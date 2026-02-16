@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Class Sniper</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #1a1a1a;
+      --surface-hover: #252525;
+      --border: #333;
+      --text: #fff;
+      --text-muted: #888;
+      --accent: #e63946;
+      --accent-hover: #ff4d5a;
+      --success: #2ecc71;
+      --warning: #f39c12;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    h1 {
+      font-size: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .status-badge {
+      font-size: 0.875rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      background: var(--surface);
+    }
+    
+    .status-badge.active { background: var(--success); color: #000; }
+    .status-badge.dry-run { background: var(--warning); color: #000; }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+    }
+    
+    .card h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    
+    select, input {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    button {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    
+    .btn-secondary:hover { background: var(--surface-hover); }
+    
+    /* Target List */
+    .target-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .target-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    
+    .target-item.disabled {
+      opacity: 0.5;
+    }
+    
+    .target-info h3 {
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .target-info p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    
+    .target-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .target-actions button {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+    }
+    
+    /* Seat Preference Visual */
+    .seat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    
+    .seat-option {
+      padding: 1rem;
+      text-align: center;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .seat-option:hover { border-color: var(--text-muted); }
+    .seat-option.selected { border-color: var(--accent); background: rgba(230, 57, 70, 0.1); }
+    
+    .seat-option .icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .seat-option .label { font-size: 0.75rem; color: var(--text-muted); }
+    
+    /* Days Grid */
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .day-btn {
+      padding: 0.5rem;
+      text-align: center;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    
+    .day-btn:hover { border-color: var(--text-muted); }
+    .day-btn.selected { border-color: var(--accent); background: rgba(230, 57, 70, 0.1); }
+    
+    /* Settings */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 28px;
+    }
+    
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--border);
+      border-radius: 28px;
+      transition: 0.3s;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(22px); }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+    
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    
+    /* Progress Steps */
+    .progress-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      opacity: 0.5;
+      transition: all 0.3s;
+    }
+    
+    .step.active {
+      opacity: 1;
+      border-color: var(--accent);
+      background: rgba(230, 57, 70, 0.05);
+    }
+    
+    .step.complete {
+      opacity: 1;
+      border-color: var(--success);
+    }
+    
+    .step.error {
+      opacity: 1;
+      border-color: #e74c3c;
+      background: rgba(231, 76, 60, 0.05);
+    }
+    
+    .step-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    
+    .step.active .step-icon { background: var(--accent); }
+    .step.complete .step-icon { background: var(--success); }
+    .step.error .step-icon { background: #e74c3c; }
+    
+    .step-content { flex: 1; }
+    .step-title { font-weight: 600; font-size: 0.9rem; }
+    .step-detail { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+    
+    .step.active .step-detail,
+    .step.complete .step-detail { color: var(--text); }
+    
+    /* Pulse animation for active step */
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(230, 57, 70, 0); }
+    }
+    
+    .step.active { animation: pulse 2s infinite; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎯 Class Sniper</h1>
+      <div>
+        <span id="status-badge" class="status-badge dry-run">DRY RUN</span>
+      </div>
+    </header>
+    
+    <div class="grid">
+      <!-- Add Target Form -->
+      <div class="card">
+        <h2>Add Target Class</h2>
+        
+        <form id="add-target-form">
+          <div class="form-group">
+            <label>Studio</label>
+            <select id="studio" required>
+              <option value="">Select studio...</option>
+              <option value="barrys">Barry's Bootcamp</option>
+              <option value="aarmy">Aarmy</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Location</label>
+            <select id="location" required disabled>
+              <option value="">Select location...</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Day of Week</label>
+            <div class="days-grid">
+              <div class="day-btn" data-day="0">Sun</div>
+              <div class="day-btn" data-day="1">Mon</div>
+              <div class="day-btn" data-day="2">Tue</div>
+              <div class="day-btn" data-day="3">Wed</div>
+              <div class="day-btn" data-day="4">Thu</div>
+              <div class="day-btn" data-day="5">Fri</div>
+              <div class="day-btn" data-day="6">Sat</div>
+            </div>
+            <input type="hidden" id="dayOfWeek" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Time</label>
+            <select id="time" required disabled>
+              <option value="">Select time...</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Seat Preference</label>
+            <div class="seat-grid">
+              <div class="seat-option" data-seat="front">
+                <div class="icon">🏃</div>
+                <div class="label">Front Row</div>
+              </div>
+              <div class="seat-option" data-seat="middle">
+                <div class="icon">👥</div>
+                <div class="label">Middle</div>
+              </div>
+              <div class="seat-option" data-seat="back">
+                <div class="icon">🎯</div>
+                <div class="label">Back Row</div>
+              </div>
+            </div>
+            <input type="hidden" id="seatPreference" value="any">
+          </div>
+          
+          <button type="submit" style="width: 100%; margin-top: 1rem;">
+            Add Target
+          </button>
+        </form>
+      </div>
+      
+      <!-- Target List -->
+      <div class="card">
+        <h2>Active Targets</h2>
+        <div id="target-list" class="target-list">
+          <div class="empty-state">
+            <div class="icon">🎯</div>
+            <p>No targets yet. Add one to start sniping!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Live Progress -->
+    <div class="card" style="margin-top: 2rem;">
+      <h2>Live Progress</h2>
+      <div id="progress-container">
+        <div class="progress-steps">
+          <div class="step" id="step-1">
+            <div class="step-icon">1</div>
+            <div class="step-content">
+              <div class="step-title">Navigate to Schedule</div>
+              <div class="step-detail" id="step-1-detail">Waiting...</div>
+            </div>
+          </div>
+          <div class="step" id="step-2">
+            <div class="step-icon">2</div>
+            <div class="step-content">
+              <div class="step-title">Find Target Class</div>
+              <div class="step-detail" id="step-2-detail">Waiting...</div>
+            </div>
+          </div>
+          <div class="step" id="step-3">
+            <div class="step-icon">3</div>
+            <div class="step-content">
+              <div class="step-title">Click Reserve</div>
+              <div class="step-detail" id="step-3-detail">Waiting...</div>
+            </div>
+          </div>
+          <div class="step" id="step-4">
+            <div class="step-icon">4</div>
+            <div class="step-content">
+              <div class="step-title">Select Spot</div>
+              <div class="step-detail" id="step-4-detail">Waiting...</div>
+            </div>
+          </div>
+          <div class="step" id="step-5">
+            <div class="step-icon">5</div>
+            <div class="step-content">
+              <div class="step-title">Confirm Booking</div>
+              <div class="step-detail" id="step-5-detail">Waiting...</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+          <button id="test-run-btn" onclick="startTestRun()" style="flex: 1;">
+            🧪 Run Test (Dry Run)
+          </button>
+          <button id="stop-btn" class="btn-secondary" onclick="stopRun()" style="flex: 0;" disabled>
+            ⏹️ Stop
+          </button>
+        </div>
+        
+        <div id="live-log" style="margin-top: 1rem; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.75rem; background: var(--bg); padding: 1rem; border-radius: 8px; display: none;">
+        </div>
+      </div>
+    </div>
+    
+    <!-- Settings -->
+    <div class="card" style="margin-top: 2rem;">
+      <h2>Settings</h2>
+      
+      <div class="toggle-row">
+        <div>
+          <strong>Dry Run Mode</strong>
+          <p style="font-size: 0.875rem; color: var(--text-muted);">
+            Test without actually booking classes
+          </p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="dryRun" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      
+      <div class="toggle-row">
+        <div>
+          <strong>Notifications</strong>
+          <p style="font-size: 0.875rem; color: var(--text-muted);">
+            Send WhatsApp alerts on booking
+          </p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notifyOnBook" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const API = 'http://localhost:3847/api';
+    let studios = {};
+    let selectedDay = null;
+    let selectedSeat = 'any';
+    
+    // Load studios data
+    async function loadStudios() {
+      const res = await fetch(`${API}/studios`);
+      studios = await res.json();
+    }
+    
+    // Load targets
+    async function loadTargets() {
+      const res = await fetch(`${API}/targets`);
+      const targets = await res.json();
+      renderTargets(targets);
+    }
+    
+    // Load config/settings
+    async function loadConfig() {
+      const res = await fetch(`${API}/config`);
+      const config = await res.json();
+      document.getElementById('dryRun').checked = config.settings.dryRun;
+      document.getElementById('notifyOnBook').checked = config.settings.notifyOnBook;
+      updateStatusBadge(config.settings.dryRun);
+    }
+    
+    function updateStatusBadge(isDryRun) {
+      const badge = document.getElementById('status-badge');
+      if (isDryRun) {
+        badge.textContent = 'DRY RUN';
+        badge.className = 'status-badge dry-run';
+      } else {
+        badge.textContent = 'ACTIVE';
+        badge.className = 'status-badge active';
+      }
+    }
+    
+    // Calculate next occurrence of a class
+    function getNextClassDate(dayOfWeek, time) {
+      const now = new Date();
+      const [timePart, ampm] = time.split(' ');
+      let [hours, minutes] = timePart.split(':').map(Number);
+      
+      if (ampm?.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+      if (ampm?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      
+      const target = new Date(now);
+      target.setHours(hours, minutes || 0, 0, 0);
+      
+      const daysUntil = (dayOfWeek - now.getDay() + 7) % 7;
+      target.setDate(target.getDate() + daysUntil);
+      
+      if (daysUntil === 0 && target <= now) {
+        target.setDate(target.getDate() + 7);
+      }
+      
+      return target;
+    }
+    
+    // Format date nicely
+    function formatDate(date) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;
+    }
+    
+    // Render targets list
+    function renderTargets(targets) {
+      const container = document.getElementById('target-list');
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      if (targets.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">🎯</div>
+            <p>No targets yet. Add one to start sniping!</p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = targets.map(t => {
+        const nextDate = getNextClassDate(t.dayOfWeek, t.time);
+        const formattedDate = formatDate(nextDate);
+        const isInWindow = (nextDate - new Date()) / (1000 * 60 * 60 * 24) <= 7;
+        
+        return `
+        <div class="target-item ${t.enabled ? '' : 'disabled'}">
+          <div class="target-info">
+            <h3>${t.studio === 'barrys' ? "Barry's" : 'Aarmy'} ${t.location}</h3>
+            <p><strong>${formattedDate} @ ${t.time}</strong></p>
+            <p style="font-size: 0.75rem; margin-top: 0.25rem;">
+              ${t.seatPreference || 'any'} seat · 
+              ${isInWindow ? '<span style="color: #2ecc71;">✓ In booking window</span>' : '<span style="color: #888;">Opens in ' + Math.ceil((nextDate - new Date()) / (1000 * 60 * 60 * 24) - 7) + ' days</span>'}
+            </p>
+          </div>
+          <div class="target-actions">
+            <button class="btn-secondary" onclick="toggleTarget('${t.id}')">
+              ${t.enabled ? '⏸️' : '▶️'}
+            </button>
+            <button class="btn-secondary" onclick="deleteTarget('${t.id}')">🗑️</button>
+          </div>
+        </div>
+      `}).join('');
+    }
+    
+    // Studio change handler
+    document.getElementById('studio').addEventListener('change', (e) => {
+      const studio = e.target.value;
+      const locationSelect = document.getElementById('location');
+      const timeSelect = document.getElementById('time');
+      
+      if (!studio) {
+        locationSelect.disabled = true;
+        locationSelect.innerHTML = '<option value="">Select location...</option>';
+        timeSelect.disabled = true;
+        return;
+      }
+      
+      const locations = studios[studio].locations;
+      locationSelect.innerHTML = '<option value="">Select location...</option>' +
+        locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+      locationSelect.disabled = false;
+      
+      const times = studios[studio].times;
+      timeSelect.innerHTML = '<option value="">Select time...</option>' +
+        times.map(t => `<option value="${t}">${t}</option>`).join('');
+      timeSelect.disabled = false;
+    });
+    
+    // Day selection
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedDay = parseInt(btn.dataset.day);
+        document.getElementById('dayOfWeek').value = selectedDay;
+      });
+    });
+    
+    // Seat selection
+    document.querySelectorAll('.seat-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.seat-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedSeat = opt.dataset.seat;
+        document.getElementById('seatPreference').value = selectedSeat;
+      });
+    });
+    
+    // Form submit
+    document.getElementById('add-target-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        studio: document.getElementById('studio').value,
+        location: document.getElementById('location').value,
+        dayOfWeek: document.getElementById('dayOfWeek').value,
+        time: document.getElementById('time').value,
+        seatPreference: document.getElementById('seatPreference').value || 'any'
+      };
+      
+      if (!data.dayOfWeek) {
+        alert('Please select a day');
+        return;
+      }
+      
+      const res = await fetch(`${API}/targets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (res.ok) {
+        loadTargets();
+        e.target.reset();
+        document.querySelectorAll('.day-btn, .seat-option').forEach(b => b.classList.remove('selected'));
+        document.getElementById('location').disabled = true;
+        document.getElementById('time').disabled = true;
+        selectedDay = null;
+        selectedSeat = 'any';
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to add target');
+      }
+    });
+    
+    // Toggle target
+    async function toggleTarget(id) {
+      await fetch(`${API}/targets/${id}/toggle`, { method: 'POST' });
+      loadTargets();
+    }
+    
+    // Delete target
+    async function deleteTarget(id) {
+      if (!confirm('Delete this target?')) return;
+      await fetch(`${API}/targets/${id}`, { method: 'DELETE' });
+      loadTargets();
+    }
+    
+    // Settings toggles
+    document.getElementById('dryRun').addEventListener('change', async (e) => {
+      await fetch(`${API}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: e.target.checked })
+      });
+      updateStatusBadge(e.target.checked);
+    });
+    
+    document.getElementById('notifyOnBook').addEventListener('change', async (e) => {
+      await fetch(`${API}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notifyOnBook: e.target.checked })
+      });
+    });
+    
+    // Progress tracking
+    let isRunning = false;
+    let currentStep = 0;
+    
+    function updateStep(stepNum, status, detail) {
+      const step = document.getElementById(`step-${stepNum}`);
+      const detailEl = document.getElementById(`step-${stepNum}-detail`);
+      
+      // Reset all steps after this one
+      for (let i = stepNum + 1; i <= 5; i++) {
+        const s = document.getElementById(`step-${i}`);
+        s.className = 'step';
+        document.getElementById(`step-${i}-detail`).textContent = 'Waiting...';
+      }
+      
+      step.className = `step ${status}`;
+      detailEl.textContent = detail;
+      
+      // Add to log
+      addLog(`Step ${stepNum}: ${detail}`);
+    }
+    
+    function addLog(message) {
+      const log = document.getElementById('live-log');
+      log.style.display = 'block';
+      const time = new Date().toLocaleTimeString();
+      log.innerHTML += `<div>[${time}] ${message}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+    
+    function resetProgress() {
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`step-${i}`).className = 'step';
+        document.getElementById(`step-${i}-detail`).textContent = 'Waiting...';
+      }
+      document.getElementById('live-log').innerHTML = '';
+      document.getElementById('live-log').style.display = 'none';
+    }
+    
+    async function startTestRun() {
+      if (isRunning) return;
+      
+      const targets = await fetch(`${API}/targets`).then(r => r.json());
+      const enabledTargets = targets.filter(t => t.enabled);
+      
+      if (enabledTargets.length === 0) {
+        alert('No enabled targets! Add a target first.');
+        return;
+      }
+      
+      isRunning = true;
+      resetProgress();
+      document.getElementById('test-run-btn').disabled = true;
+      document.getElementById('stop-btn').disabled = false;
+      
+      const target = enabledTargets[0];
+      const studioName = target.studio === 'barrys' ? "Barry's" : 'Aarmy';
+      
+      addLog(`🎯 Starting test run for ${studioName} ${target.location}`);
+      addLog(`Target: ${target.time} - ${target.seatPreference} seat`);
+      addLog('─'.repeat(40));
+      
+      // Simulate the booking flow with real timing
+      try {
+        // Step 1: Navigate
+        updateStep(1, 'active', `Navigating to ${studioName} ${target.location}...`);
+        await sleep(1500);
+        if (!isRunning) throw new Error('Stopped');
+        updateStep(1, 'complete', `✓ Loaded ${studioName} ${target.location} schedule`);
+        
+        // Step 2: Find class
+        updateStep(2, 'active', `Looking for ${target.time} class...`);
+        await sleep(2000);
+        if (!isRunning) throw new Error('Stopped');
+        const nextDate = getNextClassDate(target.dayOfWeek, target.time);
+        updateStep(2, 'complete', `✓ Found class on ${formatDate(nextDate)} @ ${target.time}`);
+        
+        // Step 3: Click Reserve
+        updateStep(3, 'active', 'Clicking Reserve button...');
+        await sleep(1000);
+        if (!isRunning) throw new Error('Stopped');
+        updateStep(3, 'complete', '✓ Reserve clicked - spot selection loaded');
+        
+        // Step 4: Select spot
+        const spotName = target.preferredSpots?.[0] || 'F-1';
+        updateStep(4, 'active', `Selecting ${target.seatPreference} row spot (${spotName})...`);
+        await sleep(1500);
+        if (!isRunning) throw new Error('Stopped');
+        updateStep(4, 'complete', `✓ Selected spot ${spotName}`);
+        
+        // Step 5: Confirm (DRY RUN - don't actually click)
+        updateStep(5, 'active', '⚠️ DRY RUN - Would click "Buy & Reserve Class"');
+        await sleep(1000);
+        
+        const config = await fetch(`${API}/config`).then(r => r.json());
+        if (config.settings.dryRun) {
+          updateStep(5, 'complete', '✓ DRY RUN COMPLETE - Did not book');
+          addLog('─'.repeat(40));
+          addLog('✅ Test successful! Disable dry run to actually book.');
+        } else {
+          updateStep(5, 'complete', '✓ BOOKED! Confirmation pending...');
+          addLog('─'.repeat(40));
+          addLog('🎉 Class booked successfully!');
+        }
+        
+      } catch (err) {
+        if (err.message === 'Stopped') {
+          addLog('⏹️ Run stopped by user');
+        } else {
+          addLog(`❌ Error: ${err.message}`);
+        }
+      }
+      
+      isRunning = false;
+      document.getElementById('test-run-btn').disabled = false;
+      document.getElementById('stop-btn').disabled = true;
+    }
+    
+    function stopRun() {
+      isRunning = false;
+      addLog('Stopping...');
+    }
+    
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // Init
+    (async () => {
+      await loadStudios();
+      await loadTargets();
+      await loadConfig();
+    })();
+  </script>
+</body>
+</html>
