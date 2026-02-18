@@ -5,13 +5,14 @@ import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2, Calendar, MapPin, Clock, Armchair } from 'lucide-react';
+import { Trash2, Calendar, MapPin, Clock, Armchair, CheckCircle, XCircle, Loader2, Timer } from 'lucide-react';
 import { STUDIOS, STUDIO_LOCATIONS, DAY_ABBR, SEAT_PREFERENCES } from '@/lib/studios';
-import type { SnipeTarget } from '@/lib/types';
+import type { TargetWithJob, JobStatus } from '@/lib/types';
 
-function formatTargetDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
+function formatTargetDate(dateVal: string | Date): string {
+  const date = typeof dateVal === 'string'
+    ? new Date(dateVal + 'T00:00:00')
+    : new Date(dateVal);
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -19,7 +20,15 @@ function formatTargetDate(dateStr: string): string {
   });
 }
 
-export function TargetsList({ targets }: { targets: SnipeTarget[] }) {
+const JOB_STATUS_CONFIG: Record<string, { label: string; style: string; icon: React.ComponentType<{ className?: string }> }> = {
+  pending: { label: 'Queued', style: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30', icon: Timer },
+  claimed: { label: 'Claimed', style: 'bg-blue-500/10 text-blue-400 border-blue-500/30', icon: Loader2 },
+  running: { label: 'Booking...', style: 'bg-purple-500/10 text-purple-400 border-purple-500/30', icon: Loader2 },
+  success: { label: 'Booked', style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', icon: CheckCircle },
+  failed: { label: 'Failed', style: 'bg-red-500/10 text-red-400 border-red-500/30', icon: XCircle },
+};
+
+export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
   const router = useRouter();
 
   async function toggleTarget(id: string, enabled: boolean) {
@@ -70,6 +79,9 @@ export function TargetsList({ targets }: { targets: SnipeTarget[] }) {
             ? formatTargetDate(target.target_date)
             : DAY_ABBR[target.day_of_week ?? 0];
 
+        const jobConfig = target.job_status ? JOB_STATUS_CONFIG[target.job_status] : null;
+        const JobIcon = jobConfig?.icon;
+
         return (
           <div
             key={target.id}
@@ -90,6 +102,18 @@ export function TargetsList({ targets }: { targets: SnipeTarget[] }) {
                     {target.target_type === 'one_time' && (
                       <Badge variant="outline" className="border-blue-500/30 text-xs text-blue-400">
                         One-time
+                      </Badge>
+                    )}
+                    {jobConfig && (
+                      <Badge variant="outline" className={`text-xs ${jobConfig.style}`}>
+                        {JobIcon && <JobIcon className={`mr-1 h-3 w-3 ${target.job_status === 'running' || target.job_status === 'claimed' ? 'animate-spin' : ''}`} />}
+                        {jobConfig.label}
+                        {target.job_status === 'success' && target.job_spot && ` · Spot ${target.job_spot}`}
+                      </Badge>
+                    )}
+                    {!target.job_status && target.enabled && (
+                      <Badge variant="outline" className="border-zinc-700 text-xs text-zinc-500">
+                        Waiting
                       </Badge>
                     )}
                   </div>
@@ -115,6 +139,9 @@ export function TargetsList({ targets }: { targets: SnipeTarget[] }) {
                       </span>
                     )}
                   </div>
+                  {target.job_status === 'failed' && target.job_message && (
+                    <p className="text-xs text-red-400/70">{target.job_message}</p>
+                  )}
                 </div>
               </div>
               <Button

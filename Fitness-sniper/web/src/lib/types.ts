@@ -3,6 +3,7 @@ export type {
   Profile,
   TargetType,
   SnipeTarget,
+  TargetWithJob,
   JobStatus,
   BookingJob,
   BookingHistory,

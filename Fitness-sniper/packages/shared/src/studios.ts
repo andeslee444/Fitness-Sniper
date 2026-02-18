@@ -245,12 +245,3 @@ export const LOCATION_IDS: Record<string, Record<string, string>> = {
   },
 };
 
-// ============================================================
-// Class Time Slots
-// ============================================================
-
-export const STUDIO_TIMES: Record<string, string[]> = {
-  barrys: ['5:00 AM', '6:00 AM', '7:15 AM', '8:30 AM', '9:45 AM', '11:00 AM', '12:15 PM', '4:00 PM', '5:15 PM', '6:30 PM', '7:45 PM'],
-  aarmy: ['6:00 AM', '7:00 AM', '8:15 AM', '12:00 PM', '5:00 PM', '6:00 PM', '7:00 PM'],
-  practiceroom: ['6:00 AM', '7:15 AM', '8:30 AM', '9:45 AM', '12:00 PM', '4:30 PM', '5:45 PM', '7:00 PM'],
-};

@@ -2,14 +2,14 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TargetsList } from '@/components/targets-list';
-import type { SnipeTarget } from '@/lib/types';
+import type { TargetWithJob } from '@/lib/types';
 
 export function TargetsTabs({
   recurring,
   oneTime,
 }: {
-  recurring: SnipeTarget[];
-  oneTime: SnipeTarget[];
+  recurring: TargetWithJob[];
+  oneTime: TargetWithJob[];
 }) {
   return (
     <Tabs defaultValue="recurring">

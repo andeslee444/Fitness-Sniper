@@ -1,5 +1,5 @@
 // Re-export studio data from shared package (single source of truth)
-export { STUDIOS, STUDIO_LOCATIONS, STUDIO_TIMES, LOCATION_IDS, SPOT_PREFERENCES } from '@fitness-sniper/shared';
+export { STUDIOS, STUDIO_LOCATIONS, LOCATION_IDS, SPOT_PREFERENCES } from '@fitness-sniper/shared';
 export type { StudioConfig, LocationInfo } from '@fitness-sniper/shared';
 
 // Web-only display constants

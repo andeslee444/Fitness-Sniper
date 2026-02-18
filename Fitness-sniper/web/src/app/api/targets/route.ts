@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/cognito';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import { STUDIOS } from '@fitness-sniper/shared';
+import { STUDIOS, parseTime } from '@fitness-sniper/shared';
 
 const TIME_REGEX = /^\d{1,2}:\d{2}\s?(AM|PM)$/i;
 
@@ -94,5 +94,57 @@ export async function POST(request: NextRequest) {
     ],
   );
 
-  return NextResponse.json(rows[0], { status: 201 });
+  const target = rows[0];
+
+  // Immediately create a booking job if within the booking window
+  try {
+    const classDate = getClassDate(data, data.time);
+    if (classDate) {
+      const studioConfig = STUDIOS[data.studio_slug];
+      const windowDays = studioConfig?.bookingWindowDays ?? 7;
+      const now = new Date();
+      const windowEnd = new Date(now);
+      windowEnd.setDate(windowEnd.getDate() + windowDays);
+
+      if (classDate >= now && classDate <= windowEnd) {
+        await query(
+          `INSERT INTO booking_jobs (user_id, target_id, status, scheduled_for)
+           VALUES ($1, $2, 'pending', $3)`,
+          [user.sub, target.id, classDate.toISOString()],
+        );
+      }
+    }
+  } catch {
+    // Non-critical — scheduler will pick it up on next scan
+  }
+
+  return NextResponse.json(target, { status: 201 });
+}
+
+function getClassDate(
+  data: { target_type: string; target_date?: string | null; day_of_week?: number | null },
+  time: string,
+): Date | null {
+  const parsed = parseTime(time);
+  const hours = parsed?.hours24 ?? 0;
+  const minutes = parsed?.minutes ?? 0;
+
+  if (data.target_type === 'one_time' && data.target_date) {
+    const [year, month, day] = data.target_date.split('-').map(Number);
+    return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  }
+
+  if (data.target_type === 'recurring' && data.day_of_week != null) {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(hours, minutes, 0, 0);
+    const daysUntil = (data.day_of_week - now.getDay() + 7) % 7;
+    target.setDate(target.getDate() + daysUntil);
+    if (daysUntil === 0 && target <= now) {
+      target.setDate(target.getDate() + 7);
+    }
+    return target;
+  }
+
+  return null;
 }

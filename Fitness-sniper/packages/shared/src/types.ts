@@ -45,6 +45,14 @@ export interface SnipeTarget {
 
 export type JobStatus = 'pending' | 'claimed' | 'running' | 'success' | 'failed' | 'cancelled';
 
+/** SnipeTarget enriched with the latest booking_job status */
+export interface TargetWithJob extends SnipeTarget {
+  job_status: JobStatus | null;
+  job_scheduled_for: string | null;
+  job_message: string | null;
+  job_spot: string | null;
+}
+
 export interface BookingJob {
   id: string;
   user_id: string;
@@ -127,6 +135,22 @@ export interface ClassSchedule {
   available: boolean;
   spots_remaining: number | null;
   scraped_at: string;
+}
+
+// ============================================================
+// Class Schedule Row (used by API clients and scrapers)
+// ============================================================
+
+export interface ClassScheduleRow {
+  studio_slug: string;
+  location_id: string;
+  class_date: string; // "YYYY-MM-DD"
+  class_time: string; // "6:00 AM" format
+  class_name: string | null;
+  instructor: string | null;
+  duration_minutes: number | null;
+  available: boolean;
+  spots_remaining: number | null;
 }
 
 // ============================================================

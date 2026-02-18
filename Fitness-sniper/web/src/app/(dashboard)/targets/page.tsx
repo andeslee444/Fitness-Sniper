@@ -2,13 +2,27 @@ import { getSession } from '@/lib/cognito';
 import { query } from '@/lib/db';
 import { AddTargetDialog } from '@/components/add-target-dialog';
 import { TargetsTabs } from './targets-tabs';
-import type { SnipeTarget } from '@/lib/types';
+import type { TargetWithJob } from '@/lib/types';
 
 export default async function TargetsPage() {
   const user = await getSession();
 
-  const { rows: targets } = await query<SnipeTarget>(
-    'SELECT * FROM snipe_targets WHERE user_id = $1 ORDER BY created_at DESC',
+  const { rows: targets } = await query<TargetWithJob>(
+    `SELECT st.*,
+       bj.status AS job_status,
+       bj.scheduled_for AS job_scheduled_for,
+       bj.result_message AS job_message,
+       bj.spot_booked AS job_spot
+     FROM snipe_targets st
+     LEFT JOIN LATERAL (
+       SELECT status, scheduled_for, result_message, spot_booked
+       FROM booking_jobs
+       WHERE target_id = st.id
+       ORDER BY created_at DESC
+       LIMIT 1
+     ) bj ON true
+     WHERE st.user_id = $1
+     ORDER BY st.created_at DESC`,
     [user!.sub],
   );
 

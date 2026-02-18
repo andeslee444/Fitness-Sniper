@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { STUDIOS, STUDIO_LOCATIONS, STUDIO_TIMES, SEAT_PREFERENCES, SPOT_PREFERENCES } from '@/lib/studios';
+import { STUDIOS, STUDIO_LOCATIONS, SEAT_PREFERENCES, SPOT_PREFERENCES } from '@/lib/studios';
 import type { StudioConfig } from '@/lib/studios';
 import type { TargetType } from '@/lib/types';
 
@@ -44,7 +44,7 @@ interface ScheduleClass {
 }
 
 interface ScheduleResponse {
-  source: 'scraped' | 'hardcoded';
+  source: 'scraped' | 'live_api' | 'empty';
   times: string[];
   classes: ScheduleClass[];
 }
@@ -72,13 +72,13 @@ export function AddTargetDialog() {
 
   const locations = studioSlug ? STUDIO_LOCATIONS[studioSlug] || [] : [];
 
-  // Determine available times: scraped data > hardcoded fallback
-  const times = scheduleData?.times ?? (studioSlug ? STUDIO_TIMES[studioSlug] || [] : []);
-  const isScraped = scheduleData?.source === 'scraped';
+  // Determine available times from API response
+  const times = scheduleData?.times ?? [];
+  const isLive = scheduleData?.source === 'scraped' || scheduleData?.source === 'live_api';
 
   // Build a map from time → class detail string for display
   const timeDisplayMap = new Map<string, string>();
-  if (scheduleData?.source === 'scraped') {
+  if (isLive && scheduleData?.classes) {
     // Deduplicate: for the same time, pick the first class entry
     for (const cls of scheduleData.classes) {
       if (!timeDisplayMap.has(cls.class_time)) {
@@ -319,7 +319,7 @@ export function AddTargetDialog() {
             <div className="flex items-center gap-2">
               <Label>Time</Label>
               {timesLoading && <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />}
-              {isScraped && !timesLoading && (
+              {isLive && !timesLoading && (
                 <span className="rounded bg-emerald-900/50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
                   Live
                 </span>
