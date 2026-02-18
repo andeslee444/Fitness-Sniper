@@ -1,0 +1,359 @@
+[
+  {
+    "studio": "barrys",
+    "url": "https://www.barrys.com/book/",
+    "timestamp": "2026-02-13T08:07:45.895Z",
+    "success": true,
+    "findings": {
+      "classCards": [
+        {
+          "selector": ".class-card",
+          "count": 0
+        },
+        {
+          "selector": ".schedule-item",
+          "count": 0
+        },
+        {
+          "selector": "[data-class-id]",
+          "count": 0
+        },
+        {
+          "selector": ".booking-tile",
+          "count": 0
+        },
+        {
+          "selector": ".class-slot",
+          "count": 0
+        }
+      ],
+      "bookButtons": [
+        {
+          "selector": "button:has-text(\"Book\")",
+          "count": 0
+        },
+        {
+          "selector": ".book-btn",
+          "count": 0
+        },
+        {
+          "selector": "[data-book]",
+          "count": 0
+        }
+      ],
+      "loginElements": [
+        {
+          "selector": "input[type=\"email\"]",
+          "count": 1
+        },
+        {
+          "selector": "input[name=\"email\"]",
+          "count": 0
+        },
+        {
+          "selector": "#email",
+          "count": 0
+        }
+      ],
+      "locationFilters": [
+        {
+          "selector": ".location-filter",
+          "count": 0
+        },
+        {
+          "selector": "[data-location]",
+          "count": 0
+        },
+        {
+          "selector": ".studio-select",
+          "count": 0
+        }
+      ],
+      "allButtons": 75,
+      "allInputs": 28,
+      "forms": 2
+    },
+    "recommendedSelectors": {
+      "loginEmail": "input[type=\"email\"]"
+    },
+    "networkRequests": [
+      "GET https://www.barrys.com/book/",
+      "GET https://www.barrys.com/book",
+      "GET https://www.barrys.com/book-now/",
+      "GET https://www.barrys.com/book-now",
+      "GET https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js",
+      "GET https://nexus.ensighten.com/choozle/20021/serverComponent.php?namespace=Bootstrapper&staticJsPath=nexus.ensighten.com/choozle/20021/code/&publishedOn=Mon%20Dec%2002%2021:24:06%20GMT%202024&ClientID=923&PageID=https%3A%2F%2Fwww.barrys.com%2Fbook-now",
+      "GET https://fast.a.klaviyo.com/custom-fonts/api/v1/company-fonts/onsite?company_id=JZhgZz",
+      "GET https://a.klaviyo.com/forms/api/v3/geo-ip",
+      "GET https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,700&display=swap",
+      "GET https://static-forms.klaviyo.com/forms/api/v7/JZhgZz/full-forms",
+      "POST https://www.barrys.com/5x7o/gs/ccm/collect?frm=0&en=page_view&dl=https%3A%2F%2Fwww.barrys.com%2Fbook-now&scrsrc=www.barrys.com&rnd=1344440550.1770970068&navt=n&npa=1&us_privacy=1---&did=dYzg1YT&gdid=dYzg1YT.dMWZhNz&_tu=CA&gtm=45892e62b1h1v9194107054za204zb78489855zd78489855xec&gcs=G100&gcd=13p3p3p3p5l1&dma_cps=-&dma=0&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938466~115938468~116988315~117447493~117527104&apve=1&apvf=f&apvc=1&tids=AW-739688553&tid=AW-739688553&tft=1770970068209&tfd=2271",
+      "POST https://bam.nr-data.net/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=2893&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70&af=err,xhr,stn,spa,ins&ap=859&be=1471&fe=1377&dc=278&at=HRpXRAoaShw%3D&fsh=1&perf=%7B%22timing%22:%7B%22of%22:1770970065939,%22n%22:0,%22r%22:0,%22re%22:440,%22f%22:440,%22dn%22:440,%22dne%22:440,%22c%22:440,%22s%22:440,%22ce%22:440,%22rq%22:440,%22rp%22:1471,%22rpe%22:1492,%22di%22:1740,%22ds%22:1743,%22de%22:1749,%22dc%22:2818,%22l%22:2818,%22le%22:2848%7D,%22navigation%22:%7B%22rc%22:3%7D%7D&fp=1724&fcp=1724",
+      "POST https://bam.nr-data.net/events/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=3008&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70",
+      "POST https://bam.nr-data.net/jserrors/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=3009&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70",
+      "POST https://bam.nr-data.net/events/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=3011&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70",
+      "POST https://bam.nr-data.net/events/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=4814&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70",
+      "POST https://bam.nr-data.net/jserrors/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=4814&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70",
+      "POST https://bam.nr-data.net/jserrors/1/NRJS-856e82f481e0003009e?a=696914306&v=1.309.0&to=MV1UMkIAWRJYVxcMXQgXdwVECFgPFkQCAldLW1oHQxIaA1ZbCA%3D%3D&rst=4815&ck=0&s=03c15f8065b28f97&ref=https://www.barrys.com/book-now&ptid=8173a071c6dada70",
+      "GET https://googleads.g.doubleclick.net/pagead/viewthroughconversion/739688553/?random=1770970070776&cv=11&fst=1770970070776&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v9194107054za204zd9194107054xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527906~104528501~104684208~104684211~115616986~115938466~115938469~116491846~116988315~117447493&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.barrys.com%2Flogin&frm=0&did=dYzg1YT&gdid=dYzg1YT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=261544388.1770970071&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "GET https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js",
+      "GET https://www.google.com/pagead/1p-user-list/739688553/?random=1770970070776&cv=11&fst=1770969600000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45892e62b1h1v9194107054za204zd9194107054xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527906~104528501~104684208~104684211~115616986~115938466~115938469~116491846~116988315~117447493&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.barrys.com%2Flogin&frm=0&did=dYzg1YT&gdid=dYzg1YT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=261544388.1770970071&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSjQEA56J1eczbzokPv1j60u7LEzuUUJLWykrJMbzeUmeriZTaibbEB28tnaJWAysh8Sk6dTolrgWEbqUomB5iy0xdsejcvQvgZbsqQ__YfXg7e5IDCp-zk4gP_J6F8qXO06hOHhzwY29pqLUMyBprIvicnwsQhFk9H0fUOyxnUtM6VhY26RInzSdzg3Vk4w4&random=1871860899&rmt_tld=0&ipr=y",
+      "GET https://fast.a.klaviyo.com/custom-fonts/api/v1/company-fonts/onsite?company_id=JZhgZz",
+      "GET https://a.klaviyo.com/forms/api/v3/geo-ip",
+      "GET https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,700&display=swap",
+      "GET https://static-forms.klaviyo.com/forms/api/v7/JZhgZz/full-forms"
+    ],
+    "title": "Book a Workout Class Now | Barry’s",
+    "screenshotPath": "/Users/andeslee/Documents/cursor-projects/class-sniper/exploration/barrys-booking.png"
+  },
+  {
+    "studio": "soulcycle",
+    "url": "https://www.soul-cycle.com/find-a-class/",
+    "timestamp": "2026-02-13T08:07:55.187Z",
+    "success": true,
+    "findings": {
+      "classCards": [
+        {
+          "selector": ".class-card",
+          "count": 0
+        },
+        {
+          "selector": ".schedule-class",
+          "count": 0
+        },
+        {
+          "selector": "[data-class]",
+          "count": 0
+        },
+        {
+          "selector": ".class-item",
+          "count": 0
+        }
+      ],
+      "bookButtons": [
+        {
+          "selector": "button:has-text(\"Book\")",
+          "count": 2
+        },
+        {
+          "selector": ".book-class",
+          "count": 0
+        },
+        {
+          "selector": "[data-book]",
+          "count": 0
+        }
+      ],
+      "loginElements": [
+        {
+          "selector": "input[type=\"email\"]",
+          "count": 3
+        },
+        {
+          "selector": "#email",
+          "count": 1
+        },
+        {
+          "selector": "input[name=\"username\"]",
+          "count": 0
+        }
+      ],
+      "locationFilters": [
+        {
+          "selector": ".location-picker",
+          "count": 0
+        },
+        {
+          "selector": ".studio-filter",
+          "count": 0
+        },
+        {
+          "selector": "[data-studio]",
+          "count": 0
+        }
+      ],
+      "allButtons": 19,
+      "allInputs": 15,
+      "forms": 3
+    },
+    "recommendedSelectors": {
+      "bookButton": "button:has-text(\"Book\")",
+      "loginEmail": "input[type=\"email\"]"
+    },
+    "networkRequests": [
+      "GET https://www.soul-cycle.com/find-a-class/",
+      "GET https://connect.facebook.net/en_US/sdk.js",
+      "GET https://googleads.g.doubleclick.net/pagead/viewthroughconversion/872817258/?random=1770970075615&cv=9&fst=1770970075615&num=1&guid=ON&resp=GooglemKTybQhCsO&eid=375603261%2C466465926%2C512247839%2C658953496&u_h=800&u_w=1280&ig=1&frm=0&url=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&tiba=Not%20Found&hn=www.googleadservices.com&uaa=x86&uab=64&uam=&uap=macOS&uapv=10_15_7&uaw=0&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&rfmt=3&fmt=4",
+      "GET https://connect.facebook.net/en_US/sdk.js?hash=507668479e27954d7cb603eaa7352a2b",
+      "GET https://connect.facebook.net/en_US/fbevents.js",
+      "POST https://sdk.iad-01.braze.com/api/v3/data/",
+      "GET https://px0.pbbl.co/ns/__p2.gif?ppid=2ea2d3d0-df67-4a39-9599-c3965b1879ac&chk=false&brid=2541&brcid=&email=&orderId=&orderValue=&productId=&offerCode=&label=&pageUrl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&referrerUrl=&targetUrl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&sessionId=l52tt3fk4vqovjcmq7fncuubrl3r2fo0&markerType=seg&rand=rS0RzGnsn93Y5JCv&iabOptOut=-&jsVer=3.2.1&frVer=1.2&markerId=674299",
+      "GET https://googleads.g.doubleclick.net/pagead/viewthroughconversion/823225795/?random=1770970075736&cv=11&fst=1770970075736&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be62b1v892507722za200zd892507722xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938469~116988315&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&frm=0&tiba=Not%20Found&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=2042091927.1770970076&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "POST https://www.google.com/ccm/collect?frm=0&en=page_view&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&scrsrc=www.googletagmanager.com&rnd=1507849804.1770970076&dt=Not%20Found&auid=2042091927.1770970076&navt=n&npa=0&gtm=45be62b1v892507722za200zd892507722xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938469~116988315&apve=1&apvf=f&apvc=1&tids=AW-823225795&tid=AW-823225795&tft=1770970075744&tfd=498",
+      "POST https://www.google.com/ccm/collect?frm=0&en=page_view&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&scrsrc=www.googletagmanager.com&rnd=1507849804.1770970076&dt=Not%20Found&auid=2042091927.1770970076&navt=n&npa=0&ep.ads_data_redaction=0&gtm=45He62b1v840578397za200zd840578397xea&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115616985~115938465~115938468~116988316&apve=1&apvf=f&apvc=0&tft=1770970075761&tfd=515",
+      "GET https://www.google.com/pagead/1p-user-list/872817258/?random=1770970075615&cv=9&fst=1770969600000&num=1&guid=ON&resp=GooglemKTybQhCsO&eid=375603261%2C466465926%2C512247839%2C658953496&u_h=800&u_w=1280&ig=1&frm=0&url=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&tiba=Not%20Found&hn=www.googleadservices.com&uaa=x86&uab=64&uam=&uap=macOS&uapv=10_15_7&uaw=0&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&rfmt=3&fmt=3&is_vtc=1&cid=CAQSfwDnonV5AD6Mw-ejbuQX2aJKEoc_vYpApIkhUqH0e-wdYDk8eKJzTndNLk5UqaitIVWh1IqjDZIdrcd_8b-GHRfluWp3iTGIOrCbj59tZykgZ70E9uX8GvA-9H0C4bBzNZOySzGhGfw2K2Eq7NnMpDPXWY7eYMlErPc39gY2Yro&random=252479333&resp=GooglemKTybQhCsO&rmt_tld=0&ipr=y",
+      "POST https://www.google-analytics.com/j/collect?v=1&_v=j102&a=1963585962&t=pageview&_s=1&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&ul=en-us&dt=Not%20Found&sr=1280x800&vp=1280x800&_u=KGBAgAAjAAAAACAAI~&jid=1958990341&gjid=1403592289&cid=1369600953.1770970076&tid=UA-30934534-3&_gid=323642388.1770970076&_slc=1&z=727574781",
+      "GET https://connect.facebook.net/signals/config/341899589486048?v=2.9.265&r=stable&domain=www.soul-cycle.com&hme=8faeb0ed09c145bbd9d3213e762abac29e9f76b8e7a9df9d71a3058625e3b7dd&ex_m=96%2C187%2C136%2C21%2C68%2C69%2C129%2C64%2C43%2C130%2C73%2C63%2C10%2C143%2C82%2C15%2C95%2C124%2C117%2C71%2C74%2C123%2C140%2C104%2C145%2C7%2C3%2C4%2C6%2C5%2C2%2C83%2C93%2C146%2C151%2C201%2C57%2C167%2C168%2C50%2C238%2C28%2C70%2C213%2C212%2C211%2C30%2C56%2C9%2C59%2C89%2C90%2C91%2C97%2C120%2C29%2C27%2C122%2C119%2C118%2C137%2C72%2C139%2C138%2C45%2C55%2C113%2C14%2C142%2C40%2C226%2C227%2C225%2C24%2C25%2C26%2C17%2C19%2C39%2C35%2C37%2C36%2C78%2C84%2C88%2C102%2C128%2C131%2C41%2C103%2C22%2C20%2C109%2C65%2C33%2C133%2C132%2C134%2C125%2C23%2C32%2C54%2C101%2C141%2C66%2C16%2C135%2C106%2C77%2C62%2C18%2C31%2C249%2C194%2C181%2C182%2C180%2C252%2C244%2C195%2C99%2C121%2C76%2C111%2C49%2C42%2C44%2C105%2C110%2C116%2C53%2C60%2C115%2C48%2C51%2C47%2C92%2C144%2C0%2C114%2C13%2C112%2C11%2C1%2C52%2C85%2C58%2C61%2C108%2C81%2C80%2C147%2C148%2C86%2C87%2C8%2C94%2C46%2C126%2C79%2C75%2C67%2C107%2C98%2C38%2C127%2C34%2C100%2C12%2C149",
+      "POST https://www.google-analytics.com/j/collect?v=1&_v=j102&a=1963585962&t=event&_s=1&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&ul=en-us&dt=Not%20Found&sr=1280x800&vp=1280x800&ec=Navigation&ea=page%20view&el=&_u=aGDAAEAjAAAAAGAAI~&jid=1795749518&gjid=404308895&cid=1369600953.1770970076&tid=UA-30934534-4&_gid=323642388.1770970076&_r=1&_slc=1&z=476808864",
+      "POST https://analytics.google.com/g/collect?v=2&tid=G-79RVN53P4N&gtm=45je62b1v9119008784za200zb892507722zd892507722&_p=1770970075565&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=1369600953.1770970076&ul=en-us&sr=1280x800&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&are=1&frm=0&pscdl=noapi&_eu=gAAAAGA&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315~117447492&sid=1770970075&sct=1&seg=0&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&dt=Not%20Found&en=page%20view&_fv=1&_ss=1&ep.event_category=Navigation&ep.event_label=&tfd=570",
+      "GET https://www.google.com/pagead/1p-user-list/823225795/?random=1770970075736&cv=11&fst=1770969600000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be62b1v892507722za200zd892507722xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115938465~115938469~116988315&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&frm=0&tiba=Not%20Found&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=2042091927.1770970076&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSjQEA56J1eblUthaMVqJkAeeax6E_ZOXw8yQiEAU1kmf6d7t3sviQKotKoFJdhhWqsSnHQcnDymUBPirzClJUySxi7YMPByZoe0ZH_qYH3s3tkj_GMiLDBFD8-8x12S3qeLdM2Y8v95ce0SNyRiY4uInEKl1VRtfWqnPQq7jXA-mU4rDIK2KVVJ1bJiw6JTU&random=2623612706&rmt_tld=0&ipr=y",
+      "POST https://www.google-analytics.com/g/collect?v=2&tid=G-DY3241QKY1&gtm=45je62b1v867615984z8840578397za20gzb840578397zd840578397&_p=1770970075565&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=1369600953.1770970076&ul=en-us&sr=1280x800&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&are=1&frm=0&pscdl=noapi&_s=1&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&sid=1770970075&sct=1&seg=0&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&dt=Not%20Found&en=page_view&_fv=1&_ss=1&tfd=597",
+      "POST https://analytics.tiktok.com/api/v2/pixel",
+      "POST https://analytics.tiktok.com/api/v2/pixel",
+      "GET https://tr.snapchat.com/p?pid=b4ac8063-b3ce-4101-9e2e-135496e13969&ev=PAGE_VIEW&intg=gtm&pids=b4ac8063-b3ce-4101-9e2e-135496e13969&u_c1=55b7e38a-b50a-4d7c-9d75-5e33ce50c740&cdid=%40-b46cb428-2ddf-4485-9fd4-4733ea246742&u_sclid=2f24ebb5-a519-4ebb-b792-27d53d433434&u_scsid=04c56811-1d63-4e22-85fd-9f2f09eb1ff7&gat=G-DY3241QKY1%2CG-79RVN53P4N%2CGTM-W5M49TL%2CAW-823225795%2CG-79RVN53P4N&gac=ce5c5f2f&bg=false&bt=1d53c387&d_a=x86&d_bvs=%5B%2C%7B%22brand%22%3A%22Not%3AA-Brand%22%2C%22version%22%3A%2299.0.0.0%22%7D%7B%22brand%22%3A%22HeadlessChrome%22%2C%22version%22%3A%22145.0.7632.6%22%7D%7B%22brand%22%3A%22Chromium%22%2C%22version%22%3A%22145.0.7632.6%22%7D%5D&d_os=10_15_7&d_ot=macOS&df=true&huah=true&m_dcl=431&m_fcps=336&m_pi=428&m_pl=0&m_pv=2&m_rd=684&m_sh=800&m_sl=677&m_sw=1280&pl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&trackId=568dd793-614a-42c3-b8ac-00694c372a84&ts=1770970075930&v=3.54.0-2512101929",
+      "POST https://soulcycle.attn.tv/unrenderedCreative?v=4.40.84&r=&id=eb05640233144987845eccc7fc32e3ba&pv=1&l=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&w=1280&h=800&ss_ref=ORGANIC&f=3",
+      "GET https://www.facebook.com/tr/?id=341899589486048&ev=page%20view&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&rl=&if=false&ts=1770970075939&cd[request_referrer]=&cd[request_host]=www.soul-cycle.com&cd[request_pathname]=%2Ffind-a-class%2F&cd[request_search]=&cd[content_name]=page%20view&sw=1280&sh=800&v=2.9.265&r=stable&ec=0&o=12318&fbp=fb.1.1770970075937.43080695346860064&ler=empty&pmd[description]=SoulCycle%20has%20revolutionized%20indoor%20cycling%20and%20taken%20the%20world%20of%20fitness%20by%20storm.%2045%20minutes%20to%20take%20your%20journey.%20Change%20your%20body.%20Find%20your%20SOUL.&plt=431.20000000298023&it=1770970075794&coo=false&eid=e9fb846e-3c79-419c-7b8c-5c1c8430ff8f&expv2[0]=pl1&expv2[1]=el2&expv2[2]=bc1&expv2[3]=ra2&expv2[4]=rp2&expv2[5]=im1&expv2[6]=hf1&rqm=GET",
+      "POST https://api2.branch.io/v1/open",
+      "GET https://insight.adsrvr.org/track/cei?advertiser_id=bvlsv86&cookie_sync=1&upv=3.0.0&upid=f1xj5qs&ref=https://www.soul-cycle.com/find-a-class/",
+      "POST https://sdk.iad-01.braze.com/api/v3/content_cards/sync",
+      "POST https://api2.branch.io/v1/pageview",
+      "POST https://analytics.tiktok.com/api/v2/pixel/act",
+      "POST https://analytics.google.com/g/collect?v=2&tid=G-79RVN53P4N&gtm=45je62b1v9119008784za200zb892507722zd892507722&_p=1770970075565&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=1369600953.1770970076&ul=en-us&sr=1280x800&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAGQ&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315~117447492&sid=1770970075&sct=1&seg=1&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&dt=Not%20Found&_s=2&tfd=3007",
+      "POST https://www.google-analytics.com/g/collect?v=2&tid=G-DY3241QKY1&gtm=45je62b1v867615984za20gzb840578397zd840578397&_p=1770970075565&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=1369600953.1770970076&ul=en-us&sr=1280x800&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&_s=2&tag_exp=103116026~103200004~104527907~104528500~104684208~104684211~115938465~115938468~116988315&sid=1770970075&sct=1&seg=0&dl=https%3A%2F%2Fwww.soul-cycle.com%2Ffind-a-class%2F&dt=Not%20Found&en=user_engagement&_et=2412&tfd=3009",
+      "GET https://connect.facebook.net/en_US/sdk.js",
+      "POST https://sdk.iad-01.braze.com/api/v3/data/",
+      "GET https://connect.facebook.net/en_US/fbevents.js",
+      "GET https://googleads.g.doubleclick.net/pagead/viewthroughconversion/823225795/?random=1770970078356&cv=11&fst=1770970078356&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be62b1v892507722za200zd892507722xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527906~104528500~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.soul-cycle.com%2Flogin%2F&frm=0&tiba=Error&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=2042091927.1770970076&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=4",
+      "GET https://connect.facebook.net/en_US/sdk.js?hash=507668479e27954d7cb603eaa7352a2b",
+      "POST https://api2.branch.io/v1/pageview",
+      "GET https://connect.facebook.net/signals/config/341899589486048?v=2.9.265&r=stable&domain=www.soul-cycle.com&hme=8faeb0ed09c145bbd9d3213e762abac29e9f76b8e7a9df9d71a3058625e3b7dd&ex_m=96%2C187%2C136%2C21%2C68%2C69%2C129%2C64%2C43%2C130%2C73%2C63%2C10%2C143%2C82%2C15%2C95%2C124%2C117%2C71%2C74%2C123%2C140%2C104%2C145%2C7%2C3%2C4%2C6%2C5%2C2%2C83%2C93%2C146%2C151%2C201%2C57%2C167%2C168%2C50%2C238%2C28%2C70%2C213%2C212%2C211%2C30%2C56%2C9%2C59%2C89%2C90%2C91%2C97%2C120%2C29%2C27%2C122%2C119%2C118%2C137%2C72%2C139%2C138%2C45%2C55%2C113%2C14%2C142%2C40%2C226%2C227%2C225%2C24%2C25%2C26%2C17%2C19%2C39%2C35%2C37%2C36%2C78%2C84%2C88%2C102%2C128%2C131%2C41%2C103%2C22%2C20%2C109%2C65%2C33%2C133%2C132%2C134%2C125%2C23%2C32%2C54%2C101%2C141%2C66%2C16%2C135%2C106%2C77%2C62%2C18%2C31%2C249%2C194%2C181%2C182%2C180%2C252%2C244%2C195%2C99%2C121%2C76%2C111%2C49%2C42%2C44%2C105%2C110%2C116%2C53%2C60%2C115%2C48%2C51%2C47%2C92%2C144%2C0%2C114%2C13%2C112%2C11%2C1%2C52%2C85%2C58%2C61%2C108%2C81%2C80%2C147%2C148%2C86%2C87%2C8%2C94%2C46%2C126%2C79%2C75%2C67%2C107%2C98%2C38%2C127%2C34%2C100%2C12%2C149",
+      "POST https://analytics.google.com/g/collect?v=2&tid=G-79RVN53P4N&gtm=45je62b1v9119008784za200zb892507722zd892507722&_p=1770970078283&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=1369600953.1770970076&ul=en-us&sr=1280x800&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&are=1&frm=0&pscdl=noapi&_eu=gAAAAGQ&_s=1&tag_exp=103116026~103200004~104527906~104528501~104684208~104684211~115938465~115938468~116988315&sid=1770970075&sct=1&seg=1&dl=https%3A%2F%2Fwww.soul-cycle.com%2Flogin%2F&dt=Error&en=page%20view&ep.event_category=Navigation&ep.event_label=&_et=4&tfd=200",
+      "POST https://www.google-analytics.com/g/collect?v=2&tid=G-DY3241QKY1&gtm=45je62b1v867615984z8840578397za20gzb840578397zd840578397&_p=1770970078283&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=1369600953.1770970076&ul=en-us&sr=1280x800&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&_s=1&tag_exp=103116026~103200004~104527906~104528500~104684208~104684211~115938465~115938469~116988315&sid=1770970075&sct=1&seg=1&dl=https%3A%2F%2Fwww.soul-cycle.com%2Flogin%2F&dt=Error&en=page_view&tfd=219",
+      "GET https://www.facebook.com/tr/?id=341899589486048&ev=page%20view&dl=https%3A%2F%2Fwww.soul-cycle.com%2Flogin%2F&rl=&if=false&ts=1770970078433&cd[request_referrer]=&cd[request_host]=www.soul-cycle.com&cd[request_pathname]=%2Flogin%2F&cd[request_search]=&cd[content_name]=page%20view&sw=1280&sh=800&v=2.9.265&r=stable&ec=0&o=12318&fbp=fb.1.1770970075937.43080695346860064&ler=empty&pmd[description]=SoulCycle%20has%20revolutionized%20indoor%20cycling%20and%20taken%20the%20world%20of%20fitness%20by%20storm.%2045%20minutes%20to%20take%20your%20journey.%20Change%20your%20body.%20Find%20your%20SOUL.&plt=124.60000000149012&it=1770970078384&coo=false&eid=e607af8e-5772-4e11-c6ee-5623c422285b&expv2[0]=pl1&expv2[1]=el2&expv2[2]=bc1&expv2[3]=ra2&expv2[4]=rp2&expv2[5]=ct3&expv2[6]=hf0&rqm=GET",
+      "GET https://www.google.com/pagead/1p-user-list/823225795/?random=1770970078356&cv=11&fst=1770969600000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be62b1v892507722za200zd892507722xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527906~104528500~104684208~104684211~115938465~115938468~116988315&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.soul-cycle.com%2Flogin%2F&frm=0&tiba=Error&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=2042091927.1770970076&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uamb=0&uam=&uap=macOS&uapv=10_15_7&uaw=0&data=event%3Dgtag.config&rfmt=3&fmt=3&is_vtc=1&cid=CAQSjQEA56J1eRBXNWQ09ggU4wEupx61blJAnmLCnJt1F8UHooDhOJ1yI3zEcm_xNNUsEZIrq9ViYNdo1TMtv_z38VRazjUK3tGYKxMpcTZrZWjWVCnfOc0Kpf7N-FKXp17ELNZ4HNufaYRcxD0iI9AlX3ExWp7gVEG4VP83B8G4U9gge6JURypBk_p1-rF7lQc&random=262005754&rmt_tld=0&ipr=y",
+      "POST https://analytics.tiktok.com/api/v2/pixel",
+      "POST https://analytics.tiktok.com/api/v2/pixel",
+      "POST https://analytics.tiktok.com/api/v2/pixel/act"
+    ],
+    "title": "Not Found",
+    "screenshotPath": "/Users/andeslee/Documents/cursor-projects/class-sniper/exploration/soulcycle-booking.png"
+  },
+  {
+    "studio": "equinox",
+    "url": "https://www.equinox.com/classes",
+    "timestamp": "2026-02-13T08:08:02.897Z",
+    "success": true,
+    "findings": {
+      "classCards": [
+        {
+          "selector": ".class-card",
+          "count": 0
+        },
+        {
+          "selector": ".schedule-item",
+          "count": 0
+        },
+        {
+          "selector": ".class-listing",
+          "count": 0
+        },
+        {
+          "selector": "[data-class-id]",
+          "count": 0
+        }
+      ],
+      "bookButtons": [
+        {
+          "selector": "button:has-text(\"Book\")",
+          "count": 0
+        },
+        {
+          "selector": ".reserve-btn",
+          "count": 0
+        },
+        {
+          "selector": "[data-reserve]",
+          "count": 0
+        }
+      ],
+      "loginElements": [
+        {
+          "selector": "input[type=\"email\"]",
+          "count": 0
+        },
+        {
+          "selector": "#email",
+          "count": 0
+        },
+        {
+          "selector": "input[name=\"email\"]",
+          "count": 0
+        }
+      ],
+      "locationFilters": [
+        {
+          "selector": ".club-selector",
+          "count": 0
+        },
+        {
+          "selector": ".location-filter",
+          "count": 0
+        },
+        {
+          "selector": "[data-club]",
+          "count": 0
+        }
+      ],
+      "allButtons": 13,
+      "allInputs": 9,
+      "forms": 0
+    },
+    "recommendedSelectors": {},
+    "networkRequests": [
+      "GET https://www.equinox.com/classes",
+      "GET https://www.equinox.com/api/auth/me",
+      "GET https://www.equinox.com/api/auth/me",
+      "GET https://connect.facebook.net/en_US/fbevents.js",
+      "GET https://connect.facebook.net/signals/config/365078060362433?v=2.9.265&r=stable&domain=www.equinox.com&hme=8faeb0ed09c145bbd9d3213e762abac29e9f76b8e7a9df9d71a3058625e3b7dd&ex_m=96%2C187%2C136%2C21%2C68%2C69%2C129%2C64%2C43%2C130%2C73%2C63%2C10%2C143%2C82%2C15%2C95%2C124%2C117%2C71%2C74%2C123%2C140%2C104%2C145%2C7%2C3%2C4%2C6%2C5%2C2%2C83%2C93%2C146%2C151%2C201%2C57%2C167%2C168%2C50%2C238%2C28%2C70%2C213%2C212%2C211%2C30%2C56%2C9%2C59%2C89%2C90%2C91%2C97%2C120%2C29%2C27%2C122%2C119%2C118%2C137%2C72%2C139%2C138%2C45%2C55%2C113%2C14%2C142%2C40%2C226%2C227%2C225%2C24%2C25%2C26%2C17%2C19%2C39%2C35%2C37%2C36%2C78%2C84%2C88%2C102%2C128%2C131%2C41%2C103%2C22%2C20%2C109%2C65%2C33%2C133%2C132%2C134%2C125%2C23%2C32%2C54%2C101%2C141%2C66%2C16%2C135%2C106%2C77%2C62%2C18%2C31%2C249%2C194%2C181%2C182%2C180%2C252%2C244%2C195%2C99%2C121%2C76%2C111%2C49%2C42%2C44%2C105%2C110%2C116%2C53%2C60%2C115%2C48%2C51%2C47%2C92%2C144%2C0%2C114%2C13%2C112%2C11%2C1%2C52%2C85%2C58%2C61%2C108%2C81%2C80%2C147%2C148%2C86%2C87%2C8%2C94%2C46%2C126%2C79%2C75%2C67%2C107%2C98%2C38%2C127%2C34%2C100%2C12%2C149",
+      "GET https://www.equinox.com/classes",
+      "GET https://connect.facebook.net/en_US/fbevents.js",
+      "GET https://connect.facebook.net/signals/config/365078060362433?v=2.9.265&r=stable&domain=www.equinox.com&hme=8faeb0ed09c145bbd9d3213e762abac29e9f76b8e7a9df9d71a3058625e3b7dd&ex_m=96%2C187%2C136%2C21%2C68%2C69%2C129%2C64%2C43%2C130%2C73%2C63%2C10%2C143%2C82%2C15%2C95%2C124%2C117%2C71%2C74%2C123%2C140%2C104%2C145%2C7%2C3%2C4%2C6%2C5%2C2%2C83%2C93%2C146%2C151%2C201%2C57%2C167%2C168%2C50%2C238%2C28%2C70%2C213%2C212%2C211%2C30%2C56%2C9%2C59%2C89%2C90%2C91%2C97%2C120%2C29%2C27%2C122%2C119%2C118%2C137%2C72%2C139%2C138%2C45%2C55%2C113%2C14%2C142%2C40%2C226%2C227%2C225%2C24%2C25%2C26%2C17%2C19%2C39%2C35%2C37%2C36%2C78%2C84%2C88%2C102%2C128%2C131%2C41%2C103%2C22%2C20%2C109%2C65%2C33%2C133%2C132%2C134%2C125%2C23%2C32%2C54%2C101%2C141%2C66%2C16%2C135%2C106%2C77%2C62%2C18%2C31%2C249%2C194%2C181%2C182%2C180%2C252%2C244%2C195%2C99%2C121%2C76%2C111%2C49%2C42%2C44%2C105%2C110%2C116%2C53%2C60%2C115%2C48%2C51%2C47%2C92%2C144%2C0%2C114%2C13%2C112%2C11%2C1%2C52%2C85%2C58%2C61%2C108%2C81%2C80%2C147%2C148%2C86%2C87%2C8%2C94%2C46%2C126%2C79%2C75%2C67%2C107%2C98%2C38%2C127%2C34%2C100%2C12%2C149",
+      "GET https://www.equinox.com/api/auth/me",
+      "GET https://www.equinox.com/api/auth/me",
+      "GET https://www.gstatic.com/recaptcha/api2/logo_48.png",
+      "GET https://chatapps-us.netomi.com/api/v1/client-config",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "GET https://chatapps-us.netomi.com/api/ip",
+      "GET https://chatapps-us.netomi.com/api/version",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "GET https://chatapps-us.netomi.com/api/v2/mqtt",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "GET https://connect.facebook.net/en_US/fbevents.js",
+      "GET https://www.equinox.com/api/auth/me",
+      "GET https://www.equinox.com/api/auth/me",
+      "GET https://connect.facebook.net/signals/config/365078060362433?v=2.9.265&r=stable&domain=www.equinox.com&hme=8faeb0ed09c145bbd9d3213e762abac29e9f76b8e7a9df9d71a3058625e3b7dd&ex_m=96%2C187%2C136%2C21%2C68%2C69%2C129%2C64%2C43%2C130%2C73%2C63%2C10%2C143%2C82%2C15%2C95%2C124%2C117%2C71%2C74%2C123%2C140%2C104%2C145%2C7%2C3%2C4%2C6%2C5%2C2%2C83%2C93%2C146%2C151%2C201%2C57%2C167%2C168%2C50%2C238%2C28%2C70%2C213%2C212%2C211%2C30%2C56%2C9%2C59%2C89%2C90%2C91%2C97%2C120%2C29%2C27%2C122%2C119%2C118%2C137%2C72%2C139%2C138%2C45%2C55%2C113%2C14%2C142%2C40%2C226%2C227%2C225%2C24%2C25%2C26%2C17%2C19%2C39%2C35%2C37%2C36%2C78%2C84%2C88%2C102%2C128%2C131%2C41%2C103%2C22%2C20%2C109%2C65%2C33%2C133%2C132%2C134%2C125%2C23%2C32%2C54%2C101%2C141%2C66%2C16%2C135%2C106%2C77%2C62%2C18%2C31%2C249%2C194%2C181%2C182%2C180%2C252%2C244%2C195%2C99%2C121%2C76%2C111%2C49%2C42%2C44%2C105%2C110%2C116%2C53%2C60%2C115%2C48%2C51%2C47%2C92%2C144%2C0%2C114%2C13%2C112%2C11%2C1%2C52%2C85%2C58%2C61%2C108%2C81%2C80%2C147%2C148%2C86%2C87%2C8%2C94%2C46%2C126%2C79%2C75%2C67%2C107%2C98%2C38%2C127%2C34%2C100%2C12%2C149",
+      "GET https://chatapps-us.netomi.com/api/v1/client-config",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "GET https://www.gstatic.com/recaptcha/api2/logo_48.png",
+      "GET https://chatapps-us.netomi.com/api/ip",
+      "GET https://chatapps-us.netomi.com/api/version",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "GET https://chatapps-us.netomi.com/api/v2/mqtt",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info",
+      "POST https://chatapps-us.netomi.com/api/v1/datadog?logLevel=info"
+    ],
+    "title": "Equinox",
+    "screenshotPath": "/Users/andeslee/Documents/cursor-projects/class-sniper/exploration/equinox-booking.png"
+  },
+  {
+    "studio": "rumble",
+    "url": "https://www.doyourumble.com/classes",
+    "timestamp": "2026-02-13T08:08:08.594Z",
+    "success": false,
+    "findings": {
+      "classCards": [],
+      "bookButtons": [],
+      "loginElements": [],
+      "locationFilters": [],
+      "allButtons": 0,
+      "allInputs": 0,
+      "forms": 0
+    },
+    "recommendedSelectors": {},
+    "networkRequests": [
+      "GET https://www.doyourumble.com/classes"
+    ],
+    "error": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.doyourumble.com/classes\", waiting until \"networkidle\"\n"
+  }
+]

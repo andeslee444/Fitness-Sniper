@@ -1,0 +1,19 @@
+{
+  "name": "fitness-sniper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auto-book competitive fitness classes",
+  "workspaces": [
+    "worker",
+    "web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "worker": "npm run dev --workspace=worker",
+    "worker:build": "npm run build --workspace=worker",
+    "web:dev": "npm run dev --workspace=web",
+    "web:build": "npm run build --workspace=web",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}
