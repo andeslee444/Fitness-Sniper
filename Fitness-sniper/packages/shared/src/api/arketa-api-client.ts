@@ -151,6 +151,7 @@ export async function fetchArketaClassesFromAPI(
         duration_minutes: item.duration,
         available: spotsRemaining > 0 && item.isBookable,
         spots_remaining: spotsRemaining,
+        booking_opens_at: null, // Arketa doesn't expose booking open times
       });
     }
 

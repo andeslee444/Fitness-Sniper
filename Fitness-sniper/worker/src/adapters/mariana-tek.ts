@@ -406,6 +406,7 @@ export class MarianaTekAdapter {
     location: string,
     time: string,
     preferredSpots?: string[],
+    classDate?: Date,
   ): Promise<BookingResult> {
     if (!this.accessToken) {
       return { success: false, message: 'Not authenticated' };
@@ -413,11 +414,11 @@ export class MarianaTekAdapter {
 
     try {
       // Step 1: Find matching class via API
-      this.log('book', `Searching for class at ${time} in ${location}`);
+      this.log('book', `Searching for class at ${time} in ${location}${classDate ? ` on ${classDate.toISOString().split('T')[0]}` : ''}`);
 
       // We need the MT location API ID. Try the location directly.
       // The scheduler should pass the MT location ID.
-      const classes = await this.getClasses(location);
+      const classes = await this.getClasses(location, classDate);
       const matchingClass = classes.find((c: any) => {
         // Match by time (fuzzy — compare hours and minutes)
         const classTime = c.time.replace(/\s+/g, ' ').trim();

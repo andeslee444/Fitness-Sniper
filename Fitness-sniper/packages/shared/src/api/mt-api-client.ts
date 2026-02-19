@@ -43,6 +43,7 @@ interface MTClassResult {
   class_type: MTClassType | null;
   instructors: MTInstructor[];
   location: MTLocation;
+  booking_start_datetime: string | null; // ISO 8601 — when booking opens
 }
 
 interface MTApiResponse {
@@ -125,6 +126,7 @@ export async function fetchClassesFromAPI(
         duration_minutes: duration,
         available: item.available_spot_count > 0,
         spots_remaining: item.available_spot_count,
+        booking_opens_at: item.booking_start_datetime || null,
       });
     }
 

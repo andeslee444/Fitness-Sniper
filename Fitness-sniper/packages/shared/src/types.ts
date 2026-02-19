@@ -49,6 +49,7 @@ export type JobStatus = 'pending' | 'claimed' | 'running' | 'success' | 'failed'
 export interface TargetWithJob extends SnipeTarget {
   job_status: JobStatus | null;
   job_scheduled_for: string | null;
+  job_class_datetime: string | null; // actual class time (for display)
   job_message: string | null;
   job_spot: string | null;
 }
@@ -61,6 +62,7 @@ export interface BookingJob {
   claimed_by: string | null;
   claimed_at: string | null;
   scheduled_for: string;
+  class_datetime: string | null; // actual class start time (scheduled_for = booking open time)
   result_message: string | null;
   spot_booked: string | null;
   screenshot_url: string | null;
@@ -151,6 +153,7 @@ export interface ClassScheduleRow {
   duration_minutes: number | null;
   available: boolean;
   spots_remaining: number | null;
+  booking_opens_at: string | null; // ISO 8601 — when booking opens for this class
 }
 
 // ============================================================

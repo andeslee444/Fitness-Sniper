@@ -246,6 +246,7 @@ export class XponentialAdapter {
     locationSlug: string,
     time: string,
     preferredSpots?: string[],
+    classDate?: Date,
   ): Promise<BookingResult> {
     if (!this.accessToken) {
       return { success: false, message: 'Not authenticated' };
@@ -253,8 +254,8 @@ export class XponentialAdapter {
 
     try {
       // Step 1: Find matching class
-      this.log('book', `Searching for class at ${time} in ${locationSlug}`);
-      const classes = await this.getClasses(locationSlug);
+      this.log('book', `Searching for class at ${time} in ${locationSlug}${classDate ? ` on ${classDate.toISOString().split('T')[0]}` : ''}`);
+      const classes = await this.getClasses(locationSlug, classDate);
       const matchingClass = classes.find((c) => {
         const classTime = c.time.replace(/\s+/g, ' ').trim();
         const targetTime = time.replace(/\s+/g, ' ').trim();

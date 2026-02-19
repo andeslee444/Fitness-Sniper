@@ -102,20 +102,24 @@ export async function POST(request: NextRequest) {
   // Immediately create a booking job if within the booking window
   try {
     const classDate = getClassDate(data, data.time);
-    if (classDate) {
+    if (classDate && classDate > new Date()) {
       const studioConfig = STUDIOS[data.studio_slug];
       const windowDays = studioConfig?.bookingWindowDays ?? 7;
-      const now = new Date();
-      const windowEnd = new Date(now);
-      windowEnd.setDate(windowEnd.getDate() + windowDays);
 
-      if (classDate >= now && classDate <= windowEnd) {
-        await query(
-          `INSERT INTO booking_jobs (user_id, target_id, status, scheduled_for)
-           VALUES ($1, $2, 'pending', $3)`,
-          [user.sub, target.id, classDate.toISOString()],
-        );
+      // Compute scheduled_for: classDate minus booking window
+      // If already past, execute immediately (set to now)
+      const now = new Date();
+      let scheduledFor = new Date(classDate);
+      scheduledFor.setDate(scheduledFor.getDate() - windowDays);
+      if (scheduledFor < now) {
+        scheduledFor = now;
       }
+
+      await query(
+        `INSERT INTO booking_jobs (user_id, target_id, status, scheduled_for, class_datetime)
+         VALUES ($1, $2, 'pending', $3, $4)`,
+        [user.sub, target.id, scheduledFor.toISOString(), classDate.toISOString()],
+      );
     }
   } catch {
     // Non-critical — scheduler will pick it up on next scan

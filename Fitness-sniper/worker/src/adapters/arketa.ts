@@ -124,6 +124,7 @@ export class ArketaAdapter {
     locationId: string,
     time: string,
     _preferredSpots?: string[],
+    classDate?: Date,
   ): Promise<BookingResult> {
     if (!this.idToken) {
       return { success: false, message: 'Not authenticated' };
@@ -131,13 +132,14 @@ export class ArketaAdapter {
 
     try {
       // Step 1: Find matching session from schedule
-      this.log('book', `Searching for session at ${time} in ${locationId}`);
+      this.log('book', `Searching for session at ${time} in ${locationId}${classDate ? ` on ${classDate.toISOString().split('T')[0]}` : ''}`);
 
       const widgetName = this.studio.widgetName || this.studio.tenant;
-      const today = new Date();
-      const dateStr = today.toISOString().split('T')[0];
-      // Search a week out to find the next occurrence
-      const weekOut = new Date(today);
+      // Use classDate if provided, otherwise search from today
+      const searchDate = classDate || new Date();
+      const dateStr = searchDate.toISOString().split('T')[0];
+      // Search a week out from the target date to find the occurrence
+      const weekOut = new Date(searchDate);
       weekOut.setDate(weekOut.getDate() + 7);
       const weekOutStr = weekOut.toISOString().split('T')[0];
 
