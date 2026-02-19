@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}>
+      <body suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}>
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         <div id="main-content">{children}</div>
         <Toaster />

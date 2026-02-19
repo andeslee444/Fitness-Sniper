@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Target, Clock, KeyRound, LogOut } from 'lucide-react';
+import { LayoutDashboard, Target, CalendarDays, Clock, KeyRound, LogOut } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/targets', label: 'Targets', icon: Target },
+  { href: '/schedule', label: 'Schedule', icon: CalendarDays },
   { href: '/history', label: 'History', icon: Clock },
   { href: '/credentials', label: 'Credentials', icon: KeyRound },
 ];

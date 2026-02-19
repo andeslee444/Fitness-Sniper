@@ -266,6 +266,11 @@ export function AddTargetDialog() {
                   Format: {STUDIOS[studioSlug]?.slug}-location-name
                 </p>
               )}
+              {STUDIOS[studioSlug]?.platform === 'arketa' && (
+                <p className="text-xs text-zinc-500">
+                  Arketa location ID from the studio&apos;s booking widget
+                </p>
+              )}
             </div>
           )}
 

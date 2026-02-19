@@ -7,6 +7,7 @@
  * No authentication needed for schedule data.
  */
 
+import https from 'node:https';
 import { formatTime12 } from '../types';
 import type { ClassScheduleRow } from '../types';
 
@@ -28,6 +29,62 @@ interface XpoScheduleResponse {
   schedule_entries: XpoScheduleEntry[];
 }
 
+// Cloudflare WAF-protected domains that block requests based on TLS fingerprinting.
+// These need browser-like cipher suites to avoid 403 blocks.
+const CF_WAF_DOMAINS = new Set(['members.purebarre.com']);
+
+// Browser-like TLS cipher suites that pass Cloudflare's fingerprint check
+const BROWSER_CIPHERS = [
+  'TLS_AES_128_GCM_SHA256',
+  'TLS_AES_256_GCM_SHA384',
+  'TLS_CHACHA20_POLY1305_SHA256',
+  'ECDHE-ECDSA-AES128-GCM-SHA256',
+  'ECDHE-RSA-AES128-GCM-SHA256',
+].join(':');
+
+const REQUEST_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
+};
+
+/**
+ * HTTPS request with custom TLS ciphers to bypass Cloudflare WAF fingerprinting.
+ * Used for domains (like members.purebarre.com) that block standard Node.js TLS.
+ */
+function fetchWithTLSCiphers(url: string): Promise<{ ok: boolean; status: number; json: () => Promise<XpoScheduleResponse> }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = https.request(
+      {
+        hostname: parsed.hostname,
+        port: 443,
+        path: parsed.pathname + parsed.search,
+        method: 'GET',
+        headers: {
+          ...REQUEST_HEADERS,
+          'Accept-Encoding': 'identity',
+        },
+        ciphers: BROWSER_CIPHERS,
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          const status = res.statusCode || 0;
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            json: () => Promise.resolve(JSON.parse(body)),
+          });
+        });
+      },
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 /**
  * Fetch classes from the Xponential member portal API.
  *
@@ -46,16 +103,14 @@ export async function fetchXpoClassesFromAPI(
 ): Promise<ClassScheduleRow[]> {
   const url = `${membersDomain}/api/v2/locations/${locationSlug}/schedule_entries?start_date=${minDate}&end_date=${maxDate}`;
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
-    },
-  });
+  // Use custom TLS ciphers for Cloudflare WAF-protected domains
+  const hostname = new URL(membersDomain).hostname;
+  const response = CF_WAF_DOMAINS.has(hostname)
+    ? await fetchWithTLSCiphers(url)
+    : await fetch(url, { headers: REQUEST_HEADERS });
 
   if (!response.ok) {
-    throw new Error(`Xpo API returned ${response.status}: ${response.statusText}`);
+    throw new Error(`Xpo API returned ${response.status}`);
   }
 
   const json = (await response.json()) as XpoScheduleResponse;

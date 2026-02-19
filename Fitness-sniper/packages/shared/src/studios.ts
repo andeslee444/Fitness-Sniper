@@ -5,12 +5,14 @@
 export interface StudioConfig {
   name: string;
   slug: string;
-  platform: 'mariana-tek' | 'xponential' | 'mindbody';
+  platform: 'mariana-tek' | 'xponential' | 'mindbody' | 'arketa';
   tenant: string; // MT subdomain (e.g. 'barrysbootcamp' → barrysbootcamp.marianatek.com)
   scheduleUrl: string;
   loginUrl: string;
   iframe: string; // iframe selector, empty string for direct SPA
   membersDomain?: string; // Xponential member portal (e.g. 'members.cyclebar.com')
+  widgetName?: string; // Arketa widget name (e.g. 'saint')
+  partnerId?: string; // Arketa partner ID
   bookingWindowDays: number; // How far ahead bookings open (scheduler uses this)
 }
 
@@ -119,7 +121,19 @@ export const STUDIOS: Record<string, StudioConfig> = {
     scheduleUrl: 'https://practiceroomnyc.com/classes/',
     loginUrl: 'https://practiceroomnyc.marianatek.com/auth/login/',
     iframe: 'iframe',
-    bookingWindowDays: 7,
+    bookingWindowDays: 14,
+  },
+  saint: {
+    name: 'Saint NYC',
+    slug: 'saint',
+    platform: 'arketa',
+    tenant: 'saint', // Arketa widget name
+    widgetName: 'saint',
+    partnerId: 'wdTh7EBQYCU9Ian0S68coANGqQG3',
+    scheduleUrl: 'https://app.arketa.co/saint',
+    loginUrl: 'https://app.arketa.co/saint',
+    iframe: '',
+    bookingWindowDays: 90,
   },
 };
 
@@ -135,27 +149,43 @@ export interface LocationInfo {
 
 export const STUDIO_LOCATIONS: Record<string, LocationInfo[]> = {
   barrys: [
-    { id: 'noho', name: 'NoHo', address: '636 Broadway' },
-    { id: 'chelsea', name: 'Chelsea', address: '305 W 27th St' },
-    { id: 'tribeca', name: 'Tribeca', address: '141 Watts St' },
-    { id: 'brooklyn-heights', name: 'Brooklyn Heights', address: '194 Joralemon St' },
-    { id: 'east-64th', name: 'East 64th', address: '213 E 64th St' },
-    { id: 'east-86th', name: 'East 86th', address: '1526 2nd Ave' },
-    { id: 'long-island-city', name: 'Long Island City', address: '29-11 Queens Plaza N' },
-    { id: 'park-ave-south', name: 'Park Ave South', address: '393 Park Ave S' },
+    { id: 'noho', name: 'Noho', address: '419 Lafayette St' },
+    { id: 'chelsea', name: 'Chelsea', address: '135 W 20th St' },
+    { id: 'tribeca', name: 'Tribeca', address: '1 York St' },
+    { id: 'brooklyn-heights', name: 'Brooklyn Heights', address: '200 Montague St, Brooklyn' },
+    { id: 'east-64th', name: 'East 64th', address: '1216 2nd Ave' },
+    { id: 'east-86th', name: 'East 86th', address: '237 E 86th St' },
+    { id: 'park-ave-south', name: 'Park Ave South', address: '107 E 27th St' },
+    { id: 'upper-west-side', name: 'Upper West Side', address: '72-74 W 69th St' },
+    { id: 'williamsburg', name: 'Williamsburg', address: '510 Driggs Ave, Brooklyn' },
+    { id: 'hoboken', name: 'Hoboken', address: '119 River St, Hoboken NJ' },
   ],
   aarmy: [
     { id: 'chelsea', name: 'Chelsea (A23)', address: '140 West 23rd St' },
     { id: 'noho', name: 'NoHo', address: '636 Broadway' },
   ],
   slt: [
-    { id: 'ues', name: 'Upper East Side', address: '' },
-    { id: 'uws', name: 'Upper West Side', address: '' },
-    { id: 'nomad', name: 'NoMad', address: '' },
-    { id: 'soho', name: 'SoHo', address: '' },
-    { id: 'fidi', name: 'FiDi', address: '' },
-    { id: 'brooklyn', name: 'Brooklyn', address: '' },
-    { id: 'hoboken', name: 'Hoboken', address: '' },
+    // Manhattan — Upper East Side
+    { id: 'e-67', name: 'E 67', address: '201 E 67th St, 4th Floor' },
+    { id: 'e-87', name: 'E 87', address: '177 E 87th St' },
+    // Manhattan — Upper West Side
+    { id: 'w-73', name: 'W 73', address: '2109 Broadway Suite 208' },
+    { id: 'w-89', name: 'W 89', address: '610 Columbus Ave' },
+    // Manhattan — Midtown / Chelsea
+    { id: 'hudson-yards', name: 'Hudson Yards', address: '525 West 30th St' },
+    { id: 'nomad', name: 'Nomad', address: '88 Madison Ave, M1' },
+    { id: 'flatiron', name: 'Flatiron', address: '137 Fifth Ave, 2nd Floor' },
+    { id: 'w-14', name: 'W 14', address: '255 W 14th St' },
+    // Manhattan — Downtown
+    { id: 'noho', name: 'Noho', address: '65 E 8th St' },
+    { id: 'tribeca', name: 'Tribeca', address: '87 Worth St' },
+    // Brooklyn
+    { id: 'brooklyn-heights', name: 'Brooklyn Heights', address: '200 Montague St, Brooklyn' },
+    { id: 'cobble-hill', name: 'Cobble Hill', address: '296 Court St, Brooklyn' },
+    { id: 'park-slope', name: 'Park Slope', address: '289 Flatbush Ave, Brooklyn' },
+    { id: 'williamsburg', name: 'Williamsburg', address: '276 Bedford Ave, Brooklyn' },
+    // New Jersey
+    { id: 'hoboken', name: 'Hoboken', address: '333 15th St, 3rd Floor, Hoboken NJ' },
   ],
   practiceroom: [
     { id: 'noho', name: 'NoHo', address: '650 Broadway, 4th Fl' },
@@ -179,6 +209,7 @@ export const STUDIO_LOCATIONS: Record<string, LocationInfo[]> = {
     { id: 'cyclebar-hoboken', name: 'Hoboken', address: '720 Monroe St' },
   ],
   clubpilates: [
+    // Manhattan
     { id: 'clubpilates-tribeca-ny', name: 'Tribeca', address: '47 Murray St' },
     { id: 'clubpilates-west-village', name: 'West Village', address: '389 6th Ave' },
     { id: 'clubpilates-gramercy-ny', name: 'Gramercy', address: '381 Second Ave' },
@@ -186,31 +217,65 @@ export const STUDIO_LOCATIONS: Record<string, LocationInfo[]> = {
     { id: 'clubpilates-penn-station', name: 'Penn Station', address: '501 7th Ave' },
     { id: 'clubpilates-midtown-east', name: 'Midtown East', address: '850 2nd Ave' },
     { id: 'clubpilates-west-57th-ny', name: 'West 57th', address: '601 W 57th St' },
+    { id: 'clubpilates-upper-west-side', name: 'Upper West Side', address: '580 Columbus Ave' },
+    { id: 'clubpilates-east-89th-ny', name: 'East 89th', address: '1715 First Ave' },
+    // Brooklyn
     { id: 'clubpilates-cobble-hill-ny', name: 'Cobble Hill', address: '181 Pacific St, Brooklyn' },
     { id: 'clubpilates-park-slope-ny', name: 'Park Slope', address: '336 Flatbush Ave, Brooklyn' },
     { id: 'clubpilates-north-3rd-ny', name: 'North 3rd', address: '56 N 3rd St, Brooklyn' },
+    { id: 'clubpilates-bay-ridge-ny', name: 'Bay Ridge', address: '540 86th St, Brooklyn' },
+    { id: 'clubpilates-kings-highway-ny', name: 'Kings Highway', address: '485 Kings Highway, Brooklyn' },
+    { id: 'clubpilates-sheepshead-bay', name: 'Sheepshead Bay', address: '1635 Sheepshead Bay Rd, Brooklyn' },
+    // Queens
+    { id: 'clubpilates-long-island-city-ny', name: 'Long Island City', address: '2-41 50th Ave, Queens' },
+    // New Jersey
+    { id: 'clubpilates-hoboken-nj', name: 'Hoboken', address: '1400 Hudson St, Ste 3C, Hoboken NJ' },
+    { id: 'clubpilates-jersey-city', name: 'Jersey City', address: '171 Morgan St, Jersey City NJ' },
   ],
   yogasix: [
     // No NYC locations — add when available
   ],
   stretchlab: [
+    // Manhattan
     { id: 'stretchlab-tribeca', name: 'Tribeca', address: '157 Chambers St' },
     { id: 'stretchlab-union-square-nyc', name: 'Union Square', address: '791 Broadway' },
+    { id: 'stretchlab-chelsea', name: 'Chelsea', address: '132 W 23rd St' },
     { id: 'stretchlab-midtown-east', name: 'Midtown East', address: '1100 2nd Ave' },
     { id: 'stretchlab-columbus-circle', name: 'Columbus Circle', address: '332 W 57th St' },
-    { id: 'stretchlab-cobble-hill', name: 'Cobble Hill', address: '321 Court St, Brooklyn' },
     { id: 'stretchlab-upper-east-side', name: 'Upper East Side', address: '1660 First Ave' },
+    { id: 'stretchlab-west-75th-street', name: 'West 75th St', address: '330 Columbus Ave' },
+    { id: 'stretchlab-west-96th', name: 'West 96th', address: '2551B Broadway' },
+    // Brooklyn
+    { id: 'stretchlab-cobble-hill', name: 'Cobble Hill', address: '321 Court St, Brooklyn' },
+    // Queens
+    { id: 'stretchlab-long-island-city', name: 'Long Island City', address: '2-37A 50th Ave, Queens' },
+    // New Jersey
+    { id: 'stretchlab-hoboken', name: 'Hoboken', address: '770 Jackson St, Hoboken NJ' },
+  ],
+  // Arketa studios
+  saint: [
+    { id: 'HdyzqlKBXi8OmbpxwxEB', name: 'Chelsea', address: '242 W 29th St' },
   ],
   purebarre: [
+    // Manhattan
     { id: 'purebarre-new-york-city-tribeca-ny', name: 'Tribeca', address: '110 Reade St' },
     { id: 'purebarre-new-york-union-square-ny', name: 'Union Square', address: '78 5th Ave' },
     { id: 'purebarre-flatiron-ny', name: 'Flatiron', address: '39 W 21st St' },
     { id: 'purebarre-new-york-financial-district-ny', name: 'Financial District', address: '80 Pine St' },
+    { id: 'purebarre-new-york-columbus-circle-60th-broadway-ny', name: 'Central Park South', address: '200 Central Park S, Suite 207' },
+    { id: 'purebarre-new-york-upper-east-side-second-avenue-ny', name: 'UES Second Ave', address: '1237 2nd Ave' },
+    { id: 'purebarre-new-york-upper-east-side-67-street-ny', name: 'UES 67th St', address: '201 E 67th St, #2F' },
+    { id: 'purebarre-new-york-upper-east-side-lexington-88th-ny', name: 'UES Lexington & 88th', address: '1325B Lexington Ave' },
+    { id: 'purebarre-new-york-upper-west-side-columbus-avenue-ny', name: 'UWS Columbus Ave', address: '412 Columbus Ave' },
+    // Brooklyn
     { id: 'purebarre-brooklyn-cobble-hill-ny', name: 'Cobble Hill', address: '266 Court St, Brooklyn' },
     { id: 'purebarre-brooklyn-williamsburg-ny', name: 'Williamsburg', address: '204 Wythe Ave, Brooklyn' },
     { id: 'purebarre-brooklyn-park-slope-ny', name: 'Park Slope', address: '178 5th Ave, Brooklyn' },
-    { id: 'purebarre-new-york-upper-east-side-second-avenue-ny', name: 'UES Second Ave', address: '1237 2nd Ave' },
-    { id: 'purebarre-new-york-upper-west-side-columbus-avenue-ny', name: 'UWS Columbus Ave', address: '412 Columbus Ave' },
+    // Queens
+    { id: 'purebarre-long-island-city-ny', name: 'Long Island City', address: '46-32 Vernon Blvd, Queens' },
+    // New Jersey
+    { id: 'purebarre-hoboken-nj', name: 'Hoboken', address: '70 Hudson St, Suite C2, Hoboken NJ' },
+    { id: 'purebarre-jersey-city-nj', name: 'Jersey City', address: '207 Van Vorst St, Jersey City NJ' },
   ],
 };
 
@@ -223,20 +288,30 @@ export const LOCATION_IDS: Record<string, Record<string, string>> = {
     'brooklyn-heights': 'brooklyn-heights',
     'east-64th': 'east-64th',
     'east-86th': 'east-86th',
-    lic: 'long-island-city',
     'park-ave-south': 'park-ave-south',
+    'upper-west-side': 'upper-west-side',
+    williamsburg: 'williamsburg',
+    hoboken: 'hoboken',
   },
   aarmy: {
     chelsea: 'Chelsea (A23)',
     noho: 'NoHo',
   },
   slt: {
-    ues: 'Upper East Side',
-    uws: 'Upper West Side',
-    nomad: 'NoMad',
-    soho: 'SoHo',
-    fidi: 'FiDi',
-    brooklyn: 'Brooklyn',
+    'e-67': 'E 67',
+    'e-87': 'E 87',
+    'w-73': 'W 73',
+    'w-89': 'W 89',
+    'hudson-yards': 'Hudson Yards',
+    nomad: 'Nomad',
+    flatiron: 'Flatiron',
+    'w-14': 'W 14',
+    noho: 'Noho',
+    tribeca: 'Tribeca',
+    'brooklyn-heights': 'Brooklyn Heights',
+    'cobble-hill': 'Cobble Hill',
+    'park-slope': 'Park Slope',
+    williamsburg: 'Williamsburg',
     hoboken: 'Hoboken',
   },
   practiceroom: {

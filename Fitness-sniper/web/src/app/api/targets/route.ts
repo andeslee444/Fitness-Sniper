@@ -16,6 +16,7 @@ const targetSchema = z.discriminatedUnion('target_type', [
     seat_preference: z.enum(['front', 'middle', 'back', 'any']).default('any'),
     preferred_spots: z.array(z.string()).default([]),
     target_date: z.null().optional(),
+    class_type: z.string().nullable().optional(),
   }),
   z.object({
     target_type: z.literal('one_time'),
@@ -26,6 +27,7 @@ const targetSchema = z.discriminatedUnion('target_type', [
     seat_preference: z.enum(['front', 'middle', 'back', 'any']).default('any'),
     preferred_spots: z.array(z.string()).default([]),
     target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+    class_type: z.string().nullable().optional(),
   }),
 ]);
 
@@ -78,8 +80,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { rows } = await query(
-    `INSERT INTO snipe_targets (user_id, studio_slug, location_id, target_type, day_of_week, time, target_date, seat_preference, preferred_spots, enabled)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+    `INSERT INTO snipe_targets (user_id, studio_slug, location_id, target_type, day_of_week, time, target_date, seat_preference, preferred_spots, class_type, enabled)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
      RETURNING *`,
     [
       user.sub,
@@ -91,6 +93,7 @@ export async function POST(request: NextRequest) {
       data.target_type === 'one_time' ? data.target_date : null,
       data.seat_preference,
       data.preferred_spots,
+      data.class_type || null,
     ],
   );
 

@@ -7,6 +7,7 @@
 import { query } from '../db.js';
 import { MarianaTekAdapter } from '../adapters/mariana-tek.js';
 import { XponentialAdapter } from '../adapters/xponential.js';
+import { ArketaAdapter } from '../adapters/arketa.js';
 import { decrypt } from '../crypto/credentials.js';
 import { sendBookingEmail } from '../notifications/email.js';
 import { STUDIOS } from '@fitness-sniper/shared';
@@ -25,7 +26,7 @@ export class JobProcessor {
     // Update status to running
     await this.updateJobStatus(job.id, 'running');
 
-    let adapter: MarianaTekAdapter | XponentialAdapter | null = null;
+    let adapter: MarianaTekAdapter | XponentialAdapter | ArketaAdapter | null = null;
 
     try {
       // 1. Fetch target details
@@ -61,6 +62,8 @@ export class JobProcessor {
         });
       } else if (studioConfig.platform === 'xponential') {
         adapter = new XponentialAdapter(target.studio_slug, creds, { log: logFn });
+      } else if (studioConfig.platform === 'arketa') {
+        adapter = new ArketaAdapter(target.studio_slug, creds, { log: logFn });
       } else {
         await this.failJob(job, `Unsupported platform: ${studioConfig.platform}`);
         return;
