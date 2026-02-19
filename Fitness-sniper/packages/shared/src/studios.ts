@@ -13,6 +13,7 @@ export interface StudioConfig {
   membersDomain?: string; // Xponential member portal (e.g. 'members.cyclebar.com')
   widgetName?: string; // Arketa widget name (e.g. 'saint')
   partnerId?: string; // Arketa partner ID
+  region?: string; // MT region ID — filters API to local classes (e.g. Barry's NYC = '9642')
   bookingWindowDays: number; // How far ahead bookings open (scheduler uses this)
 }
 
@@ -25,6 +26,7 @@ export const STUDIOS: Record<string, StudioConfig> = {
     scheduleUrl: 'https://www.barrys.com/schedule/{location}',
     loginUrl: 'https://barrysbootcamp.marianatek.com/auth/login/',
     iframe: 'iframe.visible',
+    region: '9642', // NYC region — avoids paginating 750+ global classes
     bookingWindowDays: 7,
   },
   aarmy: {

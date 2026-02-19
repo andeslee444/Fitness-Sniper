@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
       liveClasses = await fetchArketaClassesFromAPI(widgetName, studio, location, targetDate, endDate);
     } else {
       // Mariana Tek
-      liveClasses = await fetchClassesFromAPI(studioConfig.tenant, studio, location, targetDate, endDate);
+      liveClasses = await fetchClassesFromAPI(studioConfig.tenant, studio, location, targetDate, endDate, studioConfig.region);
     }
 
     // For range queries: merge DB scraped data with live API data.

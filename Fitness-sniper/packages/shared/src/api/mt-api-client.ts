@@ -76,6 +76,7 @@ export async function fetchClassesFromAPI(
   locationId: string,
   minDate: string, // "YYYY-MM-DD"
   maxDate: string, // "YYYY-MM-DD"
+  region?: string, // MT region ID to filter server-side (avoids paginating global results)
 ): Promise<ClassScheduleRow[]> {
   const allClasses: ClassScheduleRow[] = [];
 
@@ -84,7 +85,7 @@ export async function fetchClassesFromAPI(
   const locationName = locationConfig?.name; // e.g. "NoHo", "Chelsea"
 
   let url: string | null =
-    `https://${tenant}.marianatek.com/api/customer/v1/classes?min_start_date=${minDate}&max_start_date=${maxDate}&page_size=100`;
+    `https://${tenant}.marianatek.com/api/customer/v1/classes?min_start_date=${minDate}&max_start_date=${maxDate}&page_size=100${region ? `&region=${region}` : ''}`;
 
   while (url) {
     const response = await fetch(url, {
