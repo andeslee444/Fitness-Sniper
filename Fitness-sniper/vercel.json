@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm install --force",
   "buildCommand": "cd web && next build",
   "outputDirectory": "web/.next",
   "framework": "nextjs"
