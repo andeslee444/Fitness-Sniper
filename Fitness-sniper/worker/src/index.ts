@@ -2,34 +2,22 @@
  * Fitness Sniper Worker — Entry Point
  *
  * Runs on Mac Mini. Starts:
- * 1. Job Poller — polls Supabase for pending booking jobs
+ * 1. Job Poller — polls for pending booking jobs
  * 2. Job Scheduler — creates jobs from enabled snipe targets
- * 3. Heartbeat — reports worker health to Supabase
+ * 3. Heartbeat — reports worker health to database
  */
 
 import 'dotenv/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { JobPoller } from './jobs/poller.js';
 import { JobProcessor } from './jobs/processor.js';
 import { JobScheduler } from './jobs/scheduler.js';
 import { ScheduleScraper } from './jobs/schedule-scraper.js';
-import { pool } from './db.js';
+import { pool, query } from './db.js';
 
 // ============================================================
-// Config validation
+// Config
 // ============================================================
 
-function requireEnv(name: string): string {
-  const val = process.env[name];
-  if (!val) {
-    console.error(`Missing required env var: ${name}`);
-    process.exit(1);
-  }
-  return val;
-}
-
-const SUPABASE_URL = requireEnv('SUPABASE_URL');
-const SUPABASE_SERVICE_KEY = requireEnv('SUPABASE_SERVICE_KEY');
 const WORKER_ID = process.env.WORKER_ID || `worker-${Date.now()}`;
 const CONCURRENCY = parseInt(process.env.CONCURRENCY || '2', 10);
 
@@ -37,15 +25,11 @@ const CONCURRENCY = parseInt(process.env.CONCURRENCY || '2', 10);
 // Initialize
 // ============================================================
 
-const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false },
-});
-
-const processor = new JobProcessor(supabase, WORKER_ID);
+const processor = new JobProcessor(WORKER_ID);
 const scheduler = new JobScheduler();
 const scheduleScraper = new ScheduleScraper();
 
-const poller = new JobPoller(supabase, {
+const poller = new JobPoller({
   workerId: WORKER_ID,
   concurrencyLimit: CONCURRENCY,
   onJob: (job) => processor.process(job),
@@ -59,22 +43,24 @@ let heartbeatInterval: NodeJS.Timeout | null = null;
 
 async function sendHeartbeat(): Promise<void> {
   try {
-    await supabase
-      .from('worker_heartbeats')
-      .upsert(
-        {
-          worker_id: WORKER_ID,
-          last_heartbeat: new Date().toISOString(),
-          active_jobs: poller.activeJobCount,
-          status: 'online',
-          meta: {
-            pid: process.pid,
-            memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-            uptime: Math.round(process.uptime()),
-          },
-        },
-        { onConflict: 'worker_id' },
-      );
+    await query(
+      `INSERT INTO worker_heartbeats (worker_id, last_heartbeat, active_jobs, status, meta)
+       VALUES ($1, NOW(), $2, 'online', $3)
+       ON CONFLICT (worker_id) DO UPDATE SET
+         last_heartbeat = NOW(),
+         active_jobs = $2,
+         status = 'online',
+         meta = $3`,
+      [
+        WORKER_ID,
+        poller.activeJobCount,
+        JSON.stringify({
+          pid: process.pid,
+          memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          uptime: Math.round(process.uptime()),
+        }),
+      ],
+    );
   } catch (err) {
     console.error('[heartbeat] Error:', err);
   }
@@ -106,10 +92,10 @@ async function shutdown(signal: string): Promise<void> {
 
   // Mark worker as offline
   try {
-    await supabase
-      .from('worker_heartbeats')
-      .update({ status: 'offline', active_jobs: 0 })
-      .eq('worker_id', WORKER_ID);
+    await query(
+      `UPDATE worker_heartbeats SET status = 'offline', active_jobs = 0 WHERE worker_id = $1`,
+      [WORKER_ID],
+    );
   } catch {
     // Ignore — shutting down
   }
@@ -143,7 +129,6 @@ console.log('='.repeat(50));
 console.log(`Fitness Sniper Worker v1.0.0`);
 console.log(`Worker ID: ${WORKER_ID}`);
 console.log(`Concurrency: ${CONCURRENCY}`);
-console.log(`Supabase: ${SUPABASE_URL}`);
 console.log('='.repeat(50));
 
 startHeartbeat();

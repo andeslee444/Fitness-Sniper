@@ -7,12 +7,14 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const globalForPg = globalThis as unknown as { pgPool?: pg.Pool };
+const connectionString = process.env.DATABASE_URL!;
+const isLocalhost = connectionString?.includes('localhost') || connectionString?.includes('127.0.0.1');
 
 export const pool =
   globalForPg.pgPool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL!,
-    ssl: { rejectUnauthorized: false },
+    connectionString,
+    ssl: isLocalhost ? false : { rejectUnauthorized: false },
     max: 10,
   });
 

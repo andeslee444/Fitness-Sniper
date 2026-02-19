@@ -4,7 +4,7 @@
  * Flow: decrypt credentials → create adapter → execute booking → update status
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { query } from '../db.js';
 import { MarianaTekAdapter } from '../adapters/mariana-tek.js';
 import { XponentialAdapter } from '../adapters/xponential.js';
 import { decrypt } from '../crypto/credentials.js';
@@ -13,11 +13,9 @@ import { STUDIOS } from '@fitness-sniper/shared';
 import type { BookingJob, SnipeTarget, StudioCredential } from '@fitness-sniper/shared';
 
 export class JobProcessor {
-  private supabase: SupabaseClient;
   private workerId: string;
 
-  constructor(supabase: SupabaseClient, workerId: string) {
-    this.supabase = supabase;
+  constructor(workerId: string) {
     this.workerId = workerId;
   }
 
@@ -77,15 +75,10 @@ export class JobProcessor {
 
       // 5. Update job with result
       if (result.success) {
-        await this.supabase
-          .from('booking_jobs')
-          .update({
-            status: 'success',
-            result_message: result.message,
-            spot_booked: result.spot || null,
-            screenshot_url: result.screenshotPath || null,
-          })
-          .eq('id', job.id);
+        await query(
+          `UPDATE booking_jobs SET status = 'success', result_message = $1, spot_booked = $2, screenshot_url = $3 WHERE id = $4`,
+          [result.message, result.spot || null, result.screenshotPath || null, job.id],
+        );
 
         console.log(`[processor] Job ${job.id} SUCCESS: ${result.message}`);
       } else {
@@ -118,27 +111,21 @@ export class JobProcessor {
   }
 
   private async getTarget(targetId: string): Promise<SnipeTarget | null> {
-    const { data } = await this.supabase
-      .from('snipe_targets')
-      .select('*')
-      .eq('id', targetId)
-      .single();
-    return data;
+    const { rows } = await query<SnipeTarget>('SELECT * FROM snipe_targets WHERE id = $1', [targetId]);
+    return rows[0] || null;
   }
 
   private async getDecryptedCredentials(
     userId: string,
     studioSlug: string,
   ): Promise<{ email: string; password: string } | null> {
-    const { data } = await this.supabase
-      .from('studio_credentials')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('studio_slug', studioSlug)
-      .single();
+    const { rows } = await query<StudioCredential>(
+      'SELECT * FROM studio_credentials WHERE user_id = $1 AND studio_slug = $2',
+      [userId, studioSlug],
+    );
 
-    if (!data) return null;
-    const cred = data as StudioCredential;
+    if (!rows[0]) return null;
+    const cred = rows[0];
 
     return {
       email: decrypt({ ciphertext: cred.encrypted_email, iv: cred.iv, authTag: cred.auth_tag }),
@@ -151,44 +138,29 @@ export class JobProcessor {
   }
 
   private async getUserEmail(userId: string): Promise<string | null> {
-    const { data } = await this.supabase
-      .from('profiles')
-      .select('email')
-      .eq('id', userId)
-      .single();
-    return data?.email || null;
+    const { rows } = await query<{ email: string }>('SELECT email FROM profiles WHERE id = $1', [userId]);
+    return rows[0]?.email || null;
   }
 
   private async updateJobStatus(jobId: string, status: string): Promise<void> {
-    await this.supabase
-      .from('booking_jobs')
-      .update({ status })
-      .eq('id', jobId);
+    await query('UPDATE booking_jobs SET status = $1 WHERE id = $2', [status, jobId]);
   }
 
   private async failJob(job: BookingJob, message: string): Promise<void> {
-    await this.supabase
-      .from('booking_jobs')
-      .update({
-        status: 'failed',
-        result_message: message,
-      })
-      .eq('id', job.id);
+    await query(
+      `UPDATE booking_jobs SET status = 'failed', result_message = $1 WHERE id = $2`,
+      [message, job.id],
+    );
     console.log(`[processor] Job ${job.id} FAILED: ${message}`);
   }
 
   private async handleFailure(job: BookingJob, message: string): Promise<void> {
     if (job.attempts < job.max_attempts) {
       // Reset to pending for retry
-      await this.supabase
-        .from('booking_jobs')
-        .update({
-          status: 'pending',
-          claimed_by: null,
-          claimed_at: null,
-          result_message: `Attempt ${job.attempts} failed: ${message}`,
-        })
-        .eq('id', job.id);
+      await query(
+        `UPDATE booking_jobs SET status = 'pending', claimed_by = NULL, claimed_at = NULL, result_message = $1 WHERE id = $2`,
+        [`Attempt ${job.attempts} failed: ${message}`, job.id],
+      );
       console.log(`[processor] Job ${job.id} will retry (attempt ${job.attempts}/${job.max_attempts})`);
     } else {
       await this.failJob(job, `All ${job.max_attempts} attempts failed. Last: ${message}`);

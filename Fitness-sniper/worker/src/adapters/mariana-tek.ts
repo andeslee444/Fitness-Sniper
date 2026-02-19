@@ -60,6 +60,21 @@ interface MTReservation {
 // All MT iframe studios share the same OAuth client_id (Mariana Tek iframe widget)
 const MT_IFRAME_CLIENT_ID = 'sbLziNCoF5HcOhkSV6zRL8O7betwd3mDDIQbWZa3';
 
+export class InsufficientCreditsError extends Error {
+  public readonly studioName: string;
+  public readonly studioUrl: string;
+
+  constructor(studioName: string, studioUrl: string, apiDetail?: string) {
+    // Strip URL template placeholders like {location}
+    const cleanUrl = studioUrl.replace(/\/?\{[^}]+\}/g, '');
+    const msg = `Insufficient credits for ${studioName}. Please purchase more credits or renew your membership at ${cleanUrl}`;
+    super(apiDetail ? `${msg} (API: ${apiDetail})` : msg);
+    this.name = 'InsufficientCreditsError';
+    this.studioName = studioName;
+    this.studioUrl = cleanUrl;
+  }
+}
+
 // Supports: Barry's, Aarmy, SLT, Practice Room (all iframe MT studios)
 // Xponential brands (Rumble, CycleBar, etc.) use a different platform — see xponential.ts
 
@@ -327,6 +342,20 @@ export class MarianaTekAdapter {
     });
     if (!res.ok) {
       const text = await res.text();
+      const errorText = text.substring(0, 500).toLowerCase();
+      if (
+        res.status === 402 ||
+        errorText.includes('credit') ||
+        errorText.includes('payment') ||
+        errorText.includes('balance') ||
+        errorText.includes('membership') ||
+        errorText.includes('package') ||
+        errorText.includes('plan') ||
+        errorText.includes('purchase') ||
+        errorText.includes('insufficient')
+      ) {
+        throw new InsufficientCreditsError(this.studio.name, this.studio.scheduleUrl, text.substring(0, 300));
+      }
       throw new Error(`API POST ${path} returned ${res.status}: ${text.substring(0, 300)}`);
     }
     return res.json();
@@ -437,9 +466,10 @@ export class MarianaTekAdapter {
       }>(`/classes/${matchingClass.classId}/payment_options`, true);
 
       if (paymentOpts.user_payment_options.length === 0) {
+        const cleanUrl = this.studio.scheduleUrl.replace(/\/?\{[^}]+\}/g, '');
         return {
           success: false,
-          message: 'No payment options available (no credits or membership)',
+          message: `Insufficient credits for ${this.studio.name}. Please purchase more credits or renew your membership at ${cleanUrl}`,
         };
       }
 
@@ -467,6 +497,11 @@ export class MarianaTekAdapter {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.log('book', `Booking failed: ${message}`);
+
+      // Surface credit/payment errors clearly
+      if (err instanceof InsufficientCreditsError) {
+        return { success: false, message: err.message };
+      }
 
       // If it's a waitlist scenario, try waitlist
       if (message.includes('full') || message.includes('sold out')) {

@@ -1,7 +1,7 @@
 /**
  * AES-256-GCM credential encryption/decryption
  *
- * Credentials are encrypted before storage in Supabase
+ * Credentials are encrypted before storage in the database
  * and decrypted by the worker at booking time.
  */
 

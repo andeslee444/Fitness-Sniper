@@ -1,11 +1,11 @@
 /**
- * Job Poller — polls Supabase for claimable booking jobs
+ * Job Poller — polls for claimable booking jobs
  *
  * Uses claim_next_job() RPC for atomic claiming with FOR UPDATE SKIP LOCKED.
  * Exponential backoff on empty polls: 5s → 10s → 30s → 60s, reset on job found.
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { query } from '../db.js';
 import type { BookingJob } from '@fitness-sniper/shared';
 
 export interface PollerOptions {
@@ -15,7 +15,6 @@ export interface PollerOptions {
 }
 
 export class JobPoller {
-  private supabase: SupabaseClient;
   private workerId: string;
   private concurrencyLimit: number;
   private onJob: (job: BookingJob) => Promise<void>;
@@ -26,8 +25,7 @@ export class JobPoller {
   private static readonly MIN_POLL = 5000;
   private static readonly BACKOFF_STEPS = [5000, 10000, 30000, 60000];
 
-  constructor(supabase: SupabaseClient, opts: PollerOptions) {
-    this.supabase = supabase;
+  constructor(opts: PollerOptions) {
     this.workerId = opts.workerId;
     this.concurrencyLimit = opts.concurrencyLimit ?? 2;
     this.onJob = opts.onJob;
@@ -78,16 +76,9 @@ export class JobPoller {
   }
 
   private async claimJob(): Promise<BookingJob | null> {
-    const { data, error } = await this.supabase.rpc('claim_next_job', {
-      p_worker_id: this.workerId,
-    });
-
-    if (error) {
-      console.error('[poller] claim_next_job error:', error.message);
-      return null;
-    }
-
-    return data as BookingJob | null;
+    const { rows } = await query<BookingJob>('SELECT * FROM claim_next_job($1)', [this.workerId]);
+    // claim_next_job returns a row with all-null columns when no job is available
+    return rows[0]?.id ? rows[0] : null;
   }
 
   private async processJob(job: BookingJob): Promise<void> {
