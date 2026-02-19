@@ -129,7 +129,7 @@ export class ScheduleScraper {
       if (classes.length === 0) errorMessage = 'Arketa API returned no classes';
     } else {
       // Mariana Tek: try HTTP API first with retry, then browser fallback
-      const result = await this.scrapeMarianaTek(studio_slug, location_id, dates, studio.tenant);
+      const result = await this.scrapeMarianaTek(studio_slug, location_id, dates, studio.tenant, studio.region);
       classes = result.classes;
       method = result.method;
       errorMessage = result.errorMessage;
@@ -239,6 +239,7 @@ export class ScheduleScraper {
     locationId: string,
     dates: string[],
     tenant: string,
+    region?: string,
   ): Promise<{ classes: ClassScheduleRow[]; method: 'http_api' | 'browser'; errorMessage: string | null }> {
     let method: 'http_api' | 'browser' = 'http_api';
     let classes: ClassScheduleRow[] = [];
@@ -260,6 +261,7 @@ export class ScheduleScraper {
           locationId,
           dates[0],
           dates[dates.length - 1],
+          region,
         );
         console.log(`[schedule-scraper] HTTP API returned ${classes.length} classes`);
         break;
