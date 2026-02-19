@@ -296,15 +296,16 @@ export class ScheduleScraper {
         await query(
           `INSERT INTO class_schedules
              (studio_slug, location_id, class_date, class_time, class_name,
-              instructor, duration_minutes, available, spots_remaining, scraped_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+              instructor, duration_minutes, available, spots_remaining, scraped_at, booking_opens_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)
            ON CONFLICT (studio_slug, location_id, class_date, class_time, class_name)
            DO UPDATE SET
              instructor = EXCLUDED.instructor,
              duration_minutes = EXCLUDED.duration_minutes,
              available = EXCLUDED.available,
              spots_remaining = EXCLUDED.spots_remaining,
-             scraped_at = NOW()`,
+             scraped_at = NOW(),
+             booking_opens_at = COALESCE(EXCLUDED.booking_opens_at, class_schedules.booking_opens_at)`,
           [
             c.studio_slug,
             c.location_id,
@@ -315,6 +316,7 @@ export class ScheduleScraper {
             c.duration_minutes,
             c.available,
             c.spots_remaining,
+            c.booking_opens_at,
           ],
         );
       } catch (err) {

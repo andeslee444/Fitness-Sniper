@@ -131,6 +131,7 @@ export async function fetchXpoClassesFromAPI(
       duration_minutes: durationMinutes,
       available: entry.free_spots > 0,
       spots_remaining: entry.free_spots,
+      booking_opens_at: entry.booking_opens_at || null,
     };
   });
 }

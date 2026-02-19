@@ -164,6 +164,7 @@ async function scrapeDate(
         duration_minutes: null, // Can't reliably extract from DOM
         available: hasReserve !== null,
         spots_remaining: null,
+        booking_opens_at: null, // Browser scraper can't extract this
       });
     }
   }

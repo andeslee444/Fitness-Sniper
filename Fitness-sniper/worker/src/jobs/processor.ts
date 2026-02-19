@@ -70,10 +70,18 @@ export class JobProcessor {
       }
 
       await adapter.init();
+
+      // Extract actual class date from job (class_datetime is the real class time,
+      // scheduled_for is now the booking open time)
+      const classDate = job.class_datetime
+        ? new Date(job.class_datetime)
+        : new Date(job.scheduled_for);
+
       const result = await adapter.bookClass(
         target.location_id,
         target.time,
         target.preferred_spots || undefined,
+        classDate,
       );
 
       // 5. Update job with result
@@ -91,11 +99,12 @@ export class JobProcessor {
       // 6. Send notification
       const userEmail = await this.getUserEmail(job.user_id);
       if (userEmail) {
+        const emailDate = (job.class_datetime || job.scheduled_for).split('T')[0];
         await sendBookingEmail({
           to: userEmail,
           studioName: studioConfig.name,
           classTime: target.time,
-          classDate: job.scheduled_for.split('T')[0],
+          classDate: emailDate,
           location: target.location_id,
           spot: result.spot || null,
           success: result.success,

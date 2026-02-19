@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 interface Props {
-  jobs: Pick<BookingJob, 'id' | 'status' | 'scheduled_for' | 'target_id'>[];
+  jobs: Pick<BookingJob, 'id' | 'status' | 'scheduled_for' | 'class_datetime' | 'target_id'>[];
 }
 
 export function ActiveJobs({ jobs: initialJobs }: Props) {
@@ -54,13 +54,13 @@ export function ActiveJobs({ jobs: initialJobs }: Props) {
             }`} />
             <div>
               <p className="text-sm font-medium text-white">
-                {new Date(job.scheduled_for).toLocaleDateString('en-US', {
+                {new Date(job.class_datetime || job.scheduled_for).toLocaleDateString('en-US', {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',
                 })}{' '}
                 <span className="text-zinc-400">
-                  @ {new Date(job.scheduled_for).toLocaleTimeString('en-US', {
+                  @ {new Date(job.class_datetime || job.scheduled_for).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
                   })}

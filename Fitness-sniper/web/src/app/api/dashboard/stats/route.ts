@@ -11,9 +11,9 @@ export async function GET() {
   const [targetsRes, jobsRes, historyRes] = await Promise.all([
     query('SELECT id, enabled FROM snipe_targets WHERE user_id = $1', [user.sub]),
     query(
-      `SELECT id, status, scheduled_for, target_id FROM booking_jobs
+      `SELECT id, status, scheduled_for, class_datetime, target_id FROM booking_jobs
        WHERE user_id = $1 AND status IN ('pending', 'claimed', 'running')
-       ORDER BY scheduled_for ASC`,
+       ORDER BY COALESCE(class_datetime, scheduled_for) ASC`,
       [user.sub],
     ),
     query(

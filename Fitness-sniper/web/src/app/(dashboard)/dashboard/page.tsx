@@ -10,7 +10,7 @@ import type { JobStatus } from '@/lib/types';
 
 interface DashboardStats {
   targets: { id: string; enabled: boolean }[];
-  activeJobs: { id: string; status: JobStatus; scheduled_for: string; target_id: string }[];
+  activeJobs: { id: string; status: JobStatus; scheduled_for: string; class_datetime: string | null; target_id: string }[];
   recentHistory: { id: string; status: string }[];
 }
 

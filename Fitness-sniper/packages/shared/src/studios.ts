@@ -37,7 +37,7 @@ export const STUDIOS: Record<string, StudioConfig> = {
     scheduleUrl: 'https://mt.aarmy.com/index.html?_mt=%2Fschedule%2Fdaily',
     loginUrl: 'https://aarmy.marianatek.com/auth/login/',
     iframe: 'iframe',
-    bookingWindowDays: 7,
+    bookingWindowDays: 2, // Aarmy opens bookings 2 days ahead at 11am
   },
   slt: {
     name: 'SLT',
@@ -47,7 +47,7 @@ export const STUDIOS: Record<string, StudioConfig> = {
     scheduleUrl: 'https://www.sltnyc.com/book-a-class/',
     loginUrl: 'https://slt.marianatek.com/auth/login/',
     iframe: 'iframe',
-    bookingWindowDays: 7,
+    bookingWindowDays: 8, // SLT opens bookings 8 days ahead at 1pm
   },
   rumble: {
     name: 'Rumble Boxing',

@@ -99,19 +99,22 @@ export class JobScheduler {
       classDate = getNextClassDate(target.day_of_week, target.time);
     }
 
+    // Only create jobs for future classes
+    if (classDate <= new Date()) return;
+
     const studioConfig = STUDIOS[target.studio_slug];
     const windowDays = studioConfig?.bookingWindowDays ?? DEFAULT_BOOKING_WINDOW_DAYS;
-    if (!isInBookingWindow(classDate, windowDays)) {
-      return; // Not yet in booking window
-    }
 
-    // Check if a job already exists for this target + date
+    // Check if a job already exists for this target + class date
+    // Use class_datetime (not scheduled_for) for dedup since scheduled_for is now booking open time
     const classDateStr = classDate.toISOString().split('T')[0];
     const { rows: existingJobs } = await query(
       `SELECT id, status FROM booking_jobs
        WHERE target_id = $1
-         AND scheduled_for >= $2
-         AND scheduled_for <= $3
+         AND (
+           (class_datetime >= $2 AND class_datetime <= $3)
+           OR (class_datetime IS NULL AND scheduled_for >= $2 AND scheduled_for <= $3)
+         )
          AND status IN ('pending', 'claimed', 'running', 'success')`,
       [target.id, `${classDateStr}T00:00:00Z`, `${classDateStr}T23:59:59Z`],
     );
@@ -120,15 +123,47 @@ export class JobScheduler {
       return; // Job already exists
     }
 
-    // Create new booking job
+    // Look up booking_opens_at from scraped schedule data
+    let scheduledFor: Date;
+    try {
+      const { rows: scheduleRows } = await query<{ booking_opens_at: string }>(
+        `SELECT booking_opens_at FROM class_schedules
+         WHERE studio_slug = $1 AND location_id = $2
+           AND class_date = $3 AND class_time = $4
+           AND booking_opens_at IS NOT NULL
+         LIMIT 1`,
+        [target.studio_slug, target.location_id, classDateStr, target.time],
+      );
+
+      if (scheduleRows.length > 0 && scheduleRows[0].booking_opens_at) {
+        scheduledFor = new Date(scheduleRows[0].booking_opens_at);
+        console.log(`[scheduler] Using booking_opens_at for ${target.studio_slug}: ${scheduledFor.toISOString()}`);
+      } else {
+        // Fallback: classDate minus bookingWindowDays
+        scheduledFor = new Date(classDate);
+        scheduledFor.setDate(scheduledFor.getDate() - windowDays);
+        console.log(`[scheduler] Fallback scheduled_for (class - ${windowDays}d): ${scheduledFor.toISOString()}`);
+      }
+    } catch {
+      scheduledFor = new Date(classDate);
+      scheduledFor.setDate(scheduledFor.getDate() - windowDays);
+    }
+
+    // If scheduled_for is in the past, set to now (execute immediately)
+    const now = new Date();
+    if (scheduledFor < now) {
+      scheduledFor = now;
+    }
+
+    // Create new booking job with both scheduled_for (booking open time) and class_datetime
     try {
       await query(
-        `INSERT INTO booking_jobs (user_id, target_id, status, scheduled_for)
-         VALUES ($1, $2, 'pending', $3)`,
-        [target.user_id, target.id, classDate.toISOString()],
+        `INSERT INTO booking_jobs (user_id, target_id, status, scheduled_for, class_datetime)
+         VALUES ($1, $2, 'pending', $3, $4)`,
+        [target.user_id, target.id, scheduledFor.toISOString(), classDate.toISOString()],
       );
       console.log(
-        `[scheduler] Created job: ${target.studio_slug} ${target.location_id} ${target.time} on ${classDateStr}`,
+        `[scheduler] Created job: ${target.studio_slug} ${target.location_id} ${target.time} on ${classDateStr} (execute at ${scheduledFor.toISOString()})`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -143,7 +178,7 @@ export class JobScheduler {
     try {
       const { rowCount } = await query(
         `UPDATE booking_jobs
-         SET status = 'pending', claimed_at = NULL, worker_id = NULL, attempts = COALESCE(attempts, 0) + 1, updated_at = NOW()
+         SET status = 'pending', claimed_at = NULL, claimed_by = NULL, attempts = COALESCE(attempts, 0) + 1, updated_at = NOW()
          WHERE (
            (status = 'claimed' AND claimed_at < NOW() - INTERVAL '30 minutes')
            OR
