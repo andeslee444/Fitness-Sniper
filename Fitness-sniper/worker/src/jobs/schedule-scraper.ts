@@ -14,6 +14,7 @@ import { STUDIOS } from '@fitness-sniper/shared';
 import { fetchClassesFromAPI, type ClassScheduleRow } from '../scrapers/mt-api-client.js';
 import { scrapeClassesWithBrowser } from '../scrapers/mt-browser-scraper.js';
 import { fetchXpoClassesFromAPI } from '../scrapers/xpo-api-client.js';
+import { fetchArketaClassesFromAPI } from '../scrapers/arketa-api-client.js';
 
 const SCRAPE_DAYS_AHEAD = 8; // Scrape 8 days into the future
 
@@ -123,6 +124,9 @@ export class ScheduleScraper {
     if (studio.platform === 'xponential') {
       classes = await this.scrapeXponential(studio_slug, location_id, dates, studio.membersDomain);
       if (classes.length === 0) errorMessage = 'Xponential API returned no classes';
+    } else if (studio.platform === 'arketa') {
+      classes = await this.scrapeArketa(studio_slug, location_id, dates, studio.widgetName || studio.tenant);
+      if (classes.length === 0) errorMessage = 'Arketa API returned no classes';
     } else {
       // Mariana Tek: try HTTP API first with retry, then browser fallback
       const result = await this.scrapeMarianaTek(studio_slug, location_id, dates, studio.tenant);
@@ -187,6 +191,44 @@ export class ScheduleScraper {
           continue;
         }
         console.error(`[schedule-scraper] Xpo API failed after ${maxRetries + 1} attempts: ${msg}`);
+      }
+    }
+    return [];
+  }
+
+  private async scrapeArketa(
+    studioSlug: string,
+    locationId: string,
+    dates: string[],
+    widgetName: string,
+  ): Promise<ClassScheduleRow[]> {
+    const maxRetries = 2;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = 1000 * Math.pow(2, attempt - 1);
+          console.log(`[schedule-scraper] Retrying Arketa API for ${studioSlug}/${locationId} (attempt ${attempt + 1}) after ${delay}ms`);
+          await new Promise((r) => setTimeout(r, delay));
+        } else {
+          console.log(`[schedule-scraper] Trying Arketa API for ${studioSlug}/${locationId}`);
+        }
+        const classes = await fetchArketaClassesFromAPI(
+          widgetName,
+          studioSlug,
+          locationId,
+          dates[0],
+          dates[dates.length - 1],
+        );
+        console.log(`[schedule-scraper] Arketa API returned ${classes.length} classes`);
+        return classes;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (attempt < maxRetries) {
+          console.warn(`[schedule-scraper] Arketa API attempt ${attempt + 1} failed: ${msg}`);
+          continue;
+        }
+        console.error(`[schedule-scraper] Arketa API failed after ${maxRetries + 1} attempts: ${msg}`);
       }
     }
     return [];
