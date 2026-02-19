@@ -77,9 +77,17 @@ export class JobProcessor {
         ? new Date(job.class_datetime)
         : new Date(job.scheduled_for);
 
+      // For Arketa "any time" targets (time is null), derive time from job's class_datetime
+      const bookingTime = target.time || classDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'America/New_York',
+      });
+
       const result = await adapter.bookClass(
         target.location_id,
-        target.time,
+        bookingTime,
         target.preferred_spots || undefined,
         classDate,
       );
@@ -103,7 +111,7 @@ export class JobProcessor {
         await sendBookingEmail({
           to: userEmail,
           studioName: studioConfig.name,
-          classTime: target.time,
+          classTime: bookingTime,
           classDate: emailDate,
           location: target.location_id,
           spot: result.spot || null,

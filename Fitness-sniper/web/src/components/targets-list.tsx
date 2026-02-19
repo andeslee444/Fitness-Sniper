@@ -130,7 +130,7 @@ export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {target.time}
+                      {target.time || 'Any time'}
                     </span>
                     {seatLabel && seatLabel !== 'Any Available' && (
                       <span className="flex items-center gap-1">

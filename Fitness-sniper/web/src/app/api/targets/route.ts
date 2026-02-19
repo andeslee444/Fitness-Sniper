@@ -6,13 +6,16 @@ import { STUDIOS, parseTime } from '@fitness-sniper/shared';
 
 const TIME_REGEX = /^\d{1,2}:\d{2}\s?(AM|PM)$/i;
 
+// Time is optional for Arketa studios (user picks a day, worker snipes any slot)
+const timeField = z.string().regex(TIME_REGEX, 'Time must be like "6:00 AM"').nullable().optional();
+
 const targetSchema = z.discriminatedUnion('target_type', [
   z.object({
     target_type: z.literal('recurring'),
     studio_slug: z.string().refine((s) => s in STUDIOS, 'Unknown studio'),
     location_id: z.string().default(''),
     day_of_week: z.number().int().min(0).max(6),
-    time: z.string().regex(TIME_REGEX, 'Time must be like "6:00 AM"'),
+    time: timeField,
     seat_preference: z.enum(['front', 'middle', 'back', 'any']).default('any'),
     preferred_spots: z.array(z.string()).default([]),
     target_date: z.null().optional(),
@@ -23,13 +26,20 @@ const targetSchema = z.discriminatedUnion('target_type', [
     studio_slug: z.string().refine((s) => s in STUDIOS, 'Unknown studio'),
     location_id: z.string().default(''),
     day_of_week: z.null().optional(),
-    time: z.string().regex(TIME_REGEX, 'Time must be like "6:00 AM"'),
+    time: timeField,
     seat_preference: z.enum(['front', 'middle', 'back', 'any']).default('any'),
     preferred_spots: z.array(z.string()).default([]),
     target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
     class_type: z.string().nullable().optional(),
   }),
-]);
+]).refine((data) => {
+  // Non-Arketa studios still require a time
+  const studio = STUDIOS[data.studio_slug];
+  if (studio?.platform !== 'arketa' && !data.time) {
+    return false;
+  }
+  return true;
+}, { message: 'Time is required for this studio' });
 
 export async function GET() {
   const user = await getSession();
@@ -89,7 +99,7 @@ export async function POST(request: NextRequest) {
       data.location_id,
       data.target_type,
       data.target_type === 'recurring' ? data.day_of_week : null,
-      data.time,
+      data.time || null,
       data.target_type === 'one_time' ? data.target_date : null,
       data.seat_preference,
       data.preferred_spots,
@@ -100,11 +110,12 @@ export async function POST(request: NextRequest) {
   const target = rows[0];
 
   // Immediately create a booking job if within the booking window
+  // (skip Arketa — the SlotWatcher handles job creation for those)
+  const studioForJob = STUDIOS[data.studio_slug];
   try {
-    const classDate = getClassDate(data, data.time);
-    if (classDate && classDate > new Date()) {
-      const studioConfig = STUDIOS[data.studio_slug];
-      const windowDays = studioConfig?.bookingWindowDays ?? 7;
+    const classDate = data.time ? getClassDate(data, data.time) : null;
+    if (classDate && classDate > new Date() && studioForJob?.platform !== 'arketa') {
+      const windowDays = studioForJob?.bookingWindowDays ?? 7;
 
       // Compute scheduled_for: classDate minus booking window
       // If already past, execute immediately (set to now)

@@ -32,7 +32,7 @@ export interface SnipeTarget {
   location_id: string;
   target_type: TargetType;
   day_of_week: number | null; // 0-6 (Sun-Sat), null for one-time
-  time: string; // "6:00 AM"
+  time: string | null; // "6:00 AM", null = any time (Arketa)
   target_date: string | null; // "YYYY-MM-DD", null for recurring
   class_type: string | null;
   instructor: string | null;

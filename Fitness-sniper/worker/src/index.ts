@@ -12,6 +12,7 @@ import { JobPoller } from './jobs/poller.js';
 import { JobProcessor } from './jobs/processor.js';
 import { JobScheduler } from './jobs/scheduler.js';
 import { ScheduleScraper } from './jobs/schedule-scraper.js';
+import { SlotWatcher } from './jobs/slot-watcher.js';
 import { pool, query } from './db.js';
 
 // ============================================================
@@ -28,6 +29,7 @@ const CONCURRENCY = parseInt(process.env.CONCURRENCY || '2', 10);
 const processor = new JobProcessor(WORKER_ID);
 const scheduler = new JobScheduler();
 const scheduleScraper = new ScheduleScraper();
+const slotWatcher = new SlotWatcher();
 
 const poller = new JobPoller({
   workerId: WORKER_ID,
@@ -88,6 +90,7 @@ async function shutdown(signal: string): Promise<void> {
   poller.stop();
   scheduler.stop();
   scheduleScraper.stop();
+  slotWatcher.stop();
   stopHeartbeat();
 
   // Mark worker as offline
@@ -134,4 +137,5 @@ console.log('='.repeat(50));
 startHeartbeat();
 scheduler.start();
 scheduleScraper.start();
+slotWatcher.start();
 poller.start();

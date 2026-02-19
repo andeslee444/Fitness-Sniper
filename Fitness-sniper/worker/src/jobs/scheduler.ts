@@ -17,7 +17,7 @@ interface TargetRow {
   user_id: string;
   target_type: 'recurring' | 'one_time';
   day_of_week: number | null;
-  time: string;
+  time: string | null;
   target_date: string | null;
   studio_slug: string;
   location_id: string;
@@ -77,6 +77,13 @@ export class JobScheduler {
   }
 
   private async processTarget(target: TargetRow): Promise<void> {
+    // Arketa studios are handled by the SlotWatcher (unpredictable slot drops)
+    const studioConfig = STUDIOS[target.studio_slug];
+    if (studioConfig?.platform === 'arketa') return;
+
+    // Non-Arketa targets always require a time
+    if (!target.time) return;
+
     let classDate: Date;
 
     if (target.target_type === 'one_time') {
@@ -102,7 +109,6 @@ export class JobScheduler {
     // Only create jobs for future classes
     if (classDate <= new Date()) return;
 
-    const studioConfig = STUDIOS[target.studio_slug];
     const windowDays = studioConfig?.bookingWindowDays ?? DEFAULT_BOOKING_WINDOW_DAYS;
 
     // Check if a job already exists for this target + class date
@@ -241,8 +247,10 @@ export function getNextClassDate(dayOfWeek: number, time: string): Date {
 /**
  * Parse a target_date ("YYYY-MM-DD") + time ("6:00 AM") into a Date
  */
-export function parseTargetDate(dateStr: string, time: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
+export function parseTargetDate(dateStr: string | Date, time: string): Date {
+  // Postgres may return a Date object instead of a string
+  const str = dateStr instanceof Date ? dateStr.toISOString().split('T')[0] : dateStr;
+  const [year, month, day] = str.split('-').map(Number);
   const parsed = parseTime(time);
   const hours = parsed?.hours24 ?? 0;
   const minutes = parsed?.minutes ?? 0;

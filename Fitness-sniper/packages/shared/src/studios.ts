@@ -132,8 +132,8 @@ export const STUDIOS: Record<string, StudioConfig> = {
     tenant: 'saint', // Arketa widget name
     widgetName: 'saint',
     partnerId: 'wdTh7EBQYCU9Ian0S68coANGqQG3',
-    scheduleUrl: 'https://app.arketa.co/saint',
-    loginUrl: 'https://app.arketa.co/saint',
+    scheduleUrl: 'https://www.saint.nyc/reserve',
+    loginUrl: 'https://www.saint.nyc/reserve',
     iframe: '',
     bookingWindowDays: 90,
   },

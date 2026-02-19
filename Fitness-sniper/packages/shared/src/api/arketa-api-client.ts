@@ -139,7 +139,10 @@ export async function fetchArketaClassesFromAPI(
       if (classDate < minDate || classDate > maxDate) continue;
 
       const className = item.name || item.class_name || null;
-      const spotsRemaining = Math.max(0, item.max_capacity - item.total_booked);
+      // Arketa private sessions report max_capacity=1, total_booked=1 even when bookable.
+      // Trust isBookable as the source of truth — if bookable, at least 1 spot is open.
+      const calcSpots = Math.max(0, item.max_capacity - item.total_booked);
+      const spotsRemaining = item.isBookable ? Math.max(1, calcSpots) : calcSpots;
 
       results.push({
         studio_slug: studioSlug,
@@ -149,7 +152,7 @@ export async function fetchArketaClassesFromAPI(
         class_name: className,
         instructor: null, // Arketa appointments don't have separate instructors
         duration_minutes: item.duration,
-        available: spotsRemaining > 0 && item.isBookable,
+        available: item.isBookable,
         spots_remaining: spotsRemaining,
         booking_opens_at: null, // Arketa doesn't expose booking open times
       });
