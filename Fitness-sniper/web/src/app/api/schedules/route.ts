@@ -172,8 +172,14 @@ export async function GET(request: NextRequest) {
       const domain = studioConfig.membersDomain || `https://members.${studio}.com`;
       liveClasses = await fetchXpoClassesFromAPI(domain, studio, location, targetDate, endDate);
     } else if (studioConfig.platform === 'arketa') {
-      const widgetName = studioConfig.widgetName || studioConfig.tenant;
-      liveClasses = await fetchArketaClassesFromAPI(widgetName, studio, location, targetDate, endDate);
+      liveClasses = await fetchArketaClassesFromAPI(
+        studioConfig.partnerId || '',
+        studioConfig.serviceId || '',
+        studio,
+        location,
+        targetDate,
+        endDate,
+      );
     } else {
       // Mariana Tek
       liveClasses = await fetchClassesFromAPI(studioConfig.tenant, studio, location, targetDate, endDate, studioConfig.region);

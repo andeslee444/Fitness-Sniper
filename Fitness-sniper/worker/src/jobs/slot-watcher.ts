@@ -1,19 +1,26 @@
 /**
- * Slot Watcher — polls Arketa API for newly-added class slots
+ * Slot Watcher — polls Arketa appointments API for newly-available time slots.
  *
- * Saint NYC adds sauna/ice bath slots manually at unpredictable times.
- * This watcher polls every 60s, diffs against known classes, and creates
- * booking_jobs with scheduled_for=NOW() for instant pickup by the existing
- * poller/processor pipeline.
+ * Saint NYC uses Arketa's "privates/appointments" system. Slots are added
+ * manually at unpredictable times. This watcher polls every 60s, diffs
+ * against known slots, and creates booking_jobs with scheduled_for=NOW()
+ * for instant pickup by the existing poller/processor pipeline.
+ *
+ * Unlike the old classes-based watcher, this uses the real Cloud Run API:
+ *   GET {base}/{partnerId}/services/{serviceId}/availableTimes?date=...
  */
 
 import { query } from '../db.js';
 import { STUDIOS, parseTime } from '@fitness-sniper/shared';
-import { fetchArketaSlots, type ArketaSlot } from './arketa-slot-source.js';
+import {
+  fetchArketaAvailableTimes,
+  type ArketaSlot,
+} from './arketa-slot-source.js';
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000; // 60 seconds
 const TARGET_REFRESH_INTERVAL_MS = 5 * 60_000; // 5 minutes
 const CLEANUP_INTERVAL_MS = 60 * 60_000; // 1 hour
+const MAX_DAYS_AHEAD = 21; // Check up to 21 days ahead (matches Arketa bookNotBefore policy)
 
 interface SnipeTarget {
   id: string;
@@ -28,7 +35,8 @@ interface SnipeTarget {
 
 interface WatchedStudio {
   studioSlug: string;
-  widgetName: string;
+  partnerId: string;
+  serviceId: string;
   locationId: string;
 }
 
@@ -38,8 +46,8 @@ export class SlotWatcher {
   private cleanupInterval: NodeJS.Timeout | null = null;
   private running = false;
 
-  /** Set of known Arketa class IDs — used for delta detection */
-  private knownClassIds = new Set<string>();
+  /** Set of known slot keys — used for delta detection */
+  private knownSlotKeys = new Set<string>();
 
   /** Cached snipe targets for Arketa studios */
   private targets: SnipeTarget[] = [];
@@ -66,8 +74,8 @@ export class SlotWatcher {
       console.log('[slot-watcher] No Arketa targets found — will check again in 5 min');
     }
 
-    // Seed known class IDs from first fetch (no new-class detection on boot)
-    await this.seedKnownClasses();
+    // Seed known slot keys from first fetch (no new-slot detection on boot)
+    await this.seedKnownSlots();
 
     // Start poll loop
     this.pollInterval = setInterval(() => this.poll(), this.pollIntervalMs);
@@ -78,8 +86,8 @@ export class SlotWatcher {
       TARGET_REFRESH_INTERVAL_MS,
     );
 
-    // Cleanup old IDs every hour
-    this.cleanupInterval = setInterval(() => this.cleanupKnownIds(), CLEANUP_INTERVAL_MS);
+    // Cleanup old keys every hour
+    this.cleanupInterval = setInterval(() => this.cleanupKnownKeys(), CLEANUP_INTERVAL_MS);
 
     console.log(
       `[slot-watcher] Started (poll every ${this.pollIntervalMs / 1000}s, ${this.watchedStudios.length} studio(s))`,
@@ -104,25 +112,78 @@ export class SlotWatcher {
   }
 
   /**
-   * Seed known class IDs from the first API fetch — prevents restart flood.
+   * Determine which dates to check based on active targets.
+   * - one_time targets → check the specific target_date
+   * - recurring targets → check the next N occurrences of that day_of_week
    */
-  private async seedKnownClasses(): Promise<void> {
+  private getDatesToCheck(studioSlug: string, locationId: string): string[] {
+    const dates = new Set<string>();
+    const now = new Date();
+    const today = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
+    const relevantTargets = this.targets.filter(
+      (t) => t.studio_slug === studioSlug && t.location_id === locationId,
+    );
+
+    for (const target of relevantTargets) {
+      if (target.target_type === 'one_time' && target.target_date) {
+        // Only check if in the future (Postgres may return Date objects)
+        const raw = target.target_date as string | Date;
+        const dateStr = typeof raw === 'object' && raw instanceof Date
+          ? raw.toISOString().split('T')[0]
+          : String(raw).split('T')[0];
+        if (dateStr >= today) {
+          dates.add(dateStr);
+        }
+      } else if (target.target_type === 'recurring' && target.day_of_week !== null) {
+        // Find next occurrences of this day_of_week within MAX_DAYS_AHEAD
+        for (let d = 0; d < MAX_DAYS_AHEAD; d++) {
+          const checkDate = new Date(now.getTime() + d * 86_400_000);
+          const dateStr = checkDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+          // Get day of week in ET
+          const dow = new Date(
+            checkDate.toLocaleString('en-US', { timeZone: 'America/New_York' }),
+          ).getDay();
+          if (dow === target.day_of_week) {
+            dates.add(dateStr);
+          }
+        }
+      }
+    }
+
+    return [...dates].sort();
+  }
+
+  /**
+   * Seed known slot keys from the first API fetch — prevents restart flood.
+   */
+  private async seedKnownSlots(): Promise<void> {
     let totalSeeded = 0;
 
     for (const ws of this.watchedStudios) {
       try {
-        const slots = await fetchArketaSlots(ws.widgetName, ws.locationId);
-        for (const slot of slots) {
-          this.knownClassIds.add(slot.arketaId);
+        const dates = this.getDatesToCheck(ws.studioSlug, ws.locationId);
+        for (const date of dates) {
+          const slots = await fetchArketaAvailableTimes(
+            ws.partnerId,
+            ws.serviceId,
+            ws.locationId,
+            date,
+          );
+          for (const slot of slots) {
+            this.knownSlotKeys.add(slot.slotKey);
+          }
+          totalSeeded += slots.length;
         }
-        totalSeeded += slots.length;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[slot-watcher] Seed failed for ${ws.studioSlug}: ${msg}`);
       }
     }
 
-    console.log(`[slot-watcher] Seeded ${totalSeeded} known classes (${this.knownClassIds.size} unique IDs)`);
+    console.log(
+      `[slot-watcher] Seeded ${totalSeeded} known slots (${this.knownSlotKeys.size} unique keys)`,
+    );
   }
 
   /**
@@ -142,29 +203,38 @@ export class SlotWatcher {
   }
 
   private async pollStudio(ws: WatchedStudio): Promise<void> {
-    const slots = await fetchArketaSlots(ws.widgetName, ws.locationId);
+    const dates = this.getDatesToCheck(ws.studioSlug, ws.locationId);
+    if (dates.length === 0) return;
 
-    // Diff: find new classes not in known set
+    const allSlots: ArketaSlot[] = [];
+    for (const date of dates) {
+      const slots = await fetchArketaAvailableTimes(
+        ws.partnerId,
+        ws.serviceId,
+        ws.locationId,
+        date,
+      );
+      allSlots.push(...slots);
+    }
+
+    // Diff: find new slots not in known set
     const newSlots: ArketaSlot[] = [];
-    for (const slot of slots) {
-      if (!this.knownClassIds.has(slot.arketaId)) {
+    for (const slot of allSlots) {
+      if (!this.knownSlotKeys.has(slot.slotKey)) {
         newSlots.push(slot);
       }
     }
 
-    // Add ALL fetched IDs to known set (including existing ones — idempotent)
-    for (const slot of slots) {
-      this.knownClassIds.add(slot.arketaId);
+    // Add ALL fetched slot keys to known set
+    for (const slot of allSlots) {
+      this.knownSlotKeys.add(slot.slotKey);
     }
 
-    if (newSlots.length === 0) {
-      // Quiet log — don't spam on every tick
-      return;
-    }
+    if (newSlots.length === 0) return;
 
-    console.log(`[slot-watcher] Found ${newSlots.length} NEW class(es) for ${ws.studioSlug}`);
+    console.log(`[slot-watcher] Found ${newSlots.length} NEW slot(s) for ${ws.studioSlug}`);
 
-    // Upsert new classes into class_schedules
+    // Upsert new slots into class_schedules
     await this.upsertClasses(ws.studioSlug, ws.locationId, newSlots);
 
     // Match against targets and create jobs
@@ -198,11 +268,12 @@ export class SlotWatcher {
         pairSet.add(key);
 
         const studio = STUDIOS[t.studio_slug];
-        if (!studio?.widgetName) continue;
+        if (!studio?.partnerId || !studio?.serviceId) continue;
 
         watched.push({
           studioSlug: t.studio_slug,
-          widgetName: studio.widgetName,
+          partnerId: studio.partnerId,
+          serviceId: studio.serviceId,
           locationId: t.location_id,
         });
       }
@@ -232,13 +303,12 @@ export class SlotWatcher {
     for (const slot of newSlots) {
       // Get day of week in ET
       const slotDate = new Date(slot.startTime * 1000);
-      const etDateStr = slotDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
       const etDow = new Date(
         slotDate.toLocaleString('en-US', { timeZone: 'America/New_York' }),
       ).getDay();
 
       for (const target of relevantTargets) {
-        if (!this.isTargetMatch(target, slot, etDow, etDateStr)) continue;
+        if (!this.isTargetMatch(target, slot, etDow, slot.classDate)) continue;
 
         // Dedup check: skip if booking_jobs already has a row for this (target_id, class_date)
         const { rows: existingJobs } = await query(
@@ -249,7 +319,7 @@ export class SlotWatcher {
                OR (class_datetime IS NULL AND scheduled_for >= $2 AND scheduled_for <= $3)
              )
              AND status IN ('pending', 'claimed', 'running', 'success')`,
-          [target.id, `${etDateStr}T00:00:00Z`, `${etDateStr}T23:59:59Z`],
+          [target.id, `${slot.classDate}T00:00:00Z`, `${slot.classDate}T23:59:59Z`],
         );
 
         if (existingJobs.length > 0) continue;
@@ -263,7 +333,7 @@ export class SlotWatcher {
             [target.user_id, target.id, classDatetime],
           );
           console.log(
-            `[slot-watcher] Match: target ${target.id} → created job for ${slot.name} on ${etDateStr} ${slot.classTime}`,
+            `[slot-watcher] Match: target ${target.id} → created job for ${slot.classDate} ${slot.classTime}`,
           );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -299,9 +369,13 @@ export class SlotWatcher {
       return target.day_of_week === slotDayOfWeek;
     }
 
-    // one_time: match target_date
+    // one_time: match target_date (Postgres may return Date objects)
     if (target.target_type === 'one_time' && target.target_date) {
-      return target.target_date === slotDateStr;
+      const raw = target.target_date as string | Date;
+      const targetDateStr = typeof raw === 'object' && raw instanceof Date
+        ? raw.toISOString().split('T')[0]
+        : String(raw).split('T')[0];
+      return targetDateStr === slotDateStr;
     }
 
     return false;
@@ -316,8 +390,6 @@ export class SlotWatcher {
     slots: ArketaSlot[],
   ): Promise<void> {
     for (const slot of slots) {
-      const calcSpots = Math.max(0, slot.maxCapacity - slot.totalBooked);
-      const spotsRemaining = slot.isBookable ? Math.max(1, calcSpots) : calcSpots;
       try {
         await query(
           `INSERT INTO class_schedules
@@ -335,11 +407,11 @@ export class SlotWatcher {
             locationId,
             slot.classDate,
             slot.classTime,
-            slot.name,
+            'PERSONAL SAUNA & ICE BATH',
             null, // instructor
-            slot.duration,
-            slot.isBookable,
-            spotsRemaining,
+            60, // duration
+            true, // available (these are open slots from the API)
+            1, // spots_remaining (private sessions = 1 spot)
             null, // booking_opens_at
           ],
         );
@@ -351,30 +423,37 @@ export class SlotWatcher {
   }
 
   /**
-   * Prune known IDs for classes that have already passed (prevents unbounded growth).
-   * Since we don't store timestamps per ID, we re-fetch and rebuild the set.
+   * Prune known keys — rebuild from fresh API data to remove expired slots.
    */
-  private async cleanupKnownIds(): Promise<void> {
+  private async cleanupKnownKeys(): Promise<void> {
     if (this.watchedStudios.length === 0) return;
 
-    const freshIds = new Set<string>();
+    const freshKeys = new Set<string>();
     for (const ws of this.watchedStudios) {
       try {
-        const slots = await fetchArketaSlots(ws.widgetName, ws.locationId);
-        for (const slot of slots) {
-          freshIds.add(slot.arketaId);
+        const dates = this.getDatesToCheck(ws.studioSlug, ws.locationId);
+        for (const date of dates) {
+          const slots = await fetchArketaAvailableTimes(
+            ws.partnerId,
+            ws.serviceId,
+            ws.locationId,
+            date,
+          );
+          for (const slot of slots) {
+            freshKeys.add(slot.slotKey);
+          }
         }
       } catch {
-        // On error, keep existing IDs for this studio to avoid false positives
+        // On error, keep existing keys to avoid false positives
         return;
       }
     }
 
-    const oldSize = this.knownClassIds.size;
-    this.knownClassIds = freshIds;
-    const pruned = oldSize - freshIds.size;
+    const oldSize = this.knownSlotKeys.size;
+    this.knownSlotKeys = freshKeys;
+    const pruned = oldSize - freshKeys.size;
     if (pruned > 0) {
-      console.log(`[slot-watcher] Cleanup: pruned ${pruned} expired IDs (${freshIds.size} remaining)`);
+      console.log(`[slot-watcher] Cleanup: pruned ${pruned} expired keys (${freshKeys.size} remaining)`);
     }
   }
 }

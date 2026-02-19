@@ -1,8 +1,9 @@
 /**
  * Arketa HTTP API Client
  *
- * Fetches class schedules from the public Arketa widget API:
- * GET https://app.arketa.co/api/widget/data?widgetName={name}&type=classes&start_time={unix}
+ * Fetches appointment schedules from the real Arketa Cloud Run API:
+ *   GET {base}/{partnerId}/services/{serviceId}/availableDays
+ *   GET {base}/{partnerId}/services/{serviceId}/availableTimes
  *
  * No authentication needed for schedule data.
  * Used by: Saint NYC (sauna & ice bath appointments)
@@ -10,159 +11,214 @@
 
 import type { ClassScheduleRow } from '../types';
 
-const ARKETA_BASE = 'https://app.arketa.co';
+const ARKETA_WIDGET_API = 'https://widget-api-tkaeguucxq-uc.a.run.app';
+const TIMEZONE = 'America/New_York';
+const UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36';
 
-interface ArketaLocation {
-  id: string;
-  name: string;
-  address: string;
+interface AvailableDayEntry {
+  date: string; // "2026-02-26T00:00:00-05:00"
+  isAvailable: boolean;
 }
 
-interface ArketaClass {
-  id: string;
-  name: string;
-  class_name?: string;
-  start_time: number; // Unix timestamp
-  duration: number; // Minutes
-  max_capacity: number;
-  total_booked: number;
-  experience_type: string;
-  appointment_type: string | null;
-  service_id: string;
-  location: ArketaLocation | null;
+interface StartTimeEntry {
+  label: string;
+  dateString: string; // ISO "2026-02-26T22:15:00.000Z"
+  serviceId: string;
   roomId: string;
-  isBookable: boolean;
-  hidden?: boolean;
-  canceled?: boolean;
-  deleted?: boolean;
+  locationId: string;
 }
 
-interface ArketaWidgetResponse {
-  data: {
-    classes: ArketaClass[];
-    widget?: Record<string, unknown>;
-  };
+interface AvailableTimesResponse {
+  slots: {
+    type: string;
+    startTimes: StartTimeEntry[];
+    roomId: string;
+    roomName: string;
+  }[];
+  durationInMinutes: number;
 }
 
 /**
- * Convert a Unix timestamp to "H:MM AM/PM" in America/New_York timezone
+ * Convert an ISO datetime string to "H:MM AM/PM" in America/New_York timezone
  */
-function formatUnixToTime12(unixTs: number): string {
-  const date = new Date(unixTs * 1000);
-  return date.toLocaleTimeString('en-US', {
+function formatISOToTime12(isoStr: string): string {
+  return new Date(isoStr).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-    timeZone: 'America/New_York',
+    timeZone: TIMEZONE,
   });
 }
 
 /**
- * Convert a Unix timestamp to "YYYY-MM-DD" in America/New_York timezone
+ * Convert an ISO datetime string to "YYYY-MM-DD" in America/New_York timezone
  */
-function formatUnixToDate(unixTs: number): string {
-  const date = new Date(unixTs * 1000);
-  const parts = date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // en-CA gives YYYY-MM-DD
-  return parts;
+function formatISOToDate(isoStr: string): string {
+  return new Date(isoStr).toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 }
 
 /**
- * Fetch classes from the Arketa widget API.
+ * Get all unique months (YYYY-MM) that span [startDate, endDate].
+ * Returns array of { start: "YYYY-MM-01", end: "YYYY-MM-last_day" }.
+ */
+function getMonthRanges(startDate: string, endDate: string): { start: string; end: string }[] {
+  const ranges: { start: string; end: string }[] = [];
+  const [startY, startM] = startDate.split('-').map(Number);
+  const [endY, endM] = endDate.split('-').map(Number);
+
+  let y = startY;
+  let m = startM;
+
+  while (y < endY || (y === endY && m <= endM)) {
+    const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
+    const lastDay = new Date(y, m, 0).getDate(); // day 0 of next month = last day of this month
+    const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    // Clamp to requested range
+    const rangeStart = monthStart < startDate ? startDate : monthStart;
+    const rangeEnd = monthEnd > endDate ? endDate : monthEnd;
+
+    ranges.push({ start: rangeStart, end: rangeEnd });
+
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+
+  return ranges;
+}
+
+/**
+ * Fetch available days for a single month range.
+ */
+async function fetchAvailableDays(
+  partnerId: string,
+  serviceId: string,
+  locationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<AvailableDayEntry[]> {
+  const params = new URLSearchParams({
+    instructorId: '',
+    locationId,
+    roomId: 'any',
+    startDate,
+    endDate,
+    timezone: TIMEZONE,
+  });
+
+  const url = `${ARKETA_WIDGET_API}/${partnerId}/services/${serviceId}/availableDays?${params}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': UA } });
+
+  if (!res.ok) {
+    throw new Error(`Arketa availableDays ${res.status}`);
+  }
+
+  return (await res.json()) as AvailableDayEntry[];
+}
+
+/**
+ * Fetch available time slots for a single date.
+ */
+async function fetchAvailableTimes(
+  partnerId: string,
+  serviceId: string,
+  locationId: string,
+  date: string,
+): Promise<StartTimeEntry[]> {
+  const params = new URLSearchParams({
+    instructorId: '',
+    locationId,
+    roomId: 'any',
+    date,
+    timezone: TIMEZONE,
+  });
+
+  const url = `${ARKETA_WIDGET_API}/${partnerId}/services/${serviceId}/availableTimes?${params}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': UA } });
+
+  if (!res.ok) {
+    throw new Error(`Arketa availableTimes ${res.status}`);
+  }
+
+  const json = (await res.json()) as AvailableTimesResponse;
+  const entries: StartTimeEntry[] = [];
+  for (const group of json.slots || []) {
+    entries.push(...(group.startTimes || []));
+  }
+  return entries;
+}
+
+/**
+ * Fetch classes from the Arketa appointments API.
  *
- * The API returns up to 250 classes per request from start_time onward (no end
- * param, no pagination link). To cover a full date range we paginate manually:
- * when a response returns 250 results and the last class's date is still before
- * maxDate, we advance start_time past the last result and fetch again.
+ * 1. Calls availableDays per month to find which days have slots
+ * 2. Calls availableTimes for each available day
+ * 3. Transforms to ClassScheduleRow[]
  *
- * @param widgetName - Arketa widget name (e.g. "saint")
+ * @param partnerId - Arketa partner ID
+ * @param serviceId - Arketa service/offering ID
  * @param studioSlug - Internal studio slug (e.g. "saint")
- * @param locationId - Arketa location ID (e.g. "HdyzqlKBXi8OmbpxwxEB")
+ * @param locationId - Arketa location ID
  * @param minDate - "YYYY-MM-DD"
  * @param maxDate - "YYYY-MM-DD"
  */
 export async function fetchArketaClassesFromAPI(
-  widgetName: string,
+  partnerId: string,
+  serviceId: string,
   studioSlug: string,
   locationId: string,
   minDate: string,
   maxDate: string,
 ): Promise<ClassScheduleRow[]> {
-  const ARKETA_PAGE_LIMIT = 250;
-  const MAX_PAGES = 10; // safety cap
+  // 1. Get available days across all months in range
+  const monthRanges = getMonthRanges(minDate, maxDate);
+  const availableDates: string[] = [];
 
-  // Convert minDate to Unix timestamp at midnight ET
-  let currentStartTime = Math.floor(new Date(`${minDate}T00:00:00-05:00`).getTime() / 1000);
-  const maxDateEnd = `${maxDate}T23:59:59-05:00`;
-  const maxTimestamp = Math.floor(new Date(maxDateEnd).getTime() / 1000);
+  for (const range of monthRanges) {
+    try {
+      const days = await fetchAvailableDays(partnerId, serviceId, locationId, range.start, range.end);
+      for (const day of days) {
+        if (day.isAvailable) {
+          // Extract YYYY-MM-DD from the date string like "2026-02-26T00:00:00-05:00"
+          const dateStr = day.date.split('T')[0];
+          if (dateStr >= minDate && dateStr <= maxDate) {
+            availableDates.push(dateStr);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[arketa] Failed to fetch availableDays for ${range.start}-${range.end}: ${err}`);
+    }
+  }
 
+  // 2. Fetch time slots for each available day
   const results: ClassScheduleRow[] = [];
-  const seenIds = new Set<string>();
 
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const url = `${ARKETA_BASE}/api/widget/data?widgetName=${encodeURIComponent(widgetName)}&type=classes&start_time=${currentStartTime}`;
-
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Arketa API returned ${response.status}: ${response.statusText}`);
+  for (const date of availableDates) {
+    try {
+      const times = await fetchAvailableTimes(partnerId, serviceId, locationId, date);
+      for (const slot of times) {
+        const classDate = formatISOToDate(slot.dateString);
+        results.push({
+          studio_slug: studioSlug,
+          location_id: locationId,
+          class_date: classDate,
+          class_time: formatISOToTime12(slot.dateString),
+          class_name: 'PERSONAL SAUNA & ICE BATH',
+          instructor: null,
+          duration_minutes: 60,
+          available: true, // These slots are available — that's why the API returns them
+          spots_remaining: 1, // Private sessions have 1 spot
+          booking_opens_at: null,
+        });
+      }
+    } catch (err) {
+      console.error(`[arketa] Failed to fetch availableTimes for ${date}: ${err}`);
     }
-
-    const json = (await response.json()) as ArketaWidgetResponse;
-    const classes = json.data?.classes || [];
-
-    let lastTimestamp = currentStartTime;
-
-    for (const item of classes) {
-      // Track the latest timestamp for pagination
-      if (item.start_time > lastTimestamp) lastTimestamp = item.start_time;
-
-      // Deduplicate across pages (overlapping start_time boundaries)
-      if (seenIds.has(item.id)) continue;
-      seenIds.add(item.id);
-
-      // Filter out internal time blocks
-      if (item.appointment_type === 'time_block') continue;
-      // Filter out hidden/canceled/deleted
-      if (item.hidden || item.canceled || item.deleted) continue;
-      // Filter by location
-      if (locationId && item.location?.id !== locationId) continue;
-
-      const classDate = formatUnixToDate(item.start_time);
-
-      // Filter to requested date range
-      if (classDate < minDate || classDate > maxDate) continue;
-
-      const className = item.name || item.class_name || null;
-      // Arketa private sessions report max_capacity=1, total_booked=1 even when bookable.
-      // Trust isBookable as the source of truth — if bookable, at least 1 spot is open.
-      const calcSpots = Math.max(0, item.max_capacity - item.total_booked);
-      const spotsRemaining = item.isBookable ? Math.max(1, calcSpots) : calcSpots;
-
-      results.push({
-        studio_slug: studioSlug,
-        location_id: locationId,
-        class_date: classDate,
-        class_time: formatUnixToTime12(item.start_time),
-        class_name: className,
-        instructor: null, // Arketa appointments don't have separate instructors
-        duration_minutes: item.duration,
-        available: item.isBookable,
-        spots_remaining: spotsRemaining,
-        booking_opens_at: null, // Arketa doesn't expose booking open times
-      });
-    }
-
-    // Stop if: fewer than the limit returned (no more data), or we've passed maxDate
-    if (classes.length < ARKETA_PAGE_LIMIT || lastTimestamp >= maxTimestamp) break;
-
-    // Advance start_time past the last result for the next page
-    currentStartTime = lastTimestamp + 1;
   }
 
   return results;

@@ -1,136 +1,174 @@
 /**
- * Arketa Slot Source — raw API fetch for the SlotWatcher
+ * Arketa Slot Source — fetches available appointment slots from the real
+ * Arketa Cloud Run API.
  *
- * Returns Arketa classes with their original `id` field so the watcher can
- * track which classes are new (delta detection). The shared
- * `fetchArketaClassesFromAPI` strips the Arketa ID, so we need this
- * dedicated fetcher.
+ * Saint NYC uses Arketa's "privates/appointments" system (NOT the widget
+ * classes API). The real endpoints are:
+ *
+ *   GET {BASE}/{partnerId}/services/{serviceId}/availableDays
+ *       ?locationId=&roomId=any&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&timezone=
+ *       (start/end must be in the same calendar month)
+ *
+ *   GET {BASE}/{partnerId}/services/{serviceId}/availableTimes
+ *       ?locationId=&roomId=any&date=YYYY-MM-DD&timezone=
+ *
+ * No auth required — these are public widget endpoints.
  */
 
-const ARKETA_BASE = 'https://app.arketa.co';
-const ARKETA_PAGE_LIMIT = 250;
-const MAX_PAGES = 10;
+const ARKETA_WIDGET_API = 'https://widget-api-tkaeguucxq-uc.a.run.app';
+const TIMEZONE = 'America/New_York';
+const UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36';
+
+// ── Types ────────────────────────────────────────────────────────────
 
 export interface ArketaSlot {
-  arketaId: string;
-  name: string;
-  startTime: number; // Unix timestamp
-  duration: number; // Minutes
-  maxCapacity: number;
-  totalBooked: number;
-  isBookable: boolean;
-  locationId: string;
-  classDate: string; // "YYYY-MM-DD" in ET
-  classTime: string; // "H:MM AM/PM" in ET
-}
-
-interface ArketaClass {
-  id: string;
-  name: string;
-  class_name?: string;
-  start_time: number;
-  duration: number;
-  max_capacity: number;
-  total_booked: number;
-  experience_type: string;
-  appointment_type: string | null;
-  service_id: string;
-  location: { id: string; name: string; address: string } | null;
+  /** Composite key for delta detection: "dateString|roomId" */
+  slotKey: string;
+  /** Human-readable time label from API (e.g. "5:15PM") */
+  label: string;
+  /** ISO datetime from API (e.g. "2026-02-26T22:15:00.000Z") */
+  dateString: string;
+  serviceId: string;
   roomId: string;
-  isBookable: boolean;
-  hidden?: boolean;
-  canceled?: boolean;
-  deleted?: boolean;
+  locationId: string;
+  /** Date in ET: "YYYY-MM-DD" */
+  classDate: string;
+  /** Time in ET: "H:MM AM/PM" */
+  classTime: string;
+  /** Unix timestamp (seconds) */
+  startTime: number;
 }
 
-interface ArketaWidgetResponse {
-  data: {
-    classes: ArketaClass[];
-    widget?: Record<string, unknown>;
-  };
+interface AvailableDayEntry {
+  date: string; // "2026-02-26T00:00:00-05:00"
+  isAvailable: boolean;
 }
 
-function formatUnixToTime12(unixTs: number): string {
-  const date = new Date(unixTs * 1000);
-  return date.toLocaleTimeString('en-US', {
+interface StartTimeEntry {
+  label: string;
+  dateString: string;
+  serviceId: string;
+  roomId: string;
+  locationId: string;
+}
+
+interface AvailableTimesResponse {
+  slots: {
+    type: string;
+    startTimes: StartTimeEntry[];
+    roomId: string;
+    roomName: string;
+  }[];
+  durationInMinutes: number;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+function formatISOToDateET(isoStr: string): string {
+  return new Date(isoStr).toLocaleDateString('en-CA', { timeZone: TIMEZONE });
+}
+
+function formatISOToTime12ET(isoStr: string): string {
+  return new Date(isoStr).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-    timeZone: 'America/New_York',
+    timeZone: TIMEZONE,
   });
 }
 
-function formatUnixToDate(unixTs: number): string {
-  const date = new Date(unixTs * 1000);
-  return date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+// ── API Functions ────────────────────────────────────────────────────
+
+/**
+ * Fetch which days have availability in a date range (must be same month).
+ */
+export async function fetchArketaAvailableDays(
+  partnerId: string,
+  serviceId: string,
+  locationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<AvailableDayEntry[]> {
+  const params = new URLSearchParams({
+    instructorId: '',
+    locationId,
+    roomId: 'any',
+    startDate,
+    endDate,
+    timezone: TIMEZONE,
+  });
+
+  const url = `${ARKETA_WIDGET_API}/${partnerId}/services/${serviceId}/availableDays?${params}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': UA } });
+
+  if (!res.ok) {
+    throw new Error(`Arketa availableDays ${res.status}: ${await res.text().then((t) => t.substring(0, 200))}`);
+  }
+
+  return (await res.json()) as AvailableDayEntry[];
 }
 
 /**
- * Fetch all current Arketa classes for a widget + location, returning raw slot
- * data with Arketa IDs for delta detection.
- *
- * Fetches from now through ~30 days ahead with manual pagination.
+ * Fetch available time slots for a specific date.
  */
-export async function fetchArketaSlots(
-  widgetName: string,
+export async function fetchArketaAvailableTimes(
+  partnerId: string,
+  serviceId: string,
   locationId: string,
+  date: string,
 ): Promise<ArketaSlot[]> {
-  const now = Math.floor(Date.now() / 1000);
-  let currentStartTime = now;
+  const params = new URLSearchParams({
+    instructorId: '',
+    locationId,
+    roomId: 'any',
+    date,
+    timezone: TIMEZONE,
+  });
 
-  const results: ArketaSlot[] = [];
-  const seenIds = new Set<string>();
+  const url = `${ARKETA_WIDGET_API}/${partnerId}/services/${serviceId}/availableTimes?${params}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': UA } });
 
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const url = `${ARKETA_BASE}/api/widget/data?widgetName=${encodeURIComponent(widgetName)}&type=classes&start_time=${currentStartTime}`;
-
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Arketa API returned ${response.status}: ${response.statusText}`);
-    }
-
-    const json = (await response.json()) as ArketaWidgetResponse;
-    const classes = json.data?.classes || [];
-
-    let lastTimestamp = currentStartTime;
-
-    for (const item of classes) {
-      if (item.start_time > lastTimestamp) lastTimestamp = item.start_time;
-
-      if (seenIds.has(item.id)) continue;
-      seenIds.add(item.id);
-
-      // Filter out internal time blocks, hidden, canceled, deleted
-      if (item.appointment_type === 'time_block') continue;
-      if (item.hidden || item.canceled || item.deleted) continue;
-
-      // Filter by location
-      if (locationId && item.location?.id !== locationId) continue;
-
-      results.push({
-        arketaId: item.id,
-        name: item.name || item.class_name || 'Unknown',
-        startTime: item.start_time,
-        duration: item.duration,
-        maxCapacity: item.max_capacity,
-        totalBooked: item.total_booked,
-        isBookable: item.isBookable,
-        locationId: item.location?.id || locationId,
-        classDate: formatUnixToDate(item.start_time),
-        classTime: formatUnixToTime12(item.start_time),
-      });
-    }
-
-    if (classes.length < ARKETA_PAGE_LIMIT) break;
-    currentStartTime = lastTimestamp + 1;
+  if (!res.ok) {
+    throw new Error(`Arketa availableTimes ${res.status}: ${await res.text().then((t) => t.substring(0, 200))}`);
   }
 
-  return results;
+  const json = (await res.json()) as AvailableTimesResponse;
+  const slots: ArketaSlot[] = [];
+
+  for (const group of json.slots || []) {
+    for (const st of group.startTimes || []) {
+      slots.push({
+        slotKey: `${st.dateString}|${st.roomId}`,
+        label: st.label,
+        dateString: st.dateString,
+        serviceId: st.serviceId,
+        roomId: st.roomId,
+        locationId: st.locationId,
+        classDate: formatISOToDateET(st.dateString),
+        classTime: formatISOToTime12ET(st.dateString),
+        startTime: Math.floor(new Date(st.dateString).getTime() / 1000),
+      });
+    }
+  }
+
+  return slots;
+}
+
+/**
+ * Fetch all available slots across a set of dates.
+ * Used by the SlotWatcher to check multiple dates in one call.
+ */
+export async function fetchArketaSlotsForDates(
+  partnerId: string,
+  serviceId: string,
+  locationId: string,
+  dates: string[],
+): Promise<ArketaSlot[]> {
+  const all: ArketaSlot[] = [];
+  for (const date of dates) {
+    const slots = await fetchArketaAvailableTimes(partnerId, serviceId, locationId, date);
+    all.push(...slots);
+  }
+  return all;
 }

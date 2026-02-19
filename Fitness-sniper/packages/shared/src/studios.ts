@@ -13,6 +13,7 @@ export interface StudioConfig {
   membersDomain?: string; // Xponential member portal (e.g. 'members.cyclebar.com')
   widgetName?: string; // Arketa widget name (e.g. 'saint')
   partnerId?: string; // Arketa partner ID
+  serviceId?: string; // Arketa service/offering ID
   region?: string; // MT region ID — filters API to local classes (e.g. Barry's NYC = '9642')
   bookingWindowDays: number; // How far ahead bookings open (scheduler uses this)
 }
@@ -132,6 +133,7 @@ export const STUDIOS: Record<string, StudioConfig> = {
     tenant: 'saint', // Arketa widget name
     widgetName: 'saint',
     partnerId: 'wdTh7EBQYCU9Ian0S68coANGqQG3',
+    serviceId: 'Tukn5jgFtZDpbl1mMQPY',
     scheduleUrl: 'https://www.saint.nyc/reserve',
     loginUrl: 'https://www.saint.nyc/reserve',
     iframe: '',
