@@ -77,9 +77,14 @@ export class JobScheduler {
   }
 
   private async processTarget(target: TargetRow): Promise<void> {
-    // Arketa studios are handled by the SlotWatcher (unpredictable slot drops)
     const studioConfig = STUDIOS[target.studio_slug];
-    if (studioConfig?.platform === 'arketa') return;
+    if (!studioConfig) {
+      console.warn(`[scheduler] Unknown studio '${target.studio_slug}' in target ${target.id} — skipping`);
+      return;
+    }
+
+    // Arketa studios are handled by the SlotWatcher (unpredictable slot drops)
+    if (studioConfig.platform === 'arketa') return;
 
     // Non-Arketa targets always require a time
     if (!target.time) return;
@@ -226,19 +231,37 @@ export class JobScheduler {
 // ============================================================
 
 export function getNextClassDate(dayOfWeek: number, time: string): Date {
-  const now = new Date();
   const parsed = parseTime(time);
   const hours = parsed?.hours24 ?? 0;
   const minutes = parsed?.minutes ?? 0;
 
-  const target = new Date(now);
-  target.setHours(hours, minutes, 0, 0);
+  // Get today's date in America/New_York (not server local time)
+  const etTodayStr = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/New_York',
+  }); // "YYYY-MM-DD"
+  const [year, month, day] = etTodayStr.split('-').map(Number);
 
-  const daysUntil = (dayOfWeek - now.getDay() + 7) % 7;
+  // Build date at class time using explicit year/month/day
+  const target = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+  // Get day of week from the ET date string (noon avoids DST edge case)
+  const etDayOfWeek = new Date(etTodayStr + 'T12:00:00').getDay();
+
+  const daysUntil = (dayOfWeek - etDayOfWeek + 7) % 7;
   target.setDate(target.getDate() + daysUntil);
 
-  if (daysUntil === 0 && target <= now) {
-    target.setDate(target.getDate() + 7);
+  // If same day and time has already passed in ET, push to next week
+  if (daysUntil === 0) {
+    const etNowStr = new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const [etHour, etMin] = etNowStr.split(':').map(Number);
+    if (etHour > hours || (etHour === hours && etMin >= minutes)) {
+      target.setDate(target.getDate() + 7);
+    }
   }
 
   return target;
@@ -259,7 +282,11 @@ export function parseTargetDate(dateStr: string | Date, time: string): Date {
 }
 
 export function isInBookingWindow(classDate: Date, windowDays: number): boolean {
-  const now = new Date();
+  const etTodayStr = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/New_York',
+  });
+  const [year, month, day] = etTodayStr.split('-').map(Number);
+  const now = new Date(year, month - 1, day, 0, 0, 0, 0);
   const windowEnd = new Date(now);
   windowEnd.setDate(windowEnd.getDate() + windowDays);
 
