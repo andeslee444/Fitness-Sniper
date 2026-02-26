@@ -6,12 +6,17 @@ export async function GET() {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { rows } = await query(
-    `SELECT id, status, scheduled_for, class_datetime, target_id FROM booking_jobs
-     WHERE user_id = $1 AND status IN ('pending', 'claimed', 'running')
-     ORDER BY COALESCE(class_datetime, scheduled_for) ASC`,
-    [user.sub],
-  );
+  try {
+    const { rows } = await query(
+      `SELECT id, status, scheduled_for, class_datetime, target_id FROM booking_jobs
+       WHERE user_id = $1 AND status IN ('pending', 'claimed', 'running')
+       ORDER BY COALESCE(class_datetime, scheduled_for) ASC`,
+      [user.sub],
+    );
 
-  return NextResponse.json(rows);
+    return NextResponse.json(rows);
+  } catch (err) {
+    console.error('[jobs] GET error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

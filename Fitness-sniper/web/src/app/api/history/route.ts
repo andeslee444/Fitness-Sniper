@@ -10,18 +10,23 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
   const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
 
-  const [{ rows }, { rows: countRows }] = await Promise.all([
-    query(
-      'SELECT * FROM booking_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-      [user.sub, limit, offset],
-    ),
-    query<{ total: string }>(
-      'SELECT COUNT(*) as total FROM booking_history WHERE user_id = $1',
-      [user.sub],
-    ),
-  ]);
+  try {
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      query(
+        'SELECT * FROM booking_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+        [user.sub, limit, offset],
+      ),
+      query<{ total: string }>(
+        'SELECT COUNT(*) as total FROM booking_history WHERE user_id = $1',
+        [user.sub],
+      ),
+    ]);
 
-  const total = parseInt(countRows[0]?.total || '0', 10);
+    const total = parseInt(countRows[0]?.total || '0', 10);
 
-  return NextResponse.json({ rows, total, limit, offset });
+    return NextResponse.json({ rows, total, limit, offset });
+  } catch (err) {
+    console.error('[history] GET error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
