@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/cognito';
 import { query } from '@/lib/db';
-import { STUDIOS, fetchClassesFromAPI, fetchXpoClassesFromAPI, fetchArketaClassesFromAPI } from '@fitness-sniper/shared';
-import type { ClassScheduleRow } from '@fitness-sniper/shared';
+import { STUDIOS, fetchClassesFromAPI, fetchXpoClassesFromAPI, fetchArketaClassesFromAPI, normalizeClass } from '@fitness-sniper/shared';
+import type { ClassScheduleRow, NormalizedClass } from '@fitness-sniper/shared';
 
 interface ScheduleRow {
   id: string;
@@ -23,12 +23,16 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 /**
  * Compute the next occurrence of a given day-of-week (0=Sun..6=Sat)
  * as "YYYY-MM-DD". Returns today if today matches.
+ * Uses America/New_York timezone to avoid server-local date drift.
  */
 function nextOccurrence(dayOfWeek: number): string {
-  const now = new Date();
-  const today = now.getDay();
-  const diff = (dayOfWeek - today + 7) % 7;
-  const target = new Date(now);
+  const etTodayStr = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/New_York',
+  });
+  const etDayOfWeek = new Date(etTodayStr + 'T12:00:00').getDay();
+  const diff = (dayOfWeek - etDayOfWeek + 7) % 7;
+  const [year, month, day] = etTodayStr.split('-').map(Number);
+  const target = new Date(year, month - 1, day);
   target.setDate(target.getDate() + diff);
   return target.toISOString().split('T')[0];
 }
@@ -84,6 +88,36 @@ export async function GET(request: NextRequest) {
     conditions.push('class_date >= CURRENT_DATE');
   }
 
+  // studio is narrowed to string by the `if (!studio)` guard above
+  const studioSlug = studio as string;
+  const studioConfig = STUDIOS[studioSlug];
+  const studioName = studioConfig?.name || studioSlug;
+  const locationId = location || '';
+
+  // Helper: normalize a DB ScheduleRow to NormalizedClass
+  function normDb(r: ScheduleRow): NormalizedClass {
+    const dateKey = typeof r.class_date === 'string' && r.class_date.includes('T')
+      ? r.class_date.split('T')[0]
+      : String(r.class_date);
+    return {
+      studio_slug: studioSlug,
+      location_id: locationId,
+      class_date: dateKey,
+      class_time: r.class_time,
+      class_name: r.class_name || studioName,
+      instructor: r.instructor || 'Staff',
+      duration_minutes: r.duration_minutes ?? 60,
+      available: r.available,
+      spots_remaining: r.spots_remaining ?? 0,
+      booking_opens_at: null,
+    };
+  }
+
+  // Helper: normalize a live API ClassScheduleRow to NormalizedClass
+  function norm(c: ClassScheduleRow): NormalizedClass {
+    return normalizeClass(c, studioName);
+  }
+
   // Try DB first — table may not exist yet
   // For range queries (dateTo), skip DB early-return: scraped data is often
   // incomplete (only covers the scrape window), so we always prefer the live API
@@ -102,12 +136,13 @@ export async function GET(request: NextRequest) {
 
     if (rows.length > 0) {
       if (!dateTo) {
-        // Single-date query: DB data is sufficient
-        const uniqueTimes = [...new Set(rows.map((r) => r.class_time))];
+        // Single-date query: DB data is sufficient — Path 1
+        const normalized = rows.map(normDb);
+        const uniqueTimes = [...new Set(normalized.map((r) => r.class_time))];
         return NextResponse.json({
           source: 'scraped' as const,
           times: uniqueTimes,
-          classes: rows,
+          classes: normalized,
         });
       }
       // Range query: save as fallback, continue to live API
@@ -120,15 +155,15 @@ export async function GET(request: NextRequest) {
   // --- Try live API (always for range queries, fallback for single-date) ---
 
   if (!location) {
-    // Can't call API without a location — return DB data if we have any
+    // Can't call API without a location — return DB data if we have any — Path 2
     if (dbFallbackRows.length > 0) {
-      const uniqueTimes = [...new Set(dbFallbackRows.map((r) => r.class_time))];
-      return NextResponse.json({ source: 'scraped' as const, times: uniqueTimes, classes: dbFallbackRows });
+      const normalized = dbFallbackRows.map(normDb);
+      const uniqueTimes = [...new Set(normalized.map((r) => r.class_time))];
+      return NextResponse.json({ source: 'scraped' as const, times: uniqueTimes, classes: normalized });
     }
     return NextResponse.json({ source: 'empty' as const, times: [], classes: [] });
   }
 
-  const studioConfig = STUDIOS[studio];
   if (!studioConfig) {
     return NextResponse.json({ source: 'empty' as const, times: [], classes: [] });
   }
@@ -144,24 +179,16 @@ export async function GET(request: NextRequest) {
 
   const endDate = dateTo || targetDate;
 
-  // Check in-memory cache
+  // Check in-memory cache — Path 3
   const cacheKey = `${studio}:${location}:${targetDate}:${endDate}`;
   const cached = apiCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) {
-    const classes = cached.data;
-    const uniqueTimes = [...new Set(classes.map((c) => c.class_time))];
+    const normalized = cached.data.map(norm);
+    const uniqueTimes = [...new Set(normalized.map((c) => c.class_time))];
     return NextResponse.json({
       source: 'live_api' as const,
       times: uniqueTimes,
-      classes: classes.map((c) => ({
-        class_date: c.class_date,
-        class_time: c.class_time,
-        class_name: c.class_name,
-        instructor: c.instructor,
-        duration_minutes: c.duration_minutes,
-        available: c.available,
-        spots_remaining: c.spots_remaining,
-      })),
+      classes: normalized,
     });
   }
 
@@ -225,29 +252,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const uniqueTimes = [...new Set(classes.map((c) => c.class_time))];
+    // Path 4: Live API result (including merged DB data for range queries)
+    const normalized = classes.map(norm);
+    const uniqueTimes = [...new Set(normalized.map((c) => c.class_time))];
     return NextResponse.json({
       source: 'live_api' as const,
       times: uniqueTimes,
-      classes: classes.map((c) => ({
-        class_date: c.class_date,
-        class_time: c.class_time,
-        class_name: c.class_name,
-        instructor: c.instructor,
-        duration_minutes: c.duration_minutes,
-        available: c.available,
-        spots_remaining: c.spots_remaining,
-      })),
+      classes: normalized,
     });
   } catch (err) {
     console.error('[schedules] Live API fallback failed:', err);
-    // Return DB data if available
+    // Path 5: DB fallback on API failure
     if (dbFallbackRows.length > 0) {
-      const uniqueTimes = [...new Set(dbFallbackRows.map((r) => r.class_time))];
+      const normalized = dbFallbackRows.map(normDb);
+      const uniqueTimes = [...new Set(normalized.map((r) => r.class_time))];
       return NextResponse.json({
         source: 'scraped' as const,
         times: uniqueTimes,
-        classes: dbFallbackRows,
+        classes: normalized,
       });
     }
     return NextResponse.json({ source: 'empty' as const, times: [], classes: [] });

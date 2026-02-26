@@ -157,6 +157,48 @@ export interface ClassScheduleRow {
 }
 
 // ============================================================
+// Normalized Class (for UI — all display strings guaranteed non-null)
+// ============================================================
+
+/**
+ * Normalized class data for UI rendering.
+ * All string fields are guaranteed non-null — undefined instructor becomes "Staff",
+ * undefined class_name becomes the studio name.
+ * Produced by normalizeClass() from any platform's ClassScheduleRow.
+ */
+export interface NormalizedClass {
+  studio_slug: string;
+  location_id: string;
+  class_date: string;         // "YYYY-MM-DD"
+  class_time: string;         // "H:MM AM" — always present
+  class_name: string;         // never null — falls back to studio name
+  instructor: string;         // never null — falls back to "Staff"
+  duration_minutes: number;   // never null — falls back to 60
+  available: boolean;
+  spots_remaining: number;    // never null — falls back to 0
+  booking_opens_at: string | null; // nullable is OK — UI shows nothing when null
+}
+
+/**
+ * Normalize a ClassScheduleRow into a NormalizedClass for safe UI rendering.
+ * studioName is used as fallback for class_name (e.g. "Barry's Bootcamp").
+ */
+export function normalizeClass(row: ClassScheduleRow, studioName: string): NormalizedClass {
+  return {
+    studio_slug: row.studio_slug,
+    location_id: row.location_id,
+    class_date: row.class_date,
+    class_time: row.class_time,
+    class_name: row.class_name || studioName,
+    instructor: row.instructor || 'Staff',
+    duration_minutes: row.duration_minutes ?? 60,
+    available: row.available,
+    spots_remaining: row.spots_remaining ?? 0,
+    booking_opens_at: row.booking_opens_at,
+  };
+}
+
+// ============================================================
 // Time Parsing Utilities
 // ============================================================
 
