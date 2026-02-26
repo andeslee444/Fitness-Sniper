@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 ## Current Position
 
 Phase: 1 of 6 (Infrastructure Hardening)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-26 — Completed 01-01 (Cognito token refresh flow)
+Last activity: 2026-02-26 — Completed 01-02 (API route error wrapping)
 
-Progress: [█░░░░░░░░░] 5%
+Progress: [██░░░░░░░░] 11%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: < 1 minute
+- Total plans completed: 2
+- Average duration: ~1-2 minutes
 - Total execution time: < 1 hour
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 Infrastructure Hardening | 1/3 | < 1 min | < 1 min |
+| 01 Infrastructure Hardening | 2/3 | < 1 min | < 1 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (< 1 min)
+- Last 5 plans: 01-01 (< 1 min), 01-02 (2 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -49,6 +49,8 @@ Recent decisions affecting current work:
 - [Roadmap]: TanStack Query `refetchInterval` for real-time status — no SSE/WebSockets (Vercel Hobby timeout incompatibility)
 - [01-01]: refreshSession() does not update refresh token cookie — REFRESH_TOKEN_AUTH only returns access + ID tokens
 - [01-01]: getSession() unchanged — cookie mutation lives in /api/auth/refresh, called by client-side 401 interceptor (Phase 2)
+- [01-02]: Session check stays outside try/catch — getSession() returns null on auth failure (no throw risk), 401 responses unaffected
+- [01-02]: targets/route.ts and targets/[id]/route.ts error wrapping deferred to Plan 03 to avoid parallel file conflicts with timezone fixes
 
 ### Pending Todos
 
@@ -62,5 +64,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 01-01-PLAN.md (Cognito REFRESH_TOKEN_AUTH flow)
+Stopped at: Completed 01-02-PLAN.md (API route error wrapping)
 Resume file: None

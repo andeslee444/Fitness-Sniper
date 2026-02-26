@@ -10,7 +10,7 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 ### Infrastructure
 
 - [x] **INFRA-01**: User session automatically refreshes when Cognito access token expires (no silent logout after 1 hour)
-- [ ] **INFRA-02**: All API routes return consistent error shapes with user-facing messages and appropriate HTTP status codes
+- [x] **INFRA-02**: All API routes return consistent error shapes with user-facing messages and appropriate HTTP status codes
 - [ ] **INFRA-03**: Worker timezone handling in `getNextClassDate` correctly computes dates in America/New_York regardless of server timezone
 - [ ] **INFRA-04**: Data normalization layer produces consistent `NormalizedClass` objects from all 3 platforms (MT, Xponential, Arketa)
 
@@ -88,7 +88,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INFRA-01 | Phase 1 | Complete |
-| INFRA-02 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Pending |
 | INFRA-04 | Phase 1 | Pending |
 | CAL-01 | Phase 3 | Pending |
