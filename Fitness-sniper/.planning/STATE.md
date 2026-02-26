@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 ## Current Position
 
 Phase: 1 of 6 (Infrastructure Hardening)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-26 — Completed 01-02 (API route error wrapping)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-26 — Completed 01-03 (timezone fix + NormalizedClass)
 
-Progress: [██░░░░░░░░] 11%
+Progress: [███░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~1-2 minutes
+- Total plans completed: 3
+- Average duration: ~2-4 minutes
 - Total execution time: < 1 hour
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 Infrastructure Hardening | 2/3 | < 1 min | < 1 min |
+| 01 Infrastructure Hardening | 3/3 | < 1 hour | < 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (< 1 min), 01-02 (2 min)
+- Last 5 plans: 01-01 (< 1 min), 01-02 (2 min), 01-03 (4 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -51,6 +51,8 @@ Recent decisions affecting current work:
 - [01-01]: getSession() unchanged — cookie mutation lives in /api/auth/refresh, called by client-side 401 interceptor (Phase 2)
 - [01-02]: Session check stays outside try/catch — getSession() returns null on auth failure (no throw risk), 401 responses unaffected
 - [01-02]: targets/route.ts and targets/[id]/route.ts error wrapping deferred to Plan 03 to avoid parallel file conflicts with timezone fixes
+- [01-03]: Use toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) for explicit ET date computation instead of server-local getDay()
+- [01-03]: NormalizedClass placed in shared/types.ts so both web and worker can reference it; normalizer applied at schedules API boundary
 
 ### Pending Todos
 
@@ -64,5 +66,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 01-02-PLAN.md (API route error wrapping)
+Stopped at: Completed 01-03-PLAN.md (timezone fix + NormalizedClass) — Phase 1 complete
 Resume file: None
