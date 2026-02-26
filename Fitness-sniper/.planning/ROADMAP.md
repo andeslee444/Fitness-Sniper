@@ -30,12 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Every API route returns `{ error: string }` JSON with an appropriate HTTP status code — never an HTML error page or unstructured object
   3. A class that starts at 6:00 AM ET always appears on the correct day in the UI regardless of the server's system timezone
   4. MT, Xponential, and Arketa schedule data all produce `NormalizedClass` objects with the same fields — no `undefined` instructor or `null` time causes a component crash
-**Plans**: TBD
+**Plans**: 3 plans (all Wave 1 — parallel)
 
 Plans:
-- [ ] 01-01: Implement Cognito refresh token flow and global 401 interceptor
-- [ ] 01-02: Standardize all API route error shapes and add fetch wrapper
-- [ ] 01-03: Fix worker `getNextClassDate` timezone bug; add `NormalizedClass` type and per-platform normalizers
+- [ ] 01-01-PLAN.md — Implement Cognito REFRESH_TOKEN_AUTH flow via POST /api/auth/refresh route
+- [ ] 01-02-PLAN.md — Wrap all API route handlers in try/catch with consistent { error: string } JSON shape
+- [ ] 01-03-PLAN.md — Fix timezone bug in scheduler/targets date computation; add NormalizedClass type with API-boundary normalizer
 
 ### Phase 2: Data Foundation
 **Goal**: TanStack Query manages all server state in the dashboard, existing `setInterval` polling is eliminated, and the `/api/calendar` route provides merged weekly event data in a single round-trip
