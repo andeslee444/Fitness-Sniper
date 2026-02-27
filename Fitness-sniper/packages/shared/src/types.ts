@@ -233,6 +233,23 @@ export function formatTime12(input: Date | string): string {
 }
 
 // ============================================================
+// Calendar Event Types — used by /api/calendar and Phase 3 calendar UI
+// ============================================================
+
+export type CalendarEventType = 'booked' | 'failed' | 'pending' | 'configured';
+export type CalendarEventSource = 'history' | 'job' | 'target';
+
+export interface CalendarEvent {
+  id: string;
+  event_date: string;        // "YYYY-MM-DD"
+  event_time: string | null;  // "H:MM AM" format — null for Arketa any-slot targets
+  studio_slug: string;
+  event_type: CalendarEventType;
+  source: CalendarEventSource;
+  meta: Record<string, unknown>;
+}
+
+// ============================================================
 // Spot Preferences
 // ============================================================
 

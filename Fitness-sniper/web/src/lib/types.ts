@@ -9,4 +9,7 @@ export type {
   BookingHistory,
   WorkerHeartbeat,
   ClassSchedule,
+  CalendarEvent,
+  CalendarEventType,
+  CalendarEventSource,
 } from '@fitness-sniper/shared';
