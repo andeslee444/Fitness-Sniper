@@ -16,9 +16,9 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 
 ### Calendar
 
-- [ ] **CAL-01**: User sees a weekly calendar as the dashboard home showing confirmed bookings, pending snipes, and failed attempts
-- [ ] **CAL-02**: Calendar events are color-coded by status — solid for booked, outlined/dashed for pending snipes, red for failures
-- [ ] **CAL-03**: Calendar days show availability heatmap overlay indicating how many classes have open slots vs are full
+- [x] **CAL-01**: User sees a weekly calendar as the dashboard home showing confirmed bookings, pending snipes, and failed attempts
+- [x] **CAL-02**: Calendar events are color-coded by status — solid for booked, outlined/dashed for pending snipes, red for failures
+- [x] **CAL-03**: Calendar days show availability heatmap overlay indicating how many classes have open slots vs are full
 
 ### Schedule
 
@@ -28,8 +28,8 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 
 ### Trust
 
-- [ ] **TRUST-01**: Each snipe target shows a status timeline — "Scheduled → Waiting for booking window → Attempting → Booked/Failed" with timestamps
-- [ ] **TRUST-02**: Pending snipes show a countdown to when the booking window opens ("Booking opens in 2d 4h — we'll attempt at 12:00 AM")
+- [x] **TRUST-01**: Each snipe target shows a status timeline — "Scheduled → Waiting for booking window → Attempting → Booked/Failed" with timestamps
+- [x] **TRUST-02**: Pending snipes show a countdown to when the booking window opens ("Booking opens in 2d 4h — we'll attempt at 12:00 AM")
 - [ ] **TRUST-03**: Failed booking jobs display prominent failure reasons with actionable messaging ("Class was full" / "Check your credentials")
 - [ ] **TRUST-04**: Each stored credential shows validation status — "Connected", "Untested", or "Invalid" — so users know if their credentials will work
 
@@ -91,14 +91,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
-| CAL-01 | Phase 3 | Pending |
-| CAL-02 | Phase 3 | Pending |
-| CAL-03 | Phase 3 | Pending |
+| CAL-01 | Phase 3 | Complete |
+| CAL-02 | Phase 3 | Complete |
+| CAL-03 | Phase 3 | Complete |
 | SCHED-01 | Phase 4 | Pending |
 | SCHED-02 | Phase 4 | Pending |
 | SCHED-03 | Phase 4 | Pending |
-| TRUST-01 | Phase 5 | Pending |
-| TRUST-02 | Phase 5 | Pending |
+| TRUST-01 | Phase 5 | Complete |
+| TRUST-02 | Phase 5 | Complete |
 | TRUST-03 | Phase 5 | Pending |
 | TRUST-04 | Phase 4 | Pending |
 | HIST-01 | Phase 5 | Pending |

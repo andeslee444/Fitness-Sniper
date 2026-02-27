@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-02-26T14:25:06.701Z"
+status: in_progress
+last_updated: "2026-02-27T21:40:00Z"
 progress:
-  total_phases: 1
+  total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Users never miss a class they want — the system books it automatically the moment it becomes available, with clear visibility into what's happening at every step.
-**Current focus:** Phase 1 — Infrastructure Hardening
+**Current focus:** Phase 2 — Data Foundation
 
 ## Current Position
 
-Phase: 1 of 6 (Infrastructure Hardening)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-26 — Completed 01-03 (timezone fix + NormalizedClass)
+Phase: 2 of 6 (Data Foundation)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-27 — Completed 02-02 (CalendarEvent type + GET /api/calendar route)
 
-Progress: [███░░░░░░░] 17%
+Progress: [█████░░░░░] 28%
 
 ## Performance Metrics
 
@@ -41,9 +41,10 @@ Progress: [███░░░░░░░] 17%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 Infrastructure Hardening | 3/3 | < 1 hour | < 5 min |
+| 02 Data Foundation | 2/3 | < 5 min | < 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (< 1 min), 01-02 (2 min), 01-03 (4 min)
+- Last 5 plans: 01-01 (< 1 min), 01-02 (2 min), 01-03 (4 min), 02-01 (< 1 min), 02-02 (< 1 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -66,6 +67,14 @@ Recent decisions affecting current work:
 - [01-02]: targets/route.ts and targets/[id]/route.ts error wrapping deferred to Plan 03 to avoid parallel file conflicts with timezone fixes
 - [01-03]: Use toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) for explicit ET date computation instead of server-local getDay()
 - [01-03]: NormalizedClass placed in shared/types.ts so both web and worker can reference it; normalizer applied at schedules API boundary
+- [02-01]: useState(() => makeQueryClient()) lazy initializer prevents QueryClient recreation on rerenders
+- [02-01]: QueryCache onError fires /api/auth/refresh fire-and-forget on HTTP 401; ignores failures so next navigation redirects to login
+- [02-01]: ActiveJobs is now self-contained (no props from dashboard) — handles empty state internally via useQuery default empty array
+- [02-01]: isLoading (not isFetching) drives skeleton — prevents flash on every 30s background refetch
+- [02-02]: Do not deduplicate configured targets with history records — return all rows, let Phase 3 UI handle priority (booked > pending > configured)
+- [02-02]: Use CTE week_bounds to avoid repeating $2::date + INTERVAL date arithmetic across 4 UNION ALL branches
+- [02-02]: LEFT JOIN booking_jobs to snipe_targets (not subquery) per research anti-patterns
+- [02-02]: COALESCE(bj.class_datetime, bj.scheduled_for) for booking_jobs event time — class_datetime is actual class time when known
 
 ### Pending Todos
 
@@ -78,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-26
-Stopped at: Completed 01-03-PLAN.md (timezone fix + NormalizedClass) — Phase 1 complete
+Last session: 2026-02-27
+Stopped at: Completed 02-01-PLAN.md (TanStack Query v5 provider + dashboard polling migration)
 Resume file: None
