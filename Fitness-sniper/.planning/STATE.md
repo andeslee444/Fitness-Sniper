@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-27T21:46:29.641Z"
+last_updated: "2026-02-27T22:00:00.000Z"
 progress:
-  total_phases: 2
+  total_phases: 6
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Users never miss a class they want — the system books it automatically the moment it becomes available, with clear visibility into what's happening at every step.
-**Current focus:** Phase 2 — Data Foundation
+**Current focus:** Phase 3 — Calendar Home
 
 ## Current Position
 
-Phase: 2 of 6 (Data Foundation)
-Plan: 2 of 3 in current phase
+Phase: 3 of 6 (Calendar Home)
+Plan: 1 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-27 — Completed 02-02 (CalendarEvent type + GET /api/calendar route)
+Last activity: 2026-02-27 — Completed 03-01 (Calendar UI components: WeekGrid, DayColumn, CalendarEventPill, useCalendarQuery)
 
-Progress: [█████░░░░░] 28%
+Progress: [██████░░░░] 33%
 
 ## Performance Metrics
 
@@ -41,10 +41,11 @@ Progress: [█████░░░░░] 28%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 Infrastructure Hardening | 3/3 | < 1 hour | < 5 min |
-| 02 Data Foundation | 2/3 | < 5 min | < 3 min |
+| 02 Data Foundation | 3/3 | < 5 min | < 3 min |
+| 03 Calendar Home | 1/3 | < 2 min | < 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (< 1 min), 01-02 (2 min), 01-03 (4 min), 02-01 (< 1 min), 02-02 (< 1 min)
+- Last 5 plans: 01-02 (2 min), 01-03 (4 min), 02-01 (< 1 min), 02-02 (< 1 min), 03-01 (< 2 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -75,6 +76,9 @@ Recent decisions affecting current work:
 - [02-02]: Use CTE week_bounds to avoid repeating $2::date + INTERVAL date arithmetic across 4 UNION ALL branches
 - [02-02]: LEFT JOIN booking_jobs to snipe_targets (not subquery) per research anti-patterns
 - [02-02]: COALESCE(bj.class_datetime, bj.scheduled_for) for booking_jobs event time — class_datetime is actual class time when known
+- [03-01]: Do NOT add 'use client' to use-calendar-query.ts — hooks need no directive; client context comes from importing component
+- [03-01]: Safe date parsing via split('-').map(Number) + new Date(y, m-1, d) to avoid UTC-midnight interpretation of YYYY-MM-DD strings
+- [03-01]: ET today check via toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) consistent with Phase 1 timezone decisions
 
 ### Pending Todos
 
@@ -88,5 +92,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 02-01-PLAN.md (TanStack Query v5 provider + dashboard polling migration)
+Stopped at: Completed 03-01-PLAN.md (Calendar UI components: WeekGrid, DayColumn, CalendarEventPill, useCalendarQuery)
 Resume file: None
