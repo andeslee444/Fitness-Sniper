@@ -62,11 +62,11 @@ Plans:
   3. Calendar days show a heatmap overlay that communicates slot availability across studios (e.g., a busy day looks visually denser than an empty one)
   4. User can navigate to the previous and next week and all events update without a page reload
   5. All class times display in America/New_York regardless of the user's browser timezone
-**Plans**: TBD
+**Plans**: 2 plans (Wave 1 → Wave 2 sequential)
 
 Plans:
-- [ ] 03-01: Build WeekGrid, DayColumn, and CalendarEvent components with static fixture data
-- [ ] 03-02: Wire CalendarView to useCalendarQuery hook; add week navigation; replace dashboard home with calendar
+- [ ] 03-01-PLAN.md — Build WeekGrid, DayColumn, CalendarEventPill components and useCalendarQuery hook
+- [ ] 03-02-PLAN.md — Create CalendarView with week navigation; replace dashboard stats grid with calendar
 
 ### Phase 4: Schedule Browser and Click-to-Snipe
 **Goal**: Users can browse live class schedules from the top navigation and create a snipe target for any class in three clicks — without leaving the page
