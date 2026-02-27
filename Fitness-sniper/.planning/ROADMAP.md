@@ -33,9 +33,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans (all Wave 1 — parallel)
 
 Plans:
-- [ ] 01-01-PLAN.md — Implement Cognito REFRESH_TOKEN_AUTH flow via POST /api/auth/refresh route
-- [ ] 01-02-PLAN.md — Wrap all API route handlers in try/catch with consistent { error: string } JSON shape
-- [ ] 01-03-PLAN.md — Fix timezone bug in scheduler/targets date computation; add NormalizedClass type with API-boundary normalizer
+- [x] 01-01-PLAN.md — Implement Cognito REFRESH_TOKEN_AUTH flow via POST /api/auth/refresh route
+- [x] 01-02-PLAN.md — Wrap all API route handlers in try/catch with consistent { error: string } JSON shape
+- [x] 01-03-PLAN.md — Fix timezone bug in scheduler/targets date computation; add NormalizedClass type with API-boundary normalizer
 
 ### Phase 2: Data Foundation
 **Goal**: TanStack Query manages all server state in the dashboard, existing `setInterval` polling is eliminated, and the `/api/calendar` route provides merged weekly event data in a single round-trip
@@ -46,11 +46,11 @@ Plans:
   2. `GET /api/calendar?weekStart=YYYY-MM-DD` returns a merged list of confirmed bookings, pending snipes, and configured targets for that week
   3. Dashboard stat cards (worker status, active jobs) refresh without full page reload
   4. Switching browser tabs pauses background polling and resumes when the tab becomes active
-**Plans**: TBD
+**Plans**: 2 plans (all Wave 1 — parallel)
 
 Plans:
-- [ ] 02-01: Install TanStack Query, create providers and query key constants, migrate existing setInterval polling
-- [ ] 02-02: Build `GET /api/calendar` route with PostgreSQL UNION across booking_history, booking_jobs, and snipe_targets
+- [ ] 02-01-PLAN.md — Install TanStack Query, create providers and query key constants, migrate existing setInterval polling
+- [ ] 02-02-PLAN.md — Build GET /api/calendar route with PostgreSQL UNION ALL across booking_history, booking_jobs, and snipe_targets
 
 ### Phase 3: Calendar Home
 **Goal**: Users see their fitness week at a glance — booked classes in green, pending snipes in yellow, failures in red — from the moment they open the dashboard
