@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 ## Current Position
 
 Phase: 3 of 6 (Calendar Home)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-27 — Completed 03-01 (Calendar UI components: WeekGrid, DayColumn, CalendarEventPill, useCalendarQuery)
+Last activity: 2026-02-27 — Completed 03-02 (CalendarView wire-up and dashboard replace: CalendarView component with week navigation, dashboard rewritten to "Your Week")
 
 Progress: [██████░░░░] 33%
 
@@ -42,7 +42,7 @@ Progress: [██████░░░░] 33%
 |-------|-------|-------|----------|
 | 01 Infrastructure Hardening | 3/3 | < 1 hour | < 5 min |
 | 02 Data Foundation | 3/3 | < 5 min | < 3 min |
-| 03 Calendar Home | 1/3 | < 2 min | < 2 min |
+| 03 Calendar Home | 2/3 | < 3 min | < 2 min |
 
 **Recent Trend:**
 - Last 5 plans: 01-02 (2 min), 01-03 (4 min), 02-01 (< 1 min), 02-02 (< 1 min), 03-01 (< 2 min)
@@ -79,6 +79,9 @@ Recent decisions affecting current work:
 - [03-01]: Do NOT add 'use client' to use-calendar-query.ts — hooks need no directive; client context comes from importing component
 - [03-01]: Safe date parsing via split('-').map(Number) + new Date(y, m-1, d) to avoid UTC-midnight interpretation of YYYY-MM-DD strings
 - [03-01]: ET today check via toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) consistent with Phase 1 timezone decisions
+- [03-02]: isLoading (not isFetching) gates CalendarView skeleton — prevents flash on every 60s background refetch
+- [03-02]: Lazy useState(getInitialWeekStart) initializer — function reference prevents ET computation on every re-render
+- [03-02]: StatCard and OnboardingStep removed entirely — onboarding deferred to Phase 6 with calendar-integrated guidance
 
 ### Pending Todos
 
@@ -92,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 03-01-PLAN.md (Calendar UI components: WeekGrid, DayColumn, CalendarEventPill, useCalendarQuery)
+Stopped at: Completed 03-02-PLAN.md (CalendarView wire-up: week navigation + dashboard replace with "Your Week" + CalendarView)
 Resume file: None

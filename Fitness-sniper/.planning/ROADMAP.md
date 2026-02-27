@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure Hardening** - Fix the invisible bugs that silently destroy auth sessions, corrupt timezone rendering, and return unparseable API errors (completed 2026-02-26)
 - [x] **Phase 2: Data Foundation** - Install TanStack Query and the `/api/calendar` route that power all real-time UI (completed 2026-02-27)
-- [ ] **Phase 3: Calendar Home** - Replace the stats-grid dashboard with a weekly calendar view that shows bookings, snipes, and failures at a glance
+- [x] **Phase 3: Calendar Home** - Replace the stats-grid dashboard with a weekly calendar view that shows bookings, snipes, and failures at a glance (completed 2026-02-27)
 - [ ] **Phase 4: Schedule Browser and Click-to-Snipe** - Promote the schedule browser to primary nav and wire it to a one-flow snipe creation sheet
 - [ ] **Phase 5: Snipe Timeline and History** - Surface the per-snipe lifecycle and enrich booking history so users understand what happened and why
 - [ ] **Phase 6: Empty States and Onboarding** - Add guided empty states, worker-offline alerts, and an onboarding flow so new users know exactly what to do
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Infrastructure Hardening | 3/3 | Complete   | 2026-02-26 |
 | 2. Data Foundation | 2/2 | Complete   | 2026-02-27 |
-| 3. Calendar Home | 1/2 | In Progress|  |
+| 3. Calendar Home | 2/2 | Complete   | 2026-02-27 |
 | 4. Schedule Browser and Click-to-Snipe | 0/3 | Not started | - |
 | 5. Snipe Timeline and History | 0/3 | Not started | - |
 | 6. Empty States and Onboarding | 0/2 | Not started | - |
