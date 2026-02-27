@@ -1,24 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/lib/query-keys';
 import type { WorkerHeartbeat } from '@/lib/types';
 
 export function WorkerStatus() {
-  const [worker, setWorker] = useState<WorkerHeartbeat | null>(null);
-
-  useEffect(() => {
-    async function fetchStatus() {
+  const { data: worker } = useQuery<WorkerHeartbeat | null>({
+    queryKey: QUERY_KEYS.workerStatus,
+    queryFn: async () => {
       const res = await fetch('/api/worker-status');
-      if (res.ok) {
-        const data = await res.json();
-        setWorker(data);
-      }
-    }
-
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<WorkerHeartbeat | null>;
+    },
+    refetchInterval: 30_000,
+  });
 
   if (!worker) {
     return (

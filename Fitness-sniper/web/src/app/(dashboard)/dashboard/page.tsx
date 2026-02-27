@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Target, Clock, CheckCircle, Wifi, ArrowRight, KeyRound, Crosshair } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { WorkerStatus } from '@/components/worker-status';
 import { ActiveJobs } from '@/components/active-jobs';
 import { StatCardSkeleton } from '@/components/skeleton';
+import { QUERY_KEYS } from '@/lib/query-keys';
 import type { JobStatus } from '@/lib/types';
 
 interface DashboardStats {
@@ -14,37 +15,22 @@ interface DashboardStats {
   recentHistory: { id: string; status: string }[];
 }
 
-const POLL_INTERVAL = 30000;
-
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchStats = useCallback(async () => {
-    try {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: QUERY_KEYS.dashboardStats,
+    queryFn: async () => {
       const res = await fetch('/api/dashboard/stats');
-      if (res.ok) {
-        const data: DashboardStats = await res.json();
-        setStats(data);
-      }
-    } catch {
-      // Next poll will retry
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchStats]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<DashboardStats>;
+    },
+    refetchInterval: 30_000,
+  });
 
   const enabledTargets = stats?.targets.filter((t) => t.enabled).length ?? 0;
   const totalTargets = stats?.targets.length ?? 0;
-  const activeJobs = stats?.activeJobs ?? [];
+  const activeJobCount = stats?.activeJobs?.length ?? 0;
   const successfulBookings = stats?.recentHistory.filter((h) => h.status === 'booked').length ?? 0;
-  const isNewUser = stats !== null && totalTargets === 0;
+  const isNewUser = stats !== null && stats !== undefined && totalTargets === 0;
 
   return (
     <div className="space-y-8">
@@ -81,7 +67,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stats cards */}
-      {loading ? (
+      {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-4">
           <StatCardSkeleton />
           <StatCardSkeleton />
@@ -100,7 +86,7 @@ export default function DashboardPage() {
           <StatCard
             icon={Clock}
             label="Pending Jobs"
-            value={activeJobs.length}
+            value={activeJobCount}
             iconColor="text-yellow-400"
             iconBg="bg-yellow-500/10"
           />
@@ -124,18 +110,16 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Active jobs */}
-      {activeJobs.length > 0 && (
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Upcoming Jobs</h2>
-            <Link href="/history" className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white">
-              View history <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-          <ActiveJobs jobs={activeJobs} />
-        </section>
-      )}
+      {/* Active jobs — self-contained, handles empty state internally */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Upcoming Jobs</h2>
+          <Link href="/history" className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white">
+            View history <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <ActiveJobs />
+      </section>
     </div>
   );
 }
