@@ -127,6 +127,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Infrastructure Hardening | 3/3 | Complete   | 2026-02-26 |
 | 2. Data Foundation | 2/2 | Complete   | 2026-02-27 |
 | 3. Calendar Home | 2/2 | Complete   | 2026-02-27 |
-| 4. Schedule Browser and Click-to-Snipe | 0/3 | Not started | - |
+| 4. Schedule Browser and Click-to-Snipe | 2/3 | In Progress|  |
 | 5. Snipe Timeline and History | 0/3 | Not started | - |
 | 6. Empty States and Onboarding | 0/2 | Not started | - |

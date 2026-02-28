@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-27T22:14:24.273Z"
+last_updated: "2026-02-28T05:30:00Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Users never miss a class they want — the system books it automatically the moment it becomes available, with clear visibility into what's happening at every step.
-**Current focus:** Phase 3 — Calendar Home
+**Current focus:** Phase 4 — Schedule Browser and Click-to-Snipe
 
 ## Current Position
 
-Phase: 3 of 6 (Calendar Home)
-Plan: 2 of 3 in current phase
+Phase: 4 of 6 (Schedule Browser and Click-to-Snipe)
+Plan: 3 of 3 in current phase (COMPLETE)
 Status: In progress
-Last activity: 2026-02-27 — Completed 03-02 (CalendarView wire-up and dashboard replace: CalendarView component with week navigation, dashboard rewritten to "Your Week")
+Last activity: 2026-02-28 — Completed 04-03 (Credential validation: live auth check for MT/Xponential/Arketa, status badges on credentials page)
 
-Progress: [██████░░░░] 33%
+Progress: [████████░░] 53%
 
 ## Performance Metrics
 
@@ -42,7 +42,8 @@ Progress: [██████░░░░] 33%
 |-------|-------|-------|----------|
 | 01 Infrastructure Hardening | 3/3 | < 1 hour | < 5 min |
 | 02 Data Foundation | 3/3 | < 5 min | < 3 min |
-| 03 Calendar Home | 2/3 | < 3 min | < 2 min |
+| 03 Calendar Home | 3/3 | < 3 min | < 2 min |
+| 04 Schedule Browser and Click-to-Snipe | 3/3 | ~2 min | < 2 min |
 
 **Recent Trend:**
 - Last 5 plans: 01-02 (2 min), 01-03 (4 min), 02-01 (< 1 min), 02-02 (< 1 min), 03-01 (< 2 min)
@@ -82,6 +83,10 @@ Recent decisions affecting current work:
 - [03-02]: isLoading (not isFetching) gates CalendarView skeleton — prevents flash on every 60s background refetch
 - [03-02]: Lazy useState(getInitialWeekStart) initializer — function reference prevents ET computation on every re-render
 - [03-02]: StatCard and OnboardingStep removed entirely — onboarding deferred to Phase 6 with calendar-integrated guidance
+- [04-03]: Status computed on demand (not stored in DB) — avoids stale data and DB migration
+- [04-03]: Sequential validation loop (not Promise.all) — prevents rate-limit errors from studio APIs
+- [04-03]: Timeout returns 'untested' not 'invalid' — network failure does not mean bad credentials
+- [04-03]: Server component fetches slugs from DB, client component renders UI and fires validation
 
 ### Pending Todos
 
@@ -94,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Completed 03-02-PLAN.md (CalendarView wire-up: week navigation + dashboard replace with "Your Week" + CalendarView)
+Last session: 2026-02-28
+Stopped at: Completed 04-03-PLAN.md (Credential validation: live auth check for MT/Xponential/Arketa, status badges, server-to-client page refactor)
 Resume file: None
