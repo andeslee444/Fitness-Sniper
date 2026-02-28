@@ -96,12 +96,12 @@ Plans:
   4. Booking history shows class name and studio name for every entry (not just timestamps and location IDs)
   5. Dashboard shows a per-studio success rate ("Barry's: 8/10 booked, 80%") as a summary stat
   6. User can filter booking history to show only a single studio's entries
-**Plans**: TBD
+**Plans**: 3 plans (Wave 1: 05-01 + 05-03 parallel, Wave 2: 05-02)
 
 Plans:
-- [ ] 05-01: Build JobStatusTimeline component with 4 user-facing state mapping and CountdownTimer
-- [ ] 05-02: Surface job_message prominently on failed jobs; enrich history page with class name column and studio filter
-- [ ] 05-03: Add success rate stats query to dashboard; add per-studio summary cards
+- [ ] 05-01-PLAN.md — Build JobStatusTimeline + CountdownTimer components; extend TargetWithJob type; integrate into targets page with prominent failure messages
+- [ ] 05-02-PLAN.md — Add class_name column to booking_history (migration 007); enrich history API with studio filter; rebuild history page with class name and filter UI
+- [ ] 05-03-PLAN.md — Add per-studio success rate query to dashboard stats API; build StudioSuccessRates component on dashboard
 
 ### Phase 6: Empty States and Onboarding
 **Goal**: A new user with no data understands exactly what to do, and an existing user whose worker is offline immediately knows something is wrong
