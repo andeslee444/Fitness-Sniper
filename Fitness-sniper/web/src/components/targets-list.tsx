@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Calendar, MapPin, Clock, Armchair, CheckCircle, XCircle, Loader2, Timer } from 'lucide-react';
 import { STUDIOS, STUDIO_LOCATIONS, DAY_ABBR, SEAT_PREFERENCES } from '@/lib/studios';
 import type { TargetWithJob, JobStatus } from '@/lib/types';
+import { JobStatusTimeline } from '@/components/job-status-timeline';
+import { CountdownTimer } from '@/components/countdown-timer';
 
 function formatTargetDate(dateVal: string | Date): string {
   const date = typeof dateVal === 'string'
@@ -139,8 +141,18 @@ export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
                       </span>
                     )}
                   </div>
-                  {target.job_status === 'failed' && target.job_message && (
-                    <p className="text-xs text-red-400/70">{target.job_message}</p>
+                  {target.job_status && (
+                    <JobStatusTimeline
+                      jobStatus={target.job_status}
+                      scheduledFor={target.job_scheduled_for}
+                      classDatetime={target.job_class_datetime}
+                      createdAt={target.job_created_at}
+                      claimedAt={target.job_claimed_at}
+                      message={target.job_message}
+                    />
+                  )}
+                  {target.job_status === 'pending' && target.job_scheduled_for && (
+                    <CountdownTimer scheduledFor={target.job_scheduled_for} />
                   )}
                 </div>
               </div>
