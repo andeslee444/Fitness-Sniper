@@ -86,6 +86,7 @@ export interface BookingHistory {
   status: 'booked' | 'failed' | 'cancelled';
   spot: string | null;
   message: string | null;
+  class_name: string | null;
   created_at: string;
 }
 
