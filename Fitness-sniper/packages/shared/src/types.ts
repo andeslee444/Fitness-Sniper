@@ -52,6 +52,8 @@ export interface TargetWithJob extends SnipeTarget {
   job_class_datetime: string | null; // actual class time (for display)
   job_message: string | null;
   job_spot: string | null;
+  job_created_at: string | null; // when the job was first created
+  job_claimed_at: string | null; // when worker picked up the job
 }
 
 export interface BookingJob {

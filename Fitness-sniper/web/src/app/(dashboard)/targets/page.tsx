@@ -13,10 +13,12 @@ export default async function TargetsPage() {
        bj.scheduled_for AS job_scheduled_for,
        bj.class_datetime AS job_class_datetime,
        bj.result_message AS job_message,
-       bj.spot_booked AS job_spot
+       bj.spot_booked AS job_spot,
+       bj.created_at AS job_created_at,
+       bj.claimed_at AS job_claimed_at
      FROM snipe_targets st
      LEFT JOIN LATERAL (
-       SELECT status, scheduled_for, class_datetime, result_message, spot_booked
+       SELECT status, scheduled_for, class_datetime, result_message, spot_booked, created_at, claimed_at
        FROM booking_jobs
        WHERE target_id = st.id
        ORDER BY created_at DESC

@@ -2,6 +2,7 @@
 
 import { CalendarView } from '@/components/calendar-view';
 import { WorkerStatus } from '@/components/worker-status';
+import { StudioSuccessRates } from '@/components/studio-success-rates';
 
 export default function DashboardPage() {
   return (
@@ -11,6 +12,7 @@ export default function DashboardPage() {
         <WorkerStatus />
       </div>
       <CalendarView />
+      <StudioSuccessRates />
     </div>
   );
 }
