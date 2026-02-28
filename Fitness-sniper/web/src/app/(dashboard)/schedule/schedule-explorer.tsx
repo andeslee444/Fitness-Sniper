@@ -1,3 +1,6 @@
+// DEPRECATED — Replaced by SchedulePanel (components/schedule/schedule-panel.tsx)
+// and SnipeConfigSheet (components/schedule/snipe-config-sheet.tsx) in Phase 4.
+// Kept for reference. Safe to delete after Phase 4 verification.
 'use client';
 
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';

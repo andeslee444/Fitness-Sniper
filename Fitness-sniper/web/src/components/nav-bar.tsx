@@ -7,8 +7,8 @@ import { LayoutDashboard, Target, CalendarDays, Clock, KeyRound, LogOut } from '
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/targets', label: 'Targets', icon: Target },
   { href: '/schedule', label: 'Schedule', icon: CalendarDays },
+  { href: '/targets', label: 'Targets', icon: Target },
   { href: '/history', label: 'History', icon: Clock },
   { href: '/credentials', label: 'Credentials', icon: KeyRound },
 ];
