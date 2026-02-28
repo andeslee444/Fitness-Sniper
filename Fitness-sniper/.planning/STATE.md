@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-28T00:10:00.000Z"
+last_updated: "2026-02-28T06:35:42.067Z"
 progress:
-  total_phases: 6
+  total_phases: 5
   completed_phases: 4
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -103,6 +103,9 @@ Recent decisions affecting current work:
 - [05-03]: Reuse dashboardStats TanStack Query key in StudioSuccessRates — single fetch, shared cache, no extra network request
 - [05-03]: SQL COUNT(*) FILTER for conditional aggregation — database does the booked/total computation, not JavaScript
 - [05-03]: Color thresholds >=80% emerald, <50% red, else yellow — consistent traffic light semantics for success rates
+- [Phase 05-01]: JobStatusTimeline returns null when jobStatus is null — existing 'Waiting' badge handles the no-job display case
+- [Phase 05-01]: translateJobMessage exported separately from JobStatusTimeline for reuse across history page and other consumers
+- [Phase 05-01]: CountdownTimer lazy initializer useState(() => target - Date.now()) avoids SSR/hydration mismatch on initial render
 
 ### Pending Todos
 

@@ -30,7 +30,7 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 
 - [x] **TRUST-01**: Each snipe target shows a status timeline — "Scheduled → Waiting for booking window → Attempting → Booked/Failed" with timestamps
 - [x] **TRUST-02**: Pending snipes show a countdown to when the booking window opens ("Booking opens in 2d 4h — we'll attempt at 12:00 AM")
-- [ ] **TRUST-03**: Failed booking jobs display prominent failure reasons with actionable messaging ("Class was full" / "Check your credentials")
+- [x] **TRUST-03**: Failed booking jobs display prominent failure reasons with actionable messaging ("Class was full" / "Check your credentials")
 - [x] **TRUST-04**: Each stored credential shows validation status — "Connected", "Untested", or "Invalid" — so users know if their credentials will work
 
 ### History
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCHED-03 | Phase 4 | Complete |
 | TRUST-01 | Phase 5 | Complete |
 | TRUST-02 | Phase 5 | Complete |
-| TRUST-03 | Phase 5 | Pending |
+| TRUST-03 | Phase 5 | Complete |
 | TRUST-04 | Phase 4 | Complete |
 | HIST-01 | Phase 5 | Pending |
 | HIST-02 | Phase 5 | Complete |
