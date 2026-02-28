@@ -22,16 +22,16 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 
 ### Schedule
 
-- [ ] **SCHED-01**: User can browse live class schedules from primary navigation (not buried under a sub-page)
-- [ ] **SCHED-02**: User can create a snipe target directly from a class in the schedule browser (browse → select → configure → confirm in one flow)
-- [ ] **SCHED-03**: User can find the next available opening for a given studio/class type with one click
+- [x] **SCHED-01**: User can browse live class schedules from primary navigation (not buried under a sub-page)
+- [x] **SCHED-02**: User can create a snipe target directly from a class in the schedule browser (browse → select → configure → confirm in one flow)
+- [x] **SCHED-03**: User can find the next available opening for a given studio/class type with one click
 
 ### Trust
 
 - [x] **TRUST-01**: Each snipe target shows a status timeline — "Scheduled → Waiting for booking window → Attempting → Booked/Failed" with timestamps
 - [x] **TRUST-02**: Pending snipes show a countdown to when the booking window opens ("Booking opens in 2d 4h — we'll attempt at 12:00 AM")
 - [ ] **TRUST-03**: Failed booking jobs display prominent failure reasons with actionable messaging ("Class was full" / "Check your credentials")
-- [ ] **TRUST-04**: Each stored credential shows validation status — "Connected", "Untested", or "Invalid" — so users know if their credentials will work
+- [x] **TRUST-04**: Each stored credential shows validation status — "Connected", "Untested", or "Invalid" — so users know if their credentials will work
 
 ### History
 
@@ -94,13 +94,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-01 | Phase 3 | Complete |
 | CAL-02 | Phase 3 | Complete |
 | CAL-03 | Phase 3 | Complete |
-| SCHED-01 | Phase 4 | Pending |
-| SCHED-02 | Phase 4 | Pending |
-| SCHED-03 | Phase 4 | Pending |
+| SCHED-01 | Phase 4 | Complete |
+| SCHED-02 | Phase 4 | Complete |
+| SCHED-03 | Phase 4 | Complete |
 | TRUST-01 | Phase 5 | Complete |
 | TRUST-02 | Phase 5 | Complete |
 | TRUST-03 | Phase 5 | Pending |
-| TRUST-04 | Phase 4 | Pending |
+| TRUST-04 | Phase 4 | Complete |
 | HIST-01 | Phase 5 | Pending |
 | HIST-02 | Phase 5 | Pending |
 | HIST-03 | Phase 5 | Pending |

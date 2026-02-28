@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-28T05:30:00Z"
+last_updated: "2026-02-28T05:35:11.107Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 10
 ---
 
 # Project State
@@ -50,6 +50,7 @@ Progress: [████████░░] 53%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 04 P02 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,10 @@ Recent decisions affecting current work:
 - [04-03]: Sequential validation loop (not Promise.all) — prevents rate-limit errors from studio APIs
 - [04-03]: Timeout returns 'untested' not 'invalid' — network failure does not mean bad credentials
 - [04-03]: Server component fetches slugs from DB, client component renders UI and fires validation
+- [Phase 04]: State reset on open (useEffect on open=true) rather than on close - ensures fresh form even on rapid re-open
+- [Phase 04]: SchedulePageClient thin wrapper - auth stays in server component, zero props crossing client boundary
+- [Phase 04]: schedule-explorer.tsx kept with DEPRECATED comment - safe rollback until Phase 4 fully verified
+- [Phase 04]: NAV_ITEMS reorder: Dashboard, Schedule, Targets, History, Credentials (Schedule second per SCHED-01)
 
 ### Pending Todos
 
@@ -107,5 +112,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 04-01-PLAN.md (Sheet UI primitive, SchedulePanel with onSnipeClick callback, useSnipeMutation TanStack Query hook)
+Stopped at: Completed 04-02-PLAN.md (SnipeConfigSheet with recurring/one-time toggle, SchedulePageClient wiring, nav reorder)
 Resume file: None
