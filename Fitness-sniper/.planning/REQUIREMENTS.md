@@ -36,7 +36,7 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 ### History
 
 - [ ] **HIST-01**: Booking history displays class names and studio names (not just times and location IDs)
-- [ ] **HIST-02**: Dashboard shows success rate per studio ("8/10 booked, 80%") as a summary stat
+- [x] **HIST-02**: Dashboard shows success rate per studio ("8/10 booked, 80%") as a summary stat
 - [ ] **HIST-03**: User can filter booking history by studio
 
 ### Onboarding
@@ -102,7 +102,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRUST-03 | Phase 5 | Pending |
 | TRUST-04 | Phase 4 | Complete |
 | HIST-01 | Phase 5 | Pending |
-| HIST-02 | Phase 5 | Pending |
+| HIST-02 | Phase 5 | Complete |
 | HIST-03 | Phase 5 | Pending |
 | ONBD-01 | Phase 6 | Pending |
 | ONBD-02 | Phase 6 | Pending |

@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-28T05:39:31.250Z"
+last_updated: "2026-02-28T00:10:00.000Z"
 progress:
-  total_phases: 4
+  total_phases: 6
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Users never miss a class they want — the system books it automatically the moment it becomes available, with clear visibility into what's happening at every step.
-**Current focus:** Phase 4 — Schedule Browser and Click-to-Snipe
+**Current focus:** Phase 5 — Snipe Timeline and History
 
 ## Current Position
 
-Phase: 4 of 6 (Schedule Browser and Click-to-Snipe)
+Phase: 5 of 6 (Snipe Timeline and History)
 Plan: 3 of 3 in current phase (COMPLETE)
 Status: In progress
-Last activity: 2026-02-28 — Completed 04-03 (Credential validation: live auth check for MT/Xponential/Arketa, status badges on credentials page)
+Last activity: 2026-02-28 — Completed 05-03 (Per-studio success rate stats on dashboard with GROUP BY SQL query and StudioSuccessRates component)
 
-Progress: [████████░░] 53%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [████████░░] 53%
 
 *Updated after each plan completion*
 | Phase 04 P02 | 2 | 2 tasks | 5 files |
+| Phase 05 P03 | 5 | 1 task | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 04]: SchedulePageClient thin wrapper - auth stays in server component, zero props crossing client boundary
 - [Phase 04]: schedule-explorer.tsx kept with DEPRECATED comment - safe rollback until Phase 4 fully verified
 - [Phase 04]: NAV_ITEMS reorder: Dashboard, Schedule, Targets, History, Credentials (Schedule second per SCHED-01)
+- [05-03]: Reuse dashboardStats TanStack Query key in StudioSuccessRates — single fetch, shared cache, no extra network request
+- [05-03]: SQL COUNT(*) FILTER for conditional aggregation — database does the booked/total computation, not JavaScript
+- [05-03]: Color thresholds >=80% emerald, <50% red, else yellow — consistent traffic light semantics for success rates
 
 ### Pending Todos
 
@@ -112,5 +116,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 04-02-PLAN.md (SnipeConfigSheet with recurring/one-time toggle, SchedulePageClient wiring, nav reorder)
+Stopped at: Completed 05-03-PLAN.md (Per-studio success rate stats on dashboard with SQL GROUP BY aggregation and StudioSuccessRates component)
 Resume file: None

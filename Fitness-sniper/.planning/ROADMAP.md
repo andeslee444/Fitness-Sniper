@@ -101,7 +101,7 @@ Plans:
 Plans:
 - [ ] 05-01-PLAN.md — Build JobStatusTimeline + CountdownTimer components; extend TargetWithJob type; integrate into targets page with prominent failure messages
 - [ ] 05-02-PLAN.md — Add class_name column to booking_history (migration 007); enrich history API with studio filter; rebuild history page with class name and filter UI
-- [ ] 05-03-PLAN.md — Add per-studio success rate query to dashboard stats API; build StudioSuccessRates component on dashboard
+- [x] 05-03-PLAN.md — Add per-studio success rate query to dashboard stats API; build StudioSuccessRates component on dashboard
 
 ### Phase 6: Empty States and Onboarding
 **Goal**: A new user with no data understands exactly what to do, and an existing user whose worker is offline immediately knows something is wrong
@@ -128,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Data Foundation | 2/2 | Complete   | 2026-02-27 |
 | 3. Calendar Home | 2/2 | Complete   | 2026-02-27 |
 | 4. Schedule Browser and Click-to-Snipe | 3/3 | Complete   | 2026-02-28 |
-| 5. Snipe Timeline and History | 0/3 | Not started | - |
+| 5. Snipe Timeline and History | 1/3 | In progress | - |
 | 6. Empty States and Onboarding | 0/2 | Not started | - |
