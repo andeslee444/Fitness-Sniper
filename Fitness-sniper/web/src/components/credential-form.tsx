@@ -12,9 +12,10 @@ interface Props {
   studioSlug: string;
   studioName: string;
   hasSaved: boolean;
+  validationStatus?: 'connected' | 'untested' | 'invalid' | 'checking';
 }
 
-export function CredentialForm({ studioSlug, studioName, hasSaved }: Props) {
+export function CredentialForm({ studioSlug, studioName, hasSaved, validationStatus }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,6 +76,27 @@ export function CredentialForm({ studioSlug, studioName, hasSaved }: Props) {
         <div className="flex items-center gap-3">
           <CheckCircle className="h-4 w-4 text-emerald-400" />
           <span className="font-medium text-white">{studioName}</span>
+          {/* Validation status badge */}
+          {validationStatus === 'checking' && (
+            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+              Checking...
+            </span>
+          )}
+          {validationStatus === 'connected' && (
+            <span className="rounded-full bg-emerald-950 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+              Connected
+            </span>
+          )}
+          {validationStatus === 'untested' && (
+            <span className="rounded-full bg-amber-950 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+              Untested
+            </span>
+          )}
+          {validationStatus === 'invalid' && (
+            <span className="rounded-full bg-red-950 px-2 py-0.5 text-[10px] font-medium text-red-400">
+              Invalid
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="h-8 text-zinc-400 hover:text-white">
