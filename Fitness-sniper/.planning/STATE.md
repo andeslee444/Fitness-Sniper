@@ -86,6 +86,13 @@ Recent decisions affecting current work:
 - [04-03]: Status computed on demand (not stored in DB) — avoids stale data and DB migration
 - [04-03]: Sequential validation loop (not Promise.all) — prevents rate-limit errors from studio APIs
 - [04-03]: Timeout returns 'untested' not 'invalid' — network failure does not mean bad credentials
+- [04-01]: Sheet built from Radix Dialog (unified radix-ui package) — no new dependencies needed, consistent with dialog.tsx
+- [04-01]: SchedulePanel onSnipeClick prop delegates to parent when provided, falls back to inline Popover — enables Plan 04-02 config sheet
+- [04-01]: useSnipeMutation invalidates ['calendar'] (partial key) not calendarWeek(weekStart) — covers all weeks for recurring targets
+- [04-01]: SchedulePanel exports ScheduleClass and ScheduleResponse interfaces — Plan 04-02 SnipeConfigSheet consumes them
+- [04-03]: Status computed on demand (not stored in DB) — avoids stale data and DB migration
+- [04-03]: Sequential validation loop (not Promise.all) — prevents rate-limit errors from studio APIs
+- [04-03]: Timeout returns 'untested' not 'invalid' — network failure does not mean bad credentials
 - [04-03]: Server component fetches slugs from DB, client component renders UI and fires validation
 
 ### Pending Todos
@@ -100,5 +107,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 04-03-PLAN.md (Credential validation: live auth check for MT/Xponential/Arketa, status badges, server-to-client page refactor)
+Stopped at: Completed 04-01-PLAN.md (Sheet UI primitive, SchedulePanel with onSnipeClick callback, useSnipeMutation TanStack Query hook)
 Resume file: None
