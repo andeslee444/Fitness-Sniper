@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Calendar Home** - Replace the stats-grid dashboard with a weekly calendar view that shows bookings, snipes, and failures at a glance (completed 2026-02-27)
 - [x] **Phase 4: Schedule Browser and Click-to-Snipe** - Promote the schedule browser to primary nav and wire it to a one-flow snipe creation sheet (completed 2026-02-28)
 - [x] **Phase 5: Snipe Timeline and History** - Surface the per-snipe lifecycle and enrich booking history so users understand what happened and why (completed 2026-02-28)
-- [x] **Phase 6: Empty States and Onboarding** - Add guided empty states, worker-offline alerts, and an onboarding flow so new users know exactly what to do (completed 2026-03-14)
+- [ ] **Phase 6: Empty States and Onboarding** - Add guided empty states, worker-offline alerts, and an onboarding flow so new users know exactly what to do
 
 ## Phase Details
 
@@ -111,11 +111,12 @@ Plans:
   1. A new user with no snipe targets sees an empty state that explains the three steps to get started (add credentials, browse schedule, create snipe) — not a blank page
   2. When the worker daemon has not sent a heartbeat in more than 5 minutes, a prominent banner or alert appears on every dashboard page (not just a buried status indicator)
   3. A guided onboarding flow walks a new user through: pick studios → add credentials → browse schedule → create first snipe — in a linear sequence they cannot accidentally skip
-**Plans**: 2 plans (Wave 1: 06-01, Wave 2: 06-02)
+**Plans**: 3 plans (Wave 1: 06-01, Wave 2: 06-02, Wave 3: 06-03 gap closure)
 
 Plans:
-- [ ] 06-01-PLAN.md — Build EmptyStateGuide for targets page with 3-step guidance and WorkerOfflineBanner for dashboard layout
-- [ ] 06-02-PLAN.md — Build guided onboarding flow at /onboarding route with 4-step linear sequence and new-user redirect
+- [x] 06-01-PLAN.md — Build EmptyStateGuide for targets page with 3-step guidance and WorkerOfflineBanner for dashboard layout
+- [x] 06-02-PLAN.md — Build guided onboarding flow at /onboarding route with 4-step linear sequence and new-user redirect
+- [ ] 06-03-PLAN.md — Fix onboarding skip-then-redirect loop via onboarding_dismissed cookie (gap closure)
 
 ## Progress
 
@@ -129,4 +130,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Calendar Home | 2/2 | Complete   | 2026-02-27 |
 | 4. Schedule Browser and Click-to-Snipe | 3/3 | Complete   | 2026-02-28 |
 | 5. Snipe Timeline and History | 3/3 | Complete   | 2026-02-28 |
-| 6. Empty States and Onboarding | 2/2 | Complete   | 2026-03-14 |
+| 6. Empty States and Onboarding | 2/3 | Gap closure | — |
