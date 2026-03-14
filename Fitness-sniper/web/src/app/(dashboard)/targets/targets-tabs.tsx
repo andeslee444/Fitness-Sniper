@@ -7,9 +7,11 @@ import type { TargetWithJob } from '@/lib/types';
 export function TargetsTabs({
   recurring,
   oneTime,
+  hasCredentials,
 }: {
   recurring: TargetWithJob[];
   oneTime: TargetWithJob[];
+  hasCredentials: boolean;
 }) {
   return (
     <Tabs defaultValue="recurring">
@@ -18,10 +20,10 @@ export function TargetsTabs({
         <TabsTrigger value="one_time">One-Time ({oneTime.length})</TabsTrigger>
       </TabsList>
       <TabsContent value="recurring">
-        <TargetsList targets={recurring} />
+        <TargetsList targets={recurring} hasCredentials={hasCredentials} />
       </TabsContent>
       <TabsContent value="one_time">
-        <TargetsList targets={oneTime} />
+        <TargetsList targets={oneTime} hasCredentials={hasCredentials} />
       </TabsContent>
     </Tabs>
   );

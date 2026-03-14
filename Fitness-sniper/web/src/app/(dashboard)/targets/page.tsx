@@ -7,28 +7,35 @@ import type { TargetWithJob } from '@/lib/types';
 export default async function TargetsPage() {
   const user = await getSession();
 
-  const { rows: targets } = await query<TargetWithJob>(
-    `SELECT st.*,
-       bj.status AS job_status,
-       bj.scheduled_for AS job_scheduled_for,
-       bj.class_datetime AS job_class_datetime,
-       bj.result_message AS job_message,
-       bj.spot_booked AS job_spot,
-       bj.created_at AS job_created_at,
-       bj.claimed_at AS job_claimed_at
-     FROM snipe_targets st
-     LEFT JOIN LATERAL (
-       SELECT status, scheduled_for, class_datetime, result_message, spot_booked, created_at, claimed_at
-       FROM booking_jobs
-       WHERE target_id = st.id
-       ORDER BY created_at DESC
-       LIMIT 1
-     ) bj ON true
-     WHERE st.user_id = $1
-     ORDER BY st.created_at DESC`,
-    [user!.sub],
-  );
+  const [{ rows: targets }, { rows: creds }] = await Promise.all([
+    query<TargetWithJob>(
+      `SELECT st.*,
+         bj.status AS job_status,
+         bj.scheduled_for AS job_scheduled_for,
+         bj.class_datetime AS job_class_datetime,
+         bj.result_message AS job_message,
+         bj.spot_booked AS job_spot,
+         bj.created_at AS job_created_at,
+         bj.claimed_at AS job_claimed_at
+       FROM snipe_targets st
+       LEFT JOIN LATERAL (
+         SELECT status, scheduled_for, class_datetime, result_message, spot_booked, created_at, claimed_at
+         FROM booking_jobs
+         WHERE target_id = st.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) bj ON true
+       WHERE st.user_id = $1
+       ORDER BY st.created_at DESC`,
+      [user!.sub],
+    ),
+    query<{ count: string }>(
+      'SELECT COUNT(*) as count FROM studio_credentials WHERE user_id = $1',
+      [user!.sub],
+    ),
+  ]);
 
+  const hasCredentials = parseInt(creds[0]?.count ?? '0', 10) > 0;
   const allTargets = targets || [];
   const recurring = allTargets.filter((t) => t.target_type === 'recurring');
   const oneTime = allTargets.filter((t) => t.target_type === 'one_time');
@@ -42,7 +49,7 @@ export default async function TargetsPage() {
         </div>
         <AddTargetDialog />
       </div>
-      <TargetsTabs recurring={recurring} oneTime={oneTime} />
+      <TargetsTabs recurring={recurring} oneTime={oneTime} hasCredentials={hasCredentials} />
     </div>
   );
 }

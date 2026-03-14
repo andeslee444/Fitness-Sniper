@@ -10,6 +10,7 @@ import { STUDIOS, STUDIO_LOCATIONS, DAY_ABBR, SEAT_PREFERENCES } from '@/lib/stu
 import type { TargetWithJob, JobStatus } from '@/lib/types';
 import { JobStatusTimeline } from '@/components/job-status-timeline';
 import { CountdownTimer } from '@/components/countdown-timer';
+import { EmptyStateGuide } from '@/components/empty-state';
 
 function formatTargetDate(dateVal: string | Date): string {
   const date = typeof dateVal === 'string'
@@ -30,7 +31,7 @@ const JOB_STATUS_CONFIG: Record<string, { label: string; style: string; icon: Re
   failed: { label: 'Failed', style: 'bg-red-500/10 text-red-400 border-red-500/30', icon: XCircle },
 };
 
-export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
+export function TargetsList({ targets, hasCredentials }: { targets: TargetWithJob[]; hasCredentials?: boolean }) {
   const router = useRouter();
 
   async function toggleTarget(id: string, enabled: boolean) {
@@ -60,11 +61,7 @@ export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
   }
 
   if (targets.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center">
-        <p className="text-zinc-500">No targets yet. Add one to start auto-booking.</p>
-      </div>
-    );
+    return <EmptyStateGuide hasCredentials={hasCredentials ?? false} />;
   }
 
   return (
