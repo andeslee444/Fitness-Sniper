@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Calendar Home** - Replace the stats-grid dashboard with a weekly calendar view that shows bookings, snipes, and failures at a glance (completed 2026-02-27)
 - [x] **Phase 4: Schedule Browser and Click-to-Snipe** - Promote the schedule browser to primary nav and wire it to a one-flow snipe creation sheet (completed 2026-02-28)
 - [x] **Phase 5: Snipe Timeline and History** - Surface the per-snipe lifecycle and enrich booking history so users understand what happened and why (completed 2026-02-28)
-- [ ] **Phase 6: Empty States and Onboarding** - Add guided empty states, worker-offline alerts, and an onboarding flow so new users know exactly what to do
+- [x] **Phase 6: Empty States and Onboarding** - Add guided empty states, worker-offline alerts, and an onboarding flow so new users know exactly what to do (completed 2026-03-14)
 
 ## Phase Details
 
@@ -129,4 +129,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Calendar Home | 2/2 | Complete   | 2026-02-27 |
 | 4. Schedule Browser and Click-to-Snipe | 3/3 | Complete   | 2026-02-28 |
 | 5. Snipe Timeline and History | 3/3 | Complete   | 2026-02-28 |
-| 6. Empty States and Onboarding | 1/2 | In Progress|  |
+| 6. Empty States and Onboarding | 2/2 | Complete   | 2026-03-14 |

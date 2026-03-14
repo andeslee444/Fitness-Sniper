@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md (Empty states and worker offline banner)
-last_updated: "2026-03-14T06:21:33.272Z"
+stopped_at: Completed 06-02-PLAN.md (Guided onboarding flow)
+last_updated: "2026-03-14T06:26:28.678Z"
 last_activity: 2026-02-28 — Completed 05-03 (Per-studio success rate stats on dashboard with GROUP BY SQL query and StudioSuccessRates component)
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 85
 ---
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 85%
 | Phase 05 P03 | 5 | 1 task | 3 files |
 | Phase 05 P02 | 1 | 2 tasks | 4 files |
 | Phase 06 P01 | 2 | 2 tasks | 6 files |
+| Phase 06 P02 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ Recent decisions affecting current work:
 - [Phase 06]: WorkerOfflineBanner shares QUERY_KEYS.workerStatus with WorkerStatus dot — zero extra network requests via TanStack Query cache deduplication
 - [Phase 06]: 5-minute offline threshold for layout banner vs 60s for nav dot — banner is extended-outage signal, dot is real-time status
 - [Phase 06]: hasCredentials passed from server component via parallel Promise.all query — avoids client-side waterfall
+- [Phase 06]: /onboarding outside (dashboard) route group — no redirect loop without pathname guard
+- [Phase 06]: Parallel EXISTS queries for new-user detection — <5ms indexed scan, zero extra data
+- [Phase 06]: 4-step state machine via useState(0) — no URL params needed for linear flow
 
 ### Pending Todos
 
@@ -129,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T06:21:33.269Z
-Stopped at: Completed 06-01-PLAN.md (Empty states and worker offline banner)
+Last session: 2026-03-14T06:26:28.676Z
+Stopped at: Completed 06-02-PLAN.md (Guided onboarding flow)
 Resume file: None
