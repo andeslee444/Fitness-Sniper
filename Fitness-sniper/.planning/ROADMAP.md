@@ -111,11 +111,11 @@ Plans:
   1. A new user with no snipe targets sees an empty state that explains the three steps to get started (add credentials, browse schedule, create snipe) — not a blank page
   2. When the worker daemon has not sent a heartbeat in more than 5 minutes, a prominent banner or alert appears on every dashboard page (not just a buried status indicator)
   3. A guided onboarding flow walks a new user through: pick studios → add credentials → browse schedule → create first snipe — in a linear sequence they cannot accidentally skip
-**Plans**: TBD
+**Plans**: 2 plans (Wave 1: 06-01, Wave 2: 06-02)
 
 Plans:
-- [ ] 06-01: Build empty state components for no-targets, no-history, and no-schedule-data conditions
-- [ ] 06-02: Add worker-offline banner to dashboard layout; build guided onboarding flow for new users
+- [ ] 06-01-PLAN.md — Build EmptyStateGuide for targets page with 3-step guidance and WorkerOfflineBanner for dashboard layout
+- [ ] 06-02-PLAN.md — Build guided onboarding flow at /onboarding route with 4-step linear sequence and new-user redirect
 
 ## Progress
 
