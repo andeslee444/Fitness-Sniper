@@ -41,8 +41,8 @@ Requirements for the dashboard rebuild. Each maps to roadmap phases.
 
 ### Onboarding
 
-- [ ] **ONBD-01**: New users with no targets see clear empty state guidance explaining the 3 steps to get started
-- [ ] **ONBD-02**: Worker offline status is displayed prominently with a banner/alert when the daemon hasn't sent a heartbeat recently
+- [x] **ONBD-01**: New users with no targets see clear empty state guidance explaining the 3 steps to get started
+- [x] **ONBD-02**: Worker offline status is displayed prominently with a banner/alert when the daemon hasn't sent a heartbeat recently
 - [ ] **ONBD-03**: New user onboarding guides through: pick studios → add credentials → browse schedule → create first snipe
 
 ## v2 Requirements
@@ -104,8 +104,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HIST-01 | Phase 5 | Complete |
 | HIST-02 | Phase 5 | Complete |
 | HIST-03 | Phase 5 | Complete |
-| ONBD-01 | Phase 6 | Pending |
-| ONBD-02 | Phase 6 | Pending |
+| ONBD-01 | Phase 6 | Complete |
+| ONBD-02 | Phase 6 | Complete |
 | ONBD-03 | Phase 6 | Pending |
 
 **Coverage:**

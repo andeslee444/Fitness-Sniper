@@ -2,13 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-02-28T06:43:40.144Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md (Empty states and worker offline banner)
+last_updated: "2026-03-14T06:21:33.272Z"
+last_activity: 2026-02-28 — Completed 05-03 (Per-studio success rate stats on dashboard with GROUP BY SQL query and StudioSuccessRates component)
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 14
+  percent: 85
 ---
 
 # Project State
@@ -53,6 +56,7 @@ Progress: [█████████░] 85%
 | Phase 04 P02 | 2 | 2 tasks | 5 files |
 | Phase 05 P03 | 5 | 1 task | 3 files |
 | Phase 05 P02 | 1 | 2 tasks | 4 files |
+| Phase 06 P01 | 2 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -110,6 +114,9 @@ Recent decisions affecting current work:
 - [Phase 05]: Scalar subquery in on_job_completed trigger (not LEFT JOIN) — avoids duplicate history inserts when class_schedules has multiple rows per timeslot
 - [Phase 05]: Dynamic WHERE clause with baseParams/dataParams split — COUNT query uses user_id+studio only, data query adds limit+offset preventing param index mismatch
 - [Phase 05]: History page studio filter: separate useEffect on [studioFilter] resets pagination; fetchHistory dep array already includes studioFilter for re-creation
+- [Phase 06]: WorkerOfflineBanner shares QUERY_KEYS.workerStatus with WorkerStatus dot — zero extra network requests via TanStack Query cache deduplication
+- [Phase 06]: 5-minute offline threshold for layout banner vs 60s for nav dot — banner is extended-outage signal, dot is real-time status
+- [Phase 06]: hasCredentials passed from server component via parallel Promise.all query — avoids client-side waterfall
 
 ### Pending Todos
 
@@ -122,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-28
-Stopped at: Completed 05-02-PLAN.md (Booking history enrichment — class_name migration, studio filter, prominent failure messages)
+Last session: 2026-03-14T06:21:33.269Z
+Stopped at: Completed 06-01-PLAN.md (Empty states and worker offline banner)
 Resume file: None
