@@ -34,13 +34,13 @@ export default function HistoryPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [studioFilter, setStudioFilter] = useState<string>('');
+  const [studioFilter, setStudioFilter] = useState<string>('all');
 
   const fetchHistory = useCallback(async (offset: number, append: boolean) => {
     const setter = append ? setLoadingMore : setLoading;
     setter(true);
     try {
-      const url = `/api/history?limit=${PAGE_SIZE}&offset=${offset}${studioFilter ? `&studio=${studioFilter}` : ''}`;
+      const url = `/api/history?limit=${PAGE_SIZE}&offset=${offset}${studioFilter !== 'all' ? `&studio=${studioFilter}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
@@ -81,7 +81,7 @@ export default function HistoryPage() {
             <SelectValue placeholder="All Studios" />
           </SelectTrigger>
           <SelectContent className="border-white/10 bg-zinc-900 text-zinc-300">
-            <SelectItem value="">All Studios</SelectItem>
+            <SelectItem value="all">All Studios</SelectItem>
             {Object.entries(STUDIOS).map(([slug, config]) => (
               <SelectItem key={slug} value={slug}>
                 {config.name}
@@ -96,7 +96,7 @@ export default function HistoryPage() {
       ) : history.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center">
           <p className="text-zinc-500">
-            {studioFilter
+            {studioFilter !== 'all'
               ? `No bookings found for ${STUDIOS[studioFilter]?.name ?? studioFilter}.`
               : 'No bookings yet. Once the worker books a class, it will appear here.'}
           </p>
