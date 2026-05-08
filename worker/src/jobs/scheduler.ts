@@ -7,7 +7,15 @@
  */
 
 import { query } from '../db.js';
-import { parseTime, STUDIOS } from '@fitness-sniper/shared';
+import {
+  addDaysToDateString,
+  dateStringInTimeZone,
+  dayOfWeekForDateString,
+  minutesSinceMidnightInTimeZone,
+  parseTime,
+  STUDIOS,
+  zonedDateTimeToUtc,
+} from '@fitness-sniper/shared';
 import cron from 'node-cron';
 
 const DEFAULT_BOOKING_WINDOW_DAYS = 7;
@@ -235,36 +243,23 @@ export function getNextClassDate(dayOfWeek: number, time: string): Date {
   const hours = parsed?.hours24 ?? 0;
   const minutes = parsed?.minutes ?? 0;
 
-  // Get today's date in America/New_York (not server local time)
-  const etTodayStr = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/New_York',
-  }); // "YYYY-MM-DD"
-  const [year, month, day] = etTodayStr.split('-').map(Number);
-
-  // Build date at class time using explicit year/month/day
-  const target = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-  // Get day of week from the ET date string (noon avoids DST edge case)
-  const etDayOfWeek = new Date(etTodayStr + 'T12:00:00').getDay();
+  const now = new Date();
+  const etTodayStr = dateStringInTimeZone(now);
+  const etDayOfWeek = dayOfWeekForDateString(etTodayStr);
 
   const daysUntil = (dayOfWeek - etDayOfWeek + 7) % 7;
-  target.setDate(target.getDate() + daysUntil);
+  let targetDateStr = addDaysToDateString(etTodayStr, daysUntil);
 
   // If same day and time has already passed in ET, push to next week
   if (daysUntil === 0) {
-    const etNowStr = new Date().toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const [etHour, etMin] = etNowStr.split(':').map(Number);
-    if (etHour > hours || (etHour === hours && etMin >= minutes)) {
-      target.setDate(target.getDate() + 7);
+    const currentMinutes = minutesSinceMidnightInTimeZone(now);
+    const classMinutes = hours * 60 + minutes;
+    if (currentMinutes >= classMinutes) {
+      targetDateStr = addDaysToDateString(targetDateStr, 7);
     }
   }
 
-  return target;
+  return zonedDateTimeToUtc(targetDateStr, hours, minutes);
 }
 
 /**
@@ -273,22 +268,17 @@ export function getNextClassDate(dayOfWeek: number, time: string): Date {
 export function parseTargetDate(dateStr: string | Date, time: string): Date {
   // Postgres may return a Date object instead of a string
   const str = dateStr instanceof Date ? dateStr.toISOString().split('T')[0] : dateStr;
-  const [year, month, day] = str.split('-').map(Number);
   const parsed = parseTime(time);
   const hours = parsed?.hours24 ?? 0;
   const minutes = parsed?.minutes ?? 0;
 
-  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  return zonedDateTimeToUtc(str, hours, minutes);
 }
 
 export function isInBookingWindow(classDate: Date, windowDays: number): boolean {
-  const etTodayStr = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/New_York',
-  });
-  const [year, month, day] = etTodayStr.split('-').map(Number);
-  const now = new Date(year, month - 1, day, 0, 0, 0, 0);
-  const windowEnd = new Date(now);
-  windowEnd.setDate(windowEnd.getDate() + windowDays);
+  const today = dateStringInTimeZone();
+  const classDateStr = dateStringInTimeZone(classDate);
+  const windowEnd = addDaysToDateString(today, windowDays);
 
-  return classDate >= now && classDate <= windowEnd;
+  return classDateStr >= today && classDateStr <= windowEnd;
 }

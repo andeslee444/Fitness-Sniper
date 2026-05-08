@@ -15,5 +15,18 @@
     "web:build": "npm run build --workspace=web",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
+  },
+  "overrides": {
+    "@ts-morph/common": {
+      "minimatch": "^10.2.5"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^9.0.9"
+    },
+    "brace-expansion": "^1.1.14",
+    "glob": {
+      "minimatch": "^3.1.5"
+    },
+    "postcss": "^8.5.14"
   }
 }

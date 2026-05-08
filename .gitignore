@@ -26,3 +26,4 @@ data/
 
 # Legacy archive config used plaintext credentials and must remain local-only.
 archive/config/preferences.json
+.vercel

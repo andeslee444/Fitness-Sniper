@@ -80,7 +80,7 @@ import { JobPoller } from './jobs/poller';      // ✗ will fail
 
 Next.js 16.1.6 App Router with Tailwind v4 + shadcn/ui. Dark-mode only (hardcoded `className="dark"` on `<html>`).
 
-**Auth:** AWS Cognito (not Supabase Auth). Three httpOnly cookies: `cognito_access_token`, `cognito_id_token`, `cognito_refresh_token` (30-day maxAge). Middleware checks cookie presence for protected routes (`/dashboard`, `/targets`, `/history`, `/credentials`, `/schedule`). API routes validate via `getSession()` (calls Cognito `GetUserCommand`). Auth flow: `USER_PASSWORD_AUTH`. Signup auto-confirms via `AdminConfirmSignUpCommand`. Config: `lib/cognito.ts`.
+**Auth:** AWS Cognito (not Supabase Auth). Three httpOnly cookies: `cognito_access_token`, `cognito_id_token`, `cognito_refresh_token` (30-day maxAge). Next proxy checks cookie presence for protected routes (`/dashboard`, `/targets`, `/history`, `/credentials`, `/schedule`, `/onboarding`). API routes validate via `getSession()` (calls Cognito `GetUserCommand`). Auth flow: `USER_PASSWORD_AUTH`. Signup auto-confirms via `AdminConfirmSignUpCommand`. Config: `lib/cognito.ts`.
 
 **Database:** Direct PostgreSQL via `pg` pool (`lib/db.ts`), not Supabase client. Global singleton pattern prevents connection pool exhaustion during dev hot reload.
 
@@ -119,7 +119,7 @@ The canonical schema starts at `001_rds_schema.sql` (Cognito-based, `user_id` is
 `DATABASE_URL`, `ENCRYPTION_KEY` (64-char hex), `RESEND_API_KEY`, `WORKER_ID`
 
 ### Frontend (`web/.env.local`)
-`DATABASE_URL`, `ENCRYPTION_KEY` (same as worker), `AWS_REGION`, `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_USER_POOL_ID`
+`DATABASE_URL`, `DATABASE_POOL_MAX`, `ENCRYPTION_KEY` (same as worker), `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_USER_POOL_ID`
 
 ## Key Patterns
 

@@ -49,12 +49,17 @@ Required web variables:
 
 ```text
 DATABASE_URL=
+DATABASE_POOL_MAX=2
 ENCRYPTION_KEY=
 AWS_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 COGNITO_USER_POOL_ID=
 COGNITO_CLIENT_ID=
 COGNITO_CLIENT_SECRET=
 ```
+
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are required on Vercel because signup uses Cognito `AdminConfirmSignUpCommand`. `DATABASE_POOL_MAX` is optional; the web app defaults to `2` in production to avoid exhausting PostgreSQL connections from serverless instances.
 
 Required worker variables:
 
@@ -89,6 +94,18 @@ npm run lint
 ```
 
 There is currently no automated test framework configured.
+
+## Vercel
+
+Deploy from the repository root:
+
+```text
+Install Command: npm ci --workspace=web --workspace=packages/shared --include-workspace-root
+Build Command: npm run web:build
+Output Directory: web/.next
+```
+
+Set the required web environment variables in the Vercel project. The booking worker is not a Vercel function; run `npm run worker` on the always-on worker host with the worker environment variables.
 
 ## Database
 

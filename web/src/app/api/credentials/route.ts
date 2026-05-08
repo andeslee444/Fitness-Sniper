@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/cognito';
 import { query } from '@/lib/db';
 import crypto from 'node:crypto';
+import { STUDIOS } from '@fitness-sniper/shared';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -40,6 +41,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    if (!(studioSlug in STUDIOS)) {
+      return NextResponse.json({ error: 'Unknown studio' }, { status: 400 });
+    }
+
     const encEmail = encrypt(email);
     const encPassword = encrypt(password);
 
@@ -55,10 +60,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 },
-    );
+    console.error('[credentials] POST error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

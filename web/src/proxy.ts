@@ -1,15 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PROTECTED_PATHS = ['/dashboard', '/targets', '/history', '/credentials'];
+const PROTECTED_PATHS = ['/dashboard', '/targets', '/history', '/credentials', '/schedule', '/onboarding'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if accessing a protected route
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 
-  // Check for Cognito session cookies
   const accessToken = request.cookies.get('cognito_access_token')?.value;
   if (!accessToken) {
     return NextResponse.redirect(new URL('/login', request.url));

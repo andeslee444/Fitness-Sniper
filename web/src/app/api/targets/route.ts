@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/cognito';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import { STUDIOS, parseTime } from '@fitness-sniper/shared';
+import {
+  addDaysToDateString,
+  dateStringInTimeZone,
+  dayOfWeekForDateString,
+  minutesSinceMidnightInTimeZone,
+  parseTime,
+  STUDIOS,
+  zonedDateTimeToUtc,
+} from '@fitness-sniper/shared';
 
 const TIME_REGEX = /^\d{1,2}:\d{2}\s?(AM|PM)$/i;
 
@@ -75,10 +83,7 @@ export async function POST(request: NextRequest) {
 
     // One-time: reject past dates
     if (data.target_type === 'one_time') {
-      const dateObj = new Date(data.target_date + 'T00:00:00');
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (dateObj < today) {
+      if (data.target_date < dateStringInTimeZone()) {
         return NextResponse.json({ error: 'target_date cannot be in the past' }, { status: 400 });
       }
     }
@@ -154,36 +159,31 @@ function getClassDate(
   time: string,
 ): Date | null {
   const parsed = parseTime(time);
-  const hours = parsed?.hours24 ?? 0;
-  const minutes = parsed?.minutes ?? 0;
+  if (!parsed) return null;
+
+  const hours = parsed.hours24;
+  const minutes = parsed.minutes;
 
   if (data.target_type === 'one_time' && data.target_date) {
-    const [year, month, day] = data.target_date.split('-').map(Number);
-    return new Date(year, month - 1, day, hours, minutes, 0, 0);
+    return zonedDateTimeToUtc(data.target_date, hours, minutes);
   }
 
   if (data.target_type === 'recurring' && data.day_of_week != null) {
-    const etTodayStr = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/New_York',
-    });
-    const [year, month, day] = etTodayStr.split('-').map(Number);
-    const target = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    const etDayOfWeek = new Date(etTodayStr + 'T12:00:00').getDay();
+    const now = new Date();
+    const etTodayStr = dateStringInTimeZone(now);
+    const etDayOfWeek = dayOfWeekForDateString(etTodayStr);
     const daysUntil = (data.day_of_week - etDayOfWeek + 7) % 7;
-    target.setDate(target.getDate() + daysUntil);
+    let targetDateStr = addDaysToDateString(etTodayStr, daysUntil);
+
     if (daysUntil === 0) {
-      const etNowStr = new Date().toLocaleTimeString('en-US', {
-        timeZone: 'America/New_York',
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      const [etHour, etMin] = etNowStr.split(':').map(Number);
-      if (etHour > hours || (etHour === hours && etMin >= minutes)) {
-        target.setDate(target.getDate() + 7);
+      const currentMinutes = minutesSinceMidnightInTimeZone(now);
+      const classMinutes = hours * 60 + minutes;
+      if (currentMinutes >= classMinutes) {
+        targetDateStr = addDaysToDateString(targetDateStr, 7);
       }
     }
-    return target;
+
+    return zonedDateTimeToUtc(targetDateStr, hours, minutes);
   }
 
   return null;

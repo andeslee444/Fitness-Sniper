@@ -10,7 +10,7 @@
 
 import cron from 'node-cron';
 import { query } from '../db.js';
-import { STUDIOS } from '@fitness-sniper/shared';
+import { addDaysToDateString, APP_TIME_ZONE, dateStringInTimeZone, STUDIOS } from '@fitness-sniper/shared';
 import { fetchClassesFromAPI, type ClassScheduleRow } from '../scrapers/mt-api-client.js';
 import { scrapeClassesWithBrowser } from '../scrapers/mt-browser-scraper.js';
 import { fetchXpoClassesFromAPI } from '../scrapers/xpo-api-client.js';
@@ -39,11 +39,12 @@ export class ScheduleScraper {
     }, 30000);
 
     // Cron: 2 AM and 2 PM ET
-    // Note: node-cron uses system timezone; worker runs in America/New_York
     this.task = cron.schedule('0 2,14 * * *', () => {
       this.scrapeAll().catch((err) =>
         console.error('[schedule-scraper] Cron scrape failed:', err),
       );
+    }, {
+      timezone: APP_TIME_ZONE,
     });
 
     console.log('[schedule-scraper] Started (2 AM + 2 PM ET, boot in 30s)');
@@ -98,11 +99,9 @@ export class ScheduleScraper {
 
   private getDateRange(daysAhead: number): string[] {
     const dates: string[] = [];
-    const today = new Date();
+    const today = dateStringInTimeZone();
     for (let i = 0; i < daysAhead; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      dates.push(d.toISOString().split('T')[0]);
+      dates.push(addDaysToDateString(today, i));
     }
     return dates;
   }
@@ -365,7 +364,8 @@ export class ScheduleScraper {
   private async cleanup(): Promise<void> {
     try {
       const { rowCount } = await query(
-        `DELETE FROM class_schedules WHERE class_date < CURRENT_DATE - 2`,
+        `DELETE FROM class_schedules
+         WHERE class_date < ((NOW() AT TIME ZONE 'America/New_York')::date - 2)`,
       );
       if (rowCount && rowCount > 0) {
         console.log(`[schedule-scraper] Cleaned up ${rowCount} old schedule row(s)`);

@@ -111,10 +111,14 @@ export async function getSession(): Promise<CognitoUser | null> {
   try {
     // Validate access token by calling GetUser
     const response = await client.send(new GetUserCommand({ AccessToken: accessToken }));
+    const sub =
+      response.UserAttributes?.find((a) => a.Name === 'sub')?.Value || response.Username;
     const email =
       response.UserAttributes?.find((a) => a.Name === 'email')?.Value || '';
 
-    return { sub: response.Username!, email };
+    if (!sub) return null;
+
+    return { sub, email };
   } catch {
     return null;
   }

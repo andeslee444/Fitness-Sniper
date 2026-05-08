@@ -37,11 +37,15 @@ Create `web/.env.local` from `web/.env.local.example`.
 
 ```text
 DATABASE_URL=
+DATABASE_POOL_MAX=2
 ENCRYPTION_KEY=
 AWS_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 COGNITO_USER_POOL_ID=
 COGNITO_CLIENT_ID=
 COGNITO_CLIENT_SECRET=
 ```
 
 The web app uses direct PostgreSQL access through `pg` and AWS Cognito for auth. It does not use Supabase Auth or Supabase browser/server clients.
+`DATABASE_POOL_MAX` is optional and defaults to `2` in production. AWS credentials are required in Vercel for Cognito admin signup confirmation.

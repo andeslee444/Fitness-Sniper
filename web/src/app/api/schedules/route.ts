@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/cognito';
 import { query } from '@/lib/db';
-import { STUDIOS, fetchClassesFromAPI, fetchXpoClassesFromAPI, fetchArketaClassesFromAPI, normalizeClass } from '@fitness-sniper/shared';
+import {
+  addDaysToDateString,
+  dateStringInTimeZone,
+  dayOfWeekForDateString,
+  fetchArketaClassesFromAPI,
+  fetchClassesFromAPI,
+  fetchXpoClassesFromAPI,
+  normalizeClass,
+  STUDIOS,
+} from '@fitness-sniper/shared';
 import type { ClassScheduleRow, NormalizedClass } from '@fitness-sniper/shared';
 
 interface ScheduleRow {
@@ -26,15 +35,10 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  * Uses America/New_York timezone to avoid server-local date drift.
  */
 function nextOccurrence(dayOfWeek: number): string {
-  const etTodayStr = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/New_York',
-  });
-  const etDayOfWeek = new Date(etTodayStr + 'T12:00:00').getDay();
+  const etTodayStr = dateStringInTimeZone();
+  const etDayOfWeek = dayOfWeekForDateString(etTodayStr);
   const diff = (dayOfWeek - etDayOfWeek + 7) % 7;
-  const [year, month, day] = etTodayStr.split('-').map(Number);
-  const target = new Date(year, month - 1, day);
-  target.setDate(target.getDate() + diff);
-  return target.toISOString().split('T')[0];
+  return addDaysToDateString(etTodayStr, diff);
 }
 
 export async function GET(request: NextRequest) {

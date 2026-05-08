@@ -11,7 +11,13 @@
  */
 
 import { query } from '../db.js';
-import { STUDIOS, parseTime } from '@fitness-sniper/shared';
+import {
+  addDaysToDateString,
+  dateStringInTimeZone,
+  dayOfWeekForDateString,
+  parseTime,
+  STUDIOS,
+} from '@fitness-sniper/shared';
 import {
   fetchArketaAvailableTimes,
   type ArketaSlot,
@@ -119,7 +125,7 @@ export class SlotWatcher {
   private getDatesToCheck(studioSlug: string, locationId: string): string[] {
     const dates = new Set<string>();
     const now = new Date();
-    const today = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const today = dateStringInTimeZone(now);
 
     const relevantTargets = this.targets.filter(
       (t) => t.studio_slug === studioSlug && t.location_id === locationId,
@@ -138,12 +144,8 @@ export class SlotWatcher {
       } else if (target.target_type === 'recurring' && target.day_of_week !== null) {
         // Find next occurrences of this day_of_week within MAX_DAYS_AHEAD
         for (let d = 0; d < MAX_DAYS_AHEAD; d++) {
-          const checkDate = new Date(now.getTime() + d * 86_400_000);
-          const dateStr = checkDate.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-          // Get day of week in ET
-          const dow = new Date(
-            checkDate.toLocaleString('en-US', { timeZone: 'America/New_York' }),
-          ).getDay();
+          const dateStr = addDaysToDateString(today, d);
+          const dow = dayOfWeekForDateString(dateStr);
           if (dow === target.day_of_week) {
             dates.add(dateStr);
           }
@@ -301,11 +303,7 @@ export class SlotWatcher {
     if (relevantTargets.length === 0) return;
 
     for (const slot of newSlots) {
-      // Get day of week in ET
-      const slotDate = new Date(slot.startTime * 1000);
-      const etDow = new Date(
-        slotDate.toLocaleString('en-US', { timeZone: 'America/New_York' }),
-      ).getDay();
+      const etDow = dayOfWeekForDateString(slot.classDate);
 
       for (const target of relevantTargets) {
         if (!this.isTargetMatch(target, slot, etDow, slot.classDate)) continue;

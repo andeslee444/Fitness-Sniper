@@ -1,6 +1,6 @@
 {
-  "installCommand": "rm -rf node_modules package-lock.json && npm install",
-  "buildCommand": "cd web && next build --webpack",
+  "installCommand": "npm ci --workspace=web --workspace=packages/shared --include-workspace-root",
+  "buildCommand": "npm run web:build",
   "outputDirectory": "web/.next",
   "framework": "nextjs"
 }
