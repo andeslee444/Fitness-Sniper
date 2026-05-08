@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, Crosshair } from 'lucide-react';
 import {
   Sheet,
@@ -39,14 +39,6 @@ export function SnipeConfigSheet({
 }: SnipeConfigSheetProps) {
   const [targetType, setTargetType] = useState<'one_time' | 'recurring'>('one_time');
   const [seatPref, setSeatPref] = useState('any');
-
-  // Reset state when sheet opens
-  useEffect(() => {
-    if (open) {
-      setTargetType('one_time');
-      setSeatPref('any');
-    }
-  }, [open]);
 
   const { mutate, isPending } = useSnipeMutation(() => onOpenChange(false));
 

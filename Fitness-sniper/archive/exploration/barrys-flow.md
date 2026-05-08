@@ -76,8 +76,8 @@ button "Log in"     # Submit
 ```
 
 ## Credentials Tested
-- Email: andes.leelee@gmail.com
-- Password: Cheeseslice8!
+- Email: user@example.com
+- Password: example-password
 - ✅ Login successful!
 
 ## Key Insights

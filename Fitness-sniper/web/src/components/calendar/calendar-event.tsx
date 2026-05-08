@@ -1,4 +1,4 @@
-import { STUDIOS } from '@fitness-sniper/shared';
+import { STUDIOS } from '@/lib/studios';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent, CalendarEventType } from '@/lib/types';
 

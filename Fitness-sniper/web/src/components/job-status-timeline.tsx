@@ -78,7 +78,6 @@ interface StepConfig {
 export function JobStatusTimeline({
   jobStatus,
   scheduledFor,
-  classDatetime: _classDatetime,
   createdAt,
   claimedAt,
   message,

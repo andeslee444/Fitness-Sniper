@@ -1,9 +1,23 @@
 node_modules/
 dist/
-.env
-.env.local
-.env.production
-*.log
-.DS_Store
 .next/
 .turbo/
+.vercel/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+*.local
+
+# Local-only generated artifacts
+*.log
+.DS_Store
+data/
+
+# Claude/local tool settings can contain machine-specific commands or secrets.
+.claude/settings.local.json
+
+# Legacy archive config used plaintext credentials and must remain local-only.
+archive/config/preferences.json

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { STUDIOS } from '@/lib/studios';
-import type { StudioConfig } from '@fitness-sniper/shared';
 
 // Hardcoded descriptions — STUDIOS config doesn't include user-facing descriptions
 const STUDIO_DESCRIPTIONS: Record<string, string> = {

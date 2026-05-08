@@ -10,7 +10,7 @@
  * Supports: Barry's, Aarmy, SLT, Practice Room (iframe MT studios).
  */
 
-import { STUDIOS, type StudioConfig } from '@fitness-sniper/shared';
+import { STUDIOS, LOCATION_IDS, STUDIO_LOCATIONS, type StudioConfig } from '@fitness-sniper/shared';
 import { launchStealthBrowser } from '../stealth/browser.js';
 import type { BookingResult, StudioCredentials, ClassInfo } from '@fitness-sniper/shared';
 
@@ -369,9 +369,12 @@ export class MarianaTekAdapter {
     const nextDay = new Date(d);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const data = await this.apiGet<{ results: MTClass[] }>(
-      `/classes?min_start_date=${dateStr}&max_start_date=${nextDay.toISOString().split('T')[0]}&page_size=500&location=${locationApiId}`,
-    );
+    let url = `/classes?min_start_date=${dateStr}&max_start_date=${nextDay.toISOString().split('T')[0]}&page_size=500&location=${locationApiId}`;
+    if (this.studio.region) {
+      url += `&region=${this.studio.region}`;
+    }
+
+    const data = await this.apiGet<{ results: MTClass[] }>(url);
 
     return data.results.map((c) => ({
       time: new Date(c.start_datetime).toLocaleTimeString('en-US', {
@@ -413,25 +416,33 @@ export class MarianaTekAdapter {
     }
 
     try {
-      // Step 1: Find matching class via API
-      this.log('book', `Searching for class at ${time} in ${location}${classDate ? ` on ${classDate.toISOString().split('T')[0]}` : ''}`);
+      // Step 1: Resolve slug → numeric MT location ID
+      const mtLocationId = LOCATION_IDS[this.studio.slug]?.[location] || location;
+      const locationName = STUDIO_LOCATIONS[this.studio.slug]?.find(l => l.id === location)?.name;
 
-      // We need the MT location API ID. Try the location directly.
-      // The scheduler should pass the MT location ID.
-      const classes = await this.getClasses(location, classDate);
+      this.log('book', `Searching for class at ${time} in ${location} (MT location=${mtLocationId})${classDate ? ` on ${classDate.toISOString().split('T')[0]}` : ''}`);
+
+      const classes = await this.getClasses(mtLocationId, classDate);
+
+      this.log('book', `Found ${classes.length} classes from API. Available times: ${classes.map((c: any) => `${c.time} @ ${c.location}`).join(', ') || 'none'}`);
+
+      // Match by time AND location name (case-insensitive)
       const matchingClass = classes.find((c: any) => {
-        // Match by time (fuzzy — compare hours and minutes)
         const classTime = c.time.replace(/\s+/g, ' ').trim();
         const targetTime = time.replace(/\s+/g, ' ').trim();
-        return classTime === targetTime;
+        const timeMatch = classTime === targetTime;
+        // If we have a location name, also verify location matches
+        const locationMatch = !locationName || c.location.toLowerCase() === locationName.toLowerCase();
+        return timeMatch && locationMatch;
       }) as any;
 
       if (!matchingClass) {
-        return { success: false, message: `No class found at ${time} in ${location}` };
+        const availableTimes = classes.map((c: any) => `${c.time} (${c.className} @ ${c.location}, ${c.spotsAvailable} spots)`).join('; ');
+        return { success: false, message: `No class found at ${time} in ${location}. Available: [${availableTimes || 'none returned — check location ID'}]` };
       }
 
       if (!matchingClass.available) {
-        return { success: false, message: `Class at ${time} is full` };
+        return { success: false, message: `Class at ${time} is full (${matchingClass.className}, 0/${matchingClass.spotsAvailable || '?'} spots)` };
       }
 
       this.log('book', `Found class ${matchingClass.classId}: ${matchingClass.className} (${matchingClass.spotsAvailable} spots)`);
@@ -466,11 +477,13 @@ export class MarianaTekAdapter {
         user_payment_options: Array<{ id: string; name: string; type: string }>;
       }>(`/classes/${matchingClass.classId}/payment_options`, true);
 
+      this.log('book', `Payment options: ${paymentOpts.user_payment_options.map(p => `${p.name} (${p.type})`).join(', ') || 'NONE'}`);
+
       if (paymentOpts.user_payment_options.length === 0) {
         const cleanUrl = this.studio.scheduleUrl.replace(/\/?\{[^}]+\}/g, '');
         return {
           success: false,
-          message: `Insufficient credits for ${this.studio.name}. Please purchase more credits or renew your membership at ${cleanUrl}`,
+          message: `No credits/membership available for ${this.studio.name}. Purchase at ${cleanUrl}`,
         };
       }
 
@@ -504,9 +517,16 @@ export class MarianaTekAdapter {
         return { success: false, message: err.message };
       }
 
-      // If it's a waitlist scenario, try waitlist
-      if (message.includes('full') || message.includes('sold out')) {
+      // Categorize common failure reasons
+      const msgLower = message.toLowerCase();
+      if (msgLower.includes('full') || msgLower.includes('sold out') || msgLower.includes('no spots')) {
         return await this.joinWaitlist(location, time);
+      }
+      if (msgLower.includes('already booked') || msgLower.includes('already reserved') || msgLower.includes('duplicate')) {
+        return { success: false, message: `Already booked: ${message}` };
+      }
+      if (msgLower.includes('401') || msgLower.includes('unauthorized') || msgLower.includes('forbidden')) {
+        return { success: false, message: `Auth failed (token may be expired): ${message}` };
       }
 
       return { success: false, message };
@@ -519,7 +539,8 @@ export class MarianaTekAdapter {
   private async joinWaitlist(location: string, time: string): Promise<BookingResult> {
     try {
       this.log('book', 'Class full — attempting waitlist...');
-      const classes = await this.getClasses(location);
+      const mtLocationId = LOCATION_IDS[this.studio.slug]?.[location] || location;
+      const classes = await this.getClasses(mtLocationId);
       const match = classes.find((c: any) => c.time === time) as any;
       if (!match) return { success: false, message: 'Class not found for waitlist' };
 

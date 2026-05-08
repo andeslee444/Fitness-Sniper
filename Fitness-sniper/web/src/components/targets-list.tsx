@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trash2, Calendar, MapPin, Clock, Armchair, CheckCircle, XCircle, Loader2, Timer } from 'lucide-react';
 import { STUDIOS, STUDIO_LOCATIONS, DAY_ABBR, SEAT_PREFERENCES } from '@/lib/studios';
-import type { TargetWithJob, JobStatus } from '@/lib/types';
+import type { TargetWithJob } from '@/lib/types';
 import { JobStatusTimeline } from '@/components/job-status-timeline';
 import { CountdownTimer } from '@/components/countdown-timer';
 import { EmptyStateGuide } from '@/components/empty-state';

@@ -18,14 +18,14 @@ import * as path from 'path';
 
 const CONFIG = {
   barrys: {
-    email: 'andes.leelee@gmail.com',
-    password: 'Cheeseslice8!',
+    email: 'user@example.com',
+    password: 'example-password',
     scheduleUrl: (loc: string) => `https://www.barrys.com/schedule/${loc}`,
     iframe: 'iframe.visible'
   },
   aarmy: {
-    email: 'andes.leelee@gmail.com', 
-    password: 'Ilovebex823',
+    email: 'user@example.com',
+    password: 'example-password',
     scheduleUrl: () => 'https://mt.aarmy.com/index.html?_mt=%2Fschedule%2Fdaily',
     iframe: 'iframe'
   }

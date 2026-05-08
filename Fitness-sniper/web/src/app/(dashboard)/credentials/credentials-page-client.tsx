@@ -8,7 +8,9 @@ import { ShieldCheck } from 'lucide-react';
 type ValidationStatus = 'connected' | 'untested' | 'invalid' | 'checking';
 
 export function CredentialsPageClient({ savedSlugs }: { savedSlugs: string[] }) {
-  const [statuses, setStatuses] = useState<Record<string, ValidationStatus>>({});
+  const [statuses, setStatuses] = useState<Record<string, ValidationStatus>>(() =>
+    Object.fromEntries(savedSlugs.map((slug) => [slug, 'checking' as ValidationStatus])),
+  );
 
   const savedSet = new Set(savedSlugs);
   const savedStudios = Object.entries(STUDIOS).filter(([slug]) => savedSet.has(slug));
@@ -17,13 +19,6 @@ export function CredentialsPageClient({ savedSlugs }: { savedSlugs: string[] }) 
   // Validate each saved credential on mount
   useEffect(() => {
     if (savedSlugs.length === 0) return;
-
-    // Set all to 'checking' initially
-    const initial: Record<string, ValidationStatus> = {};
-    for (const slug of savedSlugs) {
-      initial[slug] = 'checking';
-    }
-    setStatuses(initial);
 
     // Fire validation sequentially to avoid rate limits
     let cancelled = false;

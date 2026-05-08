@@ -5,7 +5,7 @@ import { QUERY_KEYS } from '@/lib/query-keys';
 import type { WorkerHeartbeat } from '@/lib/types';
 
 export function WorkerStatus() {
-  const { data: worker } = useQuery<WorkerHeartbeat | null>({
+  const { data: worker, dataUpdatedAt } = useQuery<WorkerHeartbeat | null>({
     queryKey: QUERY_KEYS.workerStatus,
     queryFn: async () => {
       const res = await fetch('/api/worker-status');
@@ -24,7 +24,7 @@ export function WorkerStatus() {
     );
   }
 
-  const isRecent = Date.now() - new Date(worker.last_heartbeat).getTime() < 60000;
+  const isRecent = dataUpdatedAt - new Date(worker.last_heartbeat).getTime() < 60000;
   const isOnline = worker.status === 'online' && isRecent;
 
   return (

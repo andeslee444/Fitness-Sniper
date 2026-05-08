@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { STUDIOS, STUDIO_LOCATIONS, SEAT_PREFERENCES, SPOT_PREFERENCES } from '@/lib/studios';
-import type { StudioConfig } from '@/lib/studios';
 import type { TargetType } from '@/lib/types';
 
 const DAYS = [

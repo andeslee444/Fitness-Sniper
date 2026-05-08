@@ -1,7 +1,6 @@
 {
   "installCommand": "rm -rf node_modules package-lock.json && npm install",
-  "buildCommand": "cd web && next build",
+  "buildCommand": "cd web && next build --webpack",
   "outputDirectory": "web/.next",
   "framework": "nextjs"
 }
-

@@ -18,6 +18,10 @@ export function SchedulePageClient() {
     setSheetOpen(true);
   }
 
+  const sheetKey = selectedClass
+    ? `${snipeStudio}:${snipeLocation}:${selectedClass.class_date}:${selectedClass.class_time}`
+    : 'empty';
+
   return (
     <div className="space-y-6">
       <div>
@@ -26,6 +30,7 @@ export function SchedulePageClient() {
       </div>
       <SchedulePanel onSnipeClick={handleSnipeClick} />
       <SnipeConfigSheet
+        key={sheetKey}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         selectedClass={selectedClass}

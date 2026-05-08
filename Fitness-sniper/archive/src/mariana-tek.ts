@@ -253,8 +253,8 @@ export class MarianaTekAdapter {
 // Example usage
 export async function testBarrysLogin() {
   const adapter = new MarianaTekAdapter('barrys', {
-    email: 'andes.leelee@gmail.com',
-    password: 'Cheeseslice8!'
+    email: 'user@example.com',
+    password: 'example-password'
   });
   
   await adapter.init();
@@ -271,8 +271,8 @@ export async function testBarrysLogin() {
 
 export async function testAarmyLogin() {
   const adapter = new MarianaTekAdapter('aarmy', {
-    email: 'andes.leelee@gmail.com',
-    password: 'Ilovebex823'
+    email: 'user@example.com',
+    password: 'example-password'
   });
   
   await adapter.init();

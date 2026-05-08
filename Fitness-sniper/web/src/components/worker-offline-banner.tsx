@@ -8,7 +8,7 @@ import type { WorkerHeartbeat } from '@/lib/types';
 const OFFLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 export function WorkerOfflineBanner() {
-  const { data: worker, isLoading } = useQuery<WorkerHeartbeat | null>({
+  const { data: worker, dataUpdatedAt, isLoading } = useQuery<WorkerHeartbeat | null>({
     queryKey: QUERY_KEYS.workerStatus,
     queryFn: async () => {
       const res = await fetch('/api/worker-status');
@@ -23,7 +23,7 @@ export function WorkerOfflineBanner() {
 
   const isOffline =
     !worker ||
-    Date.now() - new Date(worker.last_heartbeat).getTime() > OFFLINE_THRESHOLD_MS;
+    dataUpdatedAt - new Date(worker.last_heartbeat).getTime() > OFFLINE_THRESHOLD_MS;
 
   if (!isOffline) return null;
 

@@ -63,8 +63,8 @@ button "Available Spot" # Spot selection
 ```
 
 ## Credentials Tested
-- Email: andes.leelee@gmail.com
-- Password: Ilovebex823
+- Email: user@example.com
+- Password: example-password
 - ✅ Login successful!
 - ✅ Schedule visible
 - ✅ RESERVE buttons found

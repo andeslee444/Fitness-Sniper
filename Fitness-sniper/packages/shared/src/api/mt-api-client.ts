@@ -106,8 +106,8 @@ export async function fetchClassesFromAPI(
     for (const item of json.results) {
       if (item.is_cancelled) continue;
 
-      // Filter by location name if we have one
-      if (locationName && item.location.name !== locationName) continue;
+      // Filter by location name if we have one (case-insensitive)
+      if (locationName && item.location.name.toLowerCase() !== locationName.toLowerCase()) continue;
 
       const instructorName = item.instructors.length > 0
         ? item.instructors[0].name
