@@ -10,8 +10,8 @@
 -- Users must re-save their studio credentials after this migration.
 -- ============================================================
 
-ALTER TABLE studio_credentials ADD COLUMN password_iv text;
-ALTER TABLE studio_credentials ADD COLUMN password_auth_tag text;
+ALTER TABLE studio_credentials ADD COLUMN IF NOT EXISTS password_iv text;
+ALTER TABLE studio_credentials ADD COLUMN IF NOT EXISTS password_auth_tag text;
 
 -- Backfill existing rows so NOT NULL can be applied.
 -- These values are wrong for password decryption, but users must re-save anyway.
