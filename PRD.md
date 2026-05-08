@@ -134,7 +134,7 @@ The old Supabase Auth schema is removed from active migrations. Access control i
 
 ## Consolidation Decisions
 
-- `Fitness-sniper/` is the authoritative app folder in this checkout.
+- The repository root is the authoritative app folder in this checkout.
 - `class-sniper/` is obsolete and should remain deleted from the repository.
 - Active package names use `fitness-sniper` and `@fitness-sniper/*`.
 - Active docs should say Fitness Sniper.
@@ -145,7 +145,7 @@ The old Supabase Auth schema is removed from active migrations. Access control i
 
 - The repo has one active app implementation.
 - No tracked plaintext credentials remain in active or legacy config files.
-- Build and lint commands run from the app root.
+- Build and lint commands run from the repository root.
 - Supabase client/auth helpers are not reintroduced.
 - The worker still compiles with NodeNext `.js` import extensions.
 - The web app still uses Cognito and direct `pg` database access.

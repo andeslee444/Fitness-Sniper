@@ -5,7 +5,7 @@
 ## Directory Layout
 
 ```
-Fitness-sniper/                  # npm workspaces monorepo root
+./                               # npm workspaces monorepo root
 ├── worker/                      # Booking daemon (runs on Mac Mini)
 │   ├── src/
 │   │   ├── index.ts             # Worker entry point

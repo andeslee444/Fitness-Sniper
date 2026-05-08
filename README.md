@@ -106,4 +106,4 @@ Supabase Auth and Supabase client helpers are legacy and should not be reintrodu
 
 ## Consolidation Note
 
-`Fitness-sniper` is the active app. The old `class-sniper` tree was an earlier name/copy and should stay deleted. Archive files are retained only for historical selector and flow reference.
+This repository root is the active Fitness Sniper app. The old `class-sniper` tree was an earlier name/copy and should stay deleted. Archive files are retained only for historical selector and flow reference.

@@ -4,6 +4,9 @@ dist/
 .turbo/
 .vercel/
 
+# Legacy nested checkout/local artifacts after repo flattening.
+Fitness-sniper/
+
 # Environment and local secrets
 .env
 .env.*
@@ -15,6 +18,8 @@ dist/
 *.log
 .DS_Store
 data/
+.playwright-mcp/
+*.tsbuildinfo
 
 # Claude/local tool settings can contain machine-specific commands or secrets.
 .claude/settings.local.json
