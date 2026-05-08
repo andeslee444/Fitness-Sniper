@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
+import { QUERY_KEYS } from '@/lib/query-keys';
 import type { BookingJob } from '@/lib/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,25 +21,16 @@ const STATUS_LABELS: Record<string, string> = {
   failed: 'Failed',
 };
 
-interface Props {
-  jobs: Pick<BookingJob, 'id' | 'status' | 'scheduled_for' | 'class_datetime' | 'target_id'>[];
-}
-
-export function ActiveJobs({ jobs: initialJobs }: Props) {
-  const [jobs, setJobs] = useState(initialJobs);
-
-  useEffect(() => {
-    async function pollJobs() {
+export function ActiveJobs() {
+  const { data: jobs = [] } = useQuery<Pick<BookingJob, 'id' | 'status' | 'scheduled_for' | 'class_datetime' | 'target_id'>[]>({
+    queryKey: QUERY_KEYS.jobs,
+    queryFn: async () => {
       const res = await fetch('/api/jobs');
-      if (res.ok) {
-        const data = await res.json();
-        setJobs(data);
-      }
-    }
-
-    const interval = setInterval(pollJobs, 15000);
-    return () => clearInterval(interval);
-  }, []);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    refetchInterval: 15_000,
+  });
 
   if (jobs.length === 0) return null;
 

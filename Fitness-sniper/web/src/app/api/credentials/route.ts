@@ -66,10 +66,15 @@ export async function DELETE(request: NextRequest) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { studioSlug } = await request.json();
-  await query(
-    'DELETE FROM studio_credentials WHERE user_id = $1 AND studio_slug = $2',
-    [user.sub, studioSlug],
-  );
-  return NextResponse.json({ success: true });
+  try {
+    const { studioSlug } = await request.json();
+    await query(
+      'DELETE FROM studio_credentials WHERE user_id = $1 AND studio_slug = $2',
+      [user.sub, studioSlug],
+    );
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('[credentials] DELETE error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

@@ -134,7 +134,8 @@ export class ArketaAdapter {
       // Step 1: Find matching session from schedule
       this.log('book', `Searching for session at ${time} in ${locationId}${classDate ? ` on ${classDate.toISOString().split('T')[0]}` : ''}`);
 
-      const widgetName = this.studio.widgetName || this.studio.tenant;
+      const partnerId = this.studio.partnerId || '';
+      const serviceId = this.studio.serviceId || '';
       // Use classDate if provided, otherwise search from today
       const searchDate = classDate || new Date();
       const dateStr = searchDate.toISOString().split('T')[0];
@@ -144,7 +145,8 @@ export class ArketaAdapter {
       const weekOutStr = weekOut.toISOString().split('T')[0];
 
       const classes = await fetchArketaClassesFromAPI(
-        widgetName,
+        partnerId,
+        serviceId,
         this.studio.slug,
         locationId,
         dateStr,
@@ -170,7 +172,8 @@ export class ArketaAdapter {
       // Step 2: Book via Arketa API
       // The booking endpoint uses the class/session ID from the widget data
       // We need to refetch the raw data to get the Arketa class ID
-      const rawClasses = await this.fetchRawClasses(widgetName, dateStr);
+      const rawWidgetName = this.studio.widgetName || this.studio.tenant;
+      const rawClasses = await this.fetchRawClasses(rawWidgetName, dateStr);
       const rawMatch = rawClasses.find((c) => {
         if (c.appointment_type === 'time_block') return false;
         if (c.hidden || c.canceled || c.deleted) return false;

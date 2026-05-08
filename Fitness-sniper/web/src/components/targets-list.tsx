@@ -7,7 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trash2, Calendar, MapPin, Clock, Armchair, CheckCircle, XCircle, Loader2, Timer } from 'lucide-react';
 import { STUDIOS, STUDIO_LOCATIONS, DAY_ABBR, SEAT_PREFERENCES } from '@/lib/studios';
-import type { TargetWithJob, JobStatus } from '@/lib/types';
+import type { TargetWithJob } from '@/lib/types';
+import { JobStatusTimeline } from '@/components/job-status-timeline';
+import { CountdownTimer } from '@/components/countdown-timer';
+import { EmptyStateGuide } from '@/components/empty-state';
 
 function formatTargetDate(dateVal: string | Date): string {
   const date = typeof dateVal === 'string'
@@ -28,7 +31,7 @@ const JOB_STATUS_CONFIG: Record<string, { label: string; style: string; icon: Re
   failed: { label: 'Failed', style: 'bg-red-500/10 text-red-400 border-red-500/30', icon: XCircle },
 };
 
-export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
+export function TargetsList({ targets, hasCredentials }: { targets: TargetWithJob[]; hasCredentials?: boolean }) {
   const router = useRouter();
 
   async function toggleTarget(id: string, enabled: boolean) {
@@ -58,11 +61,7 @@ export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
   }
 
   if (targets.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center">
-        <p className="text-zinc-500">No targets yet. Add one to start auto-booking.</p>
-      </div>
-    );
+    return <EmptyStateGuide hasCredentials={hasCredentials ?? false} />;
   }
 
   return (
@@ -130,7 +129,7 @@ export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {target.time}
+                      {target.time || 'Any time'}
                     </span>
                     {seatLabel && seatLabel !== 'Any Available' && (
                       <span className="flex items-center gap-1">
@@ -139,8 +138,18 @@ export function TargetsList({ targets }: { targets: TargetWithJob[] }) {
                       </span>
                     )}
                   </div>
-                  {target.job_status === 'failed' && target.job_message && (
-                    <p className="text-xs text-red-400/70">{target.job_message}</p>
+                  {target.job_status && (
+                    <JobStatusTimeline
+                      jobStatus={target.job_status}
+                      scheduledFor={target.job_scheduled_for}
+                      classDatetime={target.job_class_datetime}
+                      createdAt={target.job_created_at}
+                      claimedAt={target.job_claimed_at}
+                      message={target.job_message}
+                    />
+                  )}
+                  {target.job_status === 'pending' && target.job_scheduled_for && (
+                    <CountdownTimer scheduledFor={target.job_scheduled_for} />
                   )}
                 </div>
               </div>

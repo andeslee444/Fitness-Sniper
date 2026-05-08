@@ -13,7 +13,7 @@
     "worker:build": "npm run build --workspace=worker",
     "web:dev": "npm run dev --workspace=web",
     "web:build": "npm run build --workspace=web",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   }
 }

@@ -11,49 +11,68 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const user = await getSession();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id } = await params;
-  const body = await request.json();
+  try {
+    const { id } = await params;
+    const body = await request.json();
 
-  const setClauses: string[] = [];
-  const values: unknown[] = [];
-  let idx = 1;
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
 
-  for (const [key, value] of Object.entries(body)) {
-    if (!ALLOWED_COLUMNS.has(key)) continue;
-    setClauses.push(`${key} = $${idx}`);
-    values.push(value);
-    idx++;
+    for (const [key, value] of Object.entries(body)) {
+      if (!ALLOWED_COLUMNS.has(key)) continue;
+      setClauses.push(`${key} = $${idx}`);
+      values.push(value);
+      idx++;
+    }
+
+    if (setClauses.length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
+    values.push(id, user.sub);
+
+    const { rows } = await query(
+      `UPDATE snipe_targets SET ${setClauses.join(', ')} WHERE id = $${idx} AND user_id = $${idx + 1} RETURNING *`,
+      values,
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // When re-enabling a target, clear failed jobs so the UI resets
+    // and the scheduler/slot-watcher can create fresh attempts
+    if (body.enabled === true) {
+      await query(
+        `DELETE FROM booking_jobs WHERE target_id = $1 AND status = 'failed'`,
+        [id],
+      );
+    }
+
+    return NextResponse.json(rows[0]);
+  } catch (err) {
+    console.error('[targets] PUT error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  if (setClauses.length === 0) {
-    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
-  }
-
-  values.push(id, user.sub);
-
-  const { rows } = await query(
-    `UPDATE snipe_targets SET ${setClauses.join(', ')} WHERE id = $${idx} AND user_id = $${idx + 1} RETURNING *`,
-    values,
-  );
-
-  if (rows.length === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
-  return NextResponse.json(rows[0]);
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { id } = await params;
+  try {
+    const { id } = await params;
 
-  const { rowCount } = await query('DELETE FROM snipe_targets WHERE id = $1 AND user_id = $2', [id, user.sub]);
+    const { rowCount } = await query('DELETE FROM snipe_targets WHERE id = $1 AND user_id = $2', [id, user.sub]);
 
-  if (rowCount === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (rowCount === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('[targets] DELETE error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true });
 }

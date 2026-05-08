@@ -52,8 +52,8 @@ Spawn sub-agents to research in parallel:
 - Sub-agent 3: Check other MindBody studios (Orangetheory, F45, etc.)
 
 **Credentials for testing**:
-- Email: andes.leelee@gmail.com
-- Password: Cheeseslice8!
+- Email: user@example.com
+- Password: example-password
 
 ---
 
@@ -181,7 +181,7 @@ Tested 6 studios, found none use Mariana Tek:
 1. Research Xponential booking flow (login, schedule view, booking)
 2. Identify if it's a unified platform or per-brand customization
 3. Create `src/adapters/xponential.ts` following existing adapter patterns
-4. Test with Rumble (account exists: andes.leelee@gmail.com / Cheeseslice8!)
+4. Test with Rumble (account exists: user@example.com / example-password)
 5. Dry run the full booking flow (stop before confirming)
 6. Document findings in HARBOR_OUTPUT.md
 
@@ -191,6 +191,6 @@ Tested 6 studios, found none use Mariana Tek:
 - Sub-agent 3: Check other Xponential brands (CycleBar, Club Pilates)
 
 **Credentials**:
-- Email: andes.leelee@gmail.com
-- Password: Cheeseslice8!
+- Email: user@example.com
+- Password: example-password
 

@@ -120,6 +120,37 @@ export async function getSession(): Promise<CognitoUser | null> {
   }
 }
 
+export async function refreshSession(
+  refreshToken: string,
+  email: string,
+): Promise<{ accessToken: string; idToken: string } | null> {
+  const secretHash = computeSecretHash(email);
+
+  try {
+    const command = new InitiateAuthCommand({
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      ClientId: CLIENT_ID,
+      AuthParameters: {
+        REFRESH_TOKEN: refreshToken,
+        ...(secretHash && { SECRET_HASH: secretHash }),
+      },
+    });
+
+    const response = await client.send(command);
+    const result = response.AuthenticationResult;
+
+    if (!result?.AccessToken || !result?.IdToken) return null;
+
+    return {
+      accessToken: result.AccessToken,
+      idToken: result.IdToken,
+    };
+  } catch (err) {
+    console.error('[cognito] Refresh failed:', err);
+    return null;
+  }
+}
+
 export function setAuthCookies(
   responseCookies: {
     set: (name: string, value: string, options?: Record<string, unknown>) => void;

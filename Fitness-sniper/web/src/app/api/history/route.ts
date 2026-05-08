@@ -9,19 +9,42 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
   const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
+  const studioFilter = searchParams.get('studio') || null;
 
-  const [{ rows }, { rows: countRows }] = await Promise.all([
-    query(
-      'SELECT * FROM booking_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-      [user.sub, limit, offset],
-    ),
-    query<{ total: string }>(
-      'SELECT COUNT(*) as total FROM booking_history WHERE user_id = $1',
-      [user.sub],
-    ),
-  ]);
+  try {
+    // Build dynamic WHERE clause with optional studio filter
+    const conditions = ['user_id = $1'];
+    const baseParams: unknown[] = [user.sub];
+    if (studioFilter) {
+      conditions.push(`studio_slug = $${baseParams.length + 1}`);
+      baseParams.push(studioFilter);
+    }
+    const whereClause = conditions.join(' AND ');
 
-  const total = parseInt(countRows[0]?.total || '0', 10);
+    // Count params: user_id + optional studio filter (no limit/offset)
+    const countParams = [...baseParams];
 
-  return NextResponse.json({ rows, total, limit, offset });
+    // Data params: user_id + optional studio filter + limit + offset
+    const dataParams: unknown[] = [...baseParams, limit, offset];
+    const limitIndex = baseParams.length + 1;
+    const offsetIndex = baseParams.length + 2;
+
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      query(
+        `SELECT * FROM booking_history WHERE ${whereClause} ORDER BY created_at DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+        dataParams,
+      ),
+      query<{ total: string }>(
+        `SELECT COUNT(*) as total FROM booking_history WHERE ${whereClause}`,
+        countParams,
+      ),
+    ]);
+
+    const total = parseInt(countRows[0]?.total || '0', 10);
+
+    return NextResponse.json({ rows, total, limit, offset });
+  } catch (err) {
+    console.error('[history] GET error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

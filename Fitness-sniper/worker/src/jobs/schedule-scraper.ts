@@ -125,7 +125,7 @@ export class ScheduleScraper {
       classes = await this.scrapeXponential(studio_slug, location_id, dates, studio.membersDomain);
       if (classes.length === 0) errorMessage = 'Xponential API returned no classes';
     } else if (studio.platform === 'arketa') {
-      classes = await this.scrapeArketa(studio_slug, location_id, dates, studio.widgetName || studio.tenant);
+      classes = await this.scrapeArketa(studio_slug, location_id, dates, studio.partnerId || '', studio.serviceId || '');
       if (classes.length === 0) errorMessage = 'Arketa API returned no classes';
     } else {
       // Mariana Tek: try HTTP API first with retry, then browser fallback
@@ -200,7 +200,8 @@ export class ScheduleScraper {
     studioSlug: string,
     locationId: string,
     dates: string[],
-    widgetName: string,
+    partnerId: string,
+    serviceId: string,
   ): Promise<ClassScheduleRow[]> {
     const maxRetries = 2;
 
@@ -214,7 +215,8 @@ export class ScheduleScraper {
           console.log(`[schedule-scraper] Trying Arketa API for ${studioSlug}/${locationId}`);
         }
         const classes = await fetchArketaClassesFromAPI(
-          widgetName,
+          partnerId,
+          serviceId,
           studioSlug,
           locationId,
           dates[0],

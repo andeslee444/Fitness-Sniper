@@ -1,6 +1,8 @@
-// Re-export studio data from shared package (single source of truth)
-export { STUDIOS, STUDIO_LOCATIONS, LOCATION_IDS, SPOT_PREFERENCES } from '@fitness-sniper/shared';
-export type { StudioConfig, LocationInfo } from '@fitness-sniper/shared';
+// Re-export browser-safe studio data from shared package (single source of truth).
+// Do not import the shared package barrel here: it also exports server API clients.
+export { STUDIOS, STUDIO_LOCATIONS, LOCATION_IDS } from '@fitness-sniper/shared/src/studios';
+export { SPOT_PREFERENCES } from '@fitness-sniper/shared/src/types';
+export type { StudioConfig, LocationInfo } from '@fitness-sniper/shared/src/studios';
 
 // Web-only display constants
 

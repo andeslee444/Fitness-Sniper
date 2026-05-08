@@ -13,6 +13,7 @@ export interface StudioConfig {
   membersDomain?: string; // Xponential member portal (e.g. 'members.cyclebar.com')
   widgetName?: string; // Arketa widget name (e.g. 'saint')
   partnerId?: string; // Arketa partner ID
+  serviceId?: string; // Arketa service/offering ID
   region?: string; // MT region ID — filters API to local classes (e.g. Barry's NYC = '9642')
   bookingWindowDays: number; // How far ahead bookings open (scheduler uses this)
 }
@@ -123,6 +124,7 @@ export const STUDIOS: Record<string, StudioConfig> = {
     scheduleUrl: 'https://practiceroomnyc.com/classes/',
     loginUrl: 'https://practiceroomnyc.marianatek.com/auth/login/',
     iframe: 'iframe',
+    region: '48541', // NYC region
     bookingWindowDays: 14,
   },
   saint: {
@@ -132,8 +134,9 @@ export const STUDIOS: Record<string, StudioConfig> = {
     tenant: 'saint', // Arketa widget name
     widgetName: 'saint',
     partnerId: 'wdTh7EBQYCU9Ian0S68coANGqQG3',
-    scheduleUrl: 'https://app.arketa.co/saint',
-    loginUrl: 'https://app.arketa.co/saint',
+    serviceId: 'Tukn5jgFtZDpbl1mMQPY',
+    scheduleUrl: 'https://www.saint.nyc/reserve',
+    loginUrl: 'https://www.saint.nyc/reserve',
     iframe: '',
     bookingWindowDays: 90,
   },
@@ -281,9 +284,12 @@ export const STUDIO_LOCATIONS: Record<string, LocationInfo[]> = {
   ],
 };
 
-// Mariana Tek internal location IDs (used for iframe-based studios)
+// Mariana Tek numeric location IDs (from /api/customer/v1/locations)
+// The MT API &location= param requires these numeric IDs, NOT slugs.
 export const LOCATION_IDS: Record<string, Record<string, string>> = {
   barrys: {
+    // Barry's uses region filter (region: '9642') so location ID is less critical,
+    // but numeric IDs would still be more reliable. These are slug-based for now.
     noho: 'noho',
     chelsea: 'chelsea',
     tribeca: 'tribeca',
@@ -296,29 +302,29 @@ export const LOCATION_IDS: Record<string, Record<string, string>> = {
     hoboken: 'hoboken',
   },
   aarmy: {
-    chelsea: 'Chelsea (A23)',
-    noho: 'NoHo',
+    chelsea: '48750',
+    noho: '48717',
   },
   slt: {
-    'e-67': 'E 67',
-    'e-87': 'E 87',
-    'w-73': 'W 73',
-    'w-89': 'W 89',
-    'hudson-yards': 'Hudson Yards',
-    nomad: 'Nomad',
-    flatiron: 'Flatiron',
-    'w-14': 'W 14',
-    noho: 'Noho',
-    tribeca: 'Tribeca',
-    'brooklyn-heights': 'Brooklyn Heights',
-    'cobble-hill': 'Cobble Hill',
-    'park-slope': 'Park Slope',
-    williamsburg: 'Williamsburg',
-    hoboken: 'Hoboken',
+    'e-67': '48719',
+    'e-87': '48723',
+    'w-73': '48813',
+    'w-89': '48848',
+    'hudson-yards': '48881',
+    nomad: '48746',
+    flatiron: '48720',
+    'w-14': '48725',
+    noho: '48780',
+    tribeca: '48724',
+    'brooklyn-heights': '48815',
+    'cobble-hill': '48727',
+    'park-slope': '48728',
+    williamsburg: '48726',
+    hoboken: '48738',
   },
   practiceroom: {
-    noho: 'NoHo',
-    williamsburg: 'Williamsburg',
+    noho: '48717',
+    williamsburg: '48783',
   },
 };
 

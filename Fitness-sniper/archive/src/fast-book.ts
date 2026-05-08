@@ -186,8 +186,8 @@ export function printBarrysBookingScript() {
     location: 'noho',
     classTime: '6:00 PM',
     credentials: {
-      email: 'andes.leelee@gmail.com',
-      password: 'Cheeseslice8!'
+      email: 'user@example.com',
+      password: 'example-password'
     }
   });
   console.log(script);

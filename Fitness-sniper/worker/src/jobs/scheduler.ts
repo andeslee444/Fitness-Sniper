@@ -17,7 +17,7 @@ interface TargetRow {
   user_id: string;
   target_type: 'recurring' | 'one_time';
   day_of_week: number | null;
-  time: string;
+  time: string | null;
   target_date: string | null;
   studio_slug: string;
   location_id: string;
@@ -77,6 +77,18 @@ export class JobScheduler {
   }
 
   private async processTarget(target: TargetRow): Promise<void> {
+    const studioConfig = STUDIOS[target.studio_slug];
+    if (!studioConfig) {
+      console.warn(`[scheduler] Unknown studio '${target.studio_slug}' in target ${target.id} — skipping`);
+      return;
+    }
+
+    // Arketa studios are handled by the SlotWatcher (unpredictable slot drops)
+    if (studioConfig.platform === 'arketa') return;
+
+    // Non-Arketa targets always require a time
+    if (!target.time) return;
+
     let classDate: Date;
 
     if (target.target_type === 'one_time') {
@@ -102,7 +114,6 @@ export class JobScheduler {
     // Only create jobs for future classes
     if (classDate <= new Date()) return;
 
-    const studioConfig = STUDIOS[target.studio_slug];
     const windowDays = studioConfig?.bookingWindowDays ?? DEFAULT_BOOKING_WINDOW_DAYS;
 
     // Check if a job already exists for this target + class date
@@ -220,19 +231,37 @@ export class JobScheduler {
 // ============================================================
 
 export function getNextClassDate(dayOfWeek: number, time: string): Date {
-  const now = new Date();
   const parsed = parseTime(time);
   const hours = parsed?.hours24 ?? 0;
   const minutes = parsed?.minutes ?? 0;
 
-  const target = new Date(now);
-  target.setHours(hours, minutes, 0, 0);
+  // Get today's date in America/New_York (not server local time)
+  const etTodayStr = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/New_York',
+  }); // "YYYY-MM-DD"
+  const [year, month, day] = etTodayStr.split('-').map(Number);
 
-  const daysUntil = (dayOfWeek - now.getDay() + 7) % 7;
+  // Build date at class time using explicit year/month/day
+  const target = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+  // Get day of week from the ET date string (noon avoids DST edge case)
+  const etDayOfWeek = new Date(etTodayStr + 'T12:00:00').getDay();
+
+  const daysUntil = (dayOfWeek - etDayOfWeek + 7) % 7;
   target.setDate(target.getDate() + daysUntil);
 
-  if (daysUntil === 0 && target <= now) {
-    target.setDate(target.getDate() + 7);
+  // If same day and time has already passed in ET, push to next week
+  if (daysUntil === 0) {
+    const etNowStr = new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const [etHour, etMin] = etNowStr.split(':').map(Number);
+    if (etHour > hours || (etHour === hours && etMin >= minutes)) {
+      target.setDate(target.getDate() + 7);
+    }
   }
 
   return target;
@@ -241,8 +270,10 @@ export function getNextClassDate(dayOfWeek: number, time: string): Date {
 /**
  * Parse a target_date ("YYYY-MM-DD") + time ("6:00 AM") into a Date
  */
-export function parseTargetDate(dateStr: string, time: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
+export function parseTargetDate(dateStr: string | Date, time: string): Date {
+  // Postgres may return a Date object instead of a string
+  const str = dateStr instanceof Date ? dateStr.toISOString().split('T')[0] : dateStr;
+  const [year, month, day] = str.split('-').map(Number);
   const parsed = parseTime(time);
   const hours = parsed?.hours24 ?? 0;
   const minutes = parsed?.minutes ?? 0;
@@ -251,7 +282,11 @@ export function parseTargetDate(dateStr: string, time: string): Date {
 }
 
 export function isInBookingWindow(classDate: Date, windowDays: number): boolean {
-  const now = new Date();
+  const etTodayStr = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/New_York',
+  });
+  const [year, month, day] = etTodayStr.split('-').map(Number);
+  const now = new Date(year, month - 1, day, 0, 0, 0, 0);
   const windowEnd = new Date(now);
   windowEnd.setDate(windowEnd.getDate() + windowDays);
 

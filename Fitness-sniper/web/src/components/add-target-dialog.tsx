@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { STUDIOS, STUDIO_LOCATIONS, SEAT_PREFERENCES, SPOT_PREFERENCES } from '@/lib/studios';
-import type { StudioConfig } from '@/lib/studios';
 import type { TargetType } from '@/lib/types';
 
 const DAYS = [
@@ -129,7 +128,10 @@ export function AddTargetDialog() {
     return () => controller.abort();
   }, [studioSlug, locationId, targetType, dayOfWeek, targetDate]);
 
-  const isValid = studioSlug && time && (
+  const isArketa = studioSlug ? STUDIOS[studioSlug]?.platform === 'arketa' : false;
+
+  // Arketa studios don't require a time — user just picks a day
+  const isValid = studioSlug && (isArketa || time) && (
     targetType === 'recurring' ? dayOfWeek !== '' : targetDate !== undefined
   );
 
@@ -147,7 +149,7 @@ export function AddTargetDialog() {
           target_type: targetType,
           day_of_week: targetType === 'recurring' ? parseInt(dayOfWeek) : null,
           target_date: targetType === 'one_time' && targetDate ? formatDateToStr(targetDate) : null,
-          time,
+          time: time || null,
           seat_preference: seatPref,
           preferred_spots: SPOT_PREFERENCES[seatPref] || [],
         }),
@@ -319,37 +321,45 @@ export function AddTargetDialog() {
             </div>
           )}
 
-          {/* Time */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Label>Time</Label>
-              {timesLoading && <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />}
-              {isLive && !timesLoading && (
-                <span className="rounded bg-emerald-900/50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                  Live
-                </span>
+          {/* Time — hidden for Arketa studios (they snipe any available slot) */}
+          {isArketa ? (
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <p className="text-sm text-emerald-400">
+                Auto-snipe mode: will book any new slot that appears on the selected {targetType === 'recurring' ? 'day' : 'date'}.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label>Time</Label>
+                {timesLoading && <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />}
+                {isLive && !timesLoading && (
+                  <span className="rounded bg-emerald-900/50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                    Live
+                  </span>
+                )}
+              </div>
+              {times.length > 0 ? (
+                <Select value={time} onValueChange={setTime}>
+                  <SelectTrigger className="border-white/10 bg-white/5"><SelectValue placeholder="Select time" /></SelectTrigger>
+                  <SelectContent>
+                    {times.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {timeDisplayMap.get(t) || t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  placeholder="e.g. 6:00 AM"
+                  className="border-white/10 bg-white/5"
+                />
               )}
             </div>
-            {times.length > 0 ? (
-              <Select value={time} onValueChange={setTime}>
-                <SelectTrigger className="border-white/10 bg-white/5"><SelectValue placeholder="Select time" /></SelectTrigger>
-                <SelectContent>
-                  {times.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {timeDisplayMap.get(t) || t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                placeholder="e.g. 6:00 AM"
-                className="border-white/10 bg-white/5"
-              />
-            )}
-          </div>
+          )}
 
           {/* Seat Preference */}
           <div className="space-y-2">
