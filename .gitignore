@@ -18,6 +18,8 @@ Fitness-sniper/
 *.log
 .DS_Store
 data/
+!GovBudget/data/
+!GovBudget/data/manifest.jsonl
 .playwright-mcp/
 *.tsbuildinfo
 
