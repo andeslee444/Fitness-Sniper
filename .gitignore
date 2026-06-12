@@ -20,6 +20,7 @@ Fitness-sniper/
 data/
 !GovBudget/data/
 !GovBudget/data/manifest.jsonl
+!GovBudget/site/src/app/data/
 .playwright-mcp/
 *.tsbuildinfo
 
