@@ -457,15 +457,6 @@ function countRssFeeds(dir) {
 }
 
 /**
- * Recompute every figure /coverage/ renders, from the artifacts — never from
- * lib/coverage-map, which is the thing under test.
- *
- * Returns a map id → { n, d, must } where `must` is the list of substrings the
- * row's coverage cell has to contain. Numbers only: the blocker and target
- * prose is authored on purpose, and duplicating it here would pin the wording
- * instead of the truth.
- */
-/**
  * Partition the program sidecars by their OWN content — the three predicates
  * lib/data.ts getPagesWithoutDetail applies, re-implemented so the gate
  * recomputes rather than imports (#106):
@@ -546,6 +537,16 @@ export function checkProgramPagesSplit(text) {
   return { ok: true, why: null, parts };
 }
 
+/**
+ * Recompute every figure /coverage/ renders, from the artifacts — never from
+ * lib/coverage-map, which is the thing under test.
+ *
+ * Returns a map id → { n, d, must } where `must` is the list of substrings the
+ * row's coverage cell has to contain, plus an optional `split` carrying the
+ * recomputed parts of a row whose sentence states a partition (#106). Numbers
+ * only: the blocker and target prose is authored on purpose, and duplicating
+ * it here would pin the wording instead of the truth.
+ */
 function recomputeCoverageMap() {
   const programs = readJson(path.join(jsonDir, "programs.json")).length;
 
