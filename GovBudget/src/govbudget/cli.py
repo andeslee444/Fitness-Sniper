@@ -842,6 +842,8 @@ def cmd_jbooks(args) -> None:
 def cmd_review(args) -> None:
     import psycopg
 
+    from govbudget.jbooks.reconcile import CARRIED_PREFIX
+
     with psycopg.connect(config.PG_DSN) as con:
         if args.review_action == "list":
             rows = con.execute(
@@ -851,7 +853,23 @@ def cmd_review(args) -> None:
             ).fetchall()
             for r in rows:
                 print(f"#{r[0]} gate {r[1]} {r[2]}/{r[3]} expected={r[4]} actual={r[5]} :: {r[6]}")
-            print(f"{len(rows)} open item(s)")
+            # Carried rows (#9): failures re-flagged by a later run with the
+            # numbers a person already accepted, born accepted with a
+            # resolution naming the root triage. Reported apart from open
+            # items so nobody re-triages them or mistakes them for new failures.
+            carried = con.execute(
+                "select rq.id, c.gate, c.pe_bli, c.scenario, c.expected, c.actual,"
+                " rq.resolution"
+                " from review_queue rq join reconciliation_checks c on c.id=rq.check_id"
+                " where rq.status='accepted' and rq.resolution like %s order by rq.id",
+                (CARRIED_PREFIX + "%",),
+            ).fetchall()
+            if args.carried:
+                for r in carried:
+                    print(f"~#{r[0]} gate {r[1]} {r[2]}/{r[3]} expected={r[4]} actual={r[5]}"
+                          f" :: {r[6]}")
+            hint = " (review list --carried to show)" if carried and not args.carried else ""
+            print(f"{len(rows)} open item(s), {len(carried)} carried{hint}")
         elif args.review_action == "accept":
             if args.id is None:
                 print("review accept requires --id")
@@ -2529,6 +2547,8 @@ def main(argv=None) -> None:
     rv.add_argument("review_action", choices=["list", "accept"])
     rv.add_argument("--id", type=int)
     rv.add_argument("--reason", default="")
+    rv.add_argument("--carried", action="store_true",
+                    help="list: also print rows pre-accepted from a prior triage (#9)")
     rv.set_defaults(func=cmd_review)
 
     v = sub.add_parser("verify-phase1", help="run phase 1 acceptance gates 1-3")

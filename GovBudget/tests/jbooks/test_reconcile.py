@@ -4,7 +4,11 @@ from pathlib import Path
 import psycopg
 
 from govbudget.jbooks.load_details import load_document_details
-from govbudget.jbooks.reconcile import reconcile_document, scenario_map
+from govbudget.jbooks.reconcile import (
+    carried_resolution,
+    reconcile_document,
+    scenario_map,
+)
 from govbudget.jbooks.registry import upsert_documents
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks" / "darpa_fy2026_excerpt.xml"
@@ -735,3 +739,138 @@ def test_gate_a_failure_blocks_reconciled_even_when_gate_b_passes(pg_dsn):
     assert gate_a == (False,)
     assert gate_b == (True,)
     assert reconciled is False  # Gate A failure blocks serving despite Gate B pass
+
+
+# ---------------------------------------------------------------------------
+# #9 resolution memory: a failure re-flagged with the same numbers a person
+# already accepted is born accepted, naming the root human decision.
+# ---------------------------------------------------------------------------
+
+
+def test_carried_resolution_names_root_and_reason():
+    assert carried_resolution(41, "documented delta") == "carried from #41: documented delta"
+    assert carried_resolution(41, "") == "carried from #41"
+    assert carried_resolution(41, None) == "carried from #41"
+    assert carried_resolution(41, "  padded  ") == "carried from #41: padded"
+    # a carried prior is reused verbatim: chains never grow, the id stays the root
+    assert (
+        carried_resolution(99, "carried from #41: documented delta")
+        == "carried from #41: documented delta"
+    )
+
+
+def _accept_all_open(pg_dsn, reason):
+    """Stand-in for `govbudget review accept --id … --reason …` (cli.py:855-864).
+
+    Returns the accepted row's id; the assert also pins the fixture's
+    "exactly one failure" claim.
+    """
+    with psycopg.connect(pg_dsn) as con:
+        ids = con.execute(
+            "update review_queue set status='accepted', resolution=%s, resolved_at=now()"
+            " where status='open' returning id",
+            (reason,),
+        ).fetchall()
+    assert len(ids) == 1
+    return ids[0][0]
+
+
+def _queue_rows(pg_dsn, pe_bli="0601101E", scenario="PriorYear"):
+    with psycopg.connect(pg_dsn) as con:
+        return con.execute(
+            "select rq.id, rq.status, rq.resolution, rq.resolved_at is not null,"
+            " c.extraction_run_id"
+            " from review_queue rq join reconciliation_checks c on c.id=rq.check_id"
+            " where c.gate='B' and c.pe_bli=%s and c.scenario=%s order by rq.id",
+            (pe_bli, scenario),
+        ).fetchall()
+
+
+def test_reflagged_failure_carries_prior_acceptance(pg_dsn, single_failure_doc):
+    doc_id, run1 = single_failure_doc
+    first = reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run1)
+    assert (first["failed"], first["queued"], first["carried"]) == (1, 1, 0)
+    reason = "public-book value differs from display control (documented)"
+    root_id = _accept_all_open(pg_dsn, reason)
+
+    # production re-extract: a new extraction run supersedes the details and
+    # reconcile_document re-flags the same 999.999 vs 280.494 mismatch
+    run2 = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    second = reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run2)
+    assert (second["failed"], second["queued"], second["carried"]) == (1, 0, 1)
+
+    rows = _queue_rows(pg_dsn)
+    assert [r[1] for r in rows] == ["accepted", "accepted"]
+    assert rows[0][0] == root_id and rows[0][4] == run1          # root kept: audit trail
+    assert rows[1][4] == run2                                     # the new run's row …
+    assert rows[1][2] == f"carried from #{root_id}: {reason}"     # … names the root
+    assert rows[1][3] is True                                     # resolved_at stamped
+    with psycopg.connect(pg_dsn) as con:
+        open_now = con.execute(
+            "select count(*) from review_queue where status='open'"
+        ).fetchone()[0]
+        rec = con.execute(
+            "select bool_or(reconciled) from budget_line_details"
+            " where pe_bli='0601101E' and scenario='PriorYear' and not superseded"
+        ).fetchone()[0]
+    assert open_now == 0
+    assert rec is False  # acceptance never publishes: the detail stays unreconciled
+
+
+def test_changed_numbers_do_not_carry(pg_dsn, single_failure_doc):
+    doc_id, run1 = single_failure_doc
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run1)
+    _accept_all_open(pg_dsn, "documented")
+    with psycopg.connect(pg_dsn) as con:  # the control moves: a different mismatch
+        con.execute(
+            "update budget_lines set amount_thousands=%s"
+            " where pe_bli='0601101E' and amount_type='fy_2024_actuals'",
+            (Decimal("888888"),),
+        )
+    run2 = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    second = reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run2)
+    assert (second["failed"], second["queued"], second["carried"]) == (1, 1, 0)
+    rows = _queue_rows(pg_dsn)
+    assert [(r[1], r[4]) for r in rows] == [("accepted", run1), ("open", run2)]
+    assert rows[1][2] is None
+
+
+def test_rereconcile_rederives_carried_rows_from_root(pg_dsn, single_failure_doc):
+    doc_id, run1 = single_failure_doc
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run1)
+    root_id = _accept_all_open(pg_dsn, "documented")
+    run2 = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run2)
+    run3 = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    third = reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run3)
+    assert third["carried"] == 1
+    rows = _queue_rows(pg_dsn)
+    # root + ONE carried copy (run2's copy was pruned with its check), and the
+    # copy still names the root, not run2's copy
+    assert [(r[1], r[4]) for r in rows] == [("accepted", run1), ("accepted", run3)]
+    assert rows[1][2] == f"carried from #{root_id}: documented"
+    with psycopg.connect(pg_dsn) as con:
+        stale_checks = con.execute(
+            "select count(*) from reconciliation_checks where extraction_run_id=%s",
+            (run2,),
+        ).fetchone()[0]
+    assert stale_checks == 0
+
+
+def test_acceptance_is_scoped_to_the_document(pg_dsn, single_failure_doc):
+    doc1, run1 = single_failure_doc
+    reconcile_document(pg_dsn, document_id=doc1, extraction_run_id=run1)
+    _accept_all_open(pg_dsn, "documented on volume 1")
+    # a second volume of the same org shares the R-1 control rows and so fails
+    # on the same numbers — a different document must NOT inherit the triage
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa-vol2.pdf", "source_url": "https://example.test/darpa-vol2.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc2 = con.execute(
+            "select id from jbook_documents where title='darpa-vol2.pdf'"
+        ).fetchone()[0]
+    run2 = load_document_details(pg_dsn, document_id=doc2, xml_path=FIXTURE)
+    res = reconcile_document(pg_dsn, document_id=doc2, extraction_run_id=run2)
+    assert (res["queued"], res["carried"]) == (1, 0)

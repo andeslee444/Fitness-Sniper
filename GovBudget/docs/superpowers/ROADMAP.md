@@ -1039,6 +1039,24 @@ docs/superpowers/ROADMAP.md`.
    is no `govbudget refresh` orchestrator and no cron under `scripts/`.
 9. **Resolution-memory for review queue** (re-flagged items remember triage).
 
+   **Status:** CLOSED 2026-09-10 — `_tally` now looks up an accepted
+   `review_queue` row for the same (document, gate, pe_bli, scenario) with the
+   same expected/actual and inserts the re-flagged row pre-accepted
+   (`carried from #<root id>: <reason>`; the id names the human decision and a
+   carried prior is copied verbatim, so chains never grow). The re-reconcile
+   prune re-derives carried rows and keeps human roots. `review list` reports
+   carried rows apart from open ones (`--carried` prints them with a `~#`
+   prefix); `reconcile_document` returns `carried` (`failed == queued +
+   carried`). No migration — `status` / `resolution` / `resolved_at` already
+   existed. Carrying never sets `budget_line_details.reconciled` and still
+   inserts a queue row, so `accuracy_gate`'s `silent_unreconciled` — the half
+   of gate 2 that can fail — is unchanged and nothing published moves; only
+   the printed `open_review` shrinks, to the true open count. Warehouse on
+   2026-09-10: 927 open / 308 accepted, 35 of the open rows same-numbers
+   re-flags of an accepted row on the same document; those become carried at
+   their documents' next `jbooks extract` — this change backfills nothing.
+   *(Original marker below.)*
+
    **Status: OPEN** — swept 2026-08-24. Never scoped; no commit references it.
    Verified at HEAD: `review_queue` (`migrations/001_phase1_schema.sql:84`)
    does carry `status` / `resolution` / `resolved_at`, but `_tally`

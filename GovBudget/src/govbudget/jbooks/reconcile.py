@@ -63,23 +63,48 @@ def scenario_map(fiscal_year: int) -> dict[str, list[str]]:
 DESIGN_EXCLUDED_SCENARIOS = frozenset({"AllPriorYears", "BudgetYearOneOOC"})
 
 
+# Resolution memory (#9): a failure re-flagged by a later extraction run with
+# the same expected/actual a person already accepted is inserted pre-accepted,
+# with a resolution naming the ROOT human decision. Carried rows are recognised
+# by this prefix — `review list` reports them apart from open items, and the
+# re-reconcile prune re-derives them (the root row is the audit trail, not the
+# carried copies).
+CARRIED_PREFIX = "carried from #"
+
+
+def carried_resolution(prior_id: int, prior_resolution: str | None) -> str:
+    """Resolution text for a queue row pre-accepted from a prior triage.
+
+    Points at the root human acceptance: when the prior row is itself a
+    carried copy its text is reused verbatim, so chains never grow and the
+    id always names a row a person accepted.
+    """
+    reason = (prior_resolution or "").strip()
+    if reason.startswith(CARRIED_PREFIX):
+        return reason
+    return f"{CARRIED_PREFIX}{prior_id}" + (f": {reason}" if reason else "")
+
+
 def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) -> dict:
     """Run Gates A and B for one document's live details. Returns counters."""
-    passed = failed = queued = 0
+    counts = {"passed": 0, "failed": 0, "queued": 0, "carried": 0}
     with psycopg.connect(dsn) as con:
         org, family, fy = con.execute(
             "select org, exhibit_family, fiscal_year from jbook_documents where id=%s",
             (document_id,),
         ).fetchone()
         # Re-reconciling replaces this document's verdicts: drop prior checks
-        # and their UNRESOLVED queue items (resolved items keep their audit trail).
+        # and their UNRESOLVED queue items, plus machine-carried acceptances
+        # (re-derived from their root by _tally below). Human-accepted rows
+        # keep their audit trail.
         con.execute(
             """
             delete from review_queue rq using reconciliation_checks c, extraction_runs r
             where rq.check_id = c.id and c.extraction_run_id = r.id
-              and r.document_id = %s and rq.status = 'open'
+              and r.document_id = %s
+              and (rq.status = 'open' or rq.resolution like %s)
             """,
-            (document_id,),
+            (document_id, CARRIED_PREFIX + "%"),
         )
         con.execute(
             """
@@ -119,7 +144,7 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             check_id = _record(con, extraction_run_id, "A", pe_bli, scenario,
                                pe_amount, proj_total, ok,
                                f"sum(projects)={proj_total} vs PE={pe_amount}")
-            passed, failed, queued = _tally(con, check_id, ok, passed, failed, queued)
+            _tally(con, counts, check_id, ok, document_id=document_id)
             if not ok:
                 _unreconcile(con, document_id, pe_bli, scenario)
 
@@ -228,7 +253,7 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 detail = f"no R-1 row for {pe_bli} ({exhibit}/{org}/fy{fy}) in {candidates}"
             check_id = _record(con, extraction_run_id, "B", pe_bli, scenario,
                                expected, amount_m, ok, detail + basis)
-            passed, failed, queued = _tally(con, check_id, ok, passed, failed, queued)
+            _tally(con, counts, check_id, ok, document_id=document_id)
             if ok:
                 con.execute(
                     "update budget_line_details set reconciled=true "
@@ -240,7 +265,7 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 )
             else:
                 _unreconcile(con, document_id, pe_bli, scenario)
-    return {"passed": passed, "failed": failed, "queued": queued}
+    return counts
 
 
 def _record(con, run_id, gate, pe_bli, scenario, expected, actual, ok, detail) -> int:
@@ -251,11 +276,53 @@ def _record(con, run_id, gate, pe_bli, scenario, expected, actual, ok, detail) -
     ).fetchone()[0]
 
 
-def _tally(con, check_id, ok, passed, failed, queued):
+def _tally(con, counts, check_id, ok, *, document_id):
+    """Count the verdict and queue a failure — pre-accepted when a person
+    already accepted these exact numbers on this document (#9).
+    Invariant: counts["failed"] == counts["queued"] + counts["carried"]."""
     if ok:
-        return passed + 1, failed, queued
-    con.execute("insert into review_queue (check_id) values (%s)", (check_id,))
-    return passed, failed + 1, queued + 1
+        counts["passed"] += 1
+        return
+    counts["failed"] += 1
+    prior = _prior_acceptance(con, document_id=document_id, check_id=check_id)
+    if prior is None:
+        con.execute("insert into review_queue (check_id) values (%s)", (check_id,))
+        counts["queued"] += 1
+        return
+    prior_id, prior_resolution = prior
+    con.execute(
+        "insert into review_queue (check_id, status, resolution, resolved_at)"
+        " values (%s, 'accepted', %s, now())",
+        (check_id, carried_resolution(prior_id, prior_resolution)),
+    )
+    counts["carried"] += 1
+
+
+def _prior_acceptance(con, *, document_id, check_id):
+    """The accepted queue row for the same document / gate / pe_bli / scenario
+    with the same expected and actual as check `check_id` (root human
+    decisions ordered before carried copies; newest first); None when nobody
+    has triaged these numbers before. `detail` is deliberately not compared:
+    within one document it is a function of the key plus the two numbers, and
+    its slug half can be renamed by scenario_map() without the mismatch
+    changing."""
+    return con.execute(
+        """
+        select rq.id, rq.resolution
+        from reconciliation_checks n
+        join reconciliation_checks p
+          on p.gate = n.gate and p.pe_bli = n.pe_bli and p.scenario = n.scenario
+         and p.expected is not distinct from n.expected
+         and p.actual is not distinct from n.actual
+         and p.id <> n.id
+        join extraction_runs r on r.id = p.extraction_run_id
+        join review_queue rq on rq.check_id = p.id
+        where n.id = %s and r.document_id = %s and rq.status = 'accepted'
+        order by (coalesce(rq.resolution, '') like %s), rq.id desc
+        limit 1
+        """,
+        (check_id, document_id, CARRIED_PREFIX + "%"),
+    ).fetchone()
 
 
 def _unreconcile(con, document_id, pe_bli, scenario):
