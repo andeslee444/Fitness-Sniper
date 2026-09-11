@@ -45,9 +45,13 @@ import { hhiBand } from "@/lib/hhi-band.mjs";
  * fiscal_year)'s HHI over high-confidence award transactions for that year
  * alone (dbt fct_feed_events). The /program/{peBli}/ page a card links to
  * renders a DIFFERENT figure: fct_program_concentration's HHI pooled across
- * every year — over high-confidence links alone where the program clears the
- * 3-award/2-family floor, over high+medium links otherwise (ROADMAP #80; the
- * card names its basis). Both are real, correctly
+ * every year, over high-confidence links alone — and only where the program
+ * clears the 3-award / 2-positive-family floor. Below it the page publishes
+ * no pooled index at all and says so (ROADMAP #80, fix round 1 2026-09-11:
+ * 387 of 444 program pages), so a card can legitimately land on a page with
+ * no band to compare against; scripts/gates/feed.mjs leg (l) treats that as
+ * a destination state, not a missing badge. Where both exist, both are real,
+ * correctly
  * computed numbers — they are just not the same measure, and a single
  * concentrated year can sit next to a competitive pooled figure (or the
  * reverse) with no error anywhere. Without this note, a reader who reads

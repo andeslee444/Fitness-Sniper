@@ -835,22 +835,18 @@ export default function MethodologyPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-1">
-                  Contractor concentration publishes two bases
+                  Contractor concentration is computed on two bases and
+                  published on one
                 </h3>
                 <p>
-                  A program page&rsquo;s &ldquo;Contractor Concentration&rdquo;
-                  card (HHI, top contractor, family count, matched obligations)
-                  is computed twice from the same crosswalk: once over
-                  high-confidence links alone and once over high- and
-                  medium-confidence links. The high-only figures are the
-                  headline wherever the program has at least three
-                  high-confidence awards across two or more contractor
-                  families; below that floor no high-only index is published
-                  and the card headlines the pooled high-and-medium figure
-                  instead. Every card names the basis it rests on, the
-                  &ldquo;Who gets it&rdquo; line follows the same basis, and
-                  each figure carries its own derived citation with the
-                  formula for that basis.
+                  Both bases — high-confidence links alone, and every
+                  published link — are computed from the same crosswalk and
+                  both ship in the downloadable warehouse with their own
+                  derived citations, but a program page publishes only the
+                  high-confidence-only figures and states the absence where
+                  they fall below the floor, rather than substituting the
+                  wider figure; the concentration_shift entry in section 6
+                  gives the floor and the reason.
                 </p>
               </div>
             </div>
@@ -1372,19 +1368,24 @@ export default function MethodologyPage() {
                   </strong>{" "}
                   A program&rsquo;s own page (its &ldquo;Contractor
                   Concentration&rdquo; card) renders a different, pooled HHI
-                  computed across every award year. That card headlines the
-                  high-confidence links alone wherever the program has at
-                  least three such awards across two or more contractor
-                  families, names that basis in a chip, and prints the figure
-                  including medium-confidence links on a second line; below
-                  that floor no high-only index is published, the card
-                  headlines the pooled high- and medium-confidence figure and
-                  says so. Either way the two are legitimately different
-                  measures of the same program — a single concentrated year can
-                  sit next to a competitive pooled figure, or the reverse, with
-                  no error on either page. Every concentration_shift card states
-                  which fiscal year its HHI covers and that the program&rsquo;s
-                  pooled figure can differ.
+                  computed across every award year. That card publishes the
+                  high-confidence links alone, and only where the program has
+                  at least three such awards across two or more contractor
+                  families holding positive obligations; below that floor it
+                  publishes no pooled index at all and says so in place of
+                  one. The figure over every published link is computed too
+                  and ships in the downloadable warehouse, but it is never
+                  put in a withheld figure&rsquo;s place: most
+                  medium-confidence links rest on an appropriation-account
+                  association, whose measured precision as program
+                  attribution is the subject of section 4 above. Where the
+                  pooled figure is published, the two are legitimately
+                  different measures of the same program — a single
+                  concentrated year can sit next to a competitive pooled
+                  figure, or the reverse, with no error on either page. Every
+                  concentration_shift card states which fiscal year its HHI
+                  covers and that the program&rsquo;s pooled figure can
+                  differ.
                 </p>
               </div>
               <div id="feed-request_vs_actuals_gap">

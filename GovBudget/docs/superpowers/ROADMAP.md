@@ -526,6 +526,36 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   10000.000000000004 run to run (13/8/8/10/10/13 breaches over six
   consecutive counts). A gate whose result changes without the data
   changing is not a gate; the ceiling now carries a documented 1e-6 epsilon.
+  **Addendum 2026-09-11 (fix round 1, 12 findings).** Three Criticals were
+  this branch's OWN new work, and all three came from a floor and a headline
+  that counted links instead of money. (1) The floor counted high-confidence
+  AWARDS and LINKED families and nothing else, so 13 programs whose high
+  links summed to zero positive obligations published `hhi_high` = 0.0 — a
+  number, not NULL — which the card headlined "Competitive" with $0 (one
+  with −$2.3M) under a top contractor the tie-break had picked
+  alphabetically, and 7 more published 10,000 over a single positive-dollar
+  family beside a card reading "Contractor Families: 2". The floor now
+  measures positive-dollar families (published as
+  `positive_family_count_high`) and positive net dollars, and withholds
+  `top_family_high` with the index: 37 of 444, not 57. (2) The card
+  headlined the all-links figure on 387 pages — the basis the #79
+  adjudication had just measured at 0 of 60 for program attribution — and
+  286 of those headlined an index below the very floor the mart refuses to
+  publish. Publish the smaller true number: the card, the "Who gets it"
+  line and the dossier bundle now carry the high-only basis or nothing, and
+  say which. The `*_all` columns and their fids stay in the mart, the
+  download and /methodology/; nothing renders them, so their own missing
+  floor is a data question and stays open (see #107–#109 for the tier
+  decisions it waits on) — it would have to be settled BEFORE that basis is
+  ever rendered again. (3) `verify-phase3`'s new floor leg re-asserted
+  exactly the predicate the mart's own `case` guarantees, so it was
+  structurally 0 while all 20 bad rows shipped, and `high_only_rows` was
+  returned but never entered `ok`. A leg that can only fire on a
+  hand-written table is not a gate leg; it now asserts what the mart cannot
+  satisfy by construction, and the row count carries a dated do-not-lower
+  floor so a collapse of the high basis fails instead of printing. The
+  species lesson from #70–#77 repeated verbatim: every one of the three was
+  a tier-naming sentence or figure the branch itself had just written.
 - **2026-09-11: precision rubric, and the number it exposed (#79).** The
   largest published tier (`account+subagency` — 9,337 published rows in
   Postgres over 416 DARPA awards and 24 DARPA PEs, 8,856 of them in the mart,
@@ -595,7 +625,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   program_dollars) be high-only?** It is high+medium by construction; 158 of
   438 programs' blocks rest entirely on medium links, and medium is now
   dominated by the unmeasured account+subagency tier (#79). Prose is honest
-  meanwhile. **Status:** CLOSED 2026-09-05 — publish BOTH bases (controller ruling, owner may override): mart columns `*_all` (pre-#80 figures, fids unchanged) and `*_high` (high-confidence links only; `hhi_high` NULL below 3 awards across 2 families — 57 of 444 programs clear it, 225 fall below, 162 have no high link); the card and the "Who gets it" line headline the high-only figures with a tier chip and print the all-tier figures on a labelled second line, or headline the all-tier figures and say so; new derived fids for the high-only figures with formulas true of each basis; verify-phase3 floor leg (+ a 1e-6 HHI ceiling epsilon that fixed a pre-existing intermittent red), feed leg (l) requires one basis-stamped badge, q023 re-pointed (it was already stale).
+  meanwhile. **Status:** CLOSED 2026-09-05 — publish BOTH bases (controller ruling, owner may override): mart columns `*_all` (pre-#80 figures, fids unchanged) and `*_high` (high-confidence links only; `hhi_high` NULL below 3 awards across 2 families — 57 of 444 programs clear it, 225 fall below, 162 have no high link); the card and the "Who gets it" line headline the high-only figures with a tier chip and print the all-tier figures on a labelled second line, or headline the all-tier figures and say so; new derived fids for the high-only figures with formulas true of each basis; verify-phase3 floor leg (+ a 1e-6 HHI ceiling epsilon that fixed a pre-existing intermittent red), feed leg (l) requires one basis-stamped badge, q023 re-pointed (it was already stale). **Amended 2026-09-11 (fix round 1):** the floor now also requires 2 families holding POSITIVE dollars (`positive_family_count_high`, published) and positive `program_dollars_high`, and withholds `top_family_high` with the index — 37 of 444 clear it, not 57; and only the high-only basis is RENDERED. Below the floor the card, the "Who gets it" line and the dossier fact bundle publish nothing rather than substituting the all-links figure (`account+subagency`, 0/60 on program attribution, #79) — the `*_all` columns, fids and formulas are unchanged and still ship in the download, on /methodology/ and in citations. Gate 3's floor leg asserts an invariant the mart cannot satisfy by construction plus a dated `high_only_rows >= 37` floor; feed leg (l) accepts a withheld destination and rejects an all-links band; q023 re-measured to `2307, RTX` (0603882C was one of the seven single-positive-family rows).
 - **#81 FeedCardItem shared shell.** The client twin (`feed-card-item-client.tsx`)
   is pinned by a byte-identical parity test, not by construction; extract
   `hhiScopeNote` and `Fy26SplitNote` to client-safe files and render one shell

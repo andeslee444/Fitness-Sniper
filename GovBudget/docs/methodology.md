@@ -281,16 +281,13 @@ the DARPA sub-agency, the HR0011 contract-number prefix).
 rates or published subtotals — rather than directly reported in a source
 document — is labeled as derived wherever it appears.
 
-**Contractor concentration publishes two bases.** A program page's
-"Contractor Concentration" card (HHI, top contractor, family count, matched
-obligations) is computed twice from the same crosswalk: once over
-high-confidence links alone and once over high- and medium-confidence links.
-The high-only figures are the headline wherever the program has at least
-three high-confidence awards across two or more contractor families; below
-that floor no high-only index is published and the card headlines the
-pooled high-and-medium figure instead. Every card names the basis it rests
-on, the "Who gets it" line follows the same basis, and each figure carries
-its own derived citation with the formula for that basis.
+**Contractor concentration is computed on two bases and published on one.**
+Both bases — high-confidence links alone, and every published link — are
+computed from the same crosswalk and both ship in the downloadable warehouse
+with their own derived citations, but a program page publishes only the
+high-confidence-only figures and states the absence where they fall below the
+floor, rather than substituting the wider figure; the concentration_shift
+entry in section 6 gives the floor and the reason.
 
 ---
 
