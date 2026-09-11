@@ -1029,13 +1029,18 @@ export default function MethodologyPage() {
                       no page (they are workbook rows, not program identities),
                       and until #28 no element whose record stopped before FY2026
                       got one either. It states the composition of the number
-                      instead, which is what a reader of this section needs. */}
+                      instead, which is what a reader of this section needs.
+                      #106: the {" "} after each interpolation below is
+                      load-bearing — Turbopack drops the space before a
+                      multi-line text run that carries an entity (the
+                      &apos; in "President's"); this paragraph rendered
+                      "553whose" and "1,936of". Gate 2 legs (sp) and (nw). */}
                   {formatCount(serviceBooks.denominator ?? 0)} program pages in
                   total: the elements the FY2026 workbooks name, plus{" "}
-                  {formatCount(decadeOnlyPages)} whose cited record stops in an
+                  {formatCount(decadeOnlyPages)}{" "}whose cited record stops in an
                   earlier President&apos;s Budget edition. Full J-book detail
                   (mission prose, project tables, accomplishments) is ingested
-                  for {formatCount(serviceBooks.numerator ?? 0)} of them, whose justification books
+                  for {formatCount(serviceBooks.numerator ?? 0)}{" "}of them, whose justification books
                   come from the sources already in the pipeline. As of Phase 5G
                   the FY2026 justification books for all three military
                   departments are ingested: the Navy&apos;s RDT&amp;E and
@@ -1093,7 +1098,7 @@ export default function MethodologyPage() {
                   (§4) links a program element to contractor families:{" "}
                   {formatCount(flowBridge.numerator ?? 0)} of {formatCount(flowBridge.denominator ?? 0)} crosswalked
                   PEs carry FY{flowMeta.budgetFy} request dollars (
-                  {flowMeta.bridge.highConfidencePeCount} at high confidence).
+                  {flowMeta.bridge.highConfidencePeCount}{" "}at high confidence).
                   Everything else terminates in an explicit &ldquo;not yet
                   crosswalked&rdquo; band — {flowMeta.bridge.pctNotCrosswalked}%
                   of the request. That band is an honest statement about our

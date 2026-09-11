@@ -38,7 +38,21 @@
  * neighbours are out of scope: block-level siblings gluing is layout, not
  * prose.
  *
- * Export: findGlueSites(rootDir) → [{ file, line, left, right }]
+ * THE SECOND TRIM (ROADMAP #106, 2026-09-05). Babel's cleaner keeps a FIRST
+ * line's leading space, so `{n} whose cited record stops in an\n  earlier
+ * President&apos;s…` is fine by the rule above — and Next 16's Turbopack
+ * transform still rendered "553whose". When the run also carries an HTML
+ * character reference, Turbopack trims that space. ba6c7d66 (2026-07-03)
+ * already fixed one such site by hand (methodology/page.tsx: "Turbopack
+ * drops the leading space of an entity-bearing text chunk after an
+ * expression") and a2637af2 fixed the species in one component without
+ * sweeping it. turbopackTrimsLeadingSpace() models exactly that shape and
+ * nothing wider — measured 5/5 on the sites site/src had that day, with no
+ * false positive across all 136 .tsx files.
+ *
+ * Export: findGlueSites(rootDir) → { hits: [{ file, line, why, left, right }], filesScanned }
+ *         findGlueSitesInSource(file, src, rootDir) → the hits for one source
+ *         turbopackTrimsLeadingSpace(rawJsxText) → boolean
  */
 
 import fs from "fs";
@@ -87,13 +101,28 @@ export function cleanJsxText(raw) {
 
 const WORD = /[0-9A-Za-z]/;
 
-export function findGlueSites(rootDir) {
-  const hits = [];
-  let filesScanned = 0;
+/**
+ * An HTML character reference as JSX text carries it: &apos; &rsquo; &amp;
+ * &#8217; &#x2019;. A bare "&" (RDT & E) is not one.
+ */
+const HTML_ENTITY_RE = /&(?:#\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/;
 
-  for (const file of walkTsx(rootDir)) {
-    filesScanned += 1;
-    const src = fs.readFileSync(file, "utf8");
+/**
+ * The Turbopack entity trim (#106). True when a JSX text run starts with
+ * horizontal whitespace followed by content on that SAME line (the space
+ * that disappears), spans a line break, and contains a character reference.
+ * A run whose first line is blank is the ordinary case cleanJsxText models.
+ */
+export function turbopackTrimsLeadingSpace(raw) {
+  return (
+    /^[ \t]+[^\s]/.test(raw) && /[\r\n]/.test(raw) && HTML_ENTITY_RE.test(raw)
+  );
+}
+
+/** The glue sites in ONE source text — exported for the unit tests. */
+export function findGlueSitesInSource(file, src, rootDir = path.dirname(file)) {
+  const hits = [];
+  {
     const sf = ts.createSourceFile(
       file,
       src,
@@ -201,10 +230,16 @@ export function findGlueSites(rootDir) {
 
         // Did the renderer eat a line break the author wrote?
         let glued;
+        let why = "newline";
         if (gapRaw) {
           glued = /[\n\r]/.test(gapRaw);
         } else if (pair === "expr+text") {
           glued = /^[ \t]*[\r\n]/.test(b.raw) && !/^\s/.test(b.cleaned);
+          // …or the space babel keeps and Turbopack does not (#106).
+          if (!glued && turbopackTrimsLeadingSpace(b.raw)) {
+            glued = true;
+            why = "entity-trim";
+          }
         } else {
           glued = /[\r\n][ \t]*$/.test(a.raw) && !/\s$/.test(a.cleaned);
         }
@@ -216,9 +251,16 @@ export function findGlueSites(rootDir) {
           a.kind === "text"
             ? !WORD.test(a.cleaned.slice(-1))
             : edgeIsNonWord(a.vals, "end");
+        // Under the entity trim the cleaned text still starts with the
+        // space babel would keep; what actually meets the value is the
+        // first non-blank character.
+        const bText =
+          b.kind === "text" && why === "entity-trim"
+            ? b.cleaned.replace(/^\s+/, "")
+            : b.cleaned;
         const rightEdge =
           b.kind === "text"
-            ? !WORD.test(b.cleaned[0])
+            ? !WORD.test(bText[0])
             : edgeIsNonWord(b.vals, "start");
         if (leftEdge === true || rightEdge === true) continue;
         // "…FY" / "…BA" immediately before a value is the site's code idiom.
@@ -229,10 +271,11 @@ export function findGlueSites(rootDir) {
         hits.push({
           file: path.relative(rootDir, file),
           line: pos.line + 1,
+          why,
           left: (a.kind === "text" ? a.cleaned : a.node.getText(sf))
             .replace(/\s+/g, " ")
             .slice(-60),
-          right: (b.kind === "text" ? b.cleaned : b.node.getText(sf))
+          right: (b.kind === "text" ? bText : b.node.getText(sf))
             .replace(/\s+/g, " ")
             .slice(0, 60),
         });
@@ -247,5 +290,17 @@ export function findGlueSites(rootDir) {
     visit(sf);
   }
 
+  return hits;
+}
+
+export function findGlueSites(rootDir) {
+  const hits = [];
+  let filesScanned = 0;
+  for (const file of walkTsx(rootDir)) {
+    filesScanned += 1;
+    hits.push(
+      ...findGlueSitesInSource(file, fs.readFileSync(file, "utf8"), rootDir),
+    );
+  }
   return { hits, filesScanned };
 }

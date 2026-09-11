@@ -236,9 +236,18 @@ export default async function AgencyPage({
                   </span>
                 </p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {/* #106: the {" "} after each interpolation is load-bearing —
+                      Turbopack drops the space before a multi-line text run
+                      that carries an entity (&rsquo; below); this note
+                      rendered "OSD's 128programs". Pluralised while open:
+                      DMACT is the one page with a single non-reconciling
+                      program, and it read "1programs". */}
                   {formatCount(agency.fy2024_not_reconciled_count)} of{" "}
-                  {org}&rsquo;s {formatCount(agency.program_count)} programs
-                  carry an FY2024 figure that has not reconciled between the
+                  {org}&rsquo;s {formatCount(agency.program_count)}{" "}
+                  {agency.program_count === 1
+                    ? "program carries"
+                    : "programs carry"}{" "}
+                  an FY2024 figure that has not reconciled between the
                   R-2/P-40 J-book program line (the FY24 total above) and the
                   P-1/R-1 workbook total obligation authority (TOA) Fiscal
                   Receipts uses as its headline basis sitewide — the workbook

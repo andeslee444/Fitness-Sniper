@@ -297,7 +297,7 @@ export function YearsTotalsChart({
       >
         <caption className="sr-only">
           Corpus budget total by fiscal year, balanced panel of{" "}
-          {formatCount(panel.length)} programs present in every year shown.
+          {formatCount(panel.length)}{" "}programs present in every year shown.
           Figures in USD millions, not independently cited — see the matrix
           below for each contributing program&apos;s own cited figure.
         </caption>

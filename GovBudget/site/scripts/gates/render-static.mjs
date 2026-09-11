@@ -1560,7 +1560,9 @@ export async function runRenderStaticGate() {
       );
       for (const h of hits.slice(0, 10)) {
         errors.push(
-          `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — put the two on one line or add {" "}`
+          h.why === "entity-trim"
+            ? `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — Turbopack trims the leading space of a multi-line text run that carries an HTML entity: write {" "} after the expression and start the text on that line (#106)`
+            : `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — put the two on one line or add {" "}`
         );
       }
       if (hits.length > 10) errors.push(`  ... and ${hits.length - 10} more`);
