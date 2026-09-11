@@ -105,10 +105,10 @@ answer."* Three cheap changes, ranked by readers retained.
 - [ ] **Homepage hero.** Currently opens on `HHI=3820 (2022) — the program's pooled,
       all-years HHI can differ`. Replace with a fixed plain-English sentence; move the
       anomaly to `/feed/`. Also: the intro tooltip covers the headline at ≤1280px.
-- [ ] **Glossary reachable.** Linked twice per page, both in the footer, never from a
+- [x] **Glossary reachable.** Linked twice per page, both in the footer, never from a
       term. Put it in the nav; link `TOA`, `P-40`, `PE`, `HHI`, agency codes to their entries.
       Add "actuals / enacted / request" — the three most load-bearing words on the site
-      and absent from the glossary.
+      and absent from the glossary. Shipped 0409a4e8 (header nav + MobileNav + term links + actuals/enacted/request entries); pinned 2026-09-10 by gate 13 leg (j), because leg (a) reads the whole home page and a footer-only link satisfied it.
 - [ ] **`/feed/` sorts by budget-line code.** It opens on a $46.7M change because
       `0101213F` sorts first. Sort by dollar magnitude.
 
@@ -163,7 +163,7 @@ false of the public record. It is also what makes `/agency/`'s ranking wrong.
   component arithmetic — honest, but a reporter citing the total inherits it.
 - **Search ranking**: "submarine" returns Submarine Batteries first and Virginia Class
   last. Ranked by name-prefix, not magnitude.
-- `run-mobile-leg.mjs` standalone crash (chip `task_08cdaf37`) — gate fine, runner broken.
+- `run-mobile-leg.mjs` standalone crash (chip `task_08cdaf37`) — RESOLVED. The crash was fixed 2026-08-31 (d78dfec1: the leg closed the browser it owned before m4/m5 used it; gate 3 passes its own browser and was blind to it). Nothing pinned the fix because the runner did its work at import time and could not be imported by a test; on 2026-09-10 it became `runStandaloneMobileLeg()` with injectable deps and five vitest cases, including a leg that throws and an occupied port.
 - `#29(d)`, `#28` (624 decade-only pages), `#29(a)` (approved LLM extraction) — the
   pre-existing queue, resumed after Wave 3.
 

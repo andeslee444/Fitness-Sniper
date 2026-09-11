@@ -52,6 +52,15 @@
  *     link-graph leg — including this one — can see that specific miss.
  *     (prepare-assets.mjs already copies feed.json as of Task 6/#73 — the
  *     live 404 and this repo's stale out/ both predate that fix landing.)
+ * (j) THE GLOSSARY IS IN THE HEADER NAV (tri-persona Wave 3). It shipped
+ *     linked twice per page, both times in the footer, while TOA is stamped
+ *     on ~80,000 figures above it. Leg (a) reads the whole home page and is
+ *     satisfied by a footer link, so it could never have caught this. Leg
+ *     (j) scopes to `nav[data-site-nav]` on / and to NAV_LINKS in
+ *     components/mobile-nav.tsx (that panel is client-rendered, so it is
+ *     not in static HTML; gate 3's m4 leg proves the panel renders its
+ *     links, this proves which destinations are in it). Gate 19 persona 5
+ *     covers the third half of the same finding — the in-page term links.
  */
 import fs from "fs";
 import path from "path";
@@ -112,6 +121,26 @@ function linksIn(html) {
     if (n) hrefs.add(n);
   }
   return { root, hrefs };
+}
+
+/**
+ * The header nav's OWN hrefs — `<nav data-site-nav>` in layout.tsx. Returns
+ * null when the element is absent (the contract itself is gone). Matches
+ * the attribute with or without a value.
+ *
+ * Scoped on purpose. Leg (a) reads the whole page and is satisfied by a
+ * footer link — which is exactly the state tri-persona Wave 3 filed.
+ * MobileNav renders its own `<nav data-site-nav>` only when the panel is
+ * open, so it is absent from static HTML; the header nav is also first in
+ * document order.
+ */
+export function headerNavHrefs(html) {
+  const root = parse(html, { comment: false });
+  const nav = root.querySelector("nav[data-site-nav]");
+  if (!nav) return null;
+  return nav
+    .querySelectorAll("a[href]")
+    .map((a) => a.getAttribute("href") ?? "");
 }
 
 export async function runLinkgraphGate() {
@@ -330,6 +359,41 @@ export async function runLinkgraphGate() {
 
   // ── (i) every same-origin .json/.xml href resolves to a built file ──
   runJsonXmlHrefLeg(errors, notes);
+
+  // ── (j) the glossary is in the HEADER nav, not only the footer ─────────
+  // Tri-persona Wave 3, the layman review: /glossary/ was linked twice per
+  // page and both links were in the footer, below the jargon they define.
+  // Leg (a) reads the whole home page and cannot see the difference; that
+  // blindness IS the defect. Scope to the nav element, and to the mobile
+  // list, which below lg is the site's only navigation.
+  {
+    const navHrefs = headerNavHrefs(fs.readFileSync(homePath, "utf8"));
+    if (navHrefs === null) {
+      errors.push(
+        "(j) header nav: <nav data-site-nav> not found on / — the header-nav contract is gone"
+      );
+    } else if (!navHrefs.includes("/glossary/")) {
+      errors.push(
+        `(j) header nav: /glossary/ is not in <nav data-site-nav> on / (found: ${navHrefs.join(" ")}) — a footer-only glossary is the defect tri-persona Wave 3 filed; put the link in the nav's own markup, not behind a client-rendered disclosure`
+      );
+    } else {
+      notes.push(
+        `(j) header nav: ${navHrefs.length} link(s), /glossary/ present ✓`
+      );
+    }
+
+    const mobileNavSrc = fs.readFileSync(
+      path.join(srcDir, "components", "mobile-nav.tsx"),
+      "utf8"
+    );
+    if (!/href:\s*"\/glossary\/"/.test(mobileNavSrc)) {
+      errors.push(
+        "(j) mobile nav: NAV_LINKS in components/mobile-nav.tsx has no /glossary/ entry — below lg the hamburger IS the navigation"
+      );
+    } else {
+      notes.push("(j) mobile nav: NAV_LINKS includes /glossary/ ✓");
+    }
+  }
 
   // ── (f) universal PE linking on sampled program pages (Phase 5F §2a) ──
   {
