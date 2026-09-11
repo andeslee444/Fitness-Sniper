@@ -81,8 +81,8 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
             <strong className="text-foreground">
               No concentration index is published for this line.
             </strong>{" "}
-            {CONCENTRATION_WITHHELD_REASON} An index over one or two awards is
-            a fact about the sample, not about the market. Whatever further
+            {CONCENTRATION_WITHHELD_REASON} An index below that floor is a
+            fact about the sample, not about the market. Whatever further
             links this line carries are medium-confidence, and what each
             medium evidence path does and does not establish is set out in
             the{" "}

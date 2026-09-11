@@ -87,6 +87,7 @@ import { ProgramConcentration } from "@/components/program-concentration";
 import {
   concentrationHeadline,
   CONCENTRATION_WITHHELD_REASON,
+  WHO_GETS_IT_WITHHELD_LEAD,
 } from "@/lib/concentration-basis";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
@@ -1572,10 +1573,18 @@ function WhoGetsItBody({
   // below the floor DOES have links — its page renders a Related Awards
   // table — so that sentence would be false there, on ~400 pages. Say which
   // absence it is.
+  //
+  // Fix round 2 (ruling R5): the round-1 replacement was itself false. It
+  // opened "No contractor is named for this line at high confidence", and
+  // 245 of these pages name high-confidence contractors, badged "high", in
+  // the Related Awards table below. Both sentences now come from
+  // lib/concentration-basis.ts and state the rule — what is withheld (a
+  // published leader, a published index) and the floor that withholds it —
+  // never a count of this line's links or a denial that anyone is named.
   if (hhi) {
     return (
       <span data-who-tier="none" className="text-muted-foreground">
-        No contractor is named for this line at high confidence.{" "}
+        {WHO_GETS_IT_WITHHELD_LEAD}{" "}
         {CONCENTRATION_WITHHELD_REASON}{" "}
         <Link
           href="/coverage/#crosswalk"

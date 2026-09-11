@@ -25,7 +25,11 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
 import { ProgramConcentration } from "@/components/program-concentration";
-import { concentrationHeadline } from "@/lib/concentration-basis";
+import {
+  concentrationHeadline,
+  CONCENTRATION_WITHHELD_REASON,
+  WHO_GETS_IT_WITHHELD_LEAD,
+} from "@/lib/concentration-basis";
 import type { ProgramHHI } from "@/lib/data";
 
 // hhi_all 2100.4 → "Moderately Concentrated" (1,500–2,500); hhi_high 9800.2 →
@@ -131,6 +135,55 @@ describe("ProgramConcentration card", () => {
       expect(container.textContent).not.toContain(
         "an account or agency association",
       );
+    }
+  });
+});
+
+/**
+ * ROADMAP #80 fix round 2 (2026-09-11), findings 1 and 3 — ruling R5.
+ *
+ * The withheld sentences must state the RULE, never a fact about this line
+ * that may be false. Measured on the live lake at the post-fix floor: 282
+ * programs carry at least one high-confidence link and 37 clear the floor,
+ * so 245 pages withhold WITH high-confidence links on the page — 44 of them
+ * publish 3 or more, and 245 name high-confidence contractors in their own
+ * Related Awards table lower down. "Fewer than 3 high-confidence award
+ * links … are published for this line" was false on those 44; "No
+ * contractor is named for this line at high confidence" was false on all
+ * 245. The floor also has a third clause (positive net linked dollars) the
+ * old sentence never mentioned — 356010's high links net −$2,328,281.
+ *
+ * These assertions are the gate on that class of sentence: they fail if
+ * either string goes back to counting this line's links or to asserting
+ * that nobody is named.
+ */
+describe("the withheld sentences state the floor, not a count about this line", () => {
+  it("the shared reason names all three clauses of the floor", () => {
+    expect(CONCENTRATION_WITHHELD_REASON).toContain("do not clear the floor");
+    expect(CONCENTRATION_WITHHELD_REASON).toContain("3 awards");
+    expect(CONCENTRATION_WITHHELD_REASON).toContain("2 contractor families");
+    expect(CONCENTRATION_WITHHELD_REASON).toContain("positive obligations");
+    expect(CONCENTRATION_WITHHELD_REASON).toContain("positive net linked dollars");
+  });
+
+  it("the shared reason claims no count and no absence of names", () => {
+    expect(CONCENTRATION_WITHHELD_REASON).not.toMatch(/fewer than/i);
+    expect(CONCENTRATION_WITHHELD_REASON).not.toMatch(/no contractor is named/i);
+    expect(CONCENTRATION_WITHHELD_REASON).not.toMatch(/no .{0,20}link/i);
+  });
+
+  it("the answer-strip lead withholds a leader, it does not deny the names", () => {
+    expect(WHO_GETS_IT_WITHHELD_LEAD).not.toMatch(/no contractor is named/i);
+    expect(WHO_GETS_IT_WITHHELD_LEAD).not.toMatch(/fewer than/i);
+    expect(WHO_GETS_IT_WITHHELD_LEAD).toMatch(/leader/i);
+  });
+
+  it("the card renders the rule, on both withheld shapes", () => {
+    for (const [name, shape] of [["below floor", B], ["no high link", C]] as const) {
+      const { container } = render(<ProgramConcentration hhi={shape} />);
+      const note = container.querySelector('[data-concentration-withheld="below-floor"]');
+      expect(note?.textContent, name).toContain(CONCENTRATION_WITHHELD_REASON);
+      expect(note?.textContent, name).not.toMatch(/fewer than/i);
     }
   });
 });

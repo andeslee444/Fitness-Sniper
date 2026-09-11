@@ -100,9 +100,38 @@ export function concentrationHeadline(h: ProgramHHI): ConcentrationHeadline {
  * no concentration figure. Stated once so the two surfaces cannot drift,
  * and carrying no figure about this program — the counts that would say how
  * far below the floor it sits are not cited, so they are not printed.
+ *
+ * IT STATES THE RULE, NOT A FACT ABOUT THIS LINE (fix round 2, 2026-09-11,
+ * ruling R5). The first draft said "Fewer than 3 high-confidence award
+ * links … are published for this line", which is false on the 44 withheld
+ * pages that publish 3 or more — a reader counting the high-badged rows in
+ * the Related Awards table directly above reads a contradiction — and it
+ * stated two of the floor's three clauses, so it named the wrong reason on
+ * a line withheld for netting non-positive dollars (356010: −$2,328,281
+ * across 17 high links). The rule below is true on every withheld page by
+ * construction, because it is the mart's floor
+ * (dbt/models/marts/fct_program_concentration.sql) and nothing else.
  */
 export const CONCENTRATION_WITHHELD_REASON =
-  `Fewer than ${HIGH_ONLY_MIN_AWARDS} high-confidence award links across ` +
-  `${HIGH_ONLY_MIN_FAMILIES} contractor families with positive obligations ` +
-  `are published for this line, so no concentration index is published for ` +
-  `it either.`;
+  `This line's high-confidence links do not clear the floor for a published ` +
+  `concentration index — at least ${HIGH_ONLY_MIN_AWARDS} awards across ` +
+  `${HIGH_ONLY_MIN_FAMILIES} contractor families holding positive ` +
+  `obligations, with positive net linked dollars.`;
+
+/**
+ * What the "Who gets it" answer strip leads with when the index is withheld
+ * (site/src/app/program/[peBli]/page.tsx, the data-who-tier="none" branch
+ * that a program WITH a concentration block falls through to).
+ *
+ * The strip's own #80 first draft said "No contractor is named for this
+ * line at high confidence", which is false on all 245 withheld-with-links
+ * pages: they name high-confidence contractors, with a "high" confidence
+ * badge, in their own Related Awards table further down the same page
+ * (/program/2915/ names 14 contractor families across 18 high-confidence
+ * links). What is absent is a PUBLISHED LEADER — top_family_high is NULL
+ * with hhi_high below the floor, because with no positive-dollar leader the
+ * mart's tie-break picks the alphabetically first family, which is not one.
+ * Say that, then the rule above.
+ */
+export const WHO_GETS_IT_WITHHELD_LEAD =
+  `No single contractor is published as this line's leader.`;
