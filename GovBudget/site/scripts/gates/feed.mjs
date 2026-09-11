@@ -66,7 +66,8 @@
  *     as the site contradicting itself the moment someone clicks through.
  *     So this leg computes the band implied by each card's OWN rendered
  *     figure and the band the destination page ACTUALLY renders (its own
- *     [data-hhi-band], not a JSON recompute — a template regression that
+ *     [data-hhi-band] (exactly one, basis-stamped since #80), not a JSON
+ *     recompute — a template regression that
  *     stopped rendering the badge fails this too), and where they diverge,
  *     requires the card to carry an explicit [data-hhi-scope-note]
  *     disclosure (checked by content, not just presence). See hhi-band.mjs
@@ -232,13 +233,51 @@ export async function runFeedGate() {
 const MIN_HHI_CARDS = 60;
 
 /**
+ * The destination page's headline band (ROADMAP #80). The card publishes two
+ * bases but stamps [data-hhi-band] on the headline only, and since #80 that
+ * badge declares data-hhi-basis ("high" = high-confidence links alone,
+ * "all" = every published link). Exactly one badge, with a basis, is the
+ * contract; anything else is a template regression this probe names.
+ * Exported for scripts/gates/__tests__/feed-hhi-destination.test.mjs.
+ *
+ * @returns {{ band: string | null, basis: "high" | "all" | null, error: string | null }}
+ */
+export function destinationHhiBadge(destRoot) {
+  const badges = destRoot.querySelectorAll("[data-hhi-band]");
+  if (badges.length === 0) return { band: null, basis: null, error: null };
+  if (badges.length > 1) {
+    return {
+      band: null,
+      basis: null,
+      error:
+        `renders ${badges.length} [data-hhi-band] badges — the concentration card must ` +
+        `headline exactly one basis (the second line's band is plain text)`,
+    };
+  }
+  const basis = badges[0].getAttribute("data-hhi-basis");
+  if (basis !== "high" && basis !== "all") {
+    return {
+      band: null,
+      basis: null,
+      error:
+        `[data-hhi-band] carries data-hhi-basis=${JSON.stringify(basis)} — expected "high" or "all" ` +
+        `(ROADMAP #80: the headline must say which link tiers it rests on)`,
+    };
+  }
+  return { band: badges[0].getAttribute("data-hhi-band"), basis, error: null };
+}
+
+/**
  * leg l — see this file's top doc-comment for the full rationale. Reads
  * ONLY rendered HTML: the card's own figure text (ground truth for "the
  * band implied by the card's claim"), the destination page's own
  * [data-hhi-band] badge, and — where the two disagree — the card's own
  * [data-hhi-scope-note] disclosure text. Nothing here recomputes from
- * feed.json/programs.json; a template regression that stopped rendering
- * either attribute fails this leg exactly as a wrong number would.
+ * feed.json/programs.json. Since ROADMAP #80 the destination badge also
+ * declares its basis (data-hhi-basis) and must be the page's only
+ * [data-hhi-band] — see destinationHhiBadge. A template regression that
+ * stopped rendering either attribute fails this leg exactly as a wrong
+ * number would.
  */
 function runHhiDestinationLeg(errors, notes, root) {
   const cards = root.querySelectorAll("[data-feed-card]").filter((el) => {
@@ -257,7 +296,7 @@ function runHhiDestinationLeg(errors, notes, root) {
   let checked = 0;
   let agree = 0;
   let disclosedDivergence = 0;
-  const destBandCache = new Map(); // pe_bli -> band label | null | "missing"
+  const destBandCache = new Map(); // pe_bli -> band label | null | "missing" | { error }
 
   for (const el of cards) {
     const fig = el.querySelector('[data-primary-value="feed-figure"]');
@@ -297,8 +336,8 @@ function runHhiDestinationLeg(errors, notes, root) {
       } else {
         try {
           const destRoot = parse(fs.readFileSync(destPath, "utf8"), { comment: false });
-          const badge = destRoot.querySelector("[data-hhi-band]");
-          destBand = badge ? badge.getAttribute("data-hhi-band") : null;
+          const probe = destinationHhiBadge(destRoot);
+          destBand = probe.error ? { error: probe.error } : probe.band;
         } catch {
           destBand = "missing";
         }
@@ -311,6 +350,10 @@ function runHhiDestinationLeg(errors, notes, root) {
         `feed leg l: /program/${peBli}/ did not build or would not parse — card ` +
           `(HHI ${cardValue}) claims a concentration figure with no checkable destination`,
       );
+      continue;
+    }
+    if (destBand !== null && typeof destBand === "object") {
+      errors.push(`feed leg l: /program/${peBli}/ ${destBand.error} — card (HHI ${cardValue})`);
       continue;
     }
     if (destBand === null) {

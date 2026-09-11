@@ -113,7 +113,7 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
       narrative_count: 9,
       project_count: 7,
       exhibit_family: "rdte",
-      hhi: { hhi: 0.5 } as ProgramRow["hhi"],
+      hhi: { hhi_all: 0.5 } as ProgramRow["hhi"],
     }) as unknown as Record<string, unknown>;
     for (const dropped of [
       "award_count",

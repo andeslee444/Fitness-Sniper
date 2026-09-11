@@ -505,6 +505,27 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   narratives themselves (gate 21 leg l, floor 19). Rule: a negative claim
   about a population ("no document states…") must be gated against THAT
   population, never against a layer derived from it.
+- **2026-09-05: #80 — concentration on two bases.** The honest count behind
+  the owner call: 768 high vs 11,512 medium links; 162 of 444 concentrated
+  programs have no high link, 225 have too few (under 3 awards / 2 families)
+  for an index that says anything about a market, 57 clear the floor.
+  High-only everywhere would have deleted 387 cards; high+medium everywhere
+  kept headlining an association tier. Both bases, smaller-true-number
+  headline: the high-only figures where they exist, the all-tier figures on
+  a labelled second line, the chip naming the tiers in every case. Two
+  things the gates had to learn: gate 23 leg a2 groups [data-amount]s by
+  (entity, fy, measure), so a second basis needs its own measure token
+  (`hhi-high`, `obligations-high`) or it reads as a collision; feed leg (l)
+  reconciles a card's band against the destination's ONE badge, so the
+  second line's band is plain text and the badge now declares its basis.
+  Found in passing, both pre-existing: eval q023 had been stale since #70
+  (seven programs tie at 10,000 on the new basis — deterministic
+  tie-breakers plus a rounded sort key), and verify-phase3's marts leg had
+  been failing intermittently because DuckDB sums the squared shares in
+  parallel, so a single-positive-family program reads 10000.0 or
+  10000.000000000004 run to run (13/8/8/10/10/13 breaches over six
+  consecutive counts). A gate whose result changes without the data
+  changing is not a gate; the ceiling now carries a documented 1e-6 epsilon.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -553,7 +574,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   program_dollars) be high-only?** It is high+medium by construction; 158 of
   438 programs' blocks rest entirely on medium links, and medium is now
   dominated by the unmeasured account+subagency tier (#79). Prose is honest
-  meanwhile. **Status:** open (owner call, 2026-09-04).
+  meanwhile. **Status:** CLOSED 2026-09-05 — publish BOTH bases (controller ruling, owner may override): mart columns `*_all` (pre-#80 figures, fids unchanged) and `*_high` (high-confidence links only; `hhi_high` NULL below 3 awards across 2 families — 57 of 444 programs clear it, 225 fall below, 162 have no high link); the card and the "Who gets it" line headline the high-only figures with a tier chip and print the all-tier figures on a labelled second line, or headline the all-tier figures and say so; new derived fids for the high-only figures with formulas true of each basis; verify-phase3 floor leg (+ a 1e-6 HHI ceiling epsilon that fixed a pre-existing intermittent red), feed leg (l) requires one basis-stamped badge, q023 re-pointed (it was already stale).
 - **#81 FeedCardItem shared shell.** The client twin (`feed-card-item-client.tsx`)
   is pinned by a byte-identical parity test, not by construction; extract
   `hhiScopeNote` and `Fy26SplitNote` to client-safe files and render one shell

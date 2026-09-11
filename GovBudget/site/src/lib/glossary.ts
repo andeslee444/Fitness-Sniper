@@ -164,7 +164,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "HHI",
     expansion: "Herfindahl-Hirschman Index",
     definition:
-      "A standard market-concentration measure, computed here per program per fiscal year as the sum of each contractor family's obligation share squared (× 10,000), counting only high-confidence award links and positive obligations. Fiscal Receipts follows the DOJ/FTC Horizontal Merger Guidelines bands: below 1,500 is competitive, 1,500–2,500 is moderately concentrated, and 2,500 or above is highly concentrated.",
+      "A standard market-concentration measure: the sum of each contractor family's obligation share squared (× 10,000), counting only positive obligations. Fiscal Receipts computes it in two places. The anomaly feed reports one program's HHI for a single fiscal year over high-confidence award links only. Each program page's Contractor Concentration card reports a pooled all-years HHI, headlined on high-confidence links alone where the program has at least three such awards across two contractor families and otherwise on high- and medium-confidence links — the card names which. Bands follow the DOJ/FTC Horizontal Merger Guidelines: below 1,500 is competitive, 1,500–2,500 is moderately concentrated, and 2,500 or above is highly concentrated.",
   },
   {
     id: "obligation",

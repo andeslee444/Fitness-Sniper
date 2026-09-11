@@ -84,6 +84,7 @@ import { ProgramDetailsTable } from "@/components/program-details-table";
 import { ProgramAwards } from "@/components/program-awards";
 import { ProgramMentions } from "@/components/program-mentions";
 import { ProgramConcentration } from "@/components/program-concentration";
+import { concentrationHeadline } from "@/lib/concentration-basis";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
 
@@ -471,10 +472,14 @@ export default async function ProgramPage({
     pageFactIds.push(prime.fact_id);
   }
 
-  // Derived concentration figures (HHI + program dollars)
-  if (program.hhi?.hhi_fact_id) pageFactIds.push(program.hhi.hhi_fact_id);
-  if (program.hhi?.program_dollars_fact_id) {
-    pageFactIds.push(program.hhi.program_dollars_fact_id);
+  // Derived concentration figures (HHI + program dollars), both bases (#80)
+  for (const fid of [
+    program.hhi?.hhi_all_fact_id,
+    program.hhi?.program_dollars_all_fact_id,
+    program.hhi?.hhi_high_fact_id,
+    program.hhi?.program_dollars_high_fact_id,
+  ]) {
+    if (fid) pageFactIds.push(fid);
   }
 
   // Decade series + book-diff (Phase 5E): every sparkline point and the
@@ -1411,6 +1416,11 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  * accounts each).
  * The tier is stamped per name (`data-evidence-kind`) and the gate rejects
  * any name carrying a weaker one.
+ *
+ * AWARD TIER (#80). The basis is the card's — high-confidence links alone
+ * when the high-only index publishes, all published links otherwise — and
+ * the sentence says which. No [data-who-name] and exactly one
+ * fct_program_concentration [data-amount], so gate 21 leg (j) is unchanged.
  */
 function WhoGetsItBody({
   hhi,
@@ -1421,25 +1431,34 @@ function WhoGetsItBody({
   primes: NamedPrime[];
   lobbiedBy: LobbiedBy | null;
 }) {
-  if (hhi && hhi.program_dollars_fact_id) {
+  // ROADMAP #80: ONE basis per page — the same decision the Contractor
+  // Concentration card makes (lib/concentration-basis.ts), mirrored by the
+  // exporter's _who_gets_it_fid so the fallbacks below fire exactly when
+  // this branch does not render.
+  const head = hhi ? concentrationHeadline(hhi) : null;
+  if (head && head.program_dollars_fact_id) {
     return (
-      <span data-who-tier="award">
-        <span className="font-medium">{hhi.top_family}</span>
+      <span data-who-tier="award" data-who-basis={head.basis}>
+        <span className="font-medium">{head.top_family}</span>
         <span className="text-muted-foreground">
           {" leads "}
-          {hhi.family_count} contractor{" "}
-          {hhi.family_count === 1 ? "family" : "families"} sharing{" "}
+          {head.family_count} contractor{" "}
+          {head.family_count === 1 ? "family" : "families"} sharing{" "}
         </span>
         <Cite
-          value={hhi.program_dollars}
+          value={head.program_dollars}
           units="USD"
           dataset="fct_program_concentration"
-          factId={hhi.program_dollars_fact_id}
+          factId={head.program_dollars_fact_id}
           basis="usaspending"
           fy="all-years"
-          measure="obligations"
+          measure={head.dollarsMeasure}
         />
-        <span className="text-muted-foreground"> in matched awards.</span>
+        <span className="text-muted-foreground">
+          {head.basis === "high"
+            ? " in high-confidence matched awards."
+            : " in matched awards, including medium-confidence links."}
+        </span>
       </span>
     );
   }

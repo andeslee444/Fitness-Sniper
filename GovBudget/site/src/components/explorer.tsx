@@ -262,11 +262,21 @@ LIMIT 50
     case "fct_program_concentration":
       return [
         {
-          label: "Most concentrated programs (HHI)",
+          label: "Most concentrated programs (high-confidence links only)",
           sql: t(`
-SELECT pe_bli, hhi, family_count, top_family
+SELECT pe_bli, hhi_high, hhi_all, family_count_high, top_family_high
 FROM 'fct_program_concentration.parquet'
-ORDER BY hhi DESC
+WHERE hhi_high IS NOT NULL
+ORDER BY hhi_high DESC, program_dollars_high DESC
+LIMIT 50
+          `),
+        },
+        {
+          label: "Most concentrated programs (all published links)",
+          sql: t(`
+SELECT pe_bli, hhi_all, family_count_all, top_family_all
+FROM 'fct_program_concentration.parquet'
+ORDER BY hhi_all DESC
 LIMIT 50
           `),
         },

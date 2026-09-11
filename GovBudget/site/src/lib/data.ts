@@ -411,15 +411,31 @@ export interface ProgramTrajectoryFactIds {
   fy2526_change: string | null;
 }
 
+/**
+ * Contractor-concentration block, TWO bases (ROADMAP #80, 2026-09-05).
+ * `*_all` — every published link (high+medium), the pre-#80 figures under
+ * new names; their fact_ids are unchanged. `*_high` — high-confidence links
+ * only; `hhi_high` is null below 3 linked awards across 2 families, and
+ * `program_dollars_high`/`top_family_high` are null when the program has no
+ * high link at all (`award_count_high === 0`). Which basis a page headlines
+ * is decided ONCE, in lib/concentration-basis.ts, and mirrored by the
+ * exporter's `_who_gets_it_fid`.
+ */
 export interface ProgramHHI {
-  family_count: number;
-  hhi: number;
-  /** Derived citation fact_id for the HHI value (nullable). */
-  hhi_fact_id: string | null;
-  program_dollars: number;
-  /** Derived citation fact_id for program_dollars (nullable). */
-  program_dollars_fact_id: string | null;
-  top_family: string;
+  hhi_all: number;
+  hhi_all_fact_id: string | null;
+  program_dollars_all: number;
+  program_dollars_all_fact_id: string | null;
+  top_family_all: string;
+  family_count_all: number;
+  award_count_all: number;
+  hhi_high: number | null;
+  hhi_high_fact_id: string | null;
+  program_dollars_high: number | null;
+  program_dollars_high_fact_id: string | null;
+  top_family_high: string | null;
+  family_count_high: number;
+  award_count_high: number;
 }
 
 export interface ProgramRow {

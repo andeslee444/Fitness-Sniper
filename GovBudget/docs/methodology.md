@@ -263,6 +263,17 @@ a fresh sample is judged on program attribution.
 rates or published subtotals — rather than directly reported in a source
 document — is labeled as derived wherever it appears.
 
+**Contractor concentration publishes two bases.** A program page's
+"Contractor Concentration" card (HHI, top contractor, family count, matched
+obligations) is computed twice from the same crosswalk: once over
+high-confidence links alone and once over high- and medium-confidence links.
+The high-only figures are the headline wherever the program has at least
+three high-confidence awards across two or more contractor families; below
+that floor no high-only index is published and the card headlines the
+pooled high-and-medium figure instead. Every card names the basis it rests
+on, the "Who gets it" line follows the same basis, and each figure carries
+its own derived citation with the formula for that basis.
+
 ---
 
 ## 5. Known limitations
