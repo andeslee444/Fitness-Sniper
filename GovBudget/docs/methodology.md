@@ -164,9 +164,14 @@ evidence — the contract names a program the budget line's own J-book pages
 also name, adversarially verified. *Medium*: most such links are
 account-based — the award drew from the same appropriation account as the
 program, usually under the same sub-agency — an association, not evidence
-this specific program paid for the contract. Where the evidence is instead an
-FPDS acquisition-program tag or a subaward description (both detailed below),
-the program is established but which of its budget lines paid is not.
+this specific program paid for the contract. How often that association names
+the right program element is now measured rather than assumed: a held-out
+sample of account / sub-agency links, judged on program attribution, confirmed
+0 of 60 (judged 2026-09-11, sample `2026-09-05`); the page prints that figure
+from `site_meta.link_precision`, beside the tier's own caveat. Where the
+evidence is instead an FPDS acquisition-program tag or a subaward description
+(both detailed below), the program is established but which of its budget
+lines paid is not.
 *Low*: only the account matches — never published. The earlier
 automated high tier (account match plus keyword overlap) measured 9.1%
 precise under this adjudication (37 of 408 confirmed) and was corrected on
@@ -234,11 +239,12 @@ typed by hand). Every published figure answers ONE question — the study's
 migration 015): **program attribution** — does this award execute this program
 element? — judged from what the award records buying (its own description, its
 FPDS acquisition-program tag, the DoD announcement, or the subaward that names
-the work) against the work the program's own narrative and project titles own,
-not from whether the linking rule fired. The page names that question beside the
-figures, and gate 24 leg n fails a build whose figures carry any other rubric or
-whose paragraph omits it. Each sampled link is counted under the tier it
-publishes under TODAY, not the tier it carried when it was drawn —
+the work) against the work the program owns — its narrative, its project
+titles, or the program its tag names — not from whether the linking rule
+fired. The page names that question beside the figures, and gate 24 leg n
+fails a build whose figures carry any other rubric or whose paragraph omits
+it. Each sampled link is counted under the tier it publishes under TODAY, not
+the tier it carried when it was drawn —
 `fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and its links
 moved into the `fpds-ap` medium tier, so counting by the drawn method printed a
 figure for a tier no reader can meet. A sampled link the corpus no
@@ -248,16 +254,28 @@ tier, a re-measurement replaces the number it corrects and never pools with it,
 and the page states every study date it draws on.
 
 Tiers with no published figure are NAMED on the page rather than left silent:
-the account, account/sub-agency and account/keyword tiers rest on an
-appropriation-account match — an association by construction, not proof this
-program paid — and their precision as program attribution has not been
-independently measured. The account/sub-agency tier was sampled on 2026-09-04,
-but that adjudication asked only whether the mechanical rule had fired (the
-appropriation account, the sub-agency, the contract-number prefix) and not
-whether the award paid for this program; those 60 verdicts are stored under the
-`rule-fired` rubric for audit and excluded from every published figure by the
-rubric filter — not by a hand-named list — and the tier remains unmeasured until
-a fresh sample is judged on program attribution.
+the account and account/keyword tiers rest on an appropriation-account match —
+an association by construction, not proof this program paid — and their
+precision as program attribution has not been independently measured. The page
+states the narrowing each of those tiers adds (a hand adjudication that pinned
+the pair; keyword overlap) from the same list, so a tier that gains a figure
+stops being described as unmeasured in the same build. The account/sub-agency
+tier's first sample (2026-09-04) was judged only on whether the mechanical rule
+had fired — the appropriation account, the sub-agency, the contract-number
+prefix — and not on whether the award paid for this program; those 60 verdicts
+are stored under the `rule-fired` rubric for audit and excluded from every
+published figure by the rubric filter, not by a hand-named list. A fresh
+60-link sample (drawn as `2026-09-05`, seed 20260905, with the award's
+description and the program's narrative, project titles and lexicon names in
+each packet) was judged on program attribution by two independent adversarial
+lenses per packet — an attribution judge and a skeptical refuter, arbiter on
+disagreement, default refuted (120 judgements, 0 disagreements) — and
+**0 of 60** is the figure the page prints. Under that rubric a link confirms
+only when the award's own record names work the program element's narrative or
+project titles own; no sampled link cleared it — several awards name a
+different DARPA effort outright, and what the reviewers found in common
+between award and line was the linking rule itself (the appropriation account,
+the DARPA sub-agency, the HR0011 contract-number prefix).
 
 **Derived figures are labeled derived.** Any figure computed from published
 rates or published subtotals — rather than directly reported in a source

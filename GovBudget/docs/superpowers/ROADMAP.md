@@ -526,6 +526,27 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   10000.000000000004 run to run (13/8/8/10/10/13 breaches over six
   consecutive counts). A gate whose result changes without the data
   changing is not a gate; the ceiling now carries a documented 1e-6 epsilon.
+- **2026-09-11: precision rubric, and the number it exposed (#79).** The
+  largest published tier (`account+subagency` — 9,337 published rows in
+  Postgres over 416 DARPA awards and 24 DARPA PEs, 8,856 of them in the mart,
+  72% of every published link a reader can meet) carried a 60/60 "precision"
+  that measured only whether the linking rule had fired. Re-drawn (60 links,
+  seed 20260905) and judged on program attribution — does this award execute
+  this program element? — with the award's own description and the PE's
+  narrative, project titles and lexicon names in the packet: **0/60**, two
+  independent adversarial lenses per packet, 120 judgements, 0 disagreements.
+  Every sampled award's record describes work the linked PE does not own; the
+  overlaps were the appropriation account, the DARPA sub-agency and the
+  HR0011 prefix — the rule restated. Published as measured (smaller true
+  number); what the tier does next is an owner call (#107). The fix is
+  structural, not editorial: the verdict row records its rubric (migration
+  015), the exporter filters on it, and gate 24 leg n makes the page name it.
+  Lessons: a hand-named exclusion set is a label the next study forgets to
+  update, a column is a property of the row; "latest sample only" had to
+  become "latest run per stratum" the moment one stratum was re-judged alone;
+  and a tier's prose has to be derived from the same list the figures are —
+  "narrowed by sub-agency" was still rendering beside an unmeasured list that
+  no longer contained that tier until the narrowings were derived too.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -569,7 +590,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#79 Precision study rubric.** `link_precision_samples` needs a `rubric`
   column; strata judged on different questions must not publish side by side.
   Re-adjudicate `account+subagency` against program attribution (its first
-  study confirmed only that the rule fired). **Status:** open (2026-09-04).
+  study confirmed only that the rule fired). **Status:** CLOSED 2026-09-11 — migration 015 `rubric` column ('attribution' | 'rule-fired'; the 2026-09-04 account+subagency rows stamped rule-fired, the other four strata attribution); exporter and CLI filter on rubric, `_UNRUBRICKED_PRECISION_STRATA` deleted; each tier's figure comes from the latest run that judged it (a run may re-judge one stratum, nothing pools); account+subagency re-drawn (60 links, seed 20260905, sample `2026-09-05`) with attribution packets (award description + program narrative/projects/lexicon + lake evidence) and judged adversarially on program attribution — attribution judge + skeptical refuter per packet, arbiter on disagreement, default refuted, 120 judgements, 0 disagreements — at **0/60** (loaded 2026-09-11; the 2026-09-04 rule-fired rows kept for audit, 55/55 unpublished); /methodology/ prints the figure beside the tier's "association, not evidence this program paid" sentence and the rule-fired history sentence retired itself off the derived unmeasured list; gate 24 leg n requires the paragraph to name the rubric. Owner call on what the tier does next: #107.
 - **#80 Owner call: should `fct_program_concentration` (program-page HHI +
   program_dollars) be high-only?** It is high+medium by construction; 158 of
   438 programs' blocks rest entirely on medium links, and medium is now
@@ -945,6 +966,44 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   numbers; `ad23016b` the ROADMAP findings entry and this backlog entry;
   `090d63db` the style follow-up keeping `recomputeCoverageMap`'s docblock
   attached to it). (wording corrected before publication)
+- **#107 OWNER CALL: what happens to the `account+subagency` tier now that it
+  measures 0/60 for program attribution.** The 2026-09-05 sample (60 published
+  links, judged 2026-09-11 by two adversarial lenses, 0 disagreements)
+  confirmed none: every sampled award's own record describes work the linked PE
+  does not own, and the only overlaps were the appropriation account, the DARPA
+  sub-agency and the HR0011 prefix — the linking rule restated. The figure is
+  published as measured (smaller true number, 2026-08-07); WHETHER THE TIER
+  KEEPS PUBLISHING is the owner's, not a gate's. Scale: 9,337 published rows in
+  Postgres over 416 DARPA awards and 24 DARPA PEs; 8,856 in the mart — 72% of
+  every published link a reader can meet, and 8,856 of the 9,581 published rows
+  (92%) on those 24 program pages. Three options and what each costs:
+  (a) **keep it published at medium with the caveat** — nothing moves; the
+  Related Awards table on those 24 pages stays 92% rows whose attribution
+  measured 0/60, and the honesty rests entirely on the in-table medium note
+  (gate 21 leg m) plus /methodology/'s figure, which a reader skimming a table
+  may not meet; (b) **demote to an unpublished audit tier** — no program loses
+  its Related Awards table (all 24 also carry links of another species), but
+  those pages lose ~92% of their rows and the all-tier concentration basis
+  (`*_all`, #80) is recomputed on those 24; the high-only basis (`*_high`) and
+  the district dollar marts are unaffected by construction (`fct_district_*`
+  are `confidence = 'high'` only — the all-confidence breadth grain would lose
+  rows); (c) **replace with evidence-graded links only** — (b) plus a
+  description-level crosswalk for DARPA, the most expensive and the only one
+  that restores coverage with evidence behind it. Decide with #80's basis work
+  and #85's mechanical crosswalk. **Status:** open (owner call, 2026-09-11).
+- **#108 `fpds-ap` rubric: the tier was judged partly on its own rule.** The
+  FPDS acquisition-program tag IS the `fpds-ap` linking rule, and it leads 40
+  of the 60 verdict reasons behind `fpds-ap 94/120`; fewer than ten cite the
+  PE's narrative or project titles (6 by Task 6a's count, 4 by a stricter
+  match — both over `data/research/precision/verdicts_2026-09-04.json`). The
+  2026-09-04 study judged that stratum on "the tag matched and the hand-made
+  mapping holds", which is weaker than the description-level attribution the
+  announcement and subaward strata were judged on and stronger than the
+  rule-restating that #79 caught in `account+subagency` — the reasons do pair
+  the tag with the award's work description, so it was not re-stamped
+  `rule-fired`. A future study should judge `fpds-ap` on description-level
+  attribution like the other strata and publish whichever number comes back.
+  **Status:** open (2026-09-11).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

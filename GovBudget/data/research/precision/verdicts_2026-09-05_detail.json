@@ -1,0 +1,609 @@
+{
+ "sample_id": "2026-09-05",
+ "method": "account+subagency",
+ "rubric": "attribution",
+ "adjudicated_at": "2026-09-11",
+ "design": "two independent lenses (attribution judge, skeptical refuter) per packet, arbiter on disagreement, default refuted; 120 agents, 0 disagreements",
+ "verdicts": [
+  {
+   "index": 0,
+   "piid": "HR001113C0030",
+   "pe_bli": "0602303E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the 12 lake transactions for HR001113C0030 describes one effort: \"THE GOAL OF THE ADAPTIVE RADAR COUNTERMEASURES (ARC) PROGRAM IS TO DEVELOP THE CAPABILITY TO COUNTER ADAPTIVE RADAR THREATS IN TACTICALLY RELEVANT TIME FRAMES BASED ON OVER-THE-AIR OBSERVABLE SIGNALS\", with modifications reading \"LEIDOS ARC PHASE 3\" and \"ADAPTIVE RADAR COUNTERMEASURES (ARC) PROGRAM. ARCADIA PHASE 3.\"; the acquisition-program tag is \"NONE\" and there is no subaward evidence. PE 0602303E does not own ARC \u2014 its 650 narratives never contain \"Adaptive Radar Countermeasures\", \"ARC\" or \"countermeasure\", and its only radar mentions are RFMLS boilerplate listing \"conventional radio frequency (RF) systems such as radar, signals intelligence, electronic warfare, and communications\" (thematic RF overlap, not this program's work). The J-book instead assigns this exact effort to a different progr",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 1,
+   "piid": "HR001115C0084",
+   "pe_bli": "0602026E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a different DARPA program entirely: \"DARPA'S LIVING FOUNDRIES: 1000 MOLECULES PROGRAM SEEKS TO BUILD A SCALABLE, INTEGRATED, RAPID DESIGN AND PROTOTYPING INFRASTRUCTURE FOR THE FACILE ENGINEERING OF BIOLOGY\" (NAICS \"RESEARCH AND DEVELOPMENT IN BIOTECHNOLOGY\"), with no acquisition-program tag and no subaward description evidence. PE 0602026E \"Effects\" owns only physical/non-physical means \"to degrade or deny targeted adversary capabilities\" \u2014 its project titles are \"Effects Studies and Concepts\" (high pulsed power lasers), \"Humboldt\" (directed energy devices), and \"Sync\" (counter-UUV harbor defense); nothing in its narratives names Living Foundries, molecules, or biology, and the PE itself states \"Prior to FY 2026, efforts in this PE were funded in PE 0602716E, Electronics Technology,\" while this award ran FY2017\u20132022. A lake check confirms \"Living F",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 2,
+   "piid": "HR001115C0113",
+   "pe_bli": "0601101E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description names one named DARPA effort: \"RAYTHEON BBN TECHNOLOGIES' AWARD UNDER THE LOW RESOURCES LANGUAGES FOR EMERGENCY INCIDENTS (LORELEI)... DEVELOP A LANGUAGE TECHNOLOGY DEVELOPMENT ENVIRONMENT (LTDE)\", and LORELEI is not owned by 0601101E \u2014 it appears in no project title or lexicon term of Defense Research Sciences, whose narratives cover Math/Computer, Cyber, Electronic and Bio Sciences; the only J-book narrative that owns it is PE 0602303E project IT-04, \"The Low Resource Languages for Emergent Incidents (LORELEI) program is developing technology to rapidly field machine translation and other language processing capabilities for low-resource foreign languages.\" The acquisition-program tag is \"NONE\" and the claimant tag is \"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\", so nothing but the account 097-0400 and the DARPA sub-agency (th",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 3,
+   "piid": "HR001115C0114",
+   "pe_bli": "0602024E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every description on this PIID names computational linguistics, not biology: the base is \"CARNEGIE MELLON UNIVERSITY'S (CMU) AWARD UNDER DARPA'S LOW RESOURCES LANGUAGES FOR EMERGENCY INCIDENTS (LORELEI)... ADVANCE THE STATE OF COMPUTATIONAL LINGUISTICS AND HUMAN LANGUAGE TECHNOLOGY\", and the mod is \"IGF::OT::IGF CARNEGIE MELLON LORELEI PHASE 2\"; the acquisition-program tag is literally \"NONE\" and there are no subawards. PE 0602024E \"Warfighting Performance\" owns only \"biologically based materials and biological technologies\" work \u2014 none of its 21 project titles or lexicon terms (EMBER, RBC-Factory, GOLDEVAC, Rapid Battlefield Triage, etc.) touch language technology, and 0/150 of its narratives mention \"language\", \"linguis\", \"translat\" or \"Carnegie Mellon\". The lake positively places this work elsewhere: the only J-book narrative naming LORELEI is under PE 0602303E, titled \"Lo",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 4,
+   "piid": "HR001115C0115",
+   "pe_bli": "0601117E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a computational-linguistics effort, not medical basic research: \"LOW RESOURCE LANGUAGES FOR EMERGENT INCIDENTS (LORELEI) THE GOAL OF THE LORELEI PROGRAM IS TO DRAMATICALLY ADVANCE THE STATE OF COMPUTATIONAL LINGUISTICS AND HUMAN LANGUAGE TECHNOLOGY\" \u2014 \"LORELEI\" appears in all 22 transactions for this PIID and matches none of PE 0601117E's 21 project titles or its lexicon_own terms (ADEPT, AIM, EBI, PED, SHIELD, SMS, etc.), and all 144 detail_narratives rows for 0601117E contain zero hits for \"lorelei\", \"language\", \"linguistic\" or \"translation\". The dod_acquisition_program_description is \"NONE\" on every transaction and there is no subaward evidence, so the only remaining links are account 097-0400 and sub-agency DARPA, which the rubric excludes. The two apparent touchpoints are vague thematic overlap, not the program's named work: \"INFECTIOUS DISEASE",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 5,
+   "piid": "HR001115C0115",
+   "pe_bli": "0602026E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the 22 transaction descriptions for HR001115C0115 describes one effort: \"LOW RESOURCE LANGUAGES FOR EMERGENT INCIDENTS (LORELEI)... DRAMATICALLY ADVANCE THE STATE OF COMPUTATIONAL LINGUISTICS AND HUMAN LANGUAGE TECHNOLOGY\", and the dod_acquisition_program_description is 'NONE' on all of them (program_acronym/major_program null), so there is no acquisition-program tag and no subaward evidence to help. PE 0602026E's own narratives and project titles own entirely different work \u2014 \"degrade or deny targeted adversary capabilities\", \"Humboldt program seeks to develop directed energy (DE) devices\", \"Sync program will create systems to defend against uncrewed underwater vehicles (UUVs)\", \"high pulsed power laser systems\" \u2014 and a keyword scan of all six live detail_narratives for 0602026E returns zero hits for LORELEI, \"languag\", \"linguist\", or \"translat\". Nothing but the",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 6,
+   "piid": "HR001115C0116",
+   "pe_bli": "0603469E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the six transaction descriptions for HR001115C0116 in the lake names one effort only \u2014 \"LOW RESOURCE LANGUAGES FOR EMERGENT INCIDENTS (LORELEI) PROGRAM\" / \"APPEN LORELEI MILESTONE 17\", with Appen as \"A TA3.1 PERFORMER\" who \"SHALL COLLECT AND ANNOTATE (FOR TOPIC) SPEECH DATA IN THE 22 TYPOLOGICALLY REPRESENTATIVE LANGUAGES\" \u2014 and the acquisition-program tag is literally \"NONE\" (no subaward text exists in stg_subawards). Nothing in PE 0603469E's J-book owns that work: across all 96 detail_narratives rows for 0603469E, a search for lorelei / low resource language / human language technology / speech / translation returns 0 hits, and its eleven project titles are C4/microelectronics/cyber efforts (GeCCO, Space-WATCH, COOP, MELT, NGMM, Carcosa, Constellation, RSS Capstones) \u2014 none of which the award mentions. Decisively, \"Low Resource Languages for Emergent Incidents ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 7,
+   "piid": "HR001115C0121",
+   "pe_bli": "0603766E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a different DARPA program: \"DARPA CYBER GRAND CHALLENGE (CGC) PROGRAM.\" and, in the base description, \"IGF::OT::IGF   DARPA CYBER GRAND CHALLENGE (CGC) - THE AWARD PROVIDES MONTHLY DATA HOSTING-RACK SPACE/BASELINE BANDWIDTH/COOLING/ELECTRICAL FOR THE STORAGE OF I2O'S SUPERCOMPUTER IN SUPPORT OF DARPA'S 2016 CYBER CHALLENGE\" \u2014 rack space and bandwidth for an I2O supercomputer, not any named effort of 0603766E. The single lake transaction (FY2019, -$211,336.31 deobligation, SWITCH, LTD.) carries dod_acquisition_program_description = 'NONE' and no subaward evidence. Postgres confirms the mismatch: no 0603766E narrative mentions \"Cyber Grand Challenge\", \"CGC\" or \"supercomputer\" (0 hits), and \"Cyber Grand Challenge (CGC)\" appears only under PE 0602303E projects IT-03/IT-05. Nothing in this award names 0603766E's Joint Warfare Systems / Maritime Systems w",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 8,
+   "piid": "HR001115C0139",
+   "pe_bli": "0603468E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every description on this award names a different DARPA program: \"NEAR-ZERO POWER RF AND SENSOR OPERATIONS (N-ZERO) SEEKING TO ENABLE REVOLUTIONARY ADVANCES IN SCIENCE, DEVICES, OR SYSTEMS\", and all eight lake transaction descriptions for HR001115C0139 repeat it (\"...IN SUPPORT OF THE NEAR ZERO POWER RF AND SENSOR OPERATIONS (N-ZERO) PROGRAM.\"), with dod_acquisition_program_description = \"NONE\" and the claimant program \"ELECTRONICS AND COMMUNICATION EQUIPMENT\". N-ZERO appears nowhere in PE 0603468E: Postgres detail_narratives has 0 rows for pe_bli='0603468E' matching N-ZERO/\"near zero power\", while the narrative titled \"Near Zero Energy RF and Sensor Operations (N-ZERO)\" is owned by PE 0601101E (project ES-01) and PE 0602716E (project ELT-01) \u2014 \"The Near Zero Power RF and Sensor Operations (N-ZERO) program will develop and demonstrate the technologies required to extend the l",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 9,
+   "piid": "HR001115C0139",
+   "pe_bli": "0605898E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description for HR001115C0139 names DARPA's technical research effort \"NEAR-ZERO POWER RF AND SENSOR OPERATIONS (N-ZERO)\" \u2014 e.g. the base scope \"SEEKING TO ENABLE REVOLUTIONARY ADVANCES IN SCIENCE, DEVICES, OR SYSTEMS\" and mods \"EXERCISE CLIN 0003 OF THE NEAR ZERO POWER RF AND SENSOR OPERATIONS (N-ZERO) CONTRACT\" \u2014 while PE 0605898E owns only \"the administrative support costs of the Defense Advanced Research Projects Agency\u2026 personnel compensation for management headquarters civilians as well as associated travel and support contract costs,\" with project titles limited to \"Management Headquarters,\" \"\u2026Civilian Personnel Salaries,\" \"\u2026Strategic Operational Support,\" and \"\u2026Travel.\" No 0605898E narrative mentions N-ZERO, RF, or sensors (0 hits in detail_narratives), the dod_acquisition_program_description is \"NONE,\" and there is no subaward evidence, so the only ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 10,
+   "piid": "HR001115F0001",
+   "pe_bli": "0602026E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text is entirely generic agency overhead \u2014 base description \"IGF::CL::IGF - ACQUISITION CONSULTANT SUPPORT SERVICES\", PSC \"SUPPORT- MANAGEMENT: OTHER\", and all 14 lake transactions add only contract mechanics (\"EXERCISE OPTION PERIOD TWO\", \"APPLY INCREMENTAL FUNDS TO CLIN 0003\", \"REVISE THE COR\"); `dod_acquisition_program_description` is \"NONE\", there is no program acronym, and stg_subawards has zero rows for this prime. Nothing names any work 0602026E owns \u2014 not \"Effects Studies and Concepts\", \"Humboldt\" (which \"seeks to develop directed energy (DE) devices\"), or \"Sync\" (counter-UUV) \u2014 and the PE's own narrative says \"Prior to FY 2026, efforts in this PE were funded in PE 0602716E, Electronics Technology,\" with its only budget line in FY2026, while this award obligated FY2017\u2013FY2020. The closest overlap is the Effects Support mission's \"contractor support ...",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 11,
+   "piid": "HR001115F0004",
+   "pe_bli": "0603469E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description on HR001115F0004 is agency-wide acquisition staffing, not AET technical work: base scope \"IGF::CL::IGF CMO SETA SUPPORT\" and mods reading \"IGF::CL::IGF CONTRACT SPECIALIST SUPPORT SERVICES; THE PURPOSE OF THIS MODIFICATION IS TO REMOVE EXCESS EXPIRED FUNDS, REALIGN EXCESS FUNDS, ADD INCREMENTAL FUNDS, UPDATE SECTION H...\" \u2014 i.e. SETA support to DARPA's Contracts Management Office, flagged \"CLOSELY ASSOCIATED\" inherently-governmental functions, PSC \"SUPPORT- MANAGEMENT: OTHER\", NAICS \"ENGINEERING SERVICES\". The DoD acquisition-program tag is literally \"NONE\", there are no subawards (stg_subawards empty for CONT_AWD_HR001115F0004_9700_GS23F0077M_4730), and no description names any 0603469E project or lexicon term (Carcosa, COOP, GeCCO, MELT, NGMM, RSS Capstones, Space-WATCH) or any of the PE's stated work (quantum circuits, integrated photonic-elec",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 12,
+   "piid": "HR001116C0014",
+   "pe_bli": "0601117E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] All six lake transactions for HR001116C0014 name one thing: \"ELECTRICAL PRESCRIPTIONS (ELECTRX)\" and the base description \"IGF::OT::IGF - ELECTRICAL PRESCRIPTIONS (ELECTRX)PROGRAM:  ULTRX - ULTRASOUND PRESCRIPTIONS PHASE I\" \u2014 but neither \"ElectRx\"/\"Electrical Prescriptions\" nor \"ULTRX\"/\"ultrasound\" appears anywhere in 0601117E's 144 loaded narratives (including the FY2017/2018/2019 editions that span the 2016-02-08 to 2019-01-11 PoP) or in any of its 21 MED-01 project titles; a lake-wide search of detail_narratives for those strings returns zero rows, and searches for \"nerve\", \"neural\", \"ultrasound\" and \"self-healing\" under this PE return zero. The only nearby text is \"Physiological Overmatch\" citing \"Advances in engineered cells, bioelectronics, and cellular feedback circuits\", which is generic thematic overlap and does not name ElectRx or ULTRX. The acquisition-program tag ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 13,
+   "piid": "HR001116C0077",
+   "pe_bli": "0603760E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description names one effort \u2014 \"THE HIGH POWER AMPLIFIER USING VACUUM ELECTRONICS FOR OVERMATCHED CAPABILITY (HAVOC) PROGRAM WILL DEVELOP AND DEMONSTRATE A NEW CLASS OF COMPACT, HIGH POWER, AND WIDE BANDWIDTH MILLIMETER WAVE VACUUM ELECTRON DEVICES\" \u2014 and \"HAVOC\" appears in none of 0603760E's project titles, lexicon terms, or narrative bodies (Postgres: `select count(*) from detail_narratives where pe_bli='0603760E' and body ilike '%HAVOC%'` returns 0). The narrative that does own this work sits in a different PE: 0602716E project ELT-01, \"High power Amplifier using Vacuum electronics for Overmatch Capability (HAVOC)\", whose body reads \"The High power Amplifier using Vacuum electronics for Overmatch Capability (HAVOC) program seeks to develop compact radio frequency signal amplifiers\" (also cited under 0601101E, ES-01). The dod_acquisition_program_descriptio",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 14,
+   "piid": "HR001116C0090",
+   "pe_bli": "0603469E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the seven transactions for HR001116C0090 carries only boilerplate \u2014 \"IGF::OT::IGF DARPA RESEARCH PROJECT.\", \"DARPA RESEARCH EFFORT. THE PURPOSE OF THIS MODIFICATION IS TO ADD INCREMENTAL FUNDING TO CLIN 0002 (PHASE 2).\", \"DARPA RESEARCH PROJECT\" \u2014 which names no system, capability or effort at all, and the acquisition-program tag is empty (dod_acquisition_program_code '000', description \"NONE\"; program_acronym, major_program and solicitation_identifier all null). The six distinct subaward lines are generic commodity descriptions \u2014 \"RF MICROWA,WAFER,ALL\" (GlobalFoundries), \"SERV MAINT COMPUTER\", \"TLS/EQP MFG/TEST TST\", \"TLS/EQP MFG/TS OTHER\" (R&D Circuits), \"TLS/EQP COMP HARDWAR\" (Padova) \u2014 with prime_award_project_title null; an RF microwave wafer buy is at most thematic overlap with the AET-02 \"ADVANCED DISRUPTIVE MICROTECHNOLOGIES\" project and names none of the",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 15,
+   "piid": "HR001116C0091",
+   "pe_bli": "0603467E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every description for this PIID is boilerplate that names no program work: base \"IGF::OT::IGF  DARPA RESEARCH PROJECT.\" and mods like \"THE CURRENT MODIFICATION INCORPORATES CHANGES TO THE OPTION PHASES AND PROVIDES INCREMENTAL FUNDING TO CLIN 0002.\" \u2014 the acquisition-program tag is literally \"NONE\", and all four subawards say only \"IN DIRECT SUPPORT OF THE PRIME CONTRACT REQUIREMENTS.\" / \"GOODS AND SERVICES IN DIRECT SUPPORT OF THE PRIME CONTRACT.\" The one named effort anywhere in the lake for this award is the 2017-12-15 transaction \"MAGIC EYE PHASE 2 - THE CURRENT MODIFICATION UPDATES THE CYBER SECURITY CLAUSE.\", and \"Magic Eye\" appears in no 0603467E narrative, project title (DAT-01 \"ADVANCED SYSTEMS\", DAT-02 \"ISR AND SENSORS\", DAT-06, DAT-07) or lexicon term \u2014 the only \"magic\" in the whole J-book corpus is the unrelated Navy \"MAGIC-1 display computer\" in LCS SUW Mission M",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 16,
+   "piid": "HR001116C0101",
+   "pe_bli": "0603286E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text is entirely a cyber-defense program: \"EXTREME DDOS DEFENSE (XD3), BASE (TA-1, PHASES 1&2. THE XD3 PROGRAM RESEARCHES THE AREA OF RESILIENT DEFENSES AGAINST DISTRIBUTED DENIAL OF SERVICE (DDOS) ATTACKS ON COMPUTER NETWORKS... SPREADS PHYSICAL OR LOGICAL LOCATIONS OF CYBER RESOURCES TO MITIGATE CENTRALIZED POINTS OF VULNERABILITY\" \u2014 and all 15 distinct transaction descriptions in the lake repeat \"XD3\"/\"EXTREME DDOS DEFENSE\" with no acquisition-program tag (dod_acquisition_program_description = \"NONE\" on every row). PE 0603286E \"Advanced Aerospace Systems\" owns air-vehicle, hypersonics and autonomy work (ANCILLARY, CRANE, HAWC, Glide Breaker, LongShot, TERN, SPRINT); its 198 detail_narratives rows for this PE contain zero occurrences of \"XD3\", \"DDOS\", \"denial of service\", or \"cyber\", and no budget_line_details project title matches \u2014 the only \"network\" hits ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 17,
+   "piid": "HR001116C0112",
+   "pe_bli": "0603469E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names \"RADIO FREQUENCY MICRO-SATELLITE RISK REDUCTION TECHNOLOGY (RNET) - BARRACUDA - HUNGRY MAN STUDY\", and its other modifications read \"RADAR NET (RNET)\" and \"RNET - YELLOWFIN STUDY\"; the acquisition-program tag is \"NONE\" for every transaction and there are no subawards. None of RNET / Radar Net / Barracuda / Yellowfin / Hungry Man / micro-satellite appears anywhere in 0603469E \"Advanced Enabling Technologies\" \u2014 its owned efforts are GeCCO, Space-WATCH, COOP, MELT, NGMM, Carcosa, Constellation, RSS Capstones (a body/title search of that PE's narratives for those terms returned zero rows). The named work is in fact owned by a different program element: detail_narratives has 0603287E project SPC-01 titled \"Radar Net\" \u2014 \"The Radar Net program will develop lightweight, low power, wideband capability for radio frequency (RF) communications and remote sensin",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 18,
+   "piid": "HR001116C0113",
+   "pe_bli": "0602023E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction on HR001116C0113 names one effort the PE does not own: \"RADIO FREQUENCY MICRO-SATELLITE RISK REDUCTION TECHNOLOGY (RNET) - HENDERSON\", over a base description of only \"IGF::OT::IGF - DARPA RESEARCH PROJECT\"; the acquisition-program tag is \"NONE\" and there is no award_link_sources row. Nothing in PE 0602023E \"Access and Awareness\" names RNET \u2014 a word-boundary search of all detail_narratives returns zero RNET hits, \"micro-satellite\" appears only under other PEs (e.g. 0603287E \"Large In-Situ Manufactured Apertures (LIMA)\" / \"SPACE PROGRAMS AND TECHNOLOGY\"), and \"risk reduction\" appears nowhere in 0602023E; its owned project titles are Albatross, ExCURSion, LASSO, NGEST, Oversight and \"All Domain Tactical Technologies Studies and Concepts\", all of which the J-book says were \"Prior to FY 2026 ... funded in PE 0602702E\", i.e. they did not exist as this PE's work d",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 19,
+   "piid": "HR001117C0002",
+   "pe_bli": "0601117E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] No award text names any work this medical PE owns: all 22 transactions for HR001117C0002 in the contracts lake carry only boilerplate \u2014 base \"IGF::OT::IGF  DARPA RESEARCH PROJECT.\" and mods like \"THE PURPOSE OF THIS MODIFICATION IS TO INCREASE THE AMOUNT OF CLIN 0002/PHASE 2 BY $578,654 TO ACCOUNT FOR ANTICIPATED COST GROWTH IN SUPPORT OF A DARPA RESEARCH PROJECT.\" \u2014 with dod_acquisition_program_description \"NONE\" and no program_acronym; none of the PE's project titles (ADEPT, PED, SHIELD, AIM, EBI, OP TEMPO, SMS...) or any medical term appears. The subaward evidence points the other way, naming RF/sensor hardware: \"WASABI +\", \"NRE - ENGINEERING.\" (Teledyne Scientific & Imaging), \"SWITCHED FILTER BANK\" (Nuvotronics), administered by \"DCMA RADARS & SENSORS (TEWKSBURY)\"; \"WASABI\" occurs in Postgres detail_narratives only under a different PE, 0603648D8Z (\"Wasabi will produce a ",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 20,
+   "piid": "HR001117C0005",
+   "pe_bli": "0603287E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award text never names any work this PE owns: all 20 transactions for HR001117C0005 in the contracts lake carry only boilerplate \u2014 base description \"IGF::OT::IGF DARPA RESEARCH PROJECT.\" and modification texts like \"DARPA RESEARCH PROJECT. RHE PURPOSE OF THIS MODIFICATION IS TO DELETE ATTACHMENT 1, STATEMENT OF WORK (SOW)... TO REFLECT ADMINISTRATIVE CHANGES ONLY\" and \"THE PURPOSE OF THIS MODIFICATION IS TO EXERCISE CLIN 0002/PHASE 2 AND ADD INCREMENTAL FUNDING\" \u2014 with no mention of Blackjack, Radar Net, RSGS, XSP, ALASA, Hallmark, SST or any other 0603287E project title, and no space/launch/satellite/on-orbit language at all. `dod_acquisition_program_description` is \"NONE\" on every row, `program_acronym`/`major_program` are null, and a subaward query (prime_award_piid = 'HR001117C0005') returns no rows, so there is no subaward evidence either. What remains is exactly wha",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 21,
+   "piid": "HR001117C0071",
+   "pe_bli": "0602026E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description for HR001117C0071 names one program, and it is not this PE's: \"THE RECONFIGURABLE IMAGING (REIMAGINE) PROGRAM AIMS TO DEMONSTRATE MULTI-FUNCTIONAL IMAGING SENSORS THAT ARE RECONFIGURABLE THROUGH SOFTWARE\" and \"THIS MODIFICATION EXERCISES TA3, PHASE 2 (CLIN 0007) IN SUPPORT OF THE RECONFIGURABLE IMAGING (REIMAGINE) PROGRAM\" \u2014 while PE 0602026E (\"Effects\") owns only \"Effects Studies and Concepts\", \"Humboldt\" (\"directed energy (DE) devices to produce disruptive effects in electronic systems\") and \"Sync\" (\"defend against uncrewed underwater vehicles (UUVs) entering U.S. harbors and ports\"), none of which the award text names; the PE mission is means \"to degrade or deny targeted adversary capabilities\", not imaging sensors. The acquisition-program tag is literally \"NONE\", the only subaward text is \"SUP/CON SERVICES OTH\", and the lake's own J-book narr",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 22,
+   "piid": "HR001117C0086",
+   "pe_bli": "0602715E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the 11 transaction descriptions for HR001117C0086 in the lake names one effort: base \"IGF::OT::IGF OPERATIONAL FIRES\" and mods such as \"THIS MODIFICATION PROVIDES INCREMENTAL FUNDING FOR THE OPERATIONAL FIRES PROGRAM.\" and \"THIS MODIFICATION EXTENDS THE PERIOD OF PERFORMANCE FOR THE OPERATIONAL FIRES STUDY\" \u2014 none of which appears in 0602715E \"Materials and Biological Technology\" (no MBT-01/MBT-02 project title or lexicon term matches; the J-book narratives that actually carry the title \"Operational Fires\" sit under PE 0602702E and 0603286E, not 0602715E). The acquisition-program tag is \"NONE\" and no subaward descriptions exist, so the only remaining commonality is account 097-0400 plus the DARPA sub-agency \u2014 the mechanical rule itself, which the rubric excludes as evidence. [B refuted] Every transaction on HR001117C0086 names one thing: base \"IGF::OT::IGF OPERAT",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 23,
+   "piid": "HR001117C0099",
+   "pe_bli": "0603467E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names an effort this PE never names: \"CASCADE. THIS STATEMENT OF WORK SPECIFIES A CONTINUATION AND EXPANSION OF THE PRIOR EFFORT TO CREATE, DEMONSTRATE, AND EVOLVE A PROTOTYPE MET/AL\", a \"MISSION ENGINEERING ANALYTICAL CAPABILITY ... TO EXPLORE SOLUTIONS TO THE AGILE LOGISTICS CHALLENGE\", with later mods expanding the acronym as \"COMPLEX ADAPTIVE SYSTEM COMPOSITION AND DESIGN ENVIRONMENT(CASCADE)\". Neither \"CASCADE\", \"MET/AL\", \"mission engineering\", \"agile logistics\", \"adaptive\" nor \"composition\" appears in any of the 132 loaded 0603467E narratives (all from the FY2026 DARPA master justification book), and no project title matches \u2014 its named efforts are APEX, Archer, ASIMOV, Box Kick, EEI, FLUID, Pulling Guard, Scorpionfish, Willow, Argus, Cancun, DODGEball, LAP, XENA, none of which the award mentions; the sole \"logistic\" hit is Pulling Guard's \"logistic",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 24,
+   "piid": "HR001117F0009",
+   "pe_bli": "0602115E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every description on this award is generic DARPA contracting-office staff support, never biomedical work: base \"IGF::CL::IGF - CMO SETA SUPPORT - AWARD\", and the nine transactions read \"CMO SETA SUPPORT - INCREMENTAL FUNDING FOR CLIN 0001\", \"CMO SETA SUPPORT - EXERCISING OPTION YEAR ONE (1)\", \"CONTRACT MANAGEMENT OFFICE (CMO) SETA SUPPORT\", and the packet's own \"CMO SETA SUPPORT, CHANGE PCO FROM WES BENNETT TO MARY BETH COLAVITO, UPDATE WAWF CLAUSE 252.232-7006\" \u2014 i.e. systems-engineering/technical-assistance labor for the Contract Management Office, coded PSC \"SUPPORT- PROFESSIONAL: OTHER\" / NAICS \"ENGINEERING SERVICES\" with dod_acquisition_program_description \"NONE\" and no subawards. Nothing names 0602115E \"Biomedical Technology\" or any BT-01 effort (ADEPT, HAPTIX, NSIA, RESTORE, Rapid Battlefield Triage, etc.), and no 0602115E narrative in detail_narratives mentions SETA, ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 25,
+   "piid": "HR001117F0010",
+   "pe_bli": "0602702E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a specific DARPA program that belongs to a different PE: base description \"IGF::OT::IGF RADIOMAP PHASE 3 OPTION SUPPORT FOR STO\" and later transactions on the same PIID \"ADVANCED RF MAPPING (RADIOMAP) PHASE 3 LABORATORY SUPPORT\" / \"ADVANCED RF MAPPING (RADIOMAP) PROGRAM SUPPORT\". \"Advanced RF Mapping\" is owned by PE 0603760E, project CCC-02 (\"Advanced RF Mapping ... actively sense and manipulate the radio frequency (RF) environment\"), and the award is explicitly \"FOR STO\" (Strategic Technology Office), not TTO; 0602702E has zero narrative or project-title mentions of RadioMap/RF mapping, and neither RadioMap nor any RF-mapping effort appears among its project titles or lexicon_own terms. The dod_acquisition_program_description is \"NONE\" and the packet's acquisition_programs list is empty, so the only thing tying this award to 0602702E is account 097",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 26,
+   "piid": "HR001117F0017",
+   "pe_bli": "0602025E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] All 16 lake transactions for HR001117F0017 carry only \"IGF::OT::IGF SPECTRUM CHALLENGE PROGRAM SUPPORT FOR MTO.\" (mods add \"ADD WORK TO CLIN 0001... REVISE THE SOW\"), with dod_acquisition_program_description = \"NONE\" on every line \u2014 MTO is an office, not this PE, and nothing in the text names any work 0602025E owns: none of its 66 project titles or 44 lexicon terms mention a spectrum challenge, and its only \"spectrum\" narrative hits are generic (\"a broad spectrum of DoD needs\", \"full spectrum military cyberspace operations\") or the unrelated Macaroni quantum-antenna line (\"Measurement and control of the electromagnetic spectrum\"), which is vague thematic overlap, not the program's named effort. Positively, the named work belongs to a different program element: PE 0602303E project IT-02 is titled \"Spectrum Grand Challenge\" (FY2017) and \"Spectrum Collaboration Challenge (SC2)* ",
+   "evidence_kind": "lake-transaction-text"
+  },
+  {
+   "index": 27,
+   "piid": "HR001117F0022",
+   "pe_bli": "0603760E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award names one specific DARPA effort \u2014 \"COLLABORATIVE OPERATIONS IN DENIED ENVIRONMENTS (CODE) SUPPORT\", base description \"IGF::OT::IGF DARPA CODE SUPPORT FOR TTO.\" (all nine transactions in the contracts parquet repeat \"CODE SUPPORT\") \u2014 and that effort is owned by a different program element: detail_narratives has \"Collaborative Operations in Denied Environment (CODE)\" as an accomplishment_planned_program under pe_bli 0603286E, project AIR-01, with zero hits for \"CODE\" or \"denied environment\" across all 241 narratives of 0603760E. Nothing in the award names any 0603760E work \u2014 not its PE title (\"Command, Control and Communications Systems\"), nor any CCC-02/04/05 project title or lexicon term (DyNAMO, MINC, SHARE, RNDMC, Space-BACN, etc.) \u2014 and the acquisition-program tag is empty (dod_acquisition_program_description \"NONE\", code 000), so the only thing tying the award t",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 28,
+   "piid": "HR001117F0036",
+   "pe_bli": "0605502E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction on HR001117F0036 describes contracting-office staff support, never SBIR/STTR work: base \"IGF::CL::IGF - CMO SETA SUPPORT - AWARD\", then \"CMO SETA SUPPORT- EXERCISING OPTION YEAR 1 AND INCREMENTAL FUNDING\", \"CONTRACTS MANAGEMENT OFFICE (CMO) SETA SUPPORT\" (P00006-P00008), under NAICS \"ADMINISTRATIVE MANAGEMENT AND GENERAL MANAGEMENT CONSULTING SERVICES\" / PSC \"SUPPORT- PROFESSIONAL: OTHER\", competed as \"FULL AND OPEN COMPETITION\" with \"NO SET ASIDE USED.\" The acquisition-program tag is \"NONE\" (dod_acquisition_program_description) and no subaward rows exist for the PIID or its parent IDV HR001116A0001. PE 0605502E's only project is SB-01 \"SMALL BUSINESS INNOVATION RESEARCH\", whose narrative owns solely \"the DARPA Small Business Innovation Research (SBIR) and Small Business Technology Transfer (STTR) programs ... small, high-tech businesses and academic institu",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 29,
+   "piid": "HR001118C0011",
+   "pe_bli": "0603286E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction for HR001118C0011 names one DARPA effort: \"THE SYSTEM SECURITY INTEGRATED THROUGH HARDWARE AND FIRMWARE (SSITH) PROGRAM WILL DEVELOP ARCHITECTURES AND DESIGN TOOLS THAT ENABLE SYSTEM-ON-CHIP (SOC) DESIGNERS TO SAFEGUARD HARDWARE AGAINST ALL SEVEN (7) KNOWN CLASSES OF HARDWARE VULNERABILITIES\" (mods repeat \"IN SUPPORT OF THE DARPA SSITH PROGRAM\"), and the acquisition-program tag is \"NONE\". SSITH appears in no 0603286E \"Advanced Aerospace Systems\" project title or lexicon entry (which own ANCILLARY, HAWC, TBG, CRANE, Glide Breaker, LongShot, TERN, etc.), and a Postgres check returns 0 detail_narratives rows for pe_bli 0603286E matching SSITH / \"System Security Integrated\" / \"system-on-chip\" / \"hardware vulnerab\" / \"Common Weakness Enumeration\" \u2014 the only PEs whose narratives name SSITH are 0602303E and 0602716E. All that supports the link is account 097-0400 p",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 30,
+   "piid": "HR001118C0017",
+   "pe_bli": "0601117E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own description is entirely hardware security: \"THE SYSTEM SECURITY INTEGRATED THROUGH HARDWARE AND FIRMWARE (SSITH) PROGRAM WILL DEVELOP ARCHITECTURES AND DESIGN TOOLS THAT ENABLE SYSTEM-ON-CHIP (SOC) DESIGNERS TO SAFEGUARD HARDWARE AGAINST ALL SEVEN (7) KNOWN CLASSES OF HARDWARE VULNERABILITIES\" \u2014 every transaction line for HR001118C0017 in the contracts parquet repeats SSITH (\"IN SUPPORT OF THE DARPA SSITH PROGRAM\"), the acquisition-program tag is \"NONE\", and the DoD claimant is \"ELECTRONICS AND COMMUNICATION EQUIPMENT\". Nothing in it names medical work, and 0601117E \"Basic Operational Medical Research Science\" owns only medical efforts (ADEPT, PED, SHIELD, \"Outpacing Infectious Disease\"); detail_narratives for 0601117E contain zero mentions of SSITH, \"system-on-chip\", or the recipient, while SSITH narratives sit under 0602303E and 0602716E. The link rests sole",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 31,
+   "piid": "HR001118C0019",
+   "pe_bli": "0603286E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description for HR001118C0019 in the contracts lake names one effort only \u2014 \"SYSTEM SECURITY INTEGRATED THROUGH HARDWARE AND FIRMWARE (SSITH) PROGRAM\" (base description identical; `dod_acquisition_program_description` is \"NONE\", so there is no acquisition-program tag). SSITH appears nowhere in PE 0603286E (\"Advanced Aerospace Systems\") \u2014 its mission text is about \"undeterrable air presence\", \"missiles, munitions, and vehicle systems\", and none of its 30 project titles or 22 lexicon-own terms (ANCILLARY, CODE, CRANE, HAWC, TERN, Liberty Lifter, LongShot, etc.) match; a Postgres query on detail_narratives returns 0 SSITH hits for 0603286E and instead shows SSITH owned by other PEs (\"System Security Integrated Through Hardware and firmware (SSITH)\" under 0602303E and 0602716E). The two subawards reinforce the mismatch, describing \"NOVEL HARDWARE SECURITY ARCHIT",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 32,
+   "piid": "HR001118C0020",
+   "pe_bli": "0603739E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction on HR001118C0020 names one DARPA effort: \"THE SYSTEM SECURITY INTEGRATED THROUGH HARDWARE AND FIRMWARE (SSITH) PROGRAM WILL DEVELOP ARCHITECTURES AND DESIGN TOOLS THAT ENABLE SYSTEM-ON-CHIP (SOC) DESIGNERS TO SAFEGUARD HARDWARE AGAINST ALL SEVEN (7) KNOWN CLASSES OF HARDWARE VULNERABILITIES\" \u2014 and SSITH is owned by other program elements, not 0603739E: detail_narratives carries \"System Security Integrated Through Hardware and firmware (SSITH)\" only under 0602716E/ELT-02 (8 rows) and 0602303E/IT-03 (4 rows), while all 188 narrative rows for 0603739E contain zero hits for \"SSITH\", \"hardware vulnerabilit\", \"Common Weakness\" or \"attack surface\", and no 0603739E project title matches. The one stray mod description (P00006, \"SHORT-RANGE INDEPENDENT MICROROBOTIC PLATFORMS (SHRIMP)\") likewise resolves to 0601101E/ES-01 and 0602716E/ELT-01, not 0603739E. The acquisit",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 33,
+   "piid": "HR001118C0054",
+   "pe_bli": "0605502E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a different DARPA effort entirely: \"PROMETHEUS PROGRAM: DEVELOPMENT AND INTEGRATION OF SAMPLE PREPARATION AND TROPICAL FEVER ASSAY ON THE MAN PORTABLE DIAGNOSTIC SYSTEM (MPDS)\" \u2014 across all ten transactions in the lake, no description ever says \"SBIR\", \"STTR\" or \"Small Business\", and the only project 0605502E owns is SB-01 \"SMALL BUSINESS INNOVATION RESEARCH\", whose narrative is pure boilerplate (\"the DARPA Small Business Innovation Research (SBIR) and Small Business Technology Transfer (STTR) programs are designed to provide small, high-tech businesses... the opportunity to propose radical, innovative, high-risk approaches\") naming no Prometheus, MPDS, assay or diagnostic work. The FPDS fields that would flag an SBIR execution are affirmatively negative, not merely blank: research_code is null, type_of_set_aside is \"NO SET ASIDE USED.\", extent_comp",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 34,
+   "piid": "HR001118C0062",
+   "pe_bli": "0603468E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text describes cyber work only: \"HARNESSING AUTONOMY FOR COUNTERING CYBER-ADVERSARY SYSTEMS (HACCS) PHASE I, II&III - KUDU WILL, AS A TA2 PERFORMER, DEVELOP TECHNOLOGIES FOR NON-DISRUPTIVE AUTONOMOUS AGENT(S) INSERTION INTO BOTNET-CONSCRIPTED OR OTHERWISE COMPROMISED NETWORKS\", and every lake transaction repeats HACCS (\"INVESTIGATE TECHNOLOGIES FOR CONDUCTING SAFE, NON-DISRUPTIVE, AND EFFECTIVE ACTIVE DEFENSE OPERATIONS IN CYBERSPACE\"); the acquisition-program tag is \"NONE\" and the claimant is \"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\", so there is no program tag or subaward evidence. Nothing in 0603468E \"Advanced Complex Systems\" owns that work \u2014 its 12 live narratives name only Longshot, SPRINT, Otter, AIR, MoHAWC, CRANE, RSGS, DRACO and \"Advanced Complex Systems Studies and Concepts\" (air/space vehicles, missiles, munitions), with zero o",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 35,
+   "piid": "HR001118C0062",
+   "pe_bli": "0605898E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text describes cyber R&D, not headquarters administration: \"HARNESSING AUTONOMY FOR COUNTERING CYBER-ADVERSARY SYSTEMS (HACCS) PHASE I, II&III - KUDU WILL, AS A TA2 PERFORMER, DEVELOP TECHNOLOGIES FOR NON-DISRUPTIVE AUTONOMOUS AGENT(S) INSERTION INTO BOTNET-CONSCRIPTED OR OTHERWISE COMPROMISED NETWORKS\". PE 0605898E owns only \"the administrative support costs of the Defense Advanced Research Projects Agency ... personnel compensation for management headquarters civilians as well as associated travel and support contract costs\", with project titles limited to \"Management Headquarters\", \"Management Headquarters Civilian Personnel Salaries\", \"Management Headquarters Strategic Operational Support\" and \"Management Headquarters Travel\" \u2014 none of which name HACCS, autonomous agents, or botnet defense; the dod_acquisition_program_description on every transaction is \"N",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 36,
+   "piid": "HR001118C0096",
+   "pe_bli": "0601117E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own description names microelectronics work, not medical science: \"THE OVERALL GOAL OF THE THREE DIMENSIONAL MONOLITHIC SYSTEM-ON-A-CHIP (3DSOC) PROGRAM IS TO DEVELOP 3D MONOLITHIC TECHNOLOGY THAT WILL ENABLE >50X IMPROVEMENT IN SOC DIGITAL PERFORMANCE AT POWER... DRIVE RESEARCH IN PROCESS, DESIGN TOOLS, AND NEW COMPUTE ARCHITECTURES.\" PE 0601117E \"Basic Operational Medical Research Science\" owns only medical efforts (\"Outpacing Infectious Disease\", \"Anesthetics for Battlefield Care (ABC)\", \"Synthetic Hemo-technologies to Locate & Disinfect (SHIELD)\", etc.), and its narrative scope is \"medical gaps in warfighter care related to, restorative function of the body, blood loss, and prevention and treatment of infectious disease\" \u2014 nothing about chips, SoC, or compute architectures. I checked all nine transactions in the contracts parquet for this PIID (FY2018\u2013FY2022):",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 37,
+   "piid": "HR001118C0109",
+   "pe_bli": "0603468E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a different DARPA effort entirely: \"NASCENT LIGHT-MATTER INTERACTIONS (NLM). THE CONTRACTOR PROPOSES TO DEVELOP A NONLINEAR MATERIAL DESIGN TOOL (NLMDT)... QUANTITATIVE PREDICTIONS OF NONLINEAR OPTICAL RESPONSE FOR ANY MATERIAL\" (all four transactions in the contracts parquet repeat this, the 2019-02-11 mod adding \"THE GOAL OF NLM IS TO BRING TOGETHER AND INTEGRATE NASCENT CONCEPTS INTO MODELS\"), and dod_acquisition_program_description is \"NONE\" with no program_acronym, so there is no acquisition-program tag. PE 0603468E's narrative and project titles own \"Advanced Complex Systems\" work \u2014 \"undeterrable air and space presence\", \"missiles, munitions, and vehicle systems\" \u2014 and its named efforts (AIR, CRANE, DRACO, Longshot, MoHAWC, Otter, RSGS, SPRINT); a Postgres scan of all 72 detail_narratives rows for 0603468E returns zero hits for \"light-matter\",",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 38,
+   "piid": "HR001118C0133",
+   "pe_bli": "0602115E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award names no work at all: every one of the 17 transaction rows for HR001118C0133 in the contracts parquet reads only \"DARPA RESEARCH PROJECT\" / \"DARPA RESEARCH PROJECT.\" (the single variant adds administrative boilerplate \u2014 \"THE PURPOSE OF THIS MODIFICATION IS TO IDENTIFY THE WORK PERFORMED UNDER THIS CONTRACT AS MISSION ESSENTIAL WORK, COVID-19\"), with `dod_acquisition_program_description` = \"NONE\", `dod_claimant_program_description` = \"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\", and `program_acronym` null. A subaward query on prime_award_piid = 'HR001118C0133' returned 0 rows, so there is no subaward text either. Nothing in the award names any 0602115E \"Biomedical Technology\" project title or lexicon term (ADEPT, BEST, HAPTIX, NSIA, \"Rapid Battlefield Triage\", etc.), and the PE's 225 Postgres detail_narratives rows contain zero hits for \"mercury\" or",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 39,
+   "piid": "HR001118C0134",
+   "pe_bli": "0602715E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award text is content-free boilerplate: every one of the 23 transactions for HR001118C0134 in the contracts parquet reads \"DARPA RESEARCH PROJECT\" (base description) or \"DARPA RESEARCH PROJECT PHASE I. THE PURPOSE OF THIS MODIFICATION IS TO UPDATE THE CLAUSES FOUND IN SECTION I...\" \u2014 it names no system, capability or effort, and matches none of the program's project titles or lexicon terms (\"Living Foundries\", \"Manufacturable Gradient Index Optics (M-GRIN)\", \"Persistent Aquatic Living Sensors\", etc.). The acquisition-program tag is literally \"NONE\" (dod_acquisition_program_description) with claimant \"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\" and no program_acronym, and the only two subawards (Rambus Inc; Teledyne LeCroy) carry the generic \"SUBCONTRACTOR WILL SUPPLY COMMERCIAL ITEMS IN SUPPORT OF CONTRACT\". The stated rationale \u2014 \"account 097-0400; sub-",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 40,
+   "piid": "HR001118C0138",
+   "pe_bli": "0605502E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the 12 lake transactions for HR001118C0138 describes the same non-SBIR work: \"OPERATIONAL FIRES (OPFIRES) PROPULSION SYSTEM. THE OPFIRES PROPULSION SYSTEM TASK WILL BE A TWO-PHASED EFFORT TO DESIGN AND DEVELOP INNOVATIVE PROPULSION CONCEPTS AND TECHNOLOGIES ENABLING A NOVEL GROUND-LAUNCHED SYSTEM FOR TACTICAL WEAPONS DEPLOYMENT,\" with mods reading \"THIS MODIFICATION PROVIDES INCREMENTAL FUNDING TO THE OPERATIONAL FIRES (OPFIRES) PROGRAM.\" Nothing in the award names work 0605502E owns: its only project is SB-01 \"SMALL BUSINESS INNOVATION RESEARCH\" and its narratives say only that \"The Small Business Innovation Research (SBIR) and Small Business Technology Transfer (STTR) programs are designed to provide small, high-tech businesses and academic institutions the opportunity to propose radical, innovative, high-risk approaches\" \u2014 zero 0605502E narratives contain \"pro",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 41,
+   "piid": "HR001118C0151",
+   "pe_bli": "0602716E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description for HR001118C0151 in the lake is facility guard work \u2014 base \"PHYSICAL SECURITY SUPPORT SERVICES\", plus mods reading \"FUNDING INCLUDES NEW ADMINISTRATIVE SCREENER POSITIONS PRIMARILY FOR ADDITIONAL COVID-19 SCREENING\" and \"REVISE LABOR AND SURGE CLIN PRICES\" \u2014 with NAICS \"SECURITY GUARDS AND PATROL SERVICES\", PSC \"SUPPORT- PROFESSIONAL: PHYSICAL SECURITY AND BADGING\", and dod_acquisition_program_description \"NONE\"; there are zero subawards. Nothing names any Electronics Technology (0602716E) effort: no ELT-01/ELT-02 project title and no lexicon term (the program's only nearby phrase, \"The Guaranteed Architectures for Physical Security (GAPS)\", is a hardware/firmware security-architecture research effort, not guard patrol and badging). The only connection is the appropriation account 097-0400 and the DARPA sub-agency named in the packet's own ratio",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 42,
+   "piid": "HR001119C0029",
+   "pe_bli": "0602115E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every description on this award names a different DARPA program: \"RAPID ATTACK DETECTION, ISOLATION AND CHARACTERIZATION SYSTEM (RADICS) - AERIAL SENSOR TESTING\", base description \"RADICS PROGRAM AERIAL SENSOR TESTING REQUIREMENT\" (all four distinct transaction descriptions in the contracts parquet for HR001119C0029 say RADICS; dod_acquisition_program_description is \"NONE\", program_acronym/major_program null, so there is no acquisition-program tag either). Nothing in that text touches any work 0602115E \"Biomedical Technology\" owns \u2014 no project title or lexicon term (ADEPT, BEST, HAPTIX, NSIA, RBC-Factory, Rapid Battlefield Triage, etc.) appears, and a search of all 225 detail_narratives rows for 0602115E returns zero hits for RADICS, \"aerial sensor\", \"grid\" or \"cyber\". Affirmatively, the RADICS narrative belongs to a different PE: detail_narratives carries \"Rapid Attack Detec",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 43,
+   "piid": "HR001119C0038",
+   "pe_bli": "0602702E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award names one specific DARPA effort \u2014 \"THE DAPRA SHORT-RANGE INDEPENDENT MICROROBOTIC PLATFORMS (SHRIMP) PROGRAM WILL DEVELOP AND DEMONSTRATE ... MULTI-FUNCTIONAL MM-TO-CM SCALE ROBOTIC PLATFORMS WITH A FOCUS ON UNTETHERED MOBILITY, MANEUVERABILITY, AND DEXTERITY\" \u2014 and that effort is owned by a different program element: detail_narratives has an accomplishment/planned-program narrative under pe_bli 0602716E (Electronics Technology), project ELT-01, titled \"SHort Range Independent Microrobotic Platforms (SHRIMP)\" whose body is the same text (\"The SHort Range Independent Microrobotic Platforms (SHRIMP) program will develop and demonstrate multi-functional millimeter-to-centimeter scale robotic platforms with a focus on untethered mobility, maneuverability, and dexterity. To achieve this goal, SHRIMP will also provide foundational research...\"), with related SHRIMP narrat",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 44,
+   "piid": "HR001119C0039",
+   "pe_bli": "0602025E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's description names one specific DARPA effort \u2014 \"THE DAPRA SHORT-RANGE INDEPENDENT MICROROBOTIC PLATFORMS (SHRIMP) PROGRAM WILL DEVELOP AND DEMONSTRATE ... MULTI-FUNCTIONAL MM-TO-CM SCALE ROBOTIC PLATFORMS WITH A FOCUS ON UNTETHERED MOBILITY, MANEUVERABILITY, AND DEXTERITY\" \u2014 and SHRIMP appears nowhere in 0602025E: not in any of its 73 detail_narratives rows (no hit for \"SHRIMP\", \"microrobot\", \"micro-actuator\", \"untethered\", \"dexterity\"), not in its project titles, not in its lexicon_own list. The J-book text that matches this award almost verbatim belongs to a different program element: 0602716E / Project ELT-01, \"SHort Range Independent Microrobotic Platforms (SHRIMP) program will develop and demonstrate multi-functional millimeter-to-centimeter scale robotic platforms with a focus on untethered mobility, maneuverability, and dexterity\" (also carried in 0601101E /",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 45,
+   "piid": "HR001119C0045",
+   "pe_bli": "0603766E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names only one effort: \"THE DAPRA SHORT-RANGE INDEPENDENT MICROROBOTIC PLATFORMS (SHRIMP) PROGRAM WILL DEVELOP AND DEMONSTRATE... MULTI-FUNCTIONAL MM-TO-CM SCALE ROBOTIC PLATFORMS\", and 0603766E does not own SHRIMP \u2014 a Postgres search of detail_narratives finds SHRIMP only under PE 0602716E project ELT-01 (\"The SHort Range Independent Microrobotic Platforms (SHRIMP) program will develop and demonstrate multi-functional millimeter-to-centimeter scale robotic platforms\") and PE 0601101E project ES-01, with zero hits for \"SHRIMP\", \"microrobot\" or \"actuator\" in any of 0603766E's 355 narratives and no SHRIMP entry in its NET-01/NET-02 project titles or lexicon. All four lake transactions for the PIID carry dod_acquisition_program_description = \"NONE\" and no program_acronym, and there is no subaward evidence, so the only thing tying the award to this PE is acco",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 46,
+   "piid": "HR001119C0060",
+   "pe_bli": "0602024E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award names one specific DARPA effort \u2014 \"PREEMPTIVE EXPRESSION OF PROTECTIVE ALLELES AND RESPONSE ELEMENTS (PREPARE)\" (lake transaction text also shows \"...(PREPARE) WITH COVID-19 WORK\"; the acquisition-program tag is \"NONE\") \u2014 and that effort is owned by a DIFFERENT program element: detail_narratives has \"Preemptive Expression of Protective Alleles and Response Elements (PREPARE)\" as an accomplishment_planned_program of pe_bli 0602715E, project MBT-02 (\"Materials and Biological Technology\"), in every DARPA J-book FY2020\u2013FY2026, and no program_lineage row connects 0602715E to 0602024E (both exist separately in FY2026). Nothing in 0602024E \"Warfighting Performance\" owns this work: none of its 21 project titles is PREPARE, and its only matches for allele/PREPARE/DNARX are the ordinary verb (\"biosecurity preparedness\"; \"technologies that prepare, sustain, and restore the ope",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 47,
+   "piid": "HR001119C0062",
+   "pe_bli": "0603287E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's only descriptive text, on all 18 transactions in the contracts parquet, is \"CONVERGED COLLABORATIVE ELEMENTS FOR RF TASK OPERATION (CONCERTO) PHASE 2/3\" (variants \"CONCERTO PHASE 2\", \"DE-OBLIGATION MODIFICATION\"), and \"CONCERTO\"/\"Converged Collaborative Elements\" appears in zero narratives or project titles for 0603287E \u2014 the 25 project titles are all space efforts (ALASA, Blackjack, DRACO, XSP, RSGS, SST, Phoenix, Otter, Blue Check, Hallmark, Radar Net, LIMA, OASIS, Planar Imager, SDA), and a Postgres count of 0603287E narratives matching 'converged', 'RF task', 'Mustang', 'L3Harris' or 'electronic warfare' returns 0. The acquisition-program tag is \"NONE\" (\"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\") and there are no subawards; the only nearby wording, Radar Net's \"lightweight, low power, wideband capability for radio frequency (RF) communicati",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 48,
+   "piid": "HR001119C0107",
+   "pe_bli": "0602716E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a different DARPA effort: every transaction reads \"BIO REPORTERS FOR SUBTERRANEAN SURVEILLANCE PROGRAM\" (base description identical; one FY2020/FY2021 variant \"BIO REPORTER PROGRAM\"), with NAICS \"RESEARCH AND DEVELOPMENT IN BIOTECHNOLOGY (EXCEPT NANOBIOTECHNOLOGY)\". That name appears nowhere in PE 0602716E \"Electronics Technology\": no project title or lexicon term matches, and a Postgres search of detail_narratives for '%bio reporter%', '%bioreporter%', '%BRSS%' and '%subterranean%' returns zero rows for 0602716E (the only DARPA subterranean narratives are under 0602702E \"ADVANCED LAND SYSTEMS TECHNOLOGY\"). The DoD acquisition-program tag is \"NONE\" and the claimant description is the null value \"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\"; the single subaward description is generic \"SUBCONTRACTING SERVICES\". The nearest ELT-01 item",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 49,
+   "piid": "HR001119F0016",
+   "pe_bli": "0602715E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Both loaded transactions for this PIID describe only agency contracting-shop staff support: \"CONTRACT MANAGEMENT OFFICE (CMO) SETA SUPPORT - JR.\" (base, 2018-12-20) and \"CONTRACTS MANAGEMENT OFFICE (CMO) SETA SUPPORT\" (2019-11-04), with PSC \"SUPPORT- PROFESSIONAL: OTHER\", NAICS \"ENGINEERING SERVICES\", dod_acquisition_program_description \"NONE\", and zero subawards on award key CONT_AWD_HR001119F0016_9700_HR001116A0002_9700. Nothing in that text names any work the Materials and Biological Technology PE owns \u2014 not \"Materials Processing and Manufacturing\", \"Living Foundries\", \"Persistent Aquatic Living Sensors\", or any other MBT-01/MBT-02 project title \u2014 and a reverse check of all 425 detail_narratives rows for 0602715E finds zero hits for \"SETA\", \"contract management\", \"technical assistance\", \"systems engineering\", or \"Strategic Analysis\". The only thing tying this award to the ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 50,
+   "piid": "HR001119F0017",
+   "pe_bli": "0601117E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a different DARPA effort: \"DARPA MAKE-IT CAPABILITY AND RISK ASSESSMENT STUDY PROGRAM SUPPORT\" (all four FY2019\u2013FY2020 transactions in the contracts parquet; the FY2020 mod shortens it to \"MAKE-IT PROGRAM SUPPORT\"), and its acquisition-program tag is literally \"NONE\" with no subaward rows (stg_subawards empty for CONT_AWD_HR001119F0017_9700_HR001117D0001_9700). Nothing in PE 0601117E \"Basic Operational Medical Science\" owns that work: no detail_narratives row in the whole Postgres corpus mentions \"Make-It\" (0 hits), the PE's 21 MED-01 project titles are things like \"Autonomous Diagnostics to Enable Prevention and Therapeutics (ADEPT)\" and \"Preventing the Emergence of Disease (PED)\", and its narratives never say \"capability and risk\", \"risk assessment\", \"study\", \"Johns Hopkins\" or \"Applied Physics Lab\" (0 hits each). The only connection left is accou",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 51,
+   "piid": "HR001119F0017",
+   "pe_bli": "0602115E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction on HR001119F0017 (4 rows, FY2019\u2013FY2020, JHU/APL under IDV HR001117D0001) carries the same text: \"DARPA MAKE-IT CAPABILITY AND RISK ASSESSMENT STUDY PROGRAM SUPPORT\" (FY2020 mod shortened to \"MAKE-IT PROGRAM SUPPORT\"), and the DoD acquisition-program tag is literally \"NONE\" with program_acronym/major_program null. \"MAKE-IT\" appears nowhere in PE 0602115E's narratives or BT-01 project titles \u2014 a Postgres scan of detail_narratives for 'Make-It'/'MAKE-IT' in title or body returned zero rows corpus-wide, and no budget_line_details project_title matches '%make%'. The nearest 0602115E content (\"Distributed Access to Critical Biotherapeutics for Warfighters\", \"Deployable Medical Countermeasures for Warfighter Readiness\") is thematic manufacturing overlap only and never names the Make-It effort. What remains linking this award is account 097-0400 plus the DARPA sub-",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 52,
+   "piid": "HR001119F0017",
+   "pe_bli": "0603467E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's only description text is \"DARPA MAKE-IT CAPABILITY AND RISK ASSESSMENT STUDY PROGRAM SUPPORT\" (FY2020 mod: \"MAKE-IT PROGRAM SUPPORT\"), and \"MAKE-IT\" appears nowhere in 0603467E's J-book narratives or project titles \u2014 the PE's owned efforts are \"Advanced Propulsor, Experimental (APEX)\", \"Archer\", \"ASIMOV\", \"Box Kick\", \"Scorpionfish\", \"Argus\", \"DODGEball\", \"Large Area Photocathode (LAP)\", \"XENA\", etc., under projects \"ADVANCED SYSTEMS\" and \"ISR AND SENSORS\"; a Postgres search of detail_narratives for '%MAKE-IT%' returns 0 rows corpus-wide. The acquisition-program tag is literally \"NONE\" (claimant \"SERVICES\", program_acronym null) and there are no subawards for CONT_AWD_HR001119F0017_9700_HR001117D0001_9700, so the only tie is account 097-0400 plus the DARPA sub-agency \u2014 the linking rule itself, which the rubric excludes. Insufficient evidence, therefore refute. [B r",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 53,
+   "piid": "HR001119F0026",
+   "pe_bli": "0603767E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every transaction description on this PIID names chip-design security, never sensor/ISR work: \"SUPPORT FOR DARPA SYSTEM ON A CHIP (SOC) DESIGN METHODOLOGY. THE GOAL OF THIS PROJECT IS TO UNDERSTAND THE CHALLENGES INHERENT IN INTEGRATING SCALABLE SECURITY INTO THE AUTOMATED CHIP DESIGN PROCESS\" (plus later lines \"SECURE SYSTEM ON A CHIP (SOC) DESIGN METHODOLOGY\" and \"SECURE SOC METHODOLOGY LABOR SUPPORT\"); the dod_acquisition_program_description is \"NONE\" and there is no subaward text. Nothing there matches any 0603767E name \u2014 the PE's own lexicon/project titles are sensor and surveillance efforts (e.g. \"Military Imaging and Surveillance Technology (MIST)\", \"Video-rate Synthetic Aperture Radar (ViSAR)\", \"Adaptive Radar Countermeasures (ARC)\"), and a Postgres search of the 280 detail_narratives rows for pe_bli 0603767E returns zero hits for \"system on a chip\", \"SoC\" or \"chip de",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 54,
+   "piid": "HR001119F0063",
+   "pe_bli": "0603469E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] Every one of the 5 lake transactions for HR001119F0063 carries the same text, \"SYSTEM OF SYSTEMS INTEGRATION TECHNOLOGY AND EXPERIMENTATION (SOSITE) TRANSITION EXPERIMENT PROGRAM SUPPORT\", and the acquisition-program tag is empty (dod_acquisition_program_code '000' / description 'NONE'), so the description is the only candidate evidence. 0603469E does not own SOSITE: none of its eleven project titles match (its own named efforts are \"Generating Communications Channels to Operate (GeCCO)\", \"Space domain Wide Area Tracking & Characterization (Space-WATCH)\", \"Continuous-correctness On Opaque Processors (COOP)\", \"Modular Efficient Laser Technology (MELT)\", \"Next Generation Microelectronics Manufacturing (NGMM)\", \"Carcosa\", \"Constellation\", \"Resilient Software Systems Capstones (RSS Capstones)\"), and no 0603469E narrative body even contains the phrase \"system of systems\". A Postgr",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 55,
+   "piid": "HR001119F0087",
+   "pe_bli": "0602023E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's only description text, in both the transaction and the prime base record across all three transactions, is \"REPLACEMENT FURNITURE\", with PSC \"OFFICE FURNITURE\" and NAICS \"OFFICE FURNITURE (EXCEPT WOOD) MANUFACTURING\" to recipient \"COMMERCIAL OFFICE FURNITURE COMPANY\"; the acquisition-program tag is literally \"NONE\" and the DoD claimant program is \"ALL OTHERS NOT IDENTIFIABLE TO ANY OTHER PROCUREMENT PROGRAM\", and no subaward rows exist for this PIID (0 rows matching the award unique key). Nothing in that text names any work owned by PE 0602023E \"Access and Awareness\" \u2014 not the \"All Domain Tactical Technologies\" project nor its named efforts \"Albatross\", \"Expeditionary Carbon Utilization for energy Resilience and Stabilization (ExCURSion)\", \"Lunar Assay via Small Satellite Orbiter (LASSO)\" or \"Next Generation Electronic Surveillance Technology (NGEST)\". The stated ",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 56,
+   "piid": "HR001119F0087",
+   "pe_bli": "0605502E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names nothing this program element owns: every transaction description in the lake for HR001119F0087 is \"REPLACEMENT FURNITURE\" (base description identical), PSC \"OFFICE FURNITURE\", NAICS \"OFFICE FURNITURE (EXCEPT WOOD) MANUFACTURING\", recipient \"COMMERCIAL OFFICE FURNITURE COMPANY\", and the acquisition-program tag is literally \"NONE\" (packet acquisition_programs is empty); no subaward evidence is present. PE 0605502E's only project is SB-01 \"Small Business Innovation Research\", whose narratives own R&D work \u2014 \"the DARPA Small Business Innovation Research (SBIR) and Small Business Technology Transfer (STTR) programs are designed to provide small, high-tech businesses and academic institutions the opportunity to propose radical, innovative, high-risk approaches\" \u2014 none of which the furniture purchase names. The stated rationale (\"account 097-0400; sub-agen",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 57,
+   "piid": "HR001119F0089",
+   "pe_bli": "0602026E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's entire self-description is \"SERVICE CHIEF HOUSING\" under NAICS \"HOTELS (EXCEPT CASINO HOTELS) AND MOTELS\" and PSC \"TRANSPORTATION/TRAVEL/RELOCATION- TRAVEL/LODGING/RECRUITMENT: LODGING, HOTEL/MOTEL\" to OREGON PREMIER LOCATIONS, LLC; the acquisition-program tag is \"NONE\" and there are no subaward rows for this PIID, so no award-side text names any work PE 0602026E owns. The PE's narrative and project titles are \"Effects Studies and Concepts\", \"Humboldt\", \"Sync\", \"EFFECTS\" and \"EFFECTS SUPPORT\" \u2014 about technologies that \"degrade or deny targeted adversary capabilities\" \u2014 and zero narratives for this pe_bli mention lodging, housing, hotel or travel; the PE's own text says \"Prior to FY 2026, efforts in this PE were funded in PE 0602716E, Electronics Technology\" while this action dates 2019-06-21. The packet rationale (\"account 097-0400; sub-agency Defense Advanced Res",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 58,
+   "piid": "HR001119F0098",
+   "pe_bli": "0601122E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's own text names a DARPA effort that a DIFFERENT program element owns: transaction description \"A MECHANICALLY-BASED ANTENNA (AMEBA) SIGNAL CHARACTERIZATION  PROGRAM SUPPORT - SOW UPDATE COVID-19\" and base description \"A MECHANICALLY-BASED ANTENNA (AMEBA) PROGRAM SUPPORT\" \u2014 and in the J-book narratives AMEBA sits under PE 0601101E, project ES-01, titled \"A MEchanically Based Antenna (AMEBA)\" (\"The A MEchanically Based Antenna (AMEBA) program seeks to develop efficient radio frequency (RF) transmitters operating in the Ultra-Low Frequency (ULF) and Very Low Frequency (VLF) ranges\"), not under 0601122E \"Emerging Opportunities\". None of 0601122E's 26 project titles or its lexicon_own terms name AMEBA, antennas, or ULF/VLF transmitters; the sole \"antenna\" string in its 192 narrative rows is an incidental Young Faculty Award topic list (\"research in fifteen topic areas s",
+   "evidence_kind": "none"
+  },
+  {
+   "index": 59,
+   "piid": "HR001119F0099",
+   "pe_bli": "0602026E",
+   "method": "account+subagency",
+   "verdict": "refuted",
+   "how": "agree",
+   "reason": "[A refuted] The award's only description text is \"SERVICE CHIEF HOUSING\" (identical in transaction_description and prime_award_base_transaction_description in the FY2019 contracts parquet), with PSC \"TRANSPORTATION/TRAVEL/RELOCATION- TRAVEL/LODGING/RECRUITMENT: LODGING, HOTEL/MOTEL\", NAICS \"HOTELS (EXCEPT CASINO HOTELS) AND MOTELS\", dod_acquisition_program_description \"NONE\", and no subaward rows (stg_subawards is empty for CONT_AWD_HR001119F0099_9700_HR001116D0002_9700) \u2014 nothing names Effects work such as \"Humboldt\", \"Sync\", \"Effects Studies and Concepts\", \"methods of defeating enemy anti-aircraft attacks\" or \"munition technologies\", and a Postgres search of detail_narratives for pe_bli 0602026E returns zero hits for lodging/housing/hotel/\"Service Chief\". The only things tying the award to 0602026E are account 097-0400 and sub-agency DARPA, which the rubric excludes as the linking rule",
+   "evidence_kind": "none"
+  }
+ ]
+}

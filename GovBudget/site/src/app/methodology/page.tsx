@@ -145,15 +145,39 @@ export default function MethodologyPage() {
   // no gate able to catch it — the property lives in this derived boolean,
   // not a literal. `account`/`account+subagency`/`account+tokens` measured
   // 2026-09-04 against site_meta.link_precision.unmeasured.
-  const ACCOUNT_FAMILY_TIERS = new Set([
-    "account",
-    "account+subagency",
-    "account+tokens",
-  ]);
+  // ROADMAP #79 (6b): the NARROWING each of those tiers adds is per-tier
+  // too, and `account+subagency` left the unmeasured list the day its
+  // attribution figure landed (0 of 60). A sentence that kept saying
+  // "narrowed by sub-agency" beside a list that no longer names that tier
+  // would describe a MEASURED tier as unmeasured — so the narrowings are
+  // derived from the same list, and the family membership test is this
+  // map's own keys.
+  const ACCOUNT_FAMILY_NARROWING: Record<string, string> = {
+    account: "by a hand adjudication that pinned the pair",
+    "account+subagency": "by sub-agency",
+    "account+tokens": "by keyword overlap",
+  };
   const linkPrecisionUnmeasuredAllAccountFamily = linkPrecisionUnmeasuredList.every(
-    (t) => ACCOUNT_FAMILY_TIERS.has(t),
+    (t) => t in ACCOUNT_FAMILY_NARROWING,
   );
+  const linkPrecisionNarrowings = linkPrecisionUnmeasuredList
+    .map((t) => ACCOUNT_FAMILY_NARROWING[t])
+    .filter((n): n is string => Boolean(n));
+  const linkPrecisionNarrowingText =
+    linkPrecisionNarrowings.length > 2
+      ? `${linkPrecisionNarrowings.slice(0, -1).join(", ")}, or ${
+          linkPrecisionNarrowings[linkPrecisionNarrowings.length - 1]
+        }`
+      : linkPrecisionNarrowings.join(" or ");
   const linkPrecisionSampledAt = linkPrecision?.sampled_at ?? null;
+  // ROADMAP #79 (6b): the account / sub-agency tier's own measured figure,
+  // printed beside the Medium sentence that calls those links an association
+  // rather than evidence — a reader meets the number where the claim is made,
+  // not four paragraphs later. Derived like every other figure on this page,
+  // so a re-measurement moves it and a corpus with no such study prints
+  // nothing at all.
+  const linkPrecisionSubagency =
+    linkPrecision?.methods?.["account+subagency"] ?? null;
   // ROADMAP #79: every published figure answers ONE question — the rubric —
   // and the paragraph names it in the words the packets ask the adjudicator.
   // The exporter publishes only rubric='attribution', so the sentence renders
@@ -174,11 +198,13 @@ export default function MethodologyPage() {
     linkPrecisionJudged.length > 0
       ? linkPrecisionJudged.join(" and ")
       : linkPrecisionSampledAt;
-  // True only while account+subagency's sole verdicts are the 2026-09-04
-  // rule-fired ones (migration 015 stamps them 'rule-fired', so the exporter
-  // lists the tier unmeasured). The history sentence below renders from this
-  // boolean and disappears the moment an attribution study for the tier
-  // lands — no prose edit, no gate blind spot.
+  // True only while the exporter lists account+subagency unmeasured. It did
+  // until 2026-09-11, when the tier's 2026-09-05 attribution sample loaded
+  // (0/60) and the history sentence below retired itself with no prose edit —
+  // which is the point of deriving it. The sentence is kept, and worded so it
+  // stays TRUE if the tier ever returns to the unmeasured list: it describes
+  // the FIRST sample's rubric, never "this tier has not been judged on
+  // attribution", which the 2026-09-05 run would falsify.
   const linkPrecisionSubagencyAwaitsAttribution =
     linkPrecisionUnmeasuredList.includes("account+subagency");
   // §P1-8 syndication counts — the RSS files this build actually wrote.
@@ -643,7 +669,23 @@ export default function MethodologyPage() {
                   award drew from the same appropriation account as the
                   program, usually under the same sub-agency — which is an
                   association, not evidence that this specific program paid
-                  for the contract. Where the evidence is instead an FPDS
+                  for the contract.
+                  {linkPrecisionSubagency ? (
+                    <>
+                      {" "}
+                      How often that association names the right program
+                      element is now measured rather than assumed: a held-out
+                      sample of account / sub-agency links, judged on program
+                      attribution, confirmed{" "}
+                      {formatCount(linkPrecisionSubagency.confirmed)} of{" "}
+                      {formatCount(linkPrecisionSubagency.sampled)}
+                      {linkPrecisionSubagency.judged
+                        ? ` (${linkPrecisionSubagency.judged})`
+                        : ""}
+                      .
+                    </>
+                  ) : null}{" "}
+                  Where the evidence is instead an FPDS
                   acquisition-program tag or a subaward description (both
                   detailed below), the program is established but which of
                   its budget lines paid is not.{" "}
@@ -751,18 +793,18 @@ export default function MethodologyPage() {
                         tiers a reader can meet — {linkPrecisionUnmeasured}.{" "}
                         {linkPrecisionUnmeasuredAllAccountFamily ? (
                           <>
-                            Those rest on an appropriation-account match, narrowed
-                            by sub-agency, by keyword overlap, or by a hand
-                            adjudication that pinned the pair; an account match is
-                            an association by construction rather than proof this
-                            program paid, and how often it names the right program
-                            has not been independently measured for these tiers.
+                            Those rest on an appropriation-account match,
+                            narrowed {linkPrecisionNarrowingText}; an account
+                            match is an association by construction rather than
+                            proof this program paid, and how often it names the
+                            right program has not been independently measured
+                            for these tiers.
                             {linkPrecisionSubagencyAwaitsAttribution ? (
                               <>
                                 {" "}
-                                The account / sub-agency tier was sampled, but its
-                                adjudication asked only whether the mechanical rule
-                                had fired — the appropriation account, the
+                                The account / sub-agency tier&apos;s first sample
+                                (2026-09-04) asked only whether the mechanical
+                                rule had fired — the appropriation account, the
                                 sub-agency, the contract-number prefix — and not
                                 whether the award paid for this program; those
                                 verdicts are kept for audit under their own rubric

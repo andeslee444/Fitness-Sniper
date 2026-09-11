@@ -185,7 +185,9 @@ export interface SiteMeta {
    * rubric — because the study drew no sample from it, or because its only
    * verdicts answered a different question (the 2026-09-04 `account+subagency`
    * sample was judged on whether the mechanical rule had fired; migration 015
-   * stores those rows under rubric `rule-fired` and they are never published).
+   * stores those rows under rubric `rule-fired` and they are never published —
+   * that tier left this list on 2026-09-11, when a fresh sample judged on
+   * program attribution loaded at 0/60).
    * /methodology/ names them in prose so a tier with no number never reads as
    * one that passed; gate 24 leg n enforces that.
    *
