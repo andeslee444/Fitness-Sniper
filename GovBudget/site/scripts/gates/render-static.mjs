@@ -266,8 +266,11 @@ const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[TBMK]?/g;
 
 /**
  * Non-vacuity floor for leg (nw): text runs site-wide carrying a "number
- * word" pair with its space intact (measured 89,766 on 2026-09-10 against an
- * 8,368-page build, source-text and program-name exemptions applied).
+ * word" pair with its space intact. 89,766 twins measured 2026-09-10 on the
+ * main checkout's 8,368-page build BEFORE the lda-filing / data-program-name
+ * exemptions existed; the floor 40,000 is set from that pre-exemption figure
+ * with headroom. RESTAMP with the first post-#106 build's count (the
+ * controller's chain) — re-derive, never lower.
  * Below this the scan has stopped reading rendered prose — an exemption that
  * swallowed the page, a parser change — and would report "0 glued" over
  * nothing. RE-MEASURE if the corpus genuinely halves; do not lower it to fit.

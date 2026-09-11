@@ -48,7 +48,8 @@
  * expression") and a2637af2 fixed the species in one component without
  * sweeping it. turbopackTrimsLeadingSpace() models exactly that shape and
  * nothing wider — measured 5/5 on the sites site/src had that day, with no
- * false positive across all 136 .tsx files.
+ * false positive across all 136 .tsx files. Delete when a Next upgrade stops
+ * trimming; every site it flagged stays correct regardless.
  *
  * Export: findGlueSites(rootDir) → { hits: [{ file, line, why, left, right }], filesScanned }
  *         findGlueSitesInSource(file, src, rootDir) → the hits for one source

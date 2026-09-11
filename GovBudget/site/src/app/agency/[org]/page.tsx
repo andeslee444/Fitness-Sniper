@@ -240,8 +240,8 @@ export default async function AgencyPage({
                       Turbopack drops the space before a multi-line text run
                       that carries an entity (&rsquo; below); this note
                       rendered "OSD's 128programs". Pluralised while open:
-                      DMACT is the one page with a single non-reconciling
-                      program, and it read "1programs". */}
+                      DMACT is the only agency page whose `program_count` is
+                      1, so it read "1programs". */}
                   {formatCount(agency.fy2024_not_reconciled_count)} of{" "}
                   {org}&rsquo;s {formatCount(agency.program_count)}{" "}
                   {agency.program_count === 1

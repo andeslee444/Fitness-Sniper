@@ -478,7 +478,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   judged on different questions side by side; loaders that share a key need
   the same method guard regardless of run order; a gate that resolves hrefs
   does not see fetches.
-- **2026-09-05: #28 residue → #106 (four commits).** Gate 2 leg (sp) modelled
+- **2026-09-05: #28 residue → #106 (five commits).** Gate 2 leg (sp) modelled
   babel's JSX text cleaner, and babel keeps a first line's leading space —
   Next 16's Turbopack does not when the run also carries an HTML entity, so
   `/methodology/` rendered "553whose" for a week under a green gate. The
@@ -881,8 +881,8 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   run that follows spans a line and carries an HTML entity.** `/methodology/`
   rendered "plus 553whose cited record", "ingested for 1,936of them" and
   "(240at high confidence)"; nine `/agency/` reconciliation notes rendered
-  "OSD's 128programs" (DMACT's, the one page with a single non-reconciling
-  program, read "1programs"); the `/years/` balanced-panel caption compiles
+  "OSD's 128programs" (DMACT is the only agency page whose `program_count`
+  is 1, so it read "1programs"); the `/years/` balanced-panel caption compiles
   to "programs present" with no space — client-rendered, so no built-HTML
   gate could have seen it. ba6c7d66 had already fixed one such site by hand
   in `methodology/page.tsx` and named the cause in a comment; a2637af2 fixed
@@ -908,7 +908,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   covered positions marked `data-source-text="lda-filing"` with the filing's
   URL, J-book project titles marked `data-program-name`; `663a759c` leg cm reads
   each tier bucket off the sidecars and re-adds the rendered sentence's four
-  numbers).
+  numbers; `ad23016b` the ROADMAP findings entry and this backlog entry;
+  `090d63db` the style follow-up keeping `recomputeCoverageMap`'s docblock
+  attached to it). (wording corrected before publication)
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
