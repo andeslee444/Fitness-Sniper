@@ -809,10 +809,26 @@ def cmd_jbooks(args) -> None:
             f" ({by_res})"
         )
     elif args.action == "crosswalk":
-        from govbudget.jbooks.crosswalk import crosswalk_org
+        from collections import defaultdict
+
+        from govbudget.jbooks import crosswalk as xw
         from govbudget.jbooks.orgs import workbook_org
 
         import psycopg
+
+        fy_start = getattr(args, "fy_start", None)
+        fy_end = getattr(args, "fy_end", None)
+        all_years = bool(getattr(args, "all_years", False))
+        dry_run = bool(getattr(args, "dry_run", False))
+        yes = bool(getattr(args, "yes", False))
+        # The same two shapes crosswalk_org refuses, caught here so a typo
+        # exits before any Postgres connection is opened (#78).
+        if (fy_start is None) != (fy_end is None):
+            print("crosswalk: --fy-start and --fy-end must be given together")
+            sys.exit(2)
+        if all_years and fy_start is not None:
+            print("crosswalk: --all-years cannot be combined with --fy-start/--fy-end")
+            sys.exit(2)
 
         if args.org:
             orgs = [workbook_org(args.org)]
@@ -824,17 +840,53 @@ def cmd_jbooks(args) -> None:
                         " where organization is not null and organization <> ''"
                     )
                 })
-        fy_start = getattr(args, "fy_start", None)
-        fy_end = getattr(args, "fy_end", None)
+        window = xw.run_window_label(fy_start, fy_end, all_years)
+        common = dict(
+            treasury_agency="097",
+            award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+            fy_start=fy_start, fy_end=fy_end, all_years=all_years,
+        )
+
+        # #78, with the controller's 2026-09-11 ruling: EVERY run is planned
+        # first -- the per-line default as well as --all-years -- and refused
+        # above the threshold unless --yes. DARPA plans 761,029 pairs under
+        # the default and 2,339,232 under --all-years, so the number an
+        # operator has to see before a six-figure write is printed whatever
+        # flags were passed. --dry-run stops after printing it.
+        projected = 0
+        for org in orgs:
+            plan = xw.plan_crosswalk_org(config.PG_DSN, organization=org, **common)
+            per_fy: dict[int, list[int]] = defaultdict(lambda: [0, 0])
+            for row in plan:
+                per_fy[row.fiscal_year][0] += 1
+                per_fy[row.fiscal_year][1] += row.candidates
+            n = sum(row.candidates for row in plan)
+            print(
+                f"crosswalk {org}: {len(plan)} line(s), projected {n:,}"
+                f" (line, award) pair(s); window={window}"
+            )
+            for fy in sorted(per_fy):
+                n_lines, n_pairs = per_fy[fy]
+                print(f"  edition FY{fy}: {n_lines} line(s) -> {n_pairs:,} pair(s)")
+            projected += n
+        print(f"crosswalk projected total: {projected:,} pair(s); window={window}")
+        if dry_run:
+            print("crosswalk dry-run: nothing written")
+            return
+        if projected > xw.ALL_YEARS_ABORT_ROWS and not yes:
+            print(
+                f"crosswalk: the plan projects {projected:,} (line, award) pair(s),"
+                f" above the {xw.ALL_YEARS_ABORT_ROWS:,} abort threshold; nothing"
+                " written. Re-run with --yes to write anyway, or narrow the window"
+                " (--all-years is the widest; the default is each line's own"
+                " edition FY) — docs/superpowers/LAUNCH.md, Step 0"
+            )
+            sys.exit(2)
+
         total = 0
         for org in orgs:
-            n = crosswalk_org(
-                config.PG_DSN, organization=org, treasury_agency="097",
-                award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
-                fy_start=fy_start,
-                fy_end=fy_end,
-            )
-            print(f"crosswalk {org}: {n} links")
+            n = xw.crosswalk_org(config.PG_DSN, organization=org, **common)
+            print(f"crosswalk {org}: {n} links; window={window}")
             total += n
         print(f"crosswalk total: {total}")
 
@@ -2538,9 +2590,24 @@ def main(argv=None) -> None:
     j.add_argument("--probe-only", action="store_true", dest="probe_only",
                    help="backfill: run + record the edition probe, skip the pipeline")
     j.add_argument("--fy-start", type=int, default=None, dest="fy_start",
-                   help="crosswalk: filter awards to fiscal years >= this value")
+                   help="crosswalk: explicit award-FY window start (federal FY);"
+                        " requires --fy-end. Default (both omitted): each budget"
+                        " line's own PB-edition fiscal year (#78)")
     j.add_argument("--fy-end", type=int, default=None, dest="fy_end",
-                   help="crosswalk: filter awards to fiscal years <= this value")
+                   help="crosswalk: explicit award-FY window end (federal FY);"
+                        " requires --fy-start")
+    j.add_argument("--all-years", action="store_true", dest="all_years",
+                   help="crosswalk: match every loaded award year instead of"
+                        " each line's own edition FY. This is the shape of the"
+                        " 2026-09-04 +2.2M-row run")
+    j.add_argument("--dry-run", action="store_true", dest="dry_run",
+                   help="crosswalk: print the planned (line, award) pairs per"
+                        " organization and edition FY; write nothing")
+    j.add_argument("--yes", action="store_true", dest="yes",
+                   help="crosswalk: write even when the plan exceeds"
+                        " crosswalk.ALL_YEARS_ABORT_ROWS. Every run (not just"
+                        " --all-years) is planned first and aborts above that"
+                        " threshold without this flag")
     j.set_defaults(func=cmd_jbooks)
 
     rv = sub.add_parser("review", help="reconciliation review queue")
