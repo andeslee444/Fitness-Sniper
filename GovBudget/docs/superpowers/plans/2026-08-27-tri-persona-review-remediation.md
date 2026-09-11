@@ -154,10 +154,36 @@ false of the public record. It is also what makes `/agency/`'s ranking wrong.
 
 ## Deferred, with reasons
 
-- **PDF page preview never loads** ("Loading page 55…" forever; no network request
-  attempted, no console error). Reproduced only in automated Chrome — **confirm in a
-  real browser first**. If real, it is high priority: it is the exact affordance where
-  a reporter would catch a bad citation.
+- **PDF page preview never loads** — RESOLVED 2026-09-11. Confirmed in a real
+  browser against https://fiscalreceipts.com/program/0601102A/ ,
+  [data-fact-id="0aa875e88a4a03bd"] (jbook_pdf, page 55,
+  /pdfs/ad24f807…bac22.pdf), on the deployed build (whose header is already
+  ahead of main@5dd7fb04): **the panel rendered the page** — canvas backing
+  2103×1625, class `pdf-page-fade is-ready`, loading skeleton unmounted, page 55
+  of the R-2A exhibit visibly showing 19.865 highlighted in the FY2025 column.
+  Mechanical causes excluded by measurement: /pdf.worker.min.mjs serves 200
+  as application/javascript (1,245,448 bytes) and the asset host answers 206
+  with content-range: bytes 0-1023/4810912 plus
+  access-control-expose-headers: content-range,accept-ranges,content-length —
+  ranged transport is healthy. The browser's own Resource Timing confirms both
+  fetches actually happen in the page (pdf.worker.min.mjs, 380,079 B decoded;
+  the sha-addressed PDF via `fetch`, 316 ms), so the review's "no network
+  request attempted" was wrong.
+  No source change: the symptom did not reproduce in a rendering tab. It DOES
+  reproduce, indefinitely and exactly as described, whenever the tab is not
+  rendering — measured `document.hidden === true`,
+  `requestAnimationFrame` never firing within 2 s while `setTimeout` still
+  runs, and the panel still on "Loading page 55…" at t=30.8 s with every byte
+  already fetched and no console error. Chrome suspends rAF in a
+  non-rendering tab and PDF.js's render path depends on it, which is precisely
+  why the review saw this "only in automated Chrome". Gate 4 is unaffected:
+  Playwright keeps the page rendering, and gate 18 already reaches the same
+  `canvas.pdf-page-fade.is-ready` headless within 10 s.
+  Either way the review could not confirm it, because gate 4's PDF assertion
+  was `page.$("canvas")` and pdf-view.tsx renders that canvas in every state
+  including the stuck one. Gate 4 now requires a terminal state within 20s
+  (clickthrough.mjs `pdfPanelVerdict`, proof-can-fail in
+  site/scripts/gates/__tests__/pdf-terminal-state.test.mjs).
 - **RTX $238.6B** includes "Rockwell Collins Australia Pty Limited — $19.5B",
   implausible on its face. Disclosed as name-inferred, medium confidence, with visible
   component arithmetic — honest, but a reporter citing the total inherits it.

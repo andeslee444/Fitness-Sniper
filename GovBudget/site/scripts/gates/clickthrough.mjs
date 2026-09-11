@@ -3,7 +3,12 @@
  *
  * Page set computed from citations.json + program_details at runtime.
  * Tests:
- * 1. Unique jbook cite: click → panel opens → canvas rendered non-blank → highlight geometry within 3px
+ * 1. Unique jbook cite: click → panel opens → the PDF view reaches a
+ *    TERMINAL state (canvas.pdf-page-fade.is-ready; a panel still showing
+ *    [data-testid="pdf-loading-skeleton"], or the degraded fallback on a
+ *    server that holds the PDFs locally, is a FAIL) → highlight geometry
+ *    within 3px. The old "a <canvas> exists" check passed on a panel that
+ *    never loaded — see pdfPanelVerdict below.
  * 2. Ambiguous_first: amber badge text present
  * 3. Workbook drawer contract (§P1-9, PM-review Sprint 2): (a) a static sweep
  *    of json/workbook-cells/ — EVERY workbook citation has a cell preview
@@ -54,6 +59,52 @@ function workbookMultiCandidate(peBli, programDetailsDir, citations) {
       citations[bl.fact_id]?.kind === "workbook" &&
       (citations[bl.fact_id]?.cells ?? "").includes(",")
   );
+}
+
+/**
+ * Verdict for an opened jbook_pdf citation panel.
+ *
+ * `terminal` is "ready" (canvas.pdf-page-fade.is-ready present),
+ * "degraded" ([data-degraded="pdf"] present), or null (neither, within the
+ * timeout). `stillLoading` is whether [data-testid="pdf-loading-skeleton"]
+ * is present.
+ *
+ * WHY THIS IS NOT `page.$("canvas")`. pdf-view.tsx renders its <canvas>
+ * unconditionally, so the old assertion was satisfied by a panel that
+ * never loaded anything — which is exactly what the 2026-08-27 tri-persona
+ * review reported ("Loading page 55…" forever, no network request, no
+ * console error) and deferred because nothing could confirm it.
+ *
+ * A degraded panel FAILS here on purpose: serve-static.mjs serves
+ * ../data/site at /assets/ off local disk and answers /config.json with
+ * that base, so the PDF is reachable by construction. Gate 15 owns the
+ * unreachable-asset contract and blackholes /assets/ deliberately; a
+ * degraded panel in THIS gate means a missing sha-addressed PDF under
+ * data/site/pdfs/ or a broken PDF.js path.
+ */
+export function pdfPanelVerdict({ terminal, stillLoading }) {
+  if (terminal === "ready") {
+    return { ok: true, reason: "PDF page rendered (canvas.pdf-page-fade.is-ready)" };
+  }
+  if (terminal === "degraded") {
+    return {
+      ok: false,
+      reason:
+        'the panel shows the degraded fallback ([data-degraded="pdf"]) even though this server holds the PDFs on local disk — the hosted PDF is missing from data/site/pdfs/ or PDF.js failed',
+    };
+  }
+  if (stillLoading) {
+    return {
+      ok: false,
+      reason:
+        'the panel is still showing "Loading page N…" ([data-testid="pdf-loading-skeleton"]) after the timeout — neither canvas.pdf-page-fade.is-ready nor [data-degraded="pdf"] ever appeared',
+    };
+  }
+  return {
+    ok: false,
+    reason:
+      "the panel reached neither a rendered page nor the degraded fallback, and is not showing the loading skeleton either — the PDF view did not mount",
+  };
 }
 
 /**
@@ -306,16 +357,46 @@ export async function runClickthroughGate(baseUrl) {
                 `unique cite (${set.uniquePbl}): panel did not open after click on [data-fact-id="${factId}"]`
               );
             } else {
-              // Canvas rendered non-blank
+              // Canvas element present at all. Proves nothing on its own —
+              // pdf-view.tsx renders it in EVERY state (see pdfPanelVerdict).
               const canvas = await page.$("canvas").catch(() => null);
               if (!canvas) {
                 errors.push(
                   `unique cite (${set.uniquePbl}): no <canvas> in citation panel (PDF.js not rendering)`
                 );
               } else {
-                notes.push(
-                  `unique cite (${set.uniquePbl}): panel opened with canvas ✓`
+                // …and the panel must actually REACH a terminal state.
+                const terminal = await page
+                  .waitForFunction(
+                    () => {
+                      const panel = document.querySelector(
+                        '[data-testid="citation-panel"]'
+                      );
+                      if (!panel) return null;
+                      if (panel.querySelector("canvas.pdf-page-fade.is-ready"))
+                        return "ready";
+                      if (panel.querySelector('[data-degraded="pdf"]'))
+                        return "degraded";
+                      return null;
+                    },
+                    null,
+                    { timeout: 20000 }
+                  )
+                  .then((h) => h.jsonValue())
+                  .catch(() => null);
+
+                const stillLoading = Boolean(
+                  await page.$('[data-testid="pdf-loading-skeleton"]')
                 );
+
+                const verdict = pdfPanelVerdict({ terminal, stillLoading });
+                if (!verdict.ok) {
+                  errors.push(`unique cite (${set.uniquePbl}): ${verdict.reason}`);
+                } else {
+                  notes.push(
+                    `unique cite (${set.uniquePbl}): panel opened and ${verdict.reason} ✓`
+                  );
+                }
 
                 // Highlight geometry check
                 const cit = set.citations[factId];
