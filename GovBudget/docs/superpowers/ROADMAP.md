@@ -531,7 +531,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   fiscal years, an unbounded `--org` run cross-joins every line-edition against
   every award of the org's account (177 × 13,216 for DARPA). Add a default
   window (the line's own edition FY) or a per-edition line filter, and a
-  projected-row dry-run abort. **Status:** open (2026-09-04).
+  projected-row dry-run abort. **Status:** CLOSED 2026-09-05 (code) — default window = each line's own PB-edition FY (federal FY, resolved per line); `--fy-start/--fy-end` required together (one bound alone exits 2); `--all-years` is the opt-in to the old unbounded shape; EVERY run (default included, per the 2026-09-11 controller ruling) is planned first by `plan_crosswalk_org` and aborts above 500,000 projected pairs unless `--yes`; `--dry-run` prints pairs per org and edition FY and writes nothing. Data unchanged: the 124,502 mechanical DARPA rows (all `fiscal_year=2026`, rationale "all loaded award years") are still in `budget_line_awards`; the re-run under the new default (plans 761,029 DARPA pairs, measured read-only 2026-09-05, so it needs `--yes`) is the controller's call and is what #85 is blocked on. Canonical invocation: LAUNCH.md Step 0.
 - **#79 Precision study rubric.** `link_precision_samples` needs a `rubric`
   column; strata judged on different questions must not publish side by side.
   Re-adjudicate `account+subagency` against program attribution (its first

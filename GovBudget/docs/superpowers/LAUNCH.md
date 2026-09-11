@@ -29,13 +29,32 @@ way, the order they run in decides which evidence a shared key ends up
 carrying. **The canonical order is:**
 
 ```
-govbudget jbooks crosswalk           # mechanical account* rows
+govbudget jbooks crosswalk --org DARPA --dry-run   # plan first: pairs per edition FY, nothing written
+govbudget jbooks crosswalk --org DARPA             # mechanical account* rows; window = each line's own edition FY
 uv run python scripts/derive_ap_links.py        # FPDS acquisition-program tags
 uv run python scripts/load_announcement_links.py  # defense.gov + FSRS subawards
 govbudget jbooks export-facts        # Postgres -> parquet
 govbudget build                      # dbt: parquet -> the mart
 govbudget export-site                # mart -> data/site/
 ```
+
+**Award window (#78, 2026-09-05).** With no flags, `jbooks crosswalk` matches
+each budget line only against awards whose *federal* fiscal year equals that
+line's own PB-edition `fiscal_year` — resolved per line, so a PB2017 line sees
+FY2017 awards and a PB2026 line sees FY2026 awards. `--fy-start N --fy-end M`
+(always together; one bound alone exits 2) pins one explicit window for every
+line. `--all-years` is the opt-in to the old unbounded behaviour — that shape
+is what produced the 2026-09-04 +2,214,705-row DARPA run (177 line-editions ×
+13,216 awards). **Every** run is planned before it writes, `--all-years` or
+not, and **refuses to write above 500,000 planned pairs unless `--yes`**: the
+default window is not a small window, it is a smaller one. Measured read-only
+2026-09-05, DARPA plans 761,029 pairs under the default against 124,502
+mechanical DARPA rows in the table today, so a full DARPA re-run needs `--yes`
+either way (every DARPA line carries account 0400, so each edition's 17–24
+lines each match that FY's whole 097-0400 population — the account method's own
+shape, #85's question, not the window's). Run `--dry-run` before any write; it
+plans under whichever window you gave, prints the pairs per organization and
+edition FY, and writes nothing.
 
 Weakest evidence first, strongest last: each stage may upgrade the key, none
 may demote it. Two guards make that true regardless of who actually ran last,
@@ -539,6 +558,10 @@ Backs up the git-ignored `data/raw/announcements/` corpus (2,786 HTML + 2 auxili
 ## Quick reference — all commands
 
 ```bash
+# 0. Links (Step 0) — plan, then write; read the plan before any six-figure write
+govbudget jbooks crosswalk --org DARPA --dry-run
+govbudget jbooks crosswalk --org DARPA            # add --yes once the plan is read
+
 # 1. Export
 govbudget export-site
 
