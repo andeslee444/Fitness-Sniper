@@ -74,7 +74,7 @@ models:
         data_tests: [not_null]
         description: "Canonical program title (detail-row title, never an R-1 rollup NULL)."
   - name: fct_program_concentration
-    description: "Vendor-family HHI per pe_bli on two bases (ROADMAP #80): *_all over every published link (high+medium), *_high over high-confidence links only. hhi_high is NULL below the 3-award / 2-family floor."
+    description: "Vendor-family HHI per pe_bli on two bases (ROADMAP #80): *_all over every published link (high+medium), *_high over high-confidence links only. hhi_high and top_family_high are NULL below the floor — 3 linked awards, 2 families holding POSITIVE dollars (positive_family_count_high), and positive net program_dollars_high. Only the *_high basis is rendered on a program page; *_all ships in this download and is described on /methodology/."
     columns:
       - name: pe_bli
         data_tests: [unique, not_null]
@@ -83,6 +83,10 @@ models:
       - name: program_dollars_all
         data_tests: [not_null]
       - name: family_count_high
+        description: "Distinct contractor families on high-confidence links, positive-dollar or not. 0 when the program has no high link."
+        data_tests: [not_null]
+      - name: positive_family_count_high
+        description: "Distinct high-confidence families holding POSITIVE obligations — the count the floor is measured on, published so the floor is auditable from the mart alone (#80 fix round 1, 2026-09-11)."
         data_tests: [not_null]
       - name: award_count_high
         data_tests: [not_null]

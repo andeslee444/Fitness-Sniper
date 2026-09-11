@@ -1154,7 +1154,7 @@ def cmd_verify_phase3(args) -> None:
     status = "PASS" if mg["ok"] else "FAIL"
     print(
         f"gate 3 marts: trajectory={mg['trajectory_rows']} concentration={mg['concentration_rows']}"
-        f" high_only={mg['high_only_rows']}"
+        f" high_only={mg['high_only_rows']}/min {mg['min_high_only_rows']}"
         f" agency={mg['agency_rows']} exposure={mg['exposure_rows']}"
         f" bad_hhi_prog={mg['bad_hhi_program']} bad_hhi_agency={mg['bad_hhi_agency']}"
         # ROADMAP #80: the floor leg can fail on its own, so it has to be

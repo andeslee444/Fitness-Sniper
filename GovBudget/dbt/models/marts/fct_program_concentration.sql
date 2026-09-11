@@ -3,14 +3,26 @@
 --   *_all  — every published link (fct_budget_to_awards is high+medium by
 --            construction). These are the pre-#80 columns under new names;
 --            their values and their derived citation fact_ids do not move.
---   *_high — high-confidence links only. hhi_high is NULL below a floor of
---            3 linked awards across 2 contractor families (an index over one
---            or two awards is a fact about the sample, not the market);
---            program_dollars_high is NULL when the program has no high link
---            at all; the two counts are 0 in that case, never NULL.
--- The site headlines the high-only figures where they exist and prints the
--- all-tier figures on a labelled second line; the exporter mints a distinct
--- derived fact_id per basis, with a formula true of that basis.
+--   *_high — high-confidence links only. hhi_high AND top_family_high are
+--            NULL below a floor of 3 linked awards across 2 contractor
+--            families HOLDING POSITIVE DOLLARS, with positive net program
+--            dollars (an index over one or two awards is a fact about the
+--            sample, not the market — and an index over zero dollars is not
+--            a fact about anything: 13 programs' high links summed to $0 and
+--            published hhi_high = 0.0 "Competitive" with a top contractor
+--            picked alphabetically, 7 more published 10,000 over a single
+--            positive-dollar family while the card said "2-4 families",
+--            2026-09-11 review of #80). positive_family_count_high is
+--            published so the floor is auditable from the mart itself;
+--            program_dollars_high stays the TRUE sum (it may be <= 0) and is
+--            NULL only when the program has no high link at all; the three
+--            counts are 0 in that case, never NULL.
+-- The site headlines the high-only figures where they publish and states the
+-- absence where they do not; the *_all columns are not rendered (the
+-- account+subagency tier that dominates them measured 0/60 for program
+-- attribution, ROADMAP #79) but ship in the download and on /methodology/.
+-- The exporter mints a distinct derived fact_id per basis, with a formula
+-- true of that basis.
 -- Award dollars enter ONCE per award (not per transaction) to avoid double-count.
 -- HHI uses positive-obligation share only to keep HHI ∈ [0, 10000].
 -- positive-only shares: families with net deobligations keep full positive share (documented bias).
@@ -90,7 +102,14 @@ hhi_calc as (
         basis,
         pe_bli,
         sum(share_pct * share_pct) as hhi,
-        count(distinct family_key) as family_count
+        count(distinct family_key) as family_count,
+        -- families that actually hold positive dollars. family_count counts
+        -- every LINKED family, including those whose share_pct fell into the
+        -- `else 0` branch above; a floor over that count is satisfiable by a
+        -- family that contributed nothing, which is how 7 programs published
+        -- a 10,000 index next to "2 contractor families" (#80 fix round 1).
+        count(distinct case when share_pct > 0 then family_key end)
+            as positive_family_count
     from family_shares
     group by basis, pe_bli
 ),
@@ -109,6 +128,7 @@ per_basis as (
         h.pe_bli,
         h.hhi,
         h.family_count,
+        h.positive_family_count,
         t.top_family,
         pt.award_count,
         pt.program_dollars
@@ -125,14 +145,29 @@ select
     max(case when basis = 'all' then family_count end)    as family_count_all,
     max(case when basis = 'all' then award_count end)     as award_count_all,
     max(case when basis = 'all' then program_dollars end) as program_dollars_all,
-    -- the floor: no high-only index on fewer than 3 awards or 2 families
+    -- THE FLOOR (#80 fix round 1, 2026-09-11). A high-only index publishes
+    -- only over >= 3 distinct awards, >= 2 families holding POSITIVE dollars,
+    -- and positive net program dollars. top_family_high is withheld with it:
+    -- with every family at zero positive dollars the `distinct on` tie-break
+    -- picks the alphabetically first family, which is not a leader.
+    -- 37 of 444 programs clear this (2026-09-11, live lake); the 57 that
+    -- cleared the award/family-count-only floor included 13 whose high links
+    -- summed to zero or negative dollars and 7 with a single positive family.
     case
         when coalesce(max(case when basis = 'high' then award_count end), 0) >= 3
-         and coalesce(max(case when basis = 'high' then family_count end), 0) >= 2
+         and coalesce(max(case when basis = 'high' then positive_family_count end), 0) >= 2
+         and coalesce(max(case when basis = 'high' then program_dollars end), 0) > 0
         then max(case when basis = 'high' then hhi end)
     end                                                    as hhi_high,
-    max(case when basis = 'high' then top_family end)      as top_family_high,
+    case
+        when coalesce(max(case when basis = 'high' then award_count end), 0) >= 3
+         and coalesce(max(case when basis = 'high' then positive_family_count end), 0) >= 2
+         and coalesce(max(case when basis = 'high' then program_dollars end), 0) > 0
+        then max(case when basis = 'high' then top_family end)
+    end                                                    as top_family_high,
     coalesce(max(case when basis = 'high' then family_count end), 0) as family_count_high,
+    coalesce(max(case when basis = 'high' then positive_family_count end), 0)
+        as positive_family_count_high,
     coalesce(max(case when basis = 'high' then award_count end), 0)  as award_count_high,
     max(case when basis = 'high' then program_dollars end) as program_dollars_high
 from per_basis

@@ -77,8 +77,14 @@ def make_oversight_fixtures(
     return ip_path, hr_path
 
 
-def make_duckdb_with_marts(tmp_path: Path) -> Path:
-    """Build a minimal DuckDB with the four efficiency marts populated."""
+def make_duckdb_with_marts(tmp_path: Path, *, n_high_only: int = 40) -> Path:
+    """Build a minimal DuckDB with the four efficiency marts populated.
+
+    `n_high_only` is how many concentration rows publish an hhi_high. The
+    default clears verify_phase3._MIN_HIGH_ONLY_ROWS; pass fewer to exercise
+    the #80 collapse floor.
+    """
+    tmp_path.mkdir(parents=True, exist_ok=True)
     db_path = tmp_path / "t.duckdb"
     con = duckdb.connect(str(db_path))
 
@@ -96,18 +102,25 @@ def make_duckdb_with_marts(tmp_path: Path) -> Path:
     )
 
     # fct_program_concentration: valid HHI rows, both bases (ROADMAP #80).
-    # Row 1 clears the high-only floor (>=3 high awards across >=2 families);
-    # row 2 has high links below the floor (hhi_high NULL, dollars published);
-    # row 3 has no high links at all (counts 0, high dollars NULL).
+    # The first n_high_only rows clear the high-only floor (>=3 high awards
+    # across >=2 POSITIVE-dollar families, positive high dollars); then one
+    # row with high links below the floor (hhi_high NULL, dollars published)
+    # and one with no high links at all (counts 0, high dollars NULL).
+    conc_rows = [
+        f"('06011{i:02d}E', 2500.0, 'ACME CORP', 3, 4, 1000000.0,"
+        f" 2500.0, 'ACME CORP', 3, 3, 4, 1000000.0)"
+        for i in range(n_high_only)
+    ]
+    conc_rows += [
+        "('0601901E', 5000.0, 'MEGA CORP', 2, 3, 2000000.0, NULL, NULL, 1, 1, 2, 500000.0)",
+        "('0601902E', 10000.0,'SOLO CORP', 1, 1, 500000.0, NULL, NULL, 0, 0, 0, NULL)",
+    ]
     con.execute(
-        """
-        create table fct_program_concentration as select * from (values
-          ('0601101E', 2500.0, 'ACME CORP', 3, 4, 1000000.0, 2500.0, 'ACME CORP', 3, 4, 1000000.0),
-          ('0601102E', 5000.0, 'MEGA CORP', 2, 3, 2000000.0, NULL, 'MEGA CORP', 1, 2, 500000.0),
-          ('0601103E', 10000.0,'SOLO CORP', 1, 1, 500000.0, NULL, NULL, 0, 0, NULL)
-        ) t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,
-            hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high)
-        """
+        "create table fct_program_concentration as select * from (values "
+        + ",".join(conc_rows)
+        + ") t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all,"
+        "     program_dollars_all, hhi_high, top_family_high, family_count_high,"
+        "     positive_family_count_high, award_count_high, program_dollars_high)"
     )
 
     # fct_agency_concentration: ≥10 sub-agencies required
@@ -136,9 +149,9 @@ def make_duckdb_with_marts(tmp_path: Path) -> Path:
     con.execute(
         """
         create table dim_programs as select * from (values
-          ('0601101E', 'DARPA', 'rdte', 3, 280.0, true, 'Defense Research'),
-          ('0601102E', 'DARPA', 'rdte', 2, 140.0, true, 'Applied Research'),
-          ('0601103E', 'ARMY', 'rdte', 5, 500.0, true, 'Army Research')
+          ('0601100E', 'DARPA', 'rdte', 3, 280.0, true, 'Defense Research'),
+          ('0601101E', 'DARPA', 'rdte', 2, 140.0, true, 'Applied Research'),
+          ('0601901E', 'ARMY', 'rdte', 5, 500.0, true, 'Army Research')
         ) t(pe_bli, org, exhibit_family, project_count, fy2024_actual_millions,
             fully_reconciled, title)
         """
@@ -203,9 +216,10 @@ class TestMartsGate:
         con.execute(
             """
             create table fct_program_concentration as select * from (values
-              ('0601101E', 2500.0, 'ACME', 1, 1, 1e6, NULL, NULL, 0, 0, NULL)
+              ('0601101E', 2500.0, 'ACME', 1, 1, 1e6, NULL, NULL, 0, 0, 0, NULL)
             ) t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,
-                hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high)
+                hhi_high, top_family_high, family_count_high, positive_family_count_high,
+                award_count_high, program_dollars_high)
             """
         )
         con.execute(
@@ -236,9 +250,10 @@ class TestMartsGate:
         con.execute(
             """
             create table fct_program_concentration as select * from (values
-              ('0601101E', 99999.0, 'ACME', 1, 1, 1e6, NULL, NULL, 0, 0, NULL)
+              ('0601101E', 99999.0, 'ACME', 1, 1, 1e6, NULL, NULL, 0, 0, 0, NULL)
             ) t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,
-                hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high)
+                hhi_high, top_family_high, family_count_high, positive_family_count_high,
+                award_count_high, program_dollars_high)
             """
         )
         con.execute(
@@ -259,12 +274,63 @@ class TestMartsGate:
         awards or < 2 families is the regression this leg exists to catch."""
         db_path = self._marts_db(
             tmp_path,
-            "('0601101E', 2500.0, 'ACME', 3, 4, 1e6, 2500.0, 'ACME', 1, 2, 1e6)",
+            "('0601101E', 2500.0, 'ACME', 3, 4, 1e6, 2500.0, 'ACME', 1, 1, 2, 1e6)",
         )
         result = marts_gate(db_path)
         assert result["ok"] is False, result
         assert result["bad_high_floor"] == 1
-        assert result["high_only_rows"] == 1
+
+    def test_fail_high_only_index_over_nonpositive_dollars(self, tmp_path):
+        """#80 fix round 1: the counts alone are the predicate the mart
+        already applies, so the leg has to assert something the mart cannot
+        satisfy by construction. 13 programs shipped hhi_high = 0.0 over $0
+        of high-confidence obligations and one over -$2.3M; each headlined
+        "Competitive" on the card with a top contractor chosen alphabetically.
+        """
+        zero = self._marts_db(
+            tmp_path / "zero",
+            "('0601101E', 2500.0, 'ACME', 4, 4, 1e6, 0.0, 'ACME', 4, 2, 4, 0.0)",
+        )
+        result = marts_gate(zero)
+        assert result["bad_high_floor"] == 1
+        assert result["ok"] is False, result
+
+        negative = self._marts_db(
+            tmp_path / "neg",
+            "('0601101E', 2500.0, 'ACME', 7, 17, 1e6, 0.0, 'ACME', 7, 2, 17, -2328281.28)",
+        )
+        assert marts_gate(negative)["bad_high_floor"] == 1
+
+    def test_fail_high_only_index_on_one_positive_family(self, tmp_path):
+        """#80 fix round 1: family_count_high counts LINKED families, so a
+        family holding zero positive dollars satisfied the old 2-family
+        floor — 7 programs published 10,000 (one family holds 100% of the
+        positive dollars) next to a card reading "2-4 contractor families".
+        """
+        db_path = self._marts_db(
+            tmp_path,
+            "('0603882C', 10000.0, 'BOEING', 2, 4, 7.45e9, 10000.0, 'BOEING', 2, 1, 4, 7.45e9)",
+        )
+        result = marts_gate(db_path)
+        assert result["bad_high_floor"] == 1
+        assert result["ok"] is False, result
+
+    def test_fail_when_the_high_basis_collapses(self, tmp_path):
+        """#80 fix round 1: bad_high_floor is structurally 0 against any mart
+        built by fct_program_concentration.sql, so a high basis that stopped
+        matching entirely would leave gate 3 green while every card silently
+        lost its index. high_only_rows carries a dated do-not-lower floor."""
+        collapsed = make_duckdb_with_marts(tmp_path / "collapsed", n_high_only=0)
+        result = marts_gate(collapsed)
+        assert result["high_only_rows"] == 0
+        assert result["bad_high_floor"] == 0, "nothing else may be what fails"
+        assert result["bad_hhi_program"] == 0
+        assert result["ok"] is False, result
+
+        healthy = make_duckdb_with_marts(tmp_path / "healthy")
+        healthy_result = marts_gate(healthy)
+        assert healthy_result["high_only_rows"] >= healthy_result["min_high_only_rows"]
+        assert healthy_result["ok"] is True, healthy_result
 
     def test_float_noise_at_the_ceiling_is_not_a_breach(self, tmp_path):
         """ROADMAP #80 / 2026-09-10: DuckDB's parallel `sum(share*share)` puts a
@@ -274,21 +340,27 @@ class TestMartsGate:
         ok_db = self._marts_db(
             tmp_path / "ok",
             "('0601101E', 10000.000000000004, 'ACME', 2, 3, 1e6,"
-            " 10000.000000000004, 'ACME', 2, 3, 1e6)",
+            " 10000.000000000004, 'ACME', 2, 2, 3, 1e6)",
         )
         assert marts_gate(ok_db)["bad_hhi_program"] == 0
+        assert marts_gate(ok_db)["ok"] is True
 
         bad_db = self._marts_db(
             tmp_path / "bad",
-            "('0601101E', 10000.01, 'ACME', 2, 3, 1e6, NULL, NULL, 0, 0, NULL)",
+            "('0601101E', 10000.01, 'ACME', 2, 3, 1e6, NULL, NULL, 0, 0, 0, NULL)",
         )
         result = marts_gate(bad_db)
         assert result["bad_hhi_program"] == 1
         assert result["ok"] is False
 
     @staticmethod
-    def _marts_db(tmp_path, conc_row: str):
-        """A marts warehouse that passes every leg except what conc_row breaks."""
+    def _marts_db(tmp_path, conc_row: str, *, n_clean: int = 40):
+        """A marts warehouse that passes every leg except what conc_row breaks.
+
+        `n_clean` floor-clearing rows sit alongside conc_row so the #80
+        collapse floor (_MIN_HIGH_ONLY_ROWS) is not what fails the gate —
+        each of these tests must fail for exactly the reason it names.
+        """
         tmp_path.mkdir(parents=True, exist_ok=True)
         db_path = tmp_path / "t.duckdb"
         con = duckdb.connect(str(db_path))
@@ -299,12 +371,16 @@ class TestMartsGate:
             + ") t(pe_bli,organization,fy2024_actuals,fy2025_total,fy2026_total,"
             "fy2526_change,fy2526_pct_change)"
         )
+        clean = [
+            f"('CLEAN{i:03d}', 2500.0, 'ACME', 3, 4, 1e6, 2500.0, 'ACME', 3, 3, 4, 1e6)"
+            for i in range(n_clean)
+        ]
         con.execute(
             "create table fct_program_concentration as select * from (values "
-            + conc_row
+            + ",".join([conc_row, *clean])
             + ") t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all,"
             "     program_dollars_all, hhi_high, top_family_high, family_count_high,"
-            "     award_count_high, program_dollars_high)"
+            "     positive_family_count_high, award_count_high, program_dollars_high)"
         )
         agency_rows = [f"('Agency{i}', {1000.0 + i * 100}, {i * 50000.0}, {3 + i})" for i in range(1, 15)]
         con.execute(
@@ -354,7 +430,8 @@ class TestTraceGate3:
             "create table fct_program_concentration "
             "(pe_bli varchar, hhi_all double, top_family_all varchar, family_count_all integer,"
             " award_count_all integer, program_dollars_all double, hhi_high double,"
-            " top_family_high varchar, family_count_high integer, award_count_high integer,"
+            " top_family_high varchar, family_count_high integer,"
+            " positive_family_count_high integer, award_count_high integer,"
             " program_dollars_high double)"
         )
         con.close()

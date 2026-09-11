@@ -155,7 +155,8 @@ SCHEMA_CARD: dict = {
         "fct_improper_exposure.derived_improper_amount_usd is in USD (full dollars).",
         "fct_agency_concentration.hhi and fct_program_concentration.hhi_all / hhi_high "
         "are dimensionless (0-10000 scale); hhi_high is NULL below 3 high-confidence "
-        "awards across 2 families.",
+        "awards across 2 families holding positive dollars "
+        "(positive_family_count_high) with positive program_dollars_high.",
         "dim_entities.total_obligation is in USD.",
     ],
 
@@ -367,16 +368,20 @@ SCHEMA_CARD: dict = {
             "description": (
                 "HHI concentration by program element on two bases: *_all over "
                 "every published link (high+medium), *_high over high-confidence "
-                "links only (hhi_high NULL below the 3-award/2-family floor)."
+                "links only (hhi_high and top_family_high NULL below the floor: "
+                "3 awards, 2 positive-dollar families, positive program dollars). "
+                "Only the *_high basis is published on a program page; *_all "
+                "ships in the download and is described on /methodology/."
             ),
             "key_columns": {
                 "pe_bli": "Program element",
                 "hhi_high": "HHI over high-confidence links only (0-10000; NULL below floor)",
-                "hhi_all": "HHI over high+medium links (0-10000)",
-                "top_family_high": "Top vendor family, high-confidence links",
+                "hhi_all": "HHI over high+medium links (0-10000; not rendered on a page)",
+                "top_family_high": "Top vendor family, high-confidence links (NULL below floor)",
                 "top_family_all": "Top vendor family, all published links",
-                "program_dollars_high": "Linked award dollars, high-confidence links (USD)",
+                "program_dollars_high": "Linked award dollars, high-confidence links (USD; may be <= 0)",
                 "program_dollars_all": "Linked award dollars, all published links (USD)",
+                "positive_family_count_high": "High-confidence families holding positive dollars — the count the floor measures",
             },
         },
         "fct_budget_to_awards": {

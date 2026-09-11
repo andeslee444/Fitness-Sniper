@@ -759,3 +759,110 @@ def test_high_links_under_two_accounts_are_caught_before_they_fuse():
     )
     assert con.execute(sql).fetchall() == []
     con.close()
+
+
+def _model_sql(name: str, **refs: str) -> str:
+    """A committed mart model's own SQL with its `{{ ref(...) }}` macros
+    replaced by plain table names, so it can run against a throwaway DuckDB.
+    Same reasoning as _singular_test_sql: the assertion below exercises the
+    SQL dbt actually builds, not a restatement of it."""
+    sql = (ROOT / "dbt" / "models" / "marts" / f"{name}.sql").read_text()
+    for model, table in refs.items():
+        sql = sql.replace("{{ ref('%s') }}" % model, table)
+    assert "{{" not in sql, f"unsubstituted macro left in {name}.sql"
+    return sql
+
+
+def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
+    """ROADMAP #80 fix round 1 (2026-09-11), findings 1 and 7.
+
+    The first floor counted high-confidence AWARDS and LINKED FAMILIES and
+    nothing else, so it published an index for two shapes that say nothing
+    about a market:
+
+      · every high link summing to zero (or negative) obligations. Each
+        family's share_pct falls into the `else 0` branch, `sum(share*share)`
+        is 0.0 — a number, not NULL — and the card headlined "Competitive"
+        with $0 and a top contractor picked alphabetically by the tie-break.
+        13 shipped programs, one of them headlining -$2,328,281.
+      · two LINKED families where only one holds positive dollars: HHI 10,000
+        (one family at 100% of the positive dollars) next to a card reading
+        "Contractor Families: 2". 7 shipped programs.
+
+    The floor now measures positive-dollar families and positive net program
+    dollars, and withholds top_family_high with the index. Delete either
+    clause from fct_program_concentration.sql and the corresponding case
+    below publishes again.
+    """
+    import duckdb
+
+    con = duckdb.connect()
+    con.execute("create table tx (award_id_piid varchar, obligation double)")
+    con.execute(
+        "create table links (pe_bli varchar, award_piid varchar,"
+        " confidence varchar, recipient_uei varchar, recipient_name varchar)"
+    )
+    con.execute("create table xwalk (recipient_uei varchar, family_key varchar)")
+    con.execute(
+        "insert into xwalk values ('U1','ALPHA'),('U2','BRAVO'),('U3','CHARLIE')"
+    )
+
+    con.execute(
+        "insert into tx values"
+        # CLEAR: two positive families over three awards
+        " ('A1', 600.0), ('A2', 300.0), ('A3', 100.0),"
+        # ZERO: three awards carrying no positive obligation at all
+        " ('Z1', 0.0), ('Z2', 0.0), ('Z3', 0.0),"
+        # ONEPOS: two linked families, only one with positive dollars
+        " ('P1', 900.0), ('P2', 100.0), ('P3', 0.0),"
+        # NEG: two positive families, net negative after a deobligation
+        " ('N1', 100.0), ('N2', 50.0), ('N3', -500.0)"
+    )
+    con.execute(
+        "insert into links values"
+        " ('CLEAR','A1','high','U1','Alpha'),"
+        " ('CLEAR','A2','high','U2','Bravo'),"
+        " ('CLEAR','A3','high','U2','Bravo'),"
+        " ('ZERO','Z1','high','U1','Alpha'),"
+        " ('ZERO','Z2','high','U2','Bravo'),"
+        " ('ZERO','Z3','high','U3','Charlie'),"
+        " ('ONEPOS','P1','high','U1','Alpha'),"
+        " ('ONEPOS','P2','high','U1','Alpha'),"
+        " ('ONEPOS','P3','high','U2','Bravo'),"
+        " ('NEG','N1','high','U1','Alpha'),"
+        " ('NEG','N2','high','U2','Bravo'),"
+        " ('NEG','N3','high','U2','Bravo')"
+    )
+
+    rows = {
+        r[0]: r
+        for r in con.execute(
+            "select pe_bli, hhi_high, top_family_high, family_count_high,"
+            " positive_family_count_high, award_count_high, program_dollars_high"
+            " from ("
+            + _model_sql(
+                "fct_program_concentration",
+                fct_award_transactions="tx",
+                fct_budget_to_awards="links",
+                entity_xwalk="xwalk",
+            )
+            + ")"
+        ).fetchall()
+    }
+    con.close()
+
+    # The control publishes: 3 awards, 2 positive families, $1,000 net.
+    pe, hhi, top, fams, pos_fams, awards, dollars = rows["CLEAR"]
+    assert hhi is not None and round(hhi, 6) == 5200.0, rows["CLEAR"]
+    assert (top, fams, pos_fams, awards, dollars) == ("ALPHA", 2, 2, 3, 1000.0)
+
+    # Zero dollars: counts are published, the index and the "leader" are not,
+    # and program_dollars_high stays the true sum rather than going NULL
+    # (NULL there means "no high link at all", a different fact).
+    assert rows["ZERO"][1:] == (None, None, 3, 0, 3, 0.0), rows["ZERO"]
+
+    # One positive family out of two linked ones.
+    assert rows["ONEPOS"][1:] == (None, None, 2, 1, 3, 1000.0), rows["ONEPOS"]
+
+    # Net negative dollars, two positive-share families.
+    assert rows["NEG"][1:] == (None, None, 2, 2, 3, -350.0), rows["NEG"]

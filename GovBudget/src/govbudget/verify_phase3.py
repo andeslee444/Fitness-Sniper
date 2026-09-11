@@ -92,6 +92,19 @@ def linkage_gate(hr_path: Path) -> dict:
 # that would mean anything (a share above 100%). Do NOT widen it.
 _HHI_CEILING = 10_000.0 + 1e-6
 
+# #80 fix round 1 (2026-09-11): a do-not-lower floor on the number of programs
+# that publish a high-only index. bad_high_floor below can only fire on a
+# hand-written table — the mart applies the same predicate by construction —
+# so on its own it would stay 0 through a total collapse of the high basis
+# (an upstream vocabulary change, a demotion pass), every hhi_high would go
+# NULL, gate 3 would stay green and every program card would silently stop
+# publishing a concentration index. Measured 37 of 444 rows on the live lake
+# 2026-09-11 (57 cleared the award/family-count floor; 13 of those summed to
+# zero or negative high-confidence dollars and 7 more rested on a single
+# positive-dollar family). Never lower this to fit a red run: a drop means
+# the high basis moved, which is the thing to investigate.
+_MIN_HIGH_ONLY_ROWS = 37
+
 
 def marts_gate(duckdb_path: Path) -> dict:
     """Gate 3: four efficiency marts non-empty with sane invariants.
@@ -99,7 +112,9 @@ def marts_gate(duckdb_path: Path) -> dict:
     Invariants:
     - fct_budget_trajectory ≥ 300 rows
     - fct_program_concentration: hhi_all AND hhi_high ∈ [0, 10000] (see _HHI_CEILING);
-      hhi_high NULL below the 3-award / 2-family floor (#80)
+      a published hhi_high rests on >= 3 high-confidence awards across >= 2
+      POSITIVE-dollar families with positive program dollars (#80), and at
+      least _MIN_HIGH_ONLY_ROWS programs publish one
     - fct_agency_concentration: ≥ 1 sub-agency
     - fct_improper_exposure: ≥ 10 agencies
     """
@@ -121,13 +136,25 @@ def marts_gate(duckdb_path: Path) -> dict:
             f" where hhi > {_HHI_CEILING} or hhi < 0"
         ).fetchone()[0]
         # #80 floor: a high-only index may rest on nothing smaller than 3
-        # high-confidence awards across 2 contractor families. The mart NULLs
-        # hhi_high below that; a published value below it is the regression
-        # this leg exists to catch (the card would headline it).
+        # high-confidence awards across 2 contractor families HOLDING POSITIVE
+        # DOLLARS, with positive net program dollars. The mart NULLs hhi_high
+        # below that; a published value below it is the regression this leg
+        # exists to catch (the card headlines it).
+        #
+        # The dollar and positive-family clauses are the 2026-09-11 fix: the
+        # first version of this leg re-asserted only the award/family counts,
+        # exactly the predicate the mart's own `case` guarantees, so it was
+        # structurally 0 while 13 programs published hhi_high = 0.0
+        # ("Competitive", $0, a top contractor picked alphabetically) and 7
+        # published 10,000 over one positive-dollar family. A mart that stops
+        # applying either clause now fails here.
         bad_high_floor = con.execute(
             "select count(*) from fct_program_concentration"
             " where hhi_high is not null"
-            "   and (award_count_high < 3 or family_count_high < 2)"
+            "   and (program_dollars_high is null"
+            "        or program_dollars_high <= 0"
+            "        or positive_family_count_high < 2"
+            "        or award_count_high < 3)"
         ).fetchone()[0]
         high_only_rows = con.execute(
             "select count(hhi_high) from fct_program_concentration"
@@ -143,12 +170,14 @@ def marts_gate(duckdb_path: Path) -> dict:
         and bad_hhi_prog == 0
         and bad_hhi_agency == 0
         and bad_high_floor == 0
+        and high_only_rows >= _MIN_HIGH_ONLY_ROWS
     )
     return {
         "ok": ok,
         "trajectory_rows": traj_rows,
         "concentration_rows": conc_rows,
         "high_only_rows": high_only_rows,
+        "min_high_only_rows": _MIN_HIGH_ONLY_ROWS,
         "agency_rows": agency_rows,
         "exposure_rows": exposure_rows,
         "bad_hhi_program": bad_hhi_prog,

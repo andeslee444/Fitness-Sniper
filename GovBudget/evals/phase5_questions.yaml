@@ -250,16 +250,20 @@
     select pe_bli, top_family_high from fct_program_concentration
     where hhi_high is not null
     order by round(hhi_high, 6) desc, program_dollars_high desc, pe_bli limit 1
-  expected_answer: 0603882C, BOEING
+  expected_answer: 2307, RTX
   expected_citation_kind: warehouse
-  notes: 'ROADMAP #80 (2026-09-05): hhi_high is NULL below 3 high-confidence awards
-    across 2 families, so the ranking is over the 57 programs that clear the floor;
-    SEVEN of them tie at 10,000 (one family holds every positive obligation), hence
-    the dollar and pe_bli tie-breakers. round(hhi_high, 6) is not cosmetic: DuckDB
-    sums the squared shares in parallel, so a tied program reads 10000.0 or
-    10000.000000000004 run to run and the raw ordering would flip. Expected computed
-    read-only from the live lake with the new mart SQL, stable across six runs
-    (2026-09-10); refresh with `evals refresh` after the rebuild if the lake moved.'
+  notes: 'ROADMAP #80, re-measured after fix round 1 (2026-09-11): hhi_high is NULL
+    below 3 high-confidence awards across 2 families HOLDING POSITIVE DOLLARS with
+    positive net program dollars, so the ranking is over the 37 programs that clear
+    the floor (57 cleared the first, count-only floor; 13 of those summed to zero or
+    negative high-confidence dollars and 7 rested on a single positive-dollar
+    family — 0603882C, this question''s previous expected answer, was one of the
+    seven). Nothing ties at 10,000 any more: the head of the ranking is 2307 at
+    9,926.75 over 2242 at 8,992.01, and the dollar and pe_bli tie-breakers plus
+    round(hhi_high, 6) stay because DuckDB sums the squared shares in parallel and a
+    future tie must not flip run to run. Expected computed read-only from the live
+    lake with the fixed mart SQL, stable across six runs (2026-09-11); refresh with
+    `evals refresh` after the rebuild if the lake moved.'
 - id: q024
   question: Which federal agency has the highest estimated improper payment exposure
     in the warehouse (derived from program-level rates), and what is the approximate
