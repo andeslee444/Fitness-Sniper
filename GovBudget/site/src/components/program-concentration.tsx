@@ -1,41 +1,44 @@
 import Link from "next/link";
 import type { ProgramHHI } from "@/lib/data";
 import { Cite } from "@/components/cite";
+import { ScopeNote } from "@/components/notes";
 import { hhiBand } from "@/lib/hhi-band.mjs";
 import {
   concentrationHeadline,
-  awardsAcrossFamilies,
-  HIGH_ONLY_MIN_AWARDS,
-  HIGH_ONLY_MIN_FAMILIES,
+  CONCENTRATION_WITHHELD_REASON,
 } from "@/lib/concentration-basis";
 
 /**
- * ProgramConcentration — HHI concentration card, TWO bases (ROADMAP #80).
+ * ProgramConcentration — HHI concentration card (ROADMAP #80; fix round 1,
+ * 2026-09-11).
  *
- * Shown only when the block is non-null. The HEADLINE basis is decided by
- * concentrationHeadline() (lib/concentration-basis.ts): high-confidence
- * links alone where the high-only index publishes, the all-tier figure
- * otherwise. Every figure is State A via a derived citation fact_id carried
- * on programs.json (dataset fct_program_concentration):
- *   - all-tier HHI / dollars → hhi_all_fact_id / program_dollars_all_fact_id
- *     (the pre-#80 fids; measures "hhi" / "obligations", unchanged)
- *   - high-only HHI / dollars → hhi_high_fact_id / program_dollars_high_fact_id
- *     (measures "hhi-high" / "obligations-high" — distinct on purpose, see
- *     the helper's doc-comment on gate 23 leg a2)
+ * Shown only when the block is non-null (a #70 shared-code withholding
+ * removes the block upstream and this renders nothing at all). The mart
+ * computes TWO bases and both ship in the download and in citations; this
+ * card renders ONE — the high-confidence-only figures — and only where
+ * concentrationHeadline() says they publish. Where they do not, the card
+ * states the absence and prints no figure: the all-links figures rest
+ * mostly on the account+subagency tier, measured 0 of 60 for program
+ * attribution (ROADMAP #79), so substituting them would widen the claim to
+ * fit a number. See lib/concentration-basis.ts for the whole argument.
  *
- * Three shapes, one [data-concentration-secondary] line each:
- *   A basis=high  — headline high-only; second line "Including
- *                   medium-confidence links: …" with the all-tier figures
- *   B basis=all   — high links exist but sit below the floor; second line
- *                   states what they amount to and why no index is shown
- *   C basis=all   — no high link; second line says so
+ * Two states, and the gates read both:
+ *   PUBLISHED — exactly one [data-hhi-band] stamped data-hhi-basis="high",
+ *     plus State-A citations on the index and the obligations
+ *     (hhi_high_fact_id / program_dollars_high_fact_id, dataset
+ *     fct_program_concentration, measures "hhi-high"/"obligations-high" —
+ *     distinct tokens so gate 23 leg a2 can never group a high-only figure
+ *     with an all-tier one).
+ *   WITHHELD — [data-concentration-withheld="below-floor"], one sentence,
+ *     and NOTHING else: no band, no [data-amount], no [data-measure], no
+ *     tier chip, no top contractor, no family count. A reader must not be
+ *     able to mistake an absence for a small number.
  *
  * Band vocabulary lives in hhi-band.mjs (backlog #57) — this is the
  * DESTINATION page a homepage/feed concentration claim links to, and
- * scripts/gates/feed.mjs leg (l) reads the ONE [data-hhi-band] below (and,
- * since #80, its data-hhi-basis) to check that claim against what this page
- * actually renders. The second line's band is plain text on purpose: a
- * second [data-hhi-band] would fail leg (l). Color stays local.
+ * scripts/gates/feed.mjs leg (l) reads either the ONE [data-hhi-band] (with
+ * its basis stamp) or the withheld marker to check that claim against what
+ * this page actually renders. Color stays local.
  */
 
 interface ProgramConcentrationProps {
@@ -48,50 +51,71 @@ const BAND_COLOR: Record<string, string> = {
   concentrated: "text-red-700",
 };
 
-const CHIP_COLOR: Record<string, string> = {
-  high: "bg-green-100 text-green-800",
-  all: "bg-yellow-100 text-yellow-800",
-};
-
-export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
-  if (!hhi) return null;
-
-  const head = concentrationHeadline(hhi);
-  const band = hhiBand(head.hhi);
-  const { label } = band;
-  const color = BAND_COLOR[band.key];
-  const allBand = hhiBand(hhi.hhi_all);
-
+function ConcentrationSection({ children }: { children: React.ReactNode }) {
   return (
-    <section
-      aria-labelledby="concentration-heading"
-      className="mb-8"
-      data-concentration-basis={head.basis}
-    >
+    <section aria-labelledby="concentration-heading" className="mb-8">
       <h2
         id="concentration-heading"
         className="text-lg font-semibold mb-4 text-foreground"
       >
         Contractor Concentration
       </h2>
+      {children}
+    </section>
+  );
+}
 
-      <div className="rounded-lg border border-border bg-card p-4">
-        {/* Tier chip — the headline's basis, stated where a reader sees it. */}
-        <div className="mb-3 text-xs text-muted-foreground">
-          Basis:{" "}
-          <span
-            data-concentration-tier-chip={head.basis}
-            className={`inline-block px-1.5 py-0.5 rounded font-medium ${CHIP_COLOR[head.basis]}`}
-            title={
-              head.basis === "high"
-                ? `Computed from high-confidence award links only (${awardsAcrossFamilies(head.award_count, head.family_count)}).`
-                : "Computed from every published link, including medium-confidence ones — an account or agency association, not proof this line paid."
-            }
+export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
+  if (!hhi) return null;
+
+  const head = concentrationHeadline(hhi);
+
+  if (!head.published) {
+    return (
+      <ConcentrationSection>
+        <ScopeNote label={null}>
+          <p
+            data-concentration-withheld={head.withheld}
+            className="text-xs leading-relaxed text-muted-foreground"
           >
-            {head.chip}
-          </span>
-        </div>
+            <strong className="text-foreground">
+              No concentration index is published for this line.
+            </strong>{" "}
+            {CONCENTRATION_WITHHELD_REASON} An index over one or two awards is
+            a fact about the sample, not about the market. Whatever further
+            links this line carries are medium-confidence, and what each
+            medium evidence path does and does not establish is set out in
+            the{" "}
+            <Link
+              href="/methodology/#crosswalk-confidence"
+              className="underline decoration-dotted hover:text-foreground"
+            >
+              methodology
+            </Link>
+            . Both bases are in the{" "}
+            <Link
+              href="/downloads/"
+              className="underline decoration-dotted hover:text-foreground"
+            >
+              downloadable warehouse
+            </Link>
+            .
+          </p>
+        </ScopeNote>
+      </ConcentrationSection>
+    );
+  }
 
+  const band = hhiBand(head.hhi);
+  const { label } = band;
+  const color = BAND_COLOR[band.key];
+
+  return (
+    <ConcentrationSection>
+      <div
+        className="rounded-lg border border-border bg-card p-4"
+        data-concentration-basis={head.basis}
+      >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {/* HHI — derived citation (display override: index, not dollars) */}
           <div>
@@ -113,7 +137,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
               Index
               <span
                 className="ml-1 text-muted-foreground/60 cursor-help"
-                title="Herfindahl-Hirschman Index: 0–10,000. <1500 competitive; 1500–2500 moderate; >2500 concentrated. Derived from positive-only contractor shares — click the value for the formula."
+                title="Herfindahl-Hirschman Index: 0–10,000. <1500 competitive; 1500–2500 moderate; >2500 concentrated. Computed from high-confidence award links only, on positive-only contractor shares — click the value for the formula."
               >
                 ⓘ
               </span>
@@ -133,9 +157,9 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 measure={head.hhiMeasure}
               />
             </div>
-            {/* data-hhi-band: the headline's pooled all-years band, the ONE
-                stable selector for scripts/gates/feed.mjs leg (l); since #80
-                it also declares which basis it is. See hhi-band.mjs. */}
+            {/* data-hhi-band: the pooled all-years band, the ONE stable
+                selector for scripts/gates/feed.mjs leg (l); it also declares
+                which basis it is. See hhi-band.mjs. */}
             <div
               className={`text-xs font-medium ${color}`}
               data-hhi-band={label}
@@ -169,7 +193,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
               Program Obligations
               <span
                 className="ml-1 text-muted-foreground/60 cursor-help"
-                title="Total contract obligations attributed to this program element on the basis stated above. Derived — click the value for the formula."
+                title="Contract obligations attributed to this program element through high-confidence award links. Derived — click the value for the formula."
               >
                 ⓘ
               </span>
@@ -188,71 +212,25 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
           </div>
         </div>
 
-        {/* The OTHER basis — always printed, always labelled. */}
-        {head.basis === "high" && (
-          <p
-            data-concentration-secondary="all"
-            className="mt-3 text-xs text-muted-foreground"
+        <p className="mt-3 text-xs text-muted-foreground">
+          High-confidence award links only. The figures over every published
+          link, including medium-confidence ones, are in the{" "}
+          <Link
+            href="/downloads/"
+            className="underline decoration-dotted hover:text-foreground"
           >
-            Including medium-confidence links: HHI{" "}
-            <Cite
-              value={hhi.hhi_all}
-              units="USD"
-              dataset="fct_program_concentration"
-              factId={hhi.hhi_all_fact_id}
-              display={hhi.hhi_all.toFixed(0)}
-              basis="usaspending"
-              fy="all-years"
-              measure="hhi"
-            />{" "}
-            ({allBand.label}), {hhi.family_count_all} contractor{" "}
-            {hhi.family_count_all === 1 ? "family" : "families"} across{" "}
-            {hhi.award_count_all} award{hhi.award_count_all === 1 ? "" : "s"},
-            top contractor {hhi.top_family_all},{" "}
-            <Cite
-              value={hhi.program_dollars_all}
-              units="USD"
-              dataset="fct_program_concentration"
-              factId={hhi.program_dollars_all_fact_id}
-              basis="usaspending"
-              fy="all-years"
-              measure="obligations"
-            />
-            .
-          </p>
-        )}
-        {head.basis === "all" && hhi.program_dollars_high !== null && (
-          <p
-            data-concentration-secondary="high"
-            className="mt-3 text-xs text-muted-foreground"
+            downloadable warehouse
+          </Link>
+          , not on this page —{" "}
+          <Link
+            href="/methodology/#crosswalk-confidence"
+            className="underline decoration-dotted hover:text-foreground"
           >
-            High-confidence links alone:{" "}
-            {awardsAcrossFamilies(hhi.award_count_high, hhi.family_count_high)},{" "}
-            <Cite
-              value={hhi.program_dollars_high}
-              units="USD"
-              dataset="fct_program_concentration"
-              factId={hhi.program_dollars_high_fact_id}
-              basis="usaspending"
-              fy="all-years"
-              measure="obligations-high"
-            />{" "}
-            — below the {HIGH_ONLY_MIN_AWARDS}-award, {HIGH_ONLY_MIN_FAMILIES}-family
-            floor for a high-only index, so the figures above include
-            medium-confidence links.
-          </p>
-        )}
-        {head.basis === "all" && hhi.program_dollars_high === null && (
-          <p
-            data-concentration-secondary="none"
-            className="mt-3 text-xs text-muted-foreground"
-          >
-            No high-confidence link on this line; every figure above rests on
-            medium-confidence links (an account or agency association, not
-            proof this line paid).
-          </p>
-        )}
+            why
+          </Link>
+          .
+        </p>
       </div>
-    </section>
+    </ConcentrationSection>
   );
 }

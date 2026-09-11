@@ -651,7 +651,10 @@ export default function MethodologyPage() {
                 </p>
               </div>
               <div>
-                <h3 className="font-semibold text-foreground mb-1">
+                <h3
+                  id="crosswalk-confidence"
+                  className="font-semibold text-foreground mb-1 scroll-mt-16"
+                >
                   Budget-to-contract links
                 </h3>
                 <p>

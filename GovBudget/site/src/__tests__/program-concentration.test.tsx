@@ -1,15 +1,25 @@
 /**
- * ROADMAP #80 — the Contractor Concentration card publishes both link
- * bases and headlines the high-only one where it exists.
+ * ROADMAP #80 (fix round 1, 2026-09-11) — the Contractor Concentration card
+ * publishes ONE basis: high-confidence links only, or nothing.
+ *
+ * Both bases are computed and both ship in the downloadable mart and in
+ * citations. Only the high-confidence-only figures are rendered: the
+ * all-links figures are dominated by the account+subagency tier, which the
+ * 2026-09-04 adjudication measured at 0 of 60 for program attribution
+ * (ROADMAP #79), and "publish the smaller true number" (owner decision
+ * 2026-08-07) says shrink the claim rather than substitute a wider one.
  *
  * DOM contract (read by scripts/gates/feed.mjs leg l and gate 23 leg a2):
- *   - exactly ONE [data-hhi-band], stamped data-hhi-basis="high"|"all"
- *   - a [data-concentration-tier-chip] naming the tiers the headline rests on
- *   - the all-tier figures keep measures "hhi"/"obligations"; the high-only
- *     figures carry "hhi-high"/"obligations-high" so leg a2 never groups the
- *     two bases as one (entity, fy, measure) label
- *   - one [data-concentration-secondary] line: "all" (shape A), "high"
- *     (shape B: high links below the floor) or "none" (shape C: no high link)
+ *   PUBLISHED (hhi_high non-null)
+ *     - exactly ONE [data-hhi-band], stamped data-hhi-basis="high"
+ *     - measures "hhi-high" / "obligations-high" — never "hhi"/"obligations",
+ *       which would put two different figures in one (entity, fy, measure)
+ *       group for leg a2 if an all-links figure ever came back
+ *   WITHHELD (hhi_high null)
+ *     - [data-concentration-withheld="below-floor"] and a sentence saying why
+ *     - NO [data-hhi-band], NO [data-amount], NO [data-measure], no tier
+ *       chip, no top family, no family count — nothing for a reader to
+ *       mistake for a published figure
  */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
@@ -19,8 +29,8 @@ import { concentrationHeadline } from "@/lib/concentration-basis";
 import type { ProgramHHI } from "@/lib/data";
 
 // hhi_all 2100.4 → "Moderately Concentrated" (1,500–2,500); hhi_high 9800.2 →
-// "Highly Concentrated" — the two bands differ on purpose so the tests can
-// tell the headline badge from the second line's plain-text band.
+// "Highly Concentrated". The two bands differ on purpose: if an all-links
+// figure ever leaked back onto the card, the band assertions would catch it.
 const A: ProgramHHI = {
   hhi_all: 2100.4, hhi_all_fact_id: "a".repeat(16),
   program_dollars_all: 500_000_000, program_dollars_all_fact_id: "b".repeat(16),
@@ -29,25 +39,42 @@ const A: ProgramHHI = {
   program_dollars_high: 300_000_000, program_dollars_high_fact_id: "d".repeat(16),
   top_family_high: "BOEING", family_count_high: 2, award_count_high: 5,
 };
-const B: ProgramHHI = { ...A, hhi_high: null, hhi_high_fact_id: null, family_count_high: 1, award_count_high: 2 };
-const C: ProgramHHI = { ...B, program_dollars_high: null, program_dollars_high_fact_id: null, top_family_high: null, family_count_high: 0, award_count_high: 0 };
+// B — high links exist but fall below the floor. The mart NULLs top_family_high
+// with hhi_high (fix round 1): with no positive-dollar leader the tie-break
+// picks alphabetically.
+const B: ProgramHHI = {
+  ...A, hhi_high: null, hhi_high_fact_id: null, top_family_high: null,
+  family_count_high: 1, award_count_high: 2,
+};
+// C — no high link at all.
+const C: ProgramHHI = {
+  ...B, program_dollars_high: null, program_dollars_high_fact_id: null,
+  family_count_high: 0, award_count_high: 0,
+};
 
 describe("concentrationHeadline", () => {
-  it("picks the high basis only when hhi_high publishes", () => {
-    expect(concentrationHeadline(A).basis).toBe("high");
-    expect(concentrationHeadline(B).basis).toBe("all");
-    expect(concentrationHeadline(C).basis).toBe("all");
+  it("publishes only the high basis, and only when the index publishes", () => {
+    const a = concentrationHeadline(A);
+    expect(a.published).toBe(true);
+    if (!a.published) throw new Error("unreachable");
+    expect(a.basis).toBe("high");
+    expect(a.hhi).toBe(9800.2);
+    expect(a.program_dollars).toBe(300_000_000);
+    expect(a.top_family).toBe("BOEING");
+    expect(a.hhiMeasure).toBe("hhi-high");
+    expect(a.dollarsMeasure).toBe("obligations-high");
   });
-  it("carries distinct measure tokens per basis", () => {
-    expect(concentrationHeadline(A).hhiMeasure).toBe("hhi-high");
-    expect(concentrationHeadline(A).dollarsMeasure).toBe("obligations-high");
-    expect(concentrationHeadline(B).hhiMeasure).toBe("hhi");
-    expect(concentrationHeadline(B).dollarsMeasure).toBe("obligations");
-  });
-  it("names the tiers honestly per shape", () => {
-    expect(concentrationHeadline(A).chip).toBe("high-confidence links");
-    expect(concentrationHeadline(B).chip).toBe("high- and medium-confidence links");
-    expect(concentrationHeadline(C).chip).toBe("medium-confidence links only");
+
+  it("withholds rather than substituting the all-links figure", () => {
+    for (const shape of [B, C]) {
+      const h = concentrationHeadline(shape);
+      expect(h.published).toBe(false);
+      if (h.published) throw new Error("unreachable");
+      expect(h.withheld).toBe("below-floor");
+      // No path out of the withheld state carries an all-links value.
+      expect(JSON.stringify(h)).not.toContain("2100.4");
+      expect(JSON.stringify(h)).not.toContain("LOCKHEED");
+    }
   });
 });
 
@@ -55,47 +82,55 @@ describe("ProgramConcentration card", () => {
   it("renders nothing without a block", () => {
     const { container } = render(<ProgramConcentration hhi={null} />);
     expect(container.querySelector("[data-hhi-band]")).toBeNull();
+    expect(container.querySelector("[data-concentration-withheld]")).toBeNull();
+    expect(container.textContent).toBe("");
   });
 
-  it("shape A: high-only headline, one basis-stamped band, all-tier second line", () => {
+  it("published: one basis-stamped band, high-only measures, no second line", () => {
     const { container } = render(<ProgramConcentration hhi={A} />);
     const bands = container.querySelectorAll("[data-hhi-band]");
     expect(bands.length).toBe(1);
     expect(bands[0].getAttribute("data-hhi-basis")).toBe("high");
     expect(bands[0].getAttribute("data-hhi-band")).toBe("Highly Concentrated");
-    expect(container.querySelector("[data-concentration-tier-chip]")?.textContent).toBe("high-confidence links");
     const hhiHigh = container.querySelector('[data-amount][data-measure="hhi-high"]');
     expect(hhiHigh).toHaveAttribute("data-fact-id", "c".repeat(16));
     expect(hhiHigh?.textContent).toContain("9800");
-    const hhiAll = container.querySelector('[data-amount][data-measure="hhi"]');
-    expect(hhiAll).toHaveAttribute("data-fact-id", "a".repeat(16));
-    expect(container.querySelector('[data-amount][data-measure="obligations-high"]')).toHaveAttribute("data-fact-id", "d".repeat(16));
-    expect(container.querySelector('[data-amount][data-measure="obligations"]')).toHaveAttribute("data-fact-id", "b".repeat(16));
-    const second = container.querySelector('[data-concentration-secondary="all"]');
-    expect(second?.textContent).toContain("Including medium-confidence links");
-    expect(second?.textContent).toContain("Moderately Concentrated");
+    expect(
+      container.querySelector('[data-amount][data-measure="obligations-high"]'),
+    ).toHaveAttribute("data-fact-id", "d".repeat(16));
     expect(container.textContent).toContain("BOEING");
+    expect(container.querySelector("[data-concentration-withheld]")).toBeNull();
   });
 
-  it("shape B: all-tier headline, high links reported below the floor", () => {
-    const { container } = render(<ProgramConcentration hhi={B} />);
-    const bands = container.querySelectorAll("[data-hhi-band]");
-    expect(bands.length).toBe(1);
-    expect(bands[0].getAttribute("data-hhi-basis")).toBe("all");
-    expect(container.querySelector('[data-amount][data-measure="hhi"]')?.textContent).toContain("2100");
-    expect(container.querySelector('[data-amount][data-measure="hhi-high"]')).toBeNull();
-    expect(container.querySelector("[data-concentration-tier-chip]")?.textContent).toBe("high- and medium-confidence links");
-    const second = container.querySelector('[data-concentration-secondary="high"]');
-    expect(second?.textContent).toContain("2 awards across 1 family");
-    expect(second?.textContent).toContain("below the 3-award, 2-family floor");
-    expect(second?.querySelector('[data-amount][data-measure="obligations-high"]')).toHaveAttribute("data-fact-id", "d".repeat(16));
+  it("withheld: the reason, the marker, and not one figure", () => {
+    for (const [name, shape] of [["below floor", B], ["no high link", C]] as const) {
+      const { container } = render(<ProgramConcentration hhi={shape} />);
+      const note = container.querySelector('[data-concentration-withheld="below-floor"]');
+      expect(note, name).not.toBeNull();
+      expect(note?.textContent, name).toMatch(/high-confidence/i);
+      expect(note?.textContent, name).toMatch(/no concentration (index|figure)/i);
+      expect(container.querySelectorAll("[data-hhi-band]").length, name).toBe(0);
+      expect(container.querySelectorAll("[data-amount]").length, name).toBe(0);
+      expect(container.querySelectorAll("[data-measure]").length, name).toBe(0);
+      expect(container.querySelector("[data-concentration-tier-chip]"), name).toBeNull();
+      // The all-links top family and counts must not appear anywhere.
+      expect(container.textContent, name).not.toContain("LOCKHEED");
+      expect(container.textContent, name).not.toContain("2100");
+      expect(container.textContent, name).not.toContain("Moderately Concentrated");
+    }
   });
 
-  it("shape C: no high link — says so, cites only all-tier figures", () => {
-    const { container } = render(<ProgramConcentration hhi={C} />);
-    expect(container.querySelector("[data-hhi-band]")?.getAttribute("data-hhi-basis")).toBe("all");
-    expect(container.querySelector("[data-concentration-tier-chip]")?.textContent).toBe("medium-confidence links only");
-    expect(container.querySelector('[data-concentration-secondary="none"]')?.textContent).toContain("No high-confidence link");
-    expect(container.querySelectorAll('[data-amount][data-measure$="-high"]').length).toBe(0);
+  it("never renders an all-links figure or a second line, on any shape", () => {
+    for (const shape of [A, B, C]) {
+      const { container } = render(<ProgramConcentration hhi={shape} />);
+      expect(container.querySelector('[data-measure="hhi"]')).toBeNull();
+      expect(container.querySelector('[data-measure="obligations"]')).toBeNull();
+      expect(container.querySelector("[data-concentration-secondary]")).toBeNull();
+      expect(container.querySelector("[data-concentration-tier-chip]")).toBeNull();
+      expect(container.textContent).not.toContain("Including medium-confidence links");
+      expect(container.textContent).not.toContain(
+        "an account or agency association",
+      );
+    }
   });
 });

@@ -1,38 +1,55 @@
 /**
- * concentration-basis.ts — which link basis a program page HEADLINES for
- * its contractor-concentration figures (ROADMAP #80, 2026-09-05).
+ * concentration-basis.ts — whether a program page PUBLISHES a contractor
+ * concentration figure, and on which basis (ROADMAP #80; fix round 1,
+ * 2026-09-11).
  *
- * The mart publishes two bases (see ProgramHHI in lib/data.ts). "Publish
- * the smaller true number": the high-confidence-only figures are the
- * headline wherever they exist, and the all-tier figures are printed on a
- * labelled second line. Where the high-only index does not publish (fewer
- * than HIGH_ONLY_MIN_AWARDS high awards across HIGH_ONLY_MIN_FAMILIES
- * families — 387 of 444 mart rows at the 2026-09-10 measurement), the
- * all-tier figures are the headline and the chip says which tiers they
- * rest on.
+ * The mart computes two bases (see ProgramHHI in lib/data.ts) and both ship:
+ * in the downloadable warehouse, in citations.json, and in the description
+ * on /methodology/. A PAGE publishes only one of them — the
+ * high-confidence-only figures — and only where the mart's floor is cleared
+ * (HIGH_ONLY_MIN_AWARDS distinct high-confidence awards across
+ * HIGH_ONLY_MIN_FAMILIES contractor families holding positive dollars, with
+ * positive linked dollars: 37 of 444 mart rows, measured 2026-09-11).
+ *
+ * Below that floor NOTHING is published — not the all-links figure in its
+ * place. account+subagency is 8,833 of the 11,512 medium-confidence links,
+ * and the 2026-09-04 adjudication measured that tier at 0 of 60 for program
+ * attribution (ROADMAP #79): it establishes that a program exists inside an
+ * account, not that this budget line paid a contractor. Substituting it
+ * would widen the claim to fit a number, which is the move the owner
+ * decision of 2026-08-07 ("publish the smaller true number") forbids. The
+ * card states the absence instead.
  *
  * ONE basis per page: the Contractor Concentration card and the "Who gets
- * it" answer both call this. The exporter's `_who_gets_it_fid`
- * (src/govbudget/export_site.py) mirrors the `basis` decision so the
- * named-primes / uncrosswalked fallbacks fire exactly when the award tier
- * does not render — change both together.
+ * it" answer both call this, and the exporter's `_who_gets_it_fid`
+ * (src/govbudget/export_site.py) mirrors the same predicate so the
+ * named-primes / lobbying / honest-absence fallbacks fire exactly when the
+ * award tier does not — change both together.
  *
- * Measure tokens differ per basis on purpose: gate 23 leg a2 groups every
+ * Measure tokens carry the basis on purpose: gate 23 leg a2 groups every
  * [data-amount] on a page by (entity, fy, measure) and fails two distinct
- * values in one group. A high-only figure and its all-tier sibling are two
- * measures, not two bases of one measure.
+ * values in one group. A high-only figure and an all-tier sibling are two
+ * measures, not two bases of one measure — so if the all basis is ever
+ * rendered again it arrives under "hhi"/"obligations" and cannot collide
+ * with these.
  *
  * Client-safe: type-only import from lib/data (which is server-only).
  */
 import type { ProgramHHI } from "@/lib/data";
 
-export type ConcentrationBasis = "high" | "all";
+export type ConcentrationBasis = "high";
 
-/** Floor for a high-only index — mirrors fct_program_concentration.sql. */
+/**
+ * Floor for a high-only index — mirrors fct_program_concentration.sql.
+ * HIGH_ONLY_MIN_FAMILIES counts families holding POSITIVE dollars
+ * (`positive_family_count_high`), not merely linked ones: a family that
+ * contributed nothing does not make an index a statement about a market.
+ */
 export const HIGH_ONLY_MIN_AWARDS = 3;
 export const HIGH_ONLY_MIN_FAMILIES = 2;
 
-export interface ConcentrationHeadline {
+export interface ConcentrationPublished {
+  published: true;
   basis: ConcentrationBasis;
   hhi: number;
   hhi_fact_id: string | null;
@@ -41,11 +58,19 @@ export interface ConcentrationHeadline {
   top_family: string;
   family_count: number;
   award_count: number;
-  hhiMeasure: "hhi-high" | "hhi";
-  dollarsMeasure: "obligations-high" | "obligations";
-  /** Tier chip text — names exactly the link tiers the headline rests on. */
-  chip: string;
+  hhiMeasure: "hhi-high";
+  dollarsMeasure: "obligations-high";
 }
+
+export interface ConcentrationWithheld {
+  published: false;
+  /** Why nothing is published. The card stamps this as its marker value. */
+  withheld: "below-floor";
+}
+
+export type ConcentrationHeadline =
+  | ConcentrationPublished
+  | ConcentrationWithheld;
 
 export function concentrationHeadline(h: ProgramHHI): ConcentrationHeadline {
   if (
@@ -54,6 +79,7 @@ export function concentrationHeadline(h: ProgramHHI): ConcentrationHeadline {
     h.top_family_high !== null
   ) {
     return {
+      published: true,
       basis: "high",
       hhi: h.hhi_high,
       hhi_fact_id: h.hhi_high_fact_id,
@@ -64,28 +90,19 @@ export function concentrationHeadline(h: ProgramHHI): ConcentrationHeadline {
       award_count: h.award_count_high,
       hhiMeasure: "hhi-high",
       dollarsMeasure: "obligations-high",
-      chip: "high-confidence links",
     };
   }
-  return {
-    basis: "all",
-    hhi: h.hhi_all,
-    hhi_fact_id: h.hhi_all_fact_id,
-    program_dollars: h.program_dollars_all,
-    program_dollars_fact_id: h.program_dollars_all_fact_id,
-    top_family: h.top_family_all,
-    family_count: h.family_count_all,
-    award_count: h.award_count_all,
-    hhiMeasure: "hhi",
-    dollarsMeasure: "obligations",
-    chip:
-      h.award_count_high === 0
-        ? "medium-confidence links only"
-        : "high- and medium-confidence links",
-  };
+  return { published: false, withheld: "below-floor" };
 }
 
-/** "3 awards across 2 families" — shared by the card and the answer strip. */
-export function awardsAcrossFamilies(awards: number, families: number): string {
-  return `${awards} award${awards === 1 ? "" : "s"} across ${families} ${families === 1 ? "family" : "families"}`;
-}
+/**
+ * The one-sentence reason a card, or an answer strip, gives for publishing
+ * no concentration figure. Stated once so the two surfaces cannot drift,
+ * and carrying no figure about this program — the counts that would say how
+ * far below the floor it sits are not cited, so they are not printed.
+ */
+export const CONCENTRATION_WITHHELD_REASON =
+  `Fewer than ${HIGH_ONLY_MIN_AWARDS} high-confidence award links across ` +
+  `${HIGH_ONLY_MIN_FAMILIES} contractor families with positive obligations ` +
+  `are published for this line, so no concentration index is published for ` +
+  `it either.`;

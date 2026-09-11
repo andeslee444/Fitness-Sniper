@@ -84,7 +84,10 @@ import { ProgramDetailsTable } from "@/components/program-details-table";
 import { ProgramAwards } from "@/components/program-awards";
 import { ProgramMentions } from "@/components/program-mentions";
 import { ProgramConcentration } from "@/components/program-concentration";
-import { concentrationHeadline } from "@/lib/concentration-basis";
+import {
+  concentrationHeadline,
+  CONCENTRATION_WITHHELD_REASON,
+} from "@/lib/concentration-basis";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
 
@@ -1412,15 +1415,24 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  * is labelled on every mention row, but a title-word co-occurrence does not
  * earn a company's name in an above-the-fold answer. 403 program elements
  * have multi_token-only attributed families and deliberately keep the honest
- * absence; the 41 that qualify render on 45 pages (four split keys carry two
- * accounts each).
+ * absence; the 41 that qualify rendered on 45 pages (four split keys carry
+ * two accounts each) when that was measured, before #80's fix round 1. The
+ * qualifying COUNT is a property of the filings and has not moved; how many
+ * PAGES reach this tier moves with the award tier above it, and with the
+ * awarded-line guard in _build_named_primes / _build_lobbied_by — gate 21
+ * leg (j)'s census is the number that is actually measured each build.
  * The tier is stamped per name (`data-evidence-kind`) and the gate rejects
  * any name carrying a weaker one.
  *
- * AWARD TIER (#80). The basis is the card's — high-confidence links alone
- * when the high-only index publishes, all published links otherwise — and
- * the sentence says which. No [data-who-name] and exactly one
- * fct_program_concentration [data-amount], so gate 21 leg (j) is unchanged.
+ * AWARD TIER (#80, fix round 1 2026-09-11). One basis, the card's:
+ * high-confidence links alone, and only where the high-only index publishes
+ * (37 of 444 mart rows). Below that floor this tier does not render at all —
+ * the all-links figure is not substituted for it, because the
+ * account+subagency tier that dominates it measured 0 of 60 on program
+ * attribution (#79) — and the J-book / lobbying / honest-absence tiers
+ * answer instead. No [data-who-name] and exactly one
+ * fct_program_concentration [data-amount], so gate 21 leg (j) is unchanged;
+ * leg (j)'s award/jbook/lobbying/none census moves with the floor.
  */
 function WhoGetsItBody({
   hhi,
@@ -1431,12 +1443,14 @@ function WhoGetsItBody({
   primes: NamedPrime[];
   lobbiedBy: LobbiedBy | null;
 }) {
-  // ROADMAP #80: ONE basis per page — the same decision the Contractor
-  // Concentration card makes (lib/concentration-basis.ts), mirrored by the
-  // exporter's _who_gets_it_fid so the fallbacks below fire exactly when
-  // this branch does not render.
+  // ROADMAP #80 (fix round 1): ONE basis per page, and only where it
+  // publishes — the same decision the Contractor Concentration card makes
+  // (lib/concentration-basis.ts), mirrored by the exporter's
+  // _who_gets_it_fid so the fallbacks below fire exactly when this branch
+  // does not render. Below the floor the strip answers from a weaker tier
+  // or states the absence; it never substitutes the all-links figure.
   const head = hhi ? concentrationHeadline(hhi) : null;
-  if (head && head.program_dollars_fact_id) {
+  if (head?.published && head.program_dollars_fact_id) {
     return (
       <span data-who-tier="award" data-who-basis={head.basis}>
         <span className="font-medium">{head.top_family}</span>
@@ -1455,9 +1469,7 @@ function WhoGetsItBody({
           measure={head.dollarsMeasure}
         />
         <span className="text-muted-foreground">
-          {head.basis === "high"
-            ? " in high-confidence matched awards."
-            : " in matched awards, including medium-confidence links."}
+          {" in high-confidence matched awards."}
         </span>
       </span>
     );
@@ -1549,6 +1561,29 @@ function WhoGetsItBody({
             See the filings &rarr;
           </a>
         </span>
+      </span>
+    );
+  }
+
+  // #80 fix round 1: two different absences, and the old sentence was only
+  // true of the first. A line with NO concentration row has no published
+  // link at all, and "award records do not carry the program element" is
+  // exactly why. A line whose row exists but whose high-confidence links sit
+  // below the floor DOES have links — its page renders a Related Awards
+  // table — so that sentence would be false there, on ~400 pages. Say which
+  // absence it is.
+  if (hhi) {
+    return (
+      <span data-who-tier="none" className="text-muted-foreground">
+        No contractor is named for this line at high confidence.{" "}
+        {CONCENTRATION_WITHHELD_REASON}{" "}
+        <Link
+          href="/coverage/#crosswalk"
+          className="underline decoration-dotted hover:text-foreground"
+        >
+          Why the crosswalk is partial
+        </Link>
+        .
       </span>
     );
   }

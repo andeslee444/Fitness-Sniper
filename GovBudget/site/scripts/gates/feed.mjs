@@ -66,8 +66,8 @@
  *     as the site contradicting itself the moment someone clicks through.
  *     So this leg computes the band implied by each card's OWN rendered
  *     figure and the band the destination page ACTUALLY renders (its own
- *     [data-hhi-band] (exactly one, basis-stamped since #80), not a JSON
- *     recompute — a template regression that
+ *     [data-hhi-band] (exactly one, high-basis-stamped since #80, or an
+ *     explicit [data-concentration-withheld]), not a JSON recompute — a template regression that
  *     stopped rendering the badge fails this too), and where they diverge,
  *     requires the card to carry an explicit [data-hhi-scope-note]
  *     disclosure (checked by content, not just presence). See hhi-band.mjs
@@ -233,38 +233,76 @@ export async function runFeedGate() {
 const MIN_HHI_CARDS = 60;
 
 /**
- * The destination page's headline band (ROADMAP #80). The card publishes two
- * bases but stamps [data-hhi-band] on the headline only, and since #80 that
- * badge declares data-hhi-basis ("high" = high-confidence links alone,
- * "all" = every published link). Exactly one badge, with a basis, is the
- * contract; anything else is a template regression this probe names.
+ * What the destination program page renders for contractor concentration
+ * (ROADMAP #80; fix round 1, 2026-09-11).
+ *
+ * The mart computes two bases and both ship in the download; a PAGE renders
+ * exactly one of two states:
+ *
+ *   · a single [data-hhi-band] stamped data-hhi-basis="high" — the pooled
+ *     all-years band over HIGH-CONFIDENCE links only, or
+ *   · [data-concentration-withheld] — no index published, because the high
+ *     basis is below the 3-award / 2-positive-family floor.
+ *
+ * `data-hhi-basis="all"` is NOT a legitimate state any more: the all-links
+ * figure rests mostly on the account+subagency tier, measured 0 of 60 on
+ * program attribution (#79), and the site stopped rendering it. A band that
+ * declares it — like two badges, or a badge with no basis at all — is a
+ * template regression, and this probe names it rather than silently
+ * reconciling a feed claim against a figure the page should not be showing.
+ *
  * Exported for scripts/gates/__tests__/feed-hhi-destination.test.mjs.
  *
- * @returns {{ band: string | null, basis: "high" | "all" | null, error: string | null }}
+ * @returns {{ band: string | null, basis: "high" | null,
+ *             withheld: string | null, error: string | null }}
  */
 export function destinationHhiBadge(destRoot) {
   const badges = destRoot.querySelectorAll("[data-hhi-band]");
-  if (badges.length === 0) return { band: null, basis: null, error: null };
+  const withheldEl = destRoot.querySelector("[data-concentration-withheld]");
+  const withheld = withheldEl?.getAttribute("data-concentration-withheld") || null;
+
+  if (badges.length === 0) {
+    // Either an honest withholding, or no concentration block at all (the
+    // caller's own "renders no [data-hhi-band]" error covers the latter).
+    return { band: null, basis: null, withheld, error: null };
+  }
   if (badges.length > 1) {
     return {
       band: null,
       basis: null,
+      withheld: null,
       error:
         `renders ${badges.length} [data-hhi-band] badges — the concentration card must ` +
-        `headline exactly one basis (the second line's band is plain text)`,
+        `publish exactly one band`,
     };
   }
-  const basis = badges[0].getAttribute("data-hhi-basis");
-  if (basis !== "high" && basis !== "all") {
+  if (withheld) {
     return {
       band: null,
       basis: null,
+      withheld: null,
       error:
-        `[data-hhi-band] carries data-hhi-basis=${JSON.stringify(basis)} — expected "high" or "all" ` +
-        `(ROADMAP #80: the headline must say which link tiers it rests on)`,
+        `renders both a [data-hhi-band] and [data-concentration-withheld=` +
+        `${JSON.stringify(withheld)}] — the card either publishes an index or says it does not`,
     };
   }
-  return { band: badges[0].getAttribute("data-hhi-band"), basis, error: null };
+  const basis = badges[0].getAttribute("data-hhi-basis");
+  if (basis !== "high") {
+    return {
+      band: null,
+      basis: null,
+      withheld: null,
+      error:
+        `[data-hhi-band] carries data-hhi-basis=${JSON.stringify(basis)} — expected "high" ` +
+        `(ROADMAP #80: a program page publishes the high-confidence-only basis or none)`,
+    };
+  }
+  return {
+    band: badges[0].getAttribute("data-hhi-band"),
+    basis,
+    withheld: null,
+    error: null,
+  };
 }
 
 /**
@@ -274,10 +312,18 @@ export function destinationHhiBadge(destRoot) {
  * [data-hhi-band] badge, and — where the two disagree — the card's own
  * [data-hhi-scope-note] disclosure text. Nothing here recomputes from
  * feed.json/programs.json. Since ROADMAP #80 the destination badge also
- * declares its basis (data-hhi-basis) and must be the page's only
- * [data-hhi-band] — see destinationHhiBadge. A template regression that
- * stopped rendering either attribute fails this leg exactly as a wrong
- * number would.
+ * declares its basis (data-hhi-basis), must be the page's only
+ * [data-hhi-band], and must say "high" — see destinationHhiBadge. A
+ * template regression that stopped rendering either attribute, or that put
+ * back the all-links basis, fails this leg exactly as a wrong number would.
+ *
+ * A destination that publishes NO index (fix round 1, 2026-09-11: 387 of
+ * 444 program pages sit below the high-only floor) is a legitimate
+ * destination, not a missing badge: it carries
+ * [data-concentration-withheld] and there is simply nothing to reconcile
+ * the card's band against. Those are counted and reported, never silently
+ * skipped — a leg that stopped checking anything would still print a
+ * green note otherwise.
  */
 function runHhiDestinationLeg(errors, notes, root) {
   const cards = root.querySelectorAll("[data-feed-card]").filter((el) => {
@@ -296,7 +342,9 @@ function runHhiDestinationLeg(errors, notes, root) {
   let checked = 0;
   let agree = 0;
   let disclosedDivergence = 0;
-  const destBandCache = new Map(); // pe_bli -> band label | null | "missing" | { error }
+  let withheldDestination = 0;
+  // pe_bli -> band label | null | "missing" | { error } | { withheld }
+  const destBandCache = new Map();
 
   for (const el of cards) {
     const fig = el.querySelector('[data-primary-value="feed-figure"]');
@@ -337,7 +385,9 @@ function runHhiDestinationLeg(errors, notes, root) {
         try {
           const destRoot = parse(fs.readFileSync(destPath, "utf8"), { comment: false });
           const probe = destinationHhiBadge(destRoot);
-          destBand = probe.error ? { error: probe.error } : probe.band;
+          if (probe.error) destBand = { error: probe.error };
+          else if (probe.withheld) destBand = { withheld: probe.withheld };
+          else destBand = probe.band;
         } catch {
           destBand = "missing";
         }
@@ -353,6 +403,12 @@ function runHhiDestinationLeg(errors, notes, root) {
       continue;
     }
     if (destBand !== null && typeof destBand === "object") {
+      if (destBand.withheld) {
+        // The page publishes no concentration index and says so. There is no
+        // band to contradict, so there is no contradiction to find.
+        withheldDestination += 1;
+        continue;
+      }
       errors.push(`feed leg l: /program/${peBli}/ ${destBand.error} — card (HHI ${cardValue})`);
       continue;
     }
@@ -392,7 +448,8 @@ function runHhiDestinationLeg(errors, notes, root) {
     notes.push(
       `leg l: ${checked} hhi card(s) checked against the /program/ page they link ` +
         `to — ${agree} share their destination's band, ${disclosedDivergence} diverge ` +
-        `and explicitly disclose it, 0 silent contradictions ✓`,
+        `and explicitly disclose it, ${withheldDestination} link to a page that ` +
+        `publishes no pooled index and says so (#80), 0 silent contradictions ✓`,
     );
   }
 }
