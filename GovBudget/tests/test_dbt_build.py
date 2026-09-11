@@ -474,6 +474,59 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "  group by 1,2 having count(*) > 1"
         ")"
     ).fetchone()[0] == 0
+    # ── ROADMAP #6: district × fiscal_year drill-down ────────────────────
+    # The fixture's only district-linked award is K1 (CA-52, PIID
+    # HR001124C0001, $1000.5, contracts partition fy=2017) matched to the
+    # high-confidence jbook_award on pe_bli 0601101E. (HR001124C0002 is
+    # demoted to medium and HR001124C0003 is adjudicated 'reject', so
+    # neither joins.) Both by-year marts must hold exactly one CA-52 row,
+    # in FY2017, for $1000.5.
+    assert con.sql(
+        "select fiscal_year, award_count, total_obligation, positive_obligation"
+        " from fct_district_totals_by_year where pop_district='CA-52'"
+    ).fetchall() == [(2017, 1, 1000.5, 1000.5)]
+    assert con.sql(
+        "select fiscal_year, pe_bli, transaction_count, award_count,"
+        "       recipient_count, total_obligation, positive_obligation"
+        " from fct_district_programs_by_year where pop_district='CA-52'"
+    ).fetchall() == [(2017, '0601101E', 1, 1, 1, 1000.5, 1000.5)]
+    # The by-year models carry the SAME labels as their all-years siblings —
+    # a title that drifts between the two would put one program's dollars
+    # under two names on the same page (the #70 species).
+    assert con.sql(
+        "select program_title, organization from fct_district_programs_by_year"
+        " where pop_district='CA-52'"
+    ).fetchone() == con.sql(
+        "select program_title, organization from fct_district_programs"
+        " where pop_district='CA-52'"
+    ).fetchone()
+    # Grain uniqueness, both models (mirrors assert_district_by_year_grain_unique).
+    assert con.sql(
+        "select count(*) from ("
+        "  select pop_state, pop_district, fiscal_year"
+        "  from fct_district_totals_by_year group by 1,2,3 having count(*) > 1"
+        ")"
+    ).fetchone()[0] == 0
+    assert con.sql(
+        "select count(*) from ("
+        "  select pop_state, pop_district, pe_bli, fiscal_year"
+        "  from fct_district_programs_by_year group by 1,2,3,4 having count(*) > 1"
+        ")"
+    ).fetchone()[0] == 0
+    # THE CONTRACT 18b's gate 9 leg f depends on: the by-year rows sum back to
+    # the headline model. Tolerance, never an exact magnitude — see ruling 8.
+    assert con.sql(
+        "select max(abs(d.total_obligation - y.s)) from fct_district_totals d"
+        " join (select pop_state, pop_district, sum(total_obligation) s"
+        "       from fct_district_totals_by_year group by 1,2) y"
+        "   using (pop_state, pop_district)"
+    ).fetchone()[0] < 0.01
+    assert con.sql(
+        "select max(abs(p.total_obligation - s.s)) from fct_district_programs p"
+        " join (select pop_state, pop_district, pe_bli, sum(total_obligation) s"
+        "       from fct_district_programs_by_year group by 1,2,3) s"
+        "   using (pop_state, pop_district, pe_bli)"
+    ).fetchone()[0] < 0.01
     # fct_family_obligations_by_year: UEI1 → ACME PARENT family; 3 transactions across fiscal years
     assert con.sql("select count(*) from fct_family_obligations_by_year").fetchone()[0] >= 1
     # stg_contracts / stg_assistance now carry usaspending_permalink + award_unique_key
