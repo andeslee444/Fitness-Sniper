@@ -478,6 +478,20 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   judged on different questions side by side; loaders that share a key need
   the same method guard regardless of run order; a gate that resolves hrefs
   does not see fetches.
+- **2026-09-05: #28 residue → #106 (four commits).** Gate 2 leg (sp) modelled
+  babel's JSX text cleaner, and babel keeps a first line's leading space —
+  Next 16's Turbopack does not when the run also carries an HTML entity, so
+  `/methodology/` rendered "553whose" for a week under a green gate. The
+  species was not merely known, it was documented *in the same file*
+  (ba6c7d66's comment) and fixed at one site elsewhere (a2637af2): five
+  remained, one of them client-only. Lessons: when a rendering defect is
+  fixed at one site, the same change must grep the shape site-wide and leave
+  a gate on the SHAPE, not the sentence; a gate that models a compiler is
+  checked against what the compiler emitted, not against the model; an
+  assertion shaped `a + (n − a − b) + b === n` is a check of nothing — read
+  the rendered sentence back and add it up; and an exemption marker has a
+  page-weight cost, so count the elements before spraying it (136 per filing
+  page would have blown a ceiling nobody would have connected to it).
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -863,6 +877,38 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   rail's `pe` field. Each keyed edge moves its page out of leg l's floor —
   re-measure and lower with a dated note. Effort: days.
   **Status:** open (2026-09-10).
+- **#106 Turbopack drops the space after an interpolation when the JSX text
+  run that follows spans a line and carries an HTML entity.** `/methodology/`
+  rendered "plus 553whose cited record", "ingested for 1,936of them" and
+  "(240at high confidence)"; nine `/agency/` reconciliation notes rendered
+  "OSD's 128programs" (DMACT's, the one page with a single non-reconciling
+  program, read "1programs"); the `/years/` balanced-panel caption compiles
+  to "programs present" with no space — client-rendered, so no built-HTML
+  gate could have seen it. ba6c7d66 had already fixed one such site by hand
+  in `methodology/page.tsx` and named the cause in a comment; a2637af2 fixed
+  the species in `program-figures.tsx` alone. Babel's cleaner, which gate 2
+  leg (sp) modelled, keeps that space. Also: gate 14 leg cm's split-sum
+  assertion recomputed `pages − detail − decade` and re-added it to `pages`
+  (a tautology), and its "73"/"553" substring checks could match inside any
+  other number on the row. Two things left open on purpose: the 120-character
+  LDA mention snippet is NOT marked as quoted source text (136 of them on the
+  heaviest filing page would cost ~19,000 raw bytes against 19,198 of
+  `/filing/*/` raw headroom), so a join inside one will fail gate 2 loudly
+  and the fix then is the marker plus a dated ceiling raise; and whether
+  `influence pull` collapsed the registrants' line breaks at all ("H.R.
+  7586American Families First Act" is glued in the sidecar) was not
+  investigated. #28's own CLOSED stamp says 2026-08-29; its four commits are
+  dated 2026-08-31 (left as written).
+  **Status:** CLOSED 2026-09-05 (`e664dce4` five sites carry an explicit `{" "}`
+  and leg (sp) models the entity trim with a proof-can-fail test and a guard
+  on the real tree; `9aee170c` gate 2 leg (nw) reads every built text run for a
+  number glued to a word — ordinals, 8+-char hex ids and L3Harris allowed,
+  quoted source kinds and `[data-program-name]` exempt, floor 40,000 intact
+  "number word" runs against 89,766 measured — LDA activity descriptions and
+  covered positions marked `data-source-text="lda-filing"` with the filing's
+  URL, J-book project titles marked `data-program-name`; `663a759c` leg cm reads
+  each tier bucket off the sidecars and re-adds the rendered sentence's four
+  numbers).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
