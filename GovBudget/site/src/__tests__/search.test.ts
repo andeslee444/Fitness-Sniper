@@ -315,6 +315,91 @@ describe("P1-4 — ranking blend + alias injection (PM repro: 'Sentinel')", () =
   });
 });
 
+// ── Coverage-class ranking blend (tri-persona deferred, 2026-09-10) ────
+//
+// THE DEFECT, verbatim from the 2026-08-27 tri-persona review:
+// "'submarine' returns Submarine Batteries first and Virginia Class last.
+//  Ranked by name-prefix, not magnitude."
+//
+// Measured on the shipped index: Submarine Batteries scores 35.866 and
+// Virginia Class Submarine 33.180 — a 0.925 ratio, outside the old
+// BAND_RATIO of 0.95, so the two sat in different bands and the magnitude
+// tiebreak never fired. The gap is BM25 field-length normalization (a
+// two-word title vs a three-word title) for the same one matched term. It
+// carried no information about the match.
+describe("ranking blend — coverage first, then dollars (tri-persona deferred)", () => {
+  it("'submarine' ranks Virginia Class Submarine ($11.08B FY26) first", async () => {
+    const groups = await search("submarine");
+    expect(groups.programs.length).toBeGreaterThan(0);
+    expect(groups.programs[0].url).toBe("/program/2013/");
+  });
+
+  it("'submarine' does not surface Submarine Batteries ($28.2M) above the SSN/SSBN lines", async () => {
+    const groups = await search("submarine");
+    const urls = groups.programs.map((p) => p.url);
+    expect(urls).not.toContain("/program/0945/");
+    // COLUMBIA Class Submarine ($10.92B) is the second-biggest match, and
+    // MAX_PER_GROUP is 2, so it is the whole rest of the tier.
+    expect(urls).toContain("/program/1045/");
+  });
+
+  it("REGRESSION: 'submarine batteries' still finds Submarine Batteries first", async () => {
+    // Two covered terms puts it in a strictly higher coverage class than
+    // every program matching only "submarine", so the $11B lines cannot
+    // swamp the exact name.
+    const groups = await search("submarine batteries");
+    expect(groups.programs[0].url).toBe("/program/0945/");
+  });
+
+  it("REGRESSION: 'defense research sciences darpa' still resolves to DARPA's PE", async () => {
+    // Coverage counts org, not just title: four military departments ship
+    // an identically-titled "Defense Research Sciences" PE and org is the
+    // only field that distinguishes 0601101E. Without org in the coverage
+    // token set this returns 0601153N (Navy) — measured.
+    const groups = await search("defense research sciences darpa");
+    expect(groups.programs[0].url).toBe("/program/0601101E/");
+  });
+});
+
+describe("coverage helpers (exported for the blend)", () => {
+  it("matchTokens keeps both the split and the collapsed form", async () => {
+    const { matchTokens } = await import("@/lib/search");
+    const t = matchTokens("F-35 Modifications");
+    expect(t.has("f")).toBe(true);
+    expect(t.has("35")).toBe(true);
+    expect(t.has("f35")).toBe(true);
+    expect(t.has("modifications")).toBe(true);
+  });
+
+  it("matchTokens splits a hyphenated word so 'network centric' matches 'Network-Centric'", async () => {
+    const { matchTokens } = await import("@/lib/search");
+    const t = matchTokens("Network-Centric Warfare Technology");
+    expect(t.has("network")).toBe(true);
+    expect(t.has("centric")).toBe(true);
+    // the collapsed form is there too, so "networkcentric" also hits
+    expect(t.has("networkcentric")).toBe(true);
+  });
+
+  it("matchTokens tolerates null/undefined fields (docs with no title ship)", async () => {
+    const { matchTokens } = await import("@/lib/search");
+    expect(matchTokens(null, undefined, "N").has("n")).toBe(true);
+  });
+
+  it("queryMatchTerms drops single characters and keeps the collapsed form", async () => {
+    const { queryMatchTerms } = await import("@/lib/search");
+    expect(queryMatchTerms("F-35").sort()).toEqual(["35", "f35"]);
+    expect(queryMatchTerms("submarine")).toEqual(["submarine"]);
+  });
+
+  it("countCoveredTerms counts whole-word hits across title, org and pe_bli", async () => {
+    const { countCoveredTerms, queryMatchTerms } = await import("@/lib/search");
+    const terms = queryMatchTerms("defense research sciences darpa");
+    expect(countCoveredTerms(terms, "Defense Research Sciences", "DARPA", "0601101E")).toBe(4);
+    expect(countCoveredTerms(terms, "Defense Research Sciences", "N", "0601153N")).toBe(3);
+    expect(countCoveredTerms(terms, "Submarine Batteries", "N", "0945")).toBe(0);
+  });
+});
+
 describe("quick search — typo tolerance (5 representative cases per plan)", () => {
   it("'darppa' → returns DARPA agency (typo)", async () => {
     const groups = await search("darppa");

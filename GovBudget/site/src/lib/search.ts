@@ -4,8 +4,9 @@
  * search.ts — Tier-1 quick search via MiniSearch
  *
  * Builds a MiniSearch index once client-side from /json-lite/search_quick.json.
- * Fields: title, pe_bli, org. Stored: title, url, kind, dollars.
- * Options: prefix:true, fuzzy:0.2, boost:{title:2}.
+ * Fields: title, title_norm, pe_bli, org. Stored: title, url, kind, dollars,
+ * pe_bli, org.
+ * Options: prefix:true, fuzzy:0.2, boost:{title:2, title_norm:2}.
  * Results grouped by kind: Programs / Companies / Agencies / Pages.
  * Recents stored in localStorage (max 5).
  */
@@ -155,7 +156,10 @@ function buildIndex(): Promise<MiniSearch<IndexedDoc>> {
     const ms = new MiniSearch<IndexedDoc>({
       idField: "id",
       fields: ["title", "title_norm", "pe_bli", "org"],
-      storeFields: ["title", "url", "kind", "dollars", "pe_bli"],
+      // `org` is STORED (not merely indexed) since 2026-09-10: the coverage
+      // blend below counts it, and it is the only field separating the four
+      // identically-titled "Defense Research Sciences" PEs.
+      storeFields: ["title", "url", "kind", "dollars", "pe_bli", "org"],
       searchOptions: {
         prefix: true,
         fuzzy: 0.2,
@@ -240,6 +244,59 @@ export function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// ── Whole-word match tokens (coverage ranking) ───────────────────────────
+//
+// Two token forms per word, because the corpus and the users disagree about
+// punctuation: the SPLIT form ("Network-Centric" → network, centric) so a
+// user who types the words separately hits, and the COLLAPSED form ("F-35"
+// → f35) so a user who types them jammed together hits. Both go in one set;
+// a query term is "covered" if it equals any token.
+
+/** Whole-word tokens of `parts`, in both split and collapsed form.
+ *  Null-tolerant for the same reason normalizeAlnumWords is: program docs
+ *  have shipped with `title: null`, and a throw here is a whole-search
+ *  outage (see the Wave 5 note above). */
+export function matchTokens(
+  ...parts: (string | null | undefined)[]
+): Set<string> {
+  const out = new Set<string>();
+  for (const p of parts) {
+    if (typeof p !== "string") continue;
+    const low = p.toLowerCase();
+    for (const w of low.split(/[^a-z0-9]+/)) if (w) out.add(w);
+    for (const w of low.split(/\s+/)) {
+      const c = w.replace(/[^a-z0-9]/g, "");
+      if (c) out.add(c);
+    }
+  }
+  return out;
+}
+
+/** The query's match terms — same two forms, single characters dropped
+ *  (a one-character term matches half the corpus and means nothing). */
+export function queryMatchTerms(query: string): string[] {
+  const terms = new Set<string>();
+  const low = query.trim().toLowerCase();
+  for (const w of low.split(/[^a-z0-9]+/)) if (w.length >= 2) terms.add(w);
+  for (const w of low.split(/\s+/)) {
+    const c = w.replace(/[^a-z0-9]/g, "");
+    if (c.length >= 2) terms.add(c);
+  }
+  return [...terms];
+}
+
+/** How many of `terms` appear as whole words anywhere in `parts`. */
+export function countCoveredTerms(
+  terms: string[],
+  ...parts: (string | null | undefined)[]
+): number {
+  if (terms.length === 0) return 0;
+  const toks = matchTokens(...parts);
+  let n = 0;
+  for (const t of terms) if (toks.has(t)) n += 1;
+  return n;
 }
 
 // ── Query ─────────────────────────────────────────────────────────────────────
@@ -355,6 +412,7 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
           url: doc.url,
           dollars: doc.dollars,
           pe_bli: doc.pe_bli,
+          org: doc.org,
           score: aliasScore,
         });
       }
@@ -363,36 +421,70 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
 
   const rawAll = [...merged.values()].sort((a, b) => b.score - a.score);
 
-  // Ranking blend (§P1-4): within the Programs tier, name-match relevance
-  // still dominates via score BANDS (a new band starts when the score drops
-  // below 95% of the band leader); FY26 magnitude only breaks near-ties
-  // inside a band. An exact unique name keeps its own higher band, so a
-  // bigger program that merely fuzzy-matches can never swamp it.
+  // ── Ranking blend (§P1-4; rewritten 2026-09-10) ────────────────────────
+  //
+  // Programs are ordered by TERM COVERAGE first, then by FY26 magnitude.
+  //
+  // The old rule banded by BM25 score — a new band whenever the score fell
+  // below 95% of the band leader — and let dollars reorder only WITHIN a
+  // band. That handed one-word queries to MiniSearch's field-length
+  // normalization. Measured on the shipped index: "submarine" scored
+  // Submarine Batteries ($28.2M, two-word title) 35.866 and Virginia Class
+  // Submarine ($11.08B, three-word title) 33.180 — ratio 0.925, so they sat
+  // in different bands and the magnitude tiebreak never fired. Both titles
+  // match the query identically; the 2.7-point gap was title length, not
+  // meaning. The 2026-08-27 tri-persona review filed it as "ranked by
+  // name-prefix, not magnitude" and deferred it.
+  //
+  // COVERAGE is the signal the score was standing in for: how many of the
+  // query's terms appear as whole words in the doc's title, org or pe_bli.
+  // It is discrete, so a length artifact cannot erode it — a program that
+  // matches every term outranks one that matches fewer, always. Inside one
+  // coverage class the name signal is exhausted and dollars decide. An
+  // alias-matched program is full coverage: aliasMatchesForQuery fires only
+  // on full-query equality, so the alias IS the name.
+  //
+  // What this preserves, each verified against evals/search_eval.yaml:
+  //   "Sentinel Mods"  → coverage 2 beats the $4.15B GBSD line at coverage 0
+  //                       (no alias fires: aliasMatchesForQuery needs full-query
+  //                       equality, and "sentinelmods" is not an alias key)
+  //   "0601101E"       → coverage 1 on pe_bli beats every bigger program
+  //   "defense research sciences darpa" → DARPA's PE at coverage 4 (three
+  //                       title terms + org) over the identically-titled
+  //                       Army/AF/Navy lines at coverage 3
+  //   "F35" / "B21"    → the collapsed token form keeps the §P1-4 repros
   const programs = rawAll.filter((r) => r.kind === "program");
   const nonPrograms = rawAll.filter((r) => r.kind !== "program");
 
-  const BAND_RATIO = 0.95;
-  let band = -1;
-  let bandLeader = Infinity;
-  const banded = programs.map((r) => {
-    if (r.score < bandLeader * BAND_RATIO) {
-      band += 1;
-      bandLeader = r.score;
-    }
-    return { r, band };
-  });
-  banded.sort((a, b) => {
-    if (a.band !== b.band) return a.band - b.band;
-    const da = (a.r.dollars as number | null | undefined) ?? -1;
-    const db = (b.r.dollars as number | null | undefined) ?? -1;
-    if (da !== db) return db - da;
-    if (a.r.score !== b.r.score) return b.r.score - a.r.score;
-    return a.r.id < b.r.id ? -1 : 1;
-  });
+  const coverageTerms = queryMatchTerms(query);
+  const aliasIds = new Set(aliasEntries.map((e) => `p:${e.peBli}`));
+
+  const ranked = programs
+    .map((r) => ({
+      r,
+      coverage: aliasIds.has(r.id)
+        ? coverageTerms.length
+        : countCoveredTerms(
+            coverageTerms,
+            r.title as string | null | undefined,
+            r.org as string | null | undefined,
+            r.pe_bli as string | null | undefined,
+          ),
+    }))
+    .sort((a, b) => {
+      if (a.coverage !== b.coverage) return b.coverage - a.coverage;
+      const da = (a.r.dollars as number | null | undefined) ?? -1;
+      const db = (b.r.dollars as number | null | undefined) ?? -1;
+      if (da !== db) return db - da;
+      if (a.r.score !== b.r.score) return b.r.score - a.r.score;
+      return a.r.id < b.r.id ? -1 : 1;
+    });
+
   // Rewrite scores strictly decreasing in final program order so downstream
-  // score-sorted views (the palette's flattened list) preserve this ordering.
+  // score-sorted views (command-palette.tsx flattenGroups) preserve this
+  // ordering. Unchanged from the banded version.
   let prevScore = Infinity;
-  const orderedPrograms = banded.map(({ r }) => {
+  const orderedPrograms = ranked.map(({ r }) => {
     const s = Math.min(r.score, prevScore - 1e-6);
     prevScore = s;
     return { ...r, score: s };

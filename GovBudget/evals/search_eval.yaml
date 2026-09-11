@@ -175,6 +175,11 @@ cases:
     tier: quick
     note: "Alias: JSF → F-35 (ATA000); the ATA000 payload names 'Joint Strike Fighter'"
 
+  - query: "submarine"
+    expect_url_top3: "/program/2013/"
+    tier: quick
+    note: "Coverage blend (tri-persona deferred, 2026-09-10): a one-word program query ranks by dollars once every hit matches the word the same way — Virginia Class Submarine ($11.08B FY26) above Submarine Batteries ($28.2M). Pre-fix, BM25 field-length normalization put the two-word title first."
+
   # ── Deep tier (pagefind narrative search) ──────────────────────────────────
   - query: "Perceptually-Enabled Task Guidance augmented reality"
     expect_url_top5: "/program/0601101E/"
