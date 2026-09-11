@@ -879,6 +879,16 @@ export interface Fy26Split {
  * because the note used to deny one on five pages that named it three
  * inches below (837170 → 0207279F, quoted verbatim from the J-book).
  *
+ * `has_narrative` (#32(b) residue, 2026-09-05): the sidecar's own
+ * `narratives` list is non-empty. The note's successor clause used to be a
+ * claim about the DOCUMENTS ("no ingested budget document states a
+ * successor") checked only against the RAIL, and it was false on 19 of the
+ * 287 pages that rendered it — pages whose own narrative names the successor
+ * (2900 → LI 2361; 0601101E → "will be funded in PE 0601122E"). The note now
+ * claims only what this site holds and, where this flag is true, sends the
+ * reader to the prose below instead of speaking for it. Gate 21 leg (l)
+ * recomputes this from `narratives` and checks the pointer renders there.
+ *
  * `jbook_fy2026_zero` marks the 173 pages whose J-book detail carries an
  * FY2026 row at exactly $0. A workbook blank and a documented zero are
  * different records; conflating them is the error that produced the 87
@@ -892,6 +902,7 @@ export interface Fy2026Absent {
   last_fy: number;
   jbook_fy2026_zero: boolean;
   has_successor: boolean;
+  has_narrative: boolean;
 }
 
 /**

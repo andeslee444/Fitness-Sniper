@@ -27,6 +27,17 @@ import type {
   SummaryCard,
 } from "@/lib/data";
 
+/** #32(b) residue (2026-09-05): the sentence the note may never say again.
+ *  It was a claim about the DOCUMENTS checked against the lineage RAIL, and
+ *  false on 19 pages whose own narrative names the successor. */
+const RETIRED_DENIAL =
+  "No ingested budget document in this corpus states a successor for this line.";
+/** What replaced it: a claim about THIS SITE, true whenever the rail is empty. */
+const SITE_DENIAL =
+  "No successor is linked for this line: this site's program-lineage layer holds no keyed edge pointing forward from here.";
+/** Rendered only where the page renders narratives to point at. */
+const NARRATIVE_POINTER = "it is quoted below in the document's own words";
+
 const PROGRAM: ProgramRow = {
   award_count: 0,
   exhibit_family: "procurement",
@@ -272,6 +283,7 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
           last_fy: 2025,
           jbook_fy2026_zero: false,
           has_successor: false,
+          has_narrative: false,
         }}
       />,
     );
@@ -284,9 +296,10 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
     );
     expect(text).toContain("its last workbook figure is FY2025");
     expect(text).toContain("PB2026 renumbered program elements at scale");
-    expect(text).toContain(
-      "No ingested budget document in this corpus states a successor for this line.",
-    );
+    expect(text).toContain(SITE_DENIAL);
+    expect(text).not.toContain(RETIRED_DENIAL);
+    // No narrative on this page → nothing below to point at.
+    expect(text).not.toContain(NARRATIVE_POINTER);
     // A dollar figure in prose is an UNCITED figure. Gate 2 rejects any
     // currency pattern outside [data-amount], and the first cut of this
     // note shipped a literal "$0" on 50 pages.
@@ -311,6 +324,7 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
           last_fy: 2024,
           jbook_fy2026_zero: false,
           has_successor: false,
+          has_narrative: false,
         }}
       />,
     );
@@ -319,6 +333,72 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
       .textContent!.replace(/\s+/g, " ");
     expect(text).toContain("its last workbook figure is FY2024");
     expect(text).not.toContain("FY2025");
+  });
+
+  it("sends the reader to the narrative only where the page renders one (#32(b) residue)", () => {
+    // /program/2900/ renders "realigned out of LI 2900 into LI 2361" three
+    // sections below a sentence that used to deny any document says so.
+    const withNarrative = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY}
+        fy2026Absent={{
+          last_fy: 2025,
+          jbook_fy2026_zero: true,
+          has_successor: false,
+          has_narrative: true,
+        }}
+      />,
+    ).container.querySelector("[data-fy2026-absent]")!.textContent!.replace(/\s+/g, " ");
+    expect(withNarrative).toContain(SITE_DENIAL);
+    expect(withNarrative).toContain(
+      "That is an absence in this site's lineage layer, not a finding about the program",
+    );
+    expect(withNarrative).toContain(NARRATIVE_POINTER);
+    expect(withNarrative).not.toContain(RETIRED_DENIAL);
+    // Still names no program element and mints no figure.
+    expect(withNarrative).not.toMatch(/\b\d{7}[A-Z]/);
+    expect(withNarrative).not.toMatch(/\$\d/);
+  });
+
+  it("beside a cited successor rail it points at Program Lineage, not at the narrative", () => {
+    const text = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY}
+        fy2026Absent={{
+          last_fy: 2025,
+          jbook_fy2026_zero: false,
+          has_successor: true,
+          has_narrative: true,
+        }}
+      />,
+    ).container.querySelector("[data-fy2026-absent]")!.textContent!.replace(/\s+/g, " ");
+    expect(text).toContain(
+      "Where this line's funding went is recorded under Program Lineage below.",
+    );
+    expect(text).not.toContain(SITE_DENIAL);
+    expect(text).not.toContain(NARRATIVE_POINTER);
+    expect(text).not.toContain(RETIRED_DENIAL);
+  });
+
+  it("never renders the retired corpus-wide denial under any flag combination", () => {
+    for (const has_successor of [false, true]) {
+      for (const has_narrative of [false, true]) {
+        for (const jbook_fy2026_zero of [false, true]) {
+          const { container } = render(
+            <ProgramFigures
+              program={PROGRAM}
+              summary={SUMMARY}
+              fy2026Absent={{ last_fy: 2024, jbook_fy2026_zero, has_successor, has_narrative }}
+            />,
+          );
+          expect(container.querySelector("[data-fy2026-absent]")!.textContent).not.toContain(
+            RETIRED_DENIAL,
+          );
+        }
+      }
+    }
   });
 });
 
@@ -362,9 +442,11 @@ describe("ProgramFigures — decade-only note (ROADMAP #28)", () => {
       "cited to 8 President's Budget editions, the earliest PB2017 and the latest PB2024",
     );
     expect(text).toContain("fiscal years FY2015 to FY2024");
-    expect(text).toContain(
-      "No ingested budget document in this corpus states a successor for this line.",
-    );
+    expect(text).toContain(SITE_DENIAL);
+    expect(text).not.toContain(RETIRED_DENIAL);
+    // The decade note has no PB2026 prose below it (0 of 553 decade sidecars
+    // carry a narrative) and makes no pointer claim.
+    expect(text).not.toContain(NARRATIVE_POINTER);
     // No uncited figure in prose (gate 2), and no claim of an ending.
     expect(text).not.toMatch(/\$\d/);
     expect(text).not.toMatch(
@@ -400,9 +482,8 @@ describe("ProgramFigures — decade-only note (ROADMAP #28)", () => {
     expect(text).toContain(
       "Where this line's funding went is recorded under Program Lineage below.",
     );
-    expect(text).not.toContain(
-      "No ingested budget document in this corpus states a successor",
-    );
+    expect(text).not.toContain(SITE_DENIAL);
+    expect(text).not.toContain(RETIRED_DENIAL);
   });
 
   it("does not say 'editions' plural when the page publishes one", () => {

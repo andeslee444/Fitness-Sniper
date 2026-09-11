@@ -42,6 +42,11 @@
  *     workbook line at all) states its absence, states it about the record
  *     that is actually blank, and states nothing the page itself contradicts
  *     — see leg k's own block at the bottom.
+ * (l) The successor clause is checked against the page's OWN narratives, not
+ *     only the lineage rail: no note renders the retired corpus-wide denial,
+ *     the narrative pointer renders exactly where the page renders prose,
+ *     and every no-rail page whose narrative names a forward pointer sends
+ *     the reader to it (ROADMAP #32(b) residue) — see leg l's own block.
  * (n) A pe_bli shared by two programs files each member's crosswalk links on
  *     that member's own page, never on both and never on the bare
  *     disambiguation stub (ROADMAP #70) — see leg n's own block at the bottom.
@@ -460,6 +465,9 @@ export async function runProgramSkeletonGate() {
 
   // ── (g) the PB2026 renumber note (ROADMAP #32a) ───────────────────────────
   runFy2026AbsentLeg({ errors, notes, sidecars });
+
+  // ── (l) the successor clause against the page's own narratives (#32b) ────
+  runNarrativeSuccessorLeg({ errors, notes, sidecars });
 
   // ── (h) the GAO program tier (ROADMAP #30) ────────────────────────────────
   runGaoProgramLeg({ errors, notes, sidecars });
@@ -1008,9 +1016,18 @@ const FY2026_ABSENT_REQUIRED = [
   "PB2026 renumbered program elements at scale",
 ];
 
-/** The successor clause, which must match the page's own lineage rail. */
+/** The successor clause, which must match the page's own lineage rail.
+ *
+ * RETARGETED 2026-09-05 (#32(b) residue). The old denial — "No ingested
+ * budget document in this corpus states a successor for this line" — was a
+ * claim about the DOCUMENTS that this leg checked against the RAIL, and it
+ * was false on 19 of the 287 pages that rendered it: pages whose own
+ * narrative names the successor (leg l lists them). The clause is now a
+ * claim about THIS SITE, true by construction whenever the rail is empty.
+ * Leg (l) pins that the old sentence never returns. Leg (k) aliases these
+ * two constants for the decade note, so both notes move together. */
 const FY2026_SUCCESSOR_DENIAL =
-  "No ingested budget document in this corpus states a successor for this line.";
+  "No successor is linked for this line: this site's program-lineage layer holds no keyed edge pointing forward from here.";
 const FY2026_SUCCESSOR_POINTER =
   "Where this line's funding went is recorded under Program Lineage below.";
 
@@ -1071,6 +1088,10 @@ function recomputeFy2026Absent(d) {
     // 5 pages render a cited "Successors (funding flowed out)" rail while
     // the note denied any document named one.
     has_successor: Boolean(d.lineage?.rail?.successors?.length),
+    // #32(b) residue: the page renders narratives → the note points at them
+    // instead of speaking for them. Same predicate isZeroContent uses. Leg
+    // (l) compares this against the exporter's flag AND the rendered note.
+    has_narrative: (d.narratives ?? []).length > 0,
   };
 }
 
@@ -1241,9 +1262,9 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
     if (want.has_successor) {
       if (text.includes(FY2026_SUCCESSOR_DENIAL)) {
         say(
-          `program-skeleton(g): /program/${slug}/ note denies any document states a ` +
-            `successor, but this page renders a cited successor rail — both halves of ` +
-            `that sentence are false here`,
+          `program-skeleton(g): /program/${slug}/ note says this site links no successor, ` +
+            `but the page renders a cited successor rail — the denial contradicts the ` +
+            `page's own lineage layer`,
         );
       }
       if (!text.includes(FY2026_SUCCESSOR_POINTER)) {
@@ -1278,8 +1299,8 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
     if (named.length > 0) {
       say(
         `program-skeleton(g): /program/${slug}/ note names program element(s) ` +
-          `${named.join(", ")} — the corpus cannot prove a successor for a renumbered ` +
-          `line, so the note must not name one (#32b / backlog #29)`,
+          `${named.join(", ")} — the lineage layer did not key a successor for this ` +
+          `renumbered line, so the note must not name one (#32b / backlog #29)`,
       );
     }
 
@@ -1314,6 +1335,321 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
     `leg g: ${withNote}/${expected.size} renumbered-away program page(s) carry the ` +
       `"no FY2026 request" note (${byYear}); ${sidecars.size - expected.size} other ` +
       `page(s) correctly do not ✓`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg l — the successor clause against the page's OWN narratives (#32b residue)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Leg (g) checks the successor clause against the lineage RAIL: denial where
+// the rail is empty, pointer where it is not. That is the right check for the
+// rail and the wrong check for the claim the note used to make. "No ingested
+// budget document in this corpus states a successor for this line" is a
+// statement about the DOCUMENTS, and on 19 of the 287 pages that rendered it
+// (measured 2026-09-05 from the shipped sidecars' own narratives) the page's
+// PB2026 narrative — rendered three sections below — names where the money
+// went:
+//   2900 → LI 2361, 2176 → BLI 2136, 2026 → LI 2981 (Navy OPN consolidation);
+//   C01200 C02500 C03200 C03700 C04000 CFIN00 → BLI OSAEA0 (AF OSA-EA mods);
+//   FET000 → PE 0303131F (Space Force → Air Force transfer);
+//   0128B63000 → PE 0608041A ($16.144M realigned, partial);
+//   0601101E 0601117E 0602115E 0602303E 0602715E 0603286E 0603287E 0603760E
+//     → "Beginning in FY 2026, … will be funded in PE …" — DARPA's renumber
+//     sentence, verbatim, including Defense Research Sciences → 0601122E
+//     Emerging Opportunities, the case ROADMAP #32 called unprovable.
+// That is 19 pages and 23 pointers: 14 PE-shaped, 9 line-item/WSC-shaped.
+// The lineage layer keys none of them: numeric line items are refused at
+// V3-shape (pe_bli is not unique for them), WSC codes are not PE-shaped, and
+// "will be funded in" is not one of lineage/extract.py's _RULES (backlog #105).
+// The exporter and leg (g) both read the rail, so both agreed the denial was
+// fine. Two implementations of one wrong scope agreeing is not corroboration
+// — the leg (g) lesson of 2026-08-27, in a new place.
+//
+// The note now says only what THIS SITE holds and, where the page renders
+// narratives, points at them. This leg reads the narratives the sidecar
+// itself ships — the verbatim detail_narratives bodies the page renders —
+// over the WHOLE page universe, and pins:
+//
+//   0. The exporter's has_narrative equals this gate's own recompute of it.
+//      Leg (g) compares only last_fy between the two implementations.
+//   1. The retired corpus-wide denial appears in NO note, fy2026 or decade.
+//      Where the page's narrative names a forward pointer, the error quotes
+//      it, so the failure reads as the contradiction it is.
+//   2. The narrative pointer renders IFF the page renders narratives, and
+//      never beside a successor rail.
+//   3. On every no-rail page whose narrative names a forward pointer, the
+//      note carries the pointer — the reader is sent to the record the site
+//      did not key, never told there is none.
+//   4. Non-vacuity: at least MIN_NARRATIVE_FORWARD_POINTER_PAGES no-rail
+//      pages carry such a narrative. Zero would mean the scan broke.
+//
+// The scan is deliberately WIDER than extract.py's _RULES — that is the
+// point: it finds what the extractor does not key — and is used ONLY to
+// check and count. It never mints an edge and never puts a code in prose;
+// leg (g) step 6 still fails the build if the note names any program
+// element.
+
+/** The sentence the note may never say again (#32(b) residue). */
+export const FY2026_SUCCESSOR_DENIAL_RETIRED =
+  "No ingested budget document in this corpus states a successor for this line.";
+/** The narrative pointer, rendered iff the page renders narratives. */
+export const FY2026_NARRATIVE_POINTER =
+  "it is quoted below in the document's own words";
+
+/** Non-vacuity floor: 19 no-rail fy2026_absent pages whose own narratives
+ *  name a forward pointer, measured 2026-09-05 against the 2026-09-04 20:06
+ *  export (23 pointers: 14 PE-shaped, 9 line-item/WSC-shaped; slugs in the
+ *  block comment above). A DROP is either the scan breaking or backlog #105
+ *  keying some of these as edges, which moves them OUT of the no-rail set —
+ *  the fix landing, not the bar moving. RE-MEASURE and lower with a dated
+ *  note in that case; never lower it to fit a build. */
+export const MIN_NARRATIVE_FORWARD_POINTER_PAGES = 19;
+
+const NARR_CODE_PREFIX =
+  "(?:PE|program element|LI|BLI|budget line item(?:\\s*\\(BLI\\))?|line item|WSC)";
+const NARR_CODE = "([A-Z0-9]{4,10})";
+/** Forward-pointer forms. Mirrors the 'succ' direction of lineage/extract.py
+ *  _RULES (transferred/realigned … to PE X) and widens it to the three forms
+ *  the extractor does not key: line-item/WSC destinations, "will be funded
+ *  in PE X", and "will continue … in PE X". Clause-bounded on [^.:;] —
+ *  extract.py's _SENT bounds on [^.:], and ';' is added here because the AF
+ *  OSA-EA sentences run several clauses — so "transferred from (PE A …) to
+ *  (PE B …)" yields B. Present-tense "is funded in PE X" is deliberately NOT
+ *  a form: on 0602303E it names concurrent funding, not a move. */
+const NARR_FORWARD_RES = [
+  new RegExp(
+    "\\b(?:transferred|realigned|moved|consolidated|merged|migrated)\\b[^.:;]*?" +
+      "\\b(?:to|into|under)\\b[^.:;]*?\\b" +
+      NARR_CODE_PREFIX +
+      "\\s*#?\\s*" +
+      NARR_CODE +
+      "\\b",
+    "gi",
+  ),
+  new RegExp(
+    "\\bwill be (?:funded|budgeted|requested)\\s+(?:in|under)\\s+" +
+      NARR_CODE_PREFIX +
+      "\\s*#?\\s*" +
+      NARR_CODE +
+      "\\b",
+    "gi",
+  ),
+  new RegExp(
+    "\\bwill continue\\b[^.:;]*?\\bin\\s+" + NARR_CODE_PREFIX + "\\s*#?\\s*" + NARR_CODE + "\\b",
+    "gi",
+  ),
+];
+/** Same shape as lineage/extract.py's _PE (:25). */
+const NARR_PE_SHAPE = /^\d{7}(?:[A-Z][A-Z0-9]{0,3})?$/;
+
+/** The page universe as a membership test: an exact sidecar slug, or the
+ *  bare code of an E3 composite / -L split member (`2136-OPN` ⇒ `2136`). */
+export function pageUniverse(sidecars) {
+  const exact = new Set(sidecars.keys());
+  const composite = new Set();
+  for (const s of exact) {
+    const i = s.indexOf("-");
+    if (i > 0) composite.add(s.slice(0, i));
+  }
+  return { has: (code) => exact.has(code) || composite.has(code) };
+}
+
+/**
+ * Forward pointers the page's OWN narratives name: destination codes ≠ this
+ * page that exist in the page universe. Returns
+ * [{code, shape: "pe"|"line", kind, sentence}], deduped by code, in narrative
+ * order. `sentence` is a ~120-char window around the match for diagnostics —
+ * it is quoted in errors, never rendered.
+ */
+export function narrativeForwardPointers(d, slug, universe) {
+  const self = new Set([slug, slug.split("-")[0]]);
+  const out = new Map();
+  for (const n of d.narratives ?? []) {
+    const body = String(n.body ?? "");
+    for (const re of NARR_FORWARD_RES) {
+      for (const m of body.matchAll(re)) {
+        const code = m[1].toUpperCase();
+        if (self.has(code) || out.has(code) || !universe.has(code)) continue;
+        const start = Math.max(0, m.index - 80);
+        out.set(code, {
+          code,
+          shape: NARR_PE_SHAPE.test(code) ? "pe" : "line",
+          kind: n.kind ?? null,
+          sentence: body
+            .slice(start, m.index + m[0].length + 40)
+            .replace(/\s+/g, " ")
+            .trim(),
+        });
+      }
+    }
+  }
+  return [...out.values()];
+}
+
+/** The rendered note texts of one built page, or null when it is not built.
+ *  Injected in unit tests. */
+function readNoteTexts(slug) {
+  const p = pageHtmlPath(slug);
+  if (!fs.existsSync(p)) return null;
+  const html = fs.readFileSync(p, "utf8");
+  // Parsing a megabyte of HTML to find two <p>s is this leg's whole cost; a
+  // page carrying neither attribute has no note to read.
+  if (!html.includes(FY2026_ABSENT_ATTR) && !html.includes(DECADE_ONLY_ATTR)) {
+    return { absent: null, decade: null };
+  }
+  const root = parse(html, { comment: false });
+  const grab = (attr) => {
+    const el = root.querySelector(`[${attr}]`);
+    return el ? (el.text ?? "").replace(/\s+/g, " ").trim() : null;
+  };
+  return { absent: grab(FY2026_ABSENT_ATTR), decade: grab(DECADE_ONLY_ATTR) };
+}
+
+export function runNarrativeSuccessorLeg({
+  errors,
+  notes,
+  sidecars,
+  noteTexts = readNoteTexts,
+}) {
+  const universe = pageUniverse(sidecars);
+  let retired = 0;
+  let drift = 0;
+  let flagged = 0;
+  let noRailPointerPages = 0;
+  let pePointers = 0;
+  let linePointers = 0;
+  let withRailPointerPages = 0;
+  let checked = 0;
+  // One component renders every note, so a wording regression hits hundreds
+  // of pages at once: report the first 5 of each kind and count the rest.
+  const say = (n, msg) => {
+    if (n <= 5) errors.push(msg);
+  };
+
+  for (const [slug, d] of sidecars) {
+    const fa = d.fy2026_absent ?? null;
+    const da = d.decade_absent ?? null;
+    if (!fa && !da) continue;
+    const narrCount = (d.narratives ?? []).length;
+    const hasNarr = narrCount > 0;
+
+    // 0. the exporter's flag vs this gate's own recompute of it.
+    if (fa) {
+      flagged++;
+      if (fa.has_narrative !== hasNarr) {
+        drift++;
+        say(
+          drift,
+          `program-skeleton(l): /program/${slug}/ sidecar says has_narrative=` +
+            `${fa.has_narrative} but ships ${narrCount} narrative(s) — the exporter and ` +
+            `the gate disagree about whether there is prose below to point at`,
+        );
+      }
+    }
+
+    const texts = noteTexts(slug);
+    if (!texts) continue; // legs (g)/(k) already fail an unbuilt page
+    checked++;
+    const ptrs = narrativeForwardPointers(d, slug, universe);
+
+    // 1. the retired corpus-wide denial, on either note.
+    for (const [which, text] of [
+      ["fy2026-absent", texts.absent],
+      ["decade-only", texts.decade],
+    ]) {
+      if (text && text.includes(FY2026_SUCCESSOR_DENIAL_RETIRED)) {
+        retired++;
+        say(
+          retired,
+          `program-skeleton(l): /program/${slug}/ ${which} note renders the retired ` +
+            `corpus-wide successor denial "${FY2026_SUCCESSOR_DENIAL_RETIRED}"` +
+            (ptrs.length ? ` while its own narrative says "…${ptrs[0].sentence}…"` : "") +
+            ` — the note may claim only what this site holds (#32(b) residue)`,
+        );
+      }
+    }
+
+    if (!fa || !texts.absent) continue;
+    const saysPointer = texts.absent.includes(FY2026_NARRATIVE_POINTER);
+    const hasRail = Boolean(d.lineage?.rail?.successors?.length);
+
+    if (hasRail) {
+      if (ptrs.length) withRailPointerPages++;
+      // 2b. the narrative pointer belongs to the no-rail branch only.
+      if (saysPointer) {
+        drift++;
+        say(
+          drift,
+          `program-skeleton(l): /program/${slug}/ renders the narrative pointer beside a ` +
+            `successor rail — the note must point at Program Lineage there, not at the prose`,
+        );
+      }
+      continue;
+    }
+
+    if (ptrs.length) {
+      noRailPointerPages++;
+      for (const p of ptrs) {
+        if (p.shape === "pe") pePointers++;
+        else linePointers++;
+      }
+      // 3. a named forward pointer the site did not key ⇒ the reader is sent
+      //    to the record, never told there is none.
+      if (!saysPointer) {
+        drift++;
+        say(
+          drift,
+          `program-skeleton(l): /program/${slug}/ narrative names a forward pointer ` +
+            `(${ptrs.map((p) => p.code).join(", ")}: "…${ptrs[0].sentence}…") that the ` +
+            `lineage layer did not key, but the note does not send the reader to the narrative`,
+        );
+        continue;
+      }
+    }
+    // 2. the pointer renders iff there is prose below to point at.
+    if (hasNarr && !saysPointer) {
+      drift++;
+      say(
+        drift,
+        `program-skeleton(l): /program/${slug}/ renders ${narrCount} narrative(s) but its ` +
+          `note omits the narrative pointer "${FY2026_NARRATIVE_POINTER}"`,
+      );
+    } else if (!hasNarr && saysPointer) {
+      drift++;
+      say(
+        drift,
+        `program-skeleton(l): /program/${slug}/ note says a narrative "is quoted below" but ` +
+          `the page renders no narrative — the pointer points at nothing`,
+      );
+    }
+  }
+
+  if (retired > 5) {
+    errors.push(
+      `program-skeleton(l): ${retired} note(s) render the retired corpus-wide denial in total ` +
+        `(first 5 listed) — one component renders all of them, so this is one wording regression`,
+    );
+  }
+  if (drift > 5) {
+    errors.push(
+      `program-skeleton(l): ${drift} narrative-pointer defect(s) in total (first 5 listed)`,
+    );
+  }
+  if (noRailPointerPages < MIN_NARRATIVE_FORWARD_POINTER_PAGES) {
+    errors.push(
+      `program-skeleton(l): only ${noRailPointerPages} no-rail page(s) carry a narrative that ` +
+        `names a forward pointer (expected >= ${MIN_NARRATIVE_FORWARD_POINTER_PAGES}) — the ` +
+        `leg would be vacuous. Re-measure the population (backlog #105 keying edges moves pages ` +
+        `out of it) and re-derive the floor with a dated note; do not lower it to fit the build`,
+    );
+  }
+  notes.push(
+    `leg l: ${checked} note(s) read, ${flagged} has_narrative flag(s) recomputed; ` +
+      `${noRailPointerPages} no-rail page(s) whose own narrative names a forward pointer the ` +
+      `lineage layer did not key (${pePointers} PE-shaped, ${linePointers} ` +
+      `line-item/WSC-shaped) all send the reader to the narrative; ${withRailPointerPages} ` +
+      `rail page(s) also name one; ${retired} retired denial(s) ✓`,
   );
 }
 
@@ -2429,9 +2765,9 @@ function runDecadeOnlyLeg({ errors, notes, sidecars }) {
     if (want.has_successor) {
       if (text.includes(DECADE_SUCCESSOR_DENIAL)) {
         say(
-          `program-skeleton(k): /program/${slug}/ note denies any document states a successor, ` +
-            `but this page renders a cited successor rail — both halves of that sentence are ` +
-            `false here`,
+          `program-skeleton(k): /program/${slug}/ note says this site links no successor, ` +
+            `but the page renders a cited successor rail — the denial contradicts the ` +
+            `page's own lineage layer`,
         );
       }
       if (!text.includes(DECADE_SUCCESSOR_POINTER)) {

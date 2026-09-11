@@ -261,11 +261,15 @@ export function Fy26LinesNote({ split }: { split?: Fy26Split | null }) {
  *
  * Three things this note deliberately does NOT do:
  *
- *   1. It does not name a successor. The corpus cannot prove *Defense
- *      Research Sciences* → *Emerging Opportunities*, and a named guess is a
+ *   1. It does not name a successor. The corpus cannot KEY *Defense Research
+ *      Sciences* → *Emerging Opportunities* today, and a named guess is a
  *      fabricated citation — the defect ROADMAP #53 and #69 closed. Successor
  *      edges are #32(b), folded into backlog #29. Gate 21 leg (g) fails if
- *      this note ever names another program element.
+ *      this note ever names another program element. And where it links
+ *      none, it says so as a claim about THIS SITE, never about the
+ *      documents: the old "no ingested budget document states a successor"
+ *      was false on 19 pages whose own narrative names one three sections
+ *      below (#32(b) residue, 2026-09-05; gate 21 leg (l)).
  *   2. It does not say zeroed / cancelled / terminated / defunded. Absence
  *      from one edition supports none of them — that is precisely the claim
  *      the 87 withdrawn "zeroed out in FY2026" feed cards made.
@@ -323,8 +327,23 @@ export function Fy2026AbsentNote({
           </>
         ) : (
           <>
-            No ingested budget document in this corpus states a successor for
-            this line.
+            {/* A claim about THIS SITE (true whenever the rail is empty),
+                never about the documents. The narrative pointer renders
+                only where the page renders narratives — gate 21 leg (l)
+                recomputes that from the sidecar and fails a pointer at
+                nothing, or a narrative left unpointed-at. */}
+            No successor is linked for this line: this site&apos;s
+            program-lineage layer holds no keyed edge pointing forward from
+            here.
+            {fy2026Absent.has_narrative ? (
+              <>
+                {" "}
+                That is an absence in this site&apos;s lineage layer, not a
+                finding about the program: if the J-book narrative on this
+                page describes a realignment, it is quoted below in the
+                document&apos;s own words, and this note does not restate it.
+              </>
+            ) : null}
           </>
         )}
       </p>
@@ -437,8 +456,9 @@ export function DecadeOnlyNote({
           </>
         ) : (
           <>
-            No ingested budget document in this corpus states a successor for
-            this line.
+            No successor is linked for this line: this site&apos;s
+            program-lineage layer holds no keyed edge pointing forward from
+            here.
           </>
         )}
       </p>

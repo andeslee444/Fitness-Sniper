@@ -37,6 +37,7 @@ def test_no_fy2026_row_with_fy2025_money_is_flagged():
         "last_fy": 2025,
         "jbook_fy2026_zero": False,
         "has_successor": False,
+        "has_narrative": False,
     }
 
 
@@ -46,6 +47,7 @@ def test_last_fy_is_the_latest_funded_year_not_the_first():
         "last_fy": 2024,
         "jbook_fy2026_zero": False,
         "has_successor": False,
+        "has_narrative": False,
     }
 
 
@@ -142,4 +144,46 @@ def test_details_and_lineage_are_optional():
     neither. Absent inputs must not silently become a positive claim."""
     rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
     got = _fy2026_absent_block(rows)
-    assert got["jbook_fy2026_zero"] is False and got["has_successor"] is False
+    assert (
+        got["jbook_fy2026_zero"] is False
+        and got["has_successor"] is False
+        and got["has_narrative"] is False
+    )
+
+
+# --- #32(b) residue (2026-09-05): the successor sentence and the narratives ---
+# "No ingested budget document in this corpus states a successor for this
+# line" was checked against the lineage RAIL and rendered on 287 pages, 19 of
+# which state the successor in their own PB2026 narrative (2900 -> LI 2361;
+# 0601101E -> "will be funded in PE 0601122E"). The block now tells the page
+# whether it renders narratives at all, so the note can send the reader to
+# them instead of speaking for them. It still never carries a successor code.
+
+
+def test_has_narrative_is_the_pages_own_narrative_list():
+    rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
+    narr = [{
+        "kind": "description",
+        "body": "Funding for Maritime Integrated Broadcast System (MIBS) has been "
+                "realigned out of LI 2900 into LI 2361 starting in FY 2026.",
+    }]
+    assert _fy2026_absent_block(rows, [], {}, narr)["has_narrative"] is True
+    for empty in (None, []):
+        assert _fy2026_absent_block(rows, [], {}, empty)["has_narrative"] is False
+
+
+def test_block_never_mints_a_successor_from_narrative_text():
+    """The DARPA sentence names the successor verbatim. The block reports that
+    there IS prose (has_narrative) and that the rail holds no edge
+    (has_successor False) -- and nothing else. A code in this dict would be a
+    fabricated citation the moment the page rendered it (#53 / #69)."""
+    rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
+    narr = [{
+        "kind": "mission",
+        "body": "Beginning in FY 2026, efforts in this PE will be funded in PE "
+                "0601122E, Emerging Opportunities.",
+    }]
+    got = _fy2026_absent_block(rows, [], {}, narr)
+    assert set(got) == {"last_fy", "jbook_fy2026_zero", "has_successor", "has_narrative"}
+    assert got["has_successor"] is False
+    assert got["has_narrative"] is True

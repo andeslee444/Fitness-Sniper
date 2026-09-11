@@ -4788,6 +4788,7 @@ def _fy2026_absent_block(
     budget_lines: list[dict],
     details: list[dict] | None = None,
     lineage: dict | None = None,
+    narratives: list[dict] | None = None,
 ) -> dict | None:
     """`fy2026_absent` sidecar payload, or None when the page is not one.
 
@@ -4800,6 +4801,11 @@ def _fy2026_absent_block(
     money on it and no FY2026 row of any amount_type. `last_fy` is the latest
     of those funded years: the year the note tells the reader the record
     stops at.
+
+    `has_narrative` is whether the sidecar's OWN `narratives` list -- the
+    verbatim detail_narratives bodies the page renders under Description /
+    Justification -- is non-empty. The note uses it to send the reader to
+    that prose instead of speaking for it (#32(b) residue, below).
     """
     if any(bl.get("fy") == 2026 for bl in budget_lines):
         return None
@@ -4848,10 +4854,34 @@ def _fy2026_absent_block(
     rail = (lineage or {}).get("rail") or {}
     has_successor = bool(rail.get("successors"))
 
+    # (4) AND IT WAS STILL A CORPUS-WIDE CLAIM CHECKED AGAINST THE RAIL
+    # (#32(b) residue, 2026-09-05). "No ingested budget document in this
+    # corpus states a successor for this line" is a statement about the
+    # DOCUMENTS, and this block -- like gate 21 leg (g) -- only ever read the
+    # lineage rail. On 19 of the 287 pages that rendered it, the page's OWN
+    # PB2026 narrative names where the money went: /program/2900/ quotes
+    # "realigned out of LI 2900 into LI 2361", /program/FET000/ names
+    # "PE 0303131F / WSC CVR000", and /program/0601101E/ -- the canonical
+    # DARPA case ROADMAP #32 called unprovable -- says "Beginning in FY 2026,
+    # efforts in this PE will be funded in PE 0601122E". The lineage layer
+    # keys none of them: numeric line items are refused at V3-shape (pe_bli
+    # is not unique for them), WSC codes are not PE-shaped, and "will be
+    # funded in" is not one of lineage/extract.py's _RULES (backlog #105).
+    #
+    # The note now claims only what THIS SITE holds ("no keyed edge pointing
+    # forward from here" -- true by construction when the rail is empty) and,
+    # where the page renders narratives, points the reader at them. This flag
+    # is that condition: the sidecar's own narratives list, non-empty -- the
+    # same predicate isZeroContent and gate 21 use -- so leg (l) can
+    # recompute it and check the pointer renders exactly where there is
+    # prose below to point at. No successor CODE is ever emitted here.
+    has_narrative = bool(narratives)
+
     return {
         "last_fy": max(funded),
         "jbook_fy2026_zero": jbook_zero,
         "has_successor": has_successor,
+        "has_narrative": has_narrative,
     }
 
 
@@ -8952,7 +8982,7 @@ def _write_all_sidecars(
             obj["fy26_split"] = fy26_split_by_pe[slug]
         # ROADMAP #32(a): PB2026 requests nothing for this line — say so.
         _fy26_absent = _fy2026_absent_block(
-            own_bl, obj.get("details"), obj.get("lineage")
+            own_bl, obj.get("details"), obj.get("lineage"), obj.get("narratives")
         )
         if _fy26_absent is not None:
             obj["fy2026_absent"] = _fy26_absent
@@ -9041,7 +9071,8 @@ def _write_all_sidecars(
             obj["fy26_split"] = fy26_split_by_pe[pe_bli]
         # ROADMAP #32(a): PB2026 requests nothing for this line — say so.
         _fy26_absent = _fy2026_absent_block(
-            obj["budget_lines"], obj.get("details"), obj.get("lineage")
+            obj["budget_lines"], obj.get("details"), obj.get("lineage"),
+            obj.get("narratives"),
         )
         if _fy26_absent is not None:
             obj["fy2026_absent"] = _fy26_absent
