@@ -125,6 +125,22 @@
  *      render NOTHING when site_meta carries no measured methods yet (a
  *      stale or partial paragraph is as much a lie as a rotted literal). See
  *      leg n's own block at the bottom.
+ *  (o) PER-AWARD HAND-ADJUDICATION COVERAGE (ROADMAP #109, 2026-09-11). Leg
+ *      (n) grades the SAMPLED measurement of the link tiers; this one grades
+ *      the section's opening claim about the CENSUS. /methodology/ opened
+ *      "As of September 2026, every published link was individually
+ *      hand-adjudicated … a link is published as high only if neither
+ *      [adversarial reviewer] could refute it." Measured: 9,587 of the 12,595
+ *      links the crosswalk grades high or medium carry an adjudication row at
+ *      all, three of the five published methods carry NONE, 8,474 of the
+ *      adjudications that exist could not pin the work to any one program
+ *      element, and 57 rows in the whole table record both lenses. The
+ *      sentence held no number, so no number could disagree with it — the
+ *      same blind spot leg h found in feed prose. The sentence is now
+ *      rendered from site_meta.link_adjudication and this leg binds it: every
+ *      figure stated, NO figure the block does not hold, every unadjudicated
+ *      path named, and the passage present iff the block is. See leg o's own
+ *      block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -625,6 +641,9 @@ export async function runDataTruthGate() {
 
   // ── leg n: held-out link-precision study (ROADMAP #72) ────────────────────
   runLinkPrecisionLeg(errors, notes);
+
+  // ── leg o: hand-adjudication coverage (ROADMAP #109) ──────────────────────
+  runLinkAdjudicationLeg(errors, notes);
 
   // ── leg l: family labels that won a coin flip (ROADMAP #10 A) ─────────────
   runFamilyLabelLeg(errors, notes);
@@ -2453,6 +2472,209 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
         `from site_meta.link_precision (values match, rubric '${rubric}' named) ` +
         `and names all ${unmeasured.length} unmeasured published tier(s); ` +
         `${published.size} published method(s) in citations.json, all accounted for ✓`,
+    );
+  }
+}
+
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg o — per-award hand-adjudication coverage (ROADMAP #109, 2026-09-11)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT. /methodology/ §Budget-to-contract links opened: "As of September
+// 2026, every published link was individually hand-adjudicated: each award's
+// contract descriptions were investigated against the program's J-book
+// narratives and project titles, and every proposed program-level link was
+// then challenged by two independent adversarial reviewers — a link is
+// published as high only if neither could refute it." Measured 2026-09-11
+// against Postgres: of 12,595 links the crosswalk grades high or medium,
+// 9,587 carry an `award_pe_adjudications` row AT ALL — three of the five
+// published methods (announcement+lexicon, fpds-ap, subaward+lexicon) carry
+// ZERO; 8,474 of the adjudications that exist say the work could not be
+// pinned to any one program element; and 57 rows in the whole table record
+// `refuter_lenses_passed = 2`. Every other number on the page was derived and
+// gated. This sentence was authored, universal, and false — and no leg could
+// see it, because there was nothing for a number to disagree with.
+//
+// THE RULE. The sentence is now rendered from site_meta.link_adjudication
+// (export_site._link_adjudication_block), and this leg binds it:
+//   - each of `published`, `adjudicated`, `unpinned` appears in the passage
+//     formatted the way lib/format formatCount formats a count, and `as_of`
+//     dates it;
+//   - the passage carries NO number the block does not hold — a figure typed
+//     back into the prose (the species this whole leg exists for) fails here
+//     even when it is plausible;
+//   - the passage is present iff the block is non-empty — a corpus with no
+//     adjudication renders nothing rather than the old claim;
+//   - every method the block says carries NO adjudication is NAMED — silence
+//     about an unadjudicated path reads as a path that passed (the same
+//     direction leg n enforces for unmeasured precision tiers);
+//   - the block agrees with itself (per-method sums, adjudicated ≤ published,
+//     unpinned ≤ adjudicated), so a mis-shaped export cannot supply numbers
+//     the prose then faithfully renders.
+/** The three counts the passage must state, in the order the page states
+ *  them. Keyed by the block field so an error names the field to re-derive. */
+const ADJUDICATION_COUNTS = ["adjudicated", "published", "unpinned"];
+
+export function runLinkAdjudicationLeg(errors, notes, injected) {
+  let siteMeta;
+  let passageText = null;
+  let passageExists = false;
+  let methodologyBuilt = true;
+
+  if (injected) {
+    siteMeta = injected.siteMeta ?? {};
+    passageExists = injected.passageText != null;
+    passageText = injected.passageText ?? null;
+    methodologyBuilt = injected.methodologyBuilt ?? true;
+  } else {
+    const siteMetaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(siteMetaPath)) {
+      errors.push(`leg o: ${siteMetaPath} missing — cannot check link_adjudication`);
+      return;
+    }
+    try {
+      siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
+    } catch (e) {
+      errors.push(`leg o: site_meta.json unparseable — ${e.message}`);
+      return;
+    }
+    const methodRoot = readHtml("/methodology/");
+    methodologyBuilt = methodRoot != null;
+    const el = methodRoot?.querySelector("[data-link-adjudication]");
+    passageExists = el != null;
+    passageText = el ? norm(el.text) : null;
+  }
+
+  const block = siteMeta.link_adjudication ?? {};
+  if (Object.keys(block).length === 0) {
+    if (passageExists) {
+      errors.push(
+        "leg o (/methodology/): [data-link-adjudication] renders while " +
+          "site_meta.link_adjudication is empty — the hand-adjudication " +
+          "sentence must stay absent until an adjudication touches a " +
+          "published link, never fall back to a claim about one",
+      );
+    } else {
+      notes.push(
+        "leg o: link_adjudication is empty and /methodology/ renders no " +
+          "hand-adjudication sentence (nothing adjudicated yet) ✓",
+      );
+    }
+    return;
+  }
+
+  if (!methodologyBuilt) {
+    errors.push("leg o: built /methodology/ missing");
+    return;
+  }
+  if (!passageExists) {
+    errors.push(
+      "leg o (/methodology/): site_meta.link_adjudication carries coverage " +
+        `(${block.adjudicated} of ${block.published} links adjudicated) but no ` +
+        "[data-link-adjudication] passage renders — the section would open " +
+        "with the inference and never say how much of it was reviewed",
+    );
+    return;
+  }
+
+  const text = passageText ?? "";
+  const allowed = new Set();
+  for (const field of ADJUDICATION_COUNTS) {
+    const value = block[field];
+    if (typeof value !== "number") {
+      errors.push(
+        `leg o: site_meta.link_adjudication.${field} is ` +
+          `${JSON.stringify(value)}, not a count — re-run export-site`,
+      );
+      continue;
+    }
+    const rendered = value.toLocaleString("en-US");
+    allowed.add(rendered);
+    if (!text.includes(rendered)) {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] never states ` +
+          `${field} = ${rendered} — the sentence must render every figure it ` +
+          `claims from site_meta.link_adjudication, not around it`,
+      );
+    }
+  }
+  if (typeof block.as_of !== "string" || !text.includes(block.as_of)) {
+    errors.push(
+      `leg o (/methodology/): the passage does not carry as_of ` +
+        `${JSON.stringify(block.as_of ?? null)} — an undated coverage claim ` +
+        `reads as a standing one`,
+    );
+  }
+
+  // No number the block does not hold. ISO dates go first (as_of is checked
+  // above and its 2026 / 09 / 11 must not read as three stray figures).
+  const scanned = text.replace(/\d{4}-\d{2}-\d{2}/g, " ");
+  for (const m of scanned.matchAll(/\d[\d,]*/g)) {
+    if (!allowed.has(m[0])) {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] states "${m[0]}", ` +
+          `which is not a figure in site_meta.link_adjudication ` +
+          `(${[...allowed].join(", ")}) — every number in this sentence is ` +
+          `derived; a typed one is the defect the sentence was rewritten for`,
+      );
+    }
+  }
+
+  const unadjudicated = block.unadjudicated_methods ?? [];
+  for (const method of unadjudicated) {
+    if (!namesMethodToken(text, method)) {
+      errors.push(
+        `leg o (/methodology/): "${method}" publishes links and carries NO ` +
+          `adjudication row, but the passage never names it — an unreviewed ` +
+          `evidence path that says nothing reads as one that was reviewed`,
+      );
+    }
+  }
+
+  // The block against itself: prose rendered faithfully from a mis-shaped
+  // export is still a false sentence.
+  const byMethod = block.by_method ?? {};
+  const sum = (field) =>
+    Object.values(byMethod).reduce((t, v) => t + (v?.[field] ?? 0), 0);
+  if (Object.keys(byMethod).length > 0) {
+    for (const field of ["published", "adjudicated"]) {
+      if (sum(field) !== block[field]) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.${field} is ${block[field]} but ` +
+            `by_method sums to ${sum(field)} — re-run export-site`,
+        );
+      }
+    }
+    const silent = Object.entries(byMethod)
+      .filter(([m, v]) => (v?.adjudicated ?? 0) === 0 && !unadjudicated.includes(m))
+      .map(([m]) => m);
+    if (silent.length > 0) {
+      errors.push(
+        `leg o: ${silent.join(", ")} carr${silent.length === 1 ? "ies" : "y"} ` +
+          `no adjudication but ${silent.length === 1 ? "is" : "are"} missing ` +
+          `from unadjudicated_methods — the page names that list, so a path ` +
+          `left off it goes unnamed`,
+      );
+    }
+  }
+  if (block.adjudicated > block.published || block.unpinned > block.adjudicated) {
+    errors.push(
+      `leg o: site_meta.link_adjudication is inverted (${block.adjudicated} ` +
+        `adjudicated of ${block.published} published, ${block.unpinned} ` +
+        `unpinned) — a coverage claim cannot exceed its own universe`,
+    );
+  }
+
+  if (errors.every((e) => !e.startsWith("leg o"))) {
+    notes.push(
+      `leg o: [data-link-adjudication] states ${block.adjudicated.toLocaleString("en-US")} ` +
+        `of ${block.published.toLocaleString("en-US")} links adjudicated ` +
+        `(${block.unpinned.toLocaleString("en-US")} unpinned, as of ${block.as_of}) ` +
+        `from site_meta.link_adjudication, carries no undeclared figure, and names ` +
+        `all ${unadjudicated.length} unadjudicated path(s) ✓`,
     );
   }
 }
