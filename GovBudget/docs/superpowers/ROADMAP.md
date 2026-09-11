@@ -565,10 +565,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   this program element? — with the award's own description and the PE's
   narrative, project titles and lexicon names in the packet: **0/60**, two
   independent adversarial lenses per packet, 120 judgements, 0 disagreements.
-  Every sampled award's record describes work the linked PE does not own; the
-  overlaps were the appropriation account, the DARPA sub-agency and the
-  HR0011 prefix — the rule restated. Published as measured (smaller true
-  number); what the tier does next is an owner call (#107). The fix is
+  No sampled link cleared the rubric — but not all 60 failed the same way,
+  and the entry first said they did (corrected 2026-09-11, Task 6c, before
+  merge): several awards name a different DARPA effort outright, while at
+  least SIX were refuted because the record names no work at all — pure
+  "IGF::OT::IGF DARPA RESEARCH PROJECT" boilerplate, which the rubric refutes
+  on silence rather than on contrary evidence (HR001116C0090/0603469E,
+  HR001116C0091/0603467E, HR001117C0002/0601117E, HR001117C0005/0603287E,
+  HR001118C0133/0602115E, HR001118C0134/0602715E; two more describe
+  agency-wide acquisition support rather than any PE's work). Where the
+  reviewers found an overlap at all it was the appropriation account, the
+  DARPA sub-agency and the HR0011 prefix — the rule restated. Published as
+  measured (smaller true number); what the tier does next is an owner call
+  (#107). The fix is
   structural, not editorial: the verdict row records its rubric (migration
   015), the exporter filters on it, and gate 24 leg n makes the page name it.
   Lessons: a hand-named exclusion set is a label the next study forgets to
@@ -999,9 +1008,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#107 OWNER CALL: what happens to the `account+subagency` tier now that it
   measures 0/60 for program attribution.** The 2026-09-05 sample (60 published
   links, judged 2026-09-11 by two adversarial lenses, 0 disagreements)
-  confirmed none: every sampled award's own record describes work the linked PE
-  does not own, and the only overlaps were the appropriation account, the DARPA
-  sub-agency and the HR0011 prefix — the linking rule restated. The figure is
+  confirmed none. Not all 60 failed the same way (corrected 2026-09-11, Task
+  6c, before merge — the entry first stated a universal the verdicts do not
+  support): several awards name a different DARPA effort outright, at least six
+  name no work at all (boilerplate, which the rubric refutes on silence) and two
+  describe agency-wide acquisition support; where a reviewer found any overlap
+  at all it was the appropriation account, the DARPA sub-agency and the HR0011
+  prefix — the linking rule restated. The figure is
   published as measured (smaller true number, 2026-08-07); WHETHER THE TIER
   KEEPS PUBLISHING is the owner's, not a gate's. Scale: 9,337 published rows in
   Postgres over 416 DARPA awards and 24 DARPA PEs; 8,856 in the mart — 72% of
@@ -1013,7 +1026,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (gate 21 leg m) plus /methodology/'s figure, which a reader skimming a table
   may not meet; (b) **demote to an unpublished audit tier** — no program loses
   its Related Awards table (all 24 also carry links of another species), but
-  those pages lose ~92% of their rows and the all-tier concentration basis
+  11 of the 24 carry NO rows from a MEASURED tier at all (measured 2026-09-11:
+  0602715E, 0605898E, 0605001E, 0602115E, 0605502E, 0602026E, 0603468E,
+  0601122E, 0601117E, 0602023E, 0601101E have zero `announcement+lexicon` /
+  `fpds-ap` / `subaward+lexicon` rows), so under (b) those eleven pages would
+  show a Related Awards table built entirely of tiers whose precision is
+  unmeasured (`account`, `account+tokens`) — the same table to a reader,
+  carrying less evidence than the one it replaced. Those pages also
+  lose ~92% of their rows and the all-tier concentration basis
   (`*_all`, #80) is recomputed on those 24; the high-only basis (`*_high`) and
   the district dollar marts are unaffected by construction (`fct_district_*`
   are `confidence = 'high'` only — the all-confidence breadth grain would lose
@@ -1055,7 +1075,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   reword — out of scope for #79, which is why it is filed rather than edited.
   (The overlay is working: all 262 published rows whose adjudication says
   `contradicted`/`not_darpa` are demoted out of the mart.)
-  **Status:** open (2026-09-11).
+  **Status:** open (2026-09-11) — opening sentence shrunk to the derived
+  adjudication-coverage numbers in `640320e0` (Task 6c; block `61907d78`, gate
+  24 leg o `64d5cac9`); the five-path evidence pass and per-path gate remain.
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
