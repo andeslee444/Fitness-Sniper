@@ -23,6 +23,8 @@
  */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
+import fs from "fs";
+import path from "path";
 import React from "react";
 import { ProgramConcentration } from "@/components/program-concentration";
 import {
@@ -176,6 +178,30 @@ describe("the withheld sentences state the floor, not a count about this line", 
     expect(WHO_GETS_IT_WITHHELD_LEAD).not.toMatch(/no contractor is named/i);
     expect(WHO_GETS_IT_WITHHELD_LEAD).not.toMatch(/fewer than/i);
     expect(WHO_GETS_IT_WITHHELD_LEAD).toMatch(/leader/i);
+  });
+
+  // R5 also ruled ONE shared string for the card and the strip. The card is
+  // rendered above; the strip lives in a server component this suite cannot
+  // render, so its branch is read as source: a future edit that hardcodes a
+  // fresh sentence there instead of the shared constants — which is exactly
+  // how both false sentences got written — fails here.
+  it("the answer strip's withheld branch renders the shared strings, not its own", () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "..", "app", "program", "[peBli]", "page.tsx"),
+      "utf8",
+    );
+    const first = src.indexOf('data-who-tier="none"');
+    const second = src.indexOf('data-who-tier="none"', first + 1);
+    expect(first).toBeGreaterThan(-1);
+    expect(second).toBeGreaterThan(first);
+    const branch = src.slice(first, second);
+    expect(branch).toContain("{WHO_GETS_IT_WITHHELD_LEAD}");
+    expect(branch).toContain("{CONCENTRATION_WITHHELD_REASON}");
+    expect(branch).not.toMatch(/no contractor is named/i);
+    expect(branch).not.toMatch(/fewer than/i);
+    // gate 21 leg (j): a non-award tier may state no dollars.
+    expect(branch).not.toContain("data-amount");
+    expect(branch).not.toMatch(/\$[\d{]/);
   });
 
   it("the card renders the rule, on both withheld shapes", () => {

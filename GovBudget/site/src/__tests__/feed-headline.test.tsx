@@ -180,6 +180,30 @@ describe("hhiScopeNote", () => {
     expect(note!.text).not.toMatch(/high supplier-concentration/i);
   });
 
+  // ROADMAP #80 fix round 2 (2026-09-11), finding 8 — ruling R8. The note
+  // used to end "the program's pooled, all-years HHI can differ; see the
+  // program page", written when the destination always had one. After the
+  // high-only floor, 444 - 37 = 407 of the 444 mart rows publish no pooled
+  // index at all, so that instruction sent most readers to a page that
+  // states an absence. The note must say the figure may not be there —
+  // while keeping the "pooled"/"differ" tokens scripts/gates/feed.mjs leg
+  // (l) matches on. This assertion fails if either half is dropped.
+  it("does not promise the destination publishes a pooled figure", () => {
+    const note = hhiScopeNote(
+      card({
+        event_type: "concentration_shift",
+        figure_units: "hhi",
+        figure_value: 8662.294,
+        fiscal_year: 2020,
+        pe_bli: "0601101E",
+        program_url: "/program/0601101E/",
+      }),
+    );
+    expect(note!.text).toMatch(/not be published/i);
+    expect(note!.text.toLowerCase()).toContain("pooled");
+    expect(note!.text.toLowerCase()).toContain("differ");
+  });
+
   it("falls back to 'that year' when fiscal_year is absent", () => {
     const note = hhiScopeNote(
       card({
