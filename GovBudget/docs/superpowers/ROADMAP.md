@@ -1004,6 +1004,28 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   `rule-fired`. A future study should judge `fpds-ap` on description-level
   attribution like the other strata and publish whichever number comes back.
   **Status:** open (2026-09-11).
+- **#109 "every published link was individually hand-adjudicated" is looser
+  than the adjudication table.** /methodology/ §Budget-to-contract links opens
+  with it, and `docs/methodology.md` mirrors it. Measured read-only 2026-09-11
+  over the live warehouse: of 12,595 published (high/medium)
+  `budget_line_awards` rows, 9,587 carry an `award_pe_adjudications` row at all
+  (`account+subagency` 9,173/9,337, `account+tokens` 414/527, and ZERO for the
+  1,910 `fpds-ap`, 708 `announcement+lexicon` and 113 `subaward+lexicon` links,
+  which are adjudicated by the other processes the same section describes). Of
+  the adjudicated ones, 8,474 carry `award_verdict = 'darpa_unpinned'`,
+  `pair_reason = 'unpinned-pool'`, empty basis — the hand adjudication
+  investigated the AWARD and explicitly did not pin it to this PE, and the
+  loader then publishes it at medium against every DARPA PE in the account.
+  That fan-out is exactly what #79's 0/60 measured. Nothing renders a wrong
+  number and the tier grading below the sentence is honest (medium = "an
+  association, not evidence that this specific program paid", now with the
+  0/60 beside it), but the opening summary reads as "a human checked this
+  pair" for 8,474 links whose adjudication says the opposite. Fix needs an
+  evidence pass over all five evidence paths and a gate on the claim, not a
+  reword — out of scope for #79, which is why it is filed rather than edited.
+  (The overlay is working: all 262 published rows whose adjudication says
+  `contradicted`/`not_darpa` are demoted out of the mart.)
+  **Status:** open (2026-09-11).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
