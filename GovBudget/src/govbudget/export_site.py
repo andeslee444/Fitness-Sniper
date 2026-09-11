@@ -1223,7 +1223,11 @@ _DATASET_SCOPES: dict[str, str] = {
     ),
     "fct_program_concentration": (
         "One row per program element with enough matched award dollars to"
-        " compute an HHI market-concentration score."
+        " compute an HHI market-concentration score, on TWO bases: the *_all"
+        " columns over every published crosswalk link (high and medium"
+        " confidence), the *_high columns over high-confidence links alone."
+        " hhi_high is NULL below 3 linked awards across 2 contractor families"
+        " (ROADMAP #80)."
     ),
     "fct_state_per_capita": (
         "One row per (jurisdiction × comparable spending category × fiscal"
