@@ -286,6 +286,17 @@ def dossier_gate(
                 total_claims += 1
                 citation = claim["citation"]
                 if "fact_id" in citation:
+                    # TIER NOTE (ROADMAP #80 fix round 1, 2026-09-11). This
+                    # check resolves a fact_id; it cannot tell which link tier
+                    # the figure behind it rests on. For contractor
+                    # concentration that mattered — programs.json carries a
+                    # high-confidence-only fid AND an all-links fid, and a page
+                    # publishes only the first. The all-links fid is kept out
+                    # of reach upstream instead: batch._headline_concentration
+                    # projects the block down to the published basis before the
+                    # bundle is rendered, so a dossier written after that fix
+                    # has no all-links fid to cite. Dossiers generated BEFORE
+                    # it may still carry one and resolve cleanly here.
                     warehouse_claims += 1
                     if citation["fact_id"] not in fact_ids:
                         unresolved.append(

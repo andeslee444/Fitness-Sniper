@@ -3720,7 +3720,8 @@ def _build_derived_citation_rows(
             "where share = family_obligation / sum(family_obligation) "
             "across fct_budget_to_awards high-confidence links only "
             "and obligation > 0 (positive-only shares; negative obligations excluded); "
-            "not published below 3 linked awards across 2 contractor families"
+            "not published below 3 linked awards across 2 contractor families "
+            "holding positive obligations, with positive linked dollars"
         )
         # 2026-09-04 final review I5: this string used to end "obligation > 0",
         # which is the rule for the SHARES (pos_program_dollars), not for this
@@ -5997,12 +5998,20 @@ def _who_gets_it_fid(block: dict | None) -> str | None:
     """The concentration dollars fact_id the WHO-GETS-IT strip cites, or None.
 
     MIRROR of site/src/lib/concentration-basis.ts concentrationHeadline()
-    (ROADMAP #80): the strip and the Contractor Concentration card headline
-    ONE basis per page — high-confidence links alone when the high-only index
-    publishes (hhi_high non-null ⇒ ≥3 high awards across ≥2 families), the
-    all-tier figure otherwise. A non-None return is exactly the condition
-    under which the page renders the award tier; the named-primes and
-    uncrosswalked fallbacks key off it. Change both sides together.
+    (ROADMAP #80, fix round 1 2026-09-11): a program page publishes ONE
+    concentration basis — high-confidence links alone — and only where the
+    high-only index publishes (hhi_high non-null ⇒ ≥3 high awards across ≥2
+    positive-dollar families with positive linked dollars). Below that floor
+    the strip cites NOTHING: the all-tier figure is dominated by the
+    account+subagency tier, which the 2026-09-04 adjudication measured at
+    0 of 60 for program attribution (ROADMAP #79), so substituting it would
+    answer "who gets it" with a tier that does not answer it. The *_all
+    columns and their fids stay in the data for /methodology/ and the
+    download; nothing on a page reads them.
+
+    A non-None return is exactly the condition under which the page renders
+    the award tier; the named-primes and uncrosswalked fallbacks key off it,
+    and take over where this returns None.
 
     Takes the BLOCK, never the key, so it is unaffected by how hhi_by_pe is
     keyed (see ROADMAP #82 / Task 9, which re-keys it by slug).
@@ -6015,7 +6024,7 @@ def _who_gets_it_fid(block: dict | None) -> str | None:
         and block.get("top_family_high") is not None
     ):
         return block.get("program_dollars_high_fact_id")
-    return block.get("program_dollars_all_fact_id")
+    return None
 
 
 def _build_named_primes(
@@ -6024,6 +6033,7 @@ def _build_named_primes(
     entity_rows: list,
     hhi_by_pe: dict,
     cited_fact_ids: set,
+    awarded_pe_blis: set,
 ) -> dict[str, list]:
     """WHO-GETS-IT fallback (§P0-2 fix 3): when the budget→award crosswalk
     has no citable concentration dollars for a program on the basis the page
@@ -6032,6 +6042,15 @@ def _build_named_primes(
     but the program has a GATED dossier whose key-players claims name a
     known contractor family, emit named_primes: [{name, family_key, fact_id,
     public_id}] so the card can say "Named in the J-book: … — uncrosswalked".
+
+    `awarded_pe_blis` guards that last clause (#80 fix round 1, 2026-09-11).
+    This tier ends "— not yet crosswalked to award data", which is true of a
+    program with no links and false of one whose page renders a Related
+    Awards table below the card. Before #80 the guard was implicit: the only
+    programs reaching here were the ones with no concentration row at all.
+    Now that a program can have links and still publish no high-only index,
+    it has to be stated — the same guard `_build_lobbied_by` already applies
+    to its own disclaimer.
 
     Matching is DETERMINISTIC lexicon matching — the same
     word-boundary-substring discipline fct_program_lobbying uses — against
@@ -6071,6 +6090,10 @@ def _build_named_primes(
         hhi = hhi_by_pe.get(pe_bli)
         if _who_gets_it_fid(hhi):
             continue  # crosswalk answers WHO-GETS-IT — no fallback needed
+        if pe_bli in awarded_pe_blis:
+            # The page renders a Related Awards table, so this tier's closing
+            # clause ("not yet crosswalked to award data") would be false.
+            continue
         try:
             dossier = _json.loads(path.read_text()).get("dossier", {})
         except Exception:
@@ -8743,6 +8766,7 @@ def _write_all_sidecars(
         entity_rows=entity_rows,
         hhi_by_pe=hhi_by_pe,
         cited_fact_ids=_cited_fact_ids,
+        awarded_pe_blis={key[0] for key in awards_by_pe},
     )
 
     # WHO-GETS-IT third tier (tri-persona Wave 3) — the lobbying-filing

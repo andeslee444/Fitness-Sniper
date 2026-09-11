@@ -82,9 +82,21 @@ def site_fixture(tmp_path):
             "trajectory": {"fy2025_total": 50.0, "fy2026_total": 100.0},
             "trajectory_fact_ids": {"fy2026_total": "traj26fact",
                                     "fy2025_total": "traj25fact"},
-            "hhi": {"hhi_all": 2500.0, "hhi_all_fact_id": "hhifact",
-                    "program_dollars_all_fact_id": "dollarsfact",
-                    "hhi_high": None, "program_dollars_high_fact_id": None},
+            # #80 fix round 1: the high-only basis publishes here, so the
+            # bundle carries it — and only it (batch._headline_concentration).
+            # A block whose hhi_high is None reaches the prompt as no
+            # concentration block at all; see
+            # tests/test_export_site_5b3.py::TestConcentrationTwoBases.
+            "hhi": {"hhi_all": 2500.0, "hhi_all_fact_id": "allhhifact",
+                    "program_dollars_all": 5e8,
+                    "program_dollars_all_fact_id": "alldollarsfact",
+                    "top_family_all": "LOCKHEED MARTIN",
+                    "family_count_all": 12, "award_count_all": 40,
+                    "hhi_high": 3900.0, "hhi_high_fact_id": "hhifact",
+                    "program_dollars_high": 3e8,
+                    "program_dollars_high_fact_id": "dollarsfact",
+                    "top_family_high": "BOEING",
+                    "family_count_high": 4, "award_count_high": 9},
         },
         {"pe_bli": PE2, "title": "Joint Hypersonic Technology", "org": "OSD",
          "trajectory": {"fy2026_total": 500.0},
@@ -392,6 +404,22 @@ class TestBuildBundle:
         assert data["snapshots"][0]["url"] == SNAP_URL
         assert data["snapshots"][0]["title"] == "Article"
         assert len(data["snapshots"][0]["text"]) == 8000
+
+    def test_concentration_block_is_the_published_basis_only(self, site_fixture):
+        """ROADMAP #80 fix round 1, finding 12: the prompt must not be able to
+        cite a basis the page does not publish. The all-links fids are in
+        programs.json (they feed /methodology/ and the download) and must not
+        appear anywhere in the rendered bundle."""
+        rendered = self._build(site_fixture)
+        data = _bundle_json(rendered)
+        assert data["program"]["hhi"] == {
+            "basis": "high-confidence award links only",
+            "hhi": 3900.0, "hhi_fact_id": "hhifact",
+            "program_dollars": 3e8, "program_dollars_fact_id": "dollarsfact",
+            "top_family": "BOEING", "family_count": 4, "award_count": 9,
+        }
+        assert "allhhifact" not in rendered
+        assert "alldollarsfact" not in rendered
 
     def test_flows_absent_when_no_sidecar(self, site_fixture):
         b = build_bundle(PE2, site_json_dir=site_fixture.site_json,

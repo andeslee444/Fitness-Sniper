@@ -2036,8 +2036,11 @@ class TestConcentrationTwoBases:
             assert row[1] == "derived" and row[22]
 
     def test_who_gets_it_fid_mirrors_site_helper(self):
-        """Mirror of site/src/lib/concentration-basis.ts concentrationHeadline():
-        high dollars fid iff the high-only index publishes, else all-tier fid."""
+        """Mirror of site/src/lib/concentration-basis.ts concentrationHeadline()
+        (#80 fix round 1): the high dollars fid iff the high-only index
+        publishes, and NOTHING otherwise. The all-tier fid is never returned —
+        substituting an account+subagency-dominated figure (0/60 on program
+        attribution, #79) for a withheld one is the thing this fix removes."""
         from govbudget.export_site import _who_gets_it_fid
         high = {"hhi_high": 3900.0, "program_dollars_high": 3e8, "top_family_high": "BOEING",
                 "program_dollars_high_fact_id": "H" * 16, "program_dollars_all_fact_id": "A" * 16}
@@ -2048,7 +2051,36 @@ class TestConcentrationTwoBases:
         uncited = {"hhi_high": 3900.0, "program_dollars_high": 3e8, "top_family_high": "BOEING",
                    "program_dollars_high_fact_id": None, "program_dollars_all_fact_id": "A" * 16}
         assert _who_gets_it_fid(high) == "H" * 16
-        assert _who_gets_it_fid(below) == "A" * 16
-        assert _who_gets_it_fid(none) == "A" * 16
+        assert _who_gets_it_fid(below) is None
+        assert _who_gets_it_fid(none) is None
         assert _who_gets_it_fid(uncited) is None  # card headlines high, strip has nothing to cite
         assert _who_gets_it_fid(None) is None
+
+    def test_dossier_bundle_cannot_cite_the_all_links_basis(self):
+        """ROADMAP #80 fix round 1, finding 12. The 14-key block used to reach
+        the dossier prompt opaquely, carrying two HHI values and two citable
+        fids with no tier wording — a batch could write "HHI of 4,200" citing
+        hhi_all_fact_id on a page that publishes no index at all."""
+        from govbudget.dossiers.batch import _headline_concentration
+        block = {
+            "hhi_all": 4200.0, "hhi_all_fact_id": "A" * 16,
+            "program_dollars_all": 5e8, "program_dollars_all_fact_id": "B" * 16,
+            "top_family_all": "LOCKHEED MARTIN", "family_count_all": 12,
+            "award_count_all": 40,
+            "hhi_high": 3900.0, "hhi_high_fact_id": "C" * 16,
+            "program_dollars_high": 3e8, "program_dollars_high_fact_id": "D" * 16,
+            "top_family_high": "BOEING", "family_count_high": 4, "award_count_high": 9,
+        }
+        projected = _headline_concentration(block)
+        assert projected == {
+            "basis": "high-confidence award links only",
+            "hhi": 3900.0, "hhi_fact_id": "C" * 16,
+            "program_dollars": 3e8, "program_dollars_fact_id": "D" * 16,
+            "top_family": "BOEING", "family_count": 4, "award_count": 9,
+        }
+        assert "A" * 16 not in json.dumps(projected)
+        assert "B" * 16 not in json.dumps(projected)
+        # Below the floor the page publishes nothing, so neither does the bundle.
+        withheld = {**block, "hhi_high": None, "hhi_high_fact_id": None}
+        assert _headline_concentration(withheld) is None
+        assert _headline_concentration(None) is None

@@ -56,6 +56,43 @@ TOP_N_LIST = 25            # mentions / awards / project details
 SNAPSHOT_TEXT_CAP = 8_000  # chars of article text per snapshot (pre-trim)
 MAX_SNAPSHOTS = 8
 
+def _headline_concentration(block: dict | None) -> dict | None:
+    """The concentration block a dossier may cite, or None (ROADMAP #80 fix
+    round 1, 2026-09-11).
+
+    programs.json carries BOTH bases — *_all over every published link and
+    *_high over high-confidence links only — because /methodology/ and the
+    download describe both. A program PAGE publishes only the high-only
+    basis: the all-links figure is dominated by the account+subagency tier,
+    measured 0 of 60 for program attribution (ROADMAP #79). Handing the
+    14-key block to the model unlabelled let a batch write "HHI of 4,200"
+    citing hhi_all_fact_id on a page whose card publishes nothing at all —
+    the tier-naming-prose blind spot this project has been bitten by before.
+
+    So the block is projected down to what the page publishes before it
+    enters the bundle, with the basis named in the dict itself, and withheld
+    entirely where the page withholds it. `_who_gets_it_fid` in
+    export_site.py is the same predicate (imported here rather than restated
+    so the two cannot drift); the dossier gate's citation check then sees no
+    all-links fid to resolve, because none reaches the prompt.
+    """
+    from govbudget.export_site import _who_gets_it_fid
+
+    if _who_gets_it_fid(block) is None:
+        return None
+    assert block is not None  # _who_gets_it_fid returns None for a None block
+    return {
+        "basis": "high-confidence award links only",
+        "hhi": block.get("hhi_high"),
+        "hhi_fact_id": block.get("hhi_high_fact_id"),
+        "program_dollars": block.get("program_dollars_high"),
+        "program_dollars_fact_id": block.get("program_dollars_high_fact_id"),
+        "top_family": block.get("top_family_high"),
+        "family_count": block.get("family_count_high"),
+        "award_count": block.get("award_count_high"),
+    }
+
+
 REQUIRED_SECTIONS: tuple[str, ...] = ("what_it_is", "why_it_matters", "players")
 ALL_SECTIONS: tuple[str, ...] = REQUIRED_SECTIONS + ("recent_developments",)
 
@@ -404,7 +441,10 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
             "org": program.get("org", ""),
             "trajectory": program.get("trajectory"),
             "trajectory_fact_ids": program.get("trajectory_fact_ids"),
-            "hhi": program.get("hhi"),
+            # #80: the headline basis only, or nothing. See
+            # _headline_concentration — an all-links fid must never reach a
+            # dossier prompt.
+            "hhi": _headline_concentration(program.get("hhi")),
         },
         "category": _category_row(categories_csv, pe_bli),
         "budget_lines": details.get("budget_lines", []),
