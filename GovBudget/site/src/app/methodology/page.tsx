@@ -152,8 +152,16 @@ export default function MethodologyPage() {
   // would describe a MEASURED tier as unmeasured — so the narrowings are
   // derived from the same list, and the family membership test is this
   // map's own keys.
+  // ROADMAP #109 (6b review, rider A): the `account` entry read "by a hand
+  // adjudication that PINNED the pair". Measured 2026-09-11: all 442 published
+  // `account` rows publish because of an adjudication (confidence_source
+  // 'adjudicated' over crosswalk_confidence 'low'), but 426 of them carry
+  // award_verdict 'darpa_unpinned' / pair_reason 'unpinned-pool' with an empty
+  // basis — the adjudication explicitly did NOT pin the pair; only 16 are
+  // 'pinned'. What is true of every row is that a hand adjudication of the
+  // AWARD is why the link publishes at all.
   const ACCOUNT_FAMILY_NARROWING: Record<string, string> = {
-    account: "by a hand adjudication that pinned the pair",
+    account: "by a hand adjudication of the award",
     "account+subagency": "by sub-agency",
     "account+tokens": "by keyword overlap",
   };
@@ -207,6 +215,45 @@ export default function MethodologyPage() {
   // attribution", which the 2026-09-05 run would falsify.
   const linkPrecisionSubagencyAwaitsAttribution =
     linkPrecisionUnmeasuredList.includes("account+subagency");
+  // ROADMAP #109: per-award hand-adjudication COVERAGE, which the section's
+  // opening sentence claimed rather than measured. It said "every published
+  // link was individually hand-adjudicated … a link is published as high only
+  // if neither [adversarial reviewer] could refute it"; measured 2026-09-11,
+  // 9,587 of the 12,595 links the crosswalk grades high or medium carry an
+  // adjudication row at all, three published paths carry none, and 57 rows in
+  // the whole table record both lenses. The sentence now renders from
+  // site_meta.link_adjudication — every figure interpolated, none typed — and
+  // disappears entirely on a corpus with no adjudication (gate 24 leg o fails
+  // a passage that renders without the block, and a number the block does not
+  // hold).
+  const linkAdjudicationBlock = siteMeta.link_adjudication;
+  const linkAdjudication =
+    linkAdjudicationBlock?.as_of &&
+    typeof linkAdjudicationBlock.published === "number" &&
+    typeof linkAdjudicationBlock.adjudicated === "number" &&
+    typeof linkAdjudicationBlock.unpinned === "number"
+      ? {
+          ...linkAdjudicationBlock,
+          as_of: linkAdjudicationBlock.as_of,
+          published: linkAdjudicationBlock.published,
+          adjudicated: linkAdjudicationBlock.adjudicated,
+          unpinned: linkAdjudicationBlock.unpinned,
+        }
+      : null;
+  const linkAdjudicationPaths = linkAdjudication?.unadjudicated_methods ?? [];
+  const linkAdjudicationPathText =
+    linkAdjudicationPaths.length > 1
+      ? `${linkAdjudicationPaths.slice(0, -1).join(", ")} and ${
+          linkAdjudicationPaths[linkAdjudicationPaths.length - 1]
+        }`
+      : linkAdjudicationPaths.join("");
+  // "their precision is sampled instead" is a claim about the OTHER block, so
+  // it renders only while every path with no adjudication actually carries a
+  // sampled figure. A path that loses its figure loses the clause with it,
+  // rather than pointing a reader at a measurement that is not there.
+  const linkAdjudicationPathsAllSampled =
+    linkAdjudicationPaths.length > 0 &&
+    linkAdjudicationPaths.every((m) => Boolean(linkPrecision?.methods?.[m]));
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -659,12 +706,38 @@ export default function MethodologyPage() {
                 </h3>
                 <p>
                   Connecting a budget program element to the contracts that funded
-                  it is an inference. As of September 2026, every published link
-                  was individually hand-adjudicated: each award&apos;s contract
-                  descriptions were investigated against the program&apos;s J-book
-                  narratives and project titles, and every proposed program-level
-                  link was then challenged by two independent adversarial reviewers
-                  — a link is published as high only if neither could refute it.{" "}
+                  it is an inference.
+                  {linkAdjudication ? (
+                    <>
+                      {" "}
+                      <span data-link-adjudication="">
+                        As of {linkAdjudication.as_of},{" "}
+                        {formatCount(linkAdjudication.adjudicated)} of the{" "}
+                        {formatCount(linkAdjudication.published)}{" "}
+                        links the crosswalk grades high or medium carry a
+                        per-award hand adjudication, each recording which
+                        program elements, if any, the award&apos;s own contract
+                        record supports.{" "}
+                        {formatCount(linkAdjudication.unpinned)}{" "}
+                        of those found work that could not be pinned to any one
+                        program element
+                        {linkAdjudication.unpinned_tier
+                          ? `; those links publish at ${linkAdjudication.unpinned_tier}`
+                          : ""}
+                        .{" "}
+                        {linkAdjudicationPathText ? (
+                          <>
+                            The {linkAdjudicationPathText} paths carry no
+                            per-link adjudication
+                            {linkAdjudicationPathsAllSampled
+                              ? " — their precision is sampled instead (below)"
+                              : ""}
+                            .
+                          </>
+                        ) : null}
+                      </span>
+                    </>
+                  ) : null}{" "}
                   <em>High</em>: affirmative program-level evidence — the contract
                   names a program that the budget line&apos;s own J-book pages also
                   name, verified adversarially.{" "}
@@ -703,7 +776,7 @@ export default function MethodologyPage() {
                   DoD contract records carry an FPDS &ldquo;Program, System, or
                   Equipment&rdquo; tag naming the acquisition program (F-35,
                   Virginia class, Sentinel). We hand-mapped every such program to
-                  its J-book budget lines — each mapping challenged by the same
+                  its J-book budget lines — each mapping challenged by a
                   two-reviewer adversarial process — then linked a tagged award to
                   a specific line only when the award&apos;s own funding accounts
                   match that line&apos;s appropriation. FPDS-tagged awards publish
@@ -767,7 +840,7 @@ export default function MethodologyPage() {
                 {linkPrecisionText && (
                   <p className="mt-2" data-link-precision="">
                     Measured precision of the published tiers, from a held-out
-                    hand-adjudicated sample re-run through the same two-reviewer
+                    hand-adjudicated sample re-run through a two-reviewer
                     process
                     {linkPrecisionJudgedText
                       ? ` and judged ${linkPrecisionJudgedText}`

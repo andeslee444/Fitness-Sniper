@@ -89,7 +89,7 @@ const RUBRIC_SENTENCE =
 /** The paragraph /methodology/ renders for LIVE_META. */
 const LIVE_PARAGRAPH =
   "Measured precision of the published tiers, from a held-out " +
-  "hand-adjudicated sample re-run through the same two-reviewer process and " +
+  "hand-adjudicated sample re-run through a two-reviewer process and " +
   "judged 2026-09-04 and 2026-09-11. " +
   RUBRIC_SENTENCE +
   "Each sampled link is counted under the tier it " +

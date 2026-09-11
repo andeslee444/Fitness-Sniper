@@ -371,11 +371,22 @@ export function getCoverageMap(): CoverageMapRow[] {
         "Account codes are too coarse to attribute awards to program elements. " +
         "An award record carries a Treasury account and an appropriation; one " +
         "appropriation account funds dozens to hundreds of program elements, " +
-        "and nothing else on the record narrows it. Every published link was " +
-        "hand-adjudicated (September 2026): high means the contract and the " +
-        "program's own J-book pages name the same program, verified by two " +
-        "independent adversarial reviewers; medium means only that the award " +
-        "drew on the same account and agency. Where evidence pinned an award " +
+        // ROADMAP #109 (2026-09-11): this said "Every published link was
+        // hand-adjudicated". Measured against award_pe_adjudications, 9,587 of
+        // the 12,595 links the crosswalk grades high or medium carry an
+        // adjudication row at all and three published evidence paths carry
+        // none — the same universal /methodology/ opened its crosswalk section
+        // with, in a second place. The count is NOT restated here: /coverage/
+        // has no derived figure for it, and a typed one is what this branch
+        // keeps removing. "Most" is true of both the crosswalk table (76%) and
+        // the mart a reader meets (76%).
+        "and nothing else on the record narrows it. Most published links were " +
+        "hand-adjudicated (September 2026) — /methodology/ states how many, " +
+        "and which evidence paths carry no per-link adjudication at all: high " +
+        "means the contract and the program's own J-book pages name the same " +
+        "program, verified by two independent adversarial reviewers; medium " +
+        "means only that the award drew on the same account and agency. " +
+        "Where evidence pinned an award " +
         "to a different organization's program, the link was removed — a " +
         "guess wearing a citation is worse than an honest absence.",
       targetKind: "none",

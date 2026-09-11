@@ -155,23 +155,29 @@ page beneath the heading, because that is the string USAspending answers to.
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of
-September 2026 every published link was individually hand-adjudicated: each
-award's contract descriptions were investigated against the program's J-book
-narratives and project titles, and every proposed program-level link was then
-challenged by two independent adversarial reviewers — a link publishes as
-high only if neither could refute it. *High*: affirmative program-level
-evidence — the contract names a program the budget line's own J-book pages
-also name, adversarially verified. *Medium*: most such links are
+2026-09-01, 9,587 of the 12,595 links the crosswalk grades high or medium
+carry a per-award hand adjudication, each recording which program elements, if
+any, the award's own contract record supports. 8,474 of those found work that
+could not be pinned to any one program element; those links publish at medium.
+The announcement+lexicon, fpds-ap and subaward+lexicon paths carry no per-link
+adjudication — their precision is sampled instead (below). The page renders
+every one of those figures from `site_meta.link_adjudication` and gate 24 leg
+o fails a build whose sentence states a number the block does not hold.
+(Measured 2026-09-11; the sentence this replaced said "every published link
+was individually hand-adjudicated … a link publishes as high only if neither
+[adversarial reviewer] could refute it", which the census does not support —
+57 rows in the whole adjudication table record both lenses. Backlog #109
+carries the remaining five-path evidence pass.) *High*: affirmative
+program-level evidence — the contract names a program the budget line's own
+J-book pages also name, adversarially verified. *Medium*: most such links are
 account-based — the award drew from the same appropriation account as the
 program, usually under the same sub-agency — an association, not evidence
 this specific program paid for the contract. How often that association names
 the right program element is now measured rather than assumed: a held-out
 sample of account / sub-agency links, judged on program attribution, confirmed
-0 of 60 (judged 2026-09-11, sample `2026-09-05`); the page prints that figure
-from `site_meta.link_precision`, beside the tier's own caveat. Where the
-evidence is instead an FPDS acquisition-program tag or a subaward description
-(both detailed below), the program is established but which of its budget
-lines paid is not.
+0 of 60 (2026-09-11). Where the evidence is instead an FPDS
+acquisition-program tag or a subaward description (both detailed below), the
+program is established but which of its budget lines paid is not.
 *Low*: only the account matches — never published. The earlier
 automated high tier (account match plus keyword overlap) measured 9.1%
 precise under this adjudication (37 of 408 confirmed) and was corrected on
@@ -181,7 +187,7 @@ A second evidence path covers major acquisition programs. Some DoD contract
 records carry an FPDS "Program, System, or Equipment" tag naming the
 acquisition program (F-35, Virginia class, Sentinel). We hand-mapped every
 such program (746 in our corpus; 449 mappable) to its J-book budget lines,
-each mapping challenged by the same two-reviewer adversarial process, then
+each mapping challenged by a two-reviewer adversarial process, then
 linked a tagged award to a specific line only when the award's own funding
 accounts match that line's appropriation. FPDS-tagged awards publish at
 *medium* — the tag plus a verified program mapping establish the program,
@@ -231,7 +237,7 @@ at *medium* — the evidence is one hop removed, so it never publishes as high
 and its rationale names the subaward it rests on.
 
 **Measured precision of the published tiers.** A held-out stratified sample of
-published links is re-adjudicated by the same two-reviewer process, and
+published links is re-adjudicated by a two-reviewer process, and
 /methodology/ prints the confirmed/judged figure per tier from
 `site_meta.link_precision` (the exporter derives it; no figure on that page is
 typed by hand). Every published figure answers ONE question — the study's
@@ -253,13 +259,20 @@ stratum only: each tier's figure comes from the latest run that judged that
 tier, a re-measurement replaces the number it corrects and never pools with it,
 and the page states every study date it draws on.
 
-Tiers with no published figure are NAMED on the page rather than left silent:
-the account and account/keyword tiers rest on an appropriation-account match —
-an association by construction, not proof this program paid — and their
-precision as program attribution has not been independently measured. The page
-states the narrowing each of those tiers adds (a hand adjudication that pinned
-the pair; keyword overlap) from the same list, so a tier that gains a figure
-stops being described as unmeasured in the same build. The account/sub-agency
+Tiers with no published figure are NAMED on the page rather than left silent.
+The page's sentence, mirrored: "No precision figure is published for the
+remaining tiers a reader can meet — account, account+tokens. Those rest on an
+appropriation-account match, narrowed by a hand adjudication of the award or by
+keyword overlap; an account match is an association by construction rather than
+proof this program paid, and how often it names the right program has not been
+independently measured for these tiers." Both halves — the tier list and the
+narrowing each tier adds — are derived from the same `unmeasured` array, so a
+tier that gains a figure stops being described as unmeasured in the same build.
+The `account` narrowing says "a hand adjudication of the award", not "that
+pinned the pair" (its earlier wording): measured 2026-09-11, all 442 published
+`account` rows publish because of an adjudication, but 426 of them carry
+`darpa_unpinned` / `unpinned-pool` with an empty basis — the adjudication
+explicitly did NOT pin the pair; only 16 are `pinned`. The account/sub-agency
 tier's first sample (2026-09-04) was judged only on whether the mechanical rule
 had fired — the appropriation account, the sub-agency, the contract-number
 prefix — and not on whether the award paid for this program; those 60 verdicts

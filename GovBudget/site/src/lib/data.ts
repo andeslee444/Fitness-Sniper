@@ -196,6 +196,49 @@ export interface SiteMeta {
    * renders the paragraph only when `methods` is non-empty. Optional (not
    * just possibly-empty) because it is absent on pre-#72 exports.
    */
+  /**
+   * ROADMAP #109: per-award hand-adjudication COVERAGE of the budget→award
+   * crosswalk — how many of the links the crosswalk grades high or medium
+   * carry an `award_pe_adjudications` row at all, what those adjudications
+   * found, and which evidence paths carry none.
+   *
+   * The defect it exists to prevent (measured 2026-09-11): /methodology/
+   * opened the section "every published link was individually
+   * hand-adjudicated … a link is published as high only if neither
+   * [reviewer] could refute it." Three of the five published methods carry
+   * ZERO adjudication rows (their precision is measured by the sampled study
+   * in `link_precision` instead), 8,474 of the adjudications that do exist
+   * found work that could not be pinned to any one program element, and 57
+   * rows in the whole table record both adversarial lenses. The sentence is
+   * now rendered from these numbers, number for number, and gate 24 leg o
+   * binds it.
+   *
+   * The universe is the crosswalk's OWN grade (`budget_line_awards` at
+   * high/medium), which is what the adjudication overlay is applied to — not
+   * the mart a reader meets, which takes coalesce(adjudicated, mechanical)
+   * and so both gains and loses rows. The rendered sentence says "the links
+   * the crosswalk grades high or medium" for exactly that reason.
+   *
+   * `{}` until an adjudication touches a published link — the page then
+   * renders nothing for the sentence rather than a stale claim.
+   */
+  link_adjudication?: {
+    /** Latest adjudication the block counts (max adjudicated_at). */
+    as_of?: string;
+    published?: number;
+    adjudicated?: number;
+    unpinned?: number;
+    /** The one tier every unpinned link publishes at, or null when they
+     *  differ — the page states the count without a tier rather than the
+     *  majority's. */
+    unpinned_tier?: string | null;
+    by_method?: Record<string, { published: number; adjudicated: number }>;
+    adjudicated_methods?: string[];
+    /** Published methods with no adjudication row at all. /methodology/
+     *  names them so a path with no per-link review never reads as one that
+     *  passed. */
+    unadjudicated_methods?: string[];
+  };
   link_precision?: {
     /** The ONE question every figure in `methods` answered (ROADMAP #79):
      *  always "attribution" on a current export — the exporter reads
