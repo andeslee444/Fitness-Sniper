@@ -46,11 +46,15 @@ import { hhiBand } from "@/lib/hhi-band.mjs";
  * alone (dbt fct_feed_events). The /program/{peBli}/ page a card links to
  * renders a DIFFERENT figure: fct_program_concentration's HHI pooled across
  * every year, over high-confidence links alone — and only where the program
- * clears the 3-award / 2-positive-family floor. Below it the page publishes
- * no pooled index at all and says so (ROADMAP #80, fix round 1 2026-09-11:
- * 387 of 444 program pages), so a card can legitimately land on a page with
- * no band to compare against; scripts/gates/feed.mjs leg (l) treats that as
- * a destination state, not a missing badge. Where both exist, both are real,
+ * clears the floor: 3 high-confidence awards across 2 contractor families
+ * holding positive obligations, with positive net linked dollars. Below it
+ * the page publishes no pooled index at all and says so (ROADMAP #80,
+ * 2026-09-11: 444 - 37 = 407 of the 444 mart rows, the measured 37 living
+ * in _MIN_HIGH_ONLY_ROWS in src/govbudget/verify_phase3.py and mirrored in
+ * lib/concentration-basis.ts), so a card can legitimately land on a page
+ * with no band to compare against; scripts/gates/feed.mjs leg (l) treats
+ * that as a destination state, not a missing badge, and floors the
+ * population it can still reconcile. Where both exist, both are real,
  * correctly
  * computed numbers — they are just not the same measure, and a single
  * concentrated year can sit next to a competitive pooled figure (or the

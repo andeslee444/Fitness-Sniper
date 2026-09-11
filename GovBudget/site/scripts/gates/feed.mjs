@@ -317,14 +317,92 @@ export function destinationHhiBadge(destRoot) {
  * template regression that stopped rendering either attribute, or that put
  * back the all-links basis, fails this leg exactly as a wrong number would.
  *
- * A destination that publishes NO index (fix round 1, 2026-09-11: 387 of
- * 444 program pages sit below the high-only floor) is a legitimate
- * destination, not a missing badge: it carries
- * [data-concentration-withheld] and there is simply nothing to reconcile
- * the card's band against. Those are counted and reported, never silently
- * skipped — a leg that stopped checking anything would still print a
- * green note otherwise.
+ * A destination that publishes NO index (2026-09-11: 444 - 37 = 407 of the
+ * 444 mart rows sit below the high-only floor; the measured 37 lives in
+ * _MIN_HIGH_ONLY_ROWS, src/govbudget/verify_phase3.py, and is mirrored in
+ * site/src/lib/concentration-basis.ts) is a legitimate destination, not a
+ * missing badge: it carries [data-concentration-withheld] and there is
+ * simply nothing to reconcile the card's band against. Those are counted
+ * and reported, never silently skipped.
+ *
+ * Which is why the census is ASSERTED, not merely printed (fix round 2,
+ * ruling R7). Counting a withheld destination as "checked" made the leg's
+ * own `checked === 0` vacuity guard unreachable: every destination could
+ * withhold and the leg would still print a green "0 silent contradictions".
+ * `resolved` below counts only destinations that actually rendered a band —
+ * the population this leg can reconcile anything against — and
+ * hhiDestinationCensusVerdict holds it to a dated do-not-lower floor.
  */
+/**
+ * MIN_RECONCILABLE_HHI_DESTINATIONS — the floor on leg (l)'s reconcilable
+ * population: /feed/ hhi cards whose destination program page actually
+ * publishes a band. Below the floor the leg has stopped checking the thing
+ * it exists to check, and says so instead of printing a green note.
+ *
+ * MEASURED 2026-09-11 (ROADMAP #80 fix round 2, finding 5), read-only: the
+ * 75 concentration_shift cards /feed/ renders statically (FEED_SECTION_CAP,
+ * site/src/app/feed/page.tsx) against the 37 pe_blis that clear the
+ * post-fix high-only floor in dbt/models/marts/fct_program_concentration.sql
+ * — 21 cards across 5 distinct destinations (0158, 0603892C, 2004, 2122,
+ * ATA000). The feed cards were read from the data/site export that predates
+ * the fix round's mart change, so the controller re-measures this at the
+ * first full build.
+ *
+ * NEVER LOWER THIS. Raise it when a build measures more, the same rule
+ * _MIN_HIGH_ONLY_ROWS carries in src/govbudget/verify_phase3.py. A number
+ * that moves down to fit a run is not a floor.
+ */
+export const MIN_RECONCILABLE_HHI_DESTINATIONS = 21;
+
+/**
+ * Leg (l)'s verdict on its own census: the error it must raise, or the note
+ * it may print. Pure, and exported for
+ * scripts/gates/__tests__/feed-hhi-destination.test.mjs — the floor and the
+ * vacuity guard are the two things about this leg that cannot be proven by
+ * a built site that happens to be healthy.
+ *
+ * `resolved` is destinations that rendered a band (cards minus withheld
+ * destinations, minus the ones that errored above); `agree` +
+ * `disclosedDivergence` is what actually reconciled.
+ */
+export function hhiDestinationCensusVerdict({
+  cards,
+  resolved,
+  agree,
+  disclosedDivergence,
+  withheldDestination,
+}) {
+  if (resolved === 0) {
+    return {
+      error:
+        `feed leg l: not one of ${cards} hhi card(s) reached a /program/ destination that ` +
+        `publishes a band (${withheldDestination} withheld) — the leg reconciled nothing ` +
+        `and is vacuous`,
+      note: null,
+    };
+  }
+  if (resolved < MIN_RECONCILABLE_HHI_DESTINATIONS) {
+    return {
+      error:
+        `feed leg l: only ${resolved} of ${cards} hhi card(s) reached a destination that ` +
+        `publishes a band — below the do-not-lower floor of ` +
+        `${MIN_RECONCILABLE_HHI_DESTINATIONS} measured 2026-09-11 (#80). ` +
+        `${withheldDestination} destination(s) publish no pooled index; the leg can only ` +
+        `reconcile against the rest, so this is the leg losing its teeth, not a clean run`,
+      note: null,
+    };
+  }
+  return {
+    error: null,
+    note:
+      `leg l: ${cards} hhi card(s) on /feed/, ${resolved} of them reaching a destination ` +
+      `that publishes a band (floor ${MIN_RECONCILABLE_HHI_DESTINATIONS}) — ${agree} share ` +
+      `their destination's band, ${disclosedDivergence} diverge and explicitly disclose it, ` +
+      `${withheldDestination} link to a page that publishes no pooled index and says so ` +
+      `(#80), 0 silent contradictions ✓`,
+  };
+}
+
 function runHhiDestinationLeg(errors, notes, root) {
   const cards = root.querySelectorAll("[data-feed-card]").filter((el) => {
     const fig = el.querySelector('[data-primary-value="feed-figure"]');
@@ -339,7 +417,11 @@ function runHhiDestinationLeg(errors, notes, root) {
     return;
   }
 
-  let checked = 0;
+  // Destinations that actually rendered a band. Incremented AFTER the
+  // destination resolves (fix round 2): a withheld or unresolvable
+  // destination is not something this leg checked anything against, and
+  // counting it as one is what made the vacuity guard unreachable.
+  let resolved = 0;
   let agree = 0;
   let disclosedDivergence = 0;
   let withheldDestination = 0;
@@ -374,7 +456,6 @@ function runHhiDestinationLeg(errors, notes, root) {
     }
     const programUrl = link.getAttribute("href");
     const peBli = programUrl.split("/").filter(Boolean)[1];
-    checked += 1;
 
     let destBand = destBandCache.get(peBli);
     if (destBand === undefined) {
@@ -419,6 +500,7 @@ function runHhiDestinationLeg(errors, notes, root) {
       );
       continue;
     }
+    resolved += 1;
 
     if (destBand === cardBand) {
       agree += 1;
@@ -442,15 +524,17 @@ function runHhiDestinationLeg(errors, notes, root) {
     disclosedDivergence += 1;
   }
 
-  if (checked === 0) {
-    errors.push("feed leg l: no hhi card resolved a /program/ destination — the leg is vacuous");
+  const verdict = hhiDestinationCensusVerdict({
+    cards: cards.length,
+    resolved,
+    agree,
+    disclosedDivergence,
+    withheldDestination,
+  });
+  if (verdict.error) {
+    errors.push(verdict.error);
   } else if (errors.every((e) => !e.startsWith("feed leg l"))) {
-    notes.push(
-      `leg l: ${checked} hhi card(s) checked against the /program/ page they link ` +
-        `to — ${agree} share their destination's band, ${disclosedDivergence} diverge ` +
-        `and explicitly disclose it, ${withheldDestination} link to a page that ` +
-        `publishes no pooled index and says so (#80), 0 silent contradictions ✓`,
-    );
+    notes.push(verdict.note);
   }
 }
 

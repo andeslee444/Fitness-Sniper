@@ -16,7 +16,11 @@
  */
 import { describe, it, expect } from "vitest";
 import { parse } from "node-html-parser";
-import { destinationHhiBadge } from "../feed.mjs";
+import {
+  destinationHhiBadge,
+  hhiDestinationCensusVerdict,
+  MIN_RECONCILABLE_HHI_DESTINATIONS,
+} from "../feed.mjs";
 
 const page = (inner) => parse(`<html><body><main>${inner}</main></body></html>`, { comment: false });
 
@@ -71,5 +75,67 @@ describe("destinationHhiBadge", () => {
     ));
     expect(r.band).toBeNull();
     expect(r.error).toMatch(/both a \[data-hhi-band\] and/);
+  });
+});
+
+/**
+ * ROADMAP #80 fix round 2 (2026-09-11), finding 5 — ruling R7.
+ *
+ * Leg (l) counted a withheld destination as "checked" BEFORE it resolved
+ * the destination, so a run in which every destination withheld still had
+ * checked = 60+, skipped the `checked === 0` vacuity guard, and printed a
+ * green "0 silent contradictions" note having reconciled nothing. With 407
+ * of 444 mart rows publishing no index, the reconcilable population is
+ * small enough that this is a live risk, not a hypothetical.
+ *
+ * The census verdict below is the whole decision, extracted so it can be
+ * driven without a built site: `resolved` (destinations that actually
+ * rendered a high band) is what the vacuity guard and the dated
+ * do-not-lower floor both read.
+ */
+describe("hhiDestinationCensusVerdict", () => {
+  const census = (over = {}) => ({
+    cards: 75,
+    resolved: MIN_RECONCILABLE_HHI_DESTINATIONS,
+    agree: 10,
+    disclosedDivergence: MIN_RECONCILABLE_HHI_DESTINATIONS - 10,
+    withheldDestination: 75 - MIN_RECONCILABLE_HHI_DESTINATIONS,
+    ...over,
+  });
+
+  it("passes at the floor and reports the whole census", () => {
+    const v = hhiDestinationCensusVerdict(census());
+    expect(v.error).toBeNull();
+    expect(v.note).toContain(`${MIN_RECONCILABLE_HHI_DESTINATIONS}`);
+    expect(v.note).toContain("publishes no pooled index");
+    expect(v.note).toContain("0 silent contradictions");
+  });
+
+  it("fails one destination below the floor — proof the floor is load-bearing", () => {
+    const v = hhiDestinationCensusVerdict(
+      census({
+        resolved: MIN_RECONCILABLE_HHI_DESTINATIONS - 1,
+        disclosedDivergence: MIN_RECONCILABLE_HHI_DESTINATIONS - 11,
+        withheldDestination: 75 - (MIN_RECONCILABLE_HHI_DESTINATIONS - 1),
+      }),
+    );
+    expect(v.note).toBeNull();
+    expect(v.error).toMatch(/feed leg l/);
+    expect(v.error).toMatch(/floor/);
+    expect(v.error).toMatch(/2026-09-11/);
+  });
+
+  it("fails when every destination withholds — the vacuity guard now sees it", () => {
+    const v = hhiDestinationCensusVerdict(
+      census({ resolved: 0, agree: 0, disclosedDivergence: 0, withheldDestination: 75 }),
+    );
+    expect(v.note).toBeNull();
+    expect(v.error).toMatch(/vacuous/);
+    expect(v.error).toMatch(/withheld/);
+  });
+
+  it("the floor is a positive, dated, do-not-lower number", () => {
+    expect(Number.isInteger(MIN_RECONCILABLE_HHI_DESTINATIONS)).toBe(true);
+    expect(MIN_RECONCILABLE_HHI_DESTINATIONS).toBeGreaterThan(0);
   });
 });
