@@ -16,7 +16,7 @@ import psycopg
 import pytest
 
 from govbudget import export_site
-from govbudget.export_site import _link_precision_block
+from govbudget.export_site import _link_adjudication_block, _link_precision_block
 from precision_study import precision_by_method  # scripts/ on sys.path (conftest)
 
 
@@ -240,3 +240,140 @@ def test_precision_study_twin_agrees_with_the_exporter(seeded):
         assert cli_0904[method] == (figures["confirmed"], figures["sampled"]), method
     assert precision_by_method(seeded, rubric="rule-fired")["account+subagency"] == (1, 1)
     assert set(audit["methods"]) == {"account+subagency"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# site_meta.link_adjudication — per-award hand-adjudication COVERAGE (#109)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# The defect these pin (measured 2026-09-11, Task 6b): /methodology/ opened
+# "As of September 2026, every published link was individually
+# hand-adjudicated … every proposed program-level link was then challenged by
+# two independent adversarial reviewers — a link is published as high only if
+# neither could refute it." Of 12,595 links the crosswalk grades high or
+# medium, 9,587 carry an award_pe_adjudications row at all; 8,474 of those
+# adjudications say `darpa_unpinned`; and 57 rows in the whole table carry
+# refuter_lenses_passed = 2. Every number on the page was derived and true;
+# this sentence was neither.
+#
+# The block is a WHOLE-TABLE aggregate, so unlike `seeded` above its fixture
+# cannot scope itself with an organization marker — it owns both tables for
+# the duration of the test. tests/ files run one at a time and every other
+# file that seeds budget_line_awards inserts its rows inside its own tests
+# (test_precision_study.py, test_derive_ap_links_run_order.py), so the
+# truncation cannot pull a row out from under a test that is still running.
+
+
+@pytest.fixture()
+def adjudicated(pg_dsn):
+    """Three published links (2 adjudicated, 1 of those unpinned, 1 link on a
+    method with no adjudication at all) plus one UNPUBLISHED link that carries
+    an adjudication — it must count toward neither number."""
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("delete from award_pe_adjudications")
+        pg.execute("delete from budget_line_awards")
+        rows = [
+            ("LAB-1", "LAB0601101E", "account+subagency", "medium"),
+            ("LAB-2", "LAB0601101E", "account+subagency", "medium"),
+            ("LAB-3", "LAB0602303E", "fpds-ap", "medium"),
+            ("LAB-4", "LAB0602303E", "account", "low"),  # not published
+        ]
+        for piid, pe_bli, method, conf in rows:
+            pg.execute(
+                "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+                " organization, award_piid, method, confidence)"
+                " values (%s, 'R-1', 2026, 'lab-block-test', %s, %s, %s)",
+                (pe_bli, piid, method, conf),
+            )
+        adjs = [
+            # (piid, pe_bli, adjudicated_confidence, verdict, pair_reason, judged)
+            ("LAB-1", "LAB0601101E", "medium", "darpa_unpinned", "unpinned-pool",
+             "2026-09-01 12:00:00-04"),
+            ("LAB-2", "LAB0601101E", "high", "pinned", "pinned-here",
+             "2026-08-30 12:00:00-04"),
+            ("LAB-4", "LAB0602303E", "medium", "darpa_unpinned", "unpinned-pool",
+             "2026-09-30 12:00:00-04"),
+        ]
+        for piid, pe_bli, conf, verdict, reason, judged in adjs:
+            pg.execute(
+                "insert into award_pe_adjudications (award_piid, pe_bli,"
+                " adjudicated_confidence, award_verdict, pair_reason, adjudicated_at)"
+                " values (%s, %s, %s, %s, %s, %s::timestamptz)",
+                (piid, pe_bli, conf, verdict, reason, judged),
+            )
+        pg.commit()
+    yield pg_dsn
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("delete from award_pe_adjudications")
+        pg.execute("delete from budget_line_awards where organization = 'lab-block-test'")
+        pg.commit()
+
+
+def test_the_adjudication_block_counts_coverage_not_intent(adjudicated):
+    """Every figure /methodology/ prints about hand adjudication, derived.
+
+    `as_of` is the latest adjudication the block COUNTS (2026-09-01 here) —
+    LAB-4's later 2026-09-30 row is on an unpublished link and must not date
+    a claim about published ones.
+    """
+    with psycopg.connect(adjudicated) as pg:
+        block = _link_adjudication_block(pg)
+
+    assert block == {
+        "as_of": "2026-09-01",
+        "published": 3,
+        "adjudicated": 2,
+        "unpinned": 1,
+        "unpinned_tier": "medium",
+        "by_method": {
+            "account+subagency": {"published": 2, "adjudicated": 2},
+            "fpds-ap": {"published": 1, "adjudicated": 0},
+        },
+        "adjudicated_methods": ["account+subagency"],
+        "unadjudicated_methods": ["fpds-ap"],
+    }
+
+
+def test_a_method_with_no_adjudication_is_named_rather_than_left_silent(adjudicated):
+    """The half of #109 the old sentence erased: three evidence paths carry
+    ZERO adjudication rows. A method absent from `by_method` would read as a
+    method that passed."""
+    with psycopg.connect(adjudicated) as pg:
+        block = _link_adjudication_block(pg)
+
+    assert set(block["by_method"]) == {"account+subagency", "fpds-ap"}
+    assert block["adjudicated"] < block["published"]
+    assert block["unadjudicated_methods"] == ["fpds-ap"]
+
+
+def test_no_adjudications_yields_an_empty_block(adjudicated):
+    """A fixture warehouse renders NOTHING for this sentence — never a stale
+    claim about an adjudication that has not happened."""
+    with psycopg.connect(adjudicated) as pg:
+        pg.execute("delete from award_pe_adjudications")
+        pg.commit()
+        assert _link_adjudication_block(pg) == {}
+
+
+def test_the_unpinned_tier_is_none_when_the_pool_does_not_publish_at_one_tier(adjudicated):
+    """The page says "those links publish at medium" only while every unpinned
+    published link carries that one grade — a mixed pool prints no tier rather
+    than the majority's."""
+    with psycopg.connect(adjudicated) as pg:
+        pg.execute(
+            "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+            " organization, award_piid, method, confidence)"
+            " values ('LAB0601101E', 'R-1', 2026, 'lab-block-test', 'LAB-5',"
+            " 'account+subagency', 'high')"
+        )
+        pg.execute(
+            "insert into award_pe_adjudications (award_piid, pe_bli,"
+            " adjudicated_confidence, award_verdict, pair_reason, adjudicated_at)"
+            " values ('LAB-5', 'LAB0601101E', 'high', 'darpa_unpinned',"
+            " 'unpinned-pool', '2026-09-01 12:00:00-04'::timestamptz)"
+        )
+        pg.commit()
+        block = _link_adjudication_block(pg)
+
+    assert block["unpinned"] == 2
+    assert block["unpinned_tier"] is None

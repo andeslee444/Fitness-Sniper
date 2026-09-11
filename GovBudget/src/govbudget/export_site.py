@@ -2377,17 +2377,27 @@ def export_site(
     # report which published tiers carry NO measured figure (final review C1
     # / C2): /methodology/ names those in prose rather than letting a tier
     # with no number read as one that passed.
+    #
+    # ROADMAP #109: the SAME connection also yields the hand-adjudication
+    # COVERAGE block — how many of the links the crosswalk grades high or
+    # medium carry an award_pe_adjudications row at all, and what those
+    # adjudications found. /methodology/ opened the section claiming every
+    # published link had been hand-adjudicated and adversarially refuted;
+    # three of the five published methods carry zero adjudication rows. The
+    # replacement sentence renders from this block, number for number.
     published_link_methods = _published_link_methods(duckdb_path)
     with psycopg.connect(dsn) as pg_precision:
         link_precision = _link_precision_block(
             pg_precision, published_methods=published_link_methods
         )
+        link_adjudication = _link_adjudication_block(pg_precision)
 
     manifest = {
         "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "datasets": final_counts,
         "citations": cit_by_kind,
         "ingested_service_orgs": ingested_service_orgs,
+        "link_adjudication": link_adjudication,
         "link_precision": link_precision,
         "pdf_count": n_pdfs,
         "workbook_count": n_workbooks,
@@ -2751,6 +2761,114 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
         "sampled_at": max(judged_dates) if judged_dates else None,
         "methods": dict(sorted(tally.items())),
         "unmeasured": sorted((published_methods or set()) - set(tally)),
+    }
+
+
+def _link_adjudication_block(pg) -> dict:
+    """Per-award hand-adjudication COVERAGE of the budget→award crosswalk
+    (ROADMAP #109) — the numbers /methodology/ opens the "Budget-to-contract
+    links" section with.
+
+    Returns ``{}`` when no adjudication touches a published link (fixture
+    warehouses, a corpus adjudicated later) — the page then renders NOTHING
+    for that sentence rather than a claim with no measurement behind it.
+    Otherwise::
+
+        {"as_of": "2026-09-01",          # latest adjudication the block COUNTS
+         "published": 12595,             # confidence in ('high','medium')
+         "adjudicated": 9587,            # of those, links with an adjudication
+         "unpinned": 8474,               # of those, award_verdict darpa_unpinned
+         "unpinned_tier": "medium",      # the ONE grade every unpinned link
+                                         #   publishes at, or None if they differ
+         "by_method": {method: {"published": int, "adjudicated": int}},
+         "adjudicated_methods": [...],   # by_method entries with adjudicated > 0
+         "unadjudicated_methods": [...]} # by_method entries with adjudicated == 0
+
+    THE DEFECT (measured 2026-09-11, Task 6b). The section opened "As of
+    September 2026, every published link was individually hand-adjudicated:
+    … every proposed program-level link was then challenged by two independent
+    adversarial reviewers — a link is published as high only if neither could
+    refute it." Three of the five published methods carry ZERO adjudication
+    rows (their precision is measured by the sampled study instead — see
+    _link_precision_block), 8,474 of the adjudications that do exist say the
+    work could not be pinned to any one program element, and 57 rows in the
+    whole table carry refuter_lenses_passed = 2. Owner rule 2026-08-07:
+    publish the smaller true number. Every figure in the replacement sentence
+    is read from this block and bound to it by gate 24 leg o.
+
+    THE UNIVERSE is `budget_line_awards` at high/medium — the crosswalk's own
+    grade, which is what the adjudication overlay is applied TO. It is NOT
+    identical to the mart a reader meets: dbt takes
+    coalesce(adjudicated_confidence, confidence), so an adjudication can lift
+    a `low` link into the mart (442 `account` rows on 2026-09-11) or drop a
+    high/medium one out of it (262 contradicted/not_darpa rows). Measured the
+    same day, the mart held 12,280 published rows / 9,272 adjudicated — the
+    SAME 3,008 unadjudicated links, since every row the two universes disagree
+    about is one an adjudication moved. The rendered sentence therefore says
+    "the links the crosswalk grades high or medium", not "published links".
+
+    `unpinned_tier` is the adjudicated_confidence every unpinned published
+    link carries (`medium` on 2026-09-11, all 8,474 of them) — the tier they
+    publish at, because the mart takes adjudicated_confidence for an
+    adjudicated row. None when they do not agree, and the page then states
+    the count without a tier rather than the majority's.
+    """
+    rows = pg.execute(
+        """
+        select b.method,
+               count(*) as published,
+               count(a.id) as adjudicated,
+               count(*) filter (where a.award_verdict = 'darpa_unpinned') as unpinned,
+               max(a.adjudicated_at) as judged_at
+        from budget_line_awards b
+        left join award_pe_adjudications a
+          on a.award_piid = b.award_piid and a.pe_bli = b.pe_bli
+        where b.confidence in ('high', 'medium')
+        group by b.method
+        order by b.method
+        """
+    ).fetchall()
+
+    by_method: dict[str, dict] = {}
+    published = adjudicated = unpinned = 0
+    judged_dates = []
+    for method, n_pub, n_adj, n_unpinned, judged_at in rows:
+        by_method[method] = {"published": n_pub, "adjudicated": n_adj}
+        published += n_pub
+        adjudicated += n_adj
+        unpinned += n_unpinned
+        if judged_at is not None:
+            judged_dates.append(judged_at)
+    if adjudicated == 0:
+        return {}
+
+    tiers = [
+        tier
+        for (tier,) in pg.execute(
+            """
+            select distinct a.adjudicated_confidence
+            from budget_line_awards b
+            join award_pe_adjudications a
+              on a.award_piid = b.award_piid and a.pe_bli = b.pe_bli
+            where b.confidence in ('high', 'medium')
+              and a.award_verdict = 'darpa_unpinned'
+            """
+        ).fetchall()
+    ]
+
+    return {
+        "as_of": max(judged_dates).date().isoformat(),
+        "published": published,
+        "adjudicated": adjudicated,
+        "unpinned": unpinned,
+        "unpinned_tier": tiers[0] if len(tiers) == 1 else None,
+        "by_method": by_method,
+        "adjudicated_methods": sorted(
+            m for m, v in by_method.items() if v["adjudicated"] > 0
+        ),
+        "unadjudicated_methods": sorted(
+            m for m, v in by_method.items() if v["adjudicated"] == 0
+        ),
     }
 
 
@@ -10013,6 +10131,13 @@ def _write_all_sidecars(
         # export_site (Postgres scope) and threaded via manifest, same
         # reason as ingested_service_orgs just above — this function only
         # holds a duckdb connection, no Postgres dsn.
+        # ROADMAP #109: {as_of, published, adjudicated, unpinned,
+        # unpinned_tier, by_method, adjudicated_methods,
+        # unadjudicated_methods} — per-award hand-adjudication COVERAGE
+        # of the crosswalk, {} until an adjudication touches a published
+        # link. Same Postgres-scope/threading reason as link_precision
+        # below; gate 24 leg o binds the rendered sentence to it.
+        "link_adjudication": manifest.get("link_adjudication", {}),
         "link_precision": manifest.get("link_precision", {}),
         # backlog #49: dollar-denominated /programs/ coverage — see
         # build_programs_coverage's doc-comment and the 2b block above.
