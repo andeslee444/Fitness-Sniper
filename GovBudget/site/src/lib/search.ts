@@ -5,7 +5,7 @@
  *
  * Builds a MiniSearch index once client-side from /json-lite/search_quick.json.
  * Fields: title, title_norm, pe_bli, org. Stored: title, url, kind, dollars,
- * pe_bli, org.
+ * pe_bli.
  * Options: prefix:true, fuzzy:0.2, boost:{title:2, title_norm:2}.
  * Results grouped by kind: Programs / Companies / Agencies / Pages.
  * Recents stored in localStorage (max 5).
@@ -155,11 +155,14 @@ function buildIndex(): Promise<MiniSearch<IndexedDoc>> {
 
     const ms = new MiniSearch<IndexedDoc>({
       idField: "id",
+      // `org` is INDEXED but not stored: it is a BM25 signal only (it is what
+      // separates the FIVE identically-titled "Defense Research Sciences" PEs
+      // — DARPA, Army, Air Force, Space Force, Navy; DARPA's scores 318.2 on
+      // "defense research sciences darpa" against 218.1 for the other four),
+      // and the coverage class below is computed over TITLE tokens alone, so
+      // nothing reads a stored `org`.
       fields: ["title", "title_norm", "pe_bli", "org"],
-      // `org` is STORED (not merely indexed) since 2026-09-10: the coverage
-      // blend below counts it, and it is the only field separating the four
-      // identically-titled "Defense Research Sciences" PEs.
-      storeFields: ["title", "url", "kind", "dollars", "pe_bli", "org"],
+      storeFields: ["title", "url", "kind", "dollars", "pe_bli"],
       searchOptions: {
         prefix: true,
         fuzzy: 0.2,
@@ -385,11 +388,14 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
   }
 
   // Alias injection (§P1-4): a full-query alias match ("Sentinel", "JSF",
-  // "GBSD") surfaces its program in the Programs tier as an exact-name-grade
-  // hit — same band as the best direct program match, so the magnitude
-  // tiebreak below decides order WITHIN that band ("Sentinel" → GBSD EMD
-  // $4.15B above Sentinel Mods $462M) without ever outranking a stronger
-  // direct name match from a different band.
+  // "GBSD") surfaces its program in the Programs tier at the best direct
+  // program match's score, and the rule below treats it as FULL title
+  // coverage (aliasMatchesForQuery fires only on full-query equality, so the
+  // alias IS the name). Equal score plus equal coverage makes it a near-tie
+  // with that best direct match, so dollars order the pair — measured on the
+  // shipped index, "Sentinel" scores both Sentinel Mods ($462M) and GBSD EMD
+  // ($4.15B) at 51.134, and GBSD lands first. A direct match that scores
+  // clear of the near-tie band still wins on BM25.
   const aliasEntries = aliasMatchesForQuery(query);
   if (aliasEntries.length > 0) {
     let topProgramScore = 0;
@@ -412,7 +418,6 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
           url: doc.url,
           dollars: doc.dollars,
           pe_bli: doc.pe_bli,
-          org: doc.org,
           score: aliasScore,
         });
       }
@@ -421,68 +426,121 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
 
   const rawAll = [...merged.values()].sort((a, b) => b.score - a.score);
 
-  // ── Ranking blend (§P1-4; rewritten 2026-09-10) ────────────────────────
+  // ── Ranking rule (§P1-4; rewritten 2026-09-11) ─────────────────────────
   //
-  // Programs are ordered by TERM COVERAGE first, then by FY26 magnitude.
+  // Programs are ordered by NAME EVIDENCE first; FY26 magnitude only breaks
+  // ties the name evidence genuinely cannot separate.
   //
-  // The old rule banded by BM25 score — a new band whenever the score fell
-  // below 95% of the band leader — and let dollars reorder only WITHIN a
-  // band. That handed one-word queries to MiniSearch's field-length
-  // normalization. Measured on the shipped index: "submarine" scored
-  // Submarine Batteries ($28.2M, two-word title) 35.866 and Virginia Class
-  // Submarine ($11.08B, three-word title) 33.180 — ratio 0.925, so they sat
-  // in different bands and the magnitude tiebreak never fired. Both titles
-  // match the query identically; the 2.7-point gap was title length, not
-  // meaning. The 2026-08-27 tri-persona review filed it as "ranked by
-  // name-prefix, not magnitude" and deferred it.
+  //   1. An exact normalized-title match ("tactical technology" → the PE
+  //      literally titled "Tactical Technology") outranks everything else.
+  //   2. Otherwise by COVERAGE CLASS: how many of the query's terms appear
+  //      as whole words in the TITLE. Title only — an org or alias field hit
+  //      is a BM25 signal, not coverage — so the 3 MDA-*titled* programs
+  //      rank above the 40 whose org is merely "MDA".
+  //   3. Inside one class BM25 decides, EXCEPT between near-ties: two scores
+  //      within NEAR_TIE_RATIO of each other are treated as equally good
+  //      name matches and dollars order them.
+  //   4. The coverage-0 class (prefix/fuzzy-only matches, including the
+  //      1-char queries whose terms queryMatchTerms drops) keeps pure BM25
+  //      order — with no term actually covered there is no name evidence to
+  //      call exhausted, and dollars there just print the biggest programs
+  //      on the site for every keystroke.
   //
-  // COVERAGE is the signal the score was standing in for: how many of the
-  // query's terms appear as whole words in the doc's title, org or pe_bli.
-  // It is discrete, so a length artifact cannot erode it — a program that
-  // matches every term outranks one that matches fewer, always. Inside one
-  // coverage class the name signal is exhausted and dollars decide. An
-  // alias-matched program is full coverage: aliasMatchesForQuery fires only
-  // on full-query equality, so the alias IS the name.
+  // Two earlier rules failed in opposite directions, both measured on the
+  // shipped index:
+  //   • Banding by BM25 (a new band below 95% of the band leader, dollars
+  //     inside a band) never fired for "submarine": Submarine Batteries
+  //     ($28.2M, two-word title) scored 35.866 and Virginia Class Submarine
+  //     ($11.08B, three-word title) 33.180 — ratio 0.925, so they landed in
+  //     different bands. The 2.7-point gap was BM25 field-length
+  //     normalization, not meaning. 15% is the band that covers it.
+  //   • Ranking a coverage class purely by dollars (2026-09-10) overshot:
+  //     "tactical technology" dropped the exact-title PE to #2 behind a
+  //     $339M line that merely contains both words, and "MDA" / "f" —
+  //     where coverage is flat or zero — degraded into a pure rich-list
+  //     ("f" returned Long Range Kill Chains and B-21 Raider).
   //
-  // What this preserves, each verified against evals/search_eval.yaml:
-  //   "Sentinel Mods"  → coverage 2 beats the $4.15B GBSD line at coverage 0
-  //                       (no alias fires: aliasMatchesForQuery needs full-query
-  //                       equality, and "sentinelmods" is not an alias key)
-  //   "0601101E"       → coverage 1 on pe_bli beats every bigger program
-  //   "defense research sciences darpa" → DARPA's PE at coverage 4 (three
-  //                       title terms + org) over the identically-titled
-  //                       Army/AF/Navy lines at coverage 3
-  //   "F35" / "B21"    → the collapsed token form keeps the §P1-4 repros
+  // What this preserves, each re-measured on the shipped corpus:
+  //   "Sentinel Mods"   → exact title, rule 1 (BM25 163.1 would also win)
+  //   "0601101E"        → coverage 0 everywhere, pure BM25: 11.214 vs 4.037
+  //   "defense research sciences darpa" → all five same-titled PEs cover the
+  //                        same 3 title terms; DARPA's wins on BM25 (318.2 vs
+  //                        218.1 — the org index hit), outside the near-tie band
+  //   "F35" / "B21"     → the collapsed token form keeps the §P1-4 repros
   const programs = rawAll.filter((r) => r.kind === "program");
   const nonPrograms = rawAll.filter((r) => r.kind !== "program");
 
+  // Two BM25 scores within 15% of each other are one near-tie. Chosen as the
+  // smallest round band that spans the "submarine" gap (33.180 / 35.866 =
+  // 0.925 — a 7.5% spread); 15% leaves headroom for the same field-length
+  // artifact on longer titles without reaching the next real relevance step
+  // ("sensor technology": 58.511 vs 36.959, a 37% drop, stays separate).
+  const NEAR_TIE_RATIO = 0.85;
+
   const coverageTerms = queryMatchTerms(query);
   const aliasIds = new Set(aliasEntries.map((e) => `p:${e.peBli}`));
+  const queryTitleNorm = normalizeAlnumWords(query);
 
-  const ranked = programs
+  type RankedHit = { r: RawHit; exact: boolean; coverage: number };
+
+  const byDollarsThenScore = (a: RankedHit, b: RankedHit) => {
+    const da = (a.r.dollars as number | null | undefined) ?? -1;
+    const db = (b.r.dollars as number | null | undefined) ?? -1;
+    if (da !== db) return db - da;
+    if (a.r.score !== b.r.score) return b.r.score - a.r.score;
+    return a.r.id < b.r.id ? -1 : 1;
+  };
+
+  // Classes, best first: exact title, then descending coverage. Inside a
+  // class the list is BM25-descending before the near-tie pass below.
+  const classified: RankedHit[] = programs
     .map((r) => ({
       r,
+      exact:
+        queryTitleNorm.length > 0 &&
+        normalizeAlnumWords(r.title as string | null | undefined) ===
+          queryTitleNorm,
+      // An alias-matched program is full coverage: aliasMatchesForQuery
+      // fires only on full-query equality, so the alias IS the name.
       coverage: aliasIds.has(r.id)
         ? coverageTerms.length
-        : countCoveredTerms(
-            coverageTerms,
-            r.title as string | null | undefined,
-            r.org as string | null | undefined,
-            r.pe_bli as string | null | undefined,
-          ),
+        : countCoveredTerms(coverageTerms, r.title as string | null | undefined),
     }))
     .sort((a, b) => {
+      if (a.exact !== b.exact) return a.exact ? -1 : 1;
       if (a.coverage !== b.coverage) return b.coverage - a.coverage;
-      const da = (a.r.dollars as number | null | undefined) ?? -1;
-      const db = (b.r.dollars as number | null | undefined) ?? -1;
-      if (da !== db) return db - da;
       if (a.r.score !== b.r.score) return b.r.score - a.r.score;
       return a.r.id < b.r.id ? -1 : 1;
     });
 
+  // Near-tie pass, per class. A cluster is measured against its own leader
+  // (the highest unplaced BM25 in the class), never chained leader-to-leader,
+  // so the grouping is deterministic and a long tail of small steps cannot
+  // drag an unrelated program into the top cluster.
+  const classOf = (x: RankedHit) => `${x.exact ? 1 : 0}:${x.coverage}`;
+  const ranked: RankedHit[] = [];
+  for (let i = 0; i < classified.length; ) {
+    const key = classOf(classified[i]);
+    let j = i;
+    while (j < classified.length && classOf(classified[j]) === key) j += 1;
+    const cls = classified.slice(i, j);
+    if (!cls[0].exact && cls[0].coverage === 0) {
+      ranked.push(...cls); // rule 4 — pure BM25, no dollars
+    } else {
+      for (let k = 0; k < cls.length; ) {
+        const floor = (cls[k].r.score as number) * NEAR_TIE_RATIO;
+        let m = k;
+        while (m < cls.length && (cls[m].r.score as number) >= floor) m += 1;
+        ranked.push(...cls.slice(k, m).sort(byDollarsThenScore));
+        k = m;
+      }
+    }
+    i = j;
+  }
+
   // Rewrite scores strictly decreasing in final program order so downstream
   // score-sorted views (command-palette.tsx flattenGroups) preserve this
-  // ordering. Unchanged from the banded version.
+  // ordering. Carried over verbatim from the earlier ranking rules.
   let prevScore = Infinity;
   const orderedPrograms = ranked.map(({ r }) => {
     const s = Math.min(r.score, prevScore - 1e-6);

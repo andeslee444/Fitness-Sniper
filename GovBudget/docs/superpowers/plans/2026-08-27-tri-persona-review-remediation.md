@@ -188,7 +188,24 @@ false of the public record. It is also what makes `/agency/`'s ranking wrong.
   implausible on its face. Disclosed as name-inferred, medium confidence, with visible
   component arithmetic — honest, but a reporter citing the total inherits it.
 - **Search ranking**: "submarine" returns Submarine Batteries first and Virginia Class
-  last. Ranked by name-prefix, not magnitude.
+  last. Ranked by name-prefix, not magnitude. — RESOLVED 2026-09-11 over two
+  commits: `4f233b25` replaced the 95% BM25 bands with a coverage class, and the
+  fix-round commit `fix(search): exact titles and title coverage rank before
+  dollars; dollars break only near-ties` replaced *that* with the rule now in
+  `site/src/lib/search.ts`: exact normalized-title match first, then coverage over
+  TITLE tokens only, then BM25 inside a class with FY26 dollars breaking only
+  near-ties (BM25 within 15%), and the coverage-0 class left on pure BM25.
+  4f233b25 alone fixed "submarine" (Virginia Class $11.08B first; the 35.866 vs
+  33.180 gap is BM25 field-length normalization on a two- vs three-word title,
+  7.5% — inside the near-tie band) but broke four other queries by letting dollars
+  reorder a whole class: `tactical technology` dropped the exactly-titled DARPA PE
+  to #2 behind a $339M line, `MDA` returned two programs with no "MDA" in their
+  names (and below two districts in the palette's flat list), `sensor technology`
+  promoted a $1.73B program over the better name match, and `f` returned the site's
+  rich list. All five are pinned in `site/src/__tests__/search.test.ts`
+  ("the five pinned queries"); the search eval replays 35/35 quick-tier with typo
+  3/3. One deviation is recorded there: `f`'s #2 is F-22A (BM25 29.163) rather than
+  the pre-task F-15EX (29.067), because the coverage-0 class no longer uses dollars.
 - `run-mobile-leg.mjs` standalone crash (chip `task_08cdaf37`) — RESOLVED. The crash was fixed 2026-08-31 (d78dfec1: the leg closed the browser it owned before m4/m5 used it; gate 3 passes its own browser and was blind to it). Nothing pinned the fix because the runner did its work at import time and could not be imported by a test; on 2026-09-10 it became `runStandaloneMobileLeg()` with injectable deps and five vitest cases, including a leg that throws and an occupied port.
 - `#29(d)`, `#28` (624 decade-only pages), `#29(a)` (approved LLM extraction) — the
   pre-existing queue, resumed after Wave 3.

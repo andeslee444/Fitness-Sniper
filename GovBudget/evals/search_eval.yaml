@@ -168,7 +168,7 @@ cases:
   - query: "Sentinel Mods"
     expect_url_top3: "/program/0125WK5057/"
     tier: quick
-    note: "Regression: an exact unique program name still beats a bigger program — magnitude only breaks near-ties, never swamps exact name matches"
+    note: "Regression: an exact unique program name still beats a bigger program. Under the 2026-09-11 ranking rule an exact normalized-title match ranks first outright (Sentinel Mods also holds the top BM25 here, 163.1 vs 30.4 for the other *-Mods lines); FY26 dollars only reorder near-ties — BM25 within 15% — inside one coverage class."
 
   - query: "JSF"
     expect_url_top3: "/program/ATA000/"
@@ -178,7 +178,7 @@ cases:
   - query: "submarine"
     expect_url_top3: "/program/2013/"
     tier: quick
-    note: "Coverage blend (tri-persona deferred, 2026-09-10): a one-word program query ranks by dollars once every hit matches the word the same way — Virginia Class Submarine ($11.08B FY26) above Submarine Batteries ($28.2M). Pre-fix, BM25 field-length normalization put the two-word title first."
+    note: "Tri-persona deferred item (2026-09-10, re-ruled 2026-09-11): every hit matches the one word the same way, so the BM25 spread between them (35.866 for Submarine Batteries vs 33.180 for Virginia Class Submarine — 7.5%, inside the 15% near-tie band) is field-length noise and FY26 dollars order the near-tie, putting Virginia Class ($11.08B) above Submarine Batteries ($28.2M). NOTE: this eval case does not by itself prove the fix — gate 5 only asks for the expected URL in the top 3, and /program/2013/ was already 2nd of 2 before the fix, so the case passed pre-fix too. The pin is the vitest assertion on groups.programs[0] in site/src/__tests__/search.test.ts; this case is a corpus-drift tripwire."
 
   # ── Deep tier (pagefind narrative search) ──────────────────────────────────
   - query: "Perceptually-Enabled Task Guidance augmented reality"

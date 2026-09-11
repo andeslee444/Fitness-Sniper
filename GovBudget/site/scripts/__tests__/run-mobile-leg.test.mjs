@@ -17,7 +17,7 @@
  * Run via `npm test` (vitest).
  */
 import { describe, it, expect, vi } from "vitest";
-import { runStandaloneMobileLeg, DEFAULT_PORT } from "../run-mobile-leg.mjs";
+import { runStandaloneMobileLeg, DEFAULT_PORT, parsePort } from "../run-mobile-leg.mjs";
 
 function fakeServer() {
   const close = vi.fn(async () => {});
@@ -96,6 +96,26 @@ describe("runStandaloneMobileLeg", () => {
     expect(lines).toContain("PASS: false");
     expect(lines.join("\n")).toMatch(/has been closed/);
     expect(s.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("PROOF IT CAN FAIL: `--port` with no value falls back instead of listening on NaN", () => {
+    // Number(undefined) is NaN, and http.listen(NaN) silently binds an
+    // arbitrary free port — the operator reads "4182" in the docs, the
+    // server is somewhere else, and nothing says so.
+    const warnings = [];
+    expect(parsePort(["node", "run-mobile-leg.mjs", "--port"], (w) => warnings.push(w))).toBe(
+      DEFAULT_PORT
+    );
+    expect(warnings.join("\n")).toMatch(/no value/);
+  });
+
+  it("parsePort takes a real port, rejects junk and a following flag", () => {
+    expect(parsePort(["node", "x", "--port", "4190"])).toBe(4190);
+    expect(parsePort(["node", "x"])).toBe(DEFAULT_PORT);
+    expect(parsePort(["node", "x", "--port", "abc"], () => {})).toBe(DEFAULT_PORT);
+    expect(parsePort(["node", "x", "--port", "--verbose"], () => {})).toBe(DEFAULT_PORT);
+    expect(parsePort(["node", "x", "--port", "99999"], () => {})).toBe(DEFAULT_PORT);
+    expect(parsePort(["node", "x", "--port", "0"], () => {})).toBe(DEFAULT_PORT);
   });
 
   it("reports an occupied port instead of an unhandled rejection", async () => {

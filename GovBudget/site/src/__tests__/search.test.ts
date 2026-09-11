@@ -224,8 +224,11 @@ describe("quick search — highlight", () => {
 // ── P1-4 (PM review, Sprint 2 Task 1) ────────────────────────────────────────
 // The PM's exact repros become tests: alphanumeric normalization ("F35" must
 // find F-35), magnitude-blended ranking ("Sentinel" ranks GBSD above the minor
-// Sentinel Mods line), alias injection with visible aka chips, and the
-// regression guard (an exact unique name still beats a bigger near-tie).
+// Sentinel Mods line — the two score identically, 51.134, so they are a
+// near-tie and dollars order them), alias injection with visible aka chips,
+// and the regression guard (an exact unique name still beats a bigger
+// program: since 2026-09-11 an exact normalized-title match ranks first
+// outright, and dollars reorder only near-ties inside one coverage class).
 
 describe("P1-4 — alphanumeric normalization (PM repro: 'F35' finds F-35)", () => {
   it("'F35' → F-35 (ATA000) is the FIRST program result", async () => {
@@ -315,7 +318,7 @@ describe("P1-4 — ranking blend + alias injection (PM repro: 'Sentinel')", () =
   });
 });
 
-// ── Coverage-class ranking blend (tri-persona deferred, 2026-09-10) ────
+// ── Ranking rule (tri-persona deferred, 2026-09-10; re-ruled 2026-09-11) ──
 //
 // THE DEFECT, verbatim from the 2026-08-27 tri-persona review:
 // "'submarine' returns Submarine Batteries first and Virginia Class last.
@@ -326,8 +329,9 @@ describe("P1-4 — ranking blend + alias injection (PM repro: 'Sentinel')", () =
 // BAND_RATIO of 0.95, so the two sat in different bands and the magnitude
 // tiebreak never fired. The gap is BM25 field-length normalization (a
 // two-word title vs a three-word title) for the same one matched term. It
-// carried no information about the match.
-describe("ranking blend — coverage first, then dollars (tri-persona deferred)", () => {
+// carried no information about the match. The 15% near-tie band in search.ts
+// spans that 7.5% gap, so dollars order the pair.
+describe("ranking rule — exact title, title coverage, then BM25 (dollars break near-ties)", () => {
   it("'submarine' ranks Virginia Class Submarine ($11.08B FY26) first", async () => {
     const groups = await search("submarine");
     expect(groups.programs.length).toBeGreaterThan(0);
@@ -352,16 +356,118 @@ describe("ranking blend — coverage first, then dollars (tri-persona deferred)"
   });
 
   it("REGRESSION: 'defense research sciences darpa' still resolves to DARPA's PE", async () => {
-    // Coverage counts org, not just title: four military departments ship
-    // an identically-titled "Defense Research Sciences" PE and org is the
-    // only field that distinguishes 0601101E. Without org in the coverage
-    // token set this returns 0601153N (Navy) — measured.
+    // FIVE PEs ship the identical title "Defense Research Sciences" (DARPA,
+    // Army, Air Force, Space Force, Navy — counted in the shipped corpus), so
+    // all five sit in the SAME coverage class (three title terms; coverage is
+    // title-only). BM25 separates them, because `org` is an indexed field:
+    // DARPA's line scores 318.2 against 218.1 for the other four — a 31% gap,
+    // far outside the 15% near-tie band, so Navy's $511M never overtakes
+    // DARPA's $280M. Measured on the corpus.
     const groups = await search("defense research sciences darpa");
     expect(groups.programs[0].url).toBe("/program/0601101E/");
   });
 });
 
-describe("coverage helpers (exported for the blend)", () => {
+// ── The five queries the controller pinned (fix round 1, 2026-09-11) ──────
+//
+// Each is a measured regression of the 2026-09-10 "coverage class, then
+// dollars" rule, which let FY26 magnitude reorder a whole coverage class.
+// The rule now in search.ts is: exact normalized title first; then coverage
+// over TITLE tokens only; then BM25 inside a class, with dollars breaking
+// only near-ties (within 15%); and the coverage-0 class on pure BM25.
+//
+// The palette shows one flat list, not the groups — it re-sorts every result
+// by score and breaks ties by group (programs → companies → agencies →
+// pages). This mirrors command-palette.tsx:119-124; if that sort changes,
+// change this with it.
+function flattenLikePalette(groups: GroupedResults) {
+  return [
+    ...groups.programs.map((r) => ({ ...r, groupOrder: 0 })),
+    ...groups.companies.map((r) => ({ ...r, groupOrder: 1 })),
+    ...groups.agencies.map((r) => ({ ...r, groupOrder: 2 })),
+    ...groups.pages.map((r) => ({ ...r, groupOrder: 3 })),
+  ].sort((a, b) => b.score - a.score || a.groupOrder - b.groupOrder);
+}
+
+describe("ranking rule — the five pinned queries (fix round 1, 2026-09-11)", () => {
+  it("'tactical technology' puts the exactly-titled PE first (rule 1)", async () => {
+    // 0602702E "Tactical Technology" (DARPA, $196M) scores 87.108; the
+    // $339M "Tactical Network Technology Mod In Svc" scores 67.277 and
+    // covers both terms too. Under dollars-inside-a-class the $339M line
+    // took slot 1. Exact normalized-title equality now outranks it.
+    const groups = await search("tactical technology");
+    expect(groups.programs[0].url).toBe("/program/0602702E/");
+    expect(groups.programs[1].url).toBe("/program/1982B07100/");
+  });
+
+  it("'MDA' keeps MDA-TITLED programs on top, above org-only matches and above the districts (rules 2 + 4)", async () => {
+    // Coverage is title-only, so "Special Programs - MDA" (46.244) and its
+    // MDA-titled siblings hold coverage 1 while the dozens of programs whose
+    // org is merely "MDA" hold coverage 0. Under the 2026-09-10 rule every
+    // hit tied at some coverage and dollars took over: the tier became
+    // Improved Homeland Defense Interceptors ($1.64B) and Iron Beam ($1.2B),
+    // neither of which has "MDA" in its name, and both scored 6.001 — below
+    // /district/MA-02/'s 6.997, so two districts outranked the whole tier in
+    // the palette's flat list.
+    const groups = await search("MDA");
+    expect(groups.programs[0].url).toBe("/program/0603891C/");
+    for (const p of groups.programs) expect(p.title).toMatch(/MDA/);
+    const urls = groups.programs.map((p) => p.url);
+    expect(urls).not.toContain("/program/0604874C/"); // org-only, $1.64B
+    expect(urls).not.toContain("/program/MD84/"); // org-only, $1.20B
+
+    const flat = flattenLikePalette(groups);
+    const firstProgram = flat.findIndex((f) => f.kind === "program");
+    const firstDistrict = flat.findIndex((f) => f.kind === "district");
+    expect(firstProgram).toBeGreaterThanOrEqual(0);
+    if (firstDistrict >= 0) expect(firstProgram).toBeLessThan(firstDistrict);
+  });
+
+  it("'sensor technology' puts the exactly-titled PE first, and the runner-up is the best NAME match (rules 1 + 3)", async () => {
+    // 0603767E "Sensor Technology" scores 119.476. Slot 2 is decided inside
+    // the coverage-1 class by BM25: "Advanced Technology and Sensors" scores
+    // 58.511 against 36.959 for the next hit — a 37% drop, far outside the
+    // 15% near-tie band — so its $40.8M is not overtaken by the $1.73B
+    // "DARPA Advanced Technology Development" (17.107) that the dollars rule
+    // promoted into slot 2.
+    const groups = await search("sensor technology");
+    expect(groups.programs[0].url).toBe("/program/0603767E/");
+    expect(groups.programs[1].url).toBe("/program/0604257F/");
+  });
+
+  it("'f' — one keystroke — stays on BM25 and never becomes a rich list (rule 4)", async () => {
+    // queryMatchTerms drops 1-char terms, so every program ties at coverage
+    // 0 and there is no name evidence to exhaust. Pure BM25 keeps F-named
+    // programs; the dollars rule returned Long Range Kill Chains ($7.70B)
+    // and B-21 Raider ($5.55B), which do not contain an "f" word at all.
+    //
+    // DEVIATION from the fix-round note, recorded deliberately: it expected
+    // the pre-task top-2 (F/A-18E/F Hornet, F-15EX). F-15EX reached slot 2
+    // under the OLD 5% band + dollars, because F-22A (29.163) and F-15EX
+    // (29.067) are 0.3% apart and $3.01B beat $1.08B. Rule 4 forbids the
+    // dollars tiebreak in the coverage-0 class, so BM25 order stands and
+    // F-22A takes slot 2. Both are F-named jets; the rich-list failure the
+    // pin was guarding against is gone either way.
+    const groups = await search("f");
+    expect(groups.programs[0].url).toBe("/program/0145-APN/");
+    expect(groups.programs[1].url).toBe("/program/F02200/");
+    const urls = groups.programs.map((p) => p.url);
+    expect(urls).not.toContain("/program/1203154SF/");
+    expect(urls).not.toContain("/program/B02100/");
+  });
+
+  it("'submarine' — the 15% near-tie band is what lets dollars decide (rule 3)", async () => {
+    // Submarine Batteries holds the HIGHER BM25 (35.866 vs 33.180) and still
+    // loses: 33.180 / 35.866 = 0.925, inside the 15% band, so the two are one
+    // near-tie and $11.08B beats $28.2M. A band narrower than 7.5% would put
+    // Submarine Batteries back on top — this case is the band's pin.
+    const groups = await search("submarine");
+    expect(groups.programs[0].url).toBe("/program/2013/");
+    expect(groups.programs.map((p) => p.url)).not.toContain("/program/0945/");
+  });
+});
+
+describe("coverage helpers (exported for the ranking rule)", () => {
   it("matchTokens keeps both the split and the collapsed form", async () => {
     const { matchTokens } = await import("@/lib/search");
     const t = matchTokens("F-35 Modifications");
@@ -391,7 +497,11 @@ describe("coverage helpers (exported for the blend)", () => {
     expect(queryMatchTerms("submarine")).toEqual(["submarine"]);
   });
 
-  it("countCoveredTerms counts whole-word hits across title, org and pe_bli", async () => {
+  // The helper is variadic over whatever parts it is handed; since the
+  // 2026-09-11 ruling the ranking rule hands it the TITLE only (org and
+  // pe_bli stay BM25 signals), so these cases exercise the helper's own
+  // contract, not the fields the rule counts.
+  it("countCoveredTerms counts whole-word hits across every part it is given", async () => {
     const { countCoveredTerms, queryMatchTerms } = await import("@/lib/search");
     const terms = queryMatchTerms("defense research sciences darpa");
     expect(countCoveredTerms(terms, "Defense Research Sciences", "DARPA", "0601101E")).toBe(4);

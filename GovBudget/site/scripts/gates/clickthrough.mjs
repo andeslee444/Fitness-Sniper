@@ -336,8 +336,16 @@ export async function runClickthroughGate(baseUrl) {
         const programDetails = readJson(
           path.join(jsonDir, "program_details", `${set.uniquePbl}.json`)
         );
+        // Same predicate the page set used at :177-186 — including the
+        // kind filter. Without it the click site could land on a `workbook`
+        // citation on a program picked for its jbook_pdf detail, and the
+        // terminal-state check below (which waits for a rendered PDF canvas)
+        // would fail on a panel that was never going to show a PDF.
         const uniqueDetail = programDetails.details.find(
-          (d) => d.resolution === "unique" && d.fact_id
+          (d) =>
+            d.resolution === "unique" &&
+            d.fact_id &&
+            set.citations[d.fact_id]?.kind === "jbook_pdf"
         );
         const factId = uniqueDetail?.fact_id;
 

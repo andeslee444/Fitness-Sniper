@@ -77,10 +77,30 @@ export async function runStandaloneMobileLeg({
   }
 }
 
+/**
+ * Port from `--port <n>`, or DEFAULT_PORT. A `--port` with nothing after it
+ * used to yield Number(undefined) → NaN, which http.listen(NaN) turns into
+ * "pick any free port" — the runner then served the site on a port the
+ * operator never saw and never mentioned it. A non-numeric or out-of-range
+ * value did the same. Both now say so on stderr and fall back.
+ */
+export function parsePort(argv, warn = console.error) {
+  const i = argv.indexOf("--port");
+  if (i === -1) return DEFAULT_PORT;
+  const raw = argv[i + 1];
+  const n = Number(raw);
+  if (raw === undefined || raw.startsWith("--") || !Number.isInteger(n) || n < 1 || n > 65535) {
+    warn(
+      `run-mobile-leg: --port ${raw === undefined ? "(no value)" : `"${raw}"`}` +
+        ` is not a port number — using ${DEFAULT_PORT}`
+    );
+    return DEFAULT_PORT;
+  }
+  return n;
+}
+
 // ── CLI mode ───────────────────────────────────────────────────────────
 // Same guard serve-static.mjs uses (:236).
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const i = process.argv.indexOf("--port");
-  const port = i !== -1 ? Number(process.argv[i + 1]) : DEFAULT_PORT;
-  process.exitCode = await runStandaloneMobileLeg({ port });
+  process.exitCode = await runStandaloneMobileLeg({ port: parsePort(process.argv) });
 }
