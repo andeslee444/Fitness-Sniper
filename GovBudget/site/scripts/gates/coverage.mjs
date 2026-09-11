@@ -901,7 +901,13 @@ function runCoverageMapLeg(errors, notes) {
     // resolving. Replaced (not dropped) with the hand-adjudication anchors.
     if (!/hand-adjudicated/i.test(blocker)) {
       errors.push(
-        "leg cm[bridge]: the blocker must say every published link was hand-adjudicated — the method is what makes the published tiers checkable",
+        // ROADMAP #109 (2026-09-11): the CHECK is unchanged (/hand-adjudicated/i);
+        // only this message was reworded. It said "must say EVERY published
+        // link was hand-adjudicated" — the universal the blocker itself just
+        // stopped asserting (9,587 of 12,595; three published paths carry no
+        // adjudication row). A gate message that demands a false sentence is
+        // how the false sentence gets written back.
+        "leg cm[bridge]: the blocker must name hand adjudication as the method — it is what makes the published tiers checkable",
       );
     }
     if (!/adversarial/i.test(blocker)) {

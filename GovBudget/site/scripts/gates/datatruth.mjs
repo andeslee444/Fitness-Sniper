@@ -134,7 +134,8 @@
  *      links the crosswalk grades high or medium carry an adjudication row at
  *      all, three of the five published methods carry NONE, 8,474 of the
  *      adjudications that exist could not pin the work to any one program
- *      element, and 57 rows in the whole table record both lenses. The
+ *      element, and 60 rows in the whole table record both lenses (57 of
+ *      them on a published link). The
  *      sentence held no number, so no number could disagree with it — the
  *      same blind spot leg h found in feed prose. The sentence is now
  *      rendered from site_meta.link_adjudication and this leg binds it: every
@@ -2493,8 +2494,8 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
 // 9,587 carry an `award_pe_adjudications` row AT ALL — three of the five
 // published methods (announcement+lexicon, fpds-ap, subaward+lexicon) carry
 // ZERO; 8,474 of the adjudications that exist say the work could not be
-// pinned to any one program element; and 57 rows in the whole table record
-// `refuter_lenses_passed = 2`. Every other number on the page was derived and
+// pinned to any one program element; and 60 rows in the whole table record
+// `refuter_lenses_passed = 2`, 57 of them on a link the crosswalk publishes. Every other number on the page was derived and
 // gated. This sentence was authored, universal, and false — and no leg could
 // see it, because there was nothing for a number to disagree with.
 //

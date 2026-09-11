@@ -11,8 +11,8 @@
  * refute it." Measured 2026-09-11: 9,587 of the 12,595 links the crosswalk
  * grades high or medium carry an `award_pe_adjudications` row at all (three
  * of the five published methods carry NONE), 8,474 of those adjudications
- * found work that could not be pinned to any one program element, and 57 rows
- * in the whole table record both adversarial lenses.
+ * found work that could not be pinned to any one program element, and 60 rows
+ * in the whole table record both adversarial lenses (57 on a published link).
  *
  * Nothing could catch it: the sentence held no number, so no number could
  * disagree with it. The leg's answer is that the sentence now holds three

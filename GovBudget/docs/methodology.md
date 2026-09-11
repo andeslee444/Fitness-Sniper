@@ -166,8 +166,9 @@ o fails a build whose sentence states a number the block does not hold.
 (Measured 2026-09-11; the sentence this replaced said "every published link
 was individually hand-adjudicated … a link publishes as high only if neither
 [adversarial reviewer] could refute it", which the census does not support —
-57 rows in the whole adjudication table record both lenses. Backlog #109
-carries the remaining five-path evidence pass.) *High*: affirmative
+60 rows in the whole adjudication table record both lenses, 57 of them on a
+link the crosswalk publishes. Backlog #109 carries the remaining five-path
+evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
 J-book pages also name, adversarially verified. *Medium*: most such links are
 account-based — the award drew from the same appropriation account as the

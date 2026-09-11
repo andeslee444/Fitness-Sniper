@@ -2791,8 +2791,9 @@ def _link_adjudication_block(pg) -> dict:
     refute it." Three of the five published methods carry ZERO adjudication
     rows (their precision is measured by the sampled study instead — see
     _link_precision_block), 8,474 of the adjudications that do exist say the
-    work could not be pinned to any one program element, and 57 rows in the
-    whole table carry refuter_lenses_passed = 2. Owner rule 2026-08-07:
+    work could not be pinned to any one program element, and 60 rows in the
+    whole table carry refuter_lenses_passed = 2 — 57 of them on a link the
+    crosswalk grades high or medium. Owner rule 2026-08-07:
     publish the smaller true number. Every figure in the replacement sentence
     is read from this block and bound to it by gate 24 leg o.
 

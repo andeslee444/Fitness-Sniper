@@ -220,8 +220,8 @@ export default function MethodologyPage() {
   // link was individually hand-adjudicated … a link is published as high only
   // if neither [adversarial reviewer] could refute it"; measured 2026-09-11,
   // 9,587 of the 12,595 links the crosswalk grades high or medium carry an
-  // adjudication row at all, three published paths carry none, and 57 rows in
-  // the whole table record both lenses. The sentence now renders from
+  // adjudication row at all, three published paths carry none, and 60 rows in
+  // the whole table record both lenses (57 of them on a published link). The sentence now renders from
   // site_meta.link_adjudication — every figure interpolated, none typed — and
   // disappears entirely on a corpus with no adjudication (gate 24 leg o fails
   // a passage that renders without the block, and a number the block does not

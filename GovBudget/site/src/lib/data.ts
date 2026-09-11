@@ -208,8 +208,9 @@ export interface SiteMeta {
    * [reviewer] could refute it." Three of the five published methods carry
    * ZERO adjudication rows (their precision is measured by the sampled study
    * in `link_precision` instead), 8,474 of the adjudications that do exist
-   * found work that could not be pinned to any one program element, and 57
-   * rows in the whole table record both adversarial lenses. The sentence is
+   * found work that could not be pinned to any one program element, and 60
+   * rows in the whole table record both adversarial lenses (57 of them on a
+   * published link). The sentence is
    * now rendered from these numbers, number for number, and gate 24 leg o
    * binds it.
    *

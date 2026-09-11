@@ -252,8 +252,8 @@ def test_precision_study_twin_agrees_with_the_exporter(seeded):
 # two independent adversarial reviewers — a link is published as high only if
 # neither could refute it." Of 12,595 links the crosswalk grades high or
 # medium, 9,587 carry an award_pe_adjudications row at all; 8,474 of those
-# adjudications say `darpa_unpinned`; and 57 rows in the whole table carry
-# refuter_lenses_passed = 2. Every number on the page was derived and true;
+# adjudications say `darpa_unpinned`; and 60 rows in the whole table carry
+# refuter_lenses_passed = 2 (57 of them on a published link). Every number on the page was derived and true;
 # this sentence was neither.
 #
 # The block is a WHOLE-TABLE aggregate, so unlike `seeded` above its fixture
