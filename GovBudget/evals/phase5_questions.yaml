@@ -243,13 +243,23 @@
   notes: MDA moderately concentrated; HHI and family_count both move with the entity
     crosswalk, which the Task 5b rebuild corrected
 - id: q023
-  question: Which program element in the program concentration mart has the highest
-    HHI, and who is the top family?
+  question: Which program element has the highest high-confidence-only HHI in the
+    program concentration mart (ties broken by high-confidence linked dollars, then
+    pe_bli), and who is its top family on that basis?
   answer_sql: |
-    select pe_bli, top_family from fct_program_concentration order by hhi desc nulls last limit 1
-  expected_answer: 0603760E, LOCKHEED MARTIN
+    select pe_bli, top_family_high from fct_program_concentration
+    where hhi_high is not null
+    order by round(hhi_high, 6) desc, program_dollars_high desc, pe_bli limit 1
+  expected_answer: 0603882C, BOEING
   expected_citation_kind: warehouse
-  notes: DARPA C3 program; HHI 688
+  notes: 'ROADMAP #80 (2026-09-05): hhi_high is NULL below 3 high-confidence awards
+    across 2 families, so the ranking is over the 57 programs that clear the floor;
+    SEVEN of them tie at 10,000 (one family holds every positive obligation), hence
+    the dollar and pe_bli tie-breakers. round(hhi_high, 6) is not cosmetic: DuckDB
+    sums the squared shares in parallel, so a tied program reads 10000.0 or
+    10000.000000000004 run to run and the raw ordering would flip. Expected computed
+    read-only from the live lake with the new mart SQL, stable across six runs
+    (2026-09-10); refresh with `evals refresh` after the rebuild if the lake moved.'
 - id: q024
   question: Which federal agency has the highest estimated improper payment exposure
     in the warehouse (derived from program-level rates), and what is the approximate

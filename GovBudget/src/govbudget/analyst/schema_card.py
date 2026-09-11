@@ -153,8 +153,9 @@ SCHEMA_CARD: dict = {
         "fct_budget_trajectory columns (fy2024_actuals, fy2025_total, fy2026_total, "
         "fy2526_change) are in THOUSANDS of USD.",
         "fct_improper_exposure.derived_improper_amount_usd is in USD (full dollars).",
-        "fct_agency_concentration and fct_program_concentration HHI is dimensionless "
-        "(0-10000 scale).",
+        "fct_agency_concentration.hhi and fct_program_concentration.hhi_all / hhi_high "
+        "are dimensionless (0-10000 scale); hhi_high is NULL below 3 high-confidence "
+        "awards across 2 families.",
         "dim_entities.total_obligation is in USD.",
     ],
 
@@ -363,11 +364,19 @@ SCHEMA_CARD: dict = {
             },
         },
         "fct_program_concentration": {
-            "description": "HHI concentration by program element.",
+            "description": (
+                "HHI concentration by program element on two bases: *_all over "
+                "every published link (high+medium), *_high over high-confidence "
+                "links only (hhi_high NULL below the 3-award/2-family floor)."
+            ),
             "key_columns": {
                 "pe_bli": "Program element",
-                "hhi": "HHI (0-10000)",
-                "top_family": "Top vendor family name",
+                "hhi_high": "HHI over high-confidence links only (0-10000; NULL below floor)",
+                "hhi_all": "HHI over high+medium links (0-10000)",
+                "top_family_high": "Top vendor family, high-confidence links",
+                "top_family_all": "Top vendor family, all published links",
+                "program_dollars_high": "Linked award dollars, high-confidence links (USD)",
+                "program_dollars_all": "Linked award dollars, all published links (USD)",
             },
         },
         "fct_budget_to_awards": {

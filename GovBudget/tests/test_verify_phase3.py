@@ -95,14 +95,18 @@ def make_duckdb_with_marts(tmp_path: Path) -> Path:
         "  fy2526_change, fy2526_pct_change)"
     )
 
-    # fct_program_concentration: valid HHI rows
+    # fct_program_concentration: valid HHI rows, both bases (ROADMAP #80).
+    # Row 1 clears the high-only floor (>=3 high awards across >=2 families);
+    # row 2 has high links below the floor (hhi_high NULL, dollars published);
+    # row 3 has no high links at all (counts 0, high dollars NULL).
     con.execute(
         """
         create table fct_program_concentration as select * from (values
-          ('0601101E', 2500.0, 'ACME CORP', 3, 1000000.0),
-          ('0601102E', 5000.0, 'MEGA CORP', 2, 2000000.0),
-          ('0601103E', 10000.0,'SOLO CORP', 1, 500000.0)
-        ) t(pe_bli, hhi, top_family, family_count, program_dollars)
+          ('0601101E', 2500.0, 'ACME CORP', 3, 4, 1000000.0, 2500.0, 'ACME CORP', 3, 4, 1000000.0),
+          ('0601102E', 5000.0, 'MEGA CORP', 2, 3, 2000000.0, NULL, 'MEGA CORP', 1, 2, 500000.0),
+          ('0601103E', 10000.0,'SOLO CORP', 1, 1, 500000.0, NULL, NULL, 0, 0, NULL)
+        ) t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,
+            hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high)
         """
     )
 
@@ -199,8 +203,9 @@ class TestMartsGate:
         con.execute(
             """
             create table fct_program_concentration as select * from (values
-              ('0601101E', 2500.0, 'ACME', 1, 1e6)
-            ) t(pe_bli, hhi, top_family, family_count, program_dollars)
+              ('0601101E', 2500.0, 'ACME', 1, 1, 1e6, NULL, NULL, 0, 0, NULL)
+            ) t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,
+                hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high)
             """
         )
         con.execute(
@@ -231,8 +236,9 @@ class TestMartsGate:
         con.execute(
             """
             create table fct_program_concentration as select * from (values
-              ('0601101E', 99999.0, 'ACME', 1, 1e6)
-            ) t(pe_bli, hhi, top_family, family_count, program_dollars)
+              ('0601101E', 99999.0, 'ACME', 1, 1, 1e6, NULL, NULL, 0, 0, NULL)
+            ) t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,
+                hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high)
             """
         )
         con.execute(
@@ -247,6 +253,73 @@ class TestMartsGate:
         con.close()
         result = marts_gate(db_path)
         assert result["ok"] is False
+
+    def test_fail_high_only_index_below_floor(self, tmp_path):
+        """ROADMAP #80: a published hhi_high resting on < 3 high-confidence
+        awards or < 2 families is the regression this leg exists to catch."""
+        db_path = self._marts_db(
+            tmp_path,
+            "('0601101E', 2500.0, 'ACME', 3, 4, 1e6, 2500.0, 'ACME', 1, 2, 1e6)",
+        )
+        result = marts_gate(db_path)
+        assert result["ok"] is False, result
+        assert result["bad_high_floor"] == 1
+        assert result["high_only_rows"] == 1
+
+    def test_float_noise_at_the_ceiling_is_not_a_breach(self, tmp_path):
+        """ROADMAP #80 / 2026-09-10: DuckDB's parallel `sum(share*share)` puts a
+        single-positive-family program on 10000.0 or 10000.000000000004 run to
+        run (13/8/8/10/10/13 breaches in six consecutive counts over the live
+        lake). The ceiling absorbs that and nothing larger."""
+        ok_db = self._marts_db(
+            tmp_path / "ok",
+            "('0601101E', 10000.000000000004, 'ACME', 2, 3, 1e6,"
+            " 10000.000000000004, 'ACME', 2, 3, 1e6)",
+        )
+        assert marts_gate(ok_db)["bad_hhi_program"] == 0
+
+        bad_db = self._marts_db(
+            tmp_path / "bad",
+            "('0601101E', 10000.01, 'ACME', 2, 3, 1e6, NULL, NULL, 0, 0, NULL)",
+        )
+        result = marts_gate(bad_db)
+        assert result["bad_hhi_program"] == 1
+        assert result["ok"] is False
+
+    @staticmethod
+    def _marts_db(tmp_path, conc_row: str):
+        """A marts warehouse that passes every leg except what conc_row breaks."""
+        tmp_path.mkdir(parents=True, exist_ok=True)
+        db_path = tmp_path / "t.duckdb"
+        con = duckdb.connect(str(db_path))
+        rows = [f"('PE{i}','ORG',{i},{i},{i},{0},{0})" for i in range(1, 310)]
+        con.execute(
+            "create table fct_budget_trajectory as select * from (values "
+            + ",".join(rows)
+            + ") t(pe_bli,organization,fy2024_actuals,fy2025_total,fy2026_total,"
+            "fy2526_change,fy2526_pct_change)"
+        )
+        con.execute(
+            "create table fct_program_concentration as select * from (values "
+            + conc_row
+            + ") t(pe_bli, hhi_all, top_family_all, family_count_all, award_count_all,"
+            "     program_dollars_all, hhi_high, top_family_high, family_count_high,"
+            "     award_count_high, program_dollars_high)"
+        )
+        agency_rows = [f"('Agency{i}', {1000.0 + i * 100}, {i * 50000.0}, {3 + i})" for i in range(1, 15)]
+        con.execute(
+            "create table fct_agency_concentration as select * from (values "
+            + ",".join(agency_rows)
+            + ") t(awarding_sub_agency_name, hhi, total_obligation, family_count)"
+        )
+        exposure_rows = [f"('ag{i}', {2 + i}, {i * 1e9}, {5.0 + i * 0.5}, 2023)" for i in range(1, 15)]
+        con.execute(
+            "create table fct_improper_exposure as select * from (values "
+            + ",".join(exposure_rows)
+            + ") t(agency_code, program_count, derived_improper_amount_usd, weighted_rate_pct, latest_fiscal_year)"
+        )
+        con.close()
+        return db_path
 
 
 class TestTraceGate3:
@@ -279,7 +352,10 @@ class TestTraceGate3:
         )
         con.execute(
             "create table fct_program_concentration "
-            "(pe_bli varchar, hhi double, top_family varchar, family_count integer, program_dollars double)"
+            "(pe_bli varchar, hhi_all double, top_family_all varchar, family_count_all integer,"
+            " award_count_all integer, program_dollars_all double, hhi_high double,"
+            " top_family_high varchar, family_count_high integer, award_count_high integer,"
+            " program_dollars_high double)"
         )
         con.close()
         hr_path = tmp_path / "hr.parquet"

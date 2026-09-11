@@ -81,12 +81,25 @@ def linkage_gate(hr_path: Path) -> dict:
     }
 
 
+# HHI's mathematical ceiling is exactly 10,000 (one family at 100% share).
+# DuckDB sums `share_pct * share_pct` in parallel, so a program whose positive
+# obligations sit in a single family lands on 10000.0 or 10000.000000000004
+# depending on that run's partition order: six consecutive
+# `select count(*) from fct_program_concentration where hhi > 10000` over one
+# read-only connection to the live lake returned 13, 8, 8, 10, 10, 13
+# (2026-09-10) — this leg had been failing intermittently on float noise.
+# 1e-6 is four orders above that noise and eight below the smallest breach
+# that would mean anything (a share above 100%). Do NOT widen it.
+_HHI_CEILING = 10_000.0 + 1e-6
+
+
 def marts_gate(duckdb_path: Path) -> dict:
     """Gate 3: four efficiency marts non-empty with sane invariants.
 
     Invariants:
     - fct_budget_trajectory ≥ 300 rows
-    - fct_program_concentration: HHI ∈ (0, 10000] for all rows with hhi > 0
+    - fct_program_concentration: hhi_all AND hhi_high ∈ [0, 10000] (see _HHI_CEILING);
+      hhi_high NULL below the 3-award / 2-family floor (#80)
     - fct_agency_concentration: ≥ 1 sub-agency
     - fct_improper_exposure: ≥ 10 agencies
     """
@@ -97,12 +110,27 @@ def marts_gate(duckdb_path: Path) -> dict:
         agency_rows = con.execute("select count(*) from fct_agency_concentration").fetchone()[0]
         exposure_rows = con.execute("select count(*) from fct_improper_exposure").fetchone()[0]
 
-        # HHI sanity: no row with hhi > 10000 (mathematical ceiling for HHI is 10000)
+        # HHI sanity: no row outside [0, 10000] on EITHER basis (ROADMAP #80).
         bad_hhi_prog = con.execute(
-            "select count(*) from fct_program_concentration where hhi > 10000 or hhi < 0"
+            "select count(*) from fct_program_concentration"
+            f" where hhi_all > {_HHI_CEILING} or hhi_all < 0"
+            f"    or hhi_high > {_HHI_CEILING} or hhi_high < 0"
         ).fetchone()[0]
         bad_hhi_agency = con.execute(
-            "select count(*) from fct_agency_concentration where hhi > 10000 or hhi < 0"
+            "select count(*) from fct_agency_concentration"
+            f" where hhi > {_HHI_CEILING} or hhi < 0"
+        ).fetchone()[0]
+        # #80 floor: a high-only index may rest on nothing smaller than 3
+        # high-confidence awards across 2 contractor families. The mart NULLs
+        # hhi_high below that; a published value below it is the regression
+        # this leg exists to catch (the card would headline it).
+        bad_high_floor = con.execute(
+            "select count(*) from fct_program_concentration"
+            " where hhi_high is not null"
+            "   and (award_count_high < 3 or family_count_high < 2)"
+        ).fetchone()[0]
+        high_only_rows = con.execute(
+            "select count(hhi_high) from fct_program_concentration"
         ).fetchone()[0]
     finally:
         con.close()
@@ -114,15 +142,18 @@ def marts_gate(duckdb_path: Path) -> dict:
         and exposure_rows >= 10
         and bad_hhi_prog == 0
         and bad_hhi_agency == 0
+        and bad_high_floor == 0
     )
     return {
         "ok": ok,
         "trajectory_rows": traj_rows,
         "concentration_rows": conc_rows,
+        "high_only_rows": high_only_rows,
         "agency_rows": agency_rows,
         "exposure_rows": exposure_rows,
         "bad_hhi_program": bad_hhi_prog,
         "bad_hhi_agency": bad_hhi_agency,
+        "bad_high_floor": bad_high_floor,
     }
 
 
@@ -168,8 +199,8 @@ def trace_gate3(duckdb_path: Path, hr_path: Path) -> dict:
 
         # Get top program concentration row (any pe_bli with top_family)
         sample = con.execute(
-            "select pe_bli, top_family from fct_program_concentration"
-            " where top_family is not null limit 1"
+            "select pe_bli, top_family_all from fct_program_concentration"
+            " where top_family_all is not null limit 1"
         ).fetchone()
         top_family = sample[1] if sample else None
 

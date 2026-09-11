@@ -3686,11 +3686,15 @@ def _build_derived_citation_rows(
             ))
 
         # ---- HHI ----
-        # surface='concentration', key=pe_bli, metrics hhi + program_dollars
+        # surface='concentration', key=pe_bli, metrics hhi / program_dollars
+        # (all-tier: the pre-#80 fids, unchanged) and hhi_high /
+        # program_dollars_high (high-confidence links only; ROADMAP #80).
         # Positive-only shares: obligation > 0 (recoupment/negative flows excluded)
         try:
             conc_rows = con.execute(
-                "select pe_bli, hhi, program_dollars from fct_program_concentration"
+                "select pe_bli, hhi_all, program_dollars_all,"
+                " hhi_high, program_dollars_high"
+                " from fct_program_concentration"
             ).fetchall()
         except _duckdb.CatalogException:
             # ONLY "the mart does not exist" (a fixture warehouse) is a silent
@@ -3704,12 +3708,20 @@ def _build_derived_citation_rows(
         _HHI_FORMULA = (
             "sum(share_pct * share_pct) over (partition by pe_bli) "
             "where share = family_obligation / sum(family_obligation) "
+            "across fct_budget_to_awards high- and medium-confidence links "
             "and obligation > 0 (positive-only shares; negative obligations excluded)"
+        )
+        _HHI_HIGH_FORMULA = (
+            "sum(share_pct * share_pct) over (partition by pe_bli) "
+            "where share = family_obligation / sum(family_obligation) "
+            "across fct_budget_to_awards high-confidence links only "
+            "and obligation > 0 (positive-only shares; negative obligations excluded); "
+            "not published below 3 linked awards across 2 contractor families"
         )
         # 2026-09-04 final review I5: this string used to end "obligation > 0",
         # which is the rule for the SHARES (pos_program_dollars), not for this
         # figure. fct_program_concentration.sql computes
-        # `program_dollars = sum(award_obligation)` over ALL linked
+        # `program_dollars_all = sum(award_obligation)` over ALL linked
         # transactions; the positive-only column is a separate one. The
         # citation must describe the column it is attached to — a deobligation
         # moves this number down, and the old sentence said it could not.
@@ -3718,26 +3730,28 @@ def _build_derived_citation_rows(
             "via fct_budget_to_awards high- and medium-confidence links, "
             "across all linked award transactions (net of deobligations)"
         )
-        for pe_bli, hhi, prog_dollars in conc_rows:
-            if hhi is not None:
-                fid = fact_id_derived("concentration", pe_bli, "hhi")
+        _DOLLARS_HIGH_FORMULA = (
+            "sum(fct_award_transactions.obligation) for this pe_bli "
+            "via fct_budget_to_awards high-confidence links only, "
+            "across all linked award transactions (net of deobligations)"
+        )
+        for pe_bli, hhi_all, dollars_all, hhi_high, dollars_high in conc_rows:
+            for metric, value, units, formula in (
+                ("hhi", hhi_all, "Herfindahl-Hirschman Index", _HHI_FORMULA),
+                ("program_dollars", dollars_all, "USD", _DOLLARS_FORMULA),
+                ("hhi_high", hhi_high, "Herfindahl-Hirschman Index", _HHI_HIGH_FORMULA),
+                ("program_dollars_high", dollars_high, "USD", _DOLLARS_HIGH_FORMULA),
+            ):
+                if value is None:
+                    continue
+                fid = fact_id_derived("concentration", pe_bli, metric)
                 rows.append(_null_derived_row(
-                    fid, "derived", "Herfindahl-Hirschman Index",
-                    _HHI_FORMULA,
+                    fid, "derived", units,
+                    formula,
                     "[]",
-                    f"{hhi:.3f}",
+                    f"{value:.3f}",
                     built_at,
-                    query_body=_HHI_FORMULA,
-                ))
-            if prog_dollars is not None:
-                fid = fact_id_derived("concentration", pe_bli, "program_dollars")
-                rows.append(_null_derived_row(
-                    fid, "derived", "USD",
-                    _DOLLARS_FORMULA,
-                    "[]",
-                    f"{prog_dollars:.3f}",
-                    built_at,
-                    query_body=_DOLLARS_FORMULA,
+                    query_body=formula,
                 ))
 
         # ---- Improper exposure ----
@@ -5975,6 +5989,31 @@ def _emit_dossier_sidecars(
     }
 
 
+def _who_gets_it_fid(block: dict | None) -> str | None:
+    """The concentration dollars fact_id the WHO-GETS-IT strip cites, or None.
+
+    MIRROR of site/src/lib/concentration-basis.ts concentrationHeadline()
+    (ROADMAP #80): the strip and the Contractor Concentration card headline
+    ONE basis per page — high-confidence links alone when the high-only index
+    publishes (hhi_high non-null ⇒ ≥3 high awards across ≥2 families), the
+    all-tier figure otherwise. A non-None return is exactly the condition
+    under which the page renders the award tier; the named-primes and
+    uncrosswalked fallbacks key off it. Change both sides together.
+
+    Takes the BLOCK, never the key, so it is unaffected by how hhi_by_pe is
+    keyed (see ROADMAP #82 / Task 9, which re-keys it by slug).
+    """
+    if block is None:
+        return None
+    if (
+        block.get("hhi_high") is not None
+        and block.get("program_dollars_high") is not None
+        and block.get("top_family_high") is not None
+    ):
+        return block.get("program_dollars_high_fact_id")
+    return block.get("program_dollars_all_fact_id")
+
+
 def _build_named_primes(
     *,
     json_dir: Path,
@@ -5983,9 +6022,9 @@ def _build_named_primes(
     cited_fact_ids: set,
 ) -> dict[str, list]:
     """WHO-GETS-IT fallback (§P0-2 fix 3): when the budget→award crosswalk
-    has no high-confidence linkage for a program (no fct_program_concentration
-    row with a citable program_dollars fact — exactly the condition under
-    which the answer strip renders "No award linkage at high confidence"),
+    has no citable concentration dollars for a program on the basis the page
+    headlines (_who_gets_it_fid is None — exactly the condition under which
+    the answer strip does not render the award tier),
     but the program has a GATED dossier whose key-players claims name a
     known contractor family, emit named_primes: [{name, family_key, fact_id,
     public_id}] so the card can say "Named in the J-book: … — uncrosswalked".
@@ -6026,7 +6065,7 @@ def _build_named_primes(
     for path in sorted(dossier_dir.glob("*.json")):
         pe_bli = path.stem
         hhi = hhi_by_pe.get(pe_bli)
-        if hhi is not None and hhi.get("program_dollars_fact_id"):
+        if _who_gets_it_fid(hhi):
             continue  # crosswalk answers WHO-GETS-IT — no fallback needed
         try:
             dossier = _json.loads(path.read_text()).get("dossier", {})
@@ -6161,7 +6200,7 @@ def _build_lobbied_by(
     out: dict[str, dict] = {}
     for pe_bli, families in grouped.items():
         hhi = hhi_by_pe.get(pe_bli)
-        if hhi is not None and hhi.get("program_dollars_fact_id"):
+        if _who_gets_it_fid(hhi):
             continue  # the crosswalk answers WHO-GETS-IT — no fallback needed
         if named_primes_by_pe.get(pe_bli):
             continue  # the J-book names a prime — a stronger, cited answer
@@ -7910,29 +7949,41 @@ def _write_all_sidecars(
         return awards_by_pe.get(
             ident.split_key(pe_bli, account, organization), [])
 
-    # fct_program_concentration — HHI keyed by pe_bli
+    # fct_program_concentration — HHI keyed by pe_bli, two bases (ROADMAP #80)
     conc_rows = con.execute(
-        "select pe_bli, hhi, top_family, family_count, program_dollars"
+        "select pe_bli,"
+        " hhi_all, top_family_all, family_count_all, award_count_all, program_dollars_all,"
+        " hhi_high, top_family_high, family_count_high, award_count_high, program_dollars_high"
         " from fct_program_concentration"
     ).fetchall()
+
+    def _conc_fid(pe: str, metric: str, value) -> str | None:
+        """Derived citation fact_id — attached only when the citation row
+        actually exists (caller guarantees factId resolves). The all-tier
+        metrics keep the pre-#80 fid strings ("hhi", "program_dollars") so no
+        published citation moves; the high-only metrics are new fids."""
+        fid = fact_id_derived("concentration", pe, metric)
+        return fid if (value is not None and fid in _cited_fact_ids) else None
+
     hhi_by_pe: dict[str, dict] = {}
     for r in conc_rows:
-        pe_bli, hhi, top_family, family_count, program_dollars = r
-        # Derived citation fact_ids (Task 3 flips) — only attached when the
-        # citation row actually exists (caller guarantees factId resolves).
-        hhi_fid = fact_id_derived("concentration", pe_bli, "hhi")
-        dollars_fid = fact_id_derived("concentration", pe_bli, "program_dollars")
+        (pe_bli, hhi_all, top_all, fam_all, awards_all, dollars_all,
+         hhi_high, top_high, fam_high, awards_high, dollars_high) = r
         hhi_by_pe[pe_bli] = {
-            "hhi": hhi,
-            "top_family": top_family,
-            "family_count": family_count,
-            "program_dollars": program_dollars,
-            "hhi_fact_id": hhi_fid if (hhi is not None and hhi_fid in _cited_fact_ids) else None,
-            "program_dollars_fact_id": (
-                dollars_fid
-                if (program_dollars is not None and dollars_fid in _cited_fact_ids)
-                else None
-            ),
+            "hhi_all": hhi_all,
+            "hhi_all_fact_id": _conc_fid(pe_bli, "hhi", hhi_all),
+            "program_dollars_all": dollars_all,
+            "program_dollars_all_fact_id": _conc_fid(pe_bli, "program_dollars", dollars_all),
+            "top_family_all": top_all,
+            "family_count_all": fam_all,
+            "award_count_all": awards_all,
+            "hhi_high": hhi_high,
+            "hhi_high_fact_id": _conc_fid(pe_bli, "hhi_high", hhi_high),
+            "program_dollars_high": dollars_high,
+            "program_dollars_high_fact_id": _conc_fid(pe_bli, "program_dollars_high", dollars_high),
+            "top_family_high": top_high,
+            "family_count_high": fam_high,
+            "award_count_high": awards_high,
         }
 
     def _concentration_for(pe_bli: str, account=None, organization=None):
@@ -7940,7 +7991,7 @@ def _write_all_sidecars(
         figure is not this program's to claim (ROADMAP #70).
 
         fct_program_concentration aggregates award dollars by BARE pe_bli, so
-        for a pe_bli two programs share its HHI and program_dollars describe
+        for a pe_bli two programs share its HHI and program dollars (both bases) describe
         the UNION of both members' links. Handing that to both member pages
         would put one program's contractor concentration on the other's page —
         the #56 fusion shape, in the figure a reader is most likely to quote.

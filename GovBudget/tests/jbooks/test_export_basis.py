@@ -217,8 +217,9 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
     # No concentration row for PE — the WHO-GETS-IT crosswalk is empty, which
     # is the named_primes precondition.
     con.execute(
-        "create table fct_program_concentration (pe_bli varchar, hhi double,"
-        " top_family varchar, family_count bigint, program_dollars double)"
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
     )
     con.execute(
         "create table fct_improper_exposure (agency_code varchar,"

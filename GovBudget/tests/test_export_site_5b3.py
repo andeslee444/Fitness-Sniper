@@ -1522,8 +1522,9 @@ def _make_trajectory_duckdb(
 
     # fct_program_concentration (stub)
     con.execute(
-        "CREATE TABLE fct_program_concentration (pe_bli varchar, hhi double,"
-        " top_family varchar, family_count integer, program_dollars double)"
+        "CREATE TABLE fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all integer, award_count_all integer, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high integer, award_count_high integer, program_dollars_high double)"
     )
 
     # fct_improper_exposure (stub)
@@ -1657,7 +1658,7 @@ class TestFy2526ChangeInputs:
             " fully_reconciled boolean)"
         )
         for tbl, cols in [
-            ("fct_program_concentration", "pe_bli varchar, hhi double, top_family varchar, family_count integer, program_dollars double"),
+            ("fct_program_concentration", "pe_bli varchar, hhi_all double, top_family_all varchar, family_count_all integer, award_count_all integer, program_dollars_all double, hhi_high double, top_family_high varchar, family_count_high integer, award_count_high integer, program_dollars_high double"),
             ("fct_improper_exposure", "agency_code varchar, derived_improper_amount_usd double, weighted_rate_pct double"),
             ("fct_state_per_capita", "jurisdiction varchar, comparable_category varchar, amount_per_capita double, spend_source_url varchar, pop_source_url varchar, total_amount_usd double, fiscal_year varchar"),
             ("dim_entities", "family_key varchar, display_name varchar, uei_count integer, total_obligation double, worst_confidence varchar"),
@@ -1964,3 +1965,90 @@ class TestAgencyFormulaCounts:
                 assert uncited_val >= 0, (
                     f"n_uncited is negative ({uncited_val}) in formula: {formula!r}"
                 )
+
+
+class TestConcentrationTwoBases:
+    """ROADMAP #80: one derived row per basis, each formula true of its basis."""
+
+    def _db(self, tmp_path):
+        """The same seven-table stub set `_build_derived_citation_rows` needs —
+        copied from test_fy2526_change_only_emitted_when_both_peers_exist
+        (this file, ~1647-1667), the proven minimum for that function."""
+        import duckdb
+        db_path = tmp_path / "conc.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_budget_trajectory (pe_bli varchar, organization varchar,"
+            " fy2024_actuals double, fy2025_total double, fy2026_total double,"
+            " fy2526_change double, fy2526_pct_change double)"
+        )
+        con.execute(
+            "CREATE TABLE dim_programs (pe_bli varchar, org varchar, exhibit_family varchar,"
+            " title varchar, project_count integer, fy2024_actual_millions double,"
+            " fully_reconciled boolean)"
+        )
+        for tbl, cols in [
+            ("fct_improper_exposure", "agency_code varchar, derived_improper_amount_usd double, weighted_rate_pct double"),
+            ("fct_state_per_capita", "jurisdiction varchar, comparable_category varchar, amount_per_capita double, spend_source_url varchar, pop_source_url varchar, total_amount_usd double, fiscal_year varchar"),
+            ("dim_entities", "family_key varchar, display_name varchar, uei_count integer, total_obligation double, worst_confidence varchar"),
+            ("fct_influence", "family_key varchar, filing_year integer, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double"),
+            ("fct_program_lobbying", "filing_uuid varchar, pe_bli varchar, matched_term varchar, filing_url varchar"),
+        ]:
+            con.execute(f"CREATE TABLE {tbl} ({cols})")
+        con.execute(
+            "CREATE TABLE fct_program_concentration (pe_bli varchar,"
+            " hhi_all double, top_family_all varchar, family_count_all integer, award_count_all integer, program_dollars_all double,"
+            " hhi_high double, top_family_high varchar, family_count_high integer, award_count_high integer, program_dollars_high double)"
+        )
+        con.execute(
+            "INSERT INTO fct_program_concentration VALUES"
+            " ('PE-A', 4200.0, 'LOCKHEED MARTIN', 12, 40, 5e8, 3900.0, 'BOEING', 4, 9, 3e8),"   # clears the floor
+            " ('PE-B', 6100.0, 'RTX', 3, 5, 2e8, NULL, 'RTX', 1, 2, 5e7),"                        # high links below floor
+            " ('PE-C', 10000.0, 'GD', 1, 1, 1e7, NULL, NULL, 0, 0, NULL)"                          # no high links
+        )
+        con.close()
+        return db_path
+
+    def test_fids_per_basis(self, tmp_path):
+        from govbudget.export_site import _build_derived_citation_rows, fact_id_derived
+        rows = _build_derived_citation_rows(duckdb_path=self._db(tmp_path), bl_rows=[], citation_rows=[])
+        by_fid = {r[0]: r for r in rows}
+        # PE-A: four rows; values per basis; formulas name the basis
+        a_all = by_fid[fact_id_derived("concentration", "PE-A", "hhi")]
+        a_high = by_fid[fact_id_derived("concentration", "PE-A", "hhi_high")]
+        assert a_all[23] == "4200.000" and a_high[23] == "3900.000"
+        assert "high- and medium-confidence" in a_all[20]
+        assert "high-confidence links only" in a_high[20] and "3 linked awards" in a_high[20]
+        d_all = by_fid[fact_id_derived("concentration", "PE-A", "program_dollars")]
+        d_high = by_fid[fact_id_derived("concentration", "PE-A", "program_dollars_high")]
+        assert d_all[23] == "500000000.000" and d_high[23] == "300000000.000"
+        assert "high- and medium-confidence" in d_all[20]
+        assert "high-confidence links only" in d_high[20]
+        # PE-B: no hhi_high row, but the high dollars publish
+        assert fact_id_derived("concentration", "PE-B", "hhi_high") not in by_fid
+        assert by_fid[fact_id_derived("concentration", "PE-B", "program_dollars_high")][23] == "50000000.000"
+        # PE-C: all-tier rows only
+        assert fact_id_derived("concentration", "PE-C", "hhi") in by_fid
+        assert fact_id_derived("concentration", "PE-C", "hhi_high") not in by_fid
+        assert fact_id_derived("concentration", "PE-C", "program_dollars_high") not in by_fid
+        # every concentration row is kind=derived with a query_body
+        for row in (a_all, a_high, d_all, d_high):
+            assert row[1] == "derived" and row[22]
+
+    def test_who_gets_it_fid_mirrors_site_helper(self):
+        """Mirror of site/src/lib/concentration-basis.ts concentrationHeadline():
+        high dollars fid iff the high-only index publishes, else all-tier fid."""
+        from govbudget.export_site import _who_gets_it_fid
+        high = {"hhi_high": 3900.0, "program_dollars_high": 3e8, "top_family_high": "BOEING",
+                "program_dollars_high_fact_id": "H" * 16, "program_dollars_all_fact_id": "A" * 16}
+        below = {"hhi_high": None, "program_dollars_high": 5e7, "top_family_high": "RTX",
+                 "program_dollars_high_fact_id": "H" * 16, "program_dollars_all_fact_id": "A" * 16}
+        none = {"hhi_high": None, "program_dollars_high": None, "top_family_high": None,
+                "program_dollars_high_fact_id": None, "program_dollars_all_fact_id": "A" * 16}
+        uncited = {"hhi_high": 3900.0, "program_dollars_high": 3e8, "top_family_high": "BOEING",
+                   "program_dollars_high_fact_id": None, "program_dollars_all_fact_id": "A" * 16}
+        assert _who_gets_it_fid(high) == "H" * 16
+        assert _who_gets_it_fid(below) == "A" * 16
+        assert _who_gets_it_fid(none) == "A" * 16
+        assert _who_gets_it_fid(uncited) is None  # card headlines high, strip has nothing to cite
+        assert _who_gets_it_fid(None) is None

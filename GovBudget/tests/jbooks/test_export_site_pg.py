@@ -180,9 +180,16 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute("insert into dim_lobbyists values ('J. Smith','Deputy Secretary of Defense',5,true)")
 
-    # 8. fct_program_concentration  (live cols: pe_bli,hhi,top_family,family_count,program_dollars)
-    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
-    con.execute("insert into fct_program_concentration values ('0601101E',4200.0,'Lockheed Martin',12,500000000.0)")
+    # 8. fct_program_concentration  (live cols, ROADMAP #80: both bases)
+    con.execute(
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
+    )
+    con.execute(
+        "insert into fct_program_concentration values"
+        " ('0601101E', 4200.0, 'Lockheed Martin', 12, 40, 500000000.0, 3900.0, 'Boeing', 4, 9, 300000000.0)"
+    )
 
     # 9. fct_improper_exposure  (live cols: agency_code,program_count,derived_improper_amount_usd,weighted_rate_pct,latest_fiscal_year)
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
@@ -998,12 +1005,23 @@ def test_sidecar_derived_fact_ids(pg_dsn, tmp_path):
     assert "fy2024_xml_path" in p  # nullable; present on every entry
 
     hhi = p["hhi"]
-    assert hhi["hhi_fact_id"] == fact_id_derived("concentration", "0601101E", "hhi")
-    assert hhi["program_dollars_fact_id"] == fact_id_derived(
+    # all-tier fids are the pre-#80 fids — nothing moves
+    assert hhi["hhi_all_fact_id"] == fact_id_derived("concentration", "0601101E", "hhi")
+    assert hhi["program_dollars_all_fact_id"] == fact_id_derived(
         "concentration", "0601101E", "program_dollars"
     )
-    assert hhi["hhi_fact_id"] in citations
-    assert hhi["program_dollars_fact_id"] in citations
+    # high-only figures get their own fids
+    assert hhi["hhi_high_fact_id"] == fact_id_derived("concentration", "0601101E", "hhi_high")
+    assert hhi["program_dollars_high_fact_id"] == fact_id_derived(
+        "concentration", "0601101E", "program_dollars_high"
+    )
+    for k in ("hhi_all_fact_id", "program_dollars_all_fact_id",
+              "hhi_high_fact_id", "program_dollars_high_fact_id"):
+        assert hhi[k] in citations, k
+        assert citations[hhi[k]]["kind"] == "derived", k
+    assert hhi["hhi_high"] == 3900.0 and hhi["hhi_all"] == 4200.0
+    assert hhi["top_family_high"] == "Boeing" and hhi["top_family_all"] == "Lockheed Martin"
+    assert hhi["award_count_high"] == 9 and hhi["family_count_high"] == 4
 
     # ── agencies.json: derived agency-sum fact ids ──────────────────────────
     agencies = json.loads((site / "json" / "agencies.json").read_text())
@@ -1064,7 +1082,11 @@ def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
-    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute(
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
+    )
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
     con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
@@ -1111,7 +1133,11 @@ def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
-    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute(
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
+    )
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
     con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
@@ -1219,7 +1245,11 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
-    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute(
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
+    )
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
     con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
@@ -1346,7 +1376,11 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     con.execute("insert into fct_influence values ('lockheed','Lockheed Martin','2025',3,1000000.0,0.0,1000000.0,50000000.0)")
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
-    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute(
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
+    )
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
     con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
