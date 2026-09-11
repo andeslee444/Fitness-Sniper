@@ -557,6 +557,312 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#88 /feed/ expand payload.** "Show all" downloads the whole 862 KB
   feed.json; a per-event-type sidecar would be a tenth of that.
   **Status:** open (2026-09-04).
+- **#89 Service J-book decade backfill (PB2017–PB2025) — the GO/NO-GO was
+  never taken.** 5G scoped the service books to FY2026 and named "a separate
+  GO/NO-GO after this phase proves the adapter"
+  (`docs/superpowers/specs/2026-07-03-phase5g-service-jbooks-design.md:76`).
+  The adapter proved out — Navy through the live Playwright index fetch
+  (`SERVICE_INDEX_URLS`, `src/govbudget/jbooks/service_fetch.py:44`), Army and
+  Air Force / Space Force through the Internet Archive mirror
+  (`ARCHIVE_CDX_PREFIX`, `src/govbudget/cli.py:309`) — and then nothing:
+  `jbook_documents` holds 44 service books (Army 20, Navy 13, AF 11) and every
+  one is edition 2026; editions 2017–2025 have zero rows for orgs A/N/F. The
+  money is not the gap — the workbook-derived decade series already covers
+  service PEs in all ten editions (`0603502N` has rows in every
+  `fct_decade_series` edition). The gap is justification TEXT: narratives,
+  R-2/P-40 detail and quotable page citations, which for FY2026 are 9,222 of
+  the 11,679 narratives (Army 4,524, Navy 2,437, AF 2,261) and for every
+  earlier edition are zero. Cost is real: the FY2026 service books are ~2.0 GB
+  of the 2.1 GB `data/raw_docs/fy2026` tree, so nine more editions are ~18 GB
+  raw, and both fetch paths are pinned to FY2026 folder names — each earlier
+  edition needs its own verified prefix. Effort: weeks (hours for the no-go
+  labelling). Owner decision: all nine editions, a recent window
+  (PB2024–PB2025), or a no-go that says on /coverage/ that the ten-edition
+  window is workbook-only for the services. Scoping note:
+  `docs/superpowers/specs/2026-09-10-service-decade-backfill-scoping.md`.
+  **Status:** open (2026-09-10).
+- **#90 Cross-sibling page resolution for deduped service books — 8,021
+  citations resolve `unresolved`.** Each `(family, master)` group registers one
+  PDF, so a fact whose R-2/P-40 page is rendered only in a dropped sibling gets
+  no page highlight and the reader is sent to "open official source" instead.
+  The 5G-archive report records this as an accepted tradeoff and puts
+  cross-sibling resolution out of scope
+  (`docs/superpowers/reviews/5g-archive/INGESTION-REPORT.md:98-105`); nothing
+  tracked it afterwards. Measured: `data/site/manifest.json`
+  `skipped_unresolved` = 8,021 (export of 2026-09-05), and the unresolved
+  provenance rows are almost entirely the service books — Navy 10,578 of
+  14,200 amount rows, Army 3,255 of 5,523, Air Force 733 of 5,313, every
+  defense-wide org 0. The detail data is complete; only the highlight is
+  missing. The dropped siblings are still on disk and still in the database
+  (`dedup_service_master_dups`, `src/govbudget/jbooks/service_fetch.py:384`,
+  flips them to `status='superseded'`, non-destructively), so resolution
+  across them is a matter of widening the candidate set and citing the sibling
+  the page actually lives in. Effort: days. Owner decision: resolve across
+  siblings, or keep the gap and say so where a reader meets it. Decide this
+  with #89 — every service edition added scales this defect.
+  **Status:** open (2026-09-10).
+- **#91 5G visual-judging evidence pack was never produced.** The 5G exit
+  criteria required a judged pack — one upgraded Navy page and one Army page,
+  desktop + mobile, the citation panel open on a narrative and on an amount,
+  plus `RUBRIC.md`, three judges, median ≥4
+  (`docs/superpowers/plans/2026-07-03-phase5g-service-jbooks.md:92-94`;
+  `docs/superpowers/specs/2026-07-03-phase5g-service-jbooks-design.md:67`).
+  None exists: `docs/superpowers/reviews/5g-archive/` holds four live PNGs, an
+  ingestion report and two book-URL lists but no `RUBRIC.md` and no verdict;
+  there is no `site/scripts/capture-5g-visuals.mjs` (the capture scripts stop
+  at `capture-5h-visuals.mjs`); and the archive round's own ledger cell lists
+  "judge pack" among the things NOT done there
+  (`docs/superpowers/ROADMAP.md:27`). The pages shipped and are live; only the
+  judging is missing. Effort: hours. Owner decision: produce the pack
+  retroactively, or record 5G as judged by live verification only and amend
+  the evaluator framework rule that says rubric + screenshots are committed
+  for human override (`docs/superpowers/ROADMAP.md:53-59`). Same root cause as
+  #101. **Status:** open (2026-09-10).
+- **#92 Outlay-stage flows (Treasury MTS) — ingested since Phase 0, never
+  published.** 5H listed "Outlay-stage flows (MTS staged data — future)" among
+  its non-goals
+  (`docs/superpowers/specs/2026-07-02-phase5h-flowdown-chart-design.md:62`) and
+  nothing has touched the data since: `data/parquet/mts_outlays/` holds 91,647
+  rows covering 2016-10-31 through 2026-04-30, with service-level
+  classifications (Department of the Army 1,224 rows, Navy 1,150, Defense
+  Agencies 1,083, Air Force 1,035), and the exporter records it as
+  ingested-not-published by declaring no cadence for it (`_DECLARED_CADENCE`,
+  `src/govbudget/export_site.py:664-673`). The honest limit is grain: MTS is
+  agency-month outlays and this site's spine is program-element request
+  dollars, so the only defensible view is department-level
+  requested-versus-outlaid — never a per-program one, which is exactly the
+  reading a careless chart would invite. Effort: days. Owner decision: publish
+  a department-level outlay view (and give it a `_DECLARED_CADENCE` entry so
+  gate 24 leg m meters it), or state on /coverage/ that outlays are ingested
+  and deliberately unpublished. **Status:** open (2026-09-10).
+- **#93 California ACFR extraction — deferred at Phase 4, never picked up.**
+  Phase 4 registered the ACFR with a sha and recorded its extraction as
+  explicitly deferred
+  (`docs/superpowers/plans/2026-06-10-phase4-state-pilot.md:47`;
+  `docs/superpowers/specs/2026-06-10-phase-gates.md:54`). Three months later it
+  is still only a manifest row: `data/raw_docs/state/ca/ca_acfr_fy2023.pdf`
+  (376 pages, 10,312,291 bytes, FY2023, `downloaded_at` 2026-06-11),
+  `src/govbudget/verify_phase4.py:72-88` asserts manifest presence + sha + file
+  on disk and nothing more, and the exporter declares no cadence for
+  `state_acfr_ca` (`src/govbudget/export_site.py:672`). Extraction means a
+  table-layout parse of an audited financial statement — a different document
+  species from a J-book, with its own reconciliation targets and its own
+  failure modes. Effort: weeks. Owner decision: extract it (and name the
+  published totals it must reconcile against), or close state coverage at the
+  machine-readable budget + checkbook and keep the ACFR as a cited cross-check
+  only. **Status:** open (2026-09-10).
+- **#94 Congressional-adds view — the elements are ingested and nothing reads
+  them.** The Phase 5 considerations doc lists a congressional-adds view as a
+  Hill-staffer feature with the data "already in the J-book XML"
+  (`docs/superpowers/specs/2026-06-10-phase5-considerations.md:56-58`). It is:
+  the FY2026 raw XML carries 3,819 `<r2:CongressionalAddDetail>` elements
+  across 12 organizations (Army 1,825, Air Force 1,030, Navy 664, OSD 192,
+  SOCOM 44, DLA 34, DARPA 12, DTRA 10, and four more at 2 each — raw element
+  count over `data/raw_docs/fy2026/**/*.xml`, sibling books not deduped), each
+  with a `Title`, per-scenario `Funding`, and a `Text` that frequently names
+  the contractor the add was awarded to. Nothing parses them: `grep -rn
+  CongressionalAdd src/ dbt/ site/src/ migrations/` returns nothing. #7 (the
+  FEC → adds → awards chain) is a closed non-goal
+  (`docs/superpowers/ROADMAP.md:662-679`); this entry is the adds view ALONE
+  — no campaign-finance linkage, no causal claim, no new persona for the
+  money. Effort: days for extraction plus a table; weeks if it gets its own
+  page. Owner decision: is a congressional add a new claim type the
+  number-versus-citation gates cannot police — the reason #7 was closed — or
+  is it one more cited figure from a document already ingested?
+  **Status:** open (2026-09-10).
+- **#95 Dossier expansion beyond the top 50 — promised live, undecided.**
+  5F called LLM descriptions for rollup-tier pages "a cost decision, not part
+  of 5F"
+  (`docs/superpowers/specs/2026-07-02-phase5f-program-page-normalization-design.md:84-85`),
+  and /coverage/ now tells readers "the next batches are queued and will be
+  taken in order of FY2026 requested dollars … pending a roadmap decision"
+  (`site/src/lib/coverage-map.ts:290-293`; live today: "50 of 1,938 programs
+  have a research dossier"). No entry carries that decision. The economics
+  changed since the sentence was written: the 5G-dossiers round was authored
+  by subagents rather than the cost-capped Batch API
+  (`docs/superpowers/ROADMAP.md:29`), so the cost is agent time, not
+  `ANTHROPIC_API_KEY` spend, while the gate is unchanged — `dossiers gate`
+  requires every claim to resolve to a warehouse citation (last run 733/733
+  against `WAREHOUSE_FLOOR = 0.80`, `src/govbudget/dossiers/gate.py:41`) and
+  rejects a dossier with even one unresolvable claim rather than publishing it
+  with a caveat. Effort: days per batch of ~50. Owner decision: batch size and
+  cadence, or drop the /coverage/ promise. **Status:** open (2026-09-10).
+- **#96 PB2015 and PB2016 editions — promised live, undecided.** The decade
+  backfill stopped at PB2017 (5E scope) and /coverage/ says "PB2015 and PB2016
+  are the next two editions queued, and the date is pending a roadmap decision"
+  (`site/src/lib/coverage-map.ts:264-268`; the same row leads with "10 editions
+  loaded — PB2017–PB2026"). No backlog entry mentions them; the sentence has
+  stood unchanged since 2026-08-05 (01a015f7) and the only commit that has
+  ever touched the string `PB2015` is the one that published /coverage/ itself
+  (a323b157). Each edition is a `jbooks backfill` run plus the evidence-keyed
+  volume classification the /coverage/ blocker names — the rule that exists
+  because two editions were nearly published with the wrong volumes — and
+  costs roughly one defense-wide edition of storage (215–293 MB raw, judging
+  by `data/raw_docs/fy2017` through `fy2025`). Effort: days per edition. Owner
+  decision: take both, take neither and drop the promise, or publish the
+  edition window as a stated policy. **Status:** open (2026-09-10).
+- **#97 Pre-2026 narrative paragraph provenance never ran.** 5E deferred
+  page-level provenance for pre-2026 narratives, noting that "xml-anchor
+  citations [are] still present"
+  (`docs/superpowers/specs/2026-07-03-phase5e-decade-backfill-design.md:116`).
+  #29(b) later made pre-2026 narratives citable, but they still resolve to the
+  non-paged xml-anchor card rather than to a highlighted paragraph. Measured in
+  Postgres: edition 2026 has 11,942 narrative provenance rows against 11,679
+  non-superseded narratives; every earlier edition has between 0 and 5 rows
+  against 1,201–2,748 narratives — 19 rows against 18,437 narratives across
+  nine editions. The code path is the one FY2026 already uses (`python -m
+  govbudget jbooks narrative-provenance --fiscal-year <FY>`,
+  `src/govbudget/cli.py:764`) and the PDFs are on disk (215–293 MB per
+  edition), so this is a compute-and-reconcile run, not new ingestion. Effort:
+  days. Owner decision: run it for the nine editions, or state on
+  /methodology/ that paragraph highlights exist for FY2026 only and that
+  earlier editions cite the XML anchor by design.
+  **Status:** open (2026-09-10).
+- **#98 Accounts / saved searches / alerts (the first paid tier) — never
+  scoped.** The 5B surface spec's v1 non-goals name "accounts/auth, saved
+  searches/alerts (first paid tier, post-launch)"
+  (`docs/superpowers/specs/2026-06-11-phase5b-product-surface-design.md:109-111`)
+  and the phase ledger's Post-launch row still carries it as backlog
+  (`docs/superpowers/ROADMAP.md:35`). Two months after launch there is no
+  entry, spec or route. The alerting half shipped statically —
+  `site/scripts/generate-feeds.mjs` writes 287 program and 63 company RSS/Atom
+  watch feeds at build time, each item carrying its dollars and a `/fact/{id}`
+  receipt permalink. The accounts half is not a missing feature but a missing
+  stack: the site is a fully static export with no server, no session, no
+  database and no user data anywhere. Two dependencies are hard, not soft —
+  anything that mails a reader inherits the cited-or-absent rule without a
+  citation panel beside it, and firing alerts off a corpus that is not on a
+  refresh schedule (#8 open; award corpus last ingested 2026-06-11) implies a
+  currency the data does not have. Effort: weeks. Owner decision: does Fiscal
+  Receipts take on a server and user data at all? Scoping note:
+  `docs/superpowers/specs/2026-09-10-accounts-alerts-tier-scoping.md`.
+  **Status:** open (2026-09-10).
+- **#99 Public text-to-SQL analyst surface — never scoped.** The same v1
+  non-goal list defers a "public text-to-SQL endpoint (analyst agent stays an
+  internal CLI — the paid-analyst surface comes after launch)"
+  (`docs/superpowers/specs/2026-06-11-phase5b-product-surface-design.md:109-111`;
+  ledger row `docs/superpowers/ROADMAP.md:35`). The engine is real and
+  guarded: `python -m govbudget analyst` (`src/govbudget/cli.py:2647`) runs a
+  manual tool loop on `claude-sonnet-4-6` with `MAX_TURNS = 8`
+  (`src/govbudget/analyst/agent.py:40,47`), and the SQL tool accepts one
+  statement that must start with SELECT or WITH and caps results at
+  `ROW_CAP = 200` / `TIMEOUT_SECONDS = 30`
+  (`src/govbudget/analyst/sql_tool.py:83-86`), opening DuckDB `read_only=True`
+  with `data/parquet` as the only readable prefix and every other external
+  access disabled (`:176-196`). Measured on the newest recorded eval run
+  (`data/research/eval-runs/eval-20260901T055645Z.json`, 48 questions):
+  $0.8471 total, $0.0176 mean, $0.0120 median, $0.1297 worst, 2.6 turns mean —
+  and `accuracy 48/48` but `citation_ok 42/43`, so `ok: false`. That last
+  figure is the whole risk: a live answer is a number no gate saw before the
+  reader did, which is the one thing this site has never published. Effort:
+  weeks (hours for a static "asked and answered" page built from the eval
+  set). Owner decision: public, gated behind accounts, or permanently internal
+  — and if public, the 100% citation-resolution floor must be enforced at
+  answer time, not measured nightly. Scoping note:
+  `docs/superpowers/specs/2026-09-10-public-analyst-surface-scoping.md`.
+  **Status:** open (2026-09-10).
+- **#100 LLM-alias pass residue: 12,811 announcement records ($278B) never
+  attempted.** The Leg-3 LLM alias pass took the top 3,840 unmatched
+  defense.gov announcement records by announced value ($1.96T of the $2.23T
+  residue) and stopped; the remaining 12,811 records / $278B were not
+  attempted (`docs/superpowers/ROADMAP.md:118-119`). The scope is disclosed on
+  the live /methodology/ page verbatim ("the 12,811 smaller records carrying
+  the remaining ~12% were not attempted"), which is honest — but no entry
+  carried the decision, no date was set, and a stopping rule that is never
+  revisited quietly becomes a permanent one. Wave 4 is Task 25 of the
+  roadmap-completion plan (2026-09-10) — a residue miner plus a two-lens
+  adjudication under the same refute discipline — so what this entry holds is
+  the stopping RULE, not the count.
+  Effort: days. Owner decision: keep going after wave 4, or publish the
+  stopping rule as deliberate and say why the small-record tail is below the
+  line. **Status:** open (2026-09-10).
+- **#101 Print and reduced-motion captures were never produced for any judged
+  pack.** `docs/superpowers/reviews/EVIDENCE-CONVENTIONS.md:8-36` requires
+  `<page>-1440-print.png` (`page.emulateMedia({ media: "print" })`) and
+  `<page>-1440-reduced-motion.png` (`{ reducedMotion: "reduce" }`) in every
+  pack authored from 2026-07-03 onward, precisely so the D4 print/export
+  dimension and the motion contract are judged from evidence instead of from
+  default captures — the exact advisory the convention was written to fix. No
+  pack contains either file (`find docs/superpowers/reviews -name '*print*' -o
+  -name '*reduced*'` is empty) and no capture script emulates either; the
+  scripts stop at `site/scripts/capture-5h-visuals.mjs`, committed 7a72eacf on
+  2026-07-03, hours before the convention itself (746287fd, same day). Every
+  judged round since — 5G, 5I-lineage, 5I-review, PM-S1, PM-S2, PM-S3 —
+  recorded scores as ledger prose with no committed pack at all, which is also
+  why #91 has none. Effort: hours (two `emulateMedia` calls in a shared
+  capture helper, then re-capture on the next judged round). Owner decision:
+  enforce the convention on the next pack, or amend it to describe what packs
+  actually ship. **Status:** open (2026-09-10).
+- **#102 Lineage title-only endpoints — the ~4,400 verb-only clauses.**
+  #29(a) closed on clauses that already contain a PE token; the roughly 4,400
+  clauses carrying a transfer verb and no code were declared out of scope for
+  that pass and need a separate English-phrase-to-PE matcher with its own
+  precision study, because that matcher's dominant error is confidently
+  resolving a SYSTEM name to a BUDGET LINE — a true sentence with a false
+  endpoint
+  (`docs/superpowers/specs/2026-08-31-lineage-llm-extraction-precision.md:194-201`,
+  whose neighbouring section measures 432 of 1,936 corpus programs as
+  numeric-only, so the ambiguity is measured rather than assumed). Meanwhile
+  the live /coverage/ page still tells readers "narrative extraction across the
+  whole FY2026 set is the planned next step … pending a roadmap decision"
+  (`site/src/lib/coverage-map.ts:329-332`) — written 2026-08-05 (01a015f7) and
+  unchanged since, i.e. before that pass ran; today 143 of 1,938 programs
+  carry a lineage rail. Effort: weeks. Owner decision: fund the matcher and
+  its precision study, or restate the /coverage/ target to say the PE-token
+  pass ran and the title-only half is refused on measured ambiguity.
+  **Status:** open (2026-09-10).
+- **#103 Program-genealogy timeline and program-page district footprint map —
+  the 5B-3 "backlog with sketch" was never filed.** Plan-level decision 2 of
+  5B-3 deferred both with the promise of a backlog entry and a sketch
+  (`docs/superpowers/plans/2026-06-12-phase5b3-features-enrichment.md:11`);
+  neither was written. Part of the genealogy idea shipped since as the
+  program-page lineage rail and the /lineage/ Sankey — budget-line identities
+  only, no awards, GAO findings or news — so what remains is a per-program time
+  axis composing data the site already holds. The footprint map is the
+  per-program form of the choropleth closed as a non-goal in #15
+  (`docs/superpowers/ROADMAP.md:750-768`) and is blocked on the same thing: 153
+  of 435 districts carry any linked award today, so a map reads roughly
+  two-thirds blank and readers read blank as zero. Effort: days for the
+  timeline; the map is blocked, not costed. Owner decision: build the
+  timeline, and either adopt #15's reasoning for the map or name the district
+  coverage bar that would unblock it. **Status:** open (2026-09-10).
+- **#104 GAO protest-docket enrichment — promised live, nothing exists.** 5H
+  named protest-docket enrichment "future backlog"
+  (`docs/superpowers/specs/2026-07-02-phase5h-flowdown-chart-design.md:61`) and
+  the live /coverage/ feed row now tells readers "two further event types are
+  planned, protest outcomes and GAO high-risk transitions, each with its
+  threshold published before its first card"
+  (`site/src/lib/coverage-map.ts:490-493`). Neither exists: `fct_feed_events`
+  carries three types (concentration_shift 908, yoy_swing 99, new_entrant 25),
+  and `grep -rli protest src/ dbt/ site/src/` matches exactly one file —
+  `site/src/lib/coverage-map.ts`, the promise itself and nothing that keeps
+  it. The second promise is nearer than it looks:
+  `src/govbudget/oversight/high_risk.py` already ingests the high-risk list
+  (38 areas), but `data/parquet/oversight/high_risk.parquet` carries no date
+  or edition column, so it is a single undated snapshot and a TRANSITION needs
+  a second dated edition before it can be an event at all. Protests need a new
+  source (GAO's bid-protest docket), and the honesty rule from the same
+  non-goals section still binds: FPDS records offer counts only, and the UI
+  must never imply losing-bidder identities it does not have. Effort: weeks
+  for protests; days for high-risk transitions once a second edition is
+  ingested. Owner decision: ship either with its threshold published first, or
+  drop the sentence. **Status:** open (2026-09-10).
+- **#105 Key the successors the narratives already state.** 23 forward
+  pointers on 19 no-rail renumbered pages (measured 2026-09-05 against the
+  2026-09-04 20:06 export — the population Task 4's gate 21 leg l floors) are
+  verbatim in PB2026 narratives and unkeyed: (i) `_RULES` in
+  `src/govbudget/lineage/extract.py` lacks the DARPA form "Beginning in FY
+  2026, efforts in this PE will be funded in PE X" (14 PE→PE pointers, incl.
+  0601101E → 0601122E, 0603760E → 0603467E); (ii) line-item/WSC destinations
+  (2900 → LI 2361, 2176 → BLI 2136, 2026 → LI 2981, six AF BLIs → OSAEA0,
+  FET000 → PE 0303131F) need account-scoped keys — numeric pe_blis are not
+  unique (V3-shape) and would resolve to E3 composite slugs. (i) is one
+  `_RULES` entry + `lineage build` + verify-lineage; (ii) is a key-shape
+  decision through `program_lineage` (`migrations/008_program_lineage.sql`:
+  `from_pe_bli` / `to_pe_bli` are free text, no shape constraint) and the
+  rail's `pe` field. Each keyed edge moves its page out of leg l's floor —
+  re-measure and lower with a dated note. Effort: days.
+  **Status:** open (2026-09-10).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
