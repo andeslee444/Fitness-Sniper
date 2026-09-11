@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import duckdb
@@ -35,6 +36,7 @@ import pytest
 from govbudget.export_site import (
     _announcement_row,
     _build_budget_to_awards_citation_rows,
+    _index_award_link_sources,
     fact_id_derived,
 )
 from govbudget.verify_phase5b1 import _verify_announcement
@@ -401,7 +403,7 @@ def test_verify_announcement_tolerates_tracking_suffixes_on_the_snapshot(suffix)
     """
     row = _announcement_row("abcd1234abcd1234", article_id="1006508",
                             url=_ARTICLE_URL,
-                            archive_url=_ARCHIVE_URL + suffix, sha256=None)
+                            archive_url=_ARCHIVE_URL + suffix, sha256=_SHA)
     assert _verify_announcement(row, _CIT_IDX) is None
 
 
@@ -412,7 +414,7 @@ def test_verify_announcement_tolerates_snapshot_path_casing():
     row = _announcement_row(
         "abcd1234abcd1234", article_id="2661059",
         url="https://www.defense.gov/News/Contracts/Contract/Article/2661059/",
-        archive_url=lower, sha256=None)
+        archive_url=lower, sha256=_SHA)
     assert _verify_announcement(row, _CIT_IDX) is None
 
 
@@ -530,3 +532,84 @@ def test_source_row_never_builds_a_url_out_of_the_string_none():
     assert source_row("P1", "PE1", {}, "announcement+lexicon", {}) is None
     assert source_row("P1", "PE1", {"subaward_number": ""},
                       "subaward+lexicon", {}) is None
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #87 — the gate checks what its docstring promises
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("column, value", [
+    ("amount_text", "1,234"),
+    ("amount_thousands", Decimal("1234")),
+    ("recorded_value", "high"),
+])
+def test_verify_announcement_rejects_a_figure_in_any_amount_column(column, value):
+    """Rule 5 promised 'no recorded_value and no amount fields' but the code
+    checked recorded_value alone: an announcement row smuggling a figure in
+    amount_text (col 3) or amount_thousands (col 14) passed the gate."""
+    row = list(_announcement_row("abcd1234abcd1234", article_id="1006508",
+                                 url=_ARTICLE_URL, archive_url=_ARCHIVE_URL,
+                                 sha256=_SHA))
+    row[_CIT_IDX[column]] = value
+    reason = _verify_announcement(tuple(row), _CIT_IDX)
+    assert reason is not None
+    assert column in reason
+
+
+def test_verify_announcement_rejects_an_archive_url_without_a_sha256():
+    """An archived copy nobody hashed is a copy nobody verified: the Wayback
+    URL alone cannot prove the waves read the bytes the site now cites."""
+    row = _announcement_row("abcd1234abcd1234", article_id="1006508",
+                            url=_ARTICLE_URL, archive_url=_ARCHIVE_URL,
+                            sha256=None)
+    reason = _verify_announcement(row, _CIT_IDX)
+    assert reason is not None
+    assert "archive_url" in reason and "sha256" in reason
+
+
+def test_verify_announcement_allows_a_sha256_without_an_archive_url():
+    """The reverse is honest: the hash describes the local copy in
+    data/raw/announcements, which exists whether or not the manifest recorded
+    a Wayback stamp for it (load_snapshot_manifest keeps sha256 when
+    snapshot_ts or original_url is missing)."""
+    row = _announcement_row("abcd1234abcd1234", article_id="1006508",
+                            url=_ARTICLE_URL, archive_url=None, sha256=_SHA)
+    assert _verify_announcement(row, _CIT_IDX) is None
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #87 — one announcement source row per link, or a loud error
+# ---------------------------------------------------------------------------
+
+
+def _source_tuple(piid, pe, source_id):
+    """One award_link_sources row in _load_award_link_sources' SELECT order:
+    award_piid, pe_bli, source_id, source_url, archive_url, sha256, match_basis."""
+    return (piid, pe, source_id, _ARTICLE_URL, _ARCHIVE_URL, _SHA, "exact-name")
+
+
+def test_index_award_link_sources_keys_one_announcement_row_per_link():
+    m = _index_award_link_sources([
+        _source_tuple("HR001124C0001", "0601101E", "1006508"),
+        _source_tuple("HR001124C0002", "0601101E", "1006509"),
+    ])
+    assert set(m) == {("HR001124C0001", "0601101E"), ("HR001124C0002", "0601101E")}
+    assert m[("HR001124C0001", "0601101E")] == {
+        "source_id": "1006508", "source_url": _ARTICLE_URL,
+        "archive_url": _ARCHIVE_URL, "sha256": _SHA, "match_basis": "exact-name",
+    }
+
+
+def test_index_award_link_sources_raises_on_a_second_article_for_one_link():
+    """The primary key is (award, PE, kind, source_id), so two ARTICLES for one
+    link are two legal rows; the dict comprehension this replaces kept
+    whichever row Postgres returned last and the export cited that one."""
+    with pytest.raises(RuntimeError) as exc:
+        _index_award_link_sources([
+            _source_tuple("HR001124C0001", "0601101E", "1006508"),
+            _source_tuple("HR001124C0001", "0601101E", "1006509"),
+        ])
+    msg = str(exc.value)
+    assert "1006508" in msg and "1006509" in msg
+    assert "HR001124C0001" in msg and "0601101E" in msg

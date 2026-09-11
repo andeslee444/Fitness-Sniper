@@ -105,6 +105,14 @@ so a mistaken order degrades nothing silently:
   orphaned its `award_link_sources` row, losing the article from the citation
   panel with every gate still green).
 
+`scripts/load_announcement_links.py` is not a third guard — it is the reason to
+be careful with that loader's ARGUMENTS. It deletes and rebuilds its WHOLE
+partition (`announcement+lexicon` + `subaward+lexicon` links and their
+`award_link_sources` rows) from the wave result files on its command line, so
+pass every wave file on every run: a subset unpublishes the rest, with every
+gate green (ROADMAP #87). The loader prints `replacing N stored … with M`
+before it commits — read that line.
+
 After ANY of these run, `export-facts` → `build` → `export-site` must run too,
 or the mart and Postgres disagree and `export_site` fails loudly on the
 announcement-source check.

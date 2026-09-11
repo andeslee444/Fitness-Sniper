@@ -1,3 +1,4 @@
+import inspect
 from decimal import Decimal
 from pathlib import Path
 
@@ -5,8 +6,13 @@ import duckdb
 import psycopg
 import pytest
 
+from govbudget import config
 from govbudget.jbooks import crosswalk as crosswalk_module
-from govbudget.jbooks.crosswalk import crosswalk_org, plan_crosswalk_org
+from govbudget.jbooks.crosswalk import (
+    CrosswalkResult,
+    crosswalk_org,
+    plan_crosswalk_org,
+)
 
 AWARD_COLS = (
     "contract_transaction_unique_key, award_id_piid, federal_action_obligation,"
@@ -51,6 +57,32 @@ def make_award_parquet_with_dates(tmp_path: Path, rows: list[tuple]) -> str:
     values_sql = ", ".join(
         "(" + ", ".join("'" + str(v).replace("'", "''") + "'" for v in row) + ")"
         for row in rows
+    )
+    duckdb.sql(
+        f"""
+        copy (select * from (values {values_sql}) t({AWARD_COLS}))
+        to '{out}/part.parquet' (format parquet)
+        """
+    )
+    return str(tmp_path / "contracts" / "*" / "*.parquet")
+
+
+def make_award_parquet_nullable_dates(tmp_path: Path, rows: list[tuple]) -> str:
+    """Like make_award_parquet_with_dates, but a Python None in any column is
+    written as a SQL NULL — the other helper would write the string 'None'.
+    The NULL is cast to varchar so a column that is NULL in every row still
+    lands as VARCHAR in the parquet (DuckDB types a bare NULL literal as
+    INTEGER, which would change the action_date column type)."""
+    out = tmp_path / "contracts" / "fy=2024"
+    out.mkdir(parents=True, exist_ok=True)
+
+    def lit(v):
+        if v is None:
+            return "cast(NULL as varchar)"
+        return "'" + str(v).replace("'", "''") + "'"
+
+    values_sql = ", ".join(
+        "(" + ", ".join(lit(v) for v in row) + ")" for row in rows
     )
     duckdb.sql(
         f"""
@@ -166,6 +198,26 @@ def seed_mda_budget(pg_dsn):
         )
 
 
+def seed_budget_with_quoted_account(pg_dsn):
+    """A budget line whose account carries a single quote. budget_lines.account
+    is `text not null` with no check constraint (migration 001 — verified live:
+    the only constraints are the pkey, the 7-column unique and the FK), so the
+    row inserts; the crosswalk turns it into fed_account "097-04'00"."""
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values ('DARPA','rdte',2026,'quote.pdf','https://example.test/quote.pdf')"
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,%s,'DARPA','0601QUOT','QUOTED ACCOUNT LINE',"
+            " 'fy_2024_actuals',%s,%s)",
+            ("04'00", Decimal("1"), doc_id),
+        )
+
+
 def test_crosswalk_matches_by_account_and_scores_confidence(pg_dsn, tmp_path):
     seed_budget_with_detail(pg_dsn)
     lake = make_award_parquet(tmp_path)
@@ -173,7 +225,7 @@ def test_crosswalk_matches_by_account_and_scores_confidence(pg_dsn, tmp_path):
         pg_dsn, organization="DARPA", treasury_agency="097",
         award_glob=str(lake / "contracts" / "*" / "*.parquet"),
     )
-    assert n == 2  # K1 and K3 (097-0400 in accounts); K2 excluded
+    assert n == CrosswalkResult(written=2, skipped=0)  # K1 and K3 (097-0400 in accounts); K2 excluded
     with psycopg.connect(pg_dsn) as con:
         rows = {
             r[0]: r for r in con.execute(
@@ -191,11 +243,14 @@ def test_crosswalk_is_idempotent(pg_dsn, tmp_path):
     lake = make_award_parquet(tmp_path)
     kwargs = dict(organization="DARPA", treasury_agency="097",
                   award_glob=str(lake / "contracts" / "*" / "*.parquet"))
-    crosswalk_org(pg_dsn, **kwargs)
-    crosswalk_org(pg_dsn, **kwargs)
+    first = crosswalk_org(pg_dsn, **kwargs)
+    second = crosswalk_org(pg_dsn, **kwargs)
     with psycopg.connect(pg_dsn) as con:
         n = con.execute("select count(*) from budget_line_awards").fetchone()[0]
     assert n == 2
+    # Both runs WRITE both rows: the second is an update of two mechanical
+    # rows, which the method guard allows, so nothing is skipped (#86).
+    assert first == second == CrosswalkResult(written=2, skipped=0)
 
 
 def test_crosswalk_navy_service_letter_maps_to_017(pg_dsn, tmp_path):
@@ -210,7 +265,7 @@ def test_crosswalk_navy_service_letter_maps_to_017(pg_dsn, tmp_path):
         award_glob=str(lake / "contracts" / "*" / "*.parquet"),
     )
     # Only N1 (017-1319) should match; N2 (097-1319) must not
-    assert n == 1
+    assert n == CrosswalkResult(written=1, skipped=0)
     with psycopg.connect(pg_dsn) as con:
         rows = con.execute(
             "select award_piid from budget_line_awards where pe_bli='0601152N'"
@@ -287,7 +342,7 @@ def test_fy_filter_uses_federal_fiscal_year(pg_dsn, tmp_path):
         pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
         fy_start=2023, fy_end=2023,
     )
-    assert n_2024 == 1 and n_2023 == 0
+    assert n_2024 == CrosswalkResult(1, 0) and n_2023 == CrosswalkResult(0, 0)
 
 
 def test_fy_filter_september_stays_in_same_fy(pg_dsn, tmp_path):
@@ -309,7 +364,7 @@ def test_fy_filter_september_stays_in_same_fy(pg_dsn, tmp_path):
         pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
         fy_start=2025, fy_end=2025,
     )
-    assert n_2024 == 1 and n_2025 == 0
+    assert n_2024 == CrosswalkResult(1, 0) and n_2025 == CrosswalkResult(0, 0)
 
 
 def test_multi_account_award_has_no_matched_obligation(pg_dsn, tmp_path):
@@ -486,7 +541,7 @@ def test_default_window_is_the_lines_own_edition_fy(pg_dsn, tmp_path):
     seed_budget(pg_dsn)                       # edition fiscal_year = 2026
     glob = make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
     n = crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob)
-    assert n == 1
+    assert n == CrosswalkResult(written=1, skipped=0)
     rows = _links(pg_dsn)
     assert [(fy, piid) for fy, piid, _r in rows] == [(2026, "HR001126C0001")]
     assert rows[0][2].endswith("; award FY2026")
@@ -500,7 +555,7 @@ def test_default_window_is_per_line_edition_not_per_run(pg_dsn, tmp_path):
     seed_budget_editions(pg_dsn, [2024, 2026])
     glob = make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
     n = crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob)
-    assert n == 2
+    assert n == CrosswalkResult(written=2, skipped=0)
     assert [(fy, piid) for fy, piid, _r in _links(pg_dsn)] == [
         (2024, "HR001124C0001"), (2026, "HR001126C0001"),
     ]
@@ -516,7 +571,7 @@ def test_all_years_matches_every_loaded_award_year(pg_dsn, tmp_path):
         pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
         all_years=True,
     )
-    assert n == 2
+    assert n == CrosswalkResult(written=2, skipped=0)
     rows = _links(pg_dsn)
     assert [piid for _fy, piid, _r in rows] == ["HR001124C0001", "HR001126C0001"]
     assert all(r.endswith("; all loaded award years") for _fy, _p, r in rows)
@@ -531,7 +586,7 @@ def test_explicit_window_overrides_the_per_line_default(pg_dsn, tmp_path):
         pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
         fy_start=2024, fy_end=2024,
     )
-    assert n == 1
+    assert n == CrosswalkResult(written=1, skipped=0)
     rows = _links(pg_dsn)
     assert [(fy, piid) for fy, piid, _r in rows] == [(2026, "HR001124C0001")]
     assert rows[0][2].endswith("; award FY2024")
@@ -581,7 +636,13 @@ def test_plan_matches_what_the_run_writes_and_writes_nothing_itself(
     assert sorted((p.fiscal_year, p.candidates) for p in plan) == per_edition
     assert {p.fed_account for p in plan} == {"097-0400"}
     assert _links(pg_dsn) == []                      # planning wrote nothing
-    assert crosswalk_org(pg_dsn, **kw) == sum(p.candidates for p in plan)
+    # Anti-drift: the planned pair count is exactly what the run ATTEMPTS to
+    # upsert. On a clean table the method guard refuses nothing, so every
+    # planned pair is a written link and skipped is 0 (#86).
+    result = crosswalk_org(pg_dsn, **kw)
+    assert result.written + result.skipped == sum(p.candidates for p in plan)
+    assert result == CrosswalkResult(
+        written=sum(p.candidates for p in plan), skipped=0)
 
 
 # --------------------------------------------------------------------------
@@ -615,8 +676,9 @@ def test_cli_default_window_writes_only_the_edition_fy(monkeypatch, pg_dsn, tmp_
     make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
     cli.main(["jbooks", "crosswalk", "--org", "DARPA"])
     out = capsys.readouterr().out
-    assert "crosswalk DARPA: 1 links; window=each line's own edition FY" in out
-    assert "crosswalk total: 1" in out
+    assert ("crosswalk DARPA: 1 links written, 0 skipped (evidence-graded rows"
+            " kept); window=each line's own edition FY") in out
+    assert "crosswalk total: 1 written, 0 skipped" in out
     assert _link_count(pg_dsn) == 1
 
 
@@ -682,7 +744,8 @@ def test_cli_all_years_with_yes_writes_past_threshold(monkeypatch, pg_dsn, tmp_p
     cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--all-years", "--yes"])
     out = capsys.readouterr().out
     assert "crosswalk projected total: 2 pair(s)" in out
-    assert "crosswalk DARPA: 2 links; window=all loaded award years" in out
+    assert ("crosswalk DARPA: 2 links written, 0 skipped (evidence-graded rows"
+            " kept); window=all loaded award years") in out
     assert _link_count(pg_dsn) == 2
 
 
@@ -861,7 +924,7 @@ def test_any_transaction_description_counts_for_token_overlap(pg_dsn, tmp_path):
                          detail_title="MATHEMATICS AND COMPUTER SCIENCES")
     glob = make_award_parquet_with_dates(tmp_path, MULTI_TX_AWARDS)
     n = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
-    assert n == 2   # one canonical line x two awards
+    assert n == CrosswalkResult(written=2, skipped=0)  # one canonical line x two awards
     r = {row[3]: row for row in _mechanical_rows(pg_dsn)}["HR001124C0777"]
     assert (r[4], r[5], r[6]) == ("account+tokens", "high", 2)
     assert ("token overlap 2 (mathematics, sciences) across 4 distinct"
@@ -905,7 +968,7 @@ def test_one_canonical_title_per_key(pg_dsn, tmp_path):
     ])
     assert len(plan_crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)) == 1
     n = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
-    assert n == 1
+    assert n == CrosswalkResult(written=1, skipped=0)
     rows = _mechanical_rows(pg_dsn)
     assert len(rows) == 1
     assert (rows[0][4], rows[0][5], rows[0][6]) == ("account+subagency", "medium", 0)
@@ -950,5 +1013,128 @@ def test_two_runs_over_same_fixtures_produce_identical_rows(pg_dsn, tmp_path):
     first = _mechanical_rows(pg_dsn)
     n2 = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
     second = _mechanical_rows(pg_dsn)
-    assert n1 == n2 == 2
+    assert n1 == n2 == CrosswalkResult(written=2, skipped=0)
     assert first == second
+
+
+# --------------------------------------------------------------------------
+# #86 — deferred minors: what the run REPORTS, what an undated award means
+# under a window, and where the two interpolated values come from.
+# --------------------------------------------------------------------------
+
+
+def test_upsert_count_excludes_rows_the_method_guard_left_alone(pg_dsn, tmp_path):
+    """#86: the old count added 1 per candidate row, including the rows the
+    upsert's `do update ... where method in (mechanical)` refused to touch, so
+    `crosswalk DARPA: N links` overstated what the run wrote. Postgres reports
+    the rows inserted OR updated; a conflict the guard rejected reports 0."""
+    seed_budget_with_detail(pg_dsn)
+    lake = make_award_parquet(tmp_path)
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into budget_line_awards"
+            " (pe_bli, exhibit, fiscal_year, organization, award_piid,"
+            "  recipient_name, recipient_uei, matched_obligation, method,"
+            "  confidence, score, rationale)"
+            " values ('0601101E','R-1',2026,'DARPA','HR001124C0001',"
+            "  'ACME RESEARCH LLC','UEIDARPA1',5000000,'announcement+lexicon',"
+            "  'high',null,'defense.gov contract announcement 123456')"
+        )
+    result = crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097",
+        award_glob=str(lake / "contracts" / "*" / "*.parquet"),
+    )
+    # K3 is written (new mechanical row); K1 is skipped (evidence-graded row kept)
+    assert result == CrosswalkResult(written=1, skipped=1)
+    with psycopg.connect(pg_dsn) as con:
+        method = con.execute(
+            "select method from budget_line_awards"
+            " where pe_bli='0601101E' and award_piid='HR001124C0001'"
+        ).fetchone()[0]
+    assert method == "announcement+lexicon"
+
+
+def test_undated_and_malformed_action_dates_are_excluded_under_an_fy_window(
+    pg_dsn, tmp_path,
+):
+    """#86: an award whose action_date is NULL or not a date has no fiscal
+    year, so an FY window must exclude it EXPLICITLY. The old substr
+    arithmetic excluded NULL/'' only by three-valued-logic accident and read
+    '2024' as FY2024 and '2024-13-01' as FY2025 (month 13 >= 10 rolls over),
+    so the 2024..2025 window below admitted THREE awards; it must admit one.
+    The no-window path (--all-years) is deliberately not pinned here: with no
+    bounds there is no fiscal year to have, and #78's own tests own that
+    path."""
+    seed_budget(pg_dsn)
+    sub = "Defense Advanced Research Projects Agency"
+    rows = [
+        ("K20", "HR001124C0020", "1", "097-0400", "X", "Y", "Z", "U", sub, "2024-03-01"),
+        ("K21", "HR001124C0021", "1", "097-0400", "X", "Y", "Z", "U", sub, None),
+        ("K22", "HR001124C0022", "1", "097-0400", "X", "Y", "Z", "U", sub, ""),
+        ("K23", "HR001124C0023", "1", "097-0400", "X", "Y", "Z", "U", sub, "not-a-date"),
+        ("K24", "HR001124C0024", "1", "097-0400", "X", "Y", "Z", "U", sub, "2024"),
+        ("K25", "HR001124C0025", "1", "097-0400", "X", "Y", "Z", "U", sub, "2024-13-01"),
+    ]
+    glob = make_award_parquet_nullable_dates(tmp_path, rows)
+    result = crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
+        fy_start=2024, fy_end=2025,
+    )
+    assert result == CrosswalkResult(written=1, skipped=0)
+    with psycopg.connect(pg_dsn) as con:
+        piids = {r[0] for r in con.execute(
+            "select award_piid from budget_line_awards where pe_bli='0601101E'"
+        )}
+    assert piids == {"HR001124C0020"}
+
+
+def test_the_planner_excludes_undated_awards_the_same_way(pg_dsn, tmp_path):
+    """Companion to the test above: plan_crosswalk_org and crosswalk_org share
+    _candidate_where, so the plan must count the same one award — a planner
+    that still read '2024' as a fiscal year would project 3 pairs and the
+    abort threshold would be measuring a population the run never writes."""
+    seed_budget(pg_dsn)
+    sub = "Defense Advanced Research Projects Agency"
+    glob = make_award_parquet_nullable_dates(tmp_path, [
+        ("K20", "HR001124C0020", "1", "097-0400", "X", "Y", "Z", "U", sub, "2024-03-01"),
+        ("K24", "HR001124C0024", "1", "097-0400", "X", "Y", "Z", "U", sub, "2024"),
+        ("K25", "HR001124C0025", "1", "097-0400", "X", "Y", "Z", "U", sub, "2024-13-01"),
+    ])
+    plan = plan_crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
+        fy_start=2024, fy_end=2025,
+    )
+    assert [p.candidates for p in plan] == [1]
+
+
+def test_fed_account_is_bound_as_a_query_parameter(pg_dsn, tmp_path):
+    """#86: fed_account reached the DuckDB SQL by f-string at two sites (the
+    obligation `case when ... = '{fed_account}'` in _fetch_candidates and the
+    `like '%{fed_account}%'` filter in _candidate_where). A quote in the
+    account code proves the binding: interpolated, DuckDB raises
+    ParserException; bound, it is a value that matches nothing. (Live account
+    codes are digits plus one optional service letter — this is a mechanism
+    pin, not a live defect.)"""
+    seed_budget_with_quoted_account(pg_dsn)
+    lake = make_award_parquet(tmp_path)
+    kw = dict(organization="DARPA", treasury_agency="097",
+              award_glob=str(lake / "contracts" / "*" / "*.parquet"))
+    # The planner runs the same predicate and must survive the quote too.
+    assert [p.candidates for p in plan_crosswalk_org(pg_dsn, **kw)] == [0]
+    assert crosswalk_org(pg_dsn, **kw) == CrosswalkResult(written=0, skipped=0)
+
+
+def test_aliases_csv_is_anchored_to_config_root():
+    """#86: the seed path was built from Path(__file__).resolve().parents[3];
+    every other seed path in cli.py hangs off config.ROOT.
+
+    Both spellings resolve to the same directory today, so asserting equality
+    alone could never fail — the pin is on the SOURCE: one anchor per module,
+    and it is config.ROOT.
+    """
+    src = inspect.getsource(crosswalk_module)
+    assert "parents[" not in src, (
+        "crosswalk.py derives a path from __file__ depth; use config.ROOT")
+    assert crosswalk_module._ALIASES_CSV == (
+        config.ROOT / "data-seeds" / "org_subagency_aliases.csv")
+    assert crosswalk_module._ALIASES_CSV.is_file()

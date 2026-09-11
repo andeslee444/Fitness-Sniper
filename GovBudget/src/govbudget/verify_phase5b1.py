@@ -923,14 +923,22 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
        one). Absent is fine: not every article was archived, and a null is
        the honest answer.
     4. sha256, when present, is 64 lowercase hex and equals the sha256 in
-       query_body (one hash, two places, never two hashes).
-    5. No recorded_value and no amount fields — an announcement never carries
-       a figure of its own.
+       query_body (one hash, two places, never two hashes). archive_url
+       present ⇒ sha256 present (ROADMAP #87): a snapshot URL with no hash is
+       a copy nobody verified. The reverse is allowed — the hash describes
+       the local copy in data/raw/announcements, which exists whether or not
+       the manifest recorded a Wayback stamp for it.
+    5. No recorded_value, no amount_text and no amount_thousands — an
+       announcement never carries a figure of its own. All three columns are
+       checked (ROADMAP #87: the code used to check recorded_value alone).
     """
     official_url = row[idx["official_url"]] if "official_url" in idx else None
     query_body = row[idx["query_body"]] if "query_body" in idx else None
     sha = row[idx["sha256"]] if "sha256" in idx else None
     recorded_value = row[idx["recorded_value"]] if "recorded_value" in idx else None
+    amount_text = row[idx["amount_text"]] if "amount_text" in idx else None
+    amount_thousands = (row[idx["amount_thousands"]]
+                        if "amount_thousands" in idx else None)
 
     if not official_url:
         return "announcement: official_url is null or empty"
@@ -980,6 +988,15 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
         if target_m.group("article_id") != article_id:
             return (f"announcement: archive_url does not name article"
                     f" {article_id!r}: {archive_url!r}")
+        # Rule 4, second half (#87): an archived copy must carry the hash of
+        # the bytes the verification waves read. KEEP THIS LAST in the block —
+        # the archive-shape checks above own their own messages, and
+        # test_verify_announcement_fails_when_the_snapshot_is_of_another_article
+        # asserts the exact string "does not name article".
+        if sha is None:
+            return ("announcement: archive_url is present but sha256 is null —"
+                    " an archived copy nobody hashed is a copy nobody verified:"
+                    f" {archive_url!r}")
 
     if sha is not None:
         if not re.fullmatch(r"[0-9a-f]{64}", str(sha)):
@@ -991,6 +1008,12 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
     if recorded_value is not None:
         return (f"announcement: recorded_value must be null (the cited fact is"
                 f" the link, not a figure): {recorded_value!r}")
+    if amount_text is not None:
+        return (f"announcement: amount_text must be null (the cited fact is the"
+                f" link, not a figure): {amount_text!r}")
+    if amount_thousands is not None:
+        return (f"announcement: amount_thousands must be null (the cited fact"
+                f" is the link, not a figure): {amount_thousands!r}")
 
     return None
 

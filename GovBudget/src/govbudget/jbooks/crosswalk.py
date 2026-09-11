@@ -47,21 +47,45 @@ transaction of the award carries the attribute":
     097-0400 obligations carry at most two decimals, 0 of 196,043 more).
 Tier names, the min_overlap threshold and the upsert guard are unchanged;
 only membership became deterministic.
+
+Counting and binding (#86, 2026-09-11). crosswalk_org returns
+CrosswalkResult(written, skipped) rather than one number: a candidate row the
+upsert guard left alone (the key already carries an evidence-graded link) was
+being counted as a link the run wrote. fed_account and the FY bounds are
+DuckDB `?` parameters, and an award whose action_date is NULL or not a date is
+excluded from an FY window explicitly (see FED_FY_EXPR) instead of by NULL
+arithmetic. The upsert guard itself is byte-identical.
 """
 import csv
 import re
 from dataclasses import dataclass
 from decimal import Decimal
-from pathlib import Path
+from typing import NamedTuple
 
 import duckdb
 import psycopg
 
+from govbudget import config
+
 # Sub-agency alias seed: data-seeds/org_subagency_aliases.csv, columns
 # organization,alias. Replaces a hardcoded DARPA-only clause (#75) — every
 # organization's medium-tier sub-agency match now comes from this file.
-# crosswalk.py -> jbooks -> govbudget -> src -> GovBudget (parents[3]).
-_ALIASES_CSV = Path(__file__).resolve().parents[3] / "data-seeds" / "org_subagency_aliases.csv"
+# Anchored to config.ROOT like every other seed path in cli.py, so this module
+# has one path anchor and it is not this file's own depth in the tree (#86).
+_ALIASES_CSV = config.ROOT / "data-seeds" / "org_subagency_aliases.csv"
+
+
+class CrosswalkResult(NamedTuple):
+    """What one crosswalk_org run did to budget_line_awards (#86).
+
+    written  rows inserted, or updated because the stored row was mechanical
+    skipped  candidate rows the upsert guard left alone — the key already
+             holds an evidence-graded row (fpds-ap, announcement+lexicon,
+             subaward+lexicon) that a mechanical re-run must never rewrite
+    """
+
+    written: int
+    skipped: int
 
 
 def _load_subagency_aliases() -> dict[str, list[str]]:
@@ -130,13 +154,19 @@ ALL_YEARS_ABORT_ROWS = 500_000
 
 # Federal fiscal year of a USAspending action_date string (Oct 1 - Sep 30):
 # an Oct-Dec date belongs to the NEXT FY, not the calendar year the string
-# starts with (#75a). A NULL or unparseable action_date yields NULL, which no
-# BETWEEN matches, so such a row is excluded under any window and kept under
-# none -- the behaviour the explicit window has had since #75a.
+# starts with (#75a). Built on try_cast(... as date) so a value that is not a
+# date has no fiscal year AT ALL (#86): the earlier substr arithmetic read a
+# year-only '2024' as FY2024 and a month-13 '2024-13-01' as FY2025 (13 >= 10
+# rolled the year over), and excluded NULL/'' only by three-valued-logic
+# accident. A NULL fiscal year matches no BETWEEN, so such a row is excluded
+# under any window and kept under none -- the behaviour the explicit window
+# has had since #75a, now stated rather than inherited. The lake's action_date
+# is VARCHAR in every partition (10-char ISO, 0 NULL, 0 unparseable across
+# 39,765,730 rows on 2026-09-10), so this moves no live link. Callers that
+# need the expression use this constant rather than restating it.
 FED_FY_EXPR = (
-    "(try_cast(substr(action_date,1,4) as integer)"
-    " + case when try_cast(substr(action_date,6,2) as integer)"
-    " >= 10 then 1 else 0 end)"
+    "(year(try_cast(action_date as date))"
+    " + case when month(try_cast(action_date as date)) >= 10 then 1 else 0 end)"
 )
 
 
@@ -210,17 +240,41 @@ def _fed_account(account: str | None, treasury_agency: str) -> str:
 
 def _candidate_where(
     fed_account: str, fy_start: int | None, fy_end: int | None,
-) -> str:
-    """The candidate predicate, shared by the planner and the write path so a
-    plan can never count rows the run would not upsert. fy_start/fy_end here
-    are ONE LINE's resolved bounds (see _line_window), not the CLI flags."""
+) -> tuple[str, list]:
+    """The candidate predicate AND its bound parameters, shared by the planner
+    and the write path so a plan can never count rows the run would not upsert.
+    fy_start/fy_end here are ONE LINE's resolved bounds (see _line_window), not
+    the CLI flags.
+
+    Returns (sql, params). fed_account and the FY bounds are DuckDB `?`
+    parameters (#86); they used to be f-string-interpolated, so an account code
+    carrying a quote was a ParserException rather than a value that matches
+    nothing. award_glob stays interpolated at the two call sites: it is an
+    operator-supplied path, not data. DuckDB binds `?` in TEXTUAL order, so a
+    caller whose SELECT list carries its own placeholder (the obligation `case`
+    in _fetch_candidates) passes that parameter FIRST.
+
+    LIKE metacharacters in fed_account are NOT escaped: the account domain is
+    digits plus one optional service letter (see AGENCY_BY_LETTER), so no live
+    code carries `_` or `%`. Binding fixes the quoting hole, not the wildcard
+    one; escaping is a separate change if that domain ever widens.
+    """
     where = (
-        f"federal_accounts_funding_this_award like '%{fed_account}%'"
+        "federal_accounts_funding_this_award like ?"
         " and award_id_piid is not null and award_id_piid <> ''"
     )
+    params: list = [f"%{fed_account}%"]
     if fy_start is not None:
-        where += f" and {FED_FY_EXPR} between {fy_start} and {fy_end}"
-    return where
+        # An action_date that is NULL or not a date has no fiscal year, so a
+        # window excludes it EXPLICITLY (#86) instead of relying on NULL
+        # arithmetic -- and the year-only / month-13 strings the old substr
+        # expression folded into a fiscal year go with it. See FED_FY_EXPR.
+        where += (
+            " and try_cast(action_date as date) is not null"
+            f" and {FED_FY_EXPR} between ? and ?"
+        )
+        params += [fy_start, fy_end]
+    return where, params
 
 
 # One canonical budget line per (pe_bli, exhibit, fiscal_year, account) key
@@ -302,10 +356,12 @@ def plan_crosswalk_org(
             lo, hi = _line_window(fy, fy_start, fy_end, all_years)
             key = (fed_account, lo, hi)
             if key != memo_key:
+                where, where_params = _candidate_where(fed_account, lo, hi)
                 memo_n = con.execute(
                     "select count(distinct award_id_piid)"
                     f" from read_parquet('{award_glob}', union_by_name=true)"
-                    f" where {_candidate_where(fed_account, lo, hi)}"
+                    f" where {where}",
+                    where_params,
                 ).fetchone()[0]
                 memo_key = key
             out.append(LinePlan(
@@ -340,20 +396,24 @@ class AwardCandidate:
 
 
 def _fetch_candidates(
-    con: duckdb.DuckDBPyConnection, award_glob: str, fed_account: str, where: str,
+    con: duckdb.DuckDBPyConnection, award_glob: str, fed_account: str,
+    where: str, where_params: list,
 ) -> list[AwardCandidate]:
     """The only lake query in the write path. Every aggregate is
     order-independent (list / arg_max / decimal sum) -- no any_value() anywhere,
     which is what #85 was. Rows come back ordered by PIID so upsert order, and
-    therefore bigserial ids on a fresh table, are fixed too. `where` is
-    _candidate_where(fed_account, lo, hi) -- the same predicate
-    plan_crosswalk_org counts, so a plan still cannot drift from the run."""
+    therefore bigserial ids on a fresh table, are fixed too. `where` /
+    `where_params` are _candidate_where(fed_account, lo, hi) -- the same
+    predicate plan_crosswalk_org counts, so a plan still cannot drift from the
+    run. fed_account is BOUND, not interpolated (#86); DuckDB binds `?` in
+    textual order, so the obligation `case`'s parameter goes first and the
+    where clause's follow."""
     rows = con.execute(
         f"""
         select award_id_piid,
                arg_max(recipient_name, {LATEST_TX_KEY}),
                arg_max(recipient_uei, {LATEST_TX_KEY}),
-               sum(case when federal_accounts_funding_this_award = '{fed_account}'
+               sum(case when federal_accounts_funding_this_award = ?
                         then try_cast(federal_action_obligation as decimal(20,2)) end),
                list(distinct transaction_description order by transaction_description),
                list(distinct prime_award_base_transaction_description
@@ -363,7 +423,8 @@ def _fetch_candidates(
         where {where}
         group by award_id_piid
         order by award_id_piid
-        """
+        """,
+        [fed_account, *where_params],
     ).fetchall()
     out: list[AwardCandidate] = []
     for piid, rname, ruei, obligation, tx_descs, base_descs, subs in rows:
@@ -422,7 +483,7 @@ def crosswalk_org(
     fy_start: int | None = None,
     fy_end: int | None = None,
     all_years: bool = False,
-) -> int:
+) -> CrosswalkResult:
     """Crosswalk all of one organization's budget lines against the award lake.
 
     Window: fy_start/fy_end (both) pin an explicit federal-FY window on
@@ -434,9 +495,12 @@ def crosswalk_org(
     (_fetch_candidates + _grade). Two runs over the same inputs write the
     same rows.
 
-    Returns the number of (pe_bli, award) upsert statements issued (rows whose
-    existing method is evidence-graded are guarded and left untouched but
-    still counted — #86 minor 2, unchanged here).
+    Returns CrosswalkResult(written, skipped): the number of (pe_bli, award)
+    links this run inserted or updated, and the number the upsert guard left
+    alone because the key already carries an evidence-graded row (#86 — the
+    old single count included those skips and called them links). The two
+    together are the number of upsert statements issued, i.e. what
+    plan_crosswalk_org projects.
     """
     _validate_window(fy_start, fy_end, all_years)
     lines = _load_lines(dsn, organization)
@@ -455,7 +519,8 @@ def crosswalk_org(
     org_aliases = aliases.get(organization, [organization.lower()])
 
     con = duckdb.connect()
-    upserts = 0
+    written = 0
+    skipped = 0
     # Single-entry memo: lines are sorted by (account, fiscal_year), so every
     # line sharing the previous line's (fed_account, window) reuses its fetch.
     # DARPA: 10 lake scans instead of 177. One result set in memory at a time.
@@ -467,8 +532,9 @@ def crosswalk_org(
             lo, hi = _line_window(fy, fy_start, fy_end, all_years)
             key = (fed_account, lo, hi)
             if key != memo_key:
+                where, where_params = _candidate_where(fed_account, lo, hi)
                 memo_rows = _fetch_candidates(
-                    con, award_glob, fed_account, _candidate_where(fed_account, lo, hi),
+                    con, award_glob, fed_account, where, where_params,
                 )
                 memo_key = key
             # Computed ONCE per canonical line (#85): one title per key.
@@ -481,7 +547,7 @@ def crosswalk_org(
                         pe_tokens, cand, org_aliases, min_overlap, fed_account,
                     )
                     rationale = f"{why}{window_note}"
-                    pg.execute(
+                    cur = pg.execute(
                         """
                         insert into budget_line_awards
                           (pe_bli, exhibit, fiscal_year, organization, award_piid,
@@ -502,7 +568,14 @@ def crosswalk_org(
                          cand.matched_obligation, method, confidence, score,
                          rationale),
                     )
-                    upserts += 1
+                    # Postgres' INSERT tag counts rows inserted OR updated; a
+                    # conflict whose `do update ... where` rejected the row (an
+                    # evidence-graded stored row) counts 0. That is the guard
+                    # skip the old `upserts += 1` mis-counted as a link (#86).
+                    if cur.rowcount == 1:
+                        written += 1
+                    else:
+                        skipped += 1
     finally:
         con.close()
-    return upserts
+    return CrosswalkResult(written=written, skipped=skipped)

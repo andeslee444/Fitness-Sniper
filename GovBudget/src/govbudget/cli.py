@@ -883,12 +883,18 @@ def cmd_jbooks(args) -> None:
             )
             sys.exit(2)
 
-        total = 0
+        written = skipped = 0
         for org in orgs:
-            n = xw.crosswalk_org(config.PG_DSN, organization=org, **common)
-            print(f"crosswalk {org}: {n} links; window={window}")
-            total += n
-        print(f"crosswalk total: {total}")
+            r = xw.crosswalk_org(config.PG_DSN, organization=org, **common)
+            # skipped = candidate rows whose key already holds an
+            # evidence-graded link (fpds-ap / announcement+lexicon /
+            # subaward+lexicon); the mechanical upsert's method guard leaves
+            # those alone, and the old single count called them links (#86).
+            print(f"crosswalk {org}: {r.written} links written, {r.skipped}"
+                  f" skipped (evidence-graded rows kept); window={window}")
+            written += r.written
+            skipped += r.skipped
+        print(f"crosswalk total: {written} written, {skipped} skipped")
 
 
 def cmd_review(args) -> None:

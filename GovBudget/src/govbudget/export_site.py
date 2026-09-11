@@ -6397,6 +6397,9 @@ def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
     indistinguishable from a correct one. Every other Postgres read in this
     module is unguarded and raises; so is this one. See the missing-source
     check in _build_budget_to_awards_citation_rows for the other half.
+
+    A second announcement row for one link raises — see
+    _index_award_link_sources (ROADMAP #87).
     """
     import psycopg
 
@@ -6406,17 +6409,47 @@ def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
             " archive_url, sha256, match_basis from award_link_sources"
             " where source_kind = 'announcement'"
         ).fetchall()
-    return {
-        (piid, pe): {
+    return _index_award_link_sources(rows)
+
+
+def _index_award_link_sources(rows) -> dict[tuple[str, str], dict]:
+    """(award_piid, pe_bli) → source dict, from award_link_sources rows in the
+    SELECT order _load_award_link_sources uses (award_piid, pe_bli, source_id,
+    source_url, archive_url, sha256, match_basis).
+
+    RAISES on a second announcement row for the same link (ROADMAP #87). The
+    table's primary key is (award_piid, pe_bli, source_kind, source_id), so
+    two ARTICLES for one link are two legal rows; the dict comprehension this
+    replaces kept whichever row Postgres returned last and the export cited
+    that article — a silent coin-flip between two pieces of evidence. A
+    published link cites exactly one article (the loader keeps one packet per
+    pair via prov.setdefault), so a duplicate means the table was written by
+    something other than that loader and must be fixed before export. The
+    consumer (_build_budget_to_awards_citation_rows) looks a link up by the
+    pair, which is why the key stays (award_piid, pe_bli) rather than growing
+    a source_id it could never supply.
+    """
+    out: dict[tuple[str, str], dict] = {}
+    for piid, pe, source_id, source_url, archive_url, sha256, match_basis in rows:
+        key = (piid, pe)
+        if key in out:
+            raise RuntimeError(
+                "award_link_sources holds more than one announcement row for"
+                f" link (award_piid={piid!r}, pe_bli={pe!r}): source_ids"
+                f" {out[key]['source_id']!r} and {source_id!r}. A published"
+                " link cites exactly one article; the exporter used to cite"
+                " whichever row Postgres returned last. Fix the table (or"
+                " scripts/load_announcement_links.py) before exporting"
+                " (ROADMAP #87)."
+            )
+        out[key] = {
             "source_id": source_id,
             "source_url": source_url,
             "archive_url": archive_url,
             "sha256": sha256,
             "match_basis": match_basis,
         }
-        for piid, pe, source_id, source_url, archive_url, sha256, match_basis
-        in rows
-    }
+    return out
 
 
 def _build_budget_to_awards_citation_rows(

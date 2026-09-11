@@ -38,6 +38,12 @@ the announcement did NOT name the program as written, and the card must say
 so instead of collapsing every basis into the strongest sentence.
 
 Usage: uv run python scripts/load_announcement_links.py <wave_result.json>... [--dry-run]
+
+Pass EVERY wave result file on EVERY run. This loader owns every
+'announcement+lexicon' and 'subaward+lexicon' row in budget_line_awards (and
+every 'announcement'/'subaward' row in award_link_sources): it deletes that
+whole partition and rebuilds it from the files on the command line, so a run
+given only wave 3 silently unpublishes waves 1 and 2 (ROADMAP #87).
 """
 import json
 import re
@@ -54,10 +60,17 @@ from govbudget.jbooks.collision_keys import (
     raise_on_contradictory_accounts,
 )
 from derive_ap_links import (
+    EVIDENCE_GRADED_METHODS,
     fed_accounts_from_codes,
     incoming_member_claims,
     stored_member_claims,
 )
+
+# The methods this loader OWNS — every row carrying one of them is deleted
+# and rewritten on each run. It is the same tuple derive_ap_links uses as its
+# upsert guard (the deriver refuses to touch exactly what this loader owns);
+# tests/test_derive_ap_links_run_order.py pins the two together (ROADMAP #87).
+OWNED_METHODS = EVIDENCE_GRADED_METHODS
 
 
 def money_color_ok(award_accounts: set[str], line_accounts: set[str]) -> bool:
@@ -404,7 +417,24 @@ def main() -> int:
         return 0
     with pg:
         cur = pg.cursor()
-        cur.execute("delete from budget_line_awards where method in ('announcement+lexicon','subaward+lexicon')")
+        # Scoped to the two methods this loader owns — and because this loader
+        # is the ONLY writer of those methods, the delete is effectively a
+        # truncate of that partition (ROADMAP #87): every stored announcement
+        # and subaward link goes, and only the links rebuilt from the wave
+        # files on THIS command line come back. A subset of the wave files
+        # therefore unpublishes the rest with every gate green — export_site's
+        # missing-source check catches an announcement link with no source
+        # row, not a link that simply vanished. The stored and incoming counts
+        # are printed side by side so an operator sees "replacing 821 with
+        # 300" before the transaction commits (--dry-run returns above).
+        n_stored = cur.execute(
+            "select count(*) from budget_line_awards where method = any(%s)",
+            (list(OWNED_METHODS),),
+        ).fetchone()[0]
+        print(f"replacing {n_stored} stored {'/'.join(OWNED_METHODS)} links"
+              f" with {len(rows)} rebuilt from {len(paths)} wave file(s)")
+        cur.execute("delete from budget_line_awards where method = any(%s)",
+                    (list(OWNED_METHODS),))
         # ROADMAP #70 fix round 1: same guard as derive_ap_links — a link the
         # FPDS route already attributed to one member of a shared code must
         # not be moved to the other by whichever loader runs last. The raise

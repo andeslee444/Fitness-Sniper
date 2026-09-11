@@ -184,3 +184,14 @@ def test_both_loaders_build_a_row_of_that_width():
     assert deriver_cols[2] == "fiscal_year"
     assert deriver_cols[4] == "award_piid"
     assert deriver_cols[12] == "account"
+
+
+def test_the_announcement_loader_owns_exactly_the_methods_the_deriver_refuses():
+    """ROADMAP #87: load_announcement_links.py deletes and rewrites every row
+    of the methods it owns on every run. Those methods must be exactly the
+    ones derive_ap_links' upsert guard refuses to touch — one constant, two
+    uses — or a future third evidence method could be owned by nobody."""
+    from load_announcement_links import OWNED_METHODS
+
+    assert tuple(OWNED_METHODS) == tuple(EVIDENCE_GRADED_METHODS) == (
+        "announcement+lexicon", "subaward+lexicon")

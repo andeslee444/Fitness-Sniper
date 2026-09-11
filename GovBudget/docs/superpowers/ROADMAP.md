@@ -563,11 +563,11 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   **Status:** CLOSED 2026-09-05 — the reproducible source was `any_value()` over an award's transactions (three consecutive identical read-only runs changed the picked description for ~6,000 of 13,216 `097-0400` awards and the sub-agency for ~380), not the title variants (3 of 22,527 per-organization keys, all org F, none DARPA); both fixed: `_load_lines` takes one canonical title per key (latest document, explicit ORDER BY in `CANONICAL_LINE_SQL`) and `_fetch_candidates`/`_grade` grade every award from all of its transactions in the window (any-transaction sub-agency — controller ruling, documented; union-of-descriptions tokens; latest-transaction recipient; exact-decimal obligation). Order-independence and two-run tests in tests/jbooks/test_crosswalk.py; upsert guard byte-identical; no prose edit owed (tier sentences re-read). Live re-run + md5 check (LAUNCH.md) is the controller's step.
 - **#86 Task-5 deferred minors:** `_ALIASES_CSV` via `config.ROOT`; upsert count
   overstates guarded skips; NULL `action_date` untested under an FY window;
-  f-string SQL for `fed_account`. **Status:** open (2026-09-04).
+  f-string SQL for `fed_account`. **Status:** CLOSED 2026-09-11 — seed path via `config.ROOT`; `crosswalk_org` returns `CrosswalkResult(written, skipped)` from the Postgres INSERT count and the CLI prints both; awards whose `action_date` is NULL or not a date are excluded under an FY window by `try_cast(… as date)` (`FED_FY_EXPR`, shared by the planner, 0 of 39.8M lake rows affected); `fed_account` and the FY bounds are DuckDB `?` parameters at both sites (`_candidate_where` returns `(sql, params)`).
 - **#87 Task-4 deferred minors:** gate docstring rule 5 vs code; gate accepts
   `archive_url` with null sha256; source map keyed (award_piid, pe_bli) collapses
   a second announcement row per pair; loader delete is effectively a truncate.
-  **Status:** open (2026-09-04).
+  **Status:** CLOSED 2026-09-11 — gate rule 5 checks `amount_text`/`amount_thousands`/`recorded_value`; `archive_url` without `sha256` fails (708/708 live rows carry both); `_index_award_link_sources` raises on a second announcement row per link (0 live duplicates); loader delete documented as a partition rewrite with a stored-vs-incoming count, `OWNED_METHODS` pinned to the deriver's guard, LAUNCH.md says pass every wave file.
 - **#88 /feed/ expand payload.** "Show all" downloads the whole 862 KB
   feed.json; a per-event-type sidecar would be a tenth of that.
   **Status:** open (2026-09-04).
