@@ -569,11 +569,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   and the entry first said they did (corrected 2026-09-11, Task 6c, before
   merge): several awards name a different DARPA effort outright, while at
   least SIX were refuted because the record names no work at all — pure
-  "IGF::OT::IGF DARPA RESEARCH PROJECT" boilerplate, which the rubric refutes
-  on silence rather than on contrary evidence (HR001116C0090/0603469E,
-  HR001116C0091/0603467E, HR001117C0002/0601117E, HR001117C0005/0603287E,
-  HR001118C0133/0602115E, HR001118C0134/0602715E; two more describe
-  agency-wide acquisition support rather than any PE's work). Where the
+  "DARPA RESEARCH PROJECT" boilerplate (four of the six carry the
+  "IGF::OT::IGF" prefix; HR001118C0133 and HR001118C0134 carry the bare
+  string), which the rubric refutes on silence rather than on contrary
+  evidence (HR001116C0090/0603469E, HR001116C0091/0603467E,
+  HR001117C0002/0601117E, HR001117C0005/0603287E, HR001118C0133/0602115E,
+  HR001118C0134/0602715E). At least FIVE more describe DARPA-wide
+  contracting-office or acquisition-support staffing rather than any PE's work
+  (HR001115F0001/0602026E, HR001115F0004/0603469E, HR001117F0009/0602115E,
+  HR001117F0036/0605502E, HR001119F0016/0602715E — re-counted 2026-09-11 over
+  the same detail file; this entry first said two). Where the
   reviewers found an overlap at all it was the appropriation account, the
   DARPA sub-agency and the HR0011 prefix — the rule restated. Published as
   measured (smaller true number); what the tier does next is an owner call
@@ -1011,8 +1016,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   confirmed none. Not all 60 failed the same way (corrected 2026-09-11, Task
   6c, before merge — the entry first stated a universal the verdicts do not
   support): several awards name a different DARPA effort outright, at least six
-  name no work at all (boilerplate, which the rubric refutes on silence) and two
-  describe agency-wide acquisition support; where a reviewer found any overlap
+  name no work at all (boilerplate, which the rubric refutes on silence) and at
+  least five describe DARPA-wide contracting-office or acquisition-support
+  staffing; where a reviewer found any overlap
   at all it was the appropriation account, the DARPA sub-agency and the HR0011
   prefix — the linking rule restated. The figure is
   published as measured (smaller true number, 2026-08-07); WHETHER THE TIER
