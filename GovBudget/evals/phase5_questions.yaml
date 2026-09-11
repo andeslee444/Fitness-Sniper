@@ -259,11 +259,12 @@
     negative high-confidence dollars and 7 rested on a single positive-dollar
     family — 0603882C, this question''s previous expected answer, was one of the
     seven). Nothing ties at 10,000 any more: the head of the ranking is 2307 at
-    9,926.75 over 2242 at 8,992.01, and the dollar and pe_bli tie-breakers plus
-    round(hhi_high, 6) stay because DuckDB sums the squared shares in parallel and a
-    future tie must not flip run to run. Expected computed read-only from the live
-    lake with the fixed mart SQL, stable across six runs (2026-09-11); refresh with
-    `evals refresh` after the rebuild if the lake moved.'
+    9,926.75 over ATA000 at 9,873.14 — a margin of 53.61 points, which is why the
+    dollar and pe_bli tie-breakers plus round(hhi_high, 6) stay: DuckDB sums the
+    squared shares in parallel and a future tie must not flip run to run. Expected
+    computed read-only from the live lake with the fixed mart SQL, stable across six
+    runs (2026-09-11); the runner-up and margin re-derived from the same lake in fix
+    round 2; refresh with `evals refresh` after the rebuild if the lake moved.'
 - id: q024
   question: Which federal agency has the highest estimated improper payment exposure
     in the warehouse (derived from program-level rates), and what is the approximate

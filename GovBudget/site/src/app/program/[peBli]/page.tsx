@@ -476,10 +476,19 @@ export default async function ProgramPage({
     pageFactIds.push(prime.fact_id);
   }
 
-  // Derived concentration figures (HHI + program dollars), both bases (#80)
+  // Derived concentration figures — the HIGH basis only (#80 fix round 2).
+  // The slice exists so a reader can open the citation behind a figure THIS
+  // page renders; since the card and the answer strip publish one basis, the
+  // two *_all fids were citation rows with nothing on the page to open them,
+  // embedded on ~443 pages. The rows themselves stay in citations.json (the
+  // exporter still emits both bases), which is what /methodology/ and the
+  // download read, and nothing in the site's citation integrity depends on a
+  // page carrying a fid it does not render: render-static leg A resolves
+  // rendered [data-fact-id]s against the whole citations.json, PrimarySources
+  // reads only jbook_pdf/workbook kinds, and these derived rows carry no
+  // inputs. Checked before removing — no gate requires them (fix round 2,
+  // finding 9).
   for (const fid of [
-    program.hhi?.hhi_all_fact_id,
-    program.hhi?.program_dollars_all_fact_id,
     program.hhi?.hhi_high_fact_id,
     program.hhi?.program_dollars_high_fact_id,
   ]) {
