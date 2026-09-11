@@ -232,14 +232,16 @@ published links is re-adjudicated by the same two-reviewer process, and
 typed by hand). Every published figure answers ONE question — the study's
 *rubric*, recorded on every verdict row (`link_precision_samples.rubric`,
 migration 015): **program attribution** — does this award execute this program
-element? — judged from the award's own description against the program's J-book
-narrative and project titles, not from whether the linking rule fired. The page
-names that question beside the figures, and gate 24 leg n fails a build whose
-figures carry any other rubric or whose paragraph omits it. Each sampled link is
-counted under the tier it publishes under TODAY, not the tier it carried when it
-was drawn — `fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and
-its links moved into the `fpds-ap` medium tier, so counting by the drawn method
-printed a figure for a tier no reader can meet. A sampled link the corpus no
+element? — judged from what the award records buying (its own description, its
+FPDS acquisition-program tag, the DoD announcement, or the subaward that names
+the work) against the work the program's own narrative and project titles own,
+not from whether the linking rule fired. The page names that question beside the
+figures, and gate 24 leg n fails a build whose figures carry any other rubric or
+whose paragraph omits it. Each sampled link is counted under the tier it
+publishes under TODAY, not the tier it carried when it was drawn —
+`fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and its links
+moved into the `fpds-ap` medium tier, so counting by the drawn method printed a
+figure for a tier no reader can meet. A sampled link the corpus no
 longer publishes counts in neither direction. A study run may re-judge one
 stratum only: each tier's figure comes from the latest run that judged that
 tier, a re-measurement replaces the number it corrects and never pools with it,

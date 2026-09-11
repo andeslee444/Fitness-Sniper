@@ -732,9 +732,9 @@ export default function MethodologyPage() {
                       <>
                         Every figure answers one question — program attribution:
                         does this award execute this program element? — judged
-                        from the award&apos;s own description against the
-                        program&apos;s J-book narrative and project titles, not
-                        from whether the linking rule fired.{" "}
+                        from what the award records buying against the work the
+                        program owns, not from whether the linking rule fired.
+                        {" "}
                       </>
                     ) : null}
                     Each sampled link is counted under the tier it publishes

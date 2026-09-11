@@ -78,9 +78,9 @@ const LIVE_META = {
  *  it as a phrase match, not this exact string. */
 const RUBRIC_SENTENCE =
   "Every figure answers one question — program attribution: does this award " +
-  "execute this program element? — judged from the award's own description " +
-  "against the program's J-book narrative and project titles, not from " +
-  "whether the linking rule fired. ";
+  "execute this program element? — judged from what the award records buying " +
+  "against the work the program owns, not from whether the linking rule " +
+  "fired. ";
 
 /** The paragraph /methodology/ renders for LIVE_META. */
 const LIVE_PARAGRAPH =
