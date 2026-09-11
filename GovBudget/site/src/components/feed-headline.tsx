@@ -63,6 +63,14 @@ import { hhiBand } from "@/lib/hhi-band.mjs";
  * through and finds the page calling the SAME program "Competitive," has no
  * way to tell that apart from the site contradicting itself.
  *
+ * AND THE DESTINATION MAY PUBLISH NOTHING (#80 fix round 2, 2026-09-11,
+ * finding 8). The note used to promise the pooled figure outright ("see the
+ * program page"), written when the card always found one there; 407 of 444
+ * program pages now publish no pooled index at all, so a reader following
+ * the instruction meets the withheld sentence instead. It says "or not be
+ * published" — and keeps the "pooled"/"differ" tokens scripts/gates/feed.mjs
+ * leg (l) matches on to accept a disclosed band divergence.
+ *
  * Returns null for non-hhi cards. Text and band both derive from the SAME
  * shared hhiBand() the destination page's own badge uses (hhi-band.mjs) —
  * see that file's doc-comment for why it is .mjs, not .ts. Consumed by both
@@ -80,7 +88,7 @@ export function hhiScopeNote(
     band: band.label,
     text:
       `${band.label} in ${yearText} — the program's pooled, all-years HHI ` +
-      `can differ; see the program page.`,
+      `can differ, or not be published; see the program page.`,
   };
 }
 

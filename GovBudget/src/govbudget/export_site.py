@@ -1221,12 +1221,20 @@ _DATASET_SCOPES: dict[str, str] = {
         " sibling, fct_district_programs, is not summable: an award matched"
         " to N program elements appears N times with the same dollars there."
     ),
+    # The floor clause states ALL THREE of the mart's clauses (#80 fix round
+    # 2, 2026-09-11): a downloader applying the old two-clause sentence
+    # concluded 57 rows publish an index, and 37 do — it got the wrong answer
+    # on the 20 rows withdrawn for holding no positive-dollar second family
+    # or no positive net dollars. Mirrors dbt/models/marts/schema.yml's
+    # fct_program_concentration description; /data/ renders it verbatim, so
+    # watch that page's weight-ledger row (build.mjs) when editing it.
     "fct_program_concentration": (
-        "One row per program element with enough matched award dollars to"
-        " compute an HHI market-concentration score, on TWO bases: the *_all"
-        " columns over every published crosswalk link (high and medium"
-        " confidence), the *_high columns over high-confidence links alone."
-        " hhi_high is NULL below 3 linked awards across 2 contractor families"
+        "One row per program element with enough matched award dollars for an"
+        " HHI market-concentration score, on TWO bases: *_all over every"
+        " published link (high and medium confidence), *_high over"
+        " high-confidence links alone. hhi_high and top_family_high are NULL"
+        " below the floor: 3 linked awards, 2 families holding positive"
+        " dollars (positive_family_count_high), positive program_dollars_high"
         " (ROADMAP #80)."
     ),
     "fct_state_per_capita": (

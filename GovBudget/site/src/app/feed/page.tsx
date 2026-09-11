@@ -44,7 +44,7 @@ const EVENT_META: Record<
   concentration_shift: {
     label: "Award Concentration Shifts",
     description:
-      "Programs whose Herfindahl-Hirschman Index (HHI) for a single fiscal year falls in the DOJ/FTC “moderately” or “highly concentrated” band (≥ $5M matched obligations). Each card is a one-year snapshot — it can land in a different band than the pooled, all-years HHI shown on the program's own page.",
+      "Programs whose Herfindahl-Hirschman Index (HHI) for a single fiscal year falls in the DOJ/FTC “moderately” or “highly concentrated” band (≥ $5M matched obligations). Each card is a one-year snapshot — it can land in a different band than the program's own pooled, all-years HHI, which that page publishes only where its high-confidence links clear the floor, and otherwise withholds.",
     anchorId: "feed-concentration_shift",
   },
   request_vs_actuals_gap: {

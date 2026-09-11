@@ -139,7 +139,7 @@ function hhiScopeNoteClient(
     band: band.label,
     text:
       `${band.label} in ${yearText} — the program's pooled, all-years HHI ` +
-      `can differ; see the program page.`,
+      `can differ, or not be published; see the program page.`,
   };
 }
 

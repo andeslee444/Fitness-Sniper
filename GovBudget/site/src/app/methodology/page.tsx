@@ -916,10 +916,12 @@ export default function MethodologyPage() {
                   published link — are computed from the same crosswalk and
                   both ship in the downloadable warehouse with their own
                   derived citations, but a program page publishes only the
-                  high-confidence-only figures and states the absence where
-                  they fall below the floor, rather than substituting the
-                  wider figure; the concentration_shift entry in section 6
-                  gives the floor and the reason.
+                  high-confidence-only figures, and only over at least three
+                  such awards across two or more contractor families holding
+                  positive obligations with positive net linked dollars;
+                  below that floor it states the absence rather than
+                  substituting the wider figure, and the concentration_shift
+                  entry under Anomaly Feed gives the reason.
                 </p>
               </div>
             </div>

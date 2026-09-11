@@ -458,14 +458,30 @@ export interface ProgramTrajectoryFactIds {
 }
 
 /**
- * Contractor-concentration block, TWO bases (ROADMAP #80, 2026-09-05).
+ * Contractor-concentration block, TWO bases (ROADMAP #80, 2026-09-05; floor
+ * restated fix round 2, 2026-09-11).
  * `*_all` — every published link (high+medium), the pre-#80 figures under
  * new names; their fact_ids are unchanged. `*_high` — high-confidence links
- * only; `hhi_high` is null below 3 linked awards across 2 families, and
- * `program_dollars_high`/`top_family_high` are null when the program has no
- * high link at all (`award_count_high === 0`). Which basis a page headlines
- * is decided ONCE, in lib/concentration-basis.ts, and mirrored by the
- * exporter's `_who_gets_it_fid`.
+ * only.
+ *
+ * `hhi_high` AND `top_family_high` are null TOGETHER below the mart's floor
+ * — 3 linked awards, 2 families holding positive dollars, and positive
+ * `program_dollars_high` (dbt/models/marts/fct_program_concentration.sql;
+ * the mart also publishes `positive_family_count_high` so the floor is
+ * auditable, though this block does not carry it). Not only when
+ * `award_count_high === 0`: 0603882C has 4 high awards and a null
+ * `top_family_high`, and across the 407 withheld rows there are 0 with a
+ * top family but no index. That pairing is what `concentrationHeadline()`
+ * tests and what the card's fixtures encode.
+ *
+ * `program_dollars_high` is null IFF `award_count_high === 0`; where it is
+ * non-null it is the true sum and may be <= 0 (356010: -$2,328,281), which
+ * is why it is one of the floor's clauses rather than something the card
+ * has to guard.
+ *
+ * Which basis a page headlines is decided ONCE, in
+ * lib/concentration-basis.ts, and mirrored by the exporter's
+ * `_who_gets_it_fid`.
  */
 export interface ProgramHHI {
   hhi_all: number;
