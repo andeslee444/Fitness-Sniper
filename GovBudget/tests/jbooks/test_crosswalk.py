@@ -745,3 +745,210 @@ def test_cli_lone_fy_bound_exits_2(monkeypatch, pg_dsn, tmp_path, capsys):
     assert e2.value.code == 2
     assert "--all-years cannot be combined with --fy-start/--fy-end" in capsys.readouterr().out
     assert _link_count(pg_dsn) == 0
+
+
+# --------------------------------------------------------------------------
+# #85: determinism — one canonical title per (pe_bli, exhibit, fiscal_year,
+# account) key; an award is graded from ALL of its transactions in the
+# window, never from whichever one any_value() happened to scan first.
+# --------------------------------------------------------------------------
+
+DARPA_KW = dict(organization="DARPA", treasury_agency="097")
+
+
+def seed_key_with_titles(pg_dsn, *, pe_bli, titles, fiscal_year=2024,
+                         account="0400", org="DARPA", detail_title=None):
+    """One jbook_documents row and one budget_lines row per (budget_activity,
+    title) in `titles`, all on the SAME (pe_bli, R-1, fiscal_year, account)
+    key. Distinct budget_activity keeps the budget_lines unique key happy and
+    is the shape of two of the three live multi-title keys (HCMC00 on 3010F:
+    BA 05 'HC/MC-130 Modifications' and BA 07 'HC/MC-130 Post Prod' in one
+    P-1 workbook). fiscal_year=2024 so the awards below (federal FY2024
+    action_dates) fall inside Task 5's default per-edition window.
+    detail_title, when given, adds one non-superseded budget_line_details row
+    whose project_title tokens join the line's title tokens."""
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values (%s,'rdte',%s,%s,%s)",
+            (org, fiscal_year, f"{pe_bli}_{fiscal_year}.pdf",
+             f"https://example.test/{org}/{pe_bli}_{fiscal_year}.pdf"),
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        for budget_activity, title in titles:
+            con.execute(
+                "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+                " budget_activity, pe_bli, title, amount_type, amount_thousands,"
+                " source_document_id)"
+                " values ('R-1',%s,%s,%s,%s,%s,%s,'fy_2024_actuals',1,%s)",
+                (fiscal_year, account, org, budget_activity, pe_bli, title, doc_id),
+            )
+        if detail_title is not None:
+            con.execute(
+                "insert into extraction_runs (document_id, tier, tool_versions, status)"
+                " values (%s,1,'{}','success')",
+                (doc_id,),
+            )
+            run_id = con.execute("select max(id) from extraction_runs").fetchone()[0]
+            con.execute(
+                "insert into budget_line_details"
+                " (pe_bli, project_number, project_title, scenario, amount_millions,"
+                "  xml_path, extraction_run_id, document_id, superseded)"
+                " values (%s,'P-01',%s,'PriorYear',1,'ProgramElement[0]',%s,%s,false)",
+                (pe_bli, detail_title, run_id, doc_id),
+            )
+
+
+# AWARD_COLS order: contract_transaction_unique_key, award_id_piid,
+# federal_action_obligation, federal_accounts_funding_this_award,
+# transaction_description, prime_award_base_transaction_description,
+# recipient_name, recipient_uei, awarding_sub_agency_name, action_date
+MULTI_TX_AWARDS = [
+    # HR001124C0777: three transactions in the window. Only the LAST one in
+    # file order carries the DARPA sub-agency, the only description that
+    # overlaps the line, and the novated recipient. any_value() on one small
+    # parquet returns the FIRST row scanned, so the pre-#85 code graded this
+    # award account/low with the stale recipient and a binary-float sum.
+    ("T1", "HR001124C0777", "0.10", "097-0400", "ADMINISTRATIVE MODIFICATION",
+     "BASE PERIOD OPTION EXERCISE", "ACME RESEARCH LLC", "UEIACME1",
+     "Defense Contract Management Agency", "2024-01-10"),
+    ("T2", "HR001124C0777", "0.20", "097-0400", "FUNDING ACTION",
+     "BASE PERIOD OPTION EXERCISE", "ACME RESEARCH LLC", "UEIACME1",
+     "Defense Contract Management Agency", "2024-02-10"),
+    ("T3", "HR001124C0777", "0.30", "097-0400", "MATHEMATICS SCIENCES ALGORITHMS",
+     "BASE PERIOD OPTION EXERCISE", "ACME RESEARCH LLC NOVATED", "UEIACME2",
+     "Defense Advanced Research Projects Agency", "2024-03-10"),
+    # HR001124C0778: no token overlap anywhere; the DARPA sub-agency is on the
+    # SECOND of two transactions only -> medium under the any-transaction
+    # rule, low under any_value()-picks-the-first.
+    ("S1", "HR001124C0778", "1", "097-0400", "UNRELATED WORK", "UNRELATED BASE",
+     "BETA LABS", "UEIBETA", "Department of the Navy", "2024-01-05"),
+    ("S2", "HR001124C0778", "1", "097-0400", "UNRELATED WORK", "UNRELATED BASE",
+     "BETA LABS", "UEIBETA", "Defense Advanced Research Projects Agency", "2024-04-05"),
+]
+
+
+def _mechanical_rows(pg_dsn) -> list[tuple]:
+    """Every column a reader or an auditor can see, in key order."""
+    with psycopg.connect(pg_dsn) as con:
+        return con.execute(
+            "select pe_bli, exhibit, fiscal_year, award_piid, method, confidence,"
+            " score, rationale, recipient_name, recipient_uei, matched_obligation"
+            " from budget_line_awards"
+            " order by pe_bli, exhibit, fiscal_year, award_piid"
+        ).fetchall()
+
+
+def _delete_links(pg_dsn) -> None:
+    # Plain delete mid-test: no table references budget_line_awards by foreign
+    # key (migrations 001-014 checked), and the autouse _clean_tables fixture
+    # owns TRUNCATE ... RESTART IDENTITY at teardown; here the rows just need
+    # to be gone before the second run.
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute("delete from budget_line_awards")
+
+
+def test_any_transaction_description_counts_for_token_overlap(pg_dsn, tmp_path):
+    """#85 rule: an award's tokens are the union over ALL of its transactions
+    in the window. HR001124C0777's only overlapping description
+    ('MATHEMATICS SCIENCES ALGORITHMS') is on its third transaction; line
+    tokens are {sciences} from the title plus {mathematics, computer,
+    sciences} from the detail title -> overlap 2 -> account+tokens/high.
+    Recipient is the LATEST transaction's; the obligation is an exact decimal
+    (0.10 + 0.20 + 0.30 = 0.60, not 0.6000000000000001)."""
+    seed_key_with_titles(pg_dsn, pe_bli="0601101E",
+                         titles=[(None, "DEFENSE RESEARCH SCIENCES")],
+                         detail_title="MATHEMATICS AND COMPUTER SCIENCES")
+    glob = make_award_parquet_with_dates(tmp_path, MULTI_TX_AWARDS)
+    n = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
+    assert n == 2   # one canonical line x two awards
+    r = {row[3]: row for row in _mechanical_rows(pg_dsn)}["HR001124C0777"]
+    assert (r[4], r[5], r[6]) == ("account+tokens", "high", 2)
+    assert ("token overlap 2 (mathematics, sciences) across 4 distinct"
+            " description(s)") in r[7]
+    assert (r[8], r[9]) == ("ACME RESEARCH LLC NOVATED", "UEIACME2")
+    assert r[10] == Decimal("0.60")
+
+
+def test_any_transaction_sub_agency_counts_for_medium(pg_dsn, tmp_path):
+    """#85 rule (controller ruling): an award carries a sub-agency if ANY of
+    its transactions in the window was awarded under it — the pre-existing
+    semantics made explicit and order-independent. HR001124C0778 is DARPA on
+    1 of 2 transactions and overlaps nothing -> account+subagency/medium,
+    and the rationale says which name matched and how often."""
+    seed_key_with_titles(pg_dsn, pe_bli="0601101E",
+                         titles=[(None, "DEFENSE RESEARCH SCIENCES")])
+    glob = make_award_parquet_with_dates(tmp_path, MULTI_TX_AWARDS)
+    crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
+    r = {row[3]: row for row in _mechanical_rows(pg_dsn)}["HR001124C0778"]
+    assert (r[4], r[5], r[6]) == ("account+subagency", "medium", 0)
+    assert ("sub-agency Defense Advanced Research Projects Agency on 1 of 2"
+            " transaction(s)") in r[7]
+
+
+def test_one_canonical_title_per_key(pg_dsn, tmp_path):
+    """#85: a key with two title variants (two budget activities in one
+    workbook — the shape of HCMC00 and JSE000 live) is planned and graded
+    ONCE, from the canonical row (lowest budget_activity, then title), not
+    once per variant with the last writer winning. The award overlaps only
+    the non-canonical 'ZULU POST PRODUCTION SUPPORT' title (post,
+    production; 'support' is a stopword), so the canonical grade is the
+    sub-agency medium and exactly one upsert is issued for the pair."""
+    seed_key_with_titles(pg_dsn, pe_bli="0601999E", titles=[
+        ("05", "ALPHA AIRFRAME MODIFICATIONS"),
+        ("07", "ZULU POST PRODUCTION SUPPORT"),
+    ])
+    glob = make_award_parquet_with_dates(tmp_path, [
+        ("Z1", "HR001124C0999", "1", "097-0400", "POST PRODUCTION SPARES",
+         "POST PRODUCTION SPARES", "ZULU CO", "UEIZULU",
+         "Defense Advanced Research Projects Agency", "2024-06-01"),
+    ])
+    assert len(plan_crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)) == 1
+    n = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
+    assert n == 1
+    rows = _mechanical_rows(pg_dsn)
+    assert len(rows) == 1
+    assert (rows[0][4], rows[0][5], rows[0][6]) == ("account+subagency", "medium", 0)
+
+
+def test_tags_independent_of_transaction_order_in_lake(pg_dsn, tmp_path):
+    """#85 proof-it-can-fail for the any_value() root cause: the same
+    transactions written to the lake in reverse order must produce identical
+    rows. any_value() returns the first value scanned, so the pre-#85 code
+    graded HR001124C0777 low from the forward file and high from the reversed
+    one (and HR001124C0778 low vs medium)."""
+    seed_key_with_titles(pg_dsn, pe_bli="0601101E",
+                         titles=[(None, "DEFENSE RESEARCH SCIENCES")],
+                         detail_title="MATHEMATICS AND COMPUTER SCIENCES")
+    fwd = make_award_parquet_with_dates(tmp_path / "fwd", MULTI_TX_AWARDS)
+    rev = make_award_parquet_with_dates(tmp_path / "rev", list(reversed(MULTI_TX_AWARDS)))
+    crosswalk_org(pg_dsn, **DARPA_KW, award_glob=fwd)
+    from_fwd = _mechanical_rows(pg_dsn)
+    _delete_links(pg_dsn)
+    crosswalk_org(pg_dsn, **DARPA_KW, award_glob=rev)
+    from_rev = _mechanical_rows(pg_dsn)
+    assert from_fwd == from_rev
+    assert {r[3]: (r[4], r[5]) for r in from_fwd} == {
+        "HR001124C0777": ("account+tokens", "high"),
+        "HR001124C0778": ("account+subagency", "medium"),
+    }
+
+
+def test_two_runs_over_same_fixtures_produce_identical_rows(pg_dsn, tmp_path):
+    """Controller-required regression guard: a second run over the same
+    fixtures (the upsert path) leaves every mechanical row identical —
+    method, confidence, score, rationale, recipient, obligation — and adds
+    none. On a one-file fixture this passes before the fix too (DuckDB scans
+    a single row group in one order); the order-independence test above is
+    the one that proves the root cause. The live proof is the md5 check in
+    docs/superpowers/LAUNCH.md."""
+    seed_key_with_titles(pg_dsn, pe_bli="0601101E",
+                         titles=[(None, "DEFENSE RESEARCH SCIENCES")],
+                         detail_title="MATHEMATICS AND COMPUTER SCIENCES")
+    glob = make_award_parquet_with_dates(tmp_path, MULTI_TX_AWARDS)
+    n1 = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
+    first = _mechanical_rows(pg_dsn)
+    n2 = crosswalk_org(pg_dsn, **DARPA_KW, award_glob=glob)
+    second = _mechanical_rows(pg_dsn)
+    assert n1 == n2 == 2
+    assert first == second

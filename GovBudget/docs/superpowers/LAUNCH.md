@@ -30,7 +30,7 @@ carrying. **The canonical order is:**
 
 ```
 govbudget jbooks crosswalk --org DARPA --dry-run   # plan first: pairs per edition FY, nothing written
-govbudget jbooks crosswalk --org DARPA             # mechanical account* rows; window = each line's own edition FY
+govbudget jbooks crosswalk --org DARPA             # mechanical account* rows; window = each line's own edition FY. Add --yes once the plan is read — DARPA projects 761,029 pairs, above the 500,000 abort threshold
 uv run python scripts/derive_ap_links.py        # FPDS acquisition-program tags
 uv run python scripts/load_announcement_links.py  # defense.gov + FSRS subawards
 govbudget jbooks export-facts        # Postgres -> parquet
@@ -55,6 +55,42 @@ lines each match that FY's whole 097-0400 population — the account method's ow
 shape, #85's question, not the window's). Run `--dry-run` before any write; it
 plans under whichever window you gave, prints the pairs per organization and
 edition FY, and writes nothing.
+
+**Determinism (#85, 2026-09-05).** Two `jbooks crosswalk` runs over the same
+lake and the same `budget_lines` write byte-identical mechanical rows. The
+run reads ONE canonical title per (pe_bli, exhibit, fiscal_year, account)
+key within the organization — the latest document's row, then the lowest
+budget activity, then the first title (`CANONICAL_LINE_SQL`; three live keys
+carry two titles: HCMC00 and JSE000 on 3010F, SFV000 on 3022F, all org F) —
+and grades each award from ALL of its transactions in the window, never from
+whichever one was scanned first: an award carries a sub-agency if ANY of its
+transactions was awarded under it (the rationale says "on k of n
+transaction(s)"), token overlap is taken over the union of its distinct
+transaction and base descriptions, the recipient is the latest transaction's,
+and the account obligation is an exact decimal sum. Before this,
+`any_value()` picked a different transaction on consecutive identical runs
+for about 6,000 of the 13,216 `097-0400` awards (three read-only runs,
+2026-09-10) — the ±346 medium / +119 high flip #85 recorded. After ANY
+re-run, prove it on the real table: run the crosswalk twice and both of these
+must print the same thing each time —
+
+    select method, confidence, count(*) from budget_line_awards
+     where method in ('account','account+subagency','account+tokens')
+     group by 1,2 order by 1,2;
+    select count(*), md5(string_agg(
+             pe_bli||'|'||exhibit||'|'||fiscal_year||'|'||award_piid||'|'||method
+             ||'|'||confidence||'|'||coalesce(score::text,'~')||'|'||coalesce(rationale,'~')
+             ||'|'||coalesce(recipient_name,'~')||'|'||coalesce(recipient_uei,'~')
+             ||'|'||coalesce(matched_obligation::text,'~'),
+             E'\n' order by pe_bli, exhibit, fiscal_year, award_piid))
+      from budget_line_awards
+     where method in ('account','account+subagency','account+tokens');
+
+Baseline before any re-run (2026-09-10): 124,502 rows, md5
+`3e8f7459808e9b4d9bb906096abaa79a` (account/low 114,638 ·
+account+subagency/medium 9,337 · account+tokens/high 527). A changed md5
+between two consecutive runs with no lake or `budget_lines` change is a bug,
+not drift.
 
 Weakest evidence first, strongest last: each stage may upgrade the key, none
 may demote it. Two guards make that true regardless of who actually ran last,

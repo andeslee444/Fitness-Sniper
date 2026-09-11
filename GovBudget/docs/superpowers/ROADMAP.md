@@ -560,7 +560,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#85 Mechanical crosswalk nondeterminism.** `crosswalk_org` selects several
   title variants per (pe_bli, exhibit, FY, account) key and the last iteration's
   token overlap wins the tag (±346 medium / +119 high on an identical re-run).
-  **Status:** open (2026-09-04).
+  **Status:** CLOSED 2026-09-05 — the reproducible source was `any_value()` over an award's transactions (three consecutive identical read-only runs changed the picked description for ~6,000 of 13,216 `097-0400` awards and the sub-agency for ~380), not the title variants (3 of 22,527 per-organization keys, all org F, none DARPA); both fixed: `_load_lines` takes one canonical title per key (latest document, explicit ORDER BY in `CANONICAL_LINE_SQL`) and `_fetch_candidates`/`_grade` grade every award from all of its transactions in the window (any-transaction sub-agency — controller ruling, documented; union-of-descriptions tokens; latest-transaction recipient; exact-decimal obligation). Order-independence and two-run tests in tests/jbooks/test_crosswalk.py; upsert guard byte-identical; no prose edit owed (tier sentences re-read). Live re-run + md5 check (LAUNCH.md) is the controller's step.
 - **#86 Task-5 deferred minors:** `_ALIASES_CSV` via `config.ROOT`; upsert count
   overstates guarded skips; NULL `action_date` untested under an FY window;
   f-string SQL for `fed_account`. **Status:** open (2026-09-04).
