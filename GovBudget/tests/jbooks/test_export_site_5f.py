@@ -399,12 +399,15 @@ def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
     if qualifies:
         blk = full["fy2026_absent"]
         assert blk["last_fy"] == max(funded & {2024, 2025})
-        # Both disclosure flags must agree with what this page actually
-        # carries — the note's two conditional clauses render off them.
+        # All three disclosure flags must agree with what this page actually
+        # carries — the note's conditional clauses render off them, and the
+        # narrative pointer is the #32(b) residue fix: it may only send a
+        # reader to prose this same sidecar publishes.
         assert blk["jbook_fy2026_zero"] is bool(fy26_details)
         assert blk["has_successor"] is bool(
             ((full.get("lineage") or {}).get("rail") or {}).get("successors")
         )
+        assert blk["has_narrative"] is bool(full.get("narratives"))
 
 
 # ---------------------------------------------------------------------------

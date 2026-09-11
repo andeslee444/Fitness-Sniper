@@ -1640,10 +1640,14 @@ docs/superpowers/ROADMAP.md`.
     2026 → LI 2981; six Air Force lines C01200/C02500/C03200/C03700/C04000/
     CFIN00 → BLI OSAEA0; FET000 → PE 0303131F; 0128B63000 → PE 0608041A
     (partial); and eight DARPA PEs whose own PB2026 narratives say, verbatim,
-    "Beginning in FY 2026, efforts in this PE will be funded in PE …" (the
-    mission narrative on 0601101E, 0602303E, 0602715E and 0603760E) or
+    "Beginning in FY 2026, efforts in this PE will be funded in PE …" (a
+    `mission` narrative — on ALL EIGHT: 0601101E, 0601117E, 0602115E,
+    0602303E, 0602715E, 0603286E, 0603287E, 0603760E; re-measured
+    2026-09-11 over the shipped sidecars' narrative bodies, correcting this
+    block's first count of four, which came from a scanner that deduped per
+    code and reported only its first match) and
     "Beginning in FY 2026, this program will be funded in PE …" (an
-    accomplishment/planned-program narrative, on all eight) —
+    accomplishment/planned-program narrative, also on all eight) —
     **including 0601101E Defense Research Sciences → 0601122E Emerging
     Opportunities, the case (b) below calls unprovable.** It is stated; the
     extractor does not key it: `lineage/extract.py` `_RULES` has no "will be
