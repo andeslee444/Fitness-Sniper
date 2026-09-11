@@ -173,6 +173,11 @@ export function getCoverageMap(): CoverageMapRow[] {
       href: "/programs/",
       numerator: detailGrade,
       denominator: pages,
+      // #106: gate 14 leg cm parses this sentence back (coverage.mjs
+      // PROGRAM_PAGES_SPLIT_RE: "A of B program pages carry detail-grade …;
+      // C carry cited FYxxxx R-1/P-1 workbook figures only, and D are
+      // history pages") and asserts A + C + D = B as rendered. Reword the
+      // two together.
       covered:
         `${formatCount(detailGrade)} of ${formatCount(pages)} program pages carry ` +
         `detail-grade J-book justification; ${formatCount(rollups)} carry cited ` +

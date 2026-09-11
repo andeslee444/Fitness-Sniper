@@ -465,6 +465,87 @@ function countRssFeeds(dir) {
  * prose is authored on purpose, and duplicating it here would pin the wording
  * instead of the truth.
  */
+/**
+ * Partition the program sidecars by their OWN content — the three predicates
+ * lib/data.ts getPagesWithoutDetail applies, re-implemented so the gate
+ * recomputes rather than imports (#106):
+ *   detail       — at least one R-2/P-40 detail row
+ *   workbookOnly — no detail, but FY2026 R-1/P-1 workbook rows (rollup tier,
+ *                  plus the tierless lines that carry rows and no detail)
+ *   decadeOnly   — no detail, no FY2026 rows, tier:'decade'
+ *   unclassified — none of the above, or unparsable: no sentence on
+ *                  /coverage/ describes it. (getPagesWithoutDetail skips a
+ *                  malformed sidecar; a gate says so instead.)
+ * Exported for scripts/gates/__tests__/coverage-split.test.mjs.
+ */
+export function classifyProgramSidecars(dir, files) {
+  let detail = 0;
+  let workbookOnly = 0;
+  let decadeOnly = 0;
+  const unclassified = [];
+  for (const f of files) {
+    let d;
+    try {
+      d = readJson(path.join(dir, f));
+    } catch {
+      unclassified.push(f);
+      continue;
+    }
+    if (Array.isArray(d.details) && d.details.length > 0) detail += 1;
+    else if (Array.isArray(d.budget_lines) && d.budget_lines.length > 0) workbookOnly += 1;
+    else if (d.tier === "decade") decadeOnly += 1;
+    else unclassified.push(f);
+  }
+  return { detail, workbookOnly, decadeOnly, unclassified };
+}
+
+/**
+ * The program-pages coverage sentence as src/lib/coverage-map.ts composes it:
+ *   "A of B program pages carry detail-grade …; C carry cited FYxxxx R-1/P-1
+ *    workbook figures only, and D are history pages …"
+ * Loose in the prose ([^;]*), exact on the four numbers and their clauses.
+ * Reword the sentence there and this shape here together.
+ */
+export const PROGRAM_PAGES_SPLIT_RE =
+  /(\d[\d,]*) of (\d[\d,]*) program pages carry detail-grade[^;]*; (\d[\d,]*) carry cited FY\d{4} R-1\/P-1 workbook figures only, and (\d[\d,]*) are history pages/;
+
+/**
+ * Re-add the RENDERED sentence (#106): A + C + D must equal B, read from the
+ * text a reader sees — not from the recomputation, which is compared
+ * separately. A glued number ("553are history") is unreadable to this shape
+ * and fails as such. Returns { ok, why, parts }.
+ */
+export function checkProgramPagesSplit(text) {
+  const t = String(text ?? "").replace(/\s+/g, " ");
+  const m = PROGRAM_PAGES_SPLIT_RE.exec(t);
+  if (!m) {
+    return {
+      ok: false,
+      why:
+        'the program-pages sentence does not read "A of B program pages carry ' +
+        "detail-grade …; C carry cited FYxxxx R-1/P-1 workbook figures only, and " +
+        'D are history pages" — a glued or reworded number is unreadable here',
+      parts: null,
+    };
+  }
+  const [detail, total, rollup, decade] = m
+    .slice(1, 5)
+    .map((s) => Number(s.replace(/,/g, "")));
+  const parts = { detail, total, rollup, decade };
+  const sum = detail + rollup + decade;
+  if (sum !== total) {
+    return {
+      ok: false,
+      why:
+        `the split does not add up as rendered: ${detail} detail-grade + ` +
+        `${rollup} workbook-only + ${decade} history = ${sum}, but the sentence ` +
+        `says ${total} program pages`,
+      parts,
+    };
+  }
+  return { ok: true, why: null, parts };
+}
+
 function recomputeCoverageMap() {
   const programs = readJson(path.join(jsonDir, "programs.json")).length;
 
@@ -477,24 +558,32 @@ function recomputeCoverageMap() {
   // ROADMAP #28 split the non-detail remainder into two DIFFERENT things:
   // rollup-tier pages (a current FY2026 workbook line, no R-2/P-40 detail)
   // and decade-only history pages (no FY2026 line at all). The page says so
-  // rather than lumping them, so the check follows — but the two parts must
-  // still account for the whole remainder, which is the property that
-  // actually matters and the one a lump total was standing in for.
-  const decadeOnly = detailFiles.filter((f) => {
-    try {
-      return readJson(path.join(detailsDir, f)).tier === "decade";
-    } catch {
-      return false;
-    }
-  }).length;
-  const rollupOnly = pages - detailGrade - decadeOnly;
-  if (detailGrade + rollupOnly + decadeOnly !== pages) {
+  // rather than lumping them, so the check follows.
+  //
+  // #106 (2026-09-05): the first version derived rollupOnly as
+  // `pages − detailGrade − decadeOnly` and then asserted the three summed to
+  // `pages` — true by construction, a check of nothing. Each bucket is now
+  // read off the sidecar's OWN content; a sidecar that fits no bucket fails
+  // loudly; the detail bucket must agree with detailGradeCount(); and the
+  // sentence the reader sees is re-added in leg cm — its four numbers, as
+  // rendered, must sum. Those are the assertions the tautology stood in for.
+  const split = classifyProgramSidecars(detailsDir, detailFiles);
+  if (split.unclassified.length > 0) {
     throw new Error(
-      `coverage: the three page tiers do not partition the corpus — ` +
-        `${detailGrade} detail + ${rollupOnly} rollup + ${decadeOnly} decade ` +
-        `!== ${pages} pages`
+      `coverage: ${split.unclassified.length} program sidecar(s) carry neither ` +
+        `R-2/P-40 detail, nor FY2026 workbook rows, nor the decade tier: ` +
+        `${split.unclassified.slice(0, 5).join(", ")} — no sentence on ` +
+        `/coverage/ describes them`
     );
   }
+  if (split.detail !== detailGrade) {
+    throw new Error(
+      `coverage: detail-grade recount disagrees — detailGradeCount() says ` +
+        `${detailGrade}, the sidecar partition says ${split.detail}`
+    );
+  }
+  const decadeOnly = split.decadeOnly;
+  const rollupOnly = split.workbookOnly;
 
   // Programs carrying a non-empty lineage rail — parsed, not grepped.
   let lineage = 0;
@@ -580,12 +669,13 @@ function recomputeCoverageMap() {
       d: pages,
       must: [
         `${fmtCount(detailGrade)} of ${fmtCount(pages)}`,
-        // Both parts of the split, and the arithmetic is asserted below —
-        // a page could otherwise print two plausible numbers that do not
-        // add up to the remainder they claim to divide.
-        fmtCount(rollupOnly),
-        fmtCount(decadeOnly),
+        // Both parts of the split, ANCHORED to their clause — a bare "73"
+        // matched inside any other number on the row (#106). The arithmetic
+        // of the rendered sentence is re-added in leg cm.
+        `${fmtCount(rollupOnly)} carry cited`,
+        `${fmtCount(decadeOnly)} are history pages`,
       ],
+      split: { rollup: rollupOnly, decade: decadeOnly },
     },
     editions: {
       n: editions.length,
@@ -717,6 +807,31 @@ function runCoverageMapLeg(errors, notes) {
             `leg cm[${id}]: coverage cell does not contain "${want}" (rendered: "${text.slice(0, 160)}")`,
           );
         } else {
+          checkedFigures++;
+        }
+      }
+      // (2b) the split sentence's OWN arithmetic (#106): the four numbers a
+      //      reader sees must sum, and each must be its recomputed bucket.
+      if (exp.split) {
+        const check = checkProgramPagesSplit(text);
+        if (!check.ok) {
+          errors.push(
+            `leg cm[${id}]: ${check.why} (rendered: "${text.slice(0, 200)}")`,
+          );
+        } else {
+          const want = {
+            detail: exp.n,
+            total: exp.d,
+            rollup: exp.split.rollup,
+            decade: exp.split.decade,
+          };
+          for (const k of Object.keys(want)) {
+            if (check.parts[k] !== want[k]) {
+              errors.push(
+                `leg cm[${id}]: the sentence says ${k} = ${check.parts[k]}, recomputed ${want[k]}`,
+              );
+            }
+          }
           checkedFigures++;
         }
       }
