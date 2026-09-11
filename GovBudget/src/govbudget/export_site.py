@@ -49,6 +49,7 @@ from govbudget.lineage.model import DISPLAY_NARRATIVE_FY
 # never turn one into a page — see decade_only_page_pes below).
 # (jbooks.era_keys imports nothing from this module — no cycle.)
 from govbudget.jbooks.era_keys import is_era_procurement_key
+from govbudget.jbooks.collision_keys import SplitAxis, require_resolved
 
 
 # ---------------------------------------------------------------------------
@@ -246,7 +247,7 @@ def _build_account_slug_map(account_titles) -> dict[str, str]:
 
 class _ProgramIdentity:
     """The account/organization-aware program-page identity map (Task E3;
-    widened ROADMAP #45).
+    widened ROADMAP #45; classification unified under ROADMAP #83).
 
     Built once per export from dim_programs (every (pe_bli, account, org,
     title, account_title, has_detail) row). `has_detail` is exhibit_family
@@ -259,18 +260,21 @@ class _ProgramIdentity:
     data. All ten shared keys now carry real detail on both sides.)
 
     split_pe_blis: pe_bli values with >1 dim_programs row — exactly the keys
-    that need a composite slug and a disambiguation stub. Two independent
-    shapes share this one set (verified mutually exclusive — no pe_bli
-    collides on both dimensions in the shipped PB2026 warehouse): 10 keys
+    that need a composite slug and a disambiguation stub. WHICH axis tells a
+    key's members apart is not decided here: govbudget.jbooks.collision_keys
+    .classify_shared_keys is the one rule, shared with both link loaders
+    (ROADMAP #83), and on the shipped PB2026 warehouse it yields 10 keys
     split by ACCOUNT (Sprint E, ROADMAP #67 — same organization, different
     appropriation account; Sprint E measured 8, and '3302'/'4217' joined them
     when the last Navy procurement books were parsed) and 3 keys split by
     ORGANIZATION (ROADMAP #45 — same account, different organization: '20'
-    DCSA/DTRA, '30' OSD/DTRA/DMACT, '500' DLA/DHRA).
-    `slug()`/`has_own_detail()` dispatch on
-    whichever dimension actually differs among a pe_bli's own rows, so a
-    future key colliding on BOTH would still resolve (both codes threaded
-    into the slug) rather than silently collapsing.
+    DCSA/DTRA, '30' OSD/DTRA/DMACT, '500' DLA/DHRA). `slug()`,
+    `split_key()` and `has_own_detail()` all dispatch on that one axis. A
+    key whose accounts are pairwise distinct resolves on ACCOUNT even when
+    its organizations differ too — the slug is `{pe_bli}-{ACCOUNT_CODE}`,
+    exactly the address the link loaders publish against; a key NEITHER
+    axis resolves raises UnresolvedSharedKeyError at construction, so the
+    export stops instead of filing two programs under one identity.
     """
 
     def __init__(self, rows: list[tuple[str, str, str, str, bool]]):
@@ -281,7 +285,15 @@ class _ProgramIdentity:
                 (account, account_title, organization, has_detail)
             )
         self._by_pe = by_pe
-        self.split_pe_blis = {pe for pe, accts in by_pe.items() if len(accts) > 1}
+        # ROADMAP #83: the ONE classification rule, shared with both link
+        # loaders. Refuses (loudly) a shared key no single axis resolves.
+        self._axis: dict[str, SplitAxis] = require_resolved(
+            [(pe_bli, account, organization)
+             for pe_bli, account, _title, organization, _hd in rows],
+            caller="_ProgramIdentity",
+        )
+        # every pe_bli with >1 row, by construction of classify_shared_keys
+        self.split_pe_blis = set(self._axis)
         all_titles = {
             account_title
             for accts in by_pe.values()
@@ -309,23 +321,24 @@ class _ProgramIdentity:
     def is_split(self, pe_bli: str) -> bool:
         return pe_bli in self.split_pe_blis
 
+    def axis(self, pe_bli: str) -> SplitAxis | None:
+        """The resolving axis of a split key, None for an ordinary pe_bli.
+        Never UNRESOLVED — construction refused those."""
+        return self._axis.get(pe_bli)
+
     def is_account_split(self, pe_bli: str) -> bool:
-        """True iff this is a split key whose rows differ by ACCOUNT (the 10
-        Sprint E, ROADMAP #67 keys). False for organization-split keys and
-        non-split pe_blis. Callers that key a lookup by (pe_bli, account)
-        use this to decide whether `account` is the real discriminator for
-        THIS pe_bli — see is_org_split for its mirror."""
-        if pe_bli not in self.split_pe_blis:
-            return False
-        rows = self._by_pe.get(pe_bli, [])
-        return len({a for a, _t, _o, _hd in rows}) > 1
+        """True iff collision_keys classifies this key on the ACCOUNT axis
+        (the 10 Sprint E, ROADMAP #67 keys today). False for organization-
+        split keys and non-split pe_blis. Callers that key a lookup by
+        (pe_bli, account) use this to decide whether `account` is the real
+        discriminator for THIS pe_bli — see is_org_split for its mirror."""
+        return self._axis.get(pe_bli) is SplitAxis.ACCOUNT
 
     def is_org_split(self, pe_bli: str) -> bool:
-        """True iff this is a split key whose rows differ by ORGANIZATION
-        only (the 3 ROADMAP #45 keys: '20', '30', '500'). Mutually exclusive
-        with is_account_split — verified no pe_bli collides on both
-        dimensions in the shipped PB2026 warehouse."""
-        return pe_bli in self.split_pe_blis and not self.is_account_split(pe_bli)
+        """True iff collision_keys classifies this key on the ORGANIZATION
+        axis (the 3 ROADMAP #45 keys today: '20', '30', '500'). Mutually
+        exclusive with is_account_split by construction — one axis per key."""
+        return self._axis.get(pe_bli) is SplitAxis.ORGANIZATION
 
     def split_key(
         self, pe_bli: str, account: str | None, organization: str | None = None,
@@ -336,9 +349,9 @@ class _ProgramIdentity:
 
         Non-split pe_blis always collapse to (pe_bli, None, None) — the
         pre-E3 key, byte-for-byte. A split pe_bli's key carries a real value
-        on whichever axis actually distinguishes its rows (account for the
-        10 Sprint E account keys, organization for the 3 ROADMAP #45 keys) and None
-        on the other — this is the SAME dispatch `slug()`/`has_own_detail()`
+        on the ONE axis collision_keys resolved it on (account for the
+        10 Sprint E account keys, organization for the 3 ROADMAP #45 keys) and
+        None on the other — this is the SAME dispatch `slug()`/`has_own_detail()`
         use, factored out because several callers (summary-block indexes,
         years_matrix indexes, decade-grain lookups) independently needed
         the identical "which axis, and normalize the other to None" logic
@@ -348,9 +361,10 @@ class _ProgramIdentity:
         (fct_budget_trajectory always populates it) would silently collapse
         onto one dict entry unless organization is threaded through too.
         """
-        if pe_bli not in self.split_pe_blis:
+        axis = self._axis.get(pe_bli)
+        if axis is None:
             return (pe_bli, None, None)
-        if self.is_account_split(pe_bli):
+        if axis is SplitAxis.ACCOUNT:
             return (pe_bli, account, None)
         return (pe_bli, None, organization)
 
@@ -362,49 +376,33 @@ class _ProgramIdentity:
         organization: str | None = None,
     ) -> str:
         """The page slug for (pe_bli, account, organization). Identity when
-        not a split key. For a split key, dispatches on whichever dimension
-        actually differs among this pe_bli's own dim_programs rows:
-        "{pe_bli}-{ACCOUNT_CODE}" when account varies (the 10 Sprint E
-        keys), "{pe_bli}-{ORGANIZATION}" when only organization does (the 3
-        ROADMAP #45 keys — organization values are already short, unique
-        workbook codes like 'DCSA'/'DTRA', so no derivation is needed the
-        way a human-language account_title requires one). A pe_bli
-        colliding on BOTH (none exist today — verified) gets both codes
-        threaded in, "{pe_bli}-{ACCOUNT_CODE}-{ORGANIZATION}", so it still
-        resolves instead of silently colliding; a split key where NEITHER
-        dimension actually differs among its own rows is a data integrity
-        bug and raises rather than guessing.
+        not a split key. For a split key, dispatches on the ONE axis
+        collision_keys resolved it on: "{pe_bli}-{ACCOUNT_CODE}" for an
+        ACCOUNT key (the 10 Sprint E keys — the code is derived from the
+        account title, see _account_slug), "{pe_bli}-{ORGANIZATION}" for an
+        ORGANIZATION key (the 3 ROADMAP #45 keys — organization values are
+        already short, unique workbook codes like 'DCSA'/'DTRA', so no
+        derivation is needed). The value the axis needs must be supplied, or
+        this raises rather than guess.
         """
-        if pe_bli not in self.split_pe_blis:
+        axis = self._axis.get(pe_bli)
+        if axis is None:
             return pe_bli
-        rows = self._by_pe.get(pe_bli, [])
-        distinct_accounts = {a for a, _t, _o, _hd in rows}
-        distinct_orgs = {o for _a, _t, o, _hd in rows}
-        parts: list[str] = []
-        if len(distinct_accounts) > 1:
+        if axis is SplitAxis.ACCOUNT:
             if account_title is None:
                 raise ValueError(
                     f"_ProgramIdentity.slug: {pe_bli!r} is an account-split"
                     " key but no account_title was supplied — cannot derive"
                     " a composite slug"
                 )
-            parts.append(self._slug_by_title[account_title])
-        if len(distinct_orgs) > 1:
-            if organization is None:
-                raise ValueError(
-                    f"_ProgramIdentity.slug: {pe_bli!r} is an organization-"
-                    "split key but no organization was supplied — cannot"
-                    " derive a composite slug"
-                )
-            parts.append(organization)
-        if not parts:
+            return f"{pe_bli}-{self._slug_by_title[account_title]}"
+        if organization is None:
             raise ValueError(
-                f"_ProgramIdentity.slug: {pe_bli!r} is a split key but"
-                " neither account nor organization actually differs among"
-                " its own dim_programs rows — cannot derive a disambiguating"
-                " slug"
+                f"_ProgramIdentity.slug: {pe_bli!r} is an organization-"
+                "split key but no organization was supplied — cannot"
+                " derive a composite slug"
             )
-        return f"{pe_bli}-{'-'.join(parts)}"
+        return f"{pe_bli}-{organization}"
 
     def has_own_detail(
         self, pe_bli: str, account: str | None, organization: str | None = None,
@@ -412,23 +410,19 @@ class _ProgramIdentity:
         """True iff THIS (pe_bli, account, organization) owns J-book detail
         rows of its own. Non-split pe_blis always own whatever is under
         their bare key (unchanged pre-E3 behavior). Split keys resolve PER
-        ROW on whichever axis distinguishes them — dim_programs.has_detail
-        (exhibit_family is not null) is now per-account as well as
-        per-organization, because dim_programs splits the detail source by
-        account (Wave 5). A collision side with no detail of its own still
-        answers False and still renders as a rollup-tier page."""
-        if pe_bli not in self.split_pe_blis:
+        ROW on the ONE axis collision_keys resolved them on —
+        dim_programs.has_detail (exhibit_family is not null) is now
+        per-account as well as per-organization, because dim_programs splits
+        the detail source by account (Wave 5). A collision side with no
+        detail of its own still answers False and still renders as a
+        rollup-tier page."""
+        axis = self._axis.get(pe_bli)
+        if axis is None:
             return True
         rows = self._by_pe.get(pe_bli, [])
-        if len({a for a, _t, _o, _hd in rows}) > 1:
-            for a, _t, _o, hd in rows:
-                if a == account:
-                    return hd
-            return False
-        for _a, _t, o, hd in rows:
-            if o == organization:
-                return hd
-        return False
+        if axis is SplitAxis.ACCOUNT:
+            return any(hd for a, _t, _o, hd in rows if a == account)
+        return any(hd for _a, _t, o, hd in rows if o == organization)
 
 
 def shared_code_program_label(titles: list[str | None]) -> str | None:

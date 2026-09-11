@@ -553,7 +553,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   **Status:** open (2026-09-04).
 - **#83 Two definitions of "account-split"** (`scripts/collision_keys.py` vs
   `_ProgramIdentity.is_account_split`) — fail-closed today; unify.
-  **Status:** open (2026-09-04).
+  **Status:** CLOSED 2026-09-10 — one rule, `govbudget.jbooks.collision_keys.classify_shared_keys` (an axis resolves a key only when every row's value is present and pairwise distinct; ACCOUNT, else ORGANIZATION, else UNRESOLVED); `_ProgramIdentity` and both link loaders import it, `scripts/collision_keys.py` deleted; the 13 live keys classify as before (10/3/0, 27 composite slugs); an unresolved key now stops export-site (`UnresolvedSharedKeyError`) and is excluded by the loaders; identity of the three callers' function objects and the two formerly divergent shapes are pinned by tests/test_collision_keys.py.
 - **#84 Subaward citation kind.** `subaward+lexicon` links (67) still cite the
   generic derived row; `award_link_sources` already records the subaward number.
   **Status:** open (2026-09-04).

@@ -30,7 +30,7 @@ from pathlib import Path
 import duckdb
 import psycopg
 
-from collision_keys import (
+from govbudget.jbooks.collision_keys import (
     member_for_award,
     partition_split_keys,
     raise_on_contradictory_accounts,
@@ -68,7 +68,7 @@ def fed_accounts_from_codes(accounts) -> set[str]:
 
 # ---------------------------------------------------------------------------
 # The member-attribution guard both loaders run before they write (ROADMAP #70
-# fix round 1). Shared here rather than in collision_keys.py, which owns the
+# fix round 1). Shared here rather than in govbudget/jbooks/collision_keys.py, which owns the
 # pure resolution rule and no SQL — the same reason fed_accounts_from_codes
 # lives here and is imported by load_announcement_links.
 # ---------------------------------------------------------------------------
@@ -245,17 +245,24 @@ def main() -> int:
     #
     # The ORGANIZATION-split keys ('20', '30', '500' — one account 0300D,
     # different organizations) stay excluded: their members share an account,
-    # so account narrowing cannot tell them apart at all.
+    # so account narrowing cannot tell them apart at all. So does any shared
+    # key NEITHER axis resolves (none today) — export_site refuses to publish
+    # those at all. govbudget.jbooks.collision_keys is the one rule all three
+    # consumers apply (ROADMAP #83).
     split_rows = con.execute(
-        "select pe_bli, account from dim_programs"
+        "select pe_bli, account, org from dim_programs"
         " where pe_bli in (select pe_bli from dim_programs"
         "                  group by pe_bli having count(*) > 1)"
     ).fetchall()
     con.close()
-    account_split, org_split = partition_split_keys(split_rows)
-    display -= org_split
+    account_split, org_split, unresolved = partition_split_keys(split_rows)
+    display -= org_split | unresolved
     print(f"excluded {len(org_split)} organization-split collision keys from"
           f" link targets: {sorted(org_split)}")
+    if unresolved:
+        print(f"WARNING: excluded {len(unresolved)} shared key(s) neither"
+              f" account nor organization resolves — export_site will refuse"
+              f" to publish them: {sorted(unresolved)}")
     print(f"admitted {len(account_split)} account-split collision keys as"
           f" account-qualified link targets: {sorted(account_split)}")
 

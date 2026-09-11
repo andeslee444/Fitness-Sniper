@@ -1,4 +1,5 @@
-"""Which program a link on a SHARED BLI code belongs to (ROADMAP #70).
+"""Which program a link or a page on a SHARED BLI code belongs to (ROADMAP #70,
+one rule for every consumer under ROADMAP #83).
 
 Some pe_bli values in the PB2026 corpus are published by dim_programs more
 than once because two genuinely different programs share one numeric code.
@@ -9,54 +10,145 @@ They split on one of two axes:
             (1611N) AND Shipboard Tactical Communications in Other
             Procurement, Navy (1810N). Sprint E Task E3 gives each member its
             own page (`3010-SCN` / `3010-OPN`) and turns the bare
-            `/program/3010/` into a disambiguation stub.
+            `/program/3010/` into a disambiguation stub; ROADMAP #70 lets an
+            award link name the ONE member its account evidence identifies.
 
   ORGANIZATION  three keys ('20', '30', '500') — one account (0300D),
             different organizations (DCSA/DTRA, OSD/DTRA/DMACT, DLA/DHRA).
+            Each member has its own page (`20-DCSA` / `20-DTRA`) and no award
+            links: their members share an account, so no account evidence
+            tells them apart.
 
-Both link scripts used to drop every shared key (`display -= collisions`), so
-neither member of either kind ever showed an award. The account-split keys can
-be resolved — an award's own funding accounts, or the appropriation book its
-lexicon narrative lives in, names exactly one member — and this module is the
-resolution rule, shared so the FPDS path and the announcement path cannot
-drift apart. The organization-split keys cannot: their members share one
-account, so no account evidence tells them apart, and they stay excluded.
+ROADMAP #83: the exporter (export_site._ProgramIdentity) and the two link
+loaders (scripts/derive_ap_links.py, scripts/load_announcement_links.py)
+used to carry their own copy of "is this key account-split". They agreed on
+every key the warehouse has shipped and disagreed on two shapes it has not
+— three rows over two accounts (one account naming two programs) and a row
+with no account. classify_shared_keys is now the ONE rule, and the answer
+for both shapes is the strict one the loaders already used: an axis
+resolves a key only when it names EXACTLY ONE of the key's rows.
+
+  ACCOUNT       every row's account is present and no two rows share one.
+  ORGANIZATION  not ACCOUNT, and every row's organization is present and no
+                two rows share one.
+  UNRESOLVED    neither. No page slug and no link rule exists for such a
+                key: the loaders exclude it from link targets, and the
+                exporter refuses to run (require_resolved) rather than file
+                two programs under one identity.
+
+ACCOUNT wins when both axes would resolve, because every account-split
+member page is addressed `{pe_bli}-{ACCOUNT_CODE}` (Task E3) and every award
+link on a shared key carries the member ACCOUNT (#70, migration 014) — the
+organization is never part of that contract.
 
 Every function here is pure — the callers own the SQL.
 """
+from __future__ import annotations
+
+import enum
 from collections.abc import Iterable, Mapping
 
 
-def partition_split_keys(
-    rows: Iterable[tuple[str, str | None]],
-) -> tuple[dict[str, set[str]], set[str]]:
-    """Split dim_programs' (pe_bli, account) rows into the shared keys an
-    account CAN resolve and the shared keys it cannot.
+class SplitAxis(enum.Enum):
+    """The single axis that names exactly one of a shared key's rows."""
 
-    Returns ({pe_bli: {account, ...}}, {pe_bli, ...}) — account-split keys
-    first, then every other shared key.
+    ACCOUNT = "account"
+    ORGANIZATION = "organization"
+    UNRESOLVED = "unresolved"
 
-    A key is account-split only when its accounts are all present and
-    PAIRWISE DISTINCT, i.e. the account names exactly one of its rows. A key
-    with three rows over two accounts (none exist today) would leave one
-    account naming two programs, so it is reported as unresolvable rather
-    than half-resolved. Keys dim_programs publishes once are in neither
-    result: they were never ambiguous.
+
+class UnresolvedSharedKeyError(RuntimeError):
+    """dim_programs publishes a pe_bli more than once and neither account nor
+    organization alone names exactly one of its rows. Raised by
+    require_resolved instead of letting a consumer guess an identity."""
+
+
+def _names_exactly_one_row(values: list[str | None]) -> bool:
+    """True iff every value is present and no two rows share one — the axis
+    is a key over the rows, not merely 'varies somewhere'."""
+    return all(values) and len(set(values)) == len(values)
+
+
+def classify_shared_keys(
+    rows: Iterable[tuple[str, str | None, str | None]],
+) -> dict[str, SplitAxis]:
+    """{pe_bli: axis} for every pe_bli that appears in `rows` more than once.
+
+    `rows` are dim_programs' (pe_bli, account, organization) triples — one
+    per published program row. Keys that appear once are absent from the
+    result: they were never ambiguous. See the module docstring for the
+    three axes and why ACCOUNT takes precedence.
     """
-    by_pe: dict[str, list[str | None]] = {}
-    for pe_bli, account in rows:
-        by_pe.setdefault(pe_bli, []).append(account)
+    by_pe: dict[str, list[tuple[str | None, str | None]]] = {}
+    for pe_bli, account, organization in rows:
+        by_pe.setdefault(pe_bli, []).append((account, organization))
 
-    account_split: dict[str, set[str]] = {}
-    other_split: set[str] = set()
-    for pe_bli, accounts in by_pe.items():
-        if len(accounts) < 2:
+    axes: dict[str, SplitAxis] = {}
+    for pe_bli, members in by_pe.items():
+        if len(members) < 2:
             continue
-        if all(accounts) and len(set(accounts)) == len(accounts):
-            account_split[pe_bli] = set(accounts)
+        if _names_exactly_one_row([account for account, _org in members]):
+            axes[pe_bli] = SplitAxis.ACCOUNT
+        elif _names_exactly_one_row([org for _account, org in members]):
+            axes[pe_bli] = SplitAxis.ORGANIZATION
         else:
-            other_split.add(pe_bli)
-    return account_split, other_split
+            axes[pe_bli] = SplitAxis.UNRESOLVED
+    return axes
+
+
+def partition_split_keys(
+    rows: Iterable[tuple[str, str | None, str | None]],
+) -> tuple[dict[str, set[str]], set[str], set[str]]:
+    """The link loaders' view of classify_shared_keys.
+
+    Returns ({pe_bli: {account, ...}} for the ACCOUNT keys — the members an
+    award's or a document's account evidence may pick between —, the set of
+    ORGANIZATION keys, and the set of UNRESOLVED keys). Both loaders exclude
+    the last two from link targets: no account evidence can name one member
+    of either.
+    """
+    rows = list(rows)
+    axes = classify_shared_keys(rows)
+    account_split: dict[str, set[str]] = {}
+    for pe_bli, account, _organization in rows:
+        if axes.get(pe_bli) is SplitAxis.ACCOUNT:
+            account_split.setdefault(pe_bli, set()).add(account)
+    org_split = {pe for pe, axis in axes.items() if axis is SplitAxis.ORGANIZATION}
+    unresolved = {pe for pe, axis in axes.items() if axis is SplitAxis.UNRESOLVED}
+    return account_split, org_split, unresolved
+
+
+def require_resolved(
+    rows: Iterable[tuple[str, str | None, str | None]], *, caller: str,
+) -> dict[str, SplitAxis]:
+    """classify_shared_keys, but it refuses to hand back an UNRESOLVED key.
+
+    The exporter calls this: a shared key with no resolving axis has no page
+    identity, and publishing it would file two programs' figures under one
+    slug. `caller` names the consumer so the message says who stopped.
+    """
+    rows = list(rows)
+    axes = classify_shared_keys(rows)
+    bad = sorted(pe for pe, axis in axes.items() if axis is SplitAxis.UNRESOLVED)
+    if not bad:
+        return axes
+    detail = "\n".join(
+        f"  {pe!r}: "
+        + ", ".join(
+            f"(account={account!r}, organization={org!r})"
+            for p, account, org in rows if p == pe
+        )
+        for pe in bad
+    )
+    raise UnresolvedSharedKeyError(
+        f"{caller}: dim_programs publishes {len(bad)} shared pe_bli key(s)"
+        f" that neither account nor organization alone can resolve. A member"
+        f" page ({{pe_bli}}-{{ACCOUNT_CODE}} or {{pe_bli}}-{{ORGANIZATION}})"
+        f" and an award link on a shared key both need ONE axis naming exactly"
+        f" one dim_programs row, and none does here — nothing was published."
+        f" Fix the mart (dbt/models/marts/dim_programs.sql) or add a rule in"
+        f" govbudget/jbooks/collision_keys.py; do not guess.\n{detail}"
+    )
 
 
 def _exactly_one(hits: set[str]) -> str | None:

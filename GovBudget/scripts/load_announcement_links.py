@@ -19,8 +19,10 @@ skipped['money_color_mismatch']. Subaward links (method 'subaward+lexicon')
 are one hop removed (a sub's description, not the award's own funding
 account) and keep their existing medium-tier behavior unchanged.
 
-Exclusions mirror derive_ap_links.py: display-universe only, no collision
-keys (dim_programs >1 row), no synthetic -L rollup keys.
+Exclusions mirror derive_ap_links.py: display-universe only, no
+organization-split or unresolved collision keys (account-split keys are
+admitted with the member their lexicon document names — ROADMAP #70, one
+classification rule under #83), no synthetic -L rollup keys.
 
 Source rows (2026-09-04, ROADMAP #71): alongside each published link the
 loader writes its evidence STRUCTURALLY to award_link_sources — article_id +
@@ -46,7 +48,7 @@ from pathlib import Path
 import duckdb
 import psycopg
 
-from collision_keys import (
+from govbudget.jbooks.collision_keys import (
     member_for_document,
     partition_split_keys,
     raise_on_contradictory_accounts,
@@ -220,12 +222,16 @@ def main() -> int:
     # collision_account_for); the ORGANIZATION-split ones ('20','30','500')
     # share one account and stay excluded, as every shared key was before.
     split_rows = con.execute(
-        "select pe_bli, account from dim_programs"
+        "select pe_bli, account, org from dim_programs"
         " where pe_bli in (select pe_bli from dim_programs"
         "                  group by pe_bli having count(*) > 1)"
     ).fetchall()
     con.close()
-    account_split, org_split = partition_split_keys(split_rows)
+    account_split, org_split, unresolved = partition_split_keys(split_rows)
+    if unresolved:
+        print(f"WARNING: {len(unresolved)} shared key(s) neither account nor"
+              f" organization resolves — skipped as collisions; export_site"
+              f" will refuse to publish them: {sorted(unresolved)}")
     synthetic = re.compile(r"-L\d+$")
     with psycopg.connect(DSN) as pg0:
         titles = pg0.execute("select pe_bli, title from budget_lines where title is not null").fetchall()
@@ -260,7 +266,7 @@ def main() -> int:
         pe, piid = s["pe_bli"], s["piid"]
         account = None
         if synthetic.search(pe): skipped["synthetic"] += 1; continue
-        if pe in org_split: skipped["collision"] += 1; continue
+        if pe in org_split or pe in unresolved: skipped["collision"] += 1; continue
         if pe in account_split:
             account = collision_account_for(
                 pe, prov.get((piid, pe), {}), doc_accounts, account_split[pe])

@@ -20,7 +20,9 @@ This module pins the two halves of the fix:
 
 Organization-split keys ('20', '30', '500' — same account 0300D, different
 organization) stay excluded: account evidence cannot tell their members apart,
-so there is nothing to resolve.
+so there is nothing to resolve. Which axis a shared key splits on is decided
+once, in govbudget.jbooks.collision_keys (ROADMAP #83) — the exporter and both
+loaders import that one rule; tests/test_collision_keys.py pins their agreement.
 """
 from __future__ import annotations
 
@@ -49,33 +51,37 @@ SCN_FED, OPN_FED = "017-1611", "017-1810"
 
 
 def test_account_split_keys_are_separated_from_org_split_keys():
-    from collision_keys import partition_split_keys
+    from govbudget.jbooks.collision_keys import partition_split_keys
 
     rows = [
-        ("0601101E", "0400"),          # ordinary key — one row, never split
-        ("3010", SCN), ("3010", OPN),  # account-split (ROADMAP #67)
-        ("20", "0300D"), ("20", "0300D"),  # org-split (ROADMAP #45)
+        ("0601101E", "0400", "DARPA"),                  # ordinary key — one row, never split
+        ("3010", SCN, "N"), ("3010", OPN, "N"),         # account-split (ROADMAP #67)
+        ("20", "0300D", "DCSA"), ("20", "0300D", "DTRA"),  # org-split (ROADMAP #45)
     ]
-    account_split, org_split = partition_split_keys(rows)
+    account_split, org_split, unresolved = partition_split_keys(rows)
     assert account_split == {"3010": {SCN, OPN}}
     assert org_split == {"20"}
+    assert unresolved == set()
     assert "0601101E" not in account_split and "0601101E" not in org_split
 
 
 def test_a_key_whose_account_does_not_identify_one_row_is_not_account_split():
     """Three rows over two accounts: the account names a member ambiguously,
-    so the key is NOT resolvable and must stay excluded."""
-    from collision_keys import partition_split_keys
+    so the key is NOT account-resolvable and gets no award links. With three
+    distinct organizations it resolves on that axis instead (a page each);
+    tests/test_collision_keys.py pins the shape NEITHER axis resolves."""
+    from govbudget.jbooks.collision_keys import partition_split_keys
 
-    account_split, org_split = partition_split_keys(
-        [("30", "0300D"), ("30", "0300D"), ("30", "0301D")]
+    account_split, org_split, unresolved = partition_split_keys(
+        [("30", "0300D", "OSD"), ("30", "0300D", "DTRA"), ("30", "0301D", "DMACT")]
     )
     assert account_split == {}
     assert org_split == {"30"}
+    assert unresolved == set()
 
 
 def test_member_for_award_needs_exactly_one_hit():
-    from collision_keys import member_for_award
+    from govbudget.jbooks.collision_keys import member_for_award
 
     members = {SCN: {SCN_FED}, OPN: {OPN_FED}}
     assert member_for_award(members, {SCN_FED}) == SCN
@@ -88,7 +94,7 @@ def test_member_for_award_needs_exactly_one_hit():
 
 
 def test_member_for_document_needs_exactly_one_hit():
-    from collision_keys import member_for_document
+    from govbudget.jbooks.collision_keys import member_for_document
 
     members = {SCN, OPN}
     assert member_for_document({SCN}, members) == SCN
@@ -240,14 +246,14 @@ _K2 = ("3010", "P-1", 2026, "N0003917D0006")
 
 
 def test_a_stored_link_on_the_other_member_is_a_contradiction():
-    from collision_keys import contradictory_accounts
+    from govbudget.jbooks.collision_keys import contradictory_accounts
 
     conflicts = contradictory_accounts({_K1: SCN}, [(_K1, OPN)])
     assert conflicts == [(_K1, SCN, OPN)]
 
 
 def test_agreeing_or_unclaimed_stored_accounts_are_not_contradictions():
-    from collision_keys import contradictory_accounts
+    from govbudget.jbooks.collision_keys import contradictory_accounts
 
     # same member, twice — the normal re-run
     assert contradictory_accounts({_K1: SCN}, [(_K1, SCN)]) == []
@@ -263,7 +269,7 @@ def test_dropping_a_member_claim_is_also_a_contradiction():
     """A published link that names 1611N must not become member-less: the
     upsert would write account=NULL and the link would vanish from BOTH
     member pages with nothing said."""
-    from collision_keys import contradictory_accounts
+    from govbudget.jbooks.collision_keys import contradictory_accounts
 
     assert contradictory_accounts({_K1: SCN}, [(_K1, None)]) == [(_K1, SCN, None)]
 
@@ -271,13 +277,13 @@ def test_dropping_a_member_claim_is_also_a_contradiction():
 def test_one_batch_contradicting_itself_is_caught_too():
     """Run order between loaders is not the only tie-break available — two
     rows in ONE executemany would resolve by insertion order."""
-    from collision_keys import contradictory_accounts
+    from govbudget.jbooks.collision_keys import contradictory_accounts
 
     assert contradictory_accounts({}, [(_K1, SCN), (_K1, OPN)]) == [(_K1, SCN, OPN)]
 
 
 def test_raise_on_contradictory_accounts_names_both_members():
-    from collision_keys import (
+    from govbudget.jbooks.collision_keys import (
         ContradictoryAccountError,
         raise_on_contradictory_accounts,
     )
