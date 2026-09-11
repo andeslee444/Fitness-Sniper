@@ -224,9 +224,14 @@ export default function CoveragePage() {
                 ceiling; per-row class strings then cost another 841 raw, because
                 the RSC payload carries each one a second time. Nothing was
                 trimmed from the disclosure — all five counts and all five
-                explanations are here; the markup around them is. */}
+                explanations are here; the markup around them is.
+                data-measure="prose-box": five sentences in a padded, marker-less
+                box take the reading measure (globals.css, the note-register
+                rule) — 132 characters per line without it, and gate 3 leg (s2)
+                now measures marker-less items (#42 residue). */}
             <ul
               data-corpus-counts
+              data-measure="prose-box"
               className="divide-y divide-border rounded-lg border border-border text-sm text-muted-foreground [&>li]:px-4 [&>li]:py-3 [&_strong]:tabular-nums [&_strong]:text-foreground"
             >
               {counts.map((c) => (

@@ -79,15 +79,35 @@
  *        on a single line are skipped — a line that does not wrap has no
  *        measure to speak of.
  *
- *        SCOPE. Paragraphs, figure captions, and list items whose list
- *        actually carries a marker (Tailwind's preflight sets
- *        `list-style: none` on every ul/ol, so a computed list-style-type is
- *        what separates a prose bullet from a stack of cards that happens to
- *        be a <ul>). Table cells and <summary> are excluded — their width is
- *        set by their column, not by a reading column — and so is any block
- *        that contains other blocks, which is a container rather than a text
- *        block. Captions are NOT excluded: /years/ shipped one 1,248px wide,
- *        and a caption is read like anything else.
+ *        SCOPE. Paragraphs, figure captions, definition descriptions (<dd>)
+ *        and list items — EVERY leaf <li>, whatever its list-style. A draft
+ *        of this leg skipped marker-less items on the theory that Tailwind's
+ *        preflight (`list-style: none` on every ul/ol) made the computed
+ *        marker the thing that separates a prose bullet from a stack of
+ *        cards. It does not; the container test does (a card holds blocks, a
+ *        text block holds text), and the skip hid the one marker-less prose
+ *        list on a sampled route — /coverage/'s corpus counts at 132
+ *        characters per line — while <dd> was reached by no selector at all,
+ *        so /glossary/'s 21 definitions ran 121–134 with this leg green.
+ *        Re-measured 2026-09-10 with the widened selector against the
+ *        deployed 2026-09-04 build: 237 leaf blocks across 24 routes — 202 p,
+ *        7 figcaption, 6 marker li, 21 dd, 1 marker-less li — 22 of them over
+ *        80, everything else <= 73.
+ *
+ *        ONE INSTANCE PER DYNAMIC ROUTE, so this leg is not the whole story
+ *        for templated pages: /program/ resolves to the lowest-sorting built
+ *        instance (000042, which carries no dossier), while /program/000999/
+ *        renders 11 dossier-claim <li> at 117–193 cpl. Those are held by the
+ *        stylesheet's data-measure declaration, not by anything measured
+ *        here.
+ *
+ *        Table cells and <summary> are excluded — their width is set by their
+ *        column, not by a reading column — and so is any block that contains
+ *        other blocks. Captions are NOT excluded: /years/ shipped one 1,248px
+ *        wide, and a caption is read like anything else. There is no opt-out
+ *        on this side: a [data-measure="full"] block is still measured and
+ *        still held to 80 — that declaration says how the block is SIZED, not
+ *        that its lines may run long.
  */
 
 import fs from "fs";
@@ -109,10 +129,10 @@ export const SPINE_WIDTHS = [1440, 1920];
 const EDGE_TOLERANCE_PX = 1;
 
 /** WCAG 1.4.8 (Visual Presentation, AAA): no more than 80 characters per line. */
-const MAX_CPL = 80;
+export const MAX_CPL = 80;
 
 /** A block shorter than this has no reading measure worth asserting. */
-const MIN_PROSE_CHARS = 120;
+export const MIN_PROSE_CHARS = 120;
 
 /** An exception has to be an explanation, not a shrug. */
 const MIN_REASON_CHARS = 24;
@@ -190,7 +210,7 @@ export function discoverRoutes() {
  * In-page measurement — one evaluate() per page so every rect is read off a
  * single layout. Serialized into the browser, so it closes over nothing.
  */
-function measureSpineInPage({ minProseChars }) {
+export function measureSpineInPage({ minProseChars }) {
   const round = (n) => Math.round(n * 10) / 10;
   const out = {
     innerWidth: window.innerWidth,
@@ -239,12 +259,14 @@ function measureSpineInPage({ minProseChars }) {
   }
 
   // ── prose: rendered characters per line ────────────────────────────────
-  for (const el of main.querySelectorAll("p, li, figcaption")) {
+  // p, li, figcaption, dd — and EVERY leaf <li>, marker or not: see SCOPE in
+  // the header. The container test below is what separates a card from a text
+  // block; a computed list-style never did.
+  for (const el of main.querySelectorAll("p, li, figcaption, dd")) {
     if (el.closest("table, summary, nav")) continue;
-    if (el.tagName === "LI" && getComputedStyle(el).listStyleType === "none") continue;
     // A block that contains other blocks is a container, not a text block:
     // measuring it would average glyph widths across unrelated children.
-    if (el.querySelector("p, li, ul, ol, div, table, figure")) continue;
+    if (el.querySelector("p, li, ul, ol, dl, div, table, figure")) continue;
     const txt = (el.textContent ?? "").trim();
     if (txt.length < minProseChars) continue;
     const range = document.createRange();
@@ -279,6 +301,15 @@ function measureSpineInPage({ minProseChars }) {
   }
 
   return out;
+}
+
+/**
+ * (s2)'s trip condition, in one place so the unit test exercises the same
+ * predicate the leg does: the blocks whose widest line exceeds MAX_CPL,
+ * worst first (the error message samples the top three).
+ */
+export function proseOverMeasure(prose, maxCpl = MAX_CPL) {
+  return prose.filter((p) => p.cpl > maxCpl).sort((a, b) => b.cpl - a.cpl);
 }
 
 /**
@@ -409,7 +440,7 @@ export async function runSpineLeg({ baseUrl, browser }) {
                 prosePages += 1;
                 proseBlocks += m.prose.length;
               }
-              const over = m.prose.filter((p) => p.cpl > MAX_CPL).sort((a, b) => b.cpl - a.cpl);
+              const over = proseOverMeasure(m.prose);
               proseOver += over.length;
               if (over.length > 0) {
                 const sample = over

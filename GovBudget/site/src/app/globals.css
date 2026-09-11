@@ -297,7 +297,9 @@
    UNLAYERED ON PURPOSE. Tailwind's utilities live in @layer utilities, so
    these rules win over a `max-w-*` left on a paragraph — the measure is not
    something an individual page opts out of by accident. Where a block
-   genuinely is not prose, it says so: [data-measure="full"]. */
+   genuinely is not prose, it says so: [data-measure="full"]. Where a
+   marker-less list IS prose, it says that: [data-measure="prose"] for a bare
+   box, "prose-box" for a padded one (both below). */
 :root {
   --spine-max: 80rem;
   --spine-gutter: 1rem;
@@ -313,6 +315,8 @@
 
 .spine p,
 .spine figcaption,
+.spine dd,
+.spine [data-measure="prose"],
 .spine :is(ul, ol):is(.list-disc, .list-decimal) {
   max-width: var(--measure);
 }
@@ -321,8 +325,22 @@
    own horizontal padding (px-4 either side), so the text inside lands on the
    same column as the prose above it. Capping only the <p> inside left a
    1,248px tinted panel wrapped around a 500px paragraph on /programs/,
-   /coverage/, /years/, /district/ and /agency/ — measured, not guessed. */
-.spine [data-note-kind] {
+   /coverage/, /years/, /district/ and /agency/ — measured, not guessed.
+
+   [data-measure="prose-box"] is that same shape declared by hand: a padded
+   box whose items are sentences but whose list carries no marker, so neither
+   the marker rule above nor this note rule reached it. /coverage/'s
+   corpus-count list is the one on a sampled route — 132 characters per line
+   on the 2026-09-04 build, with gate 3 green because its (s2) leg skipped
+   marker-less items. A BARE list takes [data-measure="prose"] above instead
+   (the box is the measure, there is no padding to add back): the dossier
+   claim lists, which ran to 193 characters per line on /program/000999/.
+   Measured at 1440: prose-box on a padded box renders 70 characters, prose
+   on a bare one 70; swapping them gives 65 and 75. <dd> needs no
+   declaration — it joined the rule above, because a definition is prose by
+   definition. */
+.spine [data-note-kind],
+.spine [data-measure="prose-box"] {
   max-width: calc(var(--measure) + 2rem);
 }
 

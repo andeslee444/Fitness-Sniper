@@ -117,7 +117,14 @@ export function ProgramDossier({
             <h3 className="text-base font-semibold mb-2 text-foreground">
               {DOSSIER_SECTION_TITLES[key]}
             </h3>
-            <ul className="space-y-2">
+            {/* data-measure="prose": claims are sentences in a bare, marker-less
+                list, so the BOX takes the reading measure (globals.css). Measured
+                on /program/000999/ at 1440 before this: 11 claims at 117–193
+                characters per line across 1,246px. Gate 3's spine leg cannot
+                catch it — it samples the lowest-sorting program instance
+                (000042), which carries no dossier — so the declaration is the
+                whole fix for the 50 dossier pages. */}
+            <ul className="space-y-2" data-measure="prose">
               {dossier.dossier[key].claims.map((claim, i) => (
                 <li
                   key={`${key}-${i}`}
