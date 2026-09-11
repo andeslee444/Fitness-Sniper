@@ -492,6 +492,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   the rendered sentence back and add it up; and an exemption marker has a
   page-weight cost, so count the elements before spraying it (136 per filing
   page would have blown a ceiling nobody would have connected to it).
+- **2026-09-05: the corpus-wide successor denial was checked against the
+  rail, not the documents (#32(b) residue).** "No ingested budget document in
+  this corpus states a successor for this line" rendered on 287 program pages;
+  19 of them quote their own successor three sections lower — 2900 → LI 2361,
+  FET000 → PE 0303131F, and DARPA's "Beginning in FY 2026, efforts in this PE
+  will be funded in PE 0601122E" on 0601101E, the case #32 called unprovable.
+  Exporter and gate both read the lineage rail, so both agreed; two
+  implementations of one wrong scope agreeing is not corroboration (the same
+  lesson leg (g) learned on 2026-08-27, in a new place). Fix: claim only what
+  the site holds, point at the narrative, gate the note against the
+  narratives themselves (gate 21 leg l, floor 19). Rule: a negative claim
+  about a population ("no document states…") must be gated against THAT
+  population, never against a layer derived from it.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -1595,6 +1608,40 @@ docs/superpowers/ROADMAP.md`.
     actually became: #29(a)'s LLM extraction over renumber-era narratives, which
     doubled the stated tier to 98 edges. *(Original marker below.)*
     **Status: PARTIAL — half (a) CLOSED 2026-08-26, half (b) handed to #29.**
+
+    *Correction 2026-09-05 (#32(b) residue — the note's successor sentence).*
+    The (a) note's last sentence, "No ingested budget document in this corpus
+    states a successor for this line", was a claim about the DOCUMENTS that
+    the exporter (`has_successor`) and gate 21 leg (g) both checked against
+    the lineage RAIL, and it was false on **19 of the 287 pages** that
+    rendered it (measured 2026-09-05 from the shipped sidecars' own
+    narratives): Navy OPN consolidation lines 2900 → LI 2361, 2176 → BLI 2136,
+    2026 → LI 2981; six Air Force lines C01200/C02500/C03200/C03700/C04000/
+    CFIN00 → BLI OSAEA0; FET000 → PE 0303131F; 0128B63000 → PE 0608041A
+    (partial); and eight DARPA PEs whose own PB2026 narratives say, verbatim,
+    "Beginning in FY 2026, efforts in this PE will be funded in PE …" (the
+    mission narrative on 0601101E, 0602303E, 0602715E and 0603760E) or
+    "Beginning in FY 2026, this program will be funded in PE …" (an
+    accomplishment/planned-program narrative, on all eight) —
+    **including 0601101E Defense Research Sciences → 0601122E Emerging
+    Opportunities, the case (b) below calls unprovable.** It is stated; the
+    extractor does not key it: `lineage/extract.py` `_RULES` has no "will be
+    funded in" form, numeric line items are refused at V3-shape, and WSC
+    codes are not PE-shaped. The smaller true claim shipped instead: the note
+    now says "No successor is linked for this line: this site's
+    program-lineage layer holds no keyed edge pointing forward from here" (a
+    statement about this site, true by construction) and, where the page
+    renders narratives, "if the J-book narrative on this page describes a
+    realignment, it is quoted below in the document's own words". The sidecar
+    `fy2026_absent` block gained `has_narrative`. **Gate 21 leg (l)** reads
+    the sidecars' own narratives (the verbatim `detail_narratives` bodies the
+    page renders), fails any note that renders the retired sentence — quoting
+    the contradicting narrative — requires the narrative pointer exactly
+    where there is prose to point at, checks the exporter's flag against its
+    own recompute, and carries a floor of 19 such pages. Keying these as
+    edges (line-item/WSC endpoints and the "will be funded in" rule) is
+    backlog #105. Species: a "no document says X" sentence gated against a
+    derived layer instead of the documents.
 
     **(a) SHIPPED.** 319 program pages carry the note, gated by **gate 21 leg
     (g)** (`site/scripts/gates/program-skeleton.mjs`) — no 25th gate; the suite
