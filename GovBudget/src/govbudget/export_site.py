@@ -2593,21 +2593,47 @@ def _ingested_service_orgs(pg) -> list[str]:
     return sorted({_workbook_org(r[0]) for r in rows})
 
 
-#: Strata whose adjudication answered a DIFFERENT question from the others,
-#: so their verdicts must never be published beside them as one comparable
-#: "precision" figure (controller ruling, 2026-09-04, ROADMAP #72 final wave).
-#:
-#: `account+subagency`: all 60 verdict reasons for the 2026-09-04 study
-#: restate that the MECHANICAL rule fired — federal account 097-0400,
-#: sub-agency DARPA, PIID prefix HR0011 — and none judges whether the award
-#: paid for THIS program, which is the question every other stratum was
-#: judged on. 60/60 against a tautological question is not a measurement of
-#: program attribution, and publishing it as one for the site's largest tier
-#: (~9,100 mart rows) would read as certainty the study never established.
-#: The verdict rows stay in link_precision_samples for audit; the tier is
-#: named UNMEASURED on /methodology/ instead. Removing a name from this set
-#: requires a re-adjudication under the attribution rubric, not a re-count.
-_UNRUBRICKED_PRECISION_STRATA = frozenset({"account+subagency"})
+def _precision_tally_sql(sample_id: str | None) -> str:
+    """Twin of scripts/precision_study.py's precision_tally_sql — export_site
+    never imports scripts/, so the text is duplicated by hand and
+    tests/test_export_site_link_precision.py asserts the two tallies agree on
+    one fixture. Change both or neither.
+
+    Per published method: confirmed / judged under ONE rubric, from the
+    method's LATEST run (or the given run), counted under the method the link
+    publishes under TODAY (join to budget_line_awards); rows the corpus no
+    longer publishes at high/medium drop out of both numbers.
+    """
+    run_clause = "" if sample_id is None else "and s.sample_id = %(sample_id)s"
+    return f"""
+        with judged as (
+            select s.sample_id, b.method, s.verdict, s.adjudicated_at
+            from link_precision_samples s
+            join budget_line_awards b
+              on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli
+            where s.verdict is not null
+              and s.rubric = %(rubric)s
+              and b.confidence in ('high', 'medium')
+              {run_clause}
+        ),
+        latest as (
+            select method, max(sample_id) as sample_id from judged group by method
+        )
+        select j.method, j.sample_id,
+               count(*) filter (where j.verdict = 'confirmed') as confirmed,
+               count(*) as sampled,
+               max(j.adjudicated_at) as judged_at
+        from judged j
+        join latest l on l.method = j.method and l.sample_id = j.sample_id
+        group by j.method, j.sample_id
+        order by j.method
+    """
+
+
+#: The rubrics link_precision_samples.rubric may carry (migration 015 CHECK).
+#: Only the first is ever published; the exporter defaults to it and gate 24
+#: leg n fails a site_meta block carrying any other.
+_PRECISION_RUBRICS = ("attribution", "rule-fired")
 
 
 def _published_link_methods(duckdb_path) -> set[str]:
@@ -2644,105 +2670,81 @@ def _published_link_methods(duckdb_path) -> set[str]:
 
 
 def _link_precision_block(pg, published_methods: set[str] | None = None,
-                          sample_id: str | None = None) -> dict:
-    """The held-out link-precision study (ROADMAP #72), tallied under the tier
-    each sampled link publishes under TODAY.
+                          sample_id: str | None = None,
+                          rubric: str = "attribution") -> dict:
+    """The held-out link-precision study (ROADMAP #72, #79), tallied under the
+    tier each sampled link publishes under TODAY, under ONE rubric.
 
-    Returns ``{}`` while no study has adjudicated verdicts loaded, else::
+    Returns ``{}`` while no study has adjudicated verdicts under `rubric`, else::
 
-        {"sample_id": "2026-09-04", "sampled_at": "2026-09-04",
-         "methods": {method: {"confirmed": int, "sampled": int}},
+        {"rubric": "attribution",
+         "sample_id": "2026-09-05",            # latest run any figure comes from
+         "sampled_at": "2026-09-05",           # latest judged date
+         "methods": {method: {"confirmed": int, "sampled": int,
+                              "sample_id": str, "judged": "YYYY-MM-DD"}},
          "unmeasured": [method, ...]}
 
-    THE DEFECT THIS SHAPE FIXES (2026-09-04, final review C1). The old query
-    grouped link_precision_samples by its OWN `method` column — the method
-    each link carried when the sample was DRAWN — and published the result as
-    "measured precision of the published tiers". Two ways that lies:
+    THE RUBRIC (2026-09-11, #79). A verdict is comparable only to a verdict
+    that answered the same question. The 2026-09-04 run judged four strata on
+    program ATTRIBUTION — did this award pay for this program — and one,
+    `account+subagency`, on whether the MECHANICAL rule had fired; 60/60
+    against the second question was printed beside the first until f96344e5.
+    Migration 015 stamps every verdict row with its rubric and this block
+    reads exactly one rubric — the hand-named stratum set that stood in for
+    the column is gone. A published tier whose only verdicts answer another
+    question comes back in `unmeasured`, and /methodology/ names it; the page
+    also names the rubric next to the figures (gate 24 leg n checks both).
 
-      * a tier can be withdrawn between draw and export. `fpds-ap+account`
-        measured 34/60, was withdrawn the same day (zero rows in
-        budget_line_awards), and its 60 links now publish under the single
-        `fpds-ap` medium tier — so the page printed a figure for a tier no
-        reader can meet AND a flattering 60/60 for `fpds-ap`, when the honest
-        number for the tier a reader actually sees is 94/120;
-      * a sampled link can stop being published at all. Six announcement
-        links were removed by the O&M funding-account filter after the draw;
-        counting them would state a denominator the corpus does not publish.
+    THE POPULATION (2026-09-04, final review C1). Join every sampled row to
+    `budget_line_awards` on (award_piid, pe_bli), keep only rows the corpus
+    still publishes (confidence high or medium), and tally by the CURRENT
+    method: `fpds-ap+account` was withdrawn hours after its draw and its links
+    publish under `fpds-ap`; six announcement links stopped publishing. Rows
+    that no longer publish drop out of both numerator and denominator.
 
-    So: join every sampled row to `budget_line_awards` on (award_piid,
-    pe_bli), keep only rows the corpus still publishes (confidence high or
-    medium), and tally by the CURRENT method. Rows that no longer publish
-    drop out of both numerator and denominator — the figure describes the
-    tier as it stands, and `sampled_at` dates it so a reader can see how far
-    the corpus may have moved since.
+    THE RUN (final review I1, refined for #79). A study run may re-judge one
+    stratum only, so each method's figure comes from the LATEST sample_id
+    that judged THAT method under the rubric (lexicographic max — runs are
+    named by ISO date). A re-measurement replaces the number it corrects and
+    never pools with it; the other methods keep their own latest run, and
+    each figure carries the `sample_id` and `judged` date it came from so the
+    page can say every date it draws on. Pass `sample_id` to read one run.
 
-    `sampled` counts only ADJUDICATED rows (verdict is not null) — a row drawn
-    into the sample but not yet judged counts toward neither number, so a
-    study can be loaded incrementally without understating what was judged.
-
-    Only the LATEST sample_id is read (final review I1): pooling every study
-    run would silently average a re-measurement into the number it corrects.
-    `sample_id` may be passed explicitly; otherwise the lexicographic max is
-    taken, which is the latest run because precision_study.py names runs by
-    ISO date.
+    `sampled` counts only ADJUDICATED rows (verdict is not null).
 
     `published_methods` (from _published_link_methods) is the mart's own
     published-tier universe. Methods it does not contain are dropped from the
-    figures; methods with no figure of their own — because the study drew no
-    sample from them, or because their stratum is in
-    _UNRUBRICKED_PRECISION_STRATA — come back in `unmeasured`, which
-    /methodology/ names in prose so no published tier passes silently as
-    measured. Pass None (tests, fixture warehouses) to skip both.
+    figures; methods with no figure of their own come back in `unmeasured`.
+    Pass None (tests, fixture warehouses) to skip both.
 
     scripts/precision_study.py's precision_by_method is the twin of this
     query; export_site never imports from scripts/, so the two are kept in
     step by hand and by tests/test_export_site_link_precision.py.
     """
-    if sample_id is None:
-        row = pg.execute(
-            "select max(sample_id) from link_precision_samples"
-            " where verdict is not null"
-        ).fetchone()
-        sample_id = row[0] if row else None
-    if not sample_id:
-        return {}
-
-    # This tally's universe is Postgres budget_line_awards (confidence
-    # high/medium below), NOT the dbt mart _published_link_methods reads —
-    # identical for every published figure today; if they ever drift, the
-    # mart is the reader's universe.
+    if rubric not in _PRECISION_RUBRICS:
+        raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
     rows = pg.execute(
-        "select b.method, s.verdict"
-        " from link_precision_samples s"
-        " join budget_line_awards b"
-        "   on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli"
-        " where s.sample_id = %s and s.verdict is not null"
-        "   and b.confidence in ('high', 'medium')",
-        (sample_id,),
+        _precision_tally_sql(sample_id), {"rubric": rubric, "sample_id": sample_id}
     ).fetchall()
 
-    tally: dict[str, dict[str, int]] = {}
-    for method, verdict in rows:
-        if method in _UNRUBRICKED_PRECISION_STRATA:
-            continue
+    tally: dict[str, dict] = {}
+    for method, run_id, confirmed, sampled, judged_at in rows:
         if published_methods is not None and method not in published_methods:
             continue
-        slot = tally.setdefault(method, {"confirmed": 0, "sampled": 0})
-        slot["sampled"] += 1
-        if verdict == "confirmed":
-            slot["confirmed"] += 1
+        tally[method] = {
+            "confirmed": confirmed,
+            "sampled": sampled,
+            "sample_id": run_id,
+            "judged": judged_at.date().isoformat() if judged_at else None,
+        }
     if not tally:
         return {}
 
-    sampled_at = pg.execute(
-        "select max(adjudicated_at) from link_precision_samples"
-        " where sample_id = %s and verdict is not null",
-        (sample_id,),
-    ).fetchone()[0]
-
+    judged_dates = [v["judged"] for v in tally.values() if v["judged"]]
     return {
-        "sample_id": sample_id,
-        "sampled_at": sampled_at.date().isoformat() if sampled_at else None,
+        "rubric": rubric,
+        "sample_id": max(v["sample_id"] for v in tally.values()),
+        "sampled_at": max(judged_dates) if judged_dates else None,
         "methods": dict(sorted(tally.items())),
         "unmeasured": sorted((published_methods or set()) - set(tally)),
     }
@@ -9926,8 +9928,9 @@ def _write_all_sidecars(
         # must never re-derive it).
         "hero": hero,
         "scope_qualifier": _corpus_qualifier,
-        # ROADMAP #72: {method: {confirmed, sampled}} from the held-out
-        # precision study, {} until a study has verdicts loaded. Computed in
+        # ROADMAP #72/#79: {rubric, sample_id, sampled_at, methods, unmeasured}
+        # from the held-out precision study under ONE rubric ('attribution'),
+        # {} until a study has verdicts loaded under it. Computed in
         # export_site (Postgres scope) and threaded via manifest, same
         # reason as ingested_service_orgs just above — this function only
         # holds a duckdb connection, no Postgres dsn.

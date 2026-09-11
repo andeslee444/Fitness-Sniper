@@ -154,6 +154,33 @@ export default function MethodologyPage() {
     (t) => ACCOUNT_FAMILY_TIERS.has(t),
   );
   const linkPrecisionSampledAt = linkPrecision?.sampled_at ?? null;
+  // ROADMAP #79: every published figure answers ONE question — the rubric —
+  // and the paragraph names it in the words the packets ask the adjudicator.
+  // The exporter publishes only rubric='attribution', so the sentence renders
+  // from this value rather than a literal: a block under any other rubric
+  // prints figures with no question named, and gate 24 leg n fails the build
+  // (it fails the block itself too).
+  const linkPrecisionRubric = linkPrecision?.rubric ?? null;
+  // A stratum re-judged in a LATER run replaces only its own figure, so the
+  // figures can come from more than one study date — state all of them.
+  const linkPrecisionJudged = [
+    ...new Set(
+      Object.values(linkPrecision?.methods ?? {})
+        .map((v) => v.judged)
+        .filter((d): d is string => typeof d === "string" && d.length > 0),
+    ),
+  ].sort();
+  const linkPrecisionJudgedText =
+    linkPrecisionJudged.length > 0
+      ? linkPrecisionJudged.join(" and ")
+      : linkPrecisionSampledAt;
+  // True only while account+subagency's sole verdicts are the 2026-09-04
+  // rule-fired ones (migration 015 stamps them 'rule-fired', so the exporter
+  // lists the tier unmeasured). The history sentence below renders from this
+  // boolean and disappears the moment an attribution study for the tier
+  // lands — no prose edit, no gate blind spot.
+  const linkPrecisionSubagencyAwaitsAttribution =
+    linkPrecisionUnmeasuredList.includes("account+subagency");
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -697,10 +724,20 @@ export default function MethodologyPage() {
                     Measured precision of the published tiers, from a held-out
                     hand-adjudicated sample re-run through the same two-reviewer
                     process
-                    {linkPrecisionSampledAt
-                      ? ` and judged ${linkPrecisionSampledAt}`
+                    {linkPrecisionJudgedText
+                      ? ` and judged ${linkPrecisionJudgedText}`
                       : ""}
-                    . Each sampled link is counted under the tier it publishes
+                    .{" "}
+                    {linkPrecisionRubric === "attribution" ? (
+                      <>
+                        Every figure answers one question — program attribution:
+                        does this award execute this program element? — judged
+                        from the award&apos;s own description against the
+                        program&apos;s J-book narrative and project titles, not
+                        from whether the linking rule fired.{" "}
+                      </>
+                    ) : null}
+                    Each sampled link is counted under the tier it publishes
                     under today, not the tier it carried when it was drawn; a
                     sampled link the corpus no longer publishes is counted in
                     neither direction:{" "}
@@ -719,14 +756,19 @@ export default function MethodologyPage() {
                             adjudication that pinned the pair; an account match is
                             an association by construction rather than proof this
                             program paid, and how often it names the right program
-                            has not been independently measured. The account /
-                            sub-agency tier was sampled, but its adjudication asked
-                            only whether the mechanical rule had fired — the
-                            appropriation account, the sub-agency, the
-                            contract-number prefix — and not whether the award paid
-                            for this program, so those verdicts do not measure
-                            program attribution and are not published as if they
-                            did.
+                            has not been independently measured for these tiers.
+                            {linkPrecisionSubagencyAwaitsAttribution ? (
+                              <>
+                                {" "}
+                                The account / sub-agency tier was sampled, but its
+                                adjudication asked only whether the mechanical rule
+                                had fired — the appropriation account, the
+                                sub-agency, the contract-number prefix — and not
+                                whether the award paid for this program; those
+                                verdicts are kept for audit under their own rubric
+                                and are not published as program attribution.
+                              </>
+                            ) : null}
                           </>
                         ) : (
                           "Their evidence paths are described above."

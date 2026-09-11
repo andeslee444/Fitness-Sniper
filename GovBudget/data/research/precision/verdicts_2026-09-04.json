@@ -1,0 +1,2102 @@
+[
+{
+"piid": "FA820420C0004",
+"pe_bli": "0101328F",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "3600 also holds leg1-mapped 0603851F (ICBM Dem/Val, funded FY20-23); account yields 2 RDT&E lines, not one"
+},
+{
+"piid": "FA860920F0003",
+"pe_bli": "0401221F",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "All funds FY2020 3600; 0401221F absent from R-1 until FY21, KC-46 RDT&E in FY20 = 0605221F; not unique, wrong-year line"
+},
+{
+"piid": "FA862019F2815",
+"pe_bli": "0205219F",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP424 MQ-9; 057-3600 selects 0205219F (other MQ-9 lines are APAF/PDW); MQ-9 battery TME descs"
+},
+{
+"piid": "FA862020F2009",
+"pe_bli": "0205219F",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP424 MQ-9; 057-3600 is program's only RDT&E line; MQ-9 Reaper descs"
+},
+{
+"piid": "FA862519F7016",
+"pe_bli": "C130J0",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "057-3010 also funds C-130J Mods (C1300J, BA-5); ABDR manuals not pinned to C-130J production line"
+},
+{
+"piid": "FA862519F7025",
+"pe_bli": "C130J0",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "057-3010 also funds C-130J Mods; DMS CNI-MU redesign reads as mod work (C1300J narrative cites DMS)"
+},
+{
+"piid": "FA867221C0005",
+"pe_bli": "SDB002",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP439 SDB II; 057-3020 selects SDB002 (Navy twin is WPN 1507); Lot 7/8 production"
+},
+{
+"piid": "FA867221F6052",
+"pe_bli": "SDB002",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP439 SDB II; 057-3020 share selects SDB002; lot integration & test"
+},
+{
+"piid": "FA867517F1034",
+"pe_bli": "0207163F",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP185 AMRAAM; 057-3600 only RDT&E line; descs = AMRAAM platform integration (F-15 EPAWSS)"
+},
+{
+"piid": "FA867517F1036",
+"pe_bli": "0207163F",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP185 AMRAAM; 057-3600 only RDT&E line; AMRAAM F-16 Blk30 integration"
+},
+{
+"piid": "FA868119F1150",
+"pe_bli": "353620",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP503 JDAM; 057-3011 present and JDAM's only Proc-of-Ammo line is 353620 (3600 share = 0604618F)"
+},
+{
+"piid": "FA868217F1021",
+"pe_bli": "0207325F",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP555 JASSM; 057-3600 only RDT&E line; JASSM wing phase II"
+},
+{
+"piid": "FA868218F1039",
+"pe_bli": "JASSM0",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP555 JASSM; 057-3020 selects JASSM0; JASSM software updates/IDIQ option"
+},
+{
+"piid": "FA868221C2000",
+"pe_bli": "0207325F",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "All descs = F-35 AARGM-ER early integration (SiAW lineage), not JASSM; JASSM tag looks office-default"
+},
+{
+"piid": "FA880712C0012",
+"pe_bli": "1203164SF",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "3620 holds two mapped GPS lines (1203164SF, 1203165SF both funded FY21+); MGUE pick is narrative, not account"
+},
+{
+"piid": "FA880810C0001",
+"pe_bli": "GAP000",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP326 WGS; 057-3022 share selects GAP000 (WGS SF procurement line); SV11/12 production"
+},
+{
+"piid": "FA880821C0015",
+"pe_bli": "1206855SF",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP586 ESS; 057-3620 selects SF twin 1206855SF; ESS prototype"
+},
+{
+"piid": "M6785423F0010",
+"pe_bli": "4655",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP386 G/ATOR; 017-1109 PMC selects 4655 (RDT&E twin is 1319); G/ATOR network/cyber"
+},
+{
+"piid": "M6785423F0020",
+"pe_bli": "4655",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP386 G/ATOR; 017-1109 selects 4655; LRR retrofit kits"
+},
+{
+"piid": "N0001909C0019",
+"pe_bli": "0505",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "F/A-18E/F MYP III production contract; APN also funds production line 0145/L1, not the 0505 mods line"
+},
+{
+"piid": "N0001910C0071",
+"pe_bli": "0604269N",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "ITT 'concept demonstrator design' = NGJ tech maturation (own PE 0604274N in universe/lexicon); EA-18G is host platform; txns $0/deob"
+},
+{
+"piid": "N0001912C2001",
+"pe_bli": "0590",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "V-22 MYP II production (descs: APN-1, Lot 17-21) = APN production line 0164, not 0590 BA-5 mods"
+},
+{
+"piid": "N0001917F0022",
+"pe_bli": "0530",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "APN holds 0530 and MH-60R (MYP) rollups (FY15-17 funds) in leg1 map; 0530 chosen by desc, not a unique account line"
+},
+{
+"piid": "N0001918F1646",
+"pe_bli": "0195",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "ASQ-225 ACIS F3 replacement is a fleet mod item; E-2 Series mods 0544 shares APN; not pinned to 0195"
+},
+{
+"piid": "N0001918F1728",
+"pe_bli": "2301",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "WPN also funds Tomahawk production 2101; FY18-20 obligations predate Tomahawk Mods line; Williams ST/TE"
+},
+{
+"piid": "N0001919C0006",
+"pe_bli": "0604262N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP212 V-22; 017-1319 selects 0604262N; CFG GCU redesign RDT&E"
+},
+{
+"piid": "N0001919C0076",
+"pe_bli": "0505",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "BRU-32/LAU-127 GFE; APN also funds F/A-18E/F production 0145/L1; not pinned to 0505 mods"
+},
+{
+"piid": "N0001919F0279",
+"pe_bli": "0604262N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP212 V-22; 017-1319 selects 0604262N; drive stand testing"
+},
+{
+"piid": "N0001919F2679",
+"pe_bli": "0193",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "APN also funds P-8 Series mods 0586; sonobuoy storage rack not pinned to P-8A production line"
+},
+{
+"piid": "N0001919F4273",
+"pe_bli": "0193",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "APN also funds P-8 Series mods 0586; '9 LAPS units' not pinned to P-8A production line"
+},
+{
+"piid": "N0001919P0011",
+"pe_bli": "0590",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "APN also funds V-22 production 0164; MLGB FSS NRE not pinned to 0590 mods line"
+},
+{
+"piid": "N0001920F0096",
+"pe_bli": "0590",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "Night HUD units for MV/CMV/GOJ (new-production/FMS flavor); APN also funds 0164; not pinned to mods"
+},
+{
+"piid": "N0001920F0110",
+"pe_bli": "0588",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "MQ-8C engine & spares; APN also funds MQ-8 UAV production 0443 (narrative: spares); not 0588 mods"
+},
+{
+"piid": "N0001920F0256",
+"pe_bli": "0158",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP390; CH-53K FY20 spares; 0158 narrative funds initial spares/PSE; no CH-53K mods line in period"
+},
+{
+"piid": "N0001920F0517",
+"pe_bli": "0604234N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP364 E-2D AHE; 017-1319 selects 0604234N; E-2D RDAS development"
+},
+{
+"piid": "N0001920F0858",
+"pe_bli": "0204229N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP289 TACTOM; 017-1319 share selects 0204229N; TTWCS orders; narrative cites tactical tomahawk"
+},
+{
+"piid": "N0002412C2115",
+"pe_bli": "2013",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP516 SSN 774; 017-1611 selects 2013; Block IV boat construction"
+},
+{
+"piid": "N0002415C4103",
+"pe_bli": "2013",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP516 SSN 774; 017-1611 selects 2013; SSN 794-804 fwd assemblies"
+},
+{
+"piid": "N0002418C2305",
+"pe_bli": "2122",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP180 DDG 51; 017-1611 selects 2122; BIW DDG 51 construction"
+},
+{
+"piid": "N0003019C0010",
+"pe_bli": "1250",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP178 Trident II; 017-1507 share selects Trident II Mods (only WPN Trident line); SSP PILS/flight test"
+},
+{
+"piid": "N0003919F0190",
+"pe_bli": "0604280N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP554 MIDS; 017-1319 share -> JTRS-Navy PE; 0604280N narrative names MIDS; MIDS JTRS SE&I"
+},
+{
+"piid": "N0003919F0475",
+"pe_bli": "0604280N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP554 MIDS; 017-1319 share -> 0604280N (narrative names MIDS/JTRS)"
+},
+{
+"piid": "N0003920F0023",
+"pe_bli": "0604280N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP554 MIDS; 017-1319; MIDS-LVT engineering services"
+},
+{
+"piid": "N0003920F0422",
+"pe_bli": "0604280N",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP554 MIDS; 017-1319 share; MIDS JTRS terminals"
+},
+{
+"piid": "N6279314PA106",
+"pe_bli": "2001",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP223 CVN 78; 017-1611 SCN; CVN 78 procured under Carrier Replacement Program line"
+},
+{
+"piid": "N6833518F0145",
+"pe_bli": "0590",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "V-22 data transfer system units; APN also funds 0164 production; not pinned to 0590 mods"
+},
+{
+"piid": "N6833520F1135",
+"pe_bli": "0590",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "Automatic wire test set = support equipment; APN also funds 0164/SE lines; not pinned to 0590 mods"
+},
+{
+"piid": "N6833520P0105",
+"pe_bli": "0158",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP390 CH-53K; APN; 0158 is program's only APN line (PSE/TDP in-line); no K mods line"
+},
+{
+"piid": "N6931618F4003",
+"pe_bli": "2127",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP374 LCS; 017-1611 selects 2127; LCS 18 post-delivery"
+},
+{
+"piid": "N6931618F6001",
+"pe_bli": "2122",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "AP180 DDG 51; 017-1611 selects 2122; DDG 51 emergent availabilities"
+},
+{
+"piid": "S0305A20F0042",
+"pe_bli": "2301",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "1507 holds two mapped Tomahawk WPN lines (2101, 2301); recert pick rests on desc, not a unique account line"
+},
+{
+"piid": "W31P4Q12C0151",
+"pe_bli": "3025",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "Tag 260 GMLRS; GMLRS FRP Lot 7; funds 017-1109 PMC only, selecting USMC line 3025 over Army MPA 6005C64400"
+},
+{
+"piid": "W31P4Q19F0582",
+"pe_bli": "8260C53101",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "Tag 492 PAC-3 MSE; PAC-3 Missile Support Center; funds 021-2032 MPA only, selecting MSE Missile line over RDT&E PE"
+},
+{
+"piid": "W31P4Q20F0496",
+"pe_bli": "0604522N",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "Work is SRC E-LIDS counter-UAS (Army-awarded); Army 'AMDR' tag is a mis-tag, not Navy SPY-6/AMDR line 0604522N"
+},
+{
+"piid": "W56HZV21P0041",
+"pe_bli": "2073GZ0410",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "Tag 466 PIM; Cummins VTA903E-T675 engines (M109A7 PIM); funds 021-2033 WTCV only, selecting WTCV line over RDT&E"
+},
+{
+"piid": "W58RGZ18F0054",
+"pe_bli": "6771AA0005",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "Description: hardware/support equipment for UH-72A Lakota (own APA line 4742A05001); UH-60M tag contradicted"
+},
+{
+"piid": "W58RGZ19F0005",
+"pe_bli": "6771AA0005",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "APX-123A transponder obsolescence study; APX-123A is bought under APA GATM line 8859AA0711, not UH-60M line; tag-only"
+},
+{
+"piid": "W58RGZ20F0235",
+"pe_bli": "0305219A",
+"method": "fpds-ap+account",
+"verdict": "confirmed",
+"reason": "Tag 420 Gray Eagle; GE engineering/tech services, SW fielding; funds 021-2040 RDT&E only, selecting 0305219A over APA"
+},
+{
+"piid": "W58RGZ20F0252",
+"pe_bli": "0605241A",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "0605241A absent from Army R-1 until FY2025; funds are FY2020 2040; FLRAA then owned by 0603801A (lexicon)"
+},
+{
+"piid": "W58RGZ21F0009",
+"pe_bli": "6775A05101",
+"method": "fpds-ap+account",
+"verdict": "refuted",
+"reason": "BFT II MWO retrofit kits for PM Cargo; APA cannot separate 'CH-47 Helicopter' from CH-47 Mods line 3264AA0252; no tie"
+},
+{
+"piid": "FA862018F2372",
+"pe_bli": "0205219F",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 424 MQ-9 Reaper; MQ-9 MRC/ATLC work; RDT&E AF among funds; program mapping to MQ-9 UAV PE holds"
+},
+{
+"piid": "FA867219F1102",
+"pe_bli": "SDB002",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 439 SDB II; Small Diameter Bomb Increment II IDIQ; MPAF 057-3020 funds; program mapping holds"
+},
+{
+"piid": "FA867519F1001",
+"pe_bli": "2206",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 185 AMRAAM; AMRAAM lab management; WPN 017-1507 among funds; joint mapping to Navy AMRAAM line holds"
+},
+{
+"piid": "FA867520F2002",
+"pe_bli": "2206",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 185 AMRAAM; AMRAAM program support/annual sustainment; WPN 017-1507 among funds; program mapping holds"
+},
+{
+"piid": "FA868218C0009",
+"pe_bli": "JASSM0",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 555 JASSM; JASSM Group 1/XR production; MPAF 057-3020 funds; program mapping holds"
+},
+{
+"piid": "HQ003420F0414",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; BCG support to F-35 JPO negotiations/sustainment improvement; APAF 057-3010; program-level holds"
+},
+{
+"piid": "N0001911C0083",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 LRIP 6 advance acquisition contract; APN/APAF funds; program-level holds"
+},
+{
+"piid": "N0001913C0008",
+"pe_bli": "0152",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 LRIP 8 (Lockheed); APN/APAF funds; program-level holds"
+},
+{
+"piid": "N0001913C0016",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; P&W (RTX) F-35 LRIP 8 propulsion; APN/APAF funds; program-level holds"
+},
+{
+"piid": "N0001914C0002",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 LRIP 9 (Lockheed); APN/APAF/RDT&E funds; program-level holds"
+},
+{
+"piid": "N0001914C0004",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; P&W F-35 LRIP 9 propulsion; APN/APAF funds; program-level holds"
+},
+{
+"piid": "N0001915C0114",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 LRIP 10 incl. ALIS kits, sustainment; APN/APAF funds; program-level holds"
+},
+{
+"piid": "N0001916C0004",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 sustainment (ICS extension, SLO options, partner support); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001916C0004",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 sustainment (ICS extension, SLO options, partner support); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001917C0020",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; P&W F-35 Lot 11 propulsion/tooling; APN/APAF funds; program-level holds"
+},
+{
+"piid": "N0001917F0327",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 alternate mission equipment deliveries (LM); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001917F0383",
+"pe_bli": "0605504N",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 334 P-8A; PMA-290 (P-8) order; RDT&E Navy 017-1319; P-8A to MMA Inc III mapping holds at program level"
+},
+{
+"piid": "N0001918F0246",
+"pe_bli": "0505",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 378 EA-18G; ECP 6482 ASE Group A installs; APN/RDT&E N funds; mapping to F-18/EA-18G mod line holds"
+},
+{
+"piid": "N0001918F0584",
+"pe_bli": "0152",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; FY18 F-35 air-vehicle initial spares (EOTS); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001918F2494",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 DMS parts buy (Xilinx/Intel-Altera); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001918F6025",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; APAF 057-3010 via NAVAIR; descriptions admin-only but nothing contradicts; program-level holds"
+},
+{
+"piid": "N0001919C0040",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; BAE (F-35 EW supplier) Project Heisenberg flight test; APN/RDT&E funds; program-level holds"
+},
+{
+"piid": "N0001919F2474",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 Technical Refresh 3 Phase 3 modernization; APN/APAF/RDT&E; program-level holds"
+},
+{
+"piid": "N0001919F2698",
+"pe_bli": "0152",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 LRIP 13 AME and initial spares; APN/APAF; program-level holds"
+},
+{
+"piid": "N0001919F2698",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 LRIP 13 AME and initial spares; APN/APAF; program-level holds"
+},
+{
+"piid": "N0001919F4046",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 DMS case #1354 USAF production; APN/APAF; program-level holds"
+},
+{
+"piid": "N0001919F4216",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 order (delivery/CLIN admin, FY19 descope); APN/APAF; nothing contradicts; program-level holds"
+},
+{
+"piid": "N0001920C0011",
+"pe_bli": "0152",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; P&W F-35 Lot 15-17 propulsion, F135 CTOL; APN/APAF; program-level holds"
+},
+{
+"piid": "N0001920F0040",
+"pe_bli": "M09HAI",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 442 AIM-9X Blk II; core logistics/tech support; MPAF 057-3020 among funds; joint mapping to AF Sidewinder line holds"
+},
+{
+"piid": "N0001920F0410",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; overrun funding/SLA order via NAVAIR; APN/APAF; nothing contradicts; program-level holds"
+},
+{
+"piid": "N0001920F0410",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; overrun funding/SLA order via NAVAIR; APN/APAF; nothing contradicts; program-level holds"
+},
+{
+"piid": "N0001920F0411",
+"pe_bli": "0152",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 DMS parts buy (CNI Broadcom); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001920F0416",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; 'F-35 CAD/PAD transfer NRE'; APN 017-1506; program-level holds"
+},
+{
+"piid": "N0001920F0565",
+"pe_bli": "0152",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 ECP awards/EPIC material mods; APN/APAF; program-level holds"
+},
+{
+"piid": "N0001920F0571",
+"pe_bli": "0147",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 material mod/ECPs, UK LOE, bulkhead CLINs; APN/APAF; program-level holds"
+},
+{
+"piid": "N0001920F0579",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F-35 Lot 14 helmet-mounted display (HMDS); APN/APAF; program-level holds"
+},
+{
+"piid": "N0001921F0220",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198; F135 thrust recovery kits for USAF/USN/NLD CTOL/CV engines; APAF; program-level holds"
+},
+{
+"piid": "N0001921F0230",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; NAVAIR buy of Dell workstations on APAF 057-3010; commodity IT but F-35-tagged and funded"
+},
+{
+"piid": "N0001921F0231",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; NAVAIR buy of HP laptops on APAF 057-3010; commodity IT but F-35-tagged and funded"
+},
+{
+"piid": "N0001921F0232",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Tag 198 F-35; NAVAIR buy of Samsung monitors on APAF 057-3010; commodity IT but F-35-tagged and funded"
+},
+{
+"piid": "N0002409C2116",
+"pe_bli": "2001",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "Lake AP 223 'CVN 78', desc CVN 79 advance construction, SCN 017-1611; 223\u21922001 Carrier Replacement mapping holds"
+},
+{
+"piid": "N0002413C5116",
+"pe_bli": "0604307N",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 110 AEGIS; Aegis CSEA ACB 16 contract, RDT&E-N acct; 0604307N narrative owns AEGIS Combat System capability packages"
+},
+{
+"piid": "N0002413C5212",
+"pe_bli": "0607658N",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 582 CEC, desc 'Cooperative Engagement Capability', RDT&E-N 017-1319; title-exact mapping to CEC PE holds"
+},
+{
+"piid": "N0002413C5403",
+"pe_bli": "2356",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 234 SM-2; SM eng/tech services w/ WPN 017-1507; 2356 narrative funds SM-2 BLK IIIAZ/IIIC mods; program mapping holds"
+},
+{
+"piid": "N0002415C6311",
+"pe_bli": "1603",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 443 LCS MM; NGC LCS MM engineering services w/ OPN 017-1810; 1603 is one of the LCS MM program's OPN lines"
+},
+{
+"piid": "N0002417C5145",
+"pe_bli": "2119",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 197 DDG 1000; desc DDG 1000 MSE/TSCE; SCN 017-1611; title-exact SCN 'DDG 1000' mapping holds"
+},
+{
+"piid": "N0003918F0128",
+"pe_bli": "2915",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 417 CANES; desc CANES production units; OPN 017-1810; title-exact OPN 'CANES' mapping holds"
+},
+{
+"piid": "N0003919F0064",
+"pe_bli": "2925",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 417 CANES; desc Afloat Networks; OPN 017-1810; 2925 CANES-Intell is a CANES program OPN line"
+},
+{
+"piid": "N0003919F9039",
+"pe_bli": "2915",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 417 CANES; desc Afloat Networks; OPN 017-1810; title-exact OPN 'CANES' mapping holds"
+},
+{
+"piid": "N0003920F0021",
+"pe_bli": "2915",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 417 CANES; desc Afloat Networks; OPN 017-1810; title-exact OPN 'CANES' mapping holds"
+},
+{
+"piid": "N0003920F9060",
+"pe_bli": "2925",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 417 CANES; desc Afloat Networks; OPN 017-1810; 2925 CANES-Intell is a CANES program OPN line"
+},
+{
+"piid": "N0042120F1044",
+"pe_bli": "0305421N",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 373 MQ-4C Triton; ROVER 6 kit for Triton; RDT&E-N 017-1319; title-exact 'MQ-4C Triton Modernization' mapping holds"
+},
+{
+"piid": "N6833519F0430",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 198 F-35, APAF 057-3010; JPO furniture is program-office overhead on F-35 program funds; line not pinned"
+},
+{
+"piid": "N6833520F0775",
+"pe_bli": "ATA000",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 198 F-35, APAF 057-3010; JPO management-analyst support charged to F-35 program funds; program mapping holds"
+},
+{
+"piid": "N6833521F0210",
+"pe_bli": "F03500",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 198 F-35, APAF 057-3010; desc 'F-35 Joint Program Office furniture' \u2014 overhead on F-35 funds; line not pinned"
+},
+{
+"piid": "W31P4Q07C0263",
+"pe_bli": "6200C02901",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 367 HIMARS; Lockheed; MPA 021-2032; title-exact MPA HIMARS mapping holds"
+},
+{
+"piid": "W31P4Q17C0080",
+"pe_bli": "3025",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 260 GMLRS; GMLRS FRP XII rockets; PMC 017-1109 funds present; title-exact PMC GMLRS line mapping holds"
+},
+{
+"piid": "W58RGZ13C0114",
+"pe_bli": "6775A05101",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 278 CH-47F; Boeing; APA 021-2031; CH-47F \u2192 'CH-47 Helicopter' APA line mapping holds (txn descs admin-only)"
+},
+{
+"piid": "W58RGZ14C0021",
+"pe_bli": "6775A05101",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 115 CH-47D; Honeywell F-model engines/install kits; APA 021-2031; Chinook \u2192 'CH-47 Helicopter' line mapping holds"
+},
+{
+"piid": "W58RGZ18F0050",
+"pe_bli": "3264AA0252",
+"method": "fpds-ap",
+"verdict": "confirmed",
+"reason": "AP 278 CH-47F; new-build MYII aircraft, APA 021-2031; CH-47F program maps to this CH-47 mods line; line not pinned"
+},
+{
+"piid": "FA229323DB001",
+"pe_bli": "0303131F",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 3442962 names FA2293-23-D-B001 FET production for FAB-T; 0303131F narrative owns FAB-T FET program"
+},
+{
+"piid": "FA810607C0001",
+"pe_bli": "C02500",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 957168 names FA8106-07-C-0001 VC-25A seat replacement mod; C02500 narrative funds VC-25A modernization"
+},
+{
+"piid": "FA813423FB001",
+"pe_bli": "C04000",
+"method": "announcement+lexicon",
+"verdict": "refuted",
+"reason": "O&M CLS task order for C-32A+C-40B/C fleets; C-40 is the supported fleet; C04000 funds APAF mods, narrative has no CLS"
+},
+{
+"piid": "FA821317D0001",
+"pe_bli": "356010",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 1032766 names FA8213-17-D-0001 BBU-48 A/B impulse cartridges; 356010 narrative owns BBU-48 (SS27)"
+},
+{
+"piid": "FA821319C0038",
+"pe_bli": "356120",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 1954307 names FA8213-19-C-0038 HTVSF FMU-167 FRP Lot 2/3; 356120 Fuzes narrative owns FMU-167 HTVSF"
+},
+{
+"piid": "FA850419F0008",
+"pe_bli": "0401132F",
+"method": "announcement+lexicon",
+"verdict": "refuted",
+"reason": "Propulsion LTS = engine sustainment; lake accts O&M 3400/3740/3840, no 3600; C-130J is supported platform, not RDT&E PE"
+},
+{
+"piid": "FA862615D0016",
+"pe_bli": "0207268F",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 606783 names FA8626-15-D-0016 F110/101/118 ECIP; 0207268F owns F110 Aircraft Engine CIP; RDT&E-AF acct"
+},
+{
+"piid": "FA862622C0002",
+"pe_bli": "0207146F",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2827649 names FA8626-22-C-0002 F-15EX Lots 2+ propulsion; 0207146F narrative owns F-15EX (program-level)"
+},
+{
+"piid": "FA869124CB002",
+"pe_bli": "0305206F",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 3624785 names FA8691-24-C-B002 DRACO 7.0 lab test; 0305206F Agile ISR owns DRACO airborne SAR image-quality effort"
+},
+{
+"piid": "FA872621F0073",
+"pe_bli": "E011A1",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2641085 names FA8726-21-F-0073 BACN Global 6000 aircraft; E011A1 narrative owns BACN; APAF acct"
+},
+{
+"piid": "FA873018C0065",
+"pe_bli": "E00300",
+"method": "announcement+lexicon",
+"verdict": "refuted",
+"reason": "RDT&E-only (057-3600) CID sensor risk reduction; E00300 APAF narrative owns ACIP/DMS mods, no CID; AWACS = host platform"
+},
+{
+"piid": "FA873021C0031",
+"pe_bli": "0208006F",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2641085 names FA8730-21-C-0031 AGM bridge contract; 0208006F narrative owns AGM JMPS MPE; RDT&E-AF acct"
+},
+{
+"piid": "FA881018C0005",
+"pe_bli": "1206443SF",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2461951 names FA8810-18-C-0005 three NGG space vehicles; 1206443SF narrative owns Next-Gen OPIR GEO (NGG)"
+},
+{
+"piid": "FA930420D0003",
+"pe_bli": "0604256F",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2132503 names FA9304-20-D-0003 DIADS engineering services; 0604256F narrative owns DIADS at Edwards AFB"
+},
+{
+"piid": "H9224118F0022",
+"pe_bli": "0201RWUPGR",
+"method": "announcement+lexicon",
+"verdict": "refuted",
+"reason": "Ann: four NEW-BUILD MH-47G (PDW+APA); 0610MH47 MH-47 Chinook narrative owns Blk II airframes+APA 6775A05101; RWUPGR=mods"
+},
+{
+"piid": "HQ014717C0032",
+"pe_bli": "MD07",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2719988 names HQ0147-17-C-0032 THAAD weapon system mod; MD07 THAAD line owns THAAD; PDW 097-0300 acct"
+},
+{
+"piid": "HQ014719C0004",
+"pe_bli": "0603882C",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 1793336 names HQ0147-19-C-0004 GMD Development & Sustainment Contract; 0603882C narrative owns GMD"
+},
+{
+"piid": "HR001114C0123",
+"pe_bli": "0603286E",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 606849 names HR0011-14-C-0123 TBG option; 0603286E narrative owns Tactical Boost Glide (TBG)"
+},
+{
+"piid": "HR001121C0066",
+"pe_bli": "0603287E",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2567831 names HR001121C0066 DRACO Track A; 0603287E narrative owns DRACO; DARPA 097-0400 acct"
+},
+{
+"piid": "M6785417C9000",
+"pe_bli": "4630",
+"method": "announcement+lexicon",
+"verdict": "refuted",
+"reason": "TSO named as customer org for O&M IT labor; lake 100% 017-1106 O&M; 4630 TSO element funds HW/SW/network procurement"
+},
+{
+"piid": "M6785425C0023",
+"pe_bli": "2025",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 4264034 names M67854-25-C-0023 ACV-30 turrets, PMC funds; 2025 narrative owns ACV"
+},
+{
+"piid": "N0001917C0001",
+"pe_bli": "0593",
+"method": "announcement+lexicon",
+"verdict": "refuted",
+"reason": "Ann. is Lot 12 F-35 production long-lead; 0593 narrative is F-35C Modifications program (JSF only 'mentioned')"
+},
+{
+"piid": "N0001917F0399",
+"pe_bli": "0528",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 1297072 names N0001917F0399 CH-53E display B-kits, APN; 0528 H-53 Series narrative funds CH-53E mods"
+},
+{
+"piid": "N0001917G0002",
+"pe_bli": "1000CV2200",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2497472 names BOA N0001917G0002 order for CV-22 retrofit/mod spares kits; 1000CV2200 owns CV-22 Modification"
+},
+{
+"piid": "N0001919C0042",
+"pe_bli": "0164",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 1968631 names N00019-19-C-0042 V-22 aux tank systems, APN; 0164 V-22 line owns V-22; lake AP 212 V-22"
+},
+{
+"piid": "N0001919D0015",
+"pe_bli": "ATA000",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 1737551 names N0001919D0015 Lot 13 F-35 AME/spares incl. AF share, APAF funds; ATA000 owns F-35"
+},
+{
+"piid": "N0001920C0056",
+"pe_bli": "0193",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2131035 names N00019-20-C-0056 BRUs for P-8A Lots 9-11, APN; 0193 owns P-8A; lake AP 334 P-8A"
+},
+{
+"piid": "N0001920F0647",
+"pe_bli": "0586",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 4013440 names N0001920F0647 P-8A Increment 3 retrofit A-kits, APN; 0586 P-8 Series owns P-8A mods"
+},
+{
+"piid": "N0001921C0044",
+"pe_bli": "2327",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2774421 names N0001921C0044 AGM-88G AARGM-ER LRIP Lot 1, WPN; 2327 owns AGM-88G AARGM-ER"
+},
+{
+"piid": "N0001921C0060",
+"pe_bli": "0442",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann. 2537803 names N0001921C0060 MQ-4C Triton sustainment support, APN; 0442 owns MQ-4C Triton; lake AP 373"
+},
+{
+"piid": "N0001921F0228",
+"pe_bli": "0178",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 2447883 names USMC AH-1Z/UH-1Y support w/ APN funds; lexicon owns AH-1Z (doc 330); lake dap=H-1 UPGRADES, acct 017-1506"
+},
+{
+"piid": "N0001922F0889",
+"pe_bli": "0528",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3067663: 124 IVHMU B-kits, APN funds; H-53 Series narrative owns IVHMU (CH-53E mods); lake tdesc IVHMU kits CH-53"
+},
+{
+"piid": "N0001923C0048",
+"pe_bli": "0305231N",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3390075: IDS/IPS NRE for MQ-8C Fire Scout, RDT&E N funds; MQ-8 UAV PE owns MQ-8C; lake dap=MQ-8 FIRE SCOUT"
+},
+{
+"piid": "N0001924C0028",
+"pe_bli": "V02200",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3824019: VSLED WRAs for CV-22 retrofit incl. FY22 AF procurement funds; CV-22 Mods (APAF) narrative owns CV-22"
+},
+{
+"piid": "N0001924F0008",
+"pe_bli": "0452",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3678731: MAGTF UAS-Exp/MALE MQ-9A support, APN funds; Marine Group 5 UAS narrative owns MQ-9A/MALE"
+},
+{
+"piid": "N0001925F0264",
+"pe_bli": "ATA000",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 4288098: F-35 production/sustainment DMSMS support, FY23 APAF funds; ATA000 F-35 narrative owns F-35; lake dap=F-35"
+},
+{
+"piid": "N0002416C4202",
+"pe_bli": "2122",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 655726: NRE main reduction gears for DDG 51; DDG-51 SCN line; lake acct 017-1611, tdesc MRG shipset"
+},
+{
+"piid": "N0002418C4208",
+"pe_bli": "2122",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1515278: MCS consoles for DDG 51 new construction, SCN funds; DDG-51 SCN line; lake acct 017-1611"
+},
+{
+"piid": "N0002418C5395",
+"pe_bli": "2026",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1504779: manufacture up to 59 AN/SPQ-9B radars, OPN+SCN funds; BLI 2026 SPQ-9B Radar (OPN) owns it; acct 017-1810"
+},
+{
+"piid": "N0002418C5417",
+"pe_bli": "2307",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1525992: ESSM Block 2 transition to LRIP; ESSM WPN line narrative owns ESSM (funds cited RDT&E/OPN, program-level holds)"
+},
+{
+"piid": "N0002419C5509",
+"pe_bli": "2981",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1736461: DBR design agent ECP/engineering support; In-Service Radars narrative owns DBR ECP efforts; lake acct 017-1810"
+},
+{
+"piid": "N0003924D4004",
+"pe_bli": "0604280N",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3812687: MIDS JTRS terminal IDIQ incl. RDT&E N funds; JTRS-Navy PE owns MIDS JTRS; lake tdesc MIDS JTRS SE&I"
+},
+{
+"piid": "N0010416CK037",
+"pe_bli": "0182",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 713026: MJU-68/B flares for PMA272 AECM program, PANMC funds; BLI 0182 AECM narrative owns line; lake tdesc MJU-68"
+},
+{
+"piid": "N0010416G0726",
+"pe_bli": "0182",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1081980 (+1328736/1379839/1604905): BOA DOs for ALE-70/MJU-68 for PMA272 AECM program, PANMC funds; 0182 owns AECM"
+},
+{
+"piid": "N0010423DC901",
+"pe_bli": "0182",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3540301: MJU-77/B IR flare IDIQ, PANMC funds; AECM narrative owns MJU-77 decoy; lake tdesc MJU-77/B"
+},
+{
+"piid": "N0016724D0004",
+"pe_bli": "2013",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3917690: VCS propulsor forward subassemblies, SCN AP funds; BLI 2013 Virginia Class Submarine; lake tdesc VCS material"
+},
+{
+"piid": "N0042119F0531",
+"pe_bli": "1000CV2200",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 2511328: P00014 CV-22 mission planning updates w/ FY20 PDW funds; SOCOM CV-22 Mod narrative lists mission planning; acct 097-0300"
+},
+{
+"piid": "N6134018F0056",
+"pe_bli": "0569",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1581925: NRE/ECP backup oxygen for T-45, APN funds; T-45 Series APN line owns T-45; lake tdesc T-45 ABOS"
+},
+{
+"piid": "N6134018F0067",
+"pe_bli": "0569",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1592656: 39 T-45 inlet retrofit kits, APN funds; T-45 Series APN line; lake acct 017-1506"
+},
+{
+"piid": "N6134021F7002",
+"pe_bli": "0158",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 2539245: CH-53K CFTD updates/flight model validation, APN funds; BLI 0158 CH-53K narrative owns CH-53K"
+},
+{
+"piid": "N6833518C0482",
+"pe_bli": "0193",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1540364: AAS PSE for P-8A Poseidon, FY16 APN; BLI 0193 P-8A owns it; lake acct 017-1506"
+},
+{
+"piid": "N6833519C0248",
+"pe_bli": "0195",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1968631: E-2D AHE program APY-9 LRM depot repair, APN funds; BLI 0195 E-2D owns it; lake acct 017-1506"
+},
+{
+"piid": "N6833520F0008",
+"pe_bli": "0305234N",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1986937: AN/DPY-2 payload for RQ-21A Blackjack, RDT&E N + APN; STUAS PE narrative owns RQ-21A; acct 017-1319"
+},
+{
+"piid": "N6833523C0407",
+"pe_bli": "0591",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3434687: NGJ Mid-Band test/repair data, FY23 APN; BLI 0591 NGJ APN line owns NGJ"
+},
+{
+"piid": "N6893614D0024",
+"pe_bli": "0514",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 606695: 170 AV-8B AVT terminals, APN funds; AV-8 Series narrative funds T/AV-8B mods; lake tdesc AVT"
+},
+{
+"piid": "W31P4Q23C0032",
+"pe_bli": "6552C67500",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3378570: MLRS recap to M270A2, FY23 MPA funds; MLRS Mods narrative (doc 345) funds M270A2 launchers; lake dap=MLRS"
+},
+{
+"piid": "W58RGZ17C0009",
+"pe_bli": "6771AA0005",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 1238007 correction: 142 Army UH-60M + 75 HH-60M in MYP base; UH-60M MYP APA line owns both; lake acct 021-2031"
+},
+{
+"piid": "W58RGZ21D0028",
+"pe_bli": "5399AZ3537",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 2591938: production of common infrared countermeasures; CIRCM APA line owns CIRCM; lake tdesc CIRCM FRP"
+},
+{
+"piid": "W911QY16D0051",
+"pe_bli": "9140MA7804",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 808535: RA-1 Advanced Ram Air parachute + spares; Cargo/Personnel Parachute OPA narrative owns RA-1 (doc 346)"
+},
+{
+"piid": "W912CH24F0170",
+"pe_bli": "2073GZ0410",
+"method": "announcement+lexicon",
+"verdict": "confirmed",
+"reason": "Ann 3827133: M109A7/M992A3 vehicles, WTCV funds; PIM narrative (doc 350) defines PIM as M109A7 SPH + M992A3 CAT; acct 021-2033"
+},
+{
+"piid": "FA460021F0052",
+"pe_bli": "0604002SF",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc itself is SWAFS; sub: sounder data for SWAFS sustainment; SF Weather Services narrative owns SWAFS (doc 417)"
+},
+{
+"piid": "FA807517F1383",
+"pe_bli": "0605013N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime NAVAIR aviation logistics IT (RDT&E N acct); sub: AoA/integration into ALE PoR; 0605013N narrative owns ALE"
+},
+{
+"piid": "FA807524F0008",
+"pe_bli": "0804768J",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc JTSE R&D, acct 097-0400; sub JTSE; CE2T2 narrative (doc 112) owns JTSE"
+},
+{
+"piid": "FA830723FB173",
+"pe_bli": "0604250D8Z",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc C2IE support; sub is C2IE program objective; 0604250D8Z project P250 narratives own C2IE; acct 097-0400"
+},
+{
+"piid": "FA861222FB004",
+"pe_bli": "0604003F",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc ABMS digital infrastructure (AFLCMC C3BM); sub CSOW for ABMS development; ABMS PE owns ABMS"
+},
+{
+"piid": "FA861223FB001",
+"pe_bli": "0604003F",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc ABMS software integrator; sub ABMS development requirements; ABMS PE owns ABMS"
+},
+{
+"piid": "FA865020C1132",
+"pe_bli": "0603461A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime RAVENS/CREATE-RF (acct 021-2040 RDT&E A); sub states CREATE-RF is an HPCMP program; HPCMP narrative owns CREATE"
+},
+{
+"piid": "FA865116C0330",
+"pe_bli": "0603767E",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc SECTR VAULTS, acct 097-0400; sub SECTR design/sim/test; Sensor Technology PE SEN-02 owns SECTR"
+},
+{
+"piid": "FA872618F0039",
+"pe_bli": "835060",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc BITI BAN NMS, acct 057-3080 OPAF; subs BITI NMS recapitalization; BLI 835060 narrative owns BITI"
+},
+{
+"piid": "FA875018F0024",
+"pe_bli": "0604294D8Z",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "Omnibus CPAC-E prime ($87M, 189 subs on cyber/IoT/S&T); one $380K T&AM sub can't make prime's program unambiguous"
+},
+{
+"piid": "FA875023C0518",
+"pe_bli": "0602025E",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "ANSR owned by 0602303E IT-04 thru FY25 (contract FY23-25); 0602025E only from FY26; lexicon lists both PEs"
+},
+{
+"piid": "FA880619C0003",
+"pe_bli": "1206770SF",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub: SATOPS prototyping/integration for EGS capabilities (Braxton team); EGS PE narrative owns EGS; accts 057-3620"
+},
+{
+"piid": "H9240824F0015",
+"pe_bli": "1160434BB",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "HQ USSOCOM prime; sub NAVWAR lab support for LEA GPS hardening; Unmanned ISR narrative (doc 73) owns LEA MCA effort"
+},
+{
+"piid": "HDTRA117C0031",
+"pe_bli": "0605000BR",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "DTRA prime (accts 097-0100/0400); sub operates IMS station I59US; 0605000BR narrative owns U.S. portion of IMS"
+},
+{
+"piid": "HDTRA121C0030",
+"pe_bli": "0605000BR",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc IMS waveform O&M, acct 097-0400; subs operate IMS seismic/infrasound stations; PE narrative owns U.S. IMS"
+},
+{
+"piid": "HQ003418C0012",
+"pe_bli": "0305172K",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc names SWS for DISA; sub cloud architecture per SWS PWS; 0305172K narrative: CESO sustains SAP IT enterprise SWS"
+},
+{
+"piid": "HQ003419C0012",
+"pe_bli": "0305172K",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc SWS development/deployment, acct 097-0400; sub SWS PWS cloud tasking; 0305172K narrative owns SWS"
+},
+{
+"piid": "HQ003423F0237",
+"pe_bli": "0606774D8Z",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime SERC task 1080 = research supporting DCTC (per subs); sub NC A&T DCTC pilot; PE is DCTC line (doc 174)"
+},
+{
+"piid": "HQ003425FE252",
+"pe_bli": "0606774D8Z",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc research in support of DCTC; sub continues UArizona DCTC pilot (WRT-2511); PE is DCTC line"
+},
+{
+"piid": "HR001115C0038",
+"pe_bli": "0602303E",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Prime tdesc RATS Phases 4-5; sub RATS Phase IV/V; Info & Comms Technology PE narrative (doc 209) owns RATS"
+},
+{
+"piid": "N0001922F0010",
+"pe_bli": "0604786N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub 4105829259 is LRASM C-3 RFE/NRE; prime mods name LRASM 158C-3 Ph1-3; 0604786N Proj 3466 is LRASM C-3"
+},
+{
+"piid": "N0001923C0020",
+"pe_bli": "0343",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub 4505840520 'in support of NAVAIR METS program'; APN BLI 0343 is Multi-Engine Training System (T-54)"
+},
+{
+"piid": "N0002418F8804",
+"pe_bli": "0603724N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub MA1472 research support to Navy WETS; prime descr WETS; 0603724N narrative owns WETS ops via contractor"
+},
+{
+"piid": "N0002419F8816",
+"pe_bli": "0603724N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub MA1718 research support to Navy WETS; prime descr WETS, acct 017-1319; PE narrative owns WETS"
+},
+{
+"piid": "N0002420F8819",
+"pe_bli": "0603724N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub MA1808 WETS-5 research/maintenance; prime descr WETS, acct 017-1319; PE narrative owns WETS"
+},
+{
+"piid": "N0002421F8805",
+"pe_bli": "0603724N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub MA1877 WETS-6 research/maintenance support; acct 017-1319; 0603724N narrative owns WETS"
+},
+{
+"piid": "N0002421F8806",
+"pe_bli": "2010US",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "SDV MK11 also owned by RDT&E 1160483BB (dev+10 prod units in FY22 ed); FY21-22 prime, no acct; 2010US not selected"
+},
+{
+"piid": "N0002422F8803",
+"pe_bli": "0603724N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub MA2066 WETS-7 research/maintenance; prime descr WETS-7, acct 017-1319; PE narrative owns WETS"
+},
+{
+"piid": "N0003918F1316",
+"pe_bli": "0305327N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub D8639-S2 CITC secure engineering for PMW 130; prime descr CITC; 0305327N Insider Threat owns CITC"
+},
+{
+"piid": "N0003921F1006",
+"pe_bli": "2001",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub SR20230203 CVN 80 RCS integrate/test; prime descr CVN 80 SCN, acct 017-1611; SCN 2001 is CVN 80/81"
+},
+{
+"piid": "N0003923F6000",
+"pe_bli": "0605013N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub is Learning Stack software dev; prime descr LS software dev; 0605013N narrative lists LS as MyNavy HR pillar"
+},
+{
+"piid": "N0003923F6001",
+"pe_bli": "0605013N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub is Learning Stack analysis (RDTE); prime descr LS analysis; 0605013N narrative owns Learning Stack"
+},
+{
+"piid": "N6247019F4017",
+"pe_bli": "0605856N",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "Prime O&M,N-only (017-1804) compliance for COMSUBFOR; SURTASS LFA owned by 0204311N/2237; 0605856N funds studies"
+},
+{
+"piid": "N6523619F3014",
+"pe_bli": "0603287E",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub is DARPA Launch Challenge range/safety support; prime descr DLC, acct 097-0400; 0603287E narrative owns DLC"
+},
+{
+"piid": "N6600117F0562",
+"pe_bli": "3043",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub EPF Hull-12 engineering/production support; prime descr same, acct 017-1611; SCN 3043 is EPF"
+},
+{
+"piid": "N6600118F1086",
+"pe_bli": "3216",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub is NMT SOVT/PICO/PITCO technical support; acct 017-1810; OPN 3216 is Navy Multiband Terminal"
+},
+{
+"piid": "N6600119C4005",
+"pe_bli": "0603766E",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub 10391.02 supports Ocean of Things tracking/ocean models; acct 097-0400; 0603766E narrative owns OoT"
+},
+{
+"piid": "N6600122C4020",
+"pe_bli": "0602025E",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "HARDEN owned by 0602303E IT-03 thru FY25 (contract FY22-25); 0602025E MSL-04 only from FY26; lexicon lists both"
+},
+{
+"piid": "N6600122F0195",
+"pe_bli": "0603914C",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "TCES operated under 0603890C MD31 in every ed FY18-26; 0603914C's sole mention is a FY20 CTC-1 lab-move list"
+},
+{
+"piid": "N6600123F0049",
+"pe_bli": "2915",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub PMW160 CANES PITCO support; prime descr CANES production/PITCO; OPN 2915 is CANES"
+},
+{
+"piid": "N6600124F0403",
+"pe_bli": "0603914C",
+"method": "subaward+lexicon",
+"verdict": "refuted",
+"reason": "0603914C only lists TCES as a lab moved into CTC-1; 0603890C narratives FY18-26 operate TCES (comms emulation). Ambiguous"
+},
+{
+"piid": "N6660418F3013",
+"pe_bli": "0603506N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub SSTD systems engineering; prime descr SSTD adv dev, acct incl 017-1319; PE 0603506N is SSTD"
+},
+{
+"piid": "N6660425FC429",
+"pe_bli": "0603506N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub SSTD NIXIE UW/UD FoS; prime descr AN/SLQ-25E NIXIE; 0603506N narrative owns NIXIE under SSTD"
+},
+{
+"piid": "N6833517C0392",
+"pe_bli": "0605502N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub supports Navy STTR Phase I topic N17A-T021 under this prime; 0605502N is Navy SBIR/STTR PE"
+},
+{
+"piid": "N6833520F0182",
+"pe_bli": "4213",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub shipboard alts for NAVAIR ALRE MWS/ILARTS; acct 017-1810; OPN 4213 narrative includes ALRE"
+},
+{
+"piid": "N6833522C0156",
+"pe_bli": "0605502N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub NV0156 is STTR Phase 2 (DSIC/SCWMS) with prime; prime descr SBIR Ph 2; 0605502N is Navy SBIR/STTR PE"
+},
+{
+"piid": "N6893617F0353",
+"pe_bli": "0204571N",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub TCTS Inc II EWS software update; acct incl 017-1319; 0204571N narrative owns TCTS II"
+},
+{
+"piid": "W31P4Q20F0424",
+"pe_bli": "0604181C",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub T18S096 engineering analysis for HD studies; prime descr HD missile support, acct 097-0400; PE is HD"
+},
+{
+"piid": "W31P4Q20F0543",
+"pe_bli": "0604181C",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub T18S074 explicitly Hypersonic Defense studies; acct 097-0400 (RDT&E DW); 0604181C is HD"
+},
+{
+"piid": "W31P4Q22F0120",
+"pe_bli": "0605457A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "$377M sub to NGSC for IBCS software; accts 021-2040/2035; 0605457A AIAMD narrative centers on IBCS"
+},
+{
+"piid": "W58RGZ21F0232",
+"pe_bli": "6818AA0050",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub $5.2M Aviation Systems ILS integration; prime descr same; APA ATC narrative names the ILS Program"
+},
+{
+"piid": "W58RGZ22F0265",
+"pe_bli": "0603801A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub SETA for PM FLRAA office; lake ap=FLRAA, acct 021-2040; 0603801A FVL project funds FLRAA CS3"
+},
+{
+"piid": "W58RGZ23F0089",
+"pe_bli": "0603801A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub PWS engineering services for PM FLRAA; lake ap=FLRAA, acct 021-2040; 0603801A narrative owns FLRAA"
+},
+{
+"piid": "W58RGZ24F0287",
+"pe_bli": "6818AA0050",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub A3S ILS integration; prime descr same; ATC line narrative names the ILS Program in its portfolio"
+},
+{
+"piid": "W900KK23F0041",
+"pe_bli": "0304270A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub AEA-IV for U.S. Army ARAT; prime descr ARAT; 0304270A narrative funds ARAT reprogramming (EW6)"
+},
+{
+"piid": "W900KK23F0133",
+"pe_bli": "0604759A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub $12M PM CT2/ATEC Applied Environments Modernization; 0604759A Major T&E Investment narrative owns AEM"
+},
+{
+"piid": "W912HQ19F0018",
+"pe_bli": "0603716D8Z",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub program support to SERDP/ESTCP joint office; prime is SERDP ESTCP support TO; 0603716D8Z is SERDP"
+},
+{
+"piid": "W912HQ19F0018",
+"pe_bli": "0603851D8Z",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub program support to SERDP/ESTCP joint office; prime is SERDP ESTCP support TO; 0603851D8Z is ESTCP"
+},
+{
+"piid": "W912HZ24C0028",
+"pe_bli": "0603461A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub $12.5M ERDC HPCMP CSSP services; acct 021-2040; 0603461A is HPCMP"
+},
+{
+"piid": "W912HZ24F0404",
+"pe_bli": "0603461A",
+"method": "subaward+lexicon",
+"verdict": "confirmed",
+"reason": "Sub 'High Performance Computing Modernization Program'; prime descr labor for HPCMP; 0603461A is HPCMP"
+},
+{
+"piid": "HR001113C0077",
+"pe_bli": "0601122E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001115C0035",
+"pe_bli": "0602115E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; HR0011 prefix; DARPA rows present (others DCMA admin)"
+},
+{
+"piid": "HR001115C0055",
+"pe_bli": "0605502E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001115C0077",
+"pe_bli": "0603739E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001115C0081",
+"pe_bli": "0601117E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001115C0135",
+"pe_bli": "0603286E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: accts 057-3600;097-0400 (097-0400 present); sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001115C0135",
+"pe_bli": "0603287E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: accts 057-3600;097-0400 (097-0400 present); sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001116C0025",
+"pe_bli": "0602025E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001116C0025",
+"pe_bli": "0603469E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001116C0030",
+"pe_bli": "0602025E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: acct 097-0400; sub-agency DARPA; HR0011 prefix"
+},
+{
+"piid": "HR001116C0030",
+"pe_bli": "0603767E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 9/9 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001116C0055",
+"pe_bli": "0603467E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 12/12 rows 097-0400, DARPA sub-agency (1 ONR admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001116C0083",
+"pe_bli": "0602303E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 12/12 rows 097-0400, DARPA sub-agency (DCMA admin rows), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001116C0101",
+"pe_bli": "0605502E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 16/16 rows 097-0400, DARPA sub-agency (DCMA admin rows), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001116C0118",
+"pe_bli": "0603767E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 18/18 rows 097-0400, DARPA sub-agency (DCMA admin rows), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001116C0133",
+"pe_bli": "0602025E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 18/18 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001117C0048",
+"pe_bli": "0603286E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 14/14 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001117C0071",
+"pe_bli": "0602115E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 7/7 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001117C0095",
+"pe_bli": "0605502E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 11/11 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001117C0128",
+"pe_bli": "0602303E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 9/9 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001117C0129",
+"pe_bli": "0601101E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 7/7 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0010",
+"pe_bli": "0601101E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 8/8 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0011",
+"pe_bli": "0602702E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 10/10 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0027",
+"pe_bli": "0603760E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 6/6 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0036",
+"pe_bli": "0602024E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 12/12 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0046",
+"pe_bli": "0602303E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 12/12 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0049",
+"pe_bli": "0603286E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 9/9 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0056",
+"pe_bli": "0603286E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 11/11 rows include 097-0400 (also 057-3600), sub-agency DARPA, HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001118C0062",
+"pe_bli": "0603739E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 13/13 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0071",
+"pe_bli": "0603767E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 23/23 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001118C0089",
+"pe_bli": "0603287E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 17/17 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0096",
+"pe_bli": "0602716E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 9/9 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0120",
+"pe_bli": "0603760E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 8/8 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0124",
+"pe_bli": "0602303E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 7/7 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0131",
+"pe_bli": "0603287E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 8/8 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118C0133",
+"pe_bli": "0605001E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 17/17 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001118F0020",
+"pe_bli": "0602023E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 3/3 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118F0030",
+"pe_bli": "0601122E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 5/5 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118F0031",
+"pe_bli": "0603467E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 5/5 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001118F0033",
+"pe_bli": "0601117E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 5/5 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119C0014",
+"pe_bli": "0605001E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 18/18 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0018",
+"pe_bli": "0605502E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 21/21 rows 097-0400, DARPA sub-agency (DCMA admin rows), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0020",
+"pe_bli": "0605502E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 6/6 rows include 097-0400 (also 021-2040), DARPA sub-agency, HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0038",
+"pe_bli": "0602023E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 4/4 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119C0039",
+"pe_bli": "0603468E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 5/5 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119C0050",
+"pe_bli": "0603739E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 3/3 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119C0085",
+"pe_bli": "0602024E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 14/14 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0085",
+"pe_bli": "0602026E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 14/14 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0092",
+"pe_bli": "0602303E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 4/4 rows 097-0400, DARPA sub-agency (1 DCMA admin row), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0094",
+"pe_bli": "0601117E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 3/3 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119C0113",
+"pe_bli": "0601122E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 4/4 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119C0114",
+"pe_bli": "0602715E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 7/7 rows 097-0400, DARPA sub-agency (DCMA admin rows), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0118",
+"pe_bli": "0602026E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 3/3 rows 097-0400, DARPA sub-agency (DCMA admin rows), HR0011 prefix; PE is DARPA DW line"
+},
+{
+"piid": "HR001119C0131",
+"pe_bli": "0602024E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 3/3 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119F0010",
+"pe_bli": "0603287E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 4/4 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119F0011",
+"pe_bli": "0605001E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 10/10 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119F0012",
+"pe_bli": "0603469E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 6/6 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119F0067",
+"pe_bli": "0602023E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 3/3 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119F0089",
+"pe_bli": "0602026E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 1/1 row 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+},
+{
+"piid": "HR001119F0092",
+"pe_bli": "0605502E",
+"method": "account+subagency",
+"verdict": "confirmed",
+"reason": "Lake: 4/4 rows 097-0400, sub-agency DARPA, HR0011 prefix; PE is DARPA RDT&E-DW line"
+}
+]

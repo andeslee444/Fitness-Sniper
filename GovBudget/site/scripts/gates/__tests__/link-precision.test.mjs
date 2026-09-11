@@ -57,25 +57,38 @@ const LIVE_CITATIONS = citationsFor([
   ["account", "low"], // low tiers are not published — must not enter the set
 ]);
 
-/** The live site_meta.link_precision this branch exports. */
+/** The live site_meta.link_precision this branch exports: three measured
+ *  tiers, each stamped with the run its figure came from, under one rubric.
+ *  account+subagency stays UNMEASURED until 6b loads attribution verdicts. */
 const LIVE_META = {
   link_precision: {
+    rubric: "attribution",
     sample_id: "2026-09-04",
     sampled_at: "2026-09-04",
     methods: {
-      "announcement+lexicon": { confirmed: 51, sampled: 54 },
-      "fpds-ap": { confirmed: 94, sampled: 120 },
-      "subaward+lexicon": { confirmed: 53, sampled: 60 },
+      "announcement+lexicon": { confirmed: 51, sampled: 54, sample_id: "2026-09-04", judged: "2026-09-04" },
+      "fpds-ap": { confirmed: 94, sampled: 120, sample_id: "2026-09-04", judged: "2026-09-04" },
+      "subaward+lexicon": { confirmed: 53, sampled: 60, sample_id: "2026-09-04", judged: "2026-09-04" },
     },
     unmeasured: ["account", "account+subagency", "account+tokens"],
   },
 };
 
-/** The paragraph the fixed /methodology/ renders for LIVE_META. */
+/** The sentence /methodology/ renders to name the rubric — the leg requires
+ *  it as a phrase match, not this exact string. */
+const RUBRIC_SENTENCE =
+  "Every figure answers one question — program attribution: does this award " +
+  "execute this program element? — judged from the award's own description " +
+  "against the program's J-book narrative and project titles, not from " +
+  "whether the linking rule fired. ";
+
+/** The paragraph /methodology/ renders for LIVE_META. */
 const LIVE_PARAGRAPH =
   "Measured precision of the published tiers, from a held-out " +
   "hand-adjudicated sample re-run through the same two-reviewer process and " +
-  "judged 2026-09-04. Each sampled link is counted under the tier it " +
+  "judged 2026-09-04. " +
+  RUBRIC_SENTENCE +
+  "Each sampled link is counted under the tier it " +
   "publishes under today, not the tier it carried when it was drawn; a " +
   "sampled link the corpus no longer publishes is counted in neither " +
   "direction: announcement+lexicon 51/54; fpds-ap 94/120; " +
@@ -131,6 +144,7 @@ describe("gate 24 leg n — C1: a figure for a tier the corpus does not publish"
   it("FAILS on the shape that shipped (fpds-ap+account 34/60)", () => {
     const shipped = {
       link_precision: {
+        rubric: "attribution",
         sample_id: "2026-09-04",
         sampled_at: "2026-09-04",
         methods: {
@@ -144,6 +158,7 @@ describe("gate 24 leg n — C1: a figure for a tier the corpus does not publish"
       },
     };
     const paragraph =
+      RUBRIC_SENTENCE +
       "Measured precision of the published tiers: account+subagency 60/60; " +
       "announcement+lexicon 54/60; fpds-ap 60/60; fpds-ap+account 34/60; " +
       "subaward+lexicon 53/60.";
@@ -256,6 +271,42 @@ describe("gate 24 leg n — non-vacuity floor on the published universe", () => 
         paragraphText: LIVE_PARAGRAPH,
       }).errors,
     ).toEqual([]);
+  });
+});
+
+describe("gate 24 leg n — #79: every figure names the question it answered", () => {
+  it("FAILS when the paragraph prints attribution figures without naming the rubric", () => {
+    const paragraph = LIVE_PARAGRAPH.replace(RUBRIC_SENTENCE, "");
+    expect(paragraph).not.toMatch(/program attribution/);
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      citations: LIVE_CITATIONS,
+      paragraphText: paragraph,
+    });
+    expect(errors.join("\n")).toMatch(/never names the rubric/);
+  });
+
+  it("FAILS when site_meta.link_precision carries no rubric (a pre-015 export)", () => {
+    const noRubric = { ...LIVE_META.link_precision };
+    delete noRubric.rubric;   // a pre-015 export knows no rubric at all
+    const { errors } = run({
+      siteMeta: { link_precision: noRubric },
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH,
+    });
+    expect(errors.join("\n")).toMatch(/link_precision\.rubric is null/);
+  });
+
+  it("FAILS when the block was tallied under any rubric but attribution", () => {
+    const meta = { link_precision: { ...LIVE_META.link_precision, rubric: "rule-fired" } };
+    const { errors } = run({
+      siteMeta: meta,
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH,
+    });
+    expect(errors.join("\n")).toMatch(/link_precision\.rubric is "rule-fired"/);
+    // A rule-fired tally must not be reachable through this leg at all.
+    expect(errors.join("\n")).not.toMatch(/values match/);
   });
 });
 

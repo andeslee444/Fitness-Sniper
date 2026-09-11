@@ -229,23 +229,33 @@ and its rationale names the subaward it rests on.
 published links is re-adjudicated by the same two-reviewer process, and
 /methodology/ prints the confirmed/judged figure per tier from
 `site_meta.link_precision` (the exporter derives it; no figure on that page is
-typed by hand). Each sampled link is counted under the tier it publishes under
-TODAY, not the tier it carried when it was drawn — `fpds-ap+account` was
-withdrawn hours after the 2026-09-04 draw and its links moved into the
-`fpds-ap` medium tier, so counting by the drawn method printed a figure for a
-tier no reader can meet. A sampled link the corpus no longer publishes counts
-in neither direction.
+typed by hand). Every published figure answers ONE question — the study's
+*rubric*, recorded on every verdict row (`link_precision_samples.rubric`,
+migration 015): **program attribution** — does this award execute this program
+element? — judged from the award's own description against the program's J-book
+narrative and project titles, not from whether the linking rule fired. The page
+names that question beside the figures, and gate 24 leg n fails a build whose
+figures carry any other rubric or whose paragraph omits it. Each sampled link is
+counted under the tier it publishes under TODAY, not the tier it carried when it
+was drawn — `fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and
+its links moved into the `fpds-ap` medium tier, so counting by the drawn method
+printed a figure for a tier no reader can meet. A sampled link the corpus no
+longer publishes counts in neither direction. A study run may re-judge one
+stratum only: each tier's figure comes from the latest run that judged that
+tier, a re-measurement replaces the number it corrects and never pools with it,
+and the page states every study date it draws on.
 
 Tiers with no published figure are NAMED on the page rather than left silent:
 the account, account/sub-agency and account/keyword tiers rest on an
 appropriation-account match — an association by construction, not proof this
 program paid — and their precision as program attribution has not been
-independently measured. The account/sub-agency tier was sampled, but its
-adjudication asked only whether the mechanical rule had fired (the
+independently measured. The account/sub-agency tier was sampled on 2026-09-04,
+but that adjudication asked only whether the mechanical rule had fired (the
 appropriation account, the sub-agency, the contract-number prefix) and not
-whether the award paid for this program, so those verdicts are kept for audit
-and are not published as precision. Strata judged under different rubrics must
-not be reported side by side.
+whether the award paid for this program; those 60 verdicts are stored under the
+`rule-fired` rubric for audit and excluded from every published figure by the
+rubric filter — not by a hand-named list — and the tier remains unmeasured until
+a fresh sample is judged on program attribution.
 
 **Derived figures are labeled derived.** Any figure computed from published
 rates or published subtotals — rather than directly reported in a source

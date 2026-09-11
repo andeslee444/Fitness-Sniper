@@ -181,12 +181,13 @@ export interface SiteMeta {
    * links had moved into (the honest pooled figure is 94/120). Sampled links
    * the corpus no longer publishes count toward neither number.
    *
-   * `unmeasured` is every published tier with NO figure — because the study
-   * drew no sample from it, or because its verdicts answered a different
-   * question (`account+subagency`: the adjudication confirmed the mechanical
-   * rule had fired, not that the award paid for the program). /methodology/
-   * names them in prose so a tier with no number never reads as one that
-   * passed; gate 24 leg n enforces that.
+   * `unmeasured` is every published tier with NO figure under the published
+   * rubric — because the study drew no sample from it, or because its only
+   * verdicts answered a different question (the 2026-09-04 `account+subagency`
+   * sample was judged on whether the mechanical rule had fired; migration 015
+   * stores those rows under rubric `rule-fired` and they are never published).
+   * /methodology/ names them in prose so a tier with no number never reads as
+   * one that passed; gate 24 leg n enforces that.
    *
    * `sampled_at` dates the study so a reader can see how far the corpus may
    * have moved since. {} until a study's verdicts are loaded — /methodology/
@@ -194,9 +195,27 @@ export interface SiteMeta {
    * just possibly-empty) because it is absent on pre-#72 exports.
    */
   link_precision?: {
+    /** The ONE question every figure in `methods` answered (ROADMAP #79):
+     *  always "attribution" on a current export — the exporter reads
+     *  link_precision_samples by rubric (migration 015) and publishes no
+     *  other; gate 24 leg n fails any other value and requires /methodology/
+     *  to name it next to the figures. */
+    rubric?: string;
     sample_id?: string;
     sampled_at?: string | null;
-    methods?: Record<string, { confirmed: number; sampled: number }>;
+    methods?: Record<
+      string,
+      {
+        confirmed: number;
+        sampled: number;
+        /** The study run this tier's figure comes from — the LATEST run that
+         *  judged the tier under the rubric. A run may re-judge one stratum
+         *  only, so figures can come from different dates; the page states
+         *  every date it draws on. */
+        sample_id?: string;
+        judged?: string | null;
+      }
+    >;
     unmeasured?: string[];
   };
 }

@@ -2165,8 +2165,8 @@ function runCorpusCountLeg(errors, notes) {
 // leg n — held-out link-precision study (ROADMAP #72)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// site_meta.link_precision ({sample_id, sampled_at, methods, unmeasured}, or
-// {} while no study has verdicts yet) is the recomputed source of truth here
+// site_meta.link_precision ({rubric, sample_id, sampled_at, methods, unmeasured},
+// or {} while no study has verdicts yet) is the recomputed source of truth here
 // — this leg reads data/site/json/site_meta.json directly (unlike leg e,
 // which never trusts site_meta for the artifact it is derived from; here
 // site_meta IS the artifact under test, produced by an inlined Postgres query
@@ -2174,7 +2174,7 @@ function runCorpusCountLeg(errors, notes) {
 // precision_study.py's own job, exercised by tests/test_precision_study.py
 // and tests/test_export_site_link_precision.py).
 //
-// FOUR directions, all failures:
+// FIVE directions, all failures:
 //   - link_precision names a method the /methodology/ paragraph omits or
 //     states wrong numbers for (a stale/partial paragraph reads as more
 //     confidence than was measured);
@@ -2193,6 +2193,14 @@ function runCorpusCountLeg(errors, notes) {
 //     carry no measured number, and silence reads as "nothing to report".
 //     Every published tier must be either measured or named unmeasured in the
 //     rendered paragraph.
+//   - (2026-09-11, ROADMAP #79) every figure must answer ONE question and the
+//     paragraph must name it. `account+subagency 60/60` was judged on whether
+//     the linking RULE had fired, the other strata on program ATTRIBUTION,
+//     and the two were printed as one "precision". The exporter now reads the
+//     study table by rubric (migration 015) and publishes only 'attribution';
+//     this leg fails a site_meta block carrying any other rubric — or none —
+//     and a paragraph that prints figures without saying which question
+//     they answer.
 //
 // The published-tier universe is read from citations.json's crosswalk
 // formulas ("… via method='X', confidence='Y'"), which is the same artifact
@@ -2230,6 +2238,15 @@ function namesMethodToken(text, method) {
  *  on an empty set — which is exactly how the `fpds-ap+account` figure
  *  survived. RE-MEASURE if the corpus changes; do not lower it to fit. */
 const MIN_PUBLISHED_LINK_METHODS = 4;
+
+/** The only rubric the exporter publishes (scripts/precision_study.py
+ *  RUBRICS; export_site._link_precision_block's default). */
+const PUBLISHED_RUBRIC = "attribution";
+
+/** The paragraph must name the question in the words the packets ask the
+ *  adjudicator: "program attribution" and "execute this program element",
+ *  in that order, within one sentence. */
+const RUBRIC_PHRASE = /program attribution[^.]*execute this program element/i;
 
 /** `injected` is passed only by the leg's unit test
  *  (__tests__/link-precision.test.mjs), which has to hand the leg corpora the
@@ -2330,6 +2347,26 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
     return;
   }
 
+  // ── the rubric (ROADMAP #79) ─────────────────────────────────────────────
+  const rubric = linkPrecision.rubric ?? null;
+  if (rubric !== PUBLISHED_RUBRIC) {
+    errors.push(
+      `leg n: site_meta.link_precision.rubric is ${JSON.stringify(rubric)} — the ` +
+        `exporter publishes only strata judged on '${PUBLISHED_RUBRIC}' ` +
+        `(migration 015, ROADMAP #79); a block with another rubric, or none, is a ` +
+        `stale or mis-filtered export — re-run export-site`,
+    );
+    return;
+  }
+  if (!RUBRIC_PHRASE.test(paragraphText ?? "")) {
+    errors.push(
+      `leg n (/methodology/): [data-link-precision] never names the rubric — the ` +
+        `paragraph must say the figures measure program attribution ("does this ` +
+        `award execute this program element?"), or a reader takes "the rule fired" ` +
+        `and "the award paid for this program" for the same measurement`,
+    );
+  }
+
   const text = paragraphText ?? "";
   const rendered = new Map();
   for (const m of text.matchAll(/([a-z0-9][a-z0-9+_-]*)\s+([\d,]+)\/([\d,]+)/gi)) {
@@ -2413,9 +2450,9 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
   if (errors.every((e) => !e.startsWith("leg n"))) {
     notes.push(
       `leg n: [data-link-precision] states all ${checked} measured method(s) ` +
-        `from site_meta.link_precision (values match) and names all ` +
-        `${unmeasured.length} unmeasured published tier(s); ${published.size} ` +
-        `published method(s) in citations.json, all accounted for ✓`,
+        `from site_meta.link_precision (values match, rubric '${rubric}' named) ` +
+        `and names all ${unmeasured.length} unmeasured published tier(s); ` +
+        `${published.size} published method(s) in citations.json, all accounted for ✓`,
     );
   }
 }

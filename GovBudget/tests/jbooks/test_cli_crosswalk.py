@@ -13,13 +13,18 @@ plan/abort path; this one isolates the two printed counts.
 import argparse
 
 import govbudget.jbooks.db
-from govbudget import cli
+from govbudget import cli, config
 from govbudget.jbooks import crosswalk as crosswalk_module
 from govbudget.jbooks.crosswalk import CrosswalkResult, LinePlan
 
 
 def test_crosswalk_cli_prints_written_and_skipped_separately(monkeypatch, capsys):
     monkeypatch.setattr(govbudget.jbooks.db, "migrate", lambda *a, **kw: [])
+    # Defence in depth (same reason as test_crosswalk.py::_wire_crosswalk_cli):
+    # the plan/write path is monkeypatched out, so nothing here should reach
+    # Postgres — but if a patch point ever drifts, the CLI must fail on a DSN
+    # that cannot exist rather than write to the live database.
+    monkeypatch.setattr(config, "PG_DSN", "postgresql://localhost/govbudget_no_such_db")
     calls: list[str] = []
 
     def fake_plan(dsn, **kw):
