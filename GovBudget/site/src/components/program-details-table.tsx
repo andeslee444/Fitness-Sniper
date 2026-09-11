@@ -181,11 +181,17 @@ export function ProgramDetailsTable({
                   : group.project_title ??
                     group.project_number ??
                     "Program Element";
+              // #106: is the rendered label the J-book's own project title
+              // ("2112: Lightweight 155mm Howitzer"), or one this component
+              // composed? Only the source's own typography is exempt from
+              // gate 2 legs (b) and (nw).
+              let isSourceLabel = group.project_title != null;
               if (group.project_number == null && rootGroupCount > 1) {
                 // Conflicting program-level lines: identical labels with
                 // different values would be an undeclared P0-1 collision.
                 rootOrdinal += 1;
                 label = `Program Element — line ${rootOrdinal}`;
+                isSourceLabel = false;
               }
 
               return (
@@ -201,7 +207,10 @@ export function ProgramDetailsTable({
                   }
                   className="scroll-mt-16 border-b border-border/50 hover:bg-muted/30 transition-colors"
                 >
-                  <td className="py-2 pr-3 text-foreground font-medium">
+                  <td
+                    className="py-2 pr-3 text-foreground font-medium"
+                    {...(isSourceLabel ? { "data-program-name": true } : {})}
+                  >
                     {label}
                   </td>
                   {scenarios.map((scenario) => {

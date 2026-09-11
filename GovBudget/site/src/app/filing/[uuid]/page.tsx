@@ -339,8 +339,15 @@ export default async function FilingPage({ params }: Props) {
                       </span>
                     )}
                   </p>
+                  {/* #106: the filer's text, as filed — gate 2 legs (b) and
+                      (nw) and datatruth leg j read the kind, and (a0) wants
+                      the filing itself as the anchor. */}
                   {a.description && (
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    <p
+                      className="text-sm text-muted-foreground whitespace-pre-wrap"
+                      data-source-text="lda-filing"
+                      data-cite-url={human ?? f.url}
+                    >
                       {a.description}
                     </p>
                   )}
@@ -385,8 +392,13 @@ export default async function FilingPage({ params }: Props) {
                         </span>
                       )}
                     </div>
+                    {/* #106: the filer's own covered-position string. */}
                     {covered && (
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p
+                        className="mt-1 text-xs text-muted-foreground"
+                        data-source-text="lda-filing"
+                        data-cite-url={human ?? f.url}
+                      >
                         {covered}
                       </p>
                     )}

@@ -225,6 +225,20 @@
  *      stopped rendering the counter (or renamed it) would otherwise pass by
  *      finding nothing to check, exactly the failure mode #47/#48 both
  *      guarded against for their own claims.
+ *
+ * (nw) NUMBER GLUED TO THE WORD AFTER IT (ROADMAP #106). /methodology/
+ *      rendered "plus 553whose cited record" for a week under a green (sp):
+ *      that leg models babel's JSX text cleaner, and Next 16's Turbopack
+ *      trims a space babel keeps — the leading space of a multi-line text
+ *      run that carries an HTML entity (jsx-glue.mjs now models that too).
+ *      This leg reads the BUILT prose for the shape itself, per React text
+ *      run, on every page: a number immediately followed by a prose word.
+ *      Ordinals, hex ids and L3Harris are the measured allowances; quoted
+ *      source kinds (sourceNotation) and [data-program-name] titles are
+ *      exempt, the site not owning their typography. Details and the
+ *      measurement in number-word-join.mjs.
+ *      Non-vacuity: MIN_NUMBER_WORD_TWINS text runs must carry an intact
+ *      "number word" pair — the correct twin of the defect.
  */
 
 import fs from "fs";
@@ -233,6 +247,7 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { displayCompanyName } from "../../src/lib/company-name.mjs";
 import { findGlueSites } from "./jsx-glue.mjs";
+import { findNumberWordJoins } from "./number-word-join.mjs";
 import {
   isKnownSourceTextKind,
   exemptFromCurrencyScan,
@@ -248,6 +263,16 @@ const allowlistPath = path.resolve(__dirname, "prose-allowlist.json");
 // Currency pattern: $X,XXX(.XX)? optionally followed by B/M/K
 // Must be in a text node (not a URL/href)
 const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[TBMK]?/g;
+
+/**
+ * Non-vacuity floor for leg (nw): text runs site-wide carrying a "number
+ * word" pair with its space intact (measured 89,766 on 2026-09-10 against an
+ * 8,368-page build, source-text and program-name exemptions applied).
+ * Below this the scan has stopped reading rendered prose — an exemption that
+ * swallowed the page, a parser change — and would report "0 glued" over
+ * nothing. RE-MEASURE if the corpus genuinely halves; do not lower it to fit.
+ */
+const MIN_NUMBER_WORD_TWINS = 40_000;
 
 /**
  * LEG (t) — request/enacted vocabulary (#47).
@@ -471,6 +496,11 @@ export async function runRenderStaticGate() {
   const corpusCounterFailures = [];
   const corpusCounterPages = new Set();
   let corpusCounterProgramsPageSeen = false;
+
+  // (nw) number glued to the word after it (#106).
+  const numberWordFailures = [];
+  let numberWordRuns = 0;
+  let numberWordTwins = 0;
 
   // ── (st)/(inf) non-vacuity expectation from the emitted sidecars ─────────
   // Count stated / inferred rail entries across data/site/json/program_details
@@ -1089,6 +1119,20 @@ export async function runRenderStaticGate() {
       }
     }
 
+    // ── (nw) number glued to the word after it (#106) ──────────────────────
+    // Per React TEXT RUN (adjacent text children of one element, joined):
+    // "553" and "whose cited …" are separate nodes around a `<!-- -->`, so
+    // neither a per-text-node nor a whole-page scan sees the join. The allow
+    // rules and the exemptions are measured, in number-word-join.mjs.
+    {
+      const nw = findNumberWordJoins(root);
+      numberWordRuns += nw.runs;
+      numberWordTwins += nw.twins;
+      for (const h of nw.hits) {
+        numberWordFailures.push(`${relPath}: "${h.token}" — …${h.snippet}…`);
+      }
+    }
+
     // ── (tc) company display names carry their registry string ─────────────
     for (const el of root.querySelectorAll("[data-company-name]")) {
       companyNameCount += 1;
@@ -1496,6 +1540,31 @@ export async function runRenderStaticGate() {
       `corpus counter (cc): ${corpusCounterPages.size} page(s) render a ` +
         `self-denominating "N of N" counter (incl. /programs/), each paired ` +
         `with a dollar coverage figure below 100% ✓`
+    );
+  }
+
+  // ── (nw) number glued to the word after it (#106) ─────────────────────────
+  if (numberWordFailures.length > 0) {
+    errors.push(
+      `${numberWordFailures.length} number(s) glued to the word after them ` +
+        `— the "553whose cited record" class (first 10):`
+    );
+    for (const f of numberWordFailures.slice(0, 10)) {
+      errors.push(`  ${f}`);
+    }
+    if (numberWordFailures.length > 10) {
+      errors.push(`  ... and ${numberWordFailures.length - 10} more`);
+    }
+  } else if (numberWordTwins < MIN_NUMBER_WORD_TWINS) {
+    errors.push(
+      `number/word leg (nw) is VACUOUS: ${numberWordTwins} text run(s) carry a ` +
+        `"number word" pair (floor ${MIN_NUMBER_WORD_TWINS}) — the scan is not ` +
+        `reading rendered prose. Re-derive the scan; do not lower the floor.`
+    );
+  } else {
+    notes.push(
+      `number/word joins (nw): ${numberWordRuns} text run(s) scanned, ` +
+        `${numberWordTwins} "number word" pair(s) intact, 0 glued ✓`
     );
   }
 

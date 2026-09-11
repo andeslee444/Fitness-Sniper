@@ -77,6 +77,21 @@ export const SOURCE_TEXT_KINDS = {
       "formatted from. Client-only, so it never reaches the static HTML, but " +
       "the marking is the honest one.",
   },
+  "lda-filing": {
+    quotedFigures: true,
+    sourceNotation: true,
+    why:
+      "Verbatim free-text fields of a Senate LDA filing — an activity's " +
+      "specific-issues description and a lobbyist's covered-position " +
+      "disclosure — rendered as filed and anchored by data-cite-url to the " +
+      "filing's own page. Registrants write these ('H.R. 7586American " +
+      "Families First Act', \"'17-'18,Policy Advisor\"); reformatting a " +
+      "filing would misquote it. Added by #106 so gate 2 leg (nw) reads them " +
+      "as the filer's typography, not the site's. The 120-character mention " +
+      "snippet of the same text is deliberately NOT marked: 136 of them on " +
+      "the heaviest filing page would add ~19,000 raw bytes against 19,198 " +
+      "of raw headroom, so a join inside one fails the gate loudly instead.",
+  },
   headline: {
     quotedFigures: false,
     sourceNotation: false,

@@ -39,7 +39,7 @@ describe("SOURCE_TEXT_KINDS registry", () => {
   });
 
   it("classifies quoted source prose as exempt from both sweeps", () => {
-    for (const v of ["narrative", "dossier-claim", "lineage-evidence"]) {
+    for (const v of ["narrative", "dossier-claim", "lineage-evidence", "lda-filing"]) {
       expect(exemptFromCurrencyScan(v), v).toBe(true);
       expect(exemptFromNotationSweep(v), v).toBe(true);
     }
