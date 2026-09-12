@@ -1485,10 +1485,13 @@ docs/superpowers/ROADMAP.md`.
     **Status: the Splink half CLOSED AS A DELIBERATE NON-GOAL + Option A
     (display-label correction) CLOSED — owner stamp 2026-09-10. The
     SAM-extract half is OPEN, blocked on an owner-created key.**
-    The 2026-08-24 marker below is stale in its premise: two commits do
+    The 2026-08-24 marker below is stale in BOTH its claims: two commits do
     reference this item — `1d75c231` (2026-09-01, the sizing spike,
     `docs/superpowers/reviews/10-entity-resolution-spike.md`) and `a2a9b2f8`
-    (2026-09-01, `fix(#10 A)`).
+    (2026-09-01, `fix(#10 A)`) — and `entities.py:6` no longer says Splink is
+    "deliberately deferred until a gate fails": `d799e794` replaced that line
+    with the closure quoted above, which is what made the marker's second
+    claim stale.
 
     **The spike inverted the entry's premise.** `recipient_parent_name` in
     USAspending *is* the SAM registration name, so ingesting SAM reproduces the
@@ -1518,8 +1521,10 @@ docs/superpowers/ROADMAP.md`.
     (`site/scripts/gates/datatruth.mjs:83,3018` +
     `site/scripts/gates/familylabel-recompute.py`), which fails the build when a
     published family's label wins its parent-registration argmax by <15% with no
-    alias row. Live. *(Line numbers re-measured 2026-09-12; the spike commit
-    cited `export_site.py:2790` before Group B's inserts moved it.)*
+    alias row. Live. *(`export_site.py` line numbers measured at `d799e794`;
+    19b's own exporter inserts have moved them since — grep the symbol, not the
+    line. The spike commit cited `export_site.py:2790` before Group B's inserts
+    moved it.)*
 
     **Option B — parent-UEI clustering — deferred with a NAMED trigger.**
     §6: 322 families absorbed and $125.6B relabelled at ≥3 shared children /
@@ -1612,7 +1617,19 @@ docs/superpowers/ROADMAP.md`.
     uv run python -m govbudget sam preflight           # spends up to 2 requests; writes data/research/sam_entities/preflight.json
     uv run python -m govbudget sam extract             # 10/run by default; repeat daily (~20 days) until --dry-run reports complete
     uv run python -m govbudget sam reparse             # free: rebuild the parquet from data/raw/sam/
+    uv run python -m govbudget build                  # REQUIRED — see below
+    uv run python -m govbudget export-site
+    cd site && npm run build                          # then ./scripts/launch/deploy.sh
     ```
+
+    **The rebuild is not optional, and skipping it looks exactly like success.**
+    `sam_entities_relation()` probes for the parquet at dbt COMPILE time, so a
+    warehouse built while the file was absent has `dim_entities` frozen to the
+    zero-row literal: the extract can land all 200 rows and every `sam_*`
+    column stays NULL — no company line, no citation, `companies_with_sam` 0 —
+    until `govbudget build` re-runs. `verify-phase2` leg e4 says the same in
+    both of its vacuous notes. Only then do `export-site` and the site build
+    have anything to publish.
 
     If `preflight` reports a shape other than the documented one, fix the path
     map in `parse_entity`, replace `tests/fixtures/sam/entity_lockheed.json`

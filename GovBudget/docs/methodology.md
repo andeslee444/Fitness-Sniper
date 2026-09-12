@@ -158,9 +158,7 @@ confidence tier reads is *itself* the SAM.gov registration, so fetching it back
 from SAM returns the same string and upgrades nothing. Where a build has fetched
 a family's SAM record — status, CAGE code, legal business name, business types,
 primary NAICS and expiry — that company's page shows it with its own citation;
-where it has not, the page shows no line rather than a guess. (ROADMAP #10. No
-build has fetched any yet: the extract needs a credential only a SAM.gov account
-holder can mint.)
+where it has not, the page shows no line rather than a guess. (ROADMAP #10.)
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of
