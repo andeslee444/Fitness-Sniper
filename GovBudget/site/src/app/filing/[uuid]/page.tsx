@@ -281,6 +281,20 @@ export default async function FilingPage({ params }: Props) {
                     <span className="font-mono text-xs text-muted-foreground">
                       {m.pe_bli}
                     </span>
+                    {/* ROADMAP #82: a filing names a budget line, not an
+                        appropriation, so on a code two programs share the
+                        link can only open the chooser. Said here, once per
+                        such mention, rather than letting the reader land
+                        on a page that is not the one program they expected. */}
+                    {m.shared_code && (
+                      <span
+                        data-shared-code-note=""
+                        className="text-xs text-muted-foreground"
+                        title="Lobbying filings name a budget line, not an appropriation account, so this mention cannot say which of the programs sharing the code it refers to. The link opens a page listing each of them."
+                      >
+                        shared code — link opens a chooser
+                      </span>
+                    )}
                     {m.matched_term && (
                       <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                         matched: “{m.matched_term}”

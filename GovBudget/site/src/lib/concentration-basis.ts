@@ -62,10 +62,38 @@ export interface ConcentrationPublished {
   dollarsMeasure: "obligations-high";
 }
 
+/**
+ * WHY nothing is published — ONE vocabulary, two reasons, two marker values
+ * (ROADMAP #82 ruling). The site withholds a concentration figure for
+ * exactly two reasons and they are not interchangeable:
+ *
+ *   "below-floor"  — the mart row exists and its high-confidence links do
+ *                    not clear the floor (#80). CONCENTRATION_WITHHELD_REASON
+ *                    states it. The Contractor Concentration card stamps it
+ *                    as [data-concentration-withheld]; concentrationHeadline()
+ *                    is the only producer.
+ *   "shared-code"  — the mart row exists for a budget line MORE THAN ONE
+ *                    program uses, and more than one of them carries linked
+ *                    awards, so the figure is neither member's and the
+ *                    exporter withholds the whole block from both (#70/#82).
+ *                    sharedCodeWithheldReason() states it; the block never
+ *                    reaches the page, so the answer strip's "none" tier is
+ *                    the only surface that can say it, from the sidecar's
+ *                    summary.concentration_withheld. The strip stamps it as
+ *                    [data-who-withheld] and gate 21 leg n check 7 holds it
+ *                    against the payload.
+ */
+export type ConcentrationWithheldReason = "below-floor" | "shared-code";
+
 export interface ConcentrationWithheld {
   published: false;
-  /** Why nothing is published. The card stamps this as its marker value. */
-  withheld: "below-floor";
+  /**
+   * Why nothing is published. The card stamps this as its marker value, and
+   * "below-floor" is the only value this branch can carry: a shared-code
+   * withholding removes the whole block upstream, so concentrationHeadline()
+   * is never called for one.
+   */
+  withheld: Extract<ConcentrationWithheldReason, "below-floor">;
 }
 
 export type ConcentrationHeadline =
@@ -141,3 +169,35 @@ export const CONCENTRATION_WITHHELD_REASON =
  */
 export const WHO_GETS_IT_WITHHELD_LEAD =
   `No single contractor is published as this line's leader.`;
+
+/**
+ * The "shared-code" reason, the second half of the withheld vocabulary above
+ * (ROADMAP #82). Lives here, beside CONCENTRATION_WITHHELD_REASON, because
+ * R5 ruled one home for what the site says about a withheld concentration
+ * figure — the two false sentences #80 had to retract were both written
+ * inline in the surface that rendered them.
+ *
+ * EVERY CLAUSE IS TRUE BY CONSTRUCTION on every page that renders it. The
+ * exporter sets summary.concentration_withheld (src/govbudget/export_site.py,
+ * _concentration_withheld) only when ALL of these hold:
+ *   - fct_program_concentration has a row for this bare pe_bli;
+ *   - dim_programs publishes more than one program under it (ident.is_split);
+ *   - more than one of those members carries at least one published
+ *     crosswalk link, which is why the mart's figure — computed on the bare
+ *     line — is neither member's to claim and is withheld from both;
+ *   - THIS member is one of the linked ones, so this page renders its own
+ *     Related Awards table below.
+ * Nothing here counts this line's links or names a number: no dollars, no
+ * award count, no leader — gate 21 leg (j) allows a non-award tier none of
+ * those, and #80 fix round 2 showed that a count is exactly what goes false.
+ * "More than one", never "two": '30' is shared by THREE programs.
+ */
+export function sharedCodeWithheldReason(peBli: string): string {
+  return (
+    `Award records are linked to this program — see Related Awards below — ` +
+    `but no concentration index is published for it: the crosswalk computes ` +
+    `concentration on budget line ${peBli}, which more than one program ` +
+    `uses, and more than one of them carries linked awards, so the figure ` +
+    `would mix their money.`
+  );
+}

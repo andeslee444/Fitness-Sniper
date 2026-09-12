@@ -20,6 +20,14 @@
  *     - NO [data-hhi-band], NO [data-amount], NO [data-measure], no tier
  *       chip, no top family, no family count — nothing for a reader to
  *       mistake for a published figure
+ *
+ * ROADMAP #82 added the SECOND withheld reason to this same vocabulary
+ * (lib/concentration-basis.ts): "shared-code", where the mart's figure is
+ * computed on a budget line more than one program uses and more than one of
+ * them carries linked awards, so it is neither member's and the whole block
+ * is withheld upstream — the card renders nothing at all there and the
+ * answer strip's "none" tier is the only surface that can say why. The last
+ * describe below pins that branch and its marker, [data-who-withheld].
  */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
@@ -30,6 +38,7 @@ import { ProgramConcentration } from "@/components/program-concentration";
 import {
   concentrationHeadline,
   CONCENTRATION_WITHHELD_REASON,
+  sharedCodeWithheldReason,
   WHO_GETS_IT_WITHHELD_LEAD,
 } from "@/lib/concentration-basis";
 import type { ProgramHHI } from "@/lib/data";
@@ -211,5 +220,69 @@ describe("the withheld sentences state the floor, not a count about this line", 
       expect(note?.textContent, name).toContain(CONCENTRATION_WITHHELD_REASON);
       expect(note?.textContent, name).not.toMatch(/fewer than/i);
     }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// ROADMAP #82 — the second withheld reason: a figure that is nobody's
+// ───────────────────────────────────────────────────────────────────────────
+
+describe("shared-code withholding (ROADMAP #82)", () => {
+  it("states the rule, names the line, and counts nothing", () => {
+    const s = sharedCodeWithheldReason("3010");
+    expect(s).toContain("3010");
+    // The two clauses the exporter guarantees (_concentration_withheld).
+    expect(s).toMatch(/linked to this program/i);
+    expect(s).toMatch(/more than one program/i);
+    expect(s).toMatch(/more than one of them carries linked awards/i);
+    // "two" is false on '30', which THREE programs share; a count of this
+    // line's links is the sentence class #80 fix round 2 had to retract.
+    expect(s).not.toMatch(/\btwo programs\b/i);
+    expect(s).not.toMatch(/\bfewer than\b/i);
+    expect(s).not.toMatch(/\$[\d]/);
+  });
+
+  it("does not deny that any company is linked — award records are", () => {
+    // The pre-#82 sentence on these pages was "No company is linked to this
+    // line. Award records do not carry the program element, so the crosswalk
+    // is silent here", rendered above a five-row Related Awards table.
+    const s = sharedCodeWithheldReason("3010");
+    expect(s).not.toMatch(/no company is linked/i);
+    expect(s).not.toMatch(/crosswalk is silent/i);
+  });
+
+  // Same technique as the strip test above: the branch is a server component
+  // this suite cannot render, so it is read as source. Slice from the SECOND
+  // data-who-tier="none" (the #82 branch) to the THIRD (the plain absence).
+  it("the answer strip's shared-code branch renders the shared strings and the marker", () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "..", "app", "program", "[peBli]", "page.tsx"),
+      "utf8",
+    );
+    const first = src.indexOf('data-who-tier="none"');
+    const second = src.indexOf('data-who-tier="none"', first + 1);
+    const third = src.indexOf('data-who-tier="none"', second + 1);
+    expect(third).toBeGreaterThan(second);
+    const branch = src.slice(second, third);
+    expect(branch).toContain('data-who-withheld="shared-code"');
+    expect(branch).toContain("{WHO_GETS_IT_WITHHELD_LEAD}");
+    expect(branch).toContain("{sharedCodeWithheldReason(peBli)}");
+    // gate 21 leg (j): a non-award tier may state no dollars and name nobody.
+    expect(branch).not.toContain("data-amount");
+    expect(branch).not.toContain("data-who-name");
+    expect(branch).not.toMatch(/\$[\d{]/);
+  });
+
+  it("only the shared-code branch stamps the marker — leg n check 7 reads it", () => {
+    // The below-floor branch (#80) is withheld too, but for the OTHER reason,
+    // and ~400 pages render it with no summary.concentration_withheld behind
+    // them. If it stamped the marker, gate 21 leg n check 7's
+    // renderer-without-payload half would fire on every shared-code member
+    // that is merely below the floor.
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "..", "app", "program", "[peBli]", "page.tsx"),
+      "utf8",
+    );
+    expect(src.match(/data-who-withheld=/g) ?? []).toHaveLength(1);
   });
 });

@@ -919,6 +919,23 @@ export interface ProgramSummary {
   named_primes: NamedPrime[];
   /** Null on every page where the tier does not apply. */
   lobbied_by?: LobbiedBy | null;
+  /**
+   * ROADMAP #82: true only on a member of a shared BLI code whose SIBLING
+   * also carries crosswalk links. fct_program_concentration aggregates by
+   * BARE pe_bli, so its figure describes both members' money and the
+   * exporter withholds it from both (program.hhi is null on each) — but
+   * award records ARE linked on those pages, and the WHO GETS IT card's
+   * "the crosswalk is silent" sentence would be false above a Related
+   * Awards table. The card renders the withheld state instead (gate 21 leg n
+   * check 7 holds renderer and payload together on the "none" tier).
+   *
+   * The page cannot derive this from `hhi` alone: a withheld member and a
+   * program with no concentration row at all both arrive as `hhi === null`,
+   * and which of those it is decides which sentence is true. Optional:
+   * pre-#82 sidecars and test fixtures omit it, which reads as false. True
+   * on exactly two pages today (3010-SCN, 3010-OPN).
+   */
+  concentration_withheld?: boolean;
 }
 
 /**
@@ -2903,6 +2920,15 @@ export interface FilingMention {
   program_title: string | null;
   /** Null when pe_bli has no program page (plain-text mention). */
   program_url: string | null;
+  /**
+   * ROADMAP #82: true when pe_bli is a code two programs share ('3010',
+   * '20', …). A filing mention carries pe_bli only — fct_program_lobbying
+   * matches on a term, not on money — so there is no member to name:
+   * program_url is the bare-key DISAMBIGUATION STUB and program_title the
+   * both-members label, and the page says so beside the link. Optional:
+   * pre-#82 sidecars omit it (false).
+   */
+  shared_code?: boolean;
 }
 
 export interface FilingDetail {

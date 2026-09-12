@@ -87,6 +87,7 @@ import { ProgramConcentration } from "@/components/program-concentration";
 import {
   concentrationHeadline,
   CONCENTRATION_WITHHELD_REASON,
+  sharedCodeWithheldReason,
   WHO_GETS_IT_WITHHELD_LEAD,
 } from "@/lib/concentration-basis";
 
@@ -1413,6 +1414,14 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  *   jbook    — the program's dossier names a prime, cited to the claim.
  *   lobbying — Senate LDA filings name the program. NO DOLLARS. See below.
  *   none     — nothing qualifies. Says so plainly and links to the reason.
+ *              THREE shapes, because three different things can be absent:
+ *              no concentration row at all ("the crosswalk is silent here");
+ *              a row below the high-only floor (#80 — the two shared strings
+ *              in lib/concentration-basis.ts); and a row on a budget line
+ *              more than one program uses, withheld from every linked member
+ *              because it would mix their money (#82 — sharedCodeWithheldReason,
+ *              stamped data-who-withheld). All three carry the same tier
+ *              name, no dollars and no company names.
  *
  * WHY THE LOBBYING TIER IS SHAPED LIKE THIS. "Lobbied about it" and "was paid
  * for it" are different claims, and merging them is exactly the defect class
@@ -1457,10 +1466,16 @@ function WhoGetsItBody({
   hhi,
   primes,
   lobbiedBy,
+  withheld,
+  peBli,
 }: {
   hhi: ProgramRow["hhi"];
   primes: NamedPrime[];
   lobbiedBy: LobbiedBy | null;
+  /** ROADMAP #82 — summary.concentration_withheld; see this function's
+   *  shared-code branch and data.ts's field doc. */
+  withheld: boolean;
+  peBli: string;
 }) {
   // ROADMAP #80 (fix round 1): ONE basis per page, and only where it
   // publishes — the same decision the Contractor Concentration card makes
@@ -1615,6 +1630,42 @@ function WhoGetsItBody({
     );
   }
 
+  // ROADMAP #82: the OTHER withheld reason, and the last thing that can be
+  // true here. This member of a shared budget line DOES carry linked award
+  // records (the exporter sets summary.concentration_withheld only for a
+  // linked member — see _concentration_withheld), so the sentence below
+  // would be false on it; and the mart's figure, computed on the bare line,
+  // describes more than one program's money, so it is published on neither
+  // member and the Contractor Concentration card renders nothing at all.
+  // The strip is the only surface that can say why.
+  //
+  // Reached only when no stronger tier answered — and none can: the award
+  // tier needs program.hhi, which is the same withheld block; the J-book and
+  // lobbying tiers are suppressed by the exporter's own per-member awards
+  // guard, because their closing sentences ("not yet crosswalked to award
+  // data", "No contract award is linked to this line") are false above this
+  // page's Related Awards table. gate 21 leg n check 7 holds that: a
+  // withheld payload must render THIS branch, and nothing else may stamp
+  // data-who-withheld. Same "none" tier for leg (j) — no dollars, no names.
+  if (withheld) {
+    return (
+      <span
+        data-who-tier="none"
+        data-who-withheld="shared-code"
+        className="text-muted-foreground"
+      >
+        {WHO_GETS_IT_WITHHELD_LEAD} {sharedCodeWithheldReason(peBli)}{" "}
+        <Link
+          href="/coverage/#crosswalk"
+          className="underline decoration-dotted hover:text-foreground"
+        >
+          Why the crosswalk is partial
+        </Link>
+        .
+      </span>
+    );
+  }
+
   return (
     <span data-who-tier="none" className="text-muted-foreground">
       No company is linked to this line. Award records do not carry the
@@ -1649,6 +1700,7 @@ function AnswerStrip({
   const hhi = program.hhi;
   const primes = summary.named_primes;
   const lobbiedBy = summary.lobbied_by ?? null;
+  const withheld = summary.concentration_withheld === true;
   // §48: this whole strip is ONE program's own answers — the change card's
   // TOA chip shares the page's own exhibit_family, never "mixed".
   const exhibitFamily = normalizeExhibitFamily(program.exhibit_family);
@@ -1730,7 +1782,13 @@ function AnswerStrip({
           so gate 21 leg (g) can hold each one to its own contract. See
           WhoGetsItBody. */}
       <AnswerItem label="Who gets it" testId="answer-who">
-        <WhoGetsItBody hhi={hhi} primes={primes} lobbiedBy={lobbiedBy} />
+        <WhoGetsItBody
+          hhi={hhi}
+          primes={primes}
+          lobbiedBy={lobbiedBy}
+          withheld={withheld}
+          peBli={program.pe_bli}
+        />
       </AnswerItem>
     </div>
   );
