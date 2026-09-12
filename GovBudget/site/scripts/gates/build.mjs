@@ -375,7 +375,28 @@ export const PAGE_WEIGHT_BUDGET = [
   // The trim (§4 / the flow clause) is the owner's call; this string records
   // what the page actually weighs so nobody reads 638 bytes of headroom that
   // do not exist.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "154,527 / 43,042" },
+  // TRIMMED 2026-09-12 (chain-B fix 1, the owner's call taken). CEILINGS
+  // UNCHANGED at 155,000 / 42,500; the page is back inside them at
+  // 151,851 / 42,299 — 2,676 raw / 743 gzip removed, 201 gzip bytes of
+  // headroom. What came out was REDUNDANCY, not disclosure: the
+  // concentration floor now lives in §4 alone and the concentration_shift
+  // feed entry points at it; the announcement path's match-basis rule is
+  // stated once, not twice; "an account match is an association" is stated
+  // where the Medium tier is defined and not again beside the unmeasured
+  // tiers; /companies/ keeps the chip-suppression rationale and §6 the
+  // supersede pledge. Every figure, date, evidence path and gated passage
+  // is still here — see chain-B-report.md §"Chain-B fix 1" for the
+  // sentence-by-sentence list.
+  // MEASURED COST OF PROSE ON THIS PAGE, for whoever adds the next sentence:
+  // 743 gzip for 1,850 characters removed from page.tsx = 0.40 gzip per
+  // source character (each character ships twice — once in the HTML, once in
+  // the RSC payload). So the 201 bytes left is about 500 characters, and the
+  // ≤42,000 this trim aimed at would have needed ~750 characters MORE than
+  // the page had left in redundancy — i.e. cutting disclosure, which this
+  // file's /coverage/ note already rules out. Markup is not the lever here:
+  // every repeated class string on the page is worth 12-46 gzip bytes in
+  // total, and all 275 React text-boundary comments together only 327.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "151,851 / 42,299" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -458,10 +479,23 @@ export const PAGE_WEIGHT_BUDGET = [
   // argument — raise raw to ~6% headroom over a real measurement, or trim the
   // table — is the owner's to make, not a chain's. The string below is now in
   // the "raw / gzip" shape the annotation-drift leg parses.
+  // RULED 2026-09-12 (chain-B fix 1): first real measurement 2026-09-12 of a
+  // row whose 140,000 was a pre-table estimate — this is the row's INITIAL
+  // ceiling, not a raise; never raise it to fit new content. The 140,000 was
+  // written down on 2026-09-10 as an explicit +40% guess taken BEFORE the
+  // by-year table existed and against a page class that had never been
+  // weighed, and the entry said so in the same breath (its `measured` string
+  // was deliberately non-parsing until a real build carried the table). An
+  // unmeasured estimate is not an established ceiling, so raw is set from the
+  // measurement at this file's own ~6% convention for a new row: 145,449 →
+  // 154,000 (5.88% over). maxGzip is UNCHANGED at 20,000 — the gzip estimate
+  // held on its own (18,356, 8.2% of room to spare), so it is not re-derived.
+  // Next heaviest are MO-01 137,573 / 17,432 and CA-50 136,674 / 17,194, so
+  // VA-11 is the row this entry weighs by a wide margin.
   {
     label: "/district/*/ (heaviest)",
     dir: "district",
-    maxRaw: 140_000,
+    maxRaw: 154_000,
     maxGzip: 20_000,
     measured: "145,449 / 18,356 (/district/VA-11/)",
   },
