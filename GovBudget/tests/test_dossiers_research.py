@@ -188,7 +188,42 @@ class TestTop50PageIdentity:
         terms = build_program_terms(rows)
         # keyed by the bare code: an RSS item cannot tell two members apart
         assert set(terms) == {"3010", "0601101E"}
-        assert "flight" in terms["3010"]
+        # both members of the shared code fold into the one code-grain entry
+        assert {"shipboard", "tactical"} <= terms["3010"]
+
+
+class TestGenericTitleTokens:
+    """A generic token buys a resolvable citation under a false sentence.
+
+    Measured on a live pull 2026-09-12: 'flight' is 3010's only title term
+    ("LPD Flight II", an amphibious transport dock) and matched two articles
+    with nothing to do with it. recent_developments is written ONLY from the
+    snapshots in the bundle, and a snapshot url IS citable, so the gate would
+    have passed a false claim about this program.
+    """
+
+    _FALSE_POSITIVES = [
+        "Hermeus Unveils Air-Launched Ramjet Test Vehicle for High-Speed"
+        " Experiments",
+        "Lockheed Martin's Morfius X-Rotor built to fry 50 enemy drones in"
+        " one flight",
+    ]
+
+    def test_flight_is_not_a_match_term(self):
+        assert "flight" not in title_terms("LPD Flight II")
+
+    def test_the_two_measured_false_positives_no_longer_match(self):
+        terms = build_program_terms([("3010", "LPD Flight II", "N", 1.0, "3010-SCN")])
+        items = [{"title": t, "summary": "", "url": f"https://example.com/{i}"}
+                 for i, t in enumerate(self._FALSE_POSITIVES)]
+        assert match_articles(items, terms) == []
+
+    def test_a_program_with_no_match_terms_is_a_normal_state(self):
+        """Ten top-50 programs already carry none — an unmatched program is
+        honest, not a regression."""
+        assert build_program_terms([("ATA000", "F-35", "AF", 1.0)]) == {
+            "ATA000": set()
+        }
 
 
 # ---------------------------------------------------------------------------

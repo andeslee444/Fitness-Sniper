@@ -66,13 +66,25 @@ RSS_FEEDS: dict[str, str] = {
 # defense-news vocabulary carrying no program identity — never used as match
 # terms even when >=5 chars. (Tuned against a live pull of the 7 feeds: broad
 # tokens like 'platforms' or 'aviation' matched unrelated articles.)
+#
+# 'flight' joined them 2026-09-12 on the same evidence, measured on a live
+# pull: it is 3010's ONLY title term ("LPD Flight II" — an amphibious
+# transport dock), and it filed two articles under that program that have
+# nothing to do with it — a Hermeus air-launched ramjet test vehicle and a
+# Lockheed Martin drone interceptor that "fries 50 enemy drones in one
+# flight". A snapshot in the bundle is a citable url, and rule 6 tells the
+# model recent_developments comes only from those snapshots: a false match
+# here buys a resolvable citation under a false sentence, which no gate can
+# catch. 3010 is the only top-50 program that used the token at all, and ten
+# others already carry no title terms, so a program matching nothing is the
+# normal, honest state rather than a regression.
 GENERIC_TITLE_TOKENS: frozenset[str] = frozenset({
     "advanced", "activities", "agency", "analysis", "assured", "ballistic",
     "battle", "capabilities", "center", "central", "chain", "command",
     "communications", "complex", "control", "cooperative", "counter",
     "defense", "development", "demonstration", "destruction", "emerging",
     "enabling", "engineering", "enhancements", "enterprise", "evaluation",
-    "experimentation", "fielding", "hazard", "homeland", "improved",
+    "experimentation", "fielding", "flight", "hazard", "homeland", "improved",
     "industrial", "information", "innovation", "innovative", "intelligence",
     "investment", "israeli", "joint", "logistics", "maintaining", "making",
     "management", "manufacturing", "maritime", "missile", "mitigation",
