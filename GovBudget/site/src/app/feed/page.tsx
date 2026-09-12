@@ -15,7 +15,7 @@ import { FeedCardItem } from "@/components/feed-card-item";
 import { FeedSectionExpand } from "@/components/feed-section-expand";
 import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
 import { WHOLE_FEED_RSS, WHOLE_FEED_ATOM } from "@/lib/feed-model.mjs";
-import type { FeedCard } from "@/lib/data";
+import type { FeedCard, FeedSidecar } from "@/lib/data";
 import { formatCount } from "@/lib/format";
 
 // Event type metadata: display name, description, methodology anchor.
@@ -160,10 +160,30 @@ function groupByEventType(cards: FeedCard[]): Map<string, FeedCard[]> {
   return map;
 }
 
-const FEED_SECTION_CAP = 75;
+/**
+ * The /feed/ digest cap comes from feed.json's `section_cap` — owned by the
+ * exporter (_FEED_SECTION_CAP in export_site.py, ROADMAP #88) because the
+ * per-section sidecars json/feed-sections/{event_type}.json carry exactly
+ * the cards past it. No fallback: a feed.json without it predates #88 and
+ * its sidecars do not exist, so "Show all" would 404 on every section.
+ * (Historical: this was `const FEED_SECTION_CAP = 75` here, 2026-09-02.)
+ */
+function feedSectionCap(feed: FeedSidecar): number {
+  const cap = feed.section_cap;
+  if (typeof cap !== "number" || !Number.isInteger(cap) || cap <= 0) {
+    throw new Error(
+      "feed.json carries no positive-integer section_cap — the export predates " +
+        "ROADMAP #88 (per-event-type feed-sections/ sidecars). Re-run " +
+        "`uv run python -m govbudget export-site` before building.",
+    );
+  }
+  return cap;
+}
 
 export default function FeedPage() {
-  const { cards, total, scope_qualifier } = getFeed();
+  const feed = getFeed();
+  const { cards, total, scope_qualifier } = feed;
+  const FEED_SECTION_CAP = feedSectionCap(feed);
   // Backlog #49: the section scope note below used to hand-type its own
   // parenthetical, which had drifted false ("appropriations not covered by
   // the R-1/P-1 rollups" — COLUMBIA is a P-1 line and still absent). Reads
@@ -231,36 +251,11 @@ export default function FeedPage() {
             if (all_section_cards.length === 0) return null;
             // Page cap (2026-09-02): the crosswalk expansions grew the feed
             // from 160 to 700+ cards and the page to 6.8MB raw. The page is a
-            // digest: the top FEED_SECTION_CAP cards per section (cards arrive
+            // digest: the top section_cap cards per section (cards arrive
             // ranked by magnitude from the exporter); the full set stays in
             // feed.json and the RSS/Atom feeds linked in each section header.
             const section_cards = all_section_cards.slice(0, FEED_SECTION_CAP);
             const truncated = all_section_cards.length - section_cards.length;
-            // Task 6 (#73): lookup payloads for the client-side expand
-            // button, scoped to ONLY the cards beyond the cap — not the
-            // whole section and not the whole feed. FeedSectionExpand
-            // resolves companySlug/hasProgramPage for a fetched card the
-            // same way this loop does below, just off these two small maps
-            // instead of the full entityByFamilyKey/programPeBlis indexes
-            // (which would embed thousands of irrelevant entries in the
-            // page's RSC payload — see the addendum's option (a) sizing).
-            const hiddenCards = truncated > 0 ? all_section_cards.slice(FEED_SECTION_CAP) : [];
-            const programPeBlisForHidden = Array.from(
-              new Set(
-                hiddenCards
-                  .map((c) => c.pe_bli)
-                  .filter((pb): pb is string => pb != null && programPeBlis.has(pb)),
-              ),
-            );
-            const companySlugByFamilyKeyForHidden = Object.fromEntries(
-              Array.from(
-                new Set(
-                  hiddenCards
-                    .map((c) => c.family_key)
-                    .filter((fk): fk is string => fk != null),
-                ),
-              ).map((fk) => [fk, entityByFamilyKey.get(fk)?.slug ?? null]),
-            );
 
             return (
               // scroll-mt-16 clears the sticky header when navigating to the
@@ -325,8 +320,6 @@ export default function FeedPage() {
                     eventType={etype}
                     shown={section_cards.length}
                     total={all_section_cards.length}
-                    programPeBlis={programPeBlisForHidden}
-                    companySlugByFamilyKey={companySlugByFamilyKeyForHidden}
                   />
                 )}
               </section>

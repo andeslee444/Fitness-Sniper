@@ -46,12 +46,13 @@
  *     pages (where they actually live; leg (d) only scans the hub-page list)
  *     have never been checked. Leg (i) recognises the site's own origin(s)
  *     too, and checks every such href (relative or self-absolute) against a
- *     Set of every .json/.xml path actually under out/, built once. It does
- *     NOT catch feed.json itself: that path is reached only by a client-side
- *     `fetch()` inside FeedSectionExpand, never by an <a href>, so no
- *     link-graph leg — including this one — can see that specific miss.
- *     (prepare-assets.mjs already copies feed.json as of Task 6/#73 — the
- *     live 404 and this repo's stale out/ both predate that fix landing.)
+ *     Set of every .json/.xml path actually under out/, built once. An
+ *     <a href> sweep alone could never catch the miss this leg is named
+ *     for: /json/feed.json was reached only by a client-side `fetch()`
+ *     inside FeedSectionExpand, never by an anchor. So the leg also scans
+ *     site/src for statically named fetch targets and — since ROADMAP #88
+ *     moved that button to /json/feed-sections/{event_type}.json — for
+ *     directory-templated ones. See the leg's own header below.
  * (j) THE GLOSSARY IS IN THE HEADER NAV (tri-persona Wave 3). It shipped
  *     linked twice per page, both times in the footer, while TOA is stamped
  *     on ~80,000 figures above it. Leg (a) reads the whole home page and is
@@ -764,19 +765,26 @@ function runDownloadLinkLeg(errors, notes) {
  * .json/.xml path under out/, built once up front.
  *
  * SECOND SCAN (2026-09-04, batch review 1.2). An <a href> sweep cannot catch
- * the 404 this leg was written for. /json/feed.json is reached only by a
+ * the 404 this leg was written for. /json/feed.json was reached only by a
  * client-side `fetch()` inside FeedSectionExpand — never by an anchor
- * anywhere in the built HTML — and so are four more statically named
- * targets: /json/years_matrix.json, /json/flow_chart.json, /config.json and
+ * anywhere in the built HTML — and so are four statically named targets:
+ * /json/years_matrix.json, /json/flow_chart.json, /config.json and
  * /json-lite/search_quick.json. A missing one of those is a silent dead
  * feature (an expand button that spins and errors), invisible to every
  * link-graph check that reads HTML.
  *
  * So the leg ALSO reads the SOURCE: every string-literal fetch target under
  * site/src whose path is statically known, asserted to exist under out/.
- * Dynamic targets (`${assetBase}/…`, `/json-lite/program_details/${peBli}`)
- * are deliberately out of scope — their existence is a per-row question the
- * sidecar gates answer.
+ *
+ * THIRD SCAN (2026-09-05, ROADMAP #88). FeedSectionExpand now fetches
+ * `/json/feed-sections/${eventType}.json` — a STATIC DIRECTORY with one
+ * interpolated file segment, the same shape as
+ * `/json-lite/program_details/${peBli}.json`. The file half is a per-row
+ * question the sidecar gates answer (gate 8 leg o for feed-sections/); the
+ * DIRECTORY half is static enough to assert: it must exist under out/ and
+ * hold at least one .json/.xml, which is exactly what a prepare-assets
+ * mirror copy that never ran would fail. Truly dynamic targets
+ * (`${assetBase}/…`, `/json/${kind}/index.json`) stay out of scope.
  */
 const SELF_ORIGINS = [
   "https://fiscalreceipts.com",
@@ -853,9 +861,10 @@ export function staticFetchTargets(source) {
   return [...found].sort();
 }
 
-/** {target → [source files]} over every .ts/.tsx under site/src, tests
- *  excluded (a test's fetch mock names a URL nothing ships). */
-export function scanFetchTargets(dir) {
+/** Walk every .ts/.tsx under `dir` (tests excluded — a test's fetch mock
+ *  names a URL nothing ships) and collect {target → [source files]} using
+ *  `extract(source) → string[]`. */
+function scanSources(dir, extract) {
   const byTarget = new Map();
   const walk = (d) => {
     for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
@@ -865,7 +874,7 @@ export function scanFetchTargets(dir) {
         walk(abs);
       } else if (/\.tsx?$/.test(ent.name) && !/\.test\.tsx?$/.test(ent.name)) {
         const rel = path.relative(srcDir, abs).split(path.sep).join("/");
-        for (const t of staticFetchTargets(fs.readFileSync(abs, "utf8"))) {
+        for (const t of extract(fs.readFileSync(abs, "utf8"))) {
           if (!byTarget.has(t)) byTarget.set(t, []);
           byTarget.get(t).push(rel);
         }
@@ -876,15 +885,65 @@ export function scanFetchTargets(dir) {
   return byTarget;
 }
 
-/** Non-vacuity floor for the fetch-target scan (measured 2026-09-04 against
- *  site/src: FIVE statically named targets — /config.json,
- *  /json/feed.json, /json/flow_chart.json, /json/years_matrix.json,
- *  /json-lite/search_quick.json). Below this the scanner has stopped
- *  matching (a fetch wrapper, a moved file, a regex regression) and the leg
- *  would report "all targets resolve" while checking none — which is exactly
- *  the state in which /json/feed.json 404'd in production. RE-MEASURE if the
- *  client stops fetching one of these; do not lower it to fit. */
-const MIN_STATIC_FETCH_TARGETS = 5;
+/** {target → [source files]} of statically named fetch targets under site/src. */
+export function scanFetchTargets(dir) {
+  return scanSources(dir, staticFetchTargets);
+}
+
+/**
+ * Every DIRECTORY-TEMPLATED same-origin fetch target in one source file
+ * (ROADMAP #88): a static directory prefix, exactly one interpolated LAST
+ * path segment, a .json/.xml extension —
+ *   fetch(`/json/feed-sections/${eventType}.json`)  → "/json/feed-sections/"
+ *   fetch(`/json-lite/program_details/${peBli}.json`) → "/json-lite/program_details/"
+ * Anything whose directory is itself dynamic, or that begins with an
+ * interpolation, is not static enough to assert and is left alone.
+ * Exported for scripts/gates/__tests__/fetch-targets.test.mjs.
+ */
+export function templatedFetchDirs(source) {
+  const found = new Set();
+  for (const m of source.matchAll(
+    /\bfetch\(\s*`(\/[^`\n$]*\/)\$\{[^}`\n]*\}\.(?:json|xml)`/g,
+  )) {
+    found.add(m[1]);
+  }
+  return [...found].sort();
+}
+
+/** {directory prefix → [source files]} of directory-templated fetch targets. */
+export function scanTemplatedFetchDirs(dir) {
+  return scanSources(dir, templatedFetchDirs);
+}
+
+/** A directory-templated target is "shipped" when out/<dir> exists and holds
+ *  at least one .json/.xml — an empty directory is the mirror-copy-never-ran
+ *  failure. `outRoot` is a parameter so the unit test can point it at a
+ *  temp dir. Exported for scripts/gates/__tests__/fetch-targets.test.mjs. */
+export function templatedDirIsShipped(dirPrefix, outRoot = outDir) {
+  const abs = path.join(outRoot, ...dirPrefix.split("/").filter(Boolean));
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) return false;
+  return fs.readdirSync(abs).some((f) => /\.(json|xml)$/i.test(f));
+}
+
+/** Non-vacuity floor for the static fetch-target scan. Measured 2026-09-04
+ *  at FIVE; RE-MEASURED 2026-09-05 (ROADMAP #88) at FOUR — /config.json,
+ *  /json/flow_chart.json, /json/years_matrix.json,
+ *  /json-lite/search_quick.json — because the client genuinely stopped
+ *  fetching /json/feed.json (FeedSectionExpand now fetches the
+ *  directory-templated /json/feed-sections/${eventType}.json, floored
+ *  separately by MIN_TEMPLATED_FETCH_DIRS so neither floor can backfill the
+ *  other). Below this the scanner has stopped matching (a fetch wrapper, a
+ *  moved file, a regex regression) and the leg would report "all targets
+ *  resolve" while checking none — the state in which /json/feed.json 404'd
+ *  in production. RE-MEASURE if the client stops fetching one of these; do
+ *  not lower it to fit. */
+const MIN_STATIC_FETCH_TARGETS = 4;
+
+/** Non-vacuity floor for the directory-templated scan (measured 2026-09-05
+ *  against site/src: TWO — /json-lite/program_details/ from
+ *  program-awards.tsx + program-mentions.tsx, /json/feed-sections/ from
+ *  feed-section-expand.tsx). Do not lower it to fit; re-measure. */
+const MIN_TEMPLATED_FETCH_DIRS = 2;
 
 /** Exported for scripts/gates/__tests__/fetch-targets.test.mjs, which needs
  *  to force the href sweep to zero (a fake, guaranteed-unbuilt `pages` list)
@@ -933,6 +992,13 @@ export function runJsonXmlHrefLeg(
     if (!fs.existsSync(abs)) deadFetch.push([target, sources]);
   }
 
+  // ── third scan: directory-templated client fetch targets (ROADMAP #88) ──
+  const fetchDirs = scanTemplatedFetchDirs(srcDir);
+  const deadDirs = [];
+  for (const [dirPrefix, sources] of [...fetchDirs].sort()) {
+    if (!templatedDirIsShipped(dirPrefix)) deadDirs.push([dirPrefix, sources]);
+  }
+
   // Non-vacuity floor for the href half ONLY — the fetch-target floor right
   // below is separate and must not backfill this one (that was the bug).
   if (hrefsChecked === 0) {
@@ -951,6 +1017,22 @@ export function runJsonXmlHrefLeg(
         `against nothing. Re-derive the scan; do not lower the floor`,
     );
   }
+  if (fetchDirs.size < MIN_TEMPLATED_FETCH_DIRS) {
+    errors.push(
+      `leg i: only ${fetchDirs.size} directory-templated fetch target(s) found ` +
+        `under site/src (floor ${MIN_TEMPLATED_FETCH_DIRS}, measured ` +
+        `2026-09-05). The templated scanner has stopped matching; re-derive ` +
+        `the scan, do not lower the floor`,
+    );
+  }
+  for (const [dirPrefix, sources] of deadDirs) {
+    errors.push(
+      `leg i: dead client fetch directory ${dirPrefix} — fetched per-row by ` +
+        `${sources.join(", ")}, but out${dirPrefix} is missing or holds no ` +
+        `.json/.xml. No <a href> points into it, so nothing else on this site ` +
+        `can catch it: the feature just spins and errors for every reader`,
+    );
+  }
   for (const [target, sources] of deadFetch) {
     errors.push(
       `leg i: dead client fetch target ${target} — fetched by ` +
@@ -967,13 +1049,14 @@ export function runJsonXmlHrefLeg(
           `at out${target}`,
       );
     }
-  } else if (deadFetch.length === 0 && hrefsChecked > 0) {
+  } else if (deadFetch.length === 0 && deadDirs.length === 0 && hrefsChecked > 0) {
     notes.push(
-      `leg i: ${hrefsChecked + fetchTargets.size} same-origin target(s) — ` +
+      `leg i: ${hrefsChecked + fetchTargets.size + fetchDirs.size} same-origin target(s) — ` +
         `${hrefsChecked} .json/.xml href(s) across ` +
         `${pages.length} scanned page(s) plus ${fetchTargets.size} static ` +
-        `client fetch target(s) (floor ${MIN_STATIC_FETCH_TARGETS}) — all ` +
-        `resolve to a built file ✓`,
+        `client fetch target(s) (floor ${MIN_STATIC_FETCH_TARGETS}) plus ` +
+        `${fetchDirs.size} directory-templated target(s) (floor ` +
+        `${MIN_TEMPLATED_FETCH_DIRS}) — all resolve to a built file ✓`,
     );
   }
 }

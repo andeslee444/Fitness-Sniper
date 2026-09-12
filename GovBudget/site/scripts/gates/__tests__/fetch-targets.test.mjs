@@ -4,28 +4,35 @@
  * THE DEFECT. https://fiscalreceipts.com/json/feed.json 404'd in production
  * and nothing caught it. Leg (i) was written for exactly that bug and could
  * not see it: it reads `<a href>` out of built HTML, and no anchor anywhere
- * on this site points at /json/feed.json — the file is reached only by a
- * client-side fetch() baked into a JS bundle. Four more targets are in the
- * same position (/json/years_matrix.json, /json/flow_chart.json,
+ * on this site points at /json/feed.json — the file was reached only by a
+ * client-side fetch() baked into a JS bundle. Four targets are in that same
+ * position today (/json/years_matrix.json, /json/flow_chart.json,
  * /config.json, /json-lite/search_quick.json): if one goes missing the
  * feature spins and errors, and every gate stays green.
  *
- * So the leg now also scans site/src for statically named fetch targets.
- * These tests pin what "statically named" means — because a scanner that
- * over-reaches invents paths that never shipped, and one that under-reaches
- * is the miss it was written to close.
+ * So the leg now also scans site/src for statically named fetch targets —
+ * and, since ROADMAP #88 moved "Show all" to the directory-templated
+ * /json/feed-sections/${eventType}.json, for that shape too. These tests
+ * pin what "statically named" and "directory-templated" mean: a scanner
+ * that over-reaches invents paths that never shipped, and one that
+ * under-reaches is the miss it was written to close.
  *
  * Run via `npm test` (vitest).
  */
 
 import path from "path";
 import { fileURLToPath } from "url";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import fs from "fs";
+import os from "os";
 import {
   runJsonXmlHrefLeg,
   sameOriginJsonXmlTarget,
   scanFetchTargets,
+  scanTemplatedFetchDirs,
   staticFetchTargets,
+  templatedDirIsShipped,
+  templatedFetchDirs,
 } from "../linkgraph.mjs";
 
 const srcDir = path.resolve(
@@ -111,21 +118,21 @@ describe("staticFetchTargets — the shapes it must NOT invent", () => {
 });
 
 describe("scanFetchTargets — against the real site/src", () => {
-  it("finds the five statically named targets the client depends on", () => {
+  it("finds the four statically named targets the client depends on", () => {
     const found = scanFetchTargets(srcDir);
-    // Measured 2026-09-04; this is the population MIN_STATIC_FETCH_TARGETS
-    // floors. Adding a target is fine; losing one without re-measuring is the
-    // regression the floor exists to catch.
+    // Measured 2026-09-04 at five; RE-MEASURED 2026-09-05 (ROADMAP #88):
+    // /json/feed.json left this list when FeedSectionExpand moved to the
+    // directory-templated /json/feed-sections/${eventType}.json, which the
+    // templated sweep below counts. This is the population
+    // MIN_STATIC_FETCH_TARGETS floors. Adding a target is fine; losing one
+    // without re-measuring is the regression the floor exists to catch.
     expect([...found.keys()].sort()).toEqual([
       "/config.json",
       "/json-lite/search_quick.json",
-      "/json/feed.json",
       "/json/flow_chart.json",
       "/json/years_matrix.json",
     ]);
-    expect(found.get("/json/feed.json")).toEqual([
-      "components/feed-section-expand.tsx",
-    ]);
+    expect(found.has("/json/feed.json")).toBe(false);
   });
 
   it("does not pick targets out of test files' fetch mocks", () => {
@@ -135,6 +142,92 @@ describe("scanFetchTargets — against the real site/src", () => {
         expect(f).not.toMatch(/__tests__|\.test\.tsx?$/);
       }
     }
+  });
+});
+
+describe("templatedFetchDirs — directory-templated targets (ROADMAP #88)", () => {
+  it("finds a static directory prefix with one interpolated .json segment", () => {
+    expect(
+      templatedFetchDirs("const resp = await fetch(`/json/feed-sections/${eventType}.json`);"),
+    ).toEqual(["/json/feed-sections/"]);
+    expect(
+      templatedFetchDirs("fetch(`/json-lite/program_details/${peBli}.json`)"),
+    ).toEqual(["/json-lite/program_details/"]);
+  });
+
+  it("accepts an .xml extension and an expression inside the interpolation", () => {
+    expect(templatedFetchDirs("fetch(`/feeds/${encodeURIComponent(t)}.xml`)")).toEqual([
+      "/feeds/",
+    ]);
+  });
+
+  it("leaves fully static literals to staticFetchTargets", () => {
+    expect(templatedFetchDirs(`fetch("/json/feed.json")`)).toEqual([]);
+    expect(templatedFetchDirs("fetch(`/json/feed.json?v=${build}`)")).toEqual([]);
+  });
+
+  it("ignores an asset-host base URL and helper-call URLs", () => {
+    expect(templatedFetchDirs("fetch(`${assetBase}/data/${probeName}.parquet`)")).toEqual([]);
+    expect(templatedFetchDirs("fetch(breakdownUrl(factId))")).toEqual([]);
+  });
+
+  it("ignores an interpolation that is not the last path segment", () => {
+    // `/json/${kind}/index.json` — the DIRECTORY is dynamic; nothing static
+    // enough to assert shipped.
+    expect(templatedFetchDirs("fetch(`/json/${kind}/index.json`)")).toEqual([]);
+  });
+
+  it("de-duplicates and sorts", () => {
+    expect(
+      templatedFetchDirs("fetch(`/b/${x}.json`); fetch(`/a/${y}.json`); fetch(`/b/${z}.json`)"),
+    ).toEqual(["/a/", "/b/"]);
+  });
+});
+
+describe("scanTemplatedFetchDirs — against the real site/src", () => {
+  it("finds the two directory-templated targets the client depends on", () => {
+    const found = scanTemplatedFetchDirs(srcDir);
+    // Measured 2026-09-05: program_details/ (program-awards.tsx:105,
+    // program-mentions.tsx:235) and feed-sections/ (feed-section-expand.tsx).
+    // This is the population MIN_TEMPLATED_FETCH_DIRS floors.
+    expect([...found.keys()].sort()).toEqual([
+      "/json-lite/program_details/",
+      "/json/feed-sections/",
+    ]);
+    expect(found.get("/json/feed-sections/")).toEqual([
+      "components/feed-section-expand.tsx",
+    ]);
+  });
+});
+
+describe("templatedDirIsShipped — the directory must exist AND hold a file", () => {
+  let root;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "leg-i-dirs-"));
+  });
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("is false for a missing directory", () => {
+    expect(templatedDirIsShipped("/json/feed-sections/", root)).toBe(false);
+  });
+
+  it("is false for an empty directory (a mirror copy that never ran)", () => {
+    fs.mkdirSync(path.join(root, "json", "feed-sections"), { recursive: true });
+    expect(templatedDirIsShipped("/json/feed-sections/", root)).toBe(false);
+  });
+
+  it("is false when the directory holds no .json/.xml", () => {
+    fs.mkdirSync(path.join(root, "json", "feed-sections"), { recursive: true });
+    fs.writeFileSync(path.join(root, "json", "feed-sections", "README.txt"), "x");
+    expect(templatedDirIsShipped("/json/feed-sections/", root)).toBe(false);
+  });
+
+  it("is true once one .json is present", () => {
+    fs.mkdirSync(path.join(root, "json", "feed-sections"), { recursive: true });
+    fs.writeFileSync(path.join(root, "json", "feed-sections", "yoy_swing.json"), "{}");
+    expect(templatedDirIsShipped("/json/feed-sections/", root)).toBe(true);
   });
 });
 

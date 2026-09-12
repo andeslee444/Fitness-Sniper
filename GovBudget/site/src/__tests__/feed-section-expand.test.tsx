@@ -1,29 +1,31 @@
 /**
- * feed-section-expand.test.tsx — Task 6 (#73): /feed/ sections expand in
- * place past the FEED_SECTION_CAP digest cap, client-side.
+ * feed-section-expand.test.tsx — Task 6 (#73) → ROADMAP #88: /feed/
+ * sections expand in place past the digest cap, client-side, by fetching
+ * the PER-EVENT-TYPE sidecar /json/feed-sections/{event_type}.json — never
+ * the whole feed.json.
  *
- * Contract under test (task-6-brief.md Step 1, task-6-addendum.md ruling 1):
+ * Contract under test:
  *   - Collapsed state renders [data-feed-truncation-note] (gate 23 leg g4
- *     reads this attribute against the static HTML) and a "Show all N"
- *     button.
- *   - Clicking the button fetches /json/feed.json (plain same-origin fetch,
- *     mirroring ProgramAwards.handleExpand), filters `cards` by
- *     `event_type`, and renders every card past `shown` via the
- *     <FeedCardItemClient> twin.
- *   - The truncation note disappears once expanded.
+ *     reads the attribute against the static HTML) carrying
+ *     data-feed-event-type / data-feed-shown / data-feed-total (gate 8 leg o
+ *     reads these), and a "Show all N" button.
+ *   - Clicking fetches /json/feed-sections/{eventType}.json and renders
+ *     its `cards` (already the cards past the cap — no client filter, no
+ *     client slice) via the <FeedCardItemClient> twin.
+ *   - companySlug/hasProgramPage come PRE-RESOLVED on each sidecar card
+ *     (company_slug, has_program_page).
+ *   - A sidecar cut LOWER than this page's `shown` has its overlap dropped;
+ *     the footer states what is on screen, never "all", when short.
  *   - A failed fetch surfaces an error state without crashing.
- *   - companySlug/hasProgramPage for the newly-rendered cards resolve off
- *     the section-scoped lookup props, exactly like feed/page.tsx resolves
- *     them server-side for the statically-rendered cards.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 
 import { FeedSectionExpand } from "@/components/feed-section-expand";
-import type { FeedCard } from "@/lib/data";
+import type { FeedSectionCard, FeedSectionSidecar } from "@/lib/data";
 
-function card(pe_bli: string, overrides: Partial<FeedCard> = {}): FeedCard {
+function card(pe_bli: string, overrides: Partial<FeedSectionCard> = {}): FeedSectionCard {
   return {
     event_type: "concentration_shift",
     family_key: null,
@@ -32,9 +34,7 @@ function card(pe_bli: string, overrides: Partial<FeedCard> = {}): FeedCard {
     figure_value: 5000,
     fiscal_year: 2022,
     headline: `${pe_bli} award concentration HHI=5000 (2022)`,
-    headline_segments: [
-      { text: `${pe_bli} award concentration HHI=5000 (2022)` },
-    ],
+    headline_segments: [{ text: `${pe_bli} award concentration HHI=5000 (2022)` }],
     organization: null,
     pe_bli,
     program_url: `/program/${pe_bli}/`,
@@ -45,23 +45,35 @@ function card(pe_bli: string, overrides: Partial<FeedCard> = {}): FeedCard {
     measure: null,
     edition: null,
     magnitude: null,
+    company_slug: null,
+    has_program_page: false,
+    ...overrides,
+  };
+}
+
+function sidecar(
+  cards: FeedSectionCard[],
+  overrides: Partial<FeedSectionSidecar> = {},
+): FeedSectionSidecar {
+  return {
+    event_type: "concentration_shift",
+    section_cap: 75,
+    shown: 75,
+    total: 75 + cards.length,
+    cards,
     ...overrides,
   };
 }
 
 function jsonResponse(body: unknown): Response {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve(body),
-  } as unknown as Response;
+  return { ok: true, status: 200, json: () => Promise.resolve(body) } as unknown as Response;
 }
 
-/** 90 concentration_shift cards, ordered — mirrors feed.json's shape. */
-function ninetyCards(): FeedCard[] {
-  return Array.from({ length: 90 }, (_, i) =>
-    card(String(i).padStart(4, "0")),
-  );
+const SECTION_URL = "/json/feed-sections/concentration_shift.json";
+
+/** The 15 cards past a 75-cap in a 90-card section — indices 75..89. */
+function fifteenHidden(): FeedSectionCard[] {
+  return Array.from({ length: 15 }, (_, i) => card(String(75 + i).padStart(4, "0")));
 }
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -75,230 +87,261 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function mockSection(body: unknown) {
+  fetchMock.mockImplementation((url: string) =>
+    String(url) === SECTION_URL
+      ? Promise.resolve(jsonResponse(body))
+      : Promise.reject(new Error(`unmocked fetch ${url}`)),
+  );
+}
+
 describe("<FeedSectionExpand> — collapsed state", () => {
-  it("renders the truncation note and a Show all button", () => {
+  it("renders the truncation note with the gate-readable counts and a Show all button", () => {
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={75}
-        total={90}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
     );
     const note = container.querySelector("[data-feed-truncation-note]");
     expect(note).not.toBeNull();
+    expect(note!.getAttribute("data-feed-event-type")).toBe("concentration_shift");
+    expect(note!.getAttribute("data-feed-shown")).toBe("75");
+    expect(note!.getAttribute("data-feed-total")).toBe("90");
     expect(note!.textContent).toContain("75");
     expect(note!.textContent).toContain("90");
     expect(screen.getByRole("button", { name: /show all 90/i })).toBeInTheDocument();
   });
 
-  it("renders no [data-feed-card] before expansion", () => {
+  it("renders no [data-feed-card] and fetches nothing before expansion", () => {
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={75}
-        total={90}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
     );
     expect(container.querySelectorAll("[data-feed-card]").length).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
 describe("<FeedSectionExpand> — expand", () => {
-  it("fetches feed.json, renders the 15 cards past the cap, and hides the truncation note", async () => {
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
-        ? Promise.resolve(
-            jsonResponse({ cards: ninetyCards(), total: 90, scope_qualifier: null }),
-          )
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
-    );
-
+  it("fetches the section sidecar (never feed.json), renders its cards, hides the note", async () => {
+    mockSection(sidecar(fifteenHidden(), { total: 90 }));
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={75}
-        total={90}
-        programPeBlis={["0075", "0089"]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
     );
-
     fireEvent.click(screen.getByRole("button", { name: /show all 90/i }));
 
     await waitFor(() => {
       expect(container.querySelectorAll("[data-feed-card]").length).toBe(15);
     });
-
-    expect(fetchMock).toHaveBeenCalledWith("/json/feed.json");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(SECTION_URL);
+    expect(fetchMock).not.toHaveBeenCalledWith("/json/feed.json");
     expect(container.querySelector("[data-feed-truncation-note]")).toBeNull();
-    // The first rendered card is index 75 (0-based), not index 0 — the
-    // expand continues the same magnitude-ranked sequence, it does not
-    // restart it.
+    // The sidecar's first card is index 75 — the sequence CONTINUES.
     expect(container.textContent).toContain("0075");
-    expect(container.textContent).not.toContain("0000 award concentration");
+    expect(container.textContent).toContain("Showing all 90 cards in this section.");
   });
 
-  it("resolves hasProgramPage from the programPeBlis lookup prop", async () => {
+  it("interpolates the event type into the sidecar path", async () => {
     fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
+      String(url) === "/json/feed-sections/yoy_swing.json"
         ? Promise.resolve(
-            jsonResponse({ cards: ninetyCards(), total: 90, scope_qualifier: null }),
+            jsonResponse(
+              sidecar([card("0101213F", { event_type: "yoy_swing" })], {
+                event_type: "yoy_swing",
+                shown: 1,
+                total: 2,
+              }),
+            ),
           )
         : Promise.reject(new Error(`unmocked fetch ${url}`)),
     );
-
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={75}
-        total={90}
-        programPeBlis={["0075"]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="yoy_swing" shown={1} total={2} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /show all 90/i }));
+    fireEvent.click(screen.getByRole("button", { name: /show all 2/i }));
     await waitFor(() => {
-      expect(container.querySelectorAll("[data-feed-card]").length).toBe(15);
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(1);
     });
+    expect(fetchMock).toHaveBeenCalledWith("/json/feed-sections/yoy_swing.json");
+  });
 
-    // 0075 is in programPeBlis -> "view program" link renders.
+  it("renders the program link from the card's pre-resolved has_program_page", async () => {
+    mockSection(
+      sidecar(
+        [
+          card("0075", { has_program_page: true }),
+          card("0076", { has_program_page: false }),
+        ],
+        { shown: 75, total: 77 },
+      ),
+    );
+    const { container } = render(
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={77} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 77/i }));
+    await waitFor(() => {
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(2);
+    });
     const links = Array.from(container.querySelectorAll("a")).filter((a) =>
       a.textContent?.includes("view program"),
     );
     expect(links.length).toBe(1);
-    // next/link normalizes the trailing slash away under jsdom — the same
-    // reason feed-headline.test.tsx asserts with toContain, not toBe.
+    // next/link normalizes the trailing slash away under jsdom — same reason
+    // feed-headline.test.tsx asserts with toContain, not toBe.
     expect(links[0].getAttribute("href")).toContain("/program/0075");
   });
 
-  it("surfaces an error state on a failed fetch, without crashing", async () => {
+  it("renders the company link from the card's pre-resolved company_slug", async () => {
     fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
-        ? Promise.reject(new Error("network down"))
+      String(url) === "/json/feed-sections/new_entrant.json"
+        ? Promise.resolve(
+            jsonResponse(
+              sidecar(
+                [
+                  card("", {
+                    event_type: "new_entrant",
+                    pe_bli: null,
+                    program_url: null,
+                    family_key: "ACME CORP",
+                    headline: "ACME CORP new defense contractor",
+                    headline_segments: [{ text: "ACME CORP new defense contractor" }],
+                    figure_units: "dollars",
+                    figure_value: 2_000_000,
+                    why_url: "/methodology/#feed-new_entrant",
+                    company_slug: "acme-corp",
+                  }),
+                  card("", {
+                    event_type: "new_entrant",
+                    pe_bli: null,
+                    program_url: null,
+                    family_key: "NOBODY LLC",
+                    headline: "NOBODY LLC new defense contractor",
+                    headline_segments: [{ text: "NOBODY LLC new defense contractor" }],
+                    figure_units: "dollars",
+                    figure_value: 1_500_000,
+                    why_url: "/methodology/#feed-new_entrant",
+                    company_slug: null,
+                  }),
+                ],
+                { event_type: "new_entrant", shown: 0, total: 2 },
+              ),
+            ),
+          )
         : Promise.reject(new Error(`unmocked fetch ${url}`)),
     );
-
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={75}
-        total={90}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="new_entrant" shown={0} total={2} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 2/i }));
+    await waitFor(() => {
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(2);
+    });
+    const companyLink = Array.from(container.querySelectorAll("a")).find((a) =>
+      (a.getAttribute("href") ?? "").includes("/company/acme-corp"),
+    );
+    expect(companyLink).not.toBeUndefined();
+    expect(companyLink!.textContent).toBe("ACME CORP");
+    // The family outside the top 200 renders as text, flagged for gate 4.
+    expect(container.querySelector("[data-no-company-page]")).not.toBeNull();
+    expect(
+      Array.from(container.querySelectorAll("a")).some((a) =>
+        (a.getAttribute("href") ?? "").includes("/company/nobody"),
+      ),
+    ).toBe(false);
+  });
+
+  it("surfaces an error state on a failed fetch, without crashing", async () => {
+    fetchMock.mockImplementation(() => Promise.reject(new Error("network down")));
+    const { container } = render(
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /show all 90/i }));
-
     await waitFor(() => {
       expect(container.textContent).toMatch(/failed to load/i);
     });
-    // Truncation note stays — the section never actually expanded.
     expect(container.querySelector("[data-feed-truncation-note]")).not.toBeNull();
     expect(container.querySelectorAll("[data-feed-card]").length).toBe(0);
   });
 
-  // ── K.5: the footer states what is ON SCREEN, never "all" ────────────────
-  //
-  // /json/feed.json is a separate asset from the built page, so a partial
-  // deploy can leave the page ahead of the file. The footer must then say how
-  // many cards are actually rendered — and (final review M8) the first `shown`
-  // cards are SERVER-rendered and stay on screen regardless of what came back,
-  // so the honest number is `shown + extraCards.length`, not the fetch's own
-  // count.
-  it("says 'Showing 3 of 5' when the shipped feed.json is short of `total`", async () => {
-    // total=5 (what the page was built from), but the fetched file carries
-    // only 4 cards for this event type — one past the 3 already on screen.
-    const cards = [0, 1, 2, 3].map((i) => card(String(i).padStart(4, "0")));
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
-        ? Promise.resolve(jsonResponse({ cards, total: 4, scope_qualifier: null }))
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+  it("surfaces an error on a 404 (a section whose sidecar did not ship)", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as unknown as Response),
     );
-
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={3}
-        total={5}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 90/i }));
+    await waitFor(() => {
+      expect(container.textContent).toMatch(/HTTP 404/);
+    });
+    expect(container.querySelectorAll("[data-feed-card]").length).toBe(0);
+  });
+
+  it("surfaces an error when the sidecar has no cards array", async () => {
+    mockSection({ event_type: "concentration_shift", total: 90 });
+    const { container } = render(
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 90/i }));
+    await waitFor(() => {
+      expect(container.textContent).toMatch(/no cards array/i);
+    });
+  });
+
+  // ── K.5 / M8: the footer states what is ON SCREEN, never "all" ──────────
+  it("says 'Showing 4 of 5' when the shipped sidecar is short of `total`", async () => {
+    // Page built from total=5, shown=3; the shipped file carries only 1
+    // card past its own cut at 3 (a file behind a newer page).
+    mockSection(sidecar([card("0003")], { shown: 3, total: 4 }));
+    const { container } = render(
+      <FeedSectionExpand eventType="concentration_shift" shown={3} total={5} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /show all 5/i }));
-
     await waitFor(() => {
       expect(container.querySelectorAll("[data-feed-card]").length).toBe(1);
     });
-    const text = container.textContent ?? "";
-    expect(text).toContain("Showing 4 of 5 cards in this section.");
-    expect(text).not.toContain("Showing all");
+    expect(container.textContent).toContain("Showing 4 of 5 cards in this section.");
+    expect(container.textContent).not.toContain("Showing all");
   });
 
-  it("counts the server-rendered cards too when the fetch returns fewer than `shown`", async () => {
-    // The M8 shape: feed.json is BEHIND the page and carries 3 cards where the
-    // page already renders 3 server-side. extraCards is empty, but 3 cards are
-    // on screen — the footer used to say "Showing 3 of 5" only by accident and
-    // said "Showing 2 of 5" whenever the file was shorter still.
-    const cards = [0, 1].map((i) => card(String(i).padStart(4, "0")));
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
-        ? Promise.resolve(jsonResponse({ cards, total: 2, scope_qualifier: null }))
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
-    );
-
+  it("counts the server-rendered cards when the sidecar carries nothing past the cap", async () => {
+    mockSection(sidecar([], { shown: 3, total: 3 }));
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={3}
-        total={5}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={3} total={5} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /show all 5/i }));
-
     await waitFor(() => {
       expect(container.textContent).toContain("cards in this section.");
     });
-    // 3 server-rendered + 0 fetched past the cap = 3 on screen, not 2.
     expect(container.textContent).toContain("Showing 3 of 5 cards in this section.");
     expect(container.textContent).not.toContain("Showing 2 of 5");
-    expect(container.textContent).not.toContain("Showing all");
+  });
+
+  it("drops the overlap when the sidecar was cut LOWER than this page's shown", async () => {
+    // Page shows 3; the shipped file was cut at 1 and carries cards 1..4.
+    // Cards 1 and 2 are already on screen — render only 3 and 4.
+    mockSection(
+      sidecar([card("0001"), card("0002"), card("0003"), card("0004")], { shown: 1, total: 5 }),
+    );
+    const { container } = render(
+      <FeedSectionExpand eventType="concentration_shift" shown={3} total={5} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 5/i }));
+    await waitFor(() => {
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(2);
+    });
+    expect(container.textContent).toContain("0003");
+    expect(container.textContent).toContain("0004");
+    expect(container.textContent).not.toContain("0001 award concentration");
+    expect(container.textContent).toContain("Showing all 5 cards in this section.");
   });
 
   // ── K.3: two hidden cards sharing a pe_bli must not collide on key ───────
   it("renders two cards sharing a pe_bli without a duplicate-key warning", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    // Same pe_bli, same event_type — the shape that would collide if the key
-    // were `${event_type}-${pe_bli}`. React reports duplicate keys through
-    // console.error, so a silent regression here is a spy assertion, not a
-    // visible failure.
-    const cards = [
-      card("0001"),
-      card("0002"),
-      card("0002"),
-    ];
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
-        ? Promise.resolve(jsonResponse({ cards, total: 3, scope_qualifier: null }))
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
-    );
-
+    mockSection(sidecar([card("0002"), card("0002")], { shown: 1, total: 3 }));
     const { container } = render(
-      <FeedSectionExpand
-        eventType="concentration_shift"
-        shown={1}
-        total={3}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{}}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={1} total={3} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /show all 3/i }));
-
     await waitFor(() => {
       expect(container.querySelectorAll("[data-feed-card]").length).toBe(2);
     });
@@ -309,46 +352,15 @@ describe("<FeedSectionExpand> — expand", () => {
     consoleError.mockRestore();
   });
 
-  it("companySlug resolves from companySlugByFamilyKey for family_key-driven cards", async () => {
-    const cards = [
-      card("", {
-        event_type: "new_entrant",
-        pe_bli: null,
-        program_url: null,
-        family_key: "ACME CORP",
-        headline: "ACME CORP new defense contractor",
-        headline_segments: [{ text: "ACME CORP new defense contractor" }],
-        figure_units: "dollars",
-        figure_value: 2_000_000,
-        why_url: "/methodology/#feed-new_entrant",
-      }),
-    ];
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/feed.json"
-        ? Promise.resolve(
-            jsonResponse({ cards, total: 1, scope_qualifier: null }),
-          )
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
-    );
-
+  it("does not refetch on a second expand", async () => {
+    mockSection(sidecar(fifteenHidden(), { total: 90 }));
     const { container } = render(
-      <FeedSectionExpand
-        eventType="new_entrant"
-        shown={0}
-        total={1}
-        programPeBlis={[]}
-        companySlugByFamilyKey={{ "ACME CORP": "acme-corp" }}
-      />,
+      <FeedSectionExpand eventType="concentration_shift" shown={75} total={90} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /show all 1/i }));
-
+    fireEvent.click(screen.getByRole("button", { name: /show all 90/i }));
     await waitFor(() => {
-      expect(container.querySelectorAll("[data-feed-card]").length).toBe(1);
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(15);
     });
-    const companyLink = Array.from(container.querySelectorAll("a")).find((a) =>
-      (a.getAttribute("href") ?? "").includes("/company/acme-corp"),
-    );
-    expect(companyLink).not.toBeUndefined();
-    expect(companyLink!.textContent).toBe("ACME CORP");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

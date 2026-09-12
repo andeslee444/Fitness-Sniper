@@ -2286,6 +2286,42 @@ export interface FeedSidecar {
   total: number;
   /** §P0-5 corpus scope qualifier — rendered once per superlative section. */
   scope_qualifier?: string;
+  /**
+   * ROADMAP #88 — the /feed/ digest cap (top N cards per event type
+   * rendered statically), owned by the EXPORTER (`_FEED_SECTION_CAP` in
+   * export_site.py) because json/feed-sections/{event_type}.json carries
+   * exactly the cards past it. app/feed/page.tsx refuses to build without
+   * it — a silent 75 fallback would hide the one drift this single source
+   * exists to prevent. Optional in the type only because a pre-#88
+   * feed.json lacks it.
+   */
+  section_cap?: number;
+}
+
+// ── feed-sections/{event_type}.json (ROADMAP #88) ────────────────────────────
+
+/**
+ * A feed card as shipped in a feed-sections/ sidecar: the feed.json card
+ * plus the two lookups feed/page.tsx resolves server-side for the visible
+ * cards (getEntityTopByFamilyKey / getProgramPeBlis), pre-resolved by the
+ * exporter from the same entities_top.json / program_details/ sources for
+ * the cards past the cap — the client twin cannot read either off disk.
+ */
+export interface FeedSectionCard extends FeedCard {
+  /** /company/{slug}/ for family_key when it is in the top-200 index, else null. */
+  company_slug: string | null;
+  /** pe_bli has a /program/{pe_bli}/ page (a program_details/ sidecar exists). */
+  has_program_page: boolean;
+}
+
+export interface FeedSectionSidecar {
+  event_type: FeedCard["event_type"];
+  section_cap: number;
+  /** min(section_cap, total): the cards /feed/ rendered statically. */
+  shown: number;
+  total: number;
+  /** ONLY the cards past `shown`, in feed.json's ranked order. */
+  cards: FeedSectionCard[];
 }
 
 let _feed: FeedSidecar | null = null;
