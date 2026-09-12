@@ -66,6 +66,24 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Findings log (what we learned; feeds future phases)
 
+- **2026-09-12: "the page reads the right FILE" is not the same as "the file
+  holds the right rows."** chain-B fix 3 keyed the whole dossier pipeline by
+  page identity and the bundles still offered a sibling program's citable
+  `projects`, because the SIDECAR the bundle reads was itself fused: 13 of 13
+  shared BLI codes published both members' J-book narratives and both members'
+  R-2/P-40 rows. Three lessons. (a) A guard whose premise expires stops
+  guarding silently — `owns_detail` separated the two members only while five
+  of the six Navy procurement appropriations went unparsed, and Wave 5's
+  comment updating that premise did not revisit the two call sites relying on
+  it. (b) The defect is invisible to every number-to-citation gate by
+  construction: each row IS a real J-book row with a resolving fact id; only a
+  cross-page identity check sees it, which is why leg n check 8 asks "does
+  this fact id appear on two member pages" and not "does it resolve". (c) The
+  honest answer for a row that matches NO member (the PROC_DoDEA volume under
+  code '30') is neither page plus a count — publishing it on all three
+  members, which is what the bare-code lookup did, put a school-system
+  justification under OSD's, DTRA's and DMACT's names.
+
 - **2026-09-01: crosswalk hand-adjudication (correction) + FPDS-AP expansion
   (coverage), one deploy.** All 10,091 published (pe, award) pairs were
   individually adjudicated (688 award investigations, 28 agents, two
@@ -741,6 +759,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   codes still link the bare-key stub, and a withheld concentration block
   suppresses the named-prime/lobbied-by fallback on 3010's members.
   **Status:** CLOSED 2026-09-11 — account-split members name their own appropriation in the title block (`[data-program-account]`, `ProgramHeader.accountSplit` derived from the stub's own `stubDimension`; gate 21 leg n checks 5-7 with a dated 16/20 page floor, and the org-split members and the bare stub render none); district cards link the member whose mart title names it (`member_slugs_by_title`; identical member titles keep the chooser) and filing mentions carry `shared_code` and say the link opens a chooser; `named_primes`/`lobbied_by` are keyed by slug and read the member's own `_concentration_for`, `_awards_for` and dossier, closing three bugs (a slug-named dossier's primes could never reach its page; a bare-key figure no page publishes suppressed the lobbying tier on both members; #80's awards guard could not address one member). A figure withheld because more than one member is linked is now STATED on the WHO card (`summary.concentration_withheld`, `data-who-withheld="shared-code"`, `sharedCodeWithheldReason` beside #80's two strings) instead of "the crosswalk is silent here" above a five-row Related Awards table — true on 3010-SCN and 3010-OPN. No page changes tier on today's corpus.
+  **Addendum 2026-09-12 (the narrative axis).** The sweep above covered the header, the WHO strip, member links and district links; it did not cover what the page says the J-book says. Measured read-only on the shipped corpus: all **13 of 13** shared codes published IDENTICAL `narratives` and IDENTICAL `details` on every member (55 narrative and 139 detail fact ids on more than one member page) — /program/3010-SCN/ rendered the Shipboard Tactical Communications mission paragraph and the OPN volume's money under the LPD Flight II heading, every citation resolving, because each row is individually true of something. Root cause: `_narratives_with_links` and the sidecar's `details` read a bare-`pe_bli` index, and the `owns_detail` gate that used to separate them stopped separating anything in Wave 5 (all ten account keys now carry real detail on BOTH sides). Now keyed by the member's own J-book DOCUMENT — its appropriation (account axis, `budget_line_details.account`, which is also how a narrative learns its account since `detail_narratives` has no such column) or its component (organization axis, `jbook_documents.org`) — through the same `split_key` `_awards_for` and `_concentration_for` use; the /years/ matrix's project rows and the detail display-dedupe key move to the same identity (both measured no-ops today), and `programs.json.narrative_count`, `fy2026_absent.has_narrative` and the dossier bundle's `projects`/`narratives` follow the sidecar. After: **0 of 13** codes cross-publish; each member publishes its own volume only (118 → 53 narrative rows, 298 → 134 detail rows across the 27 member pages). Seven rows the PROC_DoDEA volume files under code '30' belong to no member page (DoDEA has no `dim_programs` row) and now publish on NEITHER, with a dated count in the export log — never on all three. Lobbying `mentions` deliberately stay bare-keyed on both axes: an LDA filing names a budget LINE, never an appropriation or a component, so it is evidence for every program using the code; the sidecar declares that with `mentions_shared_code` and the /filing/ page already carries the shared-code note. Gate 21 leg n gains check 8 (no narrative or detail fact id on two member pages; a repeated mention only where the sidecar declares the rule) with a dated do-not-lower floor of 22 against a measured 27 member pages publishing their own J-book rows.
 - **#83 Two definitions of "account-split"** (`scripts/collision_keys.py` vs
   `_ProgramIdentity.is_account_split`) — fail-closed today; unify.
   **Status:** CLOSED 2026-09-10 — one rule, `govbudget.jbooks.collision_keys.classify_shared_keys` (an axis resolves a key only when every row's value is present and pairwise distinct; ACCOUNT, else ORGANIZATION, else UNRESOLVED); `_ProgramIdentity` and both link loaders import it, `scripts/collision_keys.py` deleted; the 13 live keys classify as before (10/3/0, 27 composite slugs); an unresolved key now stops export-site (`UnresolvedSharedKeyError`) and is excluded by the loaders; identity of the three callers' function objects and the two formerly divergent shapes are pinned by tests/test_collision_keys.py.
@@ -1299,6 +1318,32 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   closing it.
   **Status:** open (2026-09-12) — (a)–(d) open; (e), the false rendered
   sentence, fixed on this branch by Task 17c (`428623ad`, 2026-09-12).
+- **#112 `3010` has no search alias.** "LPD 17" and "San Antonio-class" reach
+  nothing: `flight` was 3010's ONLY title term and it left
+  `GENERIC_TITLE_TOKENS` in chain-B fix 3 (it matched a ramjet test vehicle
+  and a counter-drone rotor, both filed under an amphibious transport dock,
+  and a matched snapshot is a citable url under `recent_developments`). The
+  program is now unreachable by the names a reader would actually type. Add
+  curated aliases for it in the search-alias CSV — the token set was the
+  wrong place for a program-specific name and tightening it is not a
+  substitute for naming the ship class.
+  **Status:** open (2026-09-12)
+- **#113 A J-book volume filing an ACCOUNT-split shared code under an
+  unknown appropriation raises out of `_build_summary_blocks`.**
+  `_gslug` calls `_ProgramIdentity.slug` with the account_title it looked up
+  from `dim_programs`, so a `(pe_bli, account)` pair with no program row —
+  including `account IS NULL` — raises `ValueError: … no account_title was
+  supplied` from deep inside the summary-card pass, naming neither the
+  document nor the row. Found 2026-09-12 by a Task 9b fixture, not by the
+  corpus: the live unattributable case (PROC_DoDEA under code '30') is on the
+  ORGANIZATION axis, where `slug` needs no lookup and returns `30-DODEA` —
+  a summary block under a slug no page reads, which is dead weight but not a
+  crash. Two halves: make the message name the document and the pe_bli, and
+  decide whether an unattributable grain should mint a summary block and its
+  citation rows at all (ROADMAP #82's "publishes on neither member" says no;
+  dropping it removes citation rows nothing references, so it needs a build
+  to confirm the census).
+  **Status:** open (2026-09-12)
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
