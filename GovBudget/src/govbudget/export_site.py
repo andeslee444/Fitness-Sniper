@@ -1240,7 +1240,8 @@ _DATASET_SCOPES: dict[str, str] = {
         " the SAM.gov Entity Management record of the family's dominant"
         " registration (status, CAGE, legal business name, business types,"
         " primary NAICS, expiry) where the bounded extract has reached it —"
-        " enrichment, never an input to the confidence tier."
+        " enrichment, never an input to the confidence tier. They are NULL in"
+        " every row until that extract runs."
     ),
     "fct_influence": (
         "One row per (contractor family × filing year) of Senate LDA lobbying"
@@ -4442,8 +4443,12 @@ def _build_derived_citation_rows(
                 " sam_source_url, sam_retrieved_at from dim_entities"
                 " where sam_uei is not null and sam_uei <> ''"
             ).fetchall()
-        except Exception:
-            sam_rows = []   # a mart without the sam_* columns (fixture DBs)
+        except _duckdb.Error:
+            # Narrow on purpose: the tolerated condition is "this mart has no
+            # sam_* columns" (a fixture DB, or a warehouse built before #10),
+            # which is a BinderException. A bare `except Exception` would
+            # swallow a genuine query defect into a silent "no SAM facts".
+            sam_rows = []
         for (fk, uei, legal, cage, status, expires, naics, btypes,
              public_url, src_url, retrieved) in sam_rows:
             if fk not in entity_totals or not status:
@@ -10506,6 +10511,7 @@ def _write_all_sidecars(
     # /companies/ reads that file and has ~1,800 bytes of gzip headroom, and a
     # ~350-byte object on 200 entries is ~70KB of payload on a page that never
     # renders the line.
+    import duckdb as _duckdb_sam
     try:
         sam_by_key = {
             r[0]: dict(zip(
@@ -10520,8 +10526,10 @@ def _write_all_sidecars(
                 " and sam_uei <> ''"
             ).fetchall()
         }
-    except Exception:
-        sam_by_key = {}   # a mart without the sam_* columns (fixture DBs)
+    except _duckdb_sam.Error:
+        # Narrow, for the same reason as the citation query above: only the
+        # missing-column case is tolerable here.
+        sam_by_key = {}
     sam_sidecars = 0
 
     ent_dir = json_dir / "entity_details"
