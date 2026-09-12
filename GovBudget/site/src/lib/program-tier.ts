@@ -47,7 +47,7 @@ export function serviceOrgName(code: string): string {
  * at least one non-superseded budget_line_details row LOADED behind a
  * downloaded document, each translated through workbook_org() into this same
  * code space (so CYBERCOM→CYBER, CHIPS/DPAP→OSD line up with service_org).
- * That is 24 codes (measured 2026-09-10): the three services PLUS every
+ * That is 24 codes (measured 2026-09-12): the three services PLUS every
  * defense-wide agency book with loaded detail (OSD, DCSA, MDA, DISA, DARPA,
  * …). data.ts injects it at build time via setIngestedServiceOrgs. A
  * hardcoded A/N/F set previously lied on every defense-wide agency rollup

@@ -1491,10 +1491,12 @@ docs/superpowers/ROADMAP.md`.
     `status='downloaded'` predicate (measured after the acquire: old predicate
     26 codes incl. DHA, new predicate 24). The rescrape found 38 documents /
     1 new — only the DHP volume. `PROC_SDA_PB_2026.pdf`, which a 2026-09-10
-    read-only simulation of the classifier reported as newly added, is not
-    linked on either FY2026 index page today (117 + 18 PDF links, re-read
-    2026-09-12), so no FY2026 SDA row was registered and nothing SDA-shaped
-    was extracted. `dim_programs` entries for the remaining workbook-only
+    read-only simulation of the classifier reported as newly added, is
+    **commented out on the index and 404 at origin** (HEAD-verified
+    2026-09-12): its `<li>` sits inside an HTML comment, so the selectolax
+    parse `discover_documents` uses never sees the href (117 + 18 live PDF
+    links, re-read 2026-09-12). No FY2026 SDA row was registered and nothing
+    SDA-shaped was extracted. `dim_programs` entries for the remaining workbook-only
     elements stay out of scope by design.
 
     *Update 2026-09-12 (Task 17b):* the coverage note is no longer keyed on the

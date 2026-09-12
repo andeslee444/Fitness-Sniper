@@ -17,6 +17,28 @@ Every step is idempotent — you can re-run any of them safely.
 
 ---
 
+## Rule — ingestion run from a git worktree must not record worktree paths (2026-09-12)
+
+`jbook_documents.file_path` is an absolute path that later runs re-open verbatim:
+`export_site`'s document-copy loop raises `FileNotFoundError` on any `status='downloaded'`
+row whose file is missing, so one bad path hard-fails the export for everyone. A worktree's
+`data/raw_docs` is a **symlink** into the main checkout's lake, so ingestion run from
+`.claude/worktrees/<name>/GovBudget` used to record `…/.claude/worktrees/…/data/raw_docs/…`
+— a path that vanishes when the worktree is removed. This happened to doc 459 (FY2026 DHP
+volume) on 2026-09-12 and was repaired with a one-row `update`.
+
+`acquire`, `service-acquire` and `ingest-local` now record `Path.resolve()` (see
+`jbooks.acquire.lake_path`), so new rows are canonical regardless of where the command ran.
+After ANY ingestion from a worktree, confirm nothing slipped through:
+
+```bash
+psql "$GOVBUDGET_PG_DSN" -c \
+  "select id, file_path from jbook_documents where file_path like '%/.claude/worktrees/%';"
+# expect 0 rows
+```
+
+---
+
 ## Step 0 — Loader order (run BEFORE export-site, whenever links are rebuilt)
 
 The budget→award link loaders share one table (`budget_line_awards`) and one

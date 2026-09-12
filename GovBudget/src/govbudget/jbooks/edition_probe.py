@@ -275,7 +275,10 @@ def record_org_absences(manifest_path: Path, fiscal_year: int,
     Each entry is {org, rule, reason, checked_url, checked_on}. Entries are
     sorted by org for deterministic diffs; the list replaces any prior
     absences for the edition (regeneration is idempotent, same contract as
-    record_exclusions).
+    record_exclusions). RETURNS THE WHOLE MANIFEST, not the entry —
+    record_service_exclusions returns its single entry because it writes one
+    keyed slot; this writes a whole-edition list, so there is no one entry to
+    hand back.
 
     Rule vocabulary:
       no-justification-book-published — the edition's justification index
