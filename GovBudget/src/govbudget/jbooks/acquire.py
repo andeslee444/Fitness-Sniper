@@ -19,6 +19,16 @@ def lake_path(dest: Path) -> str:
     path that vanishes the moment the worktree is removed (this happened to doc 459
     on 2026-09-12 — FY2026 DHP volume, repaired by hand). `Path.resolve()` collapses
     the symlink to the canonical lake path every other row already uses.
+
+    `config._lake_path` now resolves `RAW_DOCS_DIR` itself, so a `dest` built
+    from the config constant is already canonical and this call is a no-op.
+    It stays at every writer because `raw_docs_dir` is an INJECTED parameter on
+    three of the four (tests, `ingest-local`'s operator drop dir, and any future
+    caller passing its own root) — the constant being canonical does not make an
+    arbitrary argument canonical. All four writers route through here:
+    `acquire.acquire_pending`, `service_fetch.register_local_documents`,
+    `service_fetch.download_registered_playwright`, and
+    `cli._service_archive_download`.
     """
     return str(dest.resolve())
 

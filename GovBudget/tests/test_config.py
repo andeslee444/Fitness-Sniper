@@ -3,17 +3,36 @@ from govbudget import config
 
 def test_paths_and_constants():
     assert config.DATA_DIR.name == "data"
-    assert config.PARQUET_DIR == config.DATA_DIR / "parquet"
+    # `.resolve()`d, not just joined: in a git worktree `data/parquet` is a
+    # symlink into the main checkout's lake, and a path that names the worktree
+    # view dies with the worktree. Outside a worktree the two are the same path.
+    assert config.PARQUET_DIR == (config.DATA_DIR / "parquet").resolve()
     assert config.DOD_TOPTIER_CODE == "097"
     assert config.FY_START == 2017
     assert "contracts" in config.REQUIRED_COLUMNS
     assert config.DATA_DIR.is_absolute()
 
 
+def test_lake_dirs_are_symlink_resolved():
+    """Every lake entry a writer builds paths from is canonical at the root.
+
+    `RAW_DOCS_DIR` is the one that bit (doc 459, 2026-09-12): the four
+    `jbook_documents.file_path` writers all start from it, so resolving it here
+    makes them canonical by construction. Its siblings are resolved for the same
+    reason and pinned here so a new `DATA_DIR / "…"` constant does not quietly
+    re-open the hole.
+    """
+    for name in ("RAW_DIR", "PARQUET_DIR", "RAW_DOCS_DIR", "SITE_DIR", "DUCKDB_PATH"):
+        p = getattr(config, name)
+        assert p.is_absolute(), name
+        assert p == p.resolve(), f"{name} is not symlink-resolved: {p}"
+        assert "/.claude/worktrees/" not in str(p), f"{name} names a worktree view: {p}"
+
+
 def test_site_constants():
     from govbudget import config
 
-    assert config.SITE_DIR == config.DATA_DIR / "site"
+    assert config.SITE_DIR == (config.DATA_DIR / "site").resolve()
     assert config.PDF_BASE_URL  # non-empty; env-overridable
 
 

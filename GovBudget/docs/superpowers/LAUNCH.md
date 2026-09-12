@@ -27,8 +27,26 @@ row whose file is missing, so one bad path hard-fails the export for everyone. A
 — a path that vanishes when the worktree is removed. This happened to doc 459 (FY2026 DHP
 volume) on 2026-09-12 and was repaired with a one-row `update`.
 
-`acquire`, `service-acquire` and `ingest-local` now record `Path.resolve()` (see
-`jbooks.acquire.lake_path`), so new rows are canonical regardless of where the command ran.
+**All four** commands that write `file_path` now record `Path.resolve()` (see
+`jbooks.acquire.lake_path`), and `config._lake_path` resolves the lake constants they build
+from (`RAW_DOCS_DIR`, `RAW_DIR`, `PARQUET_DIR`, `DUCKDB_PATH`, `SITE_DIR`), so the fix holds at
+the root as well as at each writer:
+
+| command | writer |
+|---|---|
+| `jbooks acquire` | `jbooks/acquire.py` `acquire_pending` |
+| `jbooks ingest-local` | `jbooks/service_fetch.py` `register_local_documents` (the operator DROP DIR, not `raw_docs`) |
+| `jbooks backfill --service navy` | `jbooks/service_fetch.py` `download_registered_playwright` |
+| `jbooks backfill --service {army\|af\|spaceforce} --source archive` | `cli.py` `_service_archive_download` |
+
+The archive route was missed by the first fix and caught on re-review; it is the prescribed
+route for the WAF-blocked services (ROADMAP #111), and 31 rows already carry
+`acquisition='archive'` — 17 of them `status='downloaded'` (Army 10, Air Force 7), the rest
+superseded (measured 2026-09-12). Each writer has its own symlink regression test in
+`tests/jbooks/test_acquire.py`, so a **fifth** writer added without `lake_path` is a red test,
+not a dead citation. A new `DATA_DIR / "…"` lake constant that skips `_lake_path` is caught by
+`tests/test_config.py::test_lake_dirs_are_symlink_resolved`.
+
 After ANY ingestion from a worktree, confirm nothing slipped through:
 
 ```bash

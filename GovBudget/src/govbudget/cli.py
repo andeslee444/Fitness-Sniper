@@ -527,6 +527,7 @@ def _service_archive_download(service: str, fiscal_year: int) -> tuple[int, list
 
     import psycopg
 
+    from govbudget.jbooks.acquire import lake_path
     from govbudget.jbooks.archive_fetch import (
         ArchiveFetchError,
         build_client,
@@ -593,8 +594,8 @@ def _service_archive_download(service: str, fiscal_year: int) -> tuple[int, list
                     "update jbook_documents set status='downloaded', file_path=%s,"
                     " sha256=%s, bytes=%s, downloaded_at=%s, has_embedded_xml=%s"
                     " where id=%s",
-                    (str(dest), res.sha256, res.bytes, dt.datetime.now(dt.UTC),
-                     has_xml, doc_id),
+                    (lake_path(dest), res.sha256, res.bytes,
+                     dt.datetime.now(dt.UTC), has_xml, doc_id),
                 )
             done += 1
             print(f"[archive-acquire] {title}: {res.bytes:,} bytes"
