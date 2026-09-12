@@ -714,8 +714,7 @@ export default function MethodologyPage() {
                     /companies/
                   </Link>
                   , every family of which resolves by name inference — the per-row
-                  chip is suppressed and the method is stated once in the header,
-                  because a badge that never varies tells the reader nothing.
+                  chip is suppressed and the method is stated once in the header.
                 </p>
                 <p className="mt-2">
                   <strong>The tier grades the grouping, never the name.</strong> A
@@ -772,7 +771,7 @@ export default function MethodologyPage() {
                         {formatCount(linkAdjudication.published)}{" "}
                         links the crosswalk grades high or medium carry a
                         per-award hand adjudication — the most recent made on{" "}
-                        {linkAdjudication.as_of} — each recording which
+                        {linkAdjudication.as_of} — recording which
                         program elements, if any, the award&apos;s own contract
                         record supports.{" "}
                         {formatCount(linkAdjudication.unpinned)}{" "}
@@ -809,7 +808,7 @@ export default function MethodologyPage() {
                               highCensus.twoLens === highCensus.adjudicated
                                 ? `all ${formatCount(highCensus.twoLens)}`
                                 : formatCount(highCensus.twoLens)
-                            } of them challenged by two independent adversarial reviewers`
+                            } challenged by two independent adversarial reviewers`
                           : ""}
                         {highRemainderPathText
                           ? `; the other ${formatCount(highRemainder)} rest on the ${highRemainderPathText} path${
@@ -822,16 +821,14 @@ export default function MethodologyPage() {
                   ) : null}
                   <em>Medium</em>: most such links are account-based — the
                   award drew from the same appropriation account as the
-                  program, usually under the same sub-agency — which is an
-                  association, not evidence that this specific program paid
-                  for the contract.
+                  program, usually under the same sub-agency — an association,
+                  not evidence that this specific program paid for the
+                  contract.
                   {linkPrecisionSubagency ? (
                     <>
                       {" "}
-                      How often that association names the right program
-                      element is now measured rather than assumed: a held-out
-                      sample of account / sub-agency links, judged on program
-                      attribution, confirmed{" "}
+                      A held-out sample of account / sub-agency links,
+                      judged on program attribution, confirmed{" "}
                       {formatCount(linkPrecisionSubagency.confirmed)} of{" "}
                       {formatCount(linkPrecisionSubagency.sampled)}
                       {linkPrecisionSubagency.judged
@@ -842,13 +839,13 @@ export default function MethodologyPage() {
                   ) : null}{" "}
                   Where the evidence is instead an FPDS
                   acquisition-program tag or a subaward description (both
-                  detailed below), the program is established but which of
+                  below), the program is established but which of
                   its budget lines paid is not.{" "}
                   <em>Low</em>: only the account matches — never published. Our
                   earlier automated high tier (account match plus keyword overlap)
                   measured 9.1% precise under this adjudication (37 of 408 links
                   confirmed) and was corrected on 2026-09-01; superseded links are
-                  retained in the correction record, not deleted.
+                  retained in the correction record.
                 </p>
                 <p className="mt-2">
                   A second evidence path covers major acquisition programs: some
@@ -867,7 +864,7 @@ export default function MethodologyPage() {
                   earlier &ldquo;unique line&rdquo; <em>high</em> tier at 34 of 60
                   and it was withdrawn on 2026-09-04. Tagged awards whose funding
                   is entirely outside the program&apos;s J-book accounts (for
-                  example O&amp;M sustainment money) are not linked at all. The
+                  example O&amp;M sustainment money) are not linked. The
                   FPDS tag is DoD-entered and sparse — it appears on well under 1%
                   of awards, concentrated in the largest programs — so absence of
                   a link never means absence of spending.
@@ -879,8 +876,8 @@ export default function MethodologyPage() {
                   number and describes the work, often by program. Where an
                   announcement&apos;s program name is one that a program element&apos;s
                   J-book narrative itself owns, the pair is a candidate; every candidate
-                  is then judged by an agent reviewer and challenged by an independent
-                  adversarial reviewer, and only links that survive both publish — at{" "}
+                  is judged by an agent reviewer and challenged by an independent
+                  adversarial reviewer, and only links surviving both publish — at{" "}
                   <em>high</em>: the announcement establishes the contract, and
                   the program is identified by its name as written, by a
                   normalized designator, by an alias an adversarial reviewer
@@ -894,19 +891,16 @@ export default function MethodologyPage() {
                   and maintenance money are not linked to research or procurement
                   lines. Names that merely describe a platform
                   the contract supports, generic services, or weak generic names are
-                  rejected by design. Each such link cites the announcement it came from.
+                  rejected by design. Each link cites the announcement it came from.
                 </p>
                 <p className="mt-2">
-                  Scope of the announcement path, stated plainly: deterministic name
+                  Scope of the announcement path: deterministic name
                   matching covered every archived announcement; an additional LLM-assisted
                   alias pass (decoding designators and aliases) covered the 3,840
                   unmatched records that carry about 88% of the residue by announced
                   value; the 12,811 smaller records carrying the remaining ~12% were
-                  not attempted. Where the adjudication packet recorded a
-                  basis, the published link carries it and its card names it;
-                  for the rest the card says the basis was not recorded, which
-                  is not the same as the announcement having named the program
-                  outright.
+                  not attempted. A card that records no basis is not evidence
+                  the announcement named the program outright.
                 </p>
                 <p className="mt-2">
                   Where the only evidence is a subaward: FSRS subaward reports describe
@@ -928,19 +922,16 @@ export default function MethodologyPage() {
                     {linkPrecisionRubric === "attribution" ? (
                       <>
                         Every figure answers one question — program attribution:
-                        does this award execute this program element? — judged
-                        from what the award records buying against the work the
-                        program owns, not from whether the linking rule fired.
+                        does this award execute this program element? — not
+                        whether the linking rule fired.
                         {" "}
                       </>
                     ) : null}
                     Each sampled link is counted under the tier it publishes
-                    under today, not the tier it carried when it was drawn; a
-                    sampled link the corpus no longer publishes is counted in
-                    neither direction:{" "}
-                    {linkPrecisionText}. Published whatever the numbers turn out
-                    to be; a tier that misses is renamed or narrowed, never
-                    widened to fit.
+                    under today, not the tier it carried when it was drawn; one
+                    the corpus no longer publishes is counted in neither
+                    direction:{" "}
+                    {linkPrecisionText}.
                     {linkPrecisionUnmeasured && (
                       <>
                         {" "}
@@ -949,11 +940,9 @@ export default function MethodologyPage() {
                         {linkPrecisionUnmeasuredAllAccountFamily ? (
                           <>
                             Those rest on an appropriation-account match,
-                            narrowed {linkPrecisionNarrowingText}; an account
-                            match is an association by construction rather than
-                            proof this program paid, and how often it names the
-                            right program has not been independently measured
-                            for these tiers.
+                            narrowed {linkPrecisionNarrowingText}; how often
+                            that association names the right program has not
+                            been independently measured for these tiers.
                             {linkPrecisionSubagencyAwaitsAttribution ? (
                               <>
                                 {" "}
@@ -993,14 +982,12 @@ export default function MethodologyPage() {
                 <p>
                   Both bases — high-confidence links alone, and every
                   published link — are computed from the same crosswalk and
-                  both ship in the downloadable warehouse with their own
-                  derived citations, but a program page publishes only the
-                  high-confidence-only figures, and only over at least three
-                  such awards across two or more contractor families holding
-                  positive obligations with positive net linked dollars;
-                  below that floor it states the absence rather than
-                  substituting the wider figure, and the concentration_shift
-                  entry under Anomaly Feed gives the reason.
+                  ship in the downloadable warehouse with derived citations,
+                  but a program page publishes only the high-confidence-only
+                  figures, and only over at least three such awards across two
+                  or more contractor families holding positive obligations with
+                  positive net linked dollars; below that floor it states the
+                  absence rather than substituting the wider figure.
                 </p>
               </div>
             </div>
@@ -1519,25 +1506,13 @@ export default function MethodologyPage() {
                     program&rsquo;s overall concentration.
                   </strong>{" "}
                   A program&rsquo;s own page (its &ldquo;Contractor
-                  Concentration&rdquo; card) renders a different, pooled HHI
-                  computed across every award year. That card publishes the
-                  high-confidence links alone, and only where the program has
-                  at least three such awards across two or more contractor
-                  families holding positive obligations; below that floor it
-                  publishes no pooled index at all and says so in place of
-                  one. The figure over every published link is computed too
-                  and ships in the downloadable warehouse, but it is never
-                  put in a withheld figure&rsquo;s place: most
-                  medium-confidence links rest on an appropriation-account
-                  association, whose measured precision as program
-                  attribution is the subject of section 4 above. Where the
-                  pooled figure is published, the two are legitimately
-                  different measures of the same program — a single
-                  concentrated year can sit next to a competitive pooled
-                  figure, or the reverse, with no error on either page. Every
-                  concentration_shift card states which fiscal year its HHI
-                  covers and that the program&rsquo;s pooled figure can
-                  differ.
+                  Concentration&rdquo; card) renders a pooled HHI computed
+                  across every award year, on the basis and above the floor
+                  section 4 states. The two are legitimately different
+                  measures: a concentrated year can sit next to a competitive
+                  pooled figure, or the reverse, with no error on either page.
+                  Every concentration_shift card states which fiscal year its
+                  HHI covers and that the pooled figure can differ.
                 </p>
               </div>
               <div id="feed-request_vs_actuals_gap">

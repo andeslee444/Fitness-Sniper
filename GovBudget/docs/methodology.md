@@ -157,7 +157,7 @@ page beneath the heading, because that is the string USAspending answers to.
 contracts that funded it is an inference, not a direct database join. As of
 2026-09-11, 9,587 of the 12,595 links the crosswalk grades high or medium
 carry a per-award hand adjudication — the most recent made on 2026-09-01 —
-each recording which program elements, if any, the award's own contract record
+recording which program elements, if any, the award's own contract record
 supports. 8,474 of those found work that could not be pinned to any one
 program element; those links publish at medium.
 The announcement+lexicon, fpds-ap and subaward+lexicon paths carry no per-link
@@ -177,7 +177,7 @@ link the crosswalk grades high or medium. Backlog #109 carries the remaining
 five-path evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
 J-book pages also name. 60 of the 768 links published at high carry a
-per-award hand adjudication, all 60 of them challenged by two independent
+per-award hand adjudication, all 60 challenged by two independent
 adversarial reviewers; the other 708 rest on the announcement+lexicon path.
 (Measured 2026-09-11 over the MART — the tier a reader meets, not
 `budget_line_awards`: dbt demotes an unadjudicated `account+tokens` high row
@@ -190,12 +190,11 @@ replaced "adversarially verified", which was true of 60 of 768.)
 *Medium*: most such links are
 account-based — the award drew from the same appropriation account as the
 program, usually under the same sub-agency — an association, not evidence
-this specific program paid for the contract. How often that association names
-the right program element is now measured rather than assumed: a held-out
-sample of account / sub-agency links, judged on program attribution, confirmed
-0 of 60 (2026-09-11). Where the evidence is instead an FPDS
-acquisition-program tag or a subaward description (both detailed below), the
-program is established but which of its budget lines paid is not.
+this specific program paid for the contract. A held-out sample of account /
+sub-agency links, judged on program attribution, confirmed 0 of 60
+(2026-09-11). Where the evidence is
+instead an FPDS acquisition-program tag or a subaward description (both below),
+the program is established but which of its budget lines paid is not.
 *Low*: only the account matches — never published. The earlier
 automated high tier (account match plus keyword overlap) measured 9.1%
 precise under this adjudication (37 of 408 confirmed) and was corrected on
@@ -238,15 +237,13 @@ not linked to research or procurement lines. Platform-support mentions,
 generic services, and weak generic names are rejected by design. Each link
 cites its announcement (article id, date, URL).
 
-Scope of the announcement path, stated plainly: deterministic name matching
+Scope of the announcement path: deterministic name matching
 covered every archived announcement; an additional LLM-assisted alias pass
 (decoding designators and aliases such as PATRIOT backronyms → PAC-3 or
 Global Hawk → RQ-4B) covered the top 3,840 unmatched records by announced
 value ($1.96T of the $2.23T residue) — 12,811 smaller records ($278B) were
-not attempted. Where the adjudication packet recorded a basis, the
-published link carries it and its card names it; for the rest the card
-says the basis was not recorded, which is not the same as the
-announcement having named the program outright.
+not attempted. A card that records no basis is not evidence the
+announcement named the program outright.
 
 Where the only evidence is a subaward: FSRS subaward reports describe the
 work a subcontractor performs under a prime contract, and when that
@@ -281,9 +278,8 @@ Tiers with no published figure are NAMED on the page rather than left silent.
 The page's sentence, mirrored: "No precision figure is published for the
 remaining tiers a reader can meet — account, account+tokens. Those rest on an
 appropriation-account match, narrowed by a hand adjudication of the award or by
-keyword overlap; an account match is an association by construction rather than
-proof this program paid, and how often it names the right program has not been
-independently measured for these tiers." Both halves — the tier list and the
+keyword overlap; how often that association names the right program has not
+been independently measured for these tiers." Both halves — the tier list and the
 narrowing each tier adds — are derived from the same `unmeasured` array, so a
 tier that gains a figure stops being described as unmeasured in the same build.
 The `account` narrowing says "a hand adjudication of the award", not "that
@@ -314,13 +310,11 @@ document — is labeled as derived wherever it appears.
 
 **Contractor concentration is computed on two bases and published on one.**
 Both bases — high-confidence links alone, and every published link — are
-computed from the same crosswalk and both ship in the downloadable warehouse
-with their own derived citations, but a program page publishes only the
-high-confidence-only figures, and only over at least three such awards across
-two or more contractor families holding positive obligations with positive net
-linked dollars; below that floor it states the absence rather than substituting
-the wider figure, and the concentration_shift entry under Anomaly Feed gives
-the reason.
+computed from the same crosswalk and ship in the downloadable warehouse with
+derived citations, but a program page publishes only the high-confidence-only
+figures, and only over at least three such awards across two or more contractor
+families holding positive obligations with positive net linked dollars; below
+that floor it states the absence rather than substituting the wider figure.
 
 ---
 
