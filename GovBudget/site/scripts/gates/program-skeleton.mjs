@@ -55,6 +55,11 @@
  *     block names ITS OWN appropriation and never the sibling's, and a
  *     concentration figure withheld because both members are linked is
  *     said on the card, not hidden (ROADMAP #82) — see leg n's own block.
+ * (o) The service-books coverage note says the SAME thing the data says —
+ *     it renders on exactly the pages with no R-2/P-40 detail (rollup tier
+ *     AND the synthesized full-tier pages the 2026-07-05 fix never covered),
+ *     it names the page's own org, and the branch it picks agrees with
+ *     site_meta.ingested_service_orgs. ROADMAP #14 — see leg o's own block.
  */
 
 import fs from "fs";
@@ -488,6 +493,9 @@ export async function runProgramSkeletonGate() {
 
   // ── (n) a shared BLI code's members own their own awards (ROADMAP #70) ──
   runSplitKeyAwardsLeg({ errors, notes, sidecars });
+
+  // ── (o) the coverage note agrees with the loaded-book set (ROADMAP #14) ──
+  runCoverageNoteLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -3143,5 +3151,250 @@ function runDecadeOnlyLeg({ errors, notes, sidecars }) {
       `${renumberCounts.earlier} stopped earlier and say no later edition carries them); ` +
       `${spanChecked} FY spans matched against the page's own decade grid; ` +
       `${stray} stray note(s) outside the tier`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg o — the coverage note tells the truth about ingestion (ROADMAP #14)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE SPECIES, twice. (1) 2026-07-05: `program-tier.ts` pinned
+// INGESTED_SERVICE_ORGS = {A,N,F} by hand, so every defense-wide agency page
+// whose FY2026 book WAS loaded said "the {org} J-book is not yet ingested".
+// The fix made the set a payload (site_meta.ingested_service_orgs) — and
+// added NO gate, so nothing checks the rendered sentence against it. Leg (c)
+// accepts EITHER wording on a rollup page regardless of what the payload
+// says. (2) 2026-09-10: the honest wording only ever existed on the ROLLUP
+// branch. export_site._trajectory_only_feed_programs synthesizes a
+// programs.json row for a feed PE with a trajectory and no dim_programs row,
+// so 0603115DHA (Medical Development, DHA) and 0708083D (Assembled Chemical
+// Weapons Alternatives, A) render as FULL tier and told readers "The J-book
+// detail for this line carries no separate mission or description narrative"
+// about a line whose budget_line_details count is zero.
+//
+// What this leg pins, on the BUILT artifact, over the WHOLE page universe
+// (no sampling — the negative direction is the half a sample would miss):
+//
+//   1. POPULATION, both directions. A page renders [data-coverage=
+//      "service-books"] iff its own sidecar has no detail row, no narrative
+//      and at least one FY2026 workbook row — recomputed here, not trusted
+//      from the `tier` field, because tier is exactly what was wrong.
+//   2. THE ORG. The note names the page's own coverage org: the sidecar's
+//      service_org on the rollup tier, programs.json's `org` on a
+//      workbook-only full-tier page (those sidecars carry no service_org).
+//   3. THE BRANCH. The wording it picks agrees with the loaded-book set. An
+//      org IN the set gets "The {svc} FY2026 J-books are ingested, but this
+//      program element carries no R-2/P-40 narrative"; an org OUT of it gets
+//      "Detailed justification … lives in the {svc} J-book, which is not yet
+//      ingested". Both directions fail. This is the check the 2026-07-05 fix
+//      shipped without.
+//   4. THE WITHDRAWN SENTENCES. Neither full-tier empty state may appear on
+//      a page with no J-book detail behind it.
+//   5. THE PAYLOAD ITSELF. An absent or empty site_meta.ingested_service_orgs
+//      makes program-tier.ts fall back to its A/N/F default — i.e. restores
+//      the 2026-07-05 bug silently. That is a hard failure here.
+//
+// NO NUMERIC FLOOR on the note population, deliberately: it SHRINKS as books
+// land (73 pages today; 59 if the Defense Health Program book extracts), so a
+// floor would fail on success. The non-vacuity anchor is the negative
+// direction — the pages with detail that must carry no note — plus check 5,
+// which is the condition under which the leg would be reading the wrong set
+// entirely.
+
+/** Below this many detail-carrying pages the negative direction is not a
+ *  check. Measured 2026-09-10: 1,936 non-decade sidecars carry a detail row
+ *  and/or a narrative. Ingestion only ADDS to this number, so it is safe to
+ *  hold. DO NOT LOWER (2026-09-10). */
+const MIN_DETAIL_PAGES_CHECKED = 1500;
+
+const SERVICE_BOOKS_ATTR = 'data-coverage="service-books"';
+/** The two full-tier empty states, which claim a J-book detail exists. */
+const WITHDRAWN_FULL_TIER_SENTENCES = [
+  "The J-book detail for this line carries no separate mission",
+  "some exhibits carry figures without per-project prose",
+];
+
+/** Recompute of src/lib/program-tier.ts isWorkbookOnlyDetails. */
+function isWorkbookOnly(d) {
+  return (
+    (d.details ?? []).length === 0 &&
+    (d.narratives ?? []).length === 0 &&
+    (d.budget_lines ?? []).length > 0
+  );
+}
+
+/** `programs`, `ingestedOrgs` and `pages` are injected by
+ *  __tests__/coverage-note.test.mjs, which has to hand the leg corpora the
+ *  build does not contain — a check that has never been seen to fail is not
+ *  a check. The gate itself passes only `sidecars` and reads the rest off
+ *  disk. */
+export function runCoverageNoteLeg({
+  errors,
+  notes,
+  sidecars,
+  programs,
+  ingestedOrgs,
+  pages,
+}) {
+  let orgList = ingestedOrgs;
+  if (!orgList) {
+    const metaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(metaPath)) {
+      errors.push("program-skeleton(o): data/site/json/site_meta.json missing");
+      return;
+    }
+    orgList = readJson(metaPath).ingested_service_orgs;
+  }
+  if (!Array.isArray(orgList) || orgList.length === 0) {
+    errors.push(
+      "program-skeleton(o): site_meta.ingested_service_orgs is absent or empty. " +
+        "program-tier.ts then falls back to its hardcoded A/N/F default and every " +
+        "defense-wide agency page silently resumes saying 'not yet ingested' about " +
+        "a book that IS loaded — the exact 2026-07-05 defect the payload replaced. " +
+        "Re-run export-site; do not relax this check",
+    );
+    return;
+  }
+  const ingested = new Set(orgList);
+
+  let programRows = programs;
+  if (!programRows) {
+    const programsPath = path.join(jsonDir, "programs.json");
+    if (!fs.existsSync(programsPath)) {
+      errors.push("program-skeleton(o): data/site/json/programs.json missing");
+      return;
+    }
+    programRows = readJson(programsPath);
+  }
+  const orgBySlug = new Map(programRows.map((p) => [p.slug ?? p.pe_bli, p.org]));
+
+  const readHtml = (slug) => {
+    if (pages) return pages.get(slug) ?? null;
+    const p = pageHtmlPath(slug);
+    return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : null;
+  };
+
+  let noteCount = 0;
+  let detailPagesChecked = 0;
+  let stray = 0;
+  let missing = 0;
+  let badBranch = 0;
+  const branchCounts = { ingested: 0, uningested: 0 };
+  const say = (msg) => {
+    if (errors.filter((e) => e.startsWith("program-skeleton(o)")).length < 12) {
+      errors.push(msg);
+    }
+  };
+
+  for (const [slug, d] of sidecars) {
+    if (d.tier === "decade") continue; // its own tier, its own wording (leg k)
+    const want = isWorkbookOnly(d);
+    const html = readHtml(slug);
+    if (html === null) {
+      if (want) say(`program-skeleton(o): /program/${slug}/ not built`);
+      continue;
+    }
+    const hasNote = html.includes(SERVICE_BOOKS_ATTR);
+
+    // ── 1. the negative direction ─────────────────────────────────────────
+    if (!want) {
+      detailPagesChecked++;
+      if (hasNote) {
+        stray++;
+        say(
+          `program-skeleton(o): /program/${slug}/ carries the service-books ` +
+            `coverage note but its sidecar holds ${(d.details ?? []).length} detail ` +
+            `row(s) and ${(d.narratives ?? []).length} narrative(s) — the note says ` +
+            `this line has no R-2/P-40 detail, and it does`,
+        );
+      }
+      continue;
+    }
+
+    // ── 1. the positive direction ─────────────────────────────────────────
+    if (!hasNote) {
+      missing++;
+      say(
+        `program-skeleton(o): /program/${slug}/ has no R-2/P-40 detail (0 detail ` +
+          `rows, 0 narratives, ${(d.budget_lines ?? []).length} workbook row(s)) but ` +
+          `renders no [data-coverage="service-books"] note. A full-tier page in this ` +
+          `state renders the full-tier empty state instead, which asserts a J-book ` +
+          `detail that does not exist — ROADMAP #14, the 0603115DHA/0708083D defect`,
+      );
+      continue;
+    }
+    noteCount++;
+
+    // ── 4. neither withdrawn full-tier sentence may appear ────────────────
+    for (const sentence of WITHDRAWN_FULL_TIER_SENTENCES) {
+      if (html.includes(sentence)) {
+        say(
+          `program-skeleton(o): /program/${slug}/ has no J-book detail yet states ` +
+            `"${sentence}…" — that sentence claims a detail record behind the page`,
+        );
+      }
+    }
+
+    // ── 2/3. the org and the branch ───────────────────────────────────────
+    const org =
+      d.tier === "rollup" ? (d.service_org ?? "") : (orgBySlug.get(slug) ?? "");
+    const svc = serviceName(org);
+    const root = parse(html, { comment: false });
+    const note = root.querySelector(`[data-coverage="service-books"]`);
+    const text = (note?.text ?? "").replace(/\s+/g, " ").trim();
+    const saysUningested = text.includes(`lives in the ${svc} J-book`);
+    const saysIngested =
+      text.includes(`The ${svc} FY2026 J-book`) &&
+      text.includes("no R-2/P-40 narrative");
+    if (!saysUningested && !saysIngested) {
+      badBranch++;
+      say(
+        `program-skeleton(o): /program/${slug}/ note does not name the ${svc} ` +
+          `J-book in either honest wording (org "${org}", got: "${text.slice(0, 120)}")`,
+      );
+      continue;
+    }
+    if (ingested.has(org)) {
+      branchCounts.ingested++;
+      if (saysUningested) {
+        badBranch++;
+        say(
+          `program-skeleton(o): /program/${slug}/ says the ${svc} J-book is "not yet ` +
+            `ingested", but "${org}" IS in the loaded set — the 2026-07-05 species. ` +
+            `The set is site_meta.ingested_service_orgs, derived from the FY2026 ` +
+            `documents with extracted detail`,
+        );
+      }
+    } else {
+      branchCounts.uningested++;
+      if (saysIngested) {
+        badBranch++;
+        say(
+          `program-skeleton(o): /program/${slug}/ says the ${svc} FY2026 J-book "is ` +
+            `ingested", but "${org}" is NOT in the loaded set. A registered or ` +
+            `downloaded file is not a loaded narrative — this is what happens when ` +
+            `a book is acquired and nothing extracts`,
+        );
+      }
+    }
+  }
+
+  if (detailPagesChecked < MIN_DETAIL_PAGES_CHECKED) {
+    errors.push(
+      `program-skeleton(o): only ${detailPagesChecked} page(s) with detail were ` +
+        `checked for a stray coverage note (floor ${MIN_DETAIL_PAGES_CHECKED}, ` +
+        `measured 2026-09-10 at 1,936). Below the floor the negative direction has ` +
+        `nothing to read and the leg would pass on a build that renders the note ` +
+        `everywhere. Re-measure the population; do not lower the floor`,
+    );
+  }
+  notes.push(
+    `leg o: ${noteCount} page(s) render the service-books note ` +
+      `(${branchCounts.ingested} on a loaded book, ${branchCounts.uningested} on an ` +
+      `unloaded one, over ${ingested.size} loaded org code(s)); ` +
+      `${detailPagesChecked} page(s) with detail carry none` +
+      (stray + missing + badBranch === 0
+        ? " ✓"
+        : ` — ${missing} missing, ${stray} stray, ${badBranch} wrong-branch`),
   );
 }

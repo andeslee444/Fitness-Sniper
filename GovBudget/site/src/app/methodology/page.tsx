@@ -12,6 +12,7 @@ import {
   getPagesWithoutDetail,
   getSiteMeta,
   getTitleOverrides,
+  getUningestedCoverageOrgs,
 } from "@/lib/data";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
@@ -84,6 +85,16 @@ export default function MethodologyPage() {
   const serviceBooks = getCoverage("service-books");
   // ROADMAP #28 — derived, so the sentence below cannot rot into a literal.
   const decadeOnlyPages = getPagesWithoutDetail().decadeOnly;
+  // ROADMAP #14 — derived, for the same reason decadeOnlyPages is: the
+  // residual sentence below used to say every figures-only page is
+  // classified/SBIR/spectrum or a workbook remainder, and that "those pages
+  // say which case applies rather than claiming a book is missing". 19 of
+  // them claimed exactly that a book is missing. Naming the orgs from a
+  // literal would rot at the next ingestion.
+  const uningestedOrgs = getUningestedCoverageOrgs();
+  const uningestedClause = uningestedOrgs
+    .map((o) => `${o.org} (${formatCount(o.pages)})`)
+    .join(", ");
   const flowBridge = getCoverage("flow-bridge");
   const flowMeta = getFlowChartMeta();
   // ROADMAP #30: the GAO program-crosswalk's own precision measurement, read
@@ -1296,8 +1307,7 @@ export default function MethodologyPage() {
                   {formatCount(decadeOnlyPages)}{" "}whose cited record stops in an
                   earlier President&apos;s Budget edition. Full J-book detail
                   (mission prose, project tables, accomplishments) is ingested
-                  for {formatCount(serviceBooks.numerator ?? 0)}{" "}of them, whose justification books
-                  come from the sources already in the pipeline. As of Phase 5G
+                  for {formatCount(serviceBooks.numerator ?? 0)}{" "}of them. As of Phase 5G
                   the FY2026 justification books for all three military
                   departments are ingested: the Navy&apos;s RDT&amp;E and
                   procurement books, the Army&apos;s, and the Air Force and Space
@@ -1308,14 +1318,22 @@ export default function MethodologyPage() {
                   the Internet Archive&apos;s WAF-free public mirror where the
                   comptroller sites sat behind CAC or Akamai access walls; the
                   embedded XML that anchors every figure to its page survives the
-                  mirror intact. What remains figures-only is a near-zero residual:
-                  a handful of lines that publish no R-2/P-40 narrative at all —
-                  classified, SBIR, or spectrum program elements, plus a small
-                  number of R-1/P-1 workbook remainders with no matching book
-                  entry. Those pages say which case applies in place of a
-                  description rather than claiming a book is missing. We never
-                  substitute generated prose for a missing source document, and
-                  coverage grows as any residual book lands.
+                  mirror intact. What remains figures-only is a small residual:
+                  lines that publish no R-2/P-40 narrative at all — classified,
+                  SBIR, or spectrum program elements, plus R-1/P-1 workbook
+                  remainders with no matching book entry.{" "}
+                  {uningestedClause ? (
+                    <>
+                      Some of it belongs to organizations whose FY2026
+                      justification book this corpus does not hold —{" "}
+                      {uningestedClause} — and those pages say so, naming the
+                      book that is missing rather than implying a narrative
+                      exists. Which organizations appear here is read from the
+                      loaded books at build time, not maintained by hand.{" "}
+                    </>
+                  ) : null}
+                  We never substitute generated prose for a missing source
+                  document, and coverage grows as any residual book lands.
                 </p>
               </section>
 

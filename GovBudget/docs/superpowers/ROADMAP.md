@@ -1496,6 +1496,19 @@ docs/superpowers/ROADMAP.md`.
     2026-09-12), so no FY2026 SDA row was registered and nothing SDA-shaped
     was extracted. `dim_programs` entries for the remaining workbook-only
     elements stay out of scope by design.
+
+    *Update 2026-09-12 (Task 17b):* the coverage note is no longer keyed on the
+    rollup TIER but on whether a page has R-2/P-40 detail at all
+    (`isWorkbookOnlyDetails`), so `0603115DHA` and `0708083D` stop asserting a
+    J-book detail they do not have; `/methodology/`'s figures-only residual
+    sentence now names the unloaded organizations from a build-time query
+    (`getUningestedCoverageOrgs` — DHA 14, DEFW 4, IG 1 in the shipped corpus)
+    instead of claiming no page blames a missing book; and gate 21 leg (o)
+    fails when the rendered sentence and `site_meta.ingested_service_orgs`
+    disagree in either direction — the check the 2026-07-05 fix shipped
+    without. Leg (o) reads every non-decade page (no sampling): 73 render the
+    note, 1,936 with detail carry none, and the negative direction is floored
+    at 1,500 rather than the note population, which SHRINKS when a book lands.
 15. **District choropleth + entity-graph viz (5C deferred):** interactive map of
     district spend distribution and force-directed entity graph; deferred pending
     D3/Mapbox integration decision.

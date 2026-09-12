@@ -6,6 +6,7 @@ import {
   isDecadeDetails,
   isIngestedServiceOrg,
   isRollupDetails,
+  isWorkbookOnlyDetails,
   isZeroContentDetails,
   rollupProgramRow,
   serviceOrgName,
@@ -372,5 +373,57 @@ describe("decade tier (ROADMAP #28)", () => {
       },
     });
     expect(isZeroContentDetails(zero)).toBe(true);
+  });
+});
+
+describe("isWorkbookOnlyDetails (ROADMAP #14 — the liar on the full tier)", () => {
+  it("is true for a sidecar with workbook figures and no J-book detail at all", () => {
+    // The shape export_site._trajectory_only_feed_programs produces: a
+    // programs.json row exists (so resolveProgram returns tier "full") but
+    // the sidecar carries no tier, no service_org, and empty details AND
+    // narratives. 0603115DHA / 0708083D, measured 2026-09-10.
+    const d = rollupDetails({ tier: undefined, service_org: undefined });
+    expect(isWorkbookOnlyDetails(d)).toBe(true);
+  });
+
+  it("is false once ANY R-2/P-40 detail row exists", () => {
+    const d = rollupDetails({
+      tier: undefined,
+      details: [
+        {
+          amount_millions: 1,
+          fact_id: "cccccccccccccccc",
+          project_number: "1",
+          project_title: "Widget",
+          resolution: "unique",
+          scenario: "base",
+          units: "USD millions",
+          xml_path: "x.xml",
+          basis: "jbook-detail",
+          fy: 2026,
+          measure: "request",
+          edition: 2026,
+          entity: "0708011F/1",
+        },
+      ],
+    });
+    expect(isWorkbookOnlyDetails(d)).toBe(false);
+  });
+
+  it("is false when narratives exist without detail rows", () => {
+    const d = rollupDetails({
+      tier: undefined,
+      narratives: [
+        { body: "text", kind: "mission", title: "Mission", fact_id: "dddddddddddddddd" },
+      ],
+    });
+    expect(isWorkbookOnlyDetails(d)).toBe(false);
+  });
+
+  it("is false for a decade sidecar — it has no workbook line to be 'only'", () => {
+    // Every decade sidecar ships budget_lines: [] (export_site.py:9080), so
+    // the rollup tier's sentence must never reach it: a decade element is not
+    // in the FY2026 books at all.
+    expect(isWorkbookOnlyDetails(decadeDetails())).toBe(false);
   });
 });

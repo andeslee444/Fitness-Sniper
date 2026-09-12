@@ -37,6 +37,7 @@ import {
   isDecadeDetails,
   isIngestedServiceOrg,
   isRollupDetails,
+  isWorkbookOnlyDetails,
   isZeroContentDetails,
   rollupProgramRow,
   serviceOrgName,
@@ -606,12 +607,31 @@ export default async function ProgramPage({
   // Narrative groups for the two prose sections (§2d).
   const descriptionNarratives = narrativesInGroup(details.narratives, "description");
   const justificationNarratives = narrativesInGroup(details.narratives, "justification");
-  const serviceName = serviceOrgName(details.service_org ?? "") || "service";
-  // Ingested services (Navy, Army, Air Force / Space Force) have their FY2026
-  // books in the pipeline — a rollup line for one of them has no matching
-  // R-2/P-40 narrative, it is NOT "awaiting ingestion". Drives the honest
-  // empty-state wording in the justification section (5G archive round).
-  const serviceIngested = isIngestedServiceOrg(details.service_org ?? "");
+  // ── Who the service-books coverage note is for (ROADMAP #14) ─────────────
+  // The rollup tier is not the only tier that can have NO R-2/P-40 detail
+  // behind it. _trajectory_only_feed_programs synthesizes a programs.json row
+  // for a feed PE with a trajectory and no dim_programs row, so its page
+  // resolves as tier "full" while its sidecar carries zero details and zero
+  // narratives (2 pages, measured 2026-09-10: 0603115DHA, 0708083D). The
+  // full-tier empty states below assert a J-book detail those pages do not
+  // have — the 2026-07-05 "ingested-orgs liar" species, on the tier that fix
+  // never covered. They render the rollup tier's honest note instead.
+  const workbookOnlyFull = tier === "full" && isWorkbookOnlyDetails(details);
+  const showServiceBooksNote = tier === "rollup" || workbookOnlyFull;
+  // The org that answers "where would the detailed justification live".
+  // Rollup/decade sidecars carry service_org; the synthesized full-tier
+  // sidecars carry no such field, so fall back to the programs.json org code
+  // — the SAME code space (both are budget_lines.organization values). The
+  // fallback is gated on the full tier so the one rollup sidecar with an
+  // empty service_org keeps saying "service" instead of inheriting
+  // rollupProgramRow's "DoD" umbrella.
+  const coverageOrg = workbookOnlyFull ? program.org : (details.service_org ?? "");
+  const serviceName = serviceOrgName(coverageOrg) || "service";
+  // Ingested orgs have their FY2026 books LOADED (site_meta.ingested_service_orgs
+  // — a query over documents with EXTRACTED DETAIL, not a hardcoded list and
+  // not merely a downloaded file). A workbook-only line for one of them has no
+  // matching R-2/P-40 narrative; it is NOT "awaiting ingestion".
+  const serviceIngested = isIngestedServiceOrg(coverageOrg);
 
   // ── WHAT IT IS card (§P1-2) ───────────────────────────────────────────────
   // projectCount is the page's OWN project grain (the R-2/P-40 rows the
@@ -819,8 +839,10 @@ export default async function ProgramPage({
         )}
       </ProgramSection>
 
-      {/* 4 · Description (mission) — rollup pages carry the honest
-          service-J-book note (data-coverage="service-books", §2a). */}
+      {/* 4 · Description (mission) — pages with NO R-2/P-40 detail behind
+          them carry the honest service-J-book note
+          (data-coverage="service-books", §2a): the rollup tier, and the
+          workbook-only pages that resolve as full tier (ROADMAP #14). */}
       <ProgramSection id="description">
         {descriptionNarratives.length > 0 ? (
           <ProgramNarratives
@@ -829,12 +851,12 @@ export default async function ProgramPage({
             peIndex={peIndex}
             selfPe={peBli}
           />
-        ) : tier === "rollup" ? (
+        ) : showServiceBooksNote ? (
           <div className="mb-8">
             <h2 className="text-lg font-semibold mb-2 text-foreground">
               Description
             </h2>
-            <ServiceBooksNote serviceOrg={details.service_org ?? ""} />
+            <ServiceBooksNote serviceOrg={coverageOrg} />
           </div>
         ) : tier === "decade" ? (
           /* ROADMAP #28. The full-tier sentence below ("The J-book detail
@@ -870,7 +892,7 @@ export default async function ProgramPage({
             peIndex={peIndex}
             selfPe={peBli}
           />
-        ) : tier === "rollup" ? (
+        ) : showServiceBooksNote ? (
           <SectionEmpty title="Justification">
             {serviceIngested ? (
               <>

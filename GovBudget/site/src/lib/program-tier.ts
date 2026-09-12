@@ -109,6 +109,43 @@ export function isDecadeDetails(details: ProgramDetails): boolean {
 }
 
 /**
+ * True when a page carries FY2026 R-1/P-1 workbook figures and NO R-2/P-40
+ * J-book detail of any kind — the `workbookOnly` bucket of data.ts
+ * getPagesWithoutDetail (73 pages in the shipped corpus, measured
+ * 2026-09-10: 71 rollup sidecars plus 2 that carry no `tier` key at all).
+ *
+ * TIER IS NOT THE TEST, which is the whole point (ROADMAP #14).
+ * export_site._trajectory_only_feed_programs synthesizes a programs.json row
+ * for every feed PE that has a trajectory but no dim_programs row, so those
+ * pages resolve as tier "full" — and the full-tier empty states assert a
+ * J-book detail behind the page ("The J-book detail for this line carries no
+ * separate mission or description narrative", "…in this line's J-book
+ * detail"). For 0603115DHA (Medical Development, org DHA) and 0708083D
+ * (Assembled Chemical Weapons Alternatives, org A) there is no such detail:
+ * budget_line_details holds zero rows for both, no DHA J-book was in the
+ * corpus at all, and the Army chem-demil book that would carry 0708083D's
+ * R-2 is excluded from it by name. Those two pages shipped the 2026-07-05
+ * "ingested-orgs liar" species on a tier the 2026-07-05 fix never touched.
+ *
+ * `narratives` is checked as well as `details` because the sentences this
+ * predicate selects are claims about narrative absence too. Measured
+ * 2026-09-10 the two definitions agree exactly: 0 sidecars carry narratives
+ * with no detail rows, and the 1 that carries detail rows with no narratives
+ * (0607212A) keeps the full-tier sentence, which is true for it.
+ *
+ * `budget_lines.length > 0` keeps the decade tier out: a decade sidecar
+ * ships budget_lines: [] by construction, and its element is not in the
+ * FY2026 books at all — a different absence, with its own wording.
+ */
+export function isWorkbookOnlyDetails(details: ProgramDetails): boolean {
+  return (
+    details.details.length === 0 &&
+    details.narratives.length === 0 &&
+    details.budget_lines.length > 0
+  );
+}
+
+/**
  * Exhibit family for a rollup page, derived from its workbook lines:
  * R-1 → rdte, P-1/P-1R → procurement; mixed → the family with more lines;
  * no lines → the honest generic "budget".

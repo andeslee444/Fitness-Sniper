@@ -1410,6 +1410,91 @@ export function getPagesWithoutDetail(): PagesWithoutDetail {
   return (_pagesWithoutDetail = { workbookOnly, decadeOnly, unclassified });
 }
 
+export interface UningestedCoverageOrg {
+  /** Workbook org code (budget_lines.organization space). */
+  org: string;
+  /** Program pages that render the "not yet ingested" note for it. */
+  pages: number;
+}
+
+/** Sidecar fields this computation reads. Deliberately loose: the input is
+ *  parsed JSON from disk, not a validated ProgramDetails. */
+interface CoverageSidecar {
+  details?: unknown[];
+  narratives?: unknown[];
+  budget_lines?: unknown[];
+  tier?: unknown;
+  service_org?: string | null;
+}
+
+/**
+ * The orgs whose program pages actually say "…J-book, which is not yet
+ * ingested", counted from the sidecars — the page's own predicate,
+ * recomputed. Pure and injectable so its unit test never reads data/site.
+ *
+ * A page renders the note when it has no R-2/P-40 detail, no narrative, and
+ * does have FY2026 workbook rows; its coverage org is the sidecar's
+ * service_org (rollup tier) or its programs.json org (the synthesized
+ * full-tier pages, which carry no service_org field at all — that omission is
+ * what made those pages invisible to the 2026-07-05 fix). Orgs already in
+ * site_meta.ingested_service_orgs render the OTHER branch and are excluded.
+ *
+ * Sorted by page count descending, then org ascending.
+ */
+export function uningestedCoverageOrgsFrom(
+  sidecars: Iterable<[string, CoverageSidecar]>,
+  orgBySlug: ReadonlyMap<string, string>,
+  ingested: ReadonlySet<string>,
+): UningestedCoverageOrg[] {
+  const counts = new Map<string, number>();
+  for (const [slug, d] of sidecars) {
+    if ((d.details ?? []).length > 0) continue;
+    if ((d.narratives ?? []).length > 0) continue;
+    if ((d.budget_lines ?? []).length === 0) continue;
+    const org =
+      d.tier === "rollup" ? (d.service_org ?? "") : (orgBySlug.get(slug) ?? "");
+    if (!org || ingested.has(org)) continue;
+    counts.set(org, (counts.get(org) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([org, pages]) => ({ org, pages }))
+    .sort((a, b) => b.pages - a.pages || (a.org < b.org ? -1 : 1));
+}
+
+let _uningestedCoverageOrgs: UningestedCoverageOrg[] | null = null;
+
+/**
+ * Build-time wrapper over uningestedCoverageOrgsFrom. /methodology/ names
+ * this list so its residual sentence cannot contradict the 19 pages that
+ * carry the note (DHA 14, DEFW 4, IG 1, measured 2026-09-10). Never a literal
+ * — the 2026-07-05 lesson applied one surface further out: a hardcoded
+ * "which things are ingested" set drifts, and so does a hardcoded list of
+ * what is missing.
+ */
+export function getUningestedCoverageOrgs(): UningestedCoverageOrg[] {
+  if (_uningestedCoverageOrgs) return _uningestedCoverageOrgs;
+  const dir = join(jsonDir(), "program_details");
+  if (!existsSync(dir)) return (_uningestedCoverageOrgs = []);
+  const ingested = new Set(getSiteMeta().ingested_service_orgs ?? []);
+  const orgBySlug = new Map(getPrograms().map((p) => [p.slug, p.org]));
+  const sidecars: [string, CoverageSidecar][] = [];
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    try {
+      sidecars.push([
+        f.slice(0, -".json".length),
+        JSON.parse(readFileSync(join(dir, f), "utf8")) as CoverageSidecar,
+      ]);
+    } catch {
+      continue; // malformed — getCorpus / gate 24 leg d report it
+    }
+  }
+  return (_uningestedCoverageOrgs = uningestedCoverageOrgsFrom(
+    sidecars,
+    orgBySlug,
+    ingested,
+  ));
+}
+
 let _detailGradeCount: number | null = null;
 
 /**
