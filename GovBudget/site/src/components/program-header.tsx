@@ -5,7 +5,7 @@ import { CategoryHero } from "@/components/hero";
 import { serviceOrgName } from "@/lib/program-tier";
 
 /**
- * ProgramHeader — title, org link, exhibit_family badge, reconciliation badge, pe_bli mono.
+ * ProgramHeader — title, org link, appropriation (account-split members only, #82), exhibit_family badge, reconciliation badge, pe_bli mono.
  * Server component.
  *
  * The org links to /agency/{org}/ ONLY when the page passes orgHasPage
@@ -49,6 +49,21 @@ interface ProgramHeaderProps {
    * DecadeOnlyNote and the WHAT-IT-IS tail say in words.
    */
   tier?: "full" | "rollup" | "decade";
+  /**
+   * ROADMAP #82: true when this page is one member of an APPROPRIATION-
+   * ACCOUNT collision (the 10 shared keys — '3010' is LPD Flight II in
+   * 1611N and Shipboard Tactical Communications in 1810N). The page computes
+   * it from the bare key's siblings (stubDimension === "account"); the
+   * header then names the member's own appropriation beside the org,
+   * because the org ("Navy") is identical on both members and the title
+   * alone does not say which appropriation this page's money sits in.
+   * Organization-split members ('20-DTRA' / '20-DCSA', one account 0300D)
+   * pass false — their org link already discriminates, and the account
+   * would read the same on both. Defaults to false so every ordinary page
+   * renders exactly as before. gate 21 leg n check 5 reads the element this
+   * emits, and recomputes this same predicate from programs.json.
+   */
+  accountSplit?: boolean;
 }
 
 /**
@@ -118,8 +133,10 @@ export function ProgramHeader({
   category,
   orgHasPage = true,
   tier = "full",
+  accountSplit = false,
 }: ProgramHeaderProps) {
-  const { title, org, exhibit_family, reconciled_in_scope, pe_bli } = program;
+  const { title, org, exhibit_family, reconciled_in_scope, pe_bli, account, account_title } =
+    program;
 
   return (
     <div className={category ? "relative mb-6 -mx-3 px-3 py-3" : "mb-6"}>
@@ -152,6 +169,36 @@ export function ProgramHeader({
           <span className="font-medium text-foreground" title={`Organization code ${org}`}>
             {serviceOrgName(org)}
           </span>
+        )}
+
+        {/* Appropriation (ROADMAP #82) — rendered ONLY on account-split
+            members, once. gate 21 leg n check 5 reads [data-program-account]
+            on each member page and holds it to THIS member's account, never
+            the sibling's; the stub and org-split members render none. The
+            sibling's account title legitimately appears lower on the page
+            (SharedKeyDisclosure says who else uses the code), which is why
+            the gate scopes to this element and not to the page. Both
+            `account` and `account_title` are required: a member that cannot
+            name its own account must render nothing and let the gate say so,
+            rather than emit an empty attribute the gate would read as a
+            wrong account. */}
+        {accountSplit && account && account_title && (
+          <>
+            <span className="text-muted-foreground/50" aria-hidden="true">
+              ·
+            </span>
+            <span
+              data-program-account={account}
+              className="text-muted-foreground"
+              title={`Appropriation account ${account} — budget line ${pe_bli} is also used by a program in another appropriation; this page covers only this account's program`}
+            >
+              {account_title}
+              {" · "}
+              <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                {account}
+              </code>
+            </span>
+          </>
         )}
 
         <span className="text-muted-foreground/50" aria-hidden="true">

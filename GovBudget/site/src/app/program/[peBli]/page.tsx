@@ -419,6 +419,14 @@ export default async function ProgramPage({
       getProgramsByBareKey(resolvedProgram.pe_bli),
     ),
   };
+  // ROADMAP #82: an account-split member names its own appropriation in the
+  // header (ProgramHeader.accountSplit). Siblings = every programs.json row
+  // on this bare key; an ordinary page has exactly one and gets false.
+  // stubDimension is the stub's own predicate, reused so the header and the
+  // chooser can never disagree about which axis splits a code — gate 21
+  // leg n recomputes the same predicate from programs.json.
+  const siblings = getProgramsByBareKey(resolvedProgram.pe_bli);
+  const accountSplit = siblings.length > 1 && stubDimension(siblings) === "account";
   const peIndex = getPeLinkIndex();
 
   // Build set of linkable family_keys (entities_top).
@@ -676,6 +684,7 @@ export default async function ProgramPage({
           category={category}
           orgHasPage={getAgencies().some((a) => a.org === program.org)}
           tier={tier}
+          accountSplit={accountSplit}
         />
       </div>
 
