@@ -645,6 +645,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   explained in prose is a tolerance nobody re-measures — the sentence that called the
   gap expected noise is what kept it invisible, and the honest replacement is a run-time
   diff that states the truth rather than a docstring that predicts it.
+- **2026-09-10: #10 was mis-framed for four months.** The backlog entry read
+  "SAM entity extract / Splink entity-resolution upgrade" — two remedies for a
+  defect that is neither. `recipient_parent_name` IS the SAM registration name,
+  so SAM is the *origin* of the wrong string, not its cure; and the evidence
+  joining the flagship pair is a shared child set, not string similarity, so a
+  probabilistic linker never proposes it. The measured decision: $30.0B of
+  addressable name-merge headroom against $255.2B of mislabelling. The fix that
+  shipped was 15 curated rows and one gate leg. Lesson: when a backlog entry
+  names a TOOL rather than a DEFECT, size the defect first — the sizing spike
+  cost a day and deleted a week of the wrong work.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -1435,6 +1445,71 @@ docs/superpowers/ROADMAP.md`.
    remember.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
+
+    **Status: the Splink half CLOSED AS A DELIBERATE NON-GOAL + Option A
+    (display-label correction) CLOSED — owner stamp 2026-09-10. The
+    SAM-extract half is OPEN, blocked on an owner-created key.**
+    The 2026-08-24 marker below is stale in its premise: two commits do
+    reference this item — `1d75c231` (2026-09-01, the sizing spike,
+    `docs/superpowers/reviews/10-entity-resolution-spike.md`) and `a2a9b2f8`
+    (2026-09-01, `fix(#10 A)`).
+
+    **The spike inverted the entry's premise.** `recipient_parent_name` in
+    USAspending *is* the SAM registration name, so ingesting SAM reproduces the
+    defect rather than correcting it (§4). The flagship family's linkage is
+    perfect — all 15 members share parent UEI `EGAVSJTA2D81` — and only the
+    *string* that registration carries is wrong. This is a naming defect, not a
+    resolution defect.
+
+    **The Splink half (spike Option C) — closed, do not re-propose.** §3: the
+    most permissive plausible name-similarity rule over the 2,766 families
+    ≥$100M yields 103 candidate pairs worth **$30.0B**, against **$255.2B**
+    (15 of the 200 published families, 9.7% of published family dollars) of
+    labels decided by an argmax that beat its runner-up by under 15% — which
+    Splink cannot see, because the evidence tying the flagship pair together
+    is a shared child set (112 of 118 UEIs), not string similarity. A linker
+    also outputs clusters, never labels. §6 records four alternative rules
+    tested and rejected with measured blast radii; the cheapest-looking of
+    them, "name a family by its dominant member", regresses 109,349 currently
+    correct families and renames `GENERAL DYNAMICS` → `ELECTRIC BOAT
+    CORPORATION`.
+
+    **Option A — shipped and gated.** `a2a9b2f8`:
+    `data-seeds/entity_display_aliases.csv` (15 rows — 9 relabel, 6 pin),
+    `src/govbudget/entity_display_aliases.py`, exporter wiring at
+    `export_site.py:3193` (`_entity_display_labels`) and `:8994`, 22 tests
+    in `tests/test_entity_display_aliases.py`, and gate 24 leg (l)
+    (`site/scripts/gates/datatruth.mjs:83,3018` +
+    `site/scripts/gates/familylabel-recompute.py`), which fails the build when a
+    published family's label wins its parent-registration argmax by <15% with no
+    alias row. Live. *(Line numbers re-measured 2026-09-12; the spike commit
+    cited `export_site.py:2790` before Group B's inserts moved it.)*
+
+    **Option B — parent-UEI clustering — deferred with a NAMED trigger.**
+    §6: 322 families absorbed and $125.6B relabelled at ≥3 shared children /
+    ≥50% overlap, which re-keys `family_key` → slugs → fact ids → published
+    `query_body` statements, and over-merges on ownership history
+    (`AMENTUM + JACOBS + AECOM + PAE` into one $40.0B cluster). Revisit **when
+    the curated seed exceeds ~40 families** — it holds **15** today, so the
+    trigger has not fired.
+
+    **The SAM.gov Entity Management extract — scoped, blocked on the owner.**
+    Not an entity-resolution fix (see above) and it promotes no confidence
+    tier; it is an ENRICHMENT: registration status, CAGE, UEI, legal business
+    name, business types, primary NAICS and expiration for the 200 published
+    families' dominant registrations, published as a cited line on
+    `/company/{slug}/`. Blocked on a credential only an account holder can mint:
+    per https://open.gsa.gov/api/entity-api/ the Entity Management API takes a
+    SAM.gov **Personal API key** (non-federal user with no role: **10
+    requests/day**; with a role: 1,000/day), **not** an api.data.gov key — the
+    `DATA_GOV_API_KEY` registered 2026-09-05 does not open it, and
+    `https://api.sam.gov/entity-information/v3/entities` answers an empty 404
+    unauthenticated. **Owner action:** sign in at login.gov → SAM.gov → Account
+    Details → Public/Personal API key, then paste it into the gitignored
+    `GovBudget/.env` as `SAM_API_KEY=…`. At 10 requests/day the bounded extract
+    (200 UEIs, one request each) takes ~20 resumable days; with a role-holding
+    key, one run.
+    *(Original marker below.)*
 
     **Status: OPEN** — swept 2026-08-24. Never scoped; no commit references it.
     Verified at HEAD: `src/govbudget/entities.py:6` still reads that

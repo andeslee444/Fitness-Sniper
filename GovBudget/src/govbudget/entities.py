@@ -3,7 +3,14 @@
 Canonical family = parent UEI when present; otherwise normalized name.
 The dbt layer additionally merges parent UEIs whose names normalize
 identically (Boeing's 'THE BOEING COMPANY' vs 'BOEING COMPANY, THE (INC)').
-Probabilistic matching (Splink) is deliberately deferred until a gate fails.
+Probabilistic matching (Splink) is a CLOSED NON-GOAL, not a pending upgrade
+(ROADMAP #10, owner stamp 2026-09-10). Measured in
+docs/superpowers/reviews/10-entity-resolution-spike.md §3: name-similarity
+merges across the 2,766 families >=$100M top out at $30.0B, against $255.2B
+of published dollars whose defect is a WRONG STRING a comparator cannot see
+— the flagship pair (ROCKWELL COLLINS AUSTRALIA PTY LIMITED / RTX CORP)
+shares no characters and scores zero. The correction shipped instead as a
+curated display-name seed (entity_display_aliases.py, spike Option A).
 
 Boeing subsidiary fix (loop iteration 1): Self-parented Boeing subsidiaries
 (BOEING NORTH AMERICAN, INC; BOEING CAPITAL CORPORATION; BOEING REALTY CORP;

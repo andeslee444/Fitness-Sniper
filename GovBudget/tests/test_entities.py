@@ -49,3 +49,22 @@ def test_boeing_subsidiary_splits_normalize_to_boeing():
     # Confirm other divisions not over-stripped
     assert normalize_name("HUNTINGTON INGALLS INDUSTRIES, INC") == "HUNTINGTON INGALLS INDUSTRIES"
     assert normalize_name("LOCKHEED MARTIN CORPORATION") == "LOCKHEED MARTIN"
+
+
+def test_docstring_closes_splink_as_a_non_goal_and_names_the_spike():
+    """ROADMAP #10, Splink half: a decided non-goal, not a pending upgrade.
+
+    entities.py:6 read "Probabilistic matching (Splink) is deliberately
+    deferred until a gate fails" from Phase 2 until 2026-09-10. No gate can
+    fail into it: the spike measured Splink's whole addressable headroom at
+    $30.0B against $255.2B of mislabelling it cannot see, and the flagship
+    pair shares no characters. A docstring that keeps a closed option open is
+    how the option gets re-proposed.
+    """
+    import govbudget.entities as entities
+
+    doc = entities.__doc__ or ""
+    assert "deferred until a gate fails" not in doc
+    assert "Splink" in doc
+    assert "NON-GOAL" in doc
+    assert "10-entity-resolution-spike.md" in doc
