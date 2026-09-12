@@ -142,6 +142,20 @@
  *      figure stated, NO figure the block does not hold, every unadjudicated
  *      path named, and the passage present iff the block is. See leg o's own
  *      block at the bottom.
+ *  (r) DISTRICT BY-YEAR CELLS vs THE LAKE (ROADMAP #6). Gate 9 leg f proves
+ *      the by-year rows are INTERNALLY consistent — they sum to the headline
+ *      the page renders above them. An exporter that read the wrong mart, or a
+ *      mart that silently changed its predicate, satisfies that perfectly
+ *      while publishing the wrong ten numbers. This leg takes a deterministic
+ *      sample of (district, fiscal year) cells from the sidecars, recomputes
+ *      each one from fct_award_transactions joined to the high-confidence
+ *      fct_budget_to_awards links (districtyear-recompute.py — never from
+ *      fct_district_totals_by_year, the artifact under test), and requires
+ *      BOTH the sidecar value and the figure RENDERED on the built page to
+ *      match it. Non-vacuous: fails if fewer than 12 cells are published or if
+ *      any sampled cell has no rows in the lake. (The brief called this leg
+ *      (o); that letter was taken by the hand-adjudication leg above and
+ *      (p)/(q) are reserved, so the by-year leg is (r).)
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -161,6 +175,7 @@ import { createRequire } from "module";
 import { feedGuid, FR_NS } from "../../src/lib/feed-model.mjs";
 import { exemptFromNotationSweep } from "./source-text-kinds.mjs";
 import { displayCompanyName } from "../../src/lib/company-name.mjs";
+import { normalizeAmount, valuesAgree } from "./basis.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -651,6 +666,9 @@ export async function runDataTruthGate() {
 
   // ── leg m: declared cadence vs. measured ingest age (ROADMAP #8) ──────────
   runSourceCadenceLeg(errors, notes);
+
+  // ── leg r: district by-year cells vs the lake (ROADMAP #6) ────────────────
+  runDistrictYearLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -3474,4 +3492,195 @@ function runSourceCadenceLeg(errors, notes) {
         ? ` — ${uncovered.length} manifest dataset(s) publish no cadence: ${uncovered.join(", ")}`
         : ""),
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg r — district by-year cells recomputed from the lake (ROADMAP #6)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Sample size and floor. 12 cells over the 924 published is a ~1.3% sample;
+ *  the point is a tripwire on the derivation, not coverage (gate 9 leg f checks
+ *  every row for internal consistency, and assert_district_by_year_reconciles
+ *  checks every row against the all-years mart in dbt). DETERMINISTIC stride,
+ *  never Math.random: a failing gate must reproduce on the next run. */
+const DISTRICT_YEAR_SAMPLE = 12;
+const TOL_DISTRICT_YEAR = 0.01;
+
+/** formatAmount renders a negative as "-$4.2M", and normalizeAmount's regex
+ *  only accepts a leading '$'. 53 of the 924 published cells are net-negative,
+ *  so without stripping and reapplying the sign the leg would report every one
+ *  of them as unparseable. */
+function parseSignedAmount(text) {
+  const t = (text ?? "").trim();
+  const neg = t.startsWith("-") || t.startsWith("−");
+  const v = normalizeAmount(neg ? t.slice(1).trim() : t);
+  return v === null ? null : neg ? -v : v;
+}
+
+/**
+ * The pure half of leg r — exported for
+ * site/scripts/gates/__tests__/district-year-lake.test.mjs, which injects all
+ * three inputs so every failure mode is provable without a build.
+ *
+ * @param {object} args
+ * @param {{district: string, fy: number, total: number}[]} args.sample
+ *        cells read from the district sidecars.
+ * @param {Record<string, {award_count:number,total_obligation:number,
+ *        positive_obligation:number}|null>} args.truth
+ *        the lake recompute, keyed "{district}|{fy}".
+ * @param {(district: string, fy: number) =>
+ *        ({amount: number|null, cited: boolean}|null)} args.readRendered
+ *        the built page's row for that cell: null when the page or the row is
+ *        missing; amount null when the rendered text is not a single
+ *        parseable currency figure.
+ * @returns {{failures: string[], checked: number}}
+ */
+export function checkDistrictYearSample({ sample, truth, readRendered }) {
+  const failures = [];
+  let checked = 0;
+  for (const cell of sample) {
+    const key = `${cell.district}|${cell.fy}`;
+    const lake = truth[key];
+    if (!lake) {
+      failures.push(
+        `${key}: the page publishes a figure for this cell but the lake holds ` +
+          `no high-confidence-linked award transactions for it at all`,
+      );
+      continue;
+    }
+    if (Math.abs(lake.total_obligation - cell.total) > TOL_DISTRICT_YEAR) {
+      failures.push(`${key}: sidecar=${cell.total} lake=${lake.total_obligation}`);
+      continue;
+    }
+    const row = readRendered(cell.district, cell.fy);
+    if (!row) {
+      failures.push(
+        `${key}: the sidecar publishes FY${cell.fy} but the built page ` +
+          `renders no [data-district-year="${cell.fy}"] row`,
+      );
+      continue;
+    }
+    if (!row.cited) {
+      failures.push(
+        `${key}: the rendered row carries no cited [data-amount] — a by-year ` +
+          `figure must never reach the page without its receipt`,
+      );
+      continue;
+    }
+    if (row.amount === null) {
+      failures.push(
+        `${key}: the rendered figure is not a single parseable currency value`,
+      );
+      continue;
+    }
+    if (!valuesAgree(row.amount, lake.total_obligation)) {
+      failures.push(
+        `${key}: the page renders ${row.amount} where the lake says ` +
+          `${lake.total_obligation}`,
+      );
+      continue;
+    }
+    checked += 1;
+  }
+  return { failures, checked };
+}
+
+function runDistrictYearLeg(errors, notes) {
+  const districtsDir = path.join(jsonDir, "districts");
+  if (!fs.existsSync(districtsDir)) {
+    errors.push(`leg r: ${districtsDir} not found — nothing to sample`);
+    return;
+  }
+
+  const cells = [];
+  for (const file of fs.readdirSync(districtsDir).sort()) {
+    if (!file.endsWith(".json") || file === "index.json") continue;
+    let sidecar;
+    try {
+      sidecar = JSON.parse(fs.readFileSync(path.join(districtsDir, file), "utf8"));
+    } catch {
+      continue;
+    }
+    for (const row of sidecar.by_year ?? []) {
+      cells.push({
+        district: sidecar.pop_district,
+        fy: row.fiscal_year,
+        total: row.total_obligation,
+      });
+    }
+  }
+  if (cells.length < DISTRICT_YEAR_SAMPLE) {
+    errors.push(
+      `leg r: only ${cells.length} by-year cell(s) published across every ` +
+        `district sidecar — fewer than the ${DISTRICT_YEAR_SAMPLE}-cell sample ` +
+        `this leg needs to be non-vacuous (924 on the 2026-09-10 corpus)`,
+    );
+    return;
+  }
+  const stride = Math.floor(cells.length / DISTRICT_YEAR_SAMPLE);
+  const sample = [];
+  for (let i = 0; i < DISTRICT_YEAR_SAMPLE; i++) sample.push(cells[i * stride]);
+
+  const script = path.resolve(__dirname, "districtyear-recompute.py");
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 300000,
+    maxBuffer: 32 * 1024 * 1024,
+    input: JSON.stringify({
+      cells: sample.map((c) => ({ district: c.district, fy: c.fy })),
+    }),
+  });
+  if (res.status !== 0) {
+    errors.push(
+      `leg r: districtyear-recompute.py exited ${res.status}: ` +
+        `${(res.stderr || "").slice(0, 400)}`,
+    );
+    return;
+  }
+  let truth;
+  try {
+    truth = JSON.parse(res.stdout);
+  } catch (e) {
+    errors.push(`leg r: recompute helper returned unparseable JSON — ${e.message}`);
+    return;
+  }
+  if (truth.__error__) {
+    errors.push(`leg r: ${truth.__error__}`);
+    return;
+  }
+
+  // Read the RENDERED figure off the built page's own [data-district-year]
+  // row — so a page that renders a stale literal cannot pass by shipping a
+  // correct sidecar.
+  const readRendered = (district, fy) => {
+    const pagePath = path.join(outDir, "district", district, "index.html");
+    if (!fs.existsSync(pagePath)) return null;
+    const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+    const row = root.querySelector(`[data-district-year="${fy}"]`);
+    if (!row) return null;
+    const amountEl = row.querySelector("[data-amount]");
+    return {
+      cited: Boolean(amountEl && amountEl.getAttribute("data-fact-id")),
+      amount: amountEl ? parseSignedAmount(amountEl.text) : null,
+    };
+  };
+
+  const { failures, checked } = checkDistrictYearSample({
+    sample,
+    truth,
+    readRendered,
+  });
+  if (failures.length > 0) {
+    errors.push(
+      `leg r: ${failures.length} of ${sample.length} sampled district-year ` +
+        `cell(s) disagree with the lake or with the built page — ` +
+        `${failures.slice(0, 5).join("; ")}`,
+    );
+  } else {
+    notes.push(
+      `leg r: ${checked} district-year cell(s) recomputed from the lake and ` +
+        `matched their rendered, cited rows ✓`,
+    );
+  }
 }
