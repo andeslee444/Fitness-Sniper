@@ -393,6 +393,69 @@ def _seed_split_key_budget_lines(dsn: str) -> None:
             )
 
 
+#: J-book volumes seeded by `_seed_split_key_jbooks`, in the shape ROADMAP #82
+#: (narrative axis) has to tell apart. Each of the first two is one member's
+#: own book; the third files a narrative under the same code and NO accounted
+#: detail row, so nothing says which member it is about.
+_VOLUMES = (
+    # (title, sha256, account, narrative title, narrative body)
+    ("SCN_Book.pdf", "a" * 64, SCN, "LPD Flight II — Mission",
+     "The LPD Flight II amphibious transport dock supports the Marine Corps."),
+    ("OPN_BA1_Book.pdf", "b" * 64, OPN, "Shipboard Tactical Comms — Mission",
+     "Shipboard Tactical Communications fields radio room upgrades."),
+    ("ORPHAN_Book.pdf", "c" * 64, None, "Orphan Volume — Mission",
+     "A volume whose rows say nothing about which program this line is."),
+)
+
+
+def _seed_split_key_jbooks(dsn: str) -> None:
+    """One J-book volume per 3010 member, plus one that belongs to neither
+    (ROADMAP #82, narrative axis).
+
+    The two member volumes file the SAME budget-line code with the SAME
+    scenario and DISTINCT amounts, so which page a row reaches can only come
+    from the document's own appropriation — never from the prose, and never
+    from an amount that happens to be unique.
+
+    The third volume carries a narrative and no accounted detail row at all,
+    which is how a narrative becomes unattributable in the real corpus: the
+    account lives on the P-40 detail rows (migration 007), so a book that
+    files none says nothing about which of two programs its prose describes.
+    Ruling 2 sends it to NEITHER page.
+
+    status stays 'registered': the export's PDF copy step only walks
+    'downloaded' documents and these volumes have no bytes on disk. The detail
+    and narrative queries filter on sha256, not status.
+    """
+    with psycopg.connect(dsn, autocommit=True) as con:
+        for i, (title, sha, account, n_title, n_body) in enumerate(_VOLUMES):
+            doc_id = con.execute(
+                "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+                " title, source_url, sha256, status) values"
+                " ('N','procurement',2026,%s,%s,%s,'registered') returning id",
+                (title, f"https://example.test/{title}", sha),
+            ).fetchone()[0]
+            run_id = con.execute(
+                "insert into extraction_runs (document_id, tier, tool_versions)"
+                " values (%s, 1, '{}') returning id",
+                (doc_id,),
+            ).fetchone()[0]
+            con.execute(
+                "insert into detail_narratives (extraction_run_id, document_id,"
+                " pe_bli, kind, title, body, xml_path)"
+                " values (%s,%s,'3010','mission',%s,%s,%s)",
+                (run_id, doc_id, n_title, n_body, f"LineItem[{i}]/Narrative"),
+            )
+            if account is None:
+                continue
+            con.execute(
+                "insert into budget_line_details (extraction_run_id,"
+                " document_id, pe_bli, scenario, amount_millions, xml_path,"
+                " account) values (%s,%s,'3010','BudgetYearOne',%s,%s,%s)",
+                (run_id, doc_id, 100.0 + i, f"LineItem[{i}]", account),
+            )
+
+
 def _make_collision_duckdb(db_path: Path) -> None:
     """The shared 1-row mart fixture, widened to the E1 (account, pe_bli)
     grain and given 3010's two members plus one account-keyed link each."""
@@ -456,6 +519,7 @@ def collision_export(collision_pg_dsn, tmp_path_factory):
 
     tmp_path = tmp_path_factory.mktemp("collision")
     _seed_split_key_budget_lines(collision_pg_dsn)
+    _seed_split_key_jbooks(collision_pg_dsn)
     db = tmp_path / "wh.duckdb"
     _make_collision_duckdb(db)
     site = tmp_path / "site"
@@ -682,3 +746,85 @@ def test_both_linked_members_carry_the_withheld_flag_and_no_hhi(collision_export
     assert by_slug["3010-OPN"]["hhi"] is None
     assert by_slug["0601101E"]["hhi"] is not None
     assert _sidecar(collision_export, "0601101E")["summary"]["concentration_withheld"] is False
+
+
+# ---------------------------------------------------------------------------
+# (c) ROADMAP #82, the narrative axis: each member publishes its OWN J-book
+# ---------------------------------------------------------------------------
+#
+# Measured 2026-09-12 on the shipped corpus, BEFORE this fix: all 13 shared
+# codes published identical `narratives` and identical `details` on every
+# member — 55 narrative and 139 detail fact ids appearing on more than one
+# member page. /program/3010-SCN/ rendered the Shipboard Tactical
+# Communications mission paragraph and the OPN volume's money under the LPD
+# Flight II heading, and every citation on it resolved, because each row is
+# individually true of SOMETHING. The discriminator is the row's own J-book
+# document: the SCN volume and the OPN volume are different books.
+
+
+def _fids(sidecar: dict, kind: str) -> set:
+    return {r["fact_id"] for r in sidecar[kind] if r.get("fact_id")}
+
+
+def test_each_member_publishes_only_its_own_volumes_narratives(collision_export):
+    scn = _sidecar(collision_export, "3010-SCN")
+    opn = _sidecar(collision_export, "3010-OPN")
+    assert [n["title"] for n in scn["narratives"]] == ["LPD Flight II — Mission"]
+    assert [n["title"] for n in opn["narratives"]] == [
+        "Shipboard Tactical Comms — Mission"
+    ]
+
+
+def test_each_member_publishes_only_its_own_volumes_details(collision_export):
+    scn = _sidecar(collision_export, "3010-SCN")
+    opn = _sidecar(collision_export, "3010-OPN")
+    assert [d["amount_millions"] for d in scn["details"]] == [100.0]
+    assert [d["amount_millions"] for d in opn["details"]] == [101.0]
+
+
+def test_no_narrative_or_detail_fact_id_reaches_both_members(collision_export):
+    """The property gate 21 leg n check 8 asserts on the built corpus."""
+    scn = _sidecar(collision_export, "3010-SCN")
+    opn = _sidecar(collision_export, "3010-OPN")
+    for kind in ("narratives", "details"):
+        shared = _fids(scn, kind) & _fids(opn, kind)
+        assert shared == set(), (kind, shared)
+        assert _fids(scn, kind), f"{kind}: SCN must publish something to check"
+        assert _fids(opn, kind), f"{kind}: OPN must publish something to check"
+
+
+def test_a_volume_belonging_to_neither_member_publishes_on_neither(
+    collision_export,
+):
+    """ROADMAP #82 ruling 2. The orphan volume files a 3010 narrative and no
+    accounted detail row, so nothing in it says which of the two programs it
+    describes — the live shape is the PROC_DoDEA volume, which files rows
+    under code '30' for an organization that has no page. A row no member
+    owns publishes on NO page; publishing it on both is the defect, and
+    picking one would be a guess."""
+    for slug in ("3010-SCN", "3010-OPN"):
+        side = _sidecar(collision_export, slug)
+        assert "Orphan Volume — Mission" not in [
+            n["title"] for n in side["narratives"]
+        ]
+    # and it does not reappear under the bare code either — the stub owns no
+    # sidecar at all
+    assert not (collision_export / "json" / "program_details" / "3010.json").exists()
+
+
+def test_programs_json_narrative_count_is_per_member(collision_export):
+    programs = json.loads((collision_export / "json" / "programs.json").read_text())
+    by_slug = {p["slug"]: p for p in programs}
+    assert by_slug["3010-SCN"]["narrative_count"] == 1
+    assert by_slug["3010-OPN"]["narrative_count"] == 1
+
+
+def test_an_ordinary_programs_narratives_are_unchanged(collision_export):
+    """The re-keying collapses to (pe, None, None) for every unsplit code, so
+    an ordinary page keeps whatever its bare key held."""
+    side = _sidecar(collision_export, "0601101E")
+    assert isinstance(side["narratives"], list)
+    assert isinstance(side["details"], list)
+    programs = json.loads((collision_export / "json" / "programs.json").read_text())
+    by_slug = {p["slug"]: p for p in programs}
+    assert by_slug["0601101E"]["narrative_count"] == len(side["narratives"])

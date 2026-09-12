@@ -8426,6 +8426,19 @@ def _write_all_sidecars(
     # ONE, preferring the citable resolution (unique > ambiguous_first >
     # unresolved > zero_amount; first-in-sha-order on ties) so the surviving
     # row is state A whenever either copy was.
+    #
+    # ROADMAP #82 (narrative axis, 2026-09-12): the display key carries the
+    # PAGE identity. "Two volumes list this row twice" and "two programs share
+    # this budget-line code" produce the SAME (pe, project, scenario, amount)
+    # shape, and collapsing the second is not a dedupe — it is one program's
+    # row standing in for another's, and it would leave the losing member's
+    # page silently short a row it owns. Ordinary pe_blis collapse to
+    # (pe, None, None) so their dedupe is byte-identical; within one member,
+    # two volumes of that member's own appropriation still collapse as before.
+    # Measured 2026-09-12: zero rows on the 13 shared codes are currently
+    # dropped across members (every member's detail count equals its own
+    # document's row count), so this moves no shipped byte — it stops the
+    # per-member selection below from ever being right only by luck.
     _RES_RANK = {"unique": 0, "ambiguous_first": 1, "unresolved": 2, "zero_amount": 3}
     _detail_best: dict[tuple, tuple[int, int]] = {}  # display key → (rank, row idx)
     for i, row in enumerate(detail_rows):
@@ -8433,7 +8446,10 @@ def _write_all_sidecars(
             row[1], row[2], row[4], row[5]
         )
         resolution = row[12]
-        dkey = (pe_bli, project_number, scenario, amount_millions)
+        dkey = (
+            ident.split_key(pe_bli, row[13], row[8]),
+            project_number, scenario, amount_millions,
+        )
         rank = _RES_RANK.get(resolution, 9)
         cur = _detail_best.get(dkey)
         if cur is None or rank < cur[0]:
@@ -8452,7 +8468,36 @@ def _write_all_sidecars(
             _root_counts[(row[1], row[4])] += 1  # (pe_bli, scenario)
     _root_ordinal: Counter = Counter()
 
-    details_by_pe: dict[str, list] = defaultdict(list)
+    # ROADMAP #82 (narrative axis, 2026-09-12): (document_sha256, pe_bli) →
+    # the appropriation THAT DOCUMENT filed this line under. It is the J-book
+    # document's own metadata — budget_line_details.account, which migration
+    # 007 populates from the P-40 XML's AppropriationNumber and which equals
+    # budget_lines.account byte for byte — never anything inferred from the
+    # prose. detail_narratives carries no account column of its own, so this
+    # is how a narrative row learns which of a shared code's two programs its
+    # book is about: the SCN volume and the OPN volume are different books.
+    # Built over EVERY detail row (not just the deduped survivors), because a
+    # document whose detail rows were all dropped as dual-volume duplicates
+    # still tells its narratives which appropriation they belong to. A
+    # (document, pe_bli) pair that names TWO accounts is left out rather than
+    # guessed — measured 2026-09-12: 0 such pairs in the shipped corpus.
+    _doc_accounts: dict[tuple[str, str], set[str]] = {}
+    for row in detail_rows:
+        _sha, _pe, _acct = row[11], row[1], row[13]
+        if _sha and _acct:
+            _doc_accounts.setdefault((_sha, _pe), set()).add(_acct)
+    _doc_account: dict[tuple[str, str], str] = {
+        k: next(iter(v)) for k, v in _doc_accounts.items() if len(v) == 1
+    }
+
+    # Detail rows keyed by the PAGE identity the row's own J-book document
+    # carries (ROADMAP #82, narrative axis). This REPLACES the bare-pe_bli
+    # index the sidecar writers used to read: the SCN volume's R-2/P-40 rows
+    # can no longer appear on the OPN program's page. Ordinary pe_blis
+    # collapse to (pe, None, None), so their list is the old one, in the old
+    # order. No bare-code detail index survives — one would be a silent way
+    # back to the fused lookup.
+    details_by_key: dict[tuple[str, str | None, str | None], list] = defaultdict(list)
     for i, row in enumerate(detail_rows):
         if i not in _detail_keep:
             continue
@@ -8474,7 +8519,7 @@ def _write_all_sidecars(
         else:
             _root_ordinal[(pe_bli, scenario)] += 1
             entity = f"{pe_bli}/line{_root_ordinal[(pe_bli, scenario)]}"
-        details_by_pe[pe_bli].append({
+        _entry = {
             "fact_id": fid,
             "project_number": project_number,
             "project_title": project_title,
@@ -8488,7 +8533,38 @@ def _write_all_sidecars(
             "measure": d_measure,
             "edition": 2026,
             "entity": entity,
-        })
+        }
+        # `entity` is deliberately still computed over the BARE code above.
+        # It is gate 23's same-label grouping key, not a display string, and
+        # re-deriving it per member would promote a shared code's surviving
+        # root row from '{pe}/line{n}' to '{pe}' — a claim that this row IS
+        # the program's (fy, measure) value, which is a different assertion
+        # from the one this task is fixing and belongs with whoever can run
+        # gate 23 against it.
+        details_by_key[ident.split_key(pe_bli, _d_account, org)].append(_entry)
+
+    def _details_for(
+        pe_bli: str, account: str | None = None, organization: str | None = None,
+    ) -> list[dict]:
+        """This PAGE's own J-book detail rows (ROADMAP #82, narrative axis).
+
+        A shared BLI code's members are two different programs documented in
+        two different J-book volumes, and a detail row belongs to the one
+        whose appropriation (account axis) or component (organization axis)
+        its own document carries. `split_key` is the same dispatch
+        `_awards_for` and `_concentration_for` use, so all three surfaces
+        agree on what "this member" means; for the ~1,930 ordinary pe_blis it
+        collapses to (pe, None, None) and this returns exactly what the old
+        bare-pe_bli index held, in the same order.
+
+        A row whose document matches NEITHER member (the PROC_DODEA volume
+        files rows under code '30', and DoDEA has no dim_programs row there)
+        resolves to a key no page reads, so it publishes on neither member
+        rather than on both — see the dated count printed below.
+        """
+        return details_by_key.get(
+            ident.split_key(pe_bli, account, organization), []
+        )
 
     # Set of fact_ids that have a valid citation row (resolution unique/ambiguous_first)
     # Only these are safe to emit as data-fact-id (gate 2 Cite state A contract).
@@ -8928,6 +9004,14 @@ def _write_all_sidecars(
         naming a recipient has nothing resolvable to cite and the model is
         instructed (correctly) to omit it — which is how a page publishing
         five named primes came to ship a dossier naming none.
+
+        Coverage, measured 2026-09-12 over the shipped export: non-null for
+        12,280 of 12,280 award rows — every published fct_budget_to_awards
+        link mints a citation. The field stays NULLABLE anyway: "null" is a
+        claim about ONE link ("this one minted no citation row"), and a
+        consumer that treated the measured 100% as a guarantee would break
+        silently the first time an adjudication retires a citation. Re-measure
+        rather than assume.
         """
         fid = fact_id_derived("budget_to_awards", f"{pe_bli}|{award_piid}", "link")
         return fid if fid in _cited_fact_ids else None
@@ -9099,22 +9183,88 @@ def _write_all_sidecars(
     # silently join a PB2026 list and read as current. Those rows are reachable
     # exactly where they are labelled: the citation panel, which names the
     # document and its edition.
-    narr_by_pe: dict[str, list] = defaultdict(list)
+    #
+    # ROADMAP #82 (narrative axis, 2026-09-12): keyed by PAGE identity, not by
+    # the bare code. A shared BLI code's two members are two programs with two
+    # J-books — '3010' is LPD Flight II in the SCN volume AND Shipboard
+    # Tactical Communications in the OPN volume — and until this task both
+    # pages rendered all four narratives, each page presenting the other
+    # program's mission prose as its own. The narrative row itself carries no
+    # account (detail_narratives has no such column), so the discriminator is
+    # its DOCUMENT: `org` straight off the row for the organization axis, and
+    # `_doc_account[(document_sha256, pe_bli)]` — the appropriation that same
+    # document filed this line's P-40 rows under — for the account axis.
+    # Document metadata on both axes; nothing is inferred from the prose.
+    narr_by_key: dict[tuple[str, str | None, str | None], list] = defaultdict(list)
     narr_pq = out_dir / "data" / "jbook_narratives.parquet"
     if narr_pq.exists():
         import duckdb as _duckdb2
         narr_rows = _duckdb2.sql(
-            "select fact_id, pe_bli, kind, title, body, xml_path from"
-            f" read_parquet('{narr_pq}') where fiscal_year = {DISPLAY_NARRATIVE_FY}"
+            "select fact_id, pe_bli, kind, title, body, xml_path, org,"
+            f" document_sha256 from read_parquet('{narr_pq}')"
+            f" where fiscal_year = {DISPLAY_NARRATIVE_FY}"
         ).fetchall()
-        for narr_fid, pe_bli, kind, title, body, xml_path in narr_rows:
+        for (narr_fid, pe_bli, kind, title, body, xml_path,
+             narr_org, narr_sha) in narr_rows:
             entry: dict = {"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""}
             # Only attach fact_id when the citation row was emitted (xml_path non-null,
             # sha256 matched a document row). The _cited_fact_ids set is the authoritative
             # membership check — if fact_id resolves there, the model can cite it.
             if narr_fid and narr_fid in _cited_fact_ids:
                 entry["fact_id"] = narr_fid
-            narr_by_pe[pe_bli].append(entry)
+            narr_by_key[
+                ident.split_key(
+                    pe_bli, _doc_account.get((narr_sha, pe_bli)), narr_org,
+                )
+            ].append(entry)
+
+    def _narratives_for(
+        pe_bli: str, account: str | None = None, organization: str | None = None,
+    ) -> list[dict]:
+        """This PAGE's own J-book narrative rows (ROADMAP #82, narrative axis).
+
+        Same rule, same `split_key` dispatch and same "neither member rather
+        than both" fallback as `_details_for` — see its docstring. Identity
+        for every ordinary pe_bli: the key collapses to (pe, None, None) and
+        this is the old bare-code list, in the old order.
+        """
+        return narr_by_key.get(
+            ident.split_key(pe_bli, account, organization), []
+        )
+
+    # ROADMAP #82 (narrative axis), dated 2026-09-12: a J-book row on a shared
+    # BLI code whose own document matches NEITHER member publishes on NEITHER
+    # member. The PROC_DoDEA PB2026 volume files two narratives and five
+    # detail rows under code '30', and DoDEA has no dim_programs row for it —
+    # so there is no page those rows are true of. Publishing them on all three
+    # of '30's members (which is what the bare-code lookup did) would put a
+    # school-system justification under OSD's, DTRA's and DMACT's names; the
+    # honest answer is to publish them nowhere and say how many.
+    _unattributed_narr = 0
+    _unattributed_det = 0
+    _unattributed_where: set[str] = set()
+    for _pe in sorted(ident.split_pe_blis):
+        _member_keys = {
+            ident.split_key(_pe, _a, _o)
+            for _a, _t, _o, _hd in ident.accounts(_pe)
+        }
+        for _key, _rows in narr_by_key.items():
+            if _key[0] == _pe and _key not in _member_keys:
+                _unattributed_narr += len(_rows)
+                _unattributed_where.add(f"{_pe}/{_key[1] or _key[2] or '?'}")
+        for _key, _rows in details_by_key.items():
+            if _key[0] == _pe and _key not in _member_keys:
+                _unattributed_det += len(_rows)
+                _unattributed_where.add(f"{_pe}/{_key[1] or _key[2] or '?'}")
+    if _unattributed_narr or _unattributed_det:
+        print(
+            f"program_details (ROADMAP #82, narrative axis, 2026-09-12):"
+            f" {_unattributed_narr} J-book narrative row(s) and"
+            f" {_unattributed_det} detail row(s) on shared BLI codes come from"
+            f" a document whose own account/organization matches no member"
+            f" page ({', '.join(sorted(_unattributed_where))}) — published on"
+            f" NEITHER member, never on both"
+        )
 
     # Curated published labels (ROADMAP #10 option A). Loaded ONCE, here, and
     # threaded into every payload that NAMES a family to a reader. It never
@@ -9382,7 +9532,7 @@ def _write_all_sidecars(
             "fy2024_actual_millions": fy2024_actual_millions,
             # Task E3: gated on owns_detail — fy2024_fact_id/xml_path come
             # from jbook_details, which for a split key belongs entirely to
-            # the matched account (see details_by_pe's owns_detail gate in
+            # the matched account (see the details owns_detail gate in
             # the sidecar loop above). Without this gate the SYNTHETIC
             # side's entry would carry the sibling's fact_id pointing at a
             # value (fy2024_actual_millions) this row does not have — a
@@ -9400,10 +9550,14 @@ def _write_all_sidecars(
             "reconciled_in_scope": reconciled_in_scope,
             "hhi": _concentration_for(pe_bli, account, org),
             # Task E3: gated on owns_detail for the same reason as
-            # fy2024_fact_id — narr_by_pe is bare pe_bli and (per
-            # dim_programs.sql's own account_match) belongs entirely to the
-            # matched account; the synthetic side's own narrative_count is 0.
-            "narrative_count": len(narr_by_pe.get(pe_bli, [])) if owns_detail else 0,
+            # fy2024_fact_id. ROADMAP #82 (narrative axis): and counted over
+            # THIS member's own narratives — the count and the page's own
+            # narrative list are the same list, so the /programs/ table and
+            # CSV can no longer report a shared code's combined prose on both
+            # of its members.
+            "narrative_count": (
+                len(_narratives_for(pe_bli, account, org)) if owns_detail else 0
+            ),
             "org": org,
             "pe_bli": pe_bli,
             "project_count": project_count,
@@ -9719,24 +9873,41 @@ def _write_all_sidecars(
         t_pe, t_org = key
         traj_by_pe[t_pe].append((t_org, t_metrics))
 
-    def _scoped_amounts(pe_bli: str, account: str | None = None) -> dict:
-        """Canonical Decimal dollars → fact_ids for every fact of this PE
+    def _scoped_amounts(
+        pe_bli: str,
+        account: str | None = None,
+        *,
+        details: list[dict] | None = None,
+        budget_lines: list[dict] | None = None,
+    ) -> dict:
+        """Canonical Decimal dollars → fact_ids for every fact of this PAGE
         (details, budget_lines, trajectory — cited or not; §2c ambiguity is
         counted over the full scope).
 
         Task E3: for one of the 10 account-split keys, `account` selects the
         trajectory figure precisely (traj_by_pe only ever carries non-split
         rows now — see its construction above) instead of silently reading
-        nothing or an arbitrary sibling's number."""
+        nothing or an arbitrary sibling's number.
+
+        ROADMAP #82 (narrative axis): `details` and `budget_lines` are the
+        caller's own page-scoped lists where it has them. A prose dollar in
+        THIS program's narrative must never be linked to a fact id from the
+        program that merely shares its budget-line code — that is a
+        resolvable citation under a sentence it does not belong to, which no
+        number↔citation gate can see. Omitted (rollup and decade pages, which
+        are never split) they fall back to the bare-code lists, byte for
+        byte."""
         idx: dict = {}
 
         def _add(value, fid):
             idx.setdefault(value, set()).add(fid)
 
-        for d in details_by_pe.get(pe_bli, []):
+        for d in (details if details is not None else _details_for(pe_bli)):
             if d["amount_millions"] is not None:
                 _add(Decimal(str(d["amount_millions"])) * 1_000_000, d["fact_id"])
-        for b in bl_by_pe.get(pe_bli, []):
+        for b in (
+            budget_lines if budget_lines is not None else bl_by_pe.get(pe_bli, [])
+        ):
             if b["amount_thousands"] is not None:
                 _add(Decimal(str(b["amount_thousands"])) * 1_000, b["fact_id"])
 
@@ -9778,14 +9949,28 @@ def _write_all_sidecars(
                          fact_id_derived("trajectory", pe_bli, metric))
         return idx
 
-    def _narratives_with_links(pe_bli: str, account: str | None = None) -> list[dict]:
-        """Narrative entries, each gaining 'amount_links' ONLY when at least
-        one prose dollar token deterministically matched (§2c) — entries
-        without matches keep their exact prior shape (byte-stability)."""
-        entries = narr_by_pe.get(pe_bli, [])
+    def _narratives_with_links(
+        pe_bli: str,
+        account: str | None = None,
+        organization: str | None = None,
+        *,
+        details: list[dict] | None = None,
+        budget_lines: list[dict] | None = None,
+    ) -> list[dict]:
+        """THIS PAGE's narrative entries, each gaining 'amount_links' ONLY
+        when at least one prose dollar token deterministically matched (§2c) —
+        entries without matches keep their exact prior shape (byte-stability).
+
+        ROADMAP #82 (narrative axis): both halves are the page's own — the
+        entries come from `_narratives_for` (the member's own J-book volume)
+        and the amounts they may link to come from the member's own details
+        and workbook rows."""
+        entries = _narratives_for(pe_bli, account, organization)
         if not entries:
             return entries
-        scoped = _scoped_amounts(pe_bli, account)
+        scoped = _scoped_amounts(
+            pe_bli, account, details=details, budget_lines=budget_lines,
+        )
         out: list[dict] = []
         for e in entries:
             links = _narrative_amount_links(
@@ -10060,7 +10245,7 @@ def _write_all_sidecars(
         is_split = pe_bli in ident.split_pe_blis
         slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
         # has_own_detail: for a split key, R-2/P-40 project detail
-        # (details_by_pe / narratives) belongs ENTIRELY to at most one
+        # (details / narratives) belongs ENTIRELY to at most one
         # account (dim_programs.sql's account_match — verified 2026-08-21,
         # zero exceptions in the shipped warehouse); the other account's
         # page must never inherit it via the shared bare-pe_bli lookup.
@@ -10079,25 +10264,50 @@ def _write_all_sidecars(
                 own_bl = [bl for bl in own_bl if bl.get("organization") == org]
             else:
                 own_bl = [bl for bl in own_bl if bl.get("account_title") == account_title]
+        # ROADMAP #82 (narrative axis): this member's OWN J-book rows. Before
+        # this task both of a shared code's pages rendered every narrative and
+        # every R-2/P-40 detail row filed under the bare code — measured
+        # 2026-09-12 on all 13 shared codes — so each page presented its
+        # sibling program's mission prose and money as its own, with every
+        # citation individually resolvable. `_details_for`/`_narratives_with_links`
+        # resolve on the SAME axis `_awards_for` and `_concentration_for` use.
+        own_details = _details_for(pe_bli, account, org) if owns_detail else []
         obj = {
             # ROADMAP #70: this member's own links. For a shared BLI code the
             # sibling's awards belong on the sibling's page, and the bare key
             # is a disambiguation stub that owns no sidecar at all.
             "awards": _awards_for(pe_bli, account, org),
             "budget_lines": own_bl,
-            "details": details_by_pe.get(pe_bli, []) if owns_detail else [],
+            "details": own_details,
+            # ROADMAP #82, the mention axis: mentions stay keyed by the BARE
+            # code on BOTH axes, deliberately. A Senate LDA filing names a
+            # budget line ("30"), never an appropriation account or a
+            # component — fct_program_lobbying has no account or organization
+            # column to key on and nothing in the filing could populate one —
+            # so the filing is evidence about the CODE, true of every program
+            # that uses it. Both members may render it, and the /filing/ page
+            # says so beside the mention (ROADMAP #82 Task 9's shared-code
+            # note). `mentions_shared_code` below is that rule declared in the
+            # payload so gate 21 leg n check 8 can exempt these rows by
+            # reading the claim rather than by hard-coding it.
             "mentions": _build_mentions(
                 mentions_by_pe.get(pe_bli, []),
                 top200_family_keys,
             ),
             "narratives": (
                 _narratives_with_links(
-                    pe_bli, account if ident.is_account_split(pe_bli) else None,
+                    pe_bli,
+                    account if ident.is_account_split(pe_bli) else None,
+                    org if ident.is_org_split(pe_bli) else None,
+                    details=own_details,
+                    budget_lines=own_bl,
                 )
                 if owns_detail else []
             ),
             "summary": _summary_block(pe_bli, slug),
         }
+        if is_split and obj["mentions"]:
+            obj["mentions_shared_code"] = True
         if slug in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[slug]
             if slug in rva_by_pe:
@@ -10180,7 +10390,8 @@ def _write_all_sidecars(
         obj = {
             "awards": _awards_for(pe_bli),   # rollup pe's are never split
             "budget_lines": bl_by_pe.get(pe_bli, []),
-            "details": details_by_pe.get(pe_bli, []),
+            # rollup pe's are never split, so this is the bare-code list
+            "details": _details_for(pe_bli),
             "mentions": _build_mentions(
                 mentions_by_pe.get(pe_bli, []),
                 top200_family_keys,
@@ -14007,14 +14218,23 @@ def _emit_years_matrix(
     # ---- project sub-rows: pe_bli → project_number → row -------------------
     # detail_rows order is (sha256, pe_bli, scenario); last-wins per
     # (project, scenario) mirrors the program-page scenarioMap behavior.
-    projects_by_pe: dict[str, dict] = defaultdict(dict)
+    # ROADMAP #82 (narrative axis, 2026-09-12): keyed by PAGE identity, the
+    # same `split_key` the sidecar's details use. A shared BLI code's two
+    # members are two programs in two J-book volumes, and `owns_detail` is
+    # True on BOTH of them since Wave 5 — so a bare-code index would put one
+    # program's R-2/P-40 project rows, each with its own resolvable fact id,
+    # in the other program's /years/ row. Zero shipped bytes move today
+    # (measured 2026-09-12: all 13 shared codes carry only PE-ROOT detail
+    # rows, project_number null, so every member's `projects` is already
+    # empty) — this closes the latent path, it does not fix a live figure.
+    projects_by_key: dict[tuple[str, str | None, str | None], dict] = defaultdict(dict)
     for r in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, _units, xml_path, _org, _fam,
          _fy, _sha, _resolution, _acct) = r
         if project_number is None:
             continue
-        proj = projects_by_pe[pe_bli].setdefault(
+        proj = projects_by_key[ident.split_key(pe_bli, _acct, _org)].setdefault(
             project_number, {"title": None, "scenarios": {}}
         )
         if project_title:
@@ -14117,17 +14337,26 @@ def _emit_years_matrix(
         cells.update(decade_cells_by_pe.get((pe_bli, key_account, key_org), {}))
         return cells
 
-    def _project_rows(pe_bli: str, owns_detail: bool = True) -> list[dict]:
-        # Task E3: a split key's project rows (from detail_rows, which
-        # carries no account column) belong entirely to the one account
-        # dim_programs' account_match resolved — owns_detail=False renders
-        # the honest empty list for the other account instead of both
-        # program rows showing the same project detail.
+    def _project_rows(
+        pe_bli: str,
+        owns_detail: bool = True,
+        account: str | None = None,
+        organization: str | None = None,
+    ) -> list[dict]:
+        # Task E3 kept a split key's project rows off the sibling's row via
+        # owns_detail, on the premise that at most one account of a shared key
+        # had detail at all. Wave 5 ended that premise (all ten account keys
+        # carry real detail on both sides), so owns_detail is True on BOTH
+        # members and the guard stopped guarding. ROADMAP #82 (narrative
+        # axis): the rows are selected by the PAGE's own identity instead —
+        # the account/organization the row's own J-book document carries.
+        # owns_detail stays as the narrower gate it still is.
         if not owns_detail:
             return []
+        _pkey = ident.split_key(pe_bli, account, organization)
         out = []
-        for pn in sorted(projects_by_pe.get(pe_bli, {})):
-            proj = projects_by_pe[pe_bli][pn]
+        for pn in sorted(projects_by_key.get(_pkey, {})):
+            proj = projects_by_key[_pkey][pn]
             cells: dict[str, dict] = {}
             for ykey, scenario in _YEARS_PROJECT_SCENARIOS.items():
                 row = proj["scenarios"].get(scenario)
@@ -14193,7 +14422,7 @@ def _emit_years_matrix(
                 "pe_bli": pe_bli,
                 "title": display_title,
                 "cells": _program_cells(pe_bli, translated, account),
-                "projects": _project_rows(pe_bli, owns_detail),
+                "projects": _project_rows(pe_bli, owns_detail, account, org),
             }
             if is_split:
                 prog["slug"] = slug
