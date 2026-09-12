@@ -4,6 +4,23 @@
   "common_name": "B-52 RMP",
   "description_starts": "The Air Force's B-52 RMP plans to replace the current APQ-16",
   "generated_by": "tests/oversight/wsaa_fixture_tool.py",
+  "heading_cases": [
+    {
+      "common_name": "MK 54 MOD 2 (ALWT)",
+      "file": "heading-mk54mod2alwt.txt",
+      "pdf_page": 182
+    },
+    {
+      "common_name": "B-52 CERP RVP",
+      "file": "heading-b52cerprvp.txt",
+      "pdf_page": 111
+    },
+    {
+      "common_name": "DDG 51 Flight III",
+      "file": "heading-ddg51flightiii.txt",
+      "pdf_page": 173
+    }
+  ],
   "index_count_on_page": 15,
   "index_pdf_page": 86,
   "product_number": "GAO-23-106059",

@@ -1,0 +1,50 @@
+MDAP Increment Lead Component: Navy Common Name: DDG 51 Flight III
+DDG 51 Arleigh Burke Class Destroyer, Flight III
+The Navy’s DDG 51 Flight III destroyer is planned to be a multimission ship
+designed to operate against air, surface, and underwater threats.
+Compared with existing Flight IIA ships of the same class, the Navy expects
+new Flight III ships to provide the fleet with increased ballistic missile and
+air defense capabilities. Flight III’s changes include replacing the current
+SPY-1D(V) radar with the Air and Missile Defense Radar program’s AN/SPY-
+6(V)1 radar and upgrading the destroyer’s Aegis combat system.
+Source: Huntington Ingalls Industries. | GAO-23-106059
+Estimated Cost and Quantities Current Status
+fiscal year 2023 dollars in millions
+The program reported that the first eight DDG 51 Flight III ships are under
+construction, with an additional six under contract, and the Navy plans to
+deliver the lead ship—DDG 125—in June 2023. Program officials noted that
+there is a risk to the delivery schedule due to first-time integration of the new
+electrical power system and combat system. They said that they plan to use
+recently completed sea trials and further testing to mitigate these risks.
+The program pushed back the planned start of sea trials from September 2022
+to December 2022 due to these first-time integration challenges and continues
+to assess cost and schedule effects, according to program officials. We
+Cost reflects the 24 Flight III ships bought and planned from fisca previously reported on risks to program cost and schedule due to power system
+years 2017–2027. The Navy plans to procure additional ships
+during this period and is authorized to enter into one or more updates after tests on Flight IIA ships showed the initial system did not meet
+multiyear contracts to procure up to 15 additional ships starting
+in fiscal year 2023. requirements. The program mitigated this risk with a replacement power
+system on Flight IIA ships, according to program officials.
+Software Development as of January 2023
+The program experienced additional cost growth for the first two Flight III ships
+over the past year and reported receiving $168 million in fiscal year 2023 to
+cover the government’s portion of cost overruns for certain contracts. Program
+officials told us that the cost growth is primarily due to first time build
+challenges and is capped by the price ceiling on the contract.
+The Navy purchased a total of 14 Flight III ships thus far and received authority
+to enter into one or more multiyear contracts to procure up to 15 ships starting
+in fiscal year 2023, according to program officials. Competition for these
+procurement contracts is ongoing. This plan aligns with the Navy’s current long-
+range planning for force structure requirements.
+Program Office Comments
+Program Essentials We provided a draft of this assessment to the program office for review and
+comment. The program office provided technical comments, which we
+Prime contractors: General Dynamics-Bath Iron Works;
+Huntington Ingalls Industries incorporated where appropriate. According to the program, the Arleigh Burke
+Contract type: FPI (construction) class destroyer is one of the Navy’s longest-running production lines, which
+delivered 72 ships. Production continues with a number of ships under contract,
+in various stages of production, and in preconstruction activities, according to
+the program. It added that, in addition to ongoing progress to deliver the final
+few Flight IIA destroyers, the program continues toward Flight III delivery, test
+and evaluation, and deployment.
+Page 163 U.S. Government Accountability Office GAO-23-106059 Weapon Systems Annual Assessment

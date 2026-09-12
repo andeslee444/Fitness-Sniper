@@ -1,0 +1,56 @@
+Future Major Weapon Acquisition Lead Component: Space Force Common Name: Resilient MW/MT MEO
+Resilient Missile Warning (MW)/Missile Tracking (MT) Medium
+Earth Orbit (MEO) - Epoch 1
+Resilient MW/MT MEO is a new effort by the Space Force’s Space Systems
+Command (SSC) that intends to provide missile warning, tracking, and
+defense data to legacy and future missile warning and tracking space
+systems. Epoch 1 is the first of at least three, and potentially more,
+satellite Epochs focused on delivering the latest Overhead Persistent
+Infrared sensing technology into medium-Earth orbit. The Epochs will work
+with Space Based Infrared Systems and the Space Development Agency’s
+Tracking and Transport Layer satellites, the latter of which we assessed
+separately.
+Source: U.S. Space Force. | GAO-24-106831
+Estimated Cost and Quantities Current Status
+(fiscal year 2024 dollars in millions)
+DOD is expected to approve an Epoch 1 rapid prototyping effort by the end of
+the second quarter of fiscal year 2024. The program plans to develop up to nine
+satellites, up to nine ground antennas, and an operations center.
+Program officials identified two critical technologies for Epoch 1—large format
+focal plane arrays, which are sensors that can capture images with high
+resolution and sensitivity, and medium-Earth orbit optical crosslinks, which will
+enable space-to-space laser communications between satellites. Officials expect
+both technologies to reach maturity by September 2026.
+Cost and quantity represent fiscal years 2021-2030. The program reported it is using an iterative approach for development and
+cited certain product development practices used by leading companies. For
+example, officials said the program regularly engages the user community to
+Software Development as of January 2024 define and implement requirements, such as data types and tasking procedures,
+and uses modeling and simulation and continued interaction with warfighter
+groups to present capabilities to stakeholders. Each successive Epoch will
+expand on the capability development document requirements approved in
+February 2024—moving from an initial warfighting capability expected by Epoch
+2, toward the full capability expected sometime after Epoch 3. SSC plans to use
+a model-based systems engineering tool, Cameo, for digital design of its
+payloads and platforms. However, officials said the program has been
+challenged in leveraging Cameo for efficiencies due to difficulties with shared
+access to the Cameo infrastructure and communicating with other
+stakeholders. We previously found that leading companies use design modeling
+and simulation to refine requirements to be addressed in the minimum viable
+The program reported that there are plans to involve end users
+in evaluating and providing feedback on software in the future. product to deliver essential capabilities with speed.
+The program stated that it will know more about the frequency
+of testing and feedback once the software verification and
+validation process begins.
+Program Office Comments
+Program Essentials
+We provided a draft of this assessment to the program office for review and
+Prime contractor: Raytheon; Millennium Space
+Systems; L3Harris; Parsons comment. It provided technical comments, which we incorporated where
+Contract type: FFP; CPIF; CPFF appropriate. The program office stated that the nine ground antennas are being
+grouped into sets of three, at three separate sites. According to the program,
+the antennas will be able to communicate with any vendor satellite and deliver
+data back to the missile warning and tracking operations center at very low
+latency speeds. In addition, the program noted that an operations and
+integration contractor will enable hosting of command and control of orbital
+planes in collaboration with the Joint Overhead Persistent Infrared Center.
+Page 197 U.S. Government Accountability Office GAO-24-106831 Weapon Systems Annual Assessment

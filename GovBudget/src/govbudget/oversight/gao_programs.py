@@ -268,6 +268,18 @@ def _key(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+def _tokens(text: str) -> frozenset[str]:
+    """The same normalization as ``_key``, kept as a SET of words.
+
+    GAO typesets a heading from the program's full name and the banner from
+    an abbreviation of it, and the two are not always nested: the banner says
+    "MK 54 MOD 2 (ALWT)" where the heading says "MK 54 MOD 2 Advanced
+    Lightweight Torpedo (ALWT)".  Every word of the banner name is there —
+    just not contiguously (see ``_split_heading``).
+    """
+    return frozenset(re.findall(r"[a-z0-9]+", text.lower()))
+
+
 _TYPE_BY_KEY = {_key(t): t for t in _ASSESSMENT_TYPES}
 
 # One anchor per program in a service index table.  The longest type wraps
@@ -365,8 +377,14 @@ def index_table_program_counts(
       is an UPPER bound: a program name too long for the column wraps onto a
       row of its own, and so does the tail of a wrapped group label, and text
       extraction cannot tell either from a program.  Measured 2026-09-12 the
-      inflation is 7 rows of 75 (2024) and 6 of 69 (2023), so the parser is
+      inflation is 6 rows of 75 (2024) and 4 of 69 (2023), so the parser is
       expected to come in at or a little below this number, never above it.
+
+    The slack is why this count cannot be the drop detector: it is wide
+    enough to hide a missed program, and it did (an earlier reading of the
+    2024/2023 gaps as wrapped rows alone was wrong by 1 and 2 programs).
+    ``parse_edition_pages`` diffs the BANNER set against what it emitted and
+    raises; this number only says whether the volume parsed at all.
 
     This number is the parser's expected population.
     """
@@ -389,20 +407,60 @@ def index_table_program_counts(
 def _split_heading(lines: list[str], common_name: str) -> tuple[str, int]:
     """Return (heading, number of lines consumed).
 
-    The heading runs for however many lines it takes for the accumulated text
-    to contain the banner's common name — one line for "LGM-35A Sentinel",
-    two for "F-15 Eagle Passive Active Warning Survivability System" +
-    "(F-15 EPAWSS)".  Reading the name the banner already gave us beats
-    guessing where GAO's first sentence starts; an earlier cut guessed, and
-    swallowed GAO's opening clause on two programs.
+    The heading runs for the FEWEST lines whose accumulated text carries the
+    banner's common name — one line for "LGM-35A Sentinel", two for "F-15
+    Eagle Passive Active Warning Survivability System" + "(F-15 EPAWSS)".
+    Reading the name the banner already gave us beats guessing where GAO's
+    first sentence starts; an earlier cut guessed, and swallowed GAO's
+    opening clause on two programs.
+
+    "Carries the name" is two tests, and the looser one is needed because
+    GAO's heading is the program's full name while the banner's is an
+    abbreviation of it (measured 2026-09-12 over the three cached volumes):
+
+    * contiguous — ``_key(common)`` appears as a run inside ``_key(acc)``;
+    * all tokens — every word of the common name appears somewhere in the
+      accumulated lines.  "MK 54 MOD 2 (ALWT)" sits inside "MK 54 MOD 2
+      Advanced Lightweight Torpedo (ALWT)" only this way, and "B-52 CERP
+      RVP" only across BOTH of its two heading lines.
+
+    Without the token test three real assessments were dropped in silence;
+    taking the FIRST line count either test accepts is what stops the rule
+    reading on into GAO's first description sentence to find the name there
+    (it did, on three more).  A heading whose own tail is a parenthetical
+    already satisfied by line one ("(T-AO 205)", "(LPD 17 Flight II)") falls
+    into the paragraph and is stripped from it below, as it always was.
     """
     want = _key(common_name)
+    want_tokens = _tokens(common_name)
     acc = ""
     for n, line in enumerate(lines[:_MAX_HEADING_LINES], start=1):
         acc = f"{acc} {line}".strip()
-        if want and want in _key(acc):
+        if not want:
+            continue
+        if want in _key(acc) or want_tokens <= _tokens(acc):
             return _clean(acc), n
     return "", 0
+
+
+# A heading that ran on into GAO's prose, and a quote that starts where that
+# prose was cut.  Same species as ``DESC_RESIDUE_RE``: it guards the TAIL of
+# the quote, these two guard its head and the name printed above it.  A
+# program page renders ``program_name`` in its own sentence and ``description``
+# inside quotation marks, so either defect ships as GAO's own words.
+NAME_PROSE_RE = re.compile(
+    r"\b(?:is|are|was|were|will|plans|intends|includes|provides|has|have)\b"
+)
+DESC_HEAD_RE = re.compile(r'^[A-Z0-9"(]')
+
+
+def heading_defect(row: "Assessment") -> str:
+    """Why this row's heading/description split is wrong, or "" if it is not."""
+    if NAME_PROSE_RE.search(row.program_name):
+        return "program_name reads as a sentence, not a program name"
+    if not DESC_HEAD_RE.match(row.description):
+        return "description starts mid-sentence"
+    return ""
 
 
 def _last_sentence(text: str) -> str:
@@ -420,9 +478,18 @@ def _last_sentence(text: str) -> str:
 
 
 def parse_edition_pages(pages: list[str], edition: Edition) -> list[Assessment]:
-    """One Assessment per Appendix I program.  ``pages[i]`` is PDF page i+1."""
+    """One Assessment per Appendix I program.  ``pages[i]`` is PDF page i+1.
+
+    Raises when a page GAO banners as an Appendix I program emits nothing.
+    The index-row count is an UPPER bound (``index_table_program_counts``) and
+    so cannot see a missed program inside its own slack — the banner set can,
+    because GAO prints exactly one banner per program.  A silent ``continue``
+    here is how three real assessments were dropped from the 2024 and 2023
+    volumes and nothing said so.
+    """
     out: list[Assessment] = []
     seen: set[str] = set()
+    banner_pages: dict[str, tuple[int, str]] = {}
     layout = edition.layout
     for idx, raw in enumerate(pages):
         if not raw:
@@ -436,6 +503,7 @@ def parse_edition_pages(pages: list[str], edition: Edition) -> list[Assessment]:
         common = _clean(banner.group("common"))
         if atype is None or not common:
             continue
+        banner_pages.setdefault(_key(common), (idx + 1, common))
         if _key(common) in seen:
             continue  # continuation page of a two-page spread
 
@@ -477,6 +545,19 @@ def parse_edition_pages(pages: list[str], edition: Edition) -> list[Assessment]:
                 predecessor_product="",
                 predecessor_pdf_page=0,
             )
+        )
+    dropped = sorted(set(banner_pages) - seen, key=lambda k: banner_pages[k])
+    if dropped:
+        raise RuntimeError(
+            f"gao-programs: {edition.product_number}: {len(dropped)} Appendix "
+            "I banner page(s) emitted no assessment — "
+            + ", ".join(
+                f"{banner_pages[k][1]!r} (PDF p.{banner_pages[k][0]})"
+                for k in dropped[:5]
+            )
+            + ". GAO prints one banner per program, so this is a missed "
+            "program: fix the heading or description rule rather than "
+            "shipping a volume that drops it in silence"
         )
     return out
 
@@ -603,6 +684,17 @@ def _family(service: str) -> str:
     return _SERVICE_FAMILY.get(service, service)
 
 
+def service_families() -> dict[str, str]:
+    """``_SERVICE_FAMILY`` as plain data, for the export sidecar.
+
+    Gate 21's leg h8 has to make the same call this module makes when it
+    decides two labels are one program; the two used to be hand-copied
+    mirrors and drifted once already.  Emitting the map means the gate reads
+    THIS dict, so a label added here reaches the gate with the next export.
+    """
+    return dict(_SERVICE_FAMILY)
+
+
 def link_predecessors(rows: list[Assessment]) -> list[Assessment]:
     """Stamp ``predecessor_product`` / ``predecessor_pdf_page`` on every
     assessment.
@@ -690,6 +782,22 @@ def unlinked_older_assessments(
         ),
         key=lambda r: (-int(r["edition_year"]), r["service"], r["common_name"]),
     )
+
+
+def unlinked_older_programs(rows: list[dict], current_product: str) -> int:
+    """How many PROGRAMS — not rows — GAO assessed only in an earlier edition.
+
+    The same program can sit in two older volumes and still be one coverage
+    gap, so the countable unit is ``(program_key, family)``: exactly the key
+    ``link_predecessors`` chains on, which is what makes "GAO assessed it only
+    earlier" the same statement as "no current-edition assessment shares its
+    key".  /methodology/ states this number, so it has to mean what the
+    sentence says.
+    """
+    return len({
+        (r["program_key"], _family(r["service"]))
+        for r in unlinked_older_assessments(rows, current_product)
+    })
 
 
 # ── Fetch + build ───────────────────────────────────────────────────────────
@@ -795,8 +903,20 @@ def build_gao_program_assessments(
                 f"  WARNING: {expected - len(parsed)} index row(s) have no "
                 "parsed assessment — a wrapped name or group label occupies "
                 "its own row in the 2024/2023 tables (see "
-                "index_table_program_counts), so read this against the names "
-                "before treating it as a miss"
+                "index_table_program_counts).  Every BANNERED program did "
+                "parse: parse_edition_pages raises otherwise, and that diff, "
+                "not this number, is what says nothing was dropped"
+            )
+        defects = [(a, heading_defect(a)) for a in parsed]
+        defects = [(a, why) for a, why in defects if why]
+        if defects:
+            raise RuntimeError(
+                "gao-programs: the heading/description split is wrong for "
+                + ", ".join(
+                    f"{a.common_name} ({why})" for a, why in defects[:5]
+                )
+                + " — the name above the quote and the quote itself both ship "
+                "as GAO's own words"
             )
         residue = [a for a in parsed if DESC_RESIDUE_RE.search(a.description)]
         if residue:

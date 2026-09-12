@@ -1,0 +1,52 @@
+Future Major Weapon Acquisition Lead Component: Navy Common Name: MK 54 MOD 2 (ALWT)
+MK 54 MOD 2 Advanced Lightweight Torpedo (ALWT)
+The Navy’s MK 54 MOD 2 program is developing an advanced lightweight
+torpedo for use by U.S. surface ships, fixed-wing aircraft, and helicopters in
+anti-submarine warfare. The Navy plans to upgrade the MK-54 MOD 1
+torpedo’s guidance and control, propulsion system, and warhead to
+achieve higher speeds and maneuverability, greater depths, and increased
+lethality. The program continues to complete early system development
+activities and plans to formally get approval for development start as a
+major defense acquisition program on a yet-to-be determined date in fiscal
+year 2024.
+Source: Alion Science and Technology. | GAO-24-106831
+Estimated Cost and Quantities Current Status
+(fiscal year 2024 dollars in millions)
+The Navy tailored the major capability acquisition pathway to accelerate
+delivery of the MK 54 MOD 2 torpedo. However, since our last assessment,
+most major program milestones have been delayed by 8 to 9 months. Last year
+we reported that the program’s acquisition strategy had significant risks, in part
+due to a compressed schedule.
+According to the program office, subsystem development has taken longer than
+expected because the contractors’ delivery of the hardware needed for testing
+has been delayed. The program now expects to begin in-water tests, which are
+critical to discovering issues on torpedo programs, in late fiscal year 2024.
+Cost and quantity represent fiscal years 2019-2028.
+Program officials also reported that contractors’ estimated costs to complete
+system development and testing were significantly higher than expected. This
+Software Development as of January 2024 delayed the anticipated award of the other transaction agreement for this work
+to fiscal year 2024. The program moved the decision review to formally enter
+system development from 2023 to a to-be-determined date in 2024 because
+DOD has yet to complete its independent cost estimate.
+The program stated it is using an iterative approach for development and cited
+practices that we found leading companies employ to successfully develop and
+deliver products to users with speed. For example, according to program
+officials, the Navy deferred the high altitude and vertical launch capabilities for
+the MK 54 MOD 2 to deliver a minimally viable product faster. The program is
+also building on the Navy’s history of using a modular open systems approach
+and an architecture that supports software updates for its torpedo programs.
+We previously found that these practices helped leading companies add to or
+Program officials reported that the decrease in the frequency of enhance capabilities and keep systems relevant longer.
+testing and feedback this year was due to delays in the delivery
+of hardware for in-water testing.
+Program Office Comments
+Program Essentials
+We provided a draft of this assessment to the program office for review and
+Prime contractor: Progeny Systems Corporation;
+Northrup Grumman Corporation; Aerojet Rocketdyne; comment. According to the program office, the MK 54 MOD 2 ALWT addresses
+Raytheon Technologies a critical gap in the U.S. Navy's Anti-Submarine Warfare weapon inventory to
+Contract type: CPFF (using other transaction authority) prosecute challenging adversary submarines. The program added that to meet
+the operational need for the MK 54 MOD 2, it continues to optimize the
+development schedule and approach to field lethality upgrades as quickly as
+possible within funding constraints.
+Page 163 U.S. Government Accountability Office GAO-24-106831 Weapon Systems Annual Assessment

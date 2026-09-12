@@ -4,6 +4,23 @@
   "common_name": "B-52 CERP",
   "description_starts": "The B-52 CERP plans to support nuclear and conventional oper",
   "generated_by": "tests/oversight/wsaa_fixture_tool.py",
+  "heading_cases": [
+    {
+      "common_name": "MK 54 MOD 2 (ALWT)",
+      "file": "heading-mk54mod2alwt.txt",
+      "pdf_page": 175
+    },
+    {
+      "common_name": "DDG 51 Flight III",
+      "file": "heading-ddg51flightiii.txt",
+      "pdf_page": 163
+    },
+    {
+      "common_name": "Resilient MW/MT MEO",
+      "file": "heading-resilientmwmtmeo.txt",
+      "pdf_page": 209
+    }
+  ],
   "index_count_on_page": 14,
   "index_pdf_page": 80,
   "product_number": "GAO-24-106831",

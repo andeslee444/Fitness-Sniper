@@ -15,7 +15,7 @@ page per new edition, dumped from the cached PDFs by
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import duckdb
@@ -149,7 +149,7 @@ def test_banner_with_the_lead_component_order_parses():
 
 
 def test_a_dod_lead_component_parses_and_shares_the_joint_family():
-    """GAO-24-106831 p.213 and GAO-23-106059 p.216 lead the F-35 with
+    """GAO-24-106831 p.213 and GAO-23-106059 p.217 lead the F-35 with
     "Lead Component: DOD" — the label the 2025 volume writes as "Joint".
     Without DOD in the service alternation the F-35 assessment would be
     dropped silently; with it, the two volumes' F-35 rows chain to each
@@ -285,6 +285,22 @@ def test_predecessor_chain_and_unlinked_report_over_dict_rows():
     assert [(g["product_number"], g["common_name"]) for g in gap] == [
         ("GAO-23-106059", "CH-53K"),
     ]
+    assert G.unlinked_older_programs(rows, "GAO-25-107569") == 1
+
+
+def test_unlinked_programs_counts_a_program_once_across_two_editions():
+    """The number /methodology/ states is programs, not rows.
+
+    GAO assessed the F-35 in both older volumes and neither reaches a page;
+    that is ONE program the current edition does not carry, and two rows.
+    """
+    rows = [asdict(r) for r in G.link_predecessors([
+        _a("GAO-24-106831", 2024, "DOD", "F-35", 213),
+        _a("GAO-23-106059", 2023, "DOD", "F-35", 217),
+        _a("GAO-25-107569", 2025, "Air Force", "Sentinel", 79),
+    ])]
+    assert len(G.unlinked_older_assessments(rows, "GAO-25-107569")) == 2
+    assert G.unlinked_older_programs(rows, "GAO-25-107569") == 1
 
 
 # ── the matcher's scope ─────────────────────────────────────────────────────
@@ -349,6 +365,112 @@ def test_cached_fixture_pages_parse_with_the_edition_layout(slug):
     assert G.index_table_program_counts([index], edition.layout) == (
         manifest["index_count_on_page"]
     )
+
+
+# ── the heading rule, on the six pages that caught it out ───────────────────
+#
+# Measured 2026-09-12 over the cached volumes: the contiguous-substring rule
+# DROPPED three real assessments (the banner's common name is not a contiguous
+# run inside GAO's typeset heading) and OVER-CONSUMED three others (the rule
+# kept reading until it found the name inside GAO's first description line, so
+# program_name carried a sentence and the quote began mid-sentence).
+#
+# Every expected value below was read by eye off the committed fixture page,
+# never echoed from the parser — an echo would have pinned the defect.
+HEADING_EXPECTED = {
+    ("gao-24-106831", "MK 54 MOD 2 (ALWT)"): (
+        "MK 54 MOD 2 Advanced Lightweight Torpedo (ALWT)",
+        "The Navy's MK 54 MOD 2 program is developing an advanced lightweight",
+    ),
+    ("gao-24-106831", "DDG 51 Flight III"): (
+        "DDG 51 Arleigh Burke Class Destroyer, Flight III (DDG 51)",
+        "The Navy's DDG 51 Flight III destroyer is planned to be a "
+        "multimission ship",
+    ),
+    ("gao-24-106831", "Resilient MW/MT MEO"): (
+        "Resilient Missile Warning (MW)/Missile Tracking (MT) Medium Earth "
+        "Orbit (MEO) - Epoch 1",
+        "Resilient MW/MT MEO is a new effort by the Space Force's Space "
+        "Systems Command (SSC)",
+    ),
+    ("gao-23-106059", "MK 54 MOD 2 (ALWT)"): (
+        "MK 54 MOD 2 Advanced Lightweight Torpedo (ALWT)",
+        "The Navy's MK 54 MOD 2 program is developing an advanced lightweight",
+    ),
+    ("gao-23-106059", "B-52 CERP RVP"): (
+        "B-52 Commercial Engine Replacement Program (CERP) Rapid Virtual "
+        "Prototype (RVP)",
+        "The CERP RVP effort is expected to deliver a virtual system prototype",
+    ),
+    ("gao-23-106059", "DDG 51 Flight III"): (
+        "DDG 51 Arleigh Burke Class Destroyer, Flight III",
+        "The Navy's DDG 51 Flight III destroyer is planned to be a "
+        "multimission ship",
+    ),
+}
+
+
+@pytest.mark.parametrize("slug,common", sorted(HEADING_EXPECTED))
+def test_the_heading_stops_where_gao_stops_it(slug, common):
+    d = FIXTURES / slug
+    manifest = json.loads((d / "manifest.json").read_text())
+    case = next(
+        c for c in manifest["heading_cases"] if c["common_name"] == common
+    )
+    edition = _edition(manifest["product_number"])
+    want_name, want_desc = HEADING_EXPECTED[(slug, common)]
+    (a,) = G.parse_edition_pages([(d / case["file"]).read_text()], edition)
+    assert a.common_name == common
+    assert a.program_name == want_name
+    assert a.description.startswith(want_desc)
+    assert not G.heading_defect(a)
+
+
+def test_a_banner_page_that_parses_no_assessment_raises():
+    """The silent drop is the failure this module is built to refuse.
+
+    A page GAO banners as an Appendix I program and the parser emits nothing
+    for is a missed program, not noise: the index-row count is an upper bound
+    and cannot see it, so the banner set is diffed against the emitted set and
+    the difference is raised.
+    """
+    page = (
+        "MDAP Lead Component: Navy Common Name: MK 54 MOD 2 (ALWT)\n"
+        "MK 54 MOD 2 Advanced Lightweight Torpedo (ALWT)\n"
+        "Too short to be GAO's paragraph.\n"
+        "Page 175 GAO-24-106831 Weapon Systems Annual Assessment"
+    )
+    with pytest.raises(RuntimeError, match="MK 54 MOD 2"):
+        G.parse_edition_pages([page], _edition("GAO-24-106831"))
+
+
+def test_heading_defect_catches_a_swallowed_first_description_line():
+    """The head of the quote, guarded the way DESC_RESIDUE_RE guards its tail.
+
+    Both shapes the over-consuming rule produced: a program_name carrying a
+    sentence, and a description that starts mid-sentence.
+    """
+    good = replace(
+        _a("GAO-24-106831", 2024, "Navy", "DDG 51 Flight III", 163),
+        program_name="DDG 51 Arleigh Burke Class Destroyer, Flight III",
+        description=(
+            "The Navy's DDG 51 Flight III destroyer is planned to be a "
+            "multimission ship designed to operate against air, surface, and "
+            "underwater threats."
+        ),
+    )
+    assert G.heading_defect(good) == ""
+    prose = replace(
+        good,
+        program_name=(
+            "DDG 51 Arleigh Burke Class Destroyer, Flight III (DDG 51) The "
+            "Navy's DDG 51 Flight III destroyer is planned to be a "
+            "multimission ship"
+        ),
+    )
+    assert "sentence" in G.heading_defect(prose)
+    fragment = replace(good, description="designed to operate against air.")
+    assert "mid-sentence" in G.heading_defect(fragment)
 
 
 # ── the exporter inherits older editions under the ratified anchor ──────────
@@ -426,8 +548,13 @@ def test_exporter_inherits_older_editions_under_the_ratified_anchor(tmp_path):
     assert obj["stats"]["inherited_items"] == 2
     assert obj["stats"]["rendered_items"] == 3
     assert obj["stats"]["assessments_ingested"] == 4
+    # CH-53K: assessed in 2023 only, so no chain reaches it (the gap ¶2 states).
+    assert obj["stats"]["unlinked_older_programs"] == 1
     assert [e["edition_year"] for e in obj["source"]] == [2023, 2024, 2025]
     assert obj["source"][2]["report_title"] == "WSAA 2025"
+    # Gate 21 leg h8 reads this map instead of keeping its own copy of it.
+    assert obj["service_families"] == G._SERVICE_FAMILY
+    assert obj["service_families"]["DOD"] == obj["service_families"]["Joint"]
 
 
 def test_exporter_refuses_a_parquet_without_the_edition_stamp(tmp_path):

@@ -1,0 +1,49 @@
+Future Major Weapon Acquisition Lead Component: Navy Common Name: MK 54 MOD 2 (ALWT)
+MK 54 MOD 2 Advanced Lightweight Torpedo (ALWT)
+The Navy’s MK 54 MOD 2 program is developing an advanced lightweight
+torpedo for use by U.S. surface ships, fixed-wing aircraft, and helicopters
+in anti-submarine warfare. The Navy plans to upgrade the MK-54 MOD 1
+torpedo’s guidance and control, propulsion system, and warhead to
+achieve higher speeds and maneuverability, greater depths, and
+increased lethality. The program is currently conducting early system
+development activities and plans to formally enter system development
+as a major defense acquisition program in 2023.
+Source: Alion Science and Technology. | GAO-23-106059
+Estimated Cost and Quantities Current Status
+fiscal year 2023 dollars in millions
+The Navy is using a tailored version of the major capability acquisition pathway
+to try to accelerate delivery of the MK 54 MOD 2 torpedo. In an effort to
+shorten development, the MK 54 MOD 2 program collaborated with industry
+early on the system’s requirements and preliminary design and took advantage
+of the flexibility offered by other transaction authority (OTA) agreements. The
+Navy reported that using an existing OTA with Advanced Technology
+International, it selected four companies to develop improved guidance and
+control, warhead, propulsion systems, and a prototype torpedo. The program
+does not expect to hold a decision review to formally enter system
+Cost and quantity represent fiscal years 2019–2028. development until 2023, due to challenges associated with creating an
+independent cost estimate for a fully upgraded torpedo.
+Software Development as of January 2023 The Navy’s acquisition strategy has significant risks. The program started system
+development before technology maturation was complete. Our prior work
+shows that programs increase the risk of costly rework when they proceed with
+system development without fully mature technologies. The Navy also
+completed an independent assessment in June 2022 that noted the program’s
+planned schedule was shorter than prior torpedo upgrades, which were more
+limited in scope. A compressed schedule makes addressing technical risks more
+challenging and delays in delivering capability more likely.
+Nevertheless, the program incorporated several leading industry practices for
+iterative product development. For example, according to program officials, the
+program deferred the high-altitude and vertical launch capabilities for the MK
+54 MOD 2 until after initial operating capability to deliver a minimally viable
+product faster, and plans to begin work on this requirement in fiscal year 2024.
+Program Essentials
+Prime contractors: Progeny Systems Corporation,
+Program Office Comments
+Northrup Grumman Corporation, Aerojet Rocketdyne,
+Raytheon Technologies We provided a draft of this assessment to the program office for review and
+Contract type: CPFF (using other transaction authority) comment. The program office provided technical comments, which we
+incorporated where appropriate. According to the program office, the MK 54
+Mod 2 is intended to address a capability gap in countering adversary
+submarine targets and near-peer threats. The program office stated that it is
+executing a compressed development schedule to meet operational needs
+while maintaining focus on fielding capabilities on time and within cost targets.
+Page 172 U.S. Government Accountability Office GAO-23-106059 Weapon Systems Annual Assessment

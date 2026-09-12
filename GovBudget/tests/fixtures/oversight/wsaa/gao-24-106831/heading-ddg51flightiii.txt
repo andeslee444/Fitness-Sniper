@@ -1,0 +1,53 @@
+MDAP Increment Lead Component: Navy Common Name: DDG 51 Flight III
+DDG 51 Arleigh Burke Class Destroyer, Flight III (DDG 51)
+The Navy’s DDG 51 Flight III destroyer is planned to be a multimission ship
+designed to operate against air, surface, and underwater threats.
+Compared with existing Flight IIA ships of the same class, the Navy expects
+Flight III ships to provide the fleet with enhanced ballistic missile and air
+defense capability. Flight III’s changes include replacing the current SPY-
+1D(V) radar with the Air and Missile Defense Radar program’s AN/SPY-
+6(V)1 radar and upgrading the destroyer’s Aegis combat system. As with
+prior ships in the class, Flight III ships are being built by two different
+shipyards—in Bath, Maine, and Pascagoula, Mississippi.
+Source: U. S. Navy. | GAO-24-106831
+Estimated Cost and Quantities Current Status
+(fiscal year 2024 dollars in millions)
+Since last year’s assessment, the Navy completed the acceptance trial for the
+lead Flight III ship—DDG 125—and took delivery of the ship in June 2023 as
+planned. The program experienced cost growth for the first two Flight III ships,
+with the program office stating that it requested an additional $290 million for
+fiscal years 2023 and 2024 to cover the government’s portion of cost overruns
+for certain contracts. The program office stated that issues at both shipyards
+with hiring, retention, and workforce experience—and the associated
+construction inefficiencies—contributed to the cost growth.
+Cost reflects 27 Flight III ships bought or planned from fiscal Shipyard performance is also significantly hindering the schedule for follow-on
+years 2017-2028.
+ships. The program office estimates delivery delays ranging from 6 to 25 months
+Software Development as of January 2024 for the 13 follow-on ships purchased during fiscal years 2017-2022. The Navy
+awarded new contracts to both shipbuilders in August 2023 that support
+procurement of nine more DDG 51 Flight III ships, with options for additional
+ships in fiscal years 2023 through 2027. Further delivery delays could have
+significant consequences for the Navy’s efforts to counter current and future air
+and surface threats.
+The program office stated that it plans to complete Flight III initial operational
+test and evaluation by fiscal year 2028. The plan’s first test period focuses on
+ballistic missile defense, surface warfare, and initial integrated air and missile
+defense events. The program office expects the results from this test period to
+inform an initial operational capability determination for Flight III planned for
+August 2024. The program office also noted risk to achieving initial operational
+capability as scheduled because of all the test events planned to be
+accomplished in what the program considers a compressed timeline.
+Program Essentials
+Prime contractors: General Dynamics-Bath Iron Works; Program Office Comments
+Huntington Ingalls Industries
+We provided a draft of this assessment for program office review and comment.
+Contract type: FPI (construction)
+The program office provided technical comments, which we incorporated
+where appropriate. The program office stated that the DDG 51 program is one
+of the Navy’s longest-running production lines and has delivered 73 ships to the
+fleet. The program office also stated that, of the 26 Arleigh Burke class ships
+under contract, 12 ships are in various stages of production and the rest are in
+pre-construction activities. The program office added that, in addition to
+progressing toward delivery of the final few Flight IIA ships, the program is
+making significant progress in testing the first Flight III ship.
+Page 151 U.S. Government Accountability Office GAO-24-106831 Weapon Systems Annual Assessment

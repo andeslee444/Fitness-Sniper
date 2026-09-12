@@ -1,0 +1,38 @@
+MTA Lead Component: Air Force Common Name: B-52 CERP RVP
+B-52 Commercial Engine Replacement Program (CERP)
+Rapid Virtual Prototype (RVP)
+The CERP RVP effort is expected to deliver a virtual system prototype to
+reduce risk and inform the Air Force’s overall B-52 CERP. The B-52 CERP
+plans to support nuclear and conventional operations by replacing the
+aircraft’s engine with military-configured commercial engines. Along with
+the new engines, the B-52 CERP will replace associated subsystems, such
+as engine struts, the electrical power generation system, and cockpit
+displays for the B-52H fleet.
+Source: U. S. Air Force. GAO-23-106059
+Estimated Middle Tier of Acquisition Cost and Quantities fiscal year 2023 dollars in millions
+Quantity refers to the one virtual prototype the program is acquiring under the MTA effort.
+aGAO-22-105230
+Program Background and Transition Plan
+Since 2018, the program office worked with Boeing to conduct risk reduction requirements studies and deliver virtual
+prototypes. In 2021, Rolls Royce was selected to work with Boeing to integrate its engine into the virtual system prototype
+design. Initial capability for CERP RVP (increment 1) was delivered in September 2021, and the full capability (increment 2) is
+expected to be delivered in November 2023. The program plans to transition to the major capability acquisition pathway with
+entry at system development in late fiscal year 2023.
+Software Development as of January 2023 Attainment of Business Case Knowledge as of January 2023
+Key Elements of a Business Case Status at Initiation Current Status
+Approved requirements document ● ●
+Approved middle tier of acquisition strategy ● ●
+Formal technology risk assessment ● ●
+Cost estimate based on independent assessment ● ●
+Formal schedule risk assessment ● ●
+● Knowledge attained ○ Knowledge not attained … Information not available NA - Not applicable
+The program reported that end user feedback and tracking of
+software deliveries will occur after the program transitions to
+the major capability acquisition pathway. The program
+reported software costs for the total B-52 CERP program to be
+$101 million, which includes costs beyond the MTA rapid virtual
+prototyping effort.
+Program Essentials
+Prime contractors: Boeing: Rolls Royce
+Contract type: CPIF, FFP
+Page 101 U.S. Government Accountability Office GAO-23-106059 Weapon Systems Annual Assessment
