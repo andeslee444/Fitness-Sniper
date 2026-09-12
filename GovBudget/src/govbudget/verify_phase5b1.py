@@ -16,6 +16,13 @@ Gates (CLI: verify-phase5b1):
                             Wayback archive_url naming the same article, sha256
                             64-hex and agreeing with query_body, no
                             recorded_value (ROADMAP #71)
+                          - subaward: anchored USAspending award-page URL
+                            (the prime award; USAspending has no subaward
+                            page), query_body {match_basis, subaward_number,
+                            subawardee} with a non-empty number and a basis
+                            the loader emits, formula naming
+                            method='subaward+lexicon', no figure fields
+                            (ROADMAP #84)
                           PASS iff 100% of sampled citations pass AND at least
                           one citation was sampled AND every fact_id present
                           in BOTH budget_lines.parquet and
@@ -230,6 +237,8 @@ def citation_gate5b1(
             reason = _verify_jbook_narrative(row, col_idx)
         elif kind == "announcement":
             reason = _verify_announcement(row, col_idx)
+        elif kind == "subaward":
+            reason = _verify_subaward(row, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -1018,6 +1027,86 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
     return None
 
 
+# Anchored URL shape for kind='subaward'. The FSRS record's usaspending_permalink
+# is the PRIME award page — USAspending publishes no subaward-level page — and
+# every key in the corpus is upper-case [A-Z0-9_-] (CONT_AWD_…, CONT_IDV_…); all
+# 112 published permalinks fullmatch this pattern (measured 2026-09-10).
+_SUBAWARD_URL_RE = re.compile(
+    r"https://www\.usaspending\.gov/award/(?P<key>[A-Z0-9_\-]+)/"
+)
+# The only basis scripts/load_announcement_links.py emits for this kind. A new
+# basis must be added here deliberately (and phrased on the card), never
+# accepted by default.
+_SUBAWARD_MATCH_BASES = frozenset({"subaward-description-exact"})
+# site/scripts/gates/datatruth.mjs::publishedLinkMethods reads the published
+# method set from this token; a subaward row that lost it would drop
+# 'subaward+lexicon' out of the published universe and fail leg n on the
+# /methodology/ subaward figure.
+_SUBAWARD_FORMULA_TOKEN = "method='subaward+lexicon'"
+
+
+def _verify_subaward(row: tuple, idx: dict) -> str | None:
+    """Verify a subaward citation (shape-only, no network) — ROADMAP #84.
+
+    kind='subaward' cites the FSRS subaward record behind a
+    'subaward+lexicon' crosswalk link. The cited fact is the LINK, so there
+    is no recorded value and no dollar amount; the durable artifacts are the
+    prime award's USAspending page and the record identity in query_body.
+
+    Rules (docstring and code list the SAME fields — the #87 lesson):
+    1. official_url fullmatches https://www.usaspending.gov/award/{KEY}/.
+    2. query_body is a JSON object with a non-empty string subaward_number;
+       subawardee is a non-empty string or null (absence is honest, a blank
+       is not).
+    3. match_basis is one of _SUBAWARD_MATCH_BASES.
+    4. formula is non-empty and contains method='subaward+lexicon'.
+    5. recorded_value, sha256, amount_text, amount_thousands are all null.
+    """
+    official_url = row[idx["official_url"]] if "official_url" in idx else None
+    query_body = row[idx["query_body"]] if "query_body" in idx else None
+    formula = row[idx["formula"]] if "formula" in idx else None
+
+    if not official_url:
+        return "subaward: official_url is null or empty"
+    if not _SUBAWARD_URL_RE.fullmatch(str(official_url)):
+        return (f"subaward: official_url is not a USAspending award page"
+                f" (https://www.usaspending.gov/award/<KEY>/): {official_url!r}")
+
+    if not query_body:
+        return "subaward: query_body is null or empty"
+    try:
+        body = json.loads(query_body)
+    except (TypeError, ValueError):
+        return f"subaward: query_body is not valid JSON: {query_body!r}"
+    if not isinstance(body, dict):
+        return f"subaward: query_body is not a JSON object: {query_body!r}"
+
+    number = body.get("subaward_number")
+    if not isinstance(number, str) or not number.strip():
+        return "subaward: query_body carries no subaward_number"
+    subawardee = body.get("subawardee")
+    if subawardee is not None and (
+            not isinstance(subawardee, str) or not subawardee.strip()):
+        return (f"subaward: query_body subawardee must be a non-empty string"
+                f" or null: {subawardee!r}")
+    basis = body.get("match_basis")
+    if basis not in _SUBAWARD_MATCH_BASES:
+        return (f"subaward: match_basis {basis!r} is not a basis the subaward"
+                f" loader emits ({sorted(_SUBAWARD_MATCH_BASES)})")
+
+    if not formula or _SUBAWARD_FORMULA_TOKEN not in str(formula):
+        return (f"subaward: formula does not state {_SUBAWARD_FORMULA_TOKEN}"
+                f" (site gate leg n reads the published method set from it):"
+                f" {formula!r}")
+
+    for col in ("recorded_value", "sha256", "amount_text", "amount_thousands"):
+        if col in idx and row[idx[col]] is not None:
+            return (f"subaward: {col} must be null (the cited fact is the"
+                    f" link, not a figure): {row[idx[col]]!r}")
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gate 4: narrative_gate5b1 — narrative provenance re-derivation (Phase 5F §2b)
 # ---------------------------------------------------------------------------
@@ -1417,7 +1506,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
     for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending",
-                 "state_soql", "state_file", "jbook_narrative", "announcement"):
+                 "state_soql", "state_file", "jbook_narrative", "announcement",
+                 "subaward"):
         con = duckdb.connect()
         try:
             row = con.execute(

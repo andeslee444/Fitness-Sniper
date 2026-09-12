@@ -1771,7 +1771,8 @@ export type CitationKind =
   | "state_soql"
   | "state_file"
   | "jbook_narrative"
-  | "announcement";
+  | "announcement"
+  | "subaward";
 
 export interface CitationBase {
   kind: CitationKind;
@@ -2014,6 +2015,40 @@ export interface AnnouncementCitation
   sha256: string | null;
 }
 
+/**
+ * subaward — the FSRS subaward record behind a 'subaward+lexicon'
+ * budget→award crosswalk link (ROADMAP #84).
+ *
+ * official_url is the PRIME award's USAspending page: USAspending publishes
+ * no page for an individual subaward, and the record's own permalink column
+ * points at the prime, whose Subawards tab lists it. query_body is a JSON
+ * string {match_basis, subaward_number, subawardee} — exactly those keys.
+ *
+ * match_basis is 'subaward-description-exact' for every published row (the
+ * only basis the loader emits for this kind), or null when a packet recorded
+ * none; the card states it in words.
+ *
+ * formula is the link's provenance sentence (crosswalk method + confidence
+ * tier), carried over from the derived row this citation replaces. The
+ * evidence is one hop removed from the award — a subcontractor's description
+ * of its work — which is why the tier publishes at medium.
+ *
+ * recorded_value is null: the cited fact is the LINK itself, not a figure.
+ * Nothing was archived, so sha256 is null too (NonDocumentCitationFields).
+ */
+export interface SubawardCitation
+  extends CitationBase,
+    NonDocumentCitationFields {
+  kind: "subaward";
+  official_url: string;
+  query_body: string;
+  recorded_value: null;
+  /** The crosswalk method + confidence tier; null on rows exported before the
+   *  formula was carried across. */
+  formula: string | null;
+  inputs: null;
+}
+
 export type Citation =
   | JbookPdfCitation
   | WorkbookCitation
@@ -2023,7 +2058,8 @@ export type Citation =
   | StateSoqlCitation
   | StateFileCitation
   | JbookNarrativeCitation
-  | AnnouncementCitation;
+  | AnnouncementCitation
+  | SubawardCitation;
 
 export type CitationsMap = Record<string, Citation>;
 

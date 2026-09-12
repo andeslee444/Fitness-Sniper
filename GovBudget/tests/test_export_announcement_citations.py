@@ -8,10 +8,11 @@ the article URL, the Wayback snapshot of the archived copy, and that copy's
 sha256.
 
 Scope rulings pinned here:
-  - ONLY `announcement+lexicon` links flip. `subaward+lexicon` links are one
-    hop removed (an FSRS sub's description, not a defense.gov article), so
-    they keep the generic derived row — an announcement card claiming
-    "Official DoD contract announcement" would be false for them.
+  - `announcement+lexicon` links flip to kind='announcement'. `subaward+lexicon`
+    links are one hop removed (an FSRS sub's description, not a defense.gov
+    article) and mint their OWN kind='subaward' since ROADMAP #84
+    (tests/test_export_subaward_citations.py) — never an announcement card.
+    Mechanical links keep the generic derived row.
   - Fact-id minting is untouched: the announcement rows mint the same fact_ids
     the derived rows did, so every program-page `data-fact-id` resolves
     exactly as before.
@@ -171,6 +172,26 @@ _LINK_SOURCES = {
     },
 }
 
+# ROADMAP #84: the fixture mart carries one subaward+lexicon link, which now
+# needs its source row and lake row too or the build raises (by design).
+_SUB_KW = {
+    "subaward_sources": {
+        ("N6833517C0392", "0605502N"): {
+            "source_id": "000000821",
+            "match_basis": "subaward-description-exact",
+        },
+    },
+    "subaward_lake": {
+        ("N6833517C0392", "000000821"): {
+            "subawardee": "INTERNATIONAL COMPUTER SCIENCE INSTITUTE",
+            "permalink": "https://www.usaspending.gov/award/"
+                         "CONT_AWD_N6833517C0392_9700_-NONE-_-NONE-/",
+            "prime_award_unique_key":
+                "CONT_AWD_N6833517C0392_9700_-NONE-_-NONE-",
+        },
+    },
+}
+
 _ANN_FID = fact_id_derived("budget_to_awards", "0601101E|HR001124C0001", "link")
 _SUB_FID = fact_id_derived("budget_to_awards", "0605502N|N6833517C0392", "link")
 _ACC_FID = fact_id_derived("budget_to_awards", "0602303E|W911NF24C0002", "link")
@@ -179,7 +200,7 @@ _ACC_FID = fact_id_derived("budget_to_awards", "0602303E|W911NF24C0002", "link")
 def test_announcement_link_gets_announcement_row(tmp_path):
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
-        link_sources=_LINK_SOURCES,
+        link_sources=_LINK_SOURCES, **_SUB_KW,
     )
     by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
     ann = by_fid[_ANN_FID]
@@ -193,7 +214,7 @@ def test_announcement_row_carries_the_match_basis_and_the_link_formula(tmp_path)
     """The card can only be honest if both reach it (fix round 1)."""
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
-        link_sources=_LINK_SOURCES,
+        link_sources=_LINK_SOURCES, **_SUB_KW,
     )
     ann = next(r for r in rows if r[_CIT_IDX["fact_id"]] == _ANN_FID)
     assert json.loads(ann[_CIT_IDX["query_body"]])["match_basis"] == "llm-alias"
@@ -211,23 +232,28 @@ def test_announcement_row_records_no_basis_when_the_source_row_has_none(tmp_path
             "source_id": "1006508", "source_url": _ARTICLE_URL,
             "archive_url": None, "sha256": None, "match_basis": None,
         }},
+        **_SUB_KW,
     )
     ann = next(r for r in rows if r[_CIT_IDX["fact_id"]] == _ANN_FID)
     assert json.loads(ann[_CIT_IDX["query_body"]])["match_basis"] is None
 
 
-def test_subaward_and_mechanical_links_keep_the_derived_row(tmp_path):
-    """Ruling: only announcement+lexicon flips — the card says 'defense.gov'."""
+def test_mechanical_links_keep_the_derived_row_and_subaward_links_do_not(tmp_path):
+    """Ruling (ROADMAP #84 supersedes #71's): subaward links get their own
+    kind; only mechanical links keep the derived row."""
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
-        link_sources=_LINK_SOURCES,
+        link_sources=_LINK_SOURCES, **_SUB_KW,
     )
     by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
-    assert by_fid[_SUB_FID][_CIT_IDX["kind"]] == "derived"
+    assert by_fid[_SUB_FID][_CIT_IDX["kind"]] == "subaward"
     assert by_fid[_ACC_FID][_CIT_IDX["kind"]] == "derived"
-    # the derived rows are untouched: formula + recorded confidence intact
-    assert by_fid[_SUB_FID][_CIT_IDX["recorded_value"]] == "medium"
-    assert "subaward+lexicon" in by_fid[_SUB_FID][_CIT_IDX["formula"]]
+    # the derived row is untouched: formula + recorded confidence intact
+    assert by_fid[_ACC_FID][_CIT_IDX["recorded_value"]] == "high"
+    assert "account+tokens" in by_fid[_ACC_FID][_CIT_IDX["formula"]]
+    # and the subaward row is never an announcement card
+    assert by_fid[_SUB_FID][_CIT_IDX["official_url"]].startswith(
+        "https://www.usaspending.gov/award/")
 
 
 def test_fact_ids_are_the_derived_ids_the_program_pages_already_reference(tmp_path):
@@ -238,7 +264,7 @@ def test_fact_ids_are_the_derived_ids_the_program_pages_already_reference(tmp_pa
     """
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
-        link_sources=_LINK_SOURCES,
+        link_sources=_LINK_SOURCES, **_SUB_KW,
     )
     assert {r[_CIT_IDX["fact_id"]] for r in rows} == {
         _ANN_FID, _SUB_FID, _ACC_FID}

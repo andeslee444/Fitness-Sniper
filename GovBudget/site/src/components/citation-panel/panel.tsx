@@ -58,6 +58,7 @@ import {
   isStateFile,
   isJbookNarrative,
   isAnnouncement,
+  isSubaward,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { SITE_URL } from "@/lib/site";
@@ -76,6 +77,7 @@ import { UsaspendingCard } from "./usaspending-card";
 import { StateCard } from "./state-card";
 import { JbookNarrativeCard } from "./jbook-narrative-card";
 import { AnnouncementCard, type AnnouncementBody } from "./announcement-card";
+import { SubawardCard, type SubawardBody } from "./subaward-card";
 
 // ── CitationPanelProvider ─────────────────────────────────────────────────────
 
@@ -333,6 +335,8 @@ function kindLabel(citation: Citation): string {
       return "J-book Narrative";
     case "announcement":
       return "DoD Contract Announcement";
+    case "subaward":
+      return "FSRS Subaward Record";
   }
 }
 
@@ -355,6 +359,8 @@ function kindBadgeClass(citation: Citation): string {
       return "bg-amber-100 text-amber-800";
     case "announcement":
       return "bg-rose-100 text-rose-800";
+    case "subaward":
+      return "bg-indigo-100 text-indigo-800";
   }
 }
 
@@ -602,6 +608,36 @@ export function parseAnnouncementBody(raw: string | null): AnnouncementBody | nu
   }
 }
 
+/** Parse a subaward citation's query_body; null when it is unusable.
+ *
+ *  Exported for src/__tests__/subaward-card.test.tsx: `null` makes the panel
+ *  render "This subaward citation could not be read." instead of a card with
+ *  a blank subaward number (ROADMAP #84). */
+export function parseSubawardBody(raw: string | null): SubawardBody | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SubawardBody> | null;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      typeof parsed.subaward_number !== "string" ||
+      !parsed.subaward_number.trim()
+    ) {
+      return null;
+    }
+    return {
+      subaward_number: parsed.subaward_number,
+      subawardee:
+        typeof parsed.subawardee === "string" ? parsed.subawardee : null,
+      // Absent basis stays absent: the card says "basis not recorded".
+      match_basis: parsed.match_basis ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── CitationBody — dispatches to the right card ────────────────────────────
 
 function CitationBody({
@@ -651,6 +687,23 @@ function CitationBody({
     }
     return (
       <AnnouncementCard
+        url={citation.official_url}
+        body={body}
+        formula={citation.formula}
+      />
+    );
+  }
+  if (isSubaward(citation)) {
+    const body = parseSubawardBody(citation.query_body);
+    if (!body) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          This subaward citation could not be read.
+        </p>
+      );
+    }
+    return (
+      <SubawardCard
         url={citation.official_url}
         body={body}
         formula={citation.formula}

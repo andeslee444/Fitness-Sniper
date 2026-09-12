@@ -232,6 +232,7 @@ const KIND_LABELS: Record<string, string> = {
   state_file: "State Source File",
   jbook_narrative: "J-book Narrative",
   announcement: "Official DoD contract announcement",
+  subaward: "FSRS subaward record via USAspending",
 };
 
 /** Human labels for the core measure tokens in the semantic header. */

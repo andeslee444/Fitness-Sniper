@@ -10,6 +10,9 @@
  * announcement — official_url (defense.gov article), query_body
  *              ({article_id, archive_url, match_basis, sha256}), sha256 of the
  *              archived copy, formula (the link's method + confidence tier)
+ * subaward   — official_url (the PRIME award's USAspending page — no subaward
+ *              page exists), query_body ({match_basis, subaward_number,
+ *              subawardee}), formula (the link's method + confidence tier)
  *
  * Zero-amount jbook facts (1,004): NO citations row — the fact_id+xml_path
  * live in jbook_details rows with resolution='zero_amount'. These render as
@@ -43,6 +46,7 @@ export type {
   StateFileCitation,
   JbookNarrativeCitation,
   AnnouncementCitation,
+  SubawardCitation,
 } from "@/lib/data";
 
 // ── Type guards (defined here so client components can import them
@@ -59,6 +63,7 @@ import type {
   StateFileCitation,
   JbookNarrativeCitation,
   AnnouncementCitation,
+  SubawardCitation,
 } from "@/lib/data";
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {
@@ -95,6 +100,10 @@ export function isJbookNarrative(c: Citation): c is JbookNarrativeCitation {
 
 export function isAnnouncement(c: Citation): c is AnnouncementCitation {
   return c.kind === "announcement";
+}
+
+export function isSubaward(c: Citation): c is SubawardCitation {
+  return c.kind === "subaward";
 }
 
 // ── PDF-page renderable citations (Phase 5F §2b) ─────────────────────────────

@@ -2223,9 +2223,19 @@ def export_site(
     # link_sources (migration 012) flips announcement-derived links to
     # kind='announcement' — the defense.gov article, its Wayback snapshot and
     # that copy's sha256 — instead of a derived row restating the method.
+    # subaward_sources + subaward_lake (ROADMAP #84) do the same for
+    # subaward-derived links: the FSRS record's number and basis from
+    # Postgres, its subawardee and the prime award's USAspending page from
+    # data/parquet/subawards.
+    sub_sources = _load_subaward_link_sources(dsn)
     b2a_rows = _build_budget_to_awards_citation_rows(
         duckdb_path=duckdb_path, bl_rows=bl_rows,
         link_sources=_load_award_link_sources(dsn),
+        subaward_sources=sub_sources,
+        subaward_lake=_load_subaward_lake_rows(
+            duckdb_path,
+            {(piid, str(s["source_id"])) for (piid, _pe), s in sub_sources.items()},
+        ),
     )
     citation_rows.extend(b2a_rows)
 
@@ -6901,9 +6911,10 @@ def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
     rows with no error. export_site already reads Postgres directly for
     narrative/provenance-page facts, so this is the same door.
 
-    Only source_kind='announcement' is loaded: subaward links keep the generic
-    derived row (an "official DoD contract announcement" card would be false
-    for an FSRS sub's description), so their rows are provenance-only here.
+    Only source_kind='announcement' is loaded here. Subaward rows are read by
+    _load_subaward_link_sources (ROADMAP #84), keyed the same way; their
+    citation needs the subawards LAKE as well (subawardee + the prime award's
+    USAspending page), which _load_subaward_lake_rows supplies.
 
     RAISES on failure, deliberately (fix round 1). This read used to swallow
     every exception and return {} — a dead DB, a pre-012 schema, a truncated
@@ -6967,9 +6978,178 @@ def _index_award_link_sources(rows) -> dict[tuple[str, str], dict]:
     return out
 
 
+def _index_subaward_sources(rows) -> dict[tuple[str, str], dict]:
+    """(award_piid, pe_bli) → {source_id, match_basis} from subaward source rows.
+
+    `rows` are (award_piid, pe_bli, source_id, match_basis) in the SELECT
+    order _load_subaward_link_sources uses.
+
+    Split out so the one rule it enforces is testable without Postgres: a link
+    with TWO subaward source rows RAISES. The primary key (award_piid, pe_bli,
+    source_kind, source_id) admits that state (zero rows today), but a
+    kind='subaward' citation names ONE FSRS record — carrying a second is a
+    schema change (a list in query_body, a card that renders it), not a silent
+    lowest-id pick. Same rule, same reason, as the announcement source map's
+    (ROADMAP #87): a citation that names one piece of evidence must never be a
+    coin-flip between two.
+    """
+    out: dict[tuple[str, str], dict] = {}
+    for piid, pe, source_id, match_basis in rows:
+        key = (piid, pe)
+        if key in out:
+            raise RuntimeError(
+                f"award_link_sources holds two subaward rows for link"
+                f" (award_piid, pe_bli)={key}: {out[key]['source_id']!r} and"
+                f" {source_id!r}. A kind='subaward' citation names ONE record;"
+                " carrying two needs a query_body/card change, not a silent"
+                " choice (ROADMAP #84)."
+            )
+        out[key] = {"source_id": source_id, "match_basis": match_basis}
+    return out
+
+
+def _load_subaward_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
+    """(award_piid, pe_bli) → subaward source row, from Postgres (ROADMAP #84).
+
+    Same door as _load_award_link_sources (straight from Postgres, not via
+    the lake), same loudness (unguarded — a dead DB or a pre-012 schema
+    raises, because a silent {} would export every subaward link as the old
+    generic derived row and look correct). source_url/archive_url/sha256 are
+    NULL on every subaward row by construction (the loader records "no
+    canonical public URL for an FSRS subaward record" — still true: the prime
+    award page is not the record's page), so only source_id (the subaward
+    number) and match_basis are read; the citation's URL and subawardee come
+    from the lake.
+    """
+    import psycopg
+
+    with psycopg.connect(dsn) as pg:
+        rows = pg.execute(
+            "select award_piid, pe_bli, source_id, match_basis"
+            " from award_link_sources where source_kind = 'subaward'"
+            " order by award_piid, pe_bli, source_id"
+        ).fetchall()
+    return _index_subaward_sources(rows)
+
+
+def _lake_parquet_dir(duckdb_path, stage: str) -> Path | None:
+    """Resolve a hive-partitioned lake directory (data/parquet/{stage}).
+
+    Directory twin of _stage_parquet_path, same three layouts in the same
+    order:
+      1. {duckdb_dir}/parquet/{stage}            (test fixtures)
+      2. {duckdb_dir}/../parquet/{stage}         (live: data/duckdb + data/parquet)
+      3. {duckdb_dir}/../data/parquet/{stage}    (legacy fallback)
+    Returns the first existing directory, or None.
+    """
+    base = Path(duckdb_path).parent
+    for c in (base / "parquet" / stage,
+              base.parent / "parquet" / stage,
+              base.parent / "data" / "parquet" / stage):
+        if c.is_dir():
+            return c
+    return None
+
+
+_USASPENDING_AWARD_URL = "https://www.usaspending.gov/award/{key}/"
+
+
+def _load_subaward_lake_rows(
+    duckdb_path, keys: set[tuple[str, str]],
+) -> dict[tuple[str, str], dict]:
+    """(prime_award_piid, subaward_number) → the FSRS record's public identity.
+
+    Reads data/parquet/subawards the way dbt's `lake.subawards` source does
+    (hive_partitioning + union_by_name — the contract and assistance files
+    have DIFFERENT schemas: prime_award_piid vs prime_award_fain; a read that
+    projects prime_award_piid without union_by_name fails with "schema
+    mismatch in glob"). Only the requested keys are returned; nothing is
+    fabricated for a key the lake does not hold.
+
+    Per key: subawardee (subawardee_name), permalink, prime_award_unique_key.
+    USAspending publishes no page for an individual subaward: the record's
+    own usaspending_permalink column points at the PRIME award page, whose
+    Subawards tab lists the record (true of all 112 records behind the 113
+    links at 2026-09-10, and each permalink's key equals
+    prime_award_unique_key). When the column is blank the same URL is built
+    from prime_award_unique_key; when both are absent permalink is None and
+    the caller raises.
+
+    Monthly FSRS re-reports put up to 25 rows behind one key. Name, permalink
+    and key are single-valued today; the pick is deterministic regardless:
+    latest subaward_action_date, then latest report modification, then
+    permalink, then name.
+
+    Returns {} when the lake directory does not exist (degenerate/test
+    exports) — the caller's missing-row check then fails any subaward link,
+    which is the right outcome for a real export.
+    """
+    import duckdb as _duckdb
+
+    if not keys:
+        return {}
+    lake = _lake_parquet_dir(duckdb_path, "subawards")
+    if lake is None:
+        return {}
+    glob = str(lake / "*" / "*.parquet").replace("'", "''")
+    con = _duckdb.connect()
+    try:
+        con.execute(
+            "create temp table _sub_keys"
+            " (prime_award_piid varchar, subaward_number varchar)")
+        con.executemany("insert into _sub_keys values (?, ?)", sorted(keys))
+        rows = con.execute(
+            f"""
+            with lake as (
+              select prime_award_piid, subaward_number, subawardee_name,
+                     prime_award_unique_key, usaspending_permalink,
+                     subaward_action_date,
+                     subaward_sam_report_last_modified_date
+              from read_parquet('{glob}', hive_partitioning=true,
+                                union_by_name=true)
+              where prime_award_piid is not null
+                and subaward_number is not null
+            ),
+            hit as (
+              select l.*
+              from lake l
+              join _sub_keys k
+                on k.prime_award_piid = l.prime_award_piid
+               and k.subaward_number = l.subaward_number
+            )
+            select prime_award_piid, subaward_number, subawardee_name,
+                   prime_award_unique_key, usaspending_permalink
+            from hit
+            qualify row_number() over (
+              partition by prime_award_piid, subaward_number
+              order by try_cast(subaward_action_date as date) desc nulls last,
+                       subaward_sam_report_last_modified_date desc nulls last,
+                       usaspending_permalink, subawardee_name
+            ) = 1
+            order by prime_award_piid, subaward_number
+            """
+        ).fetchall()
+    finally:
+        con.close()
+
+    out: dict[tuple[str, str], dict] = {}
+    for piid, number, name, prime_key, permalink in rows:
+        prime_key = (prime_key or "").strip() or None
+        url = (permalink or "").strip() or (
+            _USASPENDING_AWARD_URL.format(key=prime_key) if prime_key else None)
+        out[(piid, number)] = {
+            "subawardee": (name or "").strip() or None,
+            "permalink": url,
+            "prime_award_unique_key": prime_key,
+        }
+    return out
+
+
 def _build_budget_to_awards_citation_rows(
     *, duckdb_path, bl_rows: list,
     link_sources: dict[tuple[str, str], dict] | None = None,
+    subaward_sources: dict[tuple[str, str], dict] | None = None,
+    subaward_lake: dict[tuple[str, str], dict] | None = None,
 ) -> list[tuple]:
     """Build citation rows for fct_budget_to_awards link rows.
 
@@ -6982,9 +7162,22 @@ def _build_budget_to_awards_citation_rows(
     IS the evidence, and a reader clicking that receipt should land on it, not
     on a formula restating the method name. It keeps the derived row's formula
     (so the card can still state the link's method and confidence tier) and
-    adds the source row's match_basis, which the card renders in words. Every
-    other method (including 'subaward+lexicon', whose evidence is an FSRS
-    sub's description rather than a DoD announcement) keeps the derived row.
+    adds the source row's match_basis, which the card renders in words.
+
+    Subaward tier (ROADMAP #84): a link published via
+    method='subaward+lexicon' mints kind='subaward' — the FSRS record whose
+    description named the program: its subaward number and match_basis from
+    award_link_sources (subaward_sources), its subawardee and the prime
+    award's USAspending page from the subawards lake (subaward_lake, keyed
+    (prime_award_piid, subaward_number)). USAspending has no subaward-level
+    page, so official_url is the prime award page that lists the record. The
+    formula sentence is kept on the row for the same reason as the
+    announcement tier (and because site gate 24 leg n reads the published
+    method set from it). Every other method keeps the derived row.
+
+    RAISES, likewise, when a 'subaward+lexicon' link has no source row, or
+    its source row names a subaward the lake does not hold, or the lake row
+    yields no URL — a fabricated or generic citation is never minted.
 
     RAISES when the mart holds an 'announcement+lexicon' link with no usable
     source row (fix round 1). Falling back to the derived row for those links
@@ -7099,6 +7292,47 @@ def _build_budget_to_awards_citation_rows(
             " citation rows, and the export would look correct (ROADMAP #71)."
         )
 
+    # ROADMAP #84: the same loud failure for subaward links. Two stores again
+    # (Postgres source rows; the subawards LAKE for the record's identity),
+    # so three distinct causes are named.
+    sub_sources = subaward_sources or {}
+    sub_lake = subaward_lake or {}
+    sub_missing: set[tuple[str, str, str]] = set()
+    for pe, piid, _org, mth, _conf, _acct in link_rows:
+        if mth != "subaward+lexicon" or not pe or not piid:
+            continue
+        src = sub_sources.get((piid, pe)) or {}
+        number = str(src.get("source_id") or "").strip()
+        if not number:
+            sub_missing.add((piid, pe, "no award_link_sources subaward row"))
+            continue
+        lake = sub_lake.get((piid, number)) or {}
+        if not lake:
+            sub_missing.add((piid, pe, f"subaward {number!r} not in the lake"))
+        elif not lake.get("permalink"):
+            sub_missing.add((piid, pe, f"subaward {number!r} has no USAspending URL"))
+    if sub_missing:
+        listed = sorted(sub_missing)
+        raise RuntimeError(
+            f"{len(listed)} 'subaward+lexicon' link(s) in the DuckDB mart"
+            " (fct_budget_to_awards) cannot be cited"
+            f" (e.g. {listed[:3]}). Causes, by message:\n"
+            "  'no award_link_sources subaward row' — the mart is STALE against"
+            " Postgres, or the loader never ran / the schema predates"
+            " migration 012. Fix: govbudget migrate && uv run python"
+            " scripts/load_announcement_links.py <every wave result>, then"
+            " govbudget jbooks export-facts && govbudget build, then export.\n"
+            "  'not in the lake' — data/parquet/subawards lacks the"
+            " (prime_award_piid, subaward_number) the loader matched on."
+            " Fix: govbudget sync-subawards (the lake must hold the record"
+            " the link rests on), then export.\n"
+            "  'has no USAspending URL' — the lake row carries neither"
+            " usaspending_permalink nor prime_award_unique_key; nothing"
+            " honest to cite.\n"
+            "Not raising would silently revert these links to generic derived"
+            " citation rows, and the export would look correct (ROADMAP #84)."
+        )
+
     # Budget-side inputs: (pe_bli, workbook org) → budget_lines fact_ids.
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
     #   organization, budget_activity, budget_activity_title, pe_bli, title,
@@ -7151,6 +7385,23 @@ def _build_budget_to_awards_citation_rows(
                 url=src["source_url"],
                 archive_url=src.get("archive_url"),
                 sha256=src.get("sha256"),
+                match_basis=src.get("match_basis"),
+                formula=formula,
+            ))
+            continue
+
+        # Subaward tier (ROADMAP #84): the missing-row check above guarantees
+        # a source row AND a lake row with a URL for every subaward+lexicon
+        # link, so these subscripts are unguarded on purpose too.
+        if method == "subaward+lexicon":
+            src = sub_sources[(award_piid, pe_bli)]
+            number = str(src["source_id"]).strip()
+            lake = sub_lake[(award_piid, number)]
+            rows.append(_subaward_row(
+                fid,
+                subaward_number=number,
+                subawardee=lake.get("subawardee"),
+                url=lake["permalink"],
                 match_basis=src.get("match_basis"),
                 formula=formula,
             ))
@@ -10860,6 +11111,56 @@ def _announcement_row(fid: str, *, article_id: str, url: str,
         None,   # cells
         None,   # amount_thousands
         sha256,
+        None,   # hosted_pdf_url
+        url,    # official_url
+        None,   # xml_path
+        None,   # retrieved_at
+        formula,
+        None,   # inputs
+        body,   # query_body
+        None,   # recorded_value
+        None,   # pe_bli
+        None,   # scenario
+        None,   # amount_type
+    )
+
+
+def _subaward_row(fid: str, *, subaward_number: str, subawardee: str | None,
+                  url: str, match_basis: str | None,
+                  formula: str | None = None) -> tuple:
+    """Build a 27-element citation row for kind='subaward' (ROADMAP #84).
+
+    Cites the FSRS subaward record behind a 'subaward+lexicon' crosswalk
+    link: the subawardee's description of its own work named the program,
+    so the PRIME award is linked on that basis — evidence one hop removed
+    from the award itself, which is why the tier publishes at medium.
+
+    Same 27-column layout as _announcement_row:
+      official_url = the prime award's USAspending page (USAspending has no
+                     subaward-level page; the prime page's Subawards tab
+                     lists this record)
+      formula      = the link's provenance sentence (method + confidence),
+                     identical to the derived row's — kept so the panel can
+                     state the method and so site gate 24 leg n can read it
+      query_body   = {match_basis, subaward_number, subawardee} — exactly
+                     these three keys (no description: monthly re-reports
+                     carry several per record and none is THE evidence text)
+      sha256, recorded_value, inputs, retrieved_at and the amount fields all
+      None: nothing was archived, nothing is a figure, nothing recomputes.
+    """
+    body = json.dumps({"match_basis": match_basis,
+                       "subaward_number": subaward_number,
+                       "subawardee": subawardee},
+                      sort_keys=True)
+    return (
+        fid, "subaward", None,
+        None,   # amount_text
+        None, None, None, None, None, None, None,  # page bbox
+        None,   # resolution
+        None,   # sheet
+        None,   # cells
+        None,   # amount_thousands
+        None,   # sha256
         None,   # hosted_pdf_url
         url,    # official_url
         None,   # xml_path

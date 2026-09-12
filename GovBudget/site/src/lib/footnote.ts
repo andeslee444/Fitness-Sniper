@@ -554,6 +554,7 @@ function genericSourceLabel(kind: string): string | null {
   if (kind === "state_file") return "State source file";
   if (kind === "jbook_narrative") return "J-book narrative";
   if (kind === "announcement") return "Official DoD contract announcement";
+  if (kind === "subaward") return "FSRS subaward record via USAspending";
   return null;
 }
 
