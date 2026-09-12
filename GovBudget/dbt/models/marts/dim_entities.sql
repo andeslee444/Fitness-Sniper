@@ -16,16 +16,24 @@
 -- The relation on the right of the join comes from sam_entities_relation(),
 -- which substitutes a typed zero-row relation when the extract has never run —
 -- see that macro for why an absent parquet would otherwise kill the mart.
+--
+-- rk (rank, ties kept) vs rn (row_number, ties broken arbitrarily): the SAM
+-- join key is taken over the TIED top set with max(), so it does not depend on
+-- which tied member a query plan happens to number 1 — sam_entities.
+-- dominant_parent_ueis() re-derives it identically and verify-phase2 leg e4
+-- compares the two. display_name keeps rn, unchanged: no published family's
+-- label moves.
 with ranked as (
     select *,
-           row_number() over (partition by family_key order by total_obligation desc nulls last) as rn
+           row_number() over (partition by family_key order by total_obligation desc nulls last) as rn,
+           rank() over (partition by family_key order by total_obligation desc nulls last) as rk
     from {{ ref('entity_xwalk') }}
 ),
 base as (
     select
         family_key,
         max(coalesce(parent_name, recipient_name)) filter (where rn = 1) as display_name,
-        max(coalesce(parent_uei, recipient_uei)) filter (where rn = 1) as dominant_registration_uei,
+        max(coalesce(parent_uei, recipient_uei)) filter (where rk = 1) as dominant_registration_uei,
         count(*) as uei_count,
         sum(total_obligation) as total_obligation,
         min(confidence) as worst_confidence

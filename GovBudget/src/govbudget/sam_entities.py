@@ -57,7 +57,7 @@ from pathlib import Path
 import duckdb
 import httpx
 
-from govbudget.manifest import ManifestRecord, append_record
+from govbudget.manifest import ManifestRecord, append_record, load_records
 
 #: Neither version is verified. `preflight` decides and records which answers.
 SAM_ENTITY_API_URL = os.environ.get(
@@ -96,6 +96,16 @@ _OWNER_ACTION = (
     "Nothing was fetched and nothing was written. To see what the run WOULD "
     "do without a key, add --dry-run."
 )
+
+
+def _utc_iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def _now_iso() -> str:
+    """This instant, UTC. The ONLY caller is a live fetch — `reparse` reads the
+    fetch record instead, so re-parsing never re-dates a stored registration."""
+    return _utc_iso(datetime.now(timezone.utc))
 
 
 class SamAuthError(RuntimeError):
@@ -158,8 +168,13 @@ def _opt(payload: dict, path: str):
         return None
 
 
-def parse_entity(payload: dict, *, source_url: str) -> dict:
-    """One parquet row from one response body. No network, no key."""
+def parse_entity(payload: dict, *, source_url: str,
+                 retrieved_at: str | None = None) -> dict:
+    """One parquet row from one response body. No network, no key.
+
+    `retrieved_at` defaults to now() because the default caller IS the fetch.
+    `reparse` always passes the stored fetch time instead — see its docstring.
+    """
     reg = _dig(payload, "entityData[0].entityRegistration")
     uei = reg.get("ueiSAM")
     if not uei:
@@ -185,7 +200,7 @@ def parse_entity(payload: dict, *, source_url: str) -> dict:
         "primary_naics": _opt(payload, "entityData[0].assertions.goodsAndServices.primaryNaics"),
         "public_url": SAM_PUBLIC_ENTITY_URL.format(uei=uei),
         "source_url": _strip_key(source_url),
-        "retrieved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "retrieved_at": retrieved_at or _now_iso(),
         # sha256 of the CANONICALISED body (sorted keys, compact separators),
         # not of the raw bytes: it must be stable across `sam reparse`, which
         # re-reads a pretty-printed copy of the same document.
@@ -232,6 +247,14 @@ def require_preflight(report_path) -> dict:
             "whether the reader-facing sam.gov entity page exists."
         )
     report = json.loads(report_path.read_text())
+    if not report.get("endpoint"):
+        raise SamShapeError(
+            f"preflight recorded endpoint={report.get('endpoint')!r} — it never"
+            " saw a SAM entity endpoint answer, so the extract has no version"
+            " to request. Re-run `govbudget sam preflight`; if it still finds"
+            " none, set SAM_ENTITY_API_URL in GovBudget/.env to the version"
+            " https://open.gsa.gov/api/entity-api/ documents today."
+        )
     if report.get("public_url_status") != 200:
         raise SamShapeError(
             "preflight recorded public_url_status="
@@ -246,10 +269,20 @@ def require_preflight(report_path) -> dict:
 def dominant_parent_ueis(duckdb_path, *, top_n: int = 200) -> list[tuple[str, str]]:
     """[(family_key, uei)] for the published families, in published order.
 
-    The UEI is the DOMINANT member's parent registration — the same rn=1 row
-    dim_entities.display_name is taken from — so the SAM record describes the
-    registration the page's own heading is built on. Measured 2026-09-10:
+    The UEI is the DOMINANT member's parent registration — the registration
+    dim_entities.dominant_registration_uei is taken from — so the SAM record
+    describes the one the page's own heading is built on. Measured 2026-09-10:
     200 families, 200 distinct UEIs, 0 null parent_uei.
+
+    TIES ARE BROKEN THE WAY THE MART BREAKS THEM, not by whichever row a plan
+    happens to number 1: `rank()` keeps every tied top member and `max()` picks
+    among them, which is exactly `dim_entities`'s
+    `max(coalesce(parent_uei, recipient_uei)) filter (where rk = 1)`. Leg e4
+    compares the two, so a disagreement would print a stale registration that
+    is not stale. 46 families in the lake tie at the top (23 across different
+    UEIs) — none in today's published 200, which is why it had to be pinned
+    before that changes. `family_key` breaks ties in the top-N cut and in the
+    published order for the same reason.
     """
     con = duckdb.connect(str(duckdb_path), read_only=True)
     try:
@@ -259,18 +292,20 @@ def dominant_parent_ueis(duckdb_path, *, top_n: int = 200) -> list[tuple[str, st
                 """
                 with top as (
                   select family_key, total_obligation from dim_entities
-                  order by total_obligation desc nulls last limit ?
+                  order by total_obligation desc nulls last, family_key limit ?
                 ),
                 ranked as (
-                  select x.family_key, x.parent_uei, x.recipient_uei,
-                         row_number() over (partition by x.family_key
-                           order by x.total_obligation desc nulls last) rn
+                  select x.family_key,
+                         coalesce(x.parent_uei, x.recipient_uei) as uei,
+                         rank() over (partition by x.family_key
+                           order by x.total_obligation desc nulls last) rk
                   from entity_xwalk x join top t using (family_key)
                 )
-                select r.family_key, coalesce(r.parent_uei, r.recipient_uei)
+                select r.family_key, max(r.uei)
                 from ranked r join top t using (family_key)
-                where r.rn = 1
-                order by t.total_obligation desc
+                where r.rk = 1
+                group by r.family_key, t.total_obligation
+                order by t.total_obligation desc, r.family_key
                 """,
                 [int(top_n)],
             ).fetchall()
@@ -376,8 +411,15 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS) -> dic
 
 def extract_entities(families, *, api_key, out_dir, raw_dir,
                      client=None, max_requests=DEFAULT_MAX_REQUESTS,
-                     refresh=False, dry_run=False):
+                     refresh=False, dry_run=False, endpoint=None):
     """Fetch up to `max_requests` missing registrations; resume-safe.
+
+    `endpoint` is the URL `preflight` RECORDED as answering — cmd_sam passes
+    `require_preflight(...)["endpoint"]`, so a probe that found v3 is not
+    followed by 10 requests to the v4 guess. It defaults to
+    SAM_ENTITY_API_URL, and any non-200 raises SamShapeError naming that env
+    var rather than an httpx.HTTPStatusError traceback: cmd_sam converts the
+    three Sam* errors into a clean BLOCKED line and nothing else.
 
     families: [(family_key, uei)]. Already-fetched UEIs (a file under
     raw_dir) are skipped unless refresh=True — that is the resume, and it is
@@ -393,6 +435,7 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
         return plan_extract(families, raw_dir=raw_dir, max_requests=max_requests)
 
     key = require_api_key(api_key)
+    endpoint = endpoint or SAM_ENTITY_API_URL
     out_dir, raw_dir = Path(out_dir), Path(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -419,8 +462,7 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
                 )
                 break
             time.sleep(_REQUEST_FLOOR_S)
-            r = client.get(SAM_ENTITY_API_URL,
-                           params={"api_key": key, "ueiSAM": uei})
+            r = client.get(endpoint, params={"api_key": key, "ueiSAM": uei})
             spent += 1
             body_text = r.text
             if r.status_code == 429 or "OVER_RATE_LIMIT" in body_text:
@@ -435,9 +477,21 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
                     f"SAM rejected the key ({r.status_code}). A SAM.gov Personal "
                     "API key is not an api.data.gov key.\n" + _OWNER_ACTION
                 )
-            r.raise_for_status()
+            if r.status_code != 200:
+                raise SamShapeError(
+                    f"SAM answered {r.status_code} for {uei} at {endpoint} "
+                    f"after {spent} request(s) this run. Re-run `govbudget sam "
+                    "preflight`; if it records a different version, set "
+                    "SAM_ENTITY_API_URL in GovBudget/.env to that URL. Bodies "
+                    "already stored are kept and never re-fetched."
+                )
             payload = r.json()
-            raw_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+            # Defence in depth: an error body that echoed the key would raise
+            # above, so this can only ever be a no-op — but the guarantee is
+            # structural rather than circumstantial (assumption 2).
+            raw_path.write_text(
+                json.dumps(payload, indent=2, sort_keys=True).replace(key, "…")
+            )
             rec = parse_entity(payload, source_url=str(r.request.url))
             append_record(manifest_path, ManifestRecord(
                 dataset="sam_entities",
@@ -462,13 +516,28 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
 
 
 def reparse(*, raw_dir, out_dir) -> Path:
-    """Rebuild the parquet from stored raw bodies. No network, no quota."""
+    """Rebuild the parquet from stored raw bodies. No network, no quota.
+
+    `retrieved_at` AND `source_url` come from the FETCH RECORD, never from
+    this run's clock or today's endpoint constant. `extract_entities` calls
+    this in its finally on EVERY run, so a now() stamp would re-date day 1's
+    Lockheed row to day 20 of the 20-day bounded extract — and the published
+    claim is "this is what SAM said on THAT day" (the exporter's citation
+    comment says exactly that). manifest.jsonl is the record; a body with no
+    manifest line (hand-dropped, or a manifest lost) falls back to the file's
+    own mtime, which is still its fetch and never now().
+    """
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
+    fetched = {r.file_name: r for r in load_records(out_dir / "manifest.jsonl")}
     records = []
     for p in sorted(raw_dir.glob("*.json")):
+        rec = fetched.get(p.name)
         payload = json.loads(p.read_text())
         records.append(parse_entity(
             payload,
-            source_url=f"{SAM_ENTITY_API_URL}?ueiSAM={p.stem}",
+            source_url=(rec.source_url if rec
+                        else f"{SAM_ENTITY_API_URL}?ueiSAM={p.stem}"),
+            retrieved_at=(rec.downloaded_at if rec else _utc_iso(
+                datetime.fromtimestamp(p.stat().st_mtime, timezone.utc))),
         ))
     return write_entities_parquet(records, out_dir)

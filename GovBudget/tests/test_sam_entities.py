@@ -15,12 +15,14 @@ so that a shape surprise is loud instead of silent.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
 import httpx
 import pytest
 
+from govbudget.manifest import ManifestRecord, append_record
 from govbudget.sam_entities import (
     SamAuthError,
     SamRateLimitError,
@@ -28,6 +30,8 @@ from govbudget.sam_entities import (
     extract_entities,
     parse_entity,
     plan_extract,
+    preflight,
+    reparse,
     require_api_key,
     require_preflight,
     write_entities_parquet,
@@ -218,6 +222,93 @@ def test_schema_only_write_produces_a_typed_zero_row_parquet(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# retrieved_at is the FETCH day, never this run's clock (fix round 1, R-19-1).
+# ---------------------------------------------------------------------------
+
+
+def _body_for(uei: str) -> dict:
+    body = json.loads(json.dumps(LOCKHEED))
+    body["entityData"][0]["entityRegistration"]["ueiSAM"] = uei
+    return body
+
+
+def _retrieved_at(parquet_path) -> dict[str, str]:
+    con = duckdb.connect()
+    try:
+        return dict(con.execute(
+            f"select sam_uei, retrieved_at from read_parquet('{parquet_path}')"
+        ).fetchall())
+    finally:
+        con.close()
+
+
+def test_reparse_takes_retrieved_at_from_the_manifest_not_from_now(tmp_path):
+    """Two bodies fetched on different days keep their own days.
+
+    `extract_entities` re-parses every stored body in its finally block on
+    EVERY run, so a now() stamp would re-date day 1's row to day 20 of the
+    bounded extract — and the published claim is "this is what SAM said on
+    that day".
+    """
+    raw, out = tmp_path / "r", tmp_path / "p"
+    raw.mkdir()
+    out.mkdir()
+    for uei, day in (("ZFN2JJXBLZT3", "2026-09-01T10:00:00+00:00"),
+                     ("NU2UC8MX6NK1", "2026-09-20T11:30:00+00:00")):
+        (raw / f"{uei}.json").write_text(json.dumps(_body_for(uei)))
+        append_record(out / "manifest.jsonl", ManifestRecord(
+            dataset="sam_entities", fiscal_year=None, file_name=f"{uei}.json",
+            source_url=f"https://api.sam.gov/entity-information/v4/entities?ueiSAM={uei}",
+            sha256="x", bytes=1, downloaded_at=day,
+        ))
+    got = _retrieved_at(reparse(raw_dir=raw, out_dir=out))
+    assert got["ZFN2JJXBLZT3"] == "2026-09-01T10:00:00+00:00"
+    assert got["NU2UC8MX6NK1"] == "2026-09-20T11:30:00+00:00"
+
+
+def test_reparse_falls_back_to_the_raw_file_mtime_when_the_manifest_is_silent(
+    tmp_path,
+):
+    """A hand-dropped body (or a lost manifest) is still dated by its FETCH,
+    not by the reparse — the file's own mtime, never now()."""
+    import os
+
+    raw, out = tmp_path / "r", tmp_path / "p"
+    raw.mkdir()
+    out.mkdir()
+    p = raw / "ZFN2JJXBLZT3.json"
+    p.write_text(json.dumps(LOCKHEED))
+    when = datetime(2026, 3, 4, 5, 6, 7, tzinfo=timezone.utc)
+    os.utime(p, (when.timestamp(), when.timestamp()))
+    got = _retrieved_at(reparse(raw_dir=raw, out_dir=out))
+    assert got["ZFN2JJXBLZT3"] == "2026-03-04T05:06:07+00:00"
+
+
+def test_a_later_run_never_restamps_an_earlier_run_s_rows(tmp_path, monkeypatch):
+    """The reviewer's exact scenario: a 20-day bounded extract must not date
+    every registration to the last day it happened to run."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+    clock = {"now": "2026-09-01T00:00:00+00:00"}
+    monkeypatch.setattr("govbudget.sam_entities._now_iso", lambda: clock["now"])
+    fams = [("F1", "UEI0000000A"), ("F2", "UEI0000000B")]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        uei = dict(request.url.params)["ueiSAM"]
+        return httpx.Response(200, json=_body_for(uei))
+
+    for day in ("2026-09-01T00:00:00+00:00", "2026-09-20T00:00:00+00:00"):
+        clock["now"] = day
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            out = extract_entities(fams, api_key="k", out_dir=tmp_path / "p",
+                                   raw_dir=tmp_path / "r", client=client,
+                                   max_requests=1)
+    got = _retrieved_at(out)
+    assert got["UEI0000000A"] == "2026-09-01T00:00:00+00:00", \
+        "day 1's row must keep day 1 after day 20's run re-parsed it"
+    assert got["UEI0000000B"] == "2026-09-20T00:00:00+00:00"
+
+
+# ---------------------------------------------------------------------------
 # --dry-run: the only mode that runs on a machine with no credential.
 # ---------------------------------------------------------------------------
 
@@ -269,6 +360,170 @@ def test_dry_run_spends_no_request_and_writes_nothing(tmp_path, monkeypatch):
     assert plan["would_fetch"] == 2
     assert not (tmp_path / "p").exists(), "a dry run writes no parquet"
     assert not (tmp_path / "r").exists(), "a dry run creates no raw dir"
+
+
+# ---------------------------------------------------------------------------
+# preflight discovers the endpoint AND the extract uses it (fix round 1,
+# R-19-3). Every path here is MockTransport; no candidate URL is ever dialled.
+# ---------------------------------------------------------------------------
+
+
+def _preflight_client(monkeypatch, status_for):
+    """A MockTransport client that answers `status_for(url)` per candidate and
+    200 for the reader-facing sam.gov page."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url).split("?")[0]
+        seen.append(url)
+        if url.startswith("https://sam.gov/entity/"):
+            return httpx.Response(200, text="<html>entity</html>")
+        code = status_for(url)
+        if code == 200:
+            return httpx.Response(200, json=LOCKHEED)
+        return httpx.Response(code, json={"error": {"code": "NOT_FOUND"}})
+
+    return httpx.Client(transport=httpx.MockTransport(handler)), seen
+
+
+def test_preflight_records_the_first_candidate_that_answers(tmp_path, monkeypatch):
+    report_path = tmp_path / "preflight.json"
+    secret = "SUPERSECRETKEY123"
+    client, seen = _preflight_client(monkeypatch, lambda url: 200)
+    with client:
+        report = preflight(api_key=secret, client=client, report_path=report_path)
+    assert report["endpoint"] == "https://api.sam.gov/entity-information/v4/entities"
+    assert report["status"] == 200
+    assert report["public_url_status"] == 200
+    # Key NAMES only — never the body, never the credential.
+    assert "entityRegistration" in report["entity_keys"]
+    on_disk = json.loads(report_path.read_text())
+    assert on_disk == report
+    assert secret not in report_path.read_text(), "the report never holds the key"
+    assert len([u for u in seen if "api.sam.gov" in u]) == 1, "one candidate, one request"
+
+
+def test_preflight_skips_a_404_candidate_and_records_the_one_that_answers(
+    tmp_path, monkeypatch
+):
+    v4 = "https://api.sam.gov/entity-information/v4/entities"
+    v3 = "https://api.sam.gov/entity-information/v3/entities"
+    client, seen = _preflight_client(monkeypatch, lambda url: 404 if url == v4 else 200)
+    with client:
+        report = preflight(api_key="k", client=client,
+                           report_path=tmp_path / "preflight.json")
+    assert report["endpoint"] == v3, "a 404 candidate is skipped, not fatal"
+    assert [u for u in seen if "api.sam.gov" in u] == [v4, v3]
+
+
+def test_preflight_raises_shape_error_naming_the_env_var_when_all_404(
+    tmp_path, monkeypatch
+):
+    client, _ = _preflight_client(monkeypatch, lambda url: 404)
+    with client:
+        with pytest.raises(SamShapeError) as exc:
+            preflight(api_key="k", client=client,
+                      report_path=tmp_path / "preflight.json")
+    assert "SAM_ENTITY_API_URL" in str(exc.value)
+    assert not (tmp_path / "preflight.json").exists(), "a failed probe writes no report"
+
+
+def test_preflight_raises_auth_error_when_every_candidate_rejects_the_key(
+    tmp_path, monkeypatch
+):
+    client, _ = _preflight_client(monkeypatch, lambda url: 403)
+    with client:
+        with pytest.raises(SamAuthError) as exc:
+            preflight(api_key="k", client=client,
+                      report_path=tmp_path / "preflight.json")
+    msg = str(exc.value)
+    assert "401/403" in msg
+    assert "login.gov" in msg, "an auth refusal always names the owner's step"
+
+
+def test_require_preflight_refuses_a_report_that_never_found_an_endpoint(tmp_path):
+    report = tmp_path / "preflight.json"
+    report.write_text(json.dumps({"endpoint": None, "status": None,
+                                  "public_url_status": 200}))
+    with pytest.raises(SamShapeError) as exc:
+        require_preflight(report)
+    assert "SAM_ENTITY_API_URL" in str(exc.value)
+
+
+def test_extract_requests_the_endpoint_preflight_recorded(tmp_path, monkeypatch):
+    """The whole point of preflight: if it recorded v3, the extract must not
+    spend the day's quota on v4."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+    v3 = "https://api.sam.gov/entity-information/v3/entities"
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url).split("?")[0])
+        return httpx.Response(200, json=LOCKHEED)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        extract_entities([("F1", "ZFN2JJXBLZT3")], api_key="k",
+                         out_dir=tmp_path / "p", raw_dir=tmp_path / "r",
+                         client=client, max_requests=1, endpoint=v3)
+    assert seen == [v3]
+
+
+def test_an_unexpected_status_is_a_sam_shape_error_not_an_http_status_error(
+    tmp_path, monkeypatch
+):
+    """cmd_sam converts the three Sam* errors into a clean BLOCKED line; an
+    httpx.HTTPStatusError would escape as a traceback instead."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"error": {"code": "NOT_FOUND"}})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(SamShapeError) as exc:
+            extract_entities([("F1", "ZFN2JJXBLZT3")], api_key="k",
+                             out_dir=tmp_path / "p", raw_dir=tmp_path / "r",
+                             client=client, max_requests=1)
+    assert not isinstance(exc.value, httpx.HTTPStatusError)
+    assert "SAM_ENTITY_API_URL" in str(exc.value)
+
+
+def test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does(
+    tmp_path,
+):
+    """`dim_entities` takes max(uei) over the TIED top members; leg e4
+    re-derives the same pick. If the two disagreed on an exact tie the gate
+    would report a stale registration that is not stale. 46 families in the
+    real lake tie at the top (23 across different UEIs) — none of them in the
+    published top 200 today, which is exactly why this has to be pinned now.
+    """
+    from govbudget.sam_entities import dominant_parent_ueis
+
+    tied = ["('U1','A INC','PB','B PARENT','TIED','parent_name','high',50.0)",
+            "('U2','A LLC','PA','A PARENT','TIED','parent_name','high',50.0)"]
+    clear = "('U3','C INC','PC','C PARENT','CLEAR','parent_name','high',10.0)"
+    picks = []
+    # Same family, the tied members inserted in each order: the answer must not
+    # depend on which one a plan happens to number 1.
+    for order in (tied, list(reversed(tied))):
+        db = tmp_path / f"t{len(picks)}.duckdb"
+        con = duckdb.connect(str(db))
+        con.execute(
+            "create table entity_xwalk as select * from (values "
+            + ", ".join(order + [clear])
+            + ") t(recipient_uei, recipient_name, parent_uei, parent_name,"
+            "  family_key, method, confidence, total_obligation)"
+        )
+        con.execute(
+            "create table dim_entities as select family_key,"
+            " sum(total_obligation) as total_obligation from entity_xwalk"
+            " group by family_key"
+        )
+        con.close()
+        picks.append(dict(dominant_parent_ueis(db, top_n=2)))
+    assert picks[0] == picks[1], "an exact tie must not depend on row order"
+    assert picks[0]["TIED"] == "PB", "the tie resolves to max(uei), as the mart does"
+    assert picks[0]["CLEAR"] == "PC"
 
 
 # ---------------------------------------------------------------------------
