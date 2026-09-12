@@ -1055,7 +1055,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   rows); (c) **replace with evidence-graded links only** — (b) plus a
   description-level crosswalk for DARPA, the most expensive and the only one
   that restores coverage with evidence behind it. Decide with #80's basis work
-  and #85's mechanical crosswalk. **Status:** open (owner call, 2026-09-11).
+  and #85's mechanical crosswalk, and alongside **#110** — the same owner call
+  one tier up, for the 708 `announcement+lexicon` links published at high
+  whose adversarial pass leaves no record.
+  **Status:** open (owner call, 2026-09-11).
 - **#108 `fpds-ap` rubric: the tier was judged partly on its own rule.** The
   FPDS acquisition-program tag IS the `fpds-ap` linking rule, and it leads 40
   of the 60 verdict reasons behind `fpds-ap 94/120`; fewer than ten cite the
@@ -1092,13 +1095,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   `contradicted`/`not_darpa` are demoted out of the mart.)
   **Status:** open (2026-09-11) — opening sentence shrunk to the derived
   adjudication-coverage numbers in `640320e0` (Task 6c; block `61907d78`, gate
-  24 leg o `64d5cac9`), then re-dated and extended to the High tier in
-  `136abf35` (Task 6c fix round 1; block + `measured_on` `7b516f6b`, leg o
-  `8409114a`, /coverage/ `0716cfe0`): the census is dated by the export run
-  and `as_of` by the last adjudication, and the four surfaces that graded the
-  whole High tier "verified adversarially" now render 60 of 768 from
-  `site_meta.link_adjudication.high`. The five-path evidence pass and
-  per-path gate remain; what to do about the 708 is #110.
+  24 leg o `64d5cac9`), then re-dated and the High tier graded surface by
+  surface in Task 6c fix round 1 (block + `measured_on` `7b516f6b`, leg o
+  `8409114a`): the census is dated by the export run and `as_of` by the last
+  adjudication; /methodology/'s High grading renders 60 of 768 from
+  `site_meta.link_adjudication.high` (`136abf35`), the flow clause now points
+  at §4's grading instead of restating the tier, /coverage/'s blocker binds
+  the adversarial step to the links that carry an adjudication (`0716cfe0`),
+  and `docs/methodology.md` mirrors the rendered sentence. Fix round 2 bound
+  each of those figures to its SLOT in leg o (a passage that permutes the
+  block's own numbers used to pass) and made a block that grades links while
+  exporting no High census a gate failure instead of a silent pass. The
+  five-path evidence pass and per-path gate remain; what to do about the 708
+  is #110.
 
 - **#110 OWNER CALL: 708 of the 768 links published at HIGH carry no per-award
   adjudication, and their adversarial pass leaves no record.** Measured
@@ -1112,14 +1121,20 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   of them (exact-name 190, designator-normalized 93, llm-alias 59,
   llm-designator-variant 36, llm-description 6) and NULL on 324, and the
   agent-reviewer + independent-adversarial-reviewer pass /methodology/
-  describes for that path writes NO row anywhere in Postgres. The path's
-  precision IS measured — 54 of 60 on attribution, sample `2026-09-04` — so
+  describes for that path writes NO row anywhere in Postgres. Its precision
+  IS measured — 51 of 54 on attribution under the tier these links publish
+  under today, sample `2026-09-04` (the raw 2026-09-04 stratum drew 60) — so
   this is not an unmeasured tier; it is a tier whose per-link review is
-  unrecorded and therefore ungateable. Task 6c fix round 1 shrank all four
-  surfaces to "60 of the 768 … all 60 challenged by two independent
-  adversarial reviewers; the other 708 rest on the announcement+lexicon path"
-  (`136abf35`), which is the smaller true number; what the SITE does about the
-  708 is the owner's call.
+  unrecorded and therefore ungateable. Task 6c fix round 1 shrank the four
+  surfaces that graded the whole tier, each in its own way: /methodology/'s
+  High grading renders "60 of the 768 … all 60 of them challenged by two
+  independent adversarial reviewers; the other 708 rest on the
+  announcement+lexicon path" from `site_meta.link_adjudication.high`
+  (`136abf35`), the flow clause points at §4's grading instead of restating
+  the tier, /coverage/'s blocker binds the adversarial step to the links that
+  carry an adjudication (`0716cfe0`), and `docs/methodology.md` mirrors the
+  rendered sentence. That is the smaller true number; what the SITE does
+  about the 708 is the owner's call.
   **Correction this entry carries** (measured 2026-09-11, and the reason it is
   not the entry the fix round was briefed to write): the review that raised
   this counted the high tier as
@@ -1158,7 +1173,12 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   chips rest on a review whose only record is prose, 324 of them without even
   a recorded match basis, and the claim can never be gated beyond "the path
   is named". Nothing is false; nothing is checkable either.
-  Decide with #109's five-path evidence pass, which is the same work as (b).
+  Decide with #109's five-path evidence pass, which is the same work as (b),
+  and alongside **#107** — the same owner call one tier down, for the
+  `account+subagency` medium tier that measured 0/60 on attribution. The two
+  are the same question about different evidence: what a tier keeps
+  publishing when its per-link attribution measured ZERO (#107) or was never
+  recorded at all (#110).
   **Status:** open (owner call, 2026-09-11).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
