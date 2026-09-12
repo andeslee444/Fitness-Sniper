@@ -1,0 +1,572 @@
+"""Wave 4 — the tail of the announcement LLM-alias pass (ROADMAP findings :118-119).
+
+The 2026-09-01/02 legs matched defense.gov contract announcements to PE
+program names two ways: deterministically (a lexicon name a J-book narrative
+owns, verbatim) and, for the biggest unmatched records, with an LLM-assisted
+alias pass that decoded designators and backronyms (PATRIOT -> PAC-3,
+SEPv3 -> M1A2 SEP). That pass stopped at the top 3,840 unmatched records by
+announced value and /methodology/ has disclosed the stop ever since.
+
+This script queues the rest. It does NOT reproduce the historical residue
+bit-for-bit: the selection code was never committed (grep 'llm_chunks' over
+scripts/ src/ tests/ docs/ returns nothing), and every reconstruction of
+"16,651 unmatched records" from records.jsonl + lexicon.jsonl comes out a
+superset (28,344 under the rule below; 27,736 including 'mentioned' names;
+24,118 as the complement of verification_queue.json's 9,369 PIIDs). ROADMAP
+:100 records 22,140 parsed records for the same 2,786 digests that parse to
+34,542 today, and the parser has one commit — so the raw HTML moved under the
+old figures. The rule is therefore restated here, in code, and its own counts
+are what /methodology/ publishes (Task 25b). What WAS reproduced: all 3,840
+wave-2 LLM records map back to records.jsonl on (article_id, text[:200]), the
+cut was amounts[0] descending at $63,206,673, and sum(amounts[0]) over them is
+$1.9545e12 — the "$1.96T" on the page.
+
+  queue   : records.jsonl + lexicon.jsonl + the lake -> wave4_queue/ chunks,
+            wave4_lexicon/ per-org indexes, residue_manifest.json
+  collect : wave4_queue/ + wave4_verdicts/ -> wave4_chunks/ (loader packets)
+            + wave4_result.json
+
+Acceptance rule (docs/superpowers/specs/2026-09-11-announcement-wave4-rubric.md):
+proposed -> refute lens A -> refute lens B -> survive. Both lenses must return
+refuted=false. A missing or unparseable lens verdict counts as REFUTED and is
+reported, so a half-finished run can never read as a clean one.
+
+Chunks are ranked by descending announced value and `collect` accepts a PARTIAL
+set of verdict files, because the run protocol (ruling A10) adjudicates rounds
+of 5 chunks and stops after 3 consecutive rounds return no survivors. A chunk
+with no verdict file is neither surviving nor refuted: it was not attempted, and
+records_attempted / chunks_attempted in wave4_result.json say exactly what ran.
+
+Usage:
+  uv run python scripts/mine_announcement_residue.py queue [--chunk-size 80]
+  uv run python scripts/mine_announcement_residue.py collect
+"""
+import argparse
+import json
+import re
+from collections import defaultdict
+from datetime import date
+from pathlib import Path
+
+import duckdb
+
+ROOT = Path(__file__).resolve().parents[1]
+ANN = ROOT / "data" / "research" / "announcements"
+RECORDS = ANN / "records.jsonl"
+PARSE_STATS = ANN / "parse_stats.json"
+LEXICON = ROOT / "data" / "research" / "lexicon" / "lexicon.jsonl"
+QUEUE_DIR = ANN / "wave4_queue"
+LEXICON_DIR = ANN / "wave4_lexicon"
+VERDICT_DIR = ANN / "wave4_verdicts"
+PACKET_DIR = ANN / "wave4_chunks"      # NB: matched by the link loader's wave*_chunks glob
+MANIFEST = ANN / "residue_manifest.json"
+QUEUE_MANIFEST = QUEUE_DIR / "queue_manifest.json"
+RESULT = ANN / "wave4_result.json"
+RUBRIC = "docs/superpowers/specs/2026-09-11-announcement-wave4-rubric.md"
+
+#: defense.gov service headings -> the J-book org dim_programs uses. Mechanical,
+#: not curated: a service with no loaded book (DEFENSE HEALTH AGENCY,
+#: U.S. TRANSPORTATION COMMAND, DFAS) has no PEs to link to, so its records are
+#: not queued at all rather than sent to an agent that can only answer "none".
+SERVICE_ORG = {
+    "ARMY": "A", "NAVY": "N", "MARINE CORPS": "N",
+    "AIR FORCE": "F", "SPACE FORCE": "F",
+    "MISSILE DEFENSE AGENCY": "MDA",
+    "DEFENSE ADVANCED RESEARCH PROJECTS AGENCY": "DARPA",
+    "U.S. SPECIAL OPERATIONS COMMAND": "SOCOM",
+    "DEFENSE INFORMATION SYSTEMS AGENCY": "DISA",
+    "DEFENSE THREAT REDUCTION AGENCY": "DTRA",
+    "DEFENSE LOGISTICS AGENCY": "DLA",
+    "WASHINGTON HEADQUARTERS SERVICES": "WHS",
+    "DEFENSE COUNTERINTELLIGENCE AND SECURITY AGENCY": "DCSA",
+    "DEFENSE SECURITY COOPERATION AGENCY": "DSCA",
+    "DEFENSE HUMAN RESOURCES ACTIVITY": "DHRA",
+    "U.S. CYBER COMMAND": "CYBERCOM",
+    "THE JOINT STAFF": "TJS",
+    "DEFENSE CONTRACT MANAGEMENT AGENCY": "DCMA",
+}
+
+#: The closed match_basis vocabulary an ANNOUNCEMENT link may carry. These five
+#: are already in award_link_sources; 'subaward-description-exact' is
+#: deliberately absent, because load_announcement_links.py:363-366 branches on
+#: it to publish at subaward+lexicon/medium and skip the money-colour guard.
+BASIS_VOCAB = frozenset({
+    "exact-name", "designator-normalized", "llm-alias",
+    "llm-designator-variant", "llm-description",
+})
+
+_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9./&-]*")
+_ENTITY = re.compile(r"&NBSP;|&AMP;", re.I)
+
+
+def normalize_service(service: str | None) -> str:
+    """'NAVY &NBSP;' -> 'NAVY'. The parser keeps the raw heading, entities and
+    all; 870 of the 34,542 records carry '&NBSP;' (some without a leading
+    space) and a heading may end in '*' or '.'."""
+    s = _ENTITY.sub(" ", (service or "").upper())
+    return re.sub(r"\s+", " ", s).strip(" .*")
+
+
+def _tokens(text: str) -> list[str]:
+    return [t.lower() for t in _TOKEN.findall(text or "")]
+
+
+def build_name_index(entries) -> dict[int, set[tuple[str, ...]]]:
+    """{token-count: {name token tuple}} for the names a PE's narrative OWNS.
+
+    'mentioned' entries are excluded because the whole evidence chain is "the
+    PE's own narrative owns this name"; weak_name entries are excluded because
+    the waves excluded them (a record naming only a weak generic name is not a
+    deterministic match and belongs in the residue, where an agent can judge
+    it). 7,300 of lexicon.jsonl's 10,464 rows qualify, carrying 6,396 distinct
+    names."""
+    index: dict[int, set[tuple[str, ...]]] = defaultdict(set)
+    for e in entries:
+        if e.get("ownership") != "own" or e.get("weak_name"):
+            continue
+        name = e.get("name") or ""
+        if len(name) < 3:
+            continue
+        toks = tuple(_tokens(name))
+        if toks:
+            index[len(toks)].add(toks)
+    return dict(index)
+
+
+def has_deterministic_match(text: str, name_index) -> bool:
+    """True when some owned lexicon name appears in the text as a contiguous
+    token n-gram (case-insensitive). This is the 'already covered' test; a
+    record it returns True for was never LLM-pass material."""
+    toks = _tokens(text)
+    for length, names in name_index.items():
+        for i in range(0, len(toks) - length + 1):
+            if tuple(toks[i:i + length]) in names:
+                return True
+    return False
+
+
+def record_key(rec: dict) -> tuple[str, str]:
+    """The stable identity of a parsed RECORD: (article_id, text[:200]).
+    Verified against the wave-2 input: all 3,840 llm_chunks entries resolve to
+    a re-parsed record on this key (3,832 distinct; 8 duplicate paragraphs).
+    Not defined for a loader PACKET, which carries announcement_excerpt."""
+    return (str(rec.get("article_id")), (rec.get("text") or "")[:200])
+
+
+def announced_value(rec: dict) -> int:
+    """The FIRST dollar figure in the paragraph — the announced value of the
+    action. Not max(): the wave-2 cut was by amounts[0] (sum $1.9545e12, the
+    '$1.96T' on /methodology/)."""
+    amounts = rec.get("amounts") or []
+    return int(amounts[0]) if amounts else 0
+
+
+def select_residue(records, *, lake, name_index, attempted, orgs_with_lexicon):
+    """(residue, queued) in ONE pass — see the module docstring for the rules.
+
+    `residue` is rules 1-2 (a lake PIID, no owned-name match), each record
+    annotated with its `lake_piids`; `queued` is the subset that also passes
+    rules 3-4 (not already attempted, service maps to an org that has a
+    lexicon), annotated with `org`. Both are returned because
+    residue_manifest.json publishes the first and the queue is the second, and
+    the owned-name scan is the expensive half — computing it twice doubles the
+    command's runtime for nothing."""
+    residue, kept = [], []
+    for rec in records:
+        piids = sorted({n["piid"] for n in rec.get("contract_numbers", [])
+                        if n["piid"] in lake})
+        if not piids:
+            continue
+        if has_deterministic_match(rec.get("text") or "", name_index):
+            continue
+        annotated = {**rec, "lake_piids": piids}
+        residue.append(annotated)
+        if record_key(rec) in attempted:
+            continue
+        org = SERVICE_ORG.get(normalize_service(rec.get("service")))
+        if org is None or org not in orgs_with_lexicon:
+            continue
+        kept.append({**annotated, "org": org})
+    return residue, kept
+
+
+def chunk_records(records, size: int = 80):
+    """Chunks grouped by org (one lexicon index per chunk), numbered globally by
+    descending max announced value so the controller can stop at any chunk and
+    what was skipped is the cheapest tail. 80 per chunk is the house size
+    (llm_chunks and mine_lexicon_candidates.py both use it). Grouping by org
+    means each org contributes a partial chunk: 23,824 records across 13 orgs
+    is 306 chunks, not 298.
+
+    Each chunk carries its `rank` — the same integer as its file name — because
+    the run protocol (ruling A10) walks the chunks in rounds of 5 in exactly
+    this order and has to be able to name the round it is on."""
+    by_org: dict[str, list[dict]] = defaultdict(list)
+    for rec in records:
+        by_org[rec["org"]].append(rec)
+    raw = []
+    for org, recs in by_org.items():
+        recs.sort(key=announced_value, reverse=True)
+        for i in range(0, len(recs), size):
+            group = recs[i:i + size]
+            raw.append({"org": org, "records": group,
+                        "announced_value": sum(announced_value(r) for r in group),
+                        "top_value": announced_value(group[0])})
+    raw.sort(key=lambda c: (-c["top_value"], c["org"]))
+    for n, chunk in enumerate(raw):
+        chunk["rank"] = n
+        chunk["file"] = f"chunk_{n:03d}_{chunk['org']}.json"
+        chunk.pop("top_value")
+    return raw
+
+
+def collect_verdicts(queue, verdicts):
+    """(packets, result) from the queue and the returned adjudications.
+
+    Acceptance: verdict == 'link' AND refute_a.refuted is False AND
+    refute_b.refuted is False. Anything else — 'weak', 'wrong', a refutation,
+    a lens that never ran, a malformed verdict — does not survive, and the
+    counts say which. Raises ValueError on a proposal the loader could not
+    publish honestly (no match_basis, basis outside the vocabulary, no
+    lexicon_doc, or a pe_bli/piid the queue chunk does not contain) and on a
+    verdict file naming a chunk this queue does not hold (the numbering is
+    derived from the universe, so a re-queue renumbers everything; silently
+    ignoring such a file would drop real adjudications).
+
+    A chunk with no verdict file is skipped, not failed: the run protocol stops
+    when three consecutive rounds return nothing, and `records_attempted` /
+    `chunks_attempted` describe what actually came back."""
+    by_file = {chunk["file"]: chunk for chunk in queue}
+    unknown = sorted(set(verdicts) - set(by_file))
+    if unknown:
+        raise ValueError(
+            f"verdict file(s) {unknown} name chunks the queue does not hold; "
+            f"re-run `queue` only when no verdicts are outstanding, because the "
+            f"chunk numbering is derived from the universe")
+    counts = {"link": 0, "weak": 0, "wrong": 0}
+    refuted_a = refuted_b = missing_lens = malformed_lens = duplicate_pairs = 0
+    packets, surviving, attempted_files = [], [], []
+    records_attempted = 0
+    seen_pairs: set[tuple[str, str]] = set()
+    for chunk in queue:
+        returned = verdicts.get(chunk["file"])
+        if returned is None:
+            continue
+        attempted_files.append(chunk["file"])
+        records = chunk["records"]
+        records_attempted += len(records)
+        # A record is identified by (article_id, PIID), not by article_id: a
+        # daily digest is one article with many paragraphs, and 1,766 of the
+        # 23,824 queued records (7.4%) share an article_id with another record
+        # in the same chunk. Keying on article_id alone would hand the packet
+        # the WRONG paragraph's date, contractor and excerpt — the citation
+        # card would quote a different award.
+        by_pair: dict[tuple[str, str], list[int]] = defaultdict(list)
+        for i, r in enumerate(records):
+            for piid in r["lake_piids"]:
+                by_pair[(str(r["article_id"]), piid)].append(i)
+        for prop in returned.get("proposals", []):
+            verdict = prop.get("verdict")
+            if verdict not in counts:
+                raise ValueError(
+                    f"{chunk['file']}: proposal for {prop.get('piid')} carries "
+                    f"verdict {verdict!r}; expected one of {sorted(counts)}")
+            counts[verdict] += 1
+            if verdict != "link":
+                continue
+            aid, piid = str(prop.get("article_id")), prop.get("piid")
+            found = by_pair.get((aid, piid), [])
+            index = prop.get("record_index")
+            if index is not None:
+                if not isinstance(index, int) or index not in found:
+                    raise ValueError(
+                        f"{chunk['file']}: proposal carries record_index "
+                        f"{index!r}, which is not a record of that chunk holding "
+                        f"article {aid} / PIID {piid}")
+            elif not found:
+                raise ValueError(
+                    f"{chunk['file']}: proposal names article "
+                    f"{prop.get('article_id')} / PIID {prop.get('piid')}, which is "
+                    f"not a lake PIID of any record in that chunk")
+            elif len(found) > 1:
+                # 17 of the queue's 31,693 (article_id, PIID) keys, across 16
+                # chunks: a modification paragraph naming the same vehicle as
+                # its award paragraph. The excerpt would be a coin flip.
+                raise ValueError(
+                    f"{chunk['file']}: article {aid} / PIID {piid} appears in "
+                    f"{len(found)} records of that chunk (record_index {found}); "
+                    f"the proposal must carry record_index to say which "
+                    f"paragraph it read")
+            else:
+                index = found[0]
+            rec = records[index]
+            if not str(prop.get("pe_bli") or "").strip():
+                raise ValueError(
+                    f"{chunk['file']}: proposal for article {aid} / PIID {piid} "
+                    f"names no pe_bli; there is nothing to link the award to")
+            basis = prop.get("match_basis")
+            if basis not in BASIS_VOCAB:
+                raise ValueError(
+                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
+                    f"match_basis {basis!r}; an announcement citation card can "
+                    f"only word {sorted(BASIS_VOCAB)}")
+            if not str(prop.get("lexicon_doc") or "").strip():
+                raise ValueError(
+                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has no "
+                    f"lexicon_doc; a shared BLI code cannot be resolved without it")
+            a = prop.get("refute_a") or {}
+            b = prop.get("refute_b") or {}
+            a_ok = a.get("refuted") is False
+            b_ok = b.get("refuted") is False
+            if a.get("refuted") is True:
+                refuted_a += 1
+            if b.get("refuted") is True:
+                refuted_b += 1
+            if "refuted" not in a or "refuted" not in b:
+                missing_lens += 1
+            elif not isinstance(a.get("refuted"), bool) or not isinstance(
+                    b.get("refuted"), bool):
+                # fail-closed: a lens that answered something other than a JSON
+                # boolean has not cleared the proposal, and the count says so
+                malformed_lens += 1
+            if not (a_ok and b_ok):
+                continue
+            pair = (prop["piid"], prop["pe_bli"])
+            if pair in seen_pairs:
+                # the same PIID can carry several announcement paragraphs; the
+                # loader keeps the first packet per pair anyway (:270-273), so
+                # the duplicate is resolved here instead of shipped
+                duplicate_pairs += 1
+                continue
+            seen_pairs.add(pair)
+            packets.append({
+                "piid": prop["piid"],
+                "pe_bli": prop["pe_bli"],
+                "program_name": prop.get("program_name"),
+                "match_basis": basis,
+                "date": rec.get("date"),
+                "contractor": rec.get("contractor"),
+                "service": rec.get("service"),
+                "article_id": str(rec["article_id"]),
+                "announcement_excerpt": (rec.get("text") or "")[:700],
+                "lexicon_quote": prop.get("lexicon_quote"),
+                "lexicon_doc": str(prop["lexicon_doc"]),
+                "llm_rationale": prop.get("rationale"),
+            })
+            surviving.append({"piid": prop["piid"], "pe_bli": prop["pe_bli"],
+                              "reason": (a.get("reason") or b.get("reason") or "")[:200]})
+    result = {
+        "triaged": records_attempted,
+        "verdict_counts": counts,
+        "proposed": counts["link"],
+        "surviving": surviving,
+        "refuted_a": refuted_a,
+        "refuted_b": refuted_b,
+        "missing_lens": missing_lens,
+        "malformed_lens": malformed_lens,
+        "duplicate_pairs": duplicate_pairs,
+        "records_attempted": records_attempted,
+        "chunks_attempted": attempted_files,
+        "chunks_queued": len(queue),
+    }
+    return packets, result
+
+
+def _load_records() -> list[dict]:
+    if not RECORDS.exists():
+        raise SystemExit(
+            f"{RECORDS} is missing. It is gitignored and regenerable (the parse "
+            f"is deterministic):\n  uv run python scripts/parse_contract_announcements.py")
+    records = [json.loads(line) for line in RECORDS.read_text().splitlines() if line.strip()]
+    stats = json.loads(PARSE_STATS.read_text())
+    if len(records) != stats["records"]:
+        raise SystemExit(
+            f"records.jsonl holds {len(records)} rows but parse_stats.json says "
+            f"{stats['records']}; re-run scripts/parse_contract_announcements.py")
+    return records
+
+
+def cmd_queue(chunk_size: int) -> int:
+    records = _load_records()
+    lexicon = [json.loads(l) for l in LEXICON.read_text().splitlines() if l.strip()]
+    name_index = build_name_index(lexicon)
+
+    # A pe_bli maps to a SET of orgs, not one: the three shared BLI codes
+    # ('20' DCSA/DTRA, '30' DMACT/DTRA/OSD, '500' DHRA/DLA) are filed under
+    # several. any_value() would pick one of them differently between runs and
+    # silently move those names out of one org's index — and the chunk
+    # numbering the verdict files are keyed by is derived from this. So every
+    # aggregate here is deterministic, and a name a shared code owns appears in
+    # the index of every org that files it.
+    con = duckdb.connect(str(ROOT / "data/duckdb/govbudget.duckdb"), read_only=True)
+    pe_orgs: dict[str, set[str]] = defaultdict(set)
+    for pe, org in con.execute(
+            "select distinct pe_bli, org from dim_programs where org is not null"
+            " order by 1, 2").fetchall():
+        pe_orgs[pe].add(org)
+    pe_title = dict(con.execute(
+        "select pe_bli, min(title) from dim_programs group by 1 order by 1").fetchall())
+    con.close()
+
+    piids = sorted({n["piid"] for r in records for n in r.get("contract_numbers", [])})
+    lakecon = duckdb.connect()
+    lakecon.execute("create temp table want(piid varchar)")
+    lakecon.executemany("insert into want values (?)", [(p,) for p in piids])
+    lake = {r[0] for r in lakecon.execute(f"""
+        select distinct award_id_piid
+        from read_parquet('{ROOT}/data/parquet/contracts/fy=*/*.parquet',
+                          union_by_name=true)
+        where award_id_piid in (select piid from want)""").fetchall()}
+    lakecon.close()
+
+    # 3,840 entries carrying 3,832 distinct keys — 8 paragraphs are exact
+    # duplicates across articles. The disclosure figure is the ENTRY count (the
+    # records the wave-2 pass was actually handed, and the denominator of its
+    # $1.9545e12); the set is what rule 3 excludes by.
+    attempted = set()
+    attempted_entries = 0
+    attempted_value = 0
+    for f in sorted((ANN / "llm_chunks").glob("chunk_*.json")):
+        for rec in json.load(open(f)):
+            attempted.add(record_key(rec))
+            attempted_entries += 1
+            attempted_value += announced_value(rec)
+
+    owned = [e for e in lexicon if e.get("ownership") == "own" and not e.get("weak_name")]
+    orgs_with_lexicon = {o for e in owned for o in pe_orgs.get(e["pe_bli"], ())}
+
+    with_lake = sum(1 for r in records
+                    if any(n["piid"] in lake for n in r.get("contract_numbers", [])))
+    residue_all, queued = select_residue(
+        records, lake=lake, name_index=name_index,
+        attempted=attempted, orgs_with_lexicon=orgs_with_lexicon)
+    chunks = chunk_records(queued, size=chunk_size)
+
+    QUEUE_DIR.mkdir(parents=True, exist_ok=True)
+    for old in QUEUE_DIR.glob("chunk_*.json"):    # prune-before-emit: a shrinking
+        old.unlink()                              # universe must not leave stale chunks
+    for chunk in chunks:
+        payload = {
+            "chunk": chunk["file"],
+            "rank": chunk["rank"],
+            "org": chunk["org"],
+            "announced_value_total": chunk["announced_value"],
+            "lexicon_index": f"data/research/announcements/wave4_lexicon/{chunk['org']}.tsv",
+            "rubric": RUBRIC,
+            "records": [
+                {"record_index": i,
+                 "article_id": r["article_id"], "date": r["date"], "service": r["service"],
+                 "contractor": r["contractor"], "amounts": r["amounts"],
+                 "lake_piids": r["lake_piids"], "text": (r["text"] or "")[:700]}
+                for i, r in enumerate(chunk["records"])],
+        }
+        (QUEUE_DIR / chunk["file"]).write_text(json.dumps(payload, indent=0))
+
+    LEXICON_DIR.mkdir(parents=True, exist_ok=True)
+    for old in LEXICON_DIR.glob("*.tsv"):
+        old.unlink()
+    for org in sorted({c["org"] for c in chunks}):
+        lines = ["name\tpe_bli\tlexicon_doc\tprogram_title"]
+        for e in owned:
+            if org not in pe_orgs.get(e["pe_bli"], ()):
+                continue
+            lines.append(f"{e['name']}\t{e['pe_bli']}\t{e.get('doc_id')}\t"
+                         f"{(pe_title.get(e['pe_bli']) or '')[:60]}")
+        (LEXICON_DIR / f"{org}.tsv").write_text("\n".join(lines) + "\n")
+
+    chunk_rows = [{"rank": c["rank"], "file": c["file"], "org": c["org"],
+                   "records": len(c["records"]),
+                   "announced_value": c["announced_value"]} for c in chunks]
+    # The run order, beside the chunks it orders: the adjudication walks this
+    # list top-down in rounds of 5 (ruling A10). Regenerable, so gitignored with
+    # the rest of wave4_queue/; residue_manifest.json is the committed copy.
+    QUEUE_MANIFEST.write_text(json.dumps({
+        "generated_at": date.today().isoformat(),
+        "rubric": RUBRIC,
+        "order": "descending announced value; rank == the chunk file's number",
+        "chunk_size": chunk_size,
+        "records_queued": len(queued),
+        "value_queued": sum(announced_value(r) for r in queued),
+        "chunks": chunk_rows,
+    }, indent=1))
+
+    manifest = {
+        "generated_at": date.today().isoformat(),
+        "records_total": len(records),
+        "records_with_lake_piid": with_lake,
+        "records_deterministic": with_lake - len(residue_all),
+        "records_residue": len(residue_all),
+        "value_residue": sum(announced_value(r) for r in residue_all),
+        "earlier_pass": {"name": "wave2-llm-alias", "records": attempted_entries,
+                         "distinct_records": len(attempted),
+                         "value": attempted_value},
+        "records_queued": len(queued),
+        "value_queued": sum(announced_value(r) for r in queued),
+        "chunk_size": chunk_size,
+        "chunks": chunk_rows,
+    }
+    MANIFEST.write_text(json.dumps(manifest, indent=1))
+    print(f"records {len(records):,}; with lake PIID {with_lake:,}; "
+          f"deterministic {manifest['records_deterministic']:,}; "
+          f"residue {len(residue_all):,} (${manifest['value_residue']/1e12:.4f}T); "
+          f"already attempted {attempted_entries:,} ({len(attempted):,} distinct); "
+          f"queued {len(queued):,} in "
+          f"{len(chunks)} chunks -> {QUEUE_DIR}")
+    return 0
+
+
+def cmd_collect() -> int:
+    queue = []
+    for f in sorted(QUEUE_DIR.glob("chunk_*.json")):
+        payload = json.load(open(f))
+        queue.append({"file": payload["chunk"], "org": payload["org"],
+                      "announced_value": sum(announced_value(r) for r in payload["records"]),
+                      "records": payload["records"]})
+    if not queue:
+        raise SystemExit(
+            f"{QUEUE_DIR} is empty — run `queue` first (it is gitignored and "
+            f"regenerated deterministically from records.jsonl + lexicon.jsonl)")
+    verdicts = {}
+    for f in sorted(VERDICT_DIR.glob("chunk_*.json")):
+        try:
+            payload = json.load(open(f))
+        except json.JSONDecodeError as e:
+            # fail closed and loudly: an unreadable verdict file is an
+            # adjudicated chunk whose result would otherwise vanish
+            raise SystemExit(f"{f} is not readable JSON ({e}); fix or remove it")
+        verdicts[payload.get("chunk", f.name)] = payload
+    packets, result = collect_verdicts(queue, verdicts)
+
+    PACKET_DIR.mkdir(parents=True, exist_ok=True)
+    for old in PACKET_DIR.glob("chunk_*.json"):
+        old.unlink()
+    for i in range(0, len(packets), 200):
+        # a bare LIST: load_announcement_links.py iterates this file directly
+        (PACKET_DIR / f"chunk_{i//200:03d}.json").write_text(
+            json.dumps(packets[i:i + 200], indent=0))
+    RESULT.write_text(json.dumps(result, indent=1))
+    print(f"chunks adjudicated {len(result['chunks_attempted'])} of {len(queue)}; "
+          f"records {result['records_attempted']:,}; "
+          f"proposed {result['proposed']:,} "
+          f"(weak {result['verdict_counts']['weak']:,}, "
+          f"wrong {result['verdict_counts']['wrong']:,}); "
+          f"refuted A {result['refuted_a']:,} / B {result['refuted_b']:,}; "
+          f"missing a lens {result['missing_lens']:,}; "
+          f"malformed a lens {result['malformed_lens']:,}; "
+          f"duplicate pairs {result['duplicate_pairs']:,}; "
+          f"surviving {len(result['surviving']):,} -> {RESULT}")
+    return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    q = sub.add_parser("queue", help="build the wave-4 adjudication queue")
+    q.add_argument("--chunk-size", type=int, default=80)
+    sub.add_parser("collect", help="turn returned verdicts into loader packets")
+    args = ap.parse_args()
+    return cmd_queue(args.chunk_size) if args.cmd == "queue" else cmd_collect()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

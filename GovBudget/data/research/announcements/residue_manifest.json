@@ -1,0 +1,2161 @@
+{
+ "generated_at": "2026-09-12",
+ "records_total": 34542,
+ "records_with_lake_piid": 32852,
+ "records_deterministic": 4508,
+ "records_residue": 28344,
+ "value_residue": 3839296125017,
+ "earlier_pass": {
+  "name": "wave2-llm-alias",
+  "records": 3840,
+  "distinct_records": 3832,
+  "value": 1954546396259
+ },
+ "records_queued": 23824,
+ "value_queued": 1611957275563,
+ "chunk_size": 80,
+ "chunks": [
+  {
+   "rank": 0,
+   "file": "chunk_000_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 235794786658
+  },
+  {
+   "rank": 1,
+   "file": "chunk_001_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 234829562946
+  },
+  {
+   "rank": 2,
+   "file": "chunk_002_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 159140987541
+  },
+  {
+   "rank": 3,
+   "file": "chunk_003_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 84617564203
+  },
+  {
+   "rank": 4,
+   "file": "chunk_004_WHS.json",
+   "org": "WHS",
+   "records": 80,
+   "announced_value": 44805752931
+  },
+  {
+   "rank": 5,
+   "file": "chunk_005_DISA.json",
+   "org": "DISA",
+   "records": 80,
+   "announced_value": 9966852340
+  },
+  {
+   "rank": 6,
+   "file": "chunk_006_MDA.json",
+   "org": "MDA",
+   "records": 80,
+   "announced_value": 42600596078
+  },
+  {
+   "rank": 7,
+   "file": "chunk_007_DTRA.json",
+   "org": "DTRA",
+   "records": 49,
+   "announced_value": 7348442159
+  },
+  {
+   "rank": 8,
+   "file": "chunk_008_SOCOM.json",
+   "org": "SOCOM",
+   "records": 80,
+   "announced_value": 16240686592
+  },
+  {
+   "rank": 9,
+   "file": "chunk_009_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 43876737776
+  },
+  {
+   "rank": 10,
+   "file": "chunk_010_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 33613256405
+  },
+  {
+   "rank": 11,
+   "file": "chunk_011_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 34793467112
+  },
+  {
+   "rank": 12,
+   "file": "chunk_012_DARPA.json",
+   "org": "DARPA",
+   "records": 80,
+   "announced_value": 2931731153
+  },
+  {
+   "rank": 13,
+   "file": "chunk_013_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 24590037599
+  },
+  {
+   "rank": 14,
+   "file": "chunk_014_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 20860936678
+  },
+  {
+   "rank": 15,
+   "file": "chunk_015_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 17382903130
+  },
+  {
+   "rank": 16,
+   "file": "chunk_016_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 17512683398
+  },
+  {
+   "rank": 17,
+   "file": "chunk_017_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 15104428502
+  },
+  {
+   "rank": 18,
+   "file": "chunk_018_DHRA.json",
+   "org": "DHRA",
+   "records": 14,
+   "announced_value": 457376665
+  },
+  {
+   "rank": 19,
+   "file": "chunk_019_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 13061986758
+  },
+  {
+   "rank": 20,
+   "file": "chunk_020_DCSA.json",
+   "org": "DCSA",
+   "records": 29,
+   "announced_value": 793826315
+  },
+  {
+   "rank": 21,
+   "file": "chunk_021_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 10438312646
+  },
+  {
+   "rank": 22,
+   "file": "chunk_022_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 9442892503
+  },
+  {
+   "rank": 23,
+   "file": "chunk_023_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 10130852662
+  },
+  {
+   "rank": 24,
+   "file": "chunk_024_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 6708104992
+  },
+  {
+   "rank": 25,
+   "file": "chunk_025_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 8518256433
+  },
+  {
+   "rank": 26,
+   "file": "chunk_026_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 8074940038
+  },
+  {
+   "rank": 27,
+   "file": "chunk_027_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 7627324178
+  },
+  {
+   "rank": 28,
+   "file": "chunk_028_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 6819959456
+  },
+  {
+   "rank": 29,
+   "file": "chunk_029_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 6976360877
+  },
+  {
+   "rank": 30,
+   "file": "chunk_030_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 6900573691
+  },
+  {
+   "rank": 31,
+   "file": "chunk_031_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 6223266471
+  },
+  {
+   "rank": 32,
+   "file": "chunk_032_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 5760894960
+  },
+  {
+   "rank": 33,
+   "file": "chunk_033_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 5283989348
+  },
+  {
+   "rank": 34,
+   "file": "chunk_034_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 5579305604
+  },
+  {
+   "rank": 35,
+   "file": "chunk_035_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 4997418591
+  },
+  {
+   "rank": 36,
+   "file": "chunk_036_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 5058479588
+  },
+  {
+   "rank": 37,
+   "file": "chunk_037_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 4733339485
+  },
+  {
+   "rank": 38,
+   "file": "chunk_038_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 4781936183
+  },
+  {
+   "rank": 39,
+   "file": "chunk_039_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 4679214085
+  },
+  {
+   "rank": 40,
+   "file": "chunk_040_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 4586746028
+  },
+  {
+   "rank": 41,
+   "file": "chunk_041_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 4517274362
+  },
+  {
+   "rank": 42,
+   "file": "chunk_042_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 4368304319
+  },
+  {
+   "rank": 43,
+   "file": "chunk_043_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 4149157573
+  },
+  {
+   "rank": 44,
+   "file": "chunk_044_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 4273859692
+  },
+  {
+   "rank": 45,
+   "file": "chunk_045_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 4084610046
+  },
+  {
+   "rank": 46,
+   "file": "chunk_046_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 4093497603
+  },
+  {
+   "rank": 47,
+   "file": "chunk_047_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 4042887916
+  },
+  {
+   "rank": 48,
+   "file": "chunk_048_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3985170142
+  },
+  {
+   "rank": 49,
+   "file": "chunk_049_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3952104193
+  },
+  {
+   "rank": 50,
+   "file": "chunk_050_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 3911131545
+  },
+  {
+   "rank": 51,
+   "file": "chunk_051_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3936004574
+  },
+  {
+   "rank": 52,
+   "file": "chunk_052_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 3895679484
+  },
+  {
+   "rank": 53,
+   "file": "chunk_053_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3911771385
+  },
+  {
+   "rank": 54,
+   "file": "chunk_054_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3885170369
+  },
+  {
+   "rank": 55,
+   "file": "chunk_055_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3835630548
+  },
+  {
+   "rank": 56,
+   "file": "chunk_056_MDA.json",
+   "org": "MDA",
+   "records": 80,
+   "announced_value": 2377707281
+  },
+  {
+   "rank": 57,
+   "file": "chunk_057_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 3702349842
+  },
+  {
+   "rank": 58,
+   "file": "chunk_058_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 3758986774
+  },
+  {
+   "rank": 59,
+   "file": "chunk_059_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3753322860
+  },
+  {
+   "rank": 60,
+   "file": "chunk_060_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3686067033
+  },
+  {
+   "rank": 61,
+   "file": "chunk_061_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3608808494
+  },
+  {
+   "rank": 62,
+   "file": "chunk_062_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 3587843097
+  },
+  {
+   "rank": 63,
+   "file": "chunk_063_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3600000000
+  },
+  {
+   "rank": 64,
+   "file": "chunk_064_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 3500341602
+  },
+  {
+   "rank": 65,
+   "file": "chunk_065_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3536348252
+  },
+  {
+   "rank": 66,
+   "file": "chunk_066_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3503580954
+  },
+  {
+   "rank": 67,
+   "file": "chunk_067_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 3353094998
+  },
+  {
+   "rank": 68,
+   "file": "chunk_068_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3381538721
+  },
+  {
+   "rank": 69,
+   "file": "chunk_069_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3383122463
+  },
+  {
+   "rank": 70,
+   "file": "chunk_070_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 3267580249
+  },
+  {
+   "rank": 71,
+   "file": "chunk_071_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3267486106
+  },
+  {
+   "rank": 72,
+   "file": "chunk_072_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3235270377
+  },
+  {
+   "rank": 73,
+   "file": "chunk_073_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3179652451
+  },
+  {
+   "rank": 74,
+   "file": "chunk_074_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 3128990230
+  },
+  {
+   "rank": 75,
+   "file": "chunk_075_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 3139847796
+  },
+  {
+   "rank": 76,
+   "file": "chunk_076_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 3043642455
+  },
+  {
+   "rank": 77,
+   "file": "chunk_077_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 3061362350
+  },
+  {
+   "rank": 78,
+   "file": "chunk_078_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2985188135
+  },
+  {
+   "rank": 79,
+   "file": "chunk_079_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 2918757943
+  },
+  {
+   "rank": 80,
+   "file": "chunk_080_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2964587886
+  },
+  {
+   "rank": 81,
+   "file": "chunk_081_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2865320055
+  },
+  {
+   "rank": 82,
+   "file": "chunk_082_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2862527104
+  },
+  {
+   "rank": 83,
+   "file": "chunk_083_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 2803099546
+  },
+  {
+   "rank": 84,
+   "file": "chunk_084_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2774745999
+  },
+  {
+   "rank": 85,
+   "file": "chunk_085_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2777883645
+  },
+  {
+   "rank": 86,
+   "file": "chunk_086_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 2737106771
+  },
+  {
+   "rank": 87,
+   "file": "chunk_087_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2682771749
+  },
+  {
+   "rank": 88,
+   "file": "chunk_088_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2692892753
+  },
+  {
+   "rank": 89,
+   "file": "chunk_089_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 2596585353
+  },
+  {
+   "rank": 90,
+   "file": "chunk_090_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2610281594
+  },
+  {
+   "rank": 91,
+   "file": "chunk_091_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2582062551
+  },
+  {
+   "rank": 92,
+   "file": "chunk_092_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 2513671725
+  },
+  {
+   "rank": 93,
+   "file": "chunk_093_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2508888633
+  },
+  {
+   "rank": 94,
+   "file": "chunk_094_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2477635428
+  },
+  {
+   "rank": 95,
+   "file": "chunk_095_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 2405058424
+  },
+  {
+   "rank": 96,
+   "file": "chunk_096_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2429063375
+  },
+  {
+   "rank": 97,
+   "file": "chunk_097_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2398076179
+  },
+  {
+   "rank": 98,
+   "file": "chunk_098_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 2327103738
+  },
+  {
+   "rank": 99,
+   "file": "chunk_099_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2400000000
+  },
+  {
+   "rank": 100,
+   "file": "chunk_100_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2363288049
+  },
+  {
+   "rank": 101,
+   "file": "chunk_101_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2337188296
+  },
+  {
+   "rank": 102,
+   "file": "chunk_102_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 2237822164
+  },
+  {
+   "rank": 103,
+   "file": "chunk_103_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2291990304
+  },
+  {
+   "rank": 104,
+   "file": "chunk_104_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2262404724
+  },
+  {
+   "rank": 105,
+   "file": "chunk_105_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2222769266
+  },
+  {
+   "rank": 106,
+   "file": "chunk_106_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 2140906724
+  },
+  {
+   "rank": 107,
+   "file": "chunk_107_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2178234552
+  },
+  {
+   "rank": 108,
+   "file": "chunk_108_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2157932651
+  },
+  {
+   "rank": 109,
+   "file": "chunk_109_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 2067421218
+  },
+  {
+   "rank": 110,
+   "file": "chunk_110_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2107507179
+  },
+  {
+   "rank": 111,
+   "file": "chunk_111_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2085307830
+  },
+  {
+   "rank": 112,
+   "file": "chunk_112_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2038265851
+  },
+  {
+   "rank": 113,
+   "file": "chunk_113_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 2008086082
+  },
+  {
+   "rank": 114,
+   "file": "chunk_114_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 2021373085
+  },
+  {
+   "rank": 115,
+   "file": "chunk_115_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 2000077569
+  },
+  {
+   "rank": 116,
+   "file": "chunk_116_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1925092988
+  },
+  {
+   "rank": 117,
+   "file": "chunk_117_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1992880780
+  },
+  {
+   "rank": 118,
+   "file": "chunk_118_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1975459279
+  },
+  {
+   "rank": 119,
+   "file": "chunk_119_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1949998940
+  },
+  {
+   "rank": 120,
+   "file": "chunk_120_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1920260599
+  },
+  {
+   "rank": 121,
+   "file": "chunk_121_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1922861767
+  },
+  {
+   "rank": 122,
+   "file": "chunk_122_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1899972237
+  },
+  {
+   "rank": 123,
+   "file": "chunk_123_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1871763241
+  },
+  {
+   "rank": 124,
+   "file": "chunk_124_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1846525113
+  },
+  {
+   "rank": 125,
+   "file": "chunk_125_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1824791226
+  },
+  {
+   "rank": 126,
+   "file": "chunk_126_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1771241611
+  },
+  {
+   "rank": 127,
+   "file": "chunk_127_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1811200221
+  },
+  {
+   "rank": 128,
+   "file": "chunk_128_DCMA.json",
+   "org": "DCMA",
+   "records": 3,
+   "announced_value": 51950908
+  },
+  {
+   "rank": 129,
+   "file": "chunk_129_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1789937157
+  },
+  {
+   "rank": 130,
+   "file": "chunk_130_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1766591895
+  },
+  {
+   "rank": 131,
+   "file": "chunk_131_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1733785450
+  },
+  {
+   "rank": 132,
+   "file": "chunk_132_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1740970470
+  },
+  {
+   "rank": 133,
+   "file": "chunk_133_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1705292262
+  },
+  {
+   "rank": 134,
+   "file": "chunk_134_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1690614306
+  },
+  {
+   "rank": 135,
+   "file": "chunk_135_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1634935632
+  },
+  {
+   "rank": 136,
+   "file": "chunk_136_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1636475086
+  },
+  {
+   "rank": 137,
+   "file": "chunk_137_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1647106219
+  },
+  {
+   "rank": 138,
+   "file": "chunk_138_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1638712194
+  },
+  {
+   "rank": 139,
+   "file": "chunk_139_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1605466962
+  },
+  {
+   "rank": 140,
+   "file": "chunk_140_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1601127354
+  },
+  {
+   "rank": 141,
+   "file": "chunk_141_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1565266567
+  },
+  {
+   "rank": 142,
+   "file": "chunk_142_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1583515331
+  },
+  {
+   "rank": 143,
+   "file": "chunk_143_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1578685948
+  },
+  {
+   "rank": 144,
+   "file": "chunk_144_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1523648161
+  },
+  {
+   "rank": 145,
+   "file": "chunk_145_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1540445959
+  },
+  {
+   "rank": 146,
+   "file": "chunk_146_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1535697246
+  },
+  {
+   "rank": 147,
+   "file": "chunk_147_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1505059784
+  },
+  {
+   "rank": 148,
+   "file": "chunk_148_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1485292064
+  },
+  {
+   "rank": 149,
+   "file": "chunk_149_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1491894047
+  },
+  {
+   "rank": 150,
+   "file": "chunk_150_MDA.json",
+   "org": "MDA",
+   "records": 80,
+   "announced_value": 986741234
+  },
+  {
+   "rank": 151,
+   "file": "chunk_151_SOCOM.json",
+   "org": "SOCOM",
+   "records": 48,
+   "announced_value": 533353021
+  },
+  {
+   "rank": 152,
+   "file": "chunk_152_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1469526099
+  },
+  {
+   "rank": 153,
+   "file": "chunk_153_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1447723985
+  },
+  {
+   "rank": 154,
+   "file": "chunk_154_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1408060362
+  },
+  {
+   "rank": 155,
+   "file": "chunk_155_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1437262034
+  },
+  {
+   "rank": 156,
+   "file": "chunk_156_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1419256869
+  },
+  {
+   "rank": 157,
+   "file": "chunk_157_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1414117099
+  },
+  {
+   "rank": 158,
+   "file": "chunk_158_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1406311192
+  },
+  {
+   "rank": 159,
+   "file": "chunk_159_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1382450579
+  },
+  {
+   "rank": 160,
+   "file": "chunk_160_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1350725691
+  },
+  {
+   "rank": 161,
+   "file": "chunk_161_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1371708853
+  },
+  {
+   "rank": 162,
+   "file": "chunk_162_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1347055137
+  },
+  {
+   "rank": 163,
+   "file": "chunk_163_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1323523085
+  },
+  {
+   "rank": 164,
+   "file": "chunk_164_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1337607725
+  },
+  {
+   "rank": 165,
+   "file": "chunk_165_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1309799463
+  },
+  {
+   "rank": 166,
+   "file": "chunk_166_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1306482099
+  },
+  {
+   "rank": 167,
+   "file": "chunk_167_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1286912855
+  },
+  {
+   "rank": 168,
+   "file": "chunk_168_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1276954492
+  },
+  {
+   "rank": 169,
+   "file": "chunk_169_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1276870828
+  },
+  {
+   "rank": 170,
+   "file": "chunk_170_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1239980282
+  },
+  {
+   "rank": 171,
+   "file": "chunk_171_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1248930008
+  },
+  {
+   "rank": 172,
+   "file": "chunk_172_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1243700926
+  },
+  {
+   "rank": 173,
+   "file": "chunk_173_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1219245827
+  },
+  {
+   "rank": 174,
+   "file": "chunk_174_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1217507500
+  },
+  {
+   "rank": 175,
+   "file": "chunk_175_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1209458934
+  },
+  {
+   "rank": 176,
+   "file": "chunk_176_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1200473641
+  },
+  {
+   "rank": 177,
+   "file": "chunk_177_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1198257867
+  },
+  {
+   "rank": 178,
+   "file": "chunk_178_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1180737559
+  },
+  {
+   "rank": 179,
+   "file": "chunk_179_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1188546342
+  },
+  {
+   "rank": 180,
+   "file": "chunk_180_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1157907804
+  },
+  {
+   "rank": 181,
+   "file": "chunk_181_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1180575965
+  },
+  {
+   "rank": 182,
+   "file": "chunk_182_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1163929215
+  },
+  {
+   "rank": 183,
+   "file": "chunk_183_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1151837471
+  },
+  {
+   "rank": 184,
+   "file": "chunk_184_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1122750903
+  },
+  {
+   "rank": 185,
+   "file": "chunk_185_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1134856370
+  },
+  {
+   "rank": 186,
+   "file": "chunk_186_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1121626716
+  },
+  {
+   "rank": 187,
+   "file": "chunk_187_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1100013305
+  },
+  {
+   "rank": 188,
+   "file": "chunk_188_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1110488724
+  },
+  {
+   "rank": 189,
+   "file": "chunk_189_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1093351489
+  },
+  {
+   "rank": 190,
+   "file": "chunk_190_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1087891014
+  },
+  {
+   "rank": 191,
+   "file": "chunk_191_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 1059144677
+  },
+  {
+   "rank": 192,
+   "file": "chunk_192_DARPA.json",
+   "org": "DARPA",
+   "records": 80,
+   "announced_value": 846026473
+  },
+  {
+   "rank": 193,
+   "file": "chunk_193_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1070344485
+  },
+  {
+   "rank": 194,
+   "file": "chunk_194_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1066702988
+  },
+  {
+   "rank": 195,
+   "file": "chunk_195_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 1045628547
+  },
+  {
+   "rank": 196,
+   "file": "chunk_196_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1047187164
+  },
+  {
+   "rank": 197,
+   "file": "chunk_197_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1047052282
+  },
+  {
+   "rank": 198,
+   "file": "chunk_198_WHS.json",
+   "org": "WHS",
+   "records": 80,
+   "announced_value": 742511407
+  },
+  {
+   "rank": 199,
+   "file": "chunk_199_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1027418824
+  },
+  {
+   "rank": 200,
+   "file": "chunk_200_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1024157651
+  },
+  {
+   "rank": 201,
+   "file": "chunk_201_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 996131145
+  },
+  {
+   "rank": 202,
+   "file": "chunk_202_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 994900838
+  },
+  {
+   "rank": 203,
+   "file": "chunk_203_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 1004508452
+  },
+  {
+   "rank": 204,
+   "file": "chunk_204_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 1002358027
+  },
+  {
+   "rank": 205,
+   "file": "chunk_205_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 985088514
+  },
+  {
+   "rank": 206,
+   "file": "chunk_206_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 982771212
+  },
+  {
+   "rank": 207,
+   "file": "chunk_207_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 965225725
+  },
+  {
+   "rank": 208,
+   "file": "chunk_208_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 949685261
+  },
+  {
+   "rank": 209,
+   "file": "chunk_209_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 955820475
+  },
+  {
+   "rank": 210,
+   "file": "chunk_210_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 960859387
+  },
+  {
+   "rank": 211,
+   "file": "chunk_211_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 949716457
+  },
+  {
+   "rank": 212,
+   "file": "chunk_212_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 940795958
+  },
+  {
+   "rank": 213,
+   "file": "chunk_213_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 927133172
+  },
+  {
+   "rank": 214,
+   "file": "chunk_214_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 908523618
+  },
+  {
+   "rank": 215,
+   "file": "chunk_215_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 922503592
+  },
+  {
+   "rank": 216,
+   "file": "chunk_216_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 899692285
+  },
+  {
+   "rank": 217,
+   "file": "chunk_217_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 907096319
+  },
+  {
+   "rank": 218,
+   "file": "chunk_218_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 902580975
+  },
+  {
+   "rank": 219,
+   "file": "chunk_219_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 882747442
+  },
+  {
+   "rank": 220,
+   "file": "chunk_220_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 882666477
+  },
+  {
+   "rank": 221,
+   "file": "chunk_221_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 856798226
+  },
+  {
+   "rank": 222,
+   "file": "chunk_222_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 855480289
+  },
+  {
+   "rank": 223,
+   "file": "chunk_223_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 866177325
+  },
+  {
+   "rank": 224,
+   "file": "chunk_224_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 862752041
+  },
+  {
+   "rank": 225,
+   "file": "chunk_225_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 849235750
+  },
+  {
+   "rank": 226,
+   "file": "chunk_226_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 844149156
+  },
+  {
+   "rank": 227,
+   "file": "chunk_227_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 833246562
+  },
+  {
+   "rank": 228,
+   "file": "chunk_228_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 829573928
+  },
+  {
+   "rank": 229,
+   "file": "chunk_229_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 816309145
+  },
+  {
+   "rank": 230,
+   "file": "chunk_230_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 811380576
+  },
+  {
+   "rank": 231,
+   "file": "chunk_231_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 815254381
+  },
+  {
+   "rank": 232,
+   "file": "chunk_232_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 809446809
+  },
+  {
+   "rank": 233,
+   "file": "chunk_233_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 801163851
+  },
+  {
+   "rank": 234,
+   "file": "chunk_234_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 800006241
+  },
+  {
+   "rank": 235,
+   "file": "chunk_235_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 799350869
+  },
+  {
+   "rank": 236,
+   "file": "chunk_236_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 786257876
+  },
+  {
+   "rank": 237,
+   "file": "chunk_237_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 796748243
+  },
+  {
+   "rank": 238,
+   "file": "chunk_238_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 793723947
+  },
+  {
+   "rank": 239,
+   "file": "chunk_239_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 792675054
+  },
+  {
+   "rank": 240,
+   "file": "chunk_240_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 784890392
+  },
+  {
+   "rank": 241,
+   "file": "chunk_241_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 784688678
+  },
+  {
+   "rank": 242,
+   "file": "chunk_242_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 775311834
+  },
+  {
+   "rank": 243,
+   "file": "chunk_243_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 771816539
+  },
+  {
+   "rank": 244,
+   "file": "chunk_244_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 772822479
+  },
+  {
+   "rank": 245,
+   "file": "chunk_245_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 757625566
+  },
+  {
+   "rank": 246,
+   "file": "chunk_246_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 762604125
+  },
+  {
+   "rank": 247,
+   "file": "chunk_247_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 760922299
+  },
+  {
+   "rank": 248,
+   "file": "chunk_248_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 751572087
+  },
+  {
+   "rank": 249,
+   "file": "chunk_249_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 750618445
+  },
+  {
+   "rank": 250,
+   "file": "chunk_250_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 748570351
+  },
+  {
+   "rank": 251,
+   "file": "chunk_251_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 738321413
+  },
+  {
+   "rank": 252,
+   "file": "chunk_252_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 733239641
+  },
+  {
+   "rank": 253,
+   "file": "chunk_253_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 719811136
+  },
+  {
+   "rank": 254,
+   "file": "chunk_254_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 728557020
+  },
+  {
+   "rank": 255,
+   "file": "chunk_255_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 725532177
+  },
+  {
+   "rank": 256,
+   "file": "chunk_256_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 720832078
+  },
+  {
+   "rank": 257,
+   "file": "chunk_257_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 719644210
+  },
+  {
+   "rank": 258,
+   "file": "chunk_258_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 709179716
+  },
+  {
+   "rank": 259,
+   "file": "chunk_259_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 710823013
+  },
+  {
+   "rank": 260,
+   "file": "chunk_260_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 709971499
+  },
+  {
+   "rank": 261,
+   "file": "chunk_261_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 698908520
+  },
+  {
+   "rank": 262,
+   "file": "chunk_262_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 691359403
+  },
+  {
+   "rank": 263,
+   "file": "chunk_263_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 698076761
+  },
+  {
+   "rank": 264,
+   "file": "chunk_264_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 686588522
+  },
+  {
+   "rank": 265,
+   "file": "chunk_265_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 686522508
+  },
+  {
+   "rank": 266,
+   "file": "chunk_266_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 684552473
+  },
+  {
+   "rank": 267,
+   "file": "chunk_267_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 676621886
+  },
+  {
+   "rank": 268,
+   "file": "chunk_268_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 665840745
+  },
+  {
+   "rank": 269,
+   "file": "chunk_269_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 670245130
+  },
+  {
+   "rank": 270,
+   "file": "chunk_270_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 662890599
+  },
+  {
+   "rank": 271,
+   "file": "chunk_271_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 665168217
+  },
+  {
+   "rank": 272,
+   "file": "chunk_272_DARPA.json",
+   "org": "DARPA",
+   "records": 35,
+   "announced_value": 269674278
+  },
+  {
+   "rank": 273,
+   "file": "chunk_273_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 655299258
+  },
+  {
+   "rank": 274,
+   "file": "chunk_274_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 654425537
+  },
+  {
+   "rank": 275,
+   "file": "chunk_275_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 640730316
+  },
+  {
+   "rank": 276,
+   "file": "chunk_276_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 636829986
+  },
+  {
+   "rank": 277,
+   "file": "chunk_277_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 642684353
+  },
+  {
+   "rank": 278,
+   "file": "chunk_278_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 643221207
+  },
+  {
+   "rank": 279,
+   "file": "chunk_279_MDA.json",
+   "org": "MDA",
+   "records": 7,
+   "announced_value": 46168797
+  },
+  {
+   "rank": 280,
+   "file": "chunk_280_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 636633789
+  },
+  {
+   "rank": 281,
+   "file": "chunk_281_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 635011107
+  },
+  {
+   "rank": 282,
+   "file": "chunk_282_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 626922270
+  },
+  {
+   "rank": 283,
+   "file": "chunk_283_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 622294627
+  },
+  {
+   "rank": 284,
+   "file": "chunk_284_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 624238876
+  },
+  {
+   "rank": 285,
+   "file": "chunk_285_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 609648186
+  },
+  {
+   "rank": 286,
+   "file": "chunk_286_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 617705526
+  },
+  {
+   "rank": 287,
+   "file": "chunk_287_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 612573373
+  },
+  {
+   "rank": 288,
+   "file": "chunk_288_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 601229618
+  },
+  {
+   "rank": 289,
+   "file": "chunk_289_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 606589565
+  },
+  {
+   "rank": 290,
+   "file": "chunk_290_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 601873253
+  },
+  {
+   "rank": 291,
+   "file": "chunk_291_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 594082538
+  },
+  {
+   "rank": 292,
+   "file": "chunk_292_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 578579837
+  },
+  {
+   "rank": 293,
+   "file": "chunk_293_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 585202373
+  },
+  {
+   "rank": 294,
+   "file": "chunk_294_F.json",
+   "org": "F",
+   "records": 80,
+   "announced_value": 574768342
+  },
+  {
+   "rank": 295,
+   "file": "chunk_295_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 573670880
+  },
+  {
+   "rank": 296,
+   "file": "chunk_296_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 566048300
+  },
+  {
+   "rank": 297,
+   "file": "chunk_297_DISA.json",
+   "org": "DISA",
+   "records": 10,
+   "announced_value": 20039844
+  },
+  {
+   "rank": 298,
+   "file": "chunk_298_A.json",
+   "org": "A",
+   "records": 80,
+   "announced_value": 419632495
+  },
+  {
+   "rank": 299,
+   "file": "chunk_299_DLA.json",
+   "org": "DLA",
+   "records": 80,
+   "announced_value": 157754530
+  },
+  {
+   "rank": 300,
+   "file": "chunk_300_N.json",
+   "org": "N",
+   "records": 80,
+   "announced_value": 248531823
+  },
+  {
+   "rank": 301,
+   "file": "chunk_301_F.json",
+   "org": "F",
+   "records": 68,
+   "announced_value": 197168519
+  },
+  {
+   "rank": 302,
+   "file": "chunk_302_WHS.json",
+   "org": "WHS",
+   "records": 5,
+   "announced_value": 8320008
+  },
+  {
+   "rank": 303,
+   "file": "chunk_303_A.json",
+   "org": "A",
+   "records": 56,
+   "announced_value": 0
+  },
+  {
+   "rank": 304,
+   "file": "chunk_304_DLA.json",
+   "org": "DLA",
+   "records": 30,
+   "announced_value": 0
+  },
+  {
+   "rank": 305,
+   "file": "chunk_305_N.json",
+   "org": "N",
+   "records": 30,
+   "announced_value": 0
+  }
+ ]
+}

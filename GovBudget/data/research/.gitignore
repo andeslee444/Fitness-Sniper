@@ -6,3 +6,11 @@ announcements/candidates.jsonl
 announcements/wave2_packets_prelim.json
 lexicon/candidates/
 lexicon/chunks/
+
+# Wave-4 queue (2026-09-11): ~20MB, regenerated deterministically by
+# scripts/mine_announcement_residue.py queue. Its OUTPUTS — wave4_chunks/,
+# wave4_verdicts/, wave4_result.json, residue_manifest.json — are committed,
+# because load_announcement_links.py reads the packets and the result file and
+# a clean checkout without them loses every wave-4 citation.
+announcements/wave4_queue/
+announcements/wave4_lexicon/
