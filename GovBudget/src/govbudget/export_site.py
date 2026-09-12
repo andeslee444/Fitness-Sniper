@@ -6807,17 +6807,35 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                 f"where pop_state = '{dy_state}' and pop_district ="
                 f" '{dy_district}' and fiscal_year = {int(dy_fy)}"
             )
-            for metric, value, wording in (
+            # The SUMMABILITY sentence is METRIC-CONDITIONAL (fix round 1,
+            # Critical 1). One template for both metrics shipped the net row's
+            # identity on the gross card, and it is false there: gross sums a
+            # district's years to MORE than its fct_district_totals headline
+            # wherever any of those years holds a deobligating transaction
+            # (measured read-only 2026-09-11: 90 of 153 districts, e.g. VA-11
+            # $2,101,123,465.21 gross against a $2,062,015,946.58 headline).
+            # The two sentences below are the ONLY per-metric difference after
+            # the opening clause — pinned by
+            # test_district_year_formula_is_metric_conditional.
+            for metric, value, wording, summability in (
                 (
                     "total_obligation",
                     float(dy_total),
                     "net obligations (deobligations subtracted)",
+                    "Dollars are counted once per award per year, so this"
+                    " district's years sum to its fct_district_totals"
+                    " headline.",
                 ),
                 (
                     "positive_obligation",
                     float(dy_positive if dy_positive is not None else dy_total),
                     "gross obligations (positive transactions only, before"
                     " deobligations are subtracted)",
+                    "Gross is the transaction-level"
+                    " sum(greatest(obligation, 0)), counted once per award per"
+                    " year, so this district's years do NOT sum to its"
+                    " fct_district_totals headline wherever one of those years"
+                    " holds a deobligating transaction.",
                 ),
             ):
                 fid = fact_id_derived(
@@ -6829,10 +6847,18 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                     f" pop_district={dy_district!r}, fiscal_year={int(dy_fy)} —"
                     f" {wording} across the {int(dy_awards or 0)} distinct"
                     f" high-confidence-crosswalked award(s) with a transaction"
-                    f" in that fiscal year. Dollars are counted once per award"
-                    f" per year, so a district's years sum to its"
-                    f" fct_district_totals headline; the award counts do NOT"
-                    f" sum (an award active in two years is counted in both).",
+                    f" in that fiscal year."
+                    # Minor 7: name the year's provenance. fiscal_year is
+                    # fct_award_transactions.fiscal_year, which equals the
+                    # federal FY of action_date on all 39,982,196 rows in the
+                    # lake (checked read-only 2026-09-11) — never a J-book
+                    # edition year, which is the confusion 18a ruling 1 exists
+                    # to stop.
+                    f" The fiscal year is the federal fiscal year of the award"
+                    f" transaction's action date, never a J-book edition year."
+                    f" {summability}"
+                    f" The award counts do NOT sum (an award active in two"
+                    f" years is counted in both).",
                     "[]",
                     f"{value:.3f}",
                     built_at,

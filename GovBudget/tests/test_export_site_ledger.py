@@ -18,6 +18,7 @@ manifest's uncited_datasets ledger:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import duckdb
@@ -356,6 +357,64 @@ class TestGeographyCitationRows:
             "district_year", "VA-08|2025", "total_obligation") in by_fid
         assert fact_id_derived(
             "district_year", "CA-18|2025", "total_obligation") not in by_fid
+
+    def test_district_year_formula_is_metric_conditional(self, tmp_path):
+        """Fix round 1, Critical 1 — the two cards may not claim each other's
+        summability.
+
+        One template for both metrics published the NET row's identity ("a
+        district's years sum to its fct_district_totals headline") on the
+        GROSS card, where it is false: 90 of 153 districts have a year holding
+        a deobligating transaction, so their gross years sum ABOVE the
+        headline (measured read-only against the shipped lake, 2026-09-11).
+
+        The contract pinned here: four sentences each; sentence 2 (the
+        action-date year, Minor 7) and sentence 4 (the award-count caveat) are
+        IDENTICAL; sentence 3 is the summability clause and is the ONLY
+        difference beyond the opening clause's metric name and net/gross
+        wording. Reword either card and this fails, which is the point."""
+        db = _make_geo_duckdb(tmp_path)
+        _add_by_year_mart(db)
+        rows = _build_geography_citation_rows(duckdb_path=db)
+        by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
+        net = by_fid[fact_id_derived(
+            "district_year", "VA-08|2024", "total_obligation")][
+                _CIT_IDX["formula"]]
+        gross = by_fid[fact_id_derived(
+            "district_year", "VA-08|2024", "positive_obligation")][
+                _CIT_IDX["formula"]]
+
+        net_s = re.split(r"(?<=\.) ", net)
+        gross_s = re.split(r"(?<=\.) ", gross)
+        assert len(net_s) == 4 and len(gross_s) == 4
+
+        # Shared: the fiscal-year provenance and the award-count caveat.
+        assert net_s[1] == gross_s[1]
+        assert "federal fiscal year of the award transaction's action date" \
+            in net_s[1]
+        assert "never a J-book edition year" in net_s[1]
+        assert net_s[3] == gross_s[3]
+        assert "award counts do NOT sum" in net_s[3]
+
+        # Differ on EXACTLY the summability clause: normalising the opening
+        # sentence's metric name and net/gross wording makes it identical too.
+        assert net_s[2] != gross_s[2]
+        norm_net = net_s[0].replace("total_obligation", "{metric}").replace(
+            "net obligations (deobligations subtracted)", "{wording}")
+        norm_gross = gross_s[0].replace(
+            "positive_obligation", "{metric}").replace(
+            "gross obligations (positive transactions only, before"
+            " deobligations are subtracted)", "{wording}")
+        assert norm_net == norm_gross
+
+        # Neither claims the other's identity.
+        assert "years sum to its fct_district_totals headline" in net_s[2]
+        assert "do NOT sum" not in net_s[2]
+        assert "years sum to its fct_district_totals headline" not in gross
+        assert "years do NOT sum to its fct_district_totals headline" \
+            in gross_s[2]
+        assert "sum(greatest(obligation, 0))" in gross_s[2]
+        assert "deobligating transaction" in gross_s[2]
 
     def test_district_year_rows_pass_verify_derived(self, tmp_path):
         """Empty inputs are legal for this formula shape — the gate's one
