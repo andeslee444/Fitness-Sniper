@@ -757,6 +757,14 @@ export interface ProgramAward {
   award_piid: string;
   confidence: string;
   recipient_name: string;
+  /**
+   * The crosswalk link's own derived citation fact_id (chain-B fix 3) —
+   * `fact_id_derived("budget_to_awards", "{pe_bli}|{award_piid}", "link")`,
+   * minted from the BARE pe_bli, so both members of a shared code resolve
+   * their own links. Null when the link minted no citation row. Appended
+   * field: older sidecars omit it entirely.
+   */
+  fact_id?: string | null;
 }
 
 export interface ProgramMention {

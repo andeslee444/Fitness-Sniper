@@ -8708,6 +8708,27 @@ def _write_all_sidecars(
         _AWARDS_SQL.format(account=""),
         5,
     )
+    def _link_fid(pe_bli: str, award_piid: str) -> str | None:
+        """The crosswalk link's own citation fact_id, or None when no citation
+        row was minted for this pair (chain-B fix 3).
+
+        THE SAME CALL the citation builder makes
+        (_build_budget_to_awards_citation_rows, minted from the BARE pe_bli
+        and the PIID — never the page slug, so a shared code's two members
+        both resolve their own links through the one id the panel publishes).
+        Re-deriving it any other way would mint an id that resolves to
+        nothing; the `_cited_fact_ids` guard is the same one `_conc_fid` uses,
+        so the field is populated only when the citation actually exists.
+
+        Why the sidecar needs it: `program_details/{slug}.json` is the dossier
+        pipeline's own bundle source. Without the fact_id, a `players` claim
+        naming a recipient has nothing resolvable to cite and the model is
+        instructed (correctly) to omit it — which is how a page publishing
+        five named primes came to ship a dossier naming none.
+        """
+        fid = fact_id_derived("budget_to_awards", f"{pe_bli}|{award_piid}", "link")
+        return fid if fid in _cited_fact_ids else None
+
     awards_by_pe: dict[tuple, list] = defaultdict(list)
     for r in awards_rows:
         pe_bli, award_piid, recipient_name, confidence, organization, account = r
@@ -8715,6 +8736,9 @@ def _write_all_sidecars(
             "recipient_name": recipient_name,
             "award_piid": award_piid,
             "confidence": confidence,
+            # APPENDED field (data contract: never reorder/rename). Nullable —
+            # null means this link minted no citation row, not "no link".
+            "fact_id": _link_fid(pe_bli, award_piid),
         })
 
     # A link on a shared BLI code filed under a key NO PAGE READS is shown on

@@ -556,6 +556,55 @@ def test_link_citation_row_names_the_account_for_a_split_key(collision_export):
     assert SCN in (by_fid[scn_fid].get("formula") or "")
 
 
+def test_a_sidecar_award_row_carries_the_links_own_citation_fact_id(
+    collision_export,
+):
+    """Chain-B fix 3: the sidecar award row and the citation row for the SAME
+    (pe_bli, award_piid) pair carry the SAME fact_id.
+
+    The sidecar is the dossier bundle's source, so an award row without a
+    resolvable fact_id is an award a `players` claim cannot cite — the measured
+    reason 3010-SCN's dossier named none of the five recipients its page
+    publishes. The id is minted from the BARE pe_bli on both sides (never the
+    page slug), which is what lets two members of one shared code each resolve
+    their own links.
+    """
+    from govbudget.export_site import fact_id_derived
+
+    by_fid = json.loads(
+        (collision_export / "json" / "citations.json").read_text()
+    )
+    for slug, pe_bli, piid in (
+        ("3010-SCN", "3010", "N0002420C0001"),
+        ("3010-OPN", "3010", "N0003917D0006"),
+        ("0601101E", "0601101E", "W911QX-24-C-0001"),
+    ):
+        rows = _sidecar(collision_export, slug)["awards"]
+        assert [a["award_piid"] for a in rows] == [piid]
+        expected = fact_id_derived(
+            "budget_to_awards", f"{pe_bli}|{piid}", "link")
+        assert rows[0]["fact_id"] == expected, slug
+        assert expected in by_fid, slug
+
+
+def test_every_sidecar_award_fact_id_resolves_or_is_null(collision_export):
+    """The field is guarded, not assumed: it is populated only when the
+    citation row was actually minted (the `_cited_fact_ids` test), so a
+    non-null value always resolves and a null one is an honest absence."""
+    by_fid = json.loads(
+        (collision_export / "json" / "citations.json").read_text()
+    )
+    details = collision_export / "json" / "program_details"
+    seen = 0
+    for path in sorted(details.glob("*.json")):
+        for award in json.loads(path.read_text()).get("awards", []):
+            assert "fact_id" in award, path.stem
+            if award["fact_id"] is not None:
+                assert award["fact_id"] in by_fid, (path.stem, award["award_piid"])
+                seen += 1
+    assert seen >= 3, "fixture should publish at least the three linked awards"
+
+
 # ---------------------------------------------------------------------------
 # (c) ROADMAP #82 — links from other surfaces reach the member, and a figure
 #     withheld from both members is said, not hidden
