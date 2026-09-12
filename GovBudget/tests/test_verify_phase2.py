@@ -97,6 +97,10 @@ def test_sam_gate_passes_before_the_extract_has_run(tmp_path):
     assert g["note"] is not None
     assert "sam extract" in g["note"]
     assert "vacuous" in g["note"]
+    # The rebuild is the step the owner will otherwise skip: the dbt source's
+    # presence probe is COMPILE-time, so a landed parquet stays invisible to
+    # dim_entities until the next build. Both vacuous notes must say so.
+    assert "govbudget build" in g["note"]
 
 
 def test_sam_gate_says_so_when_the_mart_predates_the_sam_columns(tmp_path):
@@ -123,6 +127,38 @@ def test_sam_gate_fails_when_a_lake_refresh_moved_the_dominant_member(tmp_path):
     assert g["mismatched_count"] == 1
     assert g["mismatched"] == ["BOEING"]
     assert g["ok"] is False
+
+
+def test_sam_gate_ignores_a_registration_on_a_family_outside_the_top_n(tmp_path):
+    """The top-N boundary MOVES. A family that was published when its
+    registration was fetched, and has since dropped out, keeps a correct
+    registration — it must not be counted `mismatched` (the remedy
+    `--refresh` only touches the current top-N, so the gate would be
+    unfixable), and it must not inflate the printed N/200 either.
+
+    Here HII is the rank-2 family and top_n=1, i.e. the rank-201 case.
+    """
+    db = make_sam_marts(tmp_path, [("P1", "THE BOEING COMPANY"),
+                                   ("P3", "HUNTINGTON INGALLS INDUSTRIES, INC")])
+    g = sam_gate(db, top_n=1)
+    assert g["published"] == 1
+    assert g["with_registration"] == 1, "the out-of-scope row is not in N/200"
+    assert g["with_registration"] <= g["published"]
+    assert g["out_of_scope_count"] == 1
+    assert g["mismatched_count"] == 0
+    assert g["ok"] is True, "a family that fell out of the top N is not a defect"
+    assert g["note"] is None
+
+
+def test_sam_gate_does_not_grade_an_out_of_scope_registration_s_missing_name(
+    tmp_path,
+):
+    """Out of scope is out of scope: a nameless registration on a family that
+    is no longer published cannot fail a gate about published pages."""
+    db = make_sam_marts(tmp_path, [("P1", "THE BOEING COMPANY"), ("P3", None)])
+    g = sam_gate(db, top_n=1)
+    assert g["nameless_count"] == 0
+    assert g["ok"] is True
 
 
 def test_sam_gate_fails_on_a_registration_with_no_legal_name(tmp_path):

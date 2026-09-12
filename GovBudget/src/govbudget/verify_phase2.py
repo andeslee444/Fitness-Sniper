@@ -81,6 +81,14 @@ def sam_gate(duckdb_path: Path, *, top_n: int = 200) -> dict:
     — this is a STALENESS check, not an independent reimplementation of the
     pick rule.
 
+    SCOPE IS THE CURRENT TOP-N, AND ONLY THAT. The published set moves with
+    every lake refresh, so a family fetched while it was rank 180 can be rank
+    201 today: its registration is still correct, `--refresh` (which only
+    touches the current top-N) could never "fix" it, and counting it would
+    both fail the gate forever and push `with_registration` above `published`
+    in the printed N/200. Those rows are reported as `out_of_scope_count` and
+    grade nothing.
+
     ZERO ROWS IS A PASS, BUT NEVER A SILENT ONE. An un-run extract is the
     normal state (the key is the owner's to mint, and the no-role quota is 10
     requests/day), so the gate returns ok=True — and always returns a `note`
@@ -105,8 +113,10 @@ def sam_gate(duckdb_path: Path, *, top_n: int = 200) -> dict:
     finally:
         con.close()
 
-    mismatched = [fk for fk, uei, _ in rows if expected.get(fk) != uei]
-    nameless = [fk for fk, _, name in rows if not name]
+    in_scope = [r for r in rows if r[0] in expected]
+    out_of_scope = len(rows) - len(in_scope)
+    mismatched = [fk for fk, uei, _ in in_scope if expected[fk] != uei]
+    nameless = [fk for fk, _, name in in_scope if not name]
     note = None
     if not has_columns:
         note = (
@@ -114,17 +124,25 @@ def sam_gate(duckdb_path: Path, *, top_n: int = 200) -> dict:
             " ROADMAP #10's dbt source; re-run `govbudget build`. Nothing was"
             " checked."
         )
-    elif not rows:
-        note = (
-            "no SAM.gov registration rows in dim_entities:"
+    elif not in_scope:
+        why = (
+            f" all {out_of_scope} stored registration(s) belong to families"
+            f" outside the current top {top_n}."
+            if out_of_scope else
             " `govbudget sam extract` has not run against this warehouse (it is"
             " blocked on an owner-minted SAM.gov Personal API key, and fetches"
-            " 10 registrations/day without a SAM.gov role). This leg passes"
-            " vacuously and checks nothing until the extract lands rows."
+            " 10 registrations/day without a SAM.gov role)."
+        )
+        note = (
+            "no SAM.gov registration rows in dim_entities for the published"
+            f" top {top_n}:{why} This leg passes vacuously and checks nothing"
+            " until the extract lands rows — and rows only become visible to"
+            " dim_entities after the next `govbudget build`."
         )
     return {
         "published": len(expected),
-        "with_registration": len(rows),
+        "with_registration": len(in_scope),
+        "out_of_scope_count": out_of_scope,
         "mismatched": mismatched[:5],
         "mismatched_count": len(mismatched),
         "nameless_count": len(nameless),

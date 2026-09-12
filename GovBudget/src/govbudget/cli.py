@@ -1026,6 +1026,13 @@ def cmd_verify_phase2(args) -> None:
     # exists, and a silent green would read as evidence the extract is verified.
     if sam["note"]:
         print(f"gate e4 sam: VACUOUS — {sam['note']}")
+    if sam["out_of_scope_count"]:
+        # Not a failure and not part of N/200: the published set moves, and a
+        # family that fell out of the top N keeps a registration --refresh
+        # would never revisit. Reported so the count is never a mystery.
+        print(f"gate e4 sam: {sam['out_of_scope_count']} stored registration(s)"
+              " are held for families outside the current top N — not checked,"
+              " not a failure")
     if sam["mismatched"]:
         print(f"gate e4 sam: stale registrations on {sam['mismatched']}"
               " — re-run `govbudget sam extract --refresh` for those families")
@@ -1581,13 +1588,18 @@ def cmd_sam(args) -> None:
         # The credential check comes FIRST: it is offline and free, so a
         # machine with no key never opens the shared lake to be told no.
         key = require_api_key()          # offline, free, fail-loud
-        require_preflight(report_path)   # stored report; spends no quota
+        # The report is CONSUMED, not merely required: preflight is the only
+        # thing that knows which API version answers, so the extract requests
+        # that one rather than the v4 guess baked into SAM_ENTITY_API_URL.
+        report = require_preflight(report_path)   # stored; spends no quota
         families = dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n)
         print(f"sam extract: {len(families)} published families, cap "
-              f"{args.max_requests} request(s) this run")
+              f"{args.max_requests} request(s) this run, endpoint "
+              f"{report['endpoint']} (recorded by preflight)")
         path = extract_entities(
             families, api_key=key, out_dir=out_dir, raw_dir=raw_dir,
             max_requests=args.max_requests, refresh=args.refresh,
+            endpoint=report["endpoint"],
         )
         print(f"sam extract: -> {path}")
     except (SamAuthError, SamRateLimitError, SamShapeError) as e:
