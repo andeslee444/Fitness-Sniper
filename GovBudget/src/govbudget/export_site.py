@@ -2435,6 +2435,10 @@ def export_site(
     # only holds a duckdb connection). See _ingested_service_orgs.
     with psycopg.connect(dsn) as pg_orgs:
         ingested_service_orgs = _ingested_service_orgs(pg_orgs)
+    # The other half of the same decision, from the edition probe rather than
+    # from Postgres: which orgs have NO usable FY2026 book, and why. See
+    # _org_absences — the "why" is what the page renders.
+    org_absences = _org_absences()
 
     # ROADMAP #72: held-out precision study on the published link tiers.
     # scripts/precision_study.py owns the draw/load/report CLI against
@@ -2482,6 +2486,7 @@ def export_site(
         "datasets": final_counts,
         "citations": cit_by_kind,
         "ingested_service_orgs": ingested_service_orgs,
+        "org_absences": org_absences,
         "link_adjudication": link_adjudication,
         "link_precision": link_precision,
         "pdf_count": n_pdfs,
@@ -2706,9 +2711,11 @@ def _ingested_service_orgs(pg) -> list[str]:
         2026-07-05 "ingested-orgs liar" species with a new cause, and it is
         exactly what this join prevents.
     Orgs with no loaded book (DHA until its book extracts, DEFW, IG) are
-    absent by construction and keep the honest "not yet ingested" wording;
-    the absences themselves are recorded in
-    data/research/edition_manifest.json -> org_absences.
+    absent by construction. What their pages SAY is decided one step further
+    on: an org recorded in data/research/edition_manifest.json -> org_absences
+    renders that absence rule's own sentence (_org_absences below publishes
+    the rules), and only an org that is in NEITHER set — a downloaded-but-
+    unloaded book nobody has probed — gets the generic "not yet ingested".
     """
     rows = pg.execute(
         """
@@ -2720,6 +2727,74 @@ def _ingested_service_orgs(pg) -> list[str]:
         """
     ).fetchall()
     return sorted({_workbook_org(r[0]) for r in rows})
+
+
+def _org_absences(manifest_path: Path | None = None,
+                  fiscal_year: int | None = None) -> dict[str, dict]:
+    """The edition's recorded org absences, keyed by org, for the site.
+
+    The other half of the coverage-note decision (_ingested_service_orgs is
+    the first). An org OUTSIDE the ingested set has no loaded J-book detail,
+    and until Task 17c every one of its pages said the same thing about that:
+    "…J-book, which is not yet ingested". That sentence presupposes a book
+    exists and is merely awaiting work. For FY2026 it was false on five pages
+    — the DoD IG published no RDT&E or procurement justification book at all
+    (1 page), and DEFW publishes none for its reconciliation / undistributed /
+    roll-up workbook rows (4 pages) — and imprecise on fourteen more, where
+    the Defense Health Program book WAS downloaded and simply carries no
+    jb-2009 payload to extract.
+
+    So the site reads the probe instead of guessing: `jbooks` records each
+    absence with a RULE, a URL and a date via
+    edition_probe.record_org_absences, and this publishes
+    {org: {rule, checked_on, checked_url}} into site_meta.org_absences.
+    program-tier.orgAbsenceWording renders one sentence per rule; gate 21 leg
+    (o) fails when a page whose org is in this payload renders anything else,
+    or still says "not yet ingested".
+
+    DERIVED, NEVER TYPED — the same discipline as ingested_service_orgs and
+    for the same reason: a hand-kept list of what is missing rots exactly like
+    a hand-kept list of what is present (2026-07-05).
+
+    `reason` is deliberately NOT published. It is the operator's audit trail
+    (HTTP probes, byte counts, backlog cross-references, one entry's own
+    correction history) and reads as internal prose; every word the site
+    renders comes from `rule` plus the org code, so the page cannot inherit a
+    sentence nobody wrote for a reader.
+
+    Raises ValueError on a rule outside ORG_ABSENCE_RULES rather than
+    dropping the entry: a dropped absence silently restores the false
+    "not yet ingested" wording on that org's pages, which is the defect this
+    payload exists to end. A new rule is a new sentence on the site, and the
+    export must stop until someone writes it.
+    """
+    from govbudget import config
+    from govbudget.jbooks.edition_probe import ORG_ABSENCE_RULES
+
+    path = Path(manifest_path) if manifest_path is not None else (
+        config.RESEARCH_DIR / "edition_manifest.json"
+    )
+    fy = config.JBOOK_FY if fiscal_year is None else fiscal_year
+    if not path.exists():
+        return {}
+    manifest = json.loads(path.read_text())
+    entries = (manifest.get("org_absences") or {}).get(str(fy)) or []
+    out: dict[str, dict] = {}
+    for entry in entries:
+        rule = entry.get("rule")
+        if rule not in ORG_ABSENCE_RULES:
+            raise ValueError(
+                f"org_absences[{fy}] entry for {entry.get('org')!r} carries rule "
+                f"{rule!r}, which the site has no sentence for. Add it to "
+                "ORG_ABSENCE_RULES and to program-tier.orgAbsenceWording, or the "
+                "org's pages fall back to 'not yet ingested'"
+            )
+        out[entry["org"]] = {
+            "rule": rule,
+            "checked_on": entry["checked_on"],
+            "checked_url": entry["checked_url"],
+        }
+    return dict(sorted(out.items()))
 
 
 def _precision_tally_sql(sample_id: str | None) -> str:
@@ -11051,6 +11126,15 @@ def _write_all_sidecars(
         # program-tier.ts that lied for every defense-wide agency book).
         # Computed in export_site (Postgres scope) and threaded via manifest.
         "ingested_service_orgs": manifest.get("ingested_service_orgs", []),
+        # {org: {rule, checked_on, checked_url}} for every org the FY2026
+        # edition probe found NO usable justification book for — the payload
+        # that decides which true sentence those pages render instead of the
+        # generic "not yet ingested". Derived from
+        # data/research/edition_manifest.json by _org_absences (same
+        # threading-via-manifest reason as ingested_service_orgs above);
+        # {} when nothing is recorded, which is the "unprobed" state the
+        # generic wording is actually for.
+        "org_absences": manifest.get("org_absences", {}),
         # datasets dict from manifest — single source of truth for per-dataset row counts.
         # The site build reads this for data-driven download card descriptions.
         "datasets": manifest.get("datasets", {}),

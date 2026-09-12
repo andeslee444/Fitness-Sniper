@@ -105,8 +105,9 @@ def test_acquire_continues_past_corrupt_pdf_and_marks_failed(pg_dsn, tmp_path):
 # FileNotFoundError on a missing source — so the path must name the SHARED lake,
 # which outlives the worktree. Round 1 fixed three writers and found the fourth
 # (`cli._service_archive_download`) still on `str(dest)`; these tests pin all
-# four so a fifth writer added without `lake_path` shows up as a red test rather
-# than as a dead citation.
+# four. A FIFTH writer is caught by the source census at the end of this module
+# — these four cases cannot see a writer that does not exist yet, which is how
+# the fourth one stayed invisible until a human re-grepped.
 # ---------------------------------------------------------------------------
 
 
@@ -310,3 +311,134 @@ def test_config_lake_path_is_a_noop_without_a_symlink(tmp_path, parts):
     from govbudget.config import _lake_path
 
     assert _lake_path(data, *parts) == data.joinpath(*parts)
+
+
+# ---------------------------------------------------------------------------
+# The census the docs already claimed (Task 17c rider).
+#
+# LAUNCH.md, the block comment above and tests/test_config.py all promised
+# that a FIFTH `file_path` writer would show up as a red test. Nothing
+# checked that: the four tests above pin the four writers that EXIST, and a
+# fifth one added tomorrow passes all of them by being invisible. Round 2's
+# fourth writer was found by a human grepping `file_path`, which is exactly
+# the detection this replaces.
+#
+# This parses the package's own source for SQL that writes `file_path` and
+# asserts the writer set is the four known ones — so the docs' claim is a
+# test, not a hope. Method and its limit, stated rather than assumed: every
+# statement in this codebase is ONE string literal (adjacent literals are
+# joined by the parser before the AST sees them), so the literal boundary is
+# the statement boundary; SQL assembled at runtime from fragments would
+# escape the census, and there is none today.
+# ---------------------------------------------------------------------------
+
+#: (module path relative to the package, function) for every site that writes
+#: jbook_documents.file_path, each with its own symlink regression test above.
+FILE_PATH_WRITERS = {
+    ("cli.py", "_service_archive_download"),
+    ("jbooks/acquire.py", "acquire_pending"),
+    ("jbooks/service_fetch.py", "register_local_documents"),
+    ("jbooks/service_fetch.py", "download_registered_playwright"),
+}
+
+
+def _file_path_writer_census(src_root: Path | None = None) -> set[tuple[str, str]]:
+    """{(module, function)} for every SQL literal that writes file_path.
+
+    `src_root` defaults to the installed package and is injectable so the
+    control test below can run this SAME function over a synthetic tree — a
+    census proven on a copy of its own logic proves nothing.
+    """
+    import ast
+    import re
+
+    if src_root is None:
+        import govbudget
+
+        src_root = Path(govbudget.__file__).resolve().parent
+    insert_re = re.compile(r"insert\s+into\s+(\w+)\s*\(([^)]*)\)")
+    # The SET clause only: "update scrape_runs set note=%s where file_path is
+    # null" names file_path in its WHERE and writes nothing.
+    update_re = re.compile(r"update\s+(\w+)\s+set\b(.*?)(?:\swhere\s|$)")
+
+    def writes_file_path(sql: str) -> bool:
+        low = " ".join(sql.lower().split())
+        if "file_path" not in low:
+            return False
+        m = insert_re.search(low)
+        if m and "file_path" in m.group(2):
+            return True
+        m = update_re.search(low)
+        return bool(m and "file_path" in m.group(2))
+
+    found: set[tuple[str, str]] = set()
+    for path in sorted(src_root.rglob("*.py")):
+        tree = ast.parse(path.read_text())
+        funcs = [
+            (n.lineno, n.end_lineno or n.lineno, n.name)
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        ]
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+                continue
+            if not writes_file_path(node.value):
+                continue
+            enclosing = sorted(
+                (f for f in funcs if f[0] <= node.lineno <= f[1]),
+                key=lambda f: f[1] - f[0],
+            )
+            found.add((
+                str(path.relative_to(src_root)),
+                enclosing[0][2] if enclosing else "<module>",
+            ))
+    return found
+
+
+def test_file_path_writer_census_matches_the_four_tested_writers():
+    """A fifth writer is a red test here, not a dead citation later."""
+    assert _file_path_writer_census() == FILE_PATH_WRITERS, (
+        "the set of source sites that write file_path changed. Every writer must"
+        " route its path through jbooks.acquire.lake_path and gain a symlink"
+        " regression test in this module; then add it to FILE_PATH_WRITERS and"
+        " to the command table in docs/superpowers/LAUNCH.md"
+    )
+
+
+def test_the_census_sees_a_fifth_writer_in_either_sql_shape(tmp_path):
+    """The control, through the census itself.
+
+    A census that matched FILE_PATH_WRITERS because it finds NOTHING would
+    pass just as quietly. Both write shapes (update … set, insert … (cols))
+    are planted in a synthetic package, along with two decoys that name
+    file_path without writing it — a SELECT and an unrelated table's update.
+    """
+    pkg = tmp_path / "pkg"
+    (pkg / "jbooks").mkdir(parents=True)
+    (pkg / "cli.py").write_text(
+        "def sneaky_update(con, dest, doc_id):\n"
+        "    con.execute(\n"
+        '        "update jbook_documents set status=\'downloaded\', file_path=%s,"\n'
+        '        " sha256=%s where id=%s",\n'
+        "        (str(dest), None, doc_id),\n"
+        "    )\n"
+    )
+    (pkg / "jbooks" / "loader.py").write_text(
+        "def sneaky_insert(con, p):\n"
+        "    con.execute(\n"
+        '        "insert into jbook_documents (org, file_path, status)"\n'
+        '        " values (%s,%s,\'registered\')",\n'
+        "        ('X', str(p)),\n"
+        "    )\n"
+        "\n"
+        "def reader(con):\n"
+        '    return con.execute("select id, file_path from jbook_documents").fetchall()\n'
+        "\n"
+        "def other_table(con, p):\n"
+        '    con.execute("update scrape_runs set note=%s where file_path is null", (p,))\n'
+    )
+
+    assert _file_path_writer_census(pkg) == {
+        ("cli.py", "sneaky_update"),
+        ("jbooks/loader.py", "sneaky_insert"),
+    }

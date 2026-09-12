@@ -85,6 +85,174 @@ export function isIngestedServiceOrg(code: string): boolean {
   return _ingestedServiceOrgs.has(code);
 }
 
+/**
+ * ROADMAP #14 / #111 — WHY an org has no loaded FY2026 J-book detail.
+ *
+ * isIngestedServiceOrg answers "is this org's book loaded"; this answers the
+ * question the READER has when it is not. Until Task 17c there was one answer
+ * for every unloaded org — "…J-book, which is not yet ingested" — and that
+ * sentence presupposes a book exists and is merely awaiting work. Measured
+ * 2026-09-12 it was FALSE on five pages (the DoD IG published no RDT&E or
+ * procurement justification book at all; DEFW publishes none for its
+ * reconciliation / undistributed / roll-up workbook rows) and imprecise on
+ * fourteen more (the Defense Health Program book was downloaded and carries
+ * no jb-2009 payload to extract, which is not the same as "not yet").
+ *
+ * The three rules are the vocabulary of the edition probe that records the
+ * absences (jbooks.edition_probe.ORG_ABSENCE_RULES →
+ * export_site._org_absences → site_meta.org_absences). Each selects ONE
+ * sentence, below; no org, count or dollar figure is typed anywhere.
+ */
+export type OrgAbsenceRule =
+  | "no-justification-book-published"
+  | "summary-line-only"
+  | "book-carries-no-embedded-xml";
+
+export interface OrgAbsence {
+  rule: OrgAbsenceRule;
+  /** ISO date the probe read the source. Rendered: an absence is an
+   *  observation, and an observation carries its date. */
+  checked_on: string;
+  /** What the probe read. Shipped so the claim is traceable in the payload;
+   *  not rendered (the note links to /methodology/, as it always has). */
+  checked_url: string;
+}
+
+const ORG_ABSENCE_RULES: readonly OrgAbsenceRule[] = [
+  "no-justification-book-published",
+  "summary-line-only",
+  "book-carries-no-embedded-xml",
+];
+
+let _orgAbsences: ReadonlyMap<string, OrgAbsence> = new Map();
+
+/**
+ * Inject site_meta.org_absences ({org: {rule, checked_on, checked_url}}).
+ * Called once at build time by data.ts, beside setIngestedServiceOrgs.
+ *
+ * The default is EMPTY, unlike the ingested set's A/N/F fallback, and the
+ * asymmetry is deliberate: inventing an absence would be inventing a reason
+ * to print, while an empty map just leaves the org on the generic
+ * "not yet ingested" wording — the pre-17c behaviour, which is honest for an
+ * org nobody has probed. An entry whose rule this module has no sentence for
+ * is DROPPED for the same reason; gate 21 leg (o) then fails on the page,
+ * because the payload named an org the page did not explain.
+ */
+export function setOrgAbsences(
+  payload: Record<string, Partial<OrgAbsence>> | undefined,
+): void {
+  const next = new Map<string, OrgAbsence>();
+  for (const [org, raw] of Object.entries(payload ?? {})) {
+    const rule = raw?.rule;
+    if (!org || !rule || !ORG_ABSENCE_RULES.includes(rule)) continue;
+    next.set(org, {
+      rule,
+      checked_on: raw.checked_on ?? "",
+      checked_url: raw.checked_url ?? "",
+    });
+  }
+  _orgAbsences = next;
+}
+
+/** The recorded absence for an org code, or null when none is recorded. */
+export function getOrgAbsence(code: string): OrgAbsence | null {
+  return _orgAbsences.get(code) ?? null;
+}
+
+/** The four surfaces a program page states the absence on. */
+export interface OrgAbsenceWording {
+  /** Description-section note, minus the " See roadmap." the note appends. */
+  description: string;
+  /** Justification-section empty state, whole sentence. */
+  justification: string;
+  /** WHAT-IT-IS card tail (rollup tier), whole sentence. */
+  cardTail: string;
+  /** <meta name="description"> clause (rollup tier), trailing space included. */
+  metaTail: string;
+}
+
+/**
+ * One rule, one set of sentences. Every clause restates the rule the probe
+ * recorded and nothing else: no dollar figure, no page count, no claim about
+ * the tier, and nothing about WHEN a book might land.
+ *
+ * The four surfaces exist because all four used to say "not yet ingested"
+ * about these orgs — the description note, the justification empty state, the
+ * WHAT-IT-IS card tail and the page's own <meta name="description">. Fixing
+ * three of four would have left the sentence on the page.
+ *
+ * The shared opening clause is load-bearing: gate 21 leg (o) looks for it in
+ * the description note AND inside the justification section, which is how one
+ * marker per rule binds both render sites. Keep the two sentences' openings
+ * identical, and keep "&" out of that opening (the gate reads decoded text).
+ */
+export function orgAbsenceWording(
+  absence: OrgAbsence,
+  orgCode: string,
+): OrgAbsenceWording {
+  const service = serviceOrgName(orgCode) || "service";
+  const checked = absence.checked_on;
+  switch (absence.rule) {
+    case "summary-line-only":
+      return {
+        description:
+          `No ${service}-specific FY2026 justification book is published` +
+          (checked ? ` (justification index checked ${checked})` : "") +
+          ` — its workbook rows are reconciliation, undistributed and roll-up` +
+          ` summary lines — so this corpus carries no detailed justification` +
+          ` for this program.`,
+        justification:
+          `No ${service}-specific FY2026 justification book is published, so` +
+          ` there are no accomplishments or planned-program narratives to show` +
+          ` — see the description note above.`,
+        cardTail:
+          `Summary figures only: no ${service}-specific FY2026 justification` +
+          ` book is published.`,
+        metaTail:
+          `Workbook-tier line: no ${service}-specific FY2026 justification book` +
+          ` is published. `,
+      };
+    case "book-carries-no-embedded-xml":
+      return {
+        description:
+          `The ${service} FY2026 justification book was downloaded, but its PDF` +
+          ` carries no embedded data payload` +
+          (checked ? ` (checked ${checked})` : "") +
+          `, so no R-2/P-40 detail could be extracted from it.`,
+        justification:
+          `The ${service} FY2026 justification book was downloaded, but its PDF` +
+          ` carries no embedded data payload, so no accomplishments or` +
+          ` planned-program narratives could be extracted from it — see the` +
+          ` description note above.`,
+        cardTail:
+          `Summary figures only: the ${service} FY2026 justification book was` +
+          ` downloaded and carries no embedded data payload.`,
+        metaTail:
+          `Workbook-tier line: the ${service} FY2026 justification book was` +
+          ` downloaded and carries no embedded data payload. `,
+      };
+    case "no-justification-book-published":
+    default:
+      return {
+        description:
+          `No FY2026 RDT&E or procurement justification book was published for` +
+          ` ${service}` +
+          (checked ? ` (justification index checked ${checked})` : "") +
+          `, so this corpus carries no detailed justification for this program.`,
+        justification:
+          `No FY2026 RDT&E or procurement justification book was published for` +
+          ` ${service}, so there are no accomplishments or planned-program` +
+          ` narratives to show — see the description note above.`,
+        cardTail:
+          `Summary figures only: no FY2026 RDT&E or procurement justification` +
+          ` book was published for ${service}.`,
+        metaTail:
+          `Workbook-tier line: no FY2026 RDT&E or procurement justification book` +
+          ` was published for ${service}. `,
+      };
+  }
+}
+
 /** True when the sidecar is a Batch-A rollup-tier export. */
 export function isRollupDetails(details: ProgramDetails): boolean {
   return details.tier === "rollup";

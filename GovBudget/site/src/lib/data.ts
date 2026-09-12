@@ -19,7 +19,12 @@ import {
 } from "./dossier";
 import type { FamilyEventsPayload } from "./entity-families";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
-import { isZeroContentDetails, setIngestedServiceOrgs } from "./program-tier";
+import {
+  isZeroContentDetails,
+  setIngestedServiceOrgs,
+  setOrgAbsences,
+  type OrgAbsence,
+} from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
 
@@ -94,6 +99,16 @@ export interface SiteMeta {
    * program-tier via setIngestedServiceOrgs by getSiteMeta below.
    */
   ingested_service_orgs?: string[];
+  /**
+   * ROADMAP #14 / #111 — WHY each org outside ingested_service_orgs has no
+   * loaded book, keyed by org code: {rule, checked_on, checked_url} from the
+   * edition probe (export_site._org_absences over
+   * data/research/edition_manifest.json). program-tier.orgAbsenceWording
+   * turns the rule into the sentence those pages render instead of the
+   * generic "not yet ingested". Absent on pre-17c exports; {} when no
+   * absence is recorded.
+   */
+  org_absences?: Record<string, OrgAbsence>;
   /** Per-dataset row counts keyed by dataset name (e.g. "citations", "jbook_details"). */
   datasets?: Record<string, number>;
   /** Number of J-book PDFs copied into the site bundle (from manifest.pdf_count). */
@@ -393,6 +408,10 @@ export function getSiteMeta(): SiteMeta {
   // reaches isIngestedServiceOrg first hits a data loader that calls
   // getSiteMeta, so this runs before any rollup-note wording is decided.
   setIngestedServiceOrgs(meta.ingested_service_orgs);
+  // Same injection, same reason: the universal module cannot read the payload
+  // and the coverage note needs BOTH halves — whether a book is loaded, and,
+  // when it is not, what the probe found instead.
+  setOrgAbsences(meta.org_absences);
   _siteMeta = meta;
   return _siteMeta;
 }
@@ -1422,7 +1441,7 @@ export function getPagesWithoutDetail(): PagesWithoutDetail {
 export interface UningestedCoverageOrg {
   /** Workbook org code (budget_lines.organization space). */
   org: string;
-  /** Program pages that render the "not yet ingested" note for it. */
+  /** Program pages that render a coverage note naming it as unloaded. */
   pages: number;
 }
 
@@ -1437,9 +1456,16 @@ interface CoverageSidecar {
 }
 
 /**
- * The orgs whose program pages actually say "…J-book, which is not yet
- * ingested", counted from the sidecars — the page's own predicate,
- * recomputed. Pure and injectable so its unit test never reads data/site.
+ * The orgs whose program pages carry a coverage note saying their FY2026
+ * J-book detail is NOT loaded, counted from the sidecars — the page's own
+ * predicate, recomputed. Pure and injectable so its unit test never reads
+ * data/site.
+ *
+ * Which sentence each of those pages renders is a second question, decided
+ * per org by site_meta.org_absences (Task 17c): a recorded absence states its
+ * own rule, and only an unprobed org still says "not yet ingested". This
+ * function counts the pages either way — the /methodology/ residual names the
+ * organizations, not the wording.
  *
  * A page renders the note when it has no R-2/P-40 detail, no narrative, and
  * does have FY2026 workbook rows; its coverage org is the sidecar's
@@ -1475,8 +1501,9 @@ let _uningestedCoverageOrgs: UningestedCoverageOrg[] | null = null;
 /**
  * Build-time wrapper over uningestedCoverageOrgsFrom. /methodology/ names
  * this list so its residual sentence cannot contradict the pages that carry
- * the note. 20 pages render the uningested branch; 19 of them have a NAMEABLE
- * org (DHA 14, DEFW 4, IG 1, re-measured 2026-09-12). The twentieth is
+ * the note. 20 pages carry an unloaded-book note; 19 of them have a NAMEABLE
+ * org (DHA 14, DEFW 4, IG 1, re-measured 2026-09-12) and all 19 are recorded
+ * absences after Task 17c, so each states its own case. The twentieth is
  * 9999999999 "Classified Programs" — the one rollup sidecar with an empty
  * service_org — which this function correctly omits, and which is why
  * /methodology/ says "Some of it belongs to" rather than partitioning the

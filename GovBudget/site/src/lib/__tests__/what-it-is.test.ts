@@ -299,6 +299,45 @@ describe("buildRollupCard — keeps the tier's honest tail", () => {
     expect(card.tail).toContain("DHA detail book is not yet ingested");
   });
 
+  it("states the recorded absence instead, when the probe found one", () => {
+    // ROADMAP #111 — the card tail is the THIRD surface that said "not yet
+    // ingested" about the IG's FY2026 book. No such book was published, so
+    // nothing is awaiting ingestion and the tail says what is actually true.
+    const card = buildRollupCard({
+      title: "INSPECTOR GENERAL",
+      org: "IG",
+      exhibitFamily: "rdte",
+      serviceOrg: "IG",
+      serviceIngested: false,
+      serviceAbsence: {
+        rule: "no-justification-book-published",
+        checked_on: "2026-09-12",
+        checked_url: "https://comptroller.war.gov/Budget-Materials/",
+      },
+    });
+    expect(card.tail).toBe(
+      "Summary figures only: no FY2026 RDT&E or procurement justification book" +
+        " was published for IG.",
+    );
+    expect(card.tail).not.toContain("not yet ingested");
+  });
+
+  it("prefers the absence over the ingested tail, like the coverage note does", () => {
+    const card = buildRollupCard({
+      title: "SOME LINE",
+      org: "DHA",
+      exhibitFamily: "rdte",
+      serviceOrg: "DHA",
+      serviceIngested: true,
+      serviceAbsence: {
+        rule: "book-carries-no-embedded-xml",
+        checked_on: "2026-09-12",
+        checked_url: "https://comptroller.war.gov/x.pdf",
+      },
+    });
+    expect(card.tail).toContain("carries no embedded data payload");
+  });
+
   it("routes rollup pages to the rollup card", () => {
     const card = whatItIsCard({
       tier: "rollup",

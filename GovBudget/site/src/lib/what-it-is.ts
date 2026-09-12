@@ -28,7 +28,9 @@
  * Tier 3 — ROLLUP (R-1/P-1 summary lines).
  *   Keeps the template shape AND the tier's existing honest tail: this page
  *   carries summary figures only because the ingested book has no matching
- *   R-2/P-40 detail for this line (or the book is not ingested yet).
+ *   R-2/P-40 detail for this line, because the edition probe recorded WHY
+ *   this org has no usable book (ROADMAP #111), or — for an org nobody has
+ *   probed — because the book is not ingested yet.
  *
  * Tier 4 — DECADE (ROADMAP #28: cited history, no PB2026 line at all).
  *   Same field-only shape, and a tail that states what IS missing here —
@@ -41,7 +43,11 @@
  */
 
 import type { DossierClaim, DossierFile } from "@/lib/dossier";
-import { serviceOrgName } from "@/lib/program-tier";
+import {
+  serviceOrgName,
+  orgAbsenceWording,
+  type OrgAbsence,
+} from "@/lib/program-tier";
 
 /**
  * Plain-language label for exhibit_family values (answer-strip copy).
@@ -224,6 +230,14 @@ export interface RollupCardInput {
   serviceOrg: string;
   /** isIngestedServiceOrg(serviceOrg) — injected so this module stays pure. */
   serviceIngested: boolean;
+  /**
+   * getOrgAbsence(serviceOrg) — injected for the same reason (ROADMAP #111).
+   * When the edition probe recorded WHY this org has no usable FY2026 book,
+   * the tail states that case instead of the generic "not yet ingested",
+   * which for five of these pages named a book nobody published. Absent /
+   * null on every org with a loaded book and on an unprobed one.
+   */
+  serviceAbsence?: OrgAbsence | null;
 }
 
 /**
@@ -235,9 +249,11 @@ export function buildRollupCard(input: RollupCardInput): WhatItIsRollup {
   const family = answerFamilyPlain(input.exhibitFamily);
   const article = /^[aeiou]/i.test(org) ? "an" : "a";
   const service = serviceOrgName(input.serviceOrg) || "service";
-  const tail = input.serviceIngested
-    ? `Summary figures only: the ${service} FY2026 book is ingested but carries no R-2/P-40 detail for this line.`
-    : `Summary figures only: the ${service} detail book is not yet ingested.`;
+  const tail = input.serviceAbsence
+    ? orgAbsenceWording(input.serviceAbsence, input.serviceOrg).cardTail
+    : input.serviceIngested
+      ? `Summary figures only: the ${service} FY2026 book is ingested but carries no R-2/P-40 detail for this line.`
+      : `Summary figures only: the ${service} detail book is not yet ingested.`;
   return {
     source: "rollup",
     text: `${input.title} — ${article} ${org} ${family} line in the FY2026 R-1/P-1 workbooks.`,
@@ -298,6 +314,8 @@ export interface WhatItIsInput extends FieldCardInput {
   dossier: DossierFile | null;
   serviceOrg: string;
   serviceIngested: boolean;
+  /** getOrgAbsence(serviceOrg) — see RollupCardInput.serviceAbsence. */
+  serviceAbsence?: OrgAbsence | null;
   /** ROADMAP #28: decade_absent.last_edition, decade tier only. */
   lastEdition?: number | null;
 }
@@ -325,6 +343,7 @@ export function whatItIsCard(input: WhatItIsInput): WhatItIsCard {
       exhibitFamily: input.exhibitFamily,
       serviceOrg: input.serviceOrg,
       serviceIngested: input.serviceIngested,
+      serviceAbsence: input.serviceAbsence ?? null,
     });
   }
   return buildFieldCard(input);

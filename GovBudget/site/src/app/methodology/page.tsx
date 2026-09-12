@@ -91,6 +91,15 @@ export default function MethodologyPage() {
   // say which case applies rather than claiming a book is missing". 19 of
   // them claimed exactly that a book is missing. Naming the orgs from a
   // literal would rot at the next ingestion.
+  //
+  // ROADMAP #111 / Task 17c: the pages now DO name which case applies — no
+  // book published, summary rows no book narrates, or a book with no
+  // embedded payload — from site_meta.org_absences, so the sentence below
+  // says that instead of "naming the book that is missing", which was false
+  // for the 14 DHA pages the moment their book was downloaded. "no usable
+  // FY2026 justification book" is the predicate all three cases share, and
+  // the rewrite is 9 rendered characters shorter than what it replaced (the
+  // page's gzip ceiling is never raised).
   const uningestedOrgs = getUningestedCoverageOrgs();
   const uningestedClause = uningestedOrgs
     .map((o) => `${o.org} (${formatCount(o.pages)})`)
@@ -1332,12 +1341,12 @@ export default function MethodologyPage() {
                   remainders with no matching book entry.{" "}
                   {uningestedClause ? (
                     <>
-                      Some of it belongs to organizations with no FY2026
+                      Some of it belongs to organizations with no usable FY2026
                       justification book in this corpus —{" "}
-                      {uningestedClause} — and those pages say so, naming the
-                      book that is missing rather than implying a narrative
-                      exists. Which organizations appear here is read from the
-                      loaded books at build time, not maintained by hand.{" "}
+                      {uningestedClause} — and those pages name which case
+                      applies rather than implying a narrative exists. Which
+                      organizations appear here is read from the loaded books
+                      at build time, not maintained by hand.{" "}
                     </>
                   ) : null}
                   We never substitute generated prose for a missing source

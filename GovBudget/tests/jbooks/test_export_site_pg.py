@@ -1657,6 +1657,20 @@ def test_site_meta_json(pg_dsn, tmp_path):
     assert meta["schema_version"] == 1
     assert "uncited_datasets" in meta
     assert "counts" in meta
+    # ROADMAP #111 — the coverage note's second payload. The KEY must ship on
+    # every export: gate 21 leg (o) hard-fails without it, because its absence
+    # silently drops 19 program pages back onto "…J-book, which is not yet
+    # ingested" — a sentence that presupposes a book exists. Read from
+    # data/research/edition_manifest.json by _org_absences, whose own contract
+    # is pinned in tests/jbooks/test_export_org_absences.py; here it is the
+    # WIRING that is under test.
+    assert "org_absences" in meta, (
+        "site_meta.org_absences missing — the exporter stopped publishing the"
+        " edition probe's recorded absences"
+    )
+    assert isinstance(meta["org_absences"], dict)
+    for org, entry in meta["org_absences"].items():
+        assert set(entry) == {"rule", "checked_on", "checked_url"}, org
 
 
 def test_json_sort_keys(pg_dsn, tmp_path):

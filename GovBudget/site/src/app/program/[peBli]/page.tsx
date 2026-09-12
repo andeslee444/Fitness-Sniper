@@ -34,8 +34,10 @@ import type {
 } from "@/lib/data";
 import {
   decadeProgramRow,
+  getOrgAbsence,
   isDecadeDetails,
   isIngestedServiceOrg,
+  orgAbsenceWording,
   isRollupDetails,
   isWorkbookOnlyDetails,
   isZeroContentDetails,
@@ -67,7 +69,10 @@ import {
   ProgramSection,
   SectionEmpty,
 } from "@/components/program-section";
-import { ServiceBooksNote } from "@/components/service-books-note";
+import {
+  ServiceBooksNote,
+  ServiceBooksJustificationNote,
+} from "@/components/service-books-note";
 import { ProgramHeader } from "@/components/program-header";
 import { ProgramDossier } from "@/components/program-dossier";
 import {
@@ -351,11 +356,20 @@ export async function generateMetadata({
     figureClauses.length > 0
       ? `${figureClauses.join(", ")} (P-1/R-1 workbook total obligation authority). `
       : "";
+  // Same three-way decision as the page's coverage note (ROADMAP #111): a
+  // recorded absence states its own case, a loaded book means "no narrative
+  // for this line", and only an unprobed org is "not yet ingested". The
+  // description a search engine quotes is a rendered sentence like any other,
+  // and it said "not yet ingested" about books nobody published.
+  const metaOrg = details.service_org ?? "";
+  const metaAbsence = tier === "rollup" ? getOrgAbsence(metaOrg) : null;
   const tierTail =
     tier === "rollup"
-      ? isIngestedServiceOrg(details.service_org ?? "")
-        ? "Workbook-tier line: no R-2/P-40 J-book narrative for it. "
-        : "Workbook-tier line: the detailed service J-book is not yet ingested. "
+      ? metaAbsence
+        ? orgAbsenceWording(metaAbsence, metaOrg).metaTail
+        : isIngestedServiceOrg(metaOrg)
+          ? "Workbook-tier line: no R-2/P-40 J-book narrative for it. "
+          : "Workbook-tier line: the detailed service J-book is not yet ingested. "
       : "";
   const description =
     `${program.title} (${peBli}), ${serviceOrgName(program.org)}. ` +
@@ -626,12 +640,18 @@ export default async function ProgramPage({
   // empty service_org keeps saying "service" instead of inheriting
   // rollupProgramRow's "DoD" umbrella.
   const coverageOrg = workbookOnlyFull ? program.org : (details.service_org ?? "");
-  const serviceName = serviceOrgName(coverageOrg) || "service";
   // Ingested orgs have their FY2026 books LOADED (site_meta.ingested_service_orgs
   // — a query over documents with EXTRACTED DETAIL, not a hardcoded list and
   // not merely a downloaded file). A workbook-only line for one of them has no
   // matching R-2/P-40 narrative; it is NOT "awaiting ingestion".
   const serviceIngested = isIngestedServiceOrg(coverageOrg);
+  // …and when it is NOT loaded, what the edition probe found instead
+  // (site_meta.org_absences, ROADMAP #111): no book published, a summary line
+  // no book narrates, or a book with no embedded payload. null = unprobed,
+  // the only state the generic "not yet ingested" wording is true of. The
+  // note and the justification empty state read this themselves; the card
+  // takes it injected, because what-it-is.ts is pure.
+  const serviceAbsence = getOrgAbsence(coverageOrg);
 
   // ── WHAT IT IS card (§P1-2) ───────────────────────────────────────────────
   // projectCount is the page's OWN project grain (the R-2/P-40 rows the
@@ -658,6 +678,7 @@ export default async function ProgramPage({
     dossier,
     serviceOrg: details.service_org ?? "",
     serviceIngested,
+    serviceAbsence,
     // ROADMAP #28: the decade card names the edition the page's own decade
     // table stops at. Absent on every other tier, where the branch is dead.
     lastEdition: details.decade_absent?.last_edition ?? null,
@@ -893,20 +914,13 @@ export default async function ProgramPage({
             selfPe={peBli}
           />
         ) : showServiceBooksNote ? (
+          /* The same three-way decision as the description note above, and
+             deliberately the same code: both sentences live in
+             service-books-note.tsx so a branch added on one surface cannot
+             be missed on the other (ROADMAP #111 — "not yet ingested" was
+             false here for five pages long after the note was audited). */
           <SectionEmpty title="Justification">
-            {serviceIngested ? (
-              <>
-                The {serviceName} FY2026 J-book is ingested, but this program
-                element carries no matching R-2/P-40 accomplishments or
-                planned-program narrative — see the description note above.
-              </>
-            ) : (
-              <>
-                Accomplishments and planned-program narratives live in the{" "}
-                {serviceName} J-book, which is not yet ingested — see the
-                description note above for the roadmap.
-              </>
-            )}
+            <ServiceBooksJustificationNote serviceOrg={coverageOrg} />
           </SectionEmpty>
         ) : tier === "decade" ? (
           /* ROADMAP #28 — see the description section above for why neither

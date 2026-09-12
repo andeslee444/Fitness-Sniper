@@ -43,9 +43,15 @@ The archive route was missed by the first fix and caught on re-review; it is the
 route for the WAF-blocked services (ROADMAP #111), and 31 rows already carry
 `acquisition='archive'` — 17 of them `status='downloaded'` (Army 10, Air Force 7), the rest
 superseded (measured 2026-09-12). Each writer has its own symlink regression test in
-`tests/jbooks/test_acquire.py`, so a **fifth** writer added without `lake_path` is a red test,
-not a dead citation. A new `DATA_DIR / "…"` lake constant that skips `_lake_path` is caught by
-`tests/test_config.py::test_lake_dirs_are_symlink_resolved`.
+`tests/jbooks/test_acquire.py`, and — since 2026-09-12 — that module's
+`test_file_path_writer_census_matches_the_four_tested_writers` parses `src/govbudget/**/*.py`
+for SQL that writes `file_path` and fails unless the writer set is exactly these four, so a
+**fifth** writer is a red test, not a dead citation. (Before that census the four cases pinned
+the four writers that existed and were blind to a new one — which is how the archive route
+stayed missing until a human re-grepped.) A new `DATA_DIR / "…"` lake constant that skips
+`_lake_path` is caught by `tests/test_config.py::test_lake_dirs_are_symlink_resolved` (the five
+named constants) and by `::test_every_data_dir_path_constant_is_resolved`, which sweeps every
+`Path` constant in `config`, including ones added later.
 
 After ANY ingestion from a worktree, confirm nothing slipped through:
 

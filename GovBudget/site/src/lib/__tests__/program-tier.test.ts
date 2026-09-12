@@ -11,6 +11,11 @@ import {
   rollupProgramRow,
   serviceOrgName,
   setIngestedServiceOrgs,
+  getOrgAbsence,
+  orgAbsenceWording,
+  setOrgAbsences,
+  type OrgAbsence,
+  type OrgAbsenceRule,
 } from "@/lib/program-tier";
 import type { ProgramDetails } from "@/lib/data";
 
@@ -425,5 +430,178 @@ describe("isWorkbookOnlyDetails (ROADMAP #14 — the liar on the full tier)", ()
     // the rollup tier's sentence must never reach it: a decade element is not
     // in the FY2026 books at all.
     expect(isWorkbookOnlyDetails(decadeDetails())).toBe(false);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// site_meta.org_absences — WHY an org has no loaded book (ROADMAP #111)
+// ───────────────────────────────────────────────────────────────────────────
+
+/** The live FY2026 record (data/research/edition_manifest.json → org_absences,
+ *  published by export_site._org_absences). */
+const LIVE_ABSENCES: Record<string, OrgAbsence> = {
+  DHA: {
+    rule: "book-carries-no-embedded-xml",
+    checked_on: "2026-09-12",
+    checked_url: "https://comptroller.war.gov/…/00-DHP_Vols_I_and_II_PB26.pdf",
+  },
+  DEFW: {
+    rule: "summary-line-only",
+    checked_on: "2026-09-12",
+    checked_url: "https://comptroller.war.gov/Budget-Materials/",
+  },
+  IG: {
+    rule: "no-justification-book-published",
+    checked_on: "2026-09-12",
+    checked_url: "https://comptroller.war.gov/Budget-Materials/",
+  },
+};
+
+describe("setOrgAbsences / getOrgAbsence", () => {
+  afterEach(() => setOrgAbsences(undefined));
+
+  it("is empty before any payload — an absence is a recorded probe, never a default", () => {
+    expect(getOrgAbsence("DHA")).toBeNull();
+    expect(getOrgAbsence("IG")).toBeNull();
+  });
+
+  it("reads the injected payload, and only for the orgs it names", () => {
+    setOrgAbsences(LIVE_ABSENCES);
+    expect(getOrgAbsence("IG")?.rule).toBe("no-justification-book-published");
+    expect(getOrgAbsence("DEFW")?.rule).toBe("summary-line-only");
+    expect(getOrgAbsence("DHA")?.checked_on).toBe("2026-09-12");
+    // An org with a loaded book, and the empty-org sidecar (9999999999).
+    expect(getOrgAbsence("A")).toBeNull();
+    expect(getOrgAbsence("")).toBeNull();
+  });
+
+  it("drops an entry whose rule this module has no sentence for", () => {
+    // Dropping it leaves the org on the generic wording rather than rendering
+    // a branch nobody wrote; gate 21 leg (o) then fails on the payload, which
+    // is where an unknown rule is actually fixable.
+    setOrgAbsences({
+      ...LIVE_ABSENCES,
+      IG: { ...LIVE_ABSENCES.IG, rule: "book-is-classified" as OrgAbsenceRule },
+    });
+    expect(getOrgAbsence("IG")).toBeNull();
+    expect(getOrgAbsence("DHA")).not.toBeNull();
+  });
+
+  it("clears on an absent payload — a pre-17c export must not keep a stale set", () => {
+    setOrgAbsences(LIVE_ABSENCES);
+    setOrgAbsences(undefined);
+    expect(getOrgAbsence("DHA")).toBeNull();
+  });
+});
+
+describe("orgAbsenceWording", () => {
+  /** The substrings gate 21 leg (o) matches (ABSENCE_MARKERS in
+   *  scripts/gates/program-skeleton.mjs). The leg looks for the SAME marker in
+   *  the description note and inside the justification section — that is how
+   *  one literal binds both render sites — so each rule's two sentences must
+   *  share this opening, and it must stay free of "&" (the gate reads decoded
+   *  text). Reword the sentences freely; break this pairing and the build's
+   *  own gate reds with no unit test to explain why. */
+  const GATE_MARKERS: Record<OrgAbsenceRule, (svc: string) => string> = {
+    "no-justification-book-published": (svc) =>
+      `justification book was published for ${svc}`,
+    "summary-line-only": (svc) =>
+      `No ${svc}-specific FY2026 justification book is published`,
+    "book-carries-no-embedded-xml": (svc) =>
+      `The ${svc} FY2026 justification book was downloaded`,
+  };
+
+  it.each(Object.keys(GATE_MARKERS) as OrgAbsenceRule[])(
+    "%s: the description and the justification share the gate's marker",
+    (rule) => {
+      const w = orgAbsenceWording(
+        { rule, checked_on: "2026-09-12", checked_url: "https://x" },
+        "DHA",
+      );
+      const marker = GATE_MARKERS[rule]("DHA");
+      expect(w.description).toContain(marker);
+      expect(w.justification).toContain(marker);
+      expect(marker).not.toContain("&");
+    },
+  );
+
+  it("states the DoD IG's case: no book was published, so none is awaited", () => {
+    const w = orgAbsenceWording(LIVE_ABSENCES.IG, "IG");
+    expect(w.description).toBe(
+      "No FY2026 RDT&E or procurement justification book was published for IG" +
+        " (justification index checked 2026-09-12), so this corpus carries no" +
+        " detailed justification for this program.",
+    );
+    expect(w.justification).toBe(
+      "No FY2026 RDT&E or procurement justification book was published for IG," +
+        " so there are no accomplishments or planned-program narratives to show" +
+        " — see the description note above.",
+    );
+    expect(w.cardTail).toBe(
+      "Summary figures only: no FY2026 RDT&E or procurement justification book" +
+        " was published for IG.",
+    );
+    expect(w.metaTail).toBe(
+      "Workbook-tier line: no FY2026 RDT&E or procurement justification book" +
+        " was published for IG. ",
+    );
+  });
+
+  it("states DEFW's case: summary rows, and no DEFW-specific book", () => {
+    const w = orgAbsenceWording(LIVE_ABSENCES.DEFW, "DEFW");
+    expect(w.description).toBe(
+      "No DEFW-specific FY2026 justification book is published (justification" +
+        " index checked 2026-09-12) — its workbook rows are reconciliation," +
+        " undistributed and roll-up summary lines — so this corpus carries no" +
+        " detailed justification for this program.",
+    );
+    expect(w.justification).toBe(
+      "No DEFW-specific FY2026 justification book is published, so there are no" +
+        " accomplishments or planned-program narratives to show — see the" +
+        " description note above.",
+    );
+    expect(w.cardTail).toBe(
+      "Summary figures only: no DEFW-specific FY2026 justification book is" +
+        " published.",
+    );
+  });
+
+  it("states DHA's case precisely: downloaded, and carrying no payload", () => {
+    // NOT "not yet ingested": the book is in hand. What is missing is the
+    // jb-2009 payload, and saying so is the smaller true claim.
+    const w = orgAbsenceWording(LIVE_ABSENCES.DHA, "DHA");
+    expect(w.description).toBe(
+      "The DHA FY2026 justification book was downloaded, but its PDF carries no" +
+        " embedded data payload (checked 2026-09-12), so no R-2/P-40 detail" +
+        " could be extracted from it.",
+    );
+    expect(w.justification).toBe(
+      "The DHA FY2026 justification book was downloaded, but its PDF carries no" +
+        " embedded data payload, so no accomplishments or planned-program" +
+        " narratives could be extracted from it — see the description note" +
+        " above.",
+    );
+    expect(w.metaTail).toBe(
+      "Workbook-tier line: the DHA FY2026 justification book was downloaded and" +
+        " carries no embedded data payload. ",
+    );
+  });
+
+  it("never says 'not yet ingested', on any surface, for any rule", () => {
+    for (const absence of Object.values(LIVE_ABSENCES)) {
+      const w = orgAbsenceWording(absence, "DHA");
+      for (const surface of [w.description, w.justification, w.cardTail, w.metaTail]) {
+        expect(surface).not.toContain("not yet ingested");
+      }
+    }
+  });
+
+  it("humanizes a service code and drops the stamp when the probe carries no date", () => {
+    const w = orgAbsenceWording(
+      { rule: "no-justification-book-published", checked_on: "", checked_url: "" },
+      "A",
+    );
+    expect(w.description).toContain("published for Army");
+    expect(w.description).not.toContain("checked ");
   });
 });

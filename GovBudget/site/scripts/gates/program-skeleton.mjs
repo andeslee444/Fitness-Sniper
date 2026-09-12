@@ -3247,6 +3247,20 @@ function runDecadeOnlyLeg({ errors, notes, sidecars }) {
 //   5. THE PAYLOAD ITSELF. An absent or empty site_meta.ingested_service_orgs
 //      makes program-tier.ts fall back to its A/N/F default — i.e. restores
 //      the 2026-07-05 bug silently. That is a hard failure here.
+//   6. THE RECORDED ABSENCES (Task 17c, ROADMAP #111). "Not yet ingested"
+//      presupposes a book exists. It was FALSE on 5 pages — the DoD IG
+//      published no RDT&E or procurement justification book at all, and DEFW
+//      publishes none for its reconciliation / undistributed / roll-up rows —
+//      and imprecise on the 14 DHA pages, whose book WAS downloaded and
+//      carries no jb-2009 payload. site_meta.org_absences records each case
+//      with a rule; a page whose org is in it must state that rule's own
+//      sentence, in the description note AND in the justification section,
+//      and must not say "not yet ingested" ANYWHERE on the page — the same
+//      phrase also renders in the WHAT-IT-IS card tail and in the page's
+//      <meta name="description">, two surfaces the 2026-09-12 audit of the
+//      note itself did not look at. The payload key must be present for the
+//      same reason as check 5: losing it silently restores the false
+//      sentence on 19 pages.
 //
 // NO NUMERIC FLOOR on the note population, deliberately: it SHRINKS as books
 // land (73 pages today; 59 if the Defense Health Program book extracts), so a
@@ -3270,6 +3284,29 @@ const WITHDRAWN_FULL_TIER_SENTENCES = [
   "some exhibits carry figures without per-project prose",
 ];
 
+/**
+ * One marker per absence rule: the clause src/lib/program-tier.ts
+ * orgAbsenceWording opens BOTH the description note and the justification
+ * empty state with. Checking the same marker in the two elements is what
+ * binds the two render sites with one literal.
+ *
+ * Deliberately free of "&" and of any em dash: this is matched against
+ * DECODED element text, and "RDT&E" arrives as "RDT&E" or "RDT&amp;E"
+ * depending on the parser's entity handling. The sentences themselves keep
+ * their full wording; only the marker is narrowed.
+ */
+const ABSENCE_MARKERS = {
+  "no-justification-book-published": (svc) =>
+    `justification book was published for ${svc}`,
+  "summary-line-only": (svc) =>
+    `No ${svc}-specific FY2026 justification book is published`,
+  "book-carries-no-embedded-xml": (svc) =>
+    `The ${svc} FY2026 justification book was downloaded`,
+};
+
+/** The wording no page with a recorded absence may carry, anywhere. */
+const NOT_YET_INGESTED = "not yet ingested";
+
 /** Recompute of src/lib/program-tier.ts isWorkbookOnlyDetails. */
 function isWorkbookOnly(d) {
   return (
@@ -3290,6 +3327,7 @@ export function runCoverageNoteLeg({
   sidecars,
   programs,
   ingestedOrgs,
+  absences,
   pages,
 }) {
   let orgList = ingestedOrgs;
@@ -3312,6 +3350,50 @@ export function runCoverageNoteLeg({
     return;
   }
   const ingested = new Set(orgList);
+
+  // site_meta.org_absences — {org: {rule, checked_on, checked_url}}. `{}` is
+  // legitimate (nothing probed yet); a MISSING key is not, for the same
+  // reason as the check above: every org silently drops back to the generic
+  // "not yet ingested", which is false for five of them.
+  let absenceMap = absences;
+  if (absenceMap === undefined) {
+    const metaPath = path.join(jsonDir, "site_meta.json");
+    absenceMap = fs.existsSync(metaPath)
+      ? readJson(metaPath).org_absences
+      : undefined;
+  }
+  if (absenceMap === undefined || absenceMap === null ||
+      typeof absenceMap !== "object" || Array.isArray(absenceMap)) {
+    errors.push(
+      "program-skeleton(o): site_meta.org_absences is absent or not an object. " +
+        "Without it every org with no loaded book falls back to 'Detailed " +
+        "justification … lives in the {org} J-book, which is not yet ingested' " +
+        "— a sentence that presupposes a book exists, and that is false for " +
+        "IG and DEFW (no FY2026 book was published at all) and imprecise for " +
+        "DHA (downloaded, no embedded payload). Re-run export-site; the " +
+        "exporter derives it from data/research/edition_manifest.json",
+    );
+    return;
+  }
+  const absenceByOrg = new Map(Object.entries(absenceMap));
+  for (const [org, entry] of absenceByOrg) {
+    if (!ABSENCE_MARKERS[entry?.rule]) {
+      errors.push(
+        `program-skeleton(o): site_meta.org_absences["${org}"] carries rule ` +
+          `"${entry?.rule}", which this leg (and program-tier.orgAbsenceWording) ` +
+          `has no sentence for. The org's pages fall back to "not yet ingested"`,
+      );
+    }
+    if (ingested.has(org)) {
+      errors.push(
+        `program-skeleton(o): "${org}" is in BOTH ingested_service_orgs and ` +
+          `org_absences. One says its FY2026 book loaded detail, the other says ` +
+          `it has no usable book — the page renders the absence, so a stale ` +
+          `absence record would outlive the ingestion that ended it. Re-run the ` +
+          `edition probe (jbooks) and export-site`,
+      );
+    }
+  }
 
   let programRows = programs;
   if (!programRows) {
@@ -3336,7 +3418,9 @@ export function runCoverageNoteLeg({
   let missing = 0;
   let badBranch = 0;
   let withdrawn = 0;
-  const branchCounts = { ingested: 0, uningested: 0 };
+  const branchCounts = { ingested: 0, absence: 0, uningested: 0 };
+  const byRule = new Map();
+  const unprobed = new Map();
   const say = (msg) => {
     if (errors.filter((e) => e.startsWith("program-skeleton(o)")).length < 12) {
       errors.push(msg);
@@ -3400,6 +3484,47 @@ export function runCoverageNoteLeg({
     const root = parse(html, { comment: false });
     const note = root.querySelector(`[data-coverage="service-books"]`);
     const text = (note?.text ?? "").replace(/\s+/g, " ").trim();
+
+    // ── 6. a RECORDED absence states its own case, on both surfaces ───────
+    const absence = absenceByOrg.get(org);
+    if (absence) {
+      branchCounts.absence++;
+      const key = `${org} ${absence.rule}`;
+      byRule.set(key, (byRule.get(key) ?? 0) + 1);
+      const marker = ABSENCE_MARKERS[absence.rule]?.(svc);
+      if (!marker) continue; // already reported against the payload
+      if (!text.includes(marker)) {
+        badBranch++;
+        say(
+          `program-skeleton(o): /program/${slug}/ — "${org}" has a recorded ` +
+            `absence (${absence.rule}) but its coverage note does not state it ` +
+            `(expected to contain "${marker}", got: "${text.slice(0, 120)}")`,
+        );
+      }
+      if (html.includes(NOT_YET_INGESTED)) {
+        badBranch++;
+        say(
+          `program-skeleton(o): /program/${slug}/ says "${NOT_YET_INGESTED}" ` +
+            `while "${org}" has a recorded absence (${absence.rule}). That ` +
+            `wording presupposes a book exists and is merely awaiting work. ` +
+            `Check the WHAT-IT-IS card tail and <meta name="description"> too — ` +
+            `both render the same phrase from the same decision`,
+        );
+      }
+      const just = root.querySelector('[data-section="justification"]');
+      const justText = (just?.text ?? "").replace(/\s+/g, " ").trim();
+      if (!justText.includes(marker)) {
+        badBranch++;
+        say(
+          `program-skeleton(o): /program/${slug}/ states the ${absence.rule} ` +
+            `absence in its description note but not in its justification ` +
+            `section (expected to contain "${marker}", got: ` +
+            `"${justText.slice(0, 120)}")`,
+        );
+      }
+      continue;
+    }
+
     const saysUningested = text.includes(`lives in the ${svc} J-book`);
     const saysIngested =
       text.includes(`The ${svc} FY2026 J-book`) &&
@@ -3425,6 +3550,7 @@ export function runCoverageNoteLeg({
       }
     } else {
       branchCounts.uningested++;
+      if (org) unprobed.set(org, (unprobed.get(org) ?? 0) + 1);
       if (saysIngested) {
         badBranch++;
         say(
@@ -3448,12 +3574,31 @@ export function runCoverageNoteLeg({
   }
   notes.push(
     `leg o: ${noteCount} page(s) render the service-books note ` +
-      `(${branchCounts.ingested} on a loaded book, ${branchCounts.uningested} on an ` +
-      `unloaded one, over ${ingested.size} loaded org code(s)); ` +
-      `${detailPagesChecked} page(s) with detail carry none` +
+      `(${branchCounts.ingested} on a loaded book, ${branchCounts.absence} on a ` +
+      `recorded absence, ${branchCounts.uningested} still "not yet ingested"), ` +
+      `over ${ingested.size} loaded org code(s) and ${absenceByOrg.size} ` +
+      `recorded absence(s); ${detailPagesChecked} page(s) with detail carry none` +
       (stray + missing + badBranch + withdrawn === 0
         ? " ✓"
         : ` — ${missing} missing, ${stray} stray, ${badBranch} wrong-branch, ` +
           `${withdrawn} withdrawn sentence(s)`),
+  );
+  // The breakdown chain C reads to confirm which page got which sentence.
+  // Named orgs still on the generic wording are listed rather than failed:
+  // an org whose book is downloaded and unprobed is exactly what that
+  // wording is for. An org that should have been probed shows up here as a
+  // name, not as a silence.
+  notes.push(
+    `leg o branches: ` +
+      ([...byRule.entries()]
+        .sort()
+        .map(([k, n]) => `${k} ${n}`)
+        .join("; ") || "no recorded absence on any page") +
+      (unprobed.size
+        ? ` | unprobed: ${[...unprobed.entries()].sort().map(([o, n]) => `${o} ${n}`).join(", ")}`
+        : "") +
+      (branchCounts.uningested - [...unprobed.values()].reduce((a, b) => a + b, 0)
+        ? ` | ${branchCounts.uningested - [...unprobed.values()].reduce((a, b) => a + b, 0)} with no org code`
+        : ""),
   );
 }
