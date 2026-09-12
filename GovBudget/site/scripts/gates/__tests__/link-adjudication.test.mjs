@@ -396,14 +396,25 @@ describe("gate 24 leg o — the High tier's own census (R-6c-4)", () => {
     );
   });
 
-  it("passes when the mart is absent and neither census renders", () => {
-    const { errors, notes } = run({
+  // Fix round 2, R-6c-7. This case USED to be the leg's one clean pass with
+  // no High census at all ("passes when the mart is absent and neither
+  // census renders"), and that pass is what made the whole High-tier grading
+  // disappear-able: _published_high_links swallowed every exception into the
+  // same `None` the missing-mart case returns, the block dropped `high`, the
+  // page rendered no census, and nothing anywhere went red. The exporter now
+  // raises on anything but a missing mart, and this is the half a gate can
+  // see — the tier the crosswalk grades links INTO publishes, so its census
+  // is owed.
+  it("FAILS when the block grades links and no High census was exported", () => {
+    const { errors } = run({
       siteMeta: { link_adjudication: withoutHighCensus() },
       passageText: LIVE_PASSAGE,
       highText: null,
     });
-    expect(errors).toEqual([]);
-    expect(notes.join(" ")).not.toMatch(/published at high/);
+    expect(errors.join("\n")).toMatch(
+      /the High tier publishes and no census was exported/,
+    );
+    expect(errors.join("\n")).toMatch(/Do not drop this check to clear the run/);
   });
 
   it("FAILS when by_path does not sum to the high headline counts", () => {
@@ -460,5 +471,104 @@ describe("gate 24 leg o — a block that predates measured_on", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/no `measured_on`/);
     expect(errors[0]).toMatch(/Re-run export-site; do not re-date the counts by `as_of`/);
+  });
+});
+
+describe("gate 24 leg o — each figure is bound to its SLOT (fix round 2, R-6c-6)", () => {
+  // THE HOLE THESE CLOSE. The leg asked two questions of each figure: does it
+  // appear SOMEWHERE in the passage (the includes check) and is every number
+  // in the passage one the block holds (reportStrays). A sentence assembled
+  // out of the block's own figures IN THE WRONG ORDER answers both yes. Run
+  // in-process against the LIVE block, all three strings below scored ZERO
+  // errors before this fix — including the one that grades the whole High
+  // tier by a review 708 of its links never had, which is the exact claim
+  // R-6c-4 exists to bound.
+
+  it("FAILS when the High passage grades the whole tier by the 60's review", () => {
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      passageText: LIVE_PASSAGE,
+      highText:
+        "768 of the 768 links published at high carry a per-award hand " +
+        "adjudication, all 768 of them challenged by two independent " +
+        "adversarial reviewers; the other 60 rest on the " +
+        "announcement+lexicon path.",
+    });
+    expect(errors.join("\n")).toMatch(
+      /\[data-link-adjudication-high\] states its figures in the order 768, 768, 768, 60 but the block derives 60, 768, 60, 708/,
+    );
+  });
+
+  it("FAILS when the two-lens slot carries a figure from another slot", () => {
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      passageText: LIVE_PASSAGE,
+      highText:
+        "768 of the 768 links published at high carry a per-award hand " +
+        "adjudication, all 708 of them challenged by two independent " +
+        "adversarial reviewers; the other 60 rest on the " +
+        "announcement+lexicon path.",
+    });
+    expect(errors.join("\n")).toMatch(
+      /states its figures in the order 768, 768, 708, 60 but the block derives 60, 768, 60, 708/,
+    );
+  });
+
+  it("FAILS when the census passage inverts its own ratio", () => {
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      passageText: LIVE_PASSAGE.replace(
+        "9,587 of the 12,595",
+        "12,595 of the 9,587",
+      ),
+    });
+    expect(errors.join("\n")).toMatch(
+      /\[data-link-adjudication\] states its figures in the order 12,595, 9,587, 8,474 but the block derives 9,587, 12,595, 8,474 — adjudicated, published, unpinned/,
+    );
+  });
+});
+
+describe("gate 24 leg o — a review asserted over an empty set (fix round 2, rider ii)", () => {
+  /** A corpus that publishes a High tier nothing has adjudicated. Today's is
+   *  60 of 768; this is the shape that makes "all N of them challenged by two
+   *  independent adversarial reviewers" a claim over an empty set. */
+  const NONE_ADJUDICATED = {
+    link_adjudication: {
+      ...LIVE_META.link_adjudication,
+      high: {
+        published_high: 768,
+        adjudicated_high: 0,
+        two_lens_high: 0,
+        by_path: {
+          "announcement+lexicon": { high: 768, adjudicated: 0, two_lens: 0 },
+        },
+      },
+    },
+  };
+
+  it("passes when the adversarial clause is absent because nothing was reviewed", () => {
+    const { errors } = run({
+      siteMeta: NONE_ADJUDICATED,
+      passageText: LIVE_PASSAGE,
+      highText:
+        "0 of the 768 links published at high carry a per-award hand " +
+        "adjudication; the other 768 rest on the announcement+lexicon path.",
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it("FAILS when it renders anyway — 'all 0 of them challenged by two reviewers'", () => {
+    const { errors } = run({
+      siteMeta: NONE_ADJUDICATED,
+      passageText: LIVE_PASSAGE,
+      highText:
+        "0 of the 768 links published at high carry a per-award hand " +
+        "adjudication, all 0 of them challenged by two independent " +
+        "adversarial reviewers; the other 768 rest on the " +
+        "announcement+lexicon path.",
+    });
+    expect(errors.join("\n")).toMatch(
+      /states its figures in the order 0, 768, 0, 768 but the block derives 0, 768, 768/,
+    );
   });
 });

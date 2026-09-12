@@ -2549,7 +2549,20 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
 //     own [data-link-adjudication-high] passage. Four surfaces graded the
 //     High tier "verified adversarially"; measured over the mart, 60 of the
 //     768 links published at high carry a per-award adjudication and 708
-//     `announcement+lexicon` links carry none.
+//     `announcement+lexicon` links carry none;
+//   - each figure is bound to its SLOT, not to the passage (fix round 2,
+//     R-6c-6). Presence plus a stray-number check still passes a sentence
+//     assembled out of the block's own figures in the wrong order — "12,595
+//     of the 9,587 links … carry a per-award hand adjudication", or the
+//     High passage's "768 of the 768 … all 768 of them challenged by two
+//     independent adversarial reviewers". Both scored zero errors. The
+//     numbers are now read in document order and the sequence must be the
+//     derived one;
+//   - the `high` sub-block must EXIST whenever the block grades links (fix
+//     round 2, R-6c-7, dated). A block with no `high` and a page with no
+//     High passage used to be a clean pass, so any export-time failure
+//     reading the mart deleted the entire High-tier census with every leg
+//     green.
 /** The three counts the opening passage must state, in the order the page
  *  states them. Keyed by the block field so an error names the field to
  *  re-derive. */
@@ -2719,6 +2732,43 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
   };
   reportStrays("data-link-adjudication", text, allowed);
 
+  // ── the slot binding (fix round 2, R-6c-6) ───────────────────────────────
+  //
+  // The `includes` check above asks only whether a figure appears SOMEWHERE
+  // in the passage, and `reportStrays` only whether a number is allowed. Both
+  // pass on a passage that PERMUTES the block's own figures: "12,595 of the
+  // 9,587 links … carry a per-award hand adjudication" is built entirely out
+  // of allowed numbers and states a ratio that never held, and on the High
+  // passage "768 of the 768 links published at high … all 768 of them
+  // challenged by two independent adversarial reviewers" is exactly the claim
+  // R-6c-4 exists to bound — it passed this leg with zero errors.
+  //
+  // So the numbers are read IN DOCUMENT ORDER and the whole sequence must be
+  // the one the block derives, slot for slot. That is wording-independent: a
+  // rewrite may say anything it likes between the figures, but it may not
+  // move one into another's place, drop one, or add one.
+  const reportSlots = (label, body, slots) => {
+    const got = [...undated(body).matchAll(/\d[\d,]*/g)].map((m) => m[0]);
+    const want = slots.map(([, v]) => v.toLocaleString("en-US"));
+    if (got.length === want.length && want.every((v, i) => v === got[i])) return;
+    errors.push(
+      `leg o (/methodology/): [${label}] states its figures in the order ` +
+        `${got.join(", ") || "(none)"} but the block derives ` +
+        `${want.join(", ")} — ${slots.map(([f]) => f).join(", ")}, in that ` +
+        `order. Every figure must sit in the slot it was derived for; a ` +
+        `passage that permutes its own numbers states a ratio that never ` +
+        `held while passing both the presence check and the stray-number ` +
+        `check above`,
+    );
+  };
+  if (ADJUDICATION_COUNTS.every((f) => typeof block[f] === "number")) {
+    reportSlots(
+      "data-link-adjudication",
+      text,
+      ADJUDICATION_COUNTS.map((f) => [f, block[f]]),
+    );
+  }
+
   const unadjudicated = block.unadjudicated_methods ?? [];
   for (const method of unadjudicated) {
     if (!namesMethodToken(text, method)) {
@@ -2788,6 +2838,32 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
           "High-tier grading may state the evidence it has, never a count " +
           "nothing measured",
       );
+    } else {
+      // The dated non-vacuity companion (fix round 2, R-6c-7). A block with
+      // NO high census and a page with no High passage used to be a clean
+      // pass, which made the whole High-tier grading disappear-able: any
+      // mart-side failure at export time returned null from
+      // _published_high_links, the block omitted `high`, the page rendered
+      // no census and every leg stayed green. That is the vacuity shape M4
+      // closed for `by_method`, one sub-block over. The exporter now raises
+      // on anything but a missing mart; this is the half of the direction a
+      // gate can see: if the crosswalk grades links at all, the tier they
+      // are graded INTO publishes, and its census is owed.
+      //
+      // DATED 2026-09-11: 768 links publish at high (measured over
+      // fct_budget_to_awards), and the tier has published continuously since
+      // 2026-09-01. Never remove or weaken this to make a red run go green —
+      // the run is red because the page lost a measurement.
+      errors.push(
+        "leg o (/methodology/): site_meta.link_adjudication grades links " +
+          `(${block.adjudicated} of ${block.published}) but carries no ` +
+          "`high` sub-block — the High tier publishes and no census was " +
+          "exported. `_published_high_links` returns null only for a " +
+          "warehouse with no mart; every other failure now raises. " +
+          "Re-run export-site against a built warehouse (768 links published " +
+          "at high, measured 2026-09-11; the tier has published since " +
+          "2026-09-01). Do not drop this check to clear the run",
+      );
     }
   } else if (!highExists) {
     errors.push(
@@ -2836,6 +2912,41 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     }
     reportStrays("data-link-adjudication-high", highText, highAllowed);
 
+    // The paths whose high links are not all adjudicated — the remainder the
+    // sentence must name (below), and the reason its "the other N" clause
+    // renders at all. page.tsx derives both from this same set.
+    const unreviewedPaths = Object.entries(byPath)
+      .filter(([, v]) => (v?.high ?? 0) > (v?.adjudicated ?? 0))
+      .map(([m]) => m);
+    // The High passage's slots, in the order page.tsx renders them
+    // (fix round 2, R-6c-6). Two are conditional, and the condition is the
+    // page's own:
+    //   * the adversarial clause ("all N of them challenged by two
+    //     independent adversarial reviewers") renders only while something
+    //     at high IS adjudicated — asserting a review over an empty set
+    //     would be a false sentence the moment a corpus published a high
+    //     tier with no adjudication (rider ii);
+    //   * the remainder clause ("the other N rest on …") renders only while
+    //     some path publishes at high unadjudicated.
+    // Their ABSENCE is accepted; their presence in the wrong case is not,
+    // because the sequence would then be one figure too long.
+    if (HIGH_COUNTS.every((f) => typeof high[f] === "number")) {
+      const slots = [
+        ["adjudicated_high", high.adjudicated_high],
+        ["published_high", high.published_high],
+      ];
+      if (high.adjudicated_high > 0) {
+        slots.push(["two_lens_high", high.two_lens_high]);
+      }
+      if (unreviewedPaths.length > 0) {
+        slots.push([
+          "published_high − adjudicated_high",
+          high.published_high - high.adjudicated_high,
+        ]);
+      }
+      reportSlots("data-link-adjudication-high", highText, slots);
+    }
+
     const pathSum = (field) =>
       Object.values(byPath).reduce((t, v) => t + (v?.[field] ?? 0), 0);
     for (const [field, path_field] of [
@@ -2868,9 +2979,6 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     // The claim the four surfaces used to make of the WHOLE tier. It may be
     // made of the two-lens population and no larger one, so the passage must
     // name the evidence paths the remainder rests on instead.
-    const unreviewedPaths = Object.entries(byPath)
-      .filter(([, v]) => (v?.high ?? 0) > (v?.adjudicated ?? 0))
-      .map(([m]) => m);
     for (const method of unreviewedPaths) {
       if (!namesMethodToken(highText, method)) {
         errors.push(

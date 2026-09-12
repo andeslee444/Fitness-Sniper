@@ -300,6 +300,16 @@ export default function MethodologyPage() {
   const highRemainder = highCensus
     ? highCensus.published - highCensus.adjudicated
     : 0;
+  // Fix round 2, rider (ii): the adversarial clause below renders only while
+  // something at high IS adjudicated. On a corpus that published a high tier
+  // with nothing adjudicated it would otherwise read "all 0 of them
+  // challenged by two independent adversarial reviewers" — a review asserted
+  // over an empty set, the same species of false universal this entry exists
+  // to retire, waiting for a future export to write it. Gate 24 leg o's slot
+  // binding accepts the clause's absence in exactly that case and rejects its
+  // presence. (It stays INLINE in the JSX, as a ternary of literals, because
+  // gate 2 leg (sp) can only see that a lifted-out string starts on a comma
+  // when the ternary is where the join is.)
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -793,12 +803,14 @@ export default function MethodologyPage() {
                       <span data-link-adjudication-high="">
                         {formatCount(highCensus.adjudicated)} of the{" "}
                         {formatCount(highCensus.published)} links published at
-                        high carry a per-award hand adjudication,{" "}
-                        {highCensus.twoLens === highCensus.adjudicated
-                          ? `all ${formatCount(highCensus.twoLens)}`
-                          : formatCount(highCensus.twoLens)}{" "}
-                        of them challenged by two independent adversarial
-                        reviewers
+                        high carry a per-award hand adjudication
+                        {highCensus.adjudicated > 0
+                          ? `, ${
+                              highCensus.twoLens === highCensus.adjudicated
+                                ? `all ${formatCount(highCensus.twoLens)}`
+                                : formatCount(highCensus.twoLens)
+                            } of them challenged by two independent adversarial reviewers`
+                          : ""}
                         {highRemainderPathText
                           ? `; the other ${formatCount(highRemainder)} rest on the ${highRemainderPathText} path${
                               highRemainderPaths.length > 1 ? "s" : ""
