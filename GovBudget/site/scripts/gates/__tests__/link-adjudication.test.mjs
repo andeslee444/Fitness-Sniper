@@ -71,7 +71,7 @@ const LIVE_META = {
 const LIVE_PASSAGE =
   "As of 2026-09-11, 9,587 of the 12,595 links the crosswalk grades high or " +
   "medium carry a per-award hand adjudication — the most recent made on " +
-  "2026-09-01 — each recording which program " +
+  "2026-09-01 — recording which program " +
   "elements, if any, the award's own contract record supports. 8,474 of " +
   "those found work that could not be pinned to any one program element; " +
   "those links publish at medium. The announcement+lexicon, fpds-ap and " +
@@ -81,7 +81,7 @@ const LIVE_PASSAGE =
 /** The High-tier census /methodology/ renders inside the tier grading. */
 const LIVE_HIGH =
   "60 of the 768 links published at high carry a per-award hand " +
-  "adjudication, all 60 of them challenged by two independent adversarial " +
+  "adjudication, all 60 challenged by two independent adversarial " +
   "reviewers; the other 708 rest on the announcement+lexicon path.";
 
 /** LIVE_META's block with the `high` census removed — the shape a warehouse
@@ -150,8 +150,8 @@ describe("gate 24 leg o — a figure that drifts from the block", () => {
     const { errors } = run({
       siteMeta: LIVE_META,
       passageText: LIVE_PASSAGE.replace(
-        " — the most recent made on 2026-09-01 — each",
-        ", each",
+        " — the most recent made on 2026-09-01 —",
+        ",",
       ),
     });
     expect(errors.join("\n")).toMatch(/does not carry as_of "2026-09-01"/);

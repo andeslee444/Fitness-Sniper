@@ -490,8 +490,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // measurement at this file's own ~6% convention for a new row: 145,449 →
   // 154,000 (5.88% over). maxGzip is UNCHANGED at 20,000 — the gzip estimate
   // held on its own (18,356, 8.2% of room to spare), so it is not re-derived.
-  // Next heaviest are MO-01 137,573 / 17,432 and CA-50 136,674 / 17,194, so
-  // VA-11 is the row this entry weighs by a wide margin.
+  // Next heaviest are MO-01 137,560 / 17,441 and CA-50 136,677 / 17,196
+  // (re-measured 2026-09-12 with this file's own weigh(); the earlier
+  // 137,573 / 17,432 and 136,674 / 17,194 predate the by-year table's last
+  // rebuild), so VA-11 is the row this entry weighs by a wide margin.
   {
     label: "/district/*/ (heaviest)",
     dir: "district",

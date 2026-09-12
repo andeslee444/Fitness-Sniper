@@ -7,6 +7,7 @@ import { getCoverage } from "@/lib/coverage";
 import {
   getDatasetManifest,
   getGaoCrosswalkStats,
+  getGaoEditions,
   getFlowChartMeta,
   getPagesWithoutDetail,
   getSiteMeta,
@@ -89,6 +90,16 @@ export default function MethodologyPage() {
   // from the export sidecar. Never a literal — the whole point of the section
   // is that the number is the one the pipeline actually produced.
   const gaoXwalk = getGaoCrosswalkStats();
+  // Named from the sidecar's own source[], so this sentence cannot name an
+  // edition the build did not read (ROADMAP #30).
+  const gaoEditions = getGaoEditions();
+  const gaoEditionIds = gaoEditions.map((e) => e.product_number);
+  const gaoEditionList =
+    gaoEditionIds.length > 1
+      ? `${gaoEditionIds.slice(0, -1).join(", ")} and ${
+          gaoEditionIds[gaoEditionIds.length - 1]
+        }`
+      : gaoEditionIds.join("");
   // §P1-5: dataset row counts on this page come from the shipped-parquet
   // manifest, never a literal (the LDA paragraph carried "32,780" long after
   // the mart had grown to 34,538).
@@ -484,12 +495,12 @@ export default function MethodologyPage() {
                 </h3>
                 <p data-source-freshness="unmetered">
                   GAO&apos;s annual assessment of DOD&apos;s costliest weapon
-                  programs (GAO-25-107569, June 2025) carries a per-program
-                  assessment{gaoXwalk ? ` for ${formatCount(gaoXwalk.assessments_ingested)} programs` : ""}{" "}
-                  and a bibliography of{gaoXwalk ? ` ${formatCount(gaoXwalk.related_ingested)}` : ""}{" "}
-                  program-specific GAO reports. Both are ingested from the report
-                  PDF; the assessment text quoted on a program page is GAO&apos;s
-                  own paragraph, unedited. Source cadence: annual.
+                  programs is ingested for{gaoEditionList ? ` ${formatCount(gaoEditions.length)} editions — ${gaoEditionList} —` : ""}{" "}
+                  {gaoXwalk ? `${formatCount(gaoXwalk.assessments_ingested)} per-program assessments` : ""}{" "}
+                  and the current edition&apos;s bibliography of{gaoXwalk ? ` ${formatCount(gaoXwalk.related_ingested)}` : ""}{" "}
+                  program-specific reports, read from the PDFs. Quoted
+                  assessment text is GAO&apos;s own paragraph, unedited. Source
+                  cadence: annual.
                 </p>
                 <p className="mt-2">
                   Which budget line each item belongs to, done badly, puts a real
@@ -502,7 +513,8 @@ export default function MethodologyPage() {
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
                     data-seeds/gao_program_xwalk.csv
                   </code>
-                  .
+                  . Only the current edition is matched; an earlier one renders
+                  only under a ratified newer assessment of the same program.
                 </p>
                 {gaoXwalk && (
                   <p className="mt-2">
@@ -771,7 +783,7 @@ export default function MethodologyPage() {
                         {formatCount(linkAdjudication.published)}{" "}
                         links the crosswalk grades high or medium carry a
                         per-award hand adjudication — the most recent made on{" "}
-                        {linkAdjudication.as_of} — recording which
+                        {linkAdjudication.as_of}{" "}— recording which
                         program elements, if any, the award&apos;s own contract
                         record supports.{" "}
                         {formatCount(linkAdjudication.unpinned)}{" "}
@@ -856,12 +868,14 @@ export default function MethodologyPage() {
                   two-reviewer adversarial process — then linked a tagged award to
                   a specific line only when the award&apos;s own funding accounts
                   match that line&apos;s appropriation. FPDS-tagged awards publish
-                  at <em>medium</em> — the tag plus a verified program mapping
+                  at <em>medium</em>{" "}
+                  — the tag plus a verified program mapping
                   establish the program, and the award&apos;s funding accounts
                   confirm the money color, but which of a program&apos;s several
                   lines (production vs. modification vs. research) paid is not
                   provable from account data alone. A held-out study measured the
-                  earlier &ldquo;unique line&rdquo; <em>high</em> tier at 34 of 60
+                  earlier &ldquo;unique line&rdquo; <em>high</em>{" "}
+                  tier at 34 of 60
                   and it was withdrawn on 2026-09-04. Tagged awards whose funding
                   is entirely outside the program&apos;s J-book accounts (for
                   example O&amp;M sustainment money) are not linked. The
@@ -1508,7 +1522,8 @@ export default function MethodologyPage() {
                   A program&rsquo;s own page (its &ldquo;Contractor
                   Concentration&rdquo; card) renders a pooled HHI computed
                   across every award year, on the basis and above the floor
-                  section 4 states. The two are legitimately different
+                  section 4 states — below it, no pooled index at all. The two
+                  are legitimately different
                   measures: a concentrated year can sit next to a competitive
                   pooled figure, or the reverse, with no error on either page.
                   Every concentration_shift card states which fiscal year its

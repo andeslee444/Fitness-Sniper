@@ -82,9 +82,7 @@ const LIVE_META = {
  *  it as a phrase match, not this exact string. */
 const RUBRIC_SENTENCE =
   "Every figure answers one question — program attribution: does this award " +
-  "execute this program element? — judged from what the award records buying " +
-  "against the work the program owns, not from whether the linking rule " +
-  "fired. ";
+  "execute this program element? — not whether the linking rule fired. ";
 
 /** The paragraph /methodology/ renders for LIVE_META. */
 const LIVE_PARAGRAPH =
@@ -93,12 +91,11 @@ const LIVE_PARAGRAPH =
   "judged 2026-09-04 and 2026-09-11. " +
   RUBRIC_SENTENCE +
   "Each sampled link is counted under the tier it " +
-  "publishes under today, not the tier it carried when it was drawn; a " +
-  "sampled link the corpus no longer publishes is counted in neither " +
+  "publishes under today, not the tier it carried when it was drawn; one " +
+  "the corpus no longer publishes is counted in neither " +
   "direction: account+subagency 0/60; announcement+lexicon 51/54; " +
   "fpds-ap 94/120; " +
-  "subaward+lexicon 53/60. Published whatever the numbers turn out to be; a " +
-  "tier that misses is renamed or narrowed, never widened to fit. No " +
+  "subaward+lexicon 53/60. No " +
   "precision figure is published for the remaining tiers a reader can meet " +
   "— account, account+tokens.";
 
