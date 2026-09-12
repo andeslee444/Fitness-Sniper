@@ -102,6 +102,12 @@ def _run_real_gate(site_json_dir: Path, repo_root: Path) -> dict:
         dim_programs_pe=dim_pe,
         built_site_dir=built_site_dir,
         duckdb_path=config.DUCKDB_PATH,
+        # chain-B fix 2 (2026-09-12): the exported page sidecars, read only
+        # to answer required_sections's shared-code withholding exception for
+        # `players` (dossier_gate docstring). Same discipline as
+        # built_site_dir — the marker must be verified against the artifact,
+        # so where these are absent the exception simply is not granted.
+        program_details_dir=site_json_dir / "program_details",
     )
 
 
@@ -119,6 +125,8 @@ def _print_gate_result(result: dict) -> None:
         elif name == "dossiers_present":
             detail = f" ({result['totals']['dossiers']}/{check['expected']} present)"
         print(f"  dossiers_{name}: {status}{detail}")
+        if check.get("note"):
+            print(f"    note: {check['note']}")
         # List unresolved citations verbosely
         if name == "citations_resolvable" and not check["ok"]:
             for item in check.get("unresolved", []):

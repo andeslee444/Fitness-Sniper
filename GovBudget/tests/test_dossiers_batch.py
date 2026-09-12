@@ -1121,6 +1121,125 @@ class TestGate:
         res = _run_gate(gate_fixture, built_site_dir=built)
         assert not res["checks"]["required_sections"]["ok"]
 
+    # -----------------------------------------------------------------------
+    # SHARED-CODE WITHHOLDING EXCEPTION (chain-B fix 2, 2026-09-12). A THIRD
+    # legitimate emptiness for 'players' alone, beside the dropped-claims one
+    # and Sprint E's no-evidence-in-the-warehouse one: a shared-code collision
+    # member whose contractor attribution the SITE ITSELF withholds. The union
+    # concentration figure describes neither member, so the page publishes no
+    # contractor attribution at all (ROADMAP #82, `concentration_withheld`) —
+    # naming primes in the dossier's players section would put on the page the
+    # very attribution the page withholds. Proof-it-can-fail, three arms plus
+    # the two keying arms:
+    #   1. empty players, NO marker                      -> FAIL
+    #   2. empty players, marker on this page's sidecar  -> PASS
+    #   3. empty what_it_is, marker present              -> FAIL (players only)
+    #   4. the marker is read at the dossier's PAGE identity (slug), not the
+    #      bare pe_bli — the production case is slug-named dossiers
+    #   5. no program_details_dir supplied -> the exception cannot be granted
+    # -----------------------------------------------------------------------
+
+    def _empty_players(self, gate_fixture, pe=PE2):
+        path = gate_fixture.dossier_dir / f"{pe}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        path.write_text(json.dumps(doc))
+        return path
+
+    @staticmethod
+    def _write_marker(details_dir, slug, withheld):
+        (Path(details_dir) / f"{slug}.json").write_text(json.dumps({
+            "pe_bli": slug.split("-")[0],
+            "summary": {"concentration_withheld": withheld},
+        }))
+
+    def test_withheld_arm1_empty_players_without_the_marker_still_fails(
+        self, gate_fixture, site_fixture,
+    ):
+        """The sidecar exists and is readable but does NOT carry the
+        withholding marker — the ordinary empty-section defect, which must
+        still fail. This is the arm that proves the exception is earned."""
+        self._empty_players(gate_fixture)
+        details = site_fixture.site_json / "program_details"
+        self._write_marker(details, PE2, False)
+        res = _run_gate(gate_fixture, program_details_dir=details)
+        assert not res["checks"]["required_sections"]["ok"]
+        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+        assert not res["checks"]["required_sections"]["withheld_exempt"]
+
+    def test_withheld_arm2_empty_players_with_the_marker_passes(
+        self, gate_fixture, site_fixture,
+    ):
+        """The exported page sidecar says this page's contractor attribution
+        is withheld for shared code, so an empty players section is the
+        honest state and the gate says so by name."""
+        self._empty_players(gate_fixture)
+        details = site_fixture.site_json / "program_details"
+        self._write_marker(details, PE2, True)
+        res = _run_gate(gate_fixture, program_details_dir=details)
+        assert res["checks"]["required_sections"]["ok"], (
+            res["checks"]["required_sections"])
+        assert res["checks"]["required_sections"]["withheld_exempt"] == [PE2]
+        assert "2026-09-12" in res["checks"]["required_sections"]["note"]
+        assert "concentration_withheld" in res["checks"]["required_sections"]["note"]
+        assert PE2 in res["checks"]["required_sections"]["note"]
+
+    def test_withheld_arm3_the_exemption_is_players_only(
+        self, gate_fixture, site_fixture,
+    ):
+        """The marker excuses the contractor section and nothing else: a
+        program whose concentration is withheld still has to say what it is.
+        Any other empty required section fails with the marker present."""
+        path = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["what_it_is"]["claims"] = []
+        path.write_text(json.dumps(doc))
+        details = site_fixture.site_json / "program_details"
+        self._write_marker(details, PE2, True)
+        res = _run_gate(gate_fixture, program_details_dir=details)
+        assert not res["checks"]["required_sections"]["ok"]
+        assert f"{PE2}: what_it_is" in res["checks"]["required_sections"]["empty"]
+
+    def test_withheld_marker_is_read_at_the_dossiers_page_identity(
+        self, gate_fixture, site_fixture,
+    ):
+        """Production's withheld dossiers are SLUG-named ("3010-SCN.json"):
+        the sibling lookup above resolves the bare pe_bli to that file, and
+        the marker must be read at THAT page identity. A marker filed under
+        the bare pe_bli — the collision's disambiguation stub, a different
+        page — must not excuse the member's page."""
+        src = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(src.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        doc["slug"] = f"{PE2}-SCN"
+        (gate_fixture.dossier_dir / f"{PE2}-SCN.json").write_text(json.dumps(doc))
+        src.unlink()
+        details = site_fixture.site_json / "program_details"
+
+        self._write_marker(details, PE2, True)        # the STUB, not the page
+        res = _run_gate(gate_fixture, program_details_dir=details)
+        assert not res["checks"]["required_sections"]["ok"]
+        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+
+        self._write_marker(details, f"{PE2}-SCN", True)  # the member's page
+        res = _run_gate(gate_fixture, program_details_dir=details)
+        assert res["checks"]["required_sections"]["ok"], (
+            res["checks"]["required_sections"])
+        assert res["checks"]["required_sections"]["withheld_exempt"] == [
+            f"{PE2}-SCN"]
+
+    def test_withheld_without_program_details_dir_cannot_be_granted(
+        self, gate_fixture, site_fixture,
+    ):
+        """Same discipline as built_site_dir: with no exported sidecars to
+        read, the exception cannot be granted at all and the unconditional
+        failure applies. The marker must be verified, never assumed."""
+        self._empty_players(gate_fixture)
+        self._write_marker(site_fixture.site_json / "program_details", PE2, True)
+        res = _run_gate(gate_fixture)  # no program_details_dir kwarg
+        assert not res["checks"]["required_sections"]["ok"]
+        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+
     def test_missing_dossier_file_fails(self, gate_fixture):
         (gate_fixture.dossier_dir / f"{PE2}.json").unlink()
         res = _run_gate(gate_fixture)

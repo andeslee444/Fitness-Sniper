@@ -115,6 +115,42 @@ def _has_no_players_evidence(duckdb_path, pe_bli: str) -> bool:
         # Unknown -> not granted. The exception must be earned, never assumed.
         return False
 
+
+# The exported page sidecar field that says the SITE withholds this page's
+# contractor attribution (export_site._concentration_withheld, ROADMAP #82).
+# It is a boolean on program_details/{slug}.json's `summary` block, keyed by
+# PAGE identity — the same slug the dossier file is named for — because a
+# shared code's two members are two pages with two different answers.
+_WITHHELD_MARKER = "concentration_withheld"
+
+
+def _concentration_withheld_on_page(program_details_dir, slug: str) -> bool:
+    """True iff the exported sidecar for THIS page carries the shared-code
+    withholding marker (chain-B fix 2, 2026-09-12).
+
+    Read from the export, not from a slug list: `_concentration_withheld` is
+    recomputed from the warehouse on every export, so a member that stops
+    being withheld — its sibling loses its links, the mart row disappears —
+    stops qualifying on the next export with no edit here. A page whose
+    sidecar is missing, unreadable, malformed or simply says False does not
+    qualify; with no program_details_dir supplied at all the exception cannot
+    be granted, exactly as _built_page_discloses_drop behaves without a build.
+    """
+    if program_details_dir is None:
+        return False
+    path = Path(program_details_dir) / f"{slug}.json"
+    if not path.exists():
+        return False
+    try:
+        doc = _load_json(path)
+    except (OSError, ValueError):
+        return False
+    summary = doc.get("summary") if isinstance(doc, dict) else None
+    if not isinstance(summary, dict):
+        return False
+    return summary.get(_WITHHELD_MARKER) is True
+
+
 def _built_page_discloses_drop(built_site_dir: Path, pe_bli: str) -> bool:
     """True iff out/program/{pe_bli}/index.html actually renders the
     dropped-claims correction note (program-dossier.tsx's ScopeNote,
@@ -163,6 +199,7 @@ def dossier_gate(
     warehouse_floor: float = WAREHOUSE_FLOOR,
     built_site_dir: str | Path | None = None,
     duckdb_path: str | Path | None = None,
+    program_details_dir: str | Path | None = None,
 ) -> dict:
     """The cited-or-absent dossier gate. Returns {ok, checks, totals}.
 
@@ -174,6 +211,12 @@ def dossier_gate(
     CLI path (run right after `dossiers collect`, before any site build
     exists) — with no build to check, the exception cannot be granted at
     all, and an empty required section fails exactly as it always has.
+
+    program_details_dir (optional, e.g. data/site/json/program_details): the
+    exported page sidecars, read ONLY to answer required_sections's
+    shared-code withholding exception for `players` (see below). Omitted, as
+    built_site_dir is, in the standalone `dossiers gate` CLI path — with no
+    export to read, that exception cannot be granted either.
     """
     dossier_dir = Path(dossier_dir)
     built_site_dir = Path(built_site_dir) if built_site_dir is not None else None
@@ -204,6 +247,7 @@ def dossier_gate(
     structure_errors: list[str] = []
     unresolved: list[dict] = []
     empty_required: list[str] = []
+    withheld_exempt: list[str] = []
     total_claims = 0
     warehouse_claims = 0
 
@@ -223,6 +267,12 @@ def dossier_gate(
             else:
                 missing_files.append(pe_bli)
                 continue
+        # The dossier's PAGE identity: the file stem, which is the bare
+        # pe_bli for an ordinary program and the page SLUG ("3010-SCN") for a
+        # split key resolved through the sibling lookup above. Every
+        # per-PAGE lookup below keys on this, never on pe_bli, because a
+        # shared code's members are distinct pages.
+        page_slug = path.stem
         doc = _load_json(path)
         sections = doc.get("dossier", doc) if isinstance(doc, dict) else doc
         errors = validate_dossier(sections)
@@ -280,6 +330,31 @@ def dossier_gate(
                 # fails exactly as before.
                 if not disclosed and section == "players":
                     disclosed = _has_no_players_evidence(duckdb_path, pe_bli)
+                # chain-B fix 2 (2026-09-12): a THIRD honest emptiness, for
+                # 'players' alone. Sprint E's clause above asks the warehouse
+                # whether anything EXISTS to cite. This one asks the export
+                # whether the site PUBLISHES it: on a shared-code collision
+                # member whose union concentration figure describes neither
+                # member, `_concentration_withheld` withholds the contractor
+                # attribution from the page (ROADMAP #82, rendered as
+                # data-who-withheld="shared-code"). A players section there
+                # would print on the page precisely the attribution the page
+                # declines to make — so empty is the honest state, and the
+                # only one consistent with what the reader is shown.
+                #
+                # Keyed on the MARKER at this dossier's page identity
+                # (`page_slug`, the same slug `export_site.slug_index` keys
+                # named_primes and lobbied_by by), never on a slug list: the
+                # marker is recomputed from the warehouse on every export.
+                # Scoped to 'players' because it is the only section whose
+                # content is contractor attribution; every other empty
+                # required section fails exactly as before.
+                if not disclosed and section == "players":
+                    if _concentration_withheld_on_page(
+                        program_details_dir, page_slug
+                    ):
+                        disclosed = True
+                        withheld_exempt.append(page_slug)
                 if not disclosed:
                     empty_required.append(f"{pe_bli}: {section}")
             for i, claim in enumerate(claims):
@@ -334,6 +409,14 @@ def dossier_gate(
     checks["required_sections"] = {
         "ok": not empty_required,
         "empty": empty_required,
+        "withheld_exempt": withheld_exempt,
+        "note": (
+            "players exempted on "
+            f"{len(withheld_exempt)} page(s) (2026-09-12): "
+            f"{_WITHHELD_MARKER}=true in program_details/{{slug}}.json — the "
+            "site withholds this shared code's contractor attribution: "
+            + ", ".join(withheld_exempt)
+        ) if withheld_exempt else "",
     }
     ratio = (warehouse_claims / total_claims) if total_claims else 0.0
     checks["warehouse_ratio"] = {
@@ -394,6 +477,8 @@ def print_gate(result: dict) -> None:
                 f" = {check['ratio']:.1%}, floor {check['floor']:.0%})"
             )
         print(f"dossier gate: {name}: {status}{detail}")
+        if check.get("note"):
+            print(f"  note: {check['note']}")
         if not check["ok"]:
             for key in ("missing", "errors", "unresolved", "empty"):
                 for item in check.get(key, [])[:20]:
