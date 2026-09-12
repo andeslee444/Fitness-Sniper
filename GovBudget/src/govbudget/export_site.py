@@ -2394,14 +2394,25 @@ def export_site(
     # three of the five published methods carry zero adjudication rows. The
     # replacement sentence renders from this block, number for number.
     published_link_methods = _published_link_methods(duckdb_path)
+    published_high_links = _published_high_links(duckdb_path)
+    # ONE timestamp for the run: the manifest's `built_at` and the
+    # adjudication block's `measured_on` are the same instant by construction,
+    # so the census date the page renders can never drift from the build's
+    # own (fix round 1, C1 — the sentence used to date today's counts by the
+    # last adjudication, 2026-09-01, when the corpus had grown since).
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
     with psycopg.connect(dsn) as pg_precision:
         link_precision = _link_precision_block(
             pg_precision, published_methods=published_link_methods
         )
-        link_adjudication = _link_adjudication_block(pg_precision)
+        link_adjudication = _link_adjudication_block(
+            pg_precision,
+            high_links=published_high_links,
+            measured_on=built_at[:10],
+        )
 
     manifest = {
-        "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
+        "built_at": built_at,
         "datasets": final_counts,
         "citations": cit_by_kind,
         "ingested_service_orgs": ingested_service_orgs,
@@ -2691,6 +2702,44 @@ def _published_link_methods(duckdb_path) -> set[str]:
     return {m for (m,) in rows}
 
 
+def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
+    """`(award_piid, pe_bli, method)` for every link the MART publishes at
+    HIGH — the universe /methodology/'s High-tier sentence is about.
+
+    THE REASON THIS READS THE MART AND NOT POSTGRES (measured 2026-09-11).
+    `budget_line_awards` does not know what publishes at high. dbt's
+    fct_budget_to_awards applies TWO rules on the way through, and the
+    second has no Postgres column: an adjudication's `adjudicated_confidence`
+    overrides the mechanical grade, AND an `account+tokens` row the crosswalk
+    graded high with no adjudication at all is DEMOTED to medium (#75
+    addendum, 2026-09-04 — the token-overlap tier alone is not
+    evidence-graded). Re-deriving the tier as
+    `coalesce(adjudicated_confidence, confidence)` therefore overstates the
+    high tier by the 113 unadjudicated `account+tokens` rows the mart
+    demoted: 881 instead of the 768 a reader meets. Only the mart knows.
+
+    ``None`` on a warehouse with no mart (older fixtures) — the caller then
+    omits the `high` sub-block and the page renders no High-tier census
+    rather than one measured against the wrong universe.
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        rows = con.execute(
+            "select distinct award_piid, pe_bli, method"
+            " from fct_budget_to_awards"
+            " where confidence = 'high'"
+            "   and award_piid is not null and pe_bli is not null"
+            "   and method is not null"
+        ).fetchall()
+    except Exception:  # CatalogException on a warehouse without the mart
+        return None
+    finally:
+        con.close()
+    return [(str(p), str(b), str(m)) for p, b, m in rows]
+
+
 def _link_precision_block(pg, published_methods: set[str] | None = None,
                           sample_id: str | None = None,
                           rubric: str = "attribution") -> dict:
@@ -2772,25 +2821,50 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     }
 
 
-def _link_adjudication_block(pg) -> dict:
+def _link_adjudication_block(
+    pg,
+    high_links: list[tuple[str, str, str]] | None = None,
+    measured_on: str | None = None,
+) -> dict:
     """Per-award hand-adjudication COVERAGE of the budget→award crosswalk
     (ROADMAP #109) — the numbers /methodology/ opens the "Budget-to-contract
-    links" section with.
+    links" section with, plus the High tier's own census.
 
     Returns ``{}`` when no adjudication touches a published link (fixture
     warehouses, a corpus adjudicated later) — the page then renders NOTHING
     for that sentence rather than a claim with no measurement behind it.
     Otherwise::
 
-        {"as_of": "2026-09-01",          # latest adjudication the block COUNTS
+        {"measured_on": "2026-09-11",    # the EXPORT RUN's date (see below)
+         "as_of": "2026-09-01",          # latest adjudication the block COUNTS
          "published": 12595,             # confidence in ('high','medium')
          "adjudicated": 9587,            # of those, links with an adjudication
          "unpinned": 8474,               # of those, award_verdict darpa_unpinned
          "unpinned_tier": "medium",      # the ONE grade every unpinned link
                                          #   publishes at, or None if they differ
          "by_method": {method: {"published": int, "adjudicated": int}},
-         "adjudicated_methods": [...],   # by_method entries with adjudicated > 0
-         "unadjudicated_methods": [...]} # by_method entries with adjudicated == 0
+         "unadjudicated_methods": [...], # by_method entries with adjudicated == 0
+         "high": {                       # omitted when `high_links` is None
+             "published_high": 768,
+             "adjudicated_high": 60,
+             "two_lens_high": 60,        # refuter_lenses_passed = 2
+             "by_path": {method: {"high": int, "adjudicated": int,
+                                  "two_lens": int,
+                                  "with_match_basis": int}}}}  # last key only
+                                         #   where the path records sources
+
+    TWO DATES, BECAUSE THEY ARE TWO FACTS (fix round 1, C1). `as_of` is
+    ``max(adjudicated_at)`` — it dates the last ADJUDICATION, 2026-09-01.
+    The counts are taken at EXPORT time, and the corpus moved in between:
+    9,864 of the 12,595 links were created 2026-06-10 and 2,731 (every
+    `announcement+lexicon`, `fpds-ap` and `subaward+lexicon` row) on
+    2026-09-04, after the last adjudication ran — which is precisely WHY
+    those three paths carry none. Dating the census "as of 2026-09-01" made
+    the sentence false under its own date: on that day the ratio was 9,587 of
+    9,864, not of 12,595. `measured_on` therefore carries the export run's
+    date (the exporter passes ``built_at``'s day, so the two cannot disagree)
+    and `as_of` is stated for what it is. Gate 24 leg o binds each to its own
+    clause.
 
     THE DEFECT (measured 2026-09-11, Task 6b). The section opened "As of
     September 2026, every published link was individually hand-adjudicated:
@@ -2804,6 +2878,15 @@ def _link_adjudication_block(pg) -> dict:
     crosswalk grades high or medium. Owner rule 2026-08-07:
     publish the smaller true number. Every figure in the replacement sentence
     is read from this block and bound to it by gate 24 leg o.
+
+    THE HIGH SUB-BLOCK (fix round 1, R-6c-4) answers the same question for
+    the tier four surfaces called "verified adversarially". `high_links` is
+    the MART's high tier (_published_high_links) — never re-derived from
+    `budget_line_awards`, which does not know about dbt's demotion rule and
+    would report 881 links where the site publishes 768. Measured
+    2026-09-11: 768 published at high, 60 with an adjudication (all 60 at
+    ``refuter_lenses_passed = 2``), 708 `announcement+lexicon` with none, a
+    match basis recorded on 384 of those 708.
 
     THE UNIVERSE is `budget_line_awards` at high/medium — the crosswalk's own
     grade, which is what the adjudication overlay is applied TO. It is NOT
@@ -2865,19 +2948,109 @@ def _link_adjudication_block(pg) -> dict:
         ).fetchall()
     ]
 
-    return {
+    block = {
+        "measured_on": (
+            measured_on
+            or datetime.datetime.now(datetime.UTC).date().isoformat()
+        ),
         "as_of": max(judged_dates).date().isoformat(),
         "published": published,
         "adjudicated": adjudicated,
         "unpinned": unpinned,
         "unpinned_tier": tiers[0] if len(tiers) == 1 else None,
         "by_method": by_method,
-        "adjudicated_methods": sorted(
-            m for m, v in by_method.items() if v["adjudicated"] > 0
-        ),
         "unadjudicated_methods": sorted(
             m for m, v in by_method.items() if v["adjudicated"] == 0
         ),
+    }
+    high = _high_tier_census(pg, high_links)
+    if high:
+        block["high"] = high
+    return block
+
+
+def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict:
+    """The `high` sub-block of `_link_adjudication_block` — see its docstring.
+
+    `high_links` comes from the MART (_published_high_links); this function
+    only asks Postgres what evidence each of those pairs carries. It never
+    decides which links publish at high, because Postgres cannot: dbt demotes
+    unadjudicated `account+tokens` high rows on the way through and there is
+    no column recording that.
+    """
+    if not high_links:
+        return {}
+
+    piids = [p for p, _, _ in high_links]
+    pes = [b for _, b, _ in high_links]
+
+    lenses: dict[tuple[str, str], int | None] = {
+        (p, b): n
+        for p, b, n in pg.execute(
+            """
+            select t.piid, t.pe, a.refuter_lenses_passed
+            from unnest(%(piids)s::text[], %(pes)s::text[]) as t(piid, pe)
+            join award_pe_adjudications a
+              on a.award_piid = t.piid and a.pe_bli = t.pe
+            """,
+            {"piids": piids, "pes": pes},
+        ).fetchall()
+    }
+    # A pair counts as carrying a recorded match basis when ANY of its
+    # award_link_sources rows records one. `sources` is counted too so a path
+    # that records sources but no bases publishes 0 rather than omitting the
+    # key — "not recorded" and "no such evidence" are different facts.
+    sources: dict[tuple[str, str], tuple[int, int]] = {
+        (p, b): (n_src, n_basis)
+        for p, b, n_src, n_basis in pg.execute(
+            """
+            select t.piid, t.pe, count(*) as sources,
+                   count(*) filter (
+                     where s.match_basis is not null and s.match_basis <> ''
+                   ) as with_basis
+            from unnest(%(piids)s::text[], %(pes)s::text[]) as t(piid, pe)
+            join award_link_sources s
+              on s.award_piid = t.piid and s.pe_bli = t.pe
+            group by t.piid, t.pe
+            """,
+            {"piids": piids, "pes": pes},
+        ).fetchall()
+    }
+
+    by_path: dict[str, dict] = {}
+    for piid, pe_bli, method in high_links:
+        path = by_path.setdefault(
+            method,
+            {"high": 0, "adjudicated": 0, "two_lens": 0,
+             "_sources": 0, "_basis": 0},
+        )
+        path["high"] += 1
+        key = (piid, pe_bli)
+        if key in lenses:
+            path["adjudicated"] += 1
+            if lenses[key] == 2:
+                path["two_lens"] += 1
+        n_src, n_basis = sources.get(key, (0, 0))
+        path["_sources"] += n_src
+        path["_basis"] += 1 if n_basis > 0 else 0
+
+    out_paths: dict[str, dict] = {}
+    for method in sorted(by_path):
+        path = by_path[method]
+        entry = {
+            "high": path["high"],
+            "adjudicated": path["adjudicated"],
+            "two_lens": path["two_lens"],
+        }
+        if path["_sources"] > 0:
+            entry["with_match_basis"] = path["_basis"]
+        out_paths[method] = entry
+
+    return {
+        "published_high": sum(v["high"] for v in out_paths.values()),
+        "adjudicated_high": sum(v["adjudicated"] for v in out_paths.values()),
+        "two_lens_high": sum(v["two_lens"] for v in out_paths.values()),
+        "by_path": out_paths,
     }
 
 
@@ -10140,12 +10313,15 @@ def _write_all_sidecars(
         # export_site (Postgres scope) and threaded via manifest, same
         # reason as ingested_service_orgs just above — this function only
         # holds a duckdb connection, no Postgres dsn.
-        # ROADMAP #109: {as_of, published, adjudicated, unpinned,
-        # unpinned_tier, by_method, adjudicated_methods,
-        # unadjudicated_methods} — per-award hand-adjudication COVERAGE
-        # of the crosswalk, {} until an adjudication touches a published
-        # link. Same Postgres-scope/threading reason as link_precision
-        # below; gate 24 leg o binds the rendered sentence to it.
+        # ROADMAP #109: {measured_on, as_of, published, adjudicated, unpinned,
+        # unpinned_tier, by_method, unadjudicated_methods, high} — per-award
+        # hand-adjudication COVERAGE of the crosswalk, {} until an
+        # adjudication touches a published link. `measured_on` is this run's
+        # date and `as_of` the last adjudication's: they are 10 days apart and
+        # the census belongs to the first (fix round 1, C1). `high` is the
+        # High tier's own census, counted over the MART's high rows. Same
+        # Postgres-scope/threading reason as link_precision below; gate 24
+        # leg o binds the rendered sentences to it.
         "link_adjudication": manifest.get("link_adjudication", {}),
         "link_precision": manifest.get("link_precision", {}),
         # backlog #49: dollar-denominated /programs/ coverage — see

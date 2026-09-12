@@ -12,6 +12,8 @@ population and the wrong question.
 Run against the fixture Postgres (root conftest's `pg_dsn`), so the SQL under
 test is the SQL that runs in production, not a hand-rolled stand-in.
 """
+import datetime as dt
+
 import psycopg
 import pytest
 
@@ -253,8 +255,9 @@ def test_precision_study_twin_agrees_with_the_exporter(seeded):
 # neither could refute it." Of 12,595 links the crosswalk grades high or
 # medium, 9,587 carry an award_pe_adjudications row at all; 8,474 of those
 # adjudications say `darpa_unpinned`; and 60 rows in the whole table carry
-# refuter_lenses_passed = 2 (57 of them on a published link). Every number on the page was derived and true;
-# this sentence was neither.
+# refuter_lenses_passed = 2 — 57 of them on a link the crosswalk grades high
+# or medium. Every number on the page was derived and true; this sentence was
+# neither.
 #
 # The block is a WHOLE-TABLE aggregate, so unlike `seeded` above its fixture
 # cannot scope itself with an organization marker — it owns both tables for
@@ -314,12 +317,14 @@ def test_the_adjudication_block_counts_coverage_not_intent(adjudicated):
 
     `as_of` is the latest adjudication the block COUNTS (2026-09-01 here) —
     LAB-4's later 2026-09-30 row is on an unpublished link and must not date
-    a claim about published ones.
+    a claim about published ones. `measured_on` is a DIFFERENT fact: the
+    export run's own date, passed in by the caller.
     """
     with psycopg.connect(adjudicated) as pg:
-        block = _link_adjudication_block(pg)
+        block = _link_adjudication_block(pg, measured_on="2026-09-11")
 
     assert block == {
+        "measured_on": "2026-09-11",
         "as_of": "2026-09-01",
         "published": 3,
         "adjudicated": 2,
@@ -329,9 +334,35 @@ def test_the_adjudication_block_counts_coverage_not_intent(adjudicated):
             "account+subagency": {"published": 2, "adjudicated": 2},
             "fpds-ap": {"published": 1, "adjudicated": 0},
         },
-        "adjudicated_methods": ["account+subagency"],
         "unadjudicated_methods": ["fpds-ap"],
     }
+
+
+def test_the_census_date_is_the_export_run_not_the_last_adjudication(adjudicated):
+    """Fix round 1, C1. The counts are taken at export time; `as_of` dates the
+    last adjudication. Welding the two made the rendered sentence false under
+    its own date — on 2026-09-01 the live corpus held 9,864 published links,
+    not the 12,595 the sentence counted. The two dates are now separate
+    fields, and `measured_on` defaults to TODAY rather than to `as_of` when a
+    caller does not supply the run's date."""
+    with psycopg.connect(adjudicated) as pg:
+        stamped = _link_adjudication_block(pg, measured_on="2026-12-25")
+        defaulted = _link_adjudication_block(pg)
+
+    assert stamped["measured_on"] == "2026-12-25"
+    assert stamped["as_of"] == "2026-09-01"
+    assert defaulted["measured_on"] == dt.datetime.now(dt.UTC).date().isoformat()
+    assert defaulted["measured_on"] != defaulted["as_of"]
+
+
+def test_the_block_publishes_no_list_nothing_reads(adjudicated):
+    """M5. `adjudicated_methods` was produced, typed in data.ts and consumed
+    by neither the page nor a gate leg. A field nothing reads is a field
+    nothing checks."""
+    with psycopg.connect(adjudicated) as pg:
+        block = _link_adjudication_block(pg, measured_on="2026-09-11")
+
+    assert "adjudicated_methods" not in block
 
 
 def test_a_method_with_no_adjudication_is_named_rather_than_left_silent(adjudicated):
@@ -377,3 +408,144 @@ def test_the_unpinned_tier_is_none_when_the_pool_does_not_publish_at_one_tier(ad
 
     assert block["unpinned"] == 2
     assert block["unpinned_tier"] is None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# site_meta.link_adjudication.high — the High tier's own census (#109, fix
+# round 1 R-6c-4)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# THE DEFECT THESE PIN. Four surfaces graded the High tier "verified
+# adversarially" / "verified by two independent adversarial reviewers"
+# (methodology page.tsx ×2, docs/methodology.md, lib/coverage-map.ts — the
+# last of which coverage.mjs's leg cm[bridge] MANDATED). Measured 2026-09-11
+# over the MART: 768 links publish at high, 60 carry a per-award adjudication
+# (all 60 at refuter_lenses_passed = 2), and 708 `announcement+lexicon` links
+# carry none at all — a match basis is recorded on 384 of those 708.
+#
+# THE SECOND DEFECT, which these tests exist to make unrepeatable: the high
+# tier CANNOT be re-derived from budget_line_awards. dbt demotes an
+# unadjudicated `account+tokens` high row to medium (#75 addendum,
+# 2026-09-04) and Postgres has no column for it, so
+# `coalesce(adjudicated_confidence, confidence) = 'high'` counts 881 links
+# where the site publishes 768. `high_links` is therefore an INPUT, read from
+# the mart by _published_high_links; the block only asks Postgres what
+# evidence those pairs carry.
+
+
+@pytest.fixture()
+def high_tier(adjudicated):
+    """Adds the evidence rows the high census reads: LAB-2 is the adjudicated,
+    two-lens high link; LAB-6 is an announcement link with a recorded match
+    basis and LAB-7 an announcement link without one, neither adjudicated."""
+    with psycopg.connect(adjudicated) as pg:
+        pg.execute(
+            "update award_pe_adjudications set refuter_lenses_passed = 2"
+            " where award_piid = 'LAB-2'"
+        )
+        for piid, basis in (("LAB-6", "exact-name"), ("LAB-7", None)):
+            pg.execute(
+                "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+                " organization, award_piid, method, confidence)"
+                " values ('LAB0602303E', 'R-1', 2026, 'lab-block-test', %s,"
+                " 'announcement+lexicon', 'high')",
+                (piid,),
+            )
+            pg.execute(
+                "insert into award_link_sources (award_piid, pe_bli,"
+                " source_kind, source_id, match_basis)"
+                " values (%s, 'LAB0602303E', 'announcement', %s, %s)",
+                (piid, f"src-{piid}", basis),
+            )
+        pg.commit()
+    yield adjudicated
+    with psycopg.connect(adjudicated) as pg:
+        pg.execute("delete from award_link_sources")
+        pg.commit()
+
+
+#: What _published_high_links returns for the fixture: the MART's high tier.
+#: LAB-1 is adjudicated MEDIUM and LAB-3 is an unadjudicated fpds-ap medium —
+#: neither publishes at high, so neither appears.
+FIXTURE_HIGH_LINKS = [
+    ("LAB-2", "LAB0601101E", "account+subagency"),
+    ("LAB-6", "LAB0602303E", "announcement+lexicon"),
+    ("LAB-7", "LAB0602303E", "announcement+lexicon"),
+]
+
+
+def test_the_high_census_splits_adjudicated_evidence_from_the_rest(high_tier):
+    """The sentence /methodology/ renders for the High tier, derived: how many
+    of the links published at high carry a hand adjudication, how many of
+    those survived both adversarial lenses, and what the rest carry instead."""
+    with psycopg.connect(high_tier) as pg:
+        block = _link_adjudication_block(
+            pg, high_links=FIXTURE_HIGH_LINKS, measured_on="2026-09-11"
+        )
+
+    assert block["high"] == {
+        "published_high": 3,
+        "adjudicated_high": 1,
+        "two_lens_high": 1,
+        "by_path": {
+            "account+subagency": {"high": 1, "adjudicated": 1, "two_lens": 1},
+            "announcement+lexicon": {
+                "high": 2,
+                "adjudicated": 0,
+                "two_lens": 0,
+                "with_match_basis": 1,
+            },
+        },
+    }
+
+
+def test_an_adjudication_without_two_lenses_is_not_counted_as_one(high_tier):
+    """`two_lens` is the claim "two independent adversarial reviewers", and it
+    is a STRICTLY smaller population than `adjudicated`: 10,031 of the 10,091
+    rows in the live table leave refuter_lenses_passed NULL. A block that
+    conflated them would let the page say "all 60 survived two reviewers" of a
+    tier where one did not."""
+    with psycopg.connect(high_tier) as pg:
+        pg.execute(
+            "update award_pe_adjudications set refuter_lenses_passed = null"
+            " where award_piid = 'LAB-2'"
+        )
+        pg.commit()
+        block = _link_adjudication_block(
+            pg, high_links=FIXTURE_HIGH_LINKS, measured_on="2026-09-11"
+        )
+
+    assert block["high"]["adjudicated_high"] == 1
+    assert block["high"]["two_lens_high"] == 0
+    assert block["high"]["by_path"]["account+subagency"]["two_lens"] == 0
+
+
+def test_a_path_that_records_no_sources_states_no_basis_figure(high_tier):
+    """`with_match_basis` distinguishes "recorded, and it is none" from "this
+    path records no source rows at all". The account family carries neither
+    an announcement nor a basis, so the key is absent rather than 0."""
+    with psycopg.connect(high_tier) as pg:
+        block = _link_adjudication_block(
+            pg, high_links=FIXTURE_HIGH_LINKS, measured_on="2026-09-11"
+        )
+
+    assert "with_match_basis" not in block["high"]["by_path"]["account+subagency"]
+    assert block["high"]["by_path"]["announcement+lexicon"]["with_match_basis"] == 1
+
+    with psycopg.connect(high_tier) as pg:
+        pg.execute("update award_link_sources set match_basis = null")
+        pg.commit()
+        stripped = _link_adjudication_block(
+            pg, high_links=FIXTURE_HIGH_LINKS, measured_on="2026-09-11"
+        )
+    assert stripped["high"]["by_path"]["announcement+lexicon"]["with_match_basis"] == 0
+
+
+def test_no_mart_means_no_high_sentence_rather_than_a_wrong_universe(high_tier):
+    """_published_high_links returns None on a warehouse with no mart. The
+    block then omits `high` entirely and the page renders no High-tier census
+    — never one counted against budget_line_awards, which does not know which
+    links dbt demoted."""
+    with psycopg.connect(high_tier) as pg:
+        assert "high" not in _link_adjudication_block(pg, high_links=None)
+        assert "high" not in _link_adjudication_block(pg, high_links=[])
