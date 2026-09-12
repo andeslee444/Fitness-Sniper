@@ -8,6 +8,21 @@ from govbudget.download import download_file, ensure_free_space
 from govbudget.jbooks.attachments import extract_jbook_xml
 
 
+def lake_path(dest: Path) -> str:
+    """The string to record in `jbook_documents.file_path`, symlinks resolved.
+
+    Every reader (`export_site`'s document copy loop, `verify`, `provenance_pages`)
+    re-opens this string verbatim on some future machine-state, so it has to name
+    the file in the SHARED lake, not in whatever view of it this process happened
+    to walk. Git worktrees are the live hazard: `<worktree>/data/raw_docs` is a
+    symlink into the main checkout's lake, so an un-resolved `str(dest)` records a
+    path that vanishes the moment the worktree is removed (this happened to doc 459
+    on 2026-09-12 — FY2026 DHP volume, repaired by hand). `Path.resolve()` collapses
+    the symlink to the canonical lake path every other row already uses.
+    """
+    return str(dest.resolve())
+
+
 def acquire_pending(
     dsn: str, client: httpx.Client, *, raw_docs_dir: Path, min_free_gb: float
 ) -> tuple[int, list[tuple[int, str, str]]]:
@@ -45,7 +60,7 @@ def acquire_pending(
             con.execute(
                 "update jbook_documents set status='downloaded', file_path=%s, sha256=%s, "
                 "bytes=%s, downloaded_at=%s, has_embedded_xml=%s where id=%s",
-                (str(dest), sha, n, dt.datetime.now(dt.UTC), has_xml, doc_id),
+                (lake_path(dest), sha, n, dt.datetime.now(dt.UTC), has_xml, doc_id),
             )
         done += 1
     return done, failures

@@ -1,5 +1,6 @@
 import io
 import zipfile
+from pathlib import Path
 
 import httpx
 import psycopg
@@ -91,3 +92,42 @@ def test_acquire_continues_past_corrupt_pdf_and_marks_failed(pg_dsn, tmp_path):
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         n2, f2 = acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0)
     assert (n2, f2) == (0, [])
+
+
+def test_acquire_records_the_symlink_resolved_lake_path(pg_dsn, tmp_path):
+    """A worktree's `data/raw_docs` is a symlink into the shared lake.
+
+    Regression for doc 459 (FY2026 DHP volume, 2026-09-12): acquiring through
+    that symlink recorded a `<worktree>/…` `file_path` that every reader —
+    `export_site`'s copy loop raises FileNotFoundError on a missing source —
+    would follow into a directory that disappears when the worktree is removed.
+    `file_path` must name the resolved target, like every other row.
+    """
+    lake = tmp_path / "lake"
+    lake.mkdir()
+    view = tmp_path / "worktree" / "data"
+    view.mkdir(parents=True)
+    (view / "raw_docs").symlink_to(lake)          # the worktree's view of the lake
+
+    upsert_documents(pg_dsn, [
+        {"org": "DHA", "exhibit_family": "rdte", "fiscal_year": 2026,
+         "title": "dhp.pdf", "source_url": "https://example.test/dhp.pdf"},
+    ])
+
+    def handler(request):
+        return httpx.Response(200, content=make_pdf_bytes(False))
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        n, failures = acquire_pending(
+            pg_dsn, client, raw_docs_dir=view / "raw_docs", min_free_gb=0
+        )
+    assert (n, failures) == (1, [])
+
+    with psycopg.connect(pg_dsn) as con:
+        (file_path,) = con.execute(
+            "select file_path from jbook_documents where title = 'dhp.pdf'"
+        ).fetchone()
+    expected = lake / "fy2026" / "dha" / "dhp.pdf"
+    assert file_path == str(expected.resolve())
+    assert "/worktree/" not in file_path
+    assert Path(file_path).exists()

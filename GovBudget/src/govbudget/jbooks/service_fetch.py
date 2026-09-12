@@ -324,6 +324,7 @@ def register_local_documents(
     (registered_count, skipped_basenames)."""
     import psycopg
 
+    from govbudget.jbooks.acquire import lake_path
     from govbudget.jbooks.registry import _classify_jbook
 
     drop = Path(drop_dir)
@@ -344,7 +345,7 @@ def register_local_documents(
                 " title, source_url, file_path, status, acquisition)"
                 " values (%s,%s,%s,%s,%s,%s,'registered','manual')"
                 " on conflict (source_url) do nothing",
-                (org, family, fiscal_year, p.name, per_file_url, str(p)),
+                (org, family, fiscal_year, p.name, per_file_url, lake_path(p)),
             )
             inserted += cur.rowcount
     return inserted, skipped
@@ -517,6 +518,7 @@ def download_registered_playwright(
     import psycopg
 
     from govbudget.download import ensure_free_space
+    from govbudget.jbooks.acquire import lake_path
     from govbudget.jbooks.attachments import doc_xml_dir, extract_jbook_xml
 
     with psycopg.connect(dsn) as con:
@@ -560,7 +562,7 @@ def download_registered_playwright(
                 "update jbook_documents set status='downloaded', file_path=%s,"
                 " sha256=%s, bytes=%s, downloaded_at=%s, has_embedded_xml=%s"
                 " where id=%s",
-                (str(dest), sha, n, dt.datetime.now(dt.UTC), has_xml, doc_id),
+                (lake_path(dest), sha, n, dt.datetime.now(dt.UTC), has_xml, doc_id),
             )
         done += 1
         log(f"[service-acquire] {title}: {n:,} bytes sha={sha[:16]}… xml={has_xml}")
