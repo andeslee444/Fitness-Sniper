@@ -655,6 +655,27 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   shipped was 15 curated rows and one gate leg. Lesson: when a backlog entry
   names a TOOL rather than a DEFECT, size the defect first — the sizing spike
   cost a day and deleted a week of the wrong work.
+- **2026-09-12: the false sentence had four render sites; the audit that
+  measured it found two (#111, Task 17c).** "Detailed justification for this
+  program lives in the {org} J-book, which is not yet ingested" presupposes a
+  book exists. Against the FY2026 index it is false for the DoD IG (no RDT&E
+  or procurement justification book published at all) and for DEFW (none for
+  its reconciliation / undistributed / roll-up rows) — 5 pages — and imprecise
+  for DHA's 14, whose book WAS downloaded and carries no jb-2009 payload.
+  A careful measurement pass counted the pages and found the sentence in the
+  coverage note and the Justification empty state. It also rendered, on the
+  same pages, from `buildRollupCard`'s tail and from the page's own
+  `<meta name="description">` — two more copies of one claim, each read as
+  "card wording" and "SEO text" rather than as the claim they are. Lesson:
+  measure the SENTENCE across the repo, not the component that renders it; a
+  component is a place, and a claim has as many places as it has copies. The
+  gate leg is shaped by that — the positive checks bind the two prose
+  surfaces, but the ban on "not yet ingested" runs over the WHOLE page HTML,
+  so a fifth copy is caught without anyone remembering it exists. Second
+  lesson, same shape one layer down: the absence is now published as the
+  probe's RULE (`site_meta.org_absences`), so the page renders one sentence
+  per recorded case — an unrecorded org still gets "not yet ingested", which
+  is the one state that wording is true of.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -1256,7 +1277,22 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   that account deserves its own coverage sentence. (d) `docs/methodology.md:31`
   still says J-books are published at `comptroller.defense.gov`; the host is
   `comptroller.war.gov` and every `jbook_documents.source_url` already uses it.
-  **Status:** open (2026-09-12).
+  (e) The SITE half — what those pages SAY about (a) and (b) — is **fixed on
+  this branch by Task 17c (`428623ad`, 2026-09-12)**. All 19 pages said
+  "…J-book, which is not yet ingested", a sentence that presupposes a book
+  exists: false for IG (1 page) and DEFW (4), imprecise for DHA (14, the book
+  is downloaded). `export_site._org_absences` now publishes the probe's own
+  record into `site_meta.org_absences` ({org: {rule, checked_on,
+  checked_url}}, derived from `edition_manifest.json`) and each rule renders
+  its own sentence on all four surfaces that carried the old one — the
+  description note, the Justification empty state, the WHAT-IT-IS card tail
+  and `<meta name="description">`. Gate 21 leg (o) binds the two prose
+  surfaces to the rule and bans the phrase over the whole page. The DATA half
+  — clauses (a)–(d) — is untouched and still open: the site now states the
+  absence precisely instead of mis-stating it, which is not the same as
+  closing it.
+  **Status:** open (2026-09-12) — (a)–(d) open; (e), the false rendered
+  sentence, fixed on this branch by Task 17c (`428623ad`, 2026-09-12).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
