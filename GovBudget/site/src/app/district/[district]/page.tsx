@@ -77,6 +77,14 @@ export default async function DistrictDetailPage({ params }: Props) {
   const byYear = detail.by_year ?? [];
   const awardFyRange = getAwardFyRange();
   const partialFy = awardFyRange?.maxPartial ? awardFyRange.fyMax : null;
+  // ...but the NOTE about the partial year belongs only on a page whose table
+  // actually reaches it. max_partial is SITEWIDE and true on every page, while
+  // only 67 of 153 districts have an FY2026 row (measured 2026-09-11); on the
+  // other 86 the note asserted a figure that is not in the table (fix round 1,
+  // Critical 2). The inline "partial year" row label was already derived per
+  // row and is unchanged.
+  const showsPartialFy =
+    partialFy !== null && byYear.some((r) => r.fiscal_year === partialFy);
   // The gross column earns its space only where it differs from the net one.
   const hasDeobligations = byYear.some(
     (r) => r.positive_obligation > r.total_obligation + 0.005,
@@ -298,8 +306,10 @@ export default async function DistrictDetailPage({ params }: Props) {
             <p className="text-muted-foreground text-sm mb-3">
               The same linkable obligations as the total above, split by the
               fiscal year each award transaction was recorded in. The years add
-              up to that total exactly. Award counts do not: an award active in
-              two years appears in both.
+              up to that total, though the figures here are rounded for
+              display, so adding them by eye need not land on it exactly. Award
+              counts do not add up: an award active in two years appears in
+              both.
             </p>
             <div className="rounded-lg border border-border overflow-x-auto bg-card">
               <table
@@ -388,7 +398,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                 </tbody>
               </table>
             </div>
-            {partialFy !== null && (
+            {showsPartialFy && (
               <p className="mt-2 text-xs text-muted-foreground">
                 FY{partialFy} is still open — it does not close until September
                 30, so its figure is a part-year total and is not comparable to
