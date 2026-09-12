@@ -28,7 +28,7 @@
  * non-vacuity floor rather than dodging it. Run via `npm test` (vitest).
  */
 import { describe, it, expect } from "vitest";
-import { runCoverageNoteLeg } from "../program-skeleton.mjs";
+import { ABSENCE_MARKERS, runCoverageNoteLeg } from "../program-skeleton.mjs";
 
 const INGESTED = ["A", "N", "F", "OSD"];
 
@@ -200,6 +200,23 @@ describe("leg o — the live shape", () => {
     expect(notes.join(" ")).toContain("unprobed: ZZZ 1");
     expect(notes.join(" ")).toContain("1 with no org code");
     expect(notes.join(" ")).toContain(`${DETAIL_PAGES} page(s) with detail carry none`);
+  });
+});
+
+describe("the markers legs (c) and (o) share", () => {
+  it("each rule's note opens with its marker, so leg (c) accepts the third wording", () => {
+    // leg (c) samples 8 rollup pages — head 4 + tail 4 of the sorted slugs —
+    // and the tail is RECONCIL1 / RECONCIL2 / UNDISTRIB, all DEFW absence
+    // pages. It accepts a note that carries ANY marker in this map; leg (o)
+    // decides WHICH one is right. One map, two legs: a rule dropped from it
+    // breaks both, visibly, here.
+    for (const [rule, marker] of Object.entries(ABSENCE_MARKERS)) {
+      expect(ABSENCE_TEXT[rule]("DEFW")[0]).toContain(marker("DEFW"));
+      expect(ABSENCE_TEXT[rule]("DEFW")[1]).toContain(marker("DEFW"));
+    }
+    expect(Object.keys(ABSENCE_MARKERS).sort()).toEqual(
+      Object.keys(ABSENCE_TEXT).sort(),
+    );
   });
 });
 

@@ -344,19 +344,28 @@ export async function runProgramSkeletonGate() {
       } else {
         const svc = serviceName(d.service_org ?? "");
         const text = note.text ?? "";
-        // The note must name the service and its J-book, in one of two honest
-        // wordings (Phase 5G): the UNINGESTED wording ("…lives in the {svc}
-        // J-book, which is not yet ingested…") OR the INGESTED wording ("The
-        // {svc} FY2026 J-books are ingested, but this program element carries
-        // no R-2/P-40 narrative…"). Army 'A', Navy 'N', and Air Force / Space
-        // Force 'F' now render the ingested wording; other org codes keep the
-        // uningested wording. Accept either, but require the service name + the
-        // phrase "J-book" so the note is never generic.
+        // The note must name the service and its book, in one of THREE honest
+        // wordings. (1) Phase 5G's UNINGESTED wording ("…lives in the {svc}
+        // J-book, which is not yet ingested…") and (2) its INGESTED wording
+        // ("The {svc} FY2026 J-books are ingested, but this program element
+        // carries no R-2/P-40 narrative…") — Army 'A', Navy 'N' and Air Force
+        // / Space Force 'F' render the second, most other codes the first.
+        // (3) Task 17c's RECORDED-ABSENCE wordings, one per rule in
+        // site_meta.org_absences: no RDT&E or procurement book published, a
+        // summary line no book narrates, or a book downloaded with no embedded
+        // payload. THIS LEG only asks that the note states one of them about
+        // THIS page's org and is never generic; leg (o) is the one that checks
+        // it is the RIGHT one for the payload, and it reads every page rather
+        // than this 8-page-per-tier sample. Without case 3 this leg fails on
+        // the DEFW pages, which sort into the sample's tail.
         const namesUningested = text.includes(`lives in the ${svc} J-book`);
         const namesIngested =
           text.includes(`The ${svc} FY2026 J-book`) &&
           text.includes("no R-2/P-40 narrative");
-        if (!namesUningested && !namesIngested) {
+        const namesAbsence = Object.values(ABSENCE_MARKERS).some((marker) =>
+          text.includes(marker(svc)),
+        );
+        if (!namesUningested && !namesIngested && !namesAbsence) {
           pageOk = false;
           errors.push(
             `program-skeleton(c): /program/${slug}/ note does not name the ${svc} J-book (got: "${text.slice(0, 100)}")`
@@ -3295,7 +3304,7 @@ const WITHDRAWN_FULL_TIER_SENTENCES = [
  * depending on the parser's entity handling. The sentences themselves keep
  * their full wording; only the marker is narrowed.
  */
-const ABSENCE_MARKERS = {
+export const ABSENCE_MARKERS = {
   "no-justification-book-published": (svc) =>
     `justification book was published for ${svc}`,
   "summary-line-only": (svc) =>
