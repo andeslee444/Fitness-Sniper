@@ -8,8 +8,11 @@ written parquets and whose scope sentences cannot be silently omitted.
 """
 
 import json
+import re
+from pathlib import Path
 
 import pytest
+import yaml
 
 from govbudget.export_site import _DATASET_SCOPES, _build_dataset_manifest
 
@@ -145,3 +148,86 @@ class TestBuildDatasetManifest:
             data_dir, row_counts={"dim_programs": 1739}, uncited=[], built_at="x"
         )
         json.dumps(m)
+
+
+class TestProgramConcentrationScopeMirrorsTheMart:
+    """The /data/ scope sentence and the dbt description are ONE statement.
+
+    #80 fix round 3 (2026-09-11, finding 2): the floor sentence for
+    fct_program_concentration drifted from the mart twice in two review
+    rounds — first stating two of the mart's three floor clauses, then
+    opening with a dollar gate the mart does not apply — and both fixes
+    landed as prose with nothing behind them. These bind the two mirrors:
+    every floor clause is asserted in BOTH the exporter's scope sentence
+    (rendered verbatim on /data/ and /downloads/) and the
+    fct_program_concentration description in dbt/models/marts/schema.yml, so
+    editing one alone fails here.
+
+    The mart itself is the third mirror, guarded on the Python side by
+    verify_phase3's marts_gate floor leg (#80 fix round 1).
+    """
+
+    SCHEMA_YML = (
+        Path(__file__).resolve().parents[1]
+        / "dbt" / "models" / "marts" / "schema.yml"
+    )
+
+    # Phrases that must appear in BOTH surfaces, whitespace-normalized and
+    # case-folded. Each names one of the mart's three floor clauses
+    # (fct_program_concentration.sql:156-167) or the column that makes the
+    # second clause auditable from the download alone.
+    SHARED_FLOOR_CLAUSES = (
+        "hhi_high and top_family_high are null below the floor",
+        "3 linked awards",
+        "2 families holding positive dollars (positive_family_count_high)",
+    )
+
+    @staticmethod
+    def _norm(text: str) -> str:
+        return re.sub(r"\s+", " ", text).strip().lower()
+
+    @classmethod
+    def _schema_description(cls) -> str:
+        doc = yaml.safe_load(cls.SCHEMA_YML.read_text(encoding="utf-8"))
+        models = {m["name"]: m for m in doc["models"]}
+        assert "fct_program_concentration" in models, (
+            "dbt/models/marts/schema.yml no longer documents "
+            "fct_program_concentration — the /data/ mirror lost its source"
+        )
+        return models["fct_program_concentration"]["description"]
+
+    def test_both_mirrors_state_all_three_floor_clauses(self):
+        scope = self._norm(_DATASET_SCOPES["fct_program_concentration"])
+        schema = self._norm(self._schema_description())
+        for clause in self.SHARED_FLOOR_CLAUSES:
+            assert clause in scope, f"/data/ scope dropped: {clause}"
+            assert clause in schema, f"schema.yml description dropped: {clause}"
+        # The third clause is worded "positive net program_dollars_high" in
+        # the warehouse and "positive program_dollars_high" on /data/.
+        for name, text in (("/data/ scope", scope), ("schema.yml", schema)):
+            assert re.search(r"positive (net )?program_dollars_high", text), (
+                f"{name} dropped the positive-net-dollars clause"
+            )
+            # Both bases ship in the download and both are named.
+            assert "two bases" in text, f"{name} dropped the two-basis grain"
+            assert "*_all over every published link" in text, name
+            assert "*_high over high-confidence links" in text, name
+
+    def test_the_scope_opens_with_the_grain_not_a_dollar_gate(self):
+        """#80 fix round 3, finding 1: the mart applies NO dollar gate.
+
+        Its row set is every pe_bli in fct_budget_to_awards — 444 rows, 64 of
+        them with program_dollars_all <= 0 and 59 with hhi_all = 0.0 (the
+        `else 0` share branch, not a concentration score). A downloader
+        reading the old opening clause concluded all 444 carry a meaningful
+        index.
+        """
+        scope = self._norm(_DATASET_SCOPES["fct_program_concentration"])
+        assert scope.startswith(
+            "one row per program element carrying at least one published"
+            " crosswalk link,"
+        ), _DATASET_SCOPES["fct_program_concentration"]
+        opening = scope.split("on two bases")[0]
+        assert "dollars" not in opening, (
+            "the row set is not dollar-gated; say the grain: " + opening
+        )

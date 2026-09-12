@@ -1228,9 +1228,15 @@ _DATASET_SCOPES: dict[str, str] = {
     # or no positive net dollars. Mirrors dbt/models/marts/schema.yml's
     # fct_program_concentration description; /data/ renders it verbatim, so
     # watch that page's weight-ledger row (build.mjs) when editing it.
+    # The opening clause states the GRAIN, not a dollar gate (#80 fix round 3,
+    # 2026-09-11): the mart's row set is every pe_bli in fct_budget_to_awards
+    # (fct_program_concentration.sql:38-83 applies no dollar or count
+    # predicate), so 64 of the 444 rows carry program_dollars_all <= 0 and 59
+    # carry hhi_all = 0.0 — an artifact of the `else 0` share branch, not a
+    # concentration score. Only hhi_high/top_family_high are floored.
     "fct_program_concentration": (
-        "One row per program element with enough matched award dollars for an"
-        " HHI market-concentration score, on TWO bases: *_all over every"
+        "One row per program element carrying at least one published"
+        " crosswalk link, on TWO bases: *_all over every"
         " published link (high and medium confidence), *_high over"
         " high-confidence links alone. hhi_high and top_family_high are NULL"
         " below the floor: 3 linked awards, 2 families holding positive"
