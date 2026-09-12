@@ -14,11 +14,16 @@ test is the SQL that runs in production, not a hand-rolled stand-in.
 """
 import datetime as dt
 
+import duckdb
 import psycopg
 import pytest
 
 from govbudget import export_site
-from govbudget.export_site import _link_adjudication_block, _link_precision_block
+from govbudget.export_site import (
+    _link_adjudication_block,
+    _link_precision_block,
+    _published_high_links,
+)
 from precision_study import precision_by_method  # scripts/ on sys.path (conftest)
 
 
@@ -549,3 +554,86 @@ def test_no_mart_means_no_high_sentence_rather_than_a_wrong_universe(high_tier):
     with psycopg.connect(high_tier) as pg:
         assert "high" not in _link_adjudication_block(pg, high_links=None)
         assert "high" not in _link_adjudication_block(pg, high_links=[])
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# _published_high_links — the MART query itself (#109, fix round 2 R-6c-7)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# THE DEFECT THESE PIN. This function decides the UNIVERSE the High-tier
+# census is measured over, and until 2026-09-11 nothing exercised its query
+# or its fallback: `git grep _published_high_links` found it only in comments,
+# and the block's own tests passed `high_links=None`/`[]` by hand. It also
+# swallowed EVERY exception into the same `None` the missing-mart case
+# returns — so a renamed column, a type change or a transient read failure at
+# export time would have deleted the whole High-tier grading from a published
+# /methodology/ with every gate green, which is the vacuity shape M4 closed
+# one sub-block over. The catch is now narrowed to the missing relation and
+# gate 24 leg o fails a block that grades links and exports no `high`.
+
+
+def _mart_duckdb(tmp_path, rows, *, method_column="method") -> str:
+    """A warehouse holding nothing but fct_budget_to_awards."""
+    db = tmp_path / "govbudget.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute(
+        "create table fct_budget_to_awards ("
+        f" award_piid varchar, pe_bli varchar, {method_column} varchar,"
+        "  confidence varchar)"
+    )
+    for row in rows:
+        con.execute("insert into fct_budget_to_awards values (?, ?, ?, ?)", row)
+    con.close()
+    return str(db)
+
+
+def test_published_high_links_reads_the_marts_high_tier_and_nothing_else(tmp_path):
+    """The mart's `confidence` is the authority: an `account+tokens` row the
+    crosswalk graded high but no one adjudicated arrives here already DEMOTED
+    to medium (#75 addendum ruling 3), and must not appear. Re-deriving the
+    tier in Postgres as coalesce(adjudicated_confidence, confidence) counts
+    those 113 rows and reports 881 links where the site publishes 768."""
+    db = _mart_duckdb(
+        tmp_path,
+        [
+            ("HL-1", "HL0601101E", "account+subagency", "high"),
+            ("HL-2", "HL0601101E", "account+tokens", "medium"),  # dbt demoted it
+            ("HL-3", "HL0602303E", "announcement+lexicon", "high"),
+            ("HL-3", "HL0602303E", "announcement+lexicon", "high"),  # distinct
+            (None, "HL0602303E", "account", "high"),
+            ("HL-4", None, "account", "high"),
+            ("HL-5", "HL0602303E", None, "high"),
+            ("HL-6", "HL0604256N", "fpds-ap", "low"),
+        ],
+    )
+
+    assert sorted(_published_high_links(db)) == [
+        ("HL-1", "HL0601101E", "account+subagency"),
+        ("HL-3", "HL0602303E", "announcement+lexicon"),
+    ]
+
+
+def test_a_warehouse_with_no_mart_states_no_high_census_at_all(tmp_path):
+    """`None`, not an empty list and not a guess — the caller then omits the
+    `high` sub-block entirely (pinned by
+    test_no_mart_means_no_high_sentence_rather_than_a_wrong_universe) rather
+    than publishing a census measured against the wrong universe."""
+    db = tmp_path / "govbudget.duckdb"
+    duckdb.connect(str(db)).close()
+
+    assert _published_high_links(db) is None
+
+
+def test_a_broken_mart_raises_instead_of_deleting_the_high_census(tmp_path):
+    """The narrowed catch. A mart whose `method` column was renamed is NOT a
+    warehouse without a mart: the first silently publishes a /methodology/
+    with no High-tier grading at all, which no number can disagree with. Only
+    CatalogException (no such relation) may degrade to `None`."""
+    db = _mart_duckdb(
+        tmp_path,
+        [("HL-1", "HL0601101E", "account+subagency", "high")],
+        method_column="linking_method",
+    )
+
+    with pytest.raises(duckdb.BinderException):
+        _published_high_links(db)

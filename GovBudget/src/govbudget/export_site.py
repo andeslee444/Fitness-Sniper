@@ -2727,6 +2727,17 @@ def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
     ``None`` on a warehouse with no mart (older fixtures) — the caller then
     omits the `high` sub-block and the page renders no High-tier census
     rather than one measured against the wrong universe.
+
+    ONLY THE MISSING RELATION IS CAUGHT (fix round 2, R-6c-7). This used to
+    swallow every exception into the same ``None``, so a renamed column, a
+    type change or a transient read failure would have deleted the whole
+    High-tier census from a published /methodology/ with every gate green —
+    the vacuity shape M4 closed for `by_method`. A CatalogException means
+    "this warehouse has no mart", which is a real and expected state; every
+    other DuckDB error means the mart is there and the query is wrong, and
+    that must raise the export rather than quietly shrink the page. Gate 24
+    leg o carries the dated companion for what this cannot see from here: a
+    block that grades links and carries no `high` fails the leg.
     """
     import duckdb as _duckdb
 
@@ -2739,7 +2750,7 @@ def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
             "   and award_piid is not null and pe_bli is not null"
             "   and method is not null"
         ).fetchall()
-    except Exception:  # CatalogException on a warehouse without the mart
+    except _duckdb.CatalogException:  # a warehouse without the mart
         return None
     finally:
         con.close()
