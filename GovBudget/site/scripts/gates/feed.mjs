@@ -79,6 +79,18 @@
  *     must run in non-increasing order of the DOLLARS THE CARD ITSELF
  *     PRINTS — read off the rendered magnitude line, not recomputed from
  *     feed.json — see leg (n)'s own block at the bottom.
+ *
+ * (o) THE SHIPPED SECTION SIDECAR MATCHES THE RENDERED SECTION (ROADMAP #88).
+ *     "Show all" fetches out/json/feed-sections/{event_type}.json — the
+ *     cards the page did NOT render. For every feed-* section: the file
+ *     exists and parses; every card is of that event type and carries the
+ *     pre-resolved company_slug / has_program_page the client twin renders
+ *     from; for a truncated section (a [data-feed-truncation-note] with
+ *     data-feed-shown / data-feed-total) the card count is exactly
+ *     total − shown and the file's own shown/total agree with the page; for
+ *     a complete section the file carries no hidden cards. Reads the SHIPPED
+ *     copy under out/ (what the reader fetches), like gate 1's feed.json
+ *     leg. Exported for __tests__/feed-sections.test.mjs.
  */
 
 import fs from "fs";
@@ -212,6 +224,9 @@ export async function runFeedGate() {
 
   // ── (f)-(j) Syndication (PM-review Sprint 3 Task 2, §P1-8) ──────────────────
   runSyndicationLegs(errors, notes);
+
+  // ── (o) shipped section sidecars match the rendered sections (#88) ───────
+  runSectionSidecarLeg(errors, notes, root);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -1284,4 +1299,130 @@ function runMagnitudeOrderLeg(errors, notes, sections) {
     errors.push(`feed(n): ${missing} card(s) with no readable magnitude in total (first 5 listed)`);
   }
   notes.push(`leg n: sections ranked by their own printed dollars — ${summaries.join("; ")}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg (o) — the shipped section sidecar matches the rendered section (#88)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Non-vacuity floor: at least this many rendered sections must be truncated
+ *  (i.e. "Show all" has something to fetch). Measured 2026-09-04 export: TWO
+ *  (yoy_swing 99 > 75, concentration_shift 908 > 75). If the corpus shrinks
+ *  so nothing truncates, re-measure and say so here; do not lower it to fit. */
+const MIN_TRUNCATED_SECTIONS = 1;
+
+/**
+ * @param {string[]} errors
+ * @param {string[]} notes
+ * @param root node-html-parser root of out/feed/index.html
+ * @param {string} sectionsDir the SHIPPED feed-sections directory
+ *   (out/json/feed-sections by default; a temp dir in the unit tests)
+ */
+export function runSectionSidecarLeg(
+  errors,
+  notes,
+  root,
+  sectionsDir = path.join(outDir, "json", "feed-sections"),
+) {
+  const before = errors.length;
+  const sections = root
+    .querySelectorAll("section[id]")
+    .filter((el) => (el.getAttribute("id") ?? "").startsWith("feed-"));
+  if (sections.length === 0) {
+    errors.push("feed leg o: no feed-* sections rendered — the leg is vacuous");
+    return;
+  }
+
+  let truncated = 0;
+  let checked = 0;
+  for (const section of sections) {
+    const etype = (section.getAttribute("id") ?? "").slice("feed-".length);
+    const rendered = section.querySelectorAll("[data-feed-card]").length;
+    const note = section.querySelector("[data-feed-truncation-note]");
+    const rel = `out/json/feed-sections/${etype}.json`;
+    const file = path.join(sectionsDir, `${etype}.json`);
+
+    if (!fs.existsSync(file)) {
+      errors.push(
+        `feed leg o: ${etype} renders on /feed/ but ${rel} is missing — ` +
+          `"Show all" would 404 (prepare-assets.mjs 5h mirrors data/site/json/feed-sections/)`,
+      );
+      continue;
+    }
+    let sidecar;
+    try {
+      sidecar = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch (e) {
+      errors.push(`feed leg o: ${rel} is not parseable JSON: ${e.message}`);
+      continue;
+    }
+    const cards = Array.isArray(sidecar.cards) ? sidecar.cards : null;
+    if (!cards) {
+      errors.push(`feed leg o: ${rel} has no \`cards\` array — FeedSectionExpand would error on expand`);
+      continue;
+    }
+    checked += 1;
+
+    const wrongType = cards.filter((c) => c.event_type !== etype).length;
+    if (wrongType > 0) {
+      errors.push(`feed leg o: ${rel} carries ${wrongType} card(s) of another event type`);
+    }
+    const unresolved = cards.filter(
+      (c) => typeof c.has_program_page !== "boolean" || !("company_slug" in c),
+    ).length;
+    if (unresolved > 0) {
+      errors.push(
+        `feed leg o: ${rel} has ${unresolved} card(s) without pre-resolved ` +
+          `company_slug/has_program_page — the client twin would render no links`,
+      );
+    }
+
+    if (note) {
+      truncated += 1;
+      const shown = Number(note.getAttribute("data-feed-shown"));
+      const total = Number(note.getAttribute("data-feed-total"));
+      if (!Number.isInteger(shown) || !Number.isInteger(total)) {
+        errors.push(`feed leg o: ${etype} truncation note lacks numeric data-feed-shown/data-feed-total`);
+        continue;
+      }
+      if (shown !== rendered) {
+        errors.push(`feed leg o: ${etype} note says ${shown} shown but ${rendered} [data-feed-card] rendered`);
+      }
+      if (cards.length !== total - shown) {
+        errors.push(
+          `feed leg o: ${rel} carries ${cards.length} card(s), page shows ${shown} of ${total} — ` +
+            `expected ${total - shown}; "Show all" would render the wrong set`,
+        );
+      }
+      if (sidecar.shown !== shown || sidecar.total !== total) {
+        errors.push(
+          `feed leg o: ${rel} says shown=${sidecar.shown} total=${sidecar.total}, ` +
+            `page says ${shown} of ${total} — the page and the sidecar were cut differently`,
+        );
+      }
+    } else {
+      if (cards.length !== 0) {
+        errors.push(
+          `feed leg o: ${etype} is not truncated on /feed/ (${rendered} cards, no note) ` +
+            `but ${rel} carries ${cards.length} hidden card(s)`,
+        );
+      }
+      if (sidecar.total !== rendered) {
+        errors.push(`feed leg o: ${rel} total=${sidecar.total}, page renders ${rendered}`);
+      }
+    }
+  }
+
+  if (truncated < MIN_TRUNCATED_SECTIONS) {
+    errors.push(
+      `feed leg o: ${truncated} truncated section(s) on /feed/ (floor ${MIN_TRUNCATED_SECTIONS}, ` +
+        `measured 2026-09-04 at 2) — nothing exercises "Show all"; re-measure, do not lower`,
+    );
+  }
+  if (errors.length === before) {
+    notes.push(
+      `leg o: ${checked} section sidecar(s) match their /feed/ sections ` +
+        `(${truncated} truncated) ✓`,
+    );
+  }
 }

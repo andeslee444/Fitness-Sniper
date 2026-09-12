@@ -1962,7 +1962,7 @@ function runFeedFy26SplitLeg(errors, notes) {
   let belowCap = 0;
   const missing = [];
   // 2026-09-03: /feed/ renders a per-section digest (top-N cards by
-  // magnitude, FEED_SECTION_CAP in feed/page.tsx) and says so with a
+  // magnitude, N = feed.json `section_cap`, exporter-owned since #88) and says so with a
   // [data-feed-truncation-note]. A qualifying card that is below the cap is
   // not ON the page, so it cannot mislead there — the disclosure obligation
   // attaches to rendered cards only. Without the note present, absence is

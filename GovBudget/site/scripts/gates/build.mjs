@@ -155,8 +155,9 @@ export const PAGE_WEIGHT_BUDGET = [
   // feed is at the edge of reasonable — pagination is filed as follow-up,
   // and this ceiling must NOT be raised again without it.
   // 2026-09-02: the do-not-raise-again note above is honored — the feed page
-  // is now a per-section digest (FEED_SECTION_CAP = 75 in feed/page.tsx;
-  // full set in feed.json + RSS/Atom) and the ceiling comes DOWN. Provisional
+  // is now a per-section digest (cap 75 — since #88 published by the
+  // exporter as feed.json `section_cap`, read by feed/page.tsx; full set in
+  // feed.json + RSS/Atom) and the ceiling comes DOWN. Provisional
   // ceilings from the expected ≤300-card page; `measured` is updated from
   // the first capped build.
   { label: "/feed/", file: "feed/index.html", maxRaw: 3_200_000, maxGzip: 150_000, measured: "1,278,916 / 69,534" },
@@ -1107,10 +1108,13 @@ export async function runBuildGate() {
 
   // ── /json/feed.json is SHIPPED, parses, and carries cards ─────────────────
   //
-  // Final review I2 / batch review 1.2. /json/feed.json is fetched by
-  // FeedSectionExpand when a reader clicks "show all" on a /feed/ section,
-  // and by nothing else: no <a href> points at it, so no link-graph leg could
-  // see it. It 404'd in production. Gate 13 leg (i) now scans site/src for
+  // Final review I2 / batch review 1.2. /json/feed.json 404'd in production
+  // and no link-graph leg could see it: no <a href> points at it. ROADMAP #88
+  // moved "show all" to the per-event-type sidecars, so nothing fetches this
+  // file at runtime any more — but /feed/'s truncation note still tells the
+  // reader the full set is in feed.json, generate-feeds.mjs builds the
+  // RSS/Atom feeds from the same payload, and prepare-assets 5g still ships
+  // it, so a husk copy still makes a rendered sentence false. Gate 13 leg (i) scans site/src for
   // static fetch targets and asserts each exists; this leg adds the part a
   // path-existence check cannot make: the file must PARSE and carry a real
   // digest, not a zero-card husk written by a half-run prepare-assets.
@@ -1124,9 +1128,10 @@ export async function runBuildGate() {
   const shippedFeedPath = path.join(outDir, "json", "feed.json");
   if (!fileExists(shippedFeedPath)) {
     errors.push(
-      "out/json/feed.json not found — /feed/'s 'show all' button fetches this " +
-        "file and nothing links to it, so a missing copy 404s silently for " +
-        "every reader (prepare-assets.mjs copies it into public/json/)"
+      "out/json/feed.json not found — /feed/'s truncation note names this " +
+        "file as where the full card set lives and nothing links to it, so a " +
+        "missing copy 404s silently for every reader who goes looking " +
+        "(prepare-assets.mjs 5g copies it into public/json/)"
     );
   } else {
     let shippedFeed;
@@ -1140,15 +1145,16 @@ export async function runBuildGate() {
       const cards = Array.isArray(shippedFeed.cards) ? shippedFeed.cards : null;
       if (!cards) {
         errors.push(
-          "out/json/feed.json has no `cards` array — FeedSectionExpand reads " +
-            "data.cards and would throw on every expand"
+          "out/json/feed.json has no `cards` array — the published full set " +
+            "is empty, and generate-feeds.mjs reads the same shape"
         );
       } else if (cards.length < MIN_SHIPPED_FEED_CARDS) {
         errors.push(
           `out/json/feed.json carries ${cards.length} card(s), floor ` +
             `${MIN_SHIPPED_FEED_CARDS} (measured 2026-09-04 at 1,047). A ` +
-            `truncated copy passes every existence check and still breaks ` +
-            `"show all". Re-measure the feed; do not lower the floor`
+            `truncated copy passes every existence check and still makes ` +
+            `/feed/'s "the full set is in feed.json" note false. Re-measure ` +
+            `the feed; do not lower the floor`
         );
       } else {
         notes.push(

@@ -676,7 +676,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   **Status:** CLOSED 2026-09-11 — gate rule 5 checks `amount_text`/`amount_thousands`/`recorded_value`; `archive_url` without `sha256` fails (708/708 live rows carry both); `_index_award_link_sources` raises on a second announcement row per link (0 live duplicates); loader delete documented as a partition rewrite with a stored-vs-incoming count, `OWNED_METHODS` pinned to the deriver's guard, LAUNCH.md says pass every wave file.
 - **#88 /feed/ expand payload.** "Show all" downloads the whole 862 KB
   feed.json; a per-event-type sidecar would be a tenth of that.
-  **Status:** open (2026-09-04).
+  **Status:** CLOSED 2026-09-05 — json/feed-sections/{event_type}.json (exporter; prune-before-emit; cap `_FEED_SECTION_CAP` published as feed.json `section_cap` and read by feed/page.tsx, no fallback; company_slug/has_program_page pre-resolved from entities_top + the program_details listing); prepare-assets 5h mirrors the directory; FeedSectionExpand fetches one section. Measured on the 2026-09-04 export against feed.json's 881,872 B: yoy_swing 23,927 B, concentration_shift 712,645 B — "a tenth" holds for yoy_swing only; concentration_shift IS most of the feed, so its expand saves ~19% raw (~28% gzipped). Gate 13 leg i directory-templated sweep (floor 2; static floor re-measured 5→4); gate 8 leg o (per rendered section: sidecar exists, card count = total − shown, one event type, lookups present; floor 1 truncated section).
 - **#89 Service J-book decade backfill (PB2017–PB2025) — the GO/NO-GO was
   never taken.** 5G scoped the service books to FY2026 and named "a separate
   GO/NO-GO after this phase proves the adapter"
