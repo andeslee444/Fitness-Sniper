@@ -599,6 +599,30 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   "narrowed by sub-agency" was still rendering beside an unmeasured list that
   no longer contained that tier until the narrowings were derived too.
 
+- **"Downloaded" is not "ingested" — and the constant that lied in 2026-07-05 was
+  replaced by a query that measured the wrong thing (2026-09-12).** The fix for the
+  hardcoded `INGESTED_SERVICE_ORGS` made the set data-derived, and derived it from
+  `jbook_documents.status = 'downloaded'`. A file on disk is not a narrative: `DoD` (the
+  three R-1/P-1 display workbooks) sat in the shipped set with **zero**
+  `budget_line_details` rows behind it, and registering the Defense Health Program
+  volume would have flipped all 14 DHA pages to "the book is ingested, this element
+  simply has no narrative" the moment `acquire` finished — the same species, caused by
+  its own fix. That is not a hypothetical: the volume was registered and acquired on
+  2026-09-12, it carries no jb-2009 payload, and the old predicate would now return 26
+  codes including DHA against the new predicate's 24. `_ingested_service_orgs` now joins
+  `budget_line_details` (25 codes → 24; no rendered sentence moved). Second half of the
+  same species: the honest wording only ever existed on the ROLLUP branch. `0603115DHA`
+  and `0708083D` are synthesized into `programs.json` by
+  `_trajectory_only_feed_programs`, so they render as FULL tier and told readers "The
+  J-book detail for this line carries no separate mission or description narrative"
+  about a line with no J-book detail at all (Task 17b carries the coverage note to that
+  tier). Lesson, sharper than 2026-07-05's: making a set a query is not enough — the
+  query has to measure the thing the SENTENCE claims, and every tier that can render the
+  sentence has to be in the fix's blast radius, not just the tier where the bug was
+  found. Corollary: a doc comment describing a query's semantics is part of the query;
+  `program-tier.ts` still said "status='downloaded'" until it was moved in the same
+  commit.
+
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
 - **#70 Collision-key program pages (E3).** 8 numeric pe_blis carry two
@@ -1180,6 +1204,26 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   publishing when its per-link attribution measured ZERO (#107) or was never
   recorded at all (#110).
   **Status:** open (owner call, 2026-09-11).
+- **#111 Residual FY2026 J-book absences (from #14).** (a) The DHP book's
+  per-section R-1/P-40/R-2 URLs 404 on the comptroller index and the combined
+  `00-DHP_Vols_I_and_II_PB26.pdf` that IS served carries no jb-2009 `.zzz`
+  payload (acquired 2026-09-12, `has_embedded_xml` false, zero PDF
+  attachments), so DHA has a downloaded book and still zero loaded detail —
+  re-probe the section URLs periodically, and probe the Internet-Archive
+  mirror (`jbooks backfill --source archive`) if they stay gone. An
+  LLM-over-PDF pass is NOT the fallback here: cited-or-absent.
+  (b) Whether either consolidated Defense-Wide volume (`PB_2026_PDW_VOL_1.pdf`,
+  `PB_2026_RDTE_VOL_5.pdf`, both pinned in `EXCLUDED_NAMES` as per-agency
+  re-issues) carries `0904903D`'s R-2 is unprobed. (c) `0708083D` (Assembled
+  Chemical Weapons Alternatives) is a published-but-excluded case, not an
+  absent one: its R-2 lives in `Chemical Agents and Munitions Destruction,
+  Defense.pdf`, excluded by `registry.ARMY_EXCLUSIONS` as a Defense-Wide-account
+  book in the Army inventory. Its page reads the Army books' ingested wording,
+  which is true as stated but does not name the excluded book; decide whether
+  that account deserves its own coverage sentence. (d) `docs/methodology.md:31`
+  still says J-books are published at `comptroller.defense.gov`; the host is
+  `comptroller.war.gov` and every `jbook_documents.source_url` already uses it.
+  **Status:** open (2026-09-12).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
@@ -1420,6 +1464,38 @@ docs/superpowers/ROADMAP.md`.
     closed by #17 (`2efab28`, 2026-07-02, per the update above). The
     `dim_programs`-entries half is out of scope by design pending R-2/P-40
     detail ingestion, and no later commit changes that.
+
+    *Update 2026-09-12 (Task 17a):* the "requires R-2/P-40 detail ingestion"
+    blocker was re-probed rather than re-asserted. Of the three orgs the
+    2026-07-05 findings entry named as having no loaded book, **DHA has one and
+    DEFW/IG do not**: the FY2026 Defense Health Program justification book is
+    published on `comptroller.war.gov` (the per-section R-1/P-40/R-2 URLs all
+    404; the combined `00-DHP_Vols_I_and_II_PB26.pdf` serves
+    200/3,348,155 bytes — both HEAD-verified 2026-09-12, control
+    `RDTE_OSD_PB_2026.pdf` 200/16,602,088 bytes) and is now registered as one
+    `rdte` document via `registry.DEFENSE_HEALTH_NAMES`; the FY2026 index
+    publishes only O&M exhibits for the DoD IG (`OIG_OP-5.pdf`,
+    `OIG_Cyber_OP-5.pdf`), and no DEFW-specific book at all (three of DEFW's
+    four pages are P-1 reconciliation/undistributed workbook rows). Those
+    absences are recorded in `data/research/edition_manifest.json →
+    org_absences`. **The book carries no jb-2009 payload:** acquired
+    2026-09-12 (document 459, 3,348,155 bytes, `has_embedded_xml` false — the
+    424-page PDF carries no attachments at all), so `jbooks extract --org DHA`
+    selects nothing, DHA loaded **0 detail rows and 0 narratives**, and the
+    workbook-only page count stays 73. The row stays `downloaded` as real
+    provenance (a terminal status: FY2026 is 82 discovered / 82 terminal, and
+    `edition_coverage_gate5e` still reads `loaded`), and DHA stays OUT of
+    `ingested_service_orgs` because that set now requires loaded detail — which
+    is the point: the same download would have flipped all 14 DHA pages to
+    "the book is ingested, this element simply has no narrative" under the old
+    `status='downloaded'` predicate (measured after the acquire: old predicate
+    26 codes incl. DHA, new predicate 24). The rescrape found 38 documents /
+    1 new — only the DHP volume. `PROC_SDA_PB_2026.pdf`, which a 2026-09-10
+    read-only simulation of the classifier reported as newly added, is not
+    linked on either FY2026 index page today (117 + 18 PDF links, re-read
+    2026-09-12), so no FY2026 SDA row was registered and nothing SDA-shaped
+    was extracted. `dim_programs` entries for the remaining workbook-only
+    elements stay out of scope by design.
 15. **District choropleth + entity-graph viz (5C deferred):** interactive map of
     district spend distribution and force-directed entity graph; deferred pending
     D3/Mapbox integration decision.

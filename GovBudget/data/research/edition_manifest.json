@@ -1111,6 +1111,31 @@
       "status": "loaded"
     }
   },
+  "org_absences": {
+    "2026": [
+      {
+        "checked_on": "2026-09-12",
+        "checked_url": "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
+        "org": "DEFW",
+        "reason": "No DEFW-specific justification book is published. Three of the four DEFW program pages (RECONCIL1, RECONCIL2, UNDISTRIB) are P-1 workbook reconciliation/undistributed rows that no justification book narrates by construction; the fourth (0904903D 'Defense-Wide Resources', R-1) has no per-agency book. The two consolidated Defense-Wide volumes on the index (PB_2026_PDW_VOL_1.pdf, PB_2026_RDTE_VOL_5.pdf, both still linked 2026-09-12) are pinned in registry.EXCLUDED_NAMES as re-issues of the per-agency set already loaded; whether either carries 0904903D's R-2 needs an embedded-XML probe, not an assumption - filed in the new backlog entry.",
+        "rule": "summary-line-only"
+      },
+      {
+        "checked_on": "2026-09-12",
+        "checked_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/budget_justification/pdfs/09_Defense_Health_Program/00-DHP_Vols_I_and_II_PB26.pdf",
+        "org": "DHA",
+        "reason": "The FY2026 Defense Health Program book IS published and IS downloaded (00-DHP_Vols_I_and_II_PB26.pdf, HTTP 200, application/pdf, 3,348,155 bytes, 424 pages; registered by registry.DEFENSE_HEALTH_NAMES and acquired 2026-09-12), but it carries no PDF attachments at all - no jb-2009 .zzz payload - so has_embedded_xml is false and no R-2 detail can be extracted deterministically. The index's per-section R-1/P-40/R-2 URLs (24-Vol_II_Sec_5-P-40..., 25-Vol_II_Sec_6-R-1..., 26-Vol_II_Sec_7-RDTE...) all return 404 (HEAD-verified 2026-09-12; control RDTE_OSD_PB_2026.pdf on the same index returns 200 / 16,602,088 bytes, so this is file-specific). DHA's 14 program pages therefore keep the honest 'not yet ingested' wording. Re-probe if the section PDFs come back.",
+        "rule": "book-carries-no-embedded-xml"
+      },
+      {
+        "checked_on": "2026-09-12",
+        "checked_url": "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
+        "org": "IG",
+        "reason": "The FY2026 Defense-Wide justification index publishes only O&M exhibits for the DoD Inspector General (OIG_OP-5.pdf and OIG_Cyber_OP-5.pdf, both under 01_Operation_and_Maintenance; link set re-read 2026-09-12) and no RDT&E or procurement justification book. IG's whole FY2026 workbook footprint is 2 R-1 program elements totalling $9.25M.",
+        "rule": "no-justification-book-published"
+      }
+    ]
+  },
   "services": {
     "af_2026": {
       "exclusions": [
