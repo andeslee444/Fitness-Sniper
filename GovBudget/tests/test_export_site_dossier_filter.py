@@ -251,3 +251,128 @@ def test_unreadable_raw_file_is_skipped_not_fatal(tmp_path):
     assert result["written"] == 1
     assert any("BROKEN01" in s for s in result["skipped"])
     assert (json_dir / "dossiers" / "REAL02.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# chain-B fix 3 — a raw archive keyed by its PAGE
+#
+# `dossiers collect` names a raw archive from the request's custom_id, which is
+# now the page identity ("3010-SCN") wherever a shared BLI code's two members
+# are two pages. Two things then had to change here, and both are measured
+# defects rather than hypotheticals:
+#
+#   (1) the top-50 membership seed (program_categories.csv) is keyed by the
+#       bare CODE, so a page-keyed archive looked like a pe_bli outside the
+#       top-50 and was RETIRED on sight — its sidecar unlinked;
+#   (2) the older bare-keyed archive for the same page is still on disk (paid
+#       research is never deleted) and sorted() let it write LAST, silently
+#       overwriting the regenerated dossier with the superseded one.
+# ---------------------------------------------------------------------------
+
+_SPLIT_PE, _SPLIT_SCN = "3010", "3010-SCN"
+
+
+def _clean(text: str = "A thing."):
+    return _sections(
+        what_it_is=[_claim(text, fact_id=GOOD_FACT)],
+        why_it_matters=[_claim("Matters.", fact_id=GOOD_FACT)],
+        players=[_claim("A prime built it.", fact_id=GOOD_FACT)],
+    )
+
+
+def test_a_page_keyed_archive_is_written_at_its_page_and_kept_in_the_top_set(
+    tmp_path,
+):
+    raw_dir = tmp_path / "dossiers-raw"
+    _write_raw(raw_dir, _SPLIT_SCN, _clean("The member's own dossier."))
+    json_dir = tmp_path / "json"
+
+    result = _emit_dossier_sidecars(
+        json_dir=json_dir,
+        dossiers_raw_dir=raw_dir,
+        citations_keyset={GOOD_FACT},
+        snapshot_urls=set(),
+        # the seed is keyed by the CODE — the page must resolve through it
+        top_set={_SPLIT_PE},
+        pe_by_slug={_SPLIT_SCN: _SPLIT_PE, "3010-OPN": _SPLIT_PE},
+    )
+
+    assert result["written"] == 1
+    assert result["retired"] == []
+    out = json.loads((json_dir / "dossiers" / f"{_SPLIT_SCN}.json").read_text())
+    # pe_bli keeps meaning the program key; slug is the page identity
+    assert out["pe_bli"] == _SPLIT_PE
+    assert out["slug"] == _SPLIT_SCN
+    assert out["dossier"]["what_it_is"]["claims"][0]["text"] == (
+        "The member's own dossier."
+    )
+
+
+def test_a_page_keyed_archive_supersedes_the_bare_coded_one_for_that_page(
+    tmp_path,
+):
+    """Both archives exist the moment one member is regenerated at its own
+    key. The page-keyed one wins regardless of filename sort order, and the
+    superseded archive is kept on disk."""
+    raw_dir = tmp_path / "dossiers-raw"
+    _write_raw(raw_dir, _SPLIT_PE, _clean("The OLD fused dossier."))
+    _write_raw(raw_dir, _SPLIT_SCN, _clean("The NEW member dossier."))
+    json_dir = tmp_path / "json"
+
+    result = _emit_dossier_sidecars(
+        json_dir=json_dir,
+        dossiers_raw_dir=raw_dir,
+        citations_keyset={GOOD_FACT},
+        snapshot_urls=set(),
+        top_set={_SPLIT_PE},
+        slug_by_pe={_SPLIT_PE: _SPLIT_SCN},
+        pe_by_slug={_SPLIT_SCN: _SPLIT_PE, "3010-OPN": _SPLIT_PE},
+    )
+
+    assert result["written"] == 1
+    out = json.loads((json_dir / "dossiers" / f"{_SPLIT_SCN}.json").read_text())
+    assert out["dossier"]["what_it_is"]["claims"][0]["text"] == (
+        "The NEW member dossier."
+    )
+    # paid research is never deleted
+    assert (raw_dir / f"{_SPLIT_PE}.json").exists()
+    assert (raw_dir / f"{_SPLIT_SCN}.json").exists()
+
+
+def test_a_page_outside_the_top_set_is_still_retired(tmp_path):
+    """The membership test moved to the page's CODE — it did not go away."""
+    raw_dir = tmp_path / "dossiers-raw"
+    _write_raw(raw_dir, _SPLIT_SCN, _clean())
+    json_dir = tmp_path / "json"
+
+    result = _emit_dossier_sidecars(
+        json_dir=json_dir,
+        dossiers_raw_dir=raw_dir,
+        citations_keyset={GOOD_FACT},
+        snapshot_urls=set(),
+        top_set={"SOMETHINGELSE"},
+        pe_by_slug={_SPLIT_SCN: _SPLIT_PE},
+    )
+
+    assert result["written"] == 0
+    assert result["retired"] == [_SPLIT_PE]
+    assert not (json_dir / "dossiers" / f"{_SPLIT_SCN}.json").exists()
+
+
+def test_an_ordinary_archive_is_unchanged_by_the_page_index(tmp_path):
+    raw_dir = tmp_path / "dossiers-raw"
+    _write_raw(raw_dir, "0601101E", _clean())
+    json_dir = tmp_path / "json"
+
+    result = _emit_dossier_sidecars(
+        json_dir=json_dir,
+        dossiers_raw_dir=raw_dir,
+        citations_keyset={GOOD_FACT},
+        snapshot_urls=set(),
+        top_set={"0601101E"},
+        pe_by_slug={"0601101E": "0601101E", _SPLIT_SCN: _SPLIT_PE},
+    )
+
+    assert result["written"] == 1
+    out = json.loads((json_dir / "dossiers" / "0601101E.json").read_text())
+    assert out["pe_bli"] == "0601101E" and out["slug"] == "0601101E"

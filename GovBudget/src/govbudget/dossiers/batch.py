@@ -175,6 +175,10 @@ The honesty contract — every rule below is enforced mechanically downstream:
 8. Narrative-derived claims: each narrative row that carries a fact_id field
    is citable — use that fact_id. Narrative rows without a fact_id field are
    provided for context only; do not cite them.
+9. Award recipients: each award row that carries a fact_id field is citable —
+   that id is the crosswalk link between this budget line and that contract.
+   Name recipients from those rows and cite their fact_id. An award row with
+   no fact_id field is not citable; do not name it.
 
 EXPLICIT NEGATIVE RULES (violations cause automatic rejection):
 - XML anchors such as ProgramElement[5] or ProgramElement[5]/Project[1] are
@@ -316,30 +320,85 @@ def _matched_snapshots(snapshots_dir: Path, pe_bli: str) -> list[dict]:
     return out
 
 
-def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
+class SharedCodeError(SystemExit):
+    """A dossier was keyed by a BARE shared BLI code, which names no page."""
+
+
+def resolve_page(key: str, site_json_dir: Path) -> tuple[str, str, dict]:
+    """(bare pe_bli, page identity, programs.json row) for a dossier key.
+
+    chain-B fix 3. A dossier is a PAGE's: Sprint E gave each member of a
+    shared BLI code its own page, its own `program_details/{slug}.json`
+    sidecar and its own dossier, so the key the pipeline carries is the page
+    slug ("3010-SCN") wherever the two differ. programs.json is the exported
+    page index and already carries both fields, so the resolution is read
+    from the artifact the bundle is assembled out of rather than re-derived.
+
+    A bare shared code resolves to NOTHING and raises: it is the
+    disambiguation stub's key, `program_details/3010.json` does not exist,
+    and the bundle assembled under it was empty — which is how a batch on
+    "3010" could only ever reproduce an empty players section. The message
+    names the member slugs to ask for instead.
+
+    Unknown keys, and a programs.json that does not exist or carries no slug
+    field, resolve to (key, key, {}) — the pre-fix behaviour, byte for byte.
+    """
+    programs_path = Path(site_json_dir) / "programs.json"
+    if not programs_path.exists():
+        return key, key, {}
+    rows = _load_json(programs_path)
+    by_slug = [r for r in rows if r.get("slug") == key]
+    if by_slug:
+        row = by_slug[0]
+    else:
+        by_pe = [r for r in rows if r.get("pe_bli") == key]
+        if len(by_pe) > 1:
+            slugs = sorted({str(r["slug"]) for r in by_pe if r.get("slug")})
+            raise SharedCodeError(
+                f"dossiers: {key!r} is a SHARED BLI code — {len(by_pe)} programs"
+                " publish under it and each has its own page, sidecar and"
+                " dossier; the bare code is the disambiguation stub and owns"
+                " none of them."
+                + (f" Ask for a member page instead: {', '.join(slugs)}."
+                   if slugs else "")
+                + " ABORTED — no bundle was assembled."
+            )
+        if not by_pe:
+            return key, key, {}
+        row = by_pe[0]
+    pe_bli = str(row.get("pe_bli") or key)
+    return pe_bli, str(row.get("slug") or pe_bli), row
+
+
+def _assemble(key: str, *, site_json_dir: Path, snapshots_dir: Path,
               categories_csv: Path,
               citations_keyset: set[str] | None = None,
               lda_url_map: dict[str, str] | None = None) -> dict:
     """Raw (untrimmed) bundle dict from the committed sidecars.
 
+    `key` is the dossier's PAGE identity (chain-B fix 3) — the bare pe_bli for
+    an ordinary program, the member slug ("3010-SCN") for one of the two
+    programs sharing a BLI code. Page-grain sources (the programs.json row,
+    the program_details sidecar and therefore budget_lines / projects /
+    narratives / mentions / awards) are read at that identity; the marts that
+    are keyed by CODE (the category seed, feed cards, flows, news snapshots)
+    are read at the bare pe_bli, which is the only key they have.
+
     Bundle hygiene applied here:
     - projects: only rows whose fact_id is in citations_keyset are included;
       absent-fact_id rows are dropped and counted (loud print).
+    - awards: the crosswalk link's fact_id is kept only when it resolves;
+      an award row with no citable id carries no fact_id field at all, so a
+      recipient claim either cites the link or is omitted.
     - narratives: xml_path stripped (internal locator, not citable).
     - mentions: citable_fact_id injected from lda_url_map when available;
       filing_url labeled as "(reference link, NOT a citable url)".
     """
     site_json_dir = Path(site_json_dir)
 
-    program: dict = {}
-    programs_path = site_json_dir / "programs.json"
-    if programs_path.exists():
-        for row in _load_json(programs_path):
-            if row.get("pe_bli") == pe_bli:
-                program = row
-                break
+    pe_bli, page, program = resolve_page(key, site_json_dir)
 
-    details_path = site_json_dir / "program_details" / f"{pe_bli}.json"
+    details_path = site_json_dir / "program_details" / f"{page}.json"
     details = _load_json(details_path) if details_path.exists() else {}
 
     feed_events: list[dict] = []
@@ -434,8 +493,26 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
     else:
         mentions = raw_mentions
 
+    # --- Bundle hygiene: awards ---
+    # The sidecar award row carries the crosswalk link's own citation fact_id
+    # (chain-B fix 3, export_site._link_fid). Keep it only when it actually
+    # resolves; drop the key entirely otherwise, so the model never sees a
+    # null or stale id where rule 2 tells it an id is citable.
+    raw_awards = details.get("awards", [])[:TOP_N_LIST]
+    awards: list[dict] = []
+    for a in raw_awards:
+        a_out = dict(a)
+        fid = a_out.get("fact_id")
+        if fid is None or (citations_keyset is not None
+                           and fid not in citations_keyset):
+            a_out.pop("fact_id", None)
+        awards.append(a_out)
+
     return {
         "pe_bli": pe_bli,
+        # The PAGE this dossier belongs to — equal to pe_bli for the ~1,930
+        # programs that publish one page, the member slug for a shared code.
+        "page": page,
         "program": {
             "title": program.get("title", ""),
             "org": program.get("org", ""),
@@ -451,7 +528,7 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
         "projects": projects,
         "narratives": clean_narratives,
         "mentions": mentions,
-        "awards": details.get("awards", [])[:TOP_N_LIST],
+        "awards": awards,
         "feed_events": feed_events,
         "flows": flows_summary,
         "snapshots": _matched_snapshots(snapshots_dir, pe_bli),
@@ -461,7 +538,7 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
 def render_bundle(bundle: dict) -> str:
     title = bundle.get("program", {}).get("title", "")
     header = (
-        f"FACT BUNDLE for program {bundle['pe_bli']}"
+        f"FACT BUNDLE for program {bundle.get('page') or bundle['pe_bli']}"
         + (f" — {title}" if title else "")
         + "\nWrite the dossier from this bundle only.\n\n"
     )
@@ -508,9 +585,16 @@ def build_bundle(
     citations_keyset: set[str] | None = None,
     lda_url_map: dict[str, str] | None = None,
 ) -> dict:
-    """Assemble + token-trim the fact bundle for one program.
+    """Assemble + token-trim the fact bundle for one program PAGE.
 
-    Returns {pe_bli, title, text, tokens, trim_stages}. `token_counter`
+    `pe_bli` is the dossier key — a page identity (chain-B fix 3): the bare
+    pe_bli for an ordinary program, the member slug ("3010-SCN") for one of
+    two programs sharing a BLI code. A bare shared code raises
+    SharedCodeError naming the member slugs, rather than assembling the empty
+    bundle the stub's absent sidecar produced.
+
+    Returns {pe_bli, title, text, tokens, trim_stages}, where `pe_bli` is that
+    same page identity. `token_counter`
     defaults to the chars/4 heuristic; pass make_token_counter(client) to
     count via the API instead (preferred when a key is available).
 
@@ -522,7 +606,7 @@ def build_bundle(
     """
     counter = token_counter or heuristic_token_count
     bundle = _assemble(
-        pe_bli,
+        pe_bli,   # the dossier KEY: a page identity (chain-B fix 3)
         site_json_dir=Path(site_json_dir),
         snapshots_dir=Path(snapshots_dir),
         categories_csv=Path(categories_csv),
@@ -547,7 +631,11 @@ def build_bundle(
         applied.append("hard_truncated")
 
     return {
-        "pe_bli": pe_bli,
+        # The dossier key — the PAGE identity (chain-B fix 3). It becomes the
+        # request's custom_id, and therefore the raw archive's and the
+        # sidecar's name, so a split member's dossier is filed at its own page
+        # instead of overwriting its sibling's under the shared code.
+        "pe_bli": bundle.get("page") or bundle["pe_bli"],
         "title": bundle.get("program", {}).get("title", ""),
         "text": text,
         "tokens": tokens,
@@ -746,25 +834,50 @@ def submit(
     the estimate exceeds `cost_cap`. On success writes
     {raw_dir}/batch_meta.json and returns {batch_id, requests, estimated_usd}.
 
-    pe_blis: restrict the batch to these programs (must be within the
+    pe_blis: restrict the batch to these program PAGES (must be within the
     top-`limit` set) — the retry path for individual gate-rejected dossiers.
-    Unknown pe_blis abort loudly rather than silently submitting nothing.
+    A page identity: the bare pe_bli for an ordinary program, the member slug
+    ("3010-SCN") for one of two programs sharing a BLI code (chain-B fix 3).
+    Unknown keys abort loudly rather than silently submitting nothing, and a
+    bare shared code aborts with its member slugs named.
     """
     from govbudget.dossiers.gate import dim_programs_pe_set, pre_batch_check
-    from govbudget.dossiers.research import top50
+    from govbudget.dossiers.research import member_slugs, page_key, top50
 
     client = require_client(client)
 
     programs = top50(duckdb_path, limit=limit)
+    # The selection at PAGE grain (chain-B fix 3): a dossier belongs to a
+    # page, so `--pe-blis` is matched against page identities. For the ~1,930
+    # programs that publish one page this IS the bare pe_bli, so every
+    # existing invocation keeps working unchanged.
+    keys = {page_key(p) for p in programs}
     if pe_blis is not None:
-        wanted = set(pe_blis)
-        unknown = wanted - {p[0] for p in programs}
+        wanted = {k.strip() for k in pe_blis if k and k.strip()}
+        unknown = wanted - keys
         if unknown:
+            members = member_slugs(duckdb_path)
+            detail = []
+            for key in sorted(unknown):
+                slugs = members.get(key)
+                if slugs:
+                    in_set = [s for s in slugs if s in keys]
+                    detail.append(
+                        f"  {key}: a SHARED BLI code — {len(slugs)} programs"
+                        " publish under it and each has its own page and"
+                        f" dossier. Submit a member instead: {', '.join(slugs)}"
+                        + (f" (in the top-{limit} set: {', '.join(in_set)})"
+                           if in_set else
+                           f" (none of them is in the top-{limit} set)")
+                    )
+                else:
+                    detail.append(f"  {key}: not in the top-{limit} set")
             raise SystemExit(
                 "dossiers submit: --pe-blis not in the"
-                f" top-{limit} set: {sorted(unknown)} — ABORTED."
+                f" top-{limit} set: {sorted(unknown)} — ABORTED.\n"
+                + "\n".join(detail)
             )
-        programs = [p for p in programs if p[0] in wanted]
+        programs = [p for p in programs if page_key(p) in wanted]
     pre = pre_batch_check([p[0] for p in programs], dim_programs_pe_set(duckdb_path))
     if not pre["ok"]:
         raise SystemExit(
@@ -784,7 +897,7 @@ def submit(
         )
     bundles = [
         build_bundle(
-            pe_bli,
+            page_key(program),
             site_json_dir=site_json_dir,
             snapshots_dir=snapshots_dir,
             categories_csv=categories_csv,
@@ -792,7 +905,7 @@ def submit(
             citations_keyset=cit_keyset,
             lda_url_map=lda_map,
         )
-        for pe_bli, _title, _org, _total in programs
+        for program in programs
     ]
 
     est = estimate_cost(bundles, client=client)

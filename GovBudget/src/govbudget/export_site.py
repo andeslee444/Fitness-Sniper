@@ -2561,6 +2561,11 @@ def export_site(
             fact_id_to_recorded_value=fact_id_to_recorded_value,
             top_set=_dossier_top_set,
             slug_by_pe=_slug_by_pe,
+            # chain-B fix 3: the inverse index, so an archive already keyed by
+            # its PAGE ("3010-SCN" — what `dossiers collect` now writes)
+            # resolves to its bare pe_bli for the top-50 membership test and
+            # supersedes the older bare-keyed archive for the same page.
+            pe_by_slug=_build_pe_by_slug(duckdb_path),
         )
 
     # -----------------------------------------------------------------------
@@ -6123,8 +6128,9 @@ def _emit_dossier_sidecars(
     fact_id_to_recorded_value: dict[str, str] | None = None,
     top_set: set[str] | None = None,
     slug_by_pe: dict[str, str] | None = None,
+    pe_by_slug: dict[str, str] | None = None,
 ) -> dict:
-    """Rebuild out_dir/json/dossiers/{pe_bli}.json from the committed,
+    """Rebuild out_dir/json/dossiers/{page}.json from the committed,
     already-paid LLM batch archives in dossiers_raw_dir. No network call, no
     re-generation, no API spend — every raw response is already on disk.
 
@@ -6205,6 +6211,27 @@ def _emit_dossier_sidecars(
     # config cannot be tested on synthetic data. None = emit everything.
     _top_set = top_set or set()
 
+    # chain-B fix 3: a raw archive is keyed by its dossier's PAGE identity.
+    # `dossiers collect` names the archive from the request's custom_id, which
+    # is now the page ("3010-SCN") wherever a shared BLI code's two members are
+    # two pages; archives paid for before that are keyed by the bare code and
+    # still resolve through slug_by_pe. `pe_by_slug` inverts the page index so
+    # BOTH keys land on the right page and on the right bare pe_bli — the
+    # top-50 seed, program_categories.csv, is keyed by the CODE.
+    _pe_by_slug = pe_by_slug or {}
+
+    def _identity(raw_key: str) -> tuple[str, str]:
+        """(bare pe_bli, page identity) for a raw archive's key."""
+        if raw_key in _pe_by_slug:
+            return _pe_by_slug[raw_key], raw_key
+        return raw_key, (slug_by_pe or {}).get(raw_key, raw_key)
+
+    # A page-keyed archive SUPERSEDES a bare-code archive for the same page.
+    # Both exist on disk the moment one split member is regenerated at its own
+    # key (paid research is never deleted), and sorted() alone would let the
+    # older bare-keyed file write last and silently win.
+    _by_page: dict[str, list[tuple[str, Path]]] = {}
+    _raw_paths: list[tuple[str, str, Path, dict]] = []
     for path in sorted(dossiers_raw_dir.glob("*.json")):
         if path.name == "batch_meta.json":
             continue
@@ -6213,16 +6240,37 @@ def _emit_dossier_sidecars(
         except Exception as exc:
             skipped.append(f"{path.stem}: unreadable raw file ({exc})")
             continue
-
-        pe_bli = (
+        raw_key = (
             str(raw.get("custom_id") or "").removeprefix("dossier-") or path.stem
         )
+        pe_bli, page = _identity(raw_key)
+        _by_page.setdefault(page, []).append((raw_key, path))
+        _raw_paths.append((pe_bli, page, path, raw))
+
+    _superseded: set[Path] = set()
+    for page, candidates in _by_page.items():
+        if len(candidates) < 2:
+            continue
+        page_keyed = [c for c in candidates if c[0] == page]
+        winner = page_keyed[0] if page_keyed else candidates[0]
+        for raw_key, path in candidates:
+            if path != winner[1]:
+                _superseded.add(path)
+                print(
+                    f"dossiers: raw archive {path.stem!r} superseded for page"
+                    f" {page!r} by {winner[0]!r} — the page-keyed dossier wins"
+                    " (the archive is kept; paid research is never deleted)"
+                )
+
+    for pe_bli, page, path, raw in _raw_paths:
+        if path in _superseded:
+            continue
         if _top_set and pe_bli not in _top_set:
             # Retired, not skipped: nothing is wrong with the archive, the
             # program simply is not in the top-50 any more. Stale sidecars
             # from a previous export are removed so the set cannot drift.
             retired.append(pe_bli)
-            (out_dir / f"{(slug_by_pe or {}).get(pe_bli, pe_bli)}.json").unlink(missing_ok=True)
+            (out_dir / f"{page}.json").unlink(missing_ok=True)
             continue
 
         message = raw.get("message")
@@ -6296,8 +6344,8 @@ def _emit_dossier_sidecars(
         # LPD Flight II's research on Shipboard Tactical Communications'
         # page, which is the #56 fusion shape one layer up. slug == pe_bli
         # for every non-split program, so this is a no-op for ~1,741 of them.
-        _written_names.add(f"{(slug_by_pe or {}).get(pe_bli, pe_bli)}.json")
-        (out_dir / f"{(slug_by_pe or {}).get(pe_bli, pe_bli)}.json").write_text(
+        _written_names.add(f"{page}.json")
+        (out_dir / f"{page}.json").write_text(
             json.dumps(
                 {
                     "pe_bli": pe_bli,
@@ -6335,7 +6383,7 @@ def _emit_dossier_sidecars(
                     # self-describes the page it is loaded for — renaming
                     # the file alone left pe_bli disagreeing with its own
                     # filename, and the loader rightly refused to render it.
-                    "slug": (slug_by_pe or {}).get(pe_bli, pe_bli),
+                    "slug": page,
                 },
                 ensure_ascii=False,
                 indent=1,
@@ -13427,6 +13475,47 @@ def _build_slug_by_pe(duckdb_path) -> dict[str, str]:
         if con is not None:
             con.close()
     return out
+
+def _build_pe_by_slug(duckdb_path) -> dict[str, str]:
+    """page slug -> bare pe_bli, for EVERY dim_programs member.
+
+    The inverse of the page index, and wider than `_build_slug_by_pe`: that
+    map answers "which page does this bare-keyed artifact belong to" and so
+    names only the winning member of a shared code, while this one answers
+    "which program does this page belong to" and must therefore know both.
+    chain-B fix 3 needs it because `dossiers collect` now names a raw archive
+    after the PAGE, and the top-50 seed (program_categories.csv) is keyed by
+    the CODE — without the inverse, a page-keyed archive looks like a pe_bli
+    outside the top-50 and is retired on sight.
+
+    Non-split programs map their bare key to itself, so this is inert for
+    ~1,741 of them. Unreadable warehouse -> empty map -> the pre-fix
+    behaviour (every raw key read as a bare pe_bli).
+    """
+    out: dict[str, str] = {}
+    if duckdb_path is None:
+        return out
+    con = None
+    try:
+        import duckdb as _dd
+
+        con = _dd.connect(str(duckdb_path), read_only=True)
+        ident = _fetch_program_identity(con)
+        for pe_bli, acct, acct_title, org in con.execute(
+            "select pe_bli, account, account_title, org from dim_programs"
+        ).fetchall():
+            try:
+                out[ident.slug(pe_bli, acct, acct_title, org)] = pe_bli
+            except Exception:
+                continue
+    except Exception as exc:  # pragma: no cover — warehouse-shape guard
+        print(f"export-site: page index unavailable ({exc}) —"
+              " dossier archives keyed by bare pe_bli")
+    finally:
+        if con is not None:
+            con.close()
+    return out
+
 
 def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = None,
                              slug_by_pe: dict[str, str] | None = None) -> None:

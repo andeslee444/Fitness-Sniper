@@ -1595,3 +1595,293 @@ class TestBundleHygieneRound2:
         ]
         assert cards and "why_url" not in cards[0] and "program_url" not in cards[0]
         assert cards[0]["figure_fact_id"] == "abc"
+
+
+# ---------------------------------------------------------------------------
+# chain-B fix 3 — the pipeline is keyed by PAGE identity
+#
+# Measured defect this pins (chain-B fix 2 round 2): `dossiers submit
+# --pe-blis 3010-SCN` aborted because the membership set was bare-keyed, and
+# the only accepted key ("3010") assembled an EMPTY bundle because
+# program_details/3010.json is a disambiguation stub that does not exist. The
+# same bundle carried award rows with no fact_id, so no players claim naming
+# the five recipients the page publishes could have been cited at all.
+# ---------------------------------------------------------------------------
+
+SPLIT_PE = "3010"
+SPLIT_SCN, SPLIT_OPN = "3010-SCN", "3010-OPN"
+SCN_AWARD_FIDS = [f"scnlink{i}" for i in range(5)]
+
+
+@pytest.fixture()
+def split_site_fixture(tmp_path):
+    """A shared BLI code in production's 3010 shape: two member pages, each
+    with its own sidecar, and five citable crosswalk links on the SCN member.
+    """
+    site_json = tmp_path / "json"
+    (site_json / "program_details").mkdir(parents=True)
+    (site_json / "flows").mkdir()
+    snapshots = tmp_path / "snapshots"
+    snapshots.mkdir()
+
+    (site_json / "programs.json").write_text(json.dumps([
+        {"pe_bli": SPLIT_PE, "slug": SPLIT_SCN, "title": "LPD Flight II",
+         "org": "N", "account": "1611N"},
+        {"pe_bli": SPLIT_PE, "slug": SPLIT_OPN,
+         "title": "Shipboard Tactical Communications", "org": "N",
+         "account": "1810N"},
+        {"pe_bli": PE, "slug": PE, "title": "Defense Research Sciences",
+         "org": "DARPA"},
+    ]))
+    (site_json / "program_details" / f"{SPLIT_SCN}.json").write_text(json.dumps({
+        "narratives": [], "mentions": [], "budget_lines": [], "details": [],
+        "awards": [
+            {"award_piid": f"N000241{i}C2439", "confidence": "medium",
+             "recipient_name": f"PRIME {i}", "fact_id": SCN_AWARD_FIDS[i]}
+            for i in range(5)
+        ],
+    }))
+    (site_json / "program_details" / f"{SPLIT_OPN}.json").write_text(json.dumps({
+        "narratives": [], "mentions": [], "budget_lines": [], "details": [],
+        "awards": [{"award_piid": "N0003917D0006", "confidence": "medium",
+                    "recipient_name": "OTHER PRIME", "fact_id": "opnlink0"}],
+    }))
+    # The bare code owns NO sidecar — it is the disambiguation stub.
+    (site_json / "program_details" / f"{PE}.json").write_text(json.dumps({
+        "narratives": [], "mentions": [], "budget_lines": [], "details": [],
+        "awards": [{"award_piid": "W911QX24C0001", "confidence": "high",
+                    "recipient_name": "ORDINARY PRIME",
+                    "fact_id": "ordinarylink"}],
+    }))
+    (site_json / "citations.json").write_text(json.dumps(
+        {fid: {"kind": "derived"} for fid in SCN_AWARD_FIDS}
+        | {"opnlink0": {"kind": "derived"}, "ordinarylink": {"kind": "derived"}}
+    ))
+    (snapshots / "index.json").write_text(json.dumps({"snapshots": []}))
+    categories = tmp_path / "program_categories.csv"
+    categories.write_text(
+        "pe_bli,category,rationale,source_ref\n"
+        f"{SPLIT_PE},shipbuilding,amphibs,ProgramElement[1]\n"
+        f"{PE},default,broad portfolio,ProgramElement[5]\n"
+    )
+    return SimpleNamespace(site_json=site_json, snapshots=snapshots,
+                           categories=categories, tmp=tmp_path)
+
+
+@pytest.fixture()
+def split_top50_duckdb(tmp_path):
+    """dim_programs/fct_budget_trajectory in the 3010 shape, so top50()
+    resolves each member to its own page slug."""
+    db = tmp_path / "split-top50.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, org varchar,"
+                " exhibit_family varchar, title varchar, account varchar,"
+                " account_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar,"
+                " organization varchar, fy2026_total double, account varchar)")
+    con.execute("insert into dim_programs values"
+                " ('3010','N','procurement','LPD Flight II','1611N',"
+                "  'Shipbuilding and Conversion, Navy'),"
+                " ('3010','N','procurement','Shipboard Tactical Communications',"
+                "  '1810N','Other Procurement, Navy'),"
+                f" ('{PE}','DARPA','rdte','Defense Research Sciences','0400',"
+                "  'Research, Development, Test and Evaluation')")
+    con.execute("insert into fct_budget_trajectory values"
+                " ('3010','N',2600000.0,'1611N'),"
+                " ('3010','N',20900.0,'1810N'),"
+                f" ('{PE}','DARPA',100.0,'0400')")
+    con.close()
+    return db
+
+
+class TestPageIdentityBundles:
+    def _build(self, fx, key, **kw):
+        return build_bundle(key, site_json_dir=fx.site_json,
+                            snapshots_dir=fx.snapshots,
+                            categories_csv=fx.categories, **kw)
+
+    def test_a_split_member_slug_assembles_that_members_awards_with_fact_ids(
+        self, split_site_fixture
+    ):
+        """The whole point: the member's own five links, each citable."""
+        b = self._build(split_site_fixture, SPLIT_SCN)
+        data = _bundle_json(b)
+        assert [a["fact_id"] for a in data["awards"]] == SCN_AWARD_FIDS
+        assert len(data["awards"]) == 5
+        # the bundle knows both identities: the code it belongs to and the
+        # page it IS
+        assert data["pe_bli"] == SPLIT_PE
+        assert data["page"] == SPLIT_SCN
+        # the request's key — and therefore the archive and sidecar name — is
+        # the page, not the code
+        assert b["pe_bli"] == SPLIT_SCN
+        assert b["title"] == "LPD Flight II"
+
+    def test_the_sibling_member_gets_its_own_award_not_this_one(
+        self, split_site_fixture
+    ):
+        data = _bundle_json(self._build(split_site_fixture, SPLIT_OPN))
+        assert [a["award_piid"] for a in data["awards"]] == ["N0003917D0006"]
+        assert data["page"] == SPLIT_OPN
+
+    def test_a_bare_shared_code_is_rejected_and_names_the_member_slugs(
+        self, split_site_fixture
+    ):
+        with pytest.raises(SystemExit) as exc:
+            self._build(split_site_fixture, SPLIT_PE)
+        msg = str(exc.value)
+        assert "SHARED BLI code" in msg
+        assert SPLIT_SCN in msg and SPLIT_OPN in msg
+        assert "ABORTED" in msg
+
+    def test_an_ordinary_program_is_byte_for_byte_unchanged(
+        self, split_site_fixture
+    ):
+        data = _bundle_json(self._build(split_site_fixture, PE))
+        assert data["pe_bli"] == PE and data["page"] == PE
+        assert [a["award_piid"] for a in data["awards"]] == ["W911QX24C0001"]
+
+    def test_an_unresolvable_award_fact_id_is_dropped_not_offered(
+        self, split_site_fixture
+    ):
+        """Hygiene, same rule as projects/narratives: the model may only see a
+        fact_id that resolves, or none at all."""
+        keyset = set(SCN_AWARD_FIDS[:2])
+        data = _bundle_json(
+            self._build(split_site_fixture, SPLIT_SCN, citations_keyset=keyset)
+        )
+        kept = [a.get("fact_id") for a in data["awards"]]
+        assert kept[:2] == SCN_AWARD_FIDS[:2]
+        assert all(f is None for f in kept[2:])
+        for award in data["awards"][2:]:
+            assert "fact_id" not in award
+
+    def test_an_award_row_with_no_fact_id_field_survives(self, tmp_path):
+        """Older sidecars (pre-chain-B fix 3) carry no fact_id at all — the
+        bundle must still assemble, just with nothing citable."""
+        site_json = tmp_path / "json"
+        (site_json / "program_details").mkdir(parents=True)
+        (site_json / "program_details" / f"{PE}.json").write_text(json.dumps(
+            {"awards": [{"award_piid": "P1", "confidence": "high",
+                         "recipient_name": "V"}]}))
+        snaps = tmp_path / "snaps"
+        snaps.mkdir()
+        (snaps / "index.json").write_text(json.dumps({"snapshots": []}))
+        cats = tmp_path / "cats.csv"
+        cats.write_text("pe_bli,category,rationale,source_ref\n")
+        data = _bundle_json(build_bundle(
+            PE, site_json_dir=site_json, snapshots_dir=snaps,
+            categories_csv=cats, citations_keyset=set()))
+        assert data["awards"] == [{"award_piid": "P1", "confidence": "high",
+                                   "recipient_name": "V"}]
+
+    def test_the_preamble_says_award_rows_are_citable(self):
+        """Rule 9: without it the model has a fact_id it was never told to
+        use, next to a negative rule telling it contract numbers are not
+        citations — which is how a page with five named primes shipped a
+        dossier naming none."""
+        assert "Award recipients:" in SHARED_PREAMBLE
+        assert "crosswalk link" in SHARED_PREAMBLE
+
+
+class TestSubmitPageIdentity:
+    def _submit(self, fx, db, client, **kw):
+        return submit(
+            duckdb_path=db, site_json_dir=fx.site_json,
+            snapshots_dir=fx.snapshots, categories_csv=fx.categories,
+            raw_dir=fx.tmp / "dossiers-raw", client=client, **kw,
+        )
+
+    def test_a_member_slug_is_accepted_and_keys_the_request(
+        self, split_site_fixture, split_top50_duckdb
+    ):
+        client = FakeClient()
+        summary = self._submit(split_site_fixture, split_top50_duckdb, client,
+                               pe_blis=[SPLIT_SCN])
+        assert summary["requests"] == 1
+        (requests,) = client.batches.created
+        assert [r["custom_id"] for r in requests] == [f"dossier-{SPLIT_SCN}"]
+        meta = json.loads((split_site_fixture.tmp / "dossiers-raw"
+                           / "batch_meta.json").read_text())
+        assert meta["pe_blis"] == [SPLIT_SCN]
+
+    def test_a_bare_shared_code_aborts_naming_the_member_slugs(
+        self, split_site_fixture, split_top50_duckdb
+    ):
+        client = FakeClient()
+        with pytest.raises(SystemExit) as exc:
+            self._submit(split_site_fixture, split_top50_duckdb, client,
+                         pe_blis=[SPLIT_PE])
+        msg = str(exc.value)
+        assert "SHARED BLI code" in msg
+        assert SPLIT_SCN in msg and SPLIT_OPN in msg
+        assert "ABORTED" in msg
+        assert client.batches.created == []      # nothing was spent
+
+    def test_an_unknown_key_still_aborts_plainly(
+        self, split_site_fixture, split_top50_duckdb
+    ):
+        client = FakeClient()
+        with pytest.raises(SystemExit) as exc:
+            self._submit(split_site_fixture, split_top50_duckdb, client,
+                         pe_blis=["NOSUCHPE"])
+        assert "not in the top-50 set" in str(exc.value)
+        assert client.batches.created == []
+
+    def test_the_full_batch_keys_every_split_member_by_its_page(
+        self, split_site_fixture, split_top50_duckdb
+    ):
+        client = FakeClient()
+        self._submit(split_site_fixture, split_top50_duckdb, client)
+        (requests,) = client.batches.created
+        assert sorted(r["custom_id"] for r in requests) == [
+            f"dossier-{PE}", f"dossier-{SPLIT_OPN}", f"dossier-{SPLIT_SCN}",
+        ]
+
+    def test_an_ordinary_corpus_is_unchanged(self, site_fixture,
+                                             fixture_duckdb):
+        """No page identity in the warehouse -> bare keys, exactly as before."""
+        client = FakeClient()
+        self._submit(site_fixture, fixture_duckdb, client)
+        (requests,) = client.batches.created
+        assert sorted(r["custom_id"] for r in requests) == [
+            f"dossier-{PE}", f"dossier-{PE2}"]
+
+
+class TestGatePageIdentity:
+    def test_the_gate_asks_for_the_page_the_selection_picked(self, tmp_path):
+        """A split member's dossier is filed under its page slug; the gate
+        looks for exactly that, from top50()'s own 5th element."""
+        dossier_dir = tmp_path / "dossiers"
+        dossier_dir.mkdir()
+        (dossier_dir / f"{SPLIT_SCN}.json").write_text(json.dumps(
+            {"pe_bli": SPLIT_PE, "slug": SPLIT_SCN,
+             "dossier": _valid_dossier(url_claims=0, fact_claims=3)}))
+        (tmp_path / "citations.json").write_text(json.dumps(
+            {f: {"kind": "derived"} for f in
+             ["traj26fact", "hhifact", "blfact", "feedfact", "detfact0"]}))
+        (tmp_path / "snap-index.json").write_text(json.dumps({"snapshots": []}))
+        cats = tmp_path / "cats.csv"
+        cats.write_text("pe_bli,category,rationale,source_ref\n"
+                        f"{SPLIT_PE},shipbuilding,amphibs,ProgramElement[1]\n")
+        res = dossier_gate(
+            dossier_dir, tmp_path / "citations.json",
+            tmp_path / "snap-index.json", cats,
+            [(SPLIT_PE, "LPD Flight II", "N", 1.0, SPLIT_SCN)],
+        )
+        assert res["checks"]["dossiers_present"]["ok"], res["checks"]
+        assert res["checks"]["required_sections"]["ok"]
+
+    def test_a_missing_member_dossier_still_reads_as_missing(self, tmp_path):
+        dossier_dir = tmp_path / "dossiers"
+        dossier_dir.mkdir()
+        (tmp_path / "citations.json").write_text(json.dumps({}))
+        (tmp_path / "snap-index.json").write_text(json.dumps({"snapshots": []}))
+        cats = tmp_path / "cats.csv"
+        cats.write_text("pe_bli,category,rationale,source_ref\n")
+        res = dossier_gate(
+            dossier_dir, tmp_path / "citations.json",
+            tmp_path / "snap-index.json", cats,
+            [(SPLIT_PE, "LPD Flight II", "N", 1.0, SPLIT_SCN)],
+        )
+        assert res["checks"]["dossiers_present"]["missing"] == [SPLIT_PE]

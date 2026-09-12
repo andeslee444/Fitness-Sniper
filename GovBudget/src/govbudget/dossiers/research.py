@@ -93,17 +93,26 @@ MIN_TOKEN_LEN = 5
 # ---------------------------------------------------------------------------
 
 
-def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, str, float]]:
+def top50(
+    duckdb_path: str | Path, *, limit: int = 50
+) -> list[tuple[str, str, str, float, str]]:
     """Dossier selection: top-`limit` dim_programs by FY2026 total.
 
     Joins dim_programs to fct_budget_trajectory on
     (pe_bli, workbook_org(org)) — the doc-org -> workbook-org translation is
     Python-side (govbudget.jbooks.orgs.workbook_org), per recon §C.
 
-    Returns [(pe_bli, title, org, fy2026_total)], fy2026_total in $thousands.
-    Programs with no trajectory row (or NULL fy2026_total) are excluded —
-    a naive top-50 over fct_budget_trajectory alone would pick service lines
-    without program pages.
+    Returns [(pe_bli, title, org, fy2026_total, page_slug)], fy2026_total in
+    $thousands. Programs with no trajectory row (or NULL fy2026_total) are
+    excluded — a naive top-50 over fct_budget_trajectory alone would pick
+    service lines without program pages.
+
+    `page_slug` (APPENDED, chain-B fix 3 — never reordered) is the row's PAGE
+    identity: the bare pe_bli for an ordinary program, the member slug
+    ("3010-SCN") for one of the two programs sharing a BLI code. It is the key
+    the dossier pipeline uses end to end (custom_id, raw archive, sidecar,
+    `--pe-blis`); `page_key()` reads it off a row and tolerates the bare
+    strings and 4-tuples older fixtures pass.
 
     Task E3 (Sprint E, ROADMAP #67; ROADMAP #68 candidate root cause): the
     join used to be keyed by (pe_bli, workbook_org(org)) alone. E1's
@@ -153,6 +162,12 @@ def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, s
 
     con = duckdb.connect(str(duckdb_path), read_only=True)
     try:
+        from govbudget.export_site import _fetch_program_identity
+
+        # The PAGE identity map (chain-B fix 3). _fetch_program_identity
+        # degrades to "no split keys" when dim_programs lacks the columns, so
+        # a minimal fixture warehouse keeps returning bare keys.
+        ident = _fetch_program_identity(con)
         progs = _query_with_account_fallback(
             "select pe_bli, title, org, account from dim_programs",
             "select pe_bli, title, org from dim_programs",
@@ -179,7 +194,7 @@ def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, s
     for (t_pe, t_org, _t_acct), t_total in traj.items():
         by_pe_org.setdefault((t_pe, t_org), []).append(t_total)
 
-    rows: list[tuple[str, str, str, float]] = []
+    rows: list[tuple[str, str, str, float, str]] = []
     dropped: list[str] = []
     for pe_bli, title, org, account in progs:
         wo = workbook_org(org)
@@ -191,9 +206,80 @@ def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, s
         if total is None:
             dropped.append(pe_bli)
             continue
-        rows.append((pe_bli, title, org, float(total)))
+        rows.append((pe_bli, title, org, float(total),
+                     _page_slug(ident, pe_bli, account, org)))
     rows.sort(key=lambda r: -r[3])
     return rows[:limit]
+
+
+def _page_slug(ident, pe_bli: str, account, org) -> str:
+    """This dim_programs row's PAGE identity (chain-B fix 3).
+
+    The bare pe_bli for the ~1,930 programs that publish one page, and the
+    composite member slug ("3010-SCN") for a row of a shared BLI code — the
+    exporter's own `_ProgramIdentity.slug`, never a suffix convention. An
+    unresolvable row keeps the bare key: a wrong page identity is worse than a
+    coarse one, and the bare key is exactly what the pipeline used before.
+    """
+    if not getattr(ident, "is_split", lambda _pe: False)(pe_bli):
+        return pe_bli
+    for acct, acct_title, organization, _has_detail in ident.accounts(pe_bli):
+        if acct == account:
+            try:
+                return ident.slug(pe_bli, acct, acct_title, organization)
+            except Exception:
+                return pe_bli
+    return pe_bli
+
+
+def page_key(row) -> str:
+    """The dossier key of a top50() row — its PAGE identity.
+
+    A dossier is a PAGE's, not a code's (Sprint E gave each member of a shared
+    BLI code its own page, its own sidecar and its own dossier), so every
+    place the pipeline keys a dossier — the custom_id, the raw archive name,
+    the sidecar name, `--pe-blis` — keys it by this. Accepts the bare strings
+    and 4-tuples older callers and fixtures still pass, which resolve to the
+    bare pe_bli exactly as before.
+    """
+    if isinstance(row, (list, tuple)):
+        return row[4] if len(row) > 4 and row[4] else row[0]
+    return row
+
+
+def member_slugs(duckdb_path: str | Path) -> dict[str, list[str]]:
+    """bare pe_bli -> its members' page slugs, for SHARED codes only.
+
+    Used to turn "that key names two programs" into an actionable message that
+    names the two pages the caller can actually ask for. Empty when the
+    warehouse cannot be read — the caller then reports the plain unknown-key
+    error rather than inventing membership.
+    """
+    import duckdb
+
+    from govbudget.export_site import _fetch_program_identity
+
+    out: dict[str, list[str]] = {}
+    try:
+        con = duckdb.connect(str(duckdb_path), read_only=True)
+    except Exception:
+        return out
+    try:
+        ident = _fetch_program_identity(con)
+        for pe_bli in sorted(ident.split_pe_blis):
+            slugs = []
+            for acct, acct_title, org, _hd in ident.accounts(pe_bli):
+                try:
+                    slugs.append(ident.slug(pe_bli, acct, acct_title, org))
+                except Exception:
+                    continue
+            if slugs:
+                out[pe_bli] = sorted(set(slugs))
+    except Exception:
+        return out
+    finally:
+        con.close()
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -274,13 +360,20 @@ def load_alias_terms(csv_path: str | Path) -> dict[str, str]:
 
 
 def build_program_terms(
-    programs: list[tuple[str, str, str, float]],
+    programs: list[tuple],
     alias_terms: dict[str, str] | None = None,
 ) -> dict[str, set[str]]:
-    """{pe_bli: lowercase match terms} from titles + alias table."""
+    """{pe_bli: lowercase match terms} from titles + alias table.
+
+    Keyed by the bare pe_bli, not the page identity: a news article names a
+    program, and nothing in an RSS item can tell a shared code's two members
+    apart. Indexed rather than unpacked so a top50() row of any width fits
+    (chain-B fix 3 appended the page slug).
+    """
     terms: dict[str, set[str]] = {}
     pe_set = {p[0] for p in programs}
-    for pe_bli, title, _org, _total in programs:
+    for row in programs:
+        pe_bli, title = row[0], row[1]
         terms.setdefault(pe_bli, set()).update(title_terms(title))
     for term, pe_bli in (alias_terms or {}).items():
         if pe_bli in pe_set:

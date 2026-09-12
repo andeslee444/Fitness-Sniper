@@ -2811,8 +2811,11 @@ def main(argv=None) -> None:
     )
     dos_submit.add_argument(
         "--pe-blis", default=None,
-        help="comma-separated pe_blis (within the top-N set) to resubmit —"
-             " the retry path for gate-rejected dossiers",
+        help="comma-separated program PAGES (within the top-N set) to"
+             " resubmit — the retry path for gate-rejected dossiers. A page"
+             " identity: the bare pe_bli for an ordinary program, the member"
+             " slug (e.g. 3010-SCN) for one of two programs sharing a BLI"
+             " code; a bare shared code aborts and names its members",
     )
     dos_submit.set_defaults(func=cmd_dossiers)
     dos_collect = dos_sub.add_parser(

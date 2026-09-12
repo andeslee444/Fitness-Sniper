@@ -100,8 +100,10 @@ class TestTop50:
         rows = top50(fixture_duckdb)
         assert [r[0] for r in rows] == ["0306250JCY", "0603183D8Z", "0601101E"]
         # the CYBERCOM row was matched via workbook_org('CYBERCOM') == 'CYBER'
+        # The 5th element is the row's PAGE identity (chain-B fix 3) — the
+        # bare pe_bli here, because this fixture has no shared BLI code.
         assert rows[0] == ("0306250JCY", "Cyber Operations Technology Support",
-                           "CYBERCOM", 900.0)
+                           "CYBERCOM", 900.0, "0306250JCY")
 
     def test_scope_is_dim_programs_only(self, fixture_duckdb):
         pes = {r[0] for r in top50(fixture_duckdb)}
@@ -110,6 +112,83 @@ class TestTop50:
 
     def test_limit(self, fixture_duckdb):
         assert len(top50(fixture_duckdb, limit=2)) == 2
+
+
+@pytest.fixture()
+def split_key_duckdb(tmp_path):
+    """A shared BLI code in production's 3010 shape: two dim_programs rows,
+    same organization, two appropriation accounts, each with its own
+    trajectory total."""
+    db = tmp_path / "split.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, org varchar,"
+                " exhibit_family varchar, title varchar, account varchar,"
+                " account_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar,"
+                " organization varchar, fy2026_total double, account varchar)")
+    con.execute("insert into dim_programs values"
+                " ('3010','N','procurement','LPD Flight II','1611N',"
+                "  'Shipbuilding and Conversion, Navy'),"
+                " ('3010','N','procurement','Shipboard Tactical Communications',"
+                "  '1810N','Other Procurement, Navy'),"
+                " ('0601101E','DARPA','rdte','Defense Research Sciences',"
+                "  '0400','Research, Development, Test and Evaluation')")
+    con.execute("insert into fct_budget_trajectory values"
+                " ('3010','N',2600000.0,'1611N'),"
+                " ('3010','N',20900.0,'1810N'),"
+                " ('0601101E','DARPA',100.0,'0400')")
+    con.close()
+    return db
+
+
+class TestTop50PageIdentity:
+    """chain-B fix 3: a dossier is a PAGE's, so the selection carries the page
+    identity — the defect that made `submit --pe-blis 3010-SCN` impossible and
+    left `3010` assembling an empty bundle from a sidecar that does not exist.
+    """
+
+    def test_each_member_of_a_shared_code_carries_its_own_page_slug(
+        self, split_key_duckdb
+    ):
+        by_total = {r[4]: r[3] for r in top50(split_key_duckdb)}
+        assert by_total["3010-SCN"] == 2600000.0
+        assert by_total["3010-OPN"] == 20900.0
+        # the bare code is the disambiguation stub — it is nobody's page
+        assert "3010" not in by_total
+
+    def test_an_ordinary_program_keeps_the_bare_key(self, split_key_duckdb):
+        row = [r for r in top50(split_key_duckdb) if r[0] == "0601101E"][0]
+        assert row[4] == "0601101E"
+
+    def test_page_key_reads_the_slug_and_tolerates_older_shapes(self):
+        from govbudget.dossiers.research import page_key
+
+        assert page_key(("3010", "t", "N", 1.0, "3010-SCN")) == "3010-SCN"
+        assert page_key(("0601101E", "t", "DARPA", 1.0)) == "0601101E"
+        assert page_key("0601101E") == "0601101E"
+
+    def test_member_slugs_names_both_pages_of_a_shared_code(
+        self, split_key_duckdb
+    ):
+        from govbudget.dossiers.research import member_slugs
+
+        assert member_slugs(split_key_duckdb) == {"3010": ["3010-OPN", "3010-SCN"]}
+
+    def test_build_program_terms_consumes_a_top50_row_of_any_width(
+        self, split_key_duckdb
+    ):
+        """`dossiers fetch` feeds top50()'s rows straight into the matcher.
+        Unpacking them as 4-tuples raised the moment the page slug was
+        appended — and only the live `fetch` would have found it, because the
+        unit tests hand-build their own rows."""
+        from govbudget.dossiers.research import build_program_terms
+
+        rows = top50(split_key_duckdb)
+        assert len(rows[0]) == 5
+        terms = build_program_terms(rows)
+        # keyed by the bare code: an RSS item cannot tell two members apart
+        assert set(terms) == {"3010", "0601101E"}
+        assert "flight" in terms["3010"]
 
 
 # ---------------------------------------------------------------------------

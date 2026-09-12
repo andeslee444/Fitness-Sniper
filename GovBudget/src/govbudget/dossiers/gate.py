@@ -69,6 +69,22 @@ def _top_pe(top50_list) -> list[str]:
     return [r[0] if isinstance(r, (list, tuple)) else r for r in top50_list]
 
 
+def _top_pages(top50_list) -> list[tuple[str, str]]:
+    """(bare pe_bli, PAGE identity) per top50() row (chain-B fix 3).
+
+    top50() carries the page slug in element 4; bare strings and the 4-tuples
+    older fixtures pass fall back to the bare pe_bli, which is the page for
+    every program that publishes one.
+    """
+    out: list[tuple[str, str]] = []
+    for r in top50_list:
+        if isinstance(r, (list, tuple)):
+            out.append((r[0], r[4] if len(r) > 4 and r[4] else r[0]))
+        else:
+            out.append((r, r))
+    return out
+
+
 def dim_programs_pe_set(duckdb_path: str | Path) -> set[str]:
     import duckdb
 
@@ -306,16 +322,21 @@ def dossier_gate(
     total_claims = 0
     warehouse_claims = 0
 
-    for pe_bli in top_pe:
-        path = dossier_dir / f"{pe_bli}.json"
+    for pe_bli, selected_page in _top_pages(top50_list):
+        # Sprint E (#67): a SPLIT key's sidecar is keyed by its page SLUG
+        # ("3010-SCN"), not the bare pe_bli, because E3 gave each
+        # (account, pe_bli) pair its own page and the page looks the dossier
+        # up by slug. The bare name belongs to the disambiguation stub.
+        # chain-B fix 3: the selection itself now carries that page identity,
+        # so the gate asks for the page the top-50 actually picked instead of
+        # inferring it from the filenames on disk.
+        path = dossier_dir / f"{selected_page}.json"
         if not path.exists():
-            # Sprint E (#67): a SPLIT key's sidecar is keyed by its page SLUG
-            # ("3010-SCN"), not the bare pe_bli, because E3 gave each
-            # (account, pe_bli) pair its own page and the page looks the
-            # dossier up by slug. The bare name belongs to the disambiguation
-            # stub. Accept exactly one "{pe_bli}-{CODE}.json" sibling; more
-            # than one would mean two accounts each claim a dossier for the
-            # same key, which is a real defect and must still read as missing.
+            # Fallback for a caller whose top50_list carries no page identity
+            # (bare strings, older 4-tuples): accept exactly one
+            # "{pe_bli}-{CODE}.json" sibling; more than one would mean two
+            # accounts each claim a dossier for the same key, which is a real
+            # defect and must still read as missing.
             siblings = sorted(dossier_dir.glob(f"{pe_bli}-*.json"))
             if len(siblings) == 1:
                 path = siblings[0]
@@ -324,9 +345,8 @@ def dossier_gate(
                 continue
         # The dossier's PAGE identity: the file stem, which is the bare
         # pe_bli for an ordinary program and the page SLUG ("3010-SCN") for a
-        # split key resolved through the sibling lookup above. Every
-        # per-PAGE lookup below keys on this, never on pe_bli, because a
-        # shared code's members are distinct pages.
+        # split key. Every per-PAGE lookup below keys on this, never on
+        # pe_bli, because a shared code's members are distinct pages.
         page_slug = path.stem
         doc = _load_json(path)
         sections = doc.get("dossier", doc) if isinstance(doc, dict) else doc
