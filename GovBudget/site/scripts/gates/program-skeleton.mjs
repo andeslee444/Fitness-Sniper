@@ -49,7 +49,10 @@
  *     the reader to it (ROADMAP #32(b) residue) — see leg l's own block.
  * (n) A pe_bli shared by two programs files each member's crosswalk links on
  *     that member's own page, never on both and never on the bare
- *     disambiguation stub (ROADMAP #70) — see leg n's own block at the bottom.
+ *     disambiguation stub (ROADMAP #70); each account-split member's title
+ *     block names ITS OWN appropriation and never the sibling's, and a
+ *     concentration figure withheld because both members are linked is
+ *     said on the card, not hidden (ROADMAP #82) — see leg n's own block.
  */
 
 import fs from "fs";
@@ -502,7 +505,7 @@ export async function runProgramSkeletonGate() {
 // into the Related Awards table: an exporter keyed on the BARE pe_bli hands
 // BOTH members every award on the shared code, so a reader sees one program's
 // contracts filed under the other's name — with every number↔citation gate
-// still green, because each link is individually true. Three checks:
+// still green, because each link is individually true. Seven checks:
 //
 //   1. no award PIID appears on more than one member of one shared code;
 //   2. each member's programs.json award_count equals its own sidecar's
@@ -512,6 +515,28 @@ export async function runProgramSkeletonGate() {
 //      about a program the reader has not chosen yet;
 //   4. a non-vacuity floor, because all three checks above pass perfectly on
 //      a corpus where every member page shows ZERO awards.
+//   5. (ROADMAP #82) each ACCOUNT-split member page renders exactly one
+//      [data-program-account] whose text names that member's own
+//      account_title and account code and never the sibling's; an
+//      organization-split member (one account, e.g. 0300D on '20'/'30'/'500')
+//      renders none — the org link discriminates there and the account
+//      would read the same on both pages; the stub renders none;
+//   6. a member with a sidecar and no built page is an error, not a skip —
+//      otherwise check 5 is satisfied by a corpus with no pages;
+//   7. (ROADMAP #82) renderer ↔ payload for the withheld concentration
+//      state: a sidecar whose summary.concentration_withheld is true must
+//      declare the "none" tier AND render [data-who-withheld], and no page
+//      may render that marker without the payload. The tier clause is not
+//      decoration: a withheld member carries linked awards by construction
+//      (that is WHY the bare-line figure is nobody's), so the award tier is
+//      impossible — its block is the withheld one — and the J-book and
+//      lobbying tiers' closing sentences ("not yet crosswalked to award
+//      data"; "No contract award is linked to this line") are false above
+//      that member's own Related Awards table. The exporter's per-member
+//      awards guard is what keeps those two off the page; this check is
+//      what notices if it is ever dropped. The card's "no company is linked"
+//      sentence is false there too, and the exporter is the only party that
+//      knows the figure exists and is nobody's.
 
 /** Non-vacuity floor for leg n (added 2026-09-04, #70 fix round 1 — the
  *  leg's first standalone run printed "0 member page(s) carry 0 award row(s)"
@@ -559,12 +584,38 @@ const MIN_SPLIT_AWARD_ROWS = 60;
  *  RE-MEASURE if the corpus changes; do not lower it to fit a build. */
 const MIN_SHARED_BLI_CODES = 10;
 
-/** `programs` is injected only by this leg's unit test
+/** Non-vacuity floor for check 5 (added 2026-09-05, ROADMAP #82).
+ *
+ *  Measured 2026-09-05 from data/site/json/programs.json, re-measured
+ *  2026-09-11 (unchanged): TEN account-split codes × 2 members = TWENTY
+ *  member pages carry a non-null account_title and a sibling in another
+ *  account. The 3 organization-split codes' 7 members share one account
+ *  (0300D) and render no appropriation line, so they do not count here. The
+ *  floor sits below 20 with headroom for ordinary corpus movement and above
+ *  the regression it exists to catch: a header that stops emitting
+ *  [data-program-account] makes every per-page assertion in check 5 vacuous.
+ *  RE-MEASURE if the corpus changes; never lower it to fit a build. */
+const MIN_ACCOUNT_SPLIT_MEMBER_PAGES = 16;
+
+/** Default page reader — the gate reads site/out; the unit test injects its
+ *  own `pageHtml` so a corpus the build does not contain can be checked. */
+function readPageHtml(slug) {
+  const p = pageHtmlPath(slug);
+  return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : null;
+}
+
+/** `programs` and `pageHtml` are injected only by this leg's unit test
  *  (__tests__/split-key-awards.test.mjs), which has to be able to hand the leg
  *  a corpus the build does not contain — a floor that has never been seen to
- *  trip is not a floor. The gate itself always passes it undefined and reads
- *  the shipped programs.json. */
-export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
+ *  trip is not a floor. The gate itself always passes them undefined and reads
+ *  the shipped programs.json and site/out. */
+export function runSplitKeyAwardsLeg({
+  errors,
+  notes,
+  sidecars,
+  programs,
+  pageHtml = readPageHtml,
+}) {
   let programRows = programs;
   if (!programRows) {
     const programsPath = path.join(jsonDir, "programs.json");
@@ -597,7 +648,13 @@ export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
 
   let membersWithAwards = 0;
   let awardRows = 0;
+  let accountSplitPagesChecked = 0;
   for (const [pe, rows] of splits) {
+    // Independent recompute of site/src/app/program/[peBli]/page.tsx's
+    // stubDimension — the predicate the header itself used to decide whether
+    // to render an appropriation line. Same rule, computed from the payload.
+    const distinctAccounts = new Set(rows.map((r) => r.account).filter(Boolean));
+    const accountSplit = distinctAccounts.size > 1;
     const ownerOfPiid = new Map();
     for (const r of rows) {
       const d = sidecars.get(r.slug);
@@ -634,6 +691,89 @@ export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
             `is ${r.award_count} but its sidecar lists ${awards.length} award(s)`,
         );
       }
+
+      // ── (5)/(6) ROADMAP #82: the title block names THIS member's account ──
+      // The `continue` below deliberately skips only the rest of THIS
+      // member's per-page checks: its awards were already counted and its
+      // PIIDs already filed above.
+      const html = pageHtml(r.slug);
+      if (html === null) {
+        errors.push(
+          `program-skeleton(n): shared-code member /program/${r.slug}/ has a ` +
+            `sidecar but no built page`,
+        );
+        continue;
+      }
+      const root = parse(html, { comment: false });
+      const accountEls = root.querySelectorAll("[data-program-account]");
+      if (accountSplit) {
+        if (accountEls.length !== 1) {
+          errors.push(
+            `program-skeleton(n): /program/${r.slug}/ renders ${accountEls.length} ` +
+              `[data-program-account] element(s) (expected exactly 1) — an ` +
+              `account-split member must name its own appropriation in the ` +
+              `title block`,
+          );
+        } else {
+          const text = (accountEls[0].text || "").replace(/\s+/g, " ").trim();
+          if (
+            !r.account_title ||
+            !text.includes(r.account_title) ||
+            !r.account ||
+            !text.includes(r.account)
+          ) {
+            errors.push(
+              `program-skeleton(n): /program/${r.slug}/ title block reads ` +
+                `"${text}" — expected its own appropriation "${r.account_title}" ` +
+                `and code ${r.account}`,
+            );
+          }
+          for (const s of rows) {
+            if (s.slug === r.slug || !s.account_title || s.account_title === r.account_title) {
+              continue;
+            }
+            if (text.includes(s.account_title)) {
+              errors.push(
+                `program-skeleton(n): /program/${r.slug}/ title block names its ` +
+                  `sibling's appropriation "${s.account_title}" — one program's ` +
+                  `page must not wear the other's account`,
+              );
+            }
+          }
+          accountSplitPagesChecked++;
+        }
+      } else if (accountEls.length > 0) {
+        errors.push(
+          `program-skeleton(n): /program/${r.slug}/ is an organization-split ` +
+            `member (one account, ${[...distinctAccounts][0] ?? "none"}) yet ` +
+            `renders [data-program-account] — the account is identical on every ` +
+            `member of code ${pe} and discriminates nothing`,
+        );
+      }
+
+      // ── (7) ROADMAP #82: withheld concentration, renderer ↔ payload ──
+      const withheldPayload = d.summary?.concentration_withheld === true;
+      const tierEl = root.querySelector("[data-who-tier]");
+      const tier = tierEl ? tierEl.getAttribute("data-who-tier") : null;
+      const withheldRendered = root.querySelector("[data-who-withheld]") !== null;
+      if (withheldPayload && (tier !== "none" || !withheldRendered)) {
+        errors.push(
+          `program-skeleton(n): /program/${r.slug}/ sidecar says ` +
+            `concentration_withheld=true but its WHO GETS IT card declares ` +
+            `tier "${tier}"${withheldRendered ? "" : " and renders no [data-who-withheld]"}` +
+            ` — this member carries linked awards (that is why the shared ` +
+            `line's figure is nobody's), so every stronger tier's sentence is ` +
+            `false above its own Related Awards table and the honest-absence ` +
+            `tier must state the withholding instead`,
+        );
+      }
+      if (withheldRendered && !withheldPayload) {
+        errors.push(
+          `program-skeleton(n): /program/${r.slug}/ renders [data-who-withheld] ` +
+            `but its sidecar carries no concentration_withheld=true — a withheld ` +
+            `figure is the exporter's claim, not the renderer's`,
+        );
+      }
     }
 
     if (sidecars.has(pe)) {
@@ -642,13 +782,20 @@ export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
           `sidecar — /program/${pe}/ is a disambiguation stub, not a program page`,
       );
     }
-    const stubPath = pageHtmlPath(pe);
-    if (fs.existsSync(stubPath)) {
-      const root = parse(fs.readFileSync(stubPath, "utf8"), { comment: false });
+    const stubHtml = pageHtml(pe);
+    if (stubHtml !== null) {
+      const root = parse(stubHtml, { comment: false });
       if (root.querySelector('[data-sort-table="program-awards"]')) {
         errors.push(
           `program-skeleton(n): the /program/${pe}/ disambiguation stub renders ` +
             `an awards table — it cannot say whose awards those are`,
+        );
+      }
+      if (root.querySelector("[data-program-account]")) {
+        errors.push(
+          `program-skeleton(n): the /program/${pe}/ disambiguation stub renders ` +
+            `[data-program-account] — it is a chooser between accounts, not a ` +
+            `page in one`,
         );
       }
     }
@@ -670,12 +817,26 @@ export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
     );
     return;
   }
+  if (accountSplitPagesChecked < MIN_ACCOUNT_SPLIT_MEMBER_PAGES) {
+    errors.push(
+      `program-skeleton(n): only ${accountSplitPagesChecked} account-split ` +
+        `member page(s) rendered a checkable title block (floor ` +
+        `${MIN_ACCOUNT_SPLIT_MEMBER_PAGES}, measured 2026-09-05 at 20). Check 5 ` +
+        `is satisfied by a corpus whose headers render no appropriation at ` +
+        `all. Re-measure the population from programs.json (rows whose pe_bli ` +
+        `has siblings in another account); do not lower the floor`,
+    );
+    return;
+  }
 
   notes.push(
     `leg n: ${splits.length} shared BLI code(s) checked; ` +
       `${membersWithAwards} member page(s) carry ${awardRows} award row(s) ` +
       `(floor ${MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS}/${MIN_SPLIT_AWARD_ROWS}), ` +
-      `no PIID shared between siblings, no stub rendering awards`,
+      `no PIID shared between siblings, no stub rendering awards; ` +
+      `${accountSplitPagesChecked} account-split member page(s) name their own ` +
+      `appropriation (floor ${MIN_ACCOUNT_SPLIT_MEMBER_PAGES}), none its sibling's; ` +
+      `withheld concentration said wherever the sidecar withholds it`,
   );
 }
 
