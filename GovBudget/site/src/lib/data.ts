@@ -2675,10 +2675,17 @@ export interface GaoAssessment {
   assessment_type: string;
   common_name: string;
   description: string;
+  /** The WSAA edition this assessment is printed in (2025, 2024, 2023). */
+  edition_year: number;
   gao_program: string;
+  /** null for the assessment a person ratified; otherwise the product number
+   *  of the ratified newer assessment this older edition is chained to. */
+  inherited_from: string | null;
   pdf_page: number;
   pdf_url: string;
   product_number: string;
+  /** Normalized common name — the identity that links editions. */
+  program_key: string;
   released: string;
   report_page: number;
   report_title: string;
@@ -2703,6 +2710,8 @@ export interface GaoCrosswalkStats {
   accepted: number;
   adjudicated: number;
   assessments_ingested: number;
+  editions_ingested: number;
+  inherited_items: number;
   pages_with_findings: number;
   precision_pct: number;
   rejected: number;
@@ -2710,8 +2719,17 @@ export interface GaoCrosswalkStats {
   rendered_items: number;
 }
 
+export interface GaoEditionSource {
+  edition_year: number;
+  pdf_url: string;
+  product_number: string;
+  released: string;
+  report_title: string;
+  report_url: string;
+}
+
 interface GaoProgramFindingsFile {
-  source: { product_number: string; report_url: string }[] | null;
+  source: GaoEditionSource[] | null;
   by_slug: Record<string, GaoProgramFindings>;
   stats: GaoCrosswalkStats | null;
 }
@@ -2735,6 +2753,17 @@ function gaoProgramFindingsFile(): GaoProgramFindingsFile | null {
 /** Crosswalk precision measurement, for /methodology/. Never a literal. */
 export function getGaoCrosswalkStats(): GaoCrosswalkStats | null {
   return gaoProgramFindingsFile()?.stats ?? null;
+}
+
+/**
+ * The WSAA editions actually ingested, newest first — the sidecar's own
+ * `source[]`, so /methodology/ names editions it can prove it read rather
+ * than a list someone typed (ROADMAP #30, "and its predecessors").
+ */
+export function getGaoEditions(): GaoEditionSource[] {
+  return [...(gaoProgramFindingsFile()?.source ?? [])].sort(
+    (a, b) => b.edition_year - a.edition_year,
+  );
 }
 
 /**

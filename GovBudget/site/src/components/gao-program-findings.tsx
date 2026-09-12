@@ -9,7 +9,7 @@
  * program-specific GAO reports that volume cites.  It renders ABOVE the
  * department note and takes the emphasis the department note gave up.
  *
- * Three deliberate choices:
+ * Four deliberate choices:
  *
  * 1. **Not the amber caution register.**  `notes.tsx` reserves amber for
  *    "this NUMBER needs care".  GAO assessing a program is not by itself an
@@ -27,10 +27,18 @@
  *    is one budget line that funds it.  Saying so is the difference between
  *    a true statement and an implied finding against a line GAO never
  *    examined.
+ *
+ * 4. **Editions stack under the ratified one.**  A person ratified the
+ *    CURRENT edition's assessment for this page.  Earlier editions of the
+ *    same assessment (same GAO common name and service, linked at ingestion)
+ *    render beneath it, collapsed, each with its own verbatim quote, its own
+ *    citation and its own edition named in the sentence — so no quote can be
+ *    read as newer than it is.  Inheritance runs backwards only; gate 21 leg
+ *    h8 refuses an older edition with no ratified anchor on the page.
  */
 
 import Link from "next/link";
-import type { GaoProgramFindings } from "@/lib/data";
+import type { GaoAssessment, GaoProgramFindings } from "@/lib/data";
 
 function releasedLabel(iso: string): string {
   // "2025-06" or "2024-05-16" -> "June 2025" / "May 16, 2024"
@@ -52,6 +60,53 @@ function article(word: string): string {
   return /^[aeiou]/i.test(word) ? "an" : "a";
 }
 
+function AssessmentItem({ a }: { a: GaoAssessment }) {
+  return (
+    <div
+      data-gao-item="assessment"
+      data-gao-product={a.product_number}
+      data-gao-program={a.gao_program}
+      data-gao-common={a.common_name}
+      data-gao-service={a.service}
+      data-gao-edition={a.edition_year}
+      data-gao-inherited-from={a.inherited_from ?? undefined}
+      className="mt-3"
+    >
+      <p className="text-sm text-foreground">
+        GAO assessed{" "}
+        <span data-gao-program-name className="font-semibold">
+          {a.gao_program}
+        </span>{" "}
+        in its {releasedLabel(a.released)} Weapon Systems Annual Assessment,
+        as {article(a.service)} {a.service} {a.assessment_type} program.
+      </p>
+      <blockquote
+        data-gao-quote
+        className="mt-2 border-l-2 border-foreground/25 pl-3 text-sm text-foreground/85"
+      >
+        &ldquo;{a.description}&rdquo;
+      </blockquote>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        <a
+          href={a.report_url}
+          data-gao-cite
+          className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+          title={a.report_title}
+        >
+          {a.product_number}
+        </a>
+        , p. {a.report_page} —{" "}
+        <a
+          href={`${a.pdf_url}#page=${a.pdf_page}`}
+          className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+        >
+          the assessment page in GAO&rsquo;s {a.edition_year} report
+        </a>
+      </p>
+    </div>
+  );
+}
+
 export function GaoProgramFindingsBlock({
   findings,
   programTitle,
@@ -59,6 +114,13 @@ export function GaoProgramFindingsBlock({
   findings: GaoProgramFindings;
   programTitle: string;
 }) {
+  const anchors = findings.assessments.filter((a) => !a.inherited_from);
+  const priorsOf = (a: GaoAssessment) =>
+    findings.assessments.filter(
+      (p) =>
+        p.inherited_from === a.product_number &&
+        p.program_key === a.program_key,
+    );
   const total = findings.assessments.length + findings.reports.length;
   return (
     <div
@@ -70,48 +132,31 @@ export function GaoProgramFindingsBlock({
         GAO oversight of this program
       </p>
 
-      {findings.assessments.map((a) => (
-        <div
-          key={`${a.product_number}:${a.common_name}`}
-          data-gao-item="assessment"
-          data-gao-product={a.product_number}
-          data-gao-program={a.gao_program}
-          className="mt-3"
-        >
-          <p className="text-sm text-foreground">
-            GAO assessed{" "}
-            <span data-gao-program-name className="font-semibold">
-              {a.gao_program}
-            </span>{" "}
-            in its {releasedLabel(a.released)} Weapon Systems Annual
-            Assessment, as {article(a.service)} {a.service}{" "}
-            {a.assessment_type} program.
-          </p>
-          <blockquote
-            data-gao-quote
-            className="mt-2 border-l-2 border-foreground/25 pl-3 text-sm text-foreground/85"
-          >
-            &ldquo;{a.description}&rdquo;
-          </blockquote>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            <a
-              href={a.report_url}
-              data-gao-cite
-              className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-              title={a.report_title}
-            >
-              {a.product_number}
-            </a>
-            , p. {a.report_page} —{" "}
-            <a
-              href={`${a.pdf_url}#page=${a.pdf_page}`}
-              className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-            >
-              the assessment page in GAO&rsquo;s report
-            </a>
-          </p>
-        </div>
-      ))}
+      {anchors.map((a) => {
+        const priors = priorsOf(a);
+        return (
+          <div key={`${a.product_number}:${a.common_name}`}>
+            <AssessmentItem a={a} />
+            {priors.length > 0 && (
+              <details
+                data-gao-prior-editions={priors.length}
+                className="mt-2 border-l border-border pl-3"
+              >
+                <summary className="cursor-pointer text-xs text-muted-foreground">
+                  Earlier editions of the same assessment:{" "}
+                  {priors.map((p) => releasedLabel(p.released)).join(" · ")}
+                </summary>
+                {priors.map((p) => (
+                  <AssessmentItem
+                    key={`${p.product_number}:${p.common_name}`}
+                    a={p}
+                  />
+                ))}
+              </details>
+            )}
+          </div>
+        );
+      })}
 
       {findings.reports.length > 0 && (
         <div className="mt-3">

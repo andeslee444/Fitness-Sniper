@@ -25,9 +25,11 @@
  *     end silently: it carries the [data-fy2026-absent] note, and no other
  *     page does (ROADMAP #32a) — see leg g's own block at the bottom.
  * (h) A GAO program-level finding renders only where a human ratified the
- *     crosswalk, quotes GAO verbatim, cites its own report, and sits above
- *     the department note; every other page states the absence (ROADMAP #30)
- *     — see leg h's own block at the bottom.
+ *     crosswalk, quotes GAO verbatim, cites its own report and its own WSAA
+ *     edition, and sits above the department note; an earlier edition stands
+ *     only on a ratified anchor for the same program on the same page; every
+ *     other page states the absence (ROADMAP #30) — see leg h's own block at
+ *     the bottom.
  * (i) The organization a program page names is an org CODE, and the three
  *     things that key off it actually happen: the header's own "Organization
  *     code {X}" claim is true, X links to its agency page when one exists,
@@ -1856,6 +1858,15 @@ export function runNarrativeSuccessorLeg({
 //   h7. The program tier renders ABOVE the department note, which is the
 //       placement #30 asked for and the reason the department note was
 //       allowed to give up its emphasis.
+//   h8. EDITIONS (#30 "and its predecessors"). Every rendered assessment is
+//       stamped with its edition, that stamp equals the ingested edition of
+//       its product, and the sentence a reader sees names it. An item whose
+//       (product, slug) no person ratified may render ONLY as an inherited
+//       older edition: its anchor is ratified on this page, is rendered on
+//       this page, is the same program (same normalized common name, same
+//       service family), and is NEWER — inheritance never flows forward and
+//       never crosses a rename or a service. Inherited items are exempt from
+//       h5 because h8 binds them to an anchor that already passed it.
 //
 // Non-vacuity is structural rather than a pinned literal: the leg fails if
 // the ratified set is empty, and the population it checks IS the ratified
@@ -1908,6 +1919,78 @@ function readCsvRows(text) {
   );
 }
 
+/**
+ * Leg h8 over one page's rendered GAO assessment items (see the contract
+ * comment above).  Pure: items are `{kind, product, program, common,
+ * service, editionYear, inheritedFrom, text}` read off the DOM by the
+ * caller; `ratified` is the "<product> <slug>" set; `editionYearByProduct`
+ * maps each ingested WSAA edition to its year.
+ */
+export function checkGaoEditionItems({
+  slug,
+  items,
+  ratified,
+  editionYearByProduct,
+}) {
+  const errors = [];
+  const key = (s) => gaoTokens(s).join("");
+  const family = (svc) => (GAO_SERVICE_ORGS[svc] ?? [svc])[0];
+  const anchors = items.filter(
+    (it) => it.kind === "assessment" && !it.inheritedFrom,
+  );
+  for (const it of items) {
+    if (it.kind !== "assessment") continue;
+    const at = `program-skeleton(h8): /program/${slug}/ GAO ${it.product} ("${it.program}")`;
+    const want = editionYearByProduct.get(it.product);
+    if (want === undefined) {
+      errors.push(
+        `${at} is not an ingested Weapon Systems Annual Assessment edition`,
+      );
+      continue;
+    }
+    if (it.editionYear !== want) {
+      errors.push(
+        `${at} stamps edition ${it.editionYear}; the ingested edition of ` +
+          `${it.product} is ${want}`,
+      );
+    } else if (!it.text.includes(`${want} Weapon Systems Annual Assessment`)) {
+      errors.push(
+        `${at} does not name its edition in the sentence a reader sees ` +
+          `(expected "${want} Weapon Systems Annual Assessment")`,
+      );
+    }
+    if (!it.inheritedFrom) continue;
+    if (!ratified.has(`${it.inheritedFrom} ${slug}`)) {
+      errors.push(
+        `${at} is inherited from ${it.inheritedFrom}, which no ratified ` +
+          `crosswalk places on this page`,
+      );
+      continue;
+    }
+    const anchor = anchors.find(
+      (a) =>
+        a.product === it.inheritedFrom &&
+        key(a.common) === key(it.common) &&
+        family(a.service) === family(it.service),
+    );
+    if (!anchor) {
+      errors.push(
+        `${at} is inherited from ${it.inheritedFrom} but no rendered anchor ` +
+          `on this page is the same program (same common name and service family)`,
+      );
+      continue;
+    }
+    const anchorYear = editionYearByProduct.get(anchor.product);
+    if (!(want < anchorYear)) {
+      errors.push(
+        `${at} (edition ${want}) inherits from edition ${anchorYear} — ` +
+          `inheritance flows from a newer ratified edition to older ones only`,
+      );
+    }
+  }
+  return errors;
+}
+
 function runGaoProgramLeg({ errors, notes, sidecars }) {
   const sidecarPath = path.join(jsonDir, "gao_program_findings.json");
   if (!fs.existsSync(GAO_SEED) || !fs.existsSync(sidecarPath)) {
@@ -1954,6 +2037,18 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
       serviceFor.set(`${a.product_number} ${a.gao_program}`, a.service);
     }
   }
+  const editionYearByProduct = new Map(
+    (side.source ?? [])
+      .filter((e) => Number.isFinite(Number(e.edition_year)))
+      .map((e) => [e.product_number, Number(e.edition_year)]),
+  );
+  if (editionYearByProduct.size === 0) {
+    errors.push(
+      "program-skeleton(h8): gao_program_findings.json source[] carries no " +
+        "edition_year — re-run `oversight gao-programs` and export-site",
+    );
+    return;
+  }
 
   // ── corpus title statistics for h5 ───────────────────────────────────────
   const programs = readJson(path.join(jsonDir, "programs.json"));
@@ -1977,6 +2072,8 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
   const badCite = { n: 0 };
   const badService = { n: 0 };
   const badCorroboration = { n: 0 };
+  const badEdition = { n: 0 };
+  let inheritedRendered = 0;
   const say = (bucket, msg) => {
     bucket.n++;
     if (bucket.n <= 5) errors.push(msg);
@@ -2040,15 +2137,30 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
     const pageOrg = agencyHref.split("/")[2] ?? "";
     const pageTitleTokens = new Set(gaoTokens(titleBySlug.get(slug) ?? ""));
 
+    const pageItems = [];
     for (const item of block.querySelectorAll("[data-gao-item]")) {
       const product = item.getAttribute("data-gao-product") ?? "";
       const program = item.getAttribute("data-gao-program") ?? "";
+      const inheritedFrom = item.getAttribute("data-gao-inherited-from") || null;
       rendered++;
+      if (inheritedFrom) inheritedRendered++;
+      pageItems.push({
+        kind: item.getAttribute("data-gao-item"),
+        product,
+        program,
+        common: item.getAttribute("data-gao-common") ?? "",
+        service: item.getAttribute("data-gao-service") ?? "",
+        editionYear: Number(item.getAttribute("data-gao-edition")),
+        inheritedFrom,
+        text: item.text.replace(/\s+/g, " ").trim(),
+      });
       const pairKey = `${product} ${slug}`;
       seenPairs.add(pairKey);
 
-      // h1 — nothing renders that a person did not ratify.
-      if (!ratified.has(pairKey)) {
+      // h1 — nothing renders that a person did not ratify. An inherited
+      // older edition is not in the ratified set by construction; h8 below
+      // decides whether its anchor entitles it to be here.
+      if (!ratified.has(pairKey) && !inheritedFrom) {
         say(
           unratified,
           `program-skeleton(h1): /program/${slug}/ renders GAO ${product} ` +
@@ -2103,7 +2215,9 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
         }
       }
 
-      // h5 — corroboration the matcher never used.
+      // h5 — corroboration the matcher never used. Inherited items are bound
+      // to their anchor by h8 instead (the anchor already passed h5).
+      if (inheritedFrom) continue;
       const shared = [...new Set(gaoTokens(program))].filter(
         (t) => pageTitleTokens.has(t) && (docFreq.get(t) ?? 0) <= rareLimit,
       );
@@ -2115,6 +2229,15 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
             `common — the crosswalk is not corroborated by the page's own title`,
         );
       }
+    }
+
+    for (const msg of checkGaoEditionItems({
+      slug,
+      items: pageItems,
+      ratified,
+      editionYearByProduct,
+    })) {
+      say(badEdition, msg);
     }
   }
 
@@ -2140,6 +2263,7 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
     [badCite, "h3 citation mismatch"],
     [badService, "h4 service mismatch"],
     [badCorroboration, "h5 uncorroborated crosswalk"],
+    [badEdition, "h8 edition/inheritance"],
   ]) {
     if (bucket.n > 5) {
       errors.push(
@@ -2162,11 +2286,12 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
   }
 
   notes.push(
-    `leg h: ${rendered} GAO item(s) on ${pagesWithBlock} program page(s), each ` +
-      `traced to a verdict-"y" row of ${ratified.size} in ` +
-      `data-seeds/gao_program_xwalk.csv; ${sidecars.size - pagesWithBlock} ` +
-      `other page(s) state that no program-specific GAO finding for that line ` +
-      `is ingested ✓`,
+    `leg h: ${rendered} GAO item(s) on ${pagesWithBlock} program page(s), ` +
+      `${inheritedRendered} inherited from an earlier edition, each traced ` +
+      `to a verdict-"y" row of ${ratified.size} in ` +
+      `data-seeds/gao_program_xwalk.csv (${editionYearByProduct.size} ` +
+      `editions); ${sidecars.size - pagesWithBlock} other page(s) state ` +
+      `that no program-specific GAO finding for that line is ingested ✓`,
   );
 }
 
