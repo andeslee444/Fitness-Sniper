@@ -82,73 +82,127 @@ _DROPPED_CLAIMS_ATTR_RE = re.compile(r'data-dossier-dropped-claims="(\d+)"')
 
 
 
-def _has_no_players_evidence(duckdb_path, pe_bli: str) -> bool:
-    """True iff the warehouse carries nothing a 'players' claim could cite.
+def _page_member(ident, pe_bli: str, page_slug: str):
+    """The (account, organization) of the dim_programs row whose PAGE is
+    `page_slug`, or None when this page's identity cannot be resolved.
+
+    An ordinary program is its own single member and its slug is the bare
+    pe_bli. A split key's member is found by re-deriving each member's slug
+    with the exporter's own rule (_ProgramIdentity.slug — the one
+    classification shared with both link loaders, ROADMAP #83), never by
+    parsing the slug's suffix: the axis that tells a shared code's members
+    apart is that rule's answer, not a string convention.
+    """
+    if not ident.is_split(pe_bli):
+        return (None, None) if page_slug == pe_bli else None
+    for account, account_title, organization, _has_detail in ident.accounts(pe_bli):
+        if ident.slug(pe_bli, account, account_title, organization) == page_slug:
+            return (account, organization)
+    return None
+
+
+def _concentration_is_this_members(con, ident, pe_bli, account, organization) -> bool:
+    """Mirrors export_site._concentration_for's member test.
+
+    fct_program_concentration aggregates by BARE pe_bli, so on a shared code
+    its figure describes the UNION of both members' links. That figure is one
+    member's own exactly when every link on the code carries that member's
+    key; when both members carry links it is neither's, the export withholds
+    it from both pages (ROADMAP #82), and it is therefore not this page's to
+    cite either. Non-split pe_blis take the bare row unchanged.
+    """
+    if not con.execute(
+        "select count(*) from fct_program_concentration where pe_bli = ?", [pe_bli]
+    ).fetchone()[0]:
+        return False
+    if not ident.is_split(pe_bli):
+        return True
+    linked = {
+        ident.split_key(pe_bli, a, o)
+        for a, o in con.execute(
+            "select distinct account, organization from fct_budget_to_awards"
+            " where pe_bli = ?",
+            [pe_bli],
+        ).fetchall()
+    }
+    if len(linked) != 1:
+        return False
+    return ident.split_key(pe_bli, account, organization) in linked
+
+
+def _has_no_players_evidence(duckdb_path, pe_bli: str, page_slug: str | None = None) -> bool:
+    """True iff the warehouse carries nothing THIS PAGE could cite in 'players'.
 
     'players' draws on award recipients, lobbying mentions and supplier
-    concentration. When all three are empty for a program, an empty players
-    section is the honest result, not a generation failure. Queried live —
-    never a hardcoded pe_bli list, so a program that later acquires awards
-    stops qualifying automatically.
+    concentration. When all three are empty at this page's identity, an empty
+    players section is the honest result, not a generation failure. Queried
+    live — never a hardcoded pe_bli list, so a program that later acquires
+    awards stops qualifying automatically.
+
+    PAGE-KEYED, not bare-keyed (chain-B fix 2 round 2, 2026-09-12 — the #82
+    bare-key/page-key class). A shared BLI code's two members are two pages
+    with two different answers, and the bare query answered the union: all 50
+    of 3050's crosswalk links sit on the OPN member's account, yet the bare
+    count denied the exception to 3050-SCN, whose own page publishes none of
+    them and has nothing whatever to name. Each mart is asked the question
+    its own key can answer:
+
+      - fct_budget_to_awards carries `account` and `organization`, so a split
+        member is asked only about its own links — the same split_key
+        export_site._awards_for builds a member's Related Awards table with.
+      - fct_program_concentration is keyed by the bare pe_bli, so its figure
+        counts as this member's only under _concentration_for's own member
+        test (_concentration_is_this_members above).
+      - fct_program_lobbying is keyed by the bare pe_bli AND published whole
+        on BOTH members' sidecars (export_site's program_details "mentions"
+        block reads mentions_by_pe[pe_bli]), so a mention on a shared code is
+        citable at either member's page identity and counts for both. No
+        member test is applied to it: that would grant the exception to a
+        page that renders the very rows it is being excused for not citing.
+
+    Anything unknown — no duckdb, a page identity that does not resolve, a
+    missing mart, a query error — returns False. The exception must be
+    earned, never assumed.
     """
     if duckdb_path is None:
         return False
+    page_slug = page_slug or pe_bli
     try:
         import duckdb
 
+        from govbudget.export_site import _fetch_program_identity
+
         con = duckdb.connect(str(duckdb_path), read_only=True)
         try:
-            for table in (
-                "fct_budget_to_awards",
-                "fct_program_lobbying",
-                "fct_program_concentration",
+            ident = _fetch_program_identity(con)
+            member = _page_member(ident, pe_bli, page_slug)
+            if member is None:
+                return False
+            account, organization = member
+            awards_sql = "select count(*) from fct_budget_to_awards where pe_bli = ?"
+            params: list = [pe_bli]
+            if ident.is_account_split(pe_bli):
+                awards_sql += " and account is not distinct from ?"
+                params.append(account)
+            elif ident.is_org_split(pe_bli):
+                awards_sql += " and organization is not distinct from ?"
+                params.append(organization)
+            if con.execute(awards_sql, params).fetchone()[0]:
+                return False
+            if con.execute(
+                "select count(*) from fct_program_lobbying where pe_bli = ?", [pe_bli]
+            ).fetchone()[0]:
+                return False
+            if _concentration_is_this_members(
+                con, ident, pe_bli, account, organization
             ):
-                n = con.execute(
-                    f"select count(*) from {table} where pe_bli = ?", [pe_bli]
-                ).fetchone()[0]
-                if n:
-                    return False
+                return False
             return True
         finally:
             con.close()
     except Exception:
         # Unknown -> not granted. The exception must be earned, never assumed.
         return False
-
-
-# The exported page sidecar field that says the SITE withholds this page's
-# contractor attribution (export_site._concentration_withheld, ROADMAP #82).
-# It is a boolean on program_details/{slug}.json's `summary` block, keyed by
-# PAGE identity — the same slug the dossier file is named for — because a
-# shared code's two members are two pages with two different answers.
-_WITHHELD_MARKER = "concentration_withheld"
-
-
-def _concentration_withheld_on_page(program_details_dir, slug: str) -> bool:
-    """True iff the exported sidecar for THIS page carries the shared-code
-    withholding marker (chain-B fix 2, 2026-09-12).
-
-    Read from the export, not from a slug list: `_concentration_withheld` is
-    recomputed from the warehouse on every export, so a member that stops
-    being withheld — its sibling loses its links, the mart row disappears —
-    stops qualifying on the next export with no edit here. A page whose
-    sidecar is missing, unreadable, malformed or simply says False does not
-    qualify; with no program_details_dir supplied at all the exception cannot
-    be granted, exactly as _built_page_discloses_drop behaves without a build.
-    """
-    if program_details_dir is None:
-        return False
-    path = Path(program_details_dir) / f"{slug}.json"
-    if not path.exists():
-        return False
-    try:
-        doc = _load_json(path)
-    except (OSError, ValueError):
-        return False
-    summary = doc.get("summary") if isinstance(doc, dict) else None
-    if not isinstance(summary, dict):
-        return False
-    return summary.get(_WITHHELD_MARKER) is True
 
 
 def _built_page_discloses_drop(built_site_dir: Path, pe_bli: str) -> bool:
@@ -199,7 +253,6 @@ def dossier_gate(
     warehouse_floor: float = WAREHOUSE_FLOOR,
     built_site_dir: str | Path | None = None,
     duckdb_path: str | Path | None = None,
-    program_details_dir: str | Path | None = None,
 ) -> dict:
     """The cited-or-absent dossier gate. Returns {ok, checks, totals}.
 
@@ -211,12 +264,6 @@ def dossier_gate(
     CLI path (run right after `dossiers collect`, before any site build
     exists) — with no build to check, the exception cannot be granted at
     all, and an empty required section fails exactly as it always has.
-
-    program_details_dir (optional, e.g. data/site/json/program_details): the
-    exported page sidecars, read ONLY to answer required_sections's
-    shared-code withholding exception for `players` (see below). Omitted, as
-    built_site_dir is, in the standalone `dossiers gate` CLI path — with no
-    export to read, that exception cannot be granted either.
     """
     dossier_dir = Path(dossier_dir)
     built_site_dir = Path(built_site_dir) if built_site_dir is not None else None
@@ -247,7 +294,7 @@ def dossier_gate(
     structure_errors: list[str] = []
     unresolved: list[dict] = []
     empty_required: list[str] = []
-    withheld_exempt: list[str] = []
+    no_evidence_exempt: list[str] = []
     total_claims = 0
     warehouse_claims = 0
 
@@ -314,47 +361,33 @@ def dossier_gate(
                     and built_site_dir is not None
                     and _built_page_discloses_drop(built_site_dir, pe_bli)
                 )
-                # Sprint E (#67): a SECOND legitimate emptiness, distinct from
+                # Sprint E (#67), page-keyed by chain-B fix 2 round 2
+                # (2026-09-12): a SECOND legitimate emptiness, distinct from
                 # the dropped-claims one above. 'players' can only cite award,
-                # lobbying or supplier-concentration data; a program that has
-                # NONE of those in the warehouse has no players to name, and
-                # writing some would be fabrication — the one thing this
-                # project refuses outright. Verified on the two lines the key
-                # split just added: 3010 (LPD Flight II) and 3050 (Medium
-                # Landing Ship) each carry 0 awards, 0 lobbying rows and 0
-                # concentration rows, so their generated dossiers correctly
-                # produced zero players claims with dropped_claims = 0.
+                # lobbying or supplier-concentration data; a page that has
+                # NONE of those to cite has no players to name, and writing
+                # some would be fabrication — the one thing this project
+                # refuses outright.
+                #
+                # The question is asked at THIS PAGE's identity, not at the
+                # bare pe_bli (_has_no_players_evidence). A shared BLI code's
+                # two members are two pages: 3050's 50 crosswalk links all
+                # carry the OPN member's account, so the bare count denied
+                # the exception to 3050-SCN — a page that publishes no award,
+                # no lobbying mention and no concentration figure of its own,
+                # and therefore has nothing whatever to cite. That bare-key
+                # /page-key confusion is the #82 class.
+                #
                 # This is NOT a loosening: it grants the exception only when
                 # the warehouse itself is queried and confirms there is
-                # nothing to cite. A section empty for any other reason still
-                # fails exactly as before.
+                # nothing THIS PAGE could cite. A section empty for any other
+                # reason still fails exactly as before — including a member
+                # that does publish its own links (3010-SCN publishes five),
+                # whose empty players section is a real content gap.
                 if not disclosed and section == "players":
-                    disclosed = _has_no_players_evidence(duckdb_path, pe_bli)
-                # chain-B fix 2 (2026-09-12): a THIRD honest emptiness, for
-                # 'players' alone. Sprint E's clause above asks the warehouse
-                # whether anything EXISTS to cite. This one asks the export
-                # whether the site PUBLISHES it: on a shared-code collision
-                # member whose union concentration figure describes neither
-                # member, `_concentration_withheld` withholds the contractor
-                # attribution from the page (ROADMAP #82, rendered as
-                # data-who-withheld="shared-code"). A players section there
-                # would print on the page precisely the attribution the page
-                # declines to make — so empty is the honest state, and the
-                # only one consistent with what the reader is shown.
-                #
-                # Keyed on the MARKER at this dossier's page identity
-                # (`page_slug`, the same slug `export_site.slug_index` keys
-                # named_primes and lobbied_by by), never on a slug list: the
-                # marker is recomputed from the warehouse on every export.
-                # Scoped to 'players' because it is the only section whose
-                # content is contractor attribution; every other empty
-                # required section fails exactly as before.
-                if not disclosed and section == "players":
-                    if _concentration_withheld_on_page(
-                        program_details_dir, page_slug
-                    ):
+                    if _has_no_players_evidence(duckdb_path, pe_bli, page_slug):
                         disclosed = True
-                        withheld_exempt.append(page_slug)
+                        no_evidence_exempt.append(page_slug)
                 if not disclosed:
                     empty_required.append(f"{pe_bli}: {section}")
             for i, claim in enumerate(claims):
@@ -409,14 +442,14 @@ def dossier_gate(
     checks["required_sections"] = {
         "ok": not empty_required,
         "empty": empty_required,
-        "withheld_exempt": withheld_exempt,
+        "no_evidence_exempt": no_evidence_exempt,
         "note": (
             "players exempted on "
-            f"{len(withheld_exempt)} page(s) (2026-09-12): "
-            f"{_WITHHELD_MARKER}=true in program_details/{{slug}}.json — the "
-            "site withholds this shared code's contractor attribution: "
-            + ", ".join(withheld_exempt)
-        ) if withheld_exempt else "",
+            f"{len(no_evidence_exempt)} page(s) (2026-09-12): the warehouse "
+            "carries no award, lobbying or concentration row at this page's "
+            "identity — nothing to cite: "
+            + ", ".join(no_evidence_exempt)
+        ) if no_evidence_exempt else "",
     }
     ratio = (warehouse_claims / total_claims) if total_claims else 0.0
     checks["warehouse_ratio"] = {

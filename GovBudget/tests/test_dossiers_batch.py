@@ -50,6 +50,7 @@ from govbudget.dossiers.batch import (
     submit,
     validate_dossier,
 )
+from govbudget.dossiers import gate as gate_module
 from govbudget.dossiers.gate import (
     dossier_gate,
     pre_batch_check,
@@ -922,6 +923,43 @@ class TestValidateDossier:
 
 
 @pytest.fixture()
+def split_key_duckdb(tmp_path):
+    """Production's 3050 shape: a shared BLI code (PE2) whose two dim_programs
+    rows differ by ACCOUNT, with every crosswalk link filed under ONE member
+    (OPN) and a bare-keyed concentration figure describing exactly those
+    links. PE is an ordinary single-member program with nothing at all.
+
+    Only the columns the gate's evidence query reads are defined — the real
+    marts are far wider; a narrower fixture would pass for the wrong reason
+    if a future query started reading a column this one lacks (it would raise,
+    and an unknown answer is never granted).
+    """
+    db = tmp_path / "split.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, account varchar,"
+                " account_title varchar, org varchar, exhibit_family varchar)")
+    con.execute("insert into dim_programs values (?,?,?,?,?)",
+                [PE, None, None, "DARPA", "rdte"])
+    con.execute("insert into dim_programs values (?,?,?,?,?)",
+                [PE2, "1611N", "Shipbuilding and Conversion, Navy", "N", "procurement"])
+    con.execute("insert into dim_programs values (?,?,?,?,?)",
+                [PE2, "1810N", "Other Procurement, Navy", "N", "procurement"])
+    con.execute("create table fct_budget_to_awards (pe_bli varchar,"
+                " account varchar, organization varchar, award_piid varchar)")
+    for piid in ("N0001", "N0002"):
+        con.execute("insert into fct_budget_to_awards values (?,?,?,?)",
+                    [PE2, "1810N", "N", piid])
+    con.execute("create table fct_program_lobbying (pe_bli varchar,"
+                " family_key varchar, evidence_kind varchar)")
+    con.execute("create table fct_program_concentration (pe_bli varchar,"
+                " hhi_all double)")
+    con.execute("insert into fct_program_concentration values (?,?)",
+                [PE2, 4373.59])
+    con.close()
+    return db
+
+
+@pytest.fixture()
 def gate_fixture(site_fixture):
     """Dossier files + the surrounding reference data for gate runs."""
     dossier_dir = site_fixture.tmp / "dossiers"
@@ -1122,123 +1160,142 @@ class TestGate:
         assert not res["checks"]["required_sections"]["ok"]
 
     # -----------------------------------------------------------------------
-    # SHARED-CODE WITHHOLDING EXCEPTION (chain-B fix 2, 2026-09-12). A THIRD
-    # legitimate emptiness for 'players' alone, beside the dropped-claims one
-    # and Sprint E's no-evidence-in-the-warehouse one: a shared-code collision
-    # member whose contractor attribution the SITE ITSELF withholds. The union
-    # concentration figure describes neither member, so the page publishes no
-    # contractor attribution at all (ROADMAP #82, `concentration_withheld`) —
-    # naming primes in the dossier's players section would put on the page the
-    # very attribution the page withholds. Proof-it-can-fail, three arms plus
-    # the two keying arms:
-    #   1. empty players, NO marker                      -> FAIL
-    #   2. empty players, marker on this page's sidecar  -> PASS
-    #   3. empty what_it_is, marker present              -> FAIL (players only)
-    #   4. the marker is read at the dossier's PAGE identity (slug), not the
-    #      bare pe_bli — the production case is slug-named dossiers
-    #   5. no program_details_dir supplied -> the exception cannot be granted
+    # NO-EVIDENCE EXCEPTION, PAGE-KEYED (Sprint E's arm, re-keyed by chain-B
+    # fix 2 round 2, 2026-09-12). 'players' can only cite award recipients,
+    # lobbying mentions or supplier concentration. A page with NONE of those
+    # to cite has no players to name — but the question has to be asked at
+    # the PAGE's identity, not at the bare pe_bli: a shared BLI code's two
+    # members are two pages, and the sibling's links are not this page's.
+    # The fixture is production's 3050 shape — every link on the shared code
+    # sits on the OPN member's account, the SCN member publishes none.
+    #   1. the member with nothing to cite            -> EXEMPT, named
+    #   2. its linked sibling, same warehouse         -> FAILS
+    #   3. the unit test of the keying itself, both ways + the bare stub
+    #   4. a lobbying mention on the shared code      -> FAILS on both
+    #      (mentions are bare-keyed and published on BOTH member pages)
+    #   5. a non-split program's own concentration row -> FAILS
+    #   6. no duckdb_path supplied                    -> cannot be granted
+    #   7. the exemption is players-only
     # -----------------------------------------------------------------------
 
-    def _empty_players(self, gate_fixture, pe=PE2):
-        path = gate_fixture.dossier_dir / f"{pe}.json"
-        doc = json.loads(path.read_text())
-        doc["dossier"]["players"]["claims"] = []
-        path.write_text(json.dumps(doc))
-        return path
-
     @staticmethod
-    def _write_marker(details_dir, slug, withheld):
-        (Path(details_dir) / f"{slug}.json").write_text(json.dumps({
-            "pe_bli": slug.split("-")[0],
-            "summary": {"concentration_withheld": withheld},
-        }))
-
-    def test_withheld_arm1_empty_players_without_the_marker_still_fails(
-        self, gate_fixture, site_fixture,
-    ):
-        """The sidecar exists and is readable but does NOT carry the
-        withholding marker — the ordinary empty-section defect, which must
-        still fail. This is the arm that proves the exception is earned."""
-        self._empty_players(gate_fixture)
-        details = site_fixture.site_json / "program_details"
-        self._write_marker(details, PE2, False)
-        res = _run_gate(gate_fixture, program_details_dir=details)
-        assert not res["checks"]["required_sections"]["ok"]
-        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
-        assert not res["checks"]["required_sections"]["withheld_exempt"]
-
-    def test_withheld_arm2_empty_players_with_the_marker_passes(
-        self, gate_fixture, site_fixture,
-    ):
-        """The exported page sidecar says this page's contractor attribution
-        is withheld for shared code, so an empty players section is the
-        honest state and the gate says so by name."""
-        self._empty_players(gate_fixture)
-        details = site_fixture.site_json / "program_details"
-        self._write_marker(details, PE2, True)
-        res = _run_gate(gate_fixture, program_details_dir=details)
-        assert res["checks"]["required_sections"]["ok"], (
-            res["checks"]["required_sections"])
-        assert res["checks"]["required_sections"]["withheld_exempt"] == [PE2]
-        assert "2026-09-12" in res["checks"]["required_sections"]["note"]
-        assert "concentration_withheld" in res["checks"]["required_sections"]["note"]
-        assert PE2 in res["checks"]["required_sections"]["note"]
-
-    def test_withheld_arm3_the_exemption_is_players_only(
-        self, gate_fixture, site_fixture,
-    ):
-        """The marker excuses the contractor section and nothing else: a
-        program whose concentration is withheld still has to say what it is.
-        Any other empty required section fails with the marker present."""
-        path = gate_fixture.dossier_dir / f"{PE2}.json"
-        doc = json.loads(path.read_text())
-        doc["dossier"]["what_it_is"]["claims"] = []
-        path.write_text(json.dumps(doc))
-        details = site_fixture.site_json / "program_details"
-        self._write_marker(details, PE2, True)
-        res = _run_gate(gate_fixture, program_details_dir=details)
-        assert not res["checks"]["required_sections"]["ok"]
-        assert f"{PE2}: what_it_is" in res["checks"]["required_sections"]["empty"]
-
-    def test_withheld_marker_is_read_at_the_dossiers_page_identity(
-        self, gate_fixture, site_fixture,
-    ):
-        """Production's withheld dossiers are SLUG-named ("3010-SCN.json"):
-        the sibling lookup above resolves the bare pe_bli to that file, and
-        the marker must be read at THAT page identity. A marker filed under
-        the bare pe_bli — the collision's disambiguation stub, a different
-        page — must not excuse the member's page."""
+    def _slug_dossier_with_empty_section(gate_fixture, slug, section="players"):
+        """Re-file PE2's dossier under a member SLUG (production's
+        "3010-SCN.json" shape, resolved by the gate's sibling lookup) with
+        one required section emptied."""
         src = gate_fixture.dossier_dir / f"{PE2}.json"
         doc = json.loads(src.read_text())
-        doc["dossier"]["players"]["claims"] = []
-        doc["slug"] = f"{PE2}-SCN"
-        (gate_fixture.dossier_dir / f"{PE2}-SCN.json").write_text(json.dumps(doc))
+        doc["dossier"][section]["claims"] = []
+        (gate_fixture.dossier_dir / f"{slug}.json").write_text(json.dumps(doc))
         src.unlink()
-        details = site_fixture.site_json / "program_details"
 
-        self._write_marker(details, PE2, True)        # the STUB, not the page
-        res = _run_gate(gate_fixture, program_details_dir=details)
-        assert not res["checks"]["required_sections"]["ok"]
-        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+    def test_no_evidence_exempts_the_member_with_nothing_to_cite(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """The unlinked member of a shared code: 0 awards on its own account,
+        0 lobbying rows on the code, and a bare-keyed concentration figure
+        that describes only its sibling's links. Nothing exists for a players
+        claim to cite, so empty is honest — and the gate names the page."""
+        self._slug_dossier_with_empty_section(gate_fixture, f"{PE2}-SCN")
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert rs["ok"], rs
+        assert rs["no_evidence_exempt"] == [f"{PE2}-SCN"]
+        assert "nothing to cite" in rs["note"]
+        assert f"{PE2}-SCN" in rs["note"]
 
-        self._write_marker(details, f"{PE2}-SCN", True)  # the member's page
-        res = _run_gate(gate_fixture, program_details_dir=details)
+    def test_no_evidence_does_not_exempt_the_linked_sibling(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """THE PROOF IT CAN FAIL, and the one that matters: same warehouse,
+        same shared code, but this member publishes the links. Its empty
+        players section is a real content gap and must still fail."""
+        self._slug_dossier_with_empty_section(gate_fixture, f"{PE2}-OPN")
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert not rs["ok"]
+        assert f"{PE2}: players" in rs["empty"]
+        assert rs["no_evidence_exempt"] == []
+
+    def test_the_evidence_query_is_page_keyed_not_bare_keyed(
+        self, split_key_duckdb,
+    ):
+        """The keying bug itself, at the unit: the bare pe_bli answers the
+        UNION of both members, so it denied the exception to a page that
+        publishes nothing. The bare key is also the disambiguation stub — not
+        a member page at all — and can never be granted."""
+        no_ev = gate_module._has_no_players_evidence
+        assert no_ev(split_key_duckdb, PE2, f"{PE2}-SCN") is True
+        assert no_ev(split_key_duckdb, PE2, f"{PE2}-OPN") is False
+        assert no_ev(split_key_duckdb, PE2) is False
+        assert no_ev(split_key_duckdb, PE2, f"{PE2}-NOPE") is False
+
+    def test_a_lobbying_mention_on_the_shared_code_denies_both_members(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """fct_program_lobbying is keyed by the bare pe_bli AND published
+        whole on both members' sidecars (export_site's program_details
+        "mentions"), so a mention on a shared code IS citable at either
+        member's page identity. No member test is applied to it — that would
+        excuse a page for not citing rows it actually renders."""
+        con = duckdb.connect(str(split_key_duckdb))
+        con.execute("insert into fct_program_lobbying values (?,?,?)",
+                    [PE2, "RAYTHEON", "pe_literal"])
+        con.close()
+        self._slug_dossier_with_empty_section(gate_fixture, f"{PE2}-SCN")
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert not rs["ok"]
+        assert f"{PE2}: players" in rs["empty"]
+
+    def test_a_non_split_programs_own_concentration_row_denies_the_exception(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """The member test applies to SHARED codes only. PE names one
+        program, so its bare-keyed concentration figure is its own and there
+        IS something to cite: empty players fails. Without that row (and with
+        no awards or lobbying) the same page is exempt — the pair proves the
+        row is what decides."""
+        path = gate_fixture.dossier_dir / f"{PE}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        path.write_text(json.dumps(doc))
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
         assert res["checks"]["required_sections"]["ok"], (
             res["checks"]["required_sections"])
-        assert res["checks"]["required_sections"]["withheld_exempt"] == [
-            f"{PE2}-SCN"]
 
-    def test_withheld_without_program_details_dir_cannot_be_granted(
-        self, gate_fixture, site_fixture,
+        con = duckdb.connect(str(split_key_duckdb))
+        con.execute("insert into fct_program_concentration values (?,?)",
+                    [PE, 2500.0])
+        con.close()
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert not rs["ok"]
+        assert f"{PE}: players" in rs["empty"]
+
+    def test_no_duckdb_path_cannot_grant_the_no_evidence_exception(
+        self, gate_fixture,
     ):
-        """Same discipline as built_site_dir: with no exported sidecars to
-        read, the exception cannot be granted at all and the unconditional
-        failure applies. The marker must be verified, never assumed."""
-        self._empty_players(gate_fixture)
-        self._write_marker(site_fixture.site_json / "program_details", PE2, True)
-        res = _run_gate(gate_fixture)  # no program_details_dir kwarg
-        assert not res["checks"]["required_sections"]["ok"]
-        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+        """Same discipline as built_site_dir: with no warehouse to query the
+        exception cannot be granted at all, and the unconditional failure
+        applies. Absence is never assumed."""
+        self._slug_dossier_with_empty_section(gate_fixture, f"{PE2}-SCN")
+        res = _run_gate(gate_fixture)  # no duckdb_path kwarg
+        rs = res["checks"]["required_sections"]
+        assert not rs["ok"]
+        assert f"{PE2}: players" in rs["empty"]
+
+    def test_the_no_evidence_exception_is_players_only(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """A page with no contractor evidence still has to say what it is:
+        every other empty required section fails exactly as before."""
+        self._slug_dossier_with_empty_section(
+            gate_fixture, f"{PE2}-SCN", section="what_it_is")
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert not rs["ok"]
+        assert f"{PE2}: what_it_is" in rs["empty"]
 
     def test_missing_dossier_file_fails(self, gate_fixture):
         (gate_fixture.dossier_dir / f"{PE2}.json").unlink()
