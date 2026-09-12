@@ -443,3 +443,22 @@ describe("gate 24 leg o — the High tier's own census (R-6c-4)", () => {
     expect(errors.join("\n")).toMatch(/site_meta.link_adjudication.high is inverted/);
   });
 });
+
+describe("gate 24 leg o — a block that predates measured_on", () => {
+  // The page's guard requires `measured_on`, so a pre-fix-round artifact
+  // renders NO passage while the block still carries coverage. Without this
+  // branch the leg reports "the block has coverage and nothing renders",
+  // which sends the reader looking at the page instead of the export.
+  it("names the stale artifact rather than blaming the page", () => {
+    const block = { ...LIVE_META.link_adjudication };
+    delete block.measured_on;
+    const { errors } = run({
+      siteMeta: { link_adjudication: block },
+      passageText: null,
+      highText: null,
+    });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/no `measured_on`/);
+    expect(errors[0]).toMatch(/Re-run export-site; do not re-date the counts by `as_of`/);
+  });
+});

@@ -2609,6 +2609,18 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     errors.push("leg o: built /methodology/ missing");
     return;
   }
+  // A block exported before `measured_on` existed cannot date its own census,
+  // so the page renders no passage at all — which would otherwise surface
+  // below as the much less useful "the block has coverage and nothing renders".
+  if (typeof block.measured_on !== "string") {
+    errors.push(
+      "leg o: site_meta.link_adjudication carries coverage but no " +
+        "`measured_on` — the artifact predates the field that dates the " +
+        "census (fix round 1, C1), so /methodology/ renders nothing for it. " +
+        "Re-run export-site; do not re-date the counts by `as_of`",
+    );
+    return;
+  }
   if (!passageExists) {
     errors.push(
       "leg o (/methodology/): site_meta.link_adjudication carries coverage " +
