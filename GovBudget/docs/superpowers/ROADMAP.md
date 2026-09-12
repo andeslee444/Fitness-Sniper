@@ -1262,6 +1262,38 @@ docs/superpowers/ROADMAP.md`.
    Confirmed OPEN by `c7293e5` (2026-08-12), whose blockquote below says
    closing it "would be the false-completion this ledger keeps catching
    elsewhere".
+
+   **Status: CLOSED — 2026-09-11 (owner decision 2026-09-05: build it).** The
+   third clause is delivered, and deliberately NOT inside `dim_geography`,
+   which still selects exactly `pop_state, pop_district, count(*),
+   sum(obligation)`: re-graining the all-award place-of-performance headline
+   would move every figure that reads it, so the breakdown is a purpose-built
+   pair of models instead (precedent #37/#51 — the fix belongs in a new model,
+   not a re-grained one). `dbt/models/marts/fct_district_programs_by_year.sql`
+   is grain `(pop_state, pop_district, pe_bli, fiscal_year)` — 1,984 rows, 153
+   districts, 203 program elements, FY2017–FY2026 — and
+   `fct_district_totals_by_year.sql` is its award-distinct companion at
+   `(pop_state, pop_district, fiscal_year)`, 924 rows. Both carry net AND gross
+   obligations because 53 of the 924 district-year cells are net-negative, and
+   the gross figure is summed at the TRANSACTION level (278 of the 924 cells
+   differ from the award-level formula — the fixture now pins which one is
+   published). `/district/{code}/` renders the year table off the second one,
+   every figure cited through a new derived surface `district_year`;
+   `assert_district_by_year_reconciles` pins both marts to their all-years
+   siblings at a one-cent tolerance and, since 2026-09-11, joins FULL OUTER so
+   a district that vanished from either mart is a violating row rather than an
+   invisible one; gate 9 leg f pins the rendered by-year sum to the page's own
+   headline with a non-vacuity floor (≥130 districts, ≥800 rows); and gate 24
+   leg r recomputes a deterministic 12-cell sample from the lake — never from
+   the mart under test — and checks it against both the sidecar and the
+   rendered figure. FY2026 is labelled partial on the page from
+   `site_meta.award_fy_range.max_partial`, derived not authored. Mart figures
+   measured 2026-09-10 and re-measured unchanged 2026-09-11, read-only against
+   the shipped warehouse; the page and both gate legs are proven by unit tests
+   and by that recompute, and the branch's export → build → verify chain is
+   what exercises them on a built site (it also re-measures the new
+   `/district/*/` page-weight entry, whose ceilings are this change's one
+   estimate).
 7. **FEC → CongressionalAddDetail chain** (money in → marks → money out) —
    post-5B; the J-book XML already carries the add elements.
 

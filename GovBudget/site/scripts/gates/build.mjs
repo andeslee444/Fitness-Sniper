@@ -410,6 +410,37 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,697 / 120,681 (/agency/N/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,842 / 142,829 (/program/0601102A/)" },
   { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "378,129 / 22,330 (/company/boeing/)" },
+  // NEW ENTRY 2026-09-10 (ROADMAP #6 — the by-year table). The district DETAIL
+  // class has never been weighed: this file's templated-class list covered
+  // /agency/*/, /program/*/, /company/*/ and /filing/*/, and /district/ only
+  // as the INDEX page above. A page class gaining a table is exactly when it
+  // should acquire a ceiling.
+  //
+  // BASELINE, taken with this file's own weigh() (zlib level 9) against the
+  // 2026-09-10 LIVE build at https://fiscalreceipts.com, BEFORE the by-year
+  // table existed — the three heaviest detail pages plus a mid-weight control:
+  //     /district/VA-11/  98,461 / 14,109   (19 programs — the heaviest)
+  //     /district/MO-01/  90,604 / 13,067   (17)
+  //     /district/CA-50/  89,829 / 13,148   (16)
+  //     /district/AZ-07/  74,690 / 12,158   (11)
+  // The table adds up to ten rows, one or two cited figures each with
+  // chip={false}, and their derived citations to the page's slice. These
+  // ceilings are an ESTIMATE at roughly +40% over the pre-change heaviest —
+  // deliberately generous, because the `measured` string below is NOT in the
+  // "raw / gzip" shape the annotation-drift leg parses, so that leg SKIPS this
+  // entry until the controller re-measures against a build that actually
+  // carries the table and rewrites the string in the normal form. That
+  // re-measure is a required step of this change, not an optional one.
+  {
+    label: "/district/*/ (heaviest)",
+    dir: "district",
+    maxRaw: 140_000,
+    maxGzip: 20_000,
+    measured:
+      "baseline /district/VA-11/ 98,461 raw / 14,109 gzip on the 2026-09-10 " +
+      "live build, BEFORE the by-year table — RE-MEASURE after the first build " +
+      "carrying it and rewrite this string as \"raw / gzip\"",
+  },
   // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
   // needed it, per this file's own rule -- not pre-emptively. Two changes
   // landed together: Wave 5's Navy ingestion gave 183 more programs a
