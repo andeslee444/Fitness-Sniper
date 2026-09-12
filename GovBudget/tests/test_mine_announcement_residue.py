@@ -25,7 +25,9 @@ from mine_announcement_residue import (  # scripts/ on sys.path via tests/confte
     chunk_records,
     collect_verdicts,
     has_deterministic_match,
+    lexicon_index_lines,
     normalize_service,
+    read_index_rows,
     record_key,
     select_residue,
 )
@@ -372,3 +374,170 @@ def test_collected_packets_are_a_bare_list_the_link_loader_can_iterate(tmp_path)
     # carries announcement_excerpt, never `text`.
     assert record_key({"article_id": "1", "text": "t"}) == ("1", "t")
     assert "text" not in loaded[0]
+
+
+# --- fix round 1: the index the lens copies from, and the collector's content
+# --- checks against it (rulings R-25-1, R-25-3).
+
+INDEX_N = "\n".join([
+    "name\tpe_bli\tlexicon_doc\tprogram_title",
+    "Triton\t0305220N\t601\tTRITON UAS",
+    "MQ-4C\t0305220N\t601\tTRITON UAS",
+]) + "\n"
+
+
+def _link(article_id, piid, **over):
+    """A proposal lens P + A + B would write for a record of _one_chunk()."""
+    prop = {"article_id": article_id, "piid": piid, "pe_bli": "0305220N",
+            "verdict": "link", "match_basis": "llm-alias", "program_name": "Triton",
+            "lexicon_doc": "601", "rationale": "…",
+            "refute_a": {"refuted": False, "reason": "holds"},
+            "refute_b": {"refuted": False, "reason": "holds"}}
+    prop.update(over)
+    return prop
+
+
+def _one_chunk(file="chunk_000_N.json", org="N", pairs=(("1", "P1"),)):
+    return {"file": file, "org": org, "announced_value": len(pairs),
+            "records": [dict(_rec(a, "t", [p], [1]), org=org, lake_piids=[p])
+                        for a, p in pairs]}
+
+
+def test_lexicon_index_omits_a_row_whose_lexicon_entry_has_no_doc_id():
+    """Ruling A7 makes a proposal with no lexicon_doc unpublishable, and the
+    rubric tells the lens to copy this column verbatim — so a row written as the
+    literal 'None' can only produce a packet whose published rationale reads
+    "J-book narrative owns it (None)". 314 of the first build's 6,409 rows were
+    that string (A 192 · N 83 · F 35 · DTRA 3 · DLA 1)."""
+    owned = [
+        {"name": "Triton", "pe_bli": "0305220N", "doc_id": "601"},
+        {"name": "Poseidon", "pe_bli": "0305220N", "doc_id": None},
+        {"name": "Sea Hunter", "pe_bli": "0604373N", "doc_id": ""},
+        {"name": "Reaper", "pe_bli": "0305205F", "doc_id": "712"},
+    ]
+    pe_orgs = {"0305220N": {"N"}, "0604373N": {"N"}, "0305205F": {"F"}}
+    lines = lexicon_index_lines(owned, "N", pe_orgs, {"0305220N": "TRITON UAS"})
+    assert lines[0] == "name\tpe_bli\tlexicon_doc\tprogram_title"
+    assert [l.split("\t")[0] for l in lines[1:]] == ["Triton"]
+    assert "None" not in "\n".join(lines)
+
+
+def test_read_index_rows_round_trips_what_the_queue_writes():
+    """The collector validates a proposal's (program_name, pe_bli, lexicon_doc)
+    against exactly the file the lens read, so the reader has to mirror the
+    writer. Names compare case-insensitively; the pe_bli and the doc id do not."""
+    owned = [{"name": "Triton", "pe_bli": "0305220N", "doc_id": "601"}]
+    lines = lexicon_index_lines(owned, "N", {"0305220N": {"N"}}, {"0305220N": "TRITON UAS"})
+    assert read_index_rows("\n".join(lines) + "\n") == {("triton", "0305220N", "601")}
+
+
+def test_chunk_records_ranks_by_top_record_even_when_another_chunk_sums_higher():
+    """Discriminates the rank rule: ranking by chunk SUM would invert these two.
+    On the real queue 83 of the 305 adjacent pairs carry a larger sum below a
+    smaller one, and the run protocol walks this order in rounds of 5."""
+    recs = [dict(_rec("A1", "t", ["P"], [150]), org="A", lake_piids=["P"]),
+            dict(_rec("N1", "t", ["P"], [100]), org="N", lake_piids=["P"]),
+            dict(_rec("N2", "t", ["P"], [99]), org="N", lake_piids=["P"])]
+    chunks = chunk_records(recs, size=2)
+    assert [c["file"] for c in chunks] == ["chunk_000_A.json", "chunk_001_N.json"]
+    # the sums are NOT monotonic — that is the point
+    assert [c["announced_value"] for c in chunks] == [150, 199]
+
+
+def test_collect_refuses_a_lexicon_doc_that_reads_as_absent_to_the_loader():
+    """load_announcement_links._packet_value (:112-122) maps '' and the literal
+    'None' back to absent, so accepting either here publishes a card whose
+    evidence chain names no document — and drops the link outright on an
+    account-split key (skipped['collision_unresolved'])."""
+    queue = [_one_chunk()]
+    for bad in ("None", "none", "null", "  "):
+        with pytest.raises(ValueError, match="lexicon_doc"):
+            collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [
+                _link("1", "P1", lexicon_doc=bad)]}})
+
+
+def test_collect_refuses_a_proposal_with_no_program_name():
+    """load_announcement_links.py:348 interpolates it into the published
+    rationale — without one the card reads "program 'None' named for this
+    award"."""
+    queue = [_one_chunk()]
+    for bad in (None, "", "None"):
+        with pytest.raises(ValueError, match="program_name"):
+            collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [
+                _link("1", "P1", program_name=bad)]}})
+
+
+def test_collect_counts_an_invented_or_foreign_pe_as_refuted_and_never_raises():
+    """A hallucinated code, a code borrowed from another org's index, an
+    invented doc id and a name that PE does not own are CONTENT failures the
+    refute lenses were meant to catch — they are counted, not raised, because a
+    raise would block a 150-chunk collection on one bad row. None survives:
+    load_announcement_links.py:289 would drop them anyway, so the damage they do
+    is to wave4_result.json's 'surviving', which is the number Task 25b
+    publishes."""
+    queue = [_one_chunk(pairs=(("1", "P1"), ("2", "P2"), ("3", "P3"),
+                               ("4", "P4"), ("5", "P5")))]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        _link("1", "P1"),                                        # a real index row
+        _link("2", "P2", pe_bli="ZZZ9999"),                      # invented
+        _link("3", "P3", pe_bli="0305205F"),                     # another org's index
+        _link("4", "P4", lexicon_doc="999"),                     # invented doc id
+        _link("5", "P5", program_name="Poseidon"),               # not a name of this PE
+    ]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert [p["piid"] for p in packets] == ["P1"]
+    assert result["invalid_pe_bli"] == 4
+    assert result["proposed"] == 5            # every proposal is still counted
+    assert len(result["surviving"]) == 1
+    # an alias the index carries under the same PE is fine
+    packets, _ = collect_verdicts(
+        queue, {"chunk_000_N.json": {"proposals": [_link("1", "P1", program_name="mq-4c")]}},
+        indexes={"N": read_index_rows(INDEX_N)})
+    assert [p["program_name"] for p in packets] == ["mq-4c"]
+
+
+def test_collect_does_not_attempt_a_verdict_file_with_no_proposals_list():
+    """`{}` from a crashed lens must not read as an adjudicated dry chunk: it
+    would both advance the run protocol's dry-round counter and overstate
+    records_attempted, the scope figure Task 25b publishes."""
+    queue = [_one_chunk("chunk_000_N.json"),
+             _one_chunk("chunk_001_N.json", pairs=(("2", "P2"),)),
+             _one_chunk("chunk_002_N.json", pairs=(("3", "P3"),))]
+    verdicts = {"chunk_000_N.json": {},
+                "chunk_001_N.json": {"proposals": "none of them"},
+                "chunk_002_N.json": {"proposals": [_link("3", "P3")]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert result["malformed_file"] == 2
+    assert result["chunks_attempted"] == ["chunk_002_N.json"]
+    assert result["records_attempted"] == 1
+    assert [p["piid"] for p in packets] == ["P3"]
+
+
+def test_collect_counts_a_non_dict_lens_as_malformed_rather_than_crashing():
+    """A lens that answered a bare string used to raise AttributeError naming
+    neither the chunk nor the pair."""
+    queue = [_one_chunk(pairs=(("1", "P1"), ("2", "P2")))]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        _link("1", "P1", refute_a="not refuted"),
+        _link("2", "P2", refute_b=["no"]),
+    ]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert packets == []
+    assert result["malformed_lens"] == 2
+    assert result["missing_lens"] == 0
+
+
+def test_a_survivor_with_no_reason_says_so():
+    """The reason is interpolated into the published rationale
+    ("triage+adversarial refute survived — {reason}"); an empty one printed a
+    bare semicolon."""
+    queue = [_one_chunk()]
+    verdicts = {"chunk_000_N.json": {"proposals": [_link(
+        "1", "P1", refute_a={"refuted": False}, refute_b={"refuted": False})]}}
+    _, result = collect_verdicts(queue, verdicts,
+                                 indexes={"N": read_index_rows(INDEX_N)})
+    assert result["surviving"] == [
+        {"piid": "P1", "pe_bli": "0305220N", "reason": "(no reason given)"}]

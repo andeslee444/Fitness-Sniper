@@ -153,6 +153,57 @@ def record_key(rec: dict) -> tuple[str, str]:
     return (str(rec.get("article_id")), (rec.get("text") or "")[:200])
 
 
+INDEX_HEADER = "name\tpe_bli\tlexicon_doc\tprogram_title"
+
+
+def reads_as_absent(value) -> bool:
+    """True when a field would read as ABSENT to the loader's `_packet_value`
+    (load_announcement_links.py:112-122): None, blank, or the literal strings
+    'None'/'null' that an f-string leaves behind when it interpolates one."""
+    s = str(value if value is not None else "").strip()
+    return not s or s.lower() in {"none", "null"}
+
+
+def lexicon_index_lines(owned, org, pe_orgs, pe_title) -> list[str]:
+    """One org's index TSV — the file lens P proposes out of — header first.
+
+    A lexicon row with no `doc_id` is OMITTED. Ruling A7 makes a proposal with
+    no `lexicon_doc` unpublishable and the rubric tells the lens to copy this
+    column verbatim, so such a row can only produce a packet whose published
+    rationale reads "J-book narrative owns it (None)" — and, on an
+    account-split key, a link dropped under skipped['collision_unresolved'].
+    314 of the first build's 6,409 rows were that string."""
+    lines = [INDEX_HEADER]
+    for e in owned:
+        if org not in pe_orgs.get(e["pe_bli"], ()):
+            continue
+        if reads_as_absent(e.get("doc_id")):
+            continue
+        lines.append(f"{e['name']}\t{e['pe_bli']}\t{e['doc_id']}\t"
+                     f"{(pe_title.get(e['pe_bli']) or '')[:60]}")
+    return lines
+
+
+def index_key(name, pe_bli, lexicon_doc) -> tuple[str, str, str]:
+    """The identity a proposal's (program_name, pe_bli, lexicon_doc) is checked
+    by. The name compares case-insensitively — a lens that lowercased a copied
+    name is not a hallucination — the code and the doc id do not."""
+    return (str(name or "").strip().casefold(), str(pe_bli or "").strip(),
+            str(lexicon_doc or "").strip())
+
+
+def read_index_rows(text: str) -> set[tuple[str, str, str]]:
+    """{(name, pe_bli, lexicon_doc)} of one org's index TSV. Mirrors
+    lexicon_index_lines: the collector validates against exactly the file the
+    lens read."""
+    rows = set()
+    for line in text.splitlines()[1:]:
+        cols = line.split("\t")
+        if len(cols) >= 3 and line.strip():
+            rows.add(index_key(cols[0], cols[1], cols[2]))
+    return rows
+
+
 def announced_value(rec: dict) -> int:
     """The FIRST dollar figure in the paragraph — the announced value of the
     action. Not max(): the wave-2 cut was by amounts[0] (sum $1.9545e12, the
@@ -220,18 +271,30 @@ def chunk_records(records, size: int = 80):
     return raw
 
 
-def collect_verdicts(queue, verdicts):
-    """(packets, result) from the queue and the returned adjudications.
+def collect_verdicts(queue, verdicts, indexes=None):
+    """(packets, result) from the queue, the returned adjudications and the
+    per-org lexicon indexes the lenses proposed out of (`{org: read_index_rows}`;
+    None skips the content check, which only the pure-function tests do).
 
     Acceptance: verdict == 'link' AND refute_a.refuted is False AND
     refute_b.refuted is False. Anything else — 'weak', 'wrong', a refutation,
     a lens that never ran, a malformed verdict — does not survive, and the
     counts say which. Raises ValueError on a proposal the loader could not
     publish honestly (no match_basis, basis outside the vocabulary, no
-    lexicon_doc, or a pe_bli/piid the queue chunk does not contain) and on a
-    verdict file naming a chunk this queue does not hold (the numbering is
-    derived from the universe, so a re-queue renumbers everything; silently
-    ignoring such a file would drop real adjudications).
+    lexicon_doc, no program_name, or a pe_bli/piid the queue chunk does not
+    contain) and on a verdict file naming a chunk this queue does not hold (the
+    numbering is derived from the universe, so a re-queue renumbers everything;
+    silently ignoring such a file would drop real adjudications).
+
+    Two failures are COUNTED rather than raised, because they are content the
+    refute lenses were meant to catch rather than a broken protocol, and a raise
+    would block a whole 150-chunk collection on one bad row: a
+    (program_name, pe_bli, lexicon_doc) triple that is not a row of that org's
+    index (`invalid_pe_bli` — an invented code, another org's code, an invented
+    doc id or a name that PE does not own; load_announcement_links.py:289 drops
+    them anyway, so the harm is to the 'surviving' count Task 25b publishes) and
+    a verdict file carrying no `proposals` LIST (`malformed_file` — the chunk is
+    NOT attempted, so a crashed lens cannot read as an adjudicated dry chunk).
 
     A chunk with no verdict file is skipped, not failed: the run protocol stops
     when three consecutive rounds return nothing, and `records_attempted` /
@@ -245,12 +308,19 @@ def collect_verdicts(queue, verdicts):
             f"chunk numbering is derived from the universe")
     counts = {"link": 0, "weak": 0, "wrong": 0}
     refuted_a = refuted_b = missing_lens = malformed_lens = duplicate_pairs = 0
+    invalid_pe_bli = malformed_file = 0
     packets, surviving, attempted_files = [], [], []
     records_attempted = 0
     seen_pairs: set[tuple[str, str]] = set()
     for chunk in queue:
         returned = verdicts.get(chunk["file"])
         if returned is None:
+            continue
+        if not isinstance(returned.get("proposals"), list):
+            # a crashed lens leaves {} behind; counting that as an adjudicated
+            # dry chunk would both advance the run protocol's dry-round counter
+            # and overstate records_attempted
+            malformed_file += 1
             continue
         attempted_files.append(chunk["file"])
         records = chunk["records"]
@@ -310,12 +380,31 @@ def collect_verdicts(queue, verdicts):
                     f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
                     f"match_basis {basis!r}; an announcement citation card can "
                     f"only word {sorted(BASIS_VOCAB)}")
-            if not str(prop.get("lexicon_doc") or "").strip():
+            if reads_as_absent(prop.get("lexicon_doc")):
                 raise ValueError(
-                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has no "
-                    f"lexicon_doc; a shared BLI code cannot be resolved without it")
-            a = prop.get("refute_a") or {}
-            b = prop.get("refute_b") or {}
+                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
+                    f"lexicon_doc {prop.get('lexicon_doc')!r}, which the loader's "
+                    f"_packet_value reads as no lexicon_doc; a shared BLI code "
+                    f"cannot be resolved without it, and the citation card would "
+                    f"name no document")
+            if reads_as_absent(prop.get("program_name")):
+                raise ValueError(
+                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
+                    f"program_name {prop.get('program_name')!r}; the published "
+                    f"rationale words it (\"program 'None' named for this award\")")
+            if indexes is not None and index_key(
+                    prop["program_name"], prop["pe_bli"], prop["lexicon_doc"]
+            ) not in indexes.get(chunk["org"], set()):
+                # counted as refuted, not raised — see the docstring
+                invalid_pe_bli += 1
+                continue
+            a, b = prop.get("refute_a"), prop.get("refute_b")
+            if any(x is not None and not isinstance(x, dict) for x in (a, b)):
+                # a lens that answered something other than an object cleared
+                # nothing; naming the chunk beats a bare AttributeError
+                malformed_lens += 1
+                continue
+            a, b = a or {}, b or {}
             a_ok = a.get("refuted") is False
             b_ok = b.get("refuted") is False
             if a.get("refuted") is True:
@@ -349,12 +438,15 @@ def collect_verdicts(queue, verdicts):
                 "service": rec.get("service"),
                 "article_id": str(rec["article_id"]),
                 "announcement_excerpt": (rec.get("text") or "")[:700],
-                "lexicon_quote": prop.get("lexicon_quote"),
                 "lexicon_doc": str(prop["lexicon_doc"]),
                 "llm_rationale": prop.get("rationale"),
             })
+            # the reason is interpolated into the published rationale
+            # ("triage+adversarial refute survived — …"); an empty one printed a
+            # bare semicolon
+            reason = (a.get("reason") or b.get("reason") or "").strip()[:200]
             surviving.append({"piid": prop["piid"], "pe_bli": prop["pe_bli"],
-                              "reason": (a.get("reason") or b.get("reason") or "")[:200]})
+                              "reason": reason or "(no reason given)"})
     result = {
         "triaged": records_attempted,
         "verdict_counts": counts,
@@ -364,6 +456,8 @@ def collect_verdicts(queue, verdicts):
         "refuted_b": refuted_b,
         "missing_lens": missing_lens,
         "malformed_lens": malformed_lens,
+        "invalid_pe_bli": invalid_pe_bli,
+        "malformed_file": malformed_file,
         "duplicate_pairs": duplicate_pairs,
         "records_attempted": records_attempted,
         "chunks_attempted": attempted_files,
@@ -466,13 +560,8 @@ def cmd_queue(chunk_size: int) -> int:
     for old in LEXICON_DIR.glob("*.tsv"):
         old.unlink()
     for org in sorted({c["org"] for c in chunks}):
-        lines = ["name\tpe_bli\tlexicon_doc\tprogram_title"]
-        for e in owned:
-            if org not in pe_orgs.get(e["pe_bli"], ()):
-                continue
-            lines.append(f"{e['name']}\t{e['pe_bli']}\t{e.get('doc_id')}\t"
-                         f"{(pe_title.get(e['pe_bli']) or '')[:60]}")
-        (LEXICON_DIR / f"{org}.tsv").write_text("\n".join(lines) + "\n")
+        (LEXICON_DIR / f"{org}.tsv").write_text(
+            "\n".join(lexicon_index_lines(owned, org, pe_orgs, pe_title)) + "\n")
 
     chunk_rows = [{"rank": c["rank"], "file": c["file"], "org": c["org"],
                    "records": len(c["records"]),
@@ -534,8 +623,25 @@ def cmd_collect() -> int:
             # fail closed and loudly: an unreadable verdict file is an
             # adjudicated chunk whose result would otherwise vanish
             raise SystemExit(f"{f} is not readable JSON ({e}); fix or remove it")
-        verdicts[payload.get("chunk", f.name)] = payload
-    packets, result = collect_verdicts(queue, verdicts)
+        if payload.get("chunk") != f.name:
+            # keyed by the declared name, two files declaring one chunk would
+            # silently overwrite each other in this dict
+            raise SystemExit(
+                f"{f} declares chunk {payload.get('chunk')!r}; a verdict file "
+                f"must be named for the chunk it adjudicates")
+        verdicts[f.name] = payload
+    indexes = {}
+    for org in sorted({c["org"] for c in queue}):
+        index = LEXICON_DIR / f"{org}.tsv"
+        if not index.exists():
+            # without it every proposal would count invalid_pe_bli and the run
+            # would read as uniformly hallucinated
+            raise SystemExit(
+                f"{index} is missing; it is written by `queue` beside the chunks "
+                f"and is what every proposal's (program_name, pe_bli, "
+                f"lexicon_doc) is validated against")
+        indexes[org] = read_index_rows(index.read_text())
+    packets, result = collect_verdicts(queue, verdicts, indexes)
 
     PACKET_DIR.mkdir(parents=True, exist_ok=True)
     for old in PACKET_DIR.glob("chunk_*.json"):
@@ -553,6 +659,8 @@ def cmd_collect() -> int:
           f"refuted A {result['refuted_a']:,} / B {result['refuted_b']:,}; "
           f"missing a lens {result['missing_lens']:,}; "
           f"malformed a lens {result['malformed_lens']:,}; "
+          f"not in the org index {result['invalid_pe_bli']:,}; "
+          f"malformed verdict files {result['malformed_file']:,}; "
           f"duplicate pairs {result['duplicate_pairs']:,}; "
           f"surviving {len(result['surviving']):,} -> {RESULT}")
     return 0
