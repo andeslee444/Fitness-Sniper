@@ -155,22 +155,39 @@ page beneath the heading, because that is the string USAspending answers to.
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of
-2026-09-01, 9,587 of the 12,595 links the crosswalk grades high or medium
-carry a per-award hand adjudication, each recording which program elements, if
-any, the award's own contract record supports. 8,474 of those found work that
-could not be pinned to any one program element; those links publish at medium.
+2026-09-11, 9,587 of the 12,595 links the crosswalk grades high or medium
+carry a per-award hand adjudication — the most recent made on 2026-09-01 —
+each recording which program elements, if any, the award's own contract record
+supports. 8,474 of those found work that could not be pinned to any one
+program element; those links publish at medium.
 The announcement+lexicon, fpds-ap and subaward+lexicon paths carry no per-link
 adjudication — their precision is sampled instead (below). The page renders
 every one of those figures from `site_meta.link_adjudication` and gate 24 leg
 o fails a build whose sentence states a number the block does not hold.
-(Measured 2026-09-11; the sentence this replaced said "every published link
-was individually hand-adjudicated … a link publishes as high only if neither
+(The two dates are two facts and the page states both: the census is the
+export run's, the adjudication the last one made. They were welded until
+2026-09-11 — "as of 2026-09-01, 9,587 of 12,595" is a ratio that never held,
+because 2,731 of those links were created on 2026-09-04, after the last
+adjudication, which is exactly why they carry none; on 2026-09-01 the ratio
+was 9,587 of 9,864. The sentence this replaced said "every published link was
+individually hand-adjudicated … a link publishes as high only if neither
 [adversarial reviewer] could refute it", which the census does not support —
 60 rows in the whole adjudication table record both lenses, 57 of them on a
-link the crosswalk publishes. Backlog #109 carries the remaining five-path
-evidence pass.) *High*: affirmative
+link the crosswalk grades high or medium. Backlog #109 carries the remaining
+five-path evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
-J-book pages also name, adversarially verified. *Medium*: most such links are
+J-book pages also name. 60 of the 768 links published at high carry a
+per-award hand adjudication, all 60 of them challenged by two independent
+adversarial reviewers; the other 708 rest on the announcement+lexicon path.
+(Measured 2026-09-11 over the MART — the tier a reader meets, not
+`budget_line_awards`: dbt demotes an unadjudicated `account+tokens` high row
+to medium and Postgres has no column for it, so re-deriving the tier there
+counts 881 links where the site publishes 768. Of the 708, a match basis is
+recorded on 384 — `site_meta.link_adjudication.high.by_path` carries the
+figure and gate 24 leg o binds every number the sentence states, plus the
+rule that each path publishing at high with no adjudication is NAMED. This
+replaced "adversarially verified", which was true of 60 of 768.)
+*Medium*: most such links are
 account-based — the award drew from the same appropriation account as the
 program, usually under the same sub-agency — an association, not evidence
 this specific program paid for the contract. How often that association names

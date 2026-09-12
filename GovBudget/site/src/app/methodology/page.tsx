@@ -221,20 +221,29 @@ export default function MethodologyPage() {
   // if neither [adversarial reviewer] could refute it"; measured 2026-09-11,
   // 9,587 of the 12,595 links the crosswalk grades high or medium carry an
   // adjudication row at all, three published paths carry none, and 60 rows in
-  // the whole table record both lenses (57 of them on a published link). The sentence now renders from
+  // the whole table record both lenses — 57 of them on a link the crosswalk
+  // grades high or medium. The sentence now renders from
   // site_meta.link_adjudication — every figure interpolated, none typed — and
   // disappears entirely on a corpus with no adjudication (gate 24 leg o fails
   // a passage that renders without the block, and a number the block does not
   // hold).
+  // TWO DATES (fix round 1, C1). `measured_on` is when the census was taken —
+  // the export run — and `as_of` when the last adjudication was made. They
+  // were 10 days apart on 2026-09-11, and the corpus grew in between: 2,731
+  // of the 12,595 links were created after `as_of`, which is why they carry
+  // no adjudication. Dating the counts "as of {as_of}" stated a ratio that
+  // never held (on that day it was 9,587 of 9,864). Never re-fuse them.
   const linkAdjudicationBlock = siteMeta.link_adjudication;
   const linkAdjudication =
     linkAdjudicationBlock?.as_of &&
+    linkAdjudicationBlock.measured_on &&
     typeof linkAdjudicationBlock.published === "number" &&
     typeof linkAdjudicationBlock.adjudicated === "number" &&
     typeof linkAdjudicationBlock.unpinned === "number"
       ? {
           ...linkAdjudicationBlock,
           as_of: linkAdjudicationBlock.as_of,
+          measured_on: linkAdjudicationBlock.measured_on,
           published: linkAdjudicationBlock.published,
           adjudicated: linkAdjudicationBlock.adjudicated,
           unpinned: linkAdjudicationBlock.unpinned,
@@ -254,6 +263,43 @@ export default function MethodologyPage() {
   const linkAdjudicationPathsAllSampled =
     linkAdjudicationPaths.length > 0 &&
     linkAdjudicationPaths.every((m) => Boolean(linkPrecision?.methods?.[m]));
+  // ROADMAP #109 fix round 1 (R-6c-4): the High tier graded itself "verified
+  // adversarially" in four places. Measured 2026-09-11 over the MART (the
+  // tier a reader meets, not budget_line_awards — dbt demotes unadjudicated
+  // account+tokens high rows and Postgres has no column for it): 768 links
+  // publish at high, 60 carry a per-award hand adjudication (all 60 at
+  // refuter_lenses_passed = 2) and 708 announcement+lexicon links carry
+  // none. The grading now renders that split from
+  // site_meta.link_adjudication.high, and gate 24 leg o binds it — including
+  // the rule that every path publishing at high with no adjudication is
+  // NAMED, so the remainder can never go unmentioned.
+  const highBlock = linkAdjudication?.high;
+  const highCensus =
+    typeof highBlock?.published_high === "number" &&
+    typeof highBlock.adjudicated_high === "number" &&
+    typeof highBlock.two_lens_high === "number" &&
+    highBlock.published_high > 0
+      ? {
+          published: highBlock.published_high,
+          adjudicated: highBlock.adjudicated_high,
+          twoLens: highBlock.two_lens_high,
+          byPath: highBlock.by_path ?? {},
+        }
+      : null;
+  // The paths the unadjudicated remainder rests on, and the remainder itself.
+  const highRemainderPaths = Object.entries(highCensus?.byPath ?? {})
+    .filter(([, v]) => (v?.high ?? 0) > (v?.adjudicated ?? 0))
+    .map(([m]) => m)
+    .sort();
+  const highRemainderPathText =
+    highRemainderPaths.length > 1
+      ? `${highRemainderPaths.slice(0, -1).join(", ")} and ${
+          highRemainderPaths[highRemainderPaths.length - 1]
+        }`
+      : highRemainderPaths.join("");
+  const highRemainder = highCensus
+    ? highCensus.published - highCensus.adjudicated
+    : 0;
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -711,11 +757,12 @@ export default function MethodologyPage() {
                     <>
                       {" "}
                       <span data-link-adjudication="">
-                        As of {linkAdjudication.as_of},{" "}
+                        As of {linkAdjudication.measured_on},{" "}
                         {formatCount(linkAdjudication.adjudicated)} of the{" "}
                         {formatCount(linkAdjudication.published)}{" "}
                         links the crosswalk grades high or medium carry a
-                        per-award hand adjudication, each recording which
+                        per-award hand adjudication — the most recent made on{" "}
+                        {linkAdjudication.as_of} — each recording which
                         program elements, if any, the award&apos;s own contract
                         record supports.{" "}
                         {formatCount(linkAdjudication.unpinned)}{" "}
@@ -739,8 +786,28 @@ export default function MethodologyPage() {
                     </>
                   ) : null}{" "}
                   <em>High</em>: affirmative program-level evidence — the contract
-                  names a program that the budget line&apos;s own J-book pages also
-                  name, verified adversarially.{" "}
+                  names a program the budget line&apos;s own J-book pages also
+                  name.{" "}
+                  {highCensus ? (
+                    <>
+                      <span data-link-adjudication-high="">
+                        {formatCount(highCensus.adjudicated)} of the{" "}
+                        {formatCount(highCensus.published)} links published at
+                        high carry a per-award hand adjudication,{" "}
+                        {highCensus.twoLens === highCensus.adjudicated
+                          ? `all ${formatCount(highCensus.twoLens)}`
+                          : formatCount(highCensus.twoLens)}{" "}
+                        of them challenged by two independent adversarial
+                        reviewers
+                        {highRemainderPathText
+                          ? `; the other ${formatCount(highRemainder)} rest on the ${highRemainderPathText} path${
+                              highRemainderPaths.length > 1 ? "s" : ""
+                            }`
+                          : ""}
+                        .
+                      </span>{" "}
+                    </>
+                  ) : null}
                   <em>Medium</em>: most such links are account-based — the
                   award drew from the same appropriation account as the
                   program, usually under the same sub-agency — which is an
@@ -1017,10 +1084,8 @@ export default function MethodologyPage() {
                 <p>
                   The follow-the-dollar view draws a budget line&apos;s path to
                   specific awards, recipient families, and districts. That link is
-                  an inference (§4): we render the flow only for the
-                  high-confidence crosswalk tier — hand-adjudicated links where the
-                  contract and the budget line&apos;s own J-book pages name the
-                  same program, verified adversarially. Today that covers{" "}
+                  an inference: we render the flow only for the high-confidence
+                  crosswalk tier, whose evidence §4 grades. Today that covers{" "}
                   {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs, concentrated in
                   DARPA lines whose account structure makes matching reliable.
                   Program pages outside the crosswalk say so in place of the flow

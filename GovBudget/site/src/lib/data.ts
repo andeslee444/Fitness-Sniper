@@ -209,10 +209,9 @@ export interface SiteMeta {
    * ZERO adjudication rows (their precision is measured by the sampled study
    * in `link_precision` instead), 8,474 of the adjudications that do exist
    * found work that could not be pinned to any one program element, and 60
-   * rows in the whole table record both adversarial lenses (57 of them on a
-   * published link). The sentence is
-   * now rendered from these numbers, number for number, and gate 24 leg o
-   * binds it.
+   * rows in the whole table record both adversarial lenses — 57 of them on
+   * a link the crosswalk grades high or medium. The sentence is now rendered
+   * from these numbers, number for number, and gate 24 leg o binds it.
    *
    * The universe is the crosswalk's OWN grade (`budget_line_awards` at
    * high/medium), which is what the adjudication overlay is applied to — not
@@ -224,6 +223,12 @@ export interface SiteMeta {
    * renders nothing for the sentence rather than a stale claim.
    */
   link_adjudication?: {
+    /** The EXPORT RUN's date — when the counts below were taken. A different
+     *  fact from `as_of`, and the one the census clause carries: the corpus
+     *  grew after the last adjudication (2,731 of the 12,595 links were
+     *  created 2026-09-04, which is why they carry none), so dating today's
+     *  counts by `as_of` states a ratio that never held. */
+    measured_on?: string;
     /** Latest adjudication the block counts (max adjudicated_at). */
     as_of?: string;
     published?: number;
@@ -234,11 +239,44 @@ export interface SiteMeta {
      *  majority's. */
     unpinned_tier?: string | null;
     by_method?: Record<string, { published: number; adjudicated: number }>;
-    adjudicated_methods?: string[];
     /** Published methods with no adjudication row at all. /methodology/
      *  names them so a path with no per-link review never reads as one that
      *  passed. */
     unadjudicated_methods?: string[];
+    /**
+     * The HIGH tier's own census (fix round 1, R-6c-4). Four surfaces graded
+     * the tier "verified adversarially"; measured 2026-09-11 over the MART,
+     * 768 links publish at high, 60 carry a per-award hand adjudication (all
+     * 60 at `refuter_lenses_passed = 2`) and 708 `announcement+lexicon` links
+     * carry none. The grading now renders that split.
+     *
+     * The universe here is the MART's high tier, NOT
+     * `coalesce(adjudicated_confidence, confidence)` over
+     * `budget_line_awards`: dbt demotes an unadjudicated `account+tokens`
+     * high row to medium and Postgres has no column for it, so re-deriving
+     * the tier there counts 881 links where the site publishes 768. Absent
+     * on a warehouse with no mart, and the page then states no census rather
+     * than one measured against the wrong universe.
+     */
+    high?: {
+      published_high?: number;
+      adjudicated_high?: number;
+      /** Of the adjudicated, those at `refuter_lenses_passed = 2` — the only
+       *  population "two independent adversarial reviewers" is true of. */
+      two_lens_high?: number;
+      by_path?: Record<
+        string,
+        {
+          high: number;
+          adjudicated: number;
+          two_lens: number;
+          /** Links whose `award_link_sources` row records HOW the program
+           *  name matched. Absent where the path records no source rows at
+           *  all — "not recorded" and "no such evidence" are different. */
+          with_match_basis?: number;
+        }
+      >;
+    };
   };
   link_precision?: {
     /** The ONE question every figure in `methods` answered (ROADMAP #79):
