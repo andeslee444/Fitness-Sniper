@@ -6568,7 +6568,7 @@ def _build_lobbied_by(
 def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
     """Build derived citation rows for dim_geography and district aggregates.
 
-    Three surfaces (all kind='derived'):
+    Four surfaces (all kind='derived'):
 
     1. surface='geography', key='{pop_state}|{pop_district}', metric='total_obligation'
        — one row per dim_geography mart row (USAspending place-of-performance
@@ -6591,6 +6591,14 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
        derived row chains to the USAspending tier and integrity rule 4a can
        resolve every input. Aggregation mirrors _emit_district_sidecars
        exactly (same query ORDER BY, same float accumulation).
+
+    4. surface='district_year', key='{pop_district}|{fiscal_year}',
+       metrics 'total_obligation' + 'positive_obligation'
+       — the /district/{code}/ by-year table (ROADMAP #6), read from
+       fct_district_totals_by_year. inputs=[]; query_body carries the SQL.
+       There is no per-year USAspending citation to chain to, and listing the
+       whole-corpus district_program fact_ids as inputs would assert a sum
+       relationship that is false for one year's slice.
 
     Never fails export: missing marts → skip that surface silently.
     """
@@ -6764,6 +6772,63 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                     inputs_json,
                     f"{value:.3f}",
                     built_at,
+                ))
+
+        # ---- 4. District BY-YEAR aggregates (ROADMAP #6) ----
+        # NOT kind='usaspending': that tier's filter body caps award_ids at 25
+        # (see _build_usaspending_citation_rows), and a 25-PIID cap over a year
+        # slice returns a number that does not match the published one.
+        try:
+            dy_rows = con.execute(
+                "select pop_state, pop_district, fiscal_year, award_count,"
+                "       total_obligation, positive_obligation"
+                " from fct_district_totals_by_year"
+                " order by pop_state, pop_district, fiscal_year"
+            ).fetchall()
+        except Exception:
+            dy_rows = []
+
+        for (dy_state, dy_district, dy_fy, dy_awards, dy_total,
+             dy_positive) in dy_rows:
+            if not dy_district or dy_total is None:
+                continue
+            base_where = (
+                f"where pop_state = '{dy_state}' and pop_district ="
+                f" '{dy_district}' and fiscal_year = {int(dy_fy)}"
+            )
+            for metric, value, wording in (
+                (
+                    "total_obligation",
+                    float(dy_total),
+                    "net obligations (deobligations subtracted)",
+                ),
+                (
+                    "positive_obligation",
+                    float(dy_positive if dy_positive is not None else dy_total),
+                    "gross obligations (positive transactions only, before"
+                    " deobligations are subtracted)",
+                ),
+            ):
+                fid = fact_id_derived(
+                    "district_year", f"{dy_district}|{int(dy_fy)}", metric
+                )
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD",
+                    f"fct_district_totals_by_year.{metric} for"
+                    f" pop_district={dy_district!r}, fiscal_year={int(dy_fy)} —"
+                    f" {wording} across the {int(dy_awards or 0)} distinct"
+                    f" high-confidence-crosswalked award(s) with a transaction"
+                    f" in that fiscal year. Dollars are counted once per award"
+                    f" per year, so a district's years sum to its"
+                    f" fct_district_totals headline; the award counts do NOT"
+                    f" sum (an award active in two years is counted in both).",
+                    "[]",
+                    f"{value:.3f}",
+                    built_at,
+                    query_body=(
+                        f"select {metric} from fct_district_totals_by_year"
+                        f" {base_where}"
+                    ),
                 ))
     finally:
         con.close()
@@ -11905,6 +11970,41 @@ def _emit_district_sidecars(
         (r[0], r[1]): int(r[2]) for r in fanout_rows
     }
 
+    # ---- ROADMAP #6: district × fiscal_year rows ----------------------------
+    # These marts are deliberately NOT in _MART_NAMES (they ship no parquet), so
+    # a warehouse built before they existed must degrade rather than abort the
+    # export — but LOUDLY. A district page that silently loses its year table is
+    # exactly the quiet regression gate 9 leg f exists to catch, and the print
+    # below is what an operator sees before the gate does.
+    try:
+        dy_rows = con.execute(
+            "select pop_district, fiscal_year, award_count, total_obligation,"
+            "       positive_obligation"
+            " from fct_district_totals_by_year"
+            " order by pop_district, fiscal_year"
+        ).fetchall()
+    except Exception as exc:  # noqa: BLE001 — reported, not swallowed
+        print(
+            f"districts: fct_district_totals_by_year unavailable ({exc}) —"
+            f" by_year will be EMPTY on every district sidecar (gate 9 leg f"
+            f" will fail; run `uv run python -m govbudget build` first)"
+        )
+        dy_rows = []
+    try:
+        dpy_rows = con.execute(
+            "select pop_district, pe_bli, fiscal_year, transaction_count,"
+            "       award_count, recipient_count, total_obligation,"
+            "       positive_obligation"
+            " from fct_district_programs_by_year"
+            " order by pop_district, fiscal_year, total_obligation desc nulls last"
+        ).fetchall()
+    except Exception as exc:  # noqa: BLE001 — reported, not swallowed
+        print(
+            f"districts: fct_district_programs_by_year unavailable ({exc}) —"
+            f" by_year_programs will be EMPTY on every district sidecar"
+        )
+        dpy_rows = []
+
     # ---- dim_geography grand total ----
     # Same SQL as _build_geography_citation_rows' grand-total row so the
     # sidecar value and the citation's recorded_value agree by construction.
@@ -11925,6 +12025,10 @@ def _emit_district_sidecars(
     # Build district index: distinct (pop_state, pop_district) with aggregates
     district_index: dict[str, dict] = {}
     district_programs: dict[str, list] = {}
+    # The page's own program list per district, as a set — ROADMAP #6's
+    # by_year_programs is capped to it (a pe_bli with no row, link or citation
+    # on the page must not arrive through the year door).
+    page_pe_by_district: dict[str, set] = {}
 
     # ROADMAP #39: prog_titles (param) was already corrected by the caller;
     # this covers the fct_district_programs fallback path (a pe_bli absent
@@ -11989,6 +12093,8 @@ def _emit_district_sidecars(
             "total_obligation": float(total_obligation) if total_obligation is not None else None,
             "transaction_count": transaction_count,
         })
+        # The page's program list, as a set — by_year_programs is capped to it.
+        page_pe_by_district.setdefault(key, set()).add(pe_bli)
 
     # ---- #51: replace the per-program sum with the award-distinct total ----
     # total_linkable_dollars comes from fct_district_totals, never from
@@ -12012,11 +12118,64 @@ def _emit_district_sidecars(
             fid = fact_id_derived("district", key, metric)
             info[field] = fid if fid in cited_fact_ids else None
 
+    # ---- ROADMAP #6: build by_year (cited) and by_year_programs (not) -------
+    # CITED-OR-ABSENT, MECHANICALLY: render-static's dataset ledger fails any
+    # state-C [data-amount] whose data-dataset is not on
+    # site_meta.uncited_datasets, and these marts ship no parquet so they can
+    # never join that ledger. A row whose citations do not resolve is therefore
+    # dropped here rather than rendered uncited — and the resulting shortfall
+    # shows up as a by-year/headline mismatch in gate 9 leg f, which is the
+    # loud half of this trade.
+    by_year: dict[str, list] = {}
+    for (dy_district, dy_fy, dy_awards, dy_total, dy_positive) in dy_rows:
+        if dy_district not in district_programs:
+            continue
+        fy = int(dy_fy)
+        total_fid = fact_id_derived(
+            "district_year", f"{dy_district}|{fy}", "total_obligation")
+        positive_fid = fact_id_derived(
+            "district_year", f"{dy_district}|{fy}", "positive_obligation")
+        if total_fid not in cited_fact_ids or positive_fid not in cited_fact_ids:
+            continue
+        by_year.setdefault(dy_district, []).append({
+            "award_count": int(dy_awards or 0),
+            "fiscal_year": fy,
+            "positive_fact_id": positive_fid,
+            "positive_obligation": float(
+                dy_total if dy_positive is None else dy_positive),
+            "total_fact_id": total_fid,
+            "total_obligation": float(dy_total or 0.0),
+        })
+
+    # by_year_programs carries NO fact_ids on purpose: it is data this task does
+    # not render, and shipping ids for unrendered figures invites the next
+    # author to render them without minting citations. Capped at the page's own
+    # program list so a pe_bli with no row, link or citation on the page cannot
+    # arrive through the year door.
+    by_year_programs: dict[str, list] = {}
+    for (dpy_district, dpy_pe, dpy_fy, dpy_txn, dpy_awards,
+         dpy_recipients, dpy_total, dpy_positive) in dpy_rows:
+        page_pes = page_pe_by_district.get(dpy_district)
+        if not page_pes or dpy_pe not in page_pes:
+            continue
+        by_year_programs.setdefault(dpy_district, []).append({
+            "award_count": int(dpy_awards or 0),
+            "fiscal_year": int(dpy_fy),
+            "pe_bli": dpy_pe,
+            "positive_obligation": float(
+                dpy_total if dpy_positive is None else dpy_positive),
+            "recipient_count": int(dpy_recipients or 0),
+            "total_obligation": float(dpy_total or 0.0),
+            "transaction_count": int(dpy_txn or 0),
+        })
+
     # ---- Write per-district files ----
     for key, programs in district_programs.items():
         info = district_index[key]
         obj = {
             "award_count": info["award_count"],
+            "by_year": by_year.get(key, []),
+            "by_year_programs": by_year_programs.get(key, []),
             "pop_district": info["pop_district"],
             "pop_state": info["pop_state"],
             "program_count": info["program_count"],

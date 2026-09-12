@@ -181,6 +181,42 @@ def _make_duckdb_with_districts(tmp_path: Path) -> Path:
         "('CA', 'CA-18', 7, 200000000.0)"
     )
 
+    # ROADMAP #6 — LIVE mart schemas (dbt/models/marts/fct_district_totals_by_year.sql
+    # and fct_district_programs_by_year.sql). VA-08's two programs split across
+    # FY2024/FY2025; CA-18 is single-year. VA-08's years sum to 70,000,000.0 —
+    # the same headline fct_district_totals publishes above — which is the
+    # property gate 9 leg f re-checks on the built page.
+    con.execute(
+        "CREATE TABLE fct_district_totals_by_year ("
+        "  pop_state varchar, pop_district varchar, fiscal_year integer,"
+        "  award_count bigint, total_obligation double, positive_obligation double"
+        ")"
+    )
+    con.execute(
+        "INSERT INTO fct_district_totals_by_year VALUES "
+        "('VA', 'VA-08', 2024, 5, 50000000.0, 52000000.0),"
+        "('VA', 'VA-08', 2025, 3, 20000000.0, 20000000.0),"
+        "('CA', 'CA-18', 2025, 2, 15000000.0, 15000000.0)"
+    )
+    con.execute(
+        "CREATE TABLE fct_district_programs_by_year ("
+        "  pop_state varchar, pop_district varchar, pe_bli varchar,"
+        "  fiscal_year integer, program_title varchar, organization varchar,"
+        "  transaction_count bigint, award_count bigint, recipient_count bigint,"
+        "  total_obligation double, positive_obligation double"
+        ")"
+    )
+    con.execute(
+        "INSERT INTO fct_district_programs_by_year VALUES "
+        "('VA','VA-08','0601101E',2024,'DARPA','DARPA',15,5,3,50000000.0,52000000.0),"
+        "('VA','VA-08','0602303E',2025,'Army Research','Army',8,3,2,20000000.0,20000000.0),"
+        "('CA','CA-18','0601101E',2025,'DARPA','DARPA',7,2,1,15000000.0,15000000.0),"
+        # A pe_bli that is NOT on VA-08's page (no fct_district_programs row):
+        # the cap must drop it, or a program with no row, link or citation
+        # would arrive through the year door.
+        "('VA','VA-08','0699999Z',2025,'GHOST','DARPA',1,1,1,999.0,999.0)"
+    )
+
     con.close()
     return db_path
 
@@ -845,6 +881,77 @@ class TestEmitDistrictSidecars:
 
         index = json.loads((dist_dir / "index.json").read_text())
         assert index["geo_grand_total"] is None
+
+    def test_by_year_rows_emitted_when_citations_resolve(self, tmp_path):
+        """ROADMAP #6: by_year carries one row per (district, FY), cited."""
+        db_path = _make_duckdb_with_districts(tmp_path)
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        cited = set()
+        for fy in (2024, 2025):
+            cited.add(fact_id_derived("district_year", f"VA-08|{fy}", "total_obligation"))
+            cited.add(fact_id_derived("district_year", f"VA-08|{fy}", "positive_obligation"))
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=cited
+            )
+        finally:
+            con.close()
+
+        va = json.loads((dist_dir / "VA-08.json").read_text())
+        assert [r["fiscal_year"] for r in va["by_year"]] == [2024, 2025]
+        assert [r["total_obligation"] for r in va["by_year"]] == [50000000.0, 20000000.0]
+        assert [r["positive_obligation"] for r in va["by_year"]] == [52000000.0, 20000000.0]
+        assert all(r["total_fact_id"] and r["positive_fact_id"] for r in va["by_year"])
+        # The by-year rows sum to the headline the page renders above them.
+        assert sum(r["total_obligation"] for r in va["by_year"]) == pytest.approx(
+            va["total_linkable_dollars"]
+        )
+        # CA-18's citations were NOT minted in this test — cited-or-absent.
+        ca = json.loads((dist_dir / "CA-18.json").read_text())
+        assert ca["by_year"] == []
+
+    def test_by_year_row_dropped_when_its_citation_does_not_resolve(self, tmp_path):
+        """Cited-or-absent: an uncited by-year figure is not emitted at all.
+
+        render-static's dataset ledger fails any state-C [data-amount] whose
+        dataset is not on site_meta.uncited_datasets, and the by-year marts ship
+        no parquet so they can never be on it. Dropping the row is the only
+        honest option; gate 9 leg f then reports the resulting shortfall.
+        """
+        db_path = _make_duckdb_with_districts(tmp_path)
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=set()
+            )
+        finally:
+            con.close()
+        va = json.loads((dist_dir / "VA-08.json").read_text())
+        assert va["by_year"] == []
+
+    def test_by_year_programs_capped_at_the_pages_program_list(self, tmp_path):
+        """A pe_bli with no row on the page must not arrive via the year door."""
+        db_path = _make_duckdb_with_districts(tmp_path)
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=set()
+            )
+        finally:
+            con.close()
+        va = json.loads((dist_dir / "VA-08.json").read_text())
+        page_pes = {p["pe_bli"] for p in va["programs"]}
+        assert page_pes == {"0601101E", "0602303E"}
+        assert {r["pe_bli"] for r in va["by_year_programs"]} == page_pes
+        # by_year_programs carries NO fact_ids — it is not rendered in this task,
+        # and nobody may render it without minting citations first.
+        assert all("fact_id" not in r for r in va["by_year_programs"])
 
 
 # ---------------------------------------------------------------------------

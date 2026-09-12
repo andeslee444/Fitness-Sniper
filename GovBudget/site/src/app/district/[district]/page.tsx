@@ -9,6 +9,7 @@ import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
 import { FyRange } from "@/components/fy-range";
+import { getAwardFyRange } from "@/lib/fy-range";
 
 // No fallback pages beyond what generateStaticParams returns (SSG export).
 export const dynamicParams = false;
@@ -68,11 +69,36 @@ export default async function DistrictDetailPage({ params }: Props) {
       ? (sitewideLinkable / districtIndex.geo_grand_total) * 100
       : null;
 
+  // ROADMAP #6, partial-year honesty. site_meta.award_fy_range.max_partial is
+  // true today (latest action 2026-04-23; FY2026 does not close until Sep 30),
+  // and a final row that ends on a half-collected year without saying so
+  // publishes a collapse that did not happen. DERIVED, never authored — the
+  // same source <FyRange/> reads, so the two can never disagree.
+  const byYear = detail.by_year ?? [];
+  const awardFyRange = getAwardFyRange();
+  const partialFy = awardFyRange?.maxPartial ? awardFyRange.fyMax : null;
+  // The gross column earns its space only where it differs from the net one.
+  const hasDeobligations = byYear.some(
+    (r) => r.positive_obligation > r.total_obligation + 0.005,
+  );
+
   // Collect fact_ids for cited dollars — per-program USAspending citations
-  // plus the district's derived aggregate citations (header stats).
+  // plus the district's derived aggregate citations (header stats) plus the
+  // by-year rows. Only ids that are actually RENDERED go in: collectCitations
+  // embeds each one's full citation row in the page's RSC payload, so an
+  // unrendered id is pure page weight (the gross column is conditional).
   const pageFactIds: string[] = [];
   for (const prog of detail.programs) {
     if (prog.fact_id) pageFactIds.push(prog.fact_id);
+  }
+  for (const row of byYear) {
+    // Both ids are non-null by construction (the exporter drops a row whose
+    // citations do not resolve); the guard keeps collectCitations from being
+    // handed a null if that ever changes.
+    if (row.total_fact_id) pageFactIds.push(row.total_fact_id);
+    if (hasDeobligations && row.positive_fact_id) {
+      pageFactIds.push(row.positive_fact_id);
+    }
   }
   if (detail.total_linkable_fact_id) pageFactIds.push(detail.total_linkable_fact_id);
   if (detail.total_cited_fact_id) pageFactIds.push(detail.total_cited_fact_id);
@@ -252,6 +278,134 @@ export default async function DistrictDetailPage({ params }: Props) {
             )}
           </div>
         </div>
+
+        {/* ── Obligations by fiscal year (ROADMAP #6) ────────────────────────
+            No chart library, by design: ten rows of a table is the whole
+            dataset, it is readable without JavaScript, every figure is
+            clickable to its own citation, and a canvas would hide the numbers
+            behind a hover. The <caption> is the "view as table" affordance —
+            it names what the table is for a screen reader without adding a
+            visible heading duplicate, and no [data-chart] is emitted, so gate
+            6's chart-table leg has nothing to check here. */}
+        {byYear.length > 0 && (
+          <section className="mb-8" aria-labelledby="district-by-year-heading">
+            <h2
+              id="district-by-year-heading"
+              className="text-lg font-semibold mb-2"
+            >
+              Obligations by fiscal year
+            </h2>
+            <p className="text-muted-foreground text-sm mb-3">
+              The same linkable obligations as the total above, split by the
+              fiscal year each award transaction was recorded in. The years add
+              up to that total exactly. Award counts do not: an award active in
+              two years appears in both.
+            </p>
+            <div className="rounded-lg border border-border overflow-x-auto bg-card">
+              <table
+                className="w-full text-sm"
+                data-sort-table="district-years"
+                data-sort-order="fiscal_year:asc"
+              >
+                <caption className="sr-only">
+                  High-confidence linkable obligations for {heading} by fiscal
+                  year, oldest first, each figure carrying its own citation.
+                </caption>
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide"
+                    >
+                      Fiscal year
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide"
+                    >
+                      Obligations
+                    </th>
+                    {hasDeobligations && (
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell"
+                      >
+                        Before deobligations
+                      </th>
+                    )}
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell"
+                    >
+                      Awards active
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {byYear.map((row) => (
+                    <tr
+                      key={row.fiscal_year}
+                      className="hover:bg-muted/40 transition-colors"
+                      data-district-year={row.fiscal_year}
+                      data-sort-value={String(row.fiscal_year)}
+                      data-fy-partial={
+                        row.fiscal_year === partialFy ? "" : undefined
+                      }
+                    >
+                      <td className="px-4 py-3 font-mono tabular-nums">
+                        FY{row.fiscal_year}
+                        {row.fiscal_year === partialFy && (
+                          <span className="ml-2 font-sans text-xs text-muted-foreground">
+                            partial year
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono">
+                        <Cite
+                          value={row.total_obligation}
+                          units="USD"
+                          dataset="fct_district_totals_by_year"
+                          factId={row.total_fact_id}
+                          chip={false}
+                        />
+                      </td>
+                      {hasDeobligations && (
+                        <td className="px-4 py-3 text-right font-mono text-muted-foreground hidden sm:table-cell">
+                          <Cite
+                            value={row.positive_obligation}
+                            units="USD"
+                            dataset="fct_district_totals_by_year"
+                            factId={row.positive_fact_id}
+                            chip={false}
+                          />
+                        </td>
+                      )}
+                      <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">
+                        {row.award_count.toLocaleString("en-US")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {partialFy !== null && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                FY{partialFy} is still open — it does not close until September
+                30, so its figure is a part-year total and is not comparable to
+                the full years above it.
+              </p>
+            )}
+            {hasDeobligations && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                &ldquo;Obligations&rdquo; is the net figure: money obligated in
+                that year minus money deobligated from earlier awards, which is
+                why a year can be smaller than the gross column beside it, or
+                negative. We publish the net number as the headline and show the
+                gross so the difference is visible rather than implied.
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Program table */}
         {/* §P1-7 sort contract (gate 24 leg f): exporter-declared order —

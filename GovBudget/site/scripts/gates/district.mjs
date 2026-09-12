@@ -13,6 +13,12 @@
  *     in its sidecar renders its dollar figure without a
  *     [data-shared-award-count] marker on the built page. Non-vacuous: fails
  *     if fewer than 100 district sidecars resolve.
+ * (f) by-year truth (ROADMAP #6): every district sidecar's by_year rows sum to
+ *     that sidecar's own total_linkable_dollars within a cent, every by-year
+ *     row carries a resolving citation id, and the table is non-vacuous —
+ *     >=130 districts and >=800 by-year rows must be present. "Every row adds
+ *     up" is satisfied by a corpus with no rows at all, which is exactly what
+ *     an export against a pre-#6 warehouse produces.
  */
 
 import fs from "fs";
@@ -178,6 +184,13 @@ export async function runDistrictGate() {
   // ── (e) #51 double-count fix ─────────────────────────────────────────────
   runDistrictTotalsFixLeg(districtDirs, districtOutDir, errors, notes);
 
+  // ── (f) by-year truth (ROADMAP #6) ───────────────────────────────────────
+  runDistrictByYearLeg({
+    errors,
+    notes,
+    sidecars: readDistrictSidecars(),
+  });
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -306,6 +319,111 @@ function runDistrictTotalsFixLeg(districtDirs, districtOutDir, errors, notes) {
   if (sharedAwardChecked > 0) {
     notes.push(
       `leg e: shared_award_count rendered on ${sharedAwardOk}/${sharedAwardChecked} sampled program rows ✓`
+    );
+  }
+}
+
+
+/** Read every districts/{code}.json sidecar. Returns [] when the dir is absent —
+ *  leg f's floors then fail loudly rather than the read throwing. */
+function readDistrictSidecars() {
+  const dir = path.join(jsonDir, "districts");
+  if (!fs.existsSync(dir)) return [];
+  const out = [];
+  for (const file of fs.readdirSync(dir)) {
+    if (!file.endsWith(".json") || file === "index.json") continue;
+    try {
+      out.push(JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")));
+    } catch {
+      // A sidecar that will not parse is gate 1's problem, not this leg's.
+    }
+  }
+  return out;
+}
+
+// ── leg f — the by-year table adds up, and there is one (ROADMAP #6) ────────
+//
+// FLOORS MEASURED 2026-09-10 against the shipped warehouse: 153 districts in
+// fct_district_totals (the live /district/ index links exactly 153) and 924
+// rows in fct_district_totals_by_year. The floors sit at ~85% of that so a
+// silent collapse is a failure and ordinary corpus movement is not.
+// DO NOT LOWER THEM TO FIT A BUILD — if the corpus legitimately shrinks, the
+// re-measure is a reviewed edit that says so in this comment, dated.
+const MIN_BY_YEAR_DISTRICTS = 130;
+const MIN_BY_YEAR_ROWS = 800;
+const TOL_BY_YEAR = 0.01;
+
+/**
+ * Exported for site/scripts/gates/__tests__/district-by-year.test.mjs, which
+ * injects synthetic sidecars — the leg must be provable without a build.
+ *
+ * @param {{errors: string[], notes: string[], sidecars: object[]}} args
+ */
+export function runDistrictByYearLeg({ errors, notes, sidecars }) {
+  let withTable = 0;
+  let rows = 0;
+  const mismatches = [];
+  const uncited = [];
+
+  for (const s of sidecars) {
+    const byYear = Array.isArray(s.by_year) ? s.by_year : [];
+    if (byYear.length === 0) continue;
+    withTable += 1;
+    rows += byYear.length;
+
+    let sum = 0;
+    for (const r of byYear) {
+      sum += Number(r.total_obligation ?? NaN);
+      if (!r.total_fact_id && uncited.length < 5) {
+        uncited.push(
+          `${s.pop_district} FY${r.fiscal_year} carries no total_fact_id — a ` +
+            `by-year figure with no resolving citation must not be emitted at all`,
+        );
+      }
+    }
+    const headline = Number(s.total_linkable_dollars ?? NaN);
+    if (!(Math.abs(sum - headline) <= TOL_BY_YEAR) && mismatches.length < 5) {
+      mismatches.push(
+        `${s.pop_district}: ${byYear.length} by-year rows sum to ${sum} but the ` +
+          `page's headline total_linkable_dollars is ${headline} ` +
+          `(diff ${sum - headline})`,
+      );
+    }
+  }
+
+  if (withTable < MIN_BY_YEAR_DISTRICTS) {
+    errors.push(
+      `leg f: only ${withTable} district(s) carry a by-year table (floor ` +
+        `${MIN_BY_YEAR_DISTRICTS}, measured 2026-09-10 at 153) — the export ran ` +
+        `against a warehouse without fct_district_totals_by_year, or the ` +
+        `citations for it did not resolve. Fix the export; do not lower the floor.`,
+    );
+  }
+  if (rows < MIN_BY_YEAR_ROWS) {
+    errors.push(
+      `leg f: ${rows} by-year row(s) (floor ${MIN_BY_YEAR_ROWS}, measured ` +
+        `2026-09-10 at 924) — every district can hold one year and still have ` +
+        `lost nine tenths of its table. Fix the export; do not lower the floor.`,
+    );
+  }
+  if (mismatches.length > 0) {
+    errors.push(
+      `leg f: ${mismatches.length} district(s) whose by-year rows do not sum to ` +
+        `the headline they sit under: ${mismatches.join("; ")}`,
+    );
+  }
+  if (uncited.length > 0) {
+    errors.push(`leg f: ${uncited.length} uncited by-year figure(s): ${uncited.join("; ")}`);
+  }
+  if (
+    mismatches.length === 0 &&
+    uncited.length === 0 &&
+    withTable >= MIN_BY_YEAR_DISTRICTS &&
+    rows >= MIN_BY_YEAR_ROWS
+  ) {
+    notes.push(
+      `leg f: ${withTable} district(s), ${rows} by-year row(s), every district's ` +
+        `years summing to its own headline within ${TOL_BY_YEAR} ✓`,
     );
   }
 }

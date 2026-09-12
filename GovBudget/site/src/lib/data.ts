@@ -2409,6 +2409,37 @@ export interface DistrictProgram {
   transaction_count: number;
 }
 
+/** ROADMAP #6 — one row per (district, fiscal year) on /district/{code}/.
+ *  Emitted ONLY when both fact_ids resolve, so both are non-null by
+ *  construction: a figure the citation tier cannot back is dropped, never
+ *  rendered as state C (these marts ship no parquet and so can never be on
+ *  site_meta.uncited_datasets, which is what state C requires). */
+export interface DistrictYear {
+  fiscal_year: number;
+  /** Distinct crosswalked awards with a transaction in THIS year. NOT summable
+   *  across years — an award active in two years is counted in both. */
+  award_count: number;
+  /** Net obligations; can be negative when deobligations exceed new money. */
+  total_obligation: number;
+  total_fact_id: string;
+  /** Gross obligations before deobligations are netted out. */
+  positive_obligation: number;
+  positive_fact_id: string;
+}
+
+/** ROADMAP #6 — per (program element, fiscal year), capped at the page's own
+ *  program list. Carries NO fact_id: it is not rendered today, and rendering it
+ *  requires minting its citation tier first. */
+export interface DistrictProgramYear {
+  fiscal_year: number;
+  pe_bli: string;
+  award_count: number;
+  recipient_count: number;
+  transaction_count: number;
+  total_obligation: number;
+  positive_obligation: number;
+}
+
 export interface DistrictDetail {
   pop_district: string;
   pop_state: string;
@@ -2417,6 +2448,10 @@ export interface DistrictDetail {
    *  total — from fct_district_totals, never a program-element count. */
   award_count: number;
   programs: DistrictProgram[];
+  /** ROADMAP #6. Ascending by fiscal_year. Sums to total_linkable_dollars. */
+  by_year: DistrictYear[];
+  /** ROADMAP #6. Not rendered today — see DistrictProgramYear. */
+  by_year_programs: DistrictProgramYear[];
   total_cited_dollars: number;
   /** Derived 'district' surface fact_id — null when the citation is absent. */
   total_cited_fact_id: string | null;
