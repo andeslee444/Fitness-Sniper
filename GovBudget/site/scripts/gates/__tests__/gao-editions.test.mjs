@@ -120,6 +120,12 @@ describe("gate 21 leg h8 — editions", () => {
     ).toEqual([]);
   });
 
+  it("accepts DOD inheriting from Joint — GAO's two labels for one book family", () => {
+    expect(run([item({ service: "Joint" }), prior({ service: "DOD" })])).toEqual(
+      [],
+    );
+  });
+
   it("fails inheritance that flows forward in time", () => {
     const errs = run(
       [

@@ -1934,7 +1934,13 @@ export function checkGaoEditionItems({
 }) {
   const errors = [];
   const key = (s) => gaoTokens(s).join("");
-  const family = (svc) => (GAO_SERVICE_ORGS[svc] ?? [svc])[0];
+  // GAO writes the joint-lead label two ways across editions — "Joint" in the
+  // 2025 volume, "DOD" in 2024/2023 (the F-35's) — and they are one family for
+  // inheritance, the same call gao_programs._SERVICE_FAMILY makes. Kept OUT of
+  // GAO_SERVICE_ORGS, which h4 uses to name a real org CODE a page can link to.
+  const editionFamily = { Joint: "J", DOD: "J" };
+  const family = (svc) =>
+    editionFamily[svc] ?? (GAO_SERVICE_ORGS[svc] ?? [svc])[0];
   const anchors = items.filter(
     (it) => it.kind === "assessment" && !it.inheritedFrom,
   );
