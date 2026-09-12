@@ -4592,6 +4592,15 @@ _DECADE_TOP_RVA = 100
 # while every candidate diff in the ranking window is minted.
 _FEED_RVA_TOP = 15
 
+# ROADMAP #88: the /feed/ digest cap — the top N cards per event type the
+# page renders statically. THE single source: feed.json publishes it as
+# `section_cap` (site/src/app/feed/page.tsx reads it there and refuses to
+# build without it), and json/feed-sections/{event_type}.json carries
+# exactly the cards past it. Raising this raises /feed/'s static weight —
+# gate 1's /feed/ ceiling (site/scripts/gates/build.mjs) must NOT be raised
+# for it; the 2026-09-02 do-not-raise-again note there stands.
+_FEED_SECTION_CAP = 75
+
 
 def _build_decade_citation_rows(
     *,
@@ -10508,7 +10517,20 @@ def _write_all_sidecars(
     # ------------------------------------------------------------------ #
     # 12. feed.json  (anomaly feed cards — Task 4)                       #
     # ------------------------------------------------------------------ #
-    _emit_feed_sidecar(
+    # ROADMAP #88: the two lookups feed/page.tsx applies to the VISIBLE
+    # cards, handed to the exporter so the hidden cards' sidecars carry the
+    # same answers. program_details/ was pruned and re-emitted above in this
+    # function, so its listing is this export's page universe — the same
+    # directory the site's getProgramPeBlis() reads. entities_list is the
+    # entities_top.json payload written at "4." above — what
+    # getEntityTopByFamilyKey() reads.
+    _feed_program_page_keys = frozenset(
+        p.stem for p in (json_dir / "program_details").glob("*.json")
+    )
+    _feed_company_slug_by_family_key = {
+        e["family_key"]: e["slug"] for e in entities_list
+    }
+    n_feed_sections = _emit_feed_sidecar(
         json_dir=json_dir,
         con=con,
         prog_titles=prog_titles,
@@ -10529,8 +10551,10 @@ def _write_all_sidecars(
         # "4b4" and threaded here unchanged) — see _emit_feed_sidecar's
         # doc-comment for what it does with it.
         fy26_split_by_pe=fy26_split_by_pe,
+        program_page_keys=_feed_program_page_keys,
+        company_slug_by_family_key=_feed_company_slug_by_family_key,
     )
-    n_files += 1
+    n_files += 1 + n_feed_sections
 
     # ------------------------------------------------------------------ #
     # 13. districts/index.json + districts/{pop_district}.json (Task 5)  #
@@ -10725,7 +10749,7 @@ def _write_all_sidecars(
             json_dir / "feed.json",
             json_dir / "years_matrix.json",
         ]
-        for _sub in ("program_details", "entity_details", "districts", "flows", "filings"):
+        for _sub in ("program_details", "entity_details", "districts", "flows", "filings", "feed-sections"):
             _d = json_dir / _sub
             if _d.is_dir():
                 _leak_surfaces.extend(sorted(_d.glob("*.json")))
@@ -11376,7 +11400,10 @@ def _emit_feed_sidecar(
     page_pe_blis: set | None = None,
     corpus_scope_qualifier: str | None = None,
     fy26_split_by_pe: dict | None = None,
-) -> None:
+    section_cap: int = _FEED_SECTION_CAP,
+    program_page_keys=None,
+    company_slug_by_family_key: dict | None = None,
+) -> int:
     """Emit json/feed.json from fct_feed_events (Task 4).
 
     Each card: event_type, title (resolved program title, null when none),
@@ -11410,6 +11437,15 @@ def _emit_feed_sidecar(
     discretionary-only rate that reverses its direction. Optional/None
     because this function has callers that never had a split to thread
     (defensive default only — the live pipeline always passes it).
+
+    ROADMAP #88: `section_cap`, `program_page_keys` and
+    `company_slug_by_family_key` feed _emit_feed_section_sidecars (below),
+    which writes json/feed-sections/{event_type}.json — the cards PAST the
+    /feed/ digest cap with company_slug/has_program_page pre-resolved.
+    `program_page_keys` is the program_details/ directory listing (what the
+    site's getProgramPeBlis() reads); when None (the six pre-#88 tests) it
+    falls back to `page_pe_blis`. feed.json publishes `section_cap`.
+    Returns the number of section files written.
     """
     import json as _json
 
@@ -11856,7 +11892,118 @@ def _emit_feed_sidecar(
         # P0-5: the feed's superlative framing ("largest gaps", "biggest
         # swings") is corpus-scoped — the qualifier travels with the payload.
         "scope_qualifier": corpus_scope_qualifier,
+        # ROADMAP #88: the /feed/ digest cap, published so the page and the
+        # per-section sidecars below can never disagree about where a
+        # section was cut.
+        "section_cap": section_cap,
     })
+
+    # ROADMAP #88: per-event-type sidecars for "Show all" — see the function.
+    # `pages` is this function's own page-universe local
+    # (`pages = page_pe_blis or set()`, just above the rva loop), the fallback
+    # for callers that pass no program_page_keys.
+    return _emit_feed_section_sidecars(
+        json_dir=json_dir,
+        cards=cards,
+        section_cap=section_cap,
+        program_page_keys=(
+            program_page_keys if program_page_keys is not None else pages
+        ),
+        company_slug_by_family_key=company_slug_by_family_key or {},
+    )
+
+
+def _emit_feed_section_sidecars(
+    *,
+    json_dir: Path,
+    cards: list,
+    section_cap: int,
+    program_page_keys,
+    company_slug_by_family_key: dict,
+) -> int:
+    """Emit json/feed-sections/{event_type}.json (ROADMAP #88).
+
+    One file per event type present in `cards`, which arrive ALREADY sorted
+    by _emit_feed_sidecar (contiguous by event_type, ranked by magnitude
+    within it — the exact order app/feed/page.tsx slices its first
+    `section_cap` cards from). Each file carries ONLY the cards past the
+    cap, so "Show all" on a section fetches this instead of the whole
+    feed.json (881,872 bytes on the 2026-09-04 export). Measured on that
+    export: the yoy_swing sidecar is 23,927 bytes (97% less to download);
+    concentration_shift's is 712,645 — that section IS most of the feed, so
+    its saving is ~19% raw / ~28% gzipped, not "a tenth".
+
+    Every card is the feed.json card plus two fields the client twin
+    (<FeedCardItemClient>) needs and cannot compute in the browser, resolved
+    from the SAME sources feed/page.tsx uses for the visible cards:
+      company_slug     — /company/{slug}/ for the card's family_key, from the
+                         top-200 entities_top list (getEntityTopByFamilyKey);
+                         null outside the top 200 (no company page).
+      has_program_page — pe_bli names a program_details/ sidecar, i.e. a
+                         /program/{pe_bli}/ page exists (getProgramPeBlis()
+                         reads that same directory listing). Deliberately
+                         NOT derived from program_url: the mart loop sets
+                         that whenever pe_bli is non-null, without consulting
+                         the page universe (G1 dead-link contract).
+
+    Keyed directory: prune-before-emit (same species as districts/, flows/,
+    breakdowns/), and prepare-assets.mjs copyDir MIRRORS it — a retired
+    event type must vanish from the shipped site. Non-truncated sections
+    still get a file (cards: []) so gate 8 leg (o) can assert one file per
+    rendered section and a section that crosses the cap between exports
+    never 404s. Returns the number of files written.
+    """
+    import re as _re
+    import shutil as _shutil
+
+    if section_cap < 0:
+        raise ValueError(f"feed-sections: section_cap must be >= 0, got {section_cap}")
+
+    by_type: dict[str, list] = {}
+    for c in cards:
+        by_type.setdefault(c["event_type"], []).append(c)
+
+    # The event type becomes a FILE NAME the client interpolates into a URL
+    # (fetch(`/json/feed-sections/${eventType}.json`)). Anything outside
+    # [a-z0-9_] is a mart bug — refuse loudly, and refuse BEFORE touching the
+    # directory so a poisoned mart never leaves a half-written keyed dir for
+    # prepare-assets to mirror.
+    name_re = _re.compile(r"^[a-z0-9_]+$")
+    for event_type in by_type:
+        if not name_re.fullmatch(event_type):
+            raise ValueError(
+                f"feed-sections: refusing to write a sidecar named after "
+                f"event_type {event_type!r} (must match [a-z0-9_]+)"
+            )
+
+    sections_dir = json_dir / "feed-sections"
+    if sections_dir.exists():
+        _shutil.rmtree(sections_dir)
+    sections_dir.mkdir()
+
+    n = 0
+    for event_type, section_cards in by_type.items():
+        hidden = []
+        for c in section_cards[section_cap:]:
+            family_key = c.get("family_key")
+            pe_bli = c.get("pe_bli")
+            hidden.append({
+                **c,
+                "company_slug": (
+                    company_slug_by_family_key.get(family_key) if family_key else None
+                ),
+                "has_program_page": bool(pe_bli) and pe_bli in program_page_keys,
+            })
+        _write_json(sections_dir / f"{event_type}.json", {
+            "cards": hidden,
+            "event_type": event_type,
+            "section_cap": section_cap,
+            "shown": min(section_cap, len(section_cards)),
+            "total": len(section_cards),
+        })
+        n += 1
+    print(f"feed-sections: {n} file(s) → json/feed-sections/ (cap {section_cap})")
+    return n
 
 
 def _fmt_thousands(v) -> str:

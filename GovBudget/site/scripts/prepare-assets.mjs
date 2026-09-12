@@ -216,16 +216,33 @@ copyFile(
 );
 console.log("✓  programs_excluded.json → public/json/");
 
-// ── 5g. Copy the feed sidecar (Task 6, #73 — /feed/ client-side expand) ─────
+// ── 5g. Copy the feed sidecar (Task 6, #73) ────────────────────────────────
 // feed.json is the exporter's full card set (the section digest on /feed/
-// renders only the top FEED_SECTION_CAP per event type). The client expand
-// button (feed-section-expand.tsx) fetches this same-origin, same as
-// generate-feeds.mjs already reads it at build time for the RSS/Atom feeds.
+// renders only the top `section_cap` per event type). generate-feeds.mjs
+// reads the data/site copy at build time for the RSS/Atom feeds, /feed/'s
+// truncation note names feed.json as where the full set lives, and gate 1
+// asserts this shipped copy parses and carries a real digest.
+// ROADMAP #88: the "Show all" button no longer fetches THIS file — it
+// fetches one of the per-section sidecars copied in 5h below.
 copyFile(
   path.join(jsonDir, "feed.json"),
   path.join(jsonDestDir, "feed.json")
 );
 console.log("✓  feed.json → public/json/");
+
+// ── 5h. Copy the per-event-type feed sidecars (ROADMAP #88) ────────────────
+// feed-sections/{event_type}.json — the cards PAST the /feed/ digest cap for
+// one section, with company_slug/has_program_page pre-resolved by the
+// exporter. FeedSectionExpand fetches exactly one of these on "Show all"
+// instead of the whole feed.json. copyDir MIRRORS (the directory is keyed by
+// event type and pruned-before-emit upstream): a retired event type must
+// vanish here too. A missing source directory is FATAL (copyDir exits 1) —
+// an export that predates #88 must not build a page whose button 404s.
+const feedSectionsSrc = path.join(jsonDir, "feed-sections");
+copyDir(feedSectionsSrc, path.join(jsonDestDir, "feed-sections"));
+console.log(
+  `✓  feed-sections/ (${fs.readdirSync(feedSectionsSrc).length} files) → public/json/`
+);
 
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
