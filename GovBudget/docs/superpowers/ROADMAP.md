@@ -623,6 +623,29 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   `program-tier.ts` still said "status='downloaded'" until it was moved in the same
   commit.
 
+- **A cross-check whose slack is wider than the defect cannot find the defect
+  (2026-09-12, #30 "and its predecessors").** The WSAA parser's expected population
+  is the service index tables' row count, and in the 2024/2023 typesetting that count
+  is an UPPER bound — a program name too long for the column wraps onto a row of its
+  own and text extraction cannot tell that row from a program. 68 of 75 and 63 of 69
+  cleared the 90 % guard by 0.7 and 1.3 points, and the docstring, the WARNING and the
+  commit body all wrote the difference up as wrapped rows. Three of those rows were
+  real programs the heading rule had dropped in silence — one of them, MK 54 MOD 2
+  (ALWT), breaking the 2025→2024→2023 chain the rule exists to make. Cause: the rule
+  required the banner's common name as a CONTIGUOUS run inside GAO's typeset heading,
+  and "MK 54 MOD 2 (ALWT)" is not contiguous inside "MK 54 MOD 2 Advanced Lightweight
+  Torpedo (ALWT)"; on three OTHER pages the same rule kept reading until it found the
+  name inside GAO's first sentence, so `program_name` carried a sentence and the
+  verbatim quote began mid-clause — both would have rendered as GAO's own words if
+  either program were ever ratified. The fix is a token test beside the contiguous one
+  and a head guard beside `DESC_RESIDUE_RE`'s tail guard, but the lesson is the
+  DETECTOR: GAO prints exactly one banner per program, so the banner set diffed against
+  the emitted set is exact where the row count is fuzzy, and that diff now raises
+  instead of a `continue`. Corollary in the same species as #70–#77's: a tolerance
+  explained in prose is a tolerance nobody re-measures — the sentence that called the
+  gap expected noise is what kept it invisible, and the honest replacement is a run-time
+  diff that states the truth rather than a docstring that predicts it.
+
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
 - **#70 Collision-key program pages (E3).** 8 numeric pe_blis carry two
@@ -1865,6 +1888,34 @@ docs/superpowers/ROADMAP.md`.
     gave up, and cite each to its report page. Until that lands, the honest
     statement on the page is exactly what it now says: no program-specific GAO
     finding for this line is in the ingested data.
+
+    **Status: CLOSED 2026-09-12 — the "and its predecessors" half.** GAO-24-106831
+    (Jun 2024) and GAO-23-106059 (Jun 2023) are ingested beside the 2025 volume:
+    **65 / 69 / 65** Appendix I assessments = **199**, plus the current edition's 68
+    bibliography reports (an older edition's bibliography is NOT re-read — its
+    products nobody adjudicated). **111 predecessor links**: same normalized common
+    name AND service family, nearest earlier edition, nothing fuzzier, so a rename
+    breaks its own chain by design rather than putting GAO's words on another weapon.
+    An older edition reaches a page ONLY behind a ratified current-edition anchor, and
+    the matcher is fenced to the current edition (`generate_candidates(...,
+    current_product=)`), so no new verdict was written: `gao-xwalk` still prints
+    **74 candidates / 63 adjudicated → 62 accepted, 98.4%**, byte-identical apart from
+    its new UNLINKED block. **48 pages carry 132 GAO items — 62 ratified attributions
+    and 70 inherited earlier editions.** The gap is stated, not hidden: **23 programs
+    GAO assessed only in an earlier edition reach no page** (31 assessment rows, listed
+    by `gao-xwalk`), and the entry's own flagship is one of them — GAO-25-107569
+    assesses no F-35 at all, so both older volumes' F-35 (2024 PDF p.213, 2023 p.217,
+    `Lead Component: DOD`) is ingested and visible as an UNLINKED line while reaching
+    no page. Closing that needs the matcher widened to older editions plus a fresh
+    hand-adjudication pass — owner decision. Gate 21 leg **h8** binds each rendered
+    item's edition stamp, the sentence a reader sees, its ratified anchor (same
+    program, same family, strictly newer) and the inherited COUNT to the exporter's own
+    `stats.inherited_items`; the service-family map is emitted into the sidecar from
+    `gao_programs._SERVICE_FAMILY` rather than mirrored. **Fix round 1, 2026-09-12:**
+    the heading rule had silently dropped three real assessments and swallowed GAO's
+    first description sentence on three more (see the findings log); the parser now
+    raises on any bannered program it fails to emit, and 199/111/23 are the
+    post-fix measurements.
 
     **Status: CLOSED 2026-08-27.** Shipped `de19aa2`/`e642c83`/`d99d015` and live.
     One HTTP GET (GAO-25-107569), 65/65 Appendix I assessments + 68 bibliography

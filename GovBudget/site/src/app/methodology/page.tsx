@@ -101,16 +101,11 @@ export default function MethodologyPage() {
   // from the export sidecar. Never a literal — the whole point of the section
   // is that the number is the one the pipeline actually produced.
   const gaoXwalk = getGaoCrosswalkStats();
-  // Named from the sidecar's own source[], so this sentence cannot name an
-  // edition the build did not read (ROADMAP #30).
+  // Counted from the sidecar's own source[], so this sentence cannot claim an
+  // edition the build did not read (ROADMAP #30).  The product numbers used to
+  // be listed here; they were spent on the two disclosures the same section
+  // now makes — what the 132 rendered items are, and what reaches no page.
   const gaoEditions = getGaoEditions();
-  const gaoEditionIds = gaoEditions.map((e) => e.product_number);
-  const gaoEditionList =
-    gaoEditionIds.length > 1
-      ? `${gaoEditionIds.slice(0, -1).join(", ")} and ${
-          gaoEditionIds[gaoEditionIds.length - 1]
-        }`
-      : gaoEditionIds.join("");
   // §P1-5: dataset row counts on this page come from the shipped-parquet
   // manifest, never a literal (the LDA paragraph carried "32,780" long after
   // the mart had grown to 34,538).
@@ -505,13 +500,11 @@ export default function MethodologyPage() {
                   GAO Weapon Systems Annual Assessment — the program tier
                 </h3>
                 <p data-source-freshness="unmetered">
-                  GAO&apos;s annual assessment of DOD&apos;s costliest weapon
-                  programs is ingested for{gaoEditionList ? ` ${formatCount(gaoEditions.length)} editions — ${gaoEditionList} —` : ""}{" "}
-                  {gaoXwalk ? `${formatCount(gaoXwalk.assessments_ingested)} per-program assessments` : ""}{" "}
-                  and the current edition&apos;s bibliography of{gaoXwalk ? ` ${formatCount(gaoXwalk.related_ingested)}` : ""}{" "}
-                  program-specific reports, read from the PDFs. Quoted
-                  assessment text is GAO&apos;s own paragraph, unedited. Source
-                  cadence: annual.
+                  {gaoXwalk
+                    ? `GAO's annual assessment of DOD's costliest weapon programs is ingested for ${formatCount(gaoEditions.length)} editions, ${formatCount(gaoXwalk.assessments_ingested)} per-program assessments and the current edition's bibliography of ${formatCount(gaoXwalk.related_ingested)} program-specific reports, read from the PDFs.`
+                    : "GAO's annual assessment of DOD's costliest weapon programs is read from the report PDFs."}{" "}
+                  Quoted assessment text is GAO&apos;s own paragraph, unedited.
+                  Source cadence: annual.
                 </p>
                 <p className="mt-2">
                   Which budget line each item belongs to, done badly, puts a real
@@ -524,8 +517,9 @@ export default function MethodologyPage() {
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
                     data-seeds/gao_program_xwalk.csv
                   </code>
-                  . Only the current edition is matched; an earlier one renders
-                  only under a ratified newer assessment of the same program.
+                  {gaoXwalk
+                    ? `. Only the current edition is matched; an earlier one renders only under a ratified newer assessment of the same program, and ${formatCount(gaoXwalk.unlinked_older_programs)} programs GAO assessed only earlier reach no page.`
+                    : "."}
                 </p>
                 {gaoXwalk && (
                   <p className="mt-2">
@@ -537,10 +531,10 @@ export default function MethodologyPage() {
                     line&apos;s own narrative opens &ldquo;GBU-39/B: Small Diameter
                     Bomb Increment I&rdquo;. Neither rule reaches the Increment II
                     line, so that program ships no crosswalk rather than a wrong
-                    one. {formatCount(gaoXwalk.pages_with_findings)} pages carry{" "}
-                    {formatCount(gaoXwalk.rendered_items)} GAO items; every other
-                    program page says no program-specific GAO finding for that line
-                    is ingested.
+                    one.
+                    {` ${formatCount(gaoXwalk.pages_with_findings)} pages carry ${formatCount(gaoXwalk.rendered_items)} GAO items — ${formatCount(gaoXwalk.accepted)} ratified attributions and ${formatCount(gaoXwalk.inherited_items)} earlier editions inherited from them`}
+                    ; every other program page says no program-specific GAO
+                    finding for that line is ingested.
                   </p>
                 )}
               </div>
