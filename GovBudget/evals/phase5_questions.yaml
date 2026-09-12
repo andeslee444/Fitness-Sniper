@@ -192,8 +192,9 @@
     select count(distinct pe_bli) from fct_budget_to_awards
   expected_answer: '444'
   expected_citation_kind: warehouse
-  notes: fct_budget_to_awards PE coverage. 24 at pin (DARPA-only crosswalk, 2026-08);
-    444 after the 2026-09-04 tiers; refreshed 2026-09-12
+  notes: fct_budget_to_awards PE coverage. 24 at pin (DARPA-only crosswalk, pinned
+    2026-06-10, 66d18a88); 444 after the 2026-09-04 tiers (fpds-ap / announcement+lexicon
+    / subaward+lexicon; created_at 2026-09-04); refreshed 2026-09-12
 - id: q019
   question: Which DARPA program has the most individual award contracts (distinct
     award PIIDs) linked in the budget-to-awards crosswalk mart (fct_budget_to_awards)?
