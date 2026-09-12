@@ -256,8 +256,11 @@ def test_classify_jbook_defense_health_combined_volume():
       · `_EXCLUDED_TOKENS` rejects 'DHP' (added for the O&M volumes).
     Verified live 2026-09-10: the per-section R-1/P-40/R-2 URLs the index
     links all 404; the combined volume is HTTP 200 application/pdf,
-    3,348,155 bytes. DHA files 18 R-1 program elements and no procurement
-    line, so ONE rdte registration covers its whole footprint.
+    3,348,155 bytes. DHA files 14 R-1 program elements and no procurement
+    line (`select count(distinct pe_bli), count(distinct exhibit) from
+    fct_budget_lines where fiscal_year = 2026 and organization = 'DHA'` ->
+    14, 1 ('R-1'); measured 2026-09-12), so ONE rdte registration covers its
+    whole footprint.
     """
     from govbudget.jbooks.registry import _classify_jbook
 

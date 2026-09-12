@@ -63,12 +63,19 @@ EVIDENCE_NAMES = {
 # --------------------------------------------------------------------------
 # ROADMAP #14 — the Defense Health Program (DHA) FY2026 justification book.
 #
-# DHA files 18 R-1 program elements in the FY2026 workbook (all RDT&E, all in
+# DHA files 14 R-1 program elements in the FY2026 workbook (all RDT&E, all in
 # the "Defense Health Program" account) and had no justification book in the
 # corpus at all, so all 14 of its pages published R-1 figures with nothing
-# behind them. The book exists — the FY2026 justification index links a DHP
-# section set whose Vol II Sec 6/7 are the R-1 and the "RDTE Budget Item
-# Justification" (the R-2).
+# behind them. Measured 2026-09-12, not inherited:
+#   select count(distinct pe_bli), count(distinct exhibit)
+#     from fct_budget_lines where fiscal_year = 2026 and organization = 'DHA'
+#   -> 14, 1 ('R-1'); 0601117DHA … 0607100DHA. Postgres budget_lines agrees.
+# (An earlier draft of this comment said 18, carried over from the brief and
+# never measured — it also contradicted the 14 pages in the same sentence.)
+#
+# The book exists — the FY2026 justification index links a DHP section set
+# whose Vol II Sec 6/7 are the R-1 and the "RDTE Budget Item Justification"
+# (the R-2).
 #
 # Two facts about it, both verified live 2026-09-10 by HTTP HEAD against
 # comptroller.war.gov, recorded here because they are the reason this is ONE
