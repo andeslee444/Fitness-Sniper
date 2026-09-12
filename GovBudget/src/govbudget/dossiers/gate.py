@@ -11,13 +11,21 @@ Per the plan's evaluator design (dossier_gate bullet):
 - >= 80% of claims CORPUS-WIDE carry warehouse (fact_id) citations.
 - required sections (what_it_is / why_it_matters / players) are non-empty;
   recent_developments MAY be empty (warehouse-only dossiers are valid).
-  EXCEPTION (follow-up to #52, 2026-08 — a tightening, not a loosening):
-  an empty required section still fails UNLESS the sidecar's own
+  TWO EXCEPTIONS, both narrow, both verified against an artifact:
+  (1) follow-up to #52, 2026-08 — a tightening, not a loosening: an empty
+  required section still fails UNLESS the sidecar's own
   dropped_claims_by_section records that every claim in it was removed for
   failing the evidence standard AND the built page (built_site_dir) actually
   renders the correction note disclosing it. Both conditions are checked
   independently; either one failing still fails the section, exactly as an
   empty required section always has.
+  (2) 'players' ONLY (Sprint E #67; page-keyed by chain-B fix 2 round 2,
+  2026-09-12): an empty players section is honest when the warehouse carries
+  nothing THIS PAGE could cite — no award link at this page's identity, no
+  lobbying mention on its code, and no concentration figure that is this
+  member's under _concentration_for's test (_has_no_players_evidence).
+  Queried live against duckdb_path, never a slug list; with no duckdb_path,
+  an unresolvable page identity or a missing mart it is not granted.
 - program_categories.csv covers all top-50 pe_blis with an enum category and
   a resolvable source_ref (snapshot:{sha} resolving to a cached snapshot, a
   J-book xml_path, jbook:{pe_bli}:{xml_path}, or lda:{filing_uuid} — the
