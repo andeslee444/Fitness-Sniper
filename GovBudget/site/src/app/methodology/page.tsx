@@ -1318,8 +1318,8 @@ export default function MethodologyPage() {
                   remainders with no matching book entry.{" "}
                   {uningestedClause ? (
                     <>
-                      Some of it belongs to organizations whose FY2026
-                      justification book this corpus does not hold —{" "}
+                      Some of it belongs to organizations with no FY2026
+                      justification book in this corpus —{" "}
                       {uningestedClause} — and those pages say so, naming the
                       book that is missing rather than implying a narrative
                       exists. Which organizations appear here is read from the

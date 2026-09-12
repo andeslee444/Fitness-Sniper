@@ -3256,9 +3256,11 @@ function runDecadeOnlyLeg({ errors, notes, sidecars }) {
 // entirely.
 
 /** Below this many detail-carrying pages the negative direction is not a
- *  check. Measured 2026-09-10: 1,936 non-decade sidecars carry a detail row
- *  and/or a narrative. Ingestion only ADDS to this number, so it is safe to
- *  hold. DO NOT LOWER (2026-09-10). */
+ *  check. Re-measured 2026-09-12 over data/site/json/program_details (2,562
+ *  sidecars: 553 decade, 73 workbook-only): 1,936 non-decade sidecars carry a
+ *  detail row and/or a narrative — unchanged from the 2026-09-10 reading.
+ *  Ingestion only ADDS to this number, so it is safe to hold.
+ *  DO NOT LOWER (2026-09-12). */
 const MIN_DETAIL_PAGES_CHECKED = 1500;
 
 const SERVICE_BOOKS_ATTR = 'data-coverage="service-books"';
@@ -3333,6 +3335,7 @@ export function runCoverageNoteLeg({
   let stray = 0;
   let missing = 0;
   let badBranch = 0;
+  let withdrawn = 0;
   const branchCounts = { ingested: 0, uningested: 0 };
   const say = (msg) => {
     if (errors.filter((e) => e.startsWith("program-skeleton(o)")).length < 12) {
@@ -3382,6 +3385,7 @@ export function runCoverageNoteLeg({
     // ── 4. neither withdrawn full-tier sentence may appear ────────────────
     for (const sentence of WITHDRAWN_FULL_TIER_SENTENCES) {
       if (html.includes(sentence)) {
+        withdrawn++;
         say(
           `program-skeleton(o): /program/${slug}/ has no J-book detail yet states ` +
             `"${sentence}…" — that sentence claims a detail record behind the page`,
@@ -3437,7 +3441,7 @@ export function runCoverageNoteLeg({
     errors.push(
       `program-skeleton(o): only ${detailPagesChecked} page(s) with detail were ` +
         `checked for a stray coverage note (floor ${MIN_DETAIL_PAGES_CHECKED}, ` +
-        `measured 2026-09-10 at 1,936). Below the floor the negative direction has ` +
+        `measured 2026-09-12 at 1,936). Below the floor the negative direction has ` +
         `nothing to read and the leg would pass on a build that renders the note ` +
         `everywhere. Re-measure the population; do not lower the floor`,
     );
@@ -3447,8 +3451,9 @@ export function runCoverageNoteLeg({
       `(${branchCounts.ingested} on a loaded book, ${branchCounts.uningested} on an ` +
       `unloaded one, over ${ingested.size} loaded org code(s)); ` +
       `${detailPagesChecked} page(s) with detail carry none` +
-      (stray + missing + badBranch === 0
+      (stray + missing + badBranch + withdrawn === 0
         ? " ✓"
-        : ` — ${missing} missing, ${stray} stray, ${badBranch} wrong-branch`),
+        : ` — ${missing} missing, ${stray} stray, ${badBranch} wrong-branch, ` +
+          `${withdrawn} withdrawn sentence(s)`),
   );
 }

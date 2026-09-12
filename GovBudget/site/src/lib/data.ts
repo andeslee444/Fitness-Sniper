@@ -1465,8 +1465,13 @@ let _uningestedCoverageOrgs: UningestedCoverageOrg[] | null = null;
 
 /**
  * Build-time wrapper over uningestedCoverageOrgsFrom. /methodology/ names
- * this list so its residual sentence cannot contradict the 19 pages that
- * carry the note (DHA 14, DEFW 4, IG 1, measured 2026-09-10). Never a literal
+ * this list so its residual sentence cannot contradict the pages that carry
+ * the note. 20 pages render the uningested branch; 19 of them have a NAMEABLE
+ * org (DHA 14, DEFW 4, IG 1, re-measured 2026-09-12). The twentieth is
+ * 9999999999 "Classified Programs" — the one rollup sidecar with an empty
+ * service_org — which this function correctly omits, and which is why
+ * /methodology/ says "Some of it belongs to" rather than partitioning the
+ * residual across the three named orgs. Never a literal
  * — the 2026-07-05 lesson applied one surface further out: a hardcoded
  * "which things are ingested" set drifts, and so does a hardcoded list of
  * what is missing.

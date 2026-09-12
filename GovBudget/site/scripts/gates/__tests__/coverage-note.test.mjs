@@ -30,9 +30,16 @@ const INGESTED_NOTE = (svc) =>
   `<p data-coverage="service-books" data-section-empty>The ${svc} FY2026 J-books are ingested, but this program element carries no R-2/P-40 narrative in them — only its cited R-1/P-1 workbook figures are shown. See <a href="/methodology/#coverage-service-books">roadmap</a>.</p>`;
 const FULL_TIER_SENTENCE =
   "<p data-section-empty>The J-book detail for this line carries no separate mission or description narrative — see the justification and line items below for its own prose.</p>";
+/** The OTHER withdrawn full-tier empty state — the Justification section's.
+ *  Both literals in WITHDRAWN_FULL_TIER_SENTENCES are exercised below; a
+ *  literal no test ever trips is a literal that can rot silently. */
+const WITHDRAWN_JUSTIFICATION_SENTENCE =
+  "<p data-section-empty>No accomplishments or planned-program narratives in this line's J-book detail — some exhibits carry figures without per-project prose.</p>";
 
-/** Measured 2026-09-10 from data/site/json/program_details: 1,936 non-decade
- *  pages carry detail and/or a narrative, 73 are workbook-only, 553 decade. */
+/** Re-measured 2026-09-12 from data/site/json/program_details (2,562 sidecars):
+ *  1,936 non-decade pages carry detail and/or a narrative, 73 are workbook-only,
+ *  553 decade — unchanged from the 2026-09-10 reading. Matches the leg's own
+ *  MIN_DETAIL_PAGES_CHECKED note. */
 const DETAIL_PAGES = 1936;
 
 function liveShape() {
@@ -134,6 +141,38 @@ describe("leg o — proof it can fail", () => {
   it("fails loudly when the ingested-org payload is empty — the leg would be reading the wrong set", () => {
     const { errors } = run(() => {}, []);
     expect(errors.join("\n")).toMatch(/ingested_service_orgs/);
+  });
+
+  // Check 4 in isolation. The 0603115DHA test above REPLACES the note with the
+  // withdrawn sentence, so the leg stops at check 1 ("renders no note") and
+  // check 4 never runs — it had no proof-it-can-fail test at all. Here the page
+  // keeps an otherwise-correct note and ALSO carries a withdrawn sentence, so
+  // checks 1/2/3 all pass and the only error that can appear is check 4's.
+  it.each([
+    ["the Description empty state", FULL_TIER_SENTENCE,
+     "The J-book detail for this line carries no separate mission"],
+    ["the Justification empty state", WITHDRAWN_JUSTIFICATION_SENTENCE,
+     "some exhibits carry figures without per-project prose"],
+  ])(
+    "fails when a correctly-noted page ALSO carries %s",
+    (_label, withdrawnHtml, literal) => {
+      const { errors, notes } = run((c) =>
+        c.pages.set("F-WBONLY", UNINGESTED_NOTE("DHA") + withdrawnHtml),
+      );
+      const own = errors.filter((e) => e.startsWith("program-skeleton(o)"));
+      expect(own).toHaveLength(1); // exactly one — checks 1/2/3 are satisfied
+      expect(own[0]).toContain("F-WBONLY");
+      expect(own[0]).toContain(literal);
+      expect(own[0]).toContain("claims a detail record behind the page");
+      // and the summary must not report the run as clean (minor 3)
+      expect(notes.join(" ")).not.toContain("✓");
+      expect(notes.join(" ")).toContain("1 withdrawn sentence(s)");
+    },
+  );
+
+  it("keeps the ✓ off the summary only when check 4 is the sole failure", () => {
+    // the control for the assertion above: an untouched run DOES print ✓
+    expect(run().notes.join(" ")).toContain("✓");
   });
 
   it("fails when the detail-page population collapses — the leg would be vacuous", () => {
