@@ -594,6 +594,29 @@ def test_member_slugs_by_title_refuses_identical_member_titles():
     }
 
 
+def test_member_slugs_by_title_never_names_an_org_split_member():
+    """'20' DCSA/DTRA share one account, so fct_district_programs' title
+    (resolved per (pe_bli, account)) cannot have picked one of them — a
+    distinct-looking title there names nobody, and the stub is the honest
+    destination. Org-split codes carry no crosswalk links today, so this
+    guard is what keeps a future loader change from turning "no district
+    rows" into "the wrong member"."""
+    from govbudget.export_site import _ProgramIdentity, member_slugs_by_title
+
+    rows = [
+        ("20", "DTRA", "procurement", "Vehicles", 0, 1.0, True, "0300D", "Procurement, Defense-Wide", None),
+        ("20", "DCSA", "procurement", "Major Equipment", 0, 1.0, True, "0300D", "Procurement, Defense-Wide", None),
+        ("3010", "N", "procurement", "LPD Flight II", 0, 1.0, True, SCN, SCN_TITLE, None),
+        ("3010", "N", "procurement", "Shipboard Tactical Communications", 0, 1.0, True, OPN, OPN_TITLE, None),
+    ]
+    ident = _ProgramIdentity([(r[0], r[7], r[8], r[1], True) for r in rows])
+    out = member_slugs_by_title(rows, {"20", "3010"}, ident)
+    assert set(out) == {
+        ("3010", "LPD Flight II"),
+        ("3010", "Shipboard Tactical Communications"),
+    }
+
+
 def test_both_linked_members_carry_the_withheld_flag_and_no_hhi(collision_export):
     """Both 3010 members carry a link and the mart has a bare-key figure: it
     is neither member's, programs.json publishes hhi=null on each, and the

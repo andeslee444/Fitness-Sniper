@@ -481,12 +481,21 @@ def member_slugs_by_title(
     10-tuples (pe_bli at 0, org at 1, title at 3 — already override-corrected
     — account at 7, account_title at 8); titles here are compared against
     the mart title after the SAME apply_title_override, so the two agree.
+
+    ORGANIZATION-split codes ('20'/'30'/'500') are excluded even when their
+    member titles differ: their members share one account, so the mart's
+    per-(pe_bli, account) title resolution cannot have picked one of them,
+    and a title that merely looks distinct would name a member the figure is
+    not about. They carry no crosswalk links today (both loaders exclude
+    them, ROADMAP #70/#83) and so reach no district row at all — the guard
+    exists so that a future loader change cannot turn "no rows" into "the
+    wrong member" silently.
     """
     from collections import Counter, defaultdict  # module convention: per-function
 
     by_pe: dict[str, list] = defaultdict(list)
     for r in all_prog_rows:
-        if r[0] in shared_pe_blis:
+        if r[0] in shared_pe_blis and ident.is_account_split(r[0]):
             by_pe[r[0]].append(r)
     out: dict[tuple[str, str], str] = {}
     for pe_bli, members in by_pe.items():
