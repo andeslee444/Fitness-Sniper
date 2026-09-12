@@ -15,7 +15,8 @@
  *     if fewer than 100 district sidecars resolve.
  * (f) by-year truth (ROADMAP #6): every district sidecar's by_year rows sum to
  *     that sidecar's own total_linkable_dollars within a cent, every by-year
- *     row carries a resolving citation id, and the table is non-vacuous —
+ *     row carries BOTH resolving citation ids (net and gross), and the table
+ *     is non-vacuous —
  *     >=130 districts and >=800 by-year rows must be present. "Every row adds
  *     up" is satisfied by a corpus with no rows at all, which is exactly what
  *     an export against a pre-#6 warehouse produces.
@@ -362,8 +363,16 @@ const TOL_BY_YEAR = 0.01;
 export function runDistrictByYearLeg({ errors, notes, sidecars }) {
   let withTable = 0;
   let rows = 0;
-  const mismatches = [];
-  const uncited = [];
+  // COUNT everything, cap only the DETAIL list — leg e's shape, 100 lines
+  // above. Fix round 1 (Important 3): the cap used to sit inside the detection
+  // condition, so a corpus with 50 broken districts reported "5 district(s)",
+  // and a message that is wrong about scale is the one thing these messages
+  // exist to get right.
+  let mismatches = 0;
+  let uncited = 0;
+  const mismatchDetails = [];
+  const uncitedDetails = [];
+  const DETAIL_CAP = 5;
 
   for (const s of sidecars) {
     const byYear = Array.isArray(s.by_year) ? s.by_year : [];
@@ -374,22 +383,38 @@ export function runDistrictByYearLeg({ errors, notes, sidecars }) {
     let sum = 0;
     for (const r of byYear) {
       sum += Number(r.total_obligation ?? NaN);
-      if (!r.total_fact_id && uncited.length < 5) {
-        uncited.push(
-          `${s.pop_district} FY${r.fiscal_year} carries no total_fact_id — a ` +
-            `by-year figure with no resolving citation must not be emitted at all`,
-        );
+      // BOTH ids, not just the net one (fix round 1, Minor 9). The exporter
+      // drops a by-year row unless both citations resolve, and the gross
+      // figure IS rendered on every district with a deobligation — a leg that
+      // only checks total_fact_id would let a half-cited row ship.
+      for (const field of ["total_fact_id", "positive_fact_id"]) {
+        if (r[field]) continue;
+        uncited += 1;
+        if (uncitedDetails.length < DETAIL_CAP) {
+          uncitedDetails.push(
+            `${s.pop_district} FY${r.fiscal_year} carries no ${field} — a ` +
+              `by-year figure with no resolving citation must not be emitted at all`,
+          );
+        }
       }
     }
     const headline = Number(s.total_linkable_dollars ?? NaN);
-    if (!(Math.abs(sum - headline) <= TOL_BY_YEAR) && mismatches.length < 5) {
-      mismatches.push(
-        `${s.pop_district}: ${byYear.length} by-year rows sum to ${sum} but the ` +
-          `page's headline total_linkable_dollars is ${headline} ` +
-          `(diff ${sum - headline})`,
-      );
+    if (!(Math.abs(sum - headline) <= TOL_BY_YEAR)) {
+      mismatches += 1;
+      if (mismatchDetails.length < DETAIL_CAP) {
+        mismatchDetails.push(
+          `${s.pop_district}: ${byYear.length} by-year rows sum to ${sum} but the ` +
+            `page's headline total_linkable_dollars is ${headline} ` +
+            `(diff ${sum - headline})`,
+        );
+      }
     }
   }
+
+  /** "a; b; c (+7 more)" — the count above is the true one, this is the cap. */
+  const withCap = (total, details) =>
+    details.join("; ") +
+    (total > details.length ? ` (+${total - details.length} more)` : "");
 
   if (withTable < MIN_BY_YEAR_DISTRICTS) {
     errors.push(
@@ -406,18 +431,21 @@ export function runDistrictByYearLeg({ errors, notes, sidecars }) {
         `lost nine tenths of its table. Fix the export; do not lower the floor.`,
     );
   }
-  if (mismatches.length > 0) {
+  if (mismatches > 0) {
     errors.push(
-      `leg f: ${mismatches.length} district(s) whose by-year rows do not sum to ` +
-        `the headline they sit under: ${mismatches.join("; ")}`,
+      `leg f: ${mismatches} district(s) whose by-year rows do not sum to ` +
+        `the headline they sit under: ${withCap(mismatches, mismatchDetails)}`,
     );
   }
-  if (uncited.length > 0) {
-    errors.push(`leg f: ${uncited.length} uncited by-year figure(s): ${uncited.join("; ")}`);
+  if (uncited > 0) {
+    errors.push(
+      `leg f: ${uncited} uncited by-year figure(s): ` +
+        `${withCap(uncited, uncitedDetails)}`,
+    );
   }
   if (
-    mismatches.length === 0 &&
-    uncited.length === 0 &&
+    mismatches === 0 &&
+    uncited === 0 &&
     withTable >= MIN_BY_YEAR_DISTRICTS &&
     rows >= MIN_BY_YEAR_ROWS
   ) {

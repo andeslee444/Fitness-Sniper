@@ -25,7 +25,8 @@ import { runDistrictByYearLeg } from "../district.mjs";
  *  at least one whenever rows >= districts. (A generator that truncates
  *  trailing districts would silently test a different corpus than the one the
  *  floor cases name.) */
-function corpus({ districts = 153, rows = 924, breakDistrict = null } = {}) {
+function corpus({ districts = 153, rows = 924, breakDistricts = [] } = {}) {
+  const broken = new Set(breakDistricts);
   const base = Math.floor(rows / districts);
   const remainder = rows - base * districts;
   const out = [];
@@ -46,7 +47,7 @@ function corpus({ districts = 153, rows = 924, breakDistrict = null } = {}) {
     const sum = by_year.reduce((s, r) => s + r.total_obligation, 0);
     out.push({
       pop_district: code,
-      total_linkable_dollars: code === breakDistrict ? sum + 1_000 : sum,
+      total_linkable_dollars: broken.has(code) ? sum + 1_000 : sum,
       by_year,
     });
   }
@@ -69,7 +70,7 @@ describe("gate 9 leg f — by-year sum vs the page headline", () => {
   });
 
   it("FAILS when one district's years stop adding up to its headline", () => {
-    const { errors } = run(corpus({ breakDistrict: "ZZ-007" }));
+    const { errors } = run(corpus({ breakDistricts: ["ZZ-007"] }));
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain("ZZ-007");
     expect(errors[0]).toContain("by-year rows sum to");
@@ -103,5 +104,40 @@ describe("gate 9 leg f — by-year sum vs the page headline", () => {
     c[3].by_year[0].total_fact_id = null;
     const { errors } = run(c);
     expect(errors.some((e) => e.includes("carries no total_fact_id"))).toBe(true);
+  });
+
+  // ── fix round 1 ──────────────────────────────────────────────────────────
+
+  it("reports the TRUE number of broken districts, not the detail cap", () => {
+    // The cap used to sit inside the detection condition, so this corpus
+    // reported "5 district(s)" (Important 3). Six is deliberately one past it.
+    const broken = ["ZZ-001", "ZZ-002", "ZZ-003", "ZZ-004", "ZZ-005", "ZZ-006"];
+    const { errors } = run(corpus({ breakDistricts: broken }));
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("6 district(s) whose by-year rows do not sum");
+    // Five named, the sixth counted and declared rather than dropped.
+    for (const code of broken.slice(0, 5)) expect(errors[0]).toContain(code);
+    expect(errors[0]).toContain("(+1 more)");
+  });
+
+  it("reports the TRUE number of uncited figures, not the detail cap", () => {
+    const c = corpus();
+    for (let i = 0; i < 6; i++) c[i].by_year[0].total_fact_id = null;
+    const { errors } = run(c);
+    const uncitedError = errors.find((e) => e.includes("uncited by-year figure"));
+    expect(uncitedError).toContain("6 uncited by-year figure(s)");
+    expect(uncitedError).toContain("(+1 more)");
+  });
+
+  it("FAILS on a row missing ONLY its positive_fact_id", () => {
+    // Minor 9: the gross figure is rendered on every district with a
+    // deobligation, so a row cited on the net half only is half-uncited.
+    const c = corpus();
+    c[3].by_year[0].positive_fact_id = null;
+    const { errors } = run(c);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("1 uncited by-year figure(s)");
+    expect(errors[0]).toContain("carries no positive_fact_id");
+    expect(errors[0]).not.toContain("(+");
   });
 });

@@ -152,7 +152,10 @@
  *      fct_budget_to_awards links (districtyear-recompute.py — never from
  *      fct_district_totals_by_year, the artifact under test), and requires
  *      BOTH the sidecar value and the figure RENDERED on the built page to
- *      match it. Non-vacuous: fails if fewer than 12 cells are published or if
+ *      match it — for the NET cell always, and for the gross "Before
+ *      deobligations" cell whenever the page renders one (a cell whose own
+ *      gross exceeds its net MUST render one). Non-vacuous: fails if fewer
+ *      than 12 cells are published or if
  *      any sampled cell has no rows in the lake. (The brief called this leg
  *      (o); that letter was taken by the hand-adjudication leg above and
  *      (p)/(q) are reserved, so the by-year leg is (r).)
@@ -3625,27 +3628,77 @@ function parseSignedAmount(text) {
   return v === null ? null : neg ? -v : v;
 }
 
+/** Does the RENDERED figure agree with the lake, given the rounding the page
+ *  actually applied? formatAmount is not uniform: |v| >= $1,000 becomes three
+ *  significant digits ("$124.4M"), below that it becomes INTEGER dollars
+ *  (compactFormat's `Math.round(abs)` branch). valuesAgree's granularity is the
+ *  3-significant-digit one at EVERY magnitude, so a cell at $4.37 renders "$4"
+ *  and would be reported as a disagreement by rounding alone. No such cell
+ *  exists today — the 120 sub-$10 published cells are all exactly $0.00 — but
+ *  the flake is latent, not impossible (fix round 1, Minor 6; measured
+ *  read-only against data/duckdb/govbudget.duckdb 2026-09-11). */
+function renderedAgreesWithLake(rendered, truthValue) {
+  if (rendered == null || truthValue == null) return false;
+  if (Math.abs(truthValue) < 1000) {
+    // Mirror compactFormat exactly: it rounds the ABSOLUTE value and reapplies
+    // the sign, which differs from Math.round(v) at a negative half-dollar.
+    const pageRounded =
+      truthValue < 0 ? -Math.round(-truthValue) : Math.round(truthValue);
+    return Math.abs(rendered - pageRounded) <= TOL_DISTRICT_YEAR;
+  }
+  return valuesAgree(rendered, truthValue);
+}
+
+/** One rendered figure against one lake value. Returns the failure string, or
+ *  null when it checks out. `label` distinguishes the net cell from the gross
+ *  one in the message. */
+function checkRenderedFigure(key, label, rendered, truthValue) {
+  if (!rendered.cited) {
+    return (
+      `${key}${label}: the rendered row carries no cited [data-amount] — a ` +
+      `by-year figure must never reach the page without its receipt`
+    );
+  }
+  if (rendered.amount === null) {
+    return `${key}${label}: the rendered figure is not a single parseable currency value`;
+  }
+  if (!renderedAgreesWithLake(rendered.amount, truthValue)) {
+    return (
+      `${key}${label}: the page renders ${rendered.amount} where the lake says ` +
+      `${truthValue}`
+    );
+  }
+  return null;
+}
+
 /**
  * The pure half of leg r — exported for
  * site/scripts/gates/__tests__/district-year-lake.test.mjs, which injects all
  * three inputs so every failure mode is provable without a build.
  *
  * @param {object} args
- * @param {{district: string, fy: number, total: number}[]} args.sample
- *        cells read from the district sidecars.
+ * @param {{district: string, fy: number, total: number,
+ *        positive?: number|null}[]} args.sample
+ *        cells read from the district sidecars. `positive` is the sidecar's
+ *        positive_obligation — the gross figure, rendered only on districts
+ *        that have a deobligation somewhere in the table.
  * @param {Record<string, {award_count:number,total_obligation:number,
  *        positive_obligation:number}|null>} args.truth
  *        the lake recompute, keyed "{district}|{fy}".
  * @param {(district: string, fy: number) =>
- *        ({amount: number|null, cited: boolean}|null)} args.readRendered
+ *        ({amount: number|null, cited: boolean,
+ *          gross?: {amount: number|null, cited: boolean}|null}|null)}
+ *        args.readRendered
  *        the built page's row for that cell: null when the page or the row is
  *        missing; amount null when the rendered text is not a single
- *        parseable currency figure.
- * @returns {{failures: string[], checked: number}}
+ *        parseable currency figure; `gross` null/absent when the row renders
+ *        no "Before deobligations" cell.
+ * @returns {{failures: string[], checked: number, grossChecked: number}}
  */
 export function checkDistrictYearSample({ sample, truth, readRendered }) {
   const failures = [];
   let checked = 0;
+  let grossChecked = 0;
   for (const cell of sample) {
     const key = `${cell.district}|${cell.fy}`;
     const lake = truth[key];
@@ -3668,29 +3721,55 @@ export function checkDistrictYearSample({ sample, truth, readRendered }) {
       );
       continue;
     }
-    if (!row.cited) {
-      failures.push(
-        `${key}: the rendered row carries no cited [data-amount] — a by-year ` +
-          `figure must never reach the page without its receipt`,
-      );
-      continue;
-    }
-    if (row.amount === null) {
-      failures.push(
-        `${key}: the rendered figure is not a single parseable currency value`,
-      );
-      continue;
-    }
-    if (!valuesAgree(row.amount, lake.total_obligation)) {
-      failures.push(
-        `${key}: the page renders ${row.amount} where the lake says ` +
-          `${lake.total_obligation}`,
-      );
+    const netFailure = checkRenderedFigure(key, "", row, lake.total_obligation);
+    if (netFailure) {
+      failures.push(netFailure);
       continue;
     }
     checked += 1;
+
+    // ── the gross cell, whenever it is rendered (fix round 1, Important 4) ──
+    // It is a second PUBLISHED figure per row — rendered on the 90 of 153
+    // districts that have a deobligation — and nothing bound it to the lake or
+    // to the built page. When the column is absent there is nothing to check,
+    // which is not the same as nothing to say: gate 9 leg f still requires the
+    // citation id for it on every row.
+    if (!row.gross) {
+      // ...with one exception: the page renders the column for the WHOLE
+      // district as soon as any one of its years has gross > net, so a row
+      // whose own gross exceeds its own net cannot legitimately be missing it.
+      if (cell.positive != null && cell.positive > cell.total + 0.005) {
+        failures.push(
+          `${key} (gross): the sidecar's positive_obligation ${cell.positive} ` +
+            `exceeds its net ${cell.total}, so the page must render a "Before ` +
+            `deobligations" cell on this row — it renders one [data-amount]`,
+        );
+      }
+      continue;
+    }
+    if (cell.positive === null || cell.positive === undefined) {
+      failures.push(
+        `${key} (gross): the built page renders a "Before deobligations" cell ` +
+          `but the sidecar carries no positive_obligation behind it`,
+      );
+      continue;
+    }
+    if (Math.abs(lake.positive_obligation - cell.positive) > TOL_DISTRICT_YEAR) {
+      failures.push(
+        `${key} (gross): sidecar=${cell.positive} lake=${lake.positive_obligation}`,
+      );
+      continue;
+    }
+    const grossFailure = checkRenderedFigure(
+      key, " (gross)", row.gross, lake.positive_obligation,
+    );
+    if (grossFailure) {
+      failures.push(grossFailure);
+      continue;
+    }
+    grossChecked += 1;
   }
-  return { failures, checked };
+  return { failures, checked, grossChecked };
 }
 
 function runDistrictYearLeg(errors, notes) {
@@ -3714,6 +3793,7 @@ function runDistrictYearLeg(errors, notes) {
         district: sidecar.pop_district,
         fy: row.fiscal_year,
         total: row.total_obligation,
+        positive: row.positive_obligation ?? null,
       });
     }
   }
@@ -3767,14 +3847,21 @@ function runDistrictYearLeg(errors, notes) {
     const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
     const row = root.querySelector(`[data-district-year="${fy}"]`);
     if (!row) return null;
-    const amountEl = row.querySelector("[data-amount]");
+    // Cell order is the table's column order: net, then the conditional gross
+    // ("Before deobligations"), then the award count — which is not a
+    // [data-amount] at all. Two amounts means the gross column is rendered.
+    const amountEls = row.querySelectorAll("[data-amount]");
+    const read = (el) => ({
+      cited: Boolean(el && el.getAttribute("data-fact-id")),
+      amount: el ? parseSignedAmount(el.text) : null,
+    });
     return {
-      cited: Boolean(amountEl && amountEl.getAttribute("data-fact-id")),
-      amount: amountEl ? parseSignedAmount(amountEl.text) : null,
+      ...read(amountEls[0]),
+      gross: amountEls.length > 1 ? read(amountEls[1]) : null,
     };
   };
 
-  const { failures, checked } = checkDistrictYearSample({
+  const { failures, checked, grossChecked } = checkDistrictYearSample({
     sample,
     truth,
     readRendered,
@@ -3788,7 +3875,8 @@ function runDistrictYearLeg(errors, notes) {
   } else {
     notes.push(
       `leg r: ${checked} district-year cell(s) recomputed from the lake and ` +
-        `matched their rendered, cited rows ✓`,
+        `matched their rendered, cited rows (${grossChecked} of them also ` +
+        `rendering a gross "Before deobligations" cell, checked the same way) ✓`,
     );
   }
 }
