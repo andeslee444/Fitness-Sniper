@@ -317,3 +317,54 @@ describe("FlowChart", () => {
     expect(legend.nextElementSibling).toBe(note);
   });
 });
+
+describe("node labels (round-3 judging: plates + value nearest the node)", () => {
+  const withBBox = () => {
+    // jsdom implements no SVG geometry; the component must draw a plate when a
+    // real engine provides one and degrade to no plate when it does not.
+    // @ts-expect-error - jsdom has no getBBox
+    SVGElement.prototype.getBBox = function getBBox() {
+      return { x: 514, y: 23, width: 120, height: 13.2 };
+    };
+  };
+  afterEach(() => {
+    // @ts-expect-error - restore
+    delete SVGElement.prototype.getBBox;
+  });
+
+  it("paints a plate behind every rendered label, before the text", async () => {
+    withBBox();
+    renderChart();
+    await waitForChart();
+    const group = document.querySelector('[data-node-id="b:c:A"]')!;
+    const plate = group.querySelector("[data-flow-label-plate]");
+    expect(plate).not.toBeNull();
+    expect(plate!.getAttribute("data-flow-label-plate")).toBe("b:c:A");
+    // Document order IS paint order in SVG: the plate must precede the text.
+    const kids = [...group.children];
+    expect(kids.indexOf(plate!)).toBeLessThan(
+      kids.findIndex((el) => el.tagName.toLowerCase() === "text"),
+    );
+  });
+
+  it("renders the value BEFORE the name on a start-anchored label", async () => {
+    withBBox();
+    renderChart();
+    await waitForChart();
+    const text = document.querySelector('[data-node-id="b:c:A"] text')!;
+    // b:c:A is value 60 in USD thousands -> 60 x 1e3 = $60,000 -> the K rung,
+    // one decimal (lib/format compactFormat) -> displayAmount = "60.0K".
+    expect(text.textContent!.replace(/\s+/g, " ").trim()).toMatch(/^60\.0K Army$/);
+    const value = text.querySelector("[data-flow-label-value]")!;
+    expect(value.textContent!.trim()).toBe("60.0K");
+    expect([...text.childNodes].indexOf(value)).toBe(0);
+  });
+
+  it("renders no plate when the engine cannot measure text", async () => {
+    // No getBBox stub — the environment the static export renders into.
+    renderChart();
+    await waitForChart();
+    expect(document.querySelector("[data-flow-label-plate]")).toBeNull();
+    expect(document.querySelector('[data-node-id="b:c:A"] text')).not.toBeNull();
+  });
+});

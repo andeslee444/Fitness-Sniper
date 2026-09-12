@@ -80,6 +80,13 @@
   /* light halo painted UNDER label glyphs (paint-order: stroke) so value
      numerals stay legible over busy hatched ribbons (D1) */
   --flow-label-halo: oklch(1 0 0 / 0.82);
+  /* Opaque plate painted behind a node label (round-3 judging). A glyph halo
+     cannot fix a de-obligation hairline crossing a figure — the line shows
+     through the counters and the spaces between letters. var(--card) is the
+     surface the chart already sits on (both scrollers are bg-card) AND is a
+     token the dark media query redefines (:188), so the plate is theme-correct
+     while the rest of the /flow/ palette stays deliberately light. */
+  --flow-label-plate: var(--card);
   /* leader hairlines for gutter labels displaced off their node's center */
   --flow-leader: oklch(0.72 0.01 260);
   --flow-node-budget: oklch(0.4 0.02 260);

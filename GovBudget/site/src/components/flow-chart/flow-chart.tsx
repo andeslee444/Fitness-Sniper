@@ -42,6 +42,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -730,6 +731,110 @@ function nodeFill(node: FlowNode, variant: "budget" | "spend"): string {
   return variant === "budget" ? "var(--flow-node-budget)" : "var(--flow-node-spend)";
 }
 
+/** Plate padding in viewBox units. X is generous; Y must stay under half the
+ *  exporter's gutter-label stack gap (2.0) so a plate can never reach the
+ *  label stacked above or below it. */
+const PLATE_PAD_X = 2;
+const PLATE_PAD_Y = 0.5;
+
+/**
+ * One node's inline label: an opaque plate, then the text.
+ *
+ * PLACEMENT IS STILL THE EXPORTER'S (n.lbl, precomputed, collision-free —
+ * ROADMAP.md:144). This component adds no layout math: it measures the text it
+ * has already drawn (getBBox) and paints a plate behind it, and it orders the
+ * two tspans so the VALUE is the half nearest the node face.
+ *
+ * WHY: round-3 judging left two findings open. At 1440, labels sit ON a node
+ * bar or are CROSSED by a de-obligation hairline — both are "something is
+ * painted through the figure", both legal under gate 22 leg (f) because the
+ * obstacle is painted first, and a plate is the only fix that does not move a
+ * label. At 390 the 840px chart lives in a ~358px scroller and labels showed
+ * their name on screen with the dollar figure past the edge; putting the value
+ * against the node face means that if you can see the block, you can read its
+ * number.
+ *
+ * paint-order:stroke and the halo stay: they keep the glyphs legible over the
+ * ribbon the plate does not cover (the halo hugs each glyph, the plate squares
+ * off the box).
+ */
+function NodeLabel({ node, units }: { node: FlowNode; units: AmountUnits }) {
+  const ref = useRef<SVGTextElement | null>(null);
+  const [plate, setPlate] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const lbl = node.lbl;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    // jsdom (vitest) and any non-rendering environment have no SVG geometry:
+    // degrade to an unplated label rather than throwing.
+    if (!el || typeof el.getBBox !== "function") {
+      setPlate(null);
+      return;
+    }
+    let b: { x: number; y: number; width: number; height: number } | null = null;
+    try {
+      b = el.getBBox();
+    } catch {
+      return;
+    }
+    if (!b || b.width <= 0 || b.height <= 0) return;
+    setPlate({
+      x: b.x - PLATE_PAD_X,
+      y: b.y - PLATE_PAD_Y,
+      w: b.width + PLATE_PAD_X * 2,
+      h: b.height + PLATE_PAD_Y * 2,
+    });
+  }, [node.id, node.label, node.value, units, lbl?.x, lbl?.y, lbl?.a]);
+
+  if (!lbl) return null;
+  const amount = (
+    <tspan data-flow-label-value="" className="fill-muted-foreground">
+      {displayAmount(node.value, units)}
+    </tspan>
+  );
+  return (
+    <>
+      {plate && (
+        <rect
+          data-flow-label-plate={node.id}
+          x={plate.x}
+          y={plate.y}
+          width={plate.w}
+          height={plate.h}
+          rx={2}
+          fill="var(--flow-label-plate)"
+        />
+      )}
+      <text
+        ref={ref}
+        x={lbl.x}
+        y={lbl.y + 3.5}
+        textAnchor={lbl.a === "s" ? "start" : "end"}
+        fontSize={10}
+        className="fill-foreground"
+        paintOrder="stroke"
+        stroke="var(--flow-label-halo)"
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      >
+        {lbl.a === "s" ? (
+          <>
+            {amount}
+            {"  "}
+            {node.label}
+          </>
+        ) : (
+          <>
+            {node.label}
+            {"  "}
+            {amount}
+          </>
+        )}
+      </text>
+    </>
+  );
+}
+
 function RiverSvg({
   idPrefix,
   nodes,
@@ -1021,29 +1126,10 @@ function RiverSvg({
               height={h}
             />
             {/* Inline label: geometry precomputed by the exporter (F3 —
-                zero-collision contract; absent lbl = tooltip-only node).
-                paint-order:stroke draws a light halo behind the numerals so
-                values stay legible over busy hatched ribbons (D1). */}
-            {n.lbl && (
-              <text
-                x={n.lbl.x}
-                y={n.lbl.y + 3.5}
-                textAnchor={n.lbl.a === "s" ? "start" : "end"}
-                fontSize={10}
-                className="fill-foreground"
-                paintOrder="stroke"
-                stroke="var(--flow-label-halo)"
-                strokeWidth={2.5}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              >
-                {n.label}
-                <tspan className="fill-muted-foreground">
-                  {"  "}
-                  {displayAmount(n.value, units)}
-                </tspan>
-              </text>
-            )}
+                zero-collision contract; absent lbl = tooltip-only node). The
+                plate, the halo and the value-first ordering live in
+                <NodeLabel>. */}
+            <NodeLabel node={n} units={units} />
           </g>
         );
       })}

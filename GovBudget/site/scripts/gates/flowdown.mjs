@@ -74,6 +74,19 @@
  *      separable by attribute AND by the reader's eye, and that an identity
  *      with no program page renders as an unresolved reference and not a
  *      link. Vacuity fails three ways (no ribbons, no stated, no inferred).
+ *  (h) LABEL LEGIBILITY (round-3 judging leftover, PM-S3 row). Leg (f) proves
+ *      labels do not overlap each other and are not painted over by a node
+ *      rect emitted AFTER them. Neither question is the one the judges asked:
+ *      a node bar or a de-obligation hairline painted BEFORE a label still
+ *      runs through its figure, and leg (f) is silent by construction.
+ *      (h1) asserts every label has an opaque plate that covers it, is painted
+ *      before it, and reaches no other label; the SCREENSHOT half then decodes
+ *      the rendered pixels inside each label box and requires zero
+ *      de-obligation red — the DOM can promise a plate, only pixels can say
+ *      nothing shows through it. (h2) re-runs at 390x844 and requires the
+ *      value half of a label to be the half nearest its node face and to be on
+ *      screen whenever the node bar is. Vacuity fails four ways (no labels, no
+ *      plates, no hairline red anywhere, too few nodes visible at 390).
  *
  * Export: runFlowdownGate({ baseUrl }) → { pass, errors, notes }
  *         runLineageRibbonLeg() → { errors, notes }   (leg g, standalone)
@@ -86,6 +99,16 @@ import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
 import { parse as parseHtml } from "node-html-parser";
+import { createRequire } from "module";
+// pngjs is a devDependency and ships CJS; same pattern as gates/og.mjs:34-39.
+const _require = createRequire(import.meta.url);
+const { PNG } = _require("pngjs");
+
+/** Per-channel SAD tolerance for "this pixel is the de-obligation red".
+ *  The plate is opaque, so a crossing hairline is either fully there (SAD 0)
+ *  or fully gone; 40 covers antialiasing on the hairline's own edge without
+ *  admitting a 4%-opacity tint. */
+const RED_TOL = 40;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -245,6 +268,131 @@ export function onPathPoints(d) {
     }
   }
   return pts;
+}
+
+/** Bilateral tolerance, in px — halo/antialias slop, never a masking budget. */
+const LABEL_TOL = 1;
+
+/**
+ * (h1) Every rendered label must sit on an opaque plate that (a) covers it,
+ * (b) is painted BEFORE it, and (c) does not reach any other label.
+ *
+ * WHY A PLATE AND NOT A HALO. paint-order:stroke draws a 2.5px halo around
+ * each GLYPH, so a de-obligation hairline still shows through the counters and
+ * the spaces between letters. On the 2026-09-10 deployment, 10 of the 60
+ * rendered labels at 1440 had a hairline running through their text box and 20
+ * sat on a downstream column's node bar — all of them legal under leg (f),
+ * because the obstacle is painted BEFORE the text. The plate makes the label's
+ * own box opaque, which is the only thing that makes "nothing crosses this
+ * figure" checkable at all.
+ */
+export function platedLabelFindings(labels, plates, tol = LABEL_TOL) {
+  const found = [];
+  const byId = new Map();
+  for (const p of plates) byId.set(`${p.river} ${p.id}`, p);
+  for (const a of labels) {
+    const p = byId.get(`${a.river} ${a.id}`);
+    if (!p) {
+      found.push(
+        `leg h1: ${a.river}: label "${a.id}" has no plate — a hairline or a node bar can cross its figure`,
+      );
+      continue;
+    }
+    if (
+      p.left > a.left + tol || p.right < a.right - tol ||
+      p.top > a.top + tol || p.bottom < a.bottom - tol
+    ) {
+      found.push(
+        `leg h1: ${a.river}: label "${a.id}"'s plate does not cover it ` +
+          `(plate ${p.left.toFixed(1)}..${p.right.toFixed(1)} x ${p.top.toFixed(1)}..${p.bottom.toFixed(1)}, ` +
+          `label ${a.left.toFixed(1)}..${a.right.toFixed(1)} x ${a.top.toFixed(1)}..${a.bottom.toFixed(1)})`,
+      );
+    }
+    if (p.paintIndex > a.paintIndex) {
+      found.push(
+        `leg h1: ${a.river}: label "${a.id}"'s plate is painted after the text — it would hide the glyphs`,
+      );
+    }
+    for (const b of labels) {
+      if (b === a || b.river !== a.river) continue;
+      const ow = Math.min(p.right, b.right) - Math.max(p.left, b.left);
+      const oh = Math.min(p.bottom, b.bottom) - Math.max(p.top, b.top);
+      if (ow > tol && oh > tol) {
+        found.push(
+          `leg h1: ${a.river}: label "${a.id}"'s plate covers a neighbouring label "${b.id}" ` +
+            `by ${ow.toFixed(1)}x${oh.toFixed(1)}px — shrink the plate padding, do not move the label`,
+        );
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * (h2) The VALUE half of a label is the half nearest its node face, and it is
+ * on screen whenever the node is. `r.name` is the whole <text> box; on a
+ * value-first label the name half is what extends past the value, so
+ * nodeGap(name) >= nodeGap(value) holds exactly when the value is nearest.
+ *
+ * WHAT SHIPPED: at 390 the chart is an 840px SVG in a ~358px scroll box, and
+ * 13 of the 24 labels whose node bar was fully visible rendered their name
+ * inside the box with the dollar figure past its right edge — "Shipbuilding
+ * and Conversion, Navy" visible, "47.4B" 82px off screen (deployed build,
+ * 2026-09-10). A name with no number is the one thing a money chart may not
+ * render.
+ */
+export function valueNearestNodeFindings(rows, tol = 0.5) {
+  const found = [];
+  for (const r of rows) {
+    const nodeGap = (b) =>
+      r.anchor === "s" ? b.left - r.node.right : r.node.left - b.right;
+    // Both checks run: a pre-fix label is BOTH far-side and cut, and reporting
+    // only the first would hide the reader-visible half of the defect.
+    if (nodeGap(r.value) > nodeGap(r.name) + tol) {
+      found.push(
+        `leg h2: label "${r.id}": the value is not the half nearest its node ` +
+          `(value ${nodeGap(r.value).toFixed(1)}px from the node face, name ${nodeGap(r.name).toFixed(1)}px)`,
+      );
+    }
+    const nodeVisible =
+      r.node.left >= r.visible.left - tol && r.node.right <= r.visible.right + tol;
+    if (!nodeVisible) continue;
+    const cut =
+      Math.max(0, r.value.right - r.visible.right) +
+      Math.max(0, r.visible.left - r.value.left);
+    if (cut > tol) {
+      found.push(
+        `leg h2: label "${r.id}": its node bar is fully on screen but ${cut.toFixed(0)}px of the ` +
+          `value (${r.value.left.toFixed(0)}..${r.value.right.toFixed(0)}) is outside the scroll box ` +
+          `(${r.visible.left.toFixed(0)}..${r.visible.right.toFixed(0)})`,
+      );
+    }
+  }
+  return found;
+}
+
+/**
+ * Pixels inside `box` whose colour is within `tolerance` (per channel, sum of
+ * absolute differences) of `rgb`. The screenshot half of leg (h): the DOM can
+ * say a plate exists, only pixels can say nothing shows through it.
+ */
+export function redPixelsInBox(png, box, rgb, tolerance) {
+  const x0 = Math.max(0, Math.floor(box.left));
+  const x1 = Math.min(png.width, Math.ceil(box.right));
+  const y0 = Math.max(0, Math.floor(box.top));
+  const y1 = Math.min(png.height, Math.ceil(box.bottom));
+  let n = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = (y * png.width + x) * 4;
+      const d =
+        Math.abs(png.data[i] - rgb[0]) +
+        Math.abs(png.data[i + 1] - rgb[1]) +
+        Math.abs(png.data[i + 2] - rgb[2]);
+      if (d <= tolerance) n++;
+    }
+  }
+  return n;
 }
 
 /**
@@ -1108,6 +1256,184 @@ export async function runFlowdownGate({ baseUrl }) {
                   `0 bbox collisions and 0 clipped labels (initial) ✓`
               );
             }
+          }
+        }
+
+        // ── Leg (h): label legibility — plates, pixels, and the 390 value ──
+        //
+        // COORDINATES. The h1 boxes come from one page.evaluate, so every rect
+        // in a comparison was read in the same layout pass. The pixels come
+        // from an ELEMENT screenshot of each river <svg>, whose (0,0) is that
+        // element's own top-left, with the label boxes re-read RELATIVE to the
+        // same element after scrolling it into view. Do not use
+        // page.screenshot with a clip: the spend river sits ~2,000px down the
+        // document. The context is created with no deviceScaleFactor
+        // (flowdown.mjs:1077), so 1 CSS px = 1 device px and the box
+        // coordinates index the PNG directly. If that context ever gains a
+        // scale factor, multiply here.
+        {
+          const geo = await page.evaluate(() => {
+            const order = new Map();
+            for (const svg of document.querySelectorAll('[data-testid="flow-chart"] svg')) {
+              let i = 0;
+              for (const el of svg.querySelectorAll("*")) order.set(el, i++);
+            }
+            const riverOf = (el) => {
+              const r = el.closest("[data-flow-river]");
+              return r ? `${r.getAttribute("data-flow-river")} FY${r.getAttribute("data-fy")}` : "(no river)";
+            };
+            const box = (el, id) => {
+              const r = el.getBoundingClientRect();
+              return { id, river: riverOf(el), left: r.left, top: r.top, right: r.right, bottom: r.bottom, paintIndex: order.get(el) ?? 0 };
+            };
+            const labels = [];
+            const plates = [];
+            for (const g of document.querySelectorAll(
+              '[data-testid="flow-chart"] [data-flow-node], [data-testid="flow-chart"] [data-flow-other]',
+            )) {
+              const id = g.getAttribute("data-node-id");
+              const t = g.querySelector("text");
+              if (t && t.getBoundingClientRect().width > 0) labels.push(box(t, id));
+              const p = g.querySelector("[data-flow-label-plate]");
+              if (p) plates.push(box(p, id));
+            }
+            // the de-obligation red, resolved by the browser
+            const probe = document.querySelector("[data-flow-negative]");
+            const stroke = probe ? getComputedStyle(probe).stroke : "";
+            const m = stroke.match(/(\d+),\s*(\d+),\s*(\d+)/);
+            return { labels, plates, negative: m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null };
+          });
+
+          if (geo.labels.length === 0) {
+            errors.push("leg h: no rendered flow labels at 1440 — the leg cannot vacuously pass");
+          } else if (geo.plates.length === 0) {
+            errors.push(
+              "leg h1: no [data-flow-label-plate] rendered — every label must sit on an opaque plate",
+            );
+          } else {
+            errors.push(...platedLabelFindings(geo.labels, geo.plates));
+          }
+
+          // ── the screenshot half ──────────────────────────────────────────
+          if (!geo.negative) {
+            errors.push("leg h: could not resolve --flow-negative from a rendered hairline — the pixel probe would be vacuous");
+          } else {
+            let redInLabels = 0;
+            let redOutside = 0;
+            let measured = 0;
+            const svgHandles = await page.$$('[data-testid="flow-chart"] svg');
+            for (const svg of svgHandles) {
+              await svg.scrollIntoViewIfNeeded();
+              // Label boxes RELATIVE to this svg, read after the scroll and in
+              // one evaluate, so both rects shifted together.
+              const local = await svg.evaluate((s) => {
+                const sb = s.getBoundingClientRect();
+                const out = [];
+                for (const t of s.querySelectorAll("[data-flow-node] text, [data-flow-other] text")) {
+                  const r = t.getBoundingClientRect();
+                  if (r.width === 0) continue;
+                  out.push({
+                    id: t.closest("[data-node-id]")?.getAttribute("data-node-id") ?? "(unknown)",
+                    left: r.left - sb.left,
+                    right: r.right - sb.left,
+                    top: r.top - sb.top,
+                    bottom: r.bottom - sb.top,
+                  });
+                }
+                const river = s.closest("[data-flow-river]");
+                return {
+                  river: river ? `${river.getAttribute("data-flow-river")} FY${river.getAttribute("data-fy")}` : "(no river)",
+                  boxes: out,
+                };
+              });
+              if (local.boxes.length === 0) continue;
+              const img = PNG.sync.read(await svg.screenshot());
+              redOutside += redPixelsInBox(img, { left: 0, top: 0, right: img.width, bottom: img.height }, geo.negative, RED_TOL);
+              for (const a of local.boxes) {
+                measured++;
+                const n = redPixelsInBox(img, a, geo.negative, RED_TOL);
+                redInLabels += n;
+                if (n > 0) {
+                  errors.push(
+                    `leg h1: ${local.river}: ${n} de-obligation-red pixel(s) inside label "${a.id}" — ` +
+                      `a hairline is crossing the figure it annotates`,
+                  );
+                }
+              }
+            }
+            if (measured === 0) {
+              errors.push("leg h1: no label boxes were sampled in a screenshot — the pixel probe is vacuous");
+            } else if (redOutside === 0) {
+              errors.push(
+                "leg h1: the pixel probe found NO de-obligation red anywhere in either river — " +
+                  "the probe is broken or the hairlines stopped rendering; it cannot prove a clean label box",
+              );
+            } else if (redInLabels === 0) {
+              notes.push(
+                `leg h1: ${measured} label box(es) screenshot-probed at 1440, 0 de-obligation-red pixels inside ` +
+                  `(${redOutside} elsewhere in the rivers) ✓`,
+              );
+            }
+          }
+
+          // ── (h2) 390x844: the value is nearest the node and on screen ────
+          const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } });
+          try {
+            const mp = await mobile.newPage();
+            await mp.goto(`${baseUrl}/flow/`, { waitUntil: "networkidle", timeout: 30000 });
+            await mp.waitForSelector('[data-testid="flow-chart"] [data-flow-node]', { timeout: 45000 });
+            const rows = await mp.evaluate(() => {
+              const out = [];
+              for (const g of document.querySelectorAll(
+                '[data-testid="flow-chart"] [data-flow-node], [data-testid="flow-chart"] [data-flow-other]',
+              )) {
+                const t = g.querySelector("text");
+                const v = g.querySelector("[data-flow-label-value]");
+                // The node BAR, not the group's first <rect>: the group's first
+                // rect is the enlarged transparent hit target (x0-3 .. x1+3),
+                // and the visible fill lives in the [data-node-fill] layer
+                // above. .flow-node-veil is exactly x0..x1, y0..y1.
+                const bar = g.querySelector(".flow-node-veil");
+                const scroller = g.closest(".overflow-x-auto");
+                if (!t || !v || !bar || !scroller) continue;
+                const tb = t.getBoundingClientRect();
+                if (tb.width === 0) continue;
+                const vb = v.getBoundingClientRect();
+                const nb = bar.getBoundingClientRect();
+                const sb = scroller.getBoundingClientRect();
+                out.push({
+                  id: g.getAttribute("data-node-id"),
+                  anchor: t.getAttribute("text-anchor") === "end" ? "e" : "s",
+                  node: { left: nb.left, right: nb.right },
+                  name: { left: tb.left, right: tb.right },
+                  value: { left: vb.left, right: vb.right },
+                  visible: { left: sb.left, right: sb.right },
+                });
+              }
+              return out;
+            });
+            const withVisibleNode = rows.filter(
+              (r) => r.node.left >= r.visible.left - 0.5 && r.node.right <= r.visible.right + 0.5,
+            );
+            if (rows.length === 0) {
+              errors.push("leg h2: no labels rendered at 390 — the leg cannot vacuously pass");
+            } else if (withVisibleNode.length < 5) {
+              errors.push(
+                `leg h2: only ${withVisibleNode.length} label(s) at 390 have their node bar on screen — ` +
+                  `the assertion would be vacuous`,
+              );
+            } else {
+              const found = valueNearestNodeFindings(rows);
+              errors.push(...found);
+              if (found.length === 0) {
+                notes.push(
+                  `leg h2: ${rows.length} labels at 390x844, ${withVisibleNode.length} with their node on screen, ` +
+                    `0 with a clipped or far-side value ✓`,
+                );
+              }
+            }
+          } finally {
+            await mobile.close();
           }
         }
 
