@@ -380,11 +380,20 @@ export function getCoverageMap(): CoverageMapRow[] {
         // has no derived figure for it, and a typed one is what this branch
         // keeps removing. "Most" is true of both the crosswalk table (76%) and
         // the mart a reader meets (76%).
+        //
+        // Fix round 1 (R-6c-4): the tier sentence said "high means … verified
+        // by two independent adversarial reviewers", and coverage.mjs's leg
+        // cm[bridge] MANDATED the word. Measured over the mart the same day,
+        // 768 links publish at high and 60 of them carry a per-award
+        // adjudication — the adversarial step is real, and it covers 60 of
+        // 768, not the tier. The claim is now bounded to the links that
+        // carry one; the gate mandates the bounded wording instead.
         "and nothing else on the record narrows it. Most published links were " +
         "hand-adjudicated (September 2026) — /methodology/ states how many, " +
         "and which evidence paths carry no per-link adjudication at all: high " +
         "means the contract and the program's own J-book pages name the same " +
-        "program, verified by two independent adversarial reviewers; medium " +
+        "program, and where a per-award adjudication exists it was challenged " +
+        "by two independent adversarial reviewers; medium " +
         "means only that the award drew on the same account and agency. " +
         "Where evidence pinned an award " +
         "to a different organization's program, the link was removed — a " +

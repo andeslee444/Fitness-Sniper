@@ -538,6 +538,56 @@ export function checkProgramPagesSplit(text) {
 }
 
 /**
+ * leg cm[bridge]'s wording check on the crosswalk blocker — the one row on
+ * /coverage/ whose prose IS the product's argument. Pure, and exported for
+ * scripts/gates/__tests__/coverage-bridge-blocker.test.mjs: the directions
+ * that matter here are the ones a healthy build never exercises.
+ *
+ * THE HISTORY, because each rule replaced a WRONGER one:
+ *   - 2026-09-01: "must name DARPA as the structure where account codes DO
+ *     resolve" enshrined an inaccurate sentence (all 24 DARPA PEs share one
+ *     account; sub-agency + adjudicated evidence do the resolving). Replaced
+ *     with the hand-adjudication anchors.
+ *   - ROADMAP #109 (2026-09-11): the message demanded the blocker say EVERY
+ *     published link was hand-adjudicated — the universal the blocker had
+ *     just stopped asserting (9,587 of 12,595). Reworded.
+ *   - Fix round 1 (R-6c-4): a bare /adversarial/i let the blocker grade the
+ *     WHOLE high tier by the adversarial step. Measured over the mart
+ *     2026-09-11: 768 links publish at high and 60 carry a per-award
+ *     adjudication — the step is real over 60 of 768. The check now mandates
+ *     the bounded wording (the adversarial clause must be tied to the links
+ *     that carry a per-award adjudication) and fails the universal form.
+ *     A wording check is not a floor; changing what it mandates is how it
+ *     stops mandating something false.
+ *
+ * Returns a list of error strings (empty when the blocker reads true).
+ */
+export function checkCrosswalkBlockerWording(blocker) {
+  const text = String(blocker ?? "").replace(/\s+/g, " ");
+  const errors = [];
+  if (!/account code/i.test(text) || !/coarse/i.test(text)) {
+    errors.push(
+      "leg cm[bridge]: the blocker must name account-code coarseness as the reason — that sentence is what makes the gap a methodology limit rather than an excuse",
+    );
+  }
+  if (!/hand-adjudicated/i.test(text)) {
+    errors.push(
+      "leg cm[bridge]: the blocker must name hand adjudication as the method — it is what makes the published tiers checkable",
+    );
+  }
+  if (!/adversarial/i.test(text)) {
+    errors.push(
+      "leg cm[bridge]: the blocker must name the adversarial review step — it is what the hand-adjudicated links rest on",
+    );
+  } else if (!/per-award adjudication[^.]*adversarial/i.test(text)) {
+    errors.push(
+      "leg cm[bridge]: the adversarial step must be BOUND to the links that carry a per-award adjudication (\"where a per-award adjudication exists it was challenged by …\") — 60 of the 768 links published at high carry one, so an unbounded \"high means … verified by two independent adversarial reviewers\" grades 708 links by a review they never had",
+    );
+  }
+  return errors;
+}
+
+/**
  * Recompute every figure /coverage/ renders, from the artifacts — never from
  * lib/coverage-map, which is the thing under test.
  *
@@ -890,31 +940,7 @@ function runCoverageMapLeg(errors, notes) {
   } else {
     const blocker = (xw.querySelector("[data-coverage-blocker]")?.text ?? "").replace(/\s+/g, " ");
     const target = (xw.querySelector("[data-coverage-target]")?.text ?? "").replace(/\s+/g, " ");
-    if (!/account code/i.test(blocker) || !/coarse/i.test(blocker)) {
-      errors.push(
-        "leg cm[bridge]: the blocker must name account-code coarseness as the reason — that sentence is what makes the gap a methodology limit rather than an excuse",
-      );
-    }
-    // 2026-09-01: the old expectation here ("must name DARPA as the structure
-    // where account codes DO resolve") enshrined an inaccurate sentence — all
-    // 24 DARPA PEs share one account; sub-agency + adjudicated evidence do the
-    // resolving. Replaced (not dropped) with the hand-adjudication anchors.
-    if (!/hand-adjudicated/i.test(blocker)) {
-      errors.push(
-        // ROADMAP #109 (2026-09-11): the CHECK is unchanged (/hand-adjudicated/i);
-        // only this message was reworded. It said "must say EVERY published
-        // link was hand-adjudicated" — the universal the blocker itself just
-        // stopped asserting (9,587 of 12,595; three published paths carry no
-        // adjudication row). A gate message that demands a false sentence is
-        // how the false sentence gets written back.
-        "leg cm[bridge]: the blocker must name hand adjudication as the method — it is what makes the published tiers checkable",
-      );
-    }
-    if (!/adversarial/i.test(blocker)) {
-      errors.push(
-        "leg cm[bridge]: the blocker must name the adversarial review step — high-tier links are only defensible because two independent reviewers failed to refute them",
-      );
-    }
+    errors.push(...checkCrosswalkBlockerWording(blocker));
     if (xw.querySelector("[data-coverage-target]")?.getAttribute("data-target-kind") !== "none") {
       errors.push("leg cm[bridge]: the crosswalk gap must not carry a dated target — it is not a backlog item");
     }
