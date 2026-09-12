@@ -163,6 +163,25 @@ def _make_geo_duckdb(tmp_path: Path, *, with_geo=True, with_districts=True) -> P
     return db_path
 
 
+def _add_by_year_mart(db_path: Path) -> None:
+    """ROADMAP #6 — LIVE fct_district_totals_by_year schema, added to a geo
+    fixture on demand. Kept out of _make_geo_duckdb so the pre-#6 fixtures keep
+    exercising the degrade path (a warehouse built before the mart existed)."""
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "CREATE TABLE fct_district_totals_by_year ("
+        "  pop_state varchar, pop_district varchar, fiscal_year integer,"
+        "  award_count bigint, total_obligation double, positive_obligation double"
+        ")"
+    )
+    con.execute(
+        "INSERT INTO fct_district_totals_by_year VALUES "
+        "('VA', 'VA-08', 2024, 5, 50000000.0, 52000000.0),"
+        "('VA', 'VA-08', 2025, 3, 20000000.0, 20000000.0)"
+    )
+    con.close()
+
+
 class TestGeographyCitationRows:
     def test_per_row_geography_citations(self, tmp_path):
         db = _make_geo_duckdb(tmp_path)
@@ -309,6 +328,63 @@ class TestGeographyCitationRows:
         for row in rows:
             reason = _verify_derived(row, _CIT_IDX, all_cits, _CIT_IDX, {})
             assert reason is None, f"{row[_CIT_IDX['fact_id']]}: {reason}"
+
+    def test_district_year_rows_minted(self, tmp_path):
+        """ROADMAP #6 surface 4: two derived rows per (district, fiscal year)."""
+        db = _make_geo_duckdb(tmp_path)
+        _add_by_year_mart(db)
+        rows = _build_geography_citation_rows(duckdb_path=db)
+        by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
+
+        fid_net = fact_id_derived("district_year", "VA-08|2024", "total_obligation")
+        fid_gross = fact_id_derived(
+            "district_year", "VA-08|2024", "positive_obligation")
+        assert fid_net in by_fid and fid_gross in by_fid
+        net = by_fid[fid_net]
+        assert net[_CIT_IDX["kind"]] == "derived"
+        assert net[_CIT_IDX["units"]] == "USD"
+        assert net[_CIT_IDX["recorded_value"]] == "50000000.000"
+        assert by_fid[fid_gross][_CIT_IDX["recorded_value"]] == "52000000.000"
+        # inputs=[] with the SQL in query_body — there is no per-year
+        # USAspending citation to chain to, and the whole-corpus
+        # district_program ids would assert a sum that is false for one year.
+        assert json.loads(net[_CIT_IDX["inputs"]]) == []
+        assert "fct_district_totals_by_year" in net[_CIT_IDX["query_body"]]
+        assert "fiscal_year = 2024" in net[_CIT_IDX["query_body"]]
+        # Both years present; the district with no by-year rows has none.
+        assert fact_id_derived(
+            "district_year", "VA-08|2025", "total_obligation") in by_fid
+        assert fact_id_derived(
+            "district_year", "CA-18|2025", "total_obligation") not in by_fid
+
+    def test_district_year_rows_pass_verify_derived(self, tmp_path):
+        """Empty inputs are legal for this formula shape — the gate's one
+        empty-inputs prohibition is scoped to 'sum(budget_lines' /
+        'sum(flow_children', and these rows start with the mart name."""
+        db = _make_geo_duckdb(tmp_path)
+        _add_by_year_mart(db)
+        rows = _build_geography_citation_rows(duckdb_path=db)
+        year_rows = [
+            r for r in rows
+            if r[_CIT_IDX["formula"]].startswith("fct_district_totals_by_year.")
+        ]
+        assert len(year_rows) == 4
+        for row in year_rows:
+            reason = _verify_derived(row, _CIT_IDX, rows, _CIT_IDX, {})
+            assert reason is None, f"{row[_CIT_IDX['fact_id']]}: {reason}"
+
+    def test_no_district_year_rows_when_the_mart_is_absent(self, tmp_path):
+        """A warehouse built before ROADMAP #6 degrades, never raises — the
+        other three surfaces still mint."""
+        db = _make_geo_duckdb(tmp_path)
+        rows = _build_geography_citation_rows(duckdb_path=db)
+        assert not [
+            r for r in rows
+            if r[_CIT_IDX["formula"]].startswith("fct_district_totals_by_year.")
+        ]
+        assert fact_id_derived("geography", "grand_total", "total_obligation") in {
+            r[_CIT_IDX["fact_id"]] for r in rows
+        }
 
     def test_verify_derived_fails_on_unresolvable_inputs(self, tmp_path):
         """Proof-it-can-fail: district rows FAIL _verify_derived when their

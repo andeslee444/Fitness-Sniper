@@ -17,6 +17,7 @@ import duckdb
 import pytest
 
 from govbudget.export_site import (
+    _build_geography_citation_rows,
     _emit_feed_sidecar,
     _emit_district_sidecars,
     fact_id_derived,
@@ -952,6 +953,36 @@ class TestEmitDistrictSidecars:
         # by_year_programs carries NO fact_ids — it is not rendered in this task,
         # and nobody may render it without minting citations first.
         assert all("fact_id" not in r for r in va["by_year_programs"])
+
+    def test_by_year_fact_ids_are_the_ones_the_citation_builder_mints(self, tmp_path):
+        """The page's receipts must RESOLVE.
+
+        Two places independently compute the district_year fact_ids — the
+        citation builder that mints the rows and the sidecar writer that
+        attaches them — and a key-format drift between them would silently
+        empty every by-year table (cited-or-absent drops what it cannot back).
+        This is the only test that ties the two halves together: the minted set
+        is fed in as cited_fact_ids, with nothing hand-derived.
+        """
+        db_path = _make_duckdb_with_districts(tmp_path)
+        minted = {r[0] for r in _build_geography_citation_rows(duckdb_path=db_path)}
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=minted
+            )
+        finally:
+            con.close()
+
+        va = json.loads((dist_dir / "VA-08.json").read_text())
+        ca = json.loads((dist_dir / "CA-18.json").read_text())
+        assert [r["fiscal_year"] for r in va["by_year"]] == [2024, 2025]
+        assert [r["fiscal_year"] for r in ca["by_year"]] == [2025]
+        for row in va["by_year"] + ca["by_year"]:
+            assert row["total_fact_id"] in minted
+            assert row["positive_fact_id"] in minted
 
 
 # ---------------------------------------------------------------------------
