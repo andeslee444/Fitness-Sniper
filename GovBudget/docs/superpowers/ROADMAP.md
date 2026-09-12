@@ -1509,6 +1509,57 @@ docs/superpowers/ROADMAP.md`.
     `GovBudget/.env` as `SAM_API_KEY=…`. At 10 requests/day the bounded extract
     (200 UEIs, one request each) takes ~20 resumable days; with a role-holding
     key, one run.
+
+    **What shipped 2026-09-12 (the extract lane only).** `src/govbudget/sam_entities.py`
+    + `govbudget sam preflight|extract|reparse`: resumable (a stored raw body
+    under `data/raw/sam/` is never re-fetched), self-capping (`--max-requests`,
+    default 10 = the no-role daily limit), stopping dead on a 429 /
+    `OVER_RATE_LIMIT` / `API_KEY_INVALID` rather than retrying into tomorrow's
+    quota, rebuilding `data/parquet/sam/entities.parquet` even when it stops so
+    a partial day is never lost, and refusing to publish the reader-facing
+    `sam.gov/entity/{uei}` link until `preflight` has recorded it answering 200.
+    The key is never written to a parquet, manifest, raw body or URL
+    (`source_url` is the request URL with `api_key` stripped; a test asserts
+    it), and `DATA_GOV_API_KEY` is never read. 16 tests, all offline
+    (`httpx.MockTransport` + `tests/fixtures/sam/`); **no call has ever been
+    made to api.sam.gov from this repo**, so the response shape is typed from
+    https://open.gsa.gov/api/entity-api/ and `parse_entity` raises
+    `SamShapeError` naming the missing JSON path rather than emitting nulls.
+    Runnable with no credential today: `--dry-run` (measured 2026-09-12:
+    `200 published families, 0 already stored, 200 missing; this run would
+    spend 10 of 10 request(s) and 20 run(s) remain`) and `--schema-only`.
+
+    **What is NOT built, and stays OPEN.** The warehouse and reader halves:
+    the `lake.sam_entities` dbt source and the `sam_*` columns on
+    `dim_entities`, `verify_phase2.sam_gate`, the derived citation row and the
+    `entity_details/{slug}.json` payload in `export_site.py`, the
+    `/company/{slug}/` registration line, the three "a SAM.gov entity extract
+    this build does not have" strings on `/companies/` and
+    `/companies/families/`, and the `/methodology/` paragraph. Those are
+    deliberately deferred until rows exist — a mart column and a page line
+    that can only ever be null are not worth a `dbt build` against the shared
+    lake. Until then the site's three strings remain **true as written**:
+    they describe what the BUILD has (zero SAM rows — the extract has never
+    been run against api.sam.gov), not what the repo can run.
+
+    **Owner step — the live run, once `SAM_API_KEY` is in `GovBudget/.env`:**
+
+    ```bash
+    cd GovBudget
+    uv run python -m govbudget sam extract --dry-run   # free: what today's run would fetch
+    uv run python -m govbudget sam preflight           # spends up to 2 requests; writes data/research/sam_entities/preflight.json
+    uv run python -m govbudget sam extract             # 10/run by default; repeat daily (~20 days) until --dry-run reports complete
+    uv run python -m govbudget sam reparse             # free: rebuild the parquet from data/raw/sam/
+    ```
+
+    If `preflight` reports a shape other than the documented one, fix the path
+    map in `parse_entity`, replace `tests/fixtures/sam/entity_lockheed.json`
+    with the real (key-free) body, re-run `uv run pytest
+    tests/test_sam_entities.py`, then `sam reparse` — **never re-fetch to fix a
+    parse.** If it reports a non-200 `public_url_status`, fix
+    `SAM_PUBLIC_ENTITY_URL` and re-run `preflight`; the extract refuses until
+    it is 200. A SAM.gov role raises the limit to 1,000/day and the whole set
+    lands in one run.
     *(Original marker below.)*
 
     **Status: OPEN** — swept 2026-08-24. Never scoped; no commit references it.

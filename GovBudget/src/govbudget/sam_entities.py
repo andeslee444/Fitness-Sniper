@@ -1,0 +1,474 @@
+"""SAM.gov Entity Management extract for the published company families.
+
+ROADMAP #10, SAM-extract half.
+
+WHAT THIS IS NOT. It is not an entity-resolution fix and it promotes no
+confidence tier. `recipient_parent_name` in USAspending IS the SAM
+registration name, so SAM is the ORIGIN of the label defect the curated
+display-name seed (spike Option A) corrected, not its cure — see
+docs/superpowers/reviews/10-entity-resolution-spike.md §4.
+
+WHAT THIS IS. A bounded enrichment: for each of the 200 published families,
+the SAM registration record of the family's DOMINANT member — the same
+registration `dim_entities.display_name` is built from — giving registration
+status, CAGE, UEI, legal business name, business types, primary NAICS and
+expiration.
+
+CREDENTIAL. The Entity Management API takes a SAM.gov *Personal API key*
+minted inside a SAM.gov (login.gov) account — NOT an api.data.gov key. Limits
+published at https://open.gsa.gov/api/entity-api/ : 10 requests/day for a
+non-federal user with no role, 1,000/day with a role. 200 families = 200
+requests = ~20 resumable days on the low limit. Account creation is the
+owner's action; this module refuses to run without the key rather than
+degrade. The key is read from the environment (config loads the gitignored
+.env at import); `DATA_GOV_API_KEY` is NEVER consulted, because the Entity
+Management API does not accept it — probed 2026-09-05.
+
+SHAPE IS UNVERIFIED AND THE FAILURE IS LOUD. No one on this project has held
+a key, and an unauthenticated probe of /entity-information/v3/entities
+returned an empty 404. So: the endpoint is overridable (SAM_ENTITY_API_URL),
+`preflight` reports which candidate answers and writes the first response's
+key names to data/research/sam_entities/preflight.json, and `parse_entity`
+raises SamShapeError naming the missing JSON path instead of writing nulls.
+Raw bodies are kept under data/raw/sam/ so `sam reparse` can fix a field map
+without spending a day's quota. The READER-facing URL is unverified too, and
+`require_preflight` refuses to let the extract run until preflight has seen
+it answer 200 — the LDA lesson (influence/lda.py:197-214: an "official_url"
+nobody checked was an API resource for months).
+
+POLITENESS. One request per UEI, >=1s floor between requests, no retry storm:
+a 429 or an OVER_RATE_LIMIT/API_KEY_INVALID body stops the run immediately.
+
+DRY RUN. `plan_extract` (and `extract_entities(..., dry_run=True)`) answers
+"what would this run do" from stored state alone — no key, no network, no
+write. It is the only mode that is runnable on a machine with no credential,
+and it is what `govbudget sam extract --dry-run` prints.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import time
+import urllib.parse
+from datetime import datetime, timezone
+from pathlib import Path
+
+import duckdb
+import httpx
+
+from govbudget.manifest import ManifestRecord, append_record
+
+#: Neither version is verified. `preflight` decides and records which answers.
+SAM_ENTITY_API_URL = os.environ.get(
+    "SAM_ENTITY_API_URL", "https://api.sam.gov/entity-information/v4/entities"
+)
+_CANDIDATE_URLS = tuple(dict.fromkeys((
+    SAM_ENTITY_API_URL,
+    "https://api.sam.gov/entity-information/v4/entities",
+    "https://api.sam.gov/entity-information/v3/entities",
+)))
+#: The page a READER opens. Verified by `preflight`, never assumed.
+SAM_PUBLIC_ENTITY_URL = os.environ.get(
+    "SAM_PUBLIC_ENTITY_URL", "https://sam.gov/entity/{uei}"
+)
+_REQUEST_FLOOR_S = 1.0
+_USER_AGENT = "fiscalreceipts/1.0 (research; contact: andes.lee444@gmail.com)"
+#: Non-federal, no-role daily limit. Overridable; never silently exceeded.
+DEFAULT_MAX_REQUESTS = 10
+
+_PARQUET_COLUMNS = (
+    "sam_uei", "legal_business_name", "cage_code", "registration_status",
+    "registration_expiration_date", "business_types", "primary_naics",
+    "public_url", "source_url", "retrieved_at", "response_sha256",
+)
+
+_OWNER_ACTION = (
+    "SAM_API_KEY is not set. The SAM.gov Entity Management API does NOT accept "
+    "an api.data.gov key (DATA_GOV_API_KEY will not work here). It needs a "
+    "SAM.gov *Personal API key*, which only an account holder can mint:\n"
+    "  1. sign in at login.gov\n"
+    "  2. go to SAM.gov -> Account Details\n"
+    "  3. copy the Public/Personal API key\n"
+    "  4. paste it into the gitignored GovBudget/.env as SAM_API_KEY=...\n"
+    "Limits (https://open.gsa.gov/api/entity-api/): 10 requests/day with no "
+    "role, 1,000/day with one. The bounded extract is 200 requests.\n"
+    "Nothing was fetched and nothing was written. To see what the run WOULD "
+    "do without a key, add --dry-run."
+)
+
+
+class SamAuthError(RuntimeError):
+    """No usable credential. Never downgraded to a warning."""
+
+
+class SamRateLimitError(RuntimeError):
+    """The daily quota is spent. Stop; resume tomorrow with the same command."""
+
+
+class SamShapeError(ValueError):
+    """The response (or the preflight report) lacked an expected value."""
+
+
+def require_api_key(api_key: str | None = None) -> str:
+    """The credential, or a refusal that tells the owner exactly what to do.
+
+    Offline and free — this is what `sam extract` calls, NOT `preflight`.
+    Calling preflight on every extract run would spend 2 of a 10/day quota
+    before the first family was fetched.
+    """
+    key = api_key or os.environ.get("SAM_API_KEY")
+    if not key:
+        raise SamAuthError(_OWNER_ACTION)
+    return key
+
+
+def _strip_key(url: str) -> str:
+    """The request URL with api_key removed. NOTHING that keeps a key is ever
+    written to disk (assumption 2)."""
+    parts = urllib.parse.urlsplit(url)
+    q = [(k, v) for k, v in urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+         if k.lower() != "api_key"]
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(q)))
+
+
+def _dig(payload: dict, path: str):
+    """payload['a'][0]['b'] for path 'a[0].b'; raises SamShapeError by path."""
+    cur = payload
+    for token in path.replace("]", "").split("."):
+        key, _, idx = token.partition("[")
+        try:
+            cur = cur[key]
+            if idx != "":
+                cur = cur[int(idx)]
+        except (KeyError, IndexError, TypeError) as e:
+            raise SamShapeError(
+                f"SAM response has no {path} (stopped at {token!r}): {e}. "
+                "The raw body is kept under data/raw/sam/ — fix the path map "
+                "in sam_entities.py and re-run `govbudget sam reparse`; do "
+                "not re-fetch, the quota is 10/day."
+            ) from e
+    return cur
+
+
+def _opt(payload: dict, path: str):
+    try:
+        return _dig(payload, path)
+    except SamShapeError:
+        return None
+
+
+def parse_entity(payload: dict, *, source_url: str) -> dict:
+    """One parquet row from one response body. No network, no key."""
+    reg = _dig(payload, "entityData[0].entityRegistration")
+    uei = reg.get("ueiSAM")
+    if not uei:
+        raise SamShapeError("entityData[0].entityRegistration.ueiSAM is empty")
+    legal = reg.get("legalBusinessName")
+    if not legal:
+        raise SamShapeError(
+            "entityData[0].entityRegistration.legalBusinessName is empty — "
+            "that field IS this enrichment; publishing a UEI with no name "
+            "would be a line that says nothing. The raw body is kept under "
+            "data/raw/sam/; fix the path map and `govbudget sam reparse`."
+        )
+    types = _opt(payload, "entityData[0].coreData.businessTypes.businessTypeList") or []
+    return {
+        "sam_uei": uei,
+        "legal_business_name": legal,
+        "cage_code": reg.get("cageCode") or None,
+        "registration_status": reg.get("registrationStatus") or None,
+        "registration_expiration_date": reg.get("registrationExpirationDate") or None,
+        "business_types": "; ".join(
+            t.get("businessTypeDesc", "") for t in types if t.get("businessTypeDesc")
+        ) or None,
+        "primary_naics": _opt(payload, "entityData[0].assertions.goodsAndServices.primaryNaics"),
+        "public_url": SAM_PUBLIC_ENTITY_URL.format(uei=uei),
+        "source_url": _strip_key(source_url),
+        "retrieved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        # sha256 of the CANONICALISED body (sorted keys, compact separators),
+        # not of the raw bytes: it must be stable across `sam reparse`, which
+        # re-reads a pretty-printed copy of the same document.
+        "response_sha256": hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+    }
+
+
+def write_entities_parquet(records, out_dir) -> Path:
+    """All-varchar, unique on sam_uei, deterministic order. [] writes a typed
+    zero-row file — what a LEFT JOIN from the mart needs (assumption 11)."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "entities.parquet"
+    by_uei = {r["sam_uei"]: r for r in records}  # last write wins; never fans out
+    rows = [tuple(by_uei[k][c] for c in _PARQUET_COLUMNS) for k in sorted(by_uei)]
+    con = duckdb.connect()
+    try:
+        cols = ", ".join(f"{c} varchar" for c in _PARQUET_COLUMNS)
+        con.execute(f"create table _s ({cols})")
+        if rows:
+            ph = ",".join("?" for _ in _PARQUET_COLUMNS)
+            con.executemany(f"insert into _s values ({ph})", rows)
+        con.execute(f"copy _s to '{path}' (format parquet, compression zstd)")
+    finally:
+        con.close()
+    return path
+
+
+def require_preflight(report_path) -> dict:
+    """The stored preflight report, or a refusal.
+
+    Assumption 4: the extract may not publish sam.gov/entity/{uei} as a
+    citation link until preflight has seen that URL answer 200. Reading a
+    stored report costs no quota, which is why this is not a re-probe.
+    """
+    report_path = Path(report_path)
+    if not report_path.is_file():
+        raise SamShapeError(
+            f"no preflight report at {report_path}. Run `govbudget sam "
+            "preflight` once (it spends up to 2 of the day's requests) before "
+            "the first extract: it records which API version answers and "
+            "whether the reader-facing sam.gov entity page exists."
+        )
+    report = json.loads(report_path.read_text())
+    if report.get("public_url_status") != 200:
+        raise SamShapeError(
+            "preflight recorded public_url_status="
+            f"{report.get('public_url_status')!r} for {SAM_PUBLIC_ENTITY_URL} "
+            "— refusing to publish a citation link to a page nobody has "
+            "opened. Fix SAM_PUBLIC_ENTITY_URL and re-run `govbudget sam "
+            "preflight`."
+        )
+    return report
+
+
+def dominant_parent_ueis(duckdb_path, *, top_n: int = 200) -> list[tuple[str, str]]:
+    """[(family_key, uei)] for the published families, in published order.
+
+    The UEI is the DOMINANT member's parent registration — the same rn=1 row
+    dim_entities.display_name is taken from — so the SAM record describes the
+    registration the page's own heading is built on. Measured 2026-09-10:
+    200 families, 200 distinct UEIs, 0 null parent_uei.
+    """
+    con = duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        return [
+            (r[0], r[1])
+            for r in con.execute(
+                """
+                with top as (
+                  select family_key, total_obligation from dim_entities
+                  order by total_obligation desc nulls last limit ?
+                ),
+                ranked as (
+                  select x.family_key, x.parent_uei, x.recipient_uei,
+                         row_number() over (partition by x.family_key
+                           order by x.total_obligation desc nulls last) rn
+                  from entity_xwalk x join top t using (family_key)
+                )
+                select r.family_key, coalesce(r.parent_uei, r.recipient_uei)
+                from ranked r join top t using (family_key)
+                where r.rn = 1
+                order by t.total_obligation desc
+                """,
+                [int(top_n)],
+            ).fetchall()
+            if r[1]
+        ]
+    finally:
+        con.close()
+
+
+def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
+              probe_uei: str = "ZFN2JJXBLZT3", report_path=None) -> dict:
+    """Refuse early, report exactly what the API answered, spend <=2 requests.
+
+    Returns (and writes) {"endpoint", "status", "public_url",
+    "public_url_status", "entity_keys"}. Raises SamAuthError when there is no
+    key or every candidate rejects it; SamShapeError when every candidate 404s.
+    """
+    key = require_api_key(api_key)
+    owns_client = client is None
+    client = client or httpx.Client(
+        headers={"User-Agent": _USER_AGENT}, timeout=60, follow_redirects=True
+    )
+    report: dict = {"endpoint": None, "status": None,
+                    "public_url": SAM_PUBLIC_ENTITY_URL,
+                    "public_url_status": None, "entity_keys": []}
+    auth_rejected = False
+    try:
+        for url in _CANDIDATE_URLS:
+            time.sleep(_REQUEST_FLOOR_S)
+            r = client.get(url, params={"api_key": key, "ueiSAM": probe_uei})
+            if r.status_code == 404:
+                continue
+            if r.status_code in (401, 403) or "API_KEY_INVALID" in r.text:
+                auth_rejected = True
+                continue
+            report["endpoint"] = url
+            report["status"] = r.status_code
+            try:
+                payload = r.json()
+                # Key NAMES only — never the body, never the key.
+                report["entity_keys"] = sorted(payload["entityData"][0].keys())
+            except Exception:
+                report["entity_keys"] = []
+            break
+        # The reader-facing page, checked because a citation will link to it.
+        pub = SAM_PUBLIC_ENTITY_URL.format(uei=probe_uei)
+        try:
+            report["public_url_status"] = client.get(pub).status_code
+        except httpx.HTTPError as e:
+            report["public_url_status"] = f"error: {e}"
+    finally:
+        if owns_client:
+            client.close()
+    if report["endpoint"] is None:
+        if auth_rejected:
+            raise SamAuthError(
+                "every SAM entity endpoint rejected the key (401/403). A "
+                "SAM.gov Personal API key is not an api.data.gov key.\n"
+                + _OWNER_ACTION
+            )
+        raise SamShapeError(
+            "every candidate SAM entity endpoint answered 404: "
+            f"{_CANDIDATE_URLS}. Set SAM_ENTITY_API_URL to the version "
+            "https://open.gsa.gov/api/entity-api/ documents today and re-run."
+        )
+    if report_path:
+        report_path = Path(report_path)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2, sort_keys=True))
+    return report
+
+
+def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS) -> dict:
+    """What the next `sam extract` WOULD do, from stored state alone.
+
+    No key, no network, no write — this is the dry run, and it is the only
+    mode that answers a useful question on a machine that has never held a
+    SAM.gov credential. `missing` is what the whole extract still owes;
+    `would_fetch` is what ONE run at this cap covers; `runs_remaining` is how
+    many runs are still needed INCLUDING this one (ceil(missing / cap)), i.e.
+    the number of days a 10/day key has left to go.
+    """
+    raw_dir = Path(raw_dir)
+    missing = [(fk, uei) for fk, uei in families
+               if not (raw_dir / f"{uei}.json").exists()]
+    cap = max(int(max_requests), 0)
+    would = min(len(missing), cap)
+    return {
+        "families": len(families),
+        "already_stored": len(families) - len(missing),
+        "missing": len(missing),
+        "max_requests": cap,
+        "would_fetch": would,
+        "runs_remaining": (-(-len(missing) // cap)) if cap else None,
+        "next_ueis": [uei for _, uei in missing[:would]],
+        "next_families": [fk for fk, _ in missing[:would]],
+        "complete": not missing,
+        "raw_dir": str(raw_dir),
+        "endpoint": SAM_ENTITY_API_URL,
+        "has_key": bool(os.environ.get("SAM_API_KEY")),
+    }
+
+
+def extract_entities(families, *, api_key, out_dir, raw_dir,
+                     client=None, max_requests=DEFAULT_MAX_REQUESTS,
+                     refresh=False, dry_run=False):
+    """Fetch up to `max_requests` missing registrations; resume-safe.
+
+    families: [(family_key, uei)]. Already-fetched UEIs (a file under
+    raw_dir) are skipped unless refresh=True — that is the resume, and it is
+    what makes a 10/day quota survivable over 20 days. The parquet is rebuilt
+    in a finally block, so a rate-limit or auth stop mid-run still keeps every
+    body already paid for.
+
+    Returns the parquet Path. With dry_run=True it returns the plan dict from
+    `plan_extract` instead, having required no key, made no request and
+    written nothing — not even a directory.
+    """
+    if dry_run:
+        return plan_extract(families, raw_dir=raw_dir, max_requests=max_requests)
+
+    key = require_api_key(api_key)
+    out_dir, raw_dir = Path(out_dir), Path(raw_dir)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = out_dir / "manifest.jsonl"
+
+    owns_client = client is None
+    client = client or httpx.Client(
+        headers={"User-Agent": _USER_AGENT}, timeout=60, follow_redirects=True
+    )
+    spent = 0
+    result_path: Path | None = None
+    try:
+        for family_key, uei in families:
+            raw_path = raw_dir / f"{uei}.json"
+            if raw_path.exists() and not refresh:
+                continue
+            if spent >= max_requests:
+                missing = sum(
+                    1 for _, u in families if not (raw_dir / f"{u}.json").exists()
+                )
+                print(
+                    f"sam extract: run cap {max_requests} reached; {missing} "
+                    "UEI(s) still missing — re-run the same command tomorrow."
+                )
+                break
+            time.sleep(_REQUEST_FLOOR_S)
+            r = client.get(SAM_ENTITY_API_URL,
+                           params={"api_key": key, "ueiSAM": uei})
+            spent += 1
+            body_text = r.text
+            if r.status_code == 429 or "OVER_RATE_LIMIT" in body_text:
+                raise SamRateLimitError(
+                    f"SAM returned a rate-limit response after {spent} request(s) "
+                    f"({r.status_code}). The quota is per DAY (10 without a SAM.gov "
+                    "role, 1,000 with one) — stopping rather than retrying. "
+                    "Re-run the same command tomorrow; fetched UEIs are skipped."
+                )
+            if r.status_code in (401, 403) or "API_KEY_INVALID" in body_text:
+                raise SamAuthError(
+                    f"SAM rejected the key ({r.status_code}). A SAM.gov Personal "
+                    "API key is not an api.data.gov key.\n" + _OWNER_ACTION
+                )
+            r.raise_for_status()
+            payload = r.json()
+            raw_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+            rec = parse_entity(payload, source_url=str(r.request.url))
+            append_record(manifest_path, ManifestRecord(
+                dataset="sam_entities",
+                fiscal_year=None,
+                file_name=raw_path.name,
+                source_url=rec["source_url"],
+                sha256=rec["response_sha256"],
+                bytes=len(body_text.encode()),
+                downloaded_at=rec["retrieved_at"],
+            ))
+            print(f"sam extract: {family_key} <- {uei} "
+                  f"({rec['registration_status']}, expires "
+                  f"{rec['registration_expiration_date']})")
+    finally:
+        if owns_client:
+            client.close()
+        try:
+            result_path = reparse(raw_dir=raw_dir, out_dir=out_dir)
+        except Exception as e:  # never mask the real failure
+            print(f"sam extract: parquet rebuild failed after the run: {e}")
+    return result_path  # type: ignore[return-value]
+
+
+def reparse(*, raw_dir, out_dir) -> Path:
+    """Rebuild the parquet from stored raw bodies. No network, no quota."""
+    raw_dir, out_dir = Path(raw_dir), Path(out_dir)
+    records = []
+    for p in sorted(raw_dir.glob("*.json")):
+        payload = json.loads(p.read_text())
+        records.append(parse_entity(
+            payload,
+            source_url=f"{SAM_ENTITY_API_URL}?ueiSAM={p.stem}",
+        ))
+    return write_entities_parquet(records, out_dir)

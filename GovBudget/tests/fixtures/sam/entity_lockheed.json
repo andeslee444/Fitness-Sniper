@@ -1,0 +1,32 @@
+{
+  "totalRecords": 1,
+  "entityData": [
+    {
+      "entityRegistration": {
+        "samRegistered": "Yes",
+        "ueiSAM": "ZFN2JJXBLZT3",
+        "cageCode": "98897",
+        "legalBusinessName": "LOCKHEED MARTIN CORPORATION",
+        "registrationStatus": "Active",
+        "registrationDate": "2004-06-14",
+        "registrationExpirationDate": "2026-05-14",
+        "lastUpdateDate": "2025-05-15",
+        "ueiStatus": "Active",
+        "publicDisplayFlag": "Y"
+      },
+      "coreData": {
+        "businessTypes": {
+          "businessTypeList": [
+            { "businessTypeCode": "2X", "businessTypeDesc": "For Profit Organization" },
+            { "businessTypeCode": "MF", "businessTypeDesc": "Manufacturer of Goods" }
+          ]
+        }
+      },
+      "assertions": {
+        "goodsAndServices": {
+          "primaryNaics": "336411"
+        }
+      }
+    }
+  ]
+}

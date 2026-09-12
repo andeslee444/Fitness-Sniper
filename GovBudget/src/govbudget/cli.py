@@ -1515,6 +1515,70 @@ def _write_program_mentions_parquet(mentions: list[dict], mentions_path) -> None
         mcon.close()
 
 
+def cmd_sam(args) -> None:
+    """ROADMAP #10, SAM-extract half: bounded SAM.gov Entity Management pull.
+
+    Every path here is offline except `preflight` and a real `extract`. The
+    credential is the OWNER's to mint (login.gov -> SAM.gov -> Account
+    Details -> Personal API key); without it this exits non-zero with that
+    instruction and writes nothing. `--dry-run` and `--schema-only` are the
+    two modes that work today, on a machine that has never held a key.
+    """
+    import json as _json
+
+    from govbudget.sam_entities import (
+        SamAuthError, SamRateLimitError, SamShapeError, dominant_parent_ueis,
+        extract_entities, plan_extract, preflight, reparse, require_api_key,
+        require_preflight, write_entities_parquet,
+    )
+
+    out_dir = config.PARQUET_DIR / "sam"
+    raw_dir = config.RAW_DIR / "sam"
+    report_path = config.RESEARCH_DIR / "sam_entities" / "preflight.json"
+    try:
+        if args.sam_action == "preflight":
+            print(_json.dumps(preflight(report_path=report_path), indent=2))
+            return
+        if args.sam_action == "reparse":
+            print(f"sam reparse: {reparse(raw_dir=raw_dir, out_dir=out_dir)}")
+            return
+        if getattr(args, "schema_only", False):
+            print(f"sam extract: {write_entities_parquet([], out_dir)} (0 rows)")
+            return
+        if getattr(args, "dry_run", False):
+            # No key, no request, no write — what the next real run would do.
+            plan = plan_extract(
+                dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
+                raw_dir=raw_dir, max_requests=args.max_requests)
+            print(_json.dumps(plan, indent=2))
+            print(
+                f"sam extract --dry-run: {plan['families']} published families,"
+                f" {plan['already_stored']} already stored,"
+                f" {plan['missing']} missing; this run would spend"
+                f" {plan['would_fetch']} of {plan['max_requests']} request(s)"
+                f" and {plan['runs_remaining']} run(s) remain."
+                f" SAM_API_KEY present: {plan['has_key']}."
+                " Nothing was fetched and nothing was written."
+            )
+            return
+        # The credential check comes FIRST: it is offline and free, so a
+        # machine with no key never opens the shared lake to be told no.
+        key = require_api_key()          # offline, free, fail-loud
+        require_preflight(report_path)   # stored report; spends no quota
+        families = dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n)
+        print(f"sam extract: {len(families)} published families, cap "
+              f"{args.max_requests} request(s) this run")
+        path = extract_entities(
+            families, api_key=key, out_dir=out_dir, raw_dir=raw_dir,
+            max_requests=args.max_requests, refresh=args.refresh,
+        )
+        print(f"sam extract: -> {path}")
+    except (SamAuthError, SamRateLimitError, SamShapeError) as e:
+        # A clean refusal, not a traceback — the same shape as lineage-llm's
+        # BLOCKED message. Exit is non-zero either way.
+        raise SystemExit(f"sam {args.sam_action}: BLOCKED — {e}") from None
+
+
 def cmd_influence(args) -> None:
     import duckdb
 
@@ -2736,6 +2800,31 @@ def main(argv=None) -> None:
                     help="Max department file size in MB to download (default: no cap = full capture)."
                          " Pass e.g. --max-mb 5 for debugging only.")
     st.set_defaults(func=cmd_states)
+
+    sam = sub.add_parser("sam", help="ROADMAP #10: SAM.gov entity registrations")
+    sam_sub = sam.add_subparsers(dest="sam_action", required=True)
+    sam_pre = sam_sub.add_parser(
+        "preflight",
+        help="check SAM_API_KEY, which endpoint answers, and whether the "
+             "reader-facing sam.gov entity page exists; spends up to 2 requests")
+    sam_pre.set_defaults(func=cmd_sam)
+    sam_ex = sam_sub.add_parser(
+        "extract", help="fetch registrations for the published families (resumable)")
+    sam_ex.add_argument("--top-n", type=int, default=200, dest="top_n",
+                        help="published families to cover (default: 200 — the set /companies/ ships)")
+    sam_ex.add_argument("--max-requests", type=int, default=10, dest="max_requests",
+                        help="hard cap for THIS run (default: 10 = the no-role daily limit)")
+    sam_ex.add_argument("--refresh", action="store_true",
+                        help="re-fetch UEIs already stored under data/raw/sam/")
+    sam_ex.add_argument("--dry-run", action="store_true", dest="dry_run",
+                        help="print what the next run would fetch and stop —"
+                             " no key, no request, no write")
+    sam_ex.add_argument("--schema-only", action="store_true", dest="schema_only",
+                        help="write a typed zero-row parquet and exit (no key needed)")
+    sam_ex.set_defaults(func=cmd_sam)
+    sam_rp = sam_sub.add_parser(
+        "reparse", help="rebuild the parquet from data/raw/sam/ (no network, no quota)")
+    sam_rp.set_defaults(func=cmd_sam)
 
     inf = sub.add_parser("influence", help="phase 5A lobbying data pipeline")
     inf_sub = inf.add_subparsers(dest="influence_action", required=True)
