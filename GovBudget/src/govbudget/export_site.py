@@ -2280,8 +2280,7 @@ def export_site(
         link_sources=_load_award_link_sources(dsn),
         subaward_sources=sub_sources,
         subaward_lake=_load_subaward_lake_rows(
-            duckdb_path,
-            {(piid, str(s["source_id"])) for (piid, _pe), s in sub_sources.items()},
+            duckdb_path, _subaward_lake_keys(sub_sources),
         ),
     )
     citation_rows.extend(b2a_rows)
@@ -7122,6 +7121,25 @@ def _load_subaward_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
     return _index_subaward_sources(rows)
 
 
+def _subaward_lake_keys(
+    subaward_sources: dict[tuple[str, str], dict],
+) -> set[tuple[str, str]]:
+    """(prime_award_piid, subaward_number) keys to pull from the lake.
+
+    The subaward number is STRIPPED here because the other two uses of the
+    same key strip it too — the missing-row check and the mint branch in
+    _build_budget_to_awards_citation_rows both do `str(...).strip()`. A
+    whitespace-padded source_id in Postgres would otherwise be fetched under
+    the padded key and looked up under the stripped one, turning a record the
+    lake really holds into a hard "not in the lake" export failure. Zero rows
+    are padded today; the three uses agree by construction instead.
+    """
+    return {
+        (piid, str(src["source_id"]).strip())
+        for (piid, _pe), src in subaward_sources.items()
+    }
+
+
 def _lake_parquet_dir(duckdb_path, stage: str) -> Path | None:
     """Resolve a hive-partitioned lake directory (data/parquet/{stage}).
 
@@ -11271,9 +11289,15 @@ def _subaward_row(fid: str, *, subaward_number: str, subawardee: str | None,
     """Build a 27-element citation row for kind='subaward' (ROADMAP #84).
 
     Cites the FSRS subaward record behind a 'subaward+lexicon' crosswalk
-    link: the subawardee's description of its own work named the program,
+    link: the subaward's REPORTED description of the work named the program,
     so the PRIME award is linked on that basis — evidence one hop removed
     from the award itself, which is why the tier publishes at medium.
+
+    Authorship-neutral on purpose: an FSRS/FFATA report is filed by the prime
+    awardee, so the record never establishes that the subawardee described
+    its own work (docs/methodology.md says only that "FSRS subaward reports
+    describe the work a subcontractor performs under a prime contract").
+    subaward-card.tsx renders the same claim and must stay in step.
 
     Same 27-column layout as _announcement_row:
       official_url = the prime award's USAspending page (USAspending has no

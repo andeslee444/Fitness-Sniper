@@ -2047,8 +2047,9 @@ export interface AnnouncementCitation
  *
  * formula is the link's provenance sentence (crosswalk method + confidence
  * tier), carried over from the derived row this citation replaces. The
- * evidence is one hop removed from the award — a subcontractor's description
- * of its work — which is why the tier publishes at medium.
+ * evidence is one hop removed from the award — the subaward's reported
+ * description of the work, filed by the PRIME awardee, not a subcontractor
+ * describing its own work — which is why the tier publishes at medium.
  *
  * recorded_value is null: the cited fact is the LINK itself, not a figure.
  * Nothing was archived, so sha256 is null too (NonDocumentCitationFields).

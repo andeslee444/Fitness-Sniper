@@ -16,6 +16,19 @@
  *   - The caveat that the evidence is one hop removed from the award — the
  *     reason this tier publishes at medium
  *
+ * The caveat is authorship-neutral on purpose. An FSRS/FFATA subaward report
+ * is filed by the PRIME awardee, so the record establishes that a reported
+ * description of the work names this program — NOT that the subawardee
+ * described its own work. docs/methodology.md is careful about exactly this
+ * ("FSRS subaward reports describe the work a subcontractor performs under a
+ * prime contract"); this card must not upgrade that.
+ *
+ * And the naming clause is conditional: the card supports match_basis = null,
+ * and on that path it makes no claim that the description named the program
+ * (the same hazard announcement-card.tsx documents at its own :17-24). Every
+ * published row carries 'subaward-description-exact' today, so the null path
+ * is latent — which is exactly when a false sentence ships unnoticed.
+ *
  * Nothing here is a figure: contract dollars come from award data, and the
  * record's own subaward_amount is deliberately not shown.
  *
@@ -44,11 +57,25 @@ interface SubawardCardProps {
 }
 
 export function SubawardCard({ url, body, formula }: SubawardCardProps) {
-  const basisPhrase = matchBasisPhrase(body.match_basis);
+  const basisToken =
+    typeof body.match_basis === "string" ? body.match_basis.trim() : "";
+  const basisPhrase = matchBasisPhrase(basisToken);
   const subawardee =
     typeof body.subawardee === "string" && body.subawardee.trim()
       ? body.subawardee.trim()
       : null;
+
+  // What the FSRS record establishes — and only when a basis was recorded.
+  // With no basis the card refuses the naming claim rather than softening it.
+  const basisCaveat = basisToken
+    ? "The subaward's reported description of the work names this program," +
+      " and the prime award is linked on that basis — evidence one hop" +
+      " removed from the award itself, which is why these links publish at" +
+      " medium, never high."
+    : "No basis was recorded for this match, so nothing here establishes" +
+      " that the record's description named the program — the link rests on" +
+      " evidence one hop removed from the award itself, which is why these" +
+      " links publish at medium, never high.";
 
   return (
     <div
@@ -133,11 +160,9 @@ export function SubawardCard({ url, body, formula }: SubawardCardProps) {
         data-testid="subaward-caveat"
       >
         USAspending publishes no page for an individual subaward; the prime
-        award page above lists this record under its Subawards tab. The
-        subawardee&apos;s description of its own work names this program, and
-        the prime award is linked on that basis — evidence one hop removed from
-        the award itself, which is why these links publish at medium, never
-        high. Contract dollars come from award data, not from this record.
+        award page above lists this record under its Subawards tab.{" "}
+        {basisCaveat} Contract dollars come from award data, not from this
+        record.
       </p>
     </div>
   );

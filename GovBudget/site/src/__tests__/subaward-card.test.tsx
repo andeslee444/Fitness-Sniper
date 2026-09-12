@@ -99,6 +99,47 @@ describe("SubawardCard", () => {
     expect(caveat).toContain("award data");
   });
 
+  it("attributes the description to the record, not to the subawardee", () => {
+    // An FSRS/FFATA report is filed BY THE PRIME, so the record never
+    // establishes that the subawardee described its own work. The caveat says
+    // what the record says and no more.
+    const { container } = render(<SubawardCard url={PRIME_URL} body={BODY} />);
+    const caveat = container.querySelector('[data-testid="subaward-caveat"]')!
+      .textContent!;
+    expect(caveat).toContain(
+      "The subaward's reported description of the work names this program," +
+        " and the prime award is linked on that basis",
+    );
+    expect(caveat).not.toContain("subawardee's");
+    expect(caveat).not.toContain("its own work");
+  });
+
+  it("makes no naming claim when no match basis was recorded", () => {
+    const { container } = render(
+      <SubawardCard url={PRIME_URL} body={{ ...BODY, match_basis: null }} />,
+    );
+    const caveat = container.querySelector('[data-testid="subaward-caveat"]')!
+      .textContent!;
+    expect(caveat).toContain("No basis was recorded for this match");
+    expect(caveat).not.toContain("names this program");
+    // the rest of the caveat is unchanged on this path
+    expect(caveat).toContain("one hop removed");
+    expect(caveat).toContain("Subawards tab");
+    expect(caveat).toContain("award data");
+  });
+
+  it("treats a blank match basis as no basis, in the caveat as in the phrase", () => {
+    const { container } = render(
+      <SubawardCard url={PRIME_URL} body={{ ...BODY, match_basis: "   " }} />,
+    );
+    expect(
+      container.querySelector('[data-testid="subaward-match-basis"]')!.textContent,
+    ).toBe("Matched by: basis not recorded");
+    expect(
+      container.querySelector('[data-testid="subaward-caveat"]')!.textContent,
+    ).toContain("No basis was recorded for this match");
+  });
+
   it("renders the link's method and confidence tier when the row carries it", () => {
     const { container } = render(
       <SubawardCard url={PRIME_URL} body={BODY} formula={FORMULA} />,

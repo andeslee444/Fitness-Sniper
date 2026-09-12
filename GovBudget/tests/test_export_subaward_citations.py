@@ -38,6 +38,7 @@ from govbudget.export_site import (
     _index_subaward_sources,
     _lake_parquet_dir,
     _load_subaward_lake_rows,
+    _subaward_lake_keys,
     _subaward_row,
     fact_id_derived,
 )
@@ -277,6 +278,26 @@ def test_a_mart_with_no_subaward_links_needs_no_subaward_sources(tmp_path):
 def test_index_subaward_sources_keys_by_piid_and_pe():
     out = _index_subaward_sources([(_PIID, _PE, _NUMBER, _BASIS)])
     assert out == {(_PIID, _PE): {"source_id": _NUMBER, "match_basis": _BASIS}}
+
+
+def test_subaward_lake_keys_strip_the_number_the_other_two_uses_strip(tmp_path):
+    """A padded source_id must not become a bogus 'not in the lake' failure.
+
+    The missing-row check and the mint branch both look the record up under
+    str(source_id).strip(). The §4d3 call site must FETCH under that same key,
+    or a padded source_id in Postgres would pull the lake under the padded key,
+    find nothing, and fail the export for a record the lake really holds.
+    """
+    padded_sources = {
+        (_PIID, _PE): {"source_id": f"  {_NUMBER}\t", "match_basis": _BASIS},
+    }
+    assert _subaward_lake_keys(padded_sources) == {(_PIID, _NUMBER)}
+
+    # …and the key the builder then uses is the same one, so the row mints
+    # (the lake fixture is keyed by the stripped number) with a clean number.
+    sub = next(r for r in _build(tmp_path, subaward_sources=padded_sources)
+               if r[_CIT_IDX["fact_id"]] == _SUB_FID)
+    assert json.loads(sub[_CIT_IDX["query_body"]])["subaward_number"] == _NUMBER
 
 
 def test_index_subaward_sources_raises_on_two_records_for_one_link():
