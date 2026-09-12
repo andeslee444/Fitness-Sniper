@@ -5,9 +5,8 @@
  *   - src/components/program-concentration.tsx  (the /program/{peBli}/
  *     "Contractor Concentration" badge — the destination page a homepage/
  *     feed concentration claim links to)
- *   - src/app/page.tsx                           (homepage lede gloss)
- *   - src/components/feed-headline.tsx           (per-card scope note,
- *     rendered on both the homepage lede and every /feed/ card)
+ *   - src/lib/hhi-scope-note.ts                  (per-card scope note,
+ *     rendered on every /feed/ card by feed-card-item-shell.tsx)
  *   - scripts/gates/feed.mjs                     (leg l: claim vs. the
  *     destination page it links to)
  *

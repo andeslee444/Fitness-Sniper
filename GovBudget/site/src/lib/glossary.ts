@@ -20,7 +20,7 @@
  * ACCURACY. Every definition here is traceable to how the site itself uses
  * the term — src/lib/basis.ts, src/lib/footnote.ts, src/lib/pe-link.ts,
  * src/lib/hhi-band.mjs, src/components/reconciliation-strip.tsx,
- * src/components/program-figures.tsx (Fy26SplitNote), and /methodology/'s
+ * src/components/fy26-split-note.tsx (Fy26SplitNote), and /methodology/'s
  * own prose. "Reconciliation" carries two genuinely different meanings on
  * this site (the internal TOA-vs-J-book verification check, AND the FY2026
  * congressional reconciliation-bill money) and the entry below states both

@@ -1,31 +1,32 @@
 /**
- * feed-card-item-parity.test.tsx — Task 6 (#73), addendum ruling 2.
+ * feed-card-item-parity.test.tsx — Task 6 (#73), addendum ruling 2; kept
+ * after ROADMAP #81.
  *
- * <FeedCardItemClient> (feed-card-item-client.tsx) is a client-safe TWIN of
- * <FeedCardItem> (feed-card-item.tsx), built because two of the pieces
- * FeedCardItem renders — <FeedHeadline> and <Fy26SplitNote> — transitively
- * `import "server-only"` (via src/lib/data.ts and src/lib/coverage.ts
- * respectively) and cannot be imported into a "use client" module without
- * breaking the Next.js client bundle build. See feed-card-item-client.tsx's
- * doc comment for the full explanation.
- *
- * This test is the parity contract: for the SAME (card, companySlug,
- * hasProgramPage) triple, the two components must render byte-identical
- * HTML. Fixtures exercise the paths that differ between the server source
- * and the client twin's reimplementation:
+ * <FeedCardItemClient> (feed-card-item-client.tsx) is the client-tree /feed/
+ * card; <FeedCardItem> (feed-card-item.tsx) the server-tree one. Since #81
+ * both render ONE <FeedCardItemShell> (feed-card-item-shell.tsx), which
+ * itself renders <Fy26SplitNote> (fy26-split-note.tsx), so parity holds by
+ * construction for everything except the headline: the server passes
+ * <FeedHeadline> (feedHeadlineSegments() in lib/data.ts, `server-only`, can
+ * fall back to getPrograms() on disk) and the client its fs-free
+ * reimplementation. feed-card-item-shell.test.tsx pins that structure; THIS
+ * file remains the end-to-end contract: for the SAME (card, companySlug,
+ * hasProgramPage) triple the two components render byte-identical HTML.
+ * Fixtures exercise the paths where the headline reimplementation could
+ * diverge, plus every Cite branch of the shell:
  *
  *   1. A plain title-led concentration_shift card (no money in the
  *      headline, no reconciliation split) — the common case.
  *   2. A yoy_swing card with fy26_split.has_reconciliation, disc AND
  *      reconciliation both set, and a headline carrying a dollar token
- *      (headline_segments with an amount run) — exercises FeedHeadlineClient's
- *      ProseCite path AND Fy26SplitNoteClient's full branch (both Cites,
- *      the recon-chip, the disc-pct-change span).
+ *      (headline_segments with an amount run) — the ProseCite path AND the
+ *      full Fy26SplitNote branch (both Cites, the recon-chip, the
+ *      disc-pct-change span).
  *   3. A code-led "legacy" headline (headline starts with the card's own
  *      pe_bli code, title === pe_bli) — the one case where the server's
  *      feedHeadlineSegments() would consult getPrograms() and the client
- *      twin deliberately does not (see that file's doc comment). Pinned
- *      here so a future divergence is caught.
+ *      reimplementation deliberately does not. Pinned here so a future
+ *      divergence is caught.
  *   4. A request_vs_actuals_gap card — the fct_book_diff / "USD thousands"
  *      Cite branch, untouched by any earlier fixture.
  *   5. A pe_bli card with hasProgramPage=false despite a non-null

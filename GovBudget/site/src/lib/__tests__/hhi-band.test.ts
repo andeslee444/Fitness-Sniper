@@ -2,7 +2,7 @@
  * hhi-band — backlog #57. The single source for the DOJ/FTC concentration
  * bands rendered on /program/{peBli}/ (program-concentration.tsx), the
  * homepage lede gloss (page.tsx), and every /feed/ hhi card
- * (feed-headline.tsx's hhiScopeNote) — and read by scripts/gates/feed.mjs
+ * (lib/hhi-scope-note.ts's hhiScopeNote) — and read by scripts/gates/feed.mjs
  * leg (l). Pinning the boundaries here is what keeps the pages and the
  * gate from silently drifting apart the way BASIS_LABEL once did
  * (backlog #48).

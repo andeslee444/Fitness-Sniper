@@ -1625,7 +1625,7 @@ function runExhibitAgreementLeg(pages, errors, notes) {
 // fy26_split) and checks the corresponding BUILT PAGE:
 //
 //   g1 CHIP PRESENCE — any page whose sidecar reports fy26_split.recon_share
-//      > 0 must render a [data-fy26-recon-chip] marker (program-figures.tsx's
+//      > 0 must render a [data-fy26-recon-chip] marker (fy26-split-note.tsx's
 //      Fy26SplitNote, beside the FY2026 card). A true reconciliation share
 //      with no rendered disclosure is exactly the defect.
 //   g2 CHANGE ACCOMPANIMENT — a page renders a COMBINED FY25→FY26 percentage
@@ -1908,9 +1908,10 @@ function runFy26SplitLeg(pages, errors, notes) {
 //       {pe_bli}", which carries the raw pe_bli regardless of any
 //       title-swap the display layer does) must render a
 //       [data-fy26-recon-chip] — the SAME marker g1 requires on
-//       /program/*\/, from the SAME <Fy26SplitNote> component (exported
-//       from program-figures.tsx and imported into feed/page.tsx rather
-//       than re-implemented, so the wording cannot drift).
+//       /program/*\/, from the SAME <Fy26SplitNote> component
+//       (components/fy26-split-note.tsx, imported by program-figures.tsx
+//       and by BOTH /feed/ card trees rather than re-implemented, so the
+//       wording cannot drift — ROADMAP #81).
 //   g4b NON-VACUITY — fewer than FEED_FY26_SPLIT_MIN_RESOLVED (20; the live
 //       corpus carries 31 measured 2026-08-19) qualifying cards actually
 //       located on the built /feed/ page FAILS — the same "field or

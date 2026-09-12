@@ -5,6 +5,7 @@ import { DecadeTrajectory } from "@/components/decade-trajectory";
 import { ReconciliationStrip } from "@/components/reconciliation-strip";
 import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
+import { Fy26SplitNote } from "@/components/fy26-split-note";
 import { normalizeExhibitFamily } from "@/lib/basis";
 import type {
   DecadeAbsent,
@@ -122,78 +123,10 @@ export function reconKeySet(summary: ProgramSummary | null): Set<string> {
   );
 }
 
-/**
- * Fy26SplitNote (backlog #50) — the FY2026 card's combined figure ($7.70B
- * for Long Range Kill Chains, PE 1203154SF) is disc + reconciliation with no
- * visible seam. When the split has a reconciliation component, this renders
- * beside the combined figure: a reconciliation-share chip (gate 23 leg g's
- * [data-fy26-recon-chip] marker), then a caption stating both addends —
- * each its OWN cited figure, never a re-typed number — and the
- * discretionary-basis change vs FY2025 enacted (gate leg g's
- * [data-fy26-disc-pct-change] marker), the like-for-like rate a reader can
- * actually extrapolate. The combined figure stays the headline (it is the
- * true total); this note is what turns "+3052.9%" from an unlabelled claim
- * into a labelled one — the raw change card is untouched, still rendered by
- * the sibling "change" SummaryCardCell.
- *
- * Exported (backlog #54) — /feed/'s FeedCardItem renders this SAME component
- * beside a yoy_swing card whose PE carries reconciliation money, so the
- * disclosure's wording and [data-fy26-recon-chip]/[data-fy26-disc-pct-change]
- * markers stay identical on both surfaces rather than growing a second,
- * differently-worded copy.
- */
-export function Fy26SplitNote({ split }: { split: Fy26Split }) {
-  if (!split.reconciliation) return null; // has_reconciliation implies this is set; defensive
-  const sharePct = (split.recon_share * 100).toFixed(1);
-  return (
-    <ScopeNote label={null} className="mt-2 text-left">
-      <span
-        data-fy26-recon-chip=""
-        className="inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline"
-      >
-        {sharePct}% reconciliation
-      </span>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        {split.disc && (
-          <>
-            <Cite
-              value={split.disc.v}
-              units={split.disc.units}
-              dataset={split.disc.dataset}
-              factId={split.disc.fid}
-              basis={split.disc.basis}
-              fy={split.disc.fy}
-              measure={split.disc.measure}
-              edition={split.disc.edition}
-              chip={false}
-            />
-            {" discretionary + "}
-          </>
-        )}
-        <Cite
-          value={split.reconciliation.v}
-          units={split.reconciliation.units}
-          dataset={split.reconciliation.dataset}
-          factId={split.reconciliation.fid}
-          basis={split.reconciliation.basis}
-          fy={split.reconciliation.fy}
-          measure={split.reconciliation.measure}
-          edition={split.reconciliation.edition}
-          chip={false}
-        />
-        {" one-time reconciliation."}
-        {split.disc_pct_change != null && (
-          <span data-fy26-disc-pct-change="">
-            {" "}
-            Discretionary change vs FY2025 enacted:{" "}
-            {split.disc_pct_change >= 0 ? "+" : ""}
-            {split.disc_pct_change.toFixed(1)}%.
-          </span>
-        )}
-      </p>
-    </ScopeNote>
-  );
-}
+// Fy26SplitNote (backlog #50/#54) lives in components/fy26-split-note.tsx
+// since ROADMAP #81: this module is server-only by way of <CoverageNote> →
+// lib/coverage.ts, and the note is rendered from /feed/'s client tree too.
+// SummaryCardCell below still renders it beside the FY2026 card.
 
 /**
  * Fy26LinesNote (ROADMAP #69) — names the budget lines a page's FY2026
@@ -208,7 +141,8 @@ export function Fy26SplitNote({ split }: { split: Fy26Split }) {
  * titled "HC/MC-130 Post Prod", which is the $17,986K half. The total is the
  * program's real FY2026 request and stays the headline — what was missing is
  * the seam, so this renders it: each constituent line, its budget activity,
- * and its own cited figure. Same disclosure register as Fy26SplitNote above.
+ * and its own cited figure. Same disclosure register as <Fy26SplitNote>
+ * (components/fy26-split-note.tsx).
  */
 export function Fy26LinesNote({ split }: { split?: Fy26Split | null }) {
   const lines = split?.lines;

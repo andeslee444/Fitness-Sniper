@@ -11,7 +11,8 @@
  *     reads these), and a "Show all N" button.
  *   - Clicking fetches /json/feed-sections/{eventType}.json and renders
  *     its `cards` (already the cards past the cap — no client filter, no
- *     client slice) via the <FeedCardItemClient> twin.
+ *     client slice) via <FeedCardItemClient> (the shared shell, with a
+ *     client-safe headline).
  *   - companySlug/hasProgramPage come PRE-RESOLVED on each sidecar card
  *     (company_slug, has_program_page).
  *   - A sidecar cut LOWER than this page's `shown` has its overlap dropped;

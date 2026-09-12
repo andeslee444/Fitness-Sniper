@@ -8,8 +8,10 @@
  * useState, plain same-origin fetch, an error state. On click it fetches
  * /json/feed-sections/{eventType}.json — the exporter's per-section sidecar
  * (copied into public/json/ by prepare-assets.mjs 5h) carrying ONLY the
- * cards past the digest cap — and renders them with the client-safe
- * <FeedCardItemClient> twin (feed-card-item-client.tsx).
+ * cards past the digest cap — and renders them with
+ * <FeedCardItemClient> (feed-card-item-client.tsx), which since ROADMAP #81
+ * renders the same <FeedCardItemShell> as the server card rather than a
+ * hand-copied twin.
  *
  * #88: this used to fetch the whole feed.json (881,872 bytes on the
  * 2026-09-04 export) and filter by event_type in the browser, so expanding

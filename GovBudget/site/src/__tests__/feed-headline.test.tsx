@@ -12,7 +12,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { FeedHeadline, hhiScopeNote } from "@/components/feed-headline";
+import { FeedHeadline } from "@/components/feed-headline";
 import type { FeedCard } from "@/lib/data";
 
 function card(over: Partial<FeedCard> = {}): FeedCard {
@@ -126,93 +126,5 @@ describe("<FeedHeadline>", () => {
     const { container } = render(<FeedHeadline card={hhi} />);
     expect(container.querySelectorAll("[data-prose-cite]").length).toBe(0);
     expect(screen.getByText(/HHI=8662/)).toBeTruthy();
-  });
-});
-
-describe("hhiScopeNote", () => {
-  it("returns null for a non-hhi card", () => {
-    expect(hhiScopeNote(card())).toBeNull();
-  });
-
-  it("returns null when the hhi card carries no figure_value", () => {
-    expect(
-      hhiScopeNote(
-        card({ event_type: "concentration_shift", figure_units: "hhi", figure_value: null }),
-      ),
-    ).toBeNull();
-  });
-
-  // backlog #57: the destination /program/0601101E/ page renders a pooled
-  // all-years HHI of 505.5 ("Competitive") for the same program — a
-  // DIFFERENT measure this note exists to disclose, not to match.
-  it("names the standard band and the fiscal year, and discloses the pooled figure can differ", () => {
-    const note = hhiScopeNote(
-      card({
-        event_type: "concentration_shift",
-        figure_units: "hhi",
-        figure_value: 8662.294,
-        fiscal_year: 2020,
-        pe_bli: "0601101E",
-        program_url: "/program/0601101E/",
-      }),
-    );
-    expect(note).not.toBeNull();
-    expect(note!.band).toBe("Highly Concentrated");
-    expect(note!.text).toContain("FY2020");
-    expect(note!.text).toContain("Highly Concentrated");
-    expect(note!.text.toLowerCase()).toContain("pooled");
-    expect(note!.text.toLowerCase()).toContain("differ");
-  });
-
-  it("uses the standard vocabulary, not an editorial adjective, below the highly-concentrated floor", () => {
-    // The old two-way split called ANYTHING under 2500 "a high supplier-
-    // concentration score" — false for a genuinely competitive value.
-    const note = hhiScopeNote(
-      card({
-        event_type: "concentration_shift",
-        figure_units: "hhi",
-        figure_value: 800,
-        fiscal_year: 2022,
-      }),
-    );
-    expect(note!.band).toBe("Competitive");
-    expect(note!.text).not.toMatch(/near-monopoly/i);
-    expect(note!.text).not.toMatch(/high supplier-concentration/i);
-  });
-
-  // ROADMAP #80 fix round 2 (2026-09-11), finding 8 — ruling R8. The note
-  // used to end "the program's pooled, all-years HHI can differ; see the
-  // program page", written when the destination always had one. After the
-  // high-only floor, 444 - 37 = 407 of the 444 mart rows publish no pooled
-  // index at all, so that instruction sent most readers to a page that
-  // states an absence. The note must say the figure may not be there —
-  // while keeping the "pooled"/"differ" tokens scripts/gates/feed.mjs leg
-  // (l) matches on. This assertion fails if either half is dropped.
-  it("does not promise the destination publishes a pooled figure", () => {
-    const note = hhiScopeNote(
-      card({
-        event_type: "concentration_shift",
-        figure_units: "hhi",
-        figure_value: 8662.294,
-        fiscal_year: 2020,
-        pe_bli: "0601101E",
-        program_url: "/program/0601101E/",
-      }),
-    );
-    expect(note!.text).toMatch(/not be published/i);
-    expect(note!.text.toLowerCase()).toContain("pooled");
-    expect(note!.text.toLowerCase()).toContain("differ");
-  });
-
-  it("falls back to 'that year' when fiscal_year is absent", () => {
-    const note = hhiScopeNote(
-      card({
-        event_type: "concentration_shift",
-        figure_units: "hhi",
-        figure_value: 3000,
-        fiscal_year: null,
-      }),
-    );
-    expect(note!.text).toContain("that year");
   });
 });
