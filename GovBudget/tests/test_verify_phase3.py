@@ -2,12 +2,15 @@
 
 Each gate is tested in isolation with minimal fixture data.
 """
+import re
 from pathlib import Path
 
 import duckdb
 import pytest
 
+from govbudget import verify_phase3
 from govbudget.verify_phase3 import (
+    _MIN_HIGH_ONLY_ROWS,
     ingest_gate,
     linkage_gate,
     marts_gate,
@@ -443,3 +446,30 @@ class TestTraceGate3:
         )
         result = trace_gate3(db_path, hr_path)
         assert result["ok"] is False
+
+
+class TestHighOnlyRowsFloor:
+    """_MIN_HIGH_ONLY_ROWS is a floor: it may be raised, never lowered.
+
+    Every marts_gate probe above builds its fixture from the constant
+    (`_marts_db(n_clean=40)` exists so the floor is never what fails those
+    tests), so lowering it to fit a red run would leave this suite green —
+    the gap #80 fix round 3 (2026-09-11, finding 3) found in the site's twin
+    floor, MIN_RECONCILABLE_HHI_DESTINATIONS. These two fail on a LOWER value
+    and on a deleted rule.
+    """
+
+    def test_the_floor_may_only_be_raised(self):
+        # MEASURED 2026-09-11 on the live lake: 37 of 444 programs publish an
+        # hhi_high under the post-#80 floor. Raise this when a build measures
+        # more; a number that moves down to fit a run is not a floor.
+        assert _MIN_HIGH_ONLY_ROWS >= 37
+
+    def test_the_do_not_lower_rule_is_stated_and_dated_beside_the_constant(self):
+        src = Path(verify_phase3.__file__).read_text(encoding="utf-8")
+        decl = src.index("_MIN_HIGH_ONLY_ROWS = ")
+        assert src[decl:].startswith(f"_MIN_HIGH_ONLY_ROWS = {_MIN_HIGH_ONLY_ROWS}\n")
+        # the comment block immediately above the constant
+        note = src[:decl].rsplit("\n\n", 1)[-1]
+        assert re.search(r"never lower", note, re.I), note
+        assert re.search(r"\b20\d\d-\d\d-\d\d\b", note), note

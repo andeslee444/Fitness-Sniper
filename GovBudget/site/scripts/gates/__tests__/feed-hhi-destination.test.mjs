@@ -15,12 +15,17 @@
  * Run via `npm test` (vitest).
  */
 import { describe, it, expect } from "vitest";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import {
   destinationHhiBadge,
   hhiDestinationCensusVerdict,
   MIN_RECONCILABLE_HHI_DESTINATIONS,
 } from "../feed.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const page = (inner) => parse(`<html><body><main>${inner}</main></body></html>`, { comment: false });
 
@@ -134,8 +139,29 @@ describe("hhiDestinationCensusVerdict", () => {
     expect(v.error).toMatch(/withheld/);
   });
 
+  // Every probe above derives its fixtures FROM the constant, so they stay
+  // green at any value — lowering the floor to 5 to clear a red build would
+  // have cost nothing (#80 fix round 3, 2026-09-11, finding 3). This one
+  // fails on a LOWER value, and pins the dated note that says why.
   it("the floor is a positive, dated, do-not-lower number", () => {
     expect(Number.isInteger(MIN_RECONCILABLE_HHI_DESTINATIONS)).toBe(true);
     expect(MIN_RECONCILABLE_HHI_DESTINATIONS).toBeGreaterThan(0);
+    // MEASURED 2026-09-11: 21 of the top-75 concentration_shift CARDS reach a
+    // pe_bli that clears the high-only floor. Raise this when a build measures
+    // more; never lower it.
+    expect(MIN_RECONCILABLE_HHI_DESTINATIONS).toBeGreaterThanOrEqual(21);
+
+    // The "never lower" rule lives in feed.mjs's doc comment, so read the
+    // source the way the strip test reads page.tsx: a silent edit that keeps
+    // the number and deletes the rule fails here too.
+    const src = fs.readFileSync(path.resolve(__dirname, "..", "feed.mjs"), "utf8");
+    const decl = src.indexOf("export const MIN_RECONCILABLE_HHI_DESTINATIONS");
+    expect(decl).toBeGreaterThan(-1);
+    expect(src.slice(decl)).toMatch(
+      new RegExp(`^export const MIN_RECONCILABLE_HHI_DESTINATIONS = ${MIN_RECONCILABLE_HHI_DESTINATIONS};`),
+    );
+    const note = src.slice(src.lastIndexOf("/**", decl), decl);
+    expect(note).toMatch(/NEVER LOWER/i);
+    expect(note).toMatch(/\b20\d\d-\d\d-\d\d\b/);
   });
 });
