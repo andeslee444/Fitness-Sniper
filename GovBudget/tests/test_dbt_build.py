@@ -243,6 +243,16 @@ def make_lake(data_dir: Path):
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
         f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3'),"
+        # K3 is a DEOBLIGATION on the same award, district and fiscal year as
+        # K1 (ROADMAP #6 rider, 2026-09-11). Without it the fixture cannot tell
+        # the by-year marts' positive_obligation formula apart from a wrong one:
+        # a single positive transaction returns 1000.5 under both
+        # sum(greatest(obl,0)) (transaction level, what the models do) and
+        # greatest(sum(obl),0) (award level, what they must not do). With K3 the
+        # two differ — 1000.5 vs 800.25 — and the fixture pins the right one.
+        # Same award_id_piid and recipient, so award_count and recipient_count
+        # stay 1 while transaction_count becomes 2.
+        f"('K3','2017-06-30','-200.25','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3'),"
         f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null,'NAVSEA HQ','NOT COMPETED',null)"
         f") t({CONTRACT_COLS})",
     )
@@ -382,11 +392,13 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     con = duckdb.connect(str(tmp_path / "duckdb" / "test.duckdb"))
-    assert con.sql("select count(*) from fct_award_transactions").fetchone()[0] == 3
+    # 4 since the ROADMAP #6 rider added K3, a deobligation on K1's award.
+    assert con.sql("select count(*) from fct_award_transactions").fetchone()[0] == 4
     assert con.sql("select count(*) from dim_recipients").fetchone()[0] == 2
+    # UEI1 = K1 1000.5 + K3 -200.25 + A1 5000 (a NET total, deobligation included).
     assert con.sql(
         "select total_obligation from dim_recipients where recipient_uei='UEI1'"
-    ).fetchone()[0] == 6000.5
+    ).fetchone()[0] == 5800.25
     # Phase 5A influence mart assertions
     assert con.sql("select count(*) from fct_influence").fetchone()[0] >= 1
     assert con.sql(
@@ -475,21 +487,28 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         ")"
     ).fetchone()[0] == 0
     # ── ROADMAP #6: district × fiscal_year drill-down ────────────────────
-    # The fixture's only district-linked award is K1 (CA-52, PIID
-    # HR001124C0001, $1000.5, contracts partition fy=2017) matched to the
-    # high-confidence jbook_award on pe_bli 0601101E. (HR001124C0002 is
-    # demoted to medium and HR001124C0003 is adjudicated 'reject', so
-    # neither joins.) Both by-year marts must hold exactly one CA-52 row,
-    # in FY2017, for $1000.5.
+    # The fixture's only district-linked award is HR001124C0001 (CA-52,
+    # contracts partition fy=2017) matched to the high-confidence jbook_award
+    # on pe_bli 0601101E. (HR001124C0002 is demoted to medium and
+    # HR001124C0003 is adjudicated 'reject', so neither joins.) It carries TWO
+    # transactions: K1 +1000.5 and the K3 deobligation -200.25. Both by-year
+    # marts must hold exactly one CA-52 row, in FY2017, netting to 800.25.
+    #
+    # The 800.25/1000.5 pair is the point of the rider: positive_obligation is
+    # summed at the TRANSACTION level (sum(greatest(obl,0)) = 1000.5), not at
+    # the award level: greatest(sum(obl),0) is 800.25 here, so the two formulas
+    # disagree and this row pins the right one. Measured read-only against the
+    # shipped warehouse 2026-09-11: 278 of the 924 district-year cells differ
+    # by more than a cent between the two formulas (293 differ at all).
     assert con.sql(
         "select fiscal_year, award_count, total_obligation, positive_obligation"
         " from fct_district_totals_by_year where pop_district='CA-52'"
-    ).fetchall() == [(2017, 1, 1000.5, 1000.5)]
+    ).fetchall() == [(2017, 1, 800.25, 1000.5)]
     assert con.sql(
         "select fiscal_year, pe_bli, transaction_count, award_count,"
         "       recipient_count, total_obligation, positive_obligation"
         " from fct_district_programs_by_year where pop_district='CA-52'"
-    ).fetchall() == [(2017, '0601101E', 1, 1, 1, 1000.5, 1000.5)]
+    ).fetchall() == [(2017, '0601101E', 2, 1, 1, 800.25, 1000.5)]
     # The by-year models carry the SAME labels as their all-years siblings —
     # a title that drifts between the two would put one program's dollars
     # under two names on the same page (the #70 species).
@@ -569,12 +588,13 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         " and node_to='DARPA|0400|1|0601101E'"
     ).fetchone()[0] == 300000.0
     # Spend river: competed_class mapping + offers buckets from the fixture
-    # contracts (K1 full-and-open/3 offers, K2 not-competed/null offers);
-    # the assistance row must NOT appear (contracts only).
+    # contracts (K1 + K3 full-and-open/3 offers, K2 not-competed/null offers);
+    # the assistance row must NOT appear (contracts only). 800.25 = K1 1000.5
+    # net of the K3 deobligation -200.25, both in the same class and bucket.
     assert con.sql(
         "select competed_class, offers_bucket, amount from fct_flow_edges"
         " where river='spend' and level_from='total' and competed_class='full_and_open'"
-    ).fetchall() == [("full_and_open", "3-4", 1000.5)]
+    ).fetchall() == [("full_and_open", "3-4", 800.25)]
     assert con.sql(
         "select competed_class, offers_bucket, amount from fct_flow_edges"
         " where river='spend' and level_from='total' and competed_class='not_competed'"
