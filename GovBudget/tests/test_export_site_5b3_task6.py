@@ -254,6 +254,33 @@ class TestEmitFilingSidecars:
         assert by_uuid[_UUID2]["has_mentions"] is False
         assert by_uuid[_UUID3]["has_mentions"] is True
 
+    def test_shared_code_mention_links_the_stub_and_says_so(self, tmp_path):
+        """ROADMAP #82: a filing names a budget line, not an appropriation —
+        on a shared code the link can only open the chooser, and the payload
+        says so."""
+        db_path = _make_filing_fixture(tmp_path)
+        json_dir = tmp_path / "json"
+        json_dir.mkdir(exist_ok=True)
+        rows = _lob_rows() + [
+            (_UUID2, "3010", "LPD Flight II", "3010", "pe_literal",
+             "...budget line 3010...", f"https://lda.senate.gov/api/v1/filings/{_UUID2}/",
+             "BETA INC", "BETA", "2024"),
+        ]
+        _emit_filing_sidecars(
+            json_dir=json_dir,
+            duckdb_path=db_path,
+            lob_rows=rows,
+            prog_titles={**_PROG_TITLES, "3010": "LPD Flight II / Shipboard Tactical Communications"},
+            cited_fact_ids=_cited_set(),
+            shared_pe_blis={"3010"},
+        )
+        m2 = json.loads((json_dir / "filings" / f"{_UUID2}.json").read_text())["mentions"]
+        assert m2[0]["program_url"] == "/program/3010/"
+        assert m2[0]["program_title"] == "LPD Flight II / Shipboard Tactical Communications"
+        assert m2[0]["shared_code"] is True
+        m1 = json.loads((json_dir / "filings" / f"{_UUID1}.json").read_text())["mentions"]
+        assert m1[0]["shared_code"] is False
+
     def test_index_mentions_first_ordering(self, tmp_path):
         json_dir = _emit(tmp_path)
         idx = json.loads((json_dir / "filings_index.json").read_text())

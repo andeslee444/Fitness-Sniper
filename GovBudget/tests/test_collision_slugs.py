@@ -434,6 +434,19 @@ def _make_collision_duckdb(db_path: Path) -> None:
         " ('CO','CO-05','3010','Shipboard Tactical Communications','N',"
         "  2,1,1,100000.0)"
     )
+    # ROADMAP #82: a mart figure for the shared code, so the exporter has
+    # something to WITHHOLD (both members carry a link above) rather than a
+    # plain absence. Column order is the live two-basis one (ROADMAP #80):
+    # (pe_bli, hhi_all, top_family_all, family_count_all, award_count_all,
+    #  program_dollars_all, hhi_high, top_family_high, family_count_high,
+    #  award_count_high, program_dollars_high) — the *_high values clear the
+    # high-only floor, so this figure WOULD publish if it were either
+    # member's.
+    con.execute(
+        "insert into fct_program_concentration values"
+        " ('3010', 8411.8, 'HUNTINGTON INGALLS INDUSTRIES', 3, 8, 3059296982.0,"
+        "  8411.8, 'HUNTINGTON INGALLS INDUSTRIES', 3, 8, 3059296982.0)"
+    )
     con.close()
 
 
@@ -541,3 +554,59 @@ def test_link_citation_row_names_the_account_for_a_split_key(collision_export):
         "budget_to_awards", "3010|N0002420C0001", "link")
     assert scn_fid in by_fid
     assert SCN in (by_fid[scn_fid].get("formula") or "")
+
+
+# ---------------------------------------------------------------------------
+# (c) ROADMAP #82 — links from other surfaces reach the member, and a figure
+#     withheld from both members is said, not hidden
+# ---------------------------------------------------------------------------
+
+
+def test_a_district_card_on_a_shared_code_links_the_member_page(collision_export):
+    """The mart title names the member whose high-confidence links produced
+    the dollars; the card links THAT page, not the bare-key chooser."""
+    assert _district_program(collision_export, "VA-08", "3010")["program_url"] == "/program/3010-SCN/"
+    assert _district_program(collision_export, "CO-05", "3010")["program_url"] == "/program/3010-OPN/"
+
+
+def test_an_ordinary_district_card_still_links_its_bare_key(collision_export):
+    assert _district_program(collision_export, "CO-05", "0601101E")["program_url"] == "/program/0601101E/"
+
+
+def test_member_slugs_by_title_refuses_identical_member_titles():
+    """'2101' publishes "Tomahawk" in two appropriations — a title names
+    nobody there, so no entry is minted and the district card keeps the stub."""
+    from govbudget.export_site import _ProgramIdentity, member_slugs_by_title
+
+    rows = [
+        ("2101", "N", "procurement", "Tomahawk", 0, 1.0, True, "1109N", "Procurement, Marine Corps", None),
+        ("2101", "N", "procurement", "Tomahawk", 0, 1.0, True, "1507N", "Weapons Procurement, Navy", None),
+        ("3010", "N", "procurement", "LPD Flight II", 0, 1.0, True, SCN, SCN_TITLE, None),
+        ("3010", "N", "procurement", "Shipboard Tactical Communications", 0, 1.0, True, OPN, OPN_TITLE, None),
+        ("0601101E", "DARPA", "rdte", "Defense Research Sciences", 1, 1.0, True, None, None, None),
+    ]
+    # _ProgramIdentity rows are (pe_bli, account, account_title, organization, has_detail).
+    ident = _ProgramIdentity([(r[0], r[7], r[8], r[1], True) for r in rows])
+    out = member_slugs_by_title(rows, {"2101", "3010"}, ident)
+    assert out == {
+        ("3010", "LPD Flight II"): "3010-SCN",
+        ("3010", "Shipboard Tactical Communications"): "3010-OPN",
+    }
+
+
+def test_both_linked_members_carry_the_withheld_flag_and_no_hhi(collision_export):
+    """Both 3010 members carry a link and the mart has a bare-key figure: it
+    is neither member's, programs.json publishes hhi=null on each, and the
+    sidecar says WHY so the page does not claim the crosswalk is silent.
+
+    This is the end-to-end pin on the exporter's withheld marker (green the
+    moment the fixture row above exists) — the red for the builder change is
+    the unit suite in tests/test_who_gets_it_fallbacks.py."""
+    for slug in ("3010-SCN", "3010-OPN"):
+        assert _sidecar(collision_export, slug)["summary"]["concentration_withheld"] is True
+    programs = json.loads((collision_export / "json" / "programs.json").read_text())
+    by_slug = {p["slug"]: p for p in programs}
+    assert by_slug["3010-SCN"]["hhi"] is None
+    assert by_slug["3010-OPN"]["hhi"] is None
+    assert by_slug["0601101E"]["hhi"] is not None
+    assert _sidecar(collision_export, "0601101E")["summary"]["concentration_withheld"] is False

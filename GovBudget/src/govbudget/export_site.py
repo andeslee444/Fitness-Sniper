@@ -461,6 +461,44 @@ def shared_code_program_label(titles: list[str | None]) -> str | None:
     return " / ".join(seen)
 
 
+def member_slugs_by_title(
+    all_prog_rows: list[tuple],
+    shared_pe_blis: set[str] | frozenset[str],
+    ident,
+) -> dict[tuple[str, str], str]:
+    """(pe_bli, title) -> member slug, for the shared codes whose members a
+    TITLE can tell apart (ROADMAP #82).
+
+    fct_district_programs carries no account column, but its program_title
+    was resolved per (pe_bli, account) by fct_budget_to_awards, so on a
+    shared code the title IS the member: 'LPD Flight II' under '3010' is the
+    1611N member and nothing else. A district card can therefore link
+    /program/3010-SCN/ instead of the bare-key chooser.
+
+    Codes whose members publish the SAME title ('2101' Tomahawk, '2292'
+    Naval Strike Missile) get no entry — the title names nobody, and the
+    caller keeps the stub link, which lists both. Rows are all_prog_rows'
+    10-tuples (pe_bli at 0, org at 1, title at 3 — already override-corrected
+    — account at 7, account_title at 8); titles here are compared against
+    the mart title after the SAME apply_title_override, so the two agree.
+    """
+    from collections import Counter, defaultdict  # module convention: per-function
+
+    by_pe: dict[str, list] = defaultdict(list)
+    for r in all_prog_rows:
+        if r[0] in shared_pe_blis:
+            by_pe[r[0]].append(r)
+    out: dict[tuple[str, str], str] = {}
+    for pe_bli, members in by_pe.items():
+        title_counts = Counter(m[3] for m in members if m[3])
+        for m in members:
+            org, title, account, account_title = m[1], m[3], m[7], m[8]
+            if not title or title_counts[title] != 1:
+                continue
+            out[(pe_bli, title)] = ident.slug(pe_bli, account, account_title, org)
+    return out
+
+
 def _query_with_account_fallback(
     con, sql_with_account: str, sql_without_account: str, account_index: int,
 ) -> list[tuple]:
@@ -6367,9 +6405,10 @@ def _build_named_primes(
     *,
     json_dir: Path,
     entity_rows: list,
-    hhi_by_pe: dict,
+    concentration_for,
+    slug_index: dict[str, tuple[str, str | None, str | None]],
     cited_fact_ids: set,
-    awarded_pe_blis: set,
+    awards_for,
 ) -> dict[str, list]:
     """WHO-GETS-IT fallback (§P0-2 fix 3): when the budget→award crosswalk
     has no citable concentration dollars for a program on the basis the page
@@ -6379,7 +6418,7 @@ def _build_named_primes(
     known contractor family, emit named_primes: [{name, family_key, fact_id,
     public_id}] so the card can say "Named in the J-book: … — uncrosswalked".
 
-    `awarded_pe_blis` guards that last clause (#80 fix round 1, 2026-09-11).
+    `awards_for` guards that last clause (#80 fix round 1, 2026-09-11).
     This tier ends "— not yet crosswalked to award data", which is true of a
     program with no links and false of one whose page renders a Related
     Awards table below the card. Before #80 the guard was implicit: the only
@@ -6387,6 +6426,21 @@ def _build_named_primes(
     Now that a program can have links and still publish no high-only index,
     it has to be stated — the same guard `_build_lobbied_by` already applies
     to its own disclaimer.
+
+    ROADMAP #82: keyed by SLUG, and both lookups are PER MEMBER. Dossier
+    sidecars are slug-named since Sprint E ('3010-SCN.json' carries
+    "slug": "3010-SCN"); this used to look the concentration up as
+    hhi_by_pe[path.stem] — a slug in a bare-pe_bli dict, never present for a
+    split member — and _summary_block then looked the result up by bare
+    pe_bli, so a split member's primes could never reach its page. The awards
+    guard was bare-keyed for the same reason and could not fire on a split
+    member at all. `concentration_for(pe_bli, account, organization)` and
+    `awards_for(pe_bli, account, organization)` are the page's own lookups
+    (_write_all_sidecars' _concentration_for — None when the bare-key figure
+    is withheld from this member — and _awards_for, this member's own Related
+    Awards rows); `slug_index` maps a stem to its (pe_bli, account,
+    organization), and a stem outside the index (a non-dim_programs page)
+    resolves to (stem, None, None), the pre-#82 lookup byte for byte.
 
     Matching is DETERMINISTIC lexicon matching — the same
     word-boundary-substring discipline fct_program_lobbying uses — against
@@ -6422,13 +6476,15 @@ def _build_named_primes(
 
     out: dict[str, list] = {}
     for path in sorted(dossier_dir.glob("*.json")):
-        pe_bli = path.stem
-        hhi = hhi_by_pe.get(pe_bli)
+        slug = path.stem
+        pe_bli, account, organization = slug_index.get(slug, (slug, None, None))
+        hhi = concentration_for(pe_bli, account, organization)
         if _who_gets_it_fid(hhi):
-            continue  # crosswalk answers WHO-GETS-IT — no fallback needed
-        if pe_bli in awarded_pe_blis:
-            # The page renders a Related Awards table, so this tier's closing
-            # clause ("not yet crosswalked to award data") would be false.
+            continue  # this member's crosswalk answers WHO-GETS-IT
+        if awards_for(pe_bli, account, organization):
+            # THIS page renders a Related Awards table, so this tier's closing
+            # clause ("not yet crosswalked to award data") would be false. A
+            # sibling member's table is not this page's (ROADMAP #82).
             continue
         try:
             dossier = _json.loads(path.read_text()).get("dossier", {})
@@ -6454,7 +6510,7 @@ def _build_named_primes(
                         "public_id": fid[:8],
                     })
         if primes:
-            out[pe_bli] = primes
+            out[slug] = primes
     return out
 
 
@@ -6476,9 +6532,10 @@ _WHO_LOBBY_CAP = 4
 def _build_lobbied_by(
     *,
     con,
-    hhi_by_pe: dict,
-    named_primes_by_pe: dict,
-    awarded_pe_blis: set,
+    concentration_for,
+    slug_index: dict[str, tuple[str, str | None, str | None]],
+    named_primes_by_slug: dict,
+    awards_for,
     entity_rows: list,
     entity_labels: dict[str, str] | None = None,
 ) -> dict[str, dict]:
@@ -6516,7 +6573,20 @@ def _build_lobbied_by(
     display_name where the family is one of the profiled top-200, so the card
     and /company/{slug}/ never spell the same company two ways.
 
-    Returns {pe_bli: {"families": [{name, family_key, filings, evidence_kind,
+    ROADMAP #82: keyed by SLUG, evaluated PER MEMBER. A filing names a
+    program by its budget line, so the families list is the same for both
+    members of a shared code — but whether the tier APPLIES is each member's
+    own question: `concentration_for` is None on a member whose figure is
+    withheld (both members linked) or never its own, `named_primes_by_slug`
+    is the dossier tier keyed the same way, and `awards_for(pe_bli, account,
+    organization)` is that member's own Related Awards table (the sentence
+    this tier renders begins "No contract award is linked to this line" and
+    may not sit above one). This used to read the raw bare-key hhi_by_pe, so
+    a figure NEITHER member publishes suppressed the fallback on both. A
+    pe_bli with no slug_index entry (rollup / decade page) is its own single
+    member — identity key, bare lookups, unchanged.
+
+    Returns {slug: {"families": [{name, family_key, filings, evidence_kind,
     slug}], "shown": int, "more": int, "filings": int}}.
     """
     try:
@@ -6560,33 +6630,44 @@ def _build_lobbied_by(
             }
         )
 
+    from collections import defaultdict
+
+    members_by_pe: dict[str, list[tuple[str, str | None, str | None]]] = defaultdict(list)
+    for slug, (pe_bli, account, organization) in slug_index.items():
+        members_by_pe[pe_bli].append((slug, account, organization))
+
     out: dict[str, dict] = {}
     for pe_bli, families in grouped.items():
-        hhi = hhi_by_pe.get(pe_bli)
-        if _who_gets_it_fid(hhi):
-            continue  # the crosswalk answers WHO-GETS-IT — no fallback needed
-        if named_primes_by_pe.get(pe_bli):
-            continue  # the J-book names a prime — a stronger, cited answer
-        if pe_bli in awarded_pe_blis:
-            # The page renders a Related Awards table, so its card must not
-            # say "no contract award is linked to this line" three thousand
-            # pixels above a list of award records. Zero pages hit this on
-            # the current corpus (all 41 strong-tier candidates have an empty
-            # awards array); the guard exists so a future crosswalk expansion
-            # cannot make the disclaimer false without anyone noticing.
-            #
-            # ROADMAP #70: bare pe_bli on purpose. This block is keyed by
-            # pe_bli (out[pe_bli] below), so it cannot address one member of
-            # a shared BLI code anyway; skipping the key when EITHER member
-            # renders an awards table keeps the disclaimer true on both.
-            continue
-        shown = families[:_WHO_LOBBY_CAP]
-        out[pe_bli] = {
-            "families": shown,
-            "shown": len(shown),
-            "more": max(0, len(families) - len(shown)),
-            "filings": sum(f["filings"] for f in families),
-        }
+        for slug, account, organization in (
+            members_by_pe.get(pe_bli) or [(pe_bli, None, None)]
+        ):
+            hhi = concentration_for(pe_bli, account, organization)
+            if _who_gets_it_fid(hhi):
+                continue  # this member's crosswalk answers WHO-GETS-IT
+            if named_primes_by_slug.get(slug):
+                continue  # the J-book names a prime — a stronger, cited answer
+            if awards_for(pe_bli, account, organization):
+                # THIS page renders a Related Awards table, so its card must
+                # not say "no contract award is linked to this line" three
+                # thousand pixels above a list of award records. Zero pages
+                # hit this on the current corpus (all 41 strong-tier
+                # candidates have an empty awards array); the guard exists so
+                # a future crosswalk expansion cannot make the disclaimer
+                # false without anyone noticing.
+                #
+                # ROADMAP #82: per MEMBER. The guard used to test the bare
+                # pe_bli because the block was keyed by it, which skipped
+                # BOTH members whenever either carried links; now the block
+                # is a member's own, and so is the table it must not
+                # contradict.
+                continue
+            shown = families[:_WHO_LOBBY_CAP]
+            out[slug] = {
+                "families": shown,
+                "shown": len(shown),
+                "more": max(0, len(families) - len(shown)),
+                "filings": sum(f["filings"] for f in families),
+            }
     return out
 
 
@@ -8447,6 +8528,18 @@ def _write_all_sidecars(
         for r in all_prog_rows
     ]
 
+    # ROADMAP #82: slug -> (pe_bli, account, organization), one entry per
+    # programs.json row. The WHO-GETS-IT builders key their output by slug
+    # and look a page's concentration and awards up by this triple, so a
+    # split member's dossier ('3010-SCN.json' — slug-named since E3) resolves
+    # to ITS member's figure and never to the bare key's union figure.
+    # Identity for every non-split pe_bli (ident.slug returns the bare key
+    # there), which is why every ordinary page is byte-identical.
+    slug_index: dict[str, tuple[str, str | None, str | None]] = {}
+    for _r in all_prog_rows:
+        _pe, _org, _account, _account_title = _r[0], _r[1], _r[7], _r[8]
+        slug_index[ident.slug(_pe, _account, _account_title, _org)] = (_pe, _account, _org)
+
     # fct_budget_trajectory → keyed by (pe_bli, organization, account).
     # Task E3: account is threaded through so a split key's two rows (same
     # org, different account) never collapse onto one dict entry — the
@@ -8681,6 +8774,15 @@ def _write_all_sidecars(
             "award_count_high": awards_high,
         }
 
+    def _linked_member_keys(pe_bli: str) -> set:
+        """The split keys under this shared code that carry at least one
+        published link — the members whose money the bare-pe_bli figure in
+        fct_program_concentration actually mixes."""
+        return {
+            key for key in awards_by_pe
+            if key[0] == pe_bli and awards_by_pe[key]
+        }
+
     def _concentration_for(pe_bli: str, account=None, organization=None):
         """This program's vendor-concentration block, or None when the mart's
         figure is not this program's to claim (ROADMAP #70).
@@ -8700,14 +8802,33 @@ def _write_all_sidecars(
         block = hhi_by_pe.get(pe_bli)
         if block is None or not ident.is_split(pe_bli):
             return block
-        linked_keys = {
-            key for key in awards_by_pe
-            if key[0] == pe_bli and awards_by_pe[key]
-        }
+        linked_keys = _linked_member_keys(pe_bli)
         if len(linked_keys) != 1:
             return None
         return block if ident.split_key(
             pe_bli, account, organization) in linked_keys else None
+
+    def _concentration_withheld(pe_bli: str, account=None, organization=None) -> bool:
+        """ROADMAP #82: True exactly when a mart figure EXISTS for this shared
+        code and _concentration_for withholds it from THIS member because its
+        sibling carries links too — the one absence the page must state
+        differently, since award records ARE linked on it (True implies this
+        member's split key is one of the linked ones, so its own Related
+        Awards table renders).
+
+        False for ordinary pe_blis, for a code with no mart row, and for the
+        unlinked member of a code whose links all sit on its sibling (that
+        absence is genuine and the ordinary sentence is true of it). This is
+        the SAME withholding _concentration_for performs — same hhi_by_pe,
+        same awards_by_pe, same ident — reported as a reason, not a second
+        mechanism. True on exactly two pages today: 3010-SCN and 3010-OPN."""
+        if hhi_by_pe.get(pe_bli) is None or not ident.is_split(pe_bli):
+            return False
+        linked_keys = _linked_member_keys(pe_bli)
+        return (
+            len(linked_keys) > 1
+            and ident.split_key(pe_bli, account, organization) in linked_keys
+        )
 
     # jbook_narratives — from detail_rows we don't have narratives;
     # we need to re-read from the written parquet or store them in memory.
@@ -9428,24 +9549,28 @@ def _write_all_sidecars(
 
     # WHO-GETS-IT named-primes fallback (PM Sprint 1, §P0-2 fix 3) — needs
     # the dossier sidecars (written by the dossier CLI before export), the
-    # entity lexicon, and the crosswalk coverage in hhi_by_pe.
-    named_primes_by_pe = _build_named_primes(
+    # entity lexicon, and this page's own concentration and awards lookups
+    # (ROADMAP #82: keyed by slug, resolved per member — see
+    # _build_named_primes).
+    named_primes_by_slug = _build_named_primes(
         json_dir=json_dir,
         entity_rows=entity_rows,
-        hhi_by_pe=hhi_by_pe,
+        concentration_for=_concentration_for,
+        slug_index=slug_index,
         cited_fact_ids=_cited_fact_ids,
-        awarded_pe_blis={key[0] for key in awards_by_pe},
+        awards_for=_awards_for,
     )
 
     # WHO-GETS-IT third tier (tri-persona Wave 3) — the lobbying-filing
     # answer, for programs the crosswalk and the dossiers both leave blank.
     # Built AFTER named_primes because it defers to it: a J-book-named prime
     # is a cited claim about who builds the thing, which outranks a filing.
-    lobbied_by_pe = _build_lobbied_by(
+    lobbied_by_slug = _build_lobbied_by(
         con=con,
-        hhi_by_pe=hhi_by_pe,
-        named_primes_by_pe=named_primes_by_pe,
-        awarded_pe_blis={key[0] for key in awards_by_pe},
+        concentration_for=_concentration_for,
+        slug_index=slug_index,
+        named_primes_by_slug=named_primes_by_slug,
+        awards_for=_awards_for,
         entity_rows=entity_rows,
         entity_labels=entity_labels,
     )
@@ -9453,22 +9578,26 @@ def _write_all_sidecars(
     def _summary_block(pe_bli: str, slug: str) -> dict:
         """The sidecar's summary payload: union block + named_primes (always
         a list — honest empty when no dossier names a known family) +
-        lobbied_by (null unless the lobbying tier applies).
+        lobbied_by (null unless the lobbying tier applies) +
+        concentration_withheld (ROADMAP #82).
 
-        Task E3: summary_by_pe is keyed by SLUG (identity for every
-        non-split pe_bli); named_primes_by_pe stays bare pe_bli — dossier
-        named-primes claims have no account concept, so both accounts of a
-        split key legitimately share the same list (the same "no account
-        data available" bucket as mentions). lobbied_by_pe is keyed the
-        same way and for the same reason: a filing names a PROGRAM, not one
-        of a split key's two accounts.
+        Task E3 keyed summary_by_pe by SLUG (identity for every non-split
+        pe_bli). ROADMAP #82 keys named_primes and lobbied_by the same way:
+        the dossier sidecars have been slug-named since E3, so the old
+        bare-pe_bli lookup here could never find a split member's primes,
+        and both builders now decide per MEMBER whether their tier applies
+        (this member's concentration, this member's awards). `slug_index`
+        gives the member's (pe_bli, account, organization); a slug outside
+        it (rollup / decade page) is its own single member.
 
-        ROADMAP #70 moved AWARDS out of that bucket — a crosswalk link now
-        carries the account its own evidence identified, so `awards` is per
-        member (see _awards_for) while these two remain per bare code."""
+        ROADMAP #70 moved AWARDS to the member (see _awards_for); #82 moves
+        the two fallback tiers and the withheld marker with them, so every
+        WHO-GETS-IT input on this page is now about this page's program."""
         block = dict(summary_by_pe.get(slug) or _summary_absence_block())
-        block["named_primes"] = named_primes_by_pe.get(pe_bli, [])
-        block["lobbied_by"] = lobbied_by_pe.get(pe_bli)
+        block["named_primes"] = named_primes_by_slug.get(slug, [])
+        block["lobbied_by"] = lobbied_by_slug.get(slug)
+        _pe, _account, _org = slug_index.get(slug, (pe_bli, None, None))
+        block["concentration_withheld"] = _concentration_withheld(_pe, _account, _org)
         return block
 
     all_pe_blis = {r[0] for r in all_prog_rows}
@@ -10826,6 +10955,7 @@ def _write_all_sidecars(
         prog_titles=prog_titles,
         cited_fact_ids=_cited_fact_ids,
         shared_pe_blis=shared_pe_blis,
+        member_slug_by_title=member_slugs_by_title(all_prog_rows, shared_pe_blis, ident),
     )
     n_files += n_dist
 
@@ -10838,6 +10968,7 @@ def _write_all_sidecars(
         lob_rows=lob_rows,
         prog_titles=prog_titles,
         cited_fact_ids=_cited_fact_ids,
+        shared_pe_blis=shared_pe_blis,
     )
     n_files += n_filings
 
@@ -12352,6 +12483,7 @@ def _emit_district_sidecars(
     prog_titles: dict,
     cited_fact_ids: set,
     shared_pe_blis: frozenset[str] | set[str] = frozenset(),
+    member_slug_by_title: dict[tuple[str, str], str] | None = None,
 ) -> int:
     """Emit districts/index.json and districts/{pop_district}.json (Task 5).
 
@@ -12383,6 +12515,11 @@ def _emit_district_sidecars(
     to the member whose high-confidence links produced them, so on a shared
     code that mart title is preferred over the dict. Every other pe_bli is
     unaffected: prog_titles remains the label, exactly as before.
+
+    ROADMAP #82: on a shared code, `member_slug_by_title` (see
+    member_slugs_by_title) turns that per-member mart title into the member's
+    own page, so program_url is /program/{slug}/ rather than the bare-key
+    chooser; a code whose members share a title keeps the stub link.
 
     Returns number of files written.
     """
@@ -12528,6 +12665,7 @@ def _emit_district_sidecars(
             continue
         key = pop_district
         _mart_title = apply_title_override(pe_bli, program_title, _title_overrides)
+        member_slug = None
         if pe_bli in shared_pe_blis and _mart_title:
             # ROADMAP #70 fix round 1: one member of this code earned these
             # dollars and the mart names it. prog_titles names BOTH members
@@ -12535,6 +12673,11 @@ def _emit_district_sidecars(
             # figure would read as one program's money under two programs'
             # names.
             title = _mart_title
+            # ROADMAP #82: and the link follows the label — that member's
+            # own page, not the chooser. None when the title cannot name one
+            # member (identical member titles), in which case the stub is
+            # the honest destination: it lists both.
+            member_slug = (member_slug_by_title or {}).get((pe_bli, _mart_title))
         else:
             title = prog_titles.get(pe_bli, _mart_title or "")
 
@@ -12568,7 +12711,7 @@ def _emit_district_sidecars(
             "fact_id": fact_id_for_program,
             "organization": organization,
             "pe_bli": pe_bli,
-            "program_url": f"/program/{pe_bli}/",
+            "program_url": f"/program/{member_slug or pe_bli}/",
             "recipient_count": recipient_count,
             # #51: the number of program elements the SAME award is also
             # matched to — 1 means "not shared". >1 is the AK-00 tell: one
@@ -12712,6 +12855,7 @@ def _emit_filing_sidecars(
     lob_rows: list,
     prog_titles: dict,
     cited_fact_ids: set,
+    shared_pe_blis: frozenset[str] | set[str] = frozenset(),
 ) -> int:
     """Emit filings/{uuid}.json (4,258) + filings_index.json (Task 6a).
 
@@ -12735,6 +12879,10 @@ def _emit_filing_sidecars(
 
     mentions.program_url links only when pe_bli has a program page
     (pe_bli in dim_programs); otherwise null (plain-text mention).
+
+    ROADMAP #82: mentions.shared_code is true when pe_bli is a code two
+    programs share — the link is then the disambiguation stub and the page
+    says so beside it (a filing names a budget line, not an appropriation).
 
     Returns number of files written (0 when the lda parquets are absent).
     """
@@ -12819,6 +12967,7 @@ def _emit_filing_sidecars(
     # there is no member to name: prog_titles' both-members label is the
     # honest one, and it is what the reader will find at the other end of the
     # link.
+    # ROADMAP #82: that is now SAID on the page via shared_code.
     _title_overrides = load_title_overrides()
     for r in lob_rows:
         (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,
@@ -12831,6 +12980,8 @@ def _emit_filing_sidecars(
             "matched_term": matched_term,
             "evidence_kind": evidence_kind,
             "pe_bli": pe_bli,
+            # ROADMAP #82: the page says "shared code — link opens a chooser".
+            "shared_code": pe_bli in shared_pe_blis,
             "program_title": prog_titles.get(
                 pe_bli, apply_title_override(pe_bli, program_title, _title_overrides)
             ),
