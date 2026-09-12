@@ -262,6 +262,57 @@ def record_service_exclusions(manifest_path: Path, service: str, fy: int,
     return entry
 
 
+def record_org_absences(manifest_path: Path, fiscal_year: int,
+                        absences: list[dict]) -> dict:
+    """Record the budget ORGS an edition publishes no usable J-book for.
+
+    Spec honesty rule 3, applied one level up from files: record_exclusions
+    says which FILES were deliberately not registered; this says which ORGS
+    have no file to register at all. That is the claim the site's coverage
+    note makes on 19 program pages ("…J-book, which is not yet ingested"),
+    and until now it lived nowhere a reader or a gate could check.
+
+    Each entry is {org, rule, reason, checked_url, checked_on}. Entries are
+    sorted by org for deterministic diffs; the list replaces any prior
+    absences for the edition (regeneration is idempotent, same contract as
+    record_exclusions).
+
+    Rule vocabulary:
+      no-justification-book-published — the edition's justification index
+        publishes no R&D or procurement justification book for this org
+        (O&M / MilCon / personnel exhibits only).
+      summary-line-only — the org's workbook rows are reconciliation,
+        undistributed or roll-up summary lines, which no justification book
+        narrates by construction.
+      book-carries-no-embedded-xml — a book exists and downloads, but
+        carries no jb-2009 .zzz payload, so no detail can be extracted
+        deterministically. (LLM-over-PDF is not a substitute: cited-or-absent.)
+
+    Lives in a TOP-LEVEL `org_absences` section rather than editions[fy] for
+    the same reason record_service_exclusions has its own `services`
+    section: editions[fy] is edition_coverage_gate5e's load-status ledger
+    (status+reason there EXCUSES an unloaded edition), and FY2026 has no
+    editions entry at all because it IS loaded. An org-level absence is not
+    an edition status and must not be written where a gate reads one.
+    """
+    allowed = {"no-justification-book-published", "summary-line-only",
+               "book-carries-no-embedded-xml"}
+    required = {"org", "rule", "reason", "checked_url", "checked_on"}
+    for e in absences:
+        if set(e) != required or e["rule"] not in allowed:
+            raise ValueError(f"malformed org-absence entry: {e!r}")
+    ordered = sorted(absences, key=lambda e: e["org"])
+    manifest_path = Path(manifest_path)
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+    else:
+        manifest = {"editions": {}}
+    manifest.setdefault("org_absences", {})[str(fiscal_year)] = ordered
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    return manifest
+
+
 def record_failure(manifest_path: Path, fy: int, *, status: str, reason: str,
                    date: str | None = None) -> dict:
     """Record a structural load failure (post-probe) with a precise reason."""

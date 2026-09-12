@@ -43,13 +43,19 @@ export function serviceOrgName(code: string): string {
  * line, or an R-1-only workbook remainder).
  *
  * DATA-DERIVED, NOT HARDCODED: the exporter emits the live set into
- * site_meta.ingested_service_orgs — the distinct FY2026 status='downloaded'
- * jbook_documents orgs, each translated through workbook_org() into this same
+ * site_meta.ingested_service_orgs — the FY2026 jbook_documents orgs that have
+ * at least one non-superseded budget_line_details row LOADED behind a
+ * downloaded document, each translated through workbook_org() into this same
  * code space (so CYBERCOM→CYBER, CHIPS/DPAP→OSD line up with service_org).
- * That is ~25 codes: the three services PLUS every defense-wide agency book
- * (OSD, DCSA, MDA, DISA, DARPA, …). data.ts injects it at build time via
- * setIngestedServiceOrgs. A hardcoded A/N/F set previously lied on every
- * defense-wide agency rollup page ("the {org} J-book is not yet ingested").
+ * That is 24 codes (measured 2026-09-10): the three services PLUS every
+ * defense-wide agency book with loaded detail (OSD, DCSA, MDA, DISA, DARPA,
+ * …). data.ts injects it at build time via setIngestedServiceOrgs. A
+ * hardcoded A/N/F set previously lied on every defense-wide agency rollup
+ * page ("the {org} J-book is not yet ingested"); deriving the set from a
+ * DOWNLOADED file rather than loaded detail would have replaced that with the
+ * mirror-image lie ("the book is ingested, this element simply has no
+ * narrative") the moment a book was acquired — ROADMAP #14, and the reason
+ * export_site._ingested_service_orgs joins budget_line_details.
  *
  * This module is universal (no fs / no server-only), so it cannot read the
  * payload itself; the build-time server layer (data.ts getSiteMeta) sets it.

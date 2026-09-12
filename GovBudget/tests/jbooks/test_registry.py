@@ -245,6 +245,33 @@ def test_classify_jbook_excludes_non_jbook_token_bearers():
     assert _classify_jbook("PB_2026_PDW_VOL_1.pdf") is None
 
 
+def test_classify_jbook_defense_health_combined_volume():
+    """ROADMAP #14. The FY2026 Defense Health Program book is the one
+    acquirable DHA artifact and it must classify as (rdte, DHA).
+
+    Three independent rules reject the filename, which is why an explicit
+    allowlist entry (checked BEFORE all of them) is the only way in:
+      · it carries no RDTE/PROC/PROCUREMENT exhibit token;
+      · `_NUMERIC_INDEX` rejects the leading '00-';
+      · `_EXCLUDED_TOKENS` rejects 'DHP' (added for the O&M volumes).
+    Verified live 2026-09-10: the per-section R-1/P-40/R-2 URLs the index
+    links all 404; the combined volume is HTTP 200 application/pdf,
+    3,348,155 bytes. DHA files 18 R-1 program elements and no procurement
+    line, so ONE rdte registration covers its whole footprint.
+    """
+    from govbudget.jbooks.registry import _classify_jbook
+
+    assert _classify_jbook("00-DHP_Vols_I_and_II_PB26.pdf") == ("rdte", "DHA")
+    # Vol III is service medical readiness prose with no R-2 exhibits: it
+    # must stay unclassifiable, not ride in on the DHP allowlist.
+    assert _classify_jbook("00-DHP_Vol_III_PB26.pdf") is None
+    # The prior edition's identically-shaped volume must NOT be swept in —
+    # the allowlist is per-file, by name (FY2025's inventory carries it).
+    assert _classify_jbook("00-DHP_Vols_I_and_II_PB25.pdf") is None
+    # The O&M volumes the DHP token exclusion was written for stay excluded.
+    assert _classify_jbook("09-Vol_I_Sec_7A-OP-5_In-House_Care_DHP_PB26.pdf") is None
+
+
 def test_classification_regression_fy2025_fy2026_full_inventories():
     """Byte-identity pin: the classifier's verdict over the complete FY2025 and
     FY2026 comptroller index inventories (fetched live 2026-07-03) must match
@@ -270,7 +297,10 @@ def test_classification_regression_fy2025_fy2026_full_inventories():
             if verdict is not None:
                 got[name] = verdict
         assert got == expected
-        assert len(got) == 34  # + 3 rollup workbooks = 37 discovered
+        # + the 3 rollup workbooks the Budget{fy} index serves = discovered.
+        # FY2026 gains one over FY2025: the Defense Health Program combined
+        # volume, registered by DEFENSE_HEALTH_NAMES (ROADMAP #14, 2026-09-10).
+        assert len(got) == {2025: 34, 2026: 35}[fy]
 
 
 # --------------------------------------------------------------------------

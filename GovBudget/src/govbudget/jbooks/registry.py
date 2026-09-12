@@ -61,6 +61,48 @@ EVIDENCE_NAMES = {
 }
 
 # --------------------------------------------------------------------------
+# ROADMAP #14 — the Defense Health Program (DHA) FY2026 justification book.
+#
+# DHA files 18 R-1 program elements in the FY2026 workbook (all RDT&E, all in
+# the "Defense Health Program" account) and had no justification book in the
+# corpus at all, so all 14 of its pages published R-1 figures with nothing
+# behind them. The book exists — the FY2026 justification index links a DHP
+# section set whose Vol II Sec 6/7 are the R-1 and the "RDTE Budget Item
+# Justification" (the R-2).
+#
+# Two facts about it, both verified live 2026-09-10 by HTTP HEAD against
+# comptroller.war.gov, recorded here because they are the reason this is ONE
+# entry and not four:
+#   1. Every per-section URL the index links 404s — 01-…Cover…, 23-…P-1…,
+#      24-…P-40…, 25-…R-1…, 26-…RDTE…. The site lists them and no longer
+#      serves them. (Control: RDTE_OSD_PB_2026.pdf on the same index returns
+#      200 / 16,602,088 bytes, so this is file-specific, not a WAF.)
+#   2. The COMBINED volume serves:
+#      .../09_Defense_Health_Program/00-DHP_Vols_I_and_II_PB26.pdf
+#      → HTTP 200, application/pdf, 3,348,155 bytes,
+#        Last-Modified Wed, 25 Jun 2025 22:00:36 GMT.
+#      It contains Vol I (O&M) AND Vol II, i.e. the P-1/P-40/R-1/R-2 sections.
+#      (Vol III, 461,753 bytes, is service medical readiness prose with no
+#      R-2 exhibits, and is deliberately NOT listed here.)
+#
+# The filename would classify as None three times over without this lookup:
+# no exhibit token, `_NUMERIC_INDEX` rejects the leading '00-', and
+# `_EXCLUDED_TOKENS` rejects 'DHP' (added for the O&M volumes, which stay
+# excluded — see the test). This dict is consulted BEFORE all three, which is
+# the whole point of an explicit, evidence-carrying allowlist. It is keyed per
+# FILE, so the identically-shaped PB25 volume is not swept in.
+#
+# has_embedded_xml is deliberately NOT asserted here: acquire.py measures it
+# on download and `jbooks extract` is a no-op when it is false. If the volume
+# carries no .zzz payload, the honest outcome is an absence recorded in
+# edition_manifest.json -> org_absences, NOT an org that reads as "ingested".
+# export_site._ingested_service_orgs now requires LOADED DETAIL rows, so
+# registering this file cannot by itself flip a single DHA sentence.
+DEFENSE_HEALTH_NAMES: dict[str, tuple[str, str]] = {
+    "00-DHP_Vols_I_and_II_PB26.pdf": ("rdte", "DHA"),
+}
+
+# --------------------------------------------------------------------------
 # Phase 5G — Navy FY2026 service J-books.
 #
 # Navy publishes its budget on secnav.navy.mil/fmc/fmb by APPROPRIATION CODE
@@ -301,6 +343,8 @@ def _classify_jbook(name: str) -> tuple[str, str] | None:
     name = unquote(name)
     if name in EVIDENCE_NAMES:
         return EVIDENCE_NAMES[name]
+    if name in DEFENSE_HEALTH_NAMES:
+        return DEFENSE_HEALTH_NAMES[name]
     if name in NAVY_NAMES:
         return NAVY_NAMES[name]
     if name in NAVY_EXCLUSIONS:

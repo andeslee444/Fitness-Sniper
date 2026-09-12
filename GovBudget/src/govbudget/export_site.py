@@ -2670,25 +2670,50 @@ from govbudget.jbooks.orgs import workbook_org as _workbook_org
 
 
 def _ingested_service_orgs(pg) -> list[str]:
-    """Sorted service_org codes whose FY2026 J-book IS loaded.
+    """Sorted service_org codes whose FY2026 J-book detail IS LOADED.
 
-    Single source of truth for the site's rollup-note wording: a rollup page
-    whose service_org is in this set is NOT "awaiting ingestion" — its book is
-    loaded, the PE simply carries no matching R-2/P-40 narrative. Emitted into
-    site_meta.json; program-tier.ts reads it (replacing a hardcoded A/N/F set
-    that lied for the ~24 defense-wide agency books — OSD, DCSA, MDA, …).
+    Single source of truth for the site's coverage-note wording: a page whose
+    coverage org is in this set is NOT "awaiting ingestion" — its book is
+    loaded, the PE simply carries no matching R-2/P-40 narrative. Emitted
+    into site_meta.json; program-tier.ts reads it (replacing a hardcoded
+    A/N/F set that lied for the ~24 defense-wide agency books — OSD, DCSA,
+    MDA, …).
 
-    CRITICAL — code-space match: the site keys the note off
-    details.service_org, which is a budget_lines.organization code (the WORKBOOK
-    org). jbook_documents.org is the DOCUMENT org, so each is translated through
-    workbook_org() (CYBERCOM→CYBER, CHIPS/DPAP→OSD) before entering the set —
-    otherwise CYBERCOM's page never matches. Orgs with no loaded book (DHA,
-    DEFW, IG) are absent by construction and keep the honest "not yet ingested"
-    wording.
+    CRITICAL — code-space match: the site keys the note off the page's
+    coverage org, which is a budget_lines.organization code (the WORKBOOK
+    org). jbook_documents.org is the DOCUMENT org, so each is translated
+    through workbook_org() (CYBERCOM→CYBER, CHIPS/DPAP→OSD) before entering
+    the set — otherwise CYBERCOM's page never matches.
+
+    CRITICAL — "ingested" means LOADED, not DOWNLOADED (ROADMAP #14,
+    2026-09-10). The predicate used to be `status='downloaded'` alone, so a
+    registered file on disk was enough. That is the wrong test for the
+    sentence it decides: the page says a NARRATIVE exists, and a PDF whose
+    embedded XML never parsed has none. Two consequences, one live and one
+    latent:
+      · live — `DoD` (the three R-1/P-1 display workbooks) sat in the
+        shipped set with ZERO budget_line_details rows behind it (25 codes
+        -> 24 after this change; no rendered sentence moves, because no
+        page's coverage org is DoD);
+      · latent — registering the Defense Health Program volume would have
+        flipped all 14 DHA pages to "the DHA FY2026 J-books are ingested,
+        but this element carries no R-2/P-40 narrative" the moment
+        `acquire` finished, whether or not anything extracted. That is the
+        2026-07-05 "ingested-orgs liar" species with a new cause, and it is
+        exactly what this join prevents.
+    Orgs with no loaded book (DHA until its book extracts, DEFW, IG) are
+    absent by construction and keep the honest "not yet ingested" wording;
+    the absences themselves are recorded in
+    data/research/edition_manifest.json -> org_absences.
     """
     rows = pg.execute(
-        "select distinct org from jbook_documents"
-        " where fiscal_year = 2026 and status = 'downloaded'"
+        """
+        select distinct j.org
+        from jbook_documents j
+        join budget_line_details d
+          on d.document_id = j.id and not d.superseded
+        where j.fiscal_year = 2026 and j.status = 'downloaded'
+        """
     ).fetchall()
     return sorted({_workbook_org(r[0]) for r in rows})
 

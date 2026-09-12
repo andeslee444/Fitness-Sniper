@@ -550,3 +550,58 @@ def test_record_service_exclusions_shape_and_isolation(tmp_path):
         record_service_exclusions(manifest, "navy", 2026, [
             {"filename": "x.pdf", "rule": "nope", "reason": "no"},
         ])
+
+
+def test_record_org_absences_shape_and_isolation(tmp_path):
+    """ROADMAP #14. An org whose FY2026 justification book does not exist
+    (or exists and cannot be extracted) is a GAP, and Phase 5E's honesty
+    rule says gaps live in the manifest, not in an agent's report.
+
+    They go in a NEW top-level `org_absences` section, never in
+    editions[fy]: editions[fy] is edition_coverage_gate5e's load-status
+    ledger (a non-empty status+reason there EXCUSES an edition that did not
+    load), FY2026 carries no editions key at all because it IS loaded, and
+    an org-level absence is not an edition status. Same separation, same
+    reason, as record_service_exclusions' `services` section."""
+    import json
+
+    from govbudget.jbooks.edition_probe import (
+        record_exclusions,
+        record_org_absences,
+    )
+
+    manifest = tmp_path / "edition_manifest.json"
+    record_exclusions(manifest, 2017, [
+        {"filename": "a.pdf", "rule": "niche-fund", "reason": "fund"},
+    ])
+    record_org_absences(manifest, 2026, [
+        {"org": "IG", "rule": "no-justification-book-published",
+         "reason": "only O&M exhibits published",
+         "checked_url": "https://comptroller.war.gov/x/", "checked_on": "2026-09-10"},
+        {"org": "DEFW", "rule": "summary-line-only",
+         "reason": "reconciliation/undistributed workbook rows",
+         "checked_url": "https://comptroller.war.gov/x/", "checked_on": "2026-09-10"},
+    ])
+    doc = json.loads(manifest.read_text())
+    # editions section untouched; no 2026 edition entry invented
+    assert doc["editions"]["2017"]["exclusions"][0]["filename"] == "a.pdf"
+    assert "2026" not in doc["editions"]
+    # sorted by org, whole-list replacement
+    assert [e["org"] for e in doc["org_absences"]["2026"]] == ["DEFW", "IG"]
+
+    record_org_absences(manifest, 2026, [
+        {"org": "DHA", "rule": "book-carries-no-embedded-xml",
+         "reason": "downloaded, no .zzz payload",
+         "checked_url": "https://comptroller.war.gov/y.pdf", "checked_on": "2026-09-10"},
+    ])
+    doc = json.loads(manifest.read_text())
+    assert [e["org"] for e in doc["org_absences"]["2026"]] == ["DHA"]
+    assert doc["editions"]["2017"]["exclusions"][0]["filename"] == "a.pdf"
+
+    with pytest.raises(ValueError, match="malformed"):
+        record_org_absences(manifest, 2026, [
+            {"org": "DHA", "rule": "because-i-said-so", "reason": "no",
+             "checked_url": "u", "checked_on": "2026-09-10"},
+        ])
+    with pytest.raises(ValueError, match="malformed"):
+        record_org_absences(manifest, 2026, [{"org": "DHA"}])
