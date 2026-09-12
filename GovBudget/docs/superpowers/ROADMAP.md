@@ -728,7 +728,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#81 FeedCardItem shared shell.** The client twin (`feed-card-item-client.tsx`)
   is pinned by a byte-identical parity test, not by construction; extract
   `hhiScopeNote` and `Fy26SplitNote` to client-safe files and render one shell
-  from both trees. **Status:** open (2026-09-04).
+  from both trees. **Status:** CLOSED 2026-09-12 — one `<FeedCardItemShell>`
+  (the headline is its only slot) rendered by both trees; `hhiScopeNote` →
+  `src/lib/hhi-scope-note.ts` and `Fy26SplitNote` →
+  `components/fy26-split-note.tsx`, both called by the shell; hand-copied
+  twins deleted; parity test kept, shell single-source test added, and
+  `vitest.client-graph.config.ts` runs the client twin against the REAL
+  `server-only` (wired into `npm test`).
 - **#82 Collision member pages: account in the title block.** E3 pages render
   the member title but not its appropriation; the gate-21 assertion the #70
   plan wanted needs that UI. Also: district cards and filing mentions on shared
