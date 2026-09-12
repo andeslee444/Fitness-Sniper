@@ -579,8 +579,15 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (HR001115F0001/0602026E, HR001115F0004/0603469E, HR001117F0009/0602115E,
   HR001117F0036/0605502E, HR001119F0016/0602715E — re-counted 2026-09-11 over
   the same detail file; this entry first said two). Where the
-  reviewers found an overlap at all it was the appropriation account, the
-  DARPA sub-agency and the HR0011 prefix — the rule restated. Published as
+  reviewers found an overlap at all it was USUALLY the appropriation account,
+  the DARPA sub-agency and the HR0011 prefix — the rule restated; SIX reasons
+  record a thematic content overlap that is none of those three and nothing
+  more (HR001113C0030/0602303E "thematic RF overlap", HR001115C0115/0601117E,
+  HR001116C0014/0601117E "generic thematic overlap", HR001116C0090/0603469E
+  "at most thematic overlap", HR001117F0017/0602025E, HR001119F0017/0602115E
+  "thematic manufacturing overlap only" — counted 2026-09-11 over the same
+  detail file; this half of the universal was left standing when the first
+  half was hedged). Published as
   measured (smaller true number); what the tier does next is an owner call
   (#107). The fix is
   structural, not editorial: the verdict row records its rubric (migration
@@ -1019,8 +1026,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   name no work at all (boilerplate, which the rubric refutes on silence) and at
   least five describe DARPA-wide contracting-office or acquisition-support
   staffing; where a reviewer found any overlap
-  at all it was the appropriation account, the DARPA sub-agency and the HR0011
-  prefix — the linking rule restated. The figure is
+  at all it was usually the appropriation account, the DARPA sub-agency and the
+  HR0011 prefix — the linking rule restated — but SIX reasons record a thematic
+  content overlap that is none of those three and nothing more (re-counted
+  2026-09-11; the first half of this universal was hedged before the second). The figure is
   published as measured (smaller true number, 2026-08-07); WHETHER THE TIER
   KEEPS PUBLISHING is the owner's, not a gate's. Scale: 9,337 published rows in
   Postgres over 416 DARPA awards and 24 DARPA PEs; 8,856 in the mart — 72% of
@@ -1083,7 +1092,74 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   `contradicted`/`not_darpa` are demoted out of the mart.)
   **Status:** open (2026-09-11) — opening sentence shrunk to the derived
   adjudication-coverage numbers in `640320e0` (Task 6c; block `61907d78`, gate
-  24 leg o `64d5cac9`); the five-path evidence pass and per-path gate remain.
+  24 leg o `64d5cac9`), then re-dated and extended to the High tier in
+  `136abf35` (Task 6c fix round 1; block + `measured_on` `7b516f6b`, leg o
+  `8409114a`, /coverage/ `0716cfe0`): the census is dated by the export run
+  and `as_of` by the last adjudication, and the four surfaces that graded the
+  whole High tier "verified adversarially" now render 60 of 768 from
+  `site_meta.link_adjudication.high`. The five-path evidence pass and
+  per-path gate remain; what to do about the 708 is #110.
+
+- **#110 OWNER CALL: 708 of the 768 links published at HIGH carry no per-award
+  adjudication, and their adversarial pass leaves no record.** Measured
+  read-only 2026-09-11 over `fct_budget_to_awards` (the tier a reader meets):
+  768 links publish at `high` — `announcement+lexicon` 708, `account+tokens`
+  34, `account+subagency` 23, `account` 3. Exactly **60** carry an
+  `award_pe_adjudications` row, and all 60 are `pinned` / `pinned-here` /
+  `refuter_lenses_passed = 2` — they are the whole two-lens population of that
+  table. The other **708** are announcement links: each carries an
+  `award_link_sources` announcement row, a match basis is recorded on **384**
+  of them (exact-name 190, designator-normalized 93, llm-alias 59,
+  llm-designator-variant 36, llm-description 6) and NULL on 324, and the
+  agent-reviewer + independent-adversarial-reviewer pass /methodology/
+  describes for that path writes NO row anywhere in Postgres. The path's
+  precision IS measured — 54 of 60 on attribution, sample `2026-09-04` — so
+  this is not an unmeasured tier; it is a tier whose per-link review is
+  unrecorded and therefore ungateable. Task 6c fix round 1 shrank all four
+  surfaces to "60 of the 768 … all 60 challenged by two independent
+  adversarial reviewers; the other 708 rest on the announcement+lexicon path"
+  (`136abf35`), which is the smaller true number; what the SITE does about the
+  708 is the owner's call.
+  **Correction this entry carries** (measured 2026-09-11, and the reason it is
+  not the entry the fix round was briefed to write): the review that raised
+  this counted the high tier as
+  `coalesce(adjudicated_confidence, confidence) = 'high'` over
+  `budget_line_awards` and got **881**, including 113 unadjudicated
+  `account+tokens` rows. Those 113 do NOT publish at high — dbt demoted them
+  on 2026-09-04 (#75 addendum ruling 3: "a mechanical account+tokens/high pair
+  that no human has adjudicated must never publish as high"), and Postgres has
+  no column recording it. So the briefed question "should the 113 be demoted"
+  is already answered, no floor moves for them, and the live question is the
+  708. Re-derive this tier from the MART or not at all —
+  `export_site._published_high_links` exists for exactly that reason.
+  Three options and what each costs:
+  (a) **demote the 708 to medium** — the high-only marts collapse, measured
+  read-only 2026-09-11 by re-running each mart's own predicate with
+  `method <> 'announcement+lexicon'`: programs publishing an `hhi_high` band
+  fall **37 → 4** (`_MIN_HIGH_ONLY_ROWS = 37`, `src/govbudget/verify_phase3.py`,
+  dated 2026-09-11 and never-lowered); `fct_district_programs` **392 → 53**
+  rows over **203 → 7** programs and **153 → 41** districts;
+  `fct_district_totals` **153 → 41**; and feed leg (l)'s reconcilable
+  population goes to ZERO — all five destinations it reconciles against
+  (`0158`, `0603892C`, `2004`, `2122`, `ATA000`) lose their band, so the leg
+  trips its own vacuity guard, not merely its floor of 21
+  (`MIN_RECONCILABLE_HHI_DESTINATIONS`, `site/scripts/gates/feed.mjs`). Gate
+  21's floors do NOT move: `MIN_MEDIUM_CAVEATS_SAMPLED`,
+  `MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS` and `MIN_SPLIT_AWARD_ROWS` all count
+  high-OR-medium rows, so a demotion can only grow them. Re-dating four
+  never-lowered floors downward is an owner decision, not a gate's;
+  (b) **record the announcement path's review** — backfill the agent-reviewer
+  and adversarial-reviewer outcomes into `award_pe_adjudications` (or a
+  sibling table) so the 708 can be gated the way the 60 are. Cost: one
+  backfill of an existing pipeline's outputs, no tier moves, and the High
+  sentence then states a coverage figure instead of a split. This is the only
+  option that ENDS the question rather than moving it;
+  (c) **leave them high with the shipped sentence** — cost: 708 of 768 high
+  chips rest on a review whose only record is prose, 324 of them without even
+  a recorded match basis, and the claim can never be gated beyond "the path
+  is named". Nothing is false; nothing is checkable either.
+  Decide with #109's five-path evidence pass, which is the same work as (b).
+  **Status:** open (owner call, 2026-09-11).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
