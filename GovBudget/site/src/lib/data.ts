@@ -1159,6 +1159,19 @@ export interface ProgramDetails {
    */
   fy2026_absent?: Fy2026Absent;
   /**
+   * ROADMAP #82 (narrative axis, 2026-09-12): this page is one member of a
+   * shared BLI code and the `mentions` above are lobbying rows keyed to that
+   * bare code. A Senate LDA filing names a budget LINE, never an
+   * appropriation or a component, so the same filing is evidence for every
+   * program using the code and every member renders it — unlike `narratives`
+   * and `details`, which are J-book rows and belong to the ONE member whose
+   * own volume carries them. Nothing renders this flag: it is the rule stated
+   * where the data is, so gate 21 leg n check 8 can exempt a repeated mention
+   * by reading the declaration instead of assuming it. Absent on every
+   * ordinary program and on any member with no mentions.
+   */
+  mentions_shared_code?: boolean;
+  /**
    * ROADMAP #28: this page's program element has no PB2026 R-1/P-1 line at
    * all, and everything it shows comes from earlier editions. Present on
    * every tier:"decade" sidecar, absent on every other.

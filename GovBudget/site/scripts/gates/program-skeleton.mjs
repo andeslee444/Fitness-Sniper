@@ -52,9 +52,13 @@
  * (n) A pe_bli shared by two programs files each member's crosswalk links on
  *     that member's own page, never on both and never on the bare
  *     disambiguation stub (ROADMAP #70); each account-split member's title
- *     block names ITS OWN appropriation and never the sibling's, and a
+ *     block names ITS OWN appropriation and never the sibling's, a
  *     concentration figure withheld because both members are linked is
- *     said on the card, not hidden (ROADMAP #82) — see leg n's own block.
+ *     said on the card, not hidden, and each member publishes only the
+ *     J-book narratives and detail rows from its OWN volume — no narrative
+ *     or detail fact id on two member pages, and a lobbying mention
+ *     repeated on both only where the sidecar declares the shared-code rule
+ *     (ROADMAP #82) — see leg n's own block.
  * (o) The service-books coverage note says the SAME thing the data says —
  *     it renders on exactly the pages with no R-2/P-40 detail (rollup tier
  *     AND the synthesized full-tier pages the 2026-07-05 fix never covered),
@@ -500,7 +504,8 @@ export async function runProgramSkeletonGate() {
   // ── (k) the decade-only tier's absence claims (ROADMAP #28) ─────────────
   runDecadeOnlyLeg({ errors, notes, sidecars });
 
-  // ── (n) a shared BLI code's members own their own awards (ROADMAP #70) ──
+  // ── (n) a shared BLI code's members own their own awards (#70) and their
+  //        own J-book narratives, details and mentions (#82) ───────────────
   runSplitKeyAwardsLeg({ errors, notes, sidecars });
 
   // ── (o) the coverage note agrees with the loaded-book set (ROADMAP #14) ──
@@ -524,7 +529,7 @@ export async function runProgramSkeletonGate() {
 // into the Related Awards table: an exporter keyed on the BARE pe_bli hands
 // BOTH members every award on the shared code, so a reader sees one program's
 // contracts filed under the other's name — with every number↔citation gate
-// still green, because each link is individually true. Seven checks:
+// still green, because each link is individually true. Eight checks:
 //
 //   1. no award PIID appears on more than one member of one shared code;
 //   2. each member's programs.json award_count equals its own sidecar's
@@ -556,6 +561,33 @@ export async function runProgramSkeletonGate() {
 //      what notices if it is ever dropped. The card's "no company is linked"
 //      sentence is false there too, and the exporter is the only party that
 //      knows the figure exists and is nobody's.
+//   8. (ROADMAP #82, the narrative axis) on a shared code, no J-book
+//      narrative or detail fact id appears on more than one member page.
+//
+//      The rule, per axis, and why the answer differs by source:
+//        * narratives and details are J-BOOK rows, and a J-book is one
+//          program's book — the SCN volume and the OPN volume are different
+//          documents, and each row's own document carries the appropriation
+//          (account axis) or the component (organization axis) that says
+//          which member it is about. So a fact id belongs to exactly one
+//          member page and appearing on two is the defect.
+//        * mentions are LOBBYING rows, and a Senate LDA filing names a
+//          budget LINE ("30"), never an appropriation or a component. The
+//          filing is evidence about the CODE, so it is true of every program
+//          that uses it and both members legitimately render it — the
+//          /filing/ page carries the shared-code note that says the mention
+//          cannot say which. The sidecar DECLARES that with
+//          `mentions_shared_code: true`, and this check exempts a repeated
+//          mention only where the declaration is there: a silent repeat
+//          would be indistinguishable from the narrative defect.
+//
+//      Measured 2026-09-12, BEFORE the fix, on the shipped corpus: all 13
+//      shared codes published identical narratives and identical details on
+//      every member — 55 narrative and 139 detail fact ids on more than one
+//      member page. /program/3010-SCN/ rendered "Shipboard Tactical
+//      Communications" prose and the OPN volume's money under the LPD
+//      Flight II heading, every citation resolving, because each row is
+//      individually true of SOMETHING.
 
 /** Non-vacuity floor for leg n (added 2026-09-04, #70 fix round 1 — the
  *  leg's first standalone run printed "0 member page(s) carry 0 award row(s)"
@@ -616,6 +648,34 @@ const MIN_SHARED_BLI_CODES = 10;
  *  RE-MEASURE if the corpus changes; never lower it to fit a build. */
 const MIN_ACCOUNT_SPLIT_MEMBER_PAGES = 16;
 
+/** Non-vacuity floor for check 8 (added 2026-09-12, ROADMAP #82 narrative
+ *  axis).
+ *
+ *  Measured 2026-09-12 from Postgres and from the shipped sidecars: every one
+ *  of the TWENTY-SEVEN shared-code member pages carries at least one J-book
+ *  narrative or detail fact id of its own, because every member has its own
+ *  volume in the PB2026 corpus:
+ *
+ *    0145-APN   APN_BA1-4_Book (1506N)   0145-PANMC PANMC_Book (1508N)
+ *    1350-WPN   WPN_Book (1507N)         1350-PANMC PANMC_Book (1508N)
+ *    2101-PMC   PMC_Book (1109N)         2101-WPN   WPN_Book (1507N)
+ *    2210-WPN / 2292-WPN / 3215-WPN / 3302-WPN / 4217-WPN  WPN_Book (1507N)
+ *    2210-OPN / 3010-OPN / 3050-OPN / 3215-OPN / 3302-OPN / 4217-OPN
+ *                                        OPN_BA1_Book (1810N)
+ *    2292-PMC   PMC_Book (1109N)         3010-SCN / 3050-SCN  SCN_Book (1611N)
+ *    20-DCSA / 20-DTRA / 30-OSD / 30-DTRA / 30-DMACT / 500-DHRA / 500-DLA
+ *                                        one PROC_{ORG}_PB_2026 volume each
+ *
+ *  Check 8 is a no-duplicate assertion, and a corpus where every member page
+ *  publishes NOTHING satisfies it perfectly — which is exactly what a
+ *  split_key drift between the J-book indexes and the sidecar writer
+ *  produces: every row files under a key no page reads and all 27 pages go
+ *  silent. The floor sits below 27 with headroom for ordinary corpus movement
+ *  (a volume withdrawn, a member that stops publishing detail) and above that
+ *  regression. RE-MEASURE if the corpus changes; never lower it to whatever
+ *  the build produced. */
+const MIN_SPLIT_MEMBER_PAGES_WITH_JBOOK_ROWS = 22;
+
 /** Default page reader — the gate reads site/out; the unit test injects its
  *  own `pageHtml` so a corpus the build does not contain can be checked. */
 function readPageHtml(slug) {
@@ -668,6 +728,7 @@ export function runSplitKeyAwardsLeg({
   let membersWithAwards = 0;
   let awardRows = 0;
   let accountSplitPagesChecked = 0;
+  let membersWithJbookRows = 0;
   for (const [pe, rows] of splits) {
     // Independent recompute of site/src/app/program/[peBli]/page.tsx's
     // stubDimension — the predicate the header itself used to decide whether
@@ -675,6 +736,11 @@ export function runSplitKeyAwardsLeg({
     const distinctAccounts = new Set(rows.map((r) => r.account).filter(Boolean));
     const accountSplit = distinctAccounts.size > 1;
     const ownerOfPiid = new Map();
+    // check 8 (ROADMAP #82, narrative axis): J-book fact id → the one member
+    // page that may publish it; mention identity → the members that do.
+    const ownerOfJbookFid = new Map();
+    const membersOfMention = new Map();
+    const declaresSharedMentions = new Set();
     for (const r of rows) {
       const d = sidecars.get(r.slug);
       if (!d) {
@@ -709,6 +775,51 @@ export function runSplitKeyAwardsLeg({
           `program-skeleton(n): /program/${r.slug}/ programs.json award_count ` +
             `is ${r.award_count} but its sidecar lists ${awards.length} award(s)`,
         );
+      }
+
+      // ── (8) ROADMAP #82, the narrative axis ──────────────────────────────
+      // A J-book row belongs to the ONE member whose own volume carries it.
+      let ownJbookFids = 0;
+      for (const kind of ["narratives", "details"]) {
+        for (const row of d[kind] ?? []) {
+          const fid = row.fact_id;
+          if (!fid) continue;
+          ownJbookFids++;
+          const prior = ownerOfJbookFid.get(fid);
+          if (prior !== undefined && prior !== r.slug) {
+            errors.push(
+              `program-skeleton(n): J-book ${kind.slice(0, -1)} ${fid} is ` +
+                `published on BOTH /program/${prior}/ and /program/${r.slug}/ ` +
+                `— the programs sharing code ${pe} are documented in ` +
+                `different J-book volumes, so a row from one volume is not ` +
+                `the other program's justification. Every citation on it ` +
+                `still resolves, which is why only this check sees it`,
+            );
+          }
+          ownerOfJbookFid.set(fid, r.slug);
+        }
+      }
+      if (ownJbookFids) membersWithJbookRows++;
+      // Mentions are the declared exception: a lobbying filing names the
+      // CODE, so both members may render it — but only where the sidecar
+      // says so, otherwise a silent repeat is indistinguishable from the
+      // defect above.
+      const mentions = d.mentions ?? [];
+      if (d.mentions_shared_code === true) declaresSharedMentions.add(r.slug);
+      if (mentions.length && d.mentions_shared_code !== true) {
+        errors.push(
+          `program-skeleton(n): /program/${r.slug}/ publishes ` +
+            `${mentions.length} lobbying mention(s) on shared code ${pe} but ` +
+            `its sidecar does not declare mentions_shared_code — a mention ` +
+            `rendered on two member pages is only honest as the stated rule ` +
+            `"the filing names the line, not the program", never as a silent ` +
+            `repeat`,
+        );
+      }
+      for (const m of mentions) {
+        const id = `${m.filing_uuid}|${m.client_name}|${m.matched_term}`;
+        if (!membersOfMention.has(id)) membersOfMention.set(id, new Set());
+        membersOfMention.get(id).add(r.slug);
       }
 
       // ── (5)/(6) ROADMAP #82: the title block names THIS member's account ──
@@ -795,6 +906,20 @@ export function runSplitKeyAwardsLeg({
       }
     }
 
+    // check 8, the mention half: a repeat is allowed only where EVERY member
+    // rendering it declared the rule.
+    for (const [id, slugs] of membersOfMention) {
+      if (slugs.size < 2) continue;
+      const undeclared = [...slugs].filter((s) => !declaresSharedMentions.has(s));
+      if (undeclared.length) {
+        errors.push(
+          `program-skeleton(n): lobbying mention ${id} appears on ` +
+            `${[...slugs].sort().join(", ")} for shared code ${pe}, and ` +
+            `${undeclared.sort().join(", ")} declare no mentions_shared_code`,
+        );
+      }
+    }
+
     if (sidecars.has(pe)) {
       errors.push(
         `program-skeleton(n): bare shared code ${pe} owns a program_details ` +
@@ -848,6 +973,21 @@ export function runSplitKeyAwardsLeg({
     return;
   }
 
+  if (membersWithJbookRows < MIN_SPLIT_MEMBER_PAGES_WITH_JBOOK_ROWS) {
+    errors.push(
+      `program-skeleton(n): only ${membersWithJbookRows} shared-code member ` +
+        `page(s) publish a J-book narrative or detail fact id of their own ` +
+        `(floor ${MIN_SPLIT_MEMBER_PAGES_WITH_JBOOK_ROWS}, measured ` +
+        `2026-09-12 at 27 — every member has its own PB2026 volume). Check 8 ` +
+        `is a no-duplicate assertion and is satisfied perfectly by a corpus ` +
+        `where every member page publishes nothing, which is what split_key ` +
+        `drift between the J-book indexes and the sidecar writer produces. ` +
+        `Re-measure the population from budget_line_details/detail_narratives ` +
+        `joined to jbook_documents; do not lower the floor`,
+    );
+    return;
+  }
+
   notes.push(
     `leg n: ${splits.length} shared BLI code(s) checked; ` +
       `${membersWithAwards} member page(s) carry ${awardRows} award row(s) ` +
@@ -855,7 +995,11 @@ export function runSplitKeyAwardsLeg({
       `no PIID shared between siblings, no stub rendering awards; ` +
       `${accountSplitPagesChecked} account-split member page(s) name their own ` +
       `appropriation (floor ${MIN_ACCOUNT_SPLIT_MEMBER_PAGES}), none its sibling's; ` +
-      `withheld concentration said wherever the sidecar withholds it`,
+      `withheld concentration said wherever the sidecar withholds it; ` +
+      `${membersWithJbookRows} member page(s) publish their own J-book rows ` +
+      `(floor ${MIN_SPLIT_MEMBER_PAGES_WITH_JBOOK_ROWS}), no narrative or ` +
+      `detail fact id on two members, lobbying mentions repeated only where ` +
+      `the sidecar declares the shared-code rule`,
   );
 }
 

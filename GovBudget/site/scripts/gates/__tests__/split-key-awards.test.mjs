@@ -1,15 +1,17 @@
 /**
  * Unit tests for gate 21 leg (n) — a shared BLI code's members own their own
- * awards (ROADMAP #70), name their own appropriation in the title block
- * (ROADMAP #82), and the leg is not vacuous.
+ * awards (ROADMAP #70), name their own appropriation in the title block and
+ * publish their own J-book narratives and detail rows (ROADMAP #82), and the
+ * leg is not vacuous.
  *
  * The floors are the reason this file exists. The leg's per-page checks are
  * all perfectly satisfied by a corpus in which every member page shows ZERO
- * awards (split_key drift), or renders NO appropriation line (a header
- * regression) — "nothing to object to" and "the regression" are the same
+ * awards (split_key drift), renders NO appropriation line (a header
+ * regression), or publishes NO J-book row (the same drift on the narrative
+ * axis) — "nothing to object to" and "the regression" are the same
  * observation without a floor. The leg's first standalone run printed
  * "0 member page(s) carry 0 award row(s)" and PASSED. These tests pin that
- * it cannot do so again, on either axis.
+ * it cannot do so again, on any of the three axes.
  *
  * Synthetic pe_bli codes are used throughout; the leg reads page HTML through
  * the injected `pageHtml` so no build is needed and the stub check finds
@@ -67,12 +69,36 @@ function memberHtml(
 }
 
 /** Build {programs, sidecars, html} from [[pe, [awardsPerMember…]], …].
- *  `page(p, siblings)` returns the HTML for one member (default: correct). */
-function corpus(shape, { piidPerMember = false, page = (p) => memberHtml(p), withheld = () => false } = {}) {
+ *  `page(p, siblings)` returns the HTML for one member (default: correct).
+ *
+ *  J-book rows (ROADMAP #82, the narrative axis): by default each member
+ *  publishes TWO narratives and FIVE details of its OWN — the live shape,
+ *  where every one of the 27 member pages has its own PB2026 volume.
+ *  `fusedJbook` reproduces the pre-fix corpus instead: every member carries
+ *  every member's rows, which is what a bare-pe_bli lookup produces.
+ *  `noJbook` empties them, the shape the floor exists to catch.
+ *
+ *  Mentions: `mentionCodes` names the codes whose members all render ONE
+ *  shared lobbying filing (the live shape on 6 of 13 codes); `declareMentions`
+ *  controls whether their sidecars declare the shared-code rule. */
+function corpus(
+  shape,
+  {
+    piidPerMember = false,
+    page = (p) => memberHtml(p),
+    withheld = () => false,
+    fusedJbook = false,
+    noJbook = false,
+    mentionCodes = new Set(),
+    declareMentions = true,
+  } = {},
+) {
   const programs = [];
   const sidecars = new Map();
   const html = new Map();
   let piid = 0;
+  const jbookFids = (pe, i, kind, n) =>
+    Array.from({ length: n }, (_, k) => ({ fact_id: `${kind}-${pe}-${i}-${k}` }));
   for (const [pe, counts] of shape) {
     const members = counts.map((n, i) => ({
       pe_bli: pe,
@@ -83,6 +109,7 @@ function corpus(shape, { piidPerMember = false, page = (p) => memberHtml(p), wit
       account_title: ORG_SPLIT.has(pe) ? "Procurement, Defense-Wide" : `Appropriation ${pe}-${i}`,
       award_count: n,
     }));
+    const allIdx = counts.map((_n, i) => i);
     members.forEach((p, i) => {
       const awards = [];
       for (let k = 0; k < counts[i]; k++) {
@@ -92,8 +119,23 @@ function corpus(shape, { piidPerMember = false, page = (p) => memberHtml(p), wit
           confidence: "medium",
         });
       }
+      const volumes = noJbook ? [] : fusedJbook ? allIdx : [i];
+      const side = {
+        awards,
+        narratives: volumes.flatMap((v) => jbookFids(pe, v, "narr", 2)),
+        details: volumes.flatMap((v) => jbookFids(pe, v, "det", 5)),
+        summary: { concentration_withheld: withheld(p) },
+      };
+      if (mentionCodes.has(pe)) {
+        side.mentions = [{
+          filing_uuid: `uuid-${pe}`,
+          client_name: "ACME LOBBYING",
+          matched_term: pe,
+        }];
+        if (declareMentions) side.mentions_shared_code = true;
+      }
       programs.push(p);
-      sidecars.set(p.slug, { awards, summary: { concentration_withheld: withheld(p) } });
+      sidecars.set(p.slug, side);
       html.set(p.slug, page(p, members));
     });
   }
@@ -162,11 +204,14 @@ describe("leg n — non-vacuity floors", () => {
   it("FAILS just below the shared-code floor and passes at it", () => {
     const nine = LIVE_SHAPE.slice(0, 9);
     expect(run(nine, { page: livePage }).errors[0]).toContain("carries 9 shared BLI code(s) (floor 10");
-    // Ten account-split codes = 20 pages: clears both the universe floor
-    // and the appropriation-line floor; the award floors are met by the
-    // first ten too (7 pages / 86 rows).
-    const ten = LIVE_SHAPE.slice(0, 10);
-    expect(run(ten, { page: livePage }).errors).toEqual([]);
+    // Eleven codes = the ten account-split ones (20 title-block pages,
+    // clearing the appropriation-line floor of 16) plus one org-split pair,
+    // for 22 member pages publishing their own J-book rows — exactly check
+    // 8's floor. The award floors are met by the first ten alone (7 pages /
+    // 86 rows). Ten codes alone would clear every floor but check 8's, which
+    // is measured on the whole 27-member population.
+    const eleven = LIVE_SHAPE.slice(0, 11);
+    expect(run(eleven, { page: livePage }).errors).toEqual([]);
   });
 });
 
@@ -287,5 +332,113 @@ describe("leg n — a withheld concentration figure is said, not hidden (ROADMAP
     const { errors } = run(LIVE_SHAPE, { page, withheld: (p) => p.pe_bli === "TC" });
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('declares tier "lobbying"');
+  });
+});
+
+describe("leg n — each member publishes its OWN J-book (ROADMAP #82, narrative axis)", () => {
+  it("passes on the corpus this branch publishes and says what it saw", () => {
+    const { errors, notes } = run(LIVE_SHAPE, { page: livePage });
+    expect(errors).toEqual([]);
+    expect(notes[0]).toContain("27 member page(s) publish their own J-book rows");
+    expect(notes[0]).toContain("no narrative or detail fact id on two members");
+  });
+
+  it("FAILS on the pre-fix corpus, where both members publish both volumes", () => {
+    // Measured 2026-09-12 before the fix: all 13 shared codes published
+    // identical narratives and identical details on every member, so
+    // /program/3010-SCN/ rendered the OPN program's mission prose and money
+    // under the LPD Flight II heading with every citation resolving.
+    const { errors } = run(LIVE_SHAPE, { page: livePage, fusedJbook: true });
+    const narr = errors.filter((e) => e.includes("J-book narrative"));
+    const det = errors.filter((e) => e.includes("J-book detail"));
+    expect(narr.length).toBeGreaterThan(0);
+    expect(det.length).toBeGreaterThan(0);
+    expect(narr[0]).toContain("is published on BOTH /program/");
+    expect(narr[0]).toContain("documented in different J-book volumes");
+  });
+
+  it("FAILS when ONE narrative crosses to the sibling", () => {
+    const { programs, sidecars, html } = corpus(LIVE_SHAPE, { page: livePage });
+    // TC-M1 (the '3010-OPN' analogue) publishes one of TC-M0's narratives.
+    sidecars.get("TC-M1").narratives.push({ fact_id: "narr-TC-0-0" });
+    const errors = [];
+    runSplitKeyAwardsLeg({
+      errors, notes: [], sidecars, programs, pageHtml: (s) => html.get(s) ?? null,
+    });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("J-book narrative narr-TC-0-0");
+    expect(errors[0]).toContain("/program/TC-M0/ and /program/TC-M1/");
+  });
+
+  it("FAILS when every member page publishes no J-book row at all", () => {
+    // The no-duplicate assertion above is satisfied perfectly by silence,
+    // and silence is exactly what split_key drift between the J-book indexes
+    // and the sidecar writer produces.
+    const { errors, notes } = run(LIVE_SHAPE, { page: livePage, noJbook: true });
+    expect(notes).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("only 0 shared-code member page(s) publish a J-book");
+    expect(errors[0]).toContain("floor 22, measured 2026-09-12 at 27");
+    expect(errors[0]).toContain("do not lower the floor");
+  });
+
+  it("FAILS just below the J-book floor and passes at it", () => {
+    const dark = new Set(["TG-M0", "TG-M1", "TH-M0", "TH-M1", "TI-M0", "TI-M1"]);
+    const { programs, sidecars, html } = corpus(LIVE_SHAPE, { page: livePage });
+    for (const slug of dark) {
+      sidecars.get(slug).narratives = [];
+      sidecars.get(slug).details = [];
+    }
+    const errors = [];
+    runSplitKeyAwardsLeg({
+      errors, notes: [], sidecars, programs, pageHtml: (s) => html.get(s) ?? null,
+    });
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("only 21 shared-code member page(s) publish a J-book");
+    // one page back above the floor and the leg is clean again
+    sidecars.get("TI-M1").details = [{ fact_id: "det-TI-1-0" }];
+    const errors2 = [];
+    runSplitKeyAwardsLeg({
+      errors: errors2, notes: [], sidecars, programs, pageHtml: (s) => html.get(s) ?? null,
+    });
+    expect(errors2).toEqual([]);
+  });
+
+  it("allows a lobbying mention on both members WHERE THE SIDECAR SAYS SO", () => {
+    // A Senate LDA filing names a budget LINE, never an appropriation or a
+    // component, so on a shared code it is evidence for every member. That
+    // is a rule, and the sidecar states it.
+    const { errors } = run(LIVE_SHAPE, {
+      page: livePage,
+      mentionCodes: new Set(["TA", "TB", "TK", "TL", "TM"]),
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it("FAILS when a mention is repeated with no declaration", () => {
+    const { errors } = run(LIVE_SHAPE, {
+      page: livePage,
+      mentionCodes: new Set(["TA"]),
+      declareMentions: false,
+    });
+    // one per member for the undeclared payload, plus the cross-member repeat
+    expect(errors.some((e) => e.includes("does not declare mentions_shared_code"))).toBe(true);
+    expect(
+      errors.some((e) => e.includes("appears on TA-M0, TA-M1") && e.includes("declare no mentions_shared_code")),
+    ).toBe(true);
+  });
+
+  it("never objects to a mention that only ONE member renders", () => {
+    const { programs, sidecars, html } = corpus(LIVE_SHAPE, {
+      page: livePage,
+      mentionCodes: new Set(["TA"]),
+    });
+    sidecars.get("TA-M1").mentions = [];
+    delete sidecars.get("TA-M1").mentions_shared_code;
+    const errors = [];
+    runSplitKeyAwardsLeg({
+      errors, notes: [], sidecars, programs, pageHtml: (s) => html.get(s) ?? null,
+    });
+    expect(errors).toEqual([]);
   });
 });
