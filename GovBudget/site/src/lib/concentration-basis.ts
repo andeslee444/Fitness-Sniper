@@ -128,10 +128,16 @@ export const CONCENTRATION_WITHHELD_REASON =
  * pages: they name high-confidence contractors, with a "high" confidence
  * badge, in their own Related Awards table further down the same page
  * (/program/2915/ names 14 contractor families across 18 high-confidence
- * links). What is absent is a PUBLISHED LEADER — top_family_high is NULL
- * with hhi_high below the floor, because with no positive-dollar leader the
- * mart's tie-break picks the alphabetically first family, which is not one.
- * Say that, then the rule above.
+ * links). What is absent is a PUBLISHED LEADER: top_family_high is withheld
+ * with the index on EVERY below-floor row — the mart repeats the hhi_high
+ * WHEN clause verbatim for it (dbt/models/marts/fct_program_concentration.sql,
+ * the two CASE expressions at :156-167) — which also removes the alphabetical
+ * tie-break pick a zero-positive-dollar program would otherwise name as a
+ * leader. It is not only those programs: a row that fails one of the other
+ * two clauses can hold a genuine positive-dollar leader and still publish
+ * none (0603882C clears the award count with 4 high awards and $7.45B, and
+ * is withheld on the one positive-dollar family — measured read-only,
+ * #80 fix round 3, 2026-09-11). Say that, then the rule above.
  */
 export const WHO_GETS_IT_WITHHELD_LEAD =
   `No single contractor is published as this line's leader.`;
