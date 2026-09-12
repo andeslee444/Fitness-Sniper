@@ -384,6 +384,19 @@ def _assemble(key: str, *, site_json_dir: Path, snapshots_dir: Path,
     are keyed by CODE (the category seed, feed cards, flows, news snapshots)
     are read at the bare pe_bli, which is the only key they have.
 
+    ROADMAP #82 (narrative axis, 2026-09-12) is what makes that page-grain
+    read mean what it says. Reading the right FILE was never enough while the
+    exporter put both members' J-book narratives and both members' R-2/P-40
+    rows in each member's sidecar: `projects` offered the sibling's LineItem
+    with a resolvable fid, and a model told (correctly) that a resolvable fid
+    may be cited would have produced a false claim no citation gate can see.
+    The bundle now offers only this page's own rows because the sidecar now
+    holds only this page's own rows — there is no filter here to keep in step.
+    `mentions` are the deliberate exception: a lobbying filing names a budget
+    LINE, never an appropriation or a component, so on a shared code the same
+    filing is evidence for both members and both bundles carry it (the
+    sidecar declares that with `mentions_shared_code`).
+
     Bundle hygiene applied here:
     - projects: only rows whose fact_id is in citations_keyset are included;
       absent-fact_id rows are dropped and counted (loud print).

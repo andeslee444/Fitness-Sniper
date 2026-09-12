@@ -141,6 +141,35 @@ def split_key_duckdb(tmp_path):
     return db
 
 
+@pytest.fixture()
+def org_split_duckdb(tmp_path):
+    """A shared BLI code in production's '30' shape: THREE dim_programs rows
+    that all share ONE appropriation account (0300D) and differ only by
+    organization. Every fixture before this one was account-split, which is
+    why `_page_slug`'s account-only match went unnoticed (ROADMAP #82,
+    2026-09-12)."""
+    db = tmp_path / "orgsplit.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, org varchar,"
+                " exhibit_family varchar, title varchar, account varchar,"
+                " account_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar,"
+                " organization varchar, fy2026_total double, account varchar)")
+    con.execute("insert into dim_programs values"
+                " ('30','OSD','procurement','Major Equipment, OSD','0300D',"
+                "  'Procurement, Defense-Wide'),"
+                " ('30','DTRA','procurement','Major Equipment, DTRA','0300D',"
+                "  'Procurement, Defense-Wide'),"
+                " ('30','DMACT','procurement','Major Equipment, DMACT',"
+                "  '0300D','Procurement, Defense-Wide')")
+    con.execute("insert into fct_budget_trajectory values"
+                " ('30','OSD',700.0,'0300D'),"
+                " ('30','DTRA',500.0,'0300D'),"
+                " ('30','DMACT',300.0,'0300D')")
+    con.close()
+    return db
+
+
 class TestTop50PageIdentity:
     """chain-B fix 3: a dossier is a PAGE's, so the selection carries the page
     identity — the defect that made `submit --pe-blis 3010-SCN` impossible and
@@ -173,6 +202,31 @@ class TestTop50PageIdentity:
         from govbudget.dossiers.research import member_slugs
 
         assert member_slugs(split_key_duckdb) == {"3010": ["3010-OPN", "3010-SCN"]}
+
+    def test_each_member_of_an_ORG_split_code_carries_its_own_page_slug(
+        self, org_split_duckdb
+    ):
+        """ROADMAP #82 (2026-09-12). `_page_slug` matched members on `account`
+        alone, and an organization-split code files every member under the
+        SAME account — so the first dim_programs row always matched and all
+        three of '30's members were handed one sibling's slug. Every claim in
+        a dossier keyed that way is about a program the page does not
+        describe."""
+        rows = top50(org_split_duckdb)
+        assert {r[4] for r in rows} == {"30-OSD", "30-DTRA", "30-DMACT"}
+        # and each page carries its OWN total, not the first row's
+        assert {r[4]: r[3] for r in rows} == {
+            "30-OSD": 700.0, "30-DTRA": 500.0, "30-DMACT": 300.0,
+        }
+
+    def test_member_slugs_names_all_three_pages_of_an_org_split_code(
+        self, org_split_duckdb
+    ):
+        from govbudget.dossiers.research import member_slugs
+
+        assert member_slugs(org_split_duckdb) == {
+            "30": ["30-DMACT", "30-DTRA", "30-OSD"]
+        }
 
     def test_build_program_terms_consumes_a_top50_row_of_any_width(
         self, split_key_duckdb

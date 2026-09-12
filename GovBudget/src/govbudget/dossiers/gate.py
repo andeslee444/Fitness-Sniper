@@ -69,19 +69,25 @@ def _top_pe(top50_list) -> list[str]:
     return [r[0] if isinstance(r, (list, tuple)) else r for r in top50_list]
 
 
-def _top_pages(top50_list) -> list[tuple[str, str]]:
-    """(bare pe_bli, PAGE identity) per top50() row (chain-B fix 3).
+def _top_pages(top50_list) -> list[tuple[str, str, bool]]:
+    """(bare pe_bli, PAGE identity, row carried that identity) per top50() row.
 
-    top50() carries the page slug in element 4; bare strings and the 4-tuples
-    older fixtures pass fall back to the bare pe_bli, which is the page for
-    every program that publishes one.
+    top50() carries the page slug in element 4 (chain-B fix 3); bare strings
+    and the 4-tuples older fixtures pass fall back to the bare pe_bli, which
+    is the page for every program that publishes one.
+
+    The third element is the one the caller acts on (ROADMAP #82, 2026-09-12):
+    a row that DID name its page has already answered "which member" and a
+    missing file for it is missing, full stop. Only a row that named none may
+    fall back to guessing from the filenames on disk.
     """
-    out: list[tuple[str, str]] = []
+    out: list[tuple[str, str, bool]] = []
     for r in top50_list:
         if isinstance(r, (list, tuple)):
-            out.append((r[0], r[4] if len(r) > 4 and r[4] else r[0]))
+            has_page = len(r) > 4 and bool(r[4])
+            out.append((r[0], r[4] if has_page else r[0], has_page))
         else:
-            out.append((r, r))
+            out.append((r, r, False))
     return out
 
 
@@ -322,7 +328,7 @@ def dossier_gate(
     total_claims = 0
     warehouse_claims = 0
 
-    for pe_bli, selected_page in _top_pages(top50_list):
+    for pe_bli, selected_page, _has_page_identity in _top_pages(top50_list):
         # Sprint E (#67): a SPLIT key's sidecar is keyed by its page SLUG
         # ("3010-SCN"), not the bare pe_bli, because E3 gave each
         # (account, pe_bli) pair its own page and the page looks the dossier
@@ -337,11 +343,22 @@ def dossier_gate(
             # "{pe_bli}-{CODE}.json" sibling; more than one would mean two
             # accounts each claim a dossier for the same key, which is a real
             # defect and must still read as missing.
-            siblings = sorted(dossier_dir.glob(f"{pe_bli}-*.json"))
+            #
+            # ROADMAP #82 (2026-09-12): guarded on `_has_page_identity`. When
+            # the selection DID name a member, a lone sibling on disk is the
+            # OTHER member's dossier, and accepting it would gate one
+            # program's page against the other program's claims — the exact
+            # substitution this leg exists to catch, performed by the leg.
+            siblings = (
+                [] if _has_page_identity
+                else sorted(dossier_dir.glob(f"{pe_bli}-*.json"))
+            )
             if len(siblings) == 1:
                 path = siblings[0]
             else:
-                missing_files.append(pe_bli)
+                # Named by the PAGE the selection asked for, not by the code:
+                # "3010" does not say which of two member pages is missing.
+                missing_files.append(selected_page)
                 continue
         # The dossier's PAGE identity: the file stem, which is the bare
         # pe_bli for an ordinary program and the page SLUG ("3010-SCN") for a

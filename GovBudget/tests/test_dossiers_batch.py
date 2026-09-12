@@ -1873,6 +1873,9 @@ class TestGatePageIdentity:
         assert res["checks"]["required_sections"]["ok"]
 
     def test_a_missing_member_dossier_still_reads_as_missing(self, tmp_path):
+        """And it is reported by the PAGE that is missing, not by the code
+        (ROADMAP #82, 2026-09-12): "3010" does not say which of two member
+        pages the operator has to regenerate."""
         dossier_dir = tmp_path / "dossiers"
         dossier_dir.mkdir()
         (tmp_path / "citations.json").write_text(json.dumps({}))
@@ -1884,4 +1887,56 @@ class TestGatePageIdentity:
             tmp_path / "snap-index.json", cats,
             [(SPLIT_PE, "LPD Flight II", "N", 1.0, SPLIT_SCN)],
         )
-        assert res["checks"]["dossiers_present"]["missing"] == [SPLIT_PE]
+        assert res["checks"]["dossiers_present"]["missing"] == [SPLIT_SCN]
+
+    def test_a_sibling_on_disk_never_answers_for_the_page_asked_for(
+        self, tmp_path,
+    ):
+        """ROADMAP #82 (2026-09-12): the sibling glob is a fallback for
+        callers whose selection carries NO page identity. When the selection
+        named 3010-SCN, the lone 3010-OPN.json on disk is the OTHER program's
+        dossier — accepting it would gate one page against the other page's
+        claims, which is the substitution this leg exists to catch."""
+        dossier_dir = tmp_path / "dossiers"
+        dossier_dir.mkdir()
+        (dossier_dir / f"{SPLIT_OPN}.json").write_text(json.dumps(
+            {"pe_bli": SPLIT_PE, "slug": SPLIT_OPN,
+             "dossier": _valid_dossier(url_claims=0, fact_claims=3)}))
+        (tmp_path / "citations.json").write_text(json.dumps(
+            {f: {"kind": "derived"} for f in
+             ["traj26fact", "hhifact", "blfact", "feedfact", "detfact0"]}))
+        (tmp_path / "snap-index.json").write_text(json.dumps({"snapshots": []}))
+        cats = tmp_path / "cats.csv"
+        cats.write_text("pe_bli,category,rationale,source_ref\n"
+                        f"{SPLIT_PE},shipbuilding,amphibs,ProgramElement[1]\n")
+        res = dossier_gate(
+            dossier_dir, tmp_path / "citations.json",
+            tmp_path / "snap-index.json", cats,
+            [(SPLIT_PE, "LPD Flight II", "N", 1.0, SPLIT_SCN)],
+        )
+        assert res["checks"]["dossiers_present"]["missing"] == [SPLIT_SCN]
+
+    def test_the_sibling_glob_still_answers_an_identityless_selection(
+        self, tmp_path,
+    ):
+        """The other half of the same rule: a caller that passed a bare code
+        (older fixtures, a hand-run gate) named no page, so exactly one
+        "{pe}-{CODE}.json" on disk is still the honest answer."""
+        dossier_dir = tmp_path / "dossiers"
+        dossier_dir.mkdir()
+        (dossier_dir / f"{SPLIT_SCN}.json").write_text(json.dumps(
+            {"pe_bli": SPLIT_PE, "slug": SPLIT_SCN,
+             "dossier": _valid_dossier(url_claims=0, fact_claims=3)}))
+        (tmp_path / "citations.json").write_text(json.dumps(
+            {f: {"kind": "derived"} for f in
+             ["traj26fact", "hhifact", "blfact", "feedfact", "detfact0"]}))
+        (tmp_path / "snap-index.json").write_text(json.dumps({"snapshots": []}))
+        cats = tmp_path / "cats.csv"
+        cats.write_text("pe_bli,category,rationale,source_ref\n"
+                        f"{SPLIT_PE},shipbuilding,amphibs,ProgramElement[1]\n")
+        res = dossier_gate(
+            dossier_dir, tmp_path / "citations.json",
+            tmp_path / "snap-index.json", cats,
+            [SPLIT_PE],
+        )
+        assert res["checks"]["dossiers_present"]["ok"], res["checks"]

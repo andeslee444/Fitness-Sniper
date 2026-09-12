@@ -232,15 +232,41 @@ def _page_slug(ident, pe_bli: str, account, org) -> str:
     exporter's own `_ProgramIdentity.slug`, never a suffix convention. An
     unresolvable row keeps the bare key: a wrong page identity is worse than a
     coarse one, and the bare key is exactly what the pipeline used before.
+
+    ROADMAP #82 (2026-09-12): the member is matched on the ONE axis
+    `_ProgramIdentity` resolved this key on, exactly as
+    `export_site._awards_for` dispatches. Matching on `account` alone was
+    right for the 10 account-split codes and WRONG for the 3
+    organization-split ones — '20', '30' and '500' file every member under
+    the same account (0300D), so the first row always matched and this
+    returned a SIBLING's slug ('20-DTRA' when asked for DCSA, '30-OSD' for
+    DTRA and for DMACT, '500-DHRA' for DLA). A dossier keyed to the wrong
+    page is the #82 species at its worst: every claim in it would be about a
+    program the page does not describe.
     """
     if not getattr(ident, "is_split", lambda _pe: False)(pe_bli):
         return pe_bli
+    split_key = getattr(ident, "split_key", None)
+
+    def _key(a, o):
+        # Duck-typed fallback for the hand-built idents older fixtures pass:
+        # the pre-#82 account match, which is still correct on that axis.
+        return split_key(pe_bli, a, o) if split_key else (pe_bli, a, None)
+
+    try:
+        want = _key(account, org)
+    except Exception:
+        return pe_bli
     for acct, acct_title, organization, _has_detail in ident.accounts(pe_bli):
-        if acct == account:
-            try:
-                return ident.slug(pe_bli, acct, acct_title, organization)
-            except Exception:
-                return pe_bli
+        try:
+            if _key(acct, organization) != want:
+                continue
+        except Exception:
+            return pe_bli
+        try:
+            return ident.slug(pe_bli, acct, acct_title, organization)
+        except Exception:
+            return pe_bli
     return pe_bli
 
 
