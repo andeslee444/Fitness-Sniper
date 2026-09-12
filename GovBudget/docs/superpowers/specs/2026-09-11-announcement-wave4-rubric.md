@@ -23,9 +23,8 @@ narrative owns). For each record it may emit at most one proposal per `(piid, pe
 ```json
 {"record_index": 12, "article_id": "2171906", "piid": "W31P4Q20C0023",
  "pe_bli": "8260C53101",
- "program_name": "PAC-3", "lexicon_doc": "407", "match_basis": "llm-alias",
+ "program_name": "PAC-3", "lexicon_doc": "345", "match_basis": "llm-alias",
  "announcement_evidence": "Phased Array Tracking Radar to Intercept on Target Advanced Capability-3 missiles",
- "lexicon_quote": "Patriot Advanced Capability 3 (PAC-3) Missile Segment Enhancement (MSE)",
  "rationale": "PATRIOT is the backronym the announcement spells out; …",
  "verdict": "link"}
 ```
@@ -36,6 +35,13 @@ many paragraphs (1,766 of the 23,824 queued records share an article_id with ano
 the same chunk), and the index is what makes the citation quote the paragraph the proposal
 actually read. Where `(article_id, piid)` names exactly one record the collector resolves it
 without the index; where it names two, it refuses until the index says which.
+`program_name`, `pe_bli` and `lexicon_doc` are **copied from one row of the index TSV** —
+the same row, verbatim (the name compares case-insensitively, nothing else does). The
+collector refuses a proposal that carries no `program_name` or no `lexicon_doc`, and COUNTS a
+proposal whose `(program_name, pe_bli, lexicon_doc)` triple is not a row of that org's index
+under `invalid_pe_bli`: it does not survive, and no invented code, borrowed code or invented
+document id reaches the published "surviving" number. Do not paraphrase the name and do not
+carry a name over from another org's index — both read as inventions.
 `match_basis` must be one of
 `exact-name` · `designator-normalized` · `llm-alias` · `llm-designator-variant` ·
 `llm-description` — the collector refuses anything else, and the citation card prints it.
@@ -71,6 +77,9 @@ under `missing_lens` — a half-finished chunk can never read as a clean one.
   `load_announcement_links.py:103`), so proposing one wastes a refute pass.
 - The proposal names no `lexicon_doc` (the collector refuses it, and on a shared BLI code the
   loader could not resolve which member it means).
+- `pe_bli` `20`, `30` or `500` — the org-split BLI codes (20 index rows: DHRA 5, DLA 5,
+  DTRA 10). `load_announcement_links.py:282` always skips them as `collision`, so a link on one
+  can never publish; spend no refute pass on them.
 
 ## 4. What this rubric does NOT measure
 
@@ -98,15 +107,18 @@ object:
  "proposals": [
    {"record_index": 12, "article_id": "2171906", "piid": "W31P4Q20C0023",
     "pe_bli": "8260C53101",
-    "program_name": "PAC-3", "lexicon_doc": "407", "match_basis": "llm-alias",
+    "program_name": "PAC-3", "lexicon_doc": "345", "match_basis": "llm-alias",
     "announcement_evidence": "…the announcement's own words…",
-    "lexicon_quote": "…the J-book narrative's own words…",
     "rationale": "…why lens P believes the award funds THIS line…",
     "verdict": "link",
     "refute_a": {"refuted": false, "reason": "procurement action against a procurement line"},
     "refute_b": {"refuted": false, "reason": "no other PE in the index owns 'PAC-3'"}}
  ]}
 ```
+
+The file must carry a `proposals` LIST even when the list is empty — a file without one is
+counted `malformed_file` and the chunk is recorded as NOT attempted, because a crashed lens
+must not read as an adjudicated dry chunk.
 
 Every proposal lens P emits belongs in the file, `weak` and `wrong` included — the verdict
 counts are the denominator that makes the surviving count meaningful, and a chunk that
@@ -125,11 +137,17 @@ its own `rank` and `announced_value_total`.
 
 - Adjudicate in **rounds of 5 chunks**, in rank order, starting at the highest-ranked chunk
   with no verdict file.
-- **Stop after 3 consecutive rounds yield 0 surviving links**, or at a hard cap of
-  **150 chunks per run**, whichever comes first.
-- Dollars are NOT a stopping rule. The distribution is extremely skewed (`chunk_000_A` alone
-  carries $235.8B and two chunks exceed the whole historically disclosed $278B remainder,
-  because the top announcements are multi-billion IDIQ ceilings). Stop by chunk count.
+- **Stop after 3 consecutive rounds yield 0 surviving links** — but **the dry counter arms
+  only after the first 6 rounds (30 chunks)**. Those rounds are the IDIQ-umbrella band §3
+  rejects by design (see the hazard below), so a dry round there says nothing about the tail:
+  rounds 1-6 are adjudicated whatever they return, and only from round 7 on can three
+  consecutive dry rounds stop the run.
+- Or stop at a hard cap of **150 chunks per run**, whichever comes first.
+  `wave4_result.json`'s `chunks_attempted` records exactly what ran.
+- Dollars are NOT a stopping rule. The distribution is extremely skewed — `chunk_000_A` alone
+  carries $235.8B, and while no single chunk exceeds the historically disclosed $278B
+  remainder, the top two together ($470.6B) do, because the top announcements are
+  multi-billion IDIQ ceilings. Stop by chunk count.
 - `collect` accepts a PARTIAL set of verdict files. A chunk with no verdict file is neither
   surviving nor refuted — it was not attempted, and `wave4_result.json`'s `records_attempted`
   and `chunks_attempted` say exactly what ran. Task 25b publishes what was adjudicated, not
@@ -144,5 +162,5 @@ the earliest rounds are the ones most likely to return zero survivors *for a rea
 nothing about the tail*. Read a dry round together with its verdict counts: a round that
 proposed nothing is the queue running out of linkable records; a round that proposed and was
 refuted is the rubric working. If the first three rounds are dry, record which of the two it
-was before stopping. For scale: the 150-chunk cap covers 11,775 records and $1.478T (92% of
+was — and keep going: the counter does not arm until round 7. For scale: the 150-chunk cap covers 11,775 records and $1.478T (92% of
 the queued value); a round of 5 chunks is ≈400 records.
