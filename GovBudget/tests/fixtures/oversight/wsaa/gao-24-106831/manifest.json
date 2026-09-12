@@ -1,0 +1,12 @@
+{
+  "assessment_pdf_page": 81,
+  "assessment_type": "MDAP",
+  "common_name": "B-52 CERP",
+  "description_starts": "The B-52 CERP plans to support nuclear and conventional oper",
+  "generated_by": "tests/oversight/wsaa_fixture_tool.py",
+  "index_count_on_page": 14,
+  "index_pdf_page": 80,
+  "product_number": "GAO-24-106831",
+  "report_page": 69,
+  "service": "Air Force"
+}

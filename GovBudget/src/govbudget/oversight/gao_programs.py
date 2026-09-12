@@ -7,8 +7,8 @@ program-specific GAO reports the same volume lists as related products.
 
 Source (verified live, August 2026)
 -----------------------------------
-``https://www.gao.gov/assets/gao-25-107569.pdf`` — one PDF per edition, 233
-pages.  Two structures are read out of it:
+``https://www.gao.gov/assets/gao-25-107569.pdf`` — one PDF per edition (2025:
+233 pages).  Two structures are read out of it:
 
 1. **Appendix I: Program Assessments** — a one- or two-page spread per
    program.  The first page of each spread opens with a machine-readable
@@ -38,9 +38,16 @@ Parquet columns (typed at ingestion — backlog #11):
     report_url varchar, source_product varchar, source_pdf_url varchar,
     released varchar, service varchar, assessment_type varchar,
     program_name varchar, common_name varchar, report_page integer,
-    pdf_page integer, description varchar
+    pdf_page integer, description varchar, edition_year integer,
+    program_key varchar, predecessor_product varchar,
+    predecessor_pdf_page integer
 
 ``kind`` is ``assessment`` (Appendix I) or ``related_product``.
+
+Three editions are ingested (2025, 2024, 2023); each assessment carries its
+edition and a link to the same program's assessment in the nearest earlier
+edition (``link_predecessors``).  Older editions reach a page only through
+that link.
 
 NOTE: this module ingests GAO's work.  It does NOT decide which budget line
 each item belongs to — that crosswalk is human-ratified in
@@ -52,11 +59,108 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import duckdb
 import httpx
+
+# ── Layouts ─────────────────────────────────────────────────────────────────
+#
+# GAO re-typesets the volume every year.  Each anchor below is a tuple of
+# regexes tried in order — the first that matches a page wins.  When an
+# edition drifts, ADD an alternative here; never loosen the one that already
+# parses a shipped edition (the 2025 anchors are listed first on purpose).
+#
+# Measured 2026-09-10 against the cached 233-page 2025 volume: the two
+# alternatives below change nothing there.  COMMON_FIRST fires on 0 pages
+# TYPE_FIRST does not; PAGENO_BARE fires on 0 pages that carry a banner and
+# lack the full footer, and never disagrees with PAGENO_FULL where both match;
+# the index-header regex finds the same four pages and the same count, 65.
+
+# GAO's own service labels.  "DOD" is the 2024/2023 volumes' label for a
+# program no single service leads (the F-35); the 2025 volume writes the
+# same idea as "Joint".  Both are kept verbatim — the label a reader sees
+# is GAO's — and _SERVICE_FAMILY below decides what they mean for linking.
+_SERVICES = r"Air Force|Army|Navy|Space Force|Marine Corps|Joint|DOD"
+
+# 2025 (verified live): "Air Force Program Type: MDAP Common Name: Sentinel"
+_BANNER_TYPE_FIRST_RE = re.compile(
+    rf"^[ \t]*(?P<service>{_SERVICES})\s+Program Type:\s*(?P<type>.+?)\s+"
+    r"Common Name:\s*(?P<common>.+?)[ \t]*$",
+    re.MULTILINE,
+)
+# The other order the same two labels can be typeset in.
+_BANNER_COMMON_FIRST_RE = re.compile(
+    rf"^[ \t]*(?P<service>{_SERVICES})\s+Common Name:\s*(?P<common>.+?)\s+"
+    r"Program Type:\s*(?P<type>.+?)[ \t]*$",
+    re.MULTILINE,
+)
+# 2024 and 2023 (measured from the cached PDFs 2026-09-12): the same three
+# labels, typeset type-first and with the service behind "Lead Component:" —
+# "MDAP Lead Component: Air Force Common Name: B-52 CERP".
+_BANNER_LEAD_COMPONENT_RE = re.compile(
+    rf"^[ \t]*(?P<type>.+?)\s+Lead Component:\s*(?P<service>{_SERVICES})\s+"
+    r"Common Name:\s*(?P<common>.+?)[ \t]*$",
+    re.MULTILINE,
+)
+# The footer's kerning breaks inside words on some pages ("U.S. Govern ment"),
+# so every literal here tolerates an interior space.
+_PAGENO_FULL_RE = re.compile(
+    r"Page\s+(\d+)\s+U\.\s?S\.\s+Govern\s*ment\s+Account\s*ability\s+"
+    r"Office\s+GAO-\d\d-\d+"
+)
+# A footer that prints only the product number.
+_PAGENO_BARE_RE = re.compile(
+    r"Page\s+(\d+)\s+GAO-\d\d-\d+\s+Weapon\s+Systems"
+)
+# The service index tables' header row; one type token per program follows.
+_INDEX_HEADER_RE = re.compile(r"Program name\s+(?:Assessment|Program) type")
+# 2024 and 2023 print the same two columns the other way round.  "Program
+# name Primary staff" (the GAO-contact table in the 2023 volume) is a
+# different table and is deliberately not matched by either anchor.
+_INDEX_HEADER_TYPE_FIRST_RE = re.compile(r"Assessment type\s+Program name")
+# Headers whose tables print the assessment type once per GROUP rather than
+# once per program, so the countable unit is the program row (see
+# ``index_table_program_counts``).
+_ROW_COUNTED_HEADERS = (_INDEX_HEADER_TYPE_FIRST_RE,)
+
+
+@dataclass(frozen=True)
+class Layout:
+    """Per-edition text anchors.  See the block comment above."""
+
+    banners: tuple[re.Pattern, ...]
+    pagenos: tuple[re.Pattern, ...]
+    index_headers: tuple[re.Pattern, ...]
+
+    @staticmethod
+    def _first(patterns: tuple[re.Pattern, ...], text: str):
+        for rx in patterns:
+            m = rx.search(text)
+            if m is not None:
+                return m
+        return None
+
+    def banner(self, text: str):
+        return self._first(self.banners, text)
+
+    def pageno(self, text: str):
+        return self._first(self.pagenos, text)
+
+    def index_header(self, text: str):
+        return self._first(self.index_headers, text)
+
+
+DEFAULT_LAYOUT = Layout(
+    banners=(
+        _BANNER_TYPE_FIRST_RE,
+        _BANNER_COMMON_FIRST_RE,
+        _BANNER_LEAD_COMPONENT_RE,
+    ),
+    pagenos=(_PAGENO_FULL_RE, _PAGENO_BARE_RE),
+    index_headers=(_INDEX_HEADER_RE, _INDEX_HEADER_TYPE_FIRST_RE),
+)
 
 # ── Editions ────────────────────────────────────────────────────────────────
 
@@ -66,10 +170,19 @@ class Edition:
     product_number: str
     report_title: str
     released: str  # ISO yyyy-mm
+    # The current edition's bibliography is the reading list.  An older
+    # edition's would add products no person has adjudicated, so it is not
+    # re-read (a coverage gap, stated on /methodology/).
+    ingest_related: bool = True
+    layout: Layout = DEFAULT_LAYOUT
 
     @property
     def slug(self) -> str:
         return self.product_number.lower()
+
+    @property
+    def year(self) -> int:
+        return int(self.released[:4])
 
     @property
     def pdf_url(self) -> str:
@@ -89,7 +202,36 @@ EDITIONS: tuple[Edition, ...] = (
         ),
         released="2025-06",
     ),
+    # Predecessors (ROADMAP #30, "and its predecessors").  Verified live
+    # 2026-09-10: the PDFs HEAD 200 application/pdf at 40,333,305 and
+    # 24,744,977 bytes; the /products/ pages carry exactly these titles and
+    # give publication dates Jun 17, 2024 and Jun 08, 2023.  GAO-24-106831 is
+    # additionally marked "[Reissued with revisions on Jul. 18, 2024]" — a
+    # revision marker, not part of the title, so it is not carried here.
+    Edition(
+        product_number="GAO-24-106831",
+        report_title=(
+            "Weapon Systems Annual Assessment: DOD Is Not Yet Well-Positioned "
+            "to Field Systems with Speed"
+        ),
+        released="2024-06",
+        ingest_related=False,
+    ),
+    Edition(
+        product_number="GAO-23-106059",
+        report_title=(
+            "Weapon Systems Annual Assessment: Programs Are Not Consistently "
+            "Implementing Practices That Can Help Accelerate Acquisitions"
+        ),
+        released="2023-06",
+        ingest_related=False,
+    ),
 )
+
+
+def current_edition() -> Edition:
+    """The newest edition — the only one the crosswalk matches against."""
+    return max(EDITIONS, key=lambda e: e.released)
 
 USER_AGENT = (
     "FiscalReceipts/1.0 (+https://fiscalreceipts.com; "
@@ -138,17 +280,6 @@ _TYPE_ANCHOR_RE = re.compile(
 
 # ── Appendix I parsing ──────────────────────────────────────────────────────
 
-_BANNER_RE = re.compile(
-    r"^[ \t]*(Air Force|Army|Navy|Space Force|Marine Corps|Joint)\s+"
-    r"Program Type:\s*(.+?)\s+Common Name:\s*(.+?)[ \t]*$",
-    re.MULTILINE,
-)
-# The footer's kerning breaks inside words on some pages ("U.S. Govern ment"),
-# so every literal here tolerates an interior space.
-_PAGENO_RE = re.compile(
-    r"Page\s+(\d+)\s+U\.\s?S\.\s+Govern\s*ment\s+Account\s*ability\s+"
-    r"Office\s+GAO-\d\d-\d+"
-)
 _MAX_HEADING_LINES = 3
 
 # The image credit is typeset in the left rail, so on 13 of the 65 spreads it
@@ -188,6 +319,12 @@ DESC_RESIDUE_RE = re.compile(
 _MIN_DESCRIPTION_CHARS = 120
 
 
+def program_key(common_name: str) -> str:
+    """The identity that links one program across editions: GAO's own common
+    name, normalized the way ``_key`` normalizes every other join."""
+    return _key(common_name)
+
+
 @dataclass
 class Assessment:
     kind: str
@@ -204,23 +341,48 @@ class Assessment:
     report_page: int
     pdf_page: int
     description: str
+    # Edition stamp + predecessor link (ROADMAP #30 "and its predecessors").
+    edition_year: int
+    program_key: str          # program_key(common_name); "" for related products
+    predecessor_product: str  # the nearest earlier edition assessing the same program, or ""
+    predecessor_pdf_page: int
 
 
-def index_table_program_counts(pages: list[str]) -> int:
+def index_table_program_counts(
+    pages: list[str], layout: Layout = DEFAULT_LAYOUT
+) -> int:
     """How many programs the service index tables say Appendix I contains.
 
-    The tables wrap names and types across typeset lines in two different
-    interleavings, so the NAMES are not reliably recoverable from them — but
-    the assessment-type column is one token per program, and counting those
-    is robust.  This number is the parser's expected population.
+    Two typesettings, counted two different ways because the tables say two
+    different things:
+
+    * 2025 prints the assessment type once per PROGRAM ("LGM-35A Sentinel
+      MDAP").  The tables wrap names and types across typeset lines in two
+      different interleavings, so the NAMES are not reliably recoverable from
+      them — but one type token per program is, and that count is exact.
+    * 2024 and 2023 print the type once per GROUP ("MDAPs", "MTA Programs")
+      and one program per row, so the countable unit is the row.  That count
+      is an UPPER bound: a program name too long for the column wraps onto a
+      row of its own, and so does the tail of a wrapped group label, and text
+      extraction cannot tell either from a program.  Measured 2026-09-12 the
+      inflation is 7 rows of 75 (2024) and 6 of 69 (2023), so the parser is
+      expected to come in at or a little below this number, never above it.
+
+    This number is the parser's expected population.
     """
     total = 0
     for raw in pages:
-        if not raw or "Program name Assessment type" not in raw:
+        if not raw:
             continue
-        block = raw.split("Program name Assessment type", 1)[1]
+        head = layout.index_header(raw)
+        if head is None:
+            continue
+        block = raw[head.end():]
         block = re.split(r"Source[s]?\s*(?:\(.*?\))?\s*:", block)[0]
-        total += len(_TYPE_ANCHOR_RE.findall(block))
+        if head.re in _ROW_COUNTED_HEADERS:
+            total += sum(1 for line in block.splitlines() if line.strip())
+        else:
+            total += len(_TYPE_ANCHOR_RE.findall(block))
     return total
 
 
@@ -261,16 +423,17 @@ def parse_edition_pages(pages: list[str], edition: Edition) -> list[Assessment]:
     """One Assessment per Appendix I program.  ``pages[i]`` is PDF page i+1."""
     out: list[Assessment] = []
     seen: set[str] = set()
+    layout = edition.layout
     for idx, raw in enumerate(pages):
         if not raw:
             continue
-        banner = _BANNER_RE.search(raw)
-        pageno = _PAGENO_RE.search(raw)
+        banner = layout.banner(raw)
+        pageno = layout.pageno(raw)
         if banner is None or pageno is None:
             continue
-        service = banner.group(1).strip()
-        atype = _TYPE_BY_KEY.get(_key(banner.group(2)))
-        common = _clean(banner.group(3))
+        service = banner.group("service").strip()
+        atype = _TYPE_BY_KEY.get(_key(banner.group("type")))
+        common = _clean(banner.group("common"))
         if atype is None or not common:
             continue
         if _key(common) in seen:
@@ -309,6 +472,10 @@ def parse_edition_pages(pages: list[str], edition: Edition) -> list[Assessment]:
                 report_page=int(pageno.group(1)),
                 pdf_page=idx + 1,
                 description=description,
+                edition_year=edition.year,
+                program_key=program_key(common),
+                predecessor_product="",
+                predecessor_pdf_page=0,
             )
         )
     return out
@@ -405,9 +572,124 @@ def parse_related_products(text: str, edition: Edition) -> list[Assessment]:
                 report_page=0,
                 pdf_page=0,
                 description="",
+                edition_year=edition.year,
+                program_key="",
+                predecessor_product="",
+                predecessor_pdf_page=0,
             )
         )
     return out
+
+
+# ── Predecessor links ───────────────────────────────────────────────────────
+
+# GAO's service label -> the book family it is carried in.  Space Force
+# programs were Air Force programs in older editions and are carried in the
+# Air Force book either way — the same call ``gao_xwalk.SERVICE_ORGS`` makes
+# for the four services it maps.  "Joint" is extra here: SERVICE_ORGS has no
+# entry for it (a Joint assessment generates no crosswalk candidate), but a
+# Joint program still needs a stable family to chain across editions.
+_SERVICE_FAMILY = {
+    "Air Force": "F", "Space Force": "F", "Army": "A",
+    "Navy": "N", "Marine Corps": "N", "Joint": "J",
+    # 2024/2023 write "DOD" where 2025 writes "Joint" — one family, so a
+    # joint-lead program (the F-35) chains across the three volumes instead
+    # of reading as a rename.
+    "DOD": "J",
+}
+
+
+def _family(service: str) -> str:
+    return _SERVICE_FAMILY.get(service, service)
+
+
+def link_predecessors(rows: list[Assessment]) -> list[Assessment]:
+    """Stamp ``predecessor_product`` / ``predecessor_pdf_page`` on every
+    assessment.
+
+    The predecessor is the SAME program — same ``program_key`` and same
+    service family — in the nearest earlier edition that assessed it.
+    Nothing fuzzier: a renamed program (GBSD -> Sentinel) breaks its own
+    chain, and an older edition's assessment that no chain reaches is linked
+    to no page.  A missed link is a coverage gap; a wrong one puts GAO's words
+    on the wrong weapon.
+    """
+    by_year: dict[int, dict[tuple[str, str], Assessment]] = {}
+    for a in rows:
+        if a.kind == "assessment":
+            by_year.setdefault(a.edition_year, {})[
+                (a.program_key, _family(a.service))
+            ] = a
+    years = sorted(by_year)
+    out: list[Assessment] = []
+    for a in rows:
+        if a.kind != "assessment":
+            out.append(a)
+            continue
+        pred = None
+        for y in reversed([y for y in years if y < a.edition_year]):
+            pred = by_year[y].get((a.program_key, _family(a.service)))
+            if pred is not None:
+                break
+        out.append(replace(
+            a,
+            predecessor_product=pred.product_number if pred else "",
+            predecessor_pdf_page=pred.pdf_page if pred else 0,
+        ))
+    return out
+
+
+def predecessor_chain(row: dict, rows: list[dict]) -> list[dict]:
+    """Older-edition assessments of ``row``'s program, newest first.
+
+    Works on parquet rows (dicts) so the exporter and the CLI share it.
+    """
+    index = {
+        (r["product_number"], r["program_key"], _family(r["service"])): r
+        for r in rows if r["kind"] == "assessment"
+    }
+    out: list[dict] = []
+    seen: set[tuple[str, str, str]] = set()
+    cur = row
+    while cur.get("predecessor_product"):
+        key = (
+            cur["predecessor_product"], cur["program_key"],
+            _family(cur["service"]),
+        )
+        if key in seen or key not in index:
+            break
+        seen.add(key)
+        cur = index[key]
+        out.append(cur)
+    return out
+
+
+def unlinked_older_assessments(
+    rows: list[dict], current_product: str
+) -> list[dict]:
+    """Older-edition assessments no current-edition chain reaches.
+
+    Programs GAO assessed in an earlier volume but not the current one
+    (delivered, cancelled, restructured, renamed).  They are linked to NO
+    page — by design — and reported so the gap is loud, not silent.
+    """
+    reached: set[tuple[str, str, str]] = set()
+    for r in rows:
+        if r["kind"] == "assessment" and r["product_number"] == current_product:
+            for p in predecessor_chain(r, rows):
+                reached.add(
+                    (p["product_number"], p["program_key"], _family(p["service"]))
+                )
+    return sorted(
+        (
+            r for r in rows
+            if r["kind"] == "assessment"
+            and r["product_number"] != current_product
+            and (r["product_number"], r["program_key"], _family(r["service"]))
+            not in reached
+        ),
+        key=lambda r: (-int(r["edition_year"]), r["service"], r["common_name"]),
+    )
 
 
 # ── Fetch + build ───────────────────────────────────────────────────────────
@@ -458,39 +740,63 @@ _COLUMNS = (
     "released varchar, service varchar, assessment_type varchar,"
     "program_name varchar, common_name varchar, report_page integer,"
     "pdf_page integer, description varchar"
+    ", edition_year integer, program_key varchar,"
+    "predecessor_product varchar, predecessor_pdf_page integer"
 )
 _FIELDS = (
     "kind", "product_number", "report_title", "report_url", "source_product",
     "source_pdf_url", "released", "service", "assessment_type",
     "program_name", "common_name", "report_page", "pdf_page", "description",
+    "edition_year", "program_key", "predecessor_product",
+    "predecessor_pdf_page",
 )
+
+
+_MIN_PARSE_SHARE = 0.9
 
 
 def build_gao_program_assessments(
     client: httpx.Client, *, raw_dir: Path, out_path: Path
 ) -> Path:
-    """Fetch every edition, parse it, write the parquet."""
+    """Fetch every edition, parse it, link predecessors, write the parquet."""
     rows: list[Assessment] = []
     for edition in EDITIONS:
         pdf = fetch_edition_pdf(client, edition, raw_dir=raw_dir)
         pages = extract_pdf_pages(pdf)
         parsed = parse_edition_pages(pages, edition)
-        expected = index_table_program_counts(pages)
-        related = parse_related_products(related_column_text(pdf), edition)
+        expected = index_table_program_counts(pages, edition.layout)
+        related = (
+            parse_related_products(related_column_text(pdf), edition)
+            if edition.ingest_related
+            else []
+        )
         print(
             f"gao-programs: {edition.product_number} -> {len(parsed)}/"
             f"{expected} Appendix I program assessments, "
             f"{len(related)} related products"
+            + ("" if edition.ingest_related else " (bibliography not re-read)")
         )
-        if not parsed:
+        if expected == 0:
             raise RuntimeError(
-                f"gao-programs: parsed 0 assessments from {pdf} — the layout "
-                "changed; fix the parser rather than shipping nothing"
+                f"gao-programs: {edition.product_number}: no service index "
+                "table matched Layout.index_headers — the layout changed; add "
+                "an anchor to the edition's Layout rather than shipping an "
+                "uncounted edition"
+            )
+        if not parsed or len(parsed) < _MIN_PARSE_SHARE * expected:
+            raise RuntimeError(
+                f"gao-programs: {edition.product_number}: parsed {len(parsed)} "
+                f"of {expected} indexed programs (< {_MIN_PARSE_SHARE:.0%}) — "
+                "the banner or footer anchors drifted; add an alternative to "
+                "the edition's Layout rather than shipping a partial edition"
             )
         if len(parsed) != expected:
             print(
-                f"  WARNING: {expected - len(parsed)} Appendix I program(s) "
-                "counted in the index tables have no parsed assessment"
+                f"  WARNING: {expected - len(parsed)} index row(s) have no "
+                "parsed assessment — a wrapped name or group label occupies "
+                "its own row in the 2024/2023 tables (see "
+                "index_table_program_counts), so read this against the names "
+                "before treating it as a miss"
             )
         residue = [a for a in parsed if DESC_RESIDUE_RE.search(a.description)]
         if residue:
@@ -503,6 +809,20 @@ def build_gao_program_assessments(
             )
         rows.extend(parsed)
         rows.extend(related)
+
+    rows = link_predecessors(rows)
+    current = current_edition().product_number
+    linked = sum(
+        1 for r in rows if r.kind == "assessment" and r.predecessor_product
+    )
+    older = sum(
+        1 for r in rows
+        if r.kind == "assessment" and r.product_number != current
+    )
+    print(
+        f"gao-programs: {linked} predecessor link(s) across {len(EDITIONS)} "
+        f"editions; {older} older-edition assessment(s) ingested"
+    )
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

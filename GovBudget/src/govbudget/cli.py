@@ -1078,6 +1078,10 @@ def cmd_oversight(args) -> None:
     elif args.action == "gao-xwalk":
         import json as _json
 
+        from govbudget.oversight.gao_programs import (
+            current_edition,
+            unlinked_older_assessments,
+        )
         from govbudget.oversight.gao_xwalk import (
             generate_candidates,
             load_ratified,
@@ -1092,11 +1096,17 @@ def cmd_oversight(args) -> None:
         )
         cols = [d[0] for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        if "edition_year" not in cols:
+            sys.exit(
+                "gao-xwalk: the parquet predates the edition stamp — run "
+                "`python -m govbudget oversight gao-programs` first"
+            )
         programs = _json.loads(
             (config.ROOT / "data" / "site" / "json" / "programs.json")
             .read_text()
         )
-        cands = generate_candidates(rows, programs)
+        current = current_edition().product_number
+        cands = generate_candidates(rows, programs, current_product=current)
         seed = config.ROOT / "data-seeds" / "gao_program_xwalk.csv"
         ratified = load_ratified(seed)
         rep = measure(cands, ratified)
@@ -1113,6 +1123,19 @@ def cmd_oversight(args) -> None:
             )
         for k in rep.stale:
             print(f"  STALE (ratified but no longer proposed)  {k}")
+        gap = unlinked_older_assessments(rows, current)
+        print(
+            f"gao-xwalk: assessments are matched against {current} only; "
+            f"{len(gap)} older-edition assessment(s) have no successor there "
+            "and are linked to no page (coverage gap, by design)"
+        )
+        for r in gap[:20]:
+            print(
+                f"  UNLINKED  {r['product_number']} {r['service']} "
+                f"{r['common_name']}"
+            )
+        if len(gap) > 20:
+            print(f"  UNLINKED  … and {len(gap) - 20} more")
         if rep.unadjudicated or rep.stale:
             sys.exit(1)
 

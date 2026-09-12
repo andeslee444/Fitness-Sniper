@@ -1,0 +1,12 @@
+{
+  "assessment_pdf_page": 87,
+  "assessment_type": "MDAP",
+  "common_name": "B-52 RMP",
+  "description_starts": "The Air Force's B-52 RMP plans to replace the current APQ-16",
+  "generated_by": "tests/oversight/wsaa_fixture_tool.py",
+  "index_count_on_page": 15,
+  "index_pdf_page": 86,
+  "product_number": "GAO-23-106059",
+  "report_page": 77,
+  "service": "Air Force"
+}

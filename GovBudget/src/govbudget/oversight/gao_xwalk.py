@@ -152,11 +152,21 @@ def candidates_for_related(*, subject: str, programs) -> list[Candidate]:
     return out
 
 
-def generate_candidates(rows, programs) -> list[Candidate]:
+def generate_candidates(
+    rows, programs, *, current_product: str | None = None
+) -> list[Candidate]:
     """All candidates for a set of ingested GAO rows.
 
     ``rows`` are dicts with the parquet's columns; ``programs`` are dicts with
     ``slug``, ``org``, ``title``.
+
+    ``current_product`` — when given, ASSESSMENT rows from any other edition
+    generate no candidates.  Older editions reach a page only through a
+    predecessor link from a ratified current-edition assessment
+    (``gao_programs.link_predecessors``), never through a new match, so there
+    is nothing for a person to adjudicate about them.  Related products are
+    untouched by the filter: 22 of the 63 ratified rows are bibliography
+    reports whose own product numbers are older than the current edition.
 
     The key is ``slug``, not ``pe_bli``: 23 budget lines share a ``pe_bli``
     with an unrelated program in another appropriation account, and ``slug``
@@ -168,6 +178,11 @@ def generate_candidates(rows, programs) -> list[Candidate]:
     out: list[Candidate] = []
     for r in rows:
         if r["kind"] == "assessment":
+            if (
+                current_product is not None
+                and r["product_number"] != current_product
+            ):
+                continue
             found = candidates_for_assessment(
                 common_name=r["common_name"],
                 program_name=r["program_name"],

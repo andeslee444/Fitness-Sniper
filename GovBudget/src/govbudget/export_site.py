@@ -13291,7 +13291,9 @@ def _emit_gao_overlays_sidecar(
 
 
 
-def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
+def _emit_gao_program_findings_sidecar(
+    *, json_dir: Path, duckdb_path, seed_path: Path | None = None
+) -> None:
     """Emit json/gao_program_findings.json — the PROGRAM tier (ROADMAP #30).
 
     The department tier (``gao_overlays.json``) says "DOD has 5 high-risk
@@ -13301,7 +13303,8 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
     the program-specific GAO reports that volume cites.
 
     Shape:
-      {source: {...}, by_slug: {slug: {assessments: [...], reports: [...]}}}
+      {source: [...editions...], by_slug: {slug: {assessments: [...],
+       reports: [...]}}, stats: {...}}
 
     **This function performs no matching.**  Which budget line each GAO item
     belongs to is read from ``data-seeds/gao_program_xwalk.csv``, one row per
@@ -13310,17 +13313,28 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
     failure mode being designed against is a GAO finding rendered against the
     wrong weapons program, which is a defamation-shaped error rather than a
     formatting one.
+
+    Editions (ROADMAP #30, "and its predecessors"): a verdict ratifies an
+    attribution against ONE edition's assessment.  Older editions of the same
+    program — same ``program_key`` and service family, linked at ingestion by
+    ``gao_programs.link_predecessors`` — are emitted directly after that
+    ratified anchor with ``inherited_from`` naming it.  Inheritance flows
+    backwards only; an older-edition assessment with no ratified successor
+    reaches no page.  Every ingested edition contributes assessment rows
+    (``build_gao_program_assessments`` raises below 90 % of the index count),
+    so every ``source[]`` entry carries a full edition record.
     """
     import duckdb as _duckdb
 
     from govbudget.config import ROOT as _REPO_ROOT
+    from govbudget.oversight.gao_programs import predecessor_chain
     from govbudget.oversight.gao_xwalk import load_ratified
 
     payload = {"source": None, "by_slug": {}, "stats": None}
     pq = _stage_parquet_path(
         duckdb_path, "oversight", "gao_program_assessments.parquet"
     )
-    seed = _REPO_ROOT / "data-seeds" / "gao_program_xwalk.csv"
+    seed = seed_path or (_REPO_ROOT / "data-seeds" / "gao_program_xwalk.csv")
     if pq is None or not seed.exists():
         _write_json(json_dir / "gao_program_findings.json", payload)
         return
@@ -13332,6 +13346,13 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
     except Exception:
         _write_json(json_dir / "gao_program_findings.json", payload)
         return
+    for needed in ("edition_year", "program_key", "predecessor_product"):
+        if needed not in cols:
+            raise RuntimeError(
+                f"gao_program_findings: {pq} has no '{needed}' column — it "
+                "predates the edition stamp; run `python -m govbudget "
+                "oversight gao-programs` before export-site"
+            )
 
     ratified = load_ratified(seed)
     # (product_number, gao_program) -> [slug, …] for verdict == "y" only
@@ -13341,25 +13362,44 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
             continue
         slugs_for.setdefault((product, program), []).append(slug)
 
-    editions = {
-        r["source_product"]: {
+    editions: dict[str, dict] = {}
+    for r in rows:
+        e = editions.setdefault(r["source_product"], {
             "product_number": r["source_product"],
             "pdf_url": r["source_pdf_url"],
-        }
-        for r in rows
-    }
-    for r in rows:
-        if r["kind"] == "assessment" and r["product_number"] in editions:
-            editions[r["product_number"]].update({
+        })
+        if r["kind"] == "assessment" and r["product_number"] == r["source_product"]:
+            e.update({
+                "edition_year": int(r["edition_year"]),
+                "released": r["released"],
                 "report_title": r["report_title"],
                 "report_url": r["report_url"],
-                "released": r["released"],
             })
     payload["source"] = sorted(
         editions.values(), key=lambda e: e["product_number"]
     )
 
+    def _assessment_item(r: dict, inherited_from: str | None) -> dict:
+        return {
+            "assessment_type": r["assessment_type"],
+            "common_name": r["common_name"],
+            "description": r["description"],
+            "edition_year": int(r["edition_year"]),
+            "gao_program": r["program_name"],
+            "inherited_from": inherited_from,
+            "pdf_page": int(r["pdf_page"] or 0),
+            "pdf_url": r["source_pdf_url"],
+            "product_number": r["product_number"],
+            "program_key": r["program_key"],
+            "released": r["released"],
+            "report_page": int(r["report_page"] or 0),
+            "report_title": r["report_title"],
+            "report_url": r["report_url"],
+            "service": r["service"],
+        }
+
     by_slug: dict[str, dict] = {}
+    inherited = 0
     for r in sorted(rows, key=lambda r: (r["product_number"], r["program_name"])):
         key = (
             r["product_number"],
@@ -13368,20 +13408,12 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
         for slug in slugs_for.get(key, []):
             bucket = by_slug.setdefault(slug, {"assessments": [], "reports": []})
             if r["kind"] == "assessment":
-                bucket["assessments"].append({
-                    "assessment_type": r["assessment_type"],
-                    "common_name": r["common_name"],
-                    "description": r["description"],
-                    "gao_program": r["program_name"],
-                    "pdf_page": int(r["pdf_page"] or 0),
-                    "pdf_url": r["source_pdf_url"],
-                    "product_number": r["product_number"],
-                    "released": r["released"],
-                    "report_page": int(r["report_page"] or 0),
-                    "report_title": r["report_title"],
-                    "report_url": r["report_url"],
-                    "service": r["service"],
-                })
+                bucket["assessments"].append(_assessment_item(r, None))
+                for older in predecessor_chain(r, rows):
+                    bucket["assessments"].append(
+                        _assessment_item(older, r["product_number"])
+                    )
+                    inherited += 1
             else:
                 bucket["reports"].append({
                     "gao_program": r["program_name"],
@@ -13405,6 +13437,8 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
         "assessments_ingested": sum(
             1 for r in rows if r["kind"] == "assessment"
         ),
+        "editions_ingested": len(editions),
+        "inherited_items": inherited,
         "pages_with_findings": len(by_slug),
         "precision_pct": round(
             100.0 * accepted / (accepted + rejected), 1
@@ -13417,7 +13451,8 @@ def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
     }
     print(
         f"gao_program_findings: {len(by_slug)} program page(s) carry "
-        f"{n_items} ratified GAO item(s)"
+        f"{n_items} ratified GAO item(s), {inherited} inherited from an "
+        f"earlier edition; {len(editions)} edition(s)"
     )
     _write_json(json_dir / "gao_program_findings.json", payload)
 

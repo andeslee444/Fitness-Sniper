@@ -1,0 +1,34 @@
+MDAP Lead Component: Air Force Common Name: B-52 RMP
+B-52 Radar Modernization Program (B-52 RMP)
+The Air Force’s B-52 RMP plans to replace the current APQ-166 radar
+on all 76 B-52H aircraft with a modern off-the-shelf Active
+Electronically Scanned Array radar. The new radar is expected to
+provide improved functionality and reliability to support both nuclear
+and conventional B-52H missions while allowing for mission-essential
+aircraft navigation and weather avoidance. The Air Force plans for
+continued B-52H operations through the year 2050.
+Source: U. S. Air Force. | GAO-23-106059
+Program Performance fiscal year 2023 dollars in millions
+Total quantities comprise two development quantities and 74 procurement quantities.
+aGAO-22-105230
+Software Development as of January 2023 Attainment of Product Knowledge as of January 2023
+Development
+Resources and requirements match Current Status
+Start
+Demonstrate all critical technologies in a relevant environment NA NA
+Demonstrate all critical technologies in a realistic environment NA NA
+Complete a system-level preliminary design review ● ●
+Product design is stable Design Review
+Release at least 90 percent of design drawings ● ●
+Test a system-level integrated prototype ○ ○
+Manufacturing processes are mature Production Start
+Demonstrate critical processes on a pilot production line NA NA
+Program Essentials Test a production-representative prototype
+NA NA
+in its intended environment
+Prime contractor: Boeing
+● Knowledge attained ○ Knowledge not attained … Information not available NA - Not applicable
+Contract type: CPIF
+We did not assess B-52 RMP critical technologies because the program office reported that the system does not have
+any. We also did not assess manufacturing maturity because the program has yet to reach production start.
+Page 77 U.S. Government Accountability Office GAO-23-106059 Weapon Systems Annual Assessment

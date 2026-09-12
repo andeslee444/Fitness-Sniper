@@ -1,0 +1,29 @@
+MDAP Lead Component: Air Force Common Name: B-52 CERP
+B-52 Commercial Engine Replacement Program (B-52 CERP)
+The B-52 CERP plans to support nuclear and conventional operations by
+replacing the aircraft’s engine with military-configured commercial
+engines. Along with the new engines, the B-52 CERP will replace associated
+subsystems, such as engine struts, the electrical power generation system,
+and cockpit displays for the B-52H fleet. In December 2023, B-52 CERP
+transitioned from the MTA pathway to the MCA pathway. The transition
+from the former effort, known as the B-52 CERP rapid virtual prototype,
+occurred prior to the start of system development.
+Source: U. S. Air Force. | GAO-24-106831
+Program Performance fiscal year 2024 dollars in millions
+aGAO-23-106059.
+Software Development as of January 2024 Attainment of Product Knowledge as of January 2024
+Plan for leading product development practices
+We have ongoing work to refine our leading product development practices associated with iterative
+development. We plan to use this space in the future to assess program implementation of leading
+practices, including those programs transitioning from the middle tier of acquisition to major capability
+acquisition pathway. These leading practices criteria include plans to use tools and approaches that
+refine requirements into a minimum viable product (MVP) with users through iterative cycles of
+development, as depicted in the figure below. The MVP is the initial set of warfighting capabilities
+suitable to be fielded in an operational environment that provides value to the warfighter in a rapid
+timeline.
+The program reported that evaluation of the software by end
+users is expected to begin in August 2024.
+Program Essentials
+Prime contractor: Boeing; Rolls Royce
+Contract type: CPIF; FFP
+Page 69 U.S. Government Accountability Office GAO-24-106831 Weapon Systems Annual Assessment
