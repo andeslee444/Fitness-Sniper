@@ -269,8 +269,15 @@ const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[TBMK]?/g;
  * word" pair with its space intact. 89,766 twins measured 2026-09-10 on the
  * main checkout's 8,368-page build BEFORE the lda-filing / data-program-name
  * exemptions existed; the floor 40,000 is set from that pre-exemption figure
- * with headroom. RESTAMP with the first post-#106 build's count (the
- * controller's chain) — re-derive, never lower.
+ * with headroom.
+ * RESTAMPED 2026-09-11 (chain B) with the first post-#106 build's count, as
+ * that sentence required: 1,171,136 text runs scanned on an 8,366-page build,
+ * 88,408 twins intact, 0 glued. The count moved 1,358 (1.5%) across BOTH the
+ * new exemptions and a month of corpus movement between the two builds — the
+ * two are not separated here, and either way it is nowhere near the
+ * page-swallowing collapse this floor exists to catch. The
+ * floor stays at 40,000 — the same ~45% of the measured count it was derived
+ * at, and a re-derivation, never a lowering.
  * Below this the scan has stopped reading rendered prose — an exemption that
  * swallowed the page, a parser change — and would report "0 glued" over
  * nothing. RE-MEASURE if the corpus genuinely halves; do not lower it to fit.

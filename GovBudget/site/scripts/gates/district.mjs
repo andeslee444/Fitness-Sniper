@@ -350,6 +350,9 @@ function readDistrictSidecars() {
 // silent collapse is a failure and ordinary corpus movement is not.
 // DO NOT LOWER THEM TO FIT A BUILD — if the corpus legitimately shrinks, the
 // re-measure is a reviewed edit that says so in this comment, dated.
+// RE-MEASURED 2026-09-11 (chain B) on the first export carrying the by-year
+// sidecars: 153 districts and 924 rows, reproducing the 2026-09-10 figures
+// exactly (67 of the 153 carry an FY2026 row). Floors unchanged at ~85%.
 const MIN_BY_YEAR_DISTRICTS = 130;
 const MIN_BY_YEAR_ROWS = 800;
 const TOL_BY_YEAR = 0.01;

@@ -363,6 +363,13 @@ export function destinationHhiBadge(destRoot) {
  * the fix round's mart change, so the controller re-measures this at the
  * first full build.
  *
+ * RE-MEASURED 2026-09-11 (chain B) on that first full build — dbt build →
+ * export-site → next build, the whole chain — and it REPRODUCES EXACTLY: 75
+ * concentration_shift cards on /feed/, 21 of them reaching a destination that
+ * publishes a band, 54 reaching one that withholds it and says so. The floor
+ * stays at 21 because the measurement did; it is not raised past what a build
+ * actually showed.
+ *
  * NEVER LOWER THIS. Raise it when a build measures more, the same rule
  * _MIN_HIGH_ONLY_ROWS carries in src/govbudget/verify_phase3.py. A number
  * that moves down to fit a run is not a floor.
@@ -1308,7 +1315,12 @@ function runMagnitudeOrderLeg(errors, notes, sections) {
 /** Non-vacuity floor: at least this many rendered sections must be truncated
  *  (i.e. "Show all" has something to fetch). Measured 2026-09-04 export: TWO
  *  (yoy_swing 99 > 75, concentration_shift 908 > 75). If the corpus shrinks
- *  so nothing truncates, re-measure and say so here; do not lower it to fit. */
+ *  so nothing truncates, re-measure and say so here; do not lower it to fit.
+ *  RE-MEASURED 2026-09-11 (chain B) on the re-exported corpus: still TWO of
+ *  four sidecars truncated (yoy_swing 99 > 75 with 24 hidden,
+ *  concentration_shift 908 > 75 with 833 hidden; new_entrant 25 and
+ *  request_vs_actuals_gap 15 fit whole). Floor unchanged at 1 — it sits below
+ *  the measurement on purpose, so ordinary corpus movement is not a failure. */
 const MIN_TRUNCATED_SECTIONS = 1;
 
 /**

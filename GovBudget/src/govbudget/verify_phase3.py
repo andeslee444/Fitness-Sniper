@@ -103,6 +103,9 @@ _HHI_CEILING = 10_000.0 + 1e-6
 # zero or negative high-confidence dollars and 7 more rested on a single
 # positive-dollar family). Never lower this to fit a red run: a drop means
 # the high basis moved, which is the thing to investigate.
+# RE-MEASURED 2026-09-11 (chain B) on the rebuilt lake: still 37 of 444 rows
+# publish a high-only index, so the floor stays at 37 — raised only by a build
+# that measures more, and this one measured the same.
 _MIN_HIGH_ONLY_ROWS = 37
 
 

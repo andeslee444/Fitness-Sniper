@@ -942,7 +942,10 @@ const MIN_STATIC_FETCH_TARGETS = 4;
 /** Non-vacuity floor for the directory-templated scan (measured 2026-09-05
  *  against site/src: TWO — /json-lite/program_details/ from
  *  program-awards.tsx + program-mentions.tsx, /json/feed-sections/ from
- *  feed-section-expand.tsx). Do not lower it to fit; re-measure. */
+ *  feed-section-expand.tsx). Do not lower it to fit; re-measure.
+ *  RE-MEASURED 2026-09-11 (chain B) against a real build: both directories
+ *  ship and resolve — the leg reports "plus 2 directory-templated target(s)
+ *  (floor 2)" beside its 4 static targets. Floor unchanged. */
 const MIN_TEMPLATED_FETCH_DIRS = 2;
 
 /** Exported for scripts/gates/__tests__/fetch-targets.test.mjs, which needs

@@ -363,7 +363,19 @@ export const PAGE_WEIGHT_BUDGET = [
   // the page whose job is to disclose method; ~6% convention over the
   // expansion build's measure.
   // Re-measured 2026-09-03 (announcement + subaward evidence-path paragraphs).
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "150,339 / 41,862" },
+  // RE-MEASURED 2026-09-11 (chain B — the first full build after Tasks 7, 6c
+  // and 11). CEILING UNCHANGED, AND THE PAGE IS NOW OVER IT: 154,527 / 43,042,
+  // which is 542 gzip bytes past the 42,500 ceiling (raw still has 473 to
+  // spare). The page gained 4,188 raw / 1,180 gzip since the 2026-09-03
+  // measurement. Tasks 7 and 6c each added §4 prose and predicted roughly
+  // +266 raw between them, so MOST of this growth is something else — the
+  // corpus counts this page states moved too, and no one has attributed the
+  // remainder; do not read the two task numbers as an account of it. This
+  // file's rule stands either way: the ceiling does NOT move to fit the page.
+  // The trim (§4 / the flow clause) is the owner's call; this string records
+  // what the page actually weighs so nobody reads 638 bytes of headroom that
+  // do not exist.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "154,527 / 43,042" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -403,7 +415,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // So the ceiling moves, on the breach this change caused, restored to ~6%
   // against the current measurement (101,500 is 5.99% over raw, 18,750 is
   // 5.97% over gzip) rather than to the 0.03% it had drifted to.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "96,898 / 18,105" },
+  // RE-MEASURED 2026-09-11 (chain B). CEILINGS UNCHANGED and the page is
+  // inside them: 98,581 / 18,320, 430 gzip bytes of headroom — up 1,683 raw /
+  // 215 gzip since 2026-09-03, unattributed. Nothing trimmed, nothing raised.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "98,581 / 18,320" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
@@ -432,15 +447,23 @@ export const PAGE_WEIGHT_BUDGET = [
   // entry until the controller re-measures against a build that actually
   // carries the table and rewrites the string in the normal form. That
   // re-measure is a required step of this change, not an optional one.
+  // RE-MEASURED 2026-09-11 (chain B) against the first build that actually
+  // carries the by-year table — the required step named above, now done.
+  // /district/VA-11/ weighs 145,449 / 18,356. The gzip estimate HELD (1,644
+  // bytes to spare); the RAW estimate did NOT — the page is 5,449 bytes over
+  // the 140,000 that was guessed at +40%, because the table is ten rows of
+  // cited, chip-suppressed figures and their derived citations, which costs
+  // far more raw than compressed. BOTH CEILINGS ARE LEFT WHERE THEY ARE: a
+  // raise is argued in the same breath as the change that needs it, and that
+  // argument — raise raw to ~6% headroom over a real measurement, or trim the
+  // table — is the owner's to make, not a chain's. The string below is now in
+  // the "raw / gzip" shape the annotation-drift leg parses.
   {
     label: "/district/*/ (heaviest)",
     dir: "district",
     maxRaw: 140_000,
     maxGzip: 20_000,
-    measured:
-      "baseline /district/VA-11/ 98,461 raw / 14,109 gzip on the 2026-09-10 " +
-      "live build, BEFORE the by-year table — RE-MEASURE after the first build " +
-      "carrying it and rewrite this string as \"raw / gzip\"",
+    measured: "145,449 / 18,356 (/district/VA-11/)",
   },
   // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
   // needed it, per this file's own rule -- not pre-emptively. Two changes
