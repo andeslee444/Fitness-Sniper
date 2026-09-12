@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-3010-SCN",
+ "batch_id": "msgbatch_01QRJgQQ7y61dfqokrAPmWi2",
+ "collected_at": "2026-09-12T07:33:33.051555+00:00",
+ "message": {
+  "id": "msg_011CeyA3eqJABT4ABJx7ABZZ",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"LPD Flight II is a shipbuilding program that funds construction of San Antonio-class amphibious transport dock ships, financed through the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"cbefae17cc3ad571\"}},{\"text\":\"The LPD 17 Flight II is expected to functionally replace LSD-41 Class and LSD-49 Class ships for the embark, transport, control, insertion, sustainment, and extraction of Marine Air-Ground Task Force elements by helicopters, landing craft, and amphibious vehicles.\",\"citation\":{\"fact_id\":\"4ec001e5c2b0f7d4\"}},{\"text\":\"Under a signed Acquisition Decision Memorandum, LPD 17 Flight II meets the Capabilities Development Document for LX(R) and subsumes all previous LX(R) efforts; the name was changed from 'Amphibious Ship Replacement LX(R)' to 'LPD 17 San Antonio Class Amphibious Transport Dock FLT II,' with LPD 30 as the first ship of the class.\",\"citation\":{\"fact_id\":\"4ec001e5c2b0f7d4\"}},{\"text\":\"The FY 2026 request of $2.6 billion (shown as 2,600,000 in USD thousands) funds a total quantity of one ship, entirely through mandatory (reconciliation) funding rather than discretionary funding.\",\"citation\":{\"fact_id\":\"bc9f5925ce19c0f4\"}},{\"text\":\"Within that request, $2,129,963 thousand covers full funding for the FY 2026 ship LPD 34, $195,037 thousand provides incremental funding for the FY 2025 ship LPD 33, and $275,000 thousand pays for Advance Procurement of the future LPD 35.\",\"citation\":{\"fact_id\":\"4ec001e5c2b0f7d4\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's funding jumped sharply, from $500,000 thousand ($500 million) in FY 2024 actuals to a $2,600,000 thousand ($2.6 billion) FY 2026 request — more than a five-fold increase.\",\"citation\":{\"fact_id\":\"3f9a467c9e4a73f6\"}},{\"text\":\"The FY 2026 total request stands at $2,600,000 thousand (about $2.6 billion).\",\"citation\":{\"fact_id\":\"e0361573b0ce7727\"}},{\"text\":\"For FY 2025, the program was enacted at $1,581,121 thousand (about $1.58 billion) in the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"3a86271300eb7ae4\"}},{\"text\":\"The Navy awarded a Multi-Ship Procurement contract in September 2024 for three ships (LPD 33, 34, and 35); the four-ship agreement was awarded simultaneously with LHA 10 and included Advance Procurement to acquire Long Lead Time Material plus full funding.\",\"citation\":{\"fact_id\":\"4ec001e5c2b0f7d4\"}},{\"text\":\"Across all prior years the program totals $5,696.637 million (about $5.7 billion), indicating its cumulative scale before the FY 2026 request.\",\"citation\":{\"fact_id\":\"909d46bbe1b2df45\"}}]},\"players\":{\"claims\":[{\"text\":\"Huntington Ingalls Incorporated is a recipient linked to this budget line through contract records.\",\"citation\":{\"fact_id\":\"d72c23e8495ab363\"}},{\"text\":\"Huntington Ingalls Incorporated appears on additional contract records tied to this program.\",\"citation\":{\"fact_id\":\"d2845e3890db051b\"}},{\"text\":\"Huntington Ingalls Incorporated also appears on a further contract record linked to this line.\",\"citation\":{\"fact_id\":\"b081a16eac1edb57\"}},{\"text\":\"BAE Systems Maritime Solutions San Diego Inc. is a recipient linked to this budget line through contract records.\",\"citation\":{\"fact_id\":\"ff6ed13f3a1678d9\"}},{\"text\":\"Raytheon Company is a recipient linked to this budget line through contract records.\",\"citation\":{\"fact_id\":\"c54d075aeed578f1\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 2750,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 2750,
+   "cache_read_input_tokens": 0,
+   "inference_geo": "global",
+   "input_tokens": 4838,
+   "output_tokens": 1463,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}
