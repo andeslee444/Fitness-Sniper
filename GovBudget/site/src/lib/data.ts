@@ -2802,6 +2802,9 @@ export interface GaoCrosswalkStats {
   rejected: number;
   related_ingested: number;
   rendered_items: number;
+  /** Programs GAO assessed only in an earlier edition, which inheritance
+   *  (backwards, from a ratified current-edition anchor) reaches on no page. */
+  unlinked_older_programs: number;
 }
 
 export interface GaoEditionSource {
@@ -2817,6 +2820,9 @@ interface GaoProgramFindingsFile {
   source: GaoEditionSource[] | null;
   by_slug: Record<string, GaoProgramFindings>;
   stats: GaoCrosswalkStats | null;
+  /** gao_programs._SERVICE_FAMILY: GAO's service label -> book family. Read
+   *  by gate 21 leg h8 so the map has one source, not a mirror. */
+  service_families: Record<string, string>;
 }
 
 let _gaoProgramFindings: GaoProgramFindingsFile | null | undefined;

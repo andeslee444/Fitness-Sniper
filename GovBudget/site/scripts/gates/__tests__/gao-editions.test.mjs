@@ -16,7 +16,10 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { checkGaoEditionItems } from "../program-skeleton.mjs";
+import {
+  checkGaoEditionItems,
+  checkGaoInheritedCount,
+} from "../program-skeleton.mjs";
 
 const EDITIONS = new Map([
   ["GAO-25-107569", 2025],
@@ -24,6 +27,17 @@ const EDITIONS = new Map([
   ["GAO-23-106059", 2023],
 ]);
 const RATIFIED = new Set(["GAO-25-107569 0101125F"]);
+// What the exporter writes into gao_program_findings.json from
+// gao_programs._SERVICE_FAMILY — the gate no longer keeps its own copy.
+const FAMILIES = new Map([
+  ["Air Force", "F"],
+  ["Space Force", "F"],
+  ["Army", "A"],
+  ["Navy", "N"],
+  ["Marine Corps", "N"],
+  ["Joint", "J"],
+  ["DOD", "J"],
+]);
 
 const sentence = (year) =>
   `GAO assessed LGM-35A Sentinel in its June ${year} Weapon Systems Annual ` +
@@ -55,6 +69,7 @@ const run = (items, ratified = RATIFIED) =>
     items,
     ratified,
     editionYearByProduct: EDITIONS,
+    serviceFamilies: FAMILIES,
   });
 
 describe("gate 21 leg h8 — editions", () => {
@@ -142,5 +157,38 @@ describe("gate 21 leg h8 — editions", () => {
     expect(
       run([{ kind: "report", product: "GAO-24-106909", program: "F-35", text: "" }]),
     ).toEqual([]);
+  });
+
+  it("reads the family map from the sidecar, so a label it omits is its own family", () => {
+    // The divergence this replaces: the gate's hand-copied map lacked DOD, so
+    // the F-35's two labels read as two programs. With the map coming from
+    // gao_programs, a label the exporter did not send cannot silently pass.
+    const errs = checkGaoEditionItems({
+      slug: "0101125F",
+      items: [item({ service: "Joint" }), prior({ service: "DOD" })],
+      ratified: RATIFIED,
+      editionYearByProduct: EDITIONS,
+      serviceFamilies: new Map([["Joint", "J"]]),
+    });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toMatch(/h8.*same program/);
+  });
+});
+
+describe("gate 21 leg h8 — the inherited items actually render", () => {
+  it("passes when the pages render every inherited item the sidecar counts", () => {
+    expect(checkGaoInheritedCount({ rendered: 70, expected: 70 })).toEqual([]);
+  });
+
+  it("fails when the priors stop rendering while the sidecar still counts them", () => {
+    const errs = checkGaoInheritedCount({ rendered: 0, expected: 70 });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toMatch(/h8.*70 inherited.*render 0/);
+  });
+
+  it("fails a sidecar with no inherited_items rather than passing vacuously", () => {
+    const errs = checkGaoInheritedCount({ rendered: 0, expected: NaN });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toMatch(/h8.*no.*inherited_items/);
   });
 });

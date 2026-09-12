@@ -1875,6 +1875,10 @@ export function runNarrativeSuccessorLeg({
 //       service family), and is NEWER — inheritance never flows forward and
 //       never crosses a rename or a service. Inherited items are exempt from
 //       h5 because h8 binds them to an anchor that already passed it.
+//       Finally the DELIVERABLE is bound both ways: the number of inherited
+//       items the pages render equals stats.inherited_items in the sidecar —
+//       the number /methodology/ prints — so priors that stop rendering fail
+//       the build instead of leaving that sentence claiming them.
 //
 // Non-vacuity is structural rather than a pinned literal: the leg fails if
 // the ratified set is empty, and the population it checks IS the ratified
@@ -1932,23 +1936,26 @@ function readCsvRows(text) {
  * comment above).  Pure: items are `{kind, product, program, common,
  * service, editionYear, inheritedFrom, text}` read off the DOM by the
  * caller; `ratified` is the "<product> <slug>" set; `editionYearByProduct`
- * maps each ingested WSAA edition to its year.
+ * maps each ingested WSAA edition to its year; `serviceFamilies` is the
+ * sidecar's own `service_families` map.
  */
 export function checkGaoEditionItems({
   slug,
   items,
   ratified,
   editionYearByProduct,
+  serviceFamilies,
 }) {
   const errors = [];
   const key = (s) => gaoTokens(s).join("");
-  // GAO writes the joint-lead label two ways across editions — "Joint" in the
-  // 2025 volume, "DOD" in 2024/2023 (the F-35's) — and they are one family for
-  // inheritance, the same call gao_programs._SERVICE_FAMILY makes. Kept OUT of
-  // GAO_SERVICE_ORGS, which h4 uses to name a real org CODE a page can link to.
-  const editionFamily = { Joint: "J", DOD: "J" };
-  const family = (svc) =>
-    editionFamily[svc] ?? (GAO_SERVICE_ORGS[svc] ?? [svc])[0];
+  // "Same program" needs GAO's service labels collapsed to book families —
+  // "Joint" in the 2025 volume and "DOD" in 2024/2023 name one lead (the
+  // F-35's). That map is gao_programs._SERVICE_FAMILY, emitted into the
+  // sidecar by the exporter and read here rather than copied: the copy drifted
+  // once already. Unknown labels stand for themselves, as _family() does.
+  // Deliberately NOT GAO_SERVICE_ORGS, which h4 uses for a different job —
+  // naming a real org CODE a page can link to.
+  const family = (svc) => serviceFamilies.get(svc) ?? svc;
   const anchors = items.filter(
     (it) => it.kind === "assessment" && !it.inheritedFrom,
   );
@@ -2003,6 +2010,31 @@ export function checkGaoEditionItems({
     }
   }
   return errors;
+}
+
+/**
+ * Leg h8's reverse direction, for the half of the deliverable the ratified
+ * set cannot cover: inherited older editions are by construction NOT ratified
+ * pairs, so h1's reverse leg never iterates them. Without this, every prior
+ * could stop rendering and the build would stay green while /methodology/
+ * went on reporting stats.inherited_items of them.
+ */
+export function checkGaoInheritedCount({ rendered, expected }) {
+  if (!Number.isFinite(expected)) {
+    return [
+      "program-skeleton(h8): gao_program_findings.json stats carries no " +
+        "inherited_items — re-run `oversight gao-programs` and export-site",
+    ];
+  }
+  if (rendered !== expected) {
+    return [
+      `program-skeleton(h8): the sidecar carries ${expected} inherited ` +
+        `older-edition item(s) but the built pages render ${rendered} — ` +
+        `/methodology/ states the sidecar's count, so an edition that stops ` +
+        `rendering makes that sentence false`,
+    ];
+  }
+  return [];
 }
 
 function runGaoProgramLeg({ errors, notes, sidecars }) {
@@ -2060,6 +2092,20 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
     errors.push(
       "program-skeleton(h8): gao_program_findings.json source[] carries no " +
         "edition_year — re-run `oversight gao-programs` and export-site",
+    );
+    return;
+  }
+  // gao_programs._SERVICE_FAMILY, as the exporter wrote it. Empty means a
+  // sidecar from before that map shipped; h8 would then read every service
+  // label as its own family and pass inheritances it must refuse.
+  const serviceFamilies = new Map(
+    Object.entries(side.service_families ?? {}),
+  );
+  if (serviceFamilies.size === 0) {
+    errors.push(
+      "program-skeleton(h8): gao_program_findings.json carries no " +
+        "service_families — re-run export-site so h8 reads the same map " +
+        "gao_programs uses instead of guessing",
     );
     return;
   }
@@ -2250,6 +2296,7 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
       items: pageItems,
       ratified,
       editionYearByProduct,
+      serviceFamilies,
     })) {
       say(badEdition, msg);
     }
@@ -2269,6 +2316,13 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
           `but the built page renders no such item`,
       );
     }
+  }
+
+  for (const msg of checkGaoInheritedCount({
+    rendered: inheritedRendered,
+    expected: Number(side.stats?.inherited_items),
+  })) {
+    errors.push(msg);
   }
 
   for (const [bucket, label] of [

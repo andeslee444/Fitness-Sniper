@@ -13352,10 +13352,24 @@ def _emit_gao_program_findings_sidecar(
     import duckdb as _duckdb
 
     from govbudget.config import ROOT as _REPO_ROOT
-    from govbudget.oversight.gao_programs import predecessor_chain
+    from govbudget.oversight.gao_programs import (
+        current_edition,
+        predecessor_chain,
+        service_families,
+        unlinked_older_programs,
+    )
     from govbudget.oversight.gao_xwalk import load_ratified
 
-    payload = {"source": None, "by_slug": {}, "stats": None}
+    # GAO's service labels -> book family, straight from gao_programs: gate
+    # 21 leg h8 decides "same program" with this map and used to keep its own
+    # copy of it (which drifted).  It is a constant, so it ships even when
+    # there is no parquet to read.
+    payload = {
+        "source": None,
+        "by_slug": {},
+        "service_families": service_families(),
+        "stats": None,
+    }
     pq = _stage_parquet_path(
         duckdb_path, "oversight", "gao_program_assessments.parquet"
     )
@@ -13473,6 +13487,12 @@ def _emit_gao_program_findings_sidecar(
             1 for r in rows if r["kind"] == "related_product"
         ),
         "rendered_items": n_items,
+        # The coverage gap /methodology/ states: programs GAO assessed only in
+        # an earlier volume, which inheritance (backwards, from a ratified
+        # current-edition anchor) can never reach.
+        "unlinked_older_programs": unlinked_older_programs(
+            rows, current_edition().product_number
+        ),
     }
     print(
         f"gao_program_findings: {len(by_slug)} program page(s) carry "
