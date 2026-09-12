@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  getCompaniesWithSamCount,
   getEntitiesTop,
   getEntityFamilyEvents,
   collectCitationsWithInputs,
@@ -39,6 +40,14 @@ export const metadata: Metadata = {
 
 export default function CompaniesPage() {
   const companies = getEntitiesTop();
+
+  // ROADMAP #10: how many company PROFILES carry a cited SAM registration
+  // today. Derived (site_meta counts the sidecars the export actually wrote),
+  // never authored — a 10-requests/day key fills the top 200 over ~20 days, so
+  // this number moves between builds and the sentence must move with it. It
+  // counts REGISTRY families (the 200 profiles), not the merged `rows` below,
+  // so the sentence names its own population instead of borrowing `rows`'.
+  const samCovered = getCompaniesWithSamCount();
 
   // §P1-3: merge the curated corporate families (Raytheon→RTX and friends)
   // and re-rank. The merged figure is the exporter's CITED combined fact.
@@ -137,9 +146,21 @@ export default function CompaniesPage() {
             <>
               {highCount} of these {rows.length} families resolve at high
               confidence and {rows.length - highCount} by name inference — the
-              biggest names on this list are mostly the latter, and promoting
-              them would need a SAM.gov entity extract this build does not
-              have.
+              biggest names on this list are mostly the latter.{" "}
+              {samCovered > 0 ? (
+                <>
+                  This build carries SAM.gov registration records for{" "}
+                  {samCovered} of the {companies.length} registry families
+                  behind this list, shown on their company pages; they promote
+                  no tier, because the registered parent name a tier reads is
+                  itself SAM-sourced.
+                </>
+              ) : (
+                <>
+                  Promoting them would need a SAM.gov entity extract this build
+                  does not have.
+                </>
+              )}
             </>
           ) : (
             <>
@@ -147,7 +168,9 @@ export default function CompaniesPage() {
               <strong>{uniformConfidence}</strong> confidence, so the per-row
               chip is suppressed: a badge that never varies tells you nothing.
               {uniformConfidence === "medium"
-                ? " Promoting the largest families to high confidence would need a SAM.gov entity extract this build does not have."
+                ? samCovered > 0
+                  ? ` This build carries SAM.gov registration records for ${samCovered} of the ${companies.length} registry families behind this list, shown on their company pages; they promote no tier, because the registered parent name a tier reads is itself SAM-sourced.`
+                  : " Promoting the largest families to high confidence would need a SAM.gov entity extract this build does not have."
                 : ""}
             </>
           )}{" "}

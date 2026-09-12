@@ -153,6 +153,15 @@ corrects the name or merely pins the argmax winner, and the build fails if a
 new one appears unreviewed. The registered name stays visible on every company
 page beneath the heading, because that is the string USAspending answers to.
 
+**What a SAM.gov extract can and cannot do.** The registered parent name a
+confidence tier reads is *itself* the SAM.gov registration, so fetching it back
+from SAM returns the same string and upgrades nothing. Where a build has fetched
+a family's SAM record — status, CAGE code, legal business name, business types,
+primary NAICS and expiry — that company's page shows it with its own citation;
+where it has not, the page shows no line rather than a guess. (ROADMAP #10. No
+build has fetched any yet: the extract needs a credential only a SAM.gov account
+holder can mint.)
+
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of
 2026-09-11, 9,587 of the 12,595 links the crosswalk grades high or medium

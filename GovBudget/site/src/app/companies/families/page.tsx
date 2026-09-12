@@ -29,7 +29,8 @@ import { Cite } from "@/components/cite";
  * Everything here is hand-curated and hand-sourced. Nothing is inferred, and
  * the page states the two things it deliberately does not do: it does not
  * guess at names that fail to resolve, and it does not promote confidence
- * tiers (that needs a SAM.gov extract this build does not have).
+ * tiers (ROADMAP #10's SAM.gov extract enriches company pages but regrades
+ * nothing — the registered parent name a tier reads is itself SAM-sourced).
  */
 
 const TITLE = "Company renames & acquisitions";
@@ -190,8 +191,10 @@ export default function CompanyFamiliesPage() {
           <p>
             <strong className="text-foreground">Not in scope:</strong> promoting
             resolution confidence from name-inference to SAM.gov
-            registered-parent. That needs a SAM.gov entity extract this build
-            does not have, so every family on{" "}
+            registered-parent. A SAM.gov registration extract would not do it:
+            the registered parent name a confidence tier reads is itself the
+            SAM registration, so fetching it from SAM returns the same string.
+            Every family on{" "}
             <Link href="/companies/" className="underline hover:text-foreground">
               /companies/
             </Link>{" "}

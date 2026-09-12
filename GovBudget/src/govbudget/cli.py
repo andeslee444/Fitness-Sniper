@@ -1002,18 +1002,35 @@ def cmd_entity_graph(args) -> None:
 
 
 def cmd_verify_phase2(args) -> None:
-    from govbudget.verify_phase2 import entity_gate, geography_gate, golden_gate
+    from govbudget.verify_phase2 import (
+        entity_gate,
+        geography_gate,
+        golden_gate,
+        sam_gate,
+    )
 
     e = entity_gate(config.DUCKDB_PATH)
     g = golden_gate(config.DUCKDB_PATH)
     geo = geography_gate(config.DUCKDB_PATH)
+    sam = sam_gate(config.DUCKDB_PATH)
     print(f"gate e1 entities: {e['resolved']}/{e['top_n']} resolved ({e['resolved_pct']}%)")
     print(f"gate e2 goldens: boeing {g['boeing_ueis']} UEIs one_family={g['boeing_one_family']}"
           f" hii one_family={g['hii_one_family']}")
     print(f"gate e3 geography: {geo['with_district']}/{geo['with_state']}"
           f" ({geo['resolved_pct']}%) state-rows with districts")
+    print(f"gate e4 sam: {sam['with_registration']}/{sam['published']} published"
+          f" families carry a SAM registration; mismatched={sam['mismatched_count']}"
+          f" nameless={sam['nameless_count']}")
+    # ROADMAP #10: a leg that passes by checking nothing says so. Printed, not
+    # swallowed — the vacuous state is the normal one until the owner's key
+    # exists, and a silent green would read as evidence the extract is verified.
+    if sam["note"]:
+        print(f"gate e4 sam: VACUOUS — {sam['note']}")
+    if sam["mismatched"]:
+        print(f"gate e4 sam: stale registrations on {sam['mismatched']}"
+              " — re-run `govbudget sam extract --refresh` for those families")
     ok = (e["resolved_pct"] >= 95.0 and g["boeing_one_family"] and g["hii_one_family"]
-          and geo["resolved_pct"] >= 99.0)
+          and geo["resolved_pct"] >= 99.0 and sam["ok"])
     print("verify-phase2:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
 

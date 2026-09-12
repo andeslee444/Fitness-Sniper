@@ -119,6 +119,11 @@ export default function MethodologyPage() {
   // qualitatively instead of as literals that rot.
   const siteMeta = getSiteMeta();
   const buildChecks = siteMeta.build_checks ?? {};
+  // ROADMAP #10: company profiles carrying a cited SAM.gov registration, counted
+  // at export from the sidecars actually written. 0 until an owner-minted key
+  // runs the bounded extract — which is why §4 states the status from this
+  // number rather than describing an extract the build does not have.
+  const samRegistrations = siteMeta.counts.companies_with_sam ?? 0;
   // ROADMAP #8: a cadence line describes the SOURCE's schedule, and every
   // one of these used to open with the word "Update" at the end of a paragraph
   // whose subject was "we". USAspending publishes monthly and this corpus was
@@ -721,17 +726,15 @@ export default function MethodologyPage() {
                 </h3>
                 <p>
                   <em>High confidence</em> (registry fact): the subsidiaries share
-                  one registered parent UEI in SAM.gov, so the GROUPING is a
-                  registry fact rather than a guess.{" "}
+                  one registered parent UEI in SAM.gov.{" "}
                   <em>Medium confidence</em> (name inference): slightly different
-                  legal-name variants normalize to the same string. Both tiers
-                  appear on screen; the method is always disclosed. Where the
-                  method is uniform across a whole table — as it is on{" "}
+                  legal-name variants normalize to the same string. Where a whole
+                  table is uniform — as on{" "}
                   <Link href="/companies/" className="underline hover:text-foreground">
                     /companies/
                   </Link>
                   , every family of which resolves by name inference — the per-row
-                  chip is suppressed and the method is stated once in the header.
+                  chip is suppressed and the method stated once in the header.
                 </p>
                 <p className="mt-2">
                   <strong>The tier grades the grouping, never the name.</strong> A
@@ -741,6 +744,17 @@ export default function MethodologyPage() {
                   under 15%. Those carry a reviewed label from a curated seed
                   instead, each company page still showing its registered name, and
                   a new one fails the build.
+                  {/* ROADMAP #10: the SAM extract's status, DERIVED — the count
+                      is site_meta.counts.companies_with_sam, so the page states
+                      what this build has instead of promising an extract. Zero
+                      today: the extract is blocked on a credential only an
+                      account holder can mint. The three preceding sentences
+                      were trimmed to pay for this one (−98 raw / −24 gzip
+                      measured on the built page; the 42,500 ceiling is never
+                      raised). */}
+                  {samRegistrations > 0
+                    ? ` ${formatCount(samRegistrations)} of the published families also carry the SAM.gov registration that name is read from, cited on the company page.`
+                    : " No SAM.gov registration record ships yet; that extract needs an account holder\u2019s credential."}
                 </p>
               </div>
               <div>

@@ -55,6 +55,15 @@ export interface SiteMetaCounts {
    * corpus module falls back to counting the sidecar directory.
    */
   program_pages?: number;
+  /**
+   * ROADMAP #10: company profiles carrying a CITED SAM.gov registration,
+   * counted at export from the entity_details sidecars actually written. 0
+   * until the bounded extract runs (it is blocked on an owner-minted key and
+   * fetches 10 registrations/day without a SAM.gov role), which is why
+   * /methodology/ states the extract's status FROM this number instead of
+   * asserting one. Absent on pre-#10 exports — read it as 0.
+   */
+  companies_with_sam?: number;
 }
 
 /**
@@ -1808,11 +1817,41 @@ export interface EntityLinkedProgram {
   title: string;
 }
 
+/**
+ * The SAM.gov Entity Management record for a family's DOMINANT registration
+ * (ROADMAP #10). Present only where the bounded extract has reached the family
+ * AND its derived citation is in the export — a 10-requests/day key covers the
+ * published 200 over ~20 days, so absent is normal, not broken.
+ *
+ * It is enrichment: it never regrades `worst_confidence`. The registered parent
+ * name a tier reads is itself the SAM registration, so reading it back from SAM
+ * returns the same string (10-entity-resolution-spike.md §4).
+ *
+ * It rides on entity_details/{slug}.json rather than entities_top.json because
+ * the latter is read by /companies/, which has ~1,800 bytes of gzip headroom
+ * and never renders this line.
+ */
+export interface EntitySamRegistration {
+  uei: string;
+  legal_business_name: string | null;
+  cage_code: string | null;
+  registration_status: string | null;
+  registration_expiration_date: string | null;
+  primary_naics: string | null;
+  business_types: string | null;
+  retrieved_at: string | null;
+  public_url: string | null;
+  /** Derived citation fact_id; null means do not render the line. */
+  fact_id: string | null;
+}
+
 export interface EntityDetails {
   awards: EntityAwardRow[];
   influence: EntityInfluenceRow[];
   linked_programs: EntityLinkedProgram[];
   mentions: EntityMentionRow[];
+  /** SAM.gov registration of the dominant member; absent until fetched. */
+  sam?: EntitySamRegistration;
 }
 
 const _entityDetails = new Map<string, EntityDetails>();
@@ -3256,6 +3295,18 @@ export function getCompaniesWithAwardsCount(): number {
     }
   }
   return count;
+}
+
+/**
+ * Number of company profiles carrying a cited SAM.gov registration (ROADMAP
+ * #10). ONE derivation, read from site_meta.counts.companies_with_sam, which
+ * the exporter counts from the entity_details sidecars it actually wrote — the
+ * /companies/ sentence and the /methodology/ sentence therefore cannot state
+ * two different numbers. 0 (the state until the owner's key exists) makes both
+ * of them say the extract has not run rather than imply data we do not have.
+ */
+export function getCompaniesWithSamCount(): number {
+  return getSiteMeta().counts.companies_with_sam ?? 0;
 }
 
 /** Number of congressional districts with linked defense dollars. */

@@ -656,6 +656,162 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select count(*) from entity_xwalk where recipient_uei='UEI1'"
     ).fetchone()[0] == 1, "entity_xwalk must have exactly 1 row per UEI (duplicate would double-count)"
 
+    # ROADMAP #10 — the ABSENT half of the SAM extract's two states. make_lake
+    # writes no data/parquet/sam/entities.parquet, which is every machine
+    # today: the key that fills it is the owner's to mint. The mart must still
+    # BUILD (dim_entities is a view and fct_influence refs it, so a hard read
+    # of a missing parquet takes down the whole export, not one column), and
+    # every sam_* column must be NULL rather than invented.
+    assert not (tmp_path / "parquet" / "sam" / "entities.parquet").exists(), (
+        "this case is only meaningful while the fixture lake has NO sam parquet"
+    )
+    sam_cols = [
+        r[0] for r in con.sql("describe dim_entities").fetchall()
+        if r[0].startswith("sam_")
+    ]
+    assert sam_cols == [
+        "sam_uei", "sam_legal_business_name", "sam_cage_code",
+        "sam_registration_status", "sam_registration_expiration_date",
+        "sam_business_types", "sam_primary_naics", "sam_public_url",
+        "sam_source_url", "sam_retrieved_at",
+    ], sam_cols
+    row = con.sql(
+        "select dominant_registration_uei, sam_uei, sam_legal_business_name,"
+        " sam_registration_status, sam_cage_code, sam_primary_naics,"
+        " worst_confidence"
+        " from dim_entities where family_key='ACME PARENT'"
+    ).fetchone()
+    # The dominant member's registration is still derived (it is what the SAM
+    # extract will be keyed on); only the SAM answer is missing.
+    assert row[0] == "PUEI1"
+    assert row[1:6] == (None, None, None, None, None), row
+    assert row[6] == "high", "an absent extract must not touch the tier"
+
+
+def test_dim_entities_tolerates_a_zero_row_sam_parquet(tmp_path):
+    """ROADMAP #10 — the third state, between absent and populated: the parquet
+    EXISTS and holds no rows (`govbudget sam extract --schema-only`, or a run
+    that was refused before it fetched anything). The LEFT JOIN must match
+    nothing and null every sam_* column, not fail and not invent.
+    """
+    from govbudget.sam_entities import write_entities_parquet
+
+    make_lake(tmp_path)
+    (tmp_path / "duckdb").mkdir()
+    out = write_entities_parquet([], tmp_path / "parquet" / "sam")
+    assert out.exists()
+    env = {
+        **os.environ,
+        "GOVBUDGET_DATA": str(tmp_path),
+        "GOVBUDGET_DUCKDB": str(tmp_path / "duckdb" / "test.duckdb"),
+    }
+    result = subprocess.run(
+        ["uv", "run", "dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt",
+         "--select", "+dim_entities"],
+        cwd=ROOT, env=env, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    con = duckdb.connect(str(tmp_path / "duckdb" / "test.duckdb"))
+    try:
+        assert con.sql("select count(*) from dim_entities").fetchone()[0] == 1
+        assert con.sql(
+            "select sam_uei, sam_legal_business_name, sam_registration_status"
+            " from dim_entities where family_key='ACME PARENT'"
+        ).fetchone() == (None, None, None)
+    finally:
+        con.close()
+
+
+def test_dim_entities_carries_the_sam_registration_once_the_extract_has_run(tmp_path):
+    """ROADMAP #10 — the PRESENT half. Same fixture lake, plus one SAM row for
+    the dominant member's registration (PUEI1), written by the extract's OWN
+    writer so the mart is read through the schema the extract produces.
+
+    Scoped to `+dim_entities` (entity_xwalk, dim_entities and their assertions)
+    — the full-lake build above already covers everything downstream, and the
+    only thing this case adds is the join.
+    """
+    from govbudget.sam_entities import write_entities_parquet
+
+    make_lake(tmp_path)
+    (tmp_path / "duckdb").mkdir()
+    write_entities_parquet(
+        [
+            {
+                "sam_uei": "PUEI1",
+                "legal_business_name": "ACME PARENT INCORPORATED",
+                "cage_code": "9Z9Z9",
+                "registration_status": "Active",
+                "registration_expiration_date": "2027-01-31",
+                "business_types": "For Profit Organization; Manufacturer of Goods",
+                "primary_naics": "336411",
+                "public_url": "https://sam.gov/entity/PUEI1",
+                "source_url": "https://api.sam.gov/entity-information/v4/entities?ueiSAM=PUEI1",
+                "retrieved_at": "2026-09-12T00:00:00+00:00",
+                "response_sha256": "0" * 64,
+            },
+            # A registration nothing points at: the LEFT JOIN must ignore it
+            # rather than add a family or duplicate one.
+            {
+                "sam_uei": "UNRELATED0001",
+                "legal_business_name": "SOMEONE ELSE LLC",
+                "cage_code": None,
+                "registration_status": "Expired",
+                "registration_expiration_date": None,
+                "business_types": None,
+                "primary_naics": None,
+                "public_url": "https://sam.gov/entity/UNRELATED0001",
+                "source_url": "https://api.sam.gov/entity-information/v4/entities?ueiSAM=UNRELATED0001",
+                "retrieved_at": "2026-09-12T00:00:00+00:00",
+                "response_sha256": "1" * 64,
+            },
+        ],
+        tmp_path / "parquet" / "sam",
+    )
+    env = {
+        **os.environ,
+        "GOVBUDGET_DATA": str(tmp_path),
+        "GOVBUDGET_DUCKDB": str(tmp_path / "duckdb" / "test.duckdb"),
+    }
+    result = subprocess.run(
+        ["uv", "run", "dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt",
+         "--select", "+dim_entities"],
+        cwd=ROOT, env=env, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    con = duckdb.connect(str(tmp_path / "duckdb" / "test.duckdb"))
+    try:
+        assert con.sql("select count(*) from dim_entities").fetchone()[0] == 1, (
+            "the SAM join must not add or fan out families"
+        )
+        row = con.sql(
+            "select sam_uei, sam_legal_business_name, sam_cage_code,"
+            " sam_registration_status, sam_registration_expiration_date,"
+            " sam_business_types, sam_primary_naics, sam_public_url,"
+            " sam_source_url, sam_retrieved_at, worst_confidence"
+            " from dim_entities where family_key='ACME PARENT'"
+        ).fetchone()
+        assert row[:10] == (
+            "PUEI1",
+            "ACME PARENT INCORPORATED",
+            "9Z9Z9",
+            "Active",
+            "2027-01-31",
+            "For Profit Organization; Manufacturer of Goods",
+            "336411",
+            "https://sam.gov/entity/PUEI1",
+            "https://api.sam.gov/entity-information/v4/entities?ueiSAM=PUEI1",
+            "2026-09-12T00:00:00+00:00",
+        ), row
+        # display_name is still the registered string from the award lake, and
+        # the tier is still the crosswalk's: SAM enriches, it never regrades.
+        assert row[10] == "high"
+        assert con.sql(
+            "select display_name from dim_entities where family_key='ACME PARENT'"
+        ).fetchone()[0] == "ACME PARENT INC"
+    finally:
+        con.close()
+
 
 def test_entity_xwalk_duplicate_uei_would_double_count(tmp_path):
     """Prove that a duplicate recipient_uei in entity_xwalk fans-out obligation totals.

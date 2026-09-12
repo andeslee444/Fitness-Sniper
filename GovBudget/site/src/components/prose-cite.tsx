@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * <ProseCite> — state-A citation for a dollar token INSIDE quoted source
- * text (Phase 5F §2c).
+ * <ProseCite> — state-A citation for a VERBATIM SOURCE TOKEN: originally a
+ * dollar figure inside quoted narrative text (Phase 5F §2c), and since
+ * ROADMAP #10 also a registry value (a SAM.gov registration status) that must
+ * be cited without being marked as an amount.
  *
  * Narrative bodies live in [data-source-text] subtrees, where the
  * render-static a0 contract forbids [data-amount] descendants (computed
@@ -24,7 +26,8 @@ export function ProseCite({
   children,
 }: {
   /** Citation fact_id — the exporter guarantees it resolves (§2c: exact
-   *  canonical match to a fact amount scoped to the same PE). */
+   *  canonical match to a fact amount scoped to the same PE; for a registry
+   *  token, the derived fact minted for that record). */
   factId: string;
   children: React.ReactNode;
 }) {

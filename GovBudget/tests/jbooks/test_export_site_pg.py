@@ -1431,6 +1431,123 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     assert (detail_dir / "lockheed.json").exists(), "re-export dropped a live sidecar"
 
 
+def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
+    """ROADMAP #10: the SAM.gov registration rides on entity_details/{slug}.json,
+    and only where the extract has actually reached the family.
+
+    Both states are asserted in one export pair, because the state that ships
+    TODAY is the empty one: dim_entities carries the sam_* columns from the
+    first build after #10, and every value in them is NULL until an owner-minted
+    key runs `govbudget sam extract`. A sidecar key or a site_meta count that
+    appeared in that state would be the site claiming data it does not have.
+    """
+    from govbudget.export_site import fact_id_derived
+
+    db = tmp_path / "wh.duckdb"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
+    # dim_entities AS THE MART SHIPS IT AFTER #10: sam_* present, all NULL.
+    con.execute(
+        "create table dim_entities (family_key varchar, display_name varchar,"
+        " uei_count bigint, total_obligation double, worst_confidence varchar,"
+        " dominant_registration_uei varchar, sam_uei varchar,"
+        " sam_legal_business_name varchar, sam_cage_code varchar,"
+        " sam_registration_status varchar, sam_registration_expiration_date varchar,"
+        " sam_business_types varchar, sam_primary_naics varchar,"
+        " sam_public_url varchar, sam_source_url varchar, sam_retrieved_at varchar)"
+    )
+    con.execute(
+        "insert into dim_entities values"
+        " ('lockheed','Lockheed Martin',5,50000000.0,'medium','ZFN2JJXBLZT3',"
+        "  null,null,null,null,null,null,null,null,null,null),"
+        " ('boeing','The Boeing Company',3,30000000.0,'high','NU2UC8MX6NK1',"
+        "  null,null,null,null,null,null,null,null,null,null)"
+    )
+    con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
+    con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
+    con.execute(
+        "create table fct_program_concentration (pe_bli varchar,"
+        " hhi_all double, top_family_all varchar, family_count_all bigint, award_count_all bigint, program_dollars_all double,"
+        " hhi_high double, top_family_high varchar, family_count_high bigint, award_count_high bigint, program_dollars_high double)"
+    )
+    con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
+    con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
+    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
+    con.close()
+
+    _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+    build_provenance_pages(pg_dsn)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    fid = fact_id_derived("entity_sam", "lockheed", "registration")
+    detail_dir = site / "json" / "entity_details"
+    lm = json.loads((detail_dir / "lockheed.json").read_text())
+    assert "sam" not in lm, "an un-run extract must put NOTHING on the sidecar"
+    cits = json.loads((site / "json" / "citations.json").read_text())
+    assert fid not in cits, "no rows, no fact — a dangling id fails render-static"
+    meta = json.loads((site / "json" / "site_meta.json").read_text())
+    assert meta["counts"]["companies_with_sam"] == 0
+
+    # ── Now the extract has reached ONE of the two families ──────────────
+    con = duckdb.connect(str(db))
+    con.execute(
+        "update dim_entities set sam_uei='ZFN2JJXBLZT3',"
+        " sam_legal_business_name='LOCKHEED MARTIN CORPORATION',"
+        " sam_cage_code='98897', sam_registration_status='Active',"
+        " sam_registration_expiration_date='2026-05-14',"
+        " sam_business_types='For Profit Organization; Manufacturer of Goods',"
+        " sam_primary_naics='336411',"
+        " sam_public_url='https://sam.gov/entity/ZFN2JJXBLZT3',"
+        " sam_source_url='https://api.sam.gov/entity-information/v4/entities?ueiSAM=ZFN2JJXBLZT3',"
+        " sam_retrieved_at='2026-09-12T00:00:00+00:00'"
+        " where family_key='lockheed'"
+    )
+    con.close()
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    lm = json.loads((detail_dir / "lockheed.json").read_text())
+    assert lm["sam"] == {
+        "uei": "ZFN2JJXBLZT3",
+        "legal_business_name": "LOCKHEED MARTIN CORPORATION",
+        "cage_code": "98897",
+        "registration_status": "Active",
+        "registration_expiration_date": "2026-05-14",
+        "primary_naics": "336411",
+        "business_types": "For Profit Organization; Manufacturer of Goods",
+        "retrieved_at": "2026-09-12T00:00:00+00:00",
+        "public_url": "https://sam.gov/entity/ZFN2JJXBLZT3",
+        "fact_id": fid,
+    }
+    boeing = json.loads((detail_dir / "boeing.json").read_text())
+    assert "sam" not in boeing, "a partial extract publishes only what it has"
+
+    cits = json.loads((site / "json" / "citations.json").read_text())
+    row = cits[fid]
+    assert row["kind"] == "derived"
+    # The panel reads the STATUS, not a dollar figure, and the inputs are the
+    # two URLs (reader page + key-stripped API URL) — rule 5 shape-check.
+    assert row["recorded_value"] == "Active"
+    assert json.loads(row["inputs"]) == [
+        "https://sam.gov/entity/ZFN2JJXBLZT3",
+        "https://api.sam.gov/entity-information/v4/entities?ueiSAM=ZFN2JJXBLZT3",
+    ]
+    assert "does not regrade this family's resolution confidence" in row["formula"]
+    assert "api_key" not in row["formula"] and "api_key" not in row["inputs"]
+
+    meta = json.loads((site / "json" / "site_meta.json").read_text())
+    assert meta["counts"]["companies_with_sam"] == 1
+
+
 def test_agencies_json_schema(pg_dsn, tmp_path):
     """agencies.json has org, program_count, fy2024_total_millions, fy2026_total_thousands."""
     site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)

@@ -1236,7 +1236,11 @@ _DATASET_SCOPES: dict[str, str] = {
     "dim_entities": (
         "One row per contractor entity family, name-normalized across"
         " USAspending/SAM.gov UEI registrations, with its UEI count, total DoD"
-        " obligation and worst match-confidence tier."
+        " obligation and worst match-confidence tier. The sam_* columns carry"
+        " the SAM.gov Entity Management record of the family's dominant"
+        " registration (status, CAGE, legal business name, business types,"
+        " primary NAICS, expiry) where the bounded extract has reached it —"
+        " enrichment, never an input to the confidence tier."
     ),
     "fct_influence": (
         "One row per (contractor family × filing year) of Senate LDA lobbying"
@@ -4339,6 +4343,52 @@ def _build_derived_citation_rows(
                     " join entity_xwalk x on t.recipient_uei=x.recipient_uei"
                     f" where x.family_key='{family_key}'"
                 ),
+            ))
+
+        # ---- SAM.gov registration facts (ROADMAP #10) ----
+        # kind='derived' with URL inputs, deliberately NOT a new citation kind:
+        # _verify_derived rule 5 shape-checks URL-input rows and accepts a
+        # non-numeric recorded_value, exactly as the crosswalk-confidence row
+        # already does, so this adds no row to the Python<->TS citation-kind
+        # mirror. recorded_value is the registration STATUS; retrieved_at is
+        # SAM's own retrieval stamp, not built_at, because the claim is "this
+        # is what SAM said on that day".
+        #
+        # Zero rows until `govbudget sam extract` runs behind the owner's key —
+        # and zero rows must mint zero facts, or /company/ pages would carry a
+        # fact id nothing resolves. The except is for fixture marts with no
+        # sam_* columns, not for a real one (dim_entities always has them after
+        # a build; verify-phase2 leg e4 says so out loud when it does not).
+        try:
+            sam_rows = con.execute(
+                "select family_key, sam_uei, sam_legal_business_name, sam_cage_code,"
+                " sam_registration_status, sam_registration_expiration_date,"
+                " sam_primary_naics, sam_business_types, sam_public_url,"
+                " sam_source_url, sam_retrieved_at from dim_entities"
+                " where sam_uei is not null and sam_uei <> ''"
+            ).fetchall()
+        except Exception:
+            sam_rows = []   # a mart without the sam_* columns (fixture DBs)
+        for (fk, uei, legal, cage, status, expires, naics, btypes,
+             public_url, src_url, retrieved) in sam_rows:
+            if fk not in entity_totals or not status:
+                continue
+            rows.append(_null_derived_row(
+                fact_id_derived("entity_sam", fk, "registration"),
+                "derived", None,
+                (
+                    f"SAM.gov Entity Management registration for UEI {uei} — the"
+                    f" registration of the member holding the most obligations in"
+                    f" family {fk}, i.e. the one this family's registered name is"
+                    f" read from. {legal}; CAGE {cage or 'not recorded'}; status"
+                    f" {status}; expires {expires or 'not recorded'}; primary"
+                    f" NAICS {naics or 'not recorded'}; business types"
+                    f" {btypes or 'not recorded'}. Registry enrichment only: it"
+                    f" does not regrade this family's resolution confidence."
+                ),
+                _json.dumps([u for u in (public_url, src_url) if u]),
+                status,
+                retrieved,
             ))
 
         # ---- Curated corporate-family combined obligations (§P1-3) ----
@@ -10372,6 +10422,33 @@ def _write_all_sidecars(
     # 5. entity_details/{slug}.json  (one file per top-200 entity)       #
     # ------------------------------------------------------------------ #
 
+    # ROADMAP #10 — the SAM.gov registration of each family's dominant member,
+    # absent unless the extract has reached this family AND the derived fact is
+    # in the citation set (cited-or-absent; 10 requests/day behind the owner's
+    # key means partial is the normal state, not an error).
+    #
+    # This rides on the PER-COMPANY sidecar, never on entities_top.json:
+    # /companies/ reads that file and has ~1,800 bytes of gzip headroom, and a
+    # ~350-byte object on 200 entries is ~70KB of payload on a page that never
+    # renders the line.
+    try:
+        sam_by_key = {
+            r[0]: dict(zip(
+                ("uei", "legal_business_name", "cage_code", "registration_status",
+                 "registration_expiration_date", "primary_naics", "business_types",
+                 "retrieved_at", "public_url"), r[1:]))
+            for r in con.execute(
+                "select family_key, sam_uei, sam_legal_business_name, sam_cage_code,"
+                " sam_registration_status, sam_registration_expiration_date,"
+                " sam_primary_naics, sam_business_types, sam_retrieved_at,"
+                " sam_public_url from dim_entities where sam_uei is not null"
+                " and sam_uei <> ''"
+            ).fetchall()
+        }
+    except Exception:
+        sam_by_key = {}   # a mart without the sam_* columns (fixture DBs)
+    sam_sidecars = 0
+
     ent_dir = json_dir / "entity_details"
     ent_dir.mkdir(exist_ok=True)
     written_entity_slugs: set[str] = set()
@@ -10408,6 +10485,12 @@ def _write_all_sidecars(
             "linked_programs": linked,
             "mentions": ent_mentions,
         }
+        _sam = sam_by_key.get(family_key)
+        if _sam:
+            _sam_fid = fact_id_derived("entity_sam", family_key, "registration")
+            if _sam_fid in _cited_fact_ids:
+                obj["sam"] = {**_sam, "fact_id": _sam_fid}
+                sam_sidecars += 1
         _write_json(ent_dir / f"{slug}.json", obj)
         written_entity_slugs.add(slug)
         n_files += 1
@@ -10854,6 +10937,13 @@ def _write_all_sidecars(
         # mistake of that shape available now, because _written_det_names is
         # the set every loop adds to as it writes.
         "program_pages": len(_written_det_names),
+        # ROADMAP #10: how many company profiles carry a CITED SAM.gov
+        # registration in this build — counted from the sidecars actually
+        # written, never authored. /methodology/ states the extract's status
+        # from this number, so an un-run extract (0, the state until the
+        # owner's key exists) makes the page say so rather than imply data it
+        # does not have.
+        "companies_with_sam": sam_sidecars,
     }
 
     # ---- Canonical-TOA hero (PM Sprint 1, §P0-5) -------------------------

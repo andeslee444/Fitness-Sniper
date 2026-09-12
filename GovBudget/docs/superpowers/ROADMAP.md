@@ -1529,18 +1529,44 @@ docs/superpowers/ROADMAP.md`.
     `200 published families, 0 already stored, 200 missing; this run would
     spend 10 of 10 request(s) and 20 run(s) remain`) and `--schema-only`.
 
-    **What is NOT built, and stays OPEN.** The warehouse and reader halves:
-    the `lake.sam_entities` dbt source and the `sam_*` columns on
-    `dim_entities`, `verify_phase2.sam_gate`, the derived citation row and the
-    `entity_details/{slug}.json` payload in `export_site.py`, the
-    `/company/{slug}/` registration line, the three "a SAM.gov entity extract
-    this build does not have" strings on `/companies/` and
-    `/companies/families/`, and the `/methodology/` paragraph. Those are
-    deliberately deferred until rows exist — a mart column and a page line
-    that can only ever be null are not worth a `dbt build` against the shared
-    lake. Until then the site's three strings remain **true as written**:
-    they describe what the BUILD has (zero SAM rows — the extract has never
-    been run against api.sam.gov), not what the repo can run.
+    **What shipped 2026-09-12, round 2 (the warehouse and reader halves), all
+    of it true by construction at ZERO rows.** `lake.sam_entities` (dbt source)
+    + `dim_entities`'s `dominant_registration_uei` and ten `sam_*` columns,
+    LEFT JOINed through the `sam_entities_relation()` macro — which substitutes
+    a typed zero-row relation when the parquet is absent, because DuckDB raises
+    at VIEW-CREATION time on a missing `read_parquet` path (measured on duckdb
+    1.5.3; the brief assumed otherwise) and `fct_influence` refs `dim_entities`,
+    so an absent extract would otherwise take down the whole export. The dbt
+    `unique`/`not_null` assertion on `dim_entities.family_key` is the anti-fan-out
+    guard. `verify_phase2.sam_gate` (CLI leg **e4**) re-derives each published
+    family's dominant registration and fails on a stale one or a nameless one;
+    with no rows it passes **and prints `VACUOUS — …`** naming the un-run
+    extract, because a leg that can pass by checking nothing has to say so.
+    `export_site.py` mints `fact_id_derived("entity_sam", family_key,
+    "registration")` (kind `derived`, URL inputs, `recorded_value` = the
+    registration status) and puts the payload on `entity_details/{slug}.json`,
+    never on `entities_top.json` (`/companies/` reads that file and has ~1,800
+    bytes of gzip headroom); `site_meta.counts.companies_with_sam` counts the
+    sidecars actually written. `SamRegistrationNote` renders the line on
+    `/company/{slug}/` only when the family has a row AND its fact id is in the
+    citation set — cited-or-absent, so today it renders **nothing**. The three
+    "a SAM.gov entity extract this build does not have" strings are now
+    data-conditional on that count (`/companies/`, both branches — at 0 they
+    render the existing true sentence verbatim) or unconditionally true
+    (`/companies/families/`: a registration extract would not promote a tier,
+    because the registered parent name a tier reads is itself the SAM
+    registration). `/methodology/` §4 states the extract's status from
+    `site_meta` in one sentence — today "No SAM.gov registration record ships
+    yet; that extract needs an account holder's credential" — paid for by
+    trimming three redundant clauses in the same passage (−98 raw / −24 gzip,
+    measured on the built page; the 42,500 ceiling was not raised), with the
+    durable claim mirrored into `docs/methodology.md`.
+
+    **What is left, and it is only the run.** No warehouse holds a SAM row and
+    none can until the owner's key exists, so every surface above is in its
+    zero state and every gate passes there. `cmd_build` deliberately does NOT
+    bootstrap a zero-row parquet (the brief's mitigation): the dbt macro makes
+    the missing-file case impossible without writing into the shared lake.
 
     **Owner step — the live run, once `SAM_API_KEY` is in `GovBudget/.env`:**
 

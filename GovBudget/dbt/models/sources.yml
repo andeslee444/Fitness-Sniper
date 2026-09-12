@@ -37,6 +37,10 @@ sources:
       - name: entity_xwalk_src
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/entities/entity_xwalk.parquet')"
+      - name: sam_entities
+        description: "SAM.gov Entity Management registrations for the dominant member of each published company family (ROADMAP #10). One row per ueiSAM; all-varchar. NOT an entity-resolution input: recipient_parent_name IS the SAM registration name, so this enriches a company page and never regrades a confidence tier. Written by `govbudget sam extract`. A zero-row file is valid and normal (the extract runs at 10 requests/day behind an owner-minted key), and so is NO FILE AT ALL: dim_entities reads this through the sam_entities_relation() macro, which substitutes a typed zero-row relation when the parquet is absent, so every sam_* column is NULL rather than the mart being unqueryable."
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/sam/entities.parquet')"
   - name: oversight
     schema: main
     tables:
