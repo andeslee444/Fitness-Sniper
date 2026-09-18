@@ -21,6 +21,7 @@ def sync_archive(
     required_columns: set[str],
     min_free_gb: float,
     toptier_code: str = DOD_TOPTIER_CODE,
+    allow_shrink: bool = False,
 ) -> str:
     """Returns 'loaded' or 'skipped'."""
     agency_id = resolve_agency_id(client, toptier_code)
@@ -34,6 +35,7 @@ def sync_archive(
         zip_path, dataset=type_, fiscal_year=fiscal_year,
         parquet_dir=parquet_dir, raw_dir=raw_dir,
         required_columns=required_columns,
+        allow_shrink=allow_shrink,
     )
     append_record(manifest_path, ManifestRecord(
         dataset=type_, fiscal_year=fiscal_year,

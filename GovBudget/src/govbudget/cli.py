@@ -12,7 +12,7 @@ def _usaspending_client() -> httpx.Client:
     return httpx.Client(base_url=config.USASPENDING_API, timeout=60)
 
 
-def sync_archive_cmd(client, type_, fy) -> str:
+def sync_archive_cmd(client, type_, fy, allow_shrink: bool = False) -> str:
     from govbudget.usaspending.archive_sync import sync_archive
 
     return sync_archive(
@@ -21,6 +21,7 @@ def sync_archive_cmd(client, type_, fy) -> str:
         manifest_path=config.MANIFEST_PATH,
         required_columns=config.REQUIRED_COLUMNS[type_],
         min_free_gb=config.MIN_FREE_GB,
+        allow_shrink=allow_shrink,
     )
 
 
@@ -38,7 +39,10 @@ def cmd_sync_archive(args) -> None:
         for fy in range(args.fy_start, args.fy_end + 1):
             for type_ in types:
                 try:
-                    result = sync_archive_cmd(client, type_, fy)
+                    result = sync_archive_cmd(
+                        client, type_, fy,
+                        allow_shrink=getattr(args, "allow_corpus_shrink", False),
+                    )
                 except Exception as e:
                     failures.append((type_, fy))
                     print(f"{type_} fy{fy}: FAILED ({type(e).__name__}: {e})")
@@ -77,6 +81,7 @@ def cmd_sync_subawards(args) -> None:
             zip_path, dataset="subawards", fiscal_year=args.fy,
             parquet_dir=config.PARQUET_DIR, raw_dir=config.RAW_DIR,
             required_columns=config.REQUIRED_COLUMNS["subawards"],
+            allow_shrink=getattr(args, "allow_corpus_shrink", False),
         )
         append_record(config.MANIFEST_PATH, ManifestRecord(
             dataset="subawards", fiscal_year=args.fy,
@@ -93,6 +98,7 @@ def cmd_sync_fiscaldata(args) -> None:
         out = sync_mts_outlays(
             client, parquet_dir=config.PARQUET_DIR, raw_dir=config.RAW_DIR,
             manifest_path=config.MANIFEST_PATH, fy_start=config.FY_START,
+            allow_shrink=getattr(args, "allow_corpus_shrink", False),
         )
     print(f"fiscaldata: loaded {out}")
 
@@ -2664,17 +2670,31 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    # argparse %-expands help strings at --help time, so a literal percent sign
+    # must be doubled or `--help` dies with "unsupported format character ')'".
+    _SHRINK_HELP = (
+        "Permit a sync whose new data holds materially fewer rows than what is "
+        "already on disk to overwrite it (ROADMAP #8 regression guard; floor "
+        "80%%). Only for a deliberate narrowing."
+    )
+
     a = sub.add_parser("sync-archive", help="DoD award archive zips -> parquet")
     a.add_argument("--type", choices=["contracts", "assistance", "both"], default="both")
     a.add_argument("--fy-start", type=int, default=config.FY_START)
     a.add_argument("--fy-end", type=int, default=config.FY_END)
+    a.add_argument("--allow-corpus-shrink", action="store_true",
+                   dest="allow_corpus_shrink", help=_SHRINK_HELP)
     a.set_defaults(func=cmd_sync_archive)
 
     s = sub.add_parser("sync-subawards", help="DoD subawards (custom download) -> parquet")
     s.add_argument("--fy", type=int, required=True)
+    s.add_argument("--allow-corpus-shrink", action="store_true",
+                   dest="allow_corpus_shrink", help=_SHRINK_HELP)
     s.set_defaults(func=cmd_sync_subawards)
 
     f = sub.add_parser("sync-fiscaldata", help="Treasury MTS outlays -> parquet")
+    f.add_argument("--allow-corpus-shrink", action="store_true",
+                   dest="allow_corpus_shrink", help=_SHRINK_HELP)
     f.set_defaults(func=cmd_sync_fiscaldata)
 
     b = sub.add_parser("build", help="dbt build star schema")
