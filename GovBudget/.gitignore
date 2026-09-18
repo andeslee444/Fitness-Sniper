@@ -12,3 +12,4 @@ logs/
 .env
 data/raw_docs/
 data/site/
+data/refresh/

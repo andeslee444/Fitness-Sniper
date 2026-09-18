@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TEMPLATE — not a loaded job. Substitute __REPO_ROOT__ and copy into
+  ~/Library/LaunchAgents/ yourself; see docs/superpowers/LAUNCH.md Step 11.
+  Quarterly cadence: the 6th of Jan/Apr/Jul/Oct at 03:00 local, a day after the
+  monthly job so the two never START at the same time. This run passes
+  --quarterly, which adds the LDA pull to the same stage graph — so in those
+  four months the whole pipeline runs twice, on the 5th and again on the 6th.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fiscalreceipts.refresh.quarterly</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__REPO_ROOT__/scripts/launch/refresh.sh</string>
+    <string>--quarterly</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO_ROOT__</string>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Month</key><integer>1</integer><key>Day</key><integer>6</integer><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Month</key><integer>4</integer><key>Day</key><integer>6</integer><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Month</key><integer>7</integer><key>Day</key><integer>6</integer><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Month</key><integer>10</integer><key>Day</key><integer>6</integer><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>__REPO_ROOT__/logs/refresh-quarterly.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO_ROOT__/logs/refresh-quarterly.err.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

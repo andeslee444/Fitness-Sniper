@@ -633,6 +633,137 @@ When a domain is chosen:
 
 ---
 
+## Step 11 — Scheduled refresh (ROADMAP #8)
+
+`govbudget refresh` is the whole drill as one command: preflight -> the three
+USAspending/Treasury syncs -> (quarterly) the LDA pull -> the golden-fixture
+parser gate -> `jbooks export-facts` -> `build` -> `export-site` -> `npm run
+build` -> `npm run verify` -> `scripts/launch/deploy.sh`. It stops at the first
+failure and tells you the `--from` flag that resumes there.
+
+```bash
+# See the plan without running any of it.
+uv run python -m govbudget refresh --dry-run --yes
+
+# The monthly run, interactively (it will ask you to type 'yes').
+uv run python -m govbudget refresh
+
+# The quarterly run adds the LDA pull.
+uv run python -m govbudget refresh --quarterly
+
+# Resume a run that died in dbt; stop before the deploy.
+uv run python -m govbudget refresh --from build --until site-verify --yes
+```
+
+Stage names, in order: `preflight`, `sync-archive`, `sync-subawards`,
+`sync-fiscaldata`, `influence-pull`, `fixtures`, `export-facts`, `build`,
+`export-site`, `site-build`, `site-verify`, `deploy`.
+
+**What the preflight checks:** >=25 GB free at `data/raw`, Postgres answering on
+`GOVBUDGET_PG_DSN`, the DuckDB lake's write lock free (nothing else holding it),
+an rclone remote named `r2`, and `vercel whoami` succeeding. Every failure is
+reported at once, and nothing runs until they are all clear. The rclone/vercel
+checks are skipped when `--until` stops the run before `deploy`. **`--from`
+skips preflight entirely** (it is a stage, and `--from` slices the graph), so a
+resume trades the early warning for the resume — which is why `refresh.sh`
+never passes `--from`.
+
+**A non-zero exit from any stage is fatal for the run**, and `sync-archive` is
+the stage where that matters most. `cmd_sync_archive` iterates (type x FY) and
+does NOT stop at the first bad year: it catches the exception, prints
+`contracts fy2019: FAILED (PartitionShrinkError: ...)`, CONTINUES to the next
+FY, and exits 1 at the end with a summary line naming every failed pair. So the
+orchestrator's "stage failed" is the whole sweep's verdict, not one year's —
+read the printed `FAILED` lines and the summary to learn which FY refused, then
+decide per FY whether the shrink is real before re-running that FY by hand with
+`--allow-corpus-shrink`.
+
+**The drift record** lands in `data/refresh/last_run.json` (gitignored) and
+carries two alarms, both also printed to stderr as `DRIFT ALARM: ...`:
+
+1. **Cadence age.** Every dataset in `data/manifest.jsonl` is aged against the
+   cadence its source publishes on (`export_site._DECLARED_CADENCE`). A dataset
+   past its window is named.
+2. **Stall.** A sync stage that exits 0 without advancing its dataset's newest
+   `downloaded_at` is named as skipped, not refreshed. `ingest_advanced` in the
+   record says per dataset whether it actually moved.
+
+**What the `fixtures` stage is, and is not.** It runs `tests/influence`,
+`tests/jbooks`, `tests/oversight` and `tests/states` after the pulls and before
+anything derived is rebuilt, so a broken parser stops the run instead of
+propagating into the mart, the site and the CDN. It is **not** an upstream-shape
+alarm: those suites read *committed* fixtures under `tests/fixtures/`, so a
+changed upstream cannot break them. What does fire on a changed upstream is
+already in the syncs — a missing required column raises `MissingColumnsError`, a
+missing `meta.total-pages` raises `ValueError`, and a truncated archive raises
+`PartitionShrinkError`. A **newly added** upstream column is detected by nothing;
+that gap is open under ROADMAP #8. (The suites build their Postgres state in the
+throwaway databases `govbudget_test` / `govbudget_test_root`, with one
+exception: `tests/jbooks/test_era_keys.py` opens a READ-ONLY connection to the
+real `GOVBUDGET_PG_DSN` warehouse for its keyspace-collision guard, and skips
+when it is unavailable.)
+
+**Known limitations — read these before trusting a green run:**
+
+- `sync-subawards` returns early once `data/manifest.jsonl` already holds that
+  dataset + FY, so after the first successful pull for an FY the stage prints
+  `skipped` every month. The stall alarm above is what says so out loud.
+- The refresh does NOT run the budget->award link loaders (Step 0). New awards
+  from a sync therefore carry no new links until an operator runs Step 0 and
+  re-runs `export-facts` -> `build` -> `export-site`.
+- Annual J-book and biennial GAO ingestion are NOT scheduled. `jbooks backfill`
+  needs per-service transport decisions (`--source archive` for Army/AF/Space
+  Force, an operator `--source-url` for `ingest-local`) that cannot be made
+  unattended, and launchd cannot express a biennial cadence. Run those by hand;
+  the cadence alarm above is what reminds you.
+- LDA, J-book and GAO ingests write no `manifest.jsonl` records, so gate 24 leg
+  m still reports them UNMETERED and the drift report cannot age them. Open
+  under ROADMAP #8.
+- A crash between the MTS `COPY` and its swap leaves
+  `data/parquet/mts_outlays/mts_table_5.parquet.incoming` on disk. dbt's source
+  glob for that directory is `*.parquet` (`dbt/models/sources.yml:17`), which
+  does not match it, so the leftover is invisible to the build and the next
+  `sync-fiscaldata` overwrites it. There is no sweeper for it —
+  `convert.sweep_incoming_dirs` only clears `fy=*.incoming` *directories*.
+- The preflight's Postgres check connects to `GOVBUDGET_PG_DSN`. The `fixtures`
+  stage creates its throwaway databases through `GOVBUDGET_TEST_PG_DSN`
+  (default `postgresql://localhost/postgres`), which preflight does not check —
+  same server in the normal setup, but not the same DSN.
+
+### Loading the scheduler — the owner does this, never an agent
+
+Two launchd templates ship under `scripts/launch/`. They are templates: nothing
+in this repo installs, loads, or enables a scheduler.
+
+```bash
+cd /path/to/GovBudget
+mkdir -p ~/Library/LaunchAgents
+
+for cadence in monthly quarterly; do
+  sed "s|__REPO_ROOT__|$PWD|g" \
+    "scripts/launch/com.fiscalreceipts.refresh.${cadence}.plist.template" \
+    > "$HOME/Library/LaunchAgents/com.fiscalreceipts.refresh.${cadence}.plist"
+  plutil -lint "$HOME/Library/LaunchAgents/com.fiscalreceipts.refresh.${cadence}.plist"
+  launchctl bootstrap "gui/$(id -u)" \
+    "$HOME/Library/LaunchAgents/com.fiscalreceipts.refresh.${cadence}.plist"
+done
+
+launchctl list | grep fiscalreceipts        # confirm both are loaded
+```
+
+Monthly fires on the 5th at 03:00; quarterly on the 6th of Jan/Apr/Jul/Oct at
+03:00 — so in those four months the pipeline runs twice, on the 5th and again
+on the 6th. Logs land in `logs/refresh-*.log` (gitignored). To stop one:
+
+```bash
+launchctl bootout "gui/$(id -u)/com.fiscalreceipts.refresh.monthly"
+```
+
+The Mac Mini must be awake at 03:00 for these to fire (`pmset repeat wakeorpoweron
+MTWRFSU 02:55:00`, or accept that a sleeping machine runs the job at next wake).
+
+---
+
 ## Backups
 
 ### Raw announcements corpus
@@ -681,4 +812,8 @@ vercel --prod
 export ANTHROPIC_API_KEY=sk-ant-...
 govbudget dossiers submit
 govbudget verify-phase5
+
+# 10. Scheduled refresh (ROADMAP #8)
+uv run python -m govbudget refresh --dry-run --yes    # plan only
+uv run python -m govbudget refresh --quarterly        # full quarterly run
 ```

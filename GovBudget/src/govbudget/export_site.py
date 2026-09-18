@@ -709,6 +709,14 @@ def _build_award_fy_range(con) -> dict | None:
 # every file") with "Update cadence: monthly", and the newest record in the
 # manifest was 81 days old. Every word was true of USAspending and false of
 # this corpus, and no number-vs-citation gate could see it.
+#
+# TWO consumers, one table: this exporter's freshness block and
+# govbudget/refresh.py's drift alarm (ROADMAP #8). Gate 24 leg m is NOT one —
+# it deliberately owns its own cadence-word -> days map
+# (site/scripts/gates/datatruth.mjs:3705) so it checks a rendered page against
+# data/manifest.jsonl rather than checking one mirror against another.
+# Adding a dataset here is still ONE decision in ONE place; the raise below is
+# what keeps it that way.
 _DECLARED_CADENCE: dict[str, str | None] = {
     "assistance": "monthly",
     "contracts": "monthly",

@@ -2674,6 +2674,25 @@ def cmd_evals(args) -> None:
         sys.exit(2)
 
 
+def cmd_refresh(args) -> None:
+    """ROADMAP #8 — unattended end-to-end refresh."""
+    from govbudget import refresh as _refresh
+
+    try:
+        record = _refresh.run_refresh(
+            dry_run=args.dry_run,
+            from_stage=args.from_stage,
+            until_stage=args.until_stage,
+            quarterly=args.quarterly,
+            assume_yes=args.yes,
+        )
+    except (_refresh.RefreshAborted, ValueError) as e:
+        print(f"refresh: {e}", file=sys.stderr)
+        sys.exit(2)
+    if not record["ok"]:
+        sys.exit(1)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -3008,6 +3027,29 @@ def main(argv=None) -> None:
         help="run only the pre-batch assertion (top-50 pe_blis ∈ dim_programs)",
     )
     dos_gate.set_defaults(func=cmd_dossiers)
+
+    from govbudget.refresh import STAGE_NAMES
+
+    rfr = sub.add_parser(
+        "refresh",
+        help="ROADMAP #8: unattended refresh — preflight, syncs, golden-fixture"
+             " parser gate, dbt build, export, site build+verify, deploy",
+    )
+    rfr.add_argument("--dry-run", action="store_true", dest="dry_run",
+                     help="print every stage command; run nothing, write no state")
+    rfr.add_argument("--from", dest="from_stage", default=None, choices=STAGE_NAMES,
+                     metavar="STAGE",
+                     help="start at this stage (resume a failed run; skips "
+                          "preflight unless STAGE is preflight). Stages, in "
+                          "order: " + ", ".join(STAGE_NAMES))
+    rfr.add_argument("--until", dest="until_stage", default=None, choices=STAGE_NAMES,
+                     metavar="STAGE", help="stop after this stage")
+    rfr.add_argument("--quarterly", action="store_true",
+                     help="also run the quarterly-cadence stage (influence pull)")
+    rfr.add_argument("--yes", action="store_true",
+                     help="skip the confirmation prompt. REQUIRED for scheduled "
+                          "runs — launchd gives a job no TTY")
+    rfr.set_defaults(func=cmd_refresh)
 
     args = p.parse_args(argv)
     args.func(args)

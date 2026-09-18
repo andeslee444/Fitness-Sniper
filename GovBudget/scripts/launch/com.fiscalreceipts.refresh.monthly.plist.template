@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TEMPLATE — not a loaded job. Substitute __REPO_ROOT__ and copy into
+  ~/Library/LaunchAgents/ yourself; see docs/superpowers/LAUNCH.md Step 11.
+  Monthly USAspending cadence: the 5th at 03:00 local, chosen to sit a few days
+  after the start of the month rather than on a published USAspending release
+  time (USAspending publishes no fixed day-of-month that this repo verifies).
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fiscalreceipts.refresh.monthly</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__REPO_ROOT__/scripts/launch/refresh.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO_ROOT__</string>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Day</key><integer>5</integer>
+    <key>Hour</key><integer>3</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__REPO_ROOT__/logs/refresh-monthly.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO_ROOT__/logs/refresh-monthly.err.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
