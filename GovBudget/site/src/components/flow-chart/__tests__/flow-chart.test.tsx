@@ -367,4 +367,49 @@ describe("node labels (round-3 judging: plates + value nearest the node)", () =>
     expect(document.querySelector("[data-flow-label-plate]")).toBeNull();
     expect(document.querySelector('[data-node-id="b:c:A"] text')).not.toBeNull();
   });
+
+  it("renders no plate for a zero-size text box", async () => {
+    // @ts-expect-error - jsdom has no getBBox
+    SVGElement.prototype.getBBox = () => ({ x: 514, y: 23, width: 0, height: 0 });
+    renderChart();
+    await waitForChart();
+    expect(document.querySelector("[data-flow-label-plate]")).toBeNull();
+  });
+
+  it("cuts the plate around a DIFFERENT node's magnitude bar", async () => {
+    // A white bite out of a bar reads as a smaller amount, and the bar's
+    // height IS the amount (gate 22 leg h1). The label crosses
+    // b:bridge:crosswalked's bar (x 762..780, y 0..30); the bar is opaque and
+    // painted first, so it covers the gap the plate leaves.
+    // @ts-expect-error - jsdom has no getBBox
+    SVGElement.prototype.getBBox = () => ({ x: 514, y: 23, width: 300, height: 13.2 });
+    renderChart();
+    await waitForChart();
+    const parts = [
+      ...document.querySelectorAll('[data-flow-label-plate="b:c:A"]'),
+    ].map((el) => ({
+      x: Number(el.getAttribute("x")),
+      y: Number(el.getAttribute("y")),
+      w: Number(el.getAttribute("width")),
+      h: Number(el.getAttribute("height")),
+    }));
+    expect(parts.length).toBeGreaterThan(1);
+    for (const p of parts) {
+      const ow = Math.min(p.x + p.w, 780) - Math.max(p.x, 762);
+      const oh = Math.min(p.y + p.h, 30) - Math.max(p.y, 0);
+      expect(ow > 0 && oh > 0).toBe(false);
+    }
+    // …and the cut removes only the bar: plate 512..816 x 22.5..36.7 is
+    // 4,316.8 units², the bite is 18 x 7.5.
+    const area = parts.reduce((n, p) => n + p.w * p.h, 0);
+    expect(area).toBeCloseTo(304 * 14.2 - 18 * 7.5, 6);
+  });
+
+  it("still plates a label that crosses no other node's bar", async () => {
+    withBBox();
+    renderChart();
+    await waitForChart();
+    const parts = document.querySelectorAll('[data-flow-label-plate="b:c:A"]');
+    expect(parts).toHaveLength(1);
+  });
 });

@@ -737,6 +737,41 @@ function nodeFill(node: FlowNode, variant: "budget" | "spend"): string {
 const PLATE_PAD_X = 2;
 const PLATE_PAD_Y = 0.5;
 
+type PlateRect = { x: number; y: number; w: number; h: number };
+
+/**
+ * `rect` minus the union of `holes`, as disjoint rects that cover exactly what
+ * survives. Guillotine split: each hole cuts every current fragment into at
+ * most four.
+ *
+ * MIRROR: scripts/gates/flowdown.mjs's `subtractRects` is the same function —
+ * the gate uses it to ask what of a label box neither its plate nor a bar
+ * covers. Change one, change the other.
+ */
+function subtractRects(rect: PlateRect, holes: PlateRect[]): PlateRect[] {
+  let frags: PlateRect[] = [rect];
+  for (const h of holes) {
+    const next: PlateRect[] = [];
+    for (const f of frags) {
+      const ix0 = Math.max(f.x, h.x);
+      const ix1 = Math.min(f.x + f.w, h.x + h.w);
+      const iy0 = Math.max(f.y, h.y);
+      const iy1 = Math.min(f.y + f.h, h.y + h.h);
+      if (ix0 >= ix1 || iy0 >= iy1) {
+        next.push(f);
+        continue;
+      }
+      if (f.y < iy0) next.push({ x: f.x, y: f.y, w: f.w, h: iy0 - f.y });
+      if (iy1 < f.y + f.h) next.push({ x: f.x, y: iy1, w: f.w, h: f.y + f.h - iy1 });
+      if (f.x < ix0) next.push({ x: f.x, y: iy0, w: ix0 - f.x, h: iy1 - iy0 });
+      if (ix1 < f.x + f.w) next.push({ x: ix1, y: iy0, w: f.x + f.w - ix1, h: iy1 - iy0 });
+    }
+    frags = next;
+    if (frags.length === 0) break;
+  }
+  return frags;
+}
+
 /**
  * One node's inline label: an opaque plate, then the text.
  *
@@ -756,11 +791,20 @@ const PLATE_PAD_Y = 0.5;
  *
  * paint-order:stroke and the halo stay: they keep the glyphs legible over the
  * ribbon the plate does not cover (the halo hugs each glyph, the plate squares
- * off the box).
+ * off the box) — and over the node bars the plate is cut around, where the
+ * halo is all the label has.
  */
-function NodeLabel({ node, units }: { node: FlowNode; units: AmountUnits }) {
+function NodeLabel({
+  node,
+  units,
+  bars,
+}: {
+  node: FlowNode;
+  units: AmountUnits;
+  bars: (PlateRect & { id: string })[];
+}) {
   const ref = useRef<SVGTextElement | null>(null);
-  const [plate, setPlate] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [plate, setPlate] = useState<PlateRect | null>(null);
   const lbl = node.lbl;
   useLayoutEffect(() => {
     const el = ref.current;
@@ -774,9 +818,14 @@ function NodeLabel({ node, units }: { node: FlowNode; units: AmountUnits }) {
     try {
       b = el.getBBox();
     } catch {
+      b = null;
+    }
+    // Both misses CLEAR the plate: a stale box measured on a previous node
+    // would paint a plate that fits nothing.
+    if (!b || b.width <= 0 || b.height <= 0) {
+      setPlate(null);
       return;
     }
-    if (!b || b.width <= 0 || b.height <= 0) return;
     setPlate({
       x: b.x - PLATE_PAD_X,
       y: b.y - PLATE_PAD_Y,
@@ -786,6 +835,14 @@ function NodeLabel({ node, units }: { node: FlowNode; units: AmountUnits }) {
   }, [node.id, node.label, node.value, units, lbl?.x, lbl?.y, lbl?.a]);
 
   if (!lbl) return null;
+  // The plate is cut around every OTHER node's magnitude bar: those bars are
+  // opaque and painted first, so they cover the gap the cut leaves, and a
+  // card-coloured bite out of a bar would read as a smaller amount (the bar's
+  // height IS the value). Measured 2026-09-12 at 1440 before the cut: 18 of 60
+  // plates took a bite, 4,946 units² — and 4,458 of that was the label's own
+  // text box, not the padding, so a smaller plate could not have fixed it.
+  // Gate 22 leg h1 checks plate ∩ other bar = 0.
+  const parts = plate ? subtractRects(plate, bars.filter((b) => b.id !== node.id)) : [];
   const amount = (
     <tspan data-flow-label-value="" className="fill-muted-foreground">
       {displayAmount(node.value, units)}
@@ -793,17 +850,18 @@ function NodeLabel({ node, units }: { node: FlowNode; units: AmountUnits }) {
   );
   return (
     <>
-      {plate && (
+      {parts.map((p, i) => (
         <rect
+          key={`plate-${i}`}
           data-flow-label-plate={node.id}
-          x={plate.x}
-          y={plate.y}
-          width={plate.w}
-          height={plate.h}
-          rx={2}
+          x={p.x}
+          y={p.y}
+          width={p.w}
+          height={p.h}
+          rx={parts.length === 1 ? 2 : 0}
           fill="var(--flow-label-plate)"
         />
-      )}
+      ))}
       <text
         ref={ref}
         x={lbl.x}
@@ -854,6 +912,15 @@ function RiverSvg({
   hideTip,
 }: RiverSvgProps) {
   const columns = levelColumns(nodes, levelLabels);
+  // Every node's magnitude bar, in viewBox units — what a label plate must be
+  // cut around (see NodeLabel).
+  const bars = nodes.map((n) => ({
+    id: n.id,
+    x: n.x0,
+    y: n.y0,
+    w: n.x1 - n.x0,
+    h: Math.max(n.y1 - n.y0, 0),
+  }));
 
   const edgeTip = (e: FlowEdge) => {
     const src = nodes[e.s];
@@ -1129,7 +1196,7 @@ function RiverSvg({
                 zero-collision contract; absent lbl = tooltip-only node). The
                 plate, the halo and the value-first ordering live in
                 <NodeLabel>. */}
-            <NodeLabel node={n} units={units} />
+            <NodeLabel node={n} units={units} bars={bars} />
           </g>
         );
       })}

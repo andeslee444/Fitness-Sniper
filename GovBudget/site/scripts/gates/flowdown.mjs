@@ -79,14 +79,21 @@
  *      rect emitted AFTER them. Neither question is the one the judges asked:
  *      a node bar or a de-obligation hairline painted BEFORE a label still
  *      runs through its figure, and leg (f) is silent by construction.
- *      (h1) asserts every label has an opaque plate that covers it, is painted
- *      before it, and reaches no other label; the SCREENSHOT half then decodes
- *      the rendered pixels inside each label box and requires zero
- *      de-obligation red — the DOM can promise a plate, only pixels can say
- *      nothing shows through it. (h2) re-runs at 390x844 and requires the
- *      value half of a label to be the half nearest its node face and to be on
- *      screen whenever the node bar is. Vacuity fails four ways (no labels, no
- *      plates, no hairline red anywhere, too few nodes visible at 390).
+ *      (h1) asserts every label has an opaque plate that covers it (cut around
+ *      the node bars it crosses, which cover the rest), is painted before it,
+ *      reaches no other label, and takes no bite out of ANOTHER node's
+ *      magnitude bar; the SCREENSHOT half then decodes the rendered pixels
+ *      inside each label box and requires zero de-obligation red — the DOM can
+ *      promise a plate, only pixels can say nothing shows through it, and the
+ *      probe is a backdrop-invariant redness lead (RED_MIN_CHROMA) because the
+ *      hairline paints at opacity 0.55 and never reaches its own token colour.
+ *      The DOM half is re-sampled after the FY switch as leg (f) is; the
+ *      screenshot half is not, because the switch changes the label set and
+ *      not the compositing rule that half probes. (h2) re-runs at 390x844 and
+ *      requires the value half of a label to be the half nearest its node face
+ *      and to be on screen whenever the node bar is. Vacuity fails five ways
+ *      (no labels, no plates, no node bars, no warm red anywhere, fewer than
+ *      MIN_LABELS_WITH_VISIBLE_NODE_390 nodes visible at 390).
  *
  * Export: runFlowdownGate({ baseUrl }) → { pass, errors, notes }
  *         runLineageRibbonLeg() → { errors, notes }   (leg g, standalone)
@@ -104,11 +111,42 @@ import { createRequire } from "module";
 const _require = createRequire(import.meta.url);
 const { PNG } = _require("pngjs");
 
-/** Per-channel SAD tolerance for "this pixel is the de-obligation red".
- *  The plate is opaque, so a crossing hairline is either fully there (SAD 0)
- *  or fully gone; 40 covers antialiasing on the hairline's own edge without
- *  admitting a 4%-opacity tint. */
-const RED_TOL = 40;
+/** How far a pixel's red channel must LEAD its green and blue for the probe to
+ *  call it de-obligation red: `r - max(g, b) >= 40`.
+ *
+ *  WHY A REDNESS LEAD AND NOT A DISTANCE TO ONE COLOUR. `.flow-band` paints at
+ *  `opacity: 0.55` (globals.css:833), so a de-obligation hairline never
+ *  reaches its own token #b91c1c on screen — it renders as a 0.55 blend with
+ *  whatever is behind it (rgb(216,130,130) over white, min SAD 152 from the
+ *  token). The shipped per-channel SAD 40 therefore counted 0 pixels inside a
+ *  label box with the plates STRIPPED as well as with them present: the probe
+ *  could not fail for the defect it exists to catch (2026-09-12 review). The
+ *  lead survives compositing — 0.55 x (185 - 28) = 86 over ANY backdrop — and
+ *  is 0 for the white plate, the halo and every neutral glyph pixel.
+ *
+ *  It is a WARM-RED test, not a #b91c1c test: the not_competed vermillion
+ *  (--flow-class-notcomp #d55e00, lead 119) also clears it, so the "elsewhere"
+ *  count below is dominated by ribbons rather than hairlines. That makes the
+ *  in-label assertion stricter (nothing warm-red may show through a label's
+ *  plate), never laxer. --flow-class-otherfull #cc79a7 (lead 37) does not
+ *  clear it. Measured on this branch at 1440 (2026-09-12): 0 px inside 60
+ *  label boxes with plates, 8,912 px across 17 of them with the plates
+ *  stripped from the live DOM. */
+export const RED_MIN_CHROMA = 40;
+
+/** Leg h2's non-vacuity floor: labels at 390x844 whose node bar is fully
+ *  inside the scroll box. Measured 24 on 2026-09-12 against this branch's
+ *  flow_chart.json. The floor is a guard that the leg still MEASURES
+ *  something, not a quality bar — a genuine drop below it means the 390
+ *  render stopped putting node bars on screen and the leg needs re-basing.
+ *  Never lower this to fit a red run. */
+export const MIN_LABELS_WITH_VISIBLE_NODE_390 = 5;
+
+/** A plate rect may miss a node bar by this much and still count as not
+ *  touching it. Pure float slop: the component subtracts the bars in viewBox
+ *  units and the gate re-reads both rects through the SVG's own scale, so a
+ *  real notch is orders of magnitude larger. */
+const BAR_TOUCH_EPS = 0.05;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -285,43 +323,81 @@ const LABEL_TOL = 1;
  * because the obstacle is painted BEFORE the text. The plate makes the label's
  * own box opaque, which is the only thing that makes "nothing crosses this
  * figure" checkable at all.
+ *
+ * CUT AROUND THE BARS. The plate is NOT a solid rectangle where the label
+ * crosses another node's bar: a card-coloured bite out of a magnitude bar
+ * reads as a smaller amount, and the bar's height is the amount. Those bars
+ * are opaque and painted first, so the label box is still fully backed —
+ * by a plate part or by a bar — which is what the coverage check below
+ * accounts for, and the bar keeps its full height.
  */
-export function platedLabelFindings(labels, plates, tol = LABEL_TOL) {
+export function platedLabelFindings(labels, plates, bars = [], tol = LABEL_TOL) {
   const found = [];
   const byId = new Map();
-  for (const p of plates) byId.set(`${p.river} ${p.id}`, p);
+  for (const p of plates) {
+    const k = `${p.river} ${p.id}`;
+    const list = byId.get(k);
+    if (list) list.push(p);
+    else byId.set(k, [p]);
+  }
+  const asRect = (b) => ({ x: b.left, y: b.top, w: b.right - b.left, h: b.bottom - b.top });
   for (const a of labels) {
-    const p = byId.get(`${a.river} ${a.id}`);
-    if (!p) {
+    const parts = byId.get(`${a.river} ${a.id}`) ?? [];
+    if (parts.length === 0) {
       found.push(
         `leg h1: ${a.river}: label "${a.id}" has no plate — a hairline or a node bar can cross its figure`,
       );
       continue;
     }
-    if (
-      p.left > a.left + tol || p.right < a.right - tol ||
-      p.top > a.top + tol || p.bottom < a.bottom - tol
-    ) {
+    // A label's OWN bar is never an excuse for an unplated gap: the exporter
+    // anchors the text outside it.
+    const otherBars = bars.filter((b) => b.river === a.river && b.id !== a.id);
+    // (a) COVERAGE. The plate is cut around other nodes' bars (R-21a-3), so
+    // the box to account for is the text box minus those bars: whatever is
+    // left must be under this label's own plate parts.
+    const open = subtractRects(asRect(a), [...parts, ...otherBars].map(asRect)).filter(
+      (r) => r.w > tol && r.h > tol,
+    );
+    if (open.length > 0) {
+      const o = open[0];
       found.push(
-        `leg h1: ${a.river}: label "${a.id}"'s plate does not cover it ` +
-          `(plate ${p.left.toFixed(1)}..${p.right.toFixed(1)} x ${p.top.toFixed(1)}..${p.bottom.toFixed(1)}, ` +
-          `label ${a.left.toFixed(1)}..${a.right.toFixed(1)} x ${a.top.toFixed(1)}..${a.bottom.toFixed(1)})`,
+        `leg h1: ${a.river}: label "${a.id}"'s plate does not cover it — ` +
+          `${o.w.toFixed(1)}x${o.h.toFixed(1)}px at ${o.x.toFixed(1)},${o.y.toFixed(1)} of the text box ` +
+          `(${a.left.toFixed(1)}..${a.right.toFixed(1)} x ${a.top.toFixed(1)}..${a.bottom.toFixed(1)}) ` +
+          `sits on neither a plate part nor a node bar`,
       );
     }
-    if (p.paintIndex > a.paintIndex) {
+    if (parts.some((p) => p.paintIndex > a.paintIndex)) {
       found.push(
         `leg h1: ${a.river}: label "${a.id}"'s plate is painted after the text — it would hide the glyphs`,
       );
     }
-    for (const b of labels) {
-      if (b === a || b.river !== a.river) continue;
-      const ow = Math.min(p.right, b.right) - Math.max(p.left, b.left);
-      const oh = Math.min(p.bottom, b.bottom) - Math.max(p.top, b.top);
-      if (ow > tol && oh > tol) {
-        found.push(
-          `leg h1: ${a.river}: label "${a.id}"'s plate covers a neighbouring label "${b.id}" ` +
-            `by ${ow.toFixed(1)}x${oh.toFixed(1)}px — shrink the plate padding, do not move the label`,
-        );
+    for (const p of parts) {
+      for (const b of labels) {
+        if (b === a || b.river !== a.river) continue;
+        const ow = Math.min(p.right, b.right) - Math.max(p.left, b.left);
+        const oh = Math.min(p.bottom, b.bottom) - Math.max(p.top, b.top);
+        if (ow > tol && oh > tol) {
+          found.push(
+            `leg h1: ${a.river}: label "${a.id}"'s plate covers a neighbouring label "${b.id}" ` +
+              `by ${ow.toFixed(1)}x${oh.toFixed(1)}px — shrink the plate padding, do not move the label`,
+          );
+        }
+      }
+      // (b) NO NOTCH. An opaque plate painted OVER another node's magnitude
+      // bar cuts a card-coloured bite out of it, and the bar's height is the
+      // amount. Measured before the clip (2026-09-12, 1440): 18 of 60 plates,
+      // 4,946 px².
+      for (const b of otherBars) {
+        const ow = Math.min(p.right, b.right) - Math.max(p.left, b.left);
+        const oh = Math.min(p.bottom, b.bottom) - Math.max(p.top, b.top);
+        if (ow > BAR_TOUCH_EPS && oh > BAR_TOUCH_EPS) {
+          found.push(
+            `leg h1: ${a.river}: label "${a.id}"'s plate notches node "${b.id}"'s magnitude bar by ` +
+              `${ow.toFixed(1)}x${oh.toFixed(1)}px — clip the plate against the bar; a bite out of a bar ` +
+              `reads as a smaller amount`,
+          );
+        }
       }
     }
   }
@@ -372,11 +448,16 @@ export function valueNearestNodeFindings(rows, tol = 0.5) {
 }
 
 /**
- * Pixels inside `box` whose colour is within `tolerance` (per channel, sum of
- * absolute differences) of `rgb`. The screenshot half of leg (h): the DOM can
- * say a plate exists, only pixels can say nothing shows through it.
+ * Pixels inside `box` that are de-obligation red by the backdrop-invariant
+ * redness lead `r - max(g, b) >= minChroma` (see RED_MIN_CHROMA for why this
+ * and not a distance to the token's own colour). The screenshot half of leg
+ * (h): the DOM can say a plate exists, only pixels can say nothing shows
+ * through it.
+ *
+ * The name stays red-specific because the test now is: this counts pixels
+ * whose red channel leads, not pixels near some caller-supplied colour.
  */
-export function redPixelsInBox(png, box, rgb, tolerance) {
+export function redPixelsInBox(png, box, minChroma = RED_MIN_CHROMA) {
   const x0 = Math.max(0, Math.floor(box.left));
   const x1 = Math.min(png.width, Math.ceil(box.right));
   const y0 = Math.max(0, Math.floor(box.top));
@@ -385,14 +466,44 @@ export function redPixelsInBox(png, box, rgb, tolerance) {
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
       const i = (y * png.width + x) * 4;
-      const d =
-        Math.abs(png.data[i] - rgb[0]) +
-        Math.abs(png.data[i + 1] - rgb[1]) +
-        Math.abs(png.data[i + 2] - rgb[2]);
-      if (d <= tolerance) n++;
+      if (png.data[i] - Math.max(png.data[i + 1], png.data[i + 2]) >= minChroma) n++;
     }
   }
   return n;
+}
+
+/**
+ * `rect` minus the union of `holes`, as disjoint rects ({x, y, w, h}) that
+ * cover exactly what survives. Guillotine split: each hole cuts every current
+ * fragment into at most four.
+ *
+ * MIRROR: flow-chart.tsx's `subtractRects` is the same function — the client
+ * uses it to cut the label plate around other nodes' bars, this gate uses it
+ * to ask what of a label box neither its plate nor a bar covers. Change one,
+ * change the other.
+ */
+export function subtractRects(rect, holes) {
+  let frags = [rect];
+  for (const h of holes) {
+    const next = [];
+    for (const f of frags) {
+      const ix0 = Math.max(f.x, h.x);
+      const ix1 = Math.min(f.x + f.w, h.x + h.w);
+      const iy0 = Math.max(f.y, h.y);
+      const iy1 = Math.min(f.y + f.h, h.y + h.h);
+      if (ix0 >= ix1 || iy0 >= iy1) {
+        next.push(f);
+        continue;
+      }
+      if (f.y < iy0) next.push({ x: f.x, y: f.y, w: f.w, h: iy0 - f.y });
+      if (iy1 < f.y + f.h) next.push({ x: f.x, y: iy1, w: f.w, h: f.y + f.h - iy1 });
+      if (f.x < ix0) next.push({ x: f.x, y: iy0, w: ix0 - f.x, h: iy1 - iy0 });
+      if (ix1 < f.x + f.w) next.push({ x: ix1, y: iy0, w: f.x + f.w - ix1, h: iy1 - iy0 });
+    }
+    frags = next;
+    if (frags.length === 0) break;
+  }
+  return frags;
 }
 
 /**
@@ -1268,11 +1379,11 @@ export async function runFlowdownGate({ baseUrl }) {
         // same element after scrolling it into view. Do not use
         // page.screenshot with a clip: the spend river sits ~2,000px down the
         // document. The context is created with no deviceScaleFactor
-        // (flowdown.mjs:1077), so 1 CSS px = 1 device px and the box
+        // (flowdown.mjs:1182), so 1 CSS px = 1 device px and the box
         // coordinates index the PNG directly. If that context ever gains a
         // scale factor, multiply here.
-        {
-          const geo = await page.evaluate(() => {
+        const collectPlateGeo = () =>
+          page.evaluate(() => {
             const order = new Map();
             for (const svg of document.querySelectorAll('[data-testid="flow-chart"] svg')) {
               let i = 0;
@@ -1294,29 +1405,80 @@ export async function runFlowdownGate({ baseUrl }) {
               const id = g.getAttribute("data-node-id");
               const t = g.querySelector("text");
               if (t && t.getBoundingClientRect().width > 0) labels.push(box(t, id));
-              const p = g.querySelector("[data-flow-label-plate]");
-              if (p) plates.push(box(p, id));
+              // querySelectorAll: one label's plate is emitted as several
+              // rects when it is cut around the node bars it crosses.
+              for (const p of g.querySelectorAll("[data-flow-label-plate]")) plates.push(box(p, id));
             }
-            // the de-obligation red, resolved by the browser
+            // The magnitude bars a plate may not take a bite out of. The
+            // visible fill lives in the [data-node-fill] layer; the node
+            // group's own first <rect> is the x0-3..x1+3 hit target.
+            const bars = [];
+            for (const el of document.querySelectorAll(
+              '[data-testid="flow-chart"] [data-node-fill] rect.flow-node-rect',
+            )) {
+              const owner = el.closest("[data-node-fill]");
+              const b = box(el, owner ? owner.getAttribute("data-node-fill") : "(unowned)");
+              if (b.right > b.left && b.bottom > b.top) bars.push(b);
+            }
+            // the de-obligation red, resolved by the browser.
+            // PARSE TRAP: Chromium already serializes some computed colours on
+            // this site as lab(...) (observed for the plate fill), and an
+            // oklch --flow-negative would make this regex return null. That
+            // fails loudly on the guard below rather than silently counting
+            // nothing — if it ever returns null while hairlines are on screen,
+            // widen the parse; do not delete the guard.
             const probe = document.querySelector("[data-flow-negative]");
             const stroke = probe ? getComputedStyle(probe).stroke : "";
             const m = stroke.match(/(\d+),\s*(\d+),\s*(\d+)/);
-            return { labels, plates, negative: m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null };
+            return { labels, plates, bars, negative: m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null };
           });
 
+        /** The DOM half of h1 on one sample. Leg (f) re-runs after the FY
+         *  switch because the label set changes; the plate is derived from a
+         *  client-side measurement of those labels, so it is re-run too. (The
+         *  screenshot half is not: it costs two full-river PNGs and the FY
+         *  switch changes labels, not the compositing rule it probes.) */
+        const plateFindings = (geo, tag) => {
           if (geo.labels.length === 0) {
-            errors.push("leg h: no rendered flow labels at 1440 — the leg cannot vacuously pass");
-          } else if (geo.plates.length === 0) {
-            errors.push(
-              "leg h1: no [data-flow-label-plate] rendered — every label must sit on an opaque plate",
+            return [`leg h: no rendered flow labels at 1440 (${tag}) — the leg cannot vacuously pass`];
+          }
+          if (geo.plates.length === 0) {
+            return [
+              `leg h1: no [data-flow-label-plate] rendered (${tag}) — every label must sit on an opaque plate`,
+            ];
+          }
+          if (geo.bars.length === 0) {
+            return [
+              `leg h1: no rect.flow-node-rect found (${tag}) — the plate-vs-bar check cannot vacuously pass`,
+            ];
+          }
+          const found = platedLabelFindings(geo.labels, geo.plates, geo.bars);
+          return found.map((f) => `${f} [${tag}]`);
+        };
+
+        {
+          const geo = await collectPlateGeo();
+          const domFound = plateFindings(geo, "initial render");
+          errors.push(...domFound);
+          if (domFound.length === 0) {
+            notes.push(
+              `leg h1: ${geo.labels.length} labels / ${geo.plates.length} plate rect(s) vs ` +
+                `${geo.bars.length} node bars at 1440 — all plated, none notching another node's bar (initial) ✓`,
             );
-          } else {
-            errors.push(...platedLabelFindings(geo.labels, geo.plates));
           }
 
           // ── the screenshot half ──────────────────────────────────────────
+          const negLead = geo.negative
+            ? geo.negative[0] - Math.max(geo.negative[1], geo.negative[2])
+            : 0;
           if (!geo.negative) {
             errors.push("leg h: could not resolve --flow-negative from a rendered hairline — the pixel probe would be vacuous");
+          } else if (negLead < RED_MIN_CHROMA) {
+            errors.push(
+              `leg h1: --flow-negative resolves to rgb(${geo.negative.join(",")}), a red lead of ${negLead} ` +
+                `below RED_MIN_CHROMA ${RED_MIN_CHROMA} — the de-obligation colour moved out of the probe's ` +
+                `reach, so re-base the constant against the new palette; do not drop the check`,
+            );
           } else {
             let redInLabels = 0;
             let redOutside = 0;
@@ -1348,10 +1510,10 @@ export async function runFlowdownGate({ baseUrl }) {
               });
               if (local.boxes.length === 0) continue;
               const img = PNG.sync.read(await svg.screenshot());
-              redOutside += redPixelsInBox(img, { left: 0, top: 0, right: img.width, bottom: img.height }, geo.negative, RED_TOL);
+              redOutside += redPixelsInBox(img, { left: 0, top: 0, right: img.width, bottom: img.height });
               for (const a of local.boxes) {
                 measured++;
-                const n = redPixelsInBox(img, a, geo.negative, RED_TOL);
+                const n = redPixelsInBox(img, a);
                 redInLabels += n;
                 if (n > 0) {
                   errors.push(
@@ -1365,13 +1527,13 @@ export async function runFlowdownGate({ baseUrl }) {
               errors.push("leg h1: no label boxes were sampled in a screenshot — the pixel probe is vacuous");
             } else if (redOutside === 0) {
               errors.push(
-                "leg h1: the pixel probe found NO de-obligation red anywhere in either river — " +
+                "leg h1: the pixel probe found NO warm red anywhere in either river — " +
                   "the probe is broken or the hairlines stopped rendering; it cannot prove a clean label box",
               );
             } else if (redInLabels === 0) {
               notes.push(
                 `leg h1: ${measured} label box(es) screenshot-probed at 1440, 0 de-obligation-red pixels inside ` +
-                  `(${redOutside} elsewhere in the rivers) ✓`,
+                  `(${redOutside} warm-red px elsewhere in the rivers — hairlines and not_competed ribbons) ✓`,
               );
             }
           }
@@ -1417,10 +1579,12 @@ export async function runFlowdownGate({ baseUrl }) {
             );
             if (rows.length === 0) {
               errors.push("leg h2: no labels rendered at 390 — the leg cannot vacuously pass");
-            } else if (withVisibleNode.length < 5) {
+            } else if (withVisibleNode.length < MIN_LABELS_WITH_VISIBLE_NODE_390) {
               errors.push(
-                `leg h2: only ${withVisibleNode.length} label(s) at 390 have their node bar on screen — ` +
-                  `the assertion would be vacuous`,
+                `leg h2: only ${withVisibleNode.length} label(s) at 390 have their node bar on screen ` +
+                  `(floor ${MIN_LABELS_WITH_VISIBLE_NODE_390}, measured 2026-09-12 at 24) — the assertion ` +
+                  `would be vacuous. The 390 render stopped putting node bars on screen: re-base the leg. ` +
+                  `Do not lower the floor.`,
               );
             } else {
               const found = valueNearestNodeFindings(rows);
@@ -1506,6 +1670,20 @@ export async function runFlowdownGate({ baseUrl }) {
               notes.push(
                 `leg f: ${rects.length} rendered labels vs ${fills.length} node fills, ` +
                   `0 bbox collisions and 0 clipped labels (after FY→${targetFy}) ✓`
+              );
+            }
+            // Leg (h1)'s DOM half on the same remount: the plate is derived
+            // from a client measurement of the labels the switch just
+            // replaced, so a plate that fails to re-measure shows up here and
+            // nowhere else.
+            const geo2 = await collectPlateGeo();
+            const found2 = plateFindings(geo2, `after FY→${targetFy} switch`);
+            errors.push(...found2);
+            if (found2.length === 0) {
+              notes.push(
+                `leg h1: ${geo2.labels.length} labels / ${geo2.plates.length} plate rect(s) vs ` +
+                  `${geo2.bars.length} node bars, all plated, none notching another node's bar ` +
+                  `(after FY→${targetFy}) ✓`,
               );
             }
           }
