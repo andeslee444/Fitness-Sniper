@@ -142,6 +142,26 @@
  *      figure stated, NO figure the block does not hold, every unadjudicated
  *      path named, and the passage present iff the block is. See leg o's own
  *      block at the bottom.
+ *  (p) CROSSWALK-COUNT PROVENANCE (PM-S3 leftover, ROADMAP.md:34). Leg (k)
+ *      does this for corpus SIZE. "Crosswalked" is the site's other
+ *      self-describing number and it shipped with two denominators — /flow/
+ *      "384 of 444 crosswalked PEs" beside /district/ "200 of 1,938 programs
+ *      currently crosswalkable" — with nothing saying they were different
+ *      questions (34 of the 200 are not in the 384 at all). (p1) recomputes
+ *      all five declared counts from the shipped artifacts and requires
+ *      /coverage/#crosswalk to publish each one IN THE DERIVED ORDER, slot
+ *      for slot, the way leg (o) binds the adjudication passage; (p2) sweeps
+ *      every page that states a crosswalk ratio and rejects a number that is
+ *      neither a declared crosswalk count, a declared corpus count, nor a
+ *      figure one of the derived site_meta blocks already publishes — those
+ *      are READ, never re-derived here, because leg (n) and leg (o) own
+ *      them; (p3) recomputes the ORGANIZATION MIX of the flow sidecars and
+ *      rejects prose that attributes linkage to one organization while that
+ *      organization holds under half of it — the "DARPA crosswalk" sentences
+ *      survived on /district/ and /methodology/ long after the sidecars
+ *      became 92 Navy / 59 Air Force / 22 Army against 14 DARPA. Vacuity
+ *      fails four ways: no artifact, no built claim page, fewer sidecars
+ *      than the dated floor, fewer swept claims than the dated floor.
  *  (r) DISTRICT BY-YEAR CELLS vs THE LAKE (ROADMAP #6). Gate 9 leg f proves
  *      the by-year rows are INTERNALLY consistent — they sum to the headline
  *      the page renders above them. An exporter that read the wrong mart, or a
@@ -669,6 +689,9 @@ export async function runDataTruthGate() {
 
   // ── leg m: declared cadence vs. measured ingest age (ROADMAP #8) ──────────
   runSourceCadenceLeg(errors, notes);
+
+  // ── leg p: crosswalk-count provenance (PM-S3 leftover) ────────────────────
+  runCrosswalkCountLeg(errors, notes);
 
   // ── leg r: district by-year cells vs the lake (ROADMAP #6) ────────────────
   runDistrictYearLeg(errors, notes);
@@ -2200,6 +2223,332 @@ function runCorpusCountLeg(errors, notes) {
         `) ✓`,
     );
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg p — crosswalk-count provenance (PM-S3 leftover)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Pages that state a crosswalk ratio in their own prose. */
+const CROSSWALK_CLAIM_PAGES = ["/flow/", "/district/", "/coverage/", "/methodology/", "/programs/"];
+
+/**
+ * MIRROR of lib/corpus CROSSWALK_COUNT_IDS — the order /coverage/ renders and
+ * the order (p1) binds. It is self-enforcing: the rendered list IS built from
+ * that constant, so a divergence fails the slot check below by name.
+ */
+const CROSSWALK_COUNT_IDS = [
+  "link-universe",
+  "bridged-request",
+  "high-confidence-links",
+  "district-linkable",
+  "district-linkable-unbridged",
+];
+
+/**
+ * A crosswalk CLAIM is a ratio with a program-or-link noun: "384 of 444
+ * crosswalked PEs", "200 of 1,938 programs", "9,587 of the 12,595 links".
+ *
+ * Noun-anchored, like leg (k2)'s CORPUS_CLAIM_RE, and for the same reason: a
+ * whole-sentence scan cannot work on rendered text, where adjacent elements
+ * concatenate with no space between them. On the 2026-09-12 build the first
+ * "sentence" of /district/ is the entire nav plus the lede, and /coverage/
+ * glues "…what the chart omits." to "Company award linkage32 of 200 profiled
+ * companies…" — a sentence-shaped sweep reads four unrelated figures out of
+ * each and reports them all.
+ *
+ * `(?<![\d,.])` is not decoration: without it the engine finds a word
+ * boundary INSIDE a glued "pages1,936" and matches "936 of 2,562", a number
+ * the page never states.
+ */
+const CROSSWALK_CLAIM_RE = new RegExp(
+  String.raw`(?<![\d,.])\b(\d{1,3}(?:,\d{3})*)\s+of\s+(?:the\s+)?(\d{1,3}(?:,\d{3})*)\s+` +
+    String.raw`(?:crosswalked\s+|published\s+|linked\s+|browsable\s+)?` +
+    String.raw`(?:PEs?|program\s+elements?|programs?|links?)\b`,
+  "gi",
+);
+
+/** A ratio is ABOUT the crosswalk when one of these sits beside it. */
+const CROSSWALK_CUE = /crosswalk|follow-the-dollar|bridge/i;
+
+/** Characters either side of the ratio that the cue may sit in. Measured
+ *  2026-09-18 over the built pages: the nine real claims are cued at 60, 80
+ *  and 120 alike, and nothing else becomes cued at any of the three, so the
+ *  window is not load-bearing at this value. */
+const CROSSWALK_CUE_WINDOW = 80;
+
+/** Non-vacuity floor for the LIVE sweep — passed in as `minClaims`, so the
+ *  pure function stays testable at both settings (measured 2026-09-18: NINE crosswalk
+ *  ratios across /flow/, /district/, /coverage/ and /methodology/). Below
+ *  this the matcher has stopped matching — a noun reword, a notation change —
+ *  and (p2) would pass on an empty set, which is the shape leg (k2)'s own
+ *  claims===0 guard exists for. RE-MEASURE if the pages change; do not lower
+ *  it to fit. */
+const MIN_CROSSWALK_CLAIMS = 6;
+
+/** Non-vacuity floor for the sidecar census (measured 2026-09-18 at 200
+ *  files in data/site/json/flows). (p1)'s district-linkable row and (p3)'s
+ *  whole org mix are counted off that directory; a pruned-but-not-re-emitted
+ *  export would otherwise make both pass on almost nothing. Do not lower. */
+const MIN_FLOW_SIDECARS = 120;
+
+/** Every integer the two derived link blocks publish. READ, never
+ *  re-derived: leg (n) owns link_precision and leg (o) owns
+ *  link_adjudication, and re-deriving either here is how one number acquires
+ *  two sources. (p2) admits these so a /methodology/ sentence that states a
+ *  block's own figure — "9,587 of the 12,595 links the crosswalk grades high
+ *  or medium" — is not reported as a sixth undeclared denominator. */
+function publishedLinkFigures(meta) {
+  const out = [];
+  const walk = (v) => {
+    if (typeof v === "number" && Number.isFinite(v)) out.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(meta?.link_adjudication ?? {});
+  walk(meta?.link_precision ?? {});
+  return out;
+}
+
+/**
+ * (p2) Every number in a crosswalk ratio must be a declared crosswalk count,
+ * a declared corpus count, a figure one of the derived blocks publishes, or
+ * the one complement the pages actually compute. `pages` is [{url, text}].
+ */
+export function crosswalkClaimFindings(
+  pages,
+  declared,
+  corpus,
+  published = [],
+  minClaims = 1,
+) {
+  const allowed = new Set([...Object.values(declared), ...Object.values(corpus), ...published]);
+  // /district/ states "N of M program elements have no district-level
+  // linkage" — M minus the linkable tier, computed in the page from those two
+  // and therefore incapable of rotting on its own.
+  if (
+    typeof corpus["index-rows"] === "number" &&
+    typeof declared["district-linkable"] === "number"
+  ) {
+    allowed.add(corpus["index-rows"] - declared["district-linkable"]);
+  }
+  const found = [];
+  let claims = 0;
+  for (const p of pages) {
+    const text = p.text;
+    for (const m of text.matchAll(CROSSWALK_CLAIM_RE)) {
+      const from = Math.max(0, m.index - CROSSWALK_CUE_WINDOW);
+      const to = m.index + m[0].length + CROSSWALK_CUE_WINDOW;
+      if (!CROSSWALK_CUE.test(text.slice(from, to))) continue;
+      claims++;
+      for (const raw of [m[1], m[2]]) {
+        const n = Number(raw.replace(/,/g, ""));
+        if (allowed.has(n)) continue;
+        found.push(
+          `leg p2 (${p.url}): "${m[0].trim()}" states ${n.toLocaleString("en-US")}, ` +
+            `which is none of the declared crosswalk counts (` +
+            Object.entries(declared).map(([k, v]) => `${k}=${v}`).join(", ") +
+            `), none of the declared corpus counts, and none of the figures ` +
+            `site_meta's link blocks publish. Either it is a literal that has ` +
+            `rotted, or it is a sixth denominator that has to be declared in ` +
+            `lib/corpus getCrosswalkCounts() and explained on /coverage/#crosswalk`,
+        );
+      }
+    }
+  }
+  if (claims < minClaims) {
+    found.push(
+      claims === 0
+        ? `leg p2: ${pages.length} page(s) scanned and not one crosswalk claim ` +
+            `matched — /flow/ and /district/ both state one, so a zero here ` +
+            `means the scan is broken, not that the site went quiet`
+        : `leg p2: ${pages.length} page(s) scanned and only ${claims} crosswalk ` +
+            `claim(s) matched — below the do-not-lower floor of ${minClaims} ` +
+            `measured 2026-09-18 at 9. RE-MEASURE if the pages change; do not ` +
+            `lower it to fit`,
+    );
+  }
+  return found;
+}
+
+/**
+ * (p3) Prose may not hand the crosswalk to one organization while the shipped
+ * sidecars say otherwise. `orgMix` is {org: sidecar count}, recomputed.
+ *
+ * Sentence-shaped on purpose, unlike (p2): the unit here is an assertion
+ * about a name, and glue can only widen the window a name is read in — it
+ * cannot invent the name. The 2026-09-12 build proves the direction: this
+ * finds exactly the three false sentences (the /district/ lede, the detail
+ * page's account-structure explanation, /methodology/'s "concentrated in
+ * DARPA lines") and nothing else across five pages carrying 122 DARPA
+ * mentions between them.
+ */
+export function orgAttributionFindings(pages, orgMix) {
+  const total = Object.values(orgMix).reduce((a, v) => a + v, 0);
+  if (total === 0) {
+    return ["leg p3: no flow sidecars could be tallied — the attribution check would be vacuous"];
+  }
+  const found = [];
+  for (const p of pages) {
+    for (const sentence of p.text.split(/(?<=[.;])\s+/)) {
+      if (!CROSSWALK_CUE.test(sentence) && !/account structure|attribut/i.test(sentence)) continue;
+      for (const [org, n] of Object.entries(orgMix)) {
+        if (org.length < 3) continue;                     // 'N', 'F', 'A' are codes, not prose
+        if (!new RegExp(`\\b${org}\\b`, "i").test(sentence)) continue;
+        if (n * 2 >= total) continue;                      // it really is the majority
+        found.push(
+          `leg p3 (${p.url}): "${sentence.trim().slice(0, 140)}" attributes the crosswalk to ${org}, ` +
+            `which holds ${n} of ${total} flow sidecars. Name the mechanism (an announcement that ` +
+            `names the program, or account plus program tokens), not an organization`,
+        );
+      }
+    }
+  }
+  return found;
+}
+
+function runCrosswalkCountLeg(errors, notes) {
+  // ── recompute the five declared counts from the shipped artifacts ────────
+  const declared = {};
+  const flowsDir = path.join(jsonDir, "flows");
+  const flowPath = path.join(jsonDir, "flow_chart.json");
+  const orgMix = {};
+  if (!fs.existsSync(flowsDir) || !fs.existsSync(flowPath)) {
+    errors.push("leg p: flows/ or flow_chart.json missing — the crosswalk counts cannot be recomputed");
+    return;
+  }
+  const sidecars = fs.readdirSync(flowsDir).filter((f) => f.endsWith(".json"));
+  if (sidecars.length < MIN_FLOW_SIDECARS) {
+    errors.push(
+      `leg p: ${sidecars.length} flow sidecar(s) on disk — below the ` +
+        `do-not-lower floor of ${MIN_FLOW_SIDECARS} measured 2026-09-18 at ` +
+        `200. The district-linkable count and the whole org mix are counted ` +
+        `off this directory. Re-run export-site; do not lower the floor`,
+    );
+  }
+  declared["district-linkable"] = sidecars.length;
+  for (const f of sidecars) {
+    try {
+      const org = JSON.parse(fs.readFileSync(path.join(flowsDir, f), "utf8"))?.header?.org;
+      if (org) orgMix[org] = (orgMix[org] ?? 0) + 1;
+    } catch {
+      /* gate 22 leg (a) reports malformed payloads */
+    }
+  }
+  const bridge = JSON.parse(fs.readFileSync(flowPath, "utf8")).budget.bridge;
+  declared["link-universe"] = bridge.crosswalk_universe_pe_count;
+  declared["bridged-request"] = bridge.crosswalked_pe_count;
+  declared["high-confidence-links"] = bridge.high_confidence_pe_count;
+  const bridged = new Set((bridge.programs ?? []).map((p) => p.pe_bli));
+  declared["district-linkable-unbridged"] = sidecars.filter(
+    (f) => !bridged.has(f.slice(0, -".json".length)),
+  ).length;
+  for (const id of CROSSWALK_COUNT_IDS) {
+    if (typeof declared[id] !== "number") {
+      errors.push(
+        `leg p: "${id}" could not be recomputed from the shipped artifacts — ` +
+          `flow_chart.json's bridge band has changed shape and every check ` +
+          `below would compare against undefined`,
+      );
+      return;
+    }
+  }
+
+  // ── (p1) /coverage/ publishes all five, in the derived order ─────────────
+  //
+  // Slot-bound, the way leg (o) binds the adjudication passage: a row-by-id
+  // lookup passes on a list that renders the right five numbers against the
+  // wrong five sentences, which is the same species of defect as a passage
+  // that permutes its own figures.
+  const covPath = htmlFor("/coverage/");
+  if (!fs.existsSync(covPath)) {
+    errors.push("leg p1: /coverage/ not built — the crosswalk reconciliation is unverifiable");
+  } else {
+    const root = parse(fs.readFileSync(covPath, "utf8"), { comment: false });
+    for (const el of root.querySelectorAll("script, style, noscript, template")) el.remove();
+    const rows = root.querySelectorAll("[data-crosswalk-count]");
+    const gotIds = rows.map((r) => r.getAttribute("data-crosswalk-count"));
+    if (
+      gotIds.length !== CROSSWALK_COUNT_IDS.length ||
+      CROSSWALK_COUNT_IDS.some((id, i) => id !== gotIds[i])
+    ) {
+      errors.push(
+        `leg p1: /coverage/#crosswalk renders the rows ${gotIds.join(", ") || "(none)"} ` +
+          `but the registry derives ${CROSSWALK_COUNT_IDS.join(", ")}, in that order. ` +
+          `A crosswalk count the site publishes and the reconciliation does not ` +
+          `explain is the defect this list exists to close, and a row in the wrong ` +
+          `slot states its neighbour's sentence about its own number`,
+      );
+    } else {
+      rows.forEach((row, i) => {
+        const id = CROSSWALK_COUNT_IDS[i];
+        const shown = parseInt(
+          norm((row.querySelector("[data-crosswalk-value]") ?? row).text).replace(/,/g, ""),
+          10,
+        );
+        if (shown !== declared[id]) {
+          errors.push(
+            `leg p1: /coverage/ row "${id}" renders ${shown} but the shipped artifact holds ${declared[id]}`,
+          );
+        }
+      });
+    }
+  }
+
+  // ── (p2) + (p3) the prose sweep ─────────────────────────────────────────
+  const pages = [];
+  for (const url of CROSSWALK_CLAIM_PAGES) {
+    const p = htmlFor(url);
+    if (!fs.existsSync(p)) continue;
+    const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
+    for (const el of root.querySelectorAll("script, style, noscript, template, [data-historical-figures]")) {
+      el.remove();
+    }
+    pages.push({ url, text: norm(root.text) });
+  }
+  // one district DETAIL page as well: it carries its own attribution prose
+  const detailDir = path.join(outDir, "district");
+  if (fs.existsSync(detailDir)) {
+    const first = fs.readdirSync(detailDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()[0];
+    if (first) {
+      const p = path.join(detailDir, first, "index.html");
+      if (fs.existsSync(p)) {
+        const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
+        for (const el of root.querySelectorAll("script, style, noscript, template")) el.remove();
+        pages.push({ url: `/district/${first}/`, text: norm(root.text) });
+      }
+    }
+  }
+  if (pages.length === 0) {
+    errors.push("leg p: no crosswalk-claim page built — the sweep is vacuous");
+    return;
+  }
+  const corpus = recomputeCorpusCounts().counts;
+  let meta = {};
+  const metaPath = path.join(jsonDir, "site_meta.json");
+  if (fs.existsSync(metaPath)) {
+    try {
+      meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+    } catch {
+      /* leg n reports an unparseable site_meta */
+    }
+  }
+  errors.push(
+    ...crosswalkClaimFindings(
+      pages,
+      declared,
+      corpus,
+      publishedLinkFigures(meta),
+      MIN_CROSSWALK_CLAIMS,
+    ),
+  );
+  errors.push(...orgAttributionFindings(pages, orgMix));
+  notes.push(
+    `leg p: ${Object.entries(declared).map(([k, v]) => `${k}=${v}`).join(", ")}; ` +
+      `sidecar org mix ${Object.entries(orgMix).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(" ")} ` +
+      `across ${pages.length} page(s)`,
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
