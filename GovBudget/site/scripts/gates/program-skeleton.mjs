@@ -745,8 +745,11 @@ const evidenceModulePath = path.resolve(siteRoot, "src", "lib", "evidence.ts");
  * WHAT THE ROW RENDERS. program-mentions.tsx (and /filing/[uuid]/) prints
  * `evidenceKindLabel(kind)` as the badge and hangs `evidenceKindTitle(kind)`
  * off it as the hover title. Those two are what a reader sees, so those two
- * are what a finding quotes. (`evidenceKindLongExplanation` is the
- * /methodology/ paragraph and is rendered on no mention row — the leg quoted
+ * are what a finding quotes. (`evidenceKindLongExplanation` is the third form
+ * in that module — the full-sentence rationale evidence.ts:66-69 keeps "for a
+ * one-time explanation", which NO page imports, so it renders on no surface at
+ * all today: /methodology/ writes the same multi-token rule out in its own
+ * prose at page.tsx:577-580 rather than reading it from there. The leg quoted
  * multi_token's version of it, for every tier, until 2026-09-18.)
  *
  * Throws if the table cannot be read or a tier is missing from it: a gate that

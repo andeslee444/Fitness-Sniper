@@ -268,17 +268,34 @@ describe("isDeobligationRed", () => {
 
   it("rejects the not_competed vermillion that swamps the whole-canvas count", () => {
     // --flow-class-notcomp #d55e00 = rgb(213,94,0) at 0.55 over white:
-    // lead 65 clears RED_MIN_CHROMA, so a lead-only probe calls a ribbon a
-    // hairline. Its tail does not: |g-b| = 52 against a 0.25 x 65 = 16 budget.
-    // Measured on site/out 2026-09-18: with every hairline's stroke removed,
-    // a lead-only probe still found 19 of 20 hairline paths "lit" by the
-    // ribbons behind them; with the tail test, 20 of 20 went blind.
+    // lead 66 clears RED_MIN_CHROMA, so a lead-only probe calls a ribbon a
+    // hairline. Its tail does not: |g-b| = 51, a ratio of 0.77 against a
+    // budget of 0.28. Measured on site/out 2026-09-18: with every hairline's
+    // stroke removed, a lead-only probe still found 19 of 20 hairline paths
+    // "lit" by the ribbons behind them; with the tail test, 20 of 20 went
+    // blind. This is the pixel that sets the ceiling on HAIRLINE_NEUTRAL_TAIL.
     expect(isDeobligationRed([232, 166, 115])).toBe(false);
   });
 
   it("accepts a hairline composited over a vermillion ribbon", () => {
     // The hairlines cross the ribbons; 0.55 x #b91c1c over rgb(232,166,115).
+    // Lead 116, |g-b| 23 — a ratio of 0.20.
     expect(isDeobligationRed([206, 90, 67])).toBe(true);
+  });
+
+  it("accepts a hairline composited over TWO stacked ribbons", () => {
+    // THE FLOOR. Where two `.flow-band` ribbons overlap, the backdrop under a
+    // hairline is one vermillion ribbon over another:
+    //   0.55 x rgb(213,94,0) over white          = rgb(232,166,115)
+    //   0.55 x rgb(213,94,0) over that           = rgb(222,127,52)
+    //   0.55 x rgb(185,28,28) over that          = rgb(201,72,39)
+    // Lead 129, |g-b| 33 — a ratio of 0.2558 (0.2614 before the channels are
+    // rounded). That is a legitimate de-obligation pixel and 0.25 REJECTED it
+    // (budget 32.25 against a gap of 33), which is why the constant is 0.28.
+    // A palette or opacity change that moves this pixel fails here, cheaply,
+    // instead of failing the live gate.
+    expect(isDeobligationRed([201, 72, 39])).toBe(true);
+    expect(isDeobligationRed([201, 72, 39], RED_MIN_CHROMA, 0.25)).toBe(false);
   });
 
   it("rejects the plate, the halo and every neutral pixel", () => {
@@ -354,8 +371,43 @@ describe("hairlineProbeFindings", () => {
     expect(out.lit).toEqual([1, 0, 0]);
   });
 
+  it("FINDS a hairline the probe could not map at all", () => {
+    // getScreenCTM() returned null for a path that IS in the DOM (a
+    // display:none ancestor, an svg that never got laid out). The caller used
+    // to skip it, which shrank the river's hairline count — and a river that
+    // lost every hairline that way collected the "no [data-flow-negative]
+    // edge" note, the control reporting the payload has no edge when the probe
+    // is what lost it.
+    const image = png(8, 4, { "1,1": composited });
+    const out = hairlineProbeFindings(
+      "spend FY2025",
+      [{ id: "e12", index: 3, points: null }],
+      image,
+    );
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0]).toContain("e12");
+    expect(out.findings[0]).toContain("path index 3");
+    expect(out.findings[0]).toContain("getScreenCTM");
+    expect(out.lit).toEqual([0]);
+  });
+
+  it("counts an unmappable hairline alongside the ones it can read", () => {
+    const image = png(8, 4, { "1,1": composited, "3,1": composited });
+    const out = hairlineProbeFindings(
+      "spend FY2025",
+      [{ id: "e1", points }, { id: "e2", points: null }],
+      image,
+    );
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0]).toContain("path index 1");
+    expect(out.lit).toEqual([2, 0]);
+  });
+
   it("pins the sample count and the tail ratio the gate ships", () => {
+    // 48 and 0.28 are both measured constants — see their comments in
+    // flowdown.mjs. Re-measured 2026-09-18 on site/out at 1440x900: 20
+    // hairlines, none blind, each lit 11-26 of the 48 samples.
     expect(HAIRLINE_SAMPLES).toBe(48);
-    expect(HAIRLINE_NEUTRAL_TAIL).toBe(0.25);
+    expect(HAIRLINE_NEUTRAL_TAIL).toBe(0.28);
   });
 });

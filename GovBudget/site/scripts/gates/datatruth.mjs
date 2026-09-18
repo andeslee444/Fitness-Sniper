@@ -2237,15 +2237,21 @@ const CROSSWALK_CLAIM_PAGES = ["/flow/", "/district/", "/coverage/", "/methodolo
  * MIRROR of lib/corpus CROSSWALK_COUNT_IDS — the order /coverage/ renders and
  * the order (p1) binds.
  *
- * NOTHING HERE ENFORCES THE MIRROR. A gate file cannot import from the site's
- * TypeScript, so this list is a hand copy, and it was described as
- * "self-enforcing" on the reasoning that /coverage/ builds its list from the
- * same constant — true of the PAGE, and no help at all if someone edits
- * lib/corpus and not this. What actually pins the two together is
+ * A HAND COPY, PINNED AT GATE TIME BY (p1). A gate file cannot import from the
+ * site's TypeScript, so this list is typed out rather than imported — but it is
+ * not unenforced. Leg (p1) below reads the `data-crosswalk-count` ids off the
+ * built /coverage/ page, which emits one `<li data-crosswalk-count={c.id}>` per
+ * getCrosswalkCounts() row (coverage/page.tsx:71, :354), and compares them to
+ * this array BY LENGTH and ELEMENT-WISE, erroring by name on any divergence.
+ * Add, remove or reorder an id in lib/corpus without editing this list and
+ * (p1) fails on the next build.
+ *
  * `src/lib/__tests__/corpus.test.ts` ("declares every crosswalk count the site
- * publishes"), which asserts getCrosswalkCounts()'s ids ARE
- * CROSSWALK_COUNT_IDS in order. Edit that constant and you edit this list and
- * that test in the same change.
+ * publishes") is the SITE-SIDE half of the same pairing: it asserts
+ * getCrosswalkCounts()'s ids ARE CROSSWALK_COUNT_IDS, in order. Both sides of
+ * that assertion live in lib/corpus (corpus.test.ts:132-135), so it cannot see
+ * this file and stays green on a divergence here — it keeps the registry
+ * honest, (p1) keeps this copy honest.
  */
 const CROSSWALK_COUNT_IDS = [
   "link-universe",
@@ -2316,18 +2322,43 @@ const MIN_FLOW_SIDECARS = 120;
  * finite number anywhere inside them: 22 distinct integers on the 2026-09-18
  * artifact, against the THREE the live claims cite (12,595 and 9,587 from here,
  * 384 from the declared counts). Every one of the other nineteen — `unpinned`
- * 8,474, every `by_method.*.adjudicated`, every `high.by_path.*` counter — was
- * a standing free pass for a rotted literal that happened to collide with it,
- * on a leg whose whole job is to catch exactly that.
+ * 8,474, every `by_method.*` counter, every `high.by_path.*` counter — was a
+ * standing free pass for a rotted literal that happened to collide with it, on
+ * a leg whose whole job is to catch exactly that.
+ *
+ * WHAT IS LEFT, MEASURED. Not all nineteen went: re-measured 2026-09-18
+ * against data/site/json/site_meta.json, the walk admitted 22 distinct
+ * integers and this enumeration admits TEN — 0, 51, 53, 54, 60, 94, 120, 768,
+ * 9,587 and 12,595 — so twelve of the 22 are gone and eight of the nineteen
+ * are not. The eight are not free passes any more, though: they are admitted
+ * because /methodology/ §4 RENDERS them, as the four precision ratios
+ * ("account+subagency 0/60; announcement+lexicon 51/54; fpds-ap 94/120;
+ * subaward+lexicon 53/60") and "60 of the 768 links published at high". The
+ * crosswalk matcher below reads neither as a claim — "0/60" is not an
+ * `N of M <noun>` ratio, and the high-tier sentence matches but carries no
+ * crosswalk cue inside CROSSWALK_CUE_WINDOW — so on this build only 9,587 and
+ * 12,595 of the ten are cited by one of the ten matched claims. All ten were
+ * checked against the text of out/methodology/index.html on 2026-09-18.
+ *
+ * (The first cut of this enumeration also kept `by_method.*.published` and
+ * stopped at fifteen. Those five — 113, 527, 708, 1,910, 9,337 — are rendered
+ * on no page at all, `by_method` has one reader in site/src and it is a type
+ * declaration, and 1,910 sat 28 away from the corpus denominator 1,938 that
+ * /district/ and /methodology/ really do state.)
  *
  * What is admitted, and which passage renders it:
- *   link_adjudication.published          12,595  /methodology/ §4, "9,587 of the 12,595 links"
- *   link_adjudication.adjudicated         9,587  that sentence's numerator
- *   link_adjudication.high.published_high   768  §4's high-tier link count
- *   link_adjudication.high.two_lens_high     60  the adjudicator-pinned half of it
- *   link_adjudication.by_method.*.published      §4's per-method tier table
- *   link_precision.methods.*.confirmed           §4's precision ratios ("51 of 54")
- *   link_precision.methods.*.sampled             their denominators
+ *   link_adjudication.published            12,595  /methodology/ §4, "9,587 of the 12,595 links" (page.tsx:809)
+ *   link_adjudication.adjudicated           9,587  that sentence's numerator
+ *   link_adjudication.high.published_high     768  §4's "60 of the 768 links published at high" (page.tsx:843)
+ *   link_adjudication.high.adjudicated_high    60  THAT sentence's numerator (page.tsx:311 → :844)
+ *   link_adjudication.high.two_lens_high       60  its trailing "all 60 challenged by two…" clause
+ *   link_precision.methods.*.confirmed             §4's precision ratios, rendered "51/54" (page.tsx:163-167 → :977)
+ *   link_precision.methods.*.sampled               their denominators
+ *
+ * adjudicated_high and two_lens_high are BOTH listed on purpose: they are 60
+ * and 60 on today's artifact, so admitting only one would pass by coincidence
+ * and stop passing the day adjudication pins a link two lenses have not both
+ * seen.
  *
  * ADD A FIELD HERE when a passage starts rendering one — with the passage named
  * above — rather than widening this back into a walk.
@@ -2341,8 +2372,8 @@ export function publishedLinkFigures(meta) {
   take(adj.published);
   take(adj.adjudicated);
   take(adj.high?.published_high);
+  take(adj.high?.adjudicated_high);
   take(adj.high?.two_lens_high);
-  for (const m of Object.values(adj.by_method ?? {})) take(m?.published);
   for (const m of Object.values(meta?.link_precision?.methods ?? {})) {
     take(m?.confirmed);
     take(m?.sampled);
@@ -2434,11 +2465,16 @@ function quoteAround(text, at, window) {
  *
  * Sentence-shaped on purpose, unlike (p2): the unit here is an assertion
  * about a name, and glue can only widen the window a name is read in — it
- * cannot invent the name. The 2026-09-12 build proves the direction: this
- * finds exactly the three false sentences (the /district/ lede, the detail
- * page's account-structure explanation, /methodology/'s "concentrated in
- * DARPA lines") and nothing else across five pages carrying 122 DARPA
- * mentions between them.
+ * cannot invent the name. RE-MEASURED 2026-09-18 against the built site/out,
+ * over the SEVEN pages this leg now sweeps (the five index pages plus the
+ * first /district/ and the first /program/ detail page): exactly three
+ * findings — the /district/ lede, /district/AL-02/'s account-structure
+ * explanation and /methodology/'s "concentrated in DARPA lines" — out of 61
+ * DARPA mentions on those pages (/flow/ 0, /district/ 5, /coverage/ 0,
+ * /methodology/ 4, /programs/ 50, /district/AL-02/ 2, /program/000042/ 0).
+ * The other 58 sit in no crosswalk-or-attribution sentence, which is what the
+ * cue filter below is for; the earlier "five pages carrying 122 DARPA
+ * mentions" predates both the /program/ sample and this build.
  */
 export function orgAttributionFindings(pages, orgMix) {
   const total = Object.values(orgMix).reduce((a, v) => a + v, 0);
@@ -2454,7 +2490,20 @@ export function orgAttributionFindings(pages, orgMix) {
         // Org names come off the sidecars' own `header.org`, so they are data,
         // not a pattern: an "OSD (R&E)" or an "A+" would otherwise be spliced
         // into the source of a RegExp and either throw or match the wrong text.
-        const hit = new RegExp(`\\b${escapeRe(org)}\\b`, "i").exec(sentence);
+        // The anchors are LOOKAROUNDS, not `\b`, for the same names: `\b` is a
+        // transition between a word and a non-word character, so a trailing
+        // `\b` after the `)` of "OSD (R&E)" can only match when a word
+        // character follows — never in prose, where a closing paren is followed
+        // by a space or a stop. That turns a wrong match into a NEVER match,
+        // and (p3) goes silent on the one org instead of reporting it. Same
+        // form as program-skeleton.mjs titleCarriesTerm(), which fixed this
+        // first. (All 8 shipped header.org values are word-char-only today, so
+        // nothing about the live sweep changes: A, DARPA, DISA, F, MDA, N, OSD,
+        // SOCOM, re-read 2026-09-18.)
+        const hit = new RegExp(
+          `(?<![A-Za-z0-9])${escapeRe(org)}(?![A-Za-z0-9])`,
+          "i",
+        ).exec(sentence);
         if (!hit) continue;
         if (n * 2 >= total) continue;                      // it really is the majority
         found.push(

@@ -483,9 +483,16 @@ export function redPixelsInBox(png, box, minChroma = RED_MIN_CHROMA) {
 /** How many evenly spaced points along a de-obligation hairline the positive
  *  control samples. The hairline is `stroke-dasharray: 4 3`, so ~4/7 of its
  *  length is painted and a sample can legitimately land in a gap; the
- *  requirement is >= 1 lit sample per hairline, not all of them. Measured on
- *  site/out at 1440x900 (2026-09-18), 20 hairlines, N=48: every hairline lit
- *  between 6 and 30 samples. */
+ *  requirement is >= 1 lit sample per hairline, not all of them. RE-MEASURED
+ *  on site/out at 1440x900 (2026-09-18) at this N and with the shipped
+ *  discriminator — lead >= RED_MIN_CHROMA 40 AND |g - b| <= HAIRLINE_NEUTRAL_TAIL
+ *  x lead — the spend FY2025 river's 20 hairlines each lit between 11 and 26
+ *  of the 48 samples, none blind. That is the range the leg's own passing note
+ *  prints at run time; keep the two in step. (This comment said "between 6 and
+ *  30" until 2026-09-18. No run produces that: the tail test only ever removes
+ *  lit samples, so nothing looser explains a minimum of 6 where the shipped
+ *  rule reports 11, and 6-30 is exactly twice the exploratory N=24 run's
+ *  3-15.) */
 export const HAIRLINE_SAMPLES = 48;
 
 /** How far a de-obligation pixel's green and blue may diverge, as a fraction of
@@ -495,16 +502,29 @@ export const HAIRLINE_SAMPLES = 48;
  *  green and blue are EQUAL (28, 28); compositing at opacity 0.55 over a
  *  neutral backdrop scales that gap by the same alpha, so a real hairline pixel
  *  keeps |g - b| ~ 0. --flow-class-notcomp vermillion #d55e00 = rgb(213,94,0)
- *  does not: at 0.55 over white it renders rgb(232,166,115), a lead of 65 that
- *  clears RED_MIN_CHROMA on its own but a |g - b| of 52 against a 0.25 x 65 = 16
- *  budget. That distinction is what makes this a control. MEASURED on site/out
- *  (2026-09-18, 1440x900, 20 hairlines, N=48) by removing every hairline's
- *  stroke from the live DOM: under the lead alone 19 of 20 hairline paths still
- *  read as "lit" by the ribbons behind them — the probe would have passed a
- *  river whose hairlines had all stopped rendering. Under the lead AND this
- *  tail, 20 of 20 went blind, while the shipped render kept all 20 lit. Widen
- *  this only against a re-measured erase control; do not drop it. */
-export const HAIRLINE_NEUTRAL_TAIL = 0.25;
+ *  does not: at 0.55 over white it renders rgb(232,166,115), a lead of 66 as
+ *  the PNG rounds it (65.45 exact) that clears RED_MIN_CHROMA on its own but a
+ *  |g - b| of 51, a ratio of 0.77. That distinction is what makes this a
+ *  control. MEASURED on site/out (2026-09-18, 1440x900, 20 hairlines, N=48) by
+ *  removing every hairline's stroke from the live DOM: under the lead alone 19
+ *  of 20 hairline paths still read as "lit" by the ribbons behind them — the
+ *  probe would have passed a river whose hairlines had all stopped rendering.
+ *  Under the lead AND this tail, 20 of 20 went blind, while the shipped render
+ *  kept all 20 lit (11-26 of 48 samples each).
+ *
+ *  WHY 0.28 AND NOT 0.25, WHICH SHIPPED FIRST. The hairlines cross the ribbons,
+ *  and where two `.flow-band` ribbons stack the hairline pixel is
+ *  0.55 x #b91c1c over 0.55 x #d55e00 over 0.55 x #d55e00 over white =
+ *  rgb(201,72,39): a lead of 129 and a |g - b| of 33, a ratio of 0.2558 rounded
+ *  (0.2614 before rounding, 0.2756 at the worst +/-1 channel rounding). At 0.25
+ *  that legitimate pixel is REJECTED — the budget was 32.25 against a gap of 33
+ *  — so 0.28 is the smallest two-decimal ratio that accepts it however the
+ *  channels round. It stays far below the 0.77 a pure vermillion ribbon pixel
+ *  would need, so the ribbons are still rejected, and both measurements above
+ *  were re-run at 0.28: erase control 20 of 20 blind, shipped render 11-26 of
+ *  48 lit, unchanged. Widen this only against a re-measured erase control; do
+ *  not drop it. */
+export const HAIRLINE_NEUTRAL_TAIL = 0.28;
 
 /** Is this pixel the de-obligation hairline's colour, as the browser paints it?
  *  `rgb` is null for a point off the edge of the PNG, which is never red.
@@ -528,14 +548,22 @@ export function isDeobligationRed(rgb, minChroma = RED_MIN_CHROMA, tailRatio = H
  * bounding boxes only raises their share to 6.9 %. So the count is kept as a
  * decode check and the hairline claim is made HERE, by sampling the paths.
  *
- * `hairlines` are `{ id, points }` with `points` already mapped into this
- * river's PNG coordinates by the caller's SVG->PNG transform — so a transform
- * that silently stopped lining up shows up as a blind hairline, which is
- * exactly the failure the control exists to catch.
+ * `hairlines` are `{ id, index, points }` with `points` already mapped into
+ * this river's PNG coordinates by the caller's SVG->PNG transform — so a
+ * transform that silently stopped lining up shows up as a blind hairline,
+ * which is exactly the failure the control exists to catch.
  *
- * A river with no `[data-flow-negative]` path is NOT a finding: the budget
- * FY2026 river legitimately renders none (measured 2026-09-18). The caller
- * notes that and moves on.
+ * `points: null` means the caller found the path but could not map it —
+ * getScreenCTM() returned null, as it does for an element inside a
+ * `display:none` ancestor or an svg that never got laid out. That is a FINDING,
+ * not a skip: dropping the path here would shrink the river's hairline count,
+ * and a river whose every hairline dropped out would collect the caller's "no
+ * [data-flow-negative] edge" note — the control quietly reporting the payload
+ * has no edge when what happened is that the probe lost it.
+ *
+ * A river with no `[data-flow-negative]` path AT ALL is the case that is NOT a
+ * finding: the budget FY2026 river legitimately renders none (measured
+ * 2026-09-18). The caller notes that and moves on.
  */
 export function hairlineProbeFindings(
   river,
@@ -553,7 +581,18 @@ export function hairlineProbeFindings(
     const i = (yi * png.width + xi) * 4;
     return [png.data[i], png.data[i + 1], png.data[i + 2]];
   };
-  for (const h of hairlines) {
+  for (const [i, h] of hairlines.entries()) {
+    if (!h.points) {
+      lit.push(0);
+      findings.push(
+        `leg h1: ${river}: de-obligation hairline "${h.id}" (path index ${h.index ?? i}) yielded no ` +
+          `sample points — getScreenCTM() returned null, so the path is in the DOM and the probe ` +
+          `cannot reach it. Skipping it would drop this river's hairline count, and a river that ` +
+          `lost all of them would be noted as having no de-obligation edge at all; fix the probe, ` +
+          `do not let the control skip itself`,
+      );
+      continue;
+    }
     const n = h.points.filter(([x, y]) => isDeobligationRed(at(x, y), minChroma, tailRatio)).length;
     lit.push(n);
     if (n === 0) {
@@ -1634,10 +1673,21 @@ export async function runFlowdownGate({ baseUrl }) {
                   // element's own origin lands them in the SAME PNG frame the
                   // label boxes above use. Sampled at (k + 0.5)/N so no sample
                   // sits exactly on an endpoint.
+                  //
+                  // A path whose getScreenCTM() is null is REPORTED, not
+                  // skipped: `points: null` reaches hairlineProbeFindings as a
+                  // finding. Dropping it here would let a river whose hairlines
+                  // all failed to map collect the "no de-obligation edge" note.
                   const hairlines = [];
-                  for (const p of s.querySelectorAll("[data-flow-negative]")) {
+                  const negatives = s.querySelectorAll("[data-flow-negative]");
+                  for (let n = 0; n < negatives.length; n++) {
+                    const p = negatives[n];
+                    const id = (p.getAttribute("aria-label") ?? "(unlabelled edge)").slice(0, 60);
                     const ctm = p.getScreenCTM();
-                    if (!ctm) continue;
+                    if (!ctm) {
+                      hairlines.push({ id, index: n, points: null });
+                      continue;
+                    }
                     const len = p.getTotalLength();
                     const points = [];
                     for (let k = 0; k < samples; k++) {
@@ -1647,10 +1697,7 @@ export async function runFlowdownGate({ baseUrl }) {
                         ctm.b * q.x + ctm.d * q.y + ctm.f - sb.top,
                       ]);
                     }
-                    hairlines.push({
-                      id: (p.getAttribute("aria-label") ?? "(unlabelled edge)").slice(0, 60),
-                      points,
-                    });
+                    hairlines.push({ id, index: n, points });
                   }
                   const river = s.closest("[data-flow-river]");
                   return {

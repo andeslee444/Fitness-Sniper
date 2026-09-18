@@ -29,9 +29,10 @@ const DECLARED = {
 };
 const CORPUS = { "index-rows": 1938, "program-pages": 2562, "detail-pages": 1936 };
 /** The leaf fields of site_meta.link_adjudication that the swept pages render
- *  — READ, never re-derived. 8,474 (`unpinned`) is deliberately NOT here: the
- *  block holds it, no page states it as a ratio, and admitting it was a free
- *  pass for any rotted literal that happened to equal it. */
+ *  — READ, never re-derived. 8,474 (`unpinned`) and every `by_method.*` figure
+ *  are deliberately NOT here: the block holds them, no page states them as a
+ *  ratio, and admitting them was a free pass for any rotted literal that
+ *  happened to equal one. */
 const PUBLISHED = [12595, 9587, 768, 60];
 
 describe("crosswalkClaimFindings", () => {
@@ -207,6 +208,26 @@ describe("orgAttributionFindings", () => {
     ).toEqual([]);
   });
 
+  it("still matches an org name that ends in a non-word character", () => {
+    // `\b` after the `)` of "OSD (R&E)" can only match before a word
+    // character, so the anchored form went permanently silent on such a name
+    // instead of reporting it. Two shapes: a parenthesised name (the comment
+    // above the matcher names this one) and one ending in a stop.
+    const mix = { "OSD (R&E)": 14, "R&E.": 6, N: 180 };
+    const found = orgAttributionFindings(
+      [
+        { url: "/district/", text: "The crosswalk is concentrated in OSD (R&E) lines whose account structure makes matching reliable." },
+        { url: "/methodology/", text: "Crosswalk coverage is concentrated in lines booked under R&E. That account structure makes matching reliable." },
+      ],
+      mix,
+    );
+    expect(found).toHaveLength(2);
+    expect(found[0]).toContain("OSD (R&E)");
+    expect(found[0]).toContain("14 of 200");
+    expect(found[1]).toContain("R&E.");
+    expect(found[1]).toContain("6 of 200");
+  });
+
   it("fails a vacuously-empty org mix rather than passing", () => {
     expect(orgAttributionFindings([{ url: "/district/", text: "anything" }], {}).join(" ")).toContain("no flow sidecars");
   });
@@ -222,6 +243,7 @@ describe("publishedLinkFigures", () => {
       by_method: {
         "account+subagency": { adjudicated: 9173, published: 9337 },
         "announcement+lexicon": { adjudicated: 0, published: 708 },
+        "fpds-ap": { adjudicated: 0, published: 1910 },
       },
       high: {
         published_high: 768,
@@ -243,22 +265,50 @@ describe("publishedLinkFigures", () => {
 
   it("admits the leaf fields the swept passages actually render", () => {
     const got = publishedLinkFigures(META);
-    for (const n of [12595, 9587, 768, 60, 9337, 708, 51, 54, 94, 120]) {
+    // "9,587 of the 12,595 links", "60 of the 768 links published at high",
+    // and the four precision ratios — every one of them text on /methodology/.
+    for (const n of [12595, 9587, 768, 60, 51, 54, 94, 120]) {
       expect(got).toContain(n);
     }
+  });
+
+  it("admits adjudicated_high in its own right, not through two_lens_high", () => {
+    // §4 renders `{adjudicated_high} of the {published_high} links published at
+    // high` (methodology/page.tsx:311 -> :844); two_lens_high is the trailing
+    // "all 60 challenged by two…" clause. They are both 60 on today's
+    // artifact, so admitting only one would pass by coincidence until the day
+    // adjudication pins a link two lenses have not both seen.
+    const meta = {
+      ...META,
+      link_adjudication: {
+        ...META.link_adjudication,
+        high: { ...META.link_adjudication.high, adjudicated_high: 61 },
+      },
+    };
+    const got = publishedLinkFigures(meta);
+    expect(got).toContain(61);
+    expect(got).toContain(60);
   });
 
   /**
    * THE DEFECT THIS CLOSES. The shipped version walked both blocks and pushed
    * every finite number it found — 22 distinct integers on the 2026-09-18
-   * artifact — so `unpinned`, every `by_method.*.adjudicated` and every
+   * artifact — so `unpinned`, every `by_method.*` counter and every
    * `high.by_path.*` counter became a free pass for any crosswalk ratio that
    * happened to collide with one. None of them is stated as an `N of M` ratio
    * on any swept page.
+   *
+   * `by_method.*.published` outlived the first cut of the enumeration on the
+   * reasoning that §4 carries a per-method tier table. It does not: `by_method`
+   * has exactly one reader in site/src, the type declaration at lib/data.ts:265,
+   * and 9,337 / 1,910 / 708 / 527 / 113 appear nowhere in the built pages. The
+   * live hazard was 1,910, which sits 28 away from the rendered corpus
+   * denominator 1,938 — a rotted "200 of 1,910 programs" would have been waved
+   * through by the leg that exists to catch it.
    */
   it("does NOT admit a number the block holds but no passage renders", () => {
     const got = publishedLinkFigures(META);
-    for (const n of [8474, 9173, 34]) {
+    for (const n of [8474, 9173, 34, 9337, 1910, 708]) {
       expect(got).not.toContain(n);
     }
   });
@@ -274,6 +324,21 @@ describe("publishedLinkFigures", () => {
     expect(
       crosswalkClaimFindings([{ url: "/methodology/", text: nonLeaf }], DECLARED, CORPUS, publishedLinkFigures(META)),
     ).toHaveLength(2);
+  });
+
+  it("reports a claim that collides with a by_method figure no page renders", () => {
+    // The shape the free pass would have hidden: 1,910 is
+    // by_method["fpds-ap"].published, 28 away from the corpus denominator the
+    // page really states (1,938), and this sentence is a crosswalk claim.
+    const rotted = "Follow-the-dollar flows cover 200 of the 1,910 programs in the index.";
+    const found = crosswalkClaimFindings(
+      [{ url: "/program/000042/", text: rotted }],
+      DECLARED,
+      CORPUS,
+      publishedLinkFigures(META),
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("1,910");
   });
 
   it("returns nothing for a site_meta with no link blocks at all", () => {
