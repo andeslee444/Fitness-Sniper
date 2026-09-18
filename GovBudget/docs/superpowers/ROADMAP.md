@@ -1445,6 +1445,34 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   matched terms DO say which member (the program page attributes on exactly
   that, Task 9b fix round 1). Rendered prose, so it was left alone here; fix
   it with the matcher, when the row itself can name its member.
+  Appended 2026-09-18 (9b re-review). The first half is not mart-only — it is
+  on a RENDERED page. `/company/{slug}/` prints
+  `entity_details.mentions[].program_title` as the link label beside the terms
+  the row matched on, and that title is the `min(title)` collapse itself
+  (`fct_program_lobbying`'s `programs` CTE, one row per `pe_bli`). Measured
+  2026-09-18 read-only on the shipped artifact:
+  `/company/international-business-machines/` renders **"F/A-18E/F (Fighter)
+  Hornet"** on all five of IBM's `0145` rows, whose `matched_term` is
+  `General|Purpose` — the title words of the SIBLING member, "General Purpose
+  Bombs". The `linked_programs` chip on the same page is already correct (it
+  carries the both-members label, ROADMAP #70 fix round 1); the mention list is
+  the surface that still names one member for a row matched against the other.
+  A third strand, same root, different question — the GRAIN of an `alias`
+  row. The
+  exporter's `_mention_is_about` treats `alias` as TITLE-grain (the row
+  publishes only on the member whose own title carries the alias phrase), while
+  `_WHO_LOBBY_TIERS = ("pe_literal", "alias")` and `_build_lobbied_by` treat it
+  as CODE-grain (both members get the same families list). A curated alias is
+  seeded per CODE — `dbt/seeds/program_aliases.csv` keys on `pe_bli`, not on a
+  `dim_programs` row — so on a shared code an alias phrase carried by NEITHER
+  member's title would be dropped from both Lobbying Mentions lists while still
+  naming companies in both WHO-GETS-IT cards. Nothing renders differently
+  today, and this entry does not change the behaviour: measured 2026-09-18
+  read-only, the 13 shared codes carry 25 `multi_token` and 51 `pe_literal`
+  mention rows and **zero** `alias` rows (256 alias rows exist corpus-wide, all
+  on unsplit codes), so the only place a dropped alias would show is the
+  export's mention census line. Decide the grain with the matcher fix above,
+  when the row can name its own member.
   **Status:** open (2026-09-18)
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now

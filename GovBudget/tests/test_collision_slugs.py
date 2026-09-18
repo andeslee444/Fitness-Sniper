@@ -953,6 +953,39 @@ def test_every_title_basis_mention_is_true_of_the_page_that_renders_it(
         assert checked, f"{slug} must render a title-basis mention to check"
 
 
+def test_the_mention_census_line_names_the_row_that_matched_no_member(
+    collision_export, collision_pg_dsn, tmp_path, capsys
+):
+    """The census print is the ONLY signal a row published on NEITHER member.
+
+    Nothing renders such a row — that is the point — so if the print stopped
+    firing, rows would disappear from the corpus in silence and the export log
+    would say the corpus was clean. Driven here by the fixture's
+    `Orphan|Volume`, the mention-axis twin of the orphan J-book volume.
+
+    Re-exports rather than reading the module-scoped fixture's output, because
+    capsys cannot see what a module-scoped fixture printed. `collision_export`
+    is requested only to guarantee the Postgres seed is already in place.
+    """
+    from govbudget.export_site import export_site
+
+    db = tmp_path / "census.duckdb"
+    _make_collision_duckdb(db)
+    capsys.readouterr()
+    export_site(
+        collision_pg_dsn, db, out_dir=tmp_path / "census-site",
+        pdf_base_url="https://cdn.example/pdfs",
+    )
+    lines = [
+        ln for ln in capsys.readouterr().out.splitlines()
+        if "mention axis" in ln and "matched no member" in ln
+    ]
+    assert len(lines) == 1, lines
+    assert "1 lobbying mention row(s)" in lines[0]
+    assert "3010/Orphan|Volume" in lines[0]
+    assert "NEITHER member" in lines[0]
+
+
 def test_an_ordinary_programs_mentions_are_unchanged(collision_export):
     """Attribution runs only on a shared code; an unsplit program keeps the
     bare-code list and declares nothing."""

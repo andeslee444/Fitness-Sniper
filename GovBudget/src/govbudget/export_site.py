@@ -6799,10 +6799,17 @@ def _build_lobbied_by(
     display_name where the family is one of the profiled top-200, so the card
     and /company/{slug}/ never spell the same company two ways.
 
-    ROADMAP #82: keyed by SLUG, evaluated PER MEMBER. A filing names a
-    program by its budget line, so the families list is the same for both
-    members of a shared code — but whether the tier APPLIES is each member's
-    own question: `concentration_for` is None on a member whose figure is
+    ROADMAP #82: keyed by SLUG, evaluated PER MEMBER. The families list is
+    the same for both members of a shared code — true of a `pe_literal` row,
+    which names the budget LINE and nothing finer, and true TODAY of the only
+    other tier this card admits: a curated `alias` is seeded per CODE
+    (`dbt/seeds/program_aliases.csv` keys on `pe_bli`), and measured
+    2026-09-18 the 13 shared codes carry zero alias rows. It is not a blanket
+    rule about every tier — `_mention_is_about` treats an alias as
+    TITLE-grain, so the same row can publish on one member's Lobbying
+    Mentions list while naming companies in both members' cards. The grain
+    question is filed under ROADMAP #115; nothing renders differently today.
+    Whether the tier APPLIES is each member's own question either way: `concentration_for` is None on a member whose figure is
     withheld (both members linked) or never its own, `named_primes_by_slug`
     is the dossier tier keyed the same way, and `awards_for(pe_bli, account,
     organization)` is that member's own Related Awards table (the sentence
