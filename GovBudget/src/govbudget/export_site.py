@@ -6809,7 +6809,8 @@ def _build_lobbied_by(
     TITLE-grain, so the same row can publish on one member's Lobbying
     Mentions list while naming companies in both members' cards. The grain
     question is filed under ROADMAP #115; nothing renders differently today.
-    Whether the tier APPLIES is each member's own question either way: `concentration_for` is None on a member whose figure is
+    Whether the tier APPLIES is each member's own question either way:
+    `concentration_for` is None on a member whose figure is
     withheld (both members linked) or never its own, `named_primes_by_slug`
     is the dossier tier keyed the same way, and `awards_for(pe_bli, account,
     organization)` is that member's own Related Awards table (the sentence

@@ -1650,8 +1650,11 @@ docs/superpowers/ROADMAP.md`.
    and nothing polls it for them. **The cadence alarm already fires today**
    (measured 2026-09-18): `contracts`, `assistance` and `subawards` were last
    ingested 2026-06-11, 99 days against a declared monthly cadence, so every
-   run including `--dry-run` prints three `DRIFT ALARM:` lines until the first
-   successful monthly run clears them. STILL OPEN: (a) LDA, J-book and GAO
+   run including `--dry-run` prints three `DRIFT ALARM:` lines. A successful
+   monthly run clears the `contracts` and `assistance` lines; the `subawards`
+   line keeps firing because of open item (b) below — that stage returns early
+   on an FY already in the manifest, so its newest `downloaded_at` never
+   moves. STILL OPEN: (a) LDA, J-book and GAO
    ingests write no `manifest.jsonl` records, so the drift report can age none
    of the three; gate 24 leg m marks the J-book and GAO cadence lines UNMETERED
    while `/methodology/` states no LDA cadence at all, so leg m never sees LDA
@@ -1672,12 +1675,18 @@ docs/superpowers/ROADMAP.md`.
    the PREVIOUS run's `"ok": true` in `last_run.json`; the preflight probes
    carry a 60 s timeout while stages deliberately carry none (a hung stage
    holds its launchd slot — LAUNCH.md Step 11 says so); a missing lake is a
-   preflight failure rather than a freshly created empty database; `logs/` is
-   a preflight check because launchd opens the job's log files before exec;
-   `run_refresh` holds an exclusive `flock` on `data/refresh/.lock` so the
-   monthly and quarterly labels cannot overlap; and the quarterly LDA stage
-   computes `--years` from the clock instead of inheriting the CLI's hardcoded
-   `2024,2025,2026`.
+   preflight failure rather than a freshly created empty database; preflight
+   CREATES a missing `logs/` (R-20b-8) while the Step 11 install snippet keeps
+   its own `mkdir -p`, because launchd opens the job's log files before exec
+   and preflight runs too late to help a scheduled run; `run_refresh` holds an
+   exclusive `flock` on `data/refresh/.lock` so the monthly and quarterly
+   labels cannot overlap, and `--dry-run` takes no lock (R-20b-7) so a plan
+   stays readable mid-refresh; and the quarterly LDA stage computes `--years`
+   as 2024 (`_LDA_FIRST_YEAR`, the corpus's first filing year) through the
+   current calendar year, instead of inheriting the CLI's hardcoded
+   `2024,2025,2026` — the end tracks the clock, the start never moves, because
+   `influence pull` overwrites `lda_filings.parquet` in full and a year the
+   window stopped naming would be a year deleted from the corpus.
 9. **Resolution-memory for review queue** (re-flagged items remember triage).
 
    **Status:** CLOSED 2026-09-10 — `_tally` now looks up an accepted
