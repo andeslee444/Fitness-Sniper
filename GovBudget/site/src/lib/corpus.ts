@@ -309,8 +309,12 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
       id: "bridged-request",
       value: b.crosswalkedPeCount,
       where: "the /flow/ bridge band",
-      counts:
-        "Of those, the ones also carrying FY2026 request dollars — all the river can draw.",
+      // Trimmed 2026-09-18 (the two longest sentences in this list) to pay for
+      // the File C note /coverage/#crosswalk now publishes, on a page whose
+      // weight ceiling is never raised. What went here was the flourish "—
+      // all the river can draw": the Sankey it refers to is the page this row
+      // already points at. No number and no definition changed.
+      counts: "Of those, the ones also carrying FY2026 request dollars.",
     },
     {
       id: "high-confidence-links",
@@ -323,8 +327,14 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
       id: "district-linkable",
       value: getFlowsCount(),
       where: "Districts, Coverage, and program pages",
+      // Same 2026-09-18 trim. The appositive "a follow-the-dollar view" went:
+      // /coverage/'s own flows row states that count as "N of M programs have
+      // a follow-the-dollar view" three sections above this list, so the term
+      // is defined on the page already. The DEFINITION — a high-confidence
+      // link naming a place of performance — is what this field is for and is
+      // kept whole.
       counts:
-        "Elements with a follow-the-dollar view: a high-confidence link naming a place of performance.",
+        "Elements whose high-confidence link names a place of performance.",
     },
     {
       id: "district-linkable-unbridged",

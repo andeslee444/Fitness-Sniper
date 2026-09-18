@@ -7,6 +7,7 @@ import { ScopeNote } from "@/components/notes";
 import {
   getCoverageMap,
   CROSSWALK_LIMIT_ID,
+  FILE_C_NOTE,
   MAP_REVIEWED_ON,
 } from "@/lib/coverage-map";
 import { getCorpusCounts, getCrosswalkCounts } from "@/lib/corpus";
@@ -36,9 +37,13 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
  * TARGETS ARE UNDATED (Sprint 3 round 3, the site owner's decision). The first
  * cut published eight dates the project had never committed to. They are gone;
  * every blocker is kept verbatim, and each row now says there is no dated
- * target, names the work that is planned, and says the date is pending a
- * roadmap decision. A site that will not publish a figure it cannot recompute
- * should not publish a schedule it has not agreed to either.
+ * target, names the work that is planned, and — where work is planned — says
+ * plainly that it is not scheduled. A site that will not publish a figure it
+ * cannot recompute should not publish a schedule it has not agreed to either.
+ *
+ * 2026-09-18: "the date is pending a roadmap decision" is retired from this
+ * page. It promised the reader a decision was coming on seven items that were
+ * filed nowhere; see COVERAGE_PROMISE_IDS in lib/coverage-map.
  */
 
 const _rows = getCoverageMap();
@@ -74,11 +79,17 @@ export default function CoveragePage() {
       <h1 className="mb-3 text-3xl font-bold">Coverage</h1>
       <div className="doc-layout">
         <div data-doc-prose>
+          {/* Trimmed 2026-09-18 to pay for the File C sentences below. What
+              went: "— including, in plain words, why no row here carries a
+              date", a promise the paragraph under the table keeps in the same
+              breath as it explains the policy. 21d's move is untouched; this
+              is the lede's own redundancy, and shortening it can only help
+              the index-fold leg. */}
           <p className="leading-7 text-muted-foreground">
             What this site covers, what it does not, and what would have to change
             for that to move. Each row gives the coverage this build actually
             shipped, the specific thing standing in the way, and where the work
-            stands — including, in plain words, why no row here carries a date.
+            stands.
           </p>
 
           {/* The "recomputed at build time" panel used to sit here, and the
@@ -190,7 +201,7 @@ export default function CoveragePage() {
 
           <p className="mt-4 text-sm text-muted-foreground">
             {dated === 0
-              ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names the work that is planned and says the date is pending a roadmap decision. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
+              ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names either the planned work, saying plainly that it is not scheduled, or the limit of the sources behind the gap. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
               : `${dated} of the ${rows.length} rows carry a dated target; the rest say why they do not, and a date that slips is moved here rather than deleted.`}{" "}
             Every figure above is recomputed at build time. The wording around
             them — blockers, targets, the reasons a row carries no date — is
@@ -202,22 +213,30 @@ export default function CoveragePage() {
             <h2 className="mb-2 text-lg font-semibold text-foreground">
               Every number on this page is recomputed at build time
             </h2>
+            {/* Trimmed 2026-09-18 to pay for the File C sentences below. What
+                went: "Nothing here is typed by hand." (the <h2> directly above
+                says it) and "The derivation for each row is printed beside
+                it." (every row visibly prints "Derived from …"). Both were
+                restatements of things already on the page; no claim was
+                dropped. */}
             <p className="text-sm leading-7">
-              Nothing here is typed by hand. Each coverage figure is read from the
+              Each coverage figure is read from the
               data files this build shipped — the same files the pages themselves
               render from — and a build-time gate recomputes all{" "}
               {rows.length} rows independently and fails the build if any rendered
               figure disagrees with its source. A coverage page carrying a
               stale literal would refute its own argument, so this one is not
-              allowed to carry any. The derivation for each row is printed beside
-              it.
+              allowed to carry any.
             </p>
+            {/* Same 2026-09-18 trim: "— and an unverifiable number on this
+                page would be worse than a missing one" was the paragraph
+                above's "A coverage page carrying a stale literal would refute
+                its own argument" in other words, two sentences apart. */}
             <p className="mt-3 text-sm leading-7">
               One figure is deliberately <em>absent</em> for the same reason: the
               share of award dollars whose recipient resolves to a corporate family.
               That is a warehouse query rather than a shipped file, so it cannot be
-              recomputed at build time — and an unverifiable number on this page
-              would be worse than a missing one.
+              recomputed at build time.
             </p>
           </ScopeNote>
 
@@ -267,13 +286,37 @@ export default function CoveragePage() {
             <h2 id="crosswalk-heading" className="mb-3 text-xl font-semibold">
               The budget→award crosswalk is a methodology limit, not a backlog item
             </h2>
+            {/* Trimmed 2026-09-18 to pay for the File C note below. What went:
+                "and what kind of gap it is matters: not work we have not got
+                to, but a limit of what the source records contain" — the <h2>
+                directly above it says exactly that, and so does the target
+                paragraph further down. */}
             <p className="leading-7 text-muted-foreground">
-              This is the site&apos;s largest gap, and what kind of gap it is
-              matters: not work we have not got to, but a limit of what the
-              source records contain.
+              This is the site&apos;s largest gap.
             </p>
             <p className="mt-3 leading-7 text-muted-foreground">
               {crosswalk.blocker}
+            </p>
+            {/* The File C negative result (spike 2026-09-01,
+                docs/superpowers/reviews/filec-program-activity-spike.md). Its
+                §Implications asks this page to say File C was examined and
+                ruled out rather than staying silent on it. The link is OMB's
+                domain list — the public evidence behind finding #1 — because
+                the write-up itself is not a published page; the label says
+                "64 MB CSV" because that is what the reader is about to get.
+                It sits BELOW [data-first-data] (the map table), so it costs
+                gate 16's index-fold leg nothing. */}
+            <p className="mt-3 leading-7 text-muted-foreground">
+              {FILE_C_NOTE.lead}
+              <a
+                href={FILE_C_NOTE.linkHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                {FILE_C_NOTE.linkLabel}
+              </a>
+              {FILE_C_NOTE.tail}
             </p>
             <p className="mt-3 leading-7 text-muted-foreground">
               So the honest boundary is this: we assert a budget→award link only

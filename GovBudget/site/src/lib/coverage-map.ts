@@ -36,7 +36,10 @@ import "server-only";
  * class of defect as publishing a figure it cannot recompute, and this is the
  * page least able to afford either. So every row now states that there is no
  * dated target AND names the work that is planned and what would move it —
- * "undated pending a roadmap decision", never "undated because nobody knows".
+ * "planned and not scheduled", never "undated because nobody knows".
+ * (2026-09-18: "undated pending a roadmap decision" is retired — it promised a
+ * decision on work that was filed nowhere and, for lineage, on a pass that had
+ * already run. See COVERAGE_PROMISE_IDS below.)
  * The BLOCKERS are untouched: they are the page's value, and none was dropped.
  * A dated target remains legal in this vocabulary (targetKind "dated"); adding
  * one back is a deliberate act that has to name a month and a year.
@@ -86,6 +89,84 @@ export type CoverageMapId = (typeof COVERAGE_MAP_IDS)[number];
  */
 export const CROSSWALK_LIMIT_ID: CoverageMapId = "bridge";
 
+/**
+ * The rows whose target names work this project intends to do — as opposed to
+ * a methodology limit (bridge, flows, company-awards) or a source limit
+ * (program-pages, awards-window).
+ *
+ * 2026-09-18. All seven used to end "pending a roadmap decision". Nothing was
+ * pending: the 2026-09-05 audit found no numbered entry, spec or commit behind
+ * any of them, and the lineage row described a pass that had already run and
+ * closed (#29(a), 2026-08-26). "Pending a decision" promises a decision is
+ * coming; "not scheduled" is what was true.
+ *
+ * The ROADMAP number is deliberately NOT rendered: ROADMAP.md is not a
+ * published document, and a reference the reader cannot open is the same
+ * defect one layer down. For a maintainer looking for the paperwork, the
+ * 2026-09-05 audit routes four of these to numbered backlog entries — grep
+ * ROADMAP.md for the SUBJECT PHRASE, never a number: "PB2015 and PB2016
+ * editions" (editions), "Dossier expansion beyond the top 50" (dossiers),
+ * "Lineage title-only endpoints" (lineage), "GAO protest-docket enrichment"
+ * (feeds). districts, state-ca and filings are routed to no entry at all,
+ * which is exactly what their rows say.
+ */
+export const COVERAGE_PROMISE_IDS: readonly CoverageMapId[] = [
+  "editions",
+  "dossiers",
+  "lineage",
+  "districts",
+  "state-ca",
+  "feeds",
+  "filings",
+];
+
+/**
+ * The File C negative result, published. Spike:
+ * docs/superpowers/reviews/filec-program-activity-spike.md (2026-09-01),
+ * whose §Implications asks this page to say File C was "examined and ruled
+ * out rather than staying silent on it".
+ *
+ * File C ("Account Breakdown by Award") nominally carries a program activity
+ * per (TAS × award) — the one official path that could have closed the
+ * budget→award gap. The spike tested it and it cannot. Every clause below is
+ * the spike's own measurement, in its own scope:
+ *
+ *   - finding #1: OMB's authoritative program-activity domain for the DoD
+ *     RDT&E accounts it checked (097-0400, 057-3600, at FY25P12) "contains
+ *     only budget-activity lines … plus junk codes", and "Program elements
+ *     are not in the valid domain", so "PE-level File C reporting is
+ *     impossible by construction". Hence "budget activities and junk codes,
+ *     never program elements" — the junk half is not dropped.
+ *   - finding #2, measured over the sample and NOT over the corpus: "81% of
+ *     absolute obligated flow ($501M of $617M) sits under junk or absent
+ *     labels", where the sample is a "Stratified sample of 44 published links
+ *     (19 high / 25 medium; 41 distinct awards)" and its 1,090 File C rows.
+ *     The rendered sentence therefore says "in a 44-link sample", never "in
+ *     the corpus", and states no dollar figure (none is derivable here).
+ *   - findings #3/#4 and §Implications: the field "contradicts ground truth
+ *     on awards we can independently verify", and cannot serve "as a join
+ *     key, … as corroborating evidence, [or] as a veto on suspect links".
+ *
+ * The spike itself has no published home (no route renders docs/, and the
+ * repository is not public), so the link is its public primary evidence: OMB's
+ * domain list. That file is 63,635,154 bytes (HTTP 200, text/csv, re-checked
+ * 2026-09-18) and the link text says "64 MB CSV" — a link that silently
+ * starts a 64 MB download is a hostile citation.
+ */
+export const FILE_C_NOTE = {
+  lead:
+    "A published negative result, not a silence: File C nominally names a " +
+    "program activity for each award, but ",
+  linkHref: "https://files.usaspending.gov/reference_data/program_activity.csv",
+  linkLabel: "OMB’s own domain list for these accounts (a 64 MB CSV)",
+  tail:
+    " carries only budget activities and junk codes, never program elements, " +
+    "so program-element grain is impossible by construction. In a 44-link " +
+    "sample, 81% of the obligated flow sat under junk or absent labels, and " +
+    "it contradicts ground truth on awards verified independently. It cannot " +
+    "join, corroborate, or veto.",
+} as const;
+
 /** "dated" → target names a month and a year. "none" → and says why not. */
 export type CoverageTargetKind = "dated" | "none";
 
@@ -122,7 +203,7 @@ export interface CoverageMapRow {
  * row's blocker was being rewritten: the date understated one row and
  * overstated the other eleven at the same time.
  */
-export const MAP_REVIEWED_ON = "2026-08-29";
+export const MAP_REVIEWED_ON = "2026-09-18";
 
 export function getCoverageMap(): CoverageMapRow[] {
   const programs = getProgramsCount();
@@ -280,11 +361,13 @@ export function getCoverageMap(): CoverageMapRow[] {
         "were nearly published with the wrong volumes before that rule existed.",
       targetKind: "none",
       target:
-        "No dated target yet — PB2015 and PB2016 are the next two editions " +
-        "queued, and the date is pending a roadmap decision rather than " +
-        "unknown. An edition ships only once its volumes are evidence-keyed — " +
-        "never on a filename pattern — so the date follows that work, not the " +
-        "other way round.",
+        // "queued" was the word that had to go with the date: nothing queues
+        // these two anywhere (#96 — the only commit that has ever touched the
+        // string PB2015 is the one that published this page).
+        "No dated target, and not scheduled — PB2015 and PB2016 are the two " +
+        "editions that would come next. An edition ships only once its " +
+        "volumes are evidence-keyed — never on a filename pattern — so a date " +
+        "could only follow that work.",
     },
     {
       id: "dossiers",
@@ -306,10 +389,13 @@ export function getCoverageMap(): CoverageMapRow[] {
         "gate, not by the availability of source material.",
       targetKind: "none",
       target:
-        "No dated target yet — the next batches are queued and will be taken " +
-        "in order of FY2026 requested dollars, so the largest lines are " +
-        "covered first. How many land by when is pending a roadmap decision; " +
-        "the order is already fixed.",
+        // The old sentence said the next batches were "queued". They are not
+        // queued anywhere (#95); the ORDER is the only thing that exists, and
+        // it exists in code — dossiers/research.py sorts the candidate rows by
+        // fct_budget_trajectory.fy2026_total descending before the cap.
+        "No dated target, and not scheduled — the order is fixed even though " +
+        "the schedule is not: whenever a next batch runs it is taken in order " +
+        "of FY2026 requested dollars, largest lines first.",
     },
     {
       id: "lineage",
@@ -345,10 +431,18 @@ export function getCoverageMap(): CoverageMapRow[] {
         "are never cited.",
       targetKind: "none",
       target:
-        "No dated target yet — narrative extraction across the whole FY2026 " +
-        "set is the planned next step and its date is pending a roadmap " +
-        "decision. Whenever it runs, anything it finds stays in the candidate " +
-        "tier until a quotable sentence names the other end.",
+        // STALE as well as over-promising. The extraction pass over clauses
+        // already carrying a PE token ran and closed as #29(a) (2026-08-26,
+        // 313 clauses). What is left is the ~4,400 verb-only clauses that
+        // §6.2 of specs/2026-08-31-lineage-llm-extraction-precision.md:194-201
+        // declares need "a separate matcher with a separate precision
+        // measurement" — its dominant error being a SYSTEM name confidently
+        // resolved to a BUDGET LINE.
+        "No dated target, and not scheduled — the pass over clauses that " +
+        "already name a program element has run; what is left are clauses " +
+        "naming only a system or an effort, which need a different matcher " +
+        "and their own precision study. Anything it found would stay in the " +
+        "candidate tier until a quotable sentence names the other end.",
     },
     {
       id: "flows",
@@ -414,13 +508,28 @@ export function getCoverageMap(): CoverageMapRow[] {
         "means only that the award drew on the same account and agency. " +
         "Where evidence pinned an award " +
         "to a different organization's program, the link was removed — a " +
-        "guess wearing a citation is worse than an honest absence.",
+        // The File C negative result (spike 2026-09-01), stated where the
+        // limit is stated. Short on purpose: this blocker renders TWICE (the
+        // map row and /coverage/#crosswalk), so every character here costs
+        // two, and the paragraph the page puts directly under it — FILE_C_NOTE
+        // — carries the measurement and the public evidence link.
+        "guess wearing a citation is worse than an honest absence. File C, " +
+        "the last untested official path, was examined and ruled out in " +
+        "September 2026.",
       targetKind: "none",
       target:
+        // Trimmed 2026-09-18 to pay for the File C sentences on this page.
+        // What went was "Until then the unbridged share is stated outright, so
+        // nobody has to reverse-engineer it from what the chart omits" — a
+        // claim this page makes twice over already: the row's own `covered`
+        // cell states the unbridged share as a percentage, and the paragraph
+        // immediately above this one in /coverage/#crosswalk says the site
+        // "publish[es] the size of the remainder rather than leaving it to be
+        // inferred from an empty chart". This target renders TWICE, so the
+        // duplicate cost double. No claim was dropped, only restated once.
         "No dated target, because this is a methodology limit and not a backlog " +
         "item. It closes if a source begins publishing the program element on " +
-        "the award record. Until then the unbridged share is stated outright, " +
-        "so nobody has to reverse-engineer it from what the chart omits.",
+        "the award record.",
     },
     {
       id: "company-awards",
@@ -483,10 +592,9 @@ export function getCoverageMap(): CoverageMapRow[] {
         "distribution nobody could check.",
       targetKind: "none",
       target:
-        "No dated target yet — the planned fix is to publish the statewide " +
-        "residual as its own row per state, so the dollars that cannot be " +
-        "districted are visible instead of missing. The work is scoped; its " +
-        "date is pending a roadmap decision.",
+        "No dated target, and not scheduled — the planned fix is scoped: " +
+        "publish the statewide residual as its own row per state, so the " +
+        "dollars that cannot be districted are visible instead of missing.",
     },
     {
       id: "state-ca",
@@ -504,10 +612,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "a separate portal with its own schema — there is no shared source.",
       targetKind: "none",
       target:
-        "No dated target yet — California FY2023 and FY2024 are the planned " +
-        "next step, pending a roadmap decision on when the reconciliation " +
-        "work is scheduled. No second state is queued behind them, and none " +
-        "will be announced before its portal is ingested.",
+        // Filed nowhere: the backlog's California entry (#93) is the 376-page
+        // ACFR table parse, a different document species from the Open Fi$Cal
+        // FY2023/FY2024 ingest this row is about.
+        "No dated target, and not scheduled — California FY2023 and FY2024 " +
+        "are the planned next step. No second state is queued behind them, " +
+        "and none will be announced before its portal is ingested.",
     },
     {
       id: "feeds",
@@ -529,10 +639,9 @@ export function getCoverageMap(): CoverageMapRow[] {
         "cannot ship until its threshold is published and gated.",
       targetKind: "none",
       target:
-        "No dated target yet — two further event types are planned, protest " +
-        "outcomes and GAO high-risk transitions, each with its threshold " +
-        "published before its first card. Which build carries them is pending " +
-        "a roadmap decision.",
+        "No dated target, and not scheduled — two further event types are " +
+        "planned, protest outcomes and GAO high-risk transitions, each with " +
+        "its threshold published before its first card.",
     },
     {
       id: "filings",
@@ -550,10 +659,11 @@ export function getCoverageMap(): CoverageMapRow[] {
         "the honest result rather than a miss.",
       targetKind: "none",
       target:
-        "No dated target yet — extending alias coverage across the whole " +
-        "detail-grade corpus is planned, with each new alias recorded in the " +
-        "alias table rather than inferred at match time. The date is pending " +
-        "a roadmap decision; the rule it has to follow is not.",
+        // Filed nowhere: the backlog's alias entry (#100) is the defence.gov
+        // announcement corpus, not this LDA alias table.
+        "No dated target, and not scheduled — extending alias coverage across " +
+        "the whole detail-grade corpus is planned, with each new alias " +
+        "recorded in the alias table rather than inferred at match time.",
     },
   ];
 

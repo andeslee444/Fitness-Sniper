@@ -79,7 +79,10 @@ vi.mock("@/lib/feeds", () => ({
 import {
   getCoverageMap,
   COVERAGE_MAP_IDS,
+  COVERAGE_PROMISE_IDS,
   CROSSWALK_LIMIT_ID,
+  FILE_C_NOTE,
+  MAP_REVIEWED_ON,
 } from "@/lib/coverage-map";
 
 const rows = getCoverageMap();
@@ -288,5 +291,99 @@ describe("coverage map — the crosswalk gap is framed as a methodology limit", 
     const t = `${r().blocker} ${r().target}`.toLowerCase();
     expect(t).not.toMatch(/not (yet )?(done|started|built)/);
     expect(t).not.toMatch(/coming soon/);
+  });
+});
+
+/**
+ * ROADMAP-COMPLETION 2026-09-18. Until this round seven rows ended "pending a
+ * roadmap decision" — a sentence that tells a reader a decision is imminent
+ * when the 2026-09-05 audit found no entry, spec or commit behind any of
+ * them, and when the lineage row was describing a pass that had already run
+ * and closed (#29(a), 2026-08-26). Each of those rows now says plainly that
+ * the work is NOT SCHEDULED.
+ */
+describe("coverage map — a promise says whether it is scheduled", () => {
+  it("the seven promise rows are exactly the rows that name planned work", () => {
+    expect([...COVERAGE_PROMISE_IDS]).toEqual([
+      "editions",
+      "dossiers",
+      "lineage",
+      "districts",
+      "state-ca",
+      "feeds",
+      "filings",
+    ]);
+    for (const id of COVERAGE_PROMISE_IDS) {
+      expect([...COVERAGE_MAP_IDS], id).toContain(id);
+    }
+  });
+
+  it("every promise row says 'not scheduled' in as many words", () => {
+    for (const id of COVERAGE_PROMISE_IDS) {
+      const r = byId.get(id)!;
+      expect(r.targetKind, id).toBe("none");
+      expect(r.target.toLowerCase(), id).toContain("not scheduled");
+      // …and the gate's own requirement is not collateral damage.
+      expect(r.target.toLowerCase(), id).toContain("no dated target");
+    }
+  });
+
+  it("no row anywhere still defers to 'a roadmap decision'", () => {
+    for (const r of rows) {
+      expect(`${r.blocker} ${r.target}`.toLowerCase(), r.id).not.toContain(
+        "roadmap decision",
+      );
+    }
+  });
+
+  it("a row that is not a promise never claims to be unscheduled", () => {
+    // bridge/flows/company-awards are methodology limits and program-pages/
+    // awards-window are source limits: "not scheduled" would frame a limit as
+    // a queue position, which is the defect this page exists to avoid.
+    const promises = new Set<string>(COVERAGE_PROMISE_IDS);
+    for (const r of rows) {
+      if (promises.has(r.id)) continue;
+      expect(r.target.toLowerCase(), r.id).not.toContain("not scheduled");
+    }
+  });
+
+  it("the prose review date moved with the prose", () => {
+    // coverage-map.ts — this constant read 2026-08-05 while a blocker was
+    // being rewritten once already (2026-08-27). It is the date the map's
+    // prose was actually re-read, never a date copied from a plan.
+    expect(MAP_REVIEWED_ON).toBe("2026-09-18");
+  });
+});
+
+/**
+ * The File C negative result (spike:
+ * docs/superpowers/reviews/filec-program-activity-spike.md, 2026-09-01). Its
+ * §Implications says /coverage/ "can now say File C was examined and ruled
+ * out rather than staying silent on it". It stayed silent; this is the
+ * sentence.
+ */
+describe("coverage map — the crosswalk row publishes the File C result", () => {
+  it("the blocker names File C and says it was ruled out, keeping what the gate pins", () => {
+    const b = byId.get(CROSSWALK_LIMIT_ID)!.blocker;
+    expect(b).toMatch(/File C/);
+    expect(b.toLowerCase()).toMatch(/ruled out/);
+    // The appended sentence must come AFTER the closing clause, not replace it.
+    expect(b).toMatch(/honest absence\.\s*File C/);
+    expect(b).toMatch(/account code/i);
+    expect(b).toMatch(/hand-adjudicated/i);
+    expect(b).toMatch(/adversarial/i);
+  });
+
+  it("the note links public evidence and discloses what the reader is about to download", () => {
+    expect(FILE_C_NOTE.linkHref).toBe(
+      "https://files.usaspending.gov/reference_data/program_activity.csv",
+    );
+    expect(FILE_C_NOTE.linkLabel).toMatch(/64 MB CSV/);
+    const prose = `${FILE_C_NOTE.lead} ${FILE_C_NOTE.tail}`;
+    expect(prose).toMatch(/negative result/i);
+    expect(prose).toMatch(/81%/);
+    expect(prose).toMatch(/44-link sample/);
+    // No currency token: prose-allowlist.json has no entry for this page.
+    expect(prose).not.toMatch(/\$/);
   });
 });
