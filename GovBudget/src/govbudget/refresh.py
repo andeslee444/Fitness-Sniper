@@ -59,7 +59,7 @@ DESIGN, and why it is this boring:
     tests/jbooks/test_era_keys.py opens a connection to the real
     `config.PG_DSN` warehouse that it uses only for SELECTs (its
     keyspace-collision guard; `psycopg.connect(config.PG_DSN)` at
-    test_era_keys.py:83 sets no read-only mode), and skips when that database
+    test_era_keys.py:84 sets no read-only mode), and skips when that database
     is unavailable. Only reads, but not "never touches".
 
   * The drift record has two halves that ARE true: drift_report ages every

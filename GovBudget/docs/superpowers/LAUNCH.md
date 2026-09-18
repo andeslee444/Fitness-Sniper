@@ -754,7 +754,7 @@ throwaway databases `govbudget_test` / `govbudget_test_root`, with one
 exception: `tests/jbooks/test_era_keys.py` opens a connection to the real
 `GOVBUDGET_PG_DSN` warehouse and only reads from it — SELECTs for its
 keyspace-collision guard; `psycopg.connect(config.PG_DSN)` at
-`test_era_keys.py:83` sets no read-only mode — and skips when that database is
+`test_era_keys.py:84` sets no read-only mode — and skips when that database is
 unavailable.)
 
 **Known limitations — read these before trusting a green run:**
