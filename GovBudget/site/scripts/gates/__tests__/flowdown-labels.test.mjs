@@ -14,6 +14,10 @@ import {
   subtractRects,
   RED_MIN_CHROMA,
   MIN_LABELS_WITH_VISIBLE_NODE_390,
+  isDeobligationRed,
+  hairlineProbeFindings,
+  HAIRLINE_SAMPLES,
+  HAIRLINE_NEUTRAL_TAIL,
 } from "../flowdown.mjs";
 
 describe("platedLabelFindings", () => {
@@ -245,5 +249,113 @@ describe("redPixelsInBox", () => {
     for (const neutral of [[255, 255, 255], [250, 250, 250], [10, 10, 12], [64, 64, 70]]) {
       expect(redPixelsInBox(png(neutral), { left: 0, top: 0, right: 6, bottom: 4 })).toBe(0);
     }
+  });
+});
+
+// ── the per-river hairline probe: leg h1's positive control ────────────────
+//
+// WHY THIS EXISTS. The whole-canvas `warmRedOnCanvas > 0` guard cannot see the
+// de-obligation hairlines at all: measured 2026-09-18 against site/out at
+// 1440x900, deleting every one of the 20 hairlines moved it 218,807 -> 216,360
+// (1.1 %), because --flow-class-notcomp vermillion dominates the count. A guard
+// that barely moves when the thing it guards is deleted is not a control. This
+// probe samples the hairline PATHS themselves, per river.
+describe("isDeobligationRed", () => {
+  it("accepts the composited hairline — #b91c1c at opacity 0.55 over white", () => {
+    // .flow-band { opacity: 0.55 }; 0.55 x rgb(185,28,28) + 0.45 x white.
+    expect(isDeobligationRed([216, 130, 130])).toBe(true);
+  });
+
+  it("rejects the not_competed vermillion that swamps the whole-canvas count", () => {
+    // --flow-class-notcomp #d55e00 = rgb(213,94,0) at 0.55 over white:
+    // lead 65 clears RED_MIN_CHROMA, so a lead-only probe calls a ribbon a
+    // hairline. Its tail does not: |g-b| = 52 against a 0.25 x 65 = 16 budget.
+    // Measured on site/out 2026-09-18: with every hairline's stroke removed,
+    // a lead-only probe still found 19 of 20 hairline paths "lit" by the
+    // ribbons behind them; with the tail test, 20 of 20 went blind.
+    expect(isDeobligationRed([232, 166, 115])).toBe(false);
+  });
+
+  it("accepts a hairline composited over a vermillion ribbon", () => {
+    // The hairlines cross the ribbons; 0.55 x #b91c1c over rgb(232,166,115).
+    expect(isDeobligationRed([206, 90, 67])).toBe(true);
+  });
+
+  it("rejects the plate, the halo and every neutral pixel", () => {
+    for (const c of [[255, 255, 255], [250, 246, 246], [10, 10, 12], [64, 64, 70]]) {
+      expect(isDeobligationRed(c)).toBe(false);
+    }
+  });
+
+  it("rejects a pixel off the edge of the PNG", () => {
+    expect(isDeobligationRed(null)).toBe(false);
+  });
+});
+
+describe("hairlineProbeFindings", () => {
+  /** A `w`x`h` white PNG with `paint` (a map "x,y" -> [r,g,b]) stamped on. */
+  function png(w, h, paint = {}) {
+    const data = Buffer.alloc(w * h * 4, 255);
+    for (const [k, rgb] of Object.entries(paint)) {
+      const [x, y] = k.split(",").map(Number);
+      const i = (y * w + x) * 4;
+      data[i] = rgb[0];
+      data[i + 1] = rgb[1];
+      data[i + 2] = rgb[2];
+    }
+    return { width: w, height: h, data };
+  }
+  const composited = [216, 130, 130];
+  /** four sample points along one hairline */
+  const points = [[1, 1], [2, 1], [3, 1], [4, 1]];
+
+  it("passes a hairline whose sampled pixels decode as de-obligation red", () => {
+    const image = png(8, 4, { "1,1": composited, "3,1": composited });
+    const out = hairlineProbeFindings("spend FY2025", [{ id: "e12", points }], image);
+    expect(out.findings).toEqual([]);
+    expect(out.lit).toEqual([2]);
+  });
+
+  it("FINDS a hairline the PNG does not show — the path is there, the paint is not", () => {
+    // The gate's own failure mode: the screenshot, the scroll or the
+    // SVG->PNG transform silently stopped lining up, so every sampled pixel
+    // is the white page. Nothing in the whole-canvas count would notice.
+    const out = hairlineProbeFindings("spend FY2025", [{ id: "e12", points }], png(8, 4));
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0]).toContain("e12");
+    expect(out.findings[0]).toContain("0 of 4");
+    expect(out.lit).toEqual([0]);
+  });
+
+  it("FINDS a hairline whose sampled pixels are warm red but BELOW the chroma lead", () => {
+    // A 4 %-opacity ghost of the same red: rgb(250,246,246), lead 4. This is
+    // what a hairline hidden behind an opaque plate leaves, and it must not
+    // be accepted as proof the hairline itself rendered.
+    const ghost = png(8, 4, { "1,1": [250, 246, 246], "2,1": [250, 246, 246], "3,1": [250, 246, 246], "4,1": [250, 246, 246] });
+    const out = hairlineProbeFindings("spend FY2025", [{ id: "e12", points }], ghost);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0]).toContain("0 of 4");
+  });
+
+  it("FINDS a hairline lit only by the vermillion ribbon behind it", () => {
+    const ribbon = png(8, 4, { "1,1": [232, 166, 115], "2,1": [232, 166, 115], "3,1": [232, 166, 115], "4,1": [232, 166, 115] });
+    expect(hairlineProbeFindings("spend FY2025", [{ id: "e12", points }], ribbon).findings).toHaveLength(1);
+  });
+
+  it("reports one finding per blind hairline and names the river", () => {
+    const image = png(8, 4, { "1,1": composited });
+    const out = hairlineProbeFindings(
+      "spend FY2025",
+      [{ id: "e1", points }, { id: "e2", points: [[6, 3]] }, { id: "e3", points: [[7, 3]] }],
+      image,
+    );
+    expect(out.findings).toHaveLength(2);
+    expect(out.findings.every((f) => f.includes("spend FY2025"))).toBe(true);
+    expect(out.lit).toEqual([1, 0, 0]);
+  });
+
+  it("pins the sample count and the tail ratio the gate ships", () => {
+    expect(HAIRLINE_SAMPLES).toBe(48);
+    expect(HAIRLINE_NEUTRAL_TAIL).toBe(0.25);
   });
 });

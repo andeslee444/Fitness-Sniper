@@ -87,13 +87,21 @@
  *      promise a plate, only pixels can say nothing shows through it, and the
  *      probe is a backdrop-invariant redness lead (RED_MIN_CHROMA) because the
  *      hairline paints at opacity 0.55 and never reaches its own token colour.
- *      The DOM half is re-sampled after the FY switch as leg (f) is; the
- *      screenshot half is not, because the switch changes the label set and
- *      not the compositing rule that half probes. (h2) re-runs at 390x844 and
- *      requires the value half of a label to be the half nearest its node face
- *      and to be on screen whenever the node bar is. Vacuity fails five ways
- *      (no labels, no plates, no node bars, no warm red anywhere, fewer than
- *      MIN_LABELS_WITH_VISIBLE_NODE_390 nodes visible at 390).
+ *      That assertion is only worth the POSITIVE CONTROL under it: per river,
+ *      every [data-flow-negative] path is sampled at HAIRLINE_SAMPLES points
+ *      and each must decode as de-obligation red somewhere along itself, so a
+ *      probe that has gone blind fails instead of reporting a clean chart. The
+ *      whole-canvas warm-red count is kept as a DECODE check only — it is
+ *      dominated by not_competed ribbon fill and barely moves when every
+ *      hairline is deleted. A river with no de-obligation edge is a note, not
+ *      an error (the budget river has none). The DOM half is re-sampled after
+ *      the FY switch as leg (f) is; the screenshot half is not, because the
+ *      switch changes the label set and not the compositing rule that half
+ *      probes. (h2) re-runs at 390x844 and requires the value half of a label
+ *      to be the half nearest its node face and to be on screen whenever the
+ *      node bar is. Vacuity fails six ways (no labels, no plates, no node
+ *      bars, no warm red decoded at all, a hairline the probe cannot see,
+ *      fewer than MIN_LABELS_WITH_VISIBLE_NODE_390 nodes visible at 390).
  *
  * Export: runFlowdownGate({ baseUrl }) → { pass, errors, notes }
  *         runLineageRibbonLeg() → { errors, notes }   (leg g, standalone)
@@ -470,6 +478,95 @@ export function redPixelsInBox(png, box, minChroma = RED_MIN_CHROMA) {
     }
   }
   return n;
+}
+
+/** How many evenly spaced points along a de-obligation hairline the positive
+ *  control samples. The hairline is `stroke-dasharray: 4 3`, so ~4/7 of its
+ *  length is painted and a sample can legitimately land in a gap; the
+ *  requirement is >= 1 lit sample per hairline, not all of them. Measured on
+ *  site/out at 1440x900 (2026-09-18), 20 hairlines, N=48: every hairline lit
+ *  between 6 and 30 samples. */
+export const HAIRLINE_SAMPLES = 48;
+
+/** How far a de-obligation pixel's green and blue may diverge, as a fraction of
+ *  its red lead, before the probe stops calling it de-obligation red.
+ *
+ *  WHY A TAIL TEST AND NOT THE LEAD ALONE. --flow-negative is #b91c1c, whose
+ *  green and blue are EQUAL (28, 28); compositing at opacity 0.55 over a
+ *  neutral backdrop scales that gap by the same alpha, so a real hairline pixel
+ *  keeps |g - b| ~ 0. --flow-class-notcomp vermillion #d55e00 = rgb(213,94,0)
+ *  does not: at 0.55 over white it renders rgb(232,166,115), a lead of 65 that
+ *  clears RED_MIN_CHROMA on its own but a |g - b| of 52 against a 0.25 x 65 = 16
+ *  budget. That distinction is what makes this a control. MEASURED on site/out
+ *  (2026-09-18, 1440x900, 20 hairlines, N=48) by removing every hairline's
+ *  stroke from the live DOM: under the lead alone 19 of 20 hairline paths still
+ *  read as "lit" by the ribbons behind them — the probe would have passed a
+ *  river whose hairlines had all stopped rendering. Under the lead AND this
+ *  tail, 20 of 20 went blind, while the shipped render kept all 20 lit. Widen
+ *  this only against a re-measured erase control; do not drop it. */
+export const HAIRLINE_NEUTRAL_TAIL = 0.25;
+
+/** Is this pixel the de-obligation hairline's colour, as the browser paints it?
+ *  `rgb` is null for a point off the edge of the PNG, which is never red.
+ *  See RED_MIN_CHROMA for the lead and HAIRLINE_NEUTRAL_TAIL for the tail. */
+export function isDeobligationRed(rgb, minChroma = RED_MIN_CHROMA, tailRatio = HAIRLINE_NEUTRAL_TAIL) {
+  if (!rgb) return false;
+  const [r, g, b] = rgb;
+  const lead = r - Math.max(g, b);
+  return lead >= minChroma && Math.abs(g - b) <= tailRatio * lead;
+}
+
+/**
+ * (h1 POSITIVE CONTROL) Every de-obligation hairline in one river must decode
+ * as de-obligation red where it is drawn.
+ *
+ * WHAT THIS REPLACES. The `warmRedOnCanvas > 0` guard below claims only that
+ * the screenshot decodes SOME warm red; it cannot speak for the hairlines.
+ * Measured on site/out at 1440x900 (2026-09-18): deleting all 20 hairlines from
+ * the live DOM moved that count 218,807 -> 216,360, a 1.1 % dent, because the
+ * not_competed ribbons dominate it. Restricting the count to the hairlines'
+ * bounding boxes only raises their share to 6.9 %. So the count is kept as a
+ * decode check and the hairline claim is made HERE, by sampling the paths.
+ *
+ * `hairlines` are `{ id, points }` with `points` already mapped into this
+ * river's PNG coordinates by the caller's SVG->PNG transform — so a transform
+ * that silently stopped lining up shows up as a blind hairline, which is
+ * exactly the failure the control exists to catch.
+ *
+ * A river with no `[data-flow-negative]` path is NOT a finding: the budget
+ * FY2026 river legitimately renders none (measured 2026-09-18). The caller
+ * notes that and moves on.
+ */
+export function hairlineProbeFindings(
+  river,
+  hairlines,
+  png,
+  minChroma = RED_MIN_CHROMA,
+  tailRatio = HAIRLINE_NEUTRAL_TAIL,
+) {
+  const findings = [];
+  const lit = [];
+  const at = (x, y) => {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    if (xi < 0 || yi < 0 || xi >= png.width || yi >= png.height) return null;
+    const i = (yi * png.width + xi) * 4;
+    return [png.data[i], png.data[i + 1], png.data[i + 2]];
+  };
+  for (const h of hairlines) {
+    const n = h.points.filter(([x, y]) => isDeobligationRed(at(x, y), minChroma, tailRatio)).length;
+    lit.push(n);
+    if (n === 0) {
+      findings.push(
+        `leg h1: ${river}: de-obligation hairline "${h.id}" decodes as red in ${n} of ` +
+          `${h.points.length} sampled point(s) along its own path — the pixel probe cannot see the ` +
+          `edges it exists to find, so its "0 red inside every label" result proves nothing. ` +
+          `Either the hairline stopped rendering, or the screenshot/SVG->PNG transform stopped ` +
+          `lining up; fix the probe, do not delete this control`,
+      );
+    }
+  }
+  return { findings, lit };
 }
 
 /**
@@ -1378,10 +1475,13 @@ export async function runFlowdownGate({ baseUrl }) {
         // element's own top-left, with the label boxes re-read RELATIVE to the
         // same element after scrolling it into view. Do not use
         // page.screenshot with a clip: the spend river sits ~2,000px down the
-        // document. The context is created with no deviceScaleFactor
-        // (flowdown.mjs:1182), so 1 CSS px = 1 device px and the box
-        // coordinates index the PNG directly. If that context ever gains a
-        // scale factor, multiply here.
+        // document. The context is created with no deviceScaleFactor — the
+        // `browser.newContext({ viewport: { width: 1440, height: 900 } })` that
+        // opens leg (e)'s `pageUp` scope, named by content because this comment
+        // has already chased that line's number twice — so 1 CSS px = 1 device
+        // px and the box coordinates index the PNG directly. If that context
+        // ever gains a scale factor, multiply here AND in the hairline sample
+        // points, which ride the same transform.
         const collectPlateGeo = () =>
           page.evaluate(() => {
             const order = new Map();
@@ -1430,7 +1530,18 @@ export async function runFlowdownGate({ baseUrl }) {
             const probe = document.querySelector("[data-flow-negative]");
             const stroke = probe ? getComputedStyle(probe).stroke : "";
             const m = stroke.match(/(\d+),\s*(\d+),\s*(\d+)/);
-            return { labels, plates, bars, negative: m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null };
+            // The OPACITY matters as much as the colour: `.flow-band` paints at
+            // 0.55, and what the probe has to see is the composited pixel, not
+            // the token. Read it here so the self-check below compares the lead
+            // the screenshot can actually contain.
+            const negOpacity = probe ? Number(getComputedStyle(probe).opacity) : 1;
+            return {
+              labels,
+              plates,
+              bars,
+              negative: m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null,
+              negativeOpacity: Number.isFinite(negOpacity) ? negOpacity : 1,
+            };
           });
 
         /** The DOM half of h1 on one sample. Leg (f) re-runs after the FY
@@ -1468,49 +1579,96 @@ export async function runFlowdownGate({ baseUrl }) {
           }
 
           // ── the screenshot half ──────────────────────────────────────────
-          const negLead = geo.negative
+          // THE LEAD THE SCREENSHOT CAN CONTAIN, not the token's. `.flow-band`
+          // paints at opacity 0.55, and compositing over a neutral backdrop
+          // scales the red lead by exactly that alpha, so the pixels this probe
+          // reads carry 0.55 x the token's lead and never the token's own. The
+          // shipped token clears RED_MIN_CHROMA either way (157 raw, 86
+          // composited), which is why the un-multiplied check passed while
+          // saying nothing: any token whose raw lead landed in [40, 72] would
+          // have satisfied it and still been invisible to the probe.
+          const tokenLead = geo.negative
             ? geo.negative[0] - Math.max(geo.negative[1], geo.negative[2])
             : 0;
+          const negLead = tokenLead * (geo.negativeOpacity ?? 1);
           if (!geo.negative) {
             errors.push("leg h: could not resolve --flow-negative from a rendered hairline — the pixel probe would be vacuous");
           } else if (negLead < RED_MIN_CHROMA) {
             errors.push(
-              `leg h1: --flow-negative resolves to rgb(${geo.negative.join(",")}), a red lead of ${negLead} ` +
-                `below RED_MIN_CHROMA ${RED_MIN_CHROMA} — the de-obligation colour moved out of the probe's ` +
-                `reach, so re-base the constant against the new palette; do not drop the check`,
+              `leg h1: --flow-negative resolves to rgb(${geo.negative.join(",")}) painted at opacity ` +
+                `${geo.negativeOpacity}, a composited red lead of ${negLead.toFixed(1)} (token lead ` +
+                `${tokenLead}) below RED_MIN_CHROMA ${RED_MIN_CHROMA} — the de-obligation colour as it is ` +
+                `actually painted is out of the probe's reach, so re-base the constant against the new ` +
+                `palette; do not drop the check`,
             );
           } else {
             let redInLabels = 0;
-            let redOutside = 0;
+            let warmRedOnCanvas = 0;
             let measured = 0;
+            /** river -> { hairlines, lit } across every svg in that river. */
+            const hairlinesByRiver = new Map();
             const svgHandles = await page.$$('[data-testid="flow-chart"] svg');
             for (const svg of svgHandles) {
               await svg.scrollIntoViewIfNeeded();
-              // Label boxes RELATIVE to this svg, read after the scroll and in
-              // one evaluate, so both rects shifted together.
-              const local = await svg.evaluate((s) => {
-                const sb = s.getBoundingClientRect();
-                const out = [];
-                for (const t of s.querySelectorAll("[data-flow-node] text, [data-flow-other] text")) {
-                  const r = t.getBoundingClientRect();
-                  if (r.width === 0) continue;
-                  out.push({
-                    id: t.closest("[data-node-id]")?.getAttribute("data-node-id") ?? "(unknown)",
-                    left: r.left - sb.left,
-                    right: r.right - sb.left,
-                    top: r.top - sb.top,
-                    bottom: r.bottom - sb.top,
-                  });
-                }
-                const river = s.closest("[data-flow-river]");
-                return {
-                  river: river ? `${river.getAttribute("data-flow-river")} FY${river.getAttribute("data-fy")}` : "(no river)",
-                  boxes: out,
-                };
-              });
-              if (local.boxes.length === 0) continue;
+              // Label boxes and hairline sample points RELATIVE to this svg,
+              // read after the scroll and in one evaluate, so every coordinate
+              // shifted together.
+              const local = await svg.evaluate(
+                (s, samples) => {
+                  const sb = s.getBoundingClientRect();
+                  const out = [];
+                  for (const t of s.querySelectorAll("[data-flow-node] text, [data-flow-other] text")) {
+                    const r = t.getBoundingClientRect();
+                    if (r.width === 0) continue;
+                    out.push({
+                      id: t.closest("[data-node-id]")?.getAttribute("data-node-id") ?? "(unknown)",
+                      left: r.left - sb.left,
+                      right: r.right - sb.left,
+                      top: r.top - sb.top,
+                      bottom: r.bottom - sb.top,
+                    });
+                  }
+                  // THE POSITIVE CONTROL'S SAMPLE POINTS. getPointAtLength walks
+                  // the path the browser actually drew; getScreenCTM maps its
+                  // user space to client coordinates, and subtracting this
+                  // element's own origin lands them in the SAME PNG frame the
+                  // label boxes above use. Sampled at (k + 0.5)/N so no sample
+                  // sits exactly on an endpoint.
+                  const hairlines = [];
+                  for (const p of s.querySelectorAll("[data-flow-negative]")) {
+                    const ctm = p.getScreenCTM();
+                    if (!ctm) continue;
+                    const len = p.getTotalLength();
+                    const points = [];
+                    for (let k = 0; k < samples; k++) {
+                      const q = p.getPointAtLength((len * (k + 0.5)) / samples);
+                      points.push([
+                        ctm.a * q.x + ctm.c * q.y + ctm.e - sb.left,
+                        ctm.b * q.x + ctm.d * q.y + ctm.f - sb.top,
+                      ]);
+                    }
+                    hairlines.push({
+                      id: (p.getAttribute("aria-label") ?? "(unlabelled edge)").slice(0, 60),
+                      points,
+                    });
+                  }
+                  const river = s.closest("[data-flow-river]");
+                  return {
+                    river: river ? `${river.getAttribute("data-flow-river")} FY${river.getAttribute("data-fy")}` : "(no river)",
+                    boxes: out,
+                    hairlines,
+                  };
+                },
+                HAIRLINE_SAMPLES,
+              );
+              if (!hairlinesByRiver.has(local.river)) {
+                hairlinesByRiver.set(local.river, { hairlines: 0, lit: [] });
+              }
+              // A river's svg is worth a screenshot if it carries EITHER a label
+              // box to clear or a hairline to prove the probe can see.
+              if (local.boxes.length === 0 && local.hairlines.length === 0) continue;
               const img = PNG.sync.read(await svg.screenshot());
-              redOutside += redPixelsInBox(img, { left: 0, top: 0, right: img.width, bottom: img.height });
+              warmRedOnCanvas += redPixelsInBox(img, { left: 0, top: 0, right: img.width, bottom: img.height });
               for (const a of local.boxes) {
                 measured++;
                 const n = redPixelsInBox(img, a);
@@ -1522,19 +1680,54 @@ export async function runFlowdownGate({ baseUrl }) {
                   );
                 }
               }
+              if (local.hairlines.length > 0) {
+                const probe = hairlineProbeFindings(local.river, local.hairlines, img);
+                errors.push(...probe.findings);
+                const acc = hairlinesByRiver.get(local.river);
+                acc.hairlines += local.hairlines.length;
+                acc.lit.push(...probe.lit);
+              }
             }
             if (measured === 0) {
               errors.push("leg h1: no label boxes were sampled in a screenshot — the pixel probe is vacuous");
-            } else if (redOutside === 0) {
+            } else if (warmRedOnCanvas === 0) {
+              // WHAT THIS GUARD DOES AND DOES NOT SAY. It counts warm red over
+              // the WHOLE canvas, which is dominated by the not_competed
+              // vermillion ribbons: deleting all 20 de-obligation hairlines
+              // moved it 218,807 -> 216,360 on site/out (2026-09-18). So it is
+              // a decode check — the screenshot arrived and the PNG parsed —
+              // and nothing more. The hairline claim is the per-river positive
+              // control above.
               errors.push(
-                "leg h1: the pixel probe found NO warm red anywhere in either river — " +
-                  "the probe is broken or the hairlines stopped rendering; it cannot prove a clean label box",
+                "leg h1: the screenshots decoded NO warm red at all, so the pixel probe read nothing it " +
+                  "could have read — the element screenshot or the PNG decode is broken, and a " +
+                  "\"0 red inside every label box\" result off it means nothing. This counts ribbon fill " +
+                  "as well as hairlines; the per-river hairline probe is what ties the probe to the " +
+                  "de-obligation edges",
               );
             } else if (redInLabels === 0) {
               notes.push(
                 `leg h1: ${measured} label box(es) screenshot-probed at 1440, 0 de-obligation-red pixels inside ` +
-                  `(${redOutside} warm-red px elsewhere in the rivers — hairlines and not_competed ribbons) ✓`,
+                  `(${warmRedOnCanvas} warm-red px elsewhere on the canvas — mostly not_competed ribbon fill, ` +
+                  `so this number is a decode check, not a hairline count) ✓`,
               );
+            }
+            // PER RIVER. A river with no de-obligation edge is a NOTE, never an
+            // error: the budget FY2026 river legitimately renders none
+            // (measured 2026-09-18 against site/out).
+            for (const [river, acc] of hairlinesByRiver) {
+              if (acc.hairlines === 0) {
+                notes.push(
+                  `leg h1: ${river} has no [data-flow-negative] edge — nothing for the hairline probe to ` +
+                    `prove here, and that is a fact about the payload, not a gap in the gate`,
+                );
+              } else if (acc.lit.every((n) => n > 0)) {
+                notes.push(
+                  `leg h1: ${river}: all ${acc.hairlines} de-obligation hairline(s) decode as red along their ` +
+                    `own paths (${Math.min(...acc.lit)}-${Math.max(...acc.lit)} of ${HAIRLINE_SAMPLES} sampled ` +
+                    `points lit) — the pixel probe can see the edges it is asserting are absent from labels ✓`,
+                );
+              }
             }
           }
 
