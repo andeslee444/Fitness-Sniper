@@ -5,6 +5,13 @@ Gates (CLI: verify-phase5b1):
                           re-derivation per citation tier:
                           - jbook_pdf: PDF file exists + sha matches + pdfplumber
                             word found at stored page with x0/top_pt within 2 pt
+                            + the HIGHLIGHTED ROW's printed label names the fact
+                              (project, program element, or one of the P-40/R-2
+                              summary rows), and for procurement a highlight off
+                              the Total Obligation Authority row must equal TOA
+                              in the same column (PM review 2026-07-30 §Systemic
+                              fix, addendum). Unreadable labels are counted, not
+                              failed.
                           - workbook: xlsx file exists + sha matches +
                             load_workbook(read_only=True, data_only=True) cell
                             values SUM == stored amount_thousands exactly
@@ -75,6 +82,177 @@ def _sql_path(p) -> str:
 _SAMPLE_SIZE = 50
 _MIN_PER_KIND = 5
 _BBOX_TOL_PT = 2.0  # points tolerance for x0/top_pt re-check
+
+# ── Row-label leg (PM review 2026-07-30 §Systemic fix, addendum line 307) ──
+#
+# "Verify the highlighted region matches the expected row label, not merely
+# that the document exists and the hash matches." P0-1 (spec :52-55) was two
+# rows of ONE P-40 Resource Summary: the PDF citation resolved to Net
+# Procurement (P-1) 5,247.070 while the published basis was Total Obligation
+# Authority 5,565.655, the two bridged by Plus CY Advance Procurement 318.585
+# printed one row above. Document, hash, page and bbox all agreed; only the
+# row did not.
+#
+# Measured over ALL 9,879 jbook_pdf citations in the shipped export
+# (2026-09-18): 4,712 project-level facts, 5,167 PE-level; the dominant labels
+# are Gross/Weapon System Cost (2,290), Total Program Element (2,135), Total
+# Obligation Authority (120), Net Procurement (P-1) (28) and Plus Cost To
+# Complete (18), plus per-project "<project>: <title>" rows.
+_ROW_BAND_TOL_PT = 3.0      # words within this much `top` print on one row
+_LABEL_RIGHT_PAD_PT = 0.5   # a label word may overhang the amount's x0
+_TOA_COL_TOL_PT = 2.0       # "same column as the highlighted amount"
+
+# The summary rows a PE-LEVEL amount may legitimately print on. The first is
+# the R-2/R-3 program-element total; the rest are the lines of ONE P-40
+# Resource Summary, which all belong to the same program element — so landing
+# on any of them still names the right PROGRAM. WHICH of them is the right ROW
+# is not this tuple's job: for procurement that is _row_basis_check's, below,
+# and it is exact. Rejecting these by name instead would fail 79 of 9,879 real
+# citations (0.80%) whose TOA cell carries the identical number; with the block
+# allowed, 13 remain (0.13%) and every one of them is a real mislabel.
+#
+# This exact tuple is what the 2026-09-18 classification was measured against.
+_PE_ROW_LABELS = (
+    "total program element",
+    "gross/weapon system cost",
+    "less py advance procurement",
+    "net procurement (p-1)",
+    "plus cy advance procurement",
+    "plus cost to complete",
+    "total procurement",
+    "total obligation authority",
+)
+
+# The value columns printed to the LEFT of the highlighted one (earlier fiscal
+# years, dashes, "Continuing"). They are not part of the row's label.
+_TRAILING_VALUE_RE = re.compile(r"^(?:[-—–]|\(?[\d,]+\.?\d*\)?|Continuing|TBD)$")
+
+
+def _norm_label(s) -> str:
+    return " ".join(str(s).split()).casefold()
+
+
+def _row_label(words: list[dict], x0: float, top_pt: float) -> str:
+    """The text printed to the LEFT of the highlighted amount, on its row."""
+    band = [w for w in words if abs(float(w["top"]) - top_pt) <= _ROW_BAND_TOL_PT]
+    band.sort(key=lambda w: float(w["x0"]))
+    left = [w["text"] for w in band if float(w["x1"]) <= x0 + _LABEL_RIGHT_PAD_PT]
+    while left and _TRAILING_VALUE_RE.match(left[-1]):
+        left.pop()
+    return " ".join(left)
+
+
+def _label_names_fact(
+    label: str,
+    pe_bli: str | None,
+    project_number: str | None,
+    project_title: str | None,
+) -> bool:
+    """Does this printed row label name the fact the citation belongs to?"""
+    lab = _norm_label(label)
+    if not lab:
+        return False
+    if project_number:
+        pn = str(project_number).casefold()
+        if lab.startswith(f"{pn}:") or f" {pn}:" in lab:
+            return True
+    if project_title:
+        head = " ".join(str(project_title).split())[:12].casefold()
+        if head and head in lab:
+            return True
+    if pe_bli and str(pe_bli).casefold() in lab:
+        return True
+    return any(lab.startswith(p) for p in _PE_ROW_LABELS)
+
+
+def _label_failure_species(label: str, pe_bli: str | None) -> str:
+    """Name the SPECIES of a label that does not name its fact.
+
+    A controller reading a red gate needs to tell a pre-existing mislabel from
+    a regression without opening the PDF, so the failure text says which of
+    the four measured species this is (2026-09-18 classification over all
+    9,879 jbook_pdf citations).
+    """
+    lab = _norm_label(label)
+    if "quantity" in lab:
+        return "procurement-quantity row"
+    if re.match(r"^[a-z0-9][a-z0-9.\-]{0,9}:", lab):
+        return "another project's row"
+    pe = str(pe_bli).casefold() if pe_bli else ""
+    for tok in re.findall(r"\b\d{4}[a-z0-9]{2,6}\b", lab):
+        if tok != pe:
+            return "another program element's row"
+    return "unrecognised row fragment"
+
+
+def _toa_column_value(words: list[dict], x0: float) -> str | None:
+    """The word in the highlighted amount's COLUMN on the page's TOA row."""
+    for anchor in (w for w in words if w["text"] == "Obligation"):
+        top = float(anchor["top"])
+        band = [w for w in words if abs(float(w["top"]) - top) <= _ROW_BAND_TOL_PT]
+        band.sort(key=lambda w: float(w["x0"]))
+        if not _norm_label(" ".join(w["text"] for w in band)).startswith(
+            "total obligation authority"
+        ):
+            continue
+        for w in band:
+            if abs(float(w["x0"]) - x0) <= _TOA_COL_TOL_PT:
+                return str(w["text"])
+    return None
+
+
+def _row_basis_check(
+    words: list[dict],
+    label: str,
+    x0: float,
+    amount_text: str,
+    page_number,
+) -> tuple[bool, str | None]:
+    """Procurement: the highlighted row must carry the published basis's number.
+
+    jbooks/p40_parser.py:6-30 — the funding measure this site publishes is
+    ResourceSummary/TotalObligationAuthority. Where the highlight is NOT on
+    the TOA row, the TOA row's cell in the SAME COLUMN must equal the cited
+    amount; unequal is P0-1's defect and fails.
+
+    Returns (compared, failure).
+    """
+    if _norm_label(label).startswith("total obligation authority"):
+        return (False, None)
+    toa = _toa_column_value(words, x0)
+    if toa is None:
+        return (False, None)
+    if toa == amount_text:
+        return (True, None)
+    return (
+        True,
+        f"TOA basis mismatch: highlighted region on page {page_number} sits on"
+        f" the {label[:48]!r} row at {amount_text}, but Total Obligation"
+        f" Authority — the basis this site publishes — carries {toa} in the"
+        f" same column",
+    )
+
+
+def _load_fid_to_jbook_detail(site_dir: Path) -> dict[str, tuple]:
+    """fact_id → (pe_bli, project_number, project_title, exhibit_family).
+
+    Empty when the export carries no jbook_details.parquet (usaspending-only
+    fixture sites); the row-label leg is then a no-op rather than a failure.
+    """
+    pq = Path(site_dir) / "data" / "jbook_details.parquet"
+    if not pq.exists():
+        return {}
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            "select fact_id, pe_bli, project_number, project_title,"
+            f" exhibit_family from read_parquet('{_sql_path(pq)}')"
+        ).fetchall()
+    finally:
+        con.close()
+    return {r[0]: (r[1], r[2], r[3], r[4]) for r in rows}
 
 
 def citation_gate5b1(
@@ -204,6 +382,12 @@ def citation_gate5b1(
     (fid_to_bl_amount, bl_overlap_fids,
      bl_overlap_divergences) = _load_fid_to_bl_amount(site_dir)
 
+    # ── Row-label leg: the jbook detail each sampled citation belongs to ────
+    fid_to_detail = _load_fid_to_jbook_detail(site_dir)
+    row_label_stats: dict[str, int] = {
+        "checked": 0, "pe_level_fallback": 0, "unreadable": 0, "basis_checked": 0,
+    }
+
     # Backlog #24: overlap equality is a gate failure in its own right —
     # setdefault alone would let a divergent decade amount hide behind the
     # budget_lines copy. These failures print first (CLI shows the first 10).
@@ -220,7 +404,11 @@ def citation_gate5b1(
         kind = row[col_idx["kind"]]
 
         if kind == "jbook_pdf":
-            reason = _verify_jbook_pdf(site_dir, row, col_idx)
+            reason = _verify_jbook_pdf(
+                site_dir, row, col_idx,
+                fid_to_detail.get(fact_id),
+                row_label_stats,
+            )
         elif kind == "workbook":
             reason = _verify_workbook(site_dir, row, col_idx)
         elif kind == "lda_filing":
@@ -256,6 +444,7 @@ def citation_gate5b1(
         "failures": failures,
         "overlap_fids": bl_overlap_fids,
         "overlap_divergent": len(bl_overlap_divergences),
+        "row_label": row_label_stats,
     }
 
 
@@ -334,7 +523,13 @@ def _load_fid_to_bl_amount(
     return fid_to_bl_amount, overlap, divergences[:10]
 
 
-def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
+def _verify_jbook_pdf(
+    site_dir: Path,
+    row: tuple,
+    idx: dict,
+    detail: tuple | None = None,
+    stats: dict | None = None,
+) -> str | None:
     """Re-derive jbook_pdf citation. Returns None on pass, error string on fail."""
     import hashlib
 
@@ -386,6 +581,45 @@ def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
         return (f"top_pt mismatch: stored={stored_top:.2f} actual={word['top']:.2f}"
                 f" (tolerance {_BBOX_TOL_PT} pt)")
 
+    # ── Row-label leg (PM review 2026-07-30 §Systemic fix, addendum) ────────
+    # The checks above prove the stored region is where THAT AMOUNT is printed.
+    # They say nothing about WHICH ROW that is, and P0-1 was a row.
+    if detail is None or stored_x0 is None or stored_top is None:
+        return None
+    pe_bli, project_number, project_title, exhibit_family = detail
+    label = _row_label(words, float(stored_x0), float(stored_top))
+    if stats is not None:
+        stats["checked"] += 1
+    if not label:
+        # Every token left of the amount was itself a value column. A matcher
+        # gap, not a proven mislabel — counted, never failed (14 of 9,879 in
+        # the 2026-09-18 export).
+        if stats is not None:
+            stats["unreadable"] += 1
+        return None
+    if not _label_names_fact(label, pe_bli, project_number, project_title):
+        return (
+            f"row label {_label_failure_species(label, pe_bli)}: highlighted"
+            f" region on page {page_number} sits on row {label[:70]!r}, which"
+            f" names neither project {project_number!r} nor program element"
+            f" {pe_bli!r}"
+        )
+    if project_number and not _norm_label(label).startswith(
+        f"{str(project_number).casefold()}:"
+    ):
+        # Passes (the row names the fact's own program element) but the
+        # highlight is not on the project's own line: the project's amount
+        # equals a total and the matcher took the first occurrence.
+        if stats is not None:
+            stats["pe_level_fallback"] += 1
+    if exhibit_family == "procurement":
+        compared, failure = _row_basis_check(
+            words, label, float(stored_x0), amount_text, page_number
+        )
+        if compared and stats is not None:
+            stats["basis_checked"] += 1
+        if failure:
+            return failure
     return None
 
 

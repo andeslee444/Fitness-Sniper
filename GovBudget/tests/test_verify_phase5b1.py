@@ -34,6 +34,33 @@ from govbudget.verify_phase5b1 import (
 
 FIXTURE_PDF = Path(__file__).resolve().parent / "fixtures" / "jbooks" / "darpa_p24_25.pdf"
 
+
+def _P0_1_WORDS() -> list[dict]:
+    """P0-1's three real P-40 Resource Summary rows, laid out as words.
+
+    FY26 Air Force Aircraft Procurement Vol I, p.55: Net Procurement (P-1)
+    5,247.070 + Plus CY Advance Procurement 318.585 = Total Obligation
+    Authority 5,565.655. The site publishes TOA; the citation resolved to Net
+    Procurement. Same document, same hash, same page, same column. (The block's
+    Gross/Weapon System Cost row is omitted rather than invented — the spec
+    does not state its value and no test needs it.)
+    """
+    def row(top, label_words, value):
+        out, x = [], 20.0
+        for t in label_words:
+            out.append({"text": t, "x0": x, "x1": x + 6.0 * len(t), "top": top,
+                        "bottom": top + 9.0})
+            x += 6.0 * len(t) + 2.0
+        out.append({"text": value, "x0": 347.1, "x1": 390.0, "top": top,
+                    "bottom": top + 9.0})
+        return out
+
+    return (
+        row(208.8, ["Net", "Procurement", "(P-1)", "($", "in", "Millions)"], "5,247.070")
+        + row(220.7, ["Plus", "CY", "Advance", "Procurement"], "318.585")
+        + row(232.9, ["Total", "Obligation", "Authority", "($", "in", "Millions)"], "5,565.655")
+    )
+
 # ---------------------------------------------------------------------------
 # Helpers — build minimal fixture site dirs
 # ---------------------------------------------------------------------------
@@ -145,6 +172,64 @@ def _make_site_with_jbook_pdf(
     )
 
     return sha, page_n, hit
+
+
+def _make_site_with_jbook_pdf_at_word(
+    site_dir: Path,
+    *,
+    amount_text: str,
+    project_number: str | None,
+    project_title: str | None,
+    exhibit_family: str = "rdte",
+) -> str:
+    """Site whose one jbook_pdf citation highlights `amount_text` on page 1.
+
+    Unlike _make_site_with_jbook_pdf this does not go through find_fact_page:
+    it points the citation at a word chosen BY NAME, so a test can put the
+    highlight on a row belonging to a different project and prove the
+    row-label leg catches it. The word must be UNIQUE on the page, because
+    _verify_jbook_pdf finds the first occurrence of amount_text and checks the
+    stored bbox against THAT word — uniqueness is what makes the pre-existing
+    x0/top_pt check pass, so the label leg is the only thing under test.
+    """
+    import pdfplumber
+
+    sha = hashlib.sha256(FIXTURE_PDF.read_bytes()).hexdigest()
+    with pdfplumber.open(FIXTURE_PDF) as pdf:
+        page = pdf.pages[0]
+        words = page.extract_words()
+        page_w, page_h = float(page.width), float(page.height)
+    hits = [w for w in words if w["text"] == amount_text]
+    assert len(hits) == 1, f"fixture word {amount_text!r} is not unique: {len(hits)}"
+    w = hits[0]
+
+    pdfs_dir = site_dir / "pdfs"
+    pdfs_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(FIXTURE_PDF, pdfs_dir / f"{sha}.pdf")
+
+    fid = fact_id_jbook(sha, "0601101E", project_number, "PriorYear", amount_text)
+    _write_parquet(
+        site_dir / "data" / "jbook_details.parquet",
+        "fact_id varchar, pe_bli varchar, project_number varchar, project_title varchar,"
+        " scenario varchar, amount_millions double, units varchar, xml_path varchar,"
+        " org varchar, exhibit_family varchar, fiscal_year integer,"
+        " document_sha256 varchar, resolution varchar",
+        [(fid, "0601101E", project_number, project_title, "PriorYear",
+          float(amount_text), "USD millions", "ProgramElement[0]",
+          "DARPA", exhibit_family, 2026, sha, "unique")],
+    )
+    _write_parquet(
+        site_dir / "citations" / "citations.parquet",
+        _CIT_COL_DEFS,
+        [(fid, "jbook_pdf", "USD millions", amount_text, 1,
+          float(w["x0"]), float(w["x1"]), float(w["top"]), float(w["bottom"]),
+          page_w, page_h, "unique",
+          None, None, None, sha,
+          f"https://cdn.example/pdfs/{sha}.pdf#page=1",
+          "https://example.mil/darpa.pdf#page=1",
+          None, None, None, None, None, None, None, None, None)],
+    )
+    return fid
 
 
 def _make_site_with_workbook(site_dir: Path) -> tuple[str, str]:
@@ -509,9 +594,9 @@ class TestStratifiedSampling:
         _orig_wb = _mod._verify_workbook
         _orig_lda = _mod._verify_lda
 
-        def _record_jbook(site_dir, row, idx):
+        def _record_jbook(site_dir, row, idx, *args, **kwargs):
             sampled_fact_ids.append(row[idx["fact_id"]])
-            return _orig_jbook(site_dir, row, idx)
+            return _orig_jbook(site_dir, row, idx, *args, **kwargs)
 
         def _record_wb(site_dir, row, idx):
             sampled_fact_ids.append(row[idx["fact_id"]])
@@ -2048,3 +2133,152 @@ class TestOverlapEquality:
         assert result["ok"] is True, result["failures"]
         assert result["overlap_fids"] == 1
         assert result["overlap_divergent"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Gate 1 addendum: the row-label leg
+# ---------------------------------------------------------------------------
+
+
+class TestRowLabelLeg:
+    """PM review 2026-07-30 §Systemic fix, the addendum (spec line 307):
+
+        "Also worth adding to the existing 50-facts-per-build provenance
+         spot-check: verify the **highlighted region** matches the expected row
+         label, not merely that the document exists and the hash matches.
+         P0-1's underlying mislabel would not have been caught by an existence
+         check."
+
+    P0-1 (spec :52-55) was two rows of ONE P-40 Resource Summary: the PDF
+    citation resolved to "Net Procurement (P-1) ($ in Millions)" = 5,247.070
+    while the published basis was "Total Obligation Authority" = 5,565.655,
+    the two bridged by "Plus CY Advance Procurement 318.585" one row above.
+    Document, hash, page and bbox all agreed. Only the ROW disagreed.
+
+    Fixture page 1 of tests/fixtures/jbooks/darpa_p24_25.pdf carries exactly
+    one "280.494" on the row "Total Program Element" (x0 235.23, top 158.47)
+    and exactly one "160.158" on the row "CCS-02: MATH AND" (x0 235.23,
+    top 173.97) — verified 2026-09-18.
+    """
+
+    # ── the pure helpers ────────────────────────────────────────────────
+    def test_row_label_reads_the_row_and_drops_the_value_columns(self):
+        from govbudget.verify_phase5b1 import _row_label
+
+        words = [
+            {"text": "Total", "x0": 20.0, "x1": 44.0, "top": 158.7, "bottom": 167.7},
+            {"text": "Program", "x0": 45.0, "x1": 85.0, "top": 158.7, "bottom": 167.7},
+            {"text": "Element", "x0": 86.0, "x1": 128.0, "top": 158.7, "bottom": 167.7},
+            {"text": "0.000", "x0": 194.8, "x1": 227.0, "top": 158.5, "bottom": 167.5},
+            {"text": "280.494", "x0": 235.2, "x1": 267.7, "top": 158.5, "bottom": 167.5},
+            {"text": "999.999", "x0": 20.0, "x1": 52.0, "top": 400.0, "bottom": 409.0},
+        ]
+        assert _row_label(words, 235.2, 158.5) == "Total Program Element"
+        # A row whose left side is nothing but value columns has no label.
+        assert _row_label(words, 235.2, 400.0) == ""
+
+    def test_label_names_fact_accepts_the_project_the_pe_and_the_summary_rows(self):
+        from govbudget.verify_phase5b1 import _label_names_fact
+
+        assert _label_names_fact("CCS-02: MATH AND", "0601101E", "CCS-02", "Math and Computer Sciences")
+        assert _label_names_fact("Total Program Element", "0601101E", None, None)
+        assert _label_names_fact("Net Procurement (P-1) ($ in Millions)", "JASSM0", None, None)
+        assert _label_names_fact("153 0604840F F-35 C2D2 07 U", "0604840F", None, None)
+        assert not _label_names_fact("CCS-02: MATH AND", "0601101E", "001", "Defense Technical Information Center")
+        assert not _label_names_fact("", "0601101E", None, None)
+        # A unit-count row is not a money row: 2 citations in the 2026-09-10
+        # export cite "19,452" whose TOA column reads "19.452".
+        assert not _label_names_fact(
+            "Procurement Quantity (Units in Each)", "0312MB7000", None, None
+        )
+
+    def test_toa_column_value_reads_the_basis_row_in_the_same_column(self):
+        from govbudget.verify_phase5b1 import _toa_column_value
+
+        words = _P0_1_WORDS()
+        assert _toa_column_value(words, 347.1) == "5,565.655"
+        assert _toa_column_value(words, 10.0) is None
+
+    def test_row_basis_check_fails_the_p0_1_species(self):
+        """The proof it can fail on the defect the addendum was written for."""
+        from govbudget.verify_phase5b1 import _row_basis_check
+
+        compared, failure = _row_basis_check(
+            _P0_1_WORDS(), "Net Procurement (P-1) ($ in Millions)", 347.1, "5,247.070", 55
+        )
+        assert compared is True
+        assert failure is not None
+        assert "5,247.070" in failure and "5,565.655" in failure
+        assert "Total Obligation Authority" in failure
+        assert "page 55" in failure
+
+    def test_row_basis_check_passes_when_the_two_rows_carry_the_same_number(self):
+        """The common real case (fact 06f8fad689ea561f, Army P-40 page 49)."""
+        from govbudget.verify_phase5b1 import _row_basis_check
+
+        words = [
+            {"text": "Net", "x0": 20.0, "x1": 38.0, "top": 208.8, "bottom": 217.8},
+            {"text": "Procurement", "x0": 39.0, "x1": 95.0, "top": 208.8, "bottom": 217.8},
+            {"text": "(P-1)", "x0": 96.0, "x1": 120.0, "top": 208.8, "bottom": 217.8},
+            {"text": "732.060", "x0": 347.1, "x1": 390.0, "top": 208.8, "bottom": 217.8},
+            {"text": "Total", "x0": 20.0, "x1": 44.0, "top": 232.9, "bottom": 241.9},
+            {"text": "Obligation", "x0": 45.0, "x1": 95.0, "top": 232.9, "bottom": 241.9},
+            {"text": "Authority", "x0": 96.0, "x1": 140.0, "top": 232.9, "bottom": 241.9},
+            {"text": "732.060", "x0": 347.1, "x1": 390.0, "top": 232.9, "bottom": 241.9},
+        ]
+        assert _row_basis_check(words, "Net Procurement (P-1)", 347.1, "732.060", 49) == (True, None)
+
+    def test_row_basis_check_is_a_no_op_on_the_toa_row_itself(self):
+        from govbudget.verify_phase5b1 import _row_basis_check
+
+        assert _row_basis_check(
+            _P0_1_WORDS(), "Total Obligation Authority ($ in Millions)", 347.1,
+            "5,565.655", 55,
+        ) == (False, None)
+
+    # ── the gate, end to end, on the real fixture PDF ───────────────────
+    def test_highlight_on_another_projects_row_fails(self, tmp_path):
+        """bbox, sha and page all correct; the ROW belongs to another project."""
+        site = tmp_path / "site"
+        fid = _make_site_with_jbook_pdf_at_word(
+            site,
+            amount_text="160.158",          # the CCS-02 row on page 1
+            project_number="001",
+            project_title="Defense Technical Information Center",
+        )
+        _write_manifest(site, datasets={"jbook_details": 1}, citations={"jbook_pdf": 1})
+        res = citation_gate5b1(site)
+        assert res["ok"] is False
+        assert len(res["failures"]) == 1
+        bad_fid, reason = res["failures"][0]
+        assert bad_fid == fid
+        assert "CCS-02" in reason
+        assert "names neither" in reason
+
+    def test_highlight_on_its_own_project_row_passes_and_is_counted(self, tmp_path):
+        site = tmp_path / "site"
+        _make_site_with_jbook_pdf_at_word(
+            site,
+            amount_text="160.158",
+            project_number="CCS-02",
+            project_title="Math and Computer Sciences",
+        )
+        _write_manifest(site, datasets={"jbook_details": 1}, citations={"jbook_pdf": 1})
+        res = citation_gate5b1(site)
+        assert res["ok"] is True, res["failures"]
+        assert res["row_label"]["checked"] == 1
+        assert res["row_label"]["pe_level_fallback"] == 0
+        assert res["row_label"]["unreadable"] == 0
+
+    def test_project_fact_on_the_pe_row_passes_but_is_counted_weak(self, tmp_path):
+        site = tmp_path / "site"
+        _make_site_with_jbook_pdf_at_word(
+            site,
+            amount_text="280.494",          # the "Total Program Element" row
+            project_number="001",
+            project_title="Defense Technical Information Center",
+        )
+        _write_manifest(site, datasets={"jbook_details": 1}, citations={"jbook_pdf": 1})
+        res = citation_gate5b1(site)
+        assert res["ok"] is True, res["failures"]
+        assert res["row_label"]["pe_level_fallback"] == 1

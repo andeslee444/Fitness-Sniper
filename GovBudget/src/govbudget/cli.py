@@ -1838,6 +1838,14 @@ def cmd_verify_phase5b1(args) -> None:
         )
         for fid, reason in cg["failures"][:10]:
             print(f"  FAIL {fid}: {reason}")
+        rl = cg.get("row_label") or {}
+        if rl.get("checked"):
+            print(
+                f"  row labels: checked={rl['checked']}"
+                f" pe_level_fallback={rl.get('pe_level_fallback', 0)}"
+                f" unreadable={rl.get('unreadable', 0)}"
+                f" toa_basis_checked={rl.get('basis_checked', 0)}"
+            )
     gates_ok = gates_ok and g1_ok
 
     # Gate 2: integrity checks
