@@ -442,7 +442,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // that 263 is the corpus counts this page derives, not prose at all. Going
   // further means cutting disclosure written before them, which this file's
   // /coverage/ note rules out. The smaller true number is published here.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "151,851 / 42,299" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "152,086 / 42,420" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -536,7 +536,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // rather than a round-number guess. The gzip headroom is deliberately the
   // tighter of the two: this page grows a paragraph at a time and the next
   // sentence on it should have to argue for itself.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_500, maxGzip: 20_750, measured: "98,581 / 18,320" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_500, maxGzip: 20_750, measured: "99,736 / 20,431" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
