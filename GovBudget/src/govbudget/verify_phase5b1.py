@@ -6,12 +6,23 @@ Gates (CLI: verify-phase5b1):
                           - jbook_pdf: PDF file exists + sha matches + pdfplumber
                             word found at stored page with x0/top_pt within 2 pt
                             + the HIGHLIGHTED ROW's printed label names the fact
-                              (project, program element, or one of the P-40/R-2
-                              summary rows), and for procurement a highlight off
-                              the Total Obligation Authority row must equal TOA
-                              in the same column (PM review 2026-07-30 §Systemic
-                              fix, addendum). Unreadable labels are counted, not
-                              failed.
+                              (project, program element, or — only when the
+                              page prints the fact's own pe_bli — one of the
+                              P-40/R-2 summary rows), and for procurement a
+                              highlight off the Total Obligation Authority row
+                              must equal TOA in the same column (PM review
+                              2026-07-30 §Systemic fix, addendum).
+                              The row rule is NOT unconditional. Three carve-outs
+                              are COUNTED, never failed, and every one of them
+                              is printed on the gate's row-label line:
+                                · unreadable label (every token left of the
+                                  amount was itself a value column)
+                                · no jbook_details row for the fact
+                                  (skipped_no_detail) or a null stored bbox
+                                  (skipped_null_bbox)
+                                · procurement with no Total Obligation Authority
+                                  cell in the highlight's column on that page
+                                  (toa_not_found) — the basis is then unchecked
                           - workbook: xlsx file exists + sha matches +
                             load_workbook(read_only=True, data_only=True) cell
                             values SUM == stored amount_thousands exactly
@@ -100,16 +111,29 @@ _BBOX_TOL_PT = 2.0  # points tolerance for x0/top_pt re-check
 # Complete (18), plus per-project "<project>: <title>" rows.
 _ROW_BAND_TOL_PT = 3.0      # words within this much `top` print on one row
 _LABEL_RIGHT_PAD_PT = 0.5   # a label word may overhang the amount's x0
-_TOA_COL_TOL_PT = 2.0       # "same column as the highlighted amount"
+# ("same column" is decided by span overlap in _toa_column_value, not by a
+# point tolerance on an edge — see that docstring for why.)
 
-# The summary rows a PE-LEVEL amount may legitimately print on. The first is
-# the R-2/R-3 program-element total; the rest are the lines of ONE P-40
-# Resource Summary, which all belong to the same program element — so landing
-# on any of them still names the right PROGRAM. WHICH of them is the right ROW
-# is not this tuple's job: for procurement that is _row_basis_check's, below,
-# and it is exact. Rejecting these by name instead would fail 79 of 9,879 real
-# citations (0.80%) whose TOA cell carries the identical number; with the block
-# allowed, 13 remain (0.13%) and every one of them is a real mislabel.
+# The summary rows an amount may legitimately print on. The first is the
+# R-2/R-3 program-element total; the rest are the lines of ONE P-40 Resource
+# Summary. A label from this tuple names a PROGRAM ELEMENT'S total, but it
+# does not say WHICH program element: an R-2 volume prints "Total Program
+# Element" once per PE and a P-40 prints its Resource Summary block once per
+# line item, so the label alone would let another PE's total stand in for this
+# fact (the RDT&E analog of P0-1). _label_names_fact therefore accepts a bare
+# summary row ONLY when the fact's own pe_bli is printed somewhere on that
+# page (word-boundary anchored). WHICH row of an accepted block is the right
+# one is still not this tuple's job: for procurement that is
+# _row_basis_check's, below, and it is exact.
+#
+# Counterfactual, MEASURED over all 9,879 jbook_pdf citations of the
+# 2026-09-12 export on 2026-09-18: dropping this tuple — rejecting every bare
+# summary row by name — would fail 4,597 citations (46.53%), the population
+# for which a summary row is the ONLY accepting branch (2,135 rdte, 2,462
+# procurement; of the procurement ones 2,460 have a TOA cell carrying the
+# identical number, i.e. they are provably citing the published basis).
+# The brief's "79 of 9,879 (0.80%)" (a 2026-09-10 reading) does not reproduce
+# under any definition measured here and is not carried forward.
 #
 # This exact tuple is what the 2026-09-18 classification was measured against.
 _PE_ROW_LABELS = (
@@ -125,7 +149,14 @@ _PE_ROW_LABELS = (
 
 # The value columns printed to the LEFT of the highlighted one (earlier fiscal
 # years, dashes, "Continuing"). They are not part of the row's label.
-_TRAILING_VALUE_RE = re.compile(r"^(?:[-—–]|\(?[\d,]+\.?\d*\)?|Continuing|TBD)$")
+# Matched against the token AFTER _norm_label, so `Continuing`/`TBD` are
+# recognised in whatever case the PDF prints them (item 8: the rest of the leg
+# already normalises; this regex used not to).
+_TRAILING_VALUE_RE = re.compile(r"^(?:[-—–]|\(?[\d,]+\.?\d*\)?|continuing|tbd)$")
+
+# A printed program-element / budget-line-item token, as PE numbers render in
+# R-1 and P-1 lines (e.g. `0604840F`, `1203001SF`).
+_PE_TOKEN_RE = re.compile(r"\b\d{4}[a-z0-9]{2,6}\b")
 
 
 def _norm_label(s) -> str:
@@ -137,9 +168,27 @@ def _row_label(words: list[dict], x0: float, top_pt: float) -> str:
     band = [w for w in words if abs(float(w["top"]) - top_pt) <= _ROW_BAND_TOL_PT]
     band.sort(key=lambda w: float(w["x0"]))
     left = [w["text"] for w in band if float(w["x1"]) <= x0 + _LABEL_RIGHT_PAD_PT]
-    while left and _TRAILING_VALUE_RE.match(left[-1]):
+    while left and _TRAILING_VALUE_RE.match(_norm_label(left[-1])):
         left.pop()
     return " ".join(left)
+
+
+def _is_summary_row(lab: str) -> bool:
+    """Is this normalised label one of the PE/line-item summary rows?"""
+    return any(lab.startswith(p) for p in _PE_ROW_LABELS)
+
+
+def _page_prints(words: list[dict], token: str | None) -> bool:
+    """Does `token` appear on the page, anchored at word boundaries?
+
+    Anchored, not substring: 1,640 BLIs are ≤4 all-digit characters, and an
+    unanchored `0449` matches a fiscal year, a line number or the tail of
+    another BLI on almost any page.
+    """
+    if not token:
+        return False
+    pat = re.compile(r"\b" + re.escape(str(token).casefold()) + r"\b")
+    return any(pat.search(_norm_label(w["text"])) for w in words)
 
 
 def _label_names_fact(
@@ -147,31 +196,52 @@ def _label_names_fact(
     pe_bli: str | None,
     project_number: str | None,
     project_title: str | None,
-) -> bool:
-    """Does this printed row label name the fact the citation belongs to?"""
+    words: list[dict],
+) -> str | None:
+    """WHICH branch, if any, makes this printed row label name the fact.
+
+    Returns the accepting branch — "project_line", "project_title", "pe_line"
+    or "summary_row" — or None. The branch is the return value rather than a
+    bool because the three non-project branches are three different strengths
+    of evidence, and the gate counts them apart (a project fact resolved by a
+    bare summary row is a much weaker match than one resolved by its own
+    rendered R-1 line).
+
+    `words` is the page's words: a bare summary row is accepted only when the
+    fact's own pe_bli is printed on that page.
+    """
     lab = _norm_label(label)
     if not lab:
-        return False
+        return None
     if project_number:
         pn = str(project_number).casefold()
         if lab.startswith(f"{pn}:") or f" {pn}:" in lab:
-            return True
+            return "project_line"
     if project_title:
         head = " ".join(str(project_title).split())[:12].casefold()
         if head and head in lab:
-            return True
-    if pe_bli and str(pe_bli).casefold() in lab:
-        return True
-    return any(lab.startswith(p) for p in _PE_ROW_LABELS)
+            return "project_title"
+    if pe_bli and re.search(
+        r"\b" + re.escape(str(pe_bli).casefold()) + r"\b", lab
+    ):
+        return "pe_line"
+    if _is_summary_row(lab) and _page_prints(words, pe_bli):
+        return "summary_row"
+    return None
 
 
-def _label_failure_species(label: str, pe_bli: str | None) -> str:
+def _label_failure_species(
+    label: str, pe_bli: str | None, words: list[dict] | None = None
+) -> str:
     """Name the SPECIES of a label that does not name its fact.
 
     A controller reading a red gate needs to tell a pre-existing mislabel from
     a regression without opening the PDF, so the failure text says which of
     the four measured species this is (2026-09-18 classification over all
-    9,879 jbook_pdf citations).
+    9,879 jbook_pdf citations). The vocabulary stays at four: a summary row
+    refused because the page belongs to some OTHER program element is the same
+    species as a row that names one in its own text, reached by a different
+    route.
     """
     lab = _norm_label(label)
     if "quantity" in lab:
@@ -179,14 +249,39 @@ def _label_failure_species(label: str, pe_bli: str | None) -> str:
     if re.match(r"^[a-z0-9][a-z0-9.\-]{0,9}:", lab):
         return "another project's row"
     pe = str(pe_bli).casefold() if pe_bli else ""
-    for tok in re.findall(r"\b\d{4}[a-z0-9]{2,6}\b", lab):
+    for tok in _PE_TOKEN_RE.findall(lab):
         if tok != pe:
             return "another program element's row"
+    if _is_summary_row(lab) and words is not None:
+        # Refused by the page, not by the label: a legitimate summary row on a
+        # page that prints some other program element (or none at all).
+        for w in words:
+            if any(t != pe for t in _PE_TOKEN_RE.findall(_norm_label(w["text"]))):
+                return "another program element's row"
     return "unrecognised row fragment"
 
 
-def _toa_column_value(words: list[dict], x0: float) -> str | None:
-    """The word in the highlighted amount's COLUMN on the page's TOA row."""
+def _toa_column_value(words: list[dict], x0: float, x1: float) -> str | None:
+    """The cell in the highlighted amount's COLUMN on the page's TOA row.
+
+    The column is matched by INTERVAL OVERLAP — the TOA cell whose [x0, x1]
+    span overlaps the highlight's the most — not by the left edge. P-40 value
+    columns are right-aligned, so a cell's x0 moves with the number's WIDTH:
+    on doc e7e1302…/page 223 one column holds `407.046` at x0 343.3 and
+    `52.191` at x0 347.1. A left-edge match with a 2 pt tolerance therefore
+    found the TOA cell only when the two numbers happened to be the same
+    width — it went blind precisely when they DISAGREED, which is the only
+    case the check exists for (it missed 4 of the 7 real mismatches in the
+    2026-09-12 export, including `7de179a27454c103` p157, cited 200.000 where
+    TOA reads 0.000).
+
+    The right edge alone is not enough either: a footnote marker printed
+    inside the column shifts it (fact `69b206a2802ea3ec` p18 — the TOA cell is
+    `332.988` at x1 208.7 with `(1)` at x1 217.3, and a right-edge match picks
+    the footnote and invents a mismatch). Maximum overlap picks the number in
+    both cases.
+    """
+    lo, hi = (x0, x1) if x1 >= x0 else (x1, x0)
     for anchor in (w for w in words if w["text"] == "Obligation"):
         top = float(anchor["top"])
         band = [w for w in words if abs(float(w["top"]) - top) <= _ROW_BAND_TOL_PT]
@@ -195,9 +290,13 @@ def _toa_column_value(words: list[dict], x0: float) -> str | None:
             "total obligation authority"
         ):
             continue
+        best, best_overlap = None, 0.0
         for w in band:
-            if abs(float(w["x0"]) - x0) <= _TOA_COL_TOL_PT:
-                return str(w["text"])
+            overlap = min(float(w["x1"]), hi) - max(float(w["x0"]), lo)
+            if overlap > best_overlap:
+                best, best_overlap = str(w["text"]), overlap
+        if best is not None:
+            return best
     return None
 
 
@@ -205,9 +304,10 @@ def _row_basis_check(
     words: list[dict],
     label: str,
     x0: float,
+    x1: float,
     amount_text: str,
     page_number,
-) -> tuple[bool, str | None]:
+) -> tuple[str, str | None]:
     """Procurement: the highlighted row must carry the published basis's number.
 
     jbooks/p40_parser.py:6-30 — the funding measure this site publishes is
@@ -215,17 +315,23 @@ def _row_basis_check(
     the TOA row, the TOA row's cell in the SAME COLUMN must equal the cited
     amount; unequal is P0-1's defect and fails.
 
-    Returns (compared, failure).
+    Returns (outcome, failure) where outcome is one of:
+      "on_toa_row"    — the highlight IS the basis; nothing to compare
+      "compared"      — the TOA cell was found and compared (failure says how)
+      "toa_not_found" — no TOA cell in that column on that page: the basis is
+                        UNCHECKED. Counted, never failed — the caller's
+                        `toa_not_found` counter is the only thing that makes
+                        this visible, so it is printed by the CLI.
     """
     if _norm_label(label).startswith("total obligation authority"):
-        return (False, None)
-    toa = _toa_column_value(words, x0)
+        return ("on_toa_row", None)
+    toa = _toa_column_value(words, x0, x1)
     if toa is None:
-        return (False, None)
+        return ("toa_not_found", None)
     if toa == amount_text:
-        return (True, None)
+        return ("compared", None)
     return (
-        True,
+        "compared",
         f"TOA basis mismatch: highlighted region on page {page_number} sits on"
         f" the {label[:48]!r} row at {amount_text}, but Total Obligation"
         f" Authority — the basis this site publishes — carries {toa} in the"
@@ -384,8 +490,26 @@ def citation_gate5b1(
 
     # ── Row-label leg: the jbook detail each sampled citation belongs to ────
     fid_to_detail = _load_fid_to_jbook_detail(site_dir)
+    # Every path through the leg increments exactly one of these, so a leg
+    # that is doing nothing is visible on the CLI line instead of looking
+    # like a clean run: sampled == checked + skipped_no_detail +
+    # skipped_null_bbox + (jbook_pdf citations that failed an earlier leg).
     row_label_stats: dict[str, int] = {
-        "checked": 0, "pe_level_fallback": 0, "unreadable": 0, "basis_checked": 0,
+        "sampled": 0,
+        "checked": 0,
+        "unreadable": 0,
+        # accepted, but not by the fact's own project line (item 4: these are
+        # three different strengths of evidence, not one population)
+        "fallback_summary_row": 0,
+        "fallback_pe_line": 0,
+        "fallback_title_match": 0,
+        # procurement basis leg: checked == on-the-TOA-row + compared
+        "basis_checked": 0,
+        "basis_compared": 0,
+        "toa_not_found": 0,
+        # never reached the label leg at all
+        "skipped_no_detail": 0,
+        "skipped_null_bbox": 0,
     }
 
     # Backlog #24: overlap equality is a gate failure in its own right —
@@ -404,6 +528,7 @@ def citation_gate5b1(
         kind = row[col_idx["kind"]]
 
         if kind == "jbook_pdf":
+            row_label_stats["sampled"] += 1
             reason = _verify_jbook_pdf(
                 site_dir, row, col_idx,
                 fid_to_detail.get(fact_id),
@@ -584,10 +709,21 @@ def _verify_jbook_pdf(
     # ── Row-label leg (PM review 2026-07-30 §Systemic fix, addendum) ────────
     # The checks above prove the stored region is where THAT AMOUNT is printed.
     # They say nothing about WHICH ROW that is, and P0-1 was a row.
-    if detail is None or stored_x0 is None or stored_top is None:
+    # Both skips below are COUNTED: an export that stopped emitting details or
+    # bboxes would otherwise silence the whole leg and still print a clean line.
+    if detail is None:
+        if stats is not None:
+            stats["skipped_no_detail"] += 1
+        return None
+    if stored_x0 is None or stored_top is None:
+        if stats is not None:
+            stats["skipped_null_bbox"] += 1
         return None
     pe_bli, project_number, project_title, exhibit_family = detail
-    label = _row_label(words, float(stored_x0), float(stored_top))
+    # The row band is centred on the word actually FOUND, not on stored_top:
+    # the two may differ by up to _BBOX_TOL_PT and still pass the bbox leg,
+    # and a band centred off the row can sweep in a neighbouring one.
+    label = _row_label(words, float(stored_x0), float(word["top"]))
     if stats is not None:
         stats["checked"] += 1
     if not label:
@@ -597,27 +733,47 @@ def _verify_jbook_pdf(
         if stats is not None:
             stats["unreadable"] += 1
         return None
-    if not _label_names_fact(label, pe_bli, project_number, project_title):
+    branch = _label_names_fact(label, pe_bli, project_number, project_title, words)
+    if branch is None:
+        extra = ""
+        if _is_summary_row(_norm_label(label)):
+            extra = (
+                f" — a summary row on a page that does not print {pe_bli!r}"
+            )
         return (
-            f"row label {_label_failure_species(label, pe_bli)}: highlighted"
-            f" region on page {page_number} sits on row {label[:70]!r}, which"
-            f" names neither project {project_number!r} nor program element"
-            f" {pe_bli!r}"
+            f"row label {_label_failure_species(label, pe_bli, words)}:"
+            f" highlighted region on page {page_number} sits on row"
+            f" {label[:70]!r} at {amount_text}, which names neither project"
+            f" {project_number!r} nor program element {pe_bli!r}{extra}"
         )
-    if project_number and not _norm_label(label).startswith(
-        f"{str(project_number).casefold()}:"
-    ):
-        # Passes (the row names the fact's own program element) but the
-        # highlight is not on the project's own line: the project's amount
-        # equals a total and the matcher took the first occurrence.
-        if stats is not None:
-            stats["pe_level_fallback"] += 1
+    if project_number and branch != "project_line" and stats is not None:
+        # Passes, but not on the project's own line: the project's amount
+        # equals a total and the matcher took the first occurrence. WHICH
+        # branch caught it is the whole point of counting — a match on the
+        # PE's own rendered R-1/P-1 line is far stronger evidence than a bare
+        # summary row, and the old single counter conflated all three.
+        stats[{
+            "summary_row": "fallback_summary_row",
+            "pe_line": "fallback_pe_line",
+            "project_title": "fallback_title_match",
+        }[branch]] += 1
     if exhibit_family == "procurement":
-        compared, failure = _row_basis_check(
-            words, label, float(stored_x0), amount_text, page_number
+        stored_x1 = row[idx["x1"]]
+        outcome, failure = _row_basis_check(
+            words,
+            label,
+            float(stored_x0),
+            float(stored_x1) if stored_x1 is not None else float(word["x1"]),
+            amount_text,
+            page_number,
         )
-        if compared and stats is not None:
-            stats["basis_checked"] += 1
+        if stats is not None:
+            if outcome == "toa_not_found":
+                stats["toa_not_found"] += 1
+            else:
+                stats["basis_checked"] += 1
+                if outcome == "compared":
+                    stats["basis_compared"] += 1
         if failure:
             return failure
     return None

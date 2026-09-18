@@ -1839,12 +1839,22 @@ def cmd_verify_phase5b1(args) -> None:
         for fid, reason in cg["failures"][:10]:
             print(f"  FAIL {fid}: {reason}")
         rl = cg.get("row_label") or {}
-        if rl.get("checked"):
+        # Printed whenever a jbook_pdf citation was SAMPLED, not only when one
+        # was checked: a leg that skipped every row (no detail rows, null
+        # bboxes) must read `checked=0 skipped_no_detail=N`, not vanish.
+        if rl.get("sampled"):
             print(
-                f"  row labels: checked={rl['checked']}"
-                f" pe_level_fallback={rl.get('pe_level_fallback', 0)}"
+                f"  row labels: sampled={rl['sampled']}"
+                f" checked={rl.get('checked', 0)}"
+                f" fallback_summary_row={rl.get('fallback_summary_row', 0)}"
+                f" fallback_pe_line={rl.get('fallback_pe_line', 0)}"
+                f" fallback_title_match={rl.get('fallback_title_match', 0)}"
                 f" unreadable={rl.get('unreadable', 0)}"
+                f" skipped_no_detail={rl.get('skipped_no_detail', 0)}"
+                f" skipped_null_bbox={rl.get('skipped_null_bbox', 0)}"
                 f" toa_basis_checked={rl.get('basis_checked', 0)}"
+                f" toa_basis_compared={rl.get('basis_compared', 0)}"
+                f" toa_not_found={rl.get('toa_not_found', 0)}"
             )
     gates_ok = gates_ok and g1_ok
 
