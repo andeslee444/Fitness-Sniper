@@ -62,11 +62,14 @@ DESIGN, and why it is this boring:
     test_era_keys.py:84 sets no read-only mode), and skips when that database
     is unavailable. Only reads, but not "never touches".
 
-  * The drift record has two halves that ARE true: drift_report ages every
-    manifest dataset against the cadence its SOURCE publishes on, and the
+  * The drift record carries three alarms that ARE true: drift_report ages
+    every manifest dataset against the cadence its SOURCE publishes on; the
     stall check alarms when a sync stage exits 0 without advancing its
-    dataset's newest downloaded_at (the sync-subawards skip). Both land in
-    data/refresh/last_run.json.
+    dataset's newest downloaded_at (the sync-subawards skip); and unparseable
+    manifest lines are counted rather than skipped in silence, because a
+    dropped line makes its dataset vanish from the report and the stall check
+    would then describe a record that exists as absent. All three land in
+    data/refresh/last_run.json (and on stderr as `DRIFT ALARM: ...`).
 
   * This module installs NO scheduler. scripts/launch/*.plist.template plus
     LAUNCH.md Step 11 are for the owner to load by hand.
@@ -86,13 +89,15 @@ from pathlib import Path
 SITE_URL = "https://fiscalreceipts.com"
 
 # How long a preflight PROBE may take before it counts as hung. The probes are
-# `rclone listremotes` and `vercel whoami`; both touch the network, both answer
-# in under a second when healthy. Generous, but finite: launchd starts no
-# second instance of a StartCalendarInterval label whose previous instance is
-# still alive, so one wedged probe would stop the monthly refresh forever with
-# nothing in the run record. STAGES deliberately get no timeout at all (dbt and
-# the site build run 30+ minutes) — LAUNCH.md Step 11 says so and says what it
-# costs.
+# `rclone listremotes`, which only reads the local rclone config, and
+# `vercel whoami`, which is the one that touches the network; both answer in
+# well under a second when healthy, and either can wedge (an unanswered API
+# call, a config read blocked on a stalled filesystem). Generous, but finite:
+# launchd starts no second instance of a StartCalendarInterval label whose
+# previous instance is still alive, so one wedged probe would stop the monthly
+# refresh forever with nothing in the run record. STAGES deliberately get no
+# timeout at all (dbt and the site build run 30+ minutes) — LAUNCH.md Step 11
+# says so and says what it costs.
 PROBE_TIMEOUT_SECONDS = 60
 
 # Returned by `_capture` for a probe that never answered. 124 is the
@@ -112,6 +117,16 @@ _CADENCE_MAX_AGE_DAYS: dict[str, int] = {
     "annual": 400,
     "biennial": 800,
 }
+
+# The first filing year the LDA corpus holds, and therefore the year the
+# quarterly pull's window opens on. It never moves DOWN (a smaller start would
+# only re-download years already on disk) and it must never move UP: the pull
+# overwrites `lda_filings.parquet` in full, so dropping a year deletes it.
+# Measured read-only 2026-09-18: filing_year 2024=2,016, 2025=2,250,
+# 2026=1,127 rows in data/parquet/influence/lda_filings.parquet, and of the
+# 4,831 distinct filing uuids behind the 20,298 `lda_filing` citations in
+# data/site/json/citations.json, 1,836 are filing_year 2024.
+_LDA_FIRST_YEAR = 2024
 
 STAGE_NAMES: tuple[str, ...] = (
     "preflight",
@@ -193,18 +208,23 @@ def _federal_fiscal_year(now: dt.datetime) -> int:
 
 
 def _lda_years(now: dt.datetime) -> str:
-    """The LDA filing years a quarterly pull covers: this CALENDAR year and the
-    two before it.
+    """The LDA filing years a quarterly pull covers: `_LDA_FIRST_YEAR` through
+    the current CALENDAR year, inclusive.
 
-    Senate LDA filings are filed per calendar year and amended for months
-    afterwards, so the current year plus two is the window that keeps a
-    scheduled pull picking up late and amended filings. Computed from the
-    clock rather than inherited from `cli.py`'s `--years 2024,2025,2026`
-    default, which a loaded quarterly job would keep using after 2026 — and
-    silently: LDA ingests write no `data/manifest.jsonl` record, so neither the
-    cadence alarm nor the stall check can see the corpus going stale.
+    The END tracks the clock because Senate LDA filings are filed per calendar
+    year and amended for months afterwards, and because `cli.py`'s
+    `--years 2024,2025,2026` default would otherwise stop covering the current
+    filing year after 2026 — silently: LDA ingests write no
+    `data/manifest.jsonl` record, so neither the cadence alarm nor the stall
+    check can see the corpus going stale.
+
+    The START is anchored and may not roll forward. `influence pull` filters
+    per `filing_year` (influence/lda.py:155) and `pull_top_families` writes
+    `lda_filings.parquet` by full OVERWRITE (lda.py:857-868) with no merge
+    against what is on disk, so a year this window stops naming is a year
+    deleted from the corpus and from every published citation that rests on it.
     """
-    return ",".join(str(now.year - back) for back in (2, 1, 0))
+    return ",".join(str(y) for y in range(_LDA_FIRST_YEAR, now.year + 1))
 
 
 def build_stages(root: Path, now: dt.datetime) -> list[Stage]:
@@ -348,14 +368,21 @@ def preflight(*, root: Path, require_deploy: bool = True) -> list[str]:
             f"another process is holding it ({type(exc).__name__}: {exc})"
         )
 
-    # launchd opens StandardOutPath/StandardErrorPath BEFORE exec and does not
-    # create missing parents, so a scheduled job cannot create its own log
-    # directory — `logs/` is gitignored, so a fresh clone has none.
-    if not (root / "logs").is_dir():
+    # R-20b-8: CREATE the directory rather than refuse to start over it.
+    # `logs/` is gitignored, so a fresh clone has none, and an in-process mkdir
+    # is free and idempotent. What preflight cannot fix stays with the
+    # operator: launchd opens StandardOutPath/StandardErrorPath BEFORE exec and
+    # does not create missing parents, so a SCHEDULED run whose logs/ is
+    # missing has already lost its output by the time this code runs — the
+    # Step 11 install snippet's own `mkdir -p "$PWD/logs"` is what prevents
+    # that, and this mkdir cannot stand in for it.
+    try:
+        (root / "logs").mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
         failures.append(
-            f"logs: {root}/logs does not exist, and launchd opens the job's log "
-            f"files before exec — run `mkdir -p {root}/logs` "
-            "(docs/superpowers/LAUNCH.md Step 11)"
+            f"logs: cannot create {root}/logs ({type(exc).__name__}: {exc}) — "
+            "launchd opens the job's log files before exec, so a scheduled run "
+            "needs this directory to exist (docs/superpowers/LAUNCH.md Step 11)"
         )
 
     if not require_deploy:
@@ -378,7 +405,16 @@ def preflight(*, root: Path, require_deploy: bool = True) -> list[str]:
         failures.append("vercel: CLI not on PATH (npm i -g vercel)")
     else:
         rc, out = _capture(["vercel", "whoami"])
-        if rc != 0:
+        if rc == PROBE_TIMEOUT_RC:
+            # Distinct from a logged-out CLI on purpose: a probe that never
+            # answered proves nothing about the credentials, and `vercel login`
+            # would be a remedy for a diagnosis nobody made.
+            failures.append(
+                f"vercel: `vercel whoami` did not answer within "
+                f"{PROBE_TIMEOUT_SECONDS}s ({out.strip()}) — the probe hung, so "
+                "whether the CLI is logged in is unknown. Run it by hand."
+            )
+        elif rc != 0:
             failures.append(
                 f"vercel: not logged in (`vercel whoami` exited {rc}: "
                 f"{out.strip()}). Run `vercel login`."
@@ -548,9 +584,14 @@ def _acquire_single_instance_lock(lock_path: Path):
 
     Returns the open file handle; closing it releases the lock. The kernel also
     releases it if the process dies, so a crashed run leaves no stale lock.
+
+    Opened WITHOUT truncating, and the pid is written only once the lock is
+    held: `open("w")` truncates before the `flock` attempt, so the instance
+    that loses the race erased the winner's pid line on its way out — and that
+    line is the only per-process identification the lock file carries.
     """
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    handle = lock_path.open("w")
+    handle = os.fdopen(os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644), "r+")
     try:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
@@ -561,6 +602,8 @@ def _acquire_single_instance_lock(lock_path: Path):
             "(`tail -f logs/refresh-*.log`); the lock clears on its own when "
             "that process exits."
         ) from None
+    handle.seek(0)
+    handle.truncate()
     handle.write(f"{os.getpid()}\n")
     handle.flush()
     return handle
@@ -584,16 +627,22 @@ def run_refresh(
     now = now or dt.datetime.now(dt.UTC)
     state_path = state_path or (config.DATA_DIR / "refresh" / "last_run.json")
 
-    # Taken BEFORE the run record exists, on purpose: a refused second instance
-    # must not overwrite the record of the run that is still going.
-    lock = _acquire_single_instance_lock(state_path.parent / ".lock")
+    # R-20b-7: a --dry-run takes NO lock. It runs no stage, writes no record
+    # and touches nothing a concurrent run could collide with — and the moment
+    # an operator most needs to read the plan is while a long refresh holds the
+    # lock. Real runs take it BEFORE the run record exists, on purpose: a
+    # refused second instance must not overwrite the record of the run that is
+    # still going.
+    lock = None if dry_run else _acquire_single_instance_lock(
+        state_path.parent / ".lock")
     try:
-        planned = _slice(build_stages(root, now), from_stage, until_stage)
-        if not assume_yes and not dry_run:
-            _confirm(planned)
-
-        require_deploy = any(s.name == "deploy" for s in planned)
-        before = drift_report(config.MANIFEST_PATH, now)
+        # The record is the FIRST act after the lock, so every escape from here
+        # on writes `"ok": false`. Built later, an abort at the confirmation
+        # gate (a plist that lost `--yes`), a bad `--from` or an unreadable
+        # manifest would leave `data/refresh/last_run.json` — the one file
+        # LAUNCH.md Step 11 tells the operator to read — holding the PREVIOUS
+        # run's `"ok": true`. It starts false and is set true only by a stage
+        # loop that ran to the end without a failure.
         record: dict = {
             "started_at": now.isoformat(),
             "root": str(root),
@@ -601,7 +650,7 @@ def run_refresh(
             "quarterly": quarterly,
             "from_stage": from_stage,
             "until_stage": until_stage,
-            "ok": True,
+            "ok": False,
             "failed_stage": None,
             "error": None,
             "stages": [],
@@ -615,8 +664,16 @@ def run_refresh(
         # returning a code, and without this the record would never be
         # rewritten — leaving `data/refresh/last_run.json`, the one file the
         # operator is told to read, holding the PREVIOUS run's `"ok": true`.
-        current: str | None = None
+        current: str | None = None      # the stage running right now, if any
+        after_stages = False            # True once the graph is behind us
         try:
+            planned = _slice(build_stages(root, now), from_stage, until_stage)
+            if not assume_yes and not dry_run:
+                _confirm(planned)
+
+            require_deploy = any(s.name == "deploy" for s in planned)
+            before = drift_report(config.MANIFEST_PATH, now)
+
             aborted = False
             for stage in planned:
                 current = stage.name
@@ -662,6 +719,14 @@ def run_refresh(
                         file=sys.stderr,
                     )
 
+            # Nothing below is a stage. Without this reset an escape from the
+            # drift report would record the LAST stage as the failure, and the
+            # resume hint would send the operator to re-run a `deploy` that
+            # succeeded.
+            current = None
+            after_stages = True
+            record["ok"] = not aborted
+
             after = drift_report(config.MANIFEST_PATH, now)
             record["drift"] = after
             record["ingest_advanced"] = {
@@ -676,11 +741,12 @@ def run_refresh(
             record["error"] = f"{type(exc).__name__}: {exc}"
             if record["failed_stage"] is None:
                 record["failed_stage"] = current
-            print(
-                f"\nrefresh: {record['error']}"
-                + (f" (during stage {current})" if current else ""),
-                file=sys.stderr,
+            where = (
+                f" (during stage {current})" if current
+                else " (after the last stage)" if after_stages
+                else " (before the first stage)"
             )
+            print(f"\nrefresh: {record['error']}{where}", file=sys.stderr)
             raise
         finally:
             record["ended_at"] = dt.datetime.now(dt.UTC).isoformat()
@@ -694,5 +760,6 @@ def run_refresh(
                 _write_state(state_path, record)
                 print(f"refresh: run record -> {state_path}")
     finally:
-        lock.close()
+        if lock is not None:
+            lock.close()
     return record

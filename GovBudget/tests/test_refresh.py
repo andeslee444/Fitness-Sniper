@@ -10,6 +10,7 @@ import datetime as dt
 import fcntl
 import io
 import json
+import os
 import shutil as _shutil
 import subprocess
 import sys
@@ -154,19 +155,37 @@ def test_subawards_stage_targets_the_current_federal_fiscal_year():
     assert later["sync-subawards"].argv[-1] == str(config.FY_END)
 
 
-def test_the_lda_pull_window_tracks_the_clock(tmp_path):
-    """The CLI default is a hardcoded `2024,2025,2026`; a loaded quarterly job
-    inheriting it would stop covering the current filing year after 2026 and
-    say nothing (LDA ingests write no manifest record, so neither drift alarm
-    can see it). The stage passes the window explicitly instead."""
+def test_the_lda_pull_window_grows_forward_and_never_sheds_a_year(tmp_path):
+    """The END tracks the clock; the START is anchored and never moves.
+
+    Two reasons the window may not roll. (1) The CLI default is a hardcoded
+    `2024,2025,2026`; a loaded quarterly job inheriting it would stop covering
+    the current filing year after 2026 and say nothing (LDA ingests write no
+    manifest record, so neither drift alarm can see it). (2) `influence pull`
+    filters per `filing_year` (influence/lda.py:155) and `pull_top_families`
+    OVERWRITES `lda_filings.parquet` in full (lda.py:857-868) with no merge
+    against the corpus on disk, so a year the window stops naming is a year
+    deleted from the corpus. Measured read-only 2026-09-18:
+    `data/parquet/influence/lda_filings.parquet` holds filing_year 2024=2,016,
+    2025=2,250, 2026=1,127 rows, and published citations cite the 2024 ones.
+    """
     def window(when):
         argv = {s.name: s for s in refresh.build_stages(ROOT, when)}[
             "influence-pull"].argv
         return argv[argv.index("--years") + 1]
 
     assert window(NOW) == "2024,2025,2026"
-    assert window(dt.datetime(2027, 3, 1, tzinfo=dt.UTC)) == "2025,2026,2027"
-    assert window(dt.datetime(2031, 12, 31, tzinfo=dt.UTC)) == "2029,2030,2031"
+    assert window(dt.datetime(2027, 3, 1, tzinfo=dt.UTC)) == "2024,2025,2026,2027"
+    assert window(dt.datetime(2031, 12, 31, tzinfo=dt.UTC)) == (
+        "2024,2025,2026,2027,2028,2029,2030,2031")
+    # Whatever the clock says, the window opens on the corpus's first filing
+    # year and runs forward with no gaps.
+    for when in (NOW,
+                 dt.datetime(2027, 1, 1, tzinfo=dt.UTC),
+                 dt.datetime(2031, 12, 31, tzinfo=dt.UTC)):
+        years = [int(y) for y in window(when).split(",")]
+        assert years[0] == refresh._LDA_FIRST_YEAR == 2024
+        assert years == list(range(years[0], when.year + 1))
 
 
 def test_syncs_never_carry_allow_corpus_shrink():
@@ -397,6 +416,106 @@ def test_the_lock_is_released_when_a_run_ends(tmp_path, calls):
     assert (tmp_path / "refresh" / ".lock").exists()
 
 
+def test_a_dry_run_takes_no_lock_and_reads_the_plan_mid_refresh(tmp_path, calls):
+    """R-20b-7: `--dry-run` executes no stage and writes no record, so it has
+    nothing to serialize against — and the operator's one way to read the plan
+    is exactly the moment a long refresh is holding the lock."""
+    state = tmp_path / "refresh" / "last_run.json"
+    lock_path = state.parent / ".lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    held = lock_path.open("w")
+    fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        record = _refresh(tmp_path, dry_run=True, state_path=state)
+    finally:
+        held.close()
+    assert {s["status"] for s in record["stages"]} <= {"dry-run", "skipped-cadence"}
+    assert calls == []
+    assert not state.exists()
+
+
+def test_a_refused_second_instance_leaves_the_holders_pid_in_the_lock_file(
+    tmp_path,
+):
+    """The lock file's pid line is the only per-process identification it
+    carries. Opening it "w" truncated it BEFORE the flock attempt, so the
+    instance that loses the race erased the winner's pid on its way out."""
+    lock_path = tmp_path / "refresh" / ".lock"
+    lock_path.parent.mkdir(parents=True)
+    lock_path.write_text("4242\n")
+    held = lock_path.open("r+")
+    fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        with pytest.raises(refresh.RefreshAborted):
+            refresh._acquire_single_instance_lock(lock_path)
+        assert lock_path.read_text() == "4242\n"
+    finally:
+        held.close()
+
+
+def test_the_lock_file_carries_the_pid_of_the_instance_holding_it(tmp_path):
+    lock_path = tmp_path / "refresh" / ".lock"
+    handle = refresh._acquire_single_instance_lock(lock_path)
+    try:
+        assert lock_path.read_text() == f"{os.getpid()}\n"
+    finally:
+        handle.close()
+
+
+def test_an_abort_at_the_confirmation_gate_overwrites_the_previous_runs_ok(
+    tmp_path, calls, monkeypatch
+):
+    """The record is created as the FIRST act after the lock. A plist or
+    refresh.sh that loses `--yes` aborts in `_confirm`, and without that
+    ordering `last_run.json` — the one file LAUNCH.md Step 11 tells the
+    operator to read — would still hold the previous month's `"ok": true`."""
+    state = _previous_ok_record(tmp_path)
+    monkeypatch.setattr(refresh.sys, "stdin", io.StringIO())
+    with pytest.raises(refresh.RefreshAborted):
+        _refresh(tmp_path, assume_yes=False, state_path=state)
+    rec = json.loads(state.read_text())
+    assert rec["ok"] is False
+    assert "RefreshAborted" in rec["error"]
+    assert rec["failed_stage"] is None   # no stage ran; none is to blame
+    assert calls == []
+
+
+def test_a_bad_from_flag_also_overwrites_the_previous_runs_ok(tmp_path, calls):
+    state = _previous_ok_record(tmp_path)
+    with pytest.raises(ValueError):
+        _refresh(tmp_path, from_stage="synk-archive", state_path=state)
+    rec = json.loads(state.read_text())
+    assert rec["ok"] is False
+    assert "ValueError" in rec["error"]
+
+
+def test_an_escape_after_the_last_stage_blames_no_stage(
+    tmp_path, calls, monkeypatch
+):
+    """`failed_stage` feeds a printed `--from <stage>` resume hint. The drift
+    report, the ingest_advanced comparison and the stall check all run AFTER
+    the graph is done, so an escape there must not name `deploy` — the
+    operator would re-run a deploy that succeeded."""
+    state = tmp_path / "refresh" / "last_run.json"
+    real = refresh.drift_report
+    seen = {"n": 0}
+
+    def boom(path, now):
+        seen["n"] += 1
+        if seen["n"] == 1:          # the "before" reading still works
+            return real(path, now)
+        raise OSError("manifest vanished mid-run")
+
+    monkeypatch.setattr(refresh, "drift_report", boom)
+    with pytest.raises(OSError):
+        _refresh(tmp_path, state_path=state)
+    rec = json.loads(state.read_text())
+    assert rec["failed_stage"] is None
+    assert rec["stages"][-1]["name"] == "deploy"
+    assert rec["stages"][-1]["status"] == "ok"
+    assert "manifest vanished" in rec["error"]
+
+
 def test_preflight_skips_deploy_credentials_when_deploy_is_not_planned(
     tmp_path, monkeypatch
 ):
@@ -488,7 +607,12 @@ def test_a_probe_that_hangs_becomes_a_named_preflight_failure(
     failures = refresh.preflight(root=tmp_path, require_deploy=True)
     assert len(failures) == 2
     assert "rclone" in failures[0] and "timed out" in failures[0]
-    assert "vercel" in failures[1] and "timed out" in failures[1]
+    assert "vercel" in failures[1] and "did not answer" in failures[1]
+    # A hung probe says nothing about the credentials, so the logged-out
+    # sentence and its `vercel login` remedy would be a wrong diagnosis with a
+    # wrong fix attached.
+    assert "not logged in" not in failures[1]
+    assert "vercel login" not in failures[1]
 
 
 def test_every_preflight_probe_carries_a_timeout(monkeypatch):
@@ -552,15 +676,21 @@ def test_preflight_calls_a_missing_lake_missing_not_locked(
     assert "holding it" not in failures[0]
 
 
-def test_preflight_names_a_missing_logs_directory(
+def test_preflight_creates_a_missing_logs_directory(
     tmp_path, monkeypatch, local_checks_green
 ):
-    """launchd opens StandardOutPath BEFORE exec and does not create missing
-    parents, so the job cannot create logs/ for itself."""
+    """R-20b-8: preflight CREATES `logs/` instead of refusing to start.
+
+    `logs/` is gitignored, so a fresh clone has none, and a hand-typed run has
+    no reason to fail over a directory the process can make for itself. What
+    launchd needs is different and stays with the operator: it opens
+    StandardOutPath/StandardErrorPath BEFORE exec and does not create missing
+    parents, which is why the Step 11 install snippet keeps its own
+    `mkdir -p "$PWD/logs"`."""
     (tmp_path / "logs").rmdir()
     failures = refresh.preflight(root=tmp_path, require_deploy=False)
-    assert len(failures) == 1
-    assert "logs" in failures[0] and "mkdir -p" in failures[0]
+    assert failures == []
+    assert (tmp_path / "logs").is_dir()
 
 
 # ── drift report ────────────────────────────────────────────────────────────
