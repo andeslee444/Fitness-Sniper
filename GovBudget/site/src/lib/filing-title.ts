@@ -44,6 +44,22 @@ export function filingPeriodShort(period: string | null): string | null {
 }
 
 /**
+ * Self-filed is a fact about the REGISTRY strings, never about their casing —
+ * a client that lobbies on its own behalf files as its own registrant, and
+ * that identity is decided before either name goes through the §P2-4 display
+ * rule. 570 of the 5,393 shipped filings are self-filed (measured 2026-09-18).
+ * Shared by filingDisplayTitle (collapses the duplicate name) and the
+ * /filing/{uuid}/ page body (collapses the duplicate "Filed as" line).
+ */
+export function isSelfFiled(
+  f: Pick<FilingTitleFields, "client_name" | "registrant_name">,
+): boolean {
+  const rawClient = f.client_name?.trim() || null;
+  const rawRegistrant = f.registrant_name?.trim() || null;
+  return rawRegistrant !== null && rawRegistrant === rawClient;
+}
+
+/**
  * "Client — Registrant, YYYY QN", degrading gracefully as fields go missing:
  * no registrant (or self-filed) → "Client, YYYY QN"; no period → "…, YYYY";
  * no year → "Client — Registrant"; nothing → "Unknown client".
@@ -54,11 +70,10 @@ export function filingDisplayTitle(f: FilingTitleFields): string {
   // 620 distinct names in this corpus case; 186 refuse (MICHAEL BEST…, AKIN
   // GUMP…, ARK STRATEGY, TCH GROUP…).
   const rawClient = f.client_name?.trim() || null;
-  const rawRegistrant = f.registrant_name?.trim() || null;
   const client = rawClient ? displayCompanyName(rawClient).display : "Unknown client";
+  const rawRegistrant = f.registrant_name?.trim() || null;
   const registrant = rawRegistrant ? displayCompanyName(rawRegistrant).display : null;
-  // Self-filed is a fact about the REGISTRY strings, never about their casing.
-  const selfFiled = rawRegistrant !== null && rawRegistrant === rawClient;
+  const selfFiled = isSelfFiled(f);
 
   let title = client;
   if (registrant && !selfFiled) title += ` — ${registrant}`;

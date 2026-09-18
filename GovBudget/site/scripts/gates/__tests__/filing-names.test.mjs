@@ -59,4 +59,39 @@ describe("filingNameFindings", () => {
       filingNameFindings({ rel: "filing/x/index.html", html, filing: { client_name: raw, registrant_name: raw } }),
     ).toEqual([]);
   });
+
+  // Fix round 1, item 7: a self-filed CASED name (client === registrant, raw
+  // comparison) previously rendered "Filed as: X — X." — the same LDA string
+  // twice. filingNameFindings only checks that each raw string that differs
+  // from its display is SOMEWHERE in the note text, so it must keep passing
+  // BOTH the fixed single-string shape and the old duplicated one — this leg
+  // pins provenance, not prose shape (that is item 7's job, in page.tsx).
+  const selfFiledRaw = "AECOM TECHNICAL SERVICES, INC.";
+  const selfFiledCased = "AECOM Technical Services, Inc.";
+  const selfFiledFiling = { client_name: selfFiledRaw, registrant_name: selfFiledRaw };
+  function selfFiledHtml(filedAsLine) {
+    return `<h1><span data-company-name="${selfFiledRaw}">${selfFiledCased}</span></h1>
+      <span>Registrant: <span data-company-name="${selfFiledRaw}">${selfFiledCased}</span></span>
+      <p data-filed-as>${filedAsLine}</p>`;
+  }
+
+  it("passes a self-filed CASED name with the single-string 'Filed as: X.' shape (item 7 fix)", () => {
+    expect(
+      filingNameFindings({
+        rel: "filing/y/index.html",
+        html: selfFiledHtml(`Filed as: ${selfFiledRaw}.`),
+        filing: selfFiledFiling,
+      }),
+    ).toEqual([]);
+  });
+
+  it("still passes the pre-fix duplicated 'Filed as: X — X.' shape — leg (e) does not police the shape", () => {
+    expect(
+      filingNameFindings({
+        rel: "filing/y/index.html",
+        html: selfFiledHtml(`Filed as: ${selfFiledRaw} — ${selfFiledRaw}.`),
+        filing: selfFiledFiling,
+      }),
+    ).toEqual([]);
+  });
 });

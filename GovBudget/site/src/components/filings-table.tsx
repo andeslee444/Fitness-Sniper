@@ -13,7 +13,7 @@ import { formatCount } from "@/lib/format";
  * - year filter (select)
  * - client search input (case-insensitive substring over client + registrant)
  * - mentions-first ordering (pre-sorted by the exporter; filtering preserves it)
- * - capped rendering with "show more" (4,258 rows would bloat the DOM)
+ * - capped rendering with "show more" (5,393 rows would bloat the DOM)
  */
 
 interface Props {
@@ -35,24 +35,39 @@ export function FilingsTable({ filings }: Props) {
     [filings],
   );
 
+  // Haystack: raw + display spellings, lowercased, precomputed ONCE per
+  // filings load — not per keystroke. Repo precedent: companies-table.tsx
+  // (haystacks memo, :285-307). Both spellings stay searchable: the registry
+  // string the LDA recorded and the cased name the row actually shows. Typing
+  // what you can see must match, and so must typing what the Senate has on
+  // file. Keyed on filing_uuid so the filter below is a bare map lookup.
+  const haystacks = useMemo(
+    () =>
+      new Map(
+        filings.map((f) => [
+          f.filing_uuid,
+          [
+            f.client_name ?? "",
+            f.registrant_name ?? "",
+            f.client_name ? companyDisplay(f.client_name) : "",
+            f.registrant_name ? companyDisplay(f.registrant_name) : "",
+          ]
+            .join(" ")
+            .toLowerCase(),
+        ]),
+      ),
+    [filings],
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     // Exporter pre-sorts mentions-first / year desc / client asc — keep it.
     return filings.filter((f) => {
       if (year && f.filing_year !== year) return false;
       if (!q) return true;
-      // Both spellings are searchable: the registry string the LDA recorded
-      // and the cased name the row actually shows. Typing what you can see
-      // must match, and so must typing what the Senate has on file.
-      const hay = [
-        f.client_name ?? "",
-        f.registrant_name ?? "",
-        f.client_name ? companyDisplay(f.client_name) : "",
-        f.registrant_name ? companyDisplay(f.registrant_name) : "",
-      ].join(" ").toLowerCase();
-      return hay.includes(q);
+      return (haystacks.get(f.filing_uuid) ?? "").includes(q);
     });
-  }, [filings, query, year]);
+  }, [filings, haystacks, query, year]);
 
   const visible = filtered.slice(0, limit);
 
@@ -64,11 +79,12 @@ export function FilingsTable({ filings }: Props) {
    * limit both preserve it (a filtered prefix of a sorted list is sorted).
    *
    * The key stays on the RAW client_name even though the cell now displays a
-   * cased one. The two lowercase to the same string today — the display rule
-   * only changes case — so this is not a behaviour change; it is the contract
-   * staying where it was declared. The exporter's order is over the registry
-   * strings and gate 24 leg (f) checks this page against that declaration, so
-   * the key must not start reading a display string that could later diverge.
+   * cased one. The two lowercase to the same string today — measured 0
+   * beyond-case divergences, 2026-09-18 — so this is not a behaviour change;
+   * it is the contract staying where it was declared. The exporter's order is
+   * over the registry strings and gate 24 leg (f) checks this page against
+   * that declaration, so the key must not start reading a display string
+   * that could later diverge.
    */
   function sortValue(f: FilingIndexRow): string {
     const yr = Number(f.filing_year);

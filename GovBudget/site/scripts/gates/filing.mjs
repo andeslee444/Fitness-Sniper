@@ -1,7 +1,7 @@
 /**
  * gate — filing_gate
  *
- * (a) Filing pages built: count >= filings_index.json total (expect ~4,258)
+ * (a) Filing pages built: count >= filings_index.json total (expect ~5,393)
  * (b) Zero-mention filings have robots noindex meta
  * (c) All sampled pages have a canonical link
  * (d) Income/expense figures carry [data-amount] (state A via lda_filing citations)
@@ -32,7 +32,7 @@ const outDir = path.resolve(siteRoot, "out");
 const jsonDir = path.resolve(siteRoot, "..", "data", "site", "json");
 
 const SAMPLE_SIZE = 50;
-const MIN_FILING_COUNT = 4000; // allow variance from the nominal 4,258
+const MIN_FILING_COUNT = 4000; // allow variance from the nominal 5,393
 
 /**
  * Pure, unit-tested: the findings for ONE built filing page (leg e).
@@ -277,17 +277,19 @@ export async function runFilingGate() {
   }
 
   // (e) non-vacuity. Measured 2026-09-18 over the shipped filings_index.json:
-  // 620 distinct client/registrant strings, of which 431 case, 186 refuse and
-  // render verbatim and 3 already carry mixed case. A 50-page sample that hits
-  // NONE of the 431 is not a sample, it is a broken leg — this floor is dated
-  // and is never lowered to make a run go green.
+  // 620 distinct client/registrant strings, of which 431 case, 186 refuse
+  // and render verbatim, and 3 (AECOM, V2X, RTX) are all-caps initialisms the
+  // rule returns unchanged — not "mixed case": 0 of the 620 names contain a
+  // lowercase letter. A 50-page sample that hits NONE of the 431 is not a
+  // sample, it is a broken leg — this floor is dated and is never lowered to
+  // make a run go green.
   errors.push(...nameErrors);
   if (nameChecked === 0) {
     errors.push("leg e: no sampled filing page had an index row — the name check is vacuous");
   } else if (casedSeen === 0) {
     errors.push(
       "leg e: not one sampled filing page rendered a cased name — either the sample missed every " +
-        "transformable string (431 of the 620 distinct LDA names case) or the casing is not applied",
+        "transformable string (431 of the 620 distinct LDA names case) or the rule itself stopped transforming",
     );
   } else if (nameErrors.length > 0) {
     notes.push(

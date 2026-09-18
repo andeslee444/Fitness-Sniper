@@ -16,7 +16,9 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { filingDisplayTitle, filingPeriodShort } from "@/lib/filing-title";
+import { render } from "@testing-library/react";
+import type React from "react";
+import { filingDisplayTitle, filingPeriodShort, isSelfFiled } from "@/lib/filing-title";
 import { displayCompanyName } from "@/lib/company-name.mjs";
 
 describe("filingPeriodShort", () => {
@@ -120,6 +122,22 @@ describe("/filing/ page metadata uses filingDisplayTitle (real data)", () => {
       "Lockheed Martin Corporation — MICHAEL BEST STRATEGIES LLC, 2025 Q4",
     );
   });
+
+  // Fix round 1, item 6: the description beside a cased title still
+  // interpolated the raw client_name/registrant_name. Same UUID, same rule
+  // (displayCompanyName) — the client cases, the registrant refuses on
+  // "BEST", so the description must show exactly what the title shows for
+  // each name, not the client's raw SHOUTED form.
+  it("generateMetadata description cases the client through the same rule as the title", async () => {
+    const { generateMetadata } = await import("@/app/filing/[uuid]/page");
+    const meta = await generateMetadata({
+      params: Promise.resolve({ uuid: UUID }),
+    });
+    expect(meta.description).toBe(
+      "Senate LDA filing Q4 2025 — client Lockheed Martin Corporation, registrant MICHAEL BEST STRATEGIES LLC. Activities, lobbyists, and tracked program mentions.",
+    );
+    expect(meta.description).not.toContain("client LOCKHEED MARTIN CORPORATION");
+  });
 });
 
 describe("filingDisplayTitle casing (PM-S3 leftover: filings shouted)", () => {
@@ -162,4 +180,56 @@ describe("filingDisplayTitle casing (PM-S3 leftover: filings shouted)", () => {
   it("keeps degrading gracefully", () => {
     expect(filingDisplayTitle({ client_name: null, registrant_name: null, filing_year: null, filing_period: null })).toBe("Unknown client");
   });
+});
+
+describe("isSelfFiled (fix round 1, item 7 — the raw-string notion, shared with the page body)", () => {
+  it("true when client and registrant are the same raw string", () => {
+    expect(
+      isSelfFiled({ client_name: "ABBOTT LABORATORIES", registrant_name: "ABBOTT LABORATORIES" }),
+    ).toBe(true);
+  });
+
+  it("false when they differ, even after trimming", () => {
+    expect(
+      isSelfFiled({ client_name: "ABBOTT LABORATORIES", registrant_name: "MICHAEL BEST STRATEGIES LLC" }),
+    ).toBe(false);
+  });
+
+  it("false when registrant is null", () => {
+    expect(isSelfFiled({ client_name: "ABBOTT LABORATORIES", registrant_name: null })).toBe(false);
+  });
+
+  it("is a fact about the REGISTRY string, decided before casing", () => {
+    // Same registry string, differently-cased inputs would still be two
+    // DIFFERENT raw strings — this function never normalises case itself.
+    expect(isSelfFiled({ client_name: "Abbott Laboratories", registrant_name: "ABBOTT LABORATORIES" })).toBe(
+      false,
+    );
+  });
+});
+
+describe("/filing/ page 'Filed as' line — self-filed collapse (fix round 1, item 7, real data)", () => {
+  // 3e857be5-28c1-436f-93c8-35af921c0fa5 = ABBOTT LABORATORIES, self-filed
+  // (client_name === registrant_name, raw comparison) — one of 570 such
+  // filings shipped (measured 2026-09-18). The name CASES (ABBOTT
+  // LABORATORIES → Abbott Laboratories), so casedAny is true and the
+  // [data-filed-as] line renders. Before this fix it read
+  // "Filed as: ABBOTT LABORATORIES — ABBOTT LABORATORIES." — the same LDA
+  // string twice across a dash that implies two different filers.
+  const SELF_FILED_UUID = "3e857be5-28c1-436f-93c8-35af921c0fa5";
+
+  async function renderSelfFiled() {
+    const { default: FilingPage } = await import("@/app/filing/[uuid]/page");
+    const el = await FilingPage({ params: Promise.resolve({ uuid: SELF_FILED_UUID }) });
+    return render(el as React.ReactElement);
+  }
+
+  it("renders the LDA string once ('Filed as: X.'), not duplicated across a dash", async () => {
+    const { container } = await renderSelfFiled();
+    const note = container.querySelector("[data-filed-as]");
+    expect(note).not.toBeNull();
+    const text = note!.textContent ?? "";
+    expect(text).not.toMatch(/ABBOTT LABORATORIES\s*—\s*ABBOTT LABORATORIES/);
+    expect(text).toContain("Filed as: ABBOTT LABORATORIES.");
+  }, 30000);
 });

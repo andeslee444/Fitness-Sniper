@@ -7,7 +7,7 @@ import {
   collectCitations,
 } from "@/lib/data";
 import { humanLdaUrl } from "@/lib/citations";
-import { filingDisplayTitle } from "@/lib/filing-title";
+import { filingDisplayTitle, isSelfFiled } from "@/lib/filing-title";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CompanyName } from "@/components/company-name";
@@ -17,7 +17,7 @@ import { Cite } from "@/components/cite";
 import { isTruncatedSnippet, tidySnippet } from "@/lib/snippet";
 import { evidenceKindLabel, evidenceKindTitle } from "@/lib/evidence";
 
-// ── SSG config — 4,258 filing pages, no fallback ──────────────────────────────
+// ── SSG config — 5,393 filing pages, no fallback ──────────────────────────────
 
 export const dynamicParams = false;
 
@@ -51,7 +51,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const f = detail.filing;
   const hasMentions = detail.mentions.length > 0;
-  const client = f.client_name ?? "Unknown client";
+  // Same §P2-4 rule the title goes through (displayCompanyName, imported
+  // below for the page body) — so the description beside the title never
+  // shouts a name the title itself cased.
+  const client = f.client_name ? displayCompanyName(f.client_name).display : "Unknown client";
+  const registrant = f.registrant_name
+    ? displayCompanyName(f.registrant_name).display
+    : "unknown";
   const year = f.filing_year ?? "";
   // Bare title for metadata (the layout template appends the site name);
   // og keeps the full suffixed form since templates don't apply to openGraph.
@@ -59,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // title both read "Client — Registrant, YYYY QN".
   const title = filingDisplayTitle(f);
   const ogTitle = `${title} | ${SITE_NAME}`;
-  const description = `Senate LDA filing ${f.filing_type ?? ""} ${year} — client ${client}, registrant ${f.registrant_name ?? "unknown"}. Activities, lobbyists, and tracked program mentions.`;
+  const description = `Senate LDA filing ${f.filing_type ?? ""} ${year} — client ${client}, registrant ${registrant}. Activities, lobbyists, and tracked program mentions.`;
   const human = humanLdaUrl(f.url);
 
   return {
@@ -120,6 +126,10 @@ export default async function FilingPage({ params }: Props) {
   const casedAny =
     (clientName !== null && clientName.display !== clientName.registry) ||
     (registrantName !== null && registrantName.display !== registrantName.registry);
+  // Raw-string fact, decided before either name is cased (filing-title.ts) —
+  // a self-filed filing has one LDA string, not two, so "Filed as" below must
+  // say it once ("Filed as: X.") rather than "X — X.".
+  const selfFiled = isSelfFiled(f);
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -206,7 +216,7 @@ export default async function FilingPage({ params }: Props) {
               <span className="font-mono text-foreground">
                 {clientName ? clientName.registry : "—"}
               </span>
-              {registrantName ? (
+              {registrantName && !selfFiled ? (
                 <>
                   {" — "}
                   <span className="font-mono text-foreground">
