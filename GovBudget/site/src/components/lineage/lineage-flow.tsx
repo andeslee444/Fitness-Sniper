@@ -577,13 +577,27 @@ export function LineageFlow({
       {/* ── Stated: the families ── */}
       <ChartFigure
         id="lineage-graph"
+        // The caption goes UNDER this diagram, not over it (Task 21d fix
+        // round 1). At 390 it is 260px of prose, and with it above, the first
+        // ribbon started 1,049px down the page against gate 16's index-fold
+        // floor of 844 (answerfold.mjs, floor 2026-09-18, do-not-lower) —
+        // i.e. the page's own "caveat above the data" defect, one component
+        // below the five pages 21d moved. Nothing about the caption changes
+        // but its position: same text, same id, same data-chart-desc, so the
+        // svg's aria-describedby still resolves and gate 6 (c1) still finds a
+        // description visible to sighted readers.
+        captionPlacement="last"
         description={
           `Every program-element identity the ingested J-books link to another one, grouped into the ` +
           `${payload.counts.families} families those links form. Boxes are identities and ribbons are the links between ` +
           `them; columns are lineage STEPS, not calendar years, because predecessors and successors keep drawing ` +
           `money side by side for whole decades and a year axis would assert a hand-off date the record does not ` +
           `contain. Read a ribbon as "this line became that one", never as a sum: every ribbon is drawn at one ` +
-          `fixed width because no J-book sentence in the corpus states how much money moved. The table below adds ` +
+          // "The table below" → "The identities table": with the caption
+          // moved under the figure the table views sit ABOVE it, and a
+          // pointer that is about to become false gets NAMED, not re-placed
+          // — 21d's own /district/ ruling, applied to its own caption.
+          `fixed width because no J-book sentence in the corpus states how much money moved. The identities table adds ` +
           `the one figure that IS stated per identity — its FY${payload.amount_fy} request — and the links table lists every ` +
           `link with the edition that asserts it.` +
           (wideFamilies > 0

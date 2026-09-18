@@ -44,6 +44,7 @@ export function ChartFigure({
   table,
   className = "",
   descClassName = "",
+  captionPlacement = "first",
 }: {
   /** Stable chart id — the [data-chart] value and the description's anchor. */
   id: string;
@@ -63,22 +64,45 @@ export function ChartFigure({
   table?: ReactNode;
   className?: string;
   descClassName?: string;
+  /**
+   * Where the <figcaption> sits inside the <figure>. Default "first" — the
+   * reader is told what the picture is for before looking at it, which is
+   * the better read wherever the caption is short enough to afford it.
+   *
+   * "last" exists for ONE shape: a tall diagram on a narrow viewport whose
+   * caption would push the picture itself below the fold. /lineage/ at 390
+   * was the case that forced it — 260px of description plus a 108px legend
+   * above a diagram that then started 1,049px down the page, against gate
+   * 16's index-fold floor of 844 (answerfold.mjs, floor 2026-09-18). A
+   * caveat that a reader has to scroll past the data to reach is the defect;
+   * a caveat the reader reaches right after the data is not. Choose "last"
+   * only on that evidence — a measured fold failure — never as a style
+   * preference, and never to make room for a longer caption.
+   */
+  captionPlacement?: "first" | "last";
 }) {
+  // HTML's <figure> content model allows the <figcaption> only as the FIRST
+  // or LAST child — those are the two legal positions, and this prop picks
+  // between them. Nothing else about the caption changes with it: same text,
+  // same id={chartDescId(id)}, same data-chart-desc, same classes, so gate 2
+  // leg (ch) (name/desc/caption/[data-amount]) and gate 6 leg (c1) (a figure
+  // must carry a description visible to sighted readers) see an identical
+  // element either way. Only the order moves.
+  const caption = (
+    <figcaption
+      id={chartDescId(id)}
+      data-chart-desc=""
+      className={`mb-2 text-xs leading-5 text-muted-foreground ${descClassName}`}
+    >
+      {description}
+    </figcaption>
+  );
   return (
-    // HTML's <figure> content model allows the <figcaption> only as the FIRST
-    // or LAST child. It goes first here, which is also the better read: the
-    // reader is told what the picture is for before looking at it, and the
-    // table view can then follow the chart directly.
     <figure data-chart={id} className={`m-0 ${className}`}>
-      <figcaption
-        id={chartDescId(id)}
-        data-chart-desc=""
-        className={`mb-2 text-xs leading-5 text-muted-foreground ${descClassName}`}
-      >
-        {description}
-      </figcaption>
+      {captionPlacement === "first" ? caption : null}
       {children}
       {table}
+      {captionPlacement === "last" ? caption : null}
     </figure>
   );
 }
