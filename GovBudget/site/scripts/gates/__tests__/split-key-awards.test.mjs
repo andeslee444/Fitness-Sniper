@@ -21,7 +21,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { runSplitKeyAwardsLeg } from "../program-skeleton.mjs";
+import { runSplitKeyAwardsLeg, evidenceBadges } from "../program-skeleton.mjs";
 
 /** Shape of the real corpus, transposed onto synthetic codes: 13 shared
  *  codes — 10 account-split (TA…TJ) and 3 organization-split (TK, TL, TM —
@@ -492,6 +492,49 @@ describe("leg n — each member publishes its OWN J-book (ROADMAP #82, narrative
     const { errors, notes } = runBuilt(built);
     expect(errors).toEqual([]);
     expect(notes[0]).toContain("2 title-basis row(s) carry every matched term");
+  });
+
+  // ── the quoted badge is the one the PAGE shows, per tier ────────────────
+  //
+  // The message hardcoded multi_token's wording ("2+ distinct, non-generic
+  // words from this program's title") for EVERY non-pe_literal tier, so an
+  // alias failure told the reader to go look for a badge that page does not
+  // render — and the sentence it quoted is evidenceKindLongExplanation's,
+  // which no mention row renders at all. Both halves are now read out of
+  // src/lib/evidence.ts, the table the row itself calls.
+  it("quotes multi_token's OWN badge on a multi_token failure", () => {
+    const { errors } = runBuilt(shape0145());
+    const offending = errors.filter((e) => e.includes("TA-M0"));
+    expect(offending[0]).toContain('the badge "matched 2+ title words"');
+    expect(offending[0]).toContain("2+ distinct title words found together");
+    expect(offending[0]).not.toContain("matched a known alias");
+  });
+
+  it("quotes ALIAS's badge on an alias failure, not multi_token's", () => {
+    const { errors } = runBuilt(
+      shape0145({ mentionKind: "alias", mentionTerm: () => "Super Hornet" }),
+    );
+    const offending = errors.filter(
+      (e) => e.includes("TA-M1") && e.includes("alias lobbying mention"),
+    );
+    expect(offending).toHaveLength(1);
+    expect(offending[0]).toContain('the badge "matched a known alias"');
+    expect(offending[0]).toContain("curated, verified alias");
+    expect(offending[0]).not.toContain("2+ distinct");
+    expect(offending[0]).not.toContain("words from");
+  });
+
+  it("reads the badge table out of src/lib/evidence.ts, and says so if it cannot", () => {
+    const table = evidenceBadges();
+    expect(table.multi_token.label).toBe("matched 2+ title words");
+    expect(table.alias.label).toBe("matched a known alias");
+    expect(table.pe_literal.label).toBe("PE code cited directly");
+    for (const kind of ["multi_token", "alias", "pe_literal"]) {
+      expect(table[kind].title.length).toBeGreaterThan(20);
+    }
+    // A module that no longer carries the table must fail loudly rather than
+    // hand the leg a stale hand-copy.
+    expect(() => evidenceBadges("/no/such/evidence.ts")).toThrow(/evidence/i);
   });
 
   it("FAILS a wrong declaration: a multi_token row declared on the pe_literal basis", () => {

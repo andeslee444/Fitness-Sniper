@@ -44,9 +44,11 @@
  *
  * Returns null for non-hhi cards. Text and band both derive from the SAME
  * shared hhiBand() the destination page's own badge uses (hhi-band.mjs) —
- * see that file's doc-comment for why it is .mjs, not .ts. Rendered on every
- * /feed/ card as the [data-hhi-scope-note] <p> that scripts/gates/feed.mjs
- * leg (l) reads.
+ * see that file's doc-comment for why it is .mjs, not .ts. Rendered as the
+ * [data-hhi-scope-note] <p> that scripts/gates/feed.mjs leg (l) reads — on
+ * the /feed/ cards whose figure_units is "hhi" and nowhere else, which is
+ * what the null return above means: a card carrying dollars or a count has no
+ * band to scope.
  */
 
 import { hhiBand } from "@/lib/hhi-band.mjs";

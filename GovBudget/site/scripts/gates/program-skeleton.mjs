@@ -733,12 +733,66 @@ function titleCarriesTerm(title, term) {
   );
 }
 
+/** The module whose table the mention rows actually render. Read as TEXT, the
+ *  way basis.mjs reads src/lib/footnote.ts: a gate cannot import the site's
+ *  TypeScript, and a hand-copied sentence in a gate message is the same
+ *  species of drift these legs exist to catch. */
+const evidenceModulePath = path.resolve(siteRoot, "src", "lib", "evidence.ts");
+
+/**
+ * The per-tier badge the page shows, read out of src/lib/evidence.ts.
+ *
+ * WHAT THE ROW RENDERS. program-mentions.tsx (and /filing/[uuid]/) prints
+ * `evidenceKindLabel(kind)` as the badge and hangs `evidenceKindTitle(kind)`
+ * off it as the hover title. Those two are what a reader sees, so those two
+ * are what a finding quotes. (`evidenceKindLongExplanation` is the
+ * /methodology/ paragraph and is rendered on no mention row — the leg quoted
+ * multi_token's version of it, for every tier, until 2026-09-18.)
+ *
+ * Throws if the table cannot be read or a tier is missing from it: a gate that
+ * silently fell back to a hand-copy would be asserting the very drift it is
+ * here to find.
+ */
+export function evidenceBadges(modulePath = evidenceModulePath) {
+  let src;
+  try {
+    src = fs.readFileSync(modulePath, "utf8");
+  } catch {
+    throw new Error(
+      `program-skeleton(n): cannot read the evidence-badge table at ${modulePath} — ` +
+        `the leg quotes the badge the page renders and will not hand-copy it`,
+    );
+  }
+  /** The `case "<kind>": return "<text>";` arm inside one named function. */
+  const arm = (fnName, kind) => {
+    const fn = new RegExp(`function ${fnName}\\b[\\s\\S]*?\\n}`, "m").exec(src);
+    if (!fn) return null;
+    const m = new RegExp(`case "${kind}":\\s*\\n?\\s*return\\s*"((?:[^"\\\\]|\\\\.)*)"`, "m").exec(fn[0]);
+    return m ? m[1].replace(/\\(.)/g, "$1") : null;
+  };
+  const table = {};
+  for (const kind of ["pe_literal", "alias", "multi_token"]) {
+    const label = arm("evidenceKindLabel", kind);
+    const title = arm("evidenceKindTitle", kind);
+    if (!label || !title) {
+      throw new Error(
+        `program-skeleton(n): src/lib/evidence.ts no longer yields a badge for "${kind}" ` +
+          `(label ${label ? "ok" : "missing"}, title ${title ? "ok" : "missing"}) — ` +
+          `re-point this reader at the table the mention row now renders`,
+      );
+    }
+    table[kind] = { label, title };
+  }
+  return table;
+}
+
 export function runSplitKeyAwardsLeg({
   errors,
   notes,
   sidecars,
   programs,
   pageHtml = readPageHtml,
+  badges = evidenceBadges(),
 }) {
   let programRows = programs;
   if (!programRows) {
@@ -905,15 +959,19 @@ export function runSplitKeyAwardsLeg({
         );
         if (!missing.length && mentionTerms(m.matched_term).length) mentionTitleRows++;
         if (missing.length || !mentionTerms(m.matched_term).length) {
+          // The badge is quoted per TIER, out of the table the row renders:
+          // an alias failure that quoted multi_token's wording sent the reader
+          // looking for text this page does not show.
+          const badge = badges[kind];
           errors.push(
             `program-skeleton(n): /program/${r.slug}/ publishes a ${kind} ` +
               `lobbying mention matched \`${m.matched_term}\` but its own ` +
               `title "${r.title}" does not carry ` +
               `${missing.length ? missing.join(", ") : "any matched term"} — ` +
-              `the row renders the badge "2+ distinct, non-generic words from ` +
-              `this program's title", which is false here. On a shared code ` +
-              `the mart is keyed on the bare code, so a row that matched the ` +
-              `SIBLING's title arrives at this page too`,
+              `the row renders the badge "${badge ? badge.label : kind}"` +
+              `${badge ? ` ("${badge.title}")` : ""}, which is false here. On a ` +
+              `shared code the mart is keyed on the bare code, so a row that ` +
+              `matched the SIBLING's title arrives at this page too`,
           );
         }
       }

@@ -24,7 +24,7 @@
  * pins the STRUCTURE that makes parity hold by construction.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -160,13 +160,12 @@ function renderBoth(card: FeedCard) {
 // ── 1. runtime: both trees render the one shell ─────────────────────────────
 
 describe("<FeedCardItemShell> is what both /feed/ card trees render", () => {
-  // Braces, not a concise body: mockClear() RETURNS the mock, and vitest
-  // treats a function returned from beforeEach as a teardown callback — it
-  // would call the spy with no arguments after every test, and the real
-  // implementation would throw destructuring `card` off undefined.
-  beforeEach(() => {
-    shell.mockClear();
-  });
+  // No beforeEach: every test in here enters through renderBoth(), whose
+  // FIRST statement is shell.mockClear(), so the hook cleared a spy that was
+  // about to be cleared again. (It also had to be written with braces rather
+  // than a concise body — mockClear() RETURNS the mock, and vitest treats a
+  // function returned from beforeEach as a teardown callback, which would have
+  // called the spy with no arguments after every test.)
 
   it("the server card and the client twin both call the shell with the same card, companySlug and hasProgramPage", () => {
     const { serverProps, clientProps } = renderBoth(PLAIN);

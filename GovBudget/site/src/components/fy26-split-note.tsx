@@ -19,9 +19,14 @@ import type { Fy26Split } from "@/lib/data";
  * Rendered on TWO surfaces from this one component (backlog #54): beside the
  * FY2026 card on /program/{peBli}/ (program-figures.tsx) and on every
  * /feed/ yoy_swing card whose PE carries reconciliation money (BOTH /feed/
- * card trees, via feed-card-item-shell.tsx) — so the wording and the
- * [data-fy26-recon-chip]/[data-fy26-disc-pct-change] markers gate 23 legs
- * g1/g4a read cannot drift between the pages.
+ * card trees, via feed-card-item-shell.tsx) — so the wording and the markers
+ * gate 23 (scripts/gates/basis.mjs, leg g) reads cannot drift between the
+ * pages. Which leg reads which, corrected 2026-09-18 against the gate:
+ * g1 requires [data-fy26-recon-chip] on every /program/{peBli}/ whose sidecar
+ * reports recon_share > 0; g4a requires that SAME chip on every qualifying
+ * /feed/ yoy_swing card; and [data-fy26-disc-pct-change] is g2's marker,
+ * required on a /program/ page that renders the combined FY25→FY26
+ * percentage. No leg reads the disc-pct marker on /feed/.
  *
  * WHY THIS FILE (ROADMAP #81). Until #81 this lived in program-figures.tsx,
  * whose top-level <CoverageNote> import (→ src/lib/coverage.ts,

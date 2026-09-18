@@ -37,8 +37,10 @@ export function generateStaticParams(): { uuid: string }[] {
 //
 // Policy (plan Task 6a, binding):
 //   - canonical → the human lda.senate.gov filing page (authoritative source)
-//   - robots noindex when the filing has zero program mentions (1,170 / 4,258
-//     thin pages stay crawlable but unindexed)
+//   - robots noindex when the filing has zero program mentions (3,536 of the
+//     5,393 built filing pages carry no mention and stay crawlable but
+//     unindexed — re-measured 2026-09-18 over filings_index.json and the
+//     filings/ sidecars; the comment said 1,170 / 4,258 from an older corpus)
 //   - shared static OG image for all filings (decision 3 — no per-filing render)
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -130,6 +132,13 @@ export default async function FilingPage({ params }: Props) {
   // a self-filed filing has one LDA string, not two, so "Filed as" below must
   // say it once ("Filed as: X.") rather than "X — X.".
   const selfFiled = isSelfFiled(f);
+  // ...and the sentence AFTER those strings has to agree in number with them.
+  // The collapse above fixed the strings and left "those strings"/"the names
+  // above" standing on all 570 self-filed pages, where exactly one of each is
+  // printed (measured 2026-09-18: 570 self-filed, 4,823 with two distinct LDA
+  // strings, 0 with no registrant at all — but the condition, not the count,
+  // is what decides here).
+  const filedAsPlural = Boolean(registrantName && !selfFiled);
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -216,16 +225,20 @@ export default async function FilingPage({ params }: Props) {
               <span className="font-mono text-foreground">
                 {clientName ? clientName.registry : "—"}
               </span>
-              {registrantName && !selfFiled ? (
+              {filedAsPlural ? (
                 <>
                   {" — "}
                   <span className="font-mono text-foreground">
-                    {registrantName.registry}
+                    {registrantName!.registry}
                   </span>
                 </>
               ) : null}
-              . Search lda.senate.gov for those strings; the names above are
-              this site&rsquo;s casing of them, nothing else.
+              . Search lda.senate.gov for{" "}
+              {filedAsPlural ? "those strings" : "that string"}; the{" "}
+              {filedAsPlural
+                ? "names above are this site\u2019s casing of them"
+                : "name above is this site\u2019s casing of it"}
+              , nothing else.
             </p>
           )}
 

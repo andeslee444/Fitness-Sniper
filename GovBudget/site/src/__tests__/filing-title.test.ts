@@ -217,6 +217,11 @@ describe("/filing/ page 'Filed as' line — self-filed collapse (fix round 1, it
   // "Filed as: ABBOTT LABORATORIES — ABBOTT LABORATORIES." — the same LDA
   // string twice across a dash that implies two different filers.
   const SELF_FILED_UUID = "3e857be5-28c1-436f-93c8-35af921c0fa5";
+  // 813b1886-… is the PM's own Lockheed repro (see this file's header): a
+  // distinct client and registrant, so the "Filed as" line prints BOTH LDA
+  // strings across the dash. One of the 4,823 two-string filings shipped
+  // against 570 self-filed (measured 2026-09-18).
+  const TWO_NAME_UUID = "813b1886-65d2-4abb-9d6f-c4a8ce7dd56c";
 
   async function renderSelfFiled() {
     const { default: FilingPage } = await import("@/app/filing/[uuid]/page");
@@ -231,5 +236,36 @@ describe("/filing/ page 'Filed as' line — self-filed collapse (fix round 1, it
     const text = note!.textContent ?? "";
     expect(text).not.toMatch(/ABBOTT LABORATORIES\s*—\s*ABBOTT LABORATORIES/);
     expect(text).toContain("Filed as: ABBOTT LABORATORIES.");
+  }, 30000);
+
+  // The collapse fixed the STRINGS and left the sentence after them plural:
+  // "Search lda.senate.gov for those strings; the names above are this site's
+  // casing of them" — on all 570 self-filed pages there is one string and one
+  // name. The sentence now agrees in number with what it points at.
+  it("says 'that string' and 'the name above', singular, when it printed one", async () => {
+    const { container } = await renderSelfFiled();
+    const text = container.querySelector("[data-filed-as]")!.textContent ?? "";
+    expect(text).toContain("Search lda.senate.gov for that string");
+    expect(text).toContain("the name above is this site");
+    expect(text).not.toContain("those strings");
+    expect(text).not.toContain("the names above");
+  }, 30000);
+
+  // 813b1886-… is the PM's own Lockheed repro: LOCKHEED MARTIN CORPORATION
+  // filed by a distinct registrant, so two strings print and the plural is
+  // the true form. Both branches are pinned, so neither can be "fixed" by
+  // making one wording serve both.
+  it("keeps the plural when it really did print two strings", async () => {
+    const { default: FilingPage } = await import("@/app/filing/[uuid]/page");
+    const el = await FilingPage({
+      params: Promise.resolve({ uuid: TWO_NAME_UUID }),
+    });
+    const { container } = render(el as React.ReactElement);
+    const note = container.querySelector("[data-filed-as]");
+    expect(note).not.toBeNull();
+    const text = note!.textContent ?? "";
+    expect(text).toMatch(/Filed as:.*—/);
+    expect(text).toContain("Search lda.senate.gov for those strings");
+    expect(text).toContain("the names above are this site");
   }, 30000);
 });

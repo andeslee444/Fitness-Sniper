@@ -3166,7 +3166,9 @@ export interface FilingDetail {
 
 export function getFilingDetail(uuid: string): FilingDetail {
   getSiteMeta();
-  // No memo map: 4,258 filings are each read exactly once during SSG.
+  // No memo map: each filing is read exactly once during SSG — one page per
+  // filings_index.json row, 5,393 of them (re-measured 2026-09-18; the
+  // comment said 4,258 from an older corpus).
   return readJson<FilingDetail>(`filings/${uuid}.json`);
 }
 
