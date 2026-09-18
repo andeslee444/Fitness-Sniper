@@ -433,10 +433,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // MEASURED COST, for whoever adds the next sentence here: 202 source
   // characters removed = 142 gzip, measured as 42,562 on the chain-D build
   // against 42,420 on fix-round build 1, the pair fix round 1 stamped. Build
-  // 2 of that same source weighed 42,416 (build-id jitter) and fix round 2's
-  // build 42,415, once one of the four trim comments moved out from between
-  // two text runs and React stopped emitting a <!-- --> separator there. So
-  // read the trim as 142 gzip ±5; 0.70 gzip per source
+  // 2 of that same source weighed 42,416 (build-id jitter), and fix round 2's
+  // two builds 42,415 and 42,417, once one of the four trim comments moved
+  // out from between two text runs and React stopped emitting a <!-- -->
+  // separator there. So read the trim as 142 gzip ±5; 0.70 gzip per source
   // character, NOT the 0.40 the note above records. That 0.40 came
   // from a 1,850-character trim whose text repeated elsewhere on the page and
   // so compressed as back-references; short, unique clauses cost nearly twice
@@ -454,10 +454,16 @@ export const PAGE_WEIGHT_BUDGET = [
   // leg below errors when a recorded `measured:` gzip overstates live headroom
   // by 2x, i.e. as soon as the page weighs more than maxGzip - (maxGzip -
   // recorded)/2. At the 42,415 stamped below against a 42,500 ceiling that is
-  // 42,458 — about +43 gzip on what the fix-round-2 build weighed, half of the
-  // 85 bytes of headroom. So the next editor has ~43 bytes before gate 1 goes
-  // red, and the fix when it does is a RESTAMP of the pair below, never a
-  // raise. Same arithmetic on /coverage/: ~153 of its 305.
+  // 42,458 — about +42 gzip on the 42,417 the build at this commit weighed,
+  // half of the headroom the entry appears to offer. So the next editor has
+  // ~42 bytes before gate 1 goes red, and the fix when it does is a RESTAMP of
+  // the pair below, never a raise. Same arithmetic on /coverage/: ~152 of the
+  // 303 it has at 20,447.
+  //
+  // The stamped pair is fix round 2's BUILD 1 (42,415 / 20,445); its build 2,
+  // same source, weighed 42,417 / 20,447. Two bytes of build-id jitter each
+  // way is ordinary here and no build chases it: the leg errors only past 2x,
+  // and the numbers above are the arithmetic, not a promise of the byte.
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "152,075 / 42,415" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
@@ -547,9 +553,11 @@ export const PAGE_WEIGHT_BUDGET = [
   //     from —" in the ScopeNote's first paragraph: −50 rendered characters.
   //     (Fix round 2 put a four-words-shorter form of that clause back: the
   //     <h2> it was trimmed against claims recomputation, not provenance. It
-  //     cost +88 raw and +18 gzip, measured against fix-round build 1 — which
-  //     is also this page's own rate for a short unique clause: 40 rendered
-  //     characters, ~0.45 gzip each.)
+  //     cost +88 raw — 39 rendered characters, each shipped twice with its
+  //     markup — and 14 to 20 gzip, which is the honest width of two builds
+  //     either side: 20,431 and 20,427 on fix round 1's two builds, 20,445 and
+  //     20,447 on fix round 2's. About 0.4 gzip per rendered character, this
+  //     page's own rate.)
   //   MEASURED TOGETHER, because no build isolated them: 102,194 / 20,473 on
   //   the chain-D build → 99,736 / 20,431 on fix-round build 1 = −2,458 raw
   //   and −42 gzip for both edits. The dedupe is what moved the raw — it

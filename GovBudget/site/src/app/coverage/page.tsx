@@ -225,8 +225,9 @@ export default function CoveragePage() {
                 from. It does not: it claims RECOMPUTATION, not provenance, and
                 with the clause gone nothing on the page said the coverage
                 figures and the rest of the site read the SAME files. Fix round
-                2 restores that identity in its shortest form (four words
-                shorter than the original). The warrant is coverage-map.ts's
+                2 restores that identity one word shorter than the original
+                ("themselves" went; 39 rendered characters, +88 raw and 14-20
+                gzip, measured). The warrant is coverage-map.ts's
                 own header: every `covered` string is assembled from the
                 data.ts / feeds.ts loaders the pages themselves render from. */}
             <p className="text-sm leading-7">
