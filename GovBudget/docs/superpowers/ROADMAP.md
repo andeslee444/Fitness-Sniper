@@ -695,6 +695,46 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   per recorded case — an unrecorded org still gets "not yet ingested", which
   is the one state that wording is true of.
 
+- **2026-09-18: two true ratios, no reconciliation, and a four-year-old
+  attribution nobody re-measured (PM-S3 row, Task 21b).** `/flow/` published
+  "384 of 444 crosswalked PEs" and `/district/` "200 of 1,938 programs
+  currently crosswalkable". Both were correct and they answer different
+  questions — the bridge counts program elements carrying a published link
+  that ALSO carry FY2026 request dollars; the district view counts elements
+  with a high-confidence link whose award records a place of performance.
+  They are not even nested: **34 of the 200 sidecar programs are absent from
+  the 384**, because the FY2026 books carry no request dollars for them.
+  Nothing on the site said so, so a reader comparing the two pages could not
+  tell a different question from a contradiction. `lib/corpus`'s
+  `getCrosswalkCounts()` now declares all five counts with what ONE unit of
+  each is — the same shape `getCorpusCounts()` gave the five corpus sizes —
+  and `/coverage/#crosswalk` publishes the list.
+  The second half is the lesson. `/district/`, its detail pages, its money
+  column ("DARPA place-of-performance $") and `/methodology/` all credited the
+  linkage to "the DARPA crosswalk". Gate 14 leg cm retired that exact claim on
+  `/coverage/` on 2026-09-01 and **these five surfaces were missed**, because
+  the retirement was scoped to the page the finding was reported on rather
+  than to the claim. Measured the same day from the shipped sidecars: 92 Navy,
+  59 Air Force, 22 Army, **14 DARPA**, 6 MDA, 4 OSD, 2 SOCOM, 1 DISA. Gate 24
+  leg (p3) now recomputes that mix from the sidecars' own headers and rejects
+  prose handing the crosswalk to an organization holding under half of it —
+  run read-only against the 2026-09-12 build it returns exactly those three
+  sentences and nothing else, across five pages carrying 122 DARPA mentions.
+  Third lesson, small and expensive: the replacement prose wanted to say the
+  mechanism was "hand-adjudicated in both cases", which #109/#110 had already
+  measured false — 708 of the 768 links published at high come from the
+  announcement path and carry no per-link adjudication. The tier sentence is
+  the one a fix is most likely to overstate, because the fix is written by
+  someone who has just finished reading how good the evidence is.
+  Fourth, on the gate's own shape: leg (p2) started sentence-shaped and could
+  not be. Rendered text glues adjacent elements, so the first "sentence" of
+  `/district/` is the whole nav plus the lede, and a sentence sweep reports
+  four unrelated figures out of it. It is noun-anchored now, like leg (k2) —
+  and the same glue taught a second thing, that a bare `\b` finds a word
+  boundary INSIDE "pages1,936" and reports "936 of 2,562", a number no page
+  states. A sweep over rendered text may lose a finding to glue; it must never
+  invent one.
+
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
 - **#70 Collision-key program pages (E3).** 8 numeric pe_blis carry two
@@ -1344,6 +1384,24 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   dropping it removes citation rows nothing references, so it needs a build
   to confirm the census).
   **Status:** open (2026-09-12)
+
+- **#114 The five crosswalk counts are derived on the SITE side, not published
+  as an exporter block.** `getCrosswalkCounts()` reads them off two shipped
+  artifacts — `flow_chart.json`'s own bridge band and the `flows/` sidecar
+  directory — and gate 24 leg (p1) recomputes them from the same two and binds
+  the rendered list slot for slot, so nothing is typed and nothing drifts
+  silently today. It is still two derivations of one number. Task 21b
+  considered publishing the registry as `site_meta.crosswalk_counts` and did
+  not, for a reason worth recording: **`site_meta.json` is written three
+  sections BEFORE `_emit_flows_sidecars` runs**, and the sidecar set is not
+  knowable until that loop finishes (a high-linked PE with no district-bearing
+  award is skipped, so it is not `select distinct pe_bli from
+  fct_district_programs` either). Publishing the block would mean either
+  reordering the export or deriving the sidecar set a second way, which is the
+  defect the registry exists to close. If a third consumer ever needs these
+  counts, move the `site_meta.json` write below section 11 rather than adding
+  a second derivation.
+  **Status:** open (2026-09-18)
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
