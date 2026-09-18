@@ -56,8 +56,9 @@
  *     concentration figure withheld because both members are linked is
  *     said on the card, not hidden, and each member publishes only the
  *     J-book narratives and detail rows from its OWN volume — no narrative
- *     or detail fact id on two member pages, and a lobbying mention
- *     repeated on both only where the sidecar declares the shared-code rule
+ *     or detail fact id on two member pages, and a lobbying mention on a
+ *     member page only where that page's own title carries the terms the
+ *     mention matched, unless the filing named the shared CODE itself
  *     (ROADMAP #82) — see leg n's own block.
  * (o) The service-books coverage note says the SAME thing the data says —
  *     it renders on exactly the pages with no R-2/P-40 detail (rollup tier
@@ -571,15 +572,37 @@ export async function runProgramSkeletonGate() {
 //          (account axis) or the component (organization axis) that says
 //          which member it is about. So a fact id belongs to exactly one
 //          member page and appearing on two is the defect.
-//        * mentions are LOBBYING rows, and a Senate LDA filing names a
-//          budget LINE ("30"), never an appropriation or a component. The
-//          filing is evidence about the CODE, so it is true of every program
-//          that uses it and both members legitimately render it — the
-//          /filing/ page carries the shared-code note that says the mention
-//          cannot say which. The sidecar DECLARES that with
-//          `mentions_shared_code: true`, and this check exempts a repeated
-//          mention only where the declaration is there: a silent repeat
-//          would be indistinguishable from the narrative defect.
+//        * mentions are LOBBYING rows, and the basis is PER ROW — the row's
+//          own evidence_kind (#52) says which, and the sidecar declares it
+//          as `mentions_shared_code: {evidence_kind: basis}`:
+//            - `pe_literal` -> "code". The filing's activity description
+//              contains the budget-line code ("30"), which names the LINE
+//              and nothing finer, so the row is evidence about the CODE,
+//              true of every program that uses it. Both members render it
+//              and the /filing/ page carries the note saying the mention
+//              cannot tell them apart. Exempt from the no-repeat rule.
+//            - `multi_token`/`alias` -> "title". The row qualified by
+//              matching ONE program title's tokens, and the page renders the
+//              badge "at least two distinct, non-generic words from this
+//              program's title". This check re-derives that test from
+//              programs.json's own titles: every term in matched_term must
+//              appear in the page's title, or the badge is false and the row
+//              does not belong on the page. Checked like a narrative — the
+//              declaration is read, never trusted, so a sidecar that
+//              declares "code" for a multi_token row fails here.
+//          An undeclared mention is an error either way: a silent repeat is
+//          indistinguishable from the narrative defect.
+//
+//      Measured 2026-09-18, BEFORE this check's mention half: 7 rendered
+//      rows failed it — /program/0145-APN/ "F/A-18E/F (Fighter) Hornet"
+//      badged 5 rows "matched 2+ title words" for `General|Purpose` (its
+//      SIBLING is "General Purpose Bombs") and /program/1350-WPN/ "Missile
+//      Industrial Facilities" badged 2 for `Weapons|Ammunition`. 2292's two
+//      members carry identical titles, so all 18 of theirs are true on both.
+//      No floor is written for the mention half: unlike the J-book axis,
+//      an exporter that drops every title-basis row fails safe (a page loses
+//      rows it should not render, never gains a false badge), and the
+//      J-book floor below already pins the same member population.
 //
 //      Measured 2026-09-12, BEFORE the fix, on the shipped corpus: all 13
 //      shared codes published identical narratives and identical details on
@@ -688,6 +711,28 @@ function readPageHtml(slug) {
  *  a corpus the build does not contain — a floor that has never been seen to
  *  trip is not a floor. The gate itself always passes them undefined and reads
  *  the shipped programs.json and site/out. */
+/** The terms a mention had to match, from its `matched_term`.
+ *  Mirrors src/govbudget/export_site.py `_mention_terms`: multi_token joins
+ *  its tokens with "|" (influence/mentions.py find_mentions); every other
+ *  tier stores a single term. */
+function mentionTerms(matchedTerm) {
+  return String(matchedTerm ?? "")
+    .split("|")
+    .filter(Boolean);
+}
+
+/** Does `title` carry `term` as a whole word (case-insensitive)?
+ *  Mirrors influence/mentions.py `_build_word_boundary_re`, which is the test
+ *  that put the row in the mart in the first place — the gate re-derives it
+ *  here from programs.json's own title rather than trusting the exporter's
+ *  declaration. */
+function titleCarriesTerm(title, term) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, "i").test(
+    String(title ?? ""),
+  );
+}
+
 export function runSplitKeyAwardsLeg({
   errors,
   notes,
@@ -729,6 +774,7 @@ export function runSplitKeyAwardsLeg({
   let awardRows = 0;
   let accountSplitPagesChecked = 0;
   let membersWithJbookRows = 0;
+  let mentionTitleRows = 0;
   for (const [pe, rows] of splits) {
     // Independent recompute of site/src/app/program/[peBli]/page.tsx's
     // stubDimension — the predicate the header itself used to decide whether
@@ -739,8 +785,11 @@ export function runSplitKeyAwardsLeg({
     // check 8 (ROADMAP #82, narrative axis): J-book fact id → the one member
     // page that may publish it; mention identity → the members that do.
     const ownerOfJbookFid = new Map();
+    // mention identity -> {kind, slugs}: which members published the row, and
+    // the evidence tier it claims (which decides whether a repeat is honest).
     const membersOfMention = new Map();
-    const declaresSharedMentions = new Set();
+    // slug -> the sidecar's {evidence_kind: basis} declaration.
+    const mentionDeclarations = new Map();
     for (const r of rows) {
       const d = sidecars.get(r.slug);
       if (!d) {
@@ -800,26 +849,73 @@ export function runSplitKeyAwardsLeg({
         }
       }
       if (ownJbookFids) membersWithJbookRows++;
-      // Mentions are the declared exception: a lobbying filing names the
-      // CODE, so both members may render it — but only where the sidecar
-      // says so, otherwise a silent repeat is indistinguishable from the
-      // defect above.
+      // Mentions carry a PER-ROW basis, declared by the sidecar and
+      // re-derived here from programs.json's own titles — see the block
+      // comment above. Three things are checked: the declaration is coherent
+      // with the evidence tiers it names, every "title"-basis row is true of
+      // THIS page's title, and no row is published with no declaration at all.
       const mentions = d.mentions ?? [];
-      if (d.mentions_shared_code === true) declaresSharedMentions.add(r.slug);
-      if (mentions.length && d.mentions_shared_code !== true) {
+      const decl = d.mentions_shared_code;
+      const declOk = decl !== null && typeof decl === "object" && !Array.isArray(decl);
+      if (declOk) mentionDeclarations.set(r.slug, decl);
+      if (mentions.length && !declOk) {
         errors.push(
           `program-skeleton(n): /program/${r.slug}/ publishes ` +
             `${mentions.length} lobbying mention(s) on shared code ${pe} but ` +
-            `its sidecar does not declare mentions_shared_code — a mention ` +
-            `rendered on two member pages is only honest as the stated rule ` +
-            `"the filing names the line, not the program", never as a silent ` +
-            `repeat`,
+            `its sidecar declares no per-row mentions_shared_code basis ` +
+            `(${JSON.stringify(decl ?? null)}) — a mention rendered on a ` +
+            `member page is only honest as a stated basis, "the filing names ` +
+            `the line" or "this page's own title carries the matched terms", ` +
+            `never as a silent repeat. A blanket \`true\` is the retired ` +
+            `shape: it asserted the first rule over rows that qualified under ` +
+            `the second`,
         );
       }
+      for (const [kind, basis] of Object.entries(declOk ? decl : {})) {
+        const expected = kind === "pe_literal" ? "code" : "title";
+        if (basis !== expected) {
+          errors.push(
+            `program-skeleton(n): /program/${r.slug}/ declares ` +
+              `mentions_shared_code ${kind}="${basis}" — a ${kind} row ` +
+              `publishes on the "${expected}" basis. Only a pe_literal ` +
+              `filing names the shared code itself; every other tier ` +
+              `qualified by matching one program title's terms and is ` +
+              `evidence about THAT program`,
+          );
+        }
+      }
       for (const m of mentions) {
+        const kind = String(m.evidence_kind);
         const id = `${m.filing_uuid}|${m.client_name}|${m.matched_term}`;
-        if (!membersOfMention.has(id)) membersOfMention.set(id, new Set());
-        membersOfMention.get(id).add(r.slug);
+        if (!membersOfMention.has(id)) membersOfMention.set(id, { kind, slugs: new Set() });
+        membersOfMention.get(id).slugs.add(r.slug);
+        if (declOk && decl[kind] === undefined) {
+          errors.push(
+            `program-skeleton(n): /program/${r.slug}/ publishes a ${kind} ` +
+              `lobbying mention (${id}) on shared code ${pe} that its ` +
+              `mentions_shared_code declares no basis for`,
+          );
+          continue;
+        }
+        if (!declOk || decl[kind] === "code") continue;
+        // "title" basis — re-derived, not trusted. The badge the page renders
+        // says the terms come from THIS program's title, so they must.
+        const missing = mentionTerms(m.matched_term).filter(
+          (t) => !titleCarriesTerm(r.title, t),
+        );
+        if (!missing.length && mentionTerms(m.matched_term).length) mentionTitleRows++;
+        if (missing.length || !mentionTerms(m.matched_term).length) {
+          errors.push(
+            `program-skeleton(n): /program/${r.slug}/ publishes a ${kind} ` +
+              `lobbying mention matched \`${m.matched_term}\` but its own ` +
+              `title "${r.title}" does not carry ` +
+              `${missing.length ? missing.join(", ") : "any matched term"} — ` +
+              `the row renders the badge "2+ distinct, non-generic words from ` +
+              `this program's title", which is false here. On a shared code ` +
+              `the mart is keyed on the bare code, so a row that matched the ` +
+              `SIBLING's title arrives at this page too`,
+          );
+        }
       }
 
       // ── (5)/(6) ROADMAP #82: the title block names THIS member's account ──
@@ -906,16 +1002,23 @@ export function runSplitKeyAwardsLeg({
       }
     }
 
-    // check 8, the mention half: a repeat is allowed only where EVERY member
-    // rendering it declared the rule.
-    for (const [id, slugs] of membersOfMention) {
+    // check 8, the mention half, across members: a repeat is honest only
+    // where every member rendering it declared the row's OWN basis — "code"
+    // (the filing names the shared line) or "title" (each of those pages'
+    // titles carries the matched terms, which the per-page check above
+    // verified against programs.json). A member that declares nothing for
+    // the tier is the silent repeat this check exists to see.
+    for (const [id, { kind, slugs }] of membersOfMention) {
       if (slugs.size < 2) continue;
-      const undeclared = [...slugs].filter((s) => !declaresSharedMentions.has(s));
+      const undeclared = [...slugs].filter(
+        (s) => (mentionDeclarations.get(s) ?? {})[kind] === undefined,
+      );
       if (undeclared.length) {
         errors.push(
-          `program-skeleton(n): lobbying mention ${id} appears on ` +
+          `program-skeleton(n): ${kind} lobbying mention ${id} appears on ` +
             `${[...slugs].sort().join(", ")} for shared code ${pe}, and ` +
-            `${undeclared.sort().join(", ")} declare no mentions_shared_code`,
+            `${undeclared.sort().join(", ")} declare no mentions_shared_code ` +
+            `basis for ${kind}`,
         );
       }
     }
@@ -998,8 +1101,9 @@ export function runSplitKeyAwardsLeg({
       `withheld concentration said wherever the sidecar withholds it; ` +
       `${membersWithJbookRows} member page(s) publish their own J-book rows ` +
       `(floor ${MIN_SPLIT_MEMBER_PAGES_WITH_JBOOK_ROWS}), no narrative or ` +
-      `detail fact id on two members, lobbying mentions repeated only where ` +
-      `the sidecar declares the shared-code rule`,
+      `detail fact id on two members; every lobbying mention declares its ` +
+      `basis, and ${mentionTitleRows} title-basis row(s) carry every matched ` +
+      `term in their own page's programs.json title`,
   );
 }
 

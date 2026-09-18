@@ -79,8 +79,12 @@ function memberHtml(
  *  `noJbook` empties them, the shape the floor exists to catch.
  *
  *  Mentions: `mentionCodes` names the codes whose members all render ONE
- *  shared lobbying filing (the live shape on 6 of 13 codes); `declareMentions`
- *  controls whether their sidecars declare the shared-code rule. */
+ *  shared lobbying filing (the live shape on 6 of 13 codes). By default that
+ *  filing is `pe_literal` — it names the shared code itself, so it is
+ *  evidence for every member, and each sidecar declares the "code" basis.
+ *  `mentionKind` switches the tier ("multi_token"), `mentionTerm(p)` decides
+ *  what each member's row matched, and `declareMentions` controls whether the
+ *  sidecar declares any basis at all. */
 function corpus(
   shape,
   {
@@ -91,6 +95,9 @@ function corpus(
     noJbook = false,
     mentionCodes = new Set(),
     declareMentions = true,
+    mentionKind = "pe_literal",
+    mentionTerm = (p) => p.pe_bli,
+    mentionDeclaration = null,
   } = {},
 ) {
   const programs = [];
@@ -130,9 +137,14 @@ function corpus(
         side.mentions = [{
           filing_uuid: `uuid-${pe}`,
           client_name: "ACME LOBBYING",
-          matched_term: pe,
+          evidence_kind: mentionKind,
+          matched_term: mentionTerm(p),
         }];
-        if (declareMentions) side.mentions_shared_code = true;
+        if (declareMentions) {
+          side.mentions_shared_code =
+            mentionDeclaration ??
+            { [mentionKind]: mentionKind === "pe_literal" ? "code" : "title" };
+        }
       }
       programs.push(p);
       sidecars.set(p.slug, side);
@@ -201,7 +213,7 @@ describe("leg n — non-vacuity floors", () => {
     expect(errors[0]).toContain("do not lower the floor");
   });
 
-  it("FAILS just below the shared-code floor and passes at it", () => {
+  it("FAILS just below the shared-code floor, and passes once every floor is met (11 codes)", () => {
     const nine = LIVE_SHAPE.slice(0, 9);
     expect(run(nine, { page: livePage }).errors[0]).toContain("carries 9 shared BLI code(s) (floor 10");
     // Eleven codes = the ten account-split ones (20 title-block pages,
@@ -404,10 +416,11 @@ describe("leg n — each member publishes its OWN J-book (ROADMAP #82, narrative
     expect(errors2).toEqual([]);
   });
 
-  it("allows a lobbying mention on both members WHERE THE SIDECAR SAYS SO", () => {
-    // A Senate LDA filing names a budget LINE, never an appropriation or a
-    // component, so on a shared code it is evidence for every member. That
-    // is a rule, and the sidecar states it.
+  it("allows a pe_literal mention on both members — the filing names the CODE", () => {
+    // A `pe_literal` filing's activity description contains the budget-line
+    // code itself, which names the LINE and nothing finer, so on a shared
+    // code it is evidence for every member. That is a rule, and the sidecar
+    // states it per row ({pe_literal: "code"}).
     const { errors } = run(LIVE_SHAPE, {
       page: livePage,
       mentionCodes: new Set(["TA", "TB", "TK", "TL", "TM"]),
@@ -422,9 +435,92 @@ describe("leg n — each member publishes its OWN J-book (ROADMAP #82, narrative
       declareMentions: false,
     });
     // one per member for the undeclared payload, plus the cross-member repeat
-    expect(errors.some((e) => e.includes("does not declare mentions_shared_code"))).toBe(true);
     expect(
-      errors.some((e) => e.includes("appears on TA-M0, TA-M1") && e.includes("declare no mentions_shared_code")),
+      errors.some((e) => e.includes("declares no per-row mentions_shared_code basis")),
+    ).toBe(true);
+    expect(
+      errors.some(
+        (e) =>
+          e.includes("appears on TA-M0, TA-M1") &&
+          e.includes("declare no mentions_shared_code basis for pe_literal"),
+      ),
+    ).toBe(true);
+  });
+
+  // ── the mention half's own defect (fix round 1, 2026-09-18) ──────────────
+  // The live 0145: the mart is keyed on the BARE code, so a multi_token row
+  // that qualified by matching ONE member's title tokens arrives at both
+  // members. /program/0145-APN/ "F/A-18E/F (Fighter) Hornet" rendered 5 rows
+  // matched `General|Purpose` — the SIBLING's title ("General Purpose
+  // Bombs") — each badged "matched 2+ distinct, non-generic words from this
+  // program's title". Check 8 used to exempt exactly those rows.
+  const shape0145 = (opts = {}) => {
+    const built = corpus(LIVE_SHAPE, {
+      page: livePage,
+      mentionCodes: new Set(["TA"]),
+      mentionKind: "multi_token",
+      mentionTerm: () => "General|Purpose",
+      ...opts,
+    });
+    built.programs.find((p) => p.slug === "TA-M0").title = "F/A-18E/F (Fighter) Hornet";
+    built.programs.find((p) => p.slug === "TA-M1").title = "General Purpose Bombs";
+    return built;
+  };
+  const runBuilt = ({ programs, sidecars, html }) => {
+    const errors = [];
+    const notes = [];
+    runSplitKeyAwardsLeg({
+      errors, notes, sidecars, programs, pageHtml: (s) => html.get(s) ?? null,
+    });
+    return { errors, notes };
+  };
+
+  it("FAILS on the 0145 shape — a multi_token row on the member whose title lacks the terms", () => {
+    const { errors } = runBuilt(shape0145());
+    const offending = errors.filter((e) => e.includes("TA-M0"));
+    expect(offending).toHaveLength(1);
+    expect(offending[0]).toContain("General|Purpose");
+    expect(offending[0]).toContain("F/A-18E/F (Fighter) Hornet");
+    expect(offending[0]).toContain("does not carry General, Purpose");
+    // the member whose title DOES carry them keeps its row, uncomplained-about
+    expect(errors.some((e) => e.includes("TA-M1"))).toBe(false);
+  });
+
+  it("passes on the 2292 shape — identical member titles, so the row is true on both", () => {
+    const built = shape0145();
+    built.programs.find((p) => p.slug === "TA-M0").title = "General Purpose Bombs";
+    const { errors, notes } = runBuilt(built);
+    expect(errors).toEqual([]);
+    expect(notes[0]).toContain("2 title-basis row(s) carry every matched term");
+  });
+
+  it("FAILS a wrong declaration: a multi_token row declared on the pe_literal basis", () => {
+    // The gate reads the declaration and never trusts it. Declaring "code"
+    // for a multi_token row is the retired blanket rule restated per tier.
+    const { errors } = runBuilt(
+      shape0145({ mentionDeclaration: { multi_token: "code" } }),
+    );
+    expect(
+      errors.some((e) => e.includes('declares mentions_shared_code multi_token="code"')),
+    ).toBe(true);
+  });
+
+  it("FAILS a row whose evidence tier the sidecar declares no basis for", () => {
+    const { errors } = runBuilt(
+      shape0145({ mentionDeclaration: { pe_literal: "code" } }),
+    );
+    // twice over: once per page, and once for the repeat across both members
+    expect(
+      errors.filter(
+        (e) =>
+          e.includes("publishes a multi_token lobbying mention") &&
+          e.includes("declares no basis for"),
+      ),
+    ).toHaveLength(2);
+    expect(
+      errors.some((e) =>
+        e.includes("multi_token lobbying mention uuid-TA|ACME LOBBYING|General|Purpose appears on TA-M0, TA-M1"),
+      ),
     ).toBe(true);
   });
 
