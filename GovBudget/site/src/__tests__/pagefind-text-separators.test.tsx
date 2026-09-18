@@ -67,8 +67,11 @@ describe("filing page — text separators + pagefind title meta (real data)", ()
     // attribute-sourced meta: title[<attr>]
     const m = spec.match(/^title\[(.+)\]$/);
     expect(m).not.toBeNull();
+    // Restated 2026-09-18: the title goes through the §P2-4 display rule now
+    // (PM-S3 leftover). Only the spelling moved — the registrant still SHOUTS
+    // because the rule refuses on the surname "BEST" rather than guess.
     expect(metaEl!.getAttribute(m![1])).toBe(
-      "LOCKHEED MARTIN CORPORATION — MICHAEL BEST STRATEGIES LLC, 2025 Q4",
+      "Lockheed Martin Corporation — MICHAEL BEST STRATEGIES LLC, 2025 Q4",
     );
   }, 30000);
 });

@@ -10,6 +10,8 @@ import { humanLdaUrl } from "@/lib/citations";
 import { filingDisplayTitle } from "@/lib/filing-title";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CompanyName } from "@/components/company-name";
+import { displayCompanyName } from "@/lib/company-name.mjs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { isTruncatedSnippet, tidySnippet } from "@/lib/snippet";
@@ -107,7 +109,17 @@ export default async function FilingPage({ params }: Props) {
   if (f.expenses_fact_id) pageFactIds.push(f.expenses_fact_id);
   const citationsSlice = collectCitations(pageFactIds);
 
-  const clientLabel = f.client_name ?? "Unknown client";
+  // §P2-4's rule, the one every other registry name on the site goes through:
+  // it cases what it can and REFUSES rather than guess at a surname, so a
+  // refused name renders exactly as the LDA recorded it.
+  const clientName = f.client_name ? displayCompanyName(f.client_name) : null;
+  const registrantName = f.registrant_name
+    ? displayCompanyName(f.registrant_name)
+    : null;
+  const clientLabel = clientName ? clientName.display : "Unknown client";
+  const casedAny =
+    (clientName !== null && clientName.display !== clientName.registry) ||
+    (registrantName !== null && registrantName.display !== registrantName.registry);
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -137,7 +149,11 @@ export default async function FilingPage({ params }: Props) {
             data-pagefind-meta="title[data-filing-title]"
             data-filing-title={filingDisplayTitle(f)}
           >
-            {clientLabel}
+            {f.client_name ? (
+              <CompanyName raw={f.client_name} />
+            ) : (
+              "Unknown client"
+            )}
           </h1>
           {/* Explicit {" "} separators between the meta spans: without them
               the rendered text nodes abut ("…LLCYear: 2025") and Pagefind
@@ -146,7 +162,11 @@ export default async function FilingPage({ params }: Props) {
             <span>
               Registrant:{" "}
               <span className="text-foreground font-medium">
-                {f.registrant_name ?? "not reported"}
+                {f.registrant_name ? (
+                  <CompanyName raw={f.registrant_name} />
+                ) : (
+                  "not reported"
+                )}
               </span>
             </span>{" "}
             {f.filing_year && (
@@ -172,6 +192,32 @@ export default async function FilingPage({ params }: Props) {
               </span>
             )}
           </div>
+
+          {/* The LDA strings, kept visible whenever a display differs from
+              them. A reader who wants to find this filing on lda.senate.gov
+              needs the string the Senate recorded, not our casing of it —
+              the same rule as /company/'s [data-registry-note]. */}
+          {casedAny && (
+            <p
+              data-filed-as=""
+              className="mt-2 text-xs leading-5 text-muted-foreground"
+            >
+              Filed as:{" "}
+              <span className="font-mono text-foreground">
+                {clientName ? clientName.registry : "—"}
+              </span>
+              {registrantName ? (
+                <>
+                  {" — "}
+                  <span className="font-mono text-foreground">
+                    {registrantName.registry}
+                  </span>
+                </>
+              ) : null}
+              . Search lda.senate.gov for those strings; the names above are
+              this site&rsquo;s casing of them, nothing else.
+            </p>
+          )}
 
           {/* Canonical source link — always visible */}
           <p className="mt-3 text-sm">

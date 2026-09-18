@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { FilingIndexRow } from "@/lib/data";
+import { CompanyName } from "@/components/company-name";
+import { companyDisplay } from "@/lib/company-name.mjs";
 import { formatCount } from "@/lib/format";
 
 /**
@@ -39,10 +41,16 @@ export function FilingsTable({ filings }: Props) {
     return filings.filter((f) => {
       if (year && f.filing_year !== year) return false;
       if (!q) return true;
-      return (
-        (f.client_name ?? "").toLowerCase().includes(q) ||
-        (f.registrant_name ?? "").toLowerCase().includes(q)
-      );
+      // Both spellings are searchable: the registry string the LDA recorded
+      // and the cased name the row actually shows. Typing what you can see
+      // must match, and so must typing what the Senate has on file.
+      const hay = [
+        f.client_name ?? "",
+        f.registrant_name ?? "",
+        f.client_name ? companyDisplay(f.client_name) : "",
+        f.registrant_name ? companyDisplay(f.registrant_name) : "",
+      ].join(" ").toLowerCase();
+      return hay.includes(q);
     });
   }, [filings, query, year]);
 
@@ -54,6 +62,13 @@ export function FilingsTable({ filings }: Props) {
    * key is the composite serialized to sort ASCENDING as a plain string:
    * "0|7973|boeing" precedes "1|7974|acme". Filtering and the "load more"
    * limit both preserve it (a filtered prefix of a sorted list is sorted).
+   *
+   * The key stays on the RAW client_name even though the cell now displays a
+   * cased one. The two lowercase to the same string today — the display rule
+   * only changes case — so this is not a behaviour change; it is the contract
+   * staying where it was declared. The exporter's order is over the registry
+   * strings and gate 24 leg (f) checks this page against that declaration, so
+   * the key must not start reading a display string that could later diverge.
    */
   function sortValue(f: FilingIndexRow): string {
     const yr = Number(f.filing_year);
@@ -141,11 +156,19 @@ export function FilingsTable({ filings }: Props) {
                       href={`/filing/${f.filing_uuid}/`}
                       className="font-medium text-primary hover:underline"
                     >
-                      {f.client_name ?? "Unknown client"}
+                      {f.client_name ? (
+                        <CompanyName raw={f.client_name} />
+                      ) : (
+                        "Unknown client"
+                      )}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                    {f.registrant_name ?? "—"}
+                    {f.registrant_name ? (
+                      <CompanyName raw={f.registrant_name} />
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground tabular-nums">
                     {f.filing_year ?? "—"}
