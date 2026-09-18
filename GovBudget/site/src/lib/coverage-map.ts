@@ -136,13 +136,20 @@ export const COVERAGE_PROMISE_IDS: readonly CoverageMapId[] = [
  *     only budget-activity lines … plus junk codes", and "Program elements
  *     are not in the valid domain", so "PE-level File C reporting is
  *     impossible by construction". Hence "budget activities and junk codes,
- *     never program elements" — the junk half is not dropped.
+ *     never program elements" — the junk half is not dropped. Fix round 1
+ *     (review Important #1, 2026-09-18): the rendered link label now names
+ *     those two accounts explicitly. The page's own crosswalk universe is
+ *     wider — it includes procurement books — and the linked file is OMB's
+ *     whole-government domain list, so the old "for these accounts" had no
+ *     antecedent that actually bounded the claim to what was checked.
  *   - finding #2, measured over the sample and NOT over the corpus: "81% of
  *     absolute obligated flow ($501M of $617M) sits under junk or absent
  *     labels", where the sample is a "Stratified sample of 44 published links
  *     (19 high / 25 medium; 41 distinct awards)" and its 1,090 File C rows.
- *     The rendered sentence therefore says "in a 44-link sample", never "in
- *     the corpus", and states no dollar figure (none is derivable here).
+ *     The rendered sentence keeps "absolute" and gives the sample its own
+ *     antecedent — "this site's own published crosswalk links (19 high / 25
+ *     medium)" — so "44-link sample" is never read as "the corpus". It states
+ *     no dollar figure (none is derivable here).
  *   - findings #3/#4 and §Implications: the field "contradicts ground truth
  *     on awards we can independently verify", and cannot serve "as a join
  *     key, … as corroborating evidence, [or] as a veto on suspect links".
@@ -158,13 +165,16 @@ export const FILE_C_NOTE = {
     "A published negative result, not a silence: File C nominally names a " +
     "program activity for each award, but ",
   linkHref: "https://files.usaspending.gov/reference_data/program_activity.csv",
-  linkLabel: "OMB’s own domain list for these accounts (a 64 MB CSV)",
+  linkLabel:
+    "OMB’s own domain list for the DoD RDT&E accounts checked, 097-0400 " +
+    "and 057-3600 (a 64 MB CSV)",
   tail:
     " carries only budget activities and junk codes, never program elements, " +
     "so program-element grain is impossible by construction. In a 44-link " +
-    "sample, 81% of the obligated flow sat under junk or absent labels, and " +
-    "it contradicts ground truth on awards verified independently. It cannot " +
-    "join, corroborate, or veto.",
+    "sample of this site's own published crosswalk links (19 high / 25 " +
+    "medium), 81% of absolute obligated flow sat under junk or absent " +
+    "labels, and it contradicts ground truth on awards verified " +
+    "independently. It cannot join, corroborate, or veto.",
 } as const;
 
 /** "dated" → target names a month and a year. "none" → and says why not. */
@@ -202,6 +212,13 @@ export interface CoverageMapRow {
  * because on 2026-08-27 this constant read 2026-08-05 while the detail-grade
  * row's blocker was being rewritten: the date understated one row and
  * overstated the other eleven at the same time.
+ *
+ * 2026-09-18 (fix round 1) re-read: the seven COVERAGE_PROMISE_IDS target
+ * sentences against ROADMAP.md; the bridge row's blocker and its FILE_C_NOTE
+ * against the spike; and the awards-window and company-awards targets, the
+ * two rows trimmed to fund that round's additions under R-22a-1's net-zero
+ * budget. It did not re-read every row on the page — a row outside that list
+ * can still be stale under this date.
  */
 export const MAP_REVIEWED_ON = "2026-09-18";
 
@@ -438,11 +455,16 @@ export function getCoverageMap(): CoverageMapRow[] {
         // declares need "a separate matcher with a separate precision
         // measurement" — its dominant error being a SYSTEM name confidently
         // resolved to a BUDGET LINE.
+        //
+        // Fix round 1 (Minor #3, 2026-09-18): "Anything it found" pointed
+        // past "a different matcher" to "an effort" two nouns back. Named
+        // the matcher explicitly instead.
         "No dated target, and not scheduled — the pass over clauses that " +
         "already name a program element has run; what is left are clauses " +
         "naming only a system or an effort, which need a different matcher " +
-        "and their own precision study. Anything it found would stay in the " +
-        "candidate tier until a quotable sentence names the other end.",
+        "and their own precision study. Anything such a matcher found would " +
+        "stay in the candidate tier until a quotable sentence names the " +
+        "other end.",
     },
     {
       id: "flows",
@@ -549,8 +571,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "partial is the link from those obligations to a named budget line.",
       targetKind: "none",
       target:
+        // Fix round 1 (funds Important #1 and Minors #2/#3 under R-22a-1):
+        // "rather than per program element" restated the bridge row's own
+        // framing, one row up on this same page. Kept "counted per company"
+        // — that half is not said anywhere else.
         "No dated target — this is the crosswalk limit above, counted per " +
-        "company rather than per program element.",
+        "company.",
     },
     {
       id: "awards-window",
@@ -571,10 +597,14 @@ export function getCoverageMap(): CoverageMapRow[] {
         "archive we ingest.",
       targetKind: "none",
       target:
+        // Fix round 1 (funds Important #1 and Minors #2/#3 under R-22a-1): "The
+        // newest fiscal year stops moving once the federal year has closed
+        // and USAspending has finished publishing against it" restated the
+        // blocker immediately above, in the same words — "the newest fiscal
+        // year is always incomplete: USAspending publishes on a rolling
+        // basis and the federal year does not close until 30 September."
         "No dated target, and none would mean anything here: this window is " +
-        "refreshed on every ingestion run rather than on a schedule. The " +
-        "newest fiscal year stops moving once the federal year has closed and " +
-        "USAspending has finished publishing against it.",
+        "refreshed on every ingestion run rather than on a schedule.",
     },
     {
       id: "districts",

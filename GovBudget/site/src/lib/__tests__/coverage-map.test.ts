@@ -386,4 +386,51 @@ describe("coverage map — the crosswalk row publishes the File C result", () =>
     // No currency token: prose-allowlist.json has no entry for this page.
     expect(prose).not.toMatch(/\$/);
   });
+
+  /**
+   * Fix round 1 (review Important #1 + Minor #2, 2026-09-18). The note used
+   * to say the domain list carries "junk codes, never program elements" "for
+   * these accounts" with no accounts named anywhere in the sentence — the
+   * page's own crosswalk universe is wider (it includes procurement books)
+   * and the linked file is OMB's whole-government list, so a reader
+   * following the link could not tell which accounts the claim was about.
+   * The spike (docs/superpowers/reviews/filec-program-activity-spike.md,
+   * finding #1) checked exactly two: DoD RDT&E accounts 097-0400 and
+   * 057-3600, at FY25P12.
+   */
+  it("bounds the domain-list claim to the accounts the spike actually checked", () => {
+    const label = FILE_C_NOTE.linkLabel;
+    expect(label).toMatch(/097-0400/);
+    expect(label).toMatch(/057-3600/);
+    expect(label.toLowerCase()).toMatch(/accounts checked/);
+    expect(label).not.toMatch(/for these accounts/);
+  });
+
+  /**
+   * Same round, Minor #2: the spike's finding #2 is "81% of absolute
+   * obligated flow ($501M of $617M) sits under junk or absent labels" over a
+   * "Stratified sample of 44 published links (19 high / 25 medium)". The old
+   * sentence dropped "absolute" and never said whose links the 44-link
+   * sample was drawn from, so "the corpus" was a plausible misreading.
+   */
+  it("restores 'absolute' and gives the 44-link sample its own antecedent", () => {
+    const prose = `${FILE_C_NOTE.lead}${FILE_C_NOTE.linkLabel}${FILE_C_NOTE.tail}`;
+    expect(prose).toMatch(/absolute obligated flow/);
+    expect(prose).toMatch(/44-link sample of this site's own published crosswalk links/);
+    expect(prose).toMatch(/19 high \/ 25 medium/);
+    // Still no currency token anywhere in the note.
+    expect(prose).not.toMatch(/\$/);
+  });
+});
+
+/**
+ * Fix round 1, Minor #3 (2026-09-18). "Anything it found" pointed past "a
+ * different matcher" to "an effort" two nouns back — the antecedent a reader
+ * would actually land on. Named the matcher explicitly instead.
+ */
+describe("coverage map — the lineage target names its own antecedent", () => {
+  it("says what would stay in the candidate tier, not 'it'", () => {
+    const t = byId.get("lineage")!.target;
+    expect(t).toMatch(/Anything such a matcher found would stay in the candidate tier/);
+  });
 });
