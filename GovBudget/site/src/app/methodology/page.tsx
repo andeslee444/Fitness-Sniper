@@ -1570,6 +1570,18 @@ export default function MethodologyPage() {
                     `Bands follow the DOJ/FTC Horizontal Merger Guidelines convention: below ${formatCount(HHI_MODERATE_MIN)} is competitive, ${formatCount(HHI_MODERATE_MIN)}–${formatCount(HHI_CONCENTRATED_MIN)} is moderately concentrated, and ${formatCount(HHI_CONCENTRATED_MIN)} or above is highly concentrated (${formatCount(HHI_CONCENTRATED_MIN)} is the "highly concentrated" floor, not a near-monopoly line — four equal-share firms alone produce exactly ${formatCount(HHI_CONCENTRATED_MIN)}).`
                   }
                 </p>
+                {/* Chain-D fix round 1 (R-D-1): "— below it, no pooled
+                    index at all" came off the paragraph below. That sentence
+                    already points at §4 ("above the floor section 4 states"),
+                    and §4's own concentration passage — the one
+                    docs/methodology.md mirrors — states the below-floor
+                    behaviour in full: "below that floor it states the absence
+                    rather than substituting the wider figure".
+                    Fix round 2 moved this comment out from between the words
+                    "floor" and "section": a JSX comment placed between two
+                    text runs deletes the newline-only whitespace on both
+                    sides, and the built page read "floorsection 4 states".
+                    Between two elements it costs nothing. */}
                 <p className="mt-2">
                   <strong>
                     This figure is a single fiscal year&rsquo;s HHI, not a
@@ -1578,15 +1590,7 @@ export default function MethodologyPage() {
                   A program&rsquo;s own page (its &ldquo;Contractor
                   Concentration&rdquo; card) renders a pooled HHI computed
                   across every award year, on the basis and above the floor
-                  {/* Chain-D fix round 1 (R-D-1): "— below it, no pooled
-                      index at all" came off. This sentence already points at
-                      §4 ("above the floor section 4 states"), and §4's own
-                      concentration passage — the one docs/methodology.md
-                      mirrors — states the below-floor behaviour in full:
-                      "below that floor it states the absence rather than
-                      substituting the wider figure". */}
-                  section 4 states. The two
-                  are legitimately different
+                  section 4 states. The two are legitimately different
                   measures: a concentrated year can sit next to a competitive
                   pooled figure, or the reverse, with no error on either page.
                   Every concentration_shift card states which fiscal year its

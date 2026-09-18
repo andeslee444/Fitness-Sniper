@@ -531,10 +531,15 @@ export function getCoverageMap(): CoverageMapRow[] {
         "Where evidence pinned an award " +
         "to a different organization's program, the link was removed — a " +
         // The File C negative result (spike 2026-09-01), stated where the
-        // limit is stated. Short on purpose: this blocker renders TWICE (the
-        // map row and /coverage/#crosswalk), so every character here costs
-        // two, and the paragraph the page puts directly under it — FILE_C_NOTE
-        // — carries the measurement and the public evidence link.
+        // limit is stated. Short on purpose: this blocker renders once, in the
+        // map row's [data-coverage-blocker] cell where gate 14 leg cm reads
+        // it, and every rendered character still ships twice in the built page
+        // (the DOM copy and the RSC flight payload). /coverage/#crosswalk
+        // carries a sentence pointing back at that row, and under it
+        // FILE_C_NOTE with the measurement and the public evidence link.
+        // (Before chain-D fix round 1's dedupe this string also rendered
+        // verbatim inside #crosswalk; that copy is gone — see the /coverage/
+        // entry in scripts/gates/build.mjs.)
         "guess wearing a citation is worse than an honest absence. File C, " +
         "the last untested official path, was examined and ruled out in " +
         "September 2026.",
@@ -544,11 +549,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         // What went was "Until then the unbridged share is stated outright, so
         // nobody has to reverse-engineer it from what the chart omits" — a
         // claim this page makes twice over already: the row's own `covered`
-        // cell states the unbridged share as a percentage, and the paragraph
-        // immediately above this one in /coverage/#crosswalk says the site
+        // cell states the unbridged share as a percentage, and the
+        // honest-boundary paragraph in /coverage/#crosswalk says the site
         // "publish[es] the size of the remainder rather than leaving it to be
-        // inferred from an empty chart". This target renders TWICE, so the
-        // duplicate cost double. No claim was dropped, only restated once.
+        // inferred from an empty chart". This target renders once, in the map
+        // row's [data-coverage-target] cell (chain-D fix round 1 removed the
+        // #crosswalk copy). No claim was dropped, only restated once.
         "No dated target, because this is a methodology limit and not a backlog " +
         "item. It closes if a source begins publishing the program element on " +
         "the award record.",

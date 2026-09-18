@@ -414,7 +414,9 @@ export const PAGE_WEIGHT_BUDGET = [
   // +3,568 source bytes across eight Group C/D commits (cfad4e75, c17f4f90,
   // 7e304d81, 2946c210, 6c3cb61d, 428623ad, a1e8dc86, ee9dbee0).
   //
-  // Four clauses came off, each one a restatement of a sentence beside it —
+  // Four clauses came off, each one a restatement of a sentence beside it or
+  // of the section that sentence points at — items 2 and 4 below are pointers
+  // to §4, not to a neighbouring line —
   // no number, no tier name, no cited claim, and nothing that docs/
   // methodology.md mirrors (its mirrored passage is §4's concentration
   // paragraph, which is untouched):
@@ -429,8 +431,11 @@ export const PAGE_WEIGHT_BUDGET = [
   //      a sentence that has just said §4 grades this evidence.
   //
   // MEASURED COST, for whoever adds the next sentence here: 202 source
-  // characters removed = 145 gzip on the built page, i.e. 0.72 gzip per
-  // source character — NOT the 0.40 the note above records. That 0.40 came
+  // characters removed = 142 gzip, measured as 42,562 on the chain-D build
+  // against 42,420 on fix-round build 1 — the pair the entry below was
+  // stamped from. Build 2 of the same source weighed 42,416, so read the
+  // figure as 142 ±4 bytes of build-id jitter; 0.70 gzip per source
+  // character, NOT the 0.40 the note above records. That 0.40 came
   // from a 1,850-character trim whose text repeated elsewhere on the page and
   // so compressed as back-references; short, unique clauses cost nearly twice
   // that. Budget with 0.7, and re-measure.
@@ -442,6 +447,15 @@ export const PAGE_WEIGHT_BUDGET = [
   // that 263 is the corpus counts this page derives, not prose at all. Going
   // further means cutting disclosure written before them, which this file's
   // /coverage/ note rules out. The smaller true number is published here.
+  //
+  // AND THE BUDGET IS SMALLER STILL THAN THAT HEADROOM. The annotation-drift
+  // leg below errors when a recorded `measured:` gzip overstates live headroom
+  // by 2x, i.e. as soon as the page weighs more than maxGzip - (maxGzip -
+  // recorded)/2. At 42,420 recorded against 42,500 that is 42,461 — about +45
+  // gzip on the 42,416 this round's final build weighed. So the next editor
+  // has ~45 bytes before gate 1 goes red, not 84, and the fix when it does is
+  // a RESTAMP of the pair below, never a raise. Same arithmetic on /coverage/:
+  // ~164 of its 323.
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "152,086 / 42,420" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
@@ -526,11 +540,19 @@ export const PAGE_WEIGHT_BUDGET = [
   //   - the bridge row's blocker and target rendered TWICE (the map table's
   //     cells and again under #crosswalk). The long form now renders once, in
   //     the table cell where gate 14 leg cm reads it, and #crosswalk points at
-  //     it: −2,424 raw on the built page, −46 gzip (a verbatim second copy
-  //     compresses to a back-reference, which is why the duplicate cost raw
-  //     and almost no gzip — worth knowing before anyone budgets a dedupe).
+  //     it.
   //   - §22a's third trim, "— the same files the pages themselves render
   //     from —" in the ScopeNote's first paragraph: −50 rendered characters.
+  //     (Fix round 2 put a four-words-shorter form of that clause back: the
+  //     <h2> it was trimmed against claims recomputation, not provenance.)
+  //   MEASURED TOGETHER, because no build isolated them: 102,194 / 20,473 on
+  //   the chain-D build → 99,736 / 20,431 on fix-round build 1 = −2,458 raw
+  //   and −42 gzip for both edits. The dedupe is what moved the raw — it
+  //   removed two paragraphs of 1,073 rendered characters, each shipped twice
+  //   (DOM plus RSC payload) — while the gzip barely moved, because a verbatim
+  //   second copy compresses to a back-reference. THAT is the number to start
+  //   from before anyone budgets a dedupe for gzip headroom: duplication is a
+  //   raw-weight problem and almost never a gzip one.
   //
   // New pair, ~3.6% over raw and ~1.5% over the post-trim gzip measurement
   // rather than a round-number guess. The gzip headroom is deliberately the

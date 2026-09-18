@@ -191,9 +191,15 @@ describe("orgAttributionFindings", () => {
           { url: "/district/", text: "District data reflects only high-confidence award crosswalk links. A budget line earns one only where the award record says more than an account code: a contract announcement that names the program, or an account plus program-specific tokens." },
           // Chain-D fix round 1 trimmed the §4 summary clause off the end of
           // this sentence (it restated the §4 reference the same sentence
-          // makes); the fixture follows the shipped wording, and the property
-          // under test is unchanged — the sentence names a mechanism, not an
-          // organization, so the leg must stay silent.
+          // makes); the fixture follows the shipped wording, and the assertion
+          // is unchanged. The reason the leg stays silent is unchanged too,
+          // and it is not the one this comment gave before fix round 2: the
+          // shipped sentence names no organization, and it carries no
+          // crosswalk cue either, so (p3) skips it at CROSSWALK_CUE
+          // (datatruth.mjs) before any org is considered — as it did with the
+          // clause as well. The cued mechanism sentence is exercised by the
+          // /district/ entry above it and by "passes prose that names the
+          // mechanism instead of an organization".
           { url: "/methodology/", text: "That covers 200 of 1,938 programs, spread across the service books." },
         ],
         MIX,

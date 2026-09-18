@@ -219,15 +219,20 @@ export default function CoveragePage() {
                 it." (every row visibly prints "Derived from …"). Both were
                 restatements of things already on the page; no claim was
                 dropped. */}
-            {/* Chain-D fix round 1 (R-D-2b) takes §22a's third trim, the one
-                that round could not reach because it lives in this file: "—
-                the same files the pages themselves render from —". The <h2>
-                above and the rest of this sentence already say where the
-                figures come from and that a gate recomputes every one of them
-                from the shipped artifacts. */}
+            {/* Chain-D fix round 1 (R-D-2b) took §22a's third trim here —
+                "— the same files the pages themselves render from —" — on the
+                grounds that the <h2> above already said where the figures come
+                from. It does not: it claims RECOMPUTATION, not provenance, and
+                with the clause gone nothing on the page said the coverage
+                figures and the rest of the site read the SAME files. Fix round
+                2 restores that identity in its shortest form (four words
+                shorter than the original). The warrant is coverage-map.ts's
+                own header: every `covered` string is assembled from the
+                data.ts / feeds.ts loaders the pages themselves render from. */}
             <p className="text-sm leading-7">
               Each coverage figure is read from the data files this build
-              shipped, and a build-time gate recomputes all{" "}
+              shipped — the same files the pages render from — and a
+              build-time gate recomputes all{" "}
               {rows.length} rows independently and fails the build if any rendered
               figure disagrees with its source. A coverage page carrying a
               stale literal would refute its own argument, so this one is not
