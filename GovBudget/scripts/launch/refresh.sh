@@ -25,6 +25,12 @@ cd "$REPO_ROOT"
 # exists to prevent.
 export PATH="/opt/homebrew/bin:/usr/local/bin:${HOME}/.local/bin:${PATH}"
 
+# This runs INSIDE the job, so it is not what makes the plist's
+# StandardOutPath/StandardErrorPath work: launchd opens those before exec and
+# does not create missing parents. The Step 11 install snippet's own
+# `mkdir -p "$PWD/logs"` is what saves the first scheduled run's output, and
+# preflight fails when the directory is missing. This line covers a manual
+# `./scripts/launch/refresh.sh` in a fresh clone.
 mkdir -p "${REPO_ROOT}/logs"
 echo "── govbudget refresh $(date -u +%Y-%m-%dT%H:%M:%SZ) ──────────────────"
 exec uv run python -m govbudget refresh --yes "$@"

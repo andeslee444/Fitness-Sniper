@@ -1610,12 +1610,24 @@ docs/superpowers/ROADMAP.md`.
    abort-without-overwrite guard is generalized to every sync-* stage
    (`convert.PartitionShrinkError`, 80% retention floor,
    `--allow-corpus-shrink`, Task 20a); the run record in
-   `data/refresh/last_run.json` carries a cadence-age alarm and a stall alarm
-   (a sync that exits 0 without advancing its dataset). Two launchd templates +
+   `data/refresh/last_run.json` carries a cadence-age alarm, a stall alarm
+   (a sync that exits 0 without advancing its dataset) and a count of
+   unparseable manifest lines. Two launchd templates +
    LAUNCH.md Step 11 ship for the owner to load — no agent installs a
-   scheduler, and none was installed. STILL OPEN: (a) LDA, J-book and GAO
-   ingests write no `manifest.jsonl` records, so gate 24 leg m reports them
-   UNMETERED and the drift report cannot age them; (b) `sync-subawards` still
+   scheduler, and none was installed. **Alarms are printed and recorded, never
+   fatal** (ruling R-20b-6): `record["ok"]` stays true and the command exits 0,
+   because a cadence alarm fires on data the upstream has not republished and
+   failing a scheduled run for that trains the operator to ignore failures —
+   so the operator reads `data/refresh/last_run.json` after a scheduled run,
+   and nothing polls it for them. **The cadence alarm already fires today**
+   (measured 2026-09-18): `contracts`, `assistance` and `subawards` were last
+   ingested 2026-06-11, 99 days against a declared monthly cadence, so every
+   run including `--dry-run` prints three `DRIFT ALARM:` lines until the first
+   successful monthly run clears them. STILL OPEN: (a) LDA, J-book and GAO
+   ingests write no `manifest.jsonl` records, so the drift report can age none
+   of the three; gate 24 leg m marks the J-book and GAO cadence lines UNMETERED
+   while `/methodology/` states no LDA cadence at all, so leg m never sees LDA
+   and reports nothing about it; (b) `sync-subawards` still
    returns early once its FY is in the manifest, so the monthly run skips
    rather than refreshing a partial FY (now alarmed, not silent); (c) annual
    J-book / biennial GAO cadences are operator-run by design (per-service
@@ -1627,7 +1639,17 @@ docs/superpowers/ROADMAP.md`.
    upstream column is detected by nothing. (e) The orchestrator is never
    exercised end to end by any test — every stage runs under a fake runner in
    `tests/test_refresh.py`, so the first real run is the first integration
-   test.
+   test. Review follow-ups landed 2026-09-18: the run record is now written
+   from a `finally`, so an exec-level failure or a Ctrl-C can no longer leave
+   the PREVIOUS run's `"ok": true` in `last_run.json`; the preflight probes
+   carry a 60 s timeout while stages deliberately carry none (a hung stage
+   holds its launchd slot — LAUNCH.md Step 11 says so); a missing lake is a
+   preflight failure rather than a freshly created empty database; `logs/` is
+   a preflight check because launchd opens the job's log files before exec;
+   `run_refresh` holds an exclusive `flock` on `data/refresh/.lock` so the
+   monthly and quarterly labels cannot overlap; and the quarterly LDA stage
+   computes `--years` from the clock instead of inheriting the CLI's hardcoded
+   `2024,2025,2026`.
 9. **Resolution-memory for review queue** (re-flagged items remember triage).
 
    **Status:** CLOSED 2026-09-10 — `_tally` now looks up an accepted

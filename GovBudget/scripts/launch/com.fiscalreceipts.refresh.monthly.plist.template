@@ -5,6 +5,8 @@
   Monthly USAspending cadence: the 5th at 03:00 local, chosen to sit a few days
   after the start of the month rather than on a published USAspending release
   time (USAspending publishes no fixed day-of-month that this repo verifies).
+  If this run overruns into the quarterly one, the quarterly job exits
+  immediately: `run_refresh` holds an exclusive flock on data/refresh/.lock.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

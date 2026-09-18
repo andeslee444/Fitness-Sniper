@@ -56,9 +56,11 @@ DESIGN, and why it is this boring:
     The suites build their Postgres state in throwaway databases
     (govbudget_test in tests/jbooks/conftest.py, govbudget_test_root in
     tests/conftest.py) — with ONE exception that is not hermetic:
-    tests/jbooks/test_era_keys.py opens a READ-ONLY connection to the real
-    `config.PG_DSN` warehouse for its keyspace-collision guard, and skips when
-    that database is unavailable. Read-only, but not "never touches".
+    tests/jbooks/test_era_keys.py opens a connection to the real
+    `config.PG_DSN` warehouse that it uses only for SELECTs (its
+    keyspace-collision guard; `psycopg.connect(config.PG_DSN)` at
+    test_era_keys.py:83 sets no read-only mode), and skips when that database
+    is unavailable. Only reads, but not "never touches".
 
   * The drift record has two halves that ARE true: drift_report ages every
     manifest dataset against the cadence its SOURCE publishes on, and the
@@ -72,6 +74,7 @@ DESIGN, and why it is this boring:
 from __future__ import annotations
 
 import datetime as dt
+import fcntl
 import json
 import os
 import shutil
@@ -81,6 +84,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 SITE_URL = "https://fiscalreceipts.com"
+
+# How long a preflight PROBE may take before it counts as hung. The probes are
+# `rclone listremotes` and `vercel whoami`; both touch the network, both answer
+# in under a second when healthy. Generous, but finite: launchd starts no
+# second instance of a StartCalendarInterval label whose previous instance is
+# still alive, so one wedged probe would stop the monthly refresh forever with
+# nothing in the run record. STAGES deliberately get no timeout at all (dbt and
+# the site build run 30+ minutes) — LAUNCH.md Step 11 says so and says what it
+# costs.
+PROBE_TIMEOUT_SECONDS = 60
+
+# Returned by `_capture` for a probe that never answered. 124 is the
+# conventional shell timeout code, so a reader who greps for it finds the
+# meaning without this file.
+PROBE_TIMEOUT_RC = 124
 
 # Cadence -> the age at which a dataset is stale enough to name in the alarm.
 # Generous on purpose: the alarm is for "nobody has run this in a season", not
@@ -136,16 +154,33 @@ class Stage:
 
 
 def _run(argv: list[str], *, cwd: Path | None = None, env: dict | None = None) -> int:
-    """Run a stage, streaming its output. Returns the exit code."""
+    """Run a stage, streaming its output. Returns the exit code.
+
+    NO TIMEOUT, on purpose: `dbt build` and `npm run build` routinely run 30+
+    minutes and a full `sync-archive` sweep runs hours, so any number small
+    enough to catch a wedged stage is small enough to kill a healthy one. The
+    cost is stated in LAUNCH.md Step 11 — a stage that hangs holds its launchd
+    slot, and launchd then skips every later occurrence of that label until the
+    machine is rebooted or the job is killed by hand.
+    """
     print(f"+ {' '.join(argv)}" + (f"   (cwd={cwd})" if cwd else ""))
     return subprocess.run(
         argv, cwd=str(cwd) if cwd else None, env={**os.environ, **(env or {})}
     ).returncode
 
 
-def _capture(argv: list[str]) -> tuple[int, str]:
-    """Run a short command and return (returncode, stdout+stderr)."""
-    proc = subprocess.run(argv, capture_output=True, text=True)
+def _capture(argv: list[str], *, timeout: int = PROBE_TIMEOUT_SECONDS) -> tuple[int, str]:
+    """Run a short PROBE and return (returncode, stdout+stderr).
+
+    A probe that does not answer within `timeout` returns `PROBE_TIMEOUT_RC`
+    and a message saying so, which preflight renders as an ordinary failure
+    naming the probe — a hung `vercel whoami` must fail the preflight, not the
+    schedule (see PROBE_TIMEOUT_SECONDS).
+    """
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return PROBE_TIMEOUT_RC, f"timed out after {timeout}s with no answer"
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
@@ -155,6 +190,21 @@ def _capture(argv: list[str]) -> tuple[int, str]:
 def _federal_fiscal_year(now: dt.datetime) -> int:
     """FY N runs Oct 1 (N-1) .. Sep 30 (N)."""
     return now.year + 1 if now.month >= 10 else now.year
+
+
+def _lda_years(now: dt.datetime) -> str:
+    """The LDA filing years a quarterly pull covers: this CALENDAR year and the
+    two before it.
+
+    Senate LDA filings are filed per calendar year and amended for months
+    afterwards, so the current year plus two is the window that keeps a
+    scheduled pull picking up late and amended filings. Computed from the
+    clock rather than inherited from `cli.py`'s `--years 2024,2025,2026`
+    default, which a loaded quarterly job would keep using after 2026 — and
+    silently: LDA ingests write no `data/manifest.jsonl` record, so neither the
+    cadence alarm nor the stall check can see the corpus going stale.
+    """
+    return ",".join(str(now.year - back) for back in (2, 1, 0))
 
 
 def build_stages(root: Path, now: dt.datetime) -> list[Stage]:
@@ -176,7 +226,9 @@ def build_stages(root: Path, now: dt.datetime) -> list[Stage]:
         # the silence into an alarm so nobody reads "skipped" as "refreshed".
         Stage("sync-subawards", gb + ["sync-subawards", "--fy", str(subaward_fy)]),
         Stage("sync-fiscaldata", gb + ["sync-fiscaldata"]),
-        Stage("influence-pull", gb + ["influence", "pull"], cadence="quarterly"),
+        Stage("influence-pull",
+              gb + ["influence", "pull", "--years", _lda_years(now)],
+              cadence="quarterly"),
         # Parser-regression gate, NOT an upstream-shape alarm — see the module
         # docstring. Runs after the pulls and before anything derived, so a
         # broken parser stops the run instead of propagating into the mart, the
@@ -231,19 +283,32 @@ def _check_postgres() -> None:
 
 
 def _check_duckdb() -> None:
-    """Open the lake read-WRITE and close it again.
+    """Assert the lake EXISTS, then open it read-WRITE and close it again.
 
-    Read-only would not answer the question: what breaks an unattended run is
-    another process (a dbt build, an open DuckDB CLI, a DBeaver session)
-    holding the single-writer lock. This takes and releases exactly the lock
-    `govbudget build` needs a few minutes later, so a failure here is the same
-    failure, five stages earlier and with a name on it.
+    The existence check has to come first, and is not a nicety:
+    `duckdb.connect(path)` CREATES an empty database at a path that does not
+    exist, so a misconfigured `GOVBUDGET_DUCKDB` / `GOVBUDGET_DATA` would pass
+    the write-lock check green and leave an empty warehouse behind for the
+    build to fail against half an hour later.
+
+    Read-only would not answer the second question: what breaks an unattended
+    run is another process (a dbt build, an open DuckDB CLI, a DBeaver
+    session) holding the single-writer lock. This takes and releases exactly
+    the lock `govbudget build` needs a few minutes later, so a failure here is
+    the same failure, five stages earlier and with a name on it.
     """
     import duckdb
 
     from govbudget import config
 
-    con = duckdb.connect(str(config.DUCKDB_PATH))
+    path = Path(config.DUCKDB_PATH)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"no lake at {path} — GOVBUDGET_DUCKDB / GOVBUDGET_DATA points "
+            "somewhere with no warehouse (connecting would CREATE an empty "
+            "database there)"
+        )
+    con = duckdb.connect(str(path))
     con.close()
 
 
@@ -273,10 +338,24 @@ def preflight(*, root: Path, require_deploy: bool = True) -> list[str]:
 
     try:
         _check_duckdb()
+    except FileNotFoundError as exc:
+        # Distinct from the lock failure below: nothing is holding a lake that
+        # is not there, and saying so would send the operator hunting a process.
+        failures.append(f"duckdb: {exc}")
     except Exception as exc:
         failures.append(
             f"duckdb: cannot take the write lock on {config.DUCKDB_PATH} — "
             f"another process is holding it ({type(exc).__name__}: {exc})"
+        )
+
+    # launchd opens StandardOutPath/StandardErrorPath BEFORE exec and does not
+    # create missing parents, so a scheduled job cannot create its own log
+    # directory — `logs/` is gitignored, so a fresh clone has none.
+    if not (root / "logs").is_dir():
+        failures.append(
+            f"logs: {root}/logs does not exist, and launchd opens the job's log "
+            f"files before exec — run `mkdir -p {root}/logs` "
+            "(docs/superpowers/LAUNCH.md Step 11)"
         )
 
     if not require_deploy:
@@ -327,10 +406,19 @@ def drift_report(manifest_path: Path, now: dt.datetime) -> dict:
     A dataset whose declared cadence is None makes no claim, so it can never be
     stale: "no claim" is a decision, not an omission — the comment block above
     `_DECLARED_CADENCE` says so and the `None` entries are deliberate.
+
+    UNPARSEABLE LINES ARE COUNTED, never merely skipped. gate 24 leg m reads
+    the same `data/manifest.jsonl` and returns a hard error on one
+    ("refusing to guess ingest ages", datatruth.mjs); this operator alarm is
+    deliberately laxer than the published-page gate — a partial final line is
+    ordinary crash residue and must not stop a refresh — but it may not be
+    silent, because a dropped line makes a dataset vanish from the report and
+    the stall check would then describe a record that exists as absent.
     """
     from govbudget.export_site import _DECLARED_CADENCE
 
     newest: dict[str, str] = {}
+    unparseable = 0
     if manifest_path.exists():
         for line in manifest_path.read_text().splitlines():
             line = line.strip()
@@ -339,9 +427,11 @@ def drift_report(manifest_path: Path, now: dt.datetime) -> dict:
             try:
                 rec = json.loads(line)
             except json.JSONDecodeError:
+                unparseable += 1
                 continue
             ds, at = rec.get("dataset"), rec.get("downloaded_at")
             if not ds or not at:
+                unparseable += 1
                 continue
             if ds not in newest or at > newest[ds]:
                 newest[ds] = at
@@ -352,6 +442,7 @@ def drift_report(manifest_path: Path, now: dt.datetime) -> dict:
         try:
             when = dt.datetime.fromisoformat(at)
         except ValueError:
+            unparseable += 1
             continue
         if when.tzinfo is None:
             when = when.replace(tzinfo=dt.UTC)
@@ -369,7 +460,18 @@ def drift_report(manifest_path: Path, now: dt.datetime) -> dict:
                 f"{cadence} cadence (alarm above {limit} days)"
             )
 
-    return {"datasets": datasets, "alarms": alarms}
+    if unparseable:
+        alarms.insert(0, (
+            f"{unparseable} unparseable manifest line(s) in {manifest_path} "
+            "were ignored — a dataset they carried may be missing from this "
+            "report entirely (gate 24 leg m treats one such line as fatal)"
+        ))
+
+    return {
+        "datasets": datasets,
+        "alarms": alarms,
+        "unparseable_lines": unparseable,
+    }
 
 
 # ── the run ─────────────────────────────────────────────────────────────────
@@ -386,9 +488,11 @@ def _confirm(planned: list[Stage]) -> None:
     if not sys.stdin.isatty():
         raise RefreshAborted(
             "no TTY to confirm on and --yes was not passed. A scheduled run "
-            "must pass --yes explicitly (launchd hands a job no controlling "
-            "terminal, and a refresh blocked on input() would hold the DuckDB "
-            "lock forever). See scripts/launch/refresh.sh."
+            "must pass --yes explicitly: launchd hands a job no controlling "
+            "terminal, so a refresh blocked on input() would hang forever "
+            "without ever running or reporting, holding its launchd slot — and "
+            "launchd starts no second instance of a label whose previous "
+            "instance is still alive. See scripts/launch/refresh.sh."
         )
     print("\nStages to run:")
     for s in planned:
@@ -404,6 +508,14 @@ def _stall_alarms(record: dict, after: dict) -> list[str]:
     the manifest holds its dataset+FY (cli.py:67-69), so a monthly run reports
     a green sync-subawards forever. Green must not read as refreshed.
     """
+    # An unparseable line drops its dataset from the report, so "no record at
+    # all" would be a false statement about a record that exists but could not
+    # be read. Say which of the two it is.
+    unreadable = after.get("unparseable_lines", 0)
+    caveat = (
+        f" (or a record that is there and unreadable — {unreadable} "
+        "unparseable manifest line(s) were ignored)" if unreadable else ""
+    )
     alarms: list[str] = []
     for entry in record["stages"]:
         if entry["status"] != "ok":
@@ -412,7 +524,7 @@ def _stall_alarms(record: dict, after: dict) -> list[str]:
             if ds not in after["datasets"]:
                 alarms.append(
                     f"{entry['name']}: exited 0 but {ds} has no record in "
-                    "data/manifest.jsonl at all"
+                    f"data/manifest.jsonl at all{caveat}"
                 )
             elif not record["ingest_advanced"][ds]:
                 stamp = after["datasets"][ds]["newest_downloaded_at"]
@@ -422,6 +534,36 @@ def _stall_alarms(record: dict, after: dict) -> list[str]:
                     "stage skipped, it did not refresh"
                 )
     return alarms
+
+
+def _acquire_single_instance_lock(lock_path: Path):
+    """Exclusive, non-blocking `flock` on `data/refresh/.lock`.
+
+    The monthly and quarterly jobs carry DIFFERENT launchd labels, so launchd's
+    same-label suppression does not keep them apart: the quarterly (6th 03:00)
+    can join a monthly (5th 03:00) still downloading archives, and both would
+    write the same parquet partitions and append the same manifest. The second
+    instance refuses immediately rather than waiting — a refresh that starts
+    hours late is not the run the schedule asked for.
+
+    Returns the open file handle; closing it releases the lock. The kernel also
+    releases it if the process dies, so a crashed run leaves no stale lock.
+    """
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("w")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        raise RefreshAborted(
+            f"another refresh already holds {lock_path} — refusing to start a "
+            "second instance against the same lake. Wait for it to finish "
+            "(`tail -f logs/refresh-*.log`); the lock clears on its own when "
+            "that process exits."
+        ) from None
+    handle.write(f"{os.getpid()}\n")
+    handle.flush()
+    return handle
 
 
 def run_refresh(
@@ -442,82 +584,115 @@ def run_refresh(
     now = now or dt.datetime.now(dt.UTC)
     state_path = state_path or (config.DATA_DIR / "refresh" / "last_run.json")
 
-    planned = _slice(build_stages(root, now), from_stage, until_stage)
-    if not assume_yes and not dry_run:
-        _confirm(planned)
+    # Taken BEFORE the run record exists, on purpose: a refused second instance
+    # must not overwrite the record of the run that is still going.
+    lock = _acquire_single_instance_lock(state_path.parent / ".lock")
+    try:
+        planned = _slice(build_stages(root, now), from_stage, until_stage)
+        if not assume_yes and not dry_run:
+            _confirm(planned)
 
-    require_deploy = any(s.name == "deploy" for s in planned)
-    before = drift_report(config.MANIFEST_PATH, now)
-    record: dict = {
-        "started_at": now.isoformat(),
-        "root": str(root),
-        "dry_run": dry_run,
-        "quarterly": quarterly,
-        "from_stage": from_stage,
-        "until_stage": until_stage,
-        "ok": True,
-        "failed_stage": None,
-        "stages": [],
-        "drift": {"datasets": {}, "alarms": []},
-        "ingest_advanced": {},
-    }
+        require_deploy = any(s.name == "deploy" for s in planned)
+        before = drift_report(config.MANIFEST_PATH, now)
+        record: dict = {
+            "started_at": now.isoformat(),
+            "root": str(root),
+            "dry_run": dry_run,
+            "quarterly": quarterly,
+            "from_stage": from_stage,
+            "until_stage": until_stage,
+            "ok": True,
+            "failed_stage": None,
+            "error": None,
+            "stages": [],
+            "drift": {"datasets": {}, "alarms": [], "unparseable_lines": 0},
+            "ingest_advanced": {},
+        }
 
-    aborted = False
-    for stage in planned:
-        entry: dict = {"name": stage.name, "status": "not-run",
-                       "returncode": None, "detail": "", "seconds": None}
-        record["stages"].append(entry)
+        # EVERYTHING from here is inside a finally that writes the record. An
+        # exec-level failure (`FileNotFoundError` from a binary that is not on
+        # launchd's minimal PATH) or a Ctrl-C escapes `_run` instead of
+        # returning a code, and without this the record would never be
+        # rewritten — leaving `data/refresh/last_run.json`, the one file the
+        # operator is told to read, holding the PREVIOUS run's `"ok": true`.
+        current: str | None = None
+        try:
+            aborted = False
+            for stage in planned:
+                current = stage.name
+                entry: dict = {"name": stage.name, "status": "not-run",
+                               "returncode": None, "detail": "", "seconds": None}
+                record["stages"].append(entry)
 
-        if aborted:
-            continue
-        if stage.cadence == "quarterly" and not quarterly:
-            entry["status"] = "skipped-cadence"
-            entry["detail"] = "quarterly stage; re-run with --quarterly"
-            continue
-        if dry_run:
-            entry["status"] = "dry-run"
-            entry["detail"] = " ".join(stage.argv) or "(in-process)"
-            print(f"+ {entry['detail']}" + (f"   (cwd={stage.cwd})" if stage.cwd else ""))
-            continue
+                if aborted:
+                    continue
+                if stage.cadence == "quarterly" and not quarterly:
+                    entry["status"] = "skipped-cadence"
+                    entry["detail"] = "quarterly stage; re-run with --quarterly"
+                    continue
+                if dry_run:
+                    entry["status"] = "dry-run"
+                    entry["detail"] = " ".join(stage.argv) or "(in-process)"
+                    print(f"+ {entry['detail']}"
+                          + (f"   (cwd={stage.cwd})" if stage.cwd else ""))
+                    continue
 
-        began = dt.datetime.now(dt.UTC)
-        if stage.name == "preflight":
-            failures = preflight(root=root, require_deploy=require_deploy)
-            rc = 1 if failures else 0
-            entry["detail"] = "; ".join(failures)
-            for f in failures:
-                print(f"PREFLIGHT FAIL: {f}", file=sys.stderr)
-        else:
-            rc = _run(stage.argv, cwd=stage.cwd, env=stage.env)
-        entry["returncode"] = rc
-        entry["seconds"] = round((dt.datetime.now(dt.UTC) - began).total_seconds(), 1)
-        entry["status"] = "ok" if rc == 0 else "failed"
-        if rc != 0:
+                began = dt.datetime.now(dt.UTC)
+                if stage.name == "preflight":
+                    failures = preflight(root=root, require_deploy=require_deploy)
+                    rc = 1 if failures else 0
+                    entry["detail"] = "; ".join(failures)
+                    for f in failures:
+                        print(f"PREFLIGHT FAIL: {f}", file=sys.stderr)
+                else:
+                    rc = _run(stage.argv, cwd=stage.cwd, env=stage.env)
+                entry["returncode"] = rc
+                entry["seconds"] = round(
+                    (dt.datetime.now(dt.UTC) - began).total_seconds(), 1)
+                entry["status"] = "ok" if rc == 0 else "failed"
+                if rc != 0:
+                    record["ok"] = False
+                    record["failed_stage"] = stage.name
+                    aborted = True
+                    print(
+                        f"\nrefresh: stage {stage.name} failed (exit {rc}). "
+                        f"Nothing after it ran. Resume with "
+                        f"`python -m govbudget refresh --from {stage.name} --yes` "
+                        "(note: --from skips preflight).",
+                        file=sys.stderr,
+                    )
+
+            after = drift_report(config.MANIFEST_PATH, now)
+            record["drift"] = after
+            record["ingest_advanced"] = {
+                ds: after["datasets"][ds]["newest_downloaded_at"]
+                != before["datasets"].get(ds, {}).get("newest_downloaded_at")
+                for ds in after["datasets"]
+            }
+            if not dry_run:
+                after["alarms"].extend(_stall_alarms(record, after))
+        except BaseException as exc:   # KeyboardInterrupt included, deliberately
             record["ok"] = False
-            record["failed_stage"] = stage.name
-            aborted = True
+            record["error"] = f"{type(exc).__name__}: {exc}"
+            if record["failed_stage"] is None:
+                record["failed_stage"] = current
             print(
-                f"\nrefresh: stage {stage.name} failed (exit {rc}). "
-                f"Nothing after it ran. Resume with "
-                f"`python -m govbudget refresh --from {stage.name} --yes` "
-                "(note: --from skips preflight).",
+                f"\nrefresh: {record['error']}"
+                + (f" (during stage {current})" if current else ""),
                 file=sys.stderr,
             )
-
-    record["ended_at"] = dt.datetime.now(dt.UTC).isoformat()
-    after = drift_report(config.MANIFEST_PATH, now)
-    record["drift"] = after
-    record["ingest_advanced"] = {
-        ds: after["datasets"][ds]["newest_downloaded_at"]
-        != before["datasets"].get(ds, {}).get("newest_downloaded_at")
-        for ds in after["datasets"]
-    }
-    if not dry_run:
-        after["alarms"].extend(_stall_alarms(record, after))
-    for alarm in record["drift"]["alarms"]:
-        print(f"DRIFT ALARM: {alarm}", file=sys.stderr)
-
-    if not dry_run:
-        _write_state(state_path, record)
-        print(f"refresh: run record -> {state_path}")
+            raise
+        finally:
+            record["ended_at"] = dt.datetime.now(dt.UTC).isoformat()
+            # R-20b-6: an alarm is REPORT-ONLY. It never clears record["ok"] and
+            # never changes the exit code — a cadence alarm on data the upstream
+            # has not republished must not fail a scheduled run. The operator
+            # reads data/refresh/last_run.json (and logs/refresh-*.err.log).
+            for alarm in record["drift"]["alarms"]:
+                print(f"DRIFT ALARM: {alarm}", file=sys.stderr)
+            if not dry_run:
+                _write_state(state_path, record)
+                print(f"refresh: run record -> {state_path}")
+    finally:
+        lock.close()
     return record

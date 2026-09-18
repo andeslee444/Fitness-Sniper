@@ -3,9 +3,14 @@
   TEMPLATE — not a loaded job. Substitute __REPO_ROOT__ and copy into
   ~/Library/LaunchAgents/ yourself; see docs/superpowers/LAUNCH.md Step 11.
   Quarterly cadence: the 6th of Jan/Apr/Jul/Oct at 03:00 local, a day after the
-  monthly job so the two never START at the same time. This run passes
-  --quarterly, which adds the LDA pull to the same stage graph — so in those
-  four months the whole pipeline runs twice, on the 5th and again on the 6th.
+  monthly job so the two never START at the same time. These are DIFFERENT
+  labels, so launchd's same-label suppression does not keep them apart if the
+  monthly run overruns 24 hours; what does is the exclusive flock `run_refresh`
+  holds on data/refresh/.lock — this job then exits non-zero at once rather
+  than writing the same parquet partitions underneath the first. This run
+  passes --quarterly, which adds the LDA pull to the same stage graph — so in
+  those four months the whole pipeline runs twice, on the 5th and again on the
+  6th.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

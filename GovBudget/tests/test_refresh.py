@@ -7,9 +7,11 @@ No test in this file may start a subprocess, open a socket, touch Postgres,
 open the DuckDB lake, or read or write outside tmp_path.
 """
 import datetime as dt
+import fcntl
 import io
 import json
 import shutil as _shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -94,13 +96,37 @@ def test_stage_order_is_the_launch_md_canonical_order():
     assert refresh.STAGE_NAMES[-1] == "deploy"
 
 
-def test_every_stage_command_is_python_npm_or_the_deploy_script():
-    allowed_first = {sys.executable, "npm", str(ROOT / "scripts" / "launch" / "deploy.sh")}
-    for stage in refresh.build_stages(ROOT, NOW):
-        if stage.name == "preflight":
-            assert stage.argv == []
-            continue
-        assert stage.argv[0] in allowed_first, stage
+def test_every_stage_argv_cwd_and_env_is_pinned_exactly():
+    """The orchestrator's whole job is typing these twelve command lines
+    correctly, so every one is pinned in full. An argv[0]-only spot check let
+    `export-sites` or `jbooks export-fact` ship green."""
+    gb = [sys.executable, "-m", "govbudget"]
+    site_env = {"NEXT_PUBLIC_SITE_URL": "https://fiscalreceipts.com"}
+    expected = {
+        "preflight": ([], None, {}),
+        "sync-archive": (gb + ["sync-archive"], None, {}),
+        "sync-subawards": (gb + ["sync-subawards", "--fy", "2026"], None, {}),
+        "sync-fiscaldata": (gb + ["sync-fiscaldata"], None, {}),
+        "influence-pull": (
+            gb + ["influence", "pull", "--years", "2024,2025,2026"], None, {}),
+        "fixtures": (
+            [sys.executable, "-m", "pytest", "-q", "tests/influence",
+             "tests/jbooks", "tests/oversight", "tests/states"], ROOT, {}),
+        "export-facts": (gb + ["jbooks", "export-facts"], None, {}),
+        "build": (gb + ["build"], None, {}),
+        "export-site": (gb + ["export-site"], None, {}),
+        "site-build": (["npm", "run", "build"], ROOT / "site", site_env),
+        "site-verify": (["npm", "run", "verify"], ROOT / "site", site_env),
+        "deploy": ([str(ROOT / "scripts" / "launch" / "deploy.sh")], None, {}),
+    }
+    stages = refresh.build_stages(ROOT, NOW)
+    assert [s.name for s in stages] == list(refresh.STAGE_NAMES)
+    allowed_first = {sys.executable, "npm",
+                     str(ROOT / "scripts" / "launch" / "deploy.sh")}
+    for s in stages:
+        assert (s.argv, s.cwd, s.env) == expected[s.name], s.name
+        if s.argv:
+            assert s.argv[0] in allowed_first, s.name
 
 
 def test_deploy_stage_uses_the_absolute_deploy_script():
@@ -126,6 +152,21 @@ def test_subawards_stage_targets_the_current_federal_fiscal_year():
     later = {s.name: s for s in refresh.build_stages(
         ROOT, dt.datetime(2026, 10, 1, tzinfo=dt.UTC))}
     assert later["sync-subawards"].argv[-1] == str(config.FY_END)
+
+
+def test_the_lda_pull_window_tracks_the_clock(tmp_path):
+    """The CLI default is a hardcoded `2024,2025,2026`; a loaded quarterly job
+    inheriting it would stop covering the current filing year after 2026 and
+    say nothing (LDA ingests write no manifest record, so neither drift alarm
+    can see it). The stage passes the window explicitly instead."""
+    def window(when):
+        argv = {s.name: s for s in refresh.build_stages(ROOT, when)}[
+            "influence-pull"].argv
+        return argv[argv.index("--years") + 1]
+
+    assert window(NOW) == "2024,2025,2026"
+    assert window(dt.datetime(2027, 3, 1, tzinfo=dt.UTC)) == "2025,2026,2027"
+    assert window(dt.datetime(2031, 12, 31, tzinfo=dt.UTC)) == "2029,2030,2031"
 
 
 def test_syncs_never_carry_allow_corpus_shrink():
@@ -161,10 +202,31 @@ def test_happy_path_runs_every_monthly_stage_in_order(tmp_path, calls):
     assert len(calls) == 10  # preflight is in-process, not a subprocess
 
 
+def test_only_the_site_stages_reach_the_runner_with_the_production_origin(
+    tmp_path, calls
+):
+    """Asserted on what reaches `_run`, not on the Stage dataclass: dropping
+    `env=stage.env` from the call site would bake the placeholder origin into
+    the production build and no dataclass assertion would notice."""
+    _refresh(tmp_path)
+    site = [c for c in calls if c["argv"][0] == "npm"]
+    assert [c["argv"] for c in site] == [["npm", "run", "build"],
+                                         ["npm", "run", "verify"]]
+    for c in site:
+        assert c["env"] == {"NEXT_PUBLIC_SITE_URL": "https://fiscalreceipts.com"}
+        assert c["cwd"] == str(ROOT / "site")
+    for c in calls:
+        if c["argv"][0] != "npm":
+            assert c["env"] == {}, c["argv"]
+
+
 def test_quarterly_flag_adds_the_influence_pull(tmp_path, calls):
     record = _refresh(tmp_path, quarterly=True)
     assert "influence-pull" in _names(record, "ok")
-    assert any(c["argv"][-2:] == ["influence", "pull"] for c in calls)
+    assert any(
+        c["argv"][-4:] == ["influence", "pull", "--years", "2024,2025,2026"]
+        for c in calls
+    )
 
 
 def test_dry_run_executes_nothing_and_writes_no_state(tmp_path, calls):
@@ -228,6 +290,58 @@ def test_first_failure_aborts_and_later_stages_are_not_run(tmp_path, monkeypatch
     assert json.loads(state.read_text())["failed_stage"] == "build"
 
 
+def _previous_ok_record(tmp_path):
+    """A last_run.json from a previous, successful run."""
+    state = tmp_path / "refresh" / "last_run.json"
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(json.dumps({"ok": True, "failed_stage": None}) + "\n")
+    return state
+
+
+def _raising_runner(monkeypatch, tmp_path, exc):
+    def boom(argv, *, cwd=None, env=None):
+        raise exc
+
+    monkeypatch.setattr(refresh, "_run", boom)
+    monkeypatch.setattr(refresh, "preflight", lambda **kw: [])
+    monkeypatch.setattr(config, "MANIFEST_PATH", tmp_path / "manifest.jsonl")
+
+
+def test_an_exec_level_failure_overwrites_the_previous_runs_ok(
+    tmp_path, monkeypatch
+):
+    """A missing binary raises out of subprocess.run rather than returning a
+    non-zero code. Without a finally the record is never rewritten and
+    last_run.json keeps the PREVIOUS run's `"ok": true` — the one file the
+    operator is told to read would be lying."""
+    state = _previous_ok_record(tmp_path)
+    _raising_runner(monkeypatch, tmp_path,
+                    FileNotFoundError(2, "No such file or directory: 'uv'"))
+    with pytest.raises(FileNotFoundError):
+        _refresh(tmp_path, state_path=state)
+    rec = json.loads(state.read_text())
+    assert rec["ok"] is False
+    assert rec["failed_stage"] == "sync-archive"
+    assert "FileNotFoundError" in rec["error"]
+    assert "uv" in rec["error"]
+    assert rec["ended_at"]
+
+
+def test_a_ctrl_c_overwrites_the_previous_runs_ok(tmp_path, monkeypatch):
+    state = _previous_ok_record(tmp_path)
+    _raising_runner(monkeypatch, tmp_path, KeyboardInterrupt())
+    with pytest.raises(KeyboardInterrupt):
+        _refresh(tmp_path, state_path=state)
+    rec = json.loads(state.read_text())
+    assert rec["ok"] is False
+    assert rec["failed_stage"] == "sync-archive"
+    assert "KeyboardInterrupt" in rec["error"]
+
+
+def test_a_clean_run_records_no_error(tmp_path, calls):
+    assert _refresh(tmp_path)["error"] is None
+
+
 def test_preflight_failure_aborts_before_any_stage(tmp_path, monkeypatch):
     recorded = []
     monkeypatch.setattr(
@@ -255,6 +369,34 @@ def test_no_tty_without_yes_refuses_to_start(tmp_path, calls, monkeypatch):
     assert calls == []
 
 
+def test_a_second_instance_refuses_to_start_while_the_lock_is_held(
+    tmp_path, calls
+):
+    """The monthly and quarterly launchd labels are different labels, so
+    launchd's same-label suppression does not keep them apart; an overrunning
+    monthly joined by the quarterly would write the same parquet partitions."""
+    state = tmp_path / "refresh" / "last_run.json"
+    lock_path = state.parent / ".lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    held = lock_path.open("w")
+    fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        with pytest.raises(refresh.RefreshAborted) as exc:
+            _refresh(tmp_path, state_path=state)
+    finally:
+        held.close()
+    assert str(lock_path) in str(exc.value)
+    assert calls == []
+    # The RUNNING instance's record must not be clobbered by the refusal.
+    assert not state.exists()
+
+
+def test_the_lock_is_released_when_a_run_ends(tmp_path, calls):
+    _refresh(tmp_path)
+    _refresh(tmp_path)   # a second run after the first finished is fine
+    assert (tmp_path / "refresh" / ".lock").exists()
+
+
 def test_preflight_skips_deploy_credentials_when_deploy_is_not_planned(
     tmp_path, monkeypatch
 ):
@@ -273,11 +415,12 @@ def test_preflight_skips_deploy_credentials_when_deploy_is_not_planned(
 
 
 @pytest.fixture
-def local_checks_green(monkeypatch):
+def local_checks_green(monkeypatch, tmp_path):
     monkeypatch.setattr(refresh, "_check_disk", lambda: None)
     monkeypatch.setattr(refresh, "_check_postgres", lambda: None)
     monkeypatch.setattr(refresh, "_check_duckdb", lambda: None)
     monkeypatch.setattr(_shutil, "which", lambda name: f"/usr/bin/{name}")
+    (tmp_path / "logs").mkdir(exist_ok=True)
 
 
 def test_preflight_reports_a_missing_rclone_remote(tmp_path, monkeypatch, local_checks_green):
@@ -319,6 +462,7 @@ def test_preflight_green_when_everything_answers(tmp_path, monkeypatch, local_ch
 
 
 def test_preflight_reports_every_failure_at_once(tmp_path, monkeypatch):
+    (tmp_path / "logs").mkdir()
     monkeypatch.setattr(refresh, "_check_disk", lambda: (_ for _ in ()).throw(
         RuntimeError("2.1 GB free")))
     monkeypatch.setattr(refresh, "_check_postgres", lambda: (_ for _ in ()).throw(
@@ -327,6 +471,96 @@ def test_preflight_reports_every_failure_at_once(tmp_path, monkeypatch):
     failures = refresh.preflight(root=tmp_path, require_deploy=False)
     assert len(failures) == 2
     assert failures[0].startswith("disk:") and failures[1].startswith("postgres:")
+
+
+def test_a_probe_that_hangs_becomes_a_named_preflight_failure(
+    tmp_path, monkeypatch, local_checks_green
+):
+    """launchd starts no second instance of a label whose previous instance is
+    still alive, so one wedged `vercel whoami` would stop the monthly refresh
+    forever with nothing in the record."""
+    _stub_deploy_script(tmp_path)
+
+    def hang(argv, **kw):
+        raise subprocess.TimeoutExpired(argv, kw.get("timeout"))
+
+    monkeypatch.setattr(refresh.subprocess, "run", hang)
+    failures = refresh.preflight(root=tmp_path, require_deploy=True)
+    assert len(failures) == 2
+    assert "rclone" in failures[0] and "timed out" in failures[0]
+    assert "vercel" in failures[1] and "timed out" in failures[1]
+
+
+def test_every_preflight_probe_carries_a_timeout(monkeypatch):
+    seen = {}
+
+    class _Proc:
+        returncode = 0
+        stdout = "r2:\n"
+        stderr = ""
+
+    def spy(argv, **kw):
+        seen[argv[0]] = kw.get("timeout")
+        return _Proc()
+
+    monkeypatch.setattr(refresh.subprocess, "run", spy)
+    assert refresh._capture(["rclone", "listremotes"]) == (0, "r2:\n")
+    assert seen["rclone"] == refresh.PROBE_TIMEOUT_SECONDS == 60
+
+
+def test_a_stage_is_run_with_no_timeout_at_all(monkeypatch):
+    """dbt and the site build run 30+ minutes; a per-stage timeout would kill
+    a healthy run. The consequence is documented in LAUNCH.md Step 11."""
+    seen = {}
+
+    class _Proc:
+        returncode = 0
+
+    def spy(argv, **kw):
+        seen.update(kw)
+        return _Proc()
+
+    monkeypatch.setattr(refresh.subprocess, "run", spy)
+    assert refresh._run(["npm", "run", "build"]) == 0
+    assert "timeout" not in seen
+
+
+def test_a_missing_lake_is_a_preflight_failure_and_creates_no_database(
+    tmp_path, monkeypatch
+):
+    """duckdb.connect CREATES an empty database at a path that does not
+    exist, so a misconfigured GOVBUDGET_DUCKDB/GOVBUDGET_DATA would pass the
+    write-lock check green and leave an empty lake behind."""
+    missing = tmp_path / "nowhere" / "govbudget.duckdb"
+    monkeypatch.setattr(config, "DUCKDB_PATH", missing)
+    with pytest.raises(FileNotFoundError) as exc:
+        refresh._check_duckdb()
+    assert str(missing) in str(exc.value)
+    assert not missing.exists()
+
+
+def test_preflight_calls_a_missing_lake_missing_not_locked(
+    tmp_path, monkeypatch
+):
+    (tmp_path / "logs").mkdir()
+    monkeypatch.setattr(refresh, "_check_disk", lambda: None)
+    monkeypatch.setattr(refresh, "_check_postgres", lambda: None)
+    monkeypatch.setattr(config, "DUCKDB_PATH", tmp_path / "nope.duckdb")
+    failures = refresh.preflight(root=tmp_path, require_deploy=False)
+    assert len(failures) == 1
+    assert "no lake" in failures[0]
+    assert "holding it" not in failures[0]
+
+
+def test_preflight_names_a_missing_logs_directory(
+    tmp_path, monkeypatch, local_checks_green
+):
+    """launchd opens StandardOutPath BEFORE exec and does not create missing
+    parents, so the job cannot create logs/ for itself."""
+    (tmp_path / "logs").rmdir()
+    failures = refresh.preflight(root=tmp_path, require_deploy=False)
+    assert len(failures) == 1
+    assert "logs" in failures[0] and "mkdir -p" in failures[0]
 
 
 # ── drift report ────────────────────────────────────────────────────────────
@@ -377,6 +611,55 @@ def test_drift_report_is_attached_to_the_run_record(tmp_path, calls, monkeypatch
     assert record["drift"]["datasets"]["contracts"]["age_days"] == 3
 
 
+def test_drift_report_counts_unparseable_manifest_lines(tmp_path):
+    """gate 24 leg m treats one unparseable line in the SAME file as fatal
+    ("refusing to guess ingest ages"); the operator alarm may be quieter than
+    the published-page gate, but it may not be silent."""
+    fresh = (NOW - dt.timedelta(days=3)).isoformat()
+    p = tmp_path / "manifest.jsonl"
+    p.write_text(
+        json.dumps({"dataset": "contracts", "downloaded_at": fresh}) + "\n"
+        # a crash between write and flush leaves a partial final line
+        + '{"dataset": "assistance", "downloa\n'
+        + json.dumps({"dataset": "subawards", "downloaded_at": "not-a-date"})
+        + "\n"
+    )
+    report = refresh.drift_report(p, NOW)
+    assert report["unparseable_lines"] == 2
+    assert [a for a in report["alarms"]
+            if a.startswith("2 unparseable manifest line(s)")]
+    assert report["datasets"]["contracts"]["age_days"] == 3
+    assert "subawards" not in report["datasets"]
+
+
+def test_a_clean_manifest_counts_zero_unparseable_lines_and_says_nothing(
+    tmp_path,
+):
+    fresh = (NOW - dt.timedelta(days=3)).isoformat()
+    p = _manifest(tmp_path, [
+        {"dataset": "contracts", "downloaded_at": fresh, "file_name": "c.zip"},
+    ])
+    report = refresh.drift_report(p, NOW)
+    assert report["unparseable_lines"] == 0
+    assert report["alarms"] == []
+
+
+def test_an_unparseable_line_is_printed_once_as_a_drift_alarm(
+    tmp_path, calls, monkeypatch, capsys
+):
+    fresh = (NOW - dt.timedelta(days=3)).isoformat()
+    p = tmp_path / "manifest.jsonl"
+    p.write_text(
+        json.dumps({"dataset": "contracts", "downloaded_at": fresh}) + "\n"
+        + "{not json at all\n"
+    )
+    monkeypatch.setattr(config, "MANIFEST_PATH", p)
+    record = _refresh(tmp_path)
+    err = capsys.readouterr().err
+    assert err.count("DRIFT ALARM: 1 unparseable manifest line(s)") == 1
+    assert record["drift"]["unparseable_lines"] == 1
+
+
 # ── the stall check: green must not read as refreshed ───────────────────────
 
 
@@ -425,6 +708,20 @@ def test_an_advancing_sync_raises_no_stall_alarm(tmp_path, monkeypatch):
     record = _refresh(tmp_path)
     assert record["ingest_advanced"] == {d: True for d in STALE_FOUR}
     assert record["drift"]["alarms"] == []
+
+
+def test_a_stall_alarm_does_not_claim_no_record_when_a_line_was_unreadable(
+    tmp_path, calls, monkeypatch
+):
+    """A dataset whose newest line is malformed disappears from the report, and
+    the unqualified "has no record ... at all" message would then be false."""
+    p = tmp_path / "manifest.jsonl"
+    p.write_text("{\"dataset\": \"subawards\", truncated\n")
+    monkeypatch.setattr(config, "MANIFEST_PATH", p)
+    record = _refresh(tmp_path)
+    joined = " | ".join(record["drift"]["alarms"])
+    assert "sync-subawards" in joined
+    assert "unparseable" in joined
 
 
 def test_a_dry_run_raises_no_stall_alarms(tmp_path, calls, monkeypatch):

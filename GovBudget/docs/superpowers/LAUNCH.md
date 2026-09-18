@@ -628,18 +628,23 @@ When a domain is chosen:
    is also being served via a custom subdomain
 5. Re-run step 4b (CORS policy) with the new origin
 6. Re-run step 7c to update `NEXT_PUBLIC_SITE_URL`
-7. Redeploy: `vercel --prod`
+7. Redeploy: `./scripts/launch/deploy.sh` (never bare `vercel --prod` — it
+   skips the R2 asset sync)
 8. Re-run step 6 (CORS live test) with the new domain
 
 ---
 
 ## Step 11 — Scheduled refresh (ROADMAP #8)
 
-`govbudget refresh` is the whole drill as one command: preflight -> the three
-USAspending/Treasury syncs -> (quarterly) the LDA pull -> the golden-fixture
-parser gate -> `jbooks export-facts` -> `build` -> `export-site` -> `npm run
-build` -> `npm run verify` -> `scripts/launch/deploy.sh`. It stops at the first
-failure and tells you the `--from` flag that resumes there.
+`govbudget refresh` is the monthly DATA refresh as one command — not the whole
+drill: the Step 0 link loaders, `migrate`, `oversight`, `states`,
+`entity-graph`, `lineage`, `dossiers` and the J-book/GAO ingests all stay
+operator-run (see Known limitations). What it does run, in order: preflight ->
+the three USAspending/Treasury syncs -> (quarterly) the LDA pull -> the
+golden-fixture parser gate -> `jbooks export-facts` -> `build` ->
+`export-site` -> `npm run build` -> `npm run verify` ->
+`scripts/launch/deploy.sh`. It stops at the first failure and tells you the
+`--from` flag that resumes there.
 
 ```bash
 # See the plan without running any of it.
@@ -660,13 +665,42 @@ Stage names, in order: `preflight`, `sync-archive`, `sync-subawards`,
 `export-site`, `site-build`, `site-verify`, `deploy`.
 
 **What the preflight checks:** >=25 GB free at `data/raw`, Postgres answering on
-`GOVBUDGET_PG_DSN`, the DuckDB lake's write lock free (nothing else holding it),
-an rclone remote named `r2`, and `vercel whoami` succeeding. Every failure is
-reported at once, and nothing runs until they are all clear. The rclone/vercel
-checks are skipped when `--until` stops the run before `deploy`. **`--from`
-skips preflight entirely** (it is a stage, and `--from` slices the graph), so a
-resume trades the early warning for the resume — which is why `refresh.sh`
-never passes `--from`.
+`GOVBUDGET_PG_DSN`, a DuckDB lake that EXISTS at `GOVBUDGET_DUCKDB` and whose
+write lock is free (nothing else holding it), a `logs/` directory, an rclone
+remote named `r2`, and `vercel whoami` succeeding. Every failure is reported at
+once, and nothing runs until they are all clear. The rclone/vercel checks are
+skipped when `--until` stops the run before `deploy`. **`--from` skips preflight
+entirely** (it is a stage, and `--from` slices the graph), so a resume trades
+the early warning for the resume — which is why `refresh.sh` never passes
+`--from`.
+
+Two of those checks exist because their failure mode is silent rather than
+loud. The lake is checked for EXISTENCE before the lock, because
+`duckdb.connect` on a path that does not exist CREATES an empty database: a
+mistyped `GOVBUDGET_DATA` would otherwise pass preflight green and fail in dbt
+half an hour later. And `logs/` is checked because launchd opens
+`StandardOutPath`/`StandardErrorPath` **before** exec and does not create
+missing parents — the job cannot create its own log directory, and `logs/` is
+gitignored, so a fresh clone has none.
+
+**Timeouts: the probes have one, the stages do not.** `rclone listremotes` and
+`vercel whoami` get 60 s each; a probe that does not answer is an ordinary
+preflight failure naming that probe. Stages get no timeout at all, because
+`dbt build` and `npm run build` routinely run 30+ minutes and a full
+`sync-archive` sweep runs hours — any limit small enough to catch a wedged
+stage would kill healthy ones. The cost is real and worth knowing: a stage that
+hangs holds its launchd slot forever, and launchd starts no second instance of
+a label whose previous instance is still alive, so the monthly job simply stops
+happening. If a scheduled run's log goes quiet, check for a live process before
+assuming the schedule is fine.
+
+**Only one refresh runs at a time.** `run_refresh` takes an exclusive
+`flock` on `data/refresh/.lock` before anything else; a second invocation
+exits non-zero immediately and names the lock. This is not hypothetical — the
+monthly and quarterly jobs are different launchd labels, so launchd's
+same-label suppression does not keep them apart, and in Jan/Apr/Jul/Oct they
+fire 24 hours apart. The lock is released when the process exits, crash
+included, so there is no stale lock to clear by hand.
 
 **A non-zero exit from any stage is fatal for the run**, and `sync-archive` is
 the stage where that matters most. `cmd_sync_archive` iterates (type x FY) and
@@ -679,14 +713,32 @@ decide per FY whether the shrink is real before re-running that FY by hand with
 `--allow-corpus-shrink`.
 
 **The drift record** lands in `data/refresh/last_run.json` (gitignored) and
-carries two alarms, both also printed to stderr as `DRIFT ALARM: ...`:
+carries three alarms, each also printed to stderr as `DRIFT ALARM: ...`:
 
 1. **Cadence age.** Every dataset in `data/manifest.jsonl` is aged against the
    cadence its source publishes on (`export_site._DECLARED_CADENCE`). A dataset
-   past its window is named.
+   past its window is named. **As of 2026-09-18 this alarm already fires on
+   every run, `--dry-run` included:** `contracts`, `assistance` and `subawards`
+   were last ingested 2026-06-11 — 99 days — against a monthly claim. That is a
+   true statement about the lake, not a bug; it clears on the first successful
+   monthly run.
 2. **Stall.** A sync stage that exits 0 without advancing its dataset's newest
    `downloaded_at` is named as skipped, not refreshed. `ingest_advanced` in the
    record says per dataset whether it actually moved.
+3. **Unparseable manifest lines.** A line that is not JSON, or carries no
+   dataset/timestamp, is counted rather than skipped in silence
+   (`unparseable_lines` in the record): a dropped line makes its dataset vanish
+   from the report, and the stall check would then describe a record that
+   exists as absent. Gate 24 leg m treats one such line in the same file as
+   fatal; this alarm is deliberately laxer — a partial final line is ordinary
+   crash residue and must not stop a refresh — but it is never silent.
+
+**An alarm never fails the run** (ruling R-20b-6). `record["ok"]` stays true and
+the command still exits 0: a cadence alarm fires on data the *upstream* has not
+republished, and failing a scheduled run for that would train the operator to
+ignore the failure. Alarms are printed and recorded, nothing more — so after a
+scheduled run the operator reads `data/refresh/last_run.json` (or
+`logs/refresh-*.err.log`). Nothing polls either file for you.
 
 **What the `fixtures` stage is, and is not.** It runs `tests/influence`,
 `tests/jbooks`, `tests/oversight` and `tests/states` after the pulls and before
@@ -699,9 +751,11 @@ missing `meta.total-pages` raises `ValueError`, and a truncated archive raises
 `PartitionShrinkError`. A **newly added** upstream column is detected by nothing;
 that gap is open under ROADMAP #8. (The suites build their Postgres state in the
 throwaway databases `govbudget_test` / `govbudget_test_root`, with one
-exception: `tests/jbooks/test_era_keys.py` opens a READ-ONLY connection to the
-real `GOVBUDGET_PG_DSN` warehouse for its keyspace-collision guard, and skips
-when it is unavailable.)
+exception: `tests/jbooks/test_era_keys.py` opens a connection to the real
+`GOVBUDGET_PG_DSN` warehouse and only reads from it — SELECTs for its
+keyspace-collision guard; `psycopg.connect(config.PG_DSN)` at
+`test_era_keys.py:83` sets no read-only mode — and skips when that database is
+unavailable.)
 
 **Known limitations — read these before trusting a green run:**
 
@@ -714,11 +768,20 @@ when it is unavailable.)
 - Annual J-book and biennial GAO ingestion are NOT scheduled. `jbooks backfill`
   needs per-service transport decisions (`--source archive` for Army/AF/Space
   Force, an operator `--source-url` for `ingest-local`) that cannot be made
-  unattended, and launchd cannot express a biennial cadence. Run those by hand;
-  the cadence alarm above is what reminds you.
-- LDA, J-book and GAO ingests write no `manifest.jsonl` records, so gate 24 leg
-  m still reports them UNMETERED and the drift report cannot age them. Open
-  under ROADMAP #8.
+  unattended, and launchd cannot express a biennial cadence. Run those by hand
+  — and note that nothing alarms when they go stale: they write no
+  `manifest.jsonl` record, so the cadence alarm above cannot see them (next
+  bullet).
+- LDA, J-book and GAO ingests write no `manifest.jsonl` records, so the drift
+  report can age none of the three. What gate 24 leg m says about them differs:
+  it marks the J-book and GAO cadence lines UNMETERED (the `unmetered` markers
+  on `/methodology/`), while the LDA section states no cadence at all, so leg m
+  never sees LDA and never marks it anything. Open under ROADMAP #8.
+- The quarterly stage passes `--years <this calendar year and the two before
+  it>` explicitly rather than inheriting the CLI's hardcoded
+  `--years 2024,2025,2026` default, which a loaded job would still be using in
+  2027. Widen it by hand (`govbudget influence pull --years ...`) if a backfill
+  needs more than three years.
 - A crash between the MTS `COPY` and its swap leaves
   `data/parquet/mts_outlays/mts_table_5.parquet.incoming` on disk. dbt's source
   glob for that directory is `*.parquet` (`dbt/models/sources.yml:17`), which
@@ -738,6 +801,9 @@ in this repo installs, loads, or enables a scheduler.
 ```bash
 cd /path/to/GovBudget
 mkdir -p ~/Library/LaunchAgents
+# launchd opens the job's log files BEFORE exec and will not create this
+# directory, so the first scheduled run loses its output without it.
+mkdir -p "$PWD/logs"
 
 for cadence in monthly quarterly; do
   sed "s|__REPO_ROOT__|$PWD|g" \
@@ -753,7 +819,9 @@ launchctl list | grep fiscalreceipts        # confirm both are loaded
 
 Monthly fires on the 5th at 03:00; quarterly on the 6th of Jan/Apr/Jul/Oct at
 03:00 — so in those four months the pipeline runs twice, on the 5th and again
-on the 6th. Logs land in `logs/refresh-*.log` (gitignored). To stop one:
+on the 6th. Logs land in `logs/refresh-*.log` (gitignored) — true once the
+`mkdir -p "$PWD/logs"` above has been run, which is why it is in the snippet
+and why preflight checks for the directory. To stop one:
 
 ```bash
 launchctl bootout "gui/$(id -u)/com.fiscalreceipts.refresh.monthly"
@@ -805,8 +873,8 @@ R2_HOST=https://pub-<hash>.r2.dev \
 SITE_URL=https://govbudget-xyz.vercel.app \
   ./scripts/launch/cors_live_test.sh
 
-# 7. Deploy
-vercel --prod
+# 7. Deploy — the ONLY deploy path (R2 assets, then Vercel, then live check)
+./scripts/launch/deploy.sh
 
 # 9. Unblock
 export ANTHROPIC_API_KEY=sk-ant-...
