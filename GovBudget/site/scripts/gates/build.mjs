@@ -432,9 +432,11 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // MEASURED COST, for whoever adds the next sentence here: 202 source
   // characters removed = 142 gzip, measured as 42,562 on the chain-D build
-  // against 42,420 on fix-round build 1 — the pair the entry below was
-  // stamped from. Build 2 of the same source weighed 42,416, so read the
-  // figure as 142 ±4 bytes of build-id jitter; 0.70 gzip per source
+  // against 42,420 on fix-round build 1, the pair fix round 1 stamped. Build
+  // 2 of that same source weighed 42,416 (build-id jitter) and fix round 2's
+  // build 42,415, once one of the four trim comments moved out from between
+  // two text runs and React stopped emitting a <!-- --> separator there. So
+  // read the trim as 142 gzip ±5; 0.70 gzip per source
   // character, NOT the 0.40 the note above records. That 0.40 came
   // from a 1,850-character trim whose text repeated elsewhere on the page and
   // so compressed as back-references; short, unique clauses cost nearly twice
@@ -451,12 +453,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // AND THE BUDGET IS SMALLER STILL THAN THAT HEADROOM. The annotation-drift
   // leg below errors when a recorded `measured:` gzip overstates live headroom
   // by 2x, i.e. as soon as the page weighs more than maxGzip - (maxGzip -
-  // recorded)/2. At 42,420 recorded against 42,500 that is 42,461 — about +45
-  // gzip on the 42,416 this round's final build weighed. So the next editor
-  // has ~45 bytes before gate 1 goes red, not 84, and the fix when it does is
-  // a RESTAMP of the pair below, never a raise. Same arithmetic on /coverage/:
-  // ~164 of its 323.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "152,086 / 42,420" },
+  // recorded)/2. At the 42,415 stamped below against a 42,500 ceiling that is
+  // 42,458 — about +43 gzip on what the fix-round-2 build weighed, half of the
+  // 85 bytes of headroom. So the next editor has ~43 bytes before gate 1 goes
+  // red, and the fix when it does is a RESTAMP of the pair below, never a
+  // raise. Same arithmetic on /coverage/: ~153 of its 305.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "152,075 / 42,415" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -544,7 +546,10 @@ export const PAGE_WEIGHT_BUDGET = [
   //   - §22a's third trim, "— the same files the pages themselves render
   //     from —" in the ScopeNote's first paragraph: −50 rendered characters.
   //     (Fix round 2 put a four-words-shorter form of that clause back: the
-  //     <h2> it was trimmed against claims recomputation, not provenance.)
+  //     <h2> it was trimmed against claims recomputation, not provenance. It
+  //     cost +88 raw and +18 gzip, measured against fix-round build 1 — which
+  //     is also this page's own rate for a short unique clause: 40 rendered
+  //     characters, ~0.45 gzip each.)
   //   MEASURED TOGETHER, because no build isolated them: 102,194 / 20,473 on
   //   the chain-D build → 99,736 / 20,431 on fix-round build 1 = −2,458 raw
   //   and −42 gzip for both edits. The dedupe is what moved the raw — it
@@ -554,11 +559,11 @@ export const PAGE_WEIGHT_BUDGET = [
   //   from before anyone budgets a dedupe for gzip headroom: duplication is a
   //   raw-weight problem and almost never a gzip one.
   //
-  // New pair, ~3.6% over raw and ~1.5% over the post-trim gzip measurement
+  // New pair, 3,676 raw and 305 gzip above the measurement stamped below
   // rather than a round-number guess. The gzip headroom is deliberately the
   // tighter of the two: this page grows a paragraph at a time and the next
   // sentence on it should have to argue for itself.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_500, maxGzip: 20_750, measured: "99,736 / 20,431" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_500, maxGzip: 20_750, measured: "99,824 / 20,445" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
