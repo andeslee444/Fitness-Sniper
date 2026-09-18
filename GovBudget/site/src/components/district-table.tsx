@@ -65,10 +65,15 @@ interface Props {
 
 export function DistrictTable({ districts }: Props) {
   // #51: a ranking by "total linkable dollars" is a leaderboard claim, and
-  // this DARPA-only, place-of-performance slice cannot support "which
-  // districts get the most defense money" (it is ~0.15% of all obligations
-  // recorded with a district — see the reconciliation line above). Default
-  // to browsing by district code instead; the money column stays sortable.
+  // this high-confidence-link, place-of-performance slice cannot support
+  // "which districts get the most defense money" (it is ~0.15% of all
+  // obligations recorded with a district — see the reconciliation line
+  // above). Default to browsing by district code instead; the money column
+  // stays sortable.
+  //
+  // It was called DARPA-only until 2026-09; the sidecars are now 92 Navy, 59
+  // Air Force and 22 Army against 14 DARPA, and gate 24 leg (p) recomputes
+  // that mix rather than trusting this comment.
   const [sortKey, setSortKey] = useState<SortKey>("pop_district");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [stateFilter, setStateFilter] = useState<string>("");
@@ -182,7 +187,7 @@ export function DistrictTable({ districts }: Props) {
         {(
           [
             ["program_count", "Programs"],
-            ["total_linkable_dollars", "DARPA $"],
+            ["total_linkable_dollars", "Linked $"],
           ] as [SortKey, string][]
         ).map(([key, label]) => (
           <button
@@ -264,12 +269,14 @@ export function DistrictTable({ districts }: Props) {
                 />
                 {/* #51: was "Linkable dollars" / "Linkable $" — a name that
                     implied "money linked to this district," full stop. It is
-                    a DARPA-only, place-of-performance slice (~0.15% of all
-                    obligations recorded with a district); the column name
-                    now says so. Attribution basis lives on the detail page. */}
+                    a high-confidence-link, place-of-performance slice (~0.15%
+                    of all obligations recorded with a district); the column
+                    name now says so. Attribution basis lives on the detail
+                    page. It was called DARPA-only until 2026-09 (see the
+                    sort-default note above for the measured org mix). */}
                 <SortHeader
-                  label="DARPA place-of-performance $"
-                  shortLabel="DARPA $"
+                  label="Linked place-of-performance $"
+                  shortLabel="Linked $"
                   colKey="total_linkable_dollars"
                   sortKey={sortKey}
                   sortDir={sortDir}

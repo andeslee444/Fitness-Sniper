@@ -1126,12 +1126,12 @@ export default function MethodologyPage() {
                   The follow-the-dollar view draws a budget line&apos;s path to
                   specific awards, recipient families, and districts. That link is
                   an inference: we render the flow only for the high-confidence
-                  crosswalk tier, whose evidence §4 grades. Today that covers{" "}
-                  {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs, concentrated in
-                  DARPA lines whose account structure makes matching reliable.
-                  Program pages outside the crosswalk say so in place of the flow
-                  — absence of a diagram means we could not defend the link, not
-                  that no money moved.
+                  crosswalk tier, whose evidence §4 grades. That covers{" "}
+                  {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs,
+                  spread across the service books; the tier is built from
+                  announcements naming a program and adjudicator-pinned account
+                  matches. Pages outside it say so in place of the flow: we
+                  could not defend the link, not that no money moved.
                 </p>
               </section>
 

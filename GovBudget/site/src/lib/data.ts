@@ -3284,6 +3284,31 @@ export function getFlowsCount(): number {
   return readdirSync(flowsDir).filter((f) => f.endsWith(".json")).length;
 }
 
+let _flowsOutsideBridge: number | null = null;
+
+/**
+ * Flow-sidecar programs the /flow/ bridge does NOT count — the exact reason
+ * /district/'s ratio and /flow/'s ratio are two questions rather than a
+ * contradiction.
+ *
+ * A program earns a sidecar when a high-confidence link's award records a
+ * place of performance; it enters the bridge when it ALSO carries FY2026
+ * request dollars. Derived from the two shipped artifacts, never a literal:
+ * the sidecar directory minus flow_chart.json's own bridge.programs keys.
+ * Memoized because flow_chart.json is ~600KB and several pages ask for this.
+ */
+export function getFlowsOutsideBridgeCount(): number {
+  if (_flowsOutsideBridge !== null) return _flowsOutsideBridge;
+  const flowsDir = join(jsonDir(), "flows");
+  if (!existsSync(flowsDir)) return (_flowsOutsideBridge = 0);
+  const pes = readdirSync(flowsDir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.slice(0, -".json".length));
+  const payload = readJson<FlowChartPayload>("flow_chart.json");
+  const bridged = new Set(payload.budget.bridge.programs.map((p) => p.pe_bli));
+  return (_flowsOutsideBridge = pes.filter((pe) => !bridged.has(pe)).length);
+}
+
 /** Total number of program pages (from programs.json length). */
 export function getProgramsCount(): number {
   return getPrograms().length;

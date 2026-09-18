@@ -3,6 +3,10 @@ import { describe, it, expect, vi } from "vitest";
 // Hermetic mock — real data sidecars must not be read in unit tests.
 vi.mock("@/lib/data", () => ({
   getFlowsCount: () => 17,
+  // 4 of the mocked 17 sidecars carry no FY2026 request dollars — the
+  // registry (lib/corpus getCrosswalkCounts) reads this, and coverage.ts now
+  // reads the registry.
+  getFlowsOutsideBridgeCount: () => 4,
   getProgramsCount: () => 420,
   // Backlog #35: the detail-grade tier is a strict SUBSET of the index, and
   // the mock keeps them different so a note that reaches for the index while

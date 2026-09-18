@@ -53,7 +53,7 @@ export default async function DistrictDetailPage({ params }: Props) {
   const { district } = await params;
   const detail = getDistrictDetail(district);
 
-  // #51: the attribution basis + the sitewide DARPA-only ratio, hoisted from
+  // #51: the attribution basis + the sitewide linked-slice ratio, hoisted from
   // the /district/ index onto the detail page — this is what search lands
   // on, so the context that makes "$209.3M" honest cannot live only one
   // click upstream. Sitewide, not per-district: the ratio describes how
@@ -180,20 +180,19 @@ export default async function DistrictDetailPage({ params }: Props) {
               district coverage means here, which is a credibility asset. Calm
               register, and after the heading. */}
           <ScopeNote className="mt-3" label="Coverage note">
-            {/* The old wording ("only high-confidence award links from the
-                DARPA crosswalk") was circular: the reader is looking at a
-                page where every program is a DARPA line and is told the
-                reason is "the DARPA crosswalk" — a phrase that presupposes
-                the answer. It now says WHY the crosswalk only resolves for
-                DARPA, which is a methodology limit and not a preference. */}
+            {/* Until 2026-09 this explained the gap by one organization's
+                account structure, on a page whose own programs are 92 Navy /
+                59 Air Force / 22 Army against 14 DARPA sitewide. It names the
+                mechanism now — gate 24 leg (p3) recomputes that mix. */}
             <p>
               {orgPhrase}, and that is a limit of the method rather than a
-              fact about this district. Linking a budget line to an award
-              needs the award&rsquo;s account code to identify one program;
-              DARPA&rsquo;s account structure does that, while the services
-              book many programs under one account, so their awards cannot be
-              attributed to a single line without guessing. We do not guess,
-              so those lines are absent here rather than approximate.
+              fact about this district. An award record carries a Treasury
+              account, and one account funds dozens to hundreds of program
+              elements — so an account code alone cannot say which line paid
+              for a contract. A link is published only where something firmer
+              says so: a contract announcement that names the program, or an
+              account plus program-specific tokens. Everything else is absent
+              here rather than approximated.
             </p>
             <p className="mt-2">
               Aggregate totals are derived from USAspending award transaction
@@ -221,8 +220,9 @@ export default async function DistrictDetailPage({ params }: Props) {
                   ? formatAmountNoCurrency(districtIndex.geo_grand_total, "USD")
                   : "—"}{" "}
                 in award obligations recorded across every U.S. district.
-                Ranking districts by this figure would rank them by a
-                DARPA-only slice, not by total defense spending — see{" "}
+                Ranking districts by this figure would rank them by the
+                high-confidence-linked slice, not by total defense spending —
+                see{" "}
                 <Link href="/district/" className="underline hover:text-foreground">
                   the district index
                 </Link>{" "}

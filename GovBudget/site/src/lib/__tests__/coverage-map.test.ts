@@ -22,6 +22,9 @@ const MOCK = {
   remainder: { workbookOnly: 190, decadeOnly: 80, unclassified: [] },
   dossiers: 51,
   flows: 19,
+  // 3 of the mocked 19 sidecars are outside the bridge — kept unequal to
+  // every other MOCK value so a row reaching for the wrong one fails here.
+  flowsOutsideBridge: 3,
   lineage: 47,
   companies: 199,
   companiesWithAwards: 21,
@@ -37,6 +40,7 @@ vi.mock("@/lib/data", () => ({
   getPagesWithoutDetail: () => MOCK.remainder,
   getDossierCount: () => MOCK.dossiers,
   getFlowsCount: () => MOCK.flows,
+  getFlowsOutsideBridgeCount: () => MOCK.flowsOutsideBridge,
   getLineagePrograms: () => MOCK.lineage,
   getCompaniesCount: () => MOCK.companies,
   getCompaniesWithAwardsCount: () => MOCK.companiesWithAwards,

@@ -51,13 +51,13 @@ import {
   getDossierCount,
   getFilingsCount,
   getFlowChartMeta,
-  getFlowsCount,
   getLineagePrograms,
   getPagesWithoutDetail,
   getProgramPagesCount,
   getProgramsCount,
   getSiteMeta,
 } from "@/lib/data";
+import { getCrosswalkCounts } from "@/lib/corpus";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
 
@@ -161,8 +161,22 @@ export function getCoverageMap(): CoverageMapRow[] {
     );
   }
   const editions = getDecadeEditions();
-  const bridge = getFlowChartMeta().bridge;
   const budgetFy = getFlowChartMeta().budgetFy;
+  // ONE declaration of what "crosswalked" counts — lib/corpus
+  // getCrosswalkCounts, which reads flow_chart.json's own bridge band and the
+  // shipped sidecar directory. The `flows` and `bridge` rows below state two
+  // DIFFERENT ratios out of the same registry, and /coverage/#crosswalk
+  // renders the list that says how they differ. Gate 24 leg (p) binds all of
+  // it. `pctNotCrosswalked` still comes off the meta: it is a share of
+  // dollars, not a count of program elements.
+  const crosswalk = getCrosswalkCounts();
+  const crosswalkValue = (id: string) =>
+    crosswalk.find((c) => c.id === id)!.value;
+  const pctNotCrosswalked = getFlowChartMeta().bridge.pctNotCrosswalked;
+  const linkable = crosswalkValue("district-linkable");
+  const bridged = crosswalkValue("bridged-request");
+  const universe = crosswalkValue("link-universe");
+  const highConfidence = crosswalkValue("high-confidence-links");
   const awardWindow = getSiteMeta().award_fy_range;
   const feeds = getFeedInventory();
 
@@ -340,31 +354,34 @@ export function getCoverageMap(): CoverageMapRow[] {
       id: "flows",
       label: "Follow-the-dollar",
       href: "/flow/",
-      numerator: getFlowsCount(),
+      numerator: linkable,
       denominator: programs,
-      covered: `${formatCount(getFlowsCount())} of ${formatCount(programs)} programs have a follow-the-dollar view.`,
+      covered: `${formatCount(linkable)} of ${formatCount(programs)} programs have a follow-the-dollar view.`,
       derivation: "flow sidecars over programs.json rows.",
+      // Trimmed 2026-09-12 to pay for the crosswalk-count list this page now
+      // publishes (#crosswalk): that list states what one unit of this count
+      // is, so the blocker no longer has to. Ceilings unchanged.
       blocker:
-        "The budget→award crosswalk, one row below. A program earns this " +
-        "view only where its awards can be tied to it by something firmer than " +
-        "an account code, and for almost every program they cannot be.",
+        "The budget→award crosswalk, one row below: a program earns this " +
+        "view only where its awards tie to it by more than an account code, " +
+        "and almost none do.",
       targetKind: "none",
       target:
-        "No dated target — this number moves when the crosswalk moves, and the " +
-        "crosswalk is a methodology limit rather than a queue.",
+        "No dated target — this number moves when the crosswalk moves, which " +
+        "is a methodology limit rather than a queue.",
     },
     {
       id: "bridge",
       label: "Budget→award crosswalk",
       href: "/flow/#bridge",
-      numerator: bridge.crosswalkedPeCount,
-      denominator: bridge.universePeCount,
+      numerator: bridged,
+      denominator: universe,
       covered:
-        `${formatCount(bridge.crosswalkedPeCount)} of ` +
-        `${formatCount(bridge.universePeCount)} crosswalked program elements ` +
+        `${formatCount(bridged)} of ` +
+        `${formatCount(universe)} crosswalked program elements ` +
         `carry FY${budgetFy} request dollars ` +
-        `(${formatCount(bridge.highConfidencePeCount)} at high confidence) — ` +
-        `${bridge.pctNotCrosswalked}% of the FY${budgetFy} request is not bridged to an award.`,
+        `(${formatCount(highConfidence)} at high confidence) — ` +
+        `${pctNotCrosswalked}% of the FY${budgetFy} request is not bridged to an award.`,
       derivation:
         "the bridge band of flow_chart.json: crosswalked and universe PE counts, and the unbridged share of the request.",
       blocker:

@@ -17,9 +17,9 @@ import "server-only";
  */
 
 import { formatCount } from "@/lib/format";
+import { getCrosswalkCounts } from "@/lib/corpus";
 import {
   getDetailGradeCount,
-  getFlowsCount,
   getProgramsCount,
   getPagesWithoutDetail,
   getProgramPagesCount,
@@ -67,14 +67,29 @@ export interface Coverage {
   linkText: string;
 }
 
+/**
+ * One value out of the crosswalk-count registry (lib/corpus). Throws through
+ * the registry's own invariants rather than falling back to a literal: a
+ * coverage note that silently states a stale count is the defect leg (p)
+ * exists to close.
+ */
+function crosswalkValue(id: string): number {
+  return getCrosswalkCounts().find((c) => c.id === id)!.value;
+}
+
 export function getCoverage(id: CoverageId): Coverage {
   switch (id) {
     case "follow-the-dollar": {
-      const num = formatCount(getFlowsCount());
+      // ONE declaration of what "crosswalked" counts (lib/corpus
+      // getCrosswalkCounts) — /flow/ publishes a different, equally true
+      // ratio, and gate 24 leg (p) is what keeps the two from drifting into
+      // an apparent contradiction again.
+      const linkable = crosswalkValue("district-linkable");
+      const num = formatCount(linkable);
       const den = formatCount(getProgramsCount());
       return {
         id,
-        numerator: getFlowsCount(),
+        numerator: linkable,
         denominator: getProgramsCount(),
         note: `Follow-the-dollar covers ${num} of ${den} programs — only high-confidence budget→award links are shown.`,
         emptyNote: `No follow-the-dollar view — this program's awards haven't been crosswalked at high confidence (flows cover ${num} of ${den} programs).`,
@@ -197,12 +212,18 @@ export function getCoverage(id: CoverageId): Coverage {
       // the payload, and the G9 leg-e contract requires the rendered note to
       // state the not-yet-crosswalked gap.
       const b = getFlowChartMeta().bridge;
+      // Same registry as follow-the-dollar above: the two ratios this module
+      // publishes are DIFFERENT questions, and they now come from one place
+      // that says so. pctNotCrosswalked stays on the meta — it is a share of
+      // dollars, not a count of program elements.
+      const bridged = crosswalkValue("bridged-request");
+      const universe = crosswalkValue("link-universe");
       return {
         id,
-        numerator: b.crosswalkedPeCount,
-        denominator: b.universePeCount,
+        numerator: bridged,
+        denominator: universe,
         note:
-          `Budget→contractor links are drawn for ${formatCount(b.crosswalkedPeCount)} of ${formatCount(b.universePeCount)} crosswalked PEs — ` +
+          `Budget→contractor links are drawn for ${formatCount(bridged)} of ${formatCount(universe)} crosswalked PEs — ` +
           `${b.pctNotCrosswalked}% of the FY2026 request is not yet crosswalked: an honest gap, not an absence of contractors.`,
         emptyNote: null,
         // Anchor id is "coverage-flowdown" (the section covers the whole

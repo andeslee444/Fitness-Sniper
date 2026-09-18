@@ -9,7 +9,7 @@ import {
   CROSSWALK_LIMIT_ID,
   MAP_REVIEWED_ON,
 } from "@/lib/coverage-map";
-import { getCorpusCounts } from "@/lib/corpus";
+import { getCorpusCounts, getCrosswalkCounts } from "@/lib/corpus";
 import { coreOgImages } from "@/lib/og";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -63,6 +63,7 @@ export default function CoveragePage() {
   const rows = getCoverageMap();
   const crosswalk = rows.find((r) => r.id === CROSSWALK_LIMIT_ID)!;
   const counts = getCorpusCounts();
+  const crosswalkCounts = getCrosswalkCounts();
   const dated = rows.filter((r) => r.targetKind === "dated").length;
 
   return (
@@ -251,9 +252,9 @@ export default function CoveragePage() {
               The budget→award crosswalk is a methodology limit, not a backlog item
             </h2>
             <p className="leading-7 text-muted-foreground">
-              This is the site&apos;s largest and most visible gap, and it is worth
-              being precise about what kind of gap it is. It is not work we have
-              not got to. It is a limit of what the source records contain.
+              This is the site&apos;s largest gap, and what kind of gap it is
+              matters: not work we have not got to, but a limit of what the
+              source records contain.
             </p>
             <p className="mt-3 leading-7 text-muted-foreground">
               {crosswalk.blocker}
@@ -274,6 +275,35 @@ export default function CoveragePage() {
             <p className="mt-3 leading-7 text-muted-foreground">
               {crosswalk.target}
             </p>
+            {/* PM-S3 leftover: "crosswalked" is published with two
+                denominators — the bridge's and the district view's — and both
+                are true. They are not nested, so each is stated with what one
+                unit of it is. Same list form, same classes and same
+                data-measure as #corpus-counts above (the 10.8KB table lesson,
+                and the repeated attribute string costs almost nothing gzipped). */}
+            <p className="mt-3 leading-7 text-muted-foreground">
+              &ldquo;Crosswalked&rdquo; is published with two denominators, and
+              they are not nested — so each is stated with what one unit of it
+              is:
+            </p>
+            <ul
+              data-crosswalk-counts
+              data-measure="prose-box"
+              className="mt-3 divide-y divide-border rounded-lg border border-border text-sm text-muted-foreground [&>li]:px-4 [&>li]:py-3 [&_strong]:tabular-nums [&_strong]:text-foreground"
+            >
+              {crosswalkCounts.map((c) => (
+                <li key={c.id} data-crosswalk-count={c.id}>
+                  {/* ONE text child after the <strong>, not four: React emits a
+                      <!-- --> separator between adjacent text nodes, and the RSC
+                      payload carries each child again. On a near-ceiling page
+                      that framing costs ~300 raw bytes for no reader. */}
+                  <strong data-crosswalk-value>
+                    {c.value.toLocaleString("en-US")}
+                  </strong>
+                  {` on ${c.where}. ${c.counts}`}
+                </li>
+              ))}
+            </ul>
           </section>
 
           {/* ── What this page is not ────────────────────────────────────────── */}

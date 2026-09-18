@@ -22,6 +22,9 @@ const state = {
     corpus_scope:
       "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project detail",
   } as Record<string, unknown>,
+  flows: 200,
+  flowsOutsideBridge: 34,
+  bridge: { universePeCount: 444, crosswalkedPeCount: 384, highConfidencePeCount: 240 },
 };
 
 vi.mock("@/lib/data", () => ({
@@ -29,9 +32,17 @@ vi.mock("@/lib/data", () => ({
   getDetailGradeCount: () => state.detailGrade,
   getProgramPagesCount: () => state.programPages,
   getSiteMeta: () => state.meta,
+  getFlowsCount: () => state.flows,
+  getFlowsOutsideBridgeCount: () => state.flowsOutsideBridge,
+  getFlowChartMeta: () => ({ bridge: state.bridge }),
 }));
 
-import { getCorpus, corpusStatement } from "@/lib/corpus";
+import {
+  getCorpus,
+  corpusStatement,
+  getCrosswalkCounts,
+  CROSSWALK_COUNT_IDS,
+} from "@/lib/corpus";
 
 const SCOPE =
   "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project detail";
@@ -44,6 +55,9 @@ function reset() {
     counts: { agencies: 23, citations: 1, companies: 200, programs: 1741, program_pages: 1993 },
     corpus_scope: SCOPE,
   };
+  state.flows = 200;
+  state.flowsOutsideBridge = 34;
+  state.bridge = { universePeCount: 444, crosswalkedPeCount: 384, highConfidencePeCount: 240 };
 }
 
 beforeEach(reset);
@@ -110,5 +124,48 @@ describe("getCorpus", () => {
   it("throws when the export predates corpus_scope rather than inventing wording", () => {
     state.meta = { counts: { program_pages: 1993 } };
     expect(() => getCorpus()).toThrow(/no corpus_scope/);
+  });
+});
+
+describe("getCrosswalkCounts", () => {
+  it("declares every crosswalk count the site publishes, each with what one unit is", () => {
+    const rows = getCrosswalkCounts();
+    expect(rows.map((r) => r.id)).toEqual([...CROSSWALK_COUNT_IDS]);
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r.value]));
+    expect(byId["link-universe"]).toBe(444);
+    expect(byId["bridged-request"]).toBe(384);
+    expect(byId["high-confidence-links"]).toBe(240);
+    expect(byId["district-linkable"]).toBe(200);
+    expect(byId["district-linkable-unbridged"]).toBe(34);
+    for (const r of rows) expect(r.counts.length).toBeGreaterThan(30);
+  });
+
+  it("recomputes on every call — a mutated fixture must be seen", () => {
+    expect(getCrosswalkCounts().find((r) => r.id === "district-linkable")!.value).toBe(200);
+    state.flows = 201;
+    expect(getCrosswalkCounts().find((r) => r.id === "district-linkable")!.value).toBe(201);
+  });
+
+  it("throws when the bridged count exceeds the universe it is drawn from", () => {
+    state.bridge = { universePeCount: 380, crosswalkedPeCount: 384, highConfidencePeCount: 240 };
+    expect(() => getCrosswalkCounts()).toThrow(/bridged-request/);
+  });
+
+  it("throws when the high-confidence tier exceeds the bridged set", () => {
+    state.bridge = { universePeCount: 444, crosswalkedPeCount: 240, highConfidencePeCount: 384 };
+    expect(() => getCrosswalkCounts()).toThrow(/high-confidence-links/);
+  });
+
+  it("does NOT compare district-linkable with high-confidence-links", () => {
+    // 34 sidecar programs carry no FY2026 request dollars, so the district
+    // tier is not a subset of the bridged high tier (240). A gate that
+    // asserted it would be asserting a coincidence.
+    state.flows = 300;
+    expect(() => getCrosswalkCounts()).not.toThrow();
+  });
+
+  it("throws when district-linkable exceeds the whole link universe", () => {
+    state.flows = 500;
+    expect(() => getCrosswalkCounts()).toThrow(/district-linkable/);
   });
 });

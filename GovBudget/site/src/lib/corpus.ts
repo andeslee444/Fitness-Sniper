@@ -36,6 +36,9 @@ import "server-only";
 import {
   getDatasetManifest,
   getDetailGradeCount,
+  getFlowChartMeta,
+  getFlowsCount,
+  getFlowsOutsideBridgeCount,
   getProgramPagesCount,
   getProgramSitemapSlugs,
   getPrograms,
@@ -236,4 +239,121 @@ export function getCorpusCounts(): CorpusCount[] {
     }
   }
   return _corpusCounts;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The crosswalk-count registry — PM-S3 leftover (ROADMAP.md:34)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The site publishes "crosswalked" TWICE, with different denominators and
+// different questions behind them, and until now nothing said so:
+//
+//   link-universe                 program elements with at least one published
+//                                 budget→award link, at any tier
+//   bridged-request               of those, the ones that also carry FY2026
+//                                 request dollars (the /flow/ bridge)
+//   high-confidence-links         of those, the ones with a high-confidence link
+//   district-linkable             elements with a follow-the-dollar view (a
+//                                 high-confidence link whose award records a
+//                                 place of performance)
+//   district-linkable-unbridged   of those, the ones NOT in the bridged set
+//
+// The last row is the point. The two published ratios are not nested: a reader
+// who saw "384 of 444" on /flow/ and "200 of 1,938" on /district/ had no way
+// to tell an inconsistency from a different question. /coverage/#crosswalk
+// renders the list; gate 24 leg (p) recomputes all five from the shipped
+// artifacts and rejects any crosswalk-shaped ratio, on the pages that publish
+// one, which is not a declared value.
+//
+// EVERY VALUE IS READ, NEVER RE-DERIVED. The first three come straight off
+// flow_chart.json's own bridge band (the exporter publishes them); the last
+// two come off the shipped sidecar directory and that same band. Nothing here
+// recomputes a figure the export already states — which is also why the
+// link-LEVEL census (how many graded links each evidence path publishes) is
+// NOT duplicated here: site_meta.link_adjudication carries it, /methodology/
+// renders it, and gate 24 leg (o) binds it slot for slot.
+//
+// NOT memoized, deliberately: getCorpusCounts() above caches in a module local
+// and is therefore untestable across fixtures. The expensive read
+// (flow_chart.json) is memoized in lib/data instead.
+
+export interface CrosswalkCount {
+  /** Stable id — the gate's key and the row's DOM hook. */
+  id: string;
+  value: number;
+  /** Where the number is published. */
+  where: string;
+  /** What ONE unit of this count is. */
+  counts: string;
+}
+
+export const CROSSWALK_COUNT_IDS = [
+  "link-universe",
+  "bridged-request",
+  "high-confidence-links",
+  "district-linkable",
+  "district-linkable-unbridged",
+] as const;
+
+export function getCrosswalkCounts(): CrosswalkCount[] {
+  const b = getFlowChartMeta().bridge;
+  const rows: CrosswalkCount[] = [
+    {
+      id: "link-universe",
+      value: b.universePeCount,
+      where: "the /flow/ bridge, and Coverage",
+      counts:
+        "Program elements with a published budget→award link, at any tier.",
+    },
+    {
+      id: "bridged-request",
+      value: b.crosswalkedPeCount,
+      where: "the /flow/ bridge band",
+      counts:
+        "Of those, the ones also carrying FY2026 request dollars — all the river can draw.",
+    },
+    {
+      id: "high-confidence-links",
+      value: b.highConfidencePeCount,
+      where: "the /flow/ bridge note",
+      counts:
+        "Of the bridged, the ones with a high-confidence link.",
+    },
+    {
+      id: "district-linkable",
+      value: getFlowsCount(),
+      where: "Districts, Coverage, and program pages",
+      counts:
+        "Elements with a follow-the-dollar view: a high-confidence link naming a place of performance.",
+    },
+    {
+      id: "district-linkable-unbridged",
+      value: getFlowsOutsideBridgeCount(),
+      where: "this list",
+      counts:
+        "Of those, the ones with no FY2026 request dollars — why the two ratios differ.",
+    },
+  ];
+  const by = (id: string) => rows.find((r) => r.id === id)!;
+  // Only the containments that are true BY CONSTRUCTION are asserted.
+  // district-linkable vs high-confidence-links is deliberately NOT one of
+  // them: the two tiers differ in both directions (place of performance vs
+  // FY2026 request dollars), and the unbridged sidecars prove it.
+  const nested: [string, string][] = [
+    ["bridged-request", "link-universe"],
+    ["high-confidence-links", "bridged-request"],
+    ["district-linkable", "link-universe"],
+    ["district-linkable-unbridged", "district-linkable"],
+  ];
+  for (const [inner, outer] of nested) {
+    if (by(inner).value > by(outer).value) {
+      throw new Error(
+        `[govbudget/corpus] ${inner} (${by(inner).value}) exceeds ${outer} ` +
+          `(${by(outer).value}). ${inner} is a subset of ${outer} by ` +
+          `construction; one of the derivations no longer counts what its ` +
+          `description says.`,
+      );
+    }
+  }
+  return rows;
 }
