@@ -81,44 +81,27 @@ export default function CoveragePage() {
             stands — including, in plain words, why no row here carries a date.
           </p>
 
-          <ScopeNote className="mt-5" label={null}>
-            <h2 className="mb-2 text-lg font-semibold text-foreground">
-              Every number on this page is recomputed at build time
-            </h2>
-            <p className="text-sm leading-7">
-              Nothing here is typed by hand. Each coverage figure is read from the
-              data files this build shipped — the same files the pages themselves
-              render from — and a build-time gate recomputes all{" "}
-              {rows.length} rows independently and fails the build if any rendered
-              figure disagrees with its source. A coverage page carrying a
-              stale literal would refute its own argument, so this one is not
-              allowed to carry any. The derivation for each row is printed beside
-              it.
-            </p>
-            <p className="mt-3 text-sm leading-7">
-              One figure is deliberately <em>absent</em> for the same reason: the
-              share of award dollars whose recipient resolves to a corporate family.
-              That is a warehouse query rather than a shipped file, so it cannot be
-              recomputed at build time — and an unverifiable number on this page
-              would be worse than a missing one.
-            </p>
-          </ScopeNote>
+          {/* The "recomputed at build time" panel used to sit here, and the
+              dated-target paragraph sat under the "Feature by feature"
+              heading. Both qualify the map table, so 21d moved both directly
+              under it; nothing was cut or reworded. The lede above and the
+              <h2> stay — they introduce the table rather than qualifying it.
+              Byte note: this is a move, not an addition, on a page whose
+              ceiling has ~430 gzip of headroom and is never raised. */}
 
           {/* ── The map ─────────────────────────────────────────────────────── */}
-          <section className="mt-10" aria-labelledby="map-heading">
+          {/* [data-first-data] marks the block gate 16's index-fold leg
+              measures. It measures the first ROW inside it, not the block's
+              own top: a table's top is its header, and a reader who can see
+              only a header has not seen data. */}
+          <section
+            data-first-data
+            className="mt-10"
+            aria-labelledby="map-heading"
+          >
             <h2 id="map-heading" className="mb-3 text-xl font-semibold">
               Feature by feature
             </h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {dated === 0
-                ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names the work that is planned and says the date is pending a roadmap decision. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
-                : `${dated} of the ${rows.length} rows carry a dated target; the rest say why they do not, and a date that slips is moved here rather than deleted.`}{" "}
-              Every figure above is recomputed at build time. The wording around
-              them — blockers, targets, the reasons a row carries no date — is
-              written by hand and was last reviewed on{" "}
-              <time dateTime={MAP_REVIEWED_ON}>{MAP_REVIEWED_ON}</time>.
-            </p>
-
             {/* MOBILE: below `sm` each row becomes a card (the /data/ treatment),
                 so the Blocker and Target columns — the whole point of the page —
                 stay on screen at 390px instead of scrolling off behind the
@@ -204,6 +187,39 @@ export default function CoveragePage() {
               </table>
             </div>
           </section>
+
+          <p className="mt-4 text-sm text-muted-foreground">
+            {dated === 0
+              ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names the work that is planned and says the date is pending a roadmap decision. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
+              : `${dated} of the ${rows.length} rows carry a dated target; the rest say why they do not, and a date that slips is moved here rather than deleted.`}{" "}
+            Every figure above is recomputed at build time. The wording around
+            them — blockers, targets, the reasons a row carries no date — is
+            written by hand and was last reviewed on{" "}
+            <time dateTime={MAP_REVIEWED_ON}>{MAP_REVIEWED_ON}</time>.
+          </p>
+
+          <ScopeNote className="mt-6" label={null}>
+            <h2 className="mb-2 text-lg font-semibold text-foreground">
+              Every number on this page is recomputed at build time
+            </h2>
+            <p className="text-sm leading-7">
+              Nothing here is typed by hand. Each coverage figure is read from the
+              data files this build shipped — the same files the pages themselves
+              render from — and a build-time gate recomputes all{" "}
+              {rows.length} rows independently and fails the build if any rendered
+              figure disagrees with its source. A coverage page carrying a
+              stale literal would refute its own argument, so this one is not
+              allowed to carry any. The derivation for each row is printed beside
+              it.
+            </p>
+            <p className="mt-3 text-sm leading-7">
+              One figure is deliberately <em>absent</em> for the same reason: the
+              share of award dollars whose recipient resolves to a corporate family.
+              That is a warehouse query rather than a shipped file, so it cannot be
+              recomputed at build time — and an unverifiable number on this page
+              would be worse than a missing one.
+            </p>
+          </ScopeNote>
 
           {/* ── How the corpus is counted (tri-persona Wave 4, item 4) ──────────
               Five true numbers, five denominators, and until now nothing that

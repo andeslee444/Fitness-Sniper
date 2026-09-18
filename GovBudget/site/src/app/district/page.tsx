@@ -83,37 +83,21 @@ export default function DistrictIndexPage() {
               How the crosswalk counts differ →
             </Link>
           </p>
-          {/* Scope note — G2 contract (data-coverage="districts") */}
-          <CoverageNote id="districts" className="mb-3" />
-          {/* §P2-6: scope disclosure, not a warning. Same words, calm
-              register — the amber is reserved for caution about a number. */}
-          <ScopeNote className="mb-4" label="Coverage note">
-            {/* The mechanism, not an organization. This said the linkage was
-                a "DARPA crosswalk" until 2026-09-18, which the shipped flow
-                sidecars contradict (92 Navy / 59 Air Force / 22 Army against
-                14 DARPA); gate 24 leg (p3) recomputes that mix rather than
-                trusting this comment. The tier is NOT described as
-                hand-adjudicated: 708 of the 768 links published at high come
-                from the announcement path, which carries no per-link
-                adjudication (ROADMAP #109). */}
-            <p>
-              District data reflects only high-confidence award crosswalk
-              links. A budget line earns one only where the award record says
-              more than an account code: a contract announcement that names the
-              program, or an account plus program-specific tokens.{" "}
-              {_unlinkedCount} of {_programsCount} program elements have no
-              district-level linkage. That is a limit of what the award records
-              contain — one appropriation account funds dozens to hundreds of
-              program elements — and not a queue position.
-            </p>
-          </ScopeNote>
+          {/* The coverage note, the scope note and the reconciliation
+              paragraph used to sit here, between the heading and the table.
+              21d moved all three directly under <DistrictTable>, which is what
+              they qualify; nothing was cut, and the one reworded clause is the
+              reconciliation paragraph's pointer at "the table below", which
+              the move would have made false (this page's own round-1 ruling:
+              named, not placed). The stat cards stay — they are data. */}
           {/* The stat row, reconciled.
               Two figures ~457× apart sat side by side with nothing relating
               them, and "all-district" read as "the 106 districts shown" when
               it means every U.S. district in the award data. The '$' was also
               missing from the middle card — on the page whose §P1-6 fix was a
-              formatter. Each card now states its universe; the reconciliation
-              line below states the relationship in one sentence. */}
+              formatter. Each card now states its universe; the
+              reconciliation paragraph under the table states the relationship
+              in one sentence. */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm mb-2">
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums">
@@ -177,47 +161,78 @@ export default function DistrictIndexPage() {
               </div>
             )}
           </div>
-          {index.geo_grand_total !== null && (
-            <p
-              data-district-reconciliation
-              className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
-            >
-              <strong className="text-foreground">
-                How these two dollar figures relate:
-              </strong>{" "}
-              {/* Round-1 judging: this said "right-hand" and "middle", which
-                  is only true at desktop — below `sm` the three cards restack
-                  2-then-1, putting the grand total bottom-left and the
-                  linkable subtotal top-right. Both pointers were wrong on the
-                  page's most trust-critical paragraph. Named, not placed. */}
-              the{" "}
-              <em className="not-italic font-medium text-foreground">
-                every U.S. district
-              </em>{" "}
-              total is all defense award obligations recorded with a
-              congressional district over the period. The{" "}
-              <em className="not-italic font-medium text-foreground">
-                linkable to a budget program
-              </em>{" "}
-              figure is the small slice of it we can tie back to a specific
-              budget program through the crosswalk — {_flowsCount} of{" "}
-              {_programsCount} programs — so it is a subset of the same
-              universe, roughly{" "}
-              {(
-                (totalLinkable / (index.geo_grand_total || 1)) *
-                100
-              ).toFixed(2)}
-              % of it, not a competing measurement of it. The gap is coverage,
-              not disagreement. Only the every-U.S.-district figure is
-              fact-backed
-              today: the district count and the linkable subtotal are computed
-              over the rows in the table below, each of which carries its own
-              citation.
-            </p>
-          )}
         </div>
 
-        <DistrictTable districts={index.districts} />
+        {/* [data-first-data] marks the block gate 16's index-fold leg measures.
+            It measures the first ROW inside it, not the block's own top: a
+            table's top is its header, and a reader who can see only a header
+            has not seen data. */}
+        <div data-first-data>
+          <DistrictTable districts={index.districts} />
+        </div>
+
+        {/* Scope note — G2 contract (data-coverage="districts") */}
+        <CoverageNote id="districts" className="mt-6 mb-3" />
+        {/* §P2-6: scope disclosure, not a warning. Same words, calm
+            register — the amber is reserved for caution about a number. */}
+        <ScopeNote className="mb-4" label="Coverage note">
+          {/* The mechanism, not an organization. This said the linkage was
+              a "DARPA crosswalk" until 2026-09-18, which the shipped flow
+              sidecars contradict (92 Navy / 59 Air Force / 22 Army against
+              14 DARPA); gate 24 leg (p3) recomputes that mix rather than
+              trusting this comment. The tier is NOT described as
+              hand-adjudicated: 708 of the 768 links published at high come
+              from the announcement path, which carries no per-link
+              adjudication (ROADMAP #109). */}
+          <p>
+            District data reflects only high-confidence award crosswalk
+            links. A budget line earns one only where the award record says
+            more than an account code: a contract announcement that names the
+            program, or an account plus program-specific tokens.{" "}
+            {_unlinkedCount} of {_programsCount} program elements have no
+            district-level linkage. That is a limit of what the award records
+            contain — one appropriation account funds dozens to hundreds of
+            program elements — and not a queue position.
+          </p>
+        </ScopeNote>
+        {index.geo_grand_total !== null && (
+          <p
+            data-district-reconciliation
+            className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+          >
+            <strong className="text-foreground">
+              How these two dollar figures relate:
+            </strong>{" "}
+            {/* Round-1 judging: this said "right-hand" and "middle", which
+                is only true at desktop — below `sm` the three cards restack
+                2-then-1, putting the grand total bottom-left and the
+                linkable subtotal top-right. Both pointers were wrong on the
+                page's most trust-critical paragraph. Named, not placed. */}
+            the{" "}
+            <em className="not-italic font-medium text-foreground">
+              every U.S. district
+            </em>{" "}
+            total is all defense award obligations recorded with a
+            congressional district over the period. The{" "}
+            <em className="not-italic font-medium text-foreground">
+              linkable to a budget program
+            </em>{" "}
+            figure is the small slice of it we can tie back to a specific
+            budget program through the crosswalk — {_flowsCount} of{" "}
+            {_programsCount} programs — so it is a subset of the same
+            universe, roughly{" "}
+            {(
+              (totalLinkable / (index.geo_grand_total || 1)) *
+              100
+            ).toFixed(2)}
+            % of it, not a competing measurement of it. The gap is coverage,
+            not disagreement. Only the every-U.S.-district figure is
+            fact-backed
+            today: the district count and the linkable subtotal are computed
+            over the rows of the district table, each of which carries its own
+            citation.
+          </p>
+        )}
 
         <p className="mt-4 text-xs text-muted-foreground">
           Dollars are from high-confidence USAspending award links only.

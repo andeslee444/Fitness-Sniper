@@ -18,7 +18,6 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CompaniesTable } from "@/components/companies-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { FyRange } from "@/components/fy-range";
-import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
 
 // §P1-6: the description used to say "FY2017 onward" while the body said
 // "FY2017–FY2025" and the data ran through FY2026. Derived, so it cannot rot.
@@ -102,20 +101,50 @@ export default function CompaniesPage() {
           federal obligations — <FyRange />. Figures are in raw USD and
           aggregate the whole period, not a single year.
         </p>
-        {/* MOBILE FOLD (round-3 judging, all three judges). Below `sm` the
-            merge note and the confidence-method note put ~24 lines of caveat
-            prose between the heading and the first company — the first row was
-            more than two screens down. The words are the page's credibility,
-            so they are collapsed, not cut: same <CollapsibleBelowSm> idiom
-            /years/ already uses, children always in the DOM so the gates that
-            read [data-merge-note] and [data-confidence-method] still see every
-            word, and always open at `sm` and above. */}
-        <CollapsibleBelowSm
-          summary="How these families are merged and scored"
-          testId="companies-preamble"
-          className="mb-2"
-          bodyClassName="space-y-2"
-        >
+        {/* The merge note and the confidence method used to sit here; 21d
+            moved both below the table they qualify (see under <CompaniesTable>). */}
+      </div>
+      {/* The money column's period + universe, restated in frame with the
+          figures (fix round, judge 2). Same derived range token as the intro
+          — <FyRange /> everywhere, never an authored year.
+
+          [data-first-data] marks the block gate 16's index-fold leg measures.
+          It measures the first ROW inside it, not the block's own top: a
+          table's top is its header, and a reader who can see only a header
+          has not seen data. */}
+      <div data-first-data>
+        <CompaniesTable
+          rows={rows}
+          showConfidence={showConfidence}
+          columnScope={
+            <>
+              Every figure in the obligations column is USAspending award
+              obligations in raw USD, summed across the whole period{" "}
+              <FyRange separator="— " /> — not a single year, and not budget
+              authority: award obligations and the budget figures elsewhere on
+              this site are different universes.
+            </>
+          }
+          columnScopeShort={
+            <>
+              USAspending awards <FyRange separator="· " />
+            </>
+          }
+        />
+      </div>
+      {/* MOBILE FOLD (round-3 judging, all three judges) and then 21d. Below
+          `sm` the merge note and the confidence-method note put ~24 lines of
+          caveat prose between the heading and the first company — the first
+          row was more than two screens down — so they were collapsed behind a
+          <CollapsibleBelowSm> line. Round-3's own ruling is stronger and makes
+          the collapse unnecessary: the caveats qualify the table, so they go
+          UNDER it, open at every width. Nothing is cut or reworded;
+          [data-merge-note], [data-confidence-method] and the
+          companies-preamble hook all survive on the wrapper. */}
+      <div
+        data-testid="companies-preamble"
+        className="mt-6 space-y-2"
+      >
         {/* §P1-3: the merge, stated where it happens. */}
         {mergedCount > 0 && (
           <p className="text-sm text-muted-foreground mb-2" data-merge-note>
@@ -133,7 +162,7 @@ export default function CompaniesPage() {
             figure whose inputs are the rows it replaced — click it to see them.
           </p>
         )}
-        {/* §P1-3: the confidence method, stated ONCE in the header — where a
+        {/* §P1-3: the confidence method, stated ONCE for the table — where a
             per-row badge could only repeat it. The chip column survives only
             while the value actually varies. */}
         <p className="text-sm text-muted-foreground" data-confidence-method>
@@ -180,29 +209,7 @@ export default function CompaniesPage() {
           </Link>
           .
         </p>
-        </CollapsibleBelowSm>
       </div>
-      {/* The money column's period + universe, restated in frame with the
-          figures (fix round, judge 2). Same derived range token as the intro
-          — <FyRange /> everywhere, never an authored year. */}
-      <CompaniesTable
-        rows={rows}
-        showConfidence={showConfidence}
-        columnScope={
-          <>
-            Every figure in the obligations column is USAspending award
-            obligations in raw USD, summed across the whole period{" "}
-            <FyRange separator="— " /> — not a single year, and not budget
-            authority: award obligations and the budget figures elsewhere on
-            this site are different universes.
-          </>
-        }
-        columnScopeShort={
-          <>
-            USAspending awards <FyRange separator="· " />
-          </>
-        }
-      />
     </div>
     </CitationPanelProvider>
   );

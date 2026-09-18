@@ -28,7 +28,9 @@ import { LineageFlow } from "@/components/lineage/lineage-flow";
  * 0203728A" and do not say how much. Every ribbon here is therefore one fixed
  * width, and the page says so three times — in the lede, in the legend, and in
  * the figure's own description — because a reader who has seen one Sankey has
- * been taught that width means money.
+ * been taught that width means money. Since 21d the long form of that
+ * refusal renders BELOW the diagram with the rest of the scope prose, and the
+ * lede above carries the one-sentence form.
  *
  * Server shell + a prerendered island. The payload is small enough to render
  * into the static HTML (unlike /flow/, which fetches), which is the point:
@@ -88,11 +90,30 @@ export default function LineagePage() {
           things. This page draws every such link the ingested justification
           books actually <em>state</em> — {c.stated_edges} of them, each cited
           to the sentence that says it — across the {c.families} families they
-          form and the {c.identities} identities those families contain.
+          form and the {c.identities} identities those families contain.{" "}
+          {/* The entity below starts its own text run on purpose: a
+              space-led, multi-line, entity-bearing run after an expression is
+              the #106 Turbopack trim (gate 2 leg (sp) / jsx-glue). */}
+          No ribbon&rsquo;s width is an amount: every one is drawn at the same
+          width, because the books state that a line moved and never how much
+          moved with it.
         </p>
 
-        {/* The refusal, in the lede rather than in a footnote. */}
-        <ScopeNote className="mb-4" label="What the ribbons are not">
+        {/* Both scope notes used to sit here, between the lede and the
+            diagram — 327px and 706px of them at 390, which put the first
+            ribbon 1,377px down the page. 21d moved them under the diagram
+            they qualify; nothing was cut or reworded. What stays above is the
+            one sentence the lede gained: a reader who meets this diagram
+            before being told a ribbon's width is not an amount misreads the
+            whole page, which is worse than a late caveat. */}
+        {/* [data-first-data] marks the block gate 16's index-fold leg
+            measures. It measures the first ROW inside it — here the first
+            [data-lineage-edge] — not the block's own top. */}
+        <div data-first-data>
+          <LineageFlow payload={payload} linkablePes={linkablePes} />
+        </div>
+
+        <ScopeNote className="mt-6 mb-4" label="What the ribbons are not">
           <p className="text-sm leading-7">
             In a Sankey, a ribbon&rsquo;s width is an amount. Here it is
             not, and it must not be read as one:{" "}
@@ -155,8 +176,6 @@ export default function LineagePage() {
             live.
           </p>
         </ScopeNote>
-
-        <LineageFlow payload={payload} linkablePes={linkablePes} />
 
         <section className="mt-10 max-w-4xl">
           <h2 className="mb-2 text-xl font-semibold">

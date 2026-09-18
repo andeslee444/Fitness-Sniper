@@ -12,7 +12,21 @@
  *    answer-who) must be present, visible, and fully inside the initial
  *    viewport: boundingBox().y + height < viewport.height (no scrolling).
  *
- * Export: runAnswerfoldGate({ baseUrl }) → { pass, errors, notes }
+ * 3. INDEX-FOLD LEG (ROADMAP.md:1606-1610, round-3 judging: "the explanatory
+ *    prose demoted below the data it qualifies on five index pages"). At the
+ *    same two viewports, on each of INDEX_FOLD_PAGES, the first data ROW
+ *    inside that page's [data-first-data] block must start inside the initial
+ *    viewport. The assertion is position, not prose length: a byte budget on
+ *    caveat text is a style opinion, while "a reader sees data without
+ *    scrolling" is the thing the judging actually asked for.
+ *
+ * FLOOR (2026-09-18, DO NOT LOWER): the two viewports are 1440x900 and
+ * 390x844 and the test is `top < height` at both. It is never relaxed into a
+ * per-page allowance or a taller notional viewport — a page that regresses
+ * moves a block below its data, the way these five did.
+ *
+ * Export: runAnswerfoldGate({ baseUrl }) → { pass, errors, notes },
+ *         INDEX_FOLD_PAGES, indexFoldFindings(rows)
  */
 
 import fs from "fs";
@@ -59,6 +73,64 @@ function sampleSlugs() {
     .slice(0, 5);
 
   return [...first5, ...flow5];
+}
+
+/**
+ * The five index pages whose explanatory prose outran their data. Chosen by
+ * measurement (2026-09-10): these five put their first data row 750-1,494px
+ * down the page at 1440x900/390x844, against a first row well inside the fold
+ * on every other index page.
+ */
+export const INDEX_FOLD_PAGES = [
+  "/companies/",
+  "/district/",
+  "/years/",
+  "/lineage/",
+  "/coverage/",
+];
+
+/** Inside [data-first-data], the element that IS the first row of data. */
+const FIRST_DATA_IN = "tbody tr, [data-lineage-edge]";
+
+/**
+ * The same thing, scoped, so the measurement can WAIT for it. /years/ is a
+ * client island that fetches its grid, so at `load` its block holds a loading
+ * placeholder and no row; measuring then would read a near-empty wrapper and
+ * pass vacuously. The wait is best-effort — a page that never renders a row
+ * still falls through to the block itself, and a missing block is still a
+ * failure below.
+ */
+const FIRST_DATA_WAIT = FIRST_DATA_IN.split(",")
+  .map((sel) => `[data-first-data] ${sel.trim()}`)
+  .join(", ");
+
+/**
+ * Round-3 judging leftover (ROADMAP.md:1606-1610): "the explanatory prose
+ * demoted below the data it qualifies on five index pages". The durable
+ * assertion is not a prose budget — it is that the page's first data ROW is
+ * inside the initial viewport at both widths, the same measurement this gate
+ * already makes for the three program-page answers. `top` is null when the
+ * page declares no [data-first-data]; that is a failure, never a skip.
+ */
+export function indexFoldFindings(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return ["index-fold: measured nothing — the leg cannot vacuously pass"];
+  }
+  const found = [];
+  for (const r of rows) {
+    const at = `${r.url} at ${r.width}x${r.height}`;
+    if (r.top === null || r.top === undefined) {
+      found.push(`index-fold: ${at}: no [data-first-data] element — the page must declare the block this leg measures`);
+      continue;
+    }
+    if (r.top >= r.height) {
+      found.push(
+        `index-fold: ${at}: the first data row starts at ${Math.round(r.top)}px, ` +
+          `${Math.round(r.top - r.height)}px below the fold — the caveat above it has to move under it`,
+      );
+    }
+  }
+  return found;
 }
 
 export async function runAnswerfoldGate({ baseUrl }) {
@@ -126,6 +198,32 @@ export async function runAnswerfoldGate({ baseUrl }) {
       }
 
       notes.push(`${vpLabel}: ${okCount}/${slugs.length} pages have all three answers above the fold`);
+
+      // ── index-fold leg (see the header doc) ──────────────────────────────
+      const foldRows = [];
+      for (const url of INDEX_FOLD_PAGES) {
+        try {
+          await page.goto(`${baseUrl}${url}`, { waitUntil: "load", timeout: 30000 });
+          await page
+            .waitForSelector(FIRST_DATA_WAIT, { timeout: 15000 })
+            .catch(() => {});
+          const top = await page.evaluate((sel) => {
+            const block = document.querySelector("[data-first-data]");
+            if (!block) return null;
+            const el = block.querySelector(sel) ?? block;
+            return el.getBoundingClientRect().top;
+          }, FIRST_DATA_IN);
+          foldRows.push({ url, width: vp.width, height: vp.height, top });
+        } catch (e) {
+          errors.push(`${vpLabel} ${url}: ${e.message.split("\n")[0]}`);
+        }
+      }
+      errors.push(...indexFoldFindings(foldRows));
+      notes.push(
+        `${vpLabel} index-fold: ` +
+          foldRows.map((r) => `${r.url} ${r.top === null ? "MISSING" : Math.round(r.top)}`).join(", "),
+      );
+
       await context.close();
     }
   } finally {
