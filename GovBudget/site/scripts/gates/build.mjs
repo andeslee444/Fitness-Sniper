@@ -176,7 +176,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // ~6% headroom against the new measurement: 1,475,000 is 6.16% over raw,
   // 95,000 is 7.88% over gzip.
   { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,228 / 88,022" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "684,005 / 67,188" },
+  // RE-MEASURED 2026-09-18 (chain D): 684,005 / 67,188 -> 692,931 / 68,099.
+  // The drift leg caught this one: the stale entry claimed 1,812 gzip bytes
+  // of headroom where 901 were left. CEILINGS UNCHANGED; nothing trimmed.
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "692,931 / 68,099" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -224,7 +227,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // Re-measured again 2026-09-02: announcement-verified links (wave 1) took
   // districts 181 → 204; the index states them all. ~6% over the measure.
   // 2026-09-03: districts 204 → 225 with wave-2 links; ~6% over the measure.
-  { label: "/district/", file: "district/index.html", maxRaw: 546_000, maxGzip: 51_000, measured: "515,448 / 48,126" },
+  // RE-MEASURED 2026-09-18 (chain D): 515,448 / 48,126 -> 359,669 / 36,072.
+  // The page got SMALLER, by a lot, so the drift leg (which only fires on an
+  // overstated headroom) stayed quiet and the entry went on claiming a
+  // weight the page has not carried since Group C/D. All 153 district rows
+  // and 612 cells are still rendered — the shrink is payload, not content.
+  { label: "/district/", file: "district/index.html", maxRaw: 546_000, maxGzip: 51_000, measured: "359,669 / 36,072" },
   // Re-baselined 2026-09-01: grew +2,319 raw since the ceiling was set via
   // ordinary curated-events/table growth (#10 relabel note, adjudication
   // tier changes), tipping a 159-byte breach. ~6% convention.
@@ -241,7 +249,11 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // ~6% headroom against the new measurement: 101,000 is 6.34% over raw,
   // 14,450 is 6.02% over gzip.
-  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "94,830 / 13,678" },
+  // RE-MEASURED 2026-09-18 (chain D): 94,830 / 13,678 -> 96,649 / 14,272.
+  // Also caught by the drift leg (claimed 772 gzip left, 178 remain).
+  // CEILINGS UNCHANGED. 178 bytes is thin — the next sentence added to the
+  // dataset inventory needs a trim of its own, not a raise.
+  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "96,649 / 14,272" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -499,7 +511,9 @@ export const PAGE_WEIGHT_BUDGET = [
     dir: "district",
     maxRaw: 154_000,
     maxGzip: 20_000,
-    measured: "145,449 / 18,356 (/district/VA-11/)",
+    measured: "145,568 / 18,413 (/district/VA-11/)",
+    // RE-MEASURED 2026-09-18 (chain D): was 145,449 / 18,356. Same page,
+    // same ceilings (154,000 / 20,000); ordinary by-year table growth.
   },
   // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
   // needed it, per this file's own rule -- not pre-emptively. Two changes
@@ -512,7 +526,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // gzip is UNCHANGED at 27,500 and is not close: 22,532, 18% headroom. Only
   // the raw ceiling moved, restored to ~6% headroom (the /programs/ Sprint E
   // convention) rather than to the drift.
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 347_500, maxGzip: 27_500, measured: "327,829 / 22,572" },
+  // RE-MEASURED 2026-09-18 (chain D): 327,829 / 22,572 -> 331,870 / 23,444
+  // (/filing/82b97e10-b18b-4a28-a09c-ea49dfff8026/), the cased-name work of
+  // Task 21c. CEILINGS UNCHANGED; 15,630 raw / 4,056 gzip still free.
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 347_500, maxGzip: 27_500, measured: "331,870 / 23,444" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */
