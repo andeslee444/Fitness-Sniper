@@ -799,7 +799,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   codes still link the bare-key stub, and a withheld concentration block
   suppresses the named-prime/lobbied-by fallback on 3010's members.
   **Status:** CLOSED 2026-09-11 — account-split members name their own appropriation in the title block (`[data-program-account]`, `ProgramHeader.accountSplit` derived from the stub's own `stubDimension`; gate 21 leg n checks 5-7 with a dated 16/20 page floor, and the org-split members and the bare stub render none); district cards link the member whose mart title names it (`member_slugs_by_title`; identical member titles keep the chooser) and filing mentions carry `shared_code` and say the link opens a chooser; `named_primes`/`lobbied_by` are keyed by slug and read the member's own `_concentration_for`, `_awards_for` and dossier, closing three bugs (a slug-named dossier's primes could never reach its page; a bare-key figure no page publishes suppressed the lobbying tier on both members; #80's awards guard could not address one member). A figure withheld because more than one member is linked is now STATED on the WHO card (`summary.concentration_withheld`, `data-who-withheld="shared-code"`, `sharedCodeWithheldReason` beside #80's two strings) instead of "the crosswalk is silent here" above a five-row Related Awards table — true on 3010-SCN and 3010-OPN. No page changes tier on today's corpus.
-  **Addendum 2026-09-12 (the narrative axis).** The sweep above covered the header, the WHO strip, member links and district links; it did not cover what the page says the J-book says. Measured read-only on the shipped corpus: all **13 of 13** shared codes published IDENTICAL `narratives` and IDENTICAL `details` on every member (55 narrative and 139 detail fact ids on more than one member page) — /program/3010-SCN/ rendered the Shipboard Tactical Communications mission paragraph and the OPN volume's money under the LPD Flight II heading, every citation resolving, because each row is individually true of something. Root cause: `_narratives_with_links` and the sidecar's `details` read a bare-`pe_bli` index, and the `owns_detail` gate that used to separate them stopped separating anything in Wave 5 (all ten account keys now carry real detail on BOTH sides). Now keyed by the member's own J-book DOCUMENT — its appropriation (account axis, `budget_line_details.account`, which is also how a narrative learns its account since `detail_narratives` has no such column) or its component (organization axis, `jbook_documents.org`) — through the same `split_key` `_awards_for` and `_concentration_for` use; the /years/ matrix's project rows and the detail display-dedupe key move to the same identity (both measured no-ops today), and `programs.json.narrative_count`, `fy2026_absent.has_narrative` and the dossier bundle's `projects`/`narratives` follow the sidecar. After: **0 of 13** codes cross-publish; each member publishes its own volume only (118 → 53 narrative rows, 298 → 134 detail rows across the 27 member pages). Seven rows the PROC_DoDEA volume files under code '30' belong to no member page (DoDEA has no `dim_programs` row) and now publish on NEITHER, with a dated count in the export log — never on all three. Lobbying `mentions` deliberately stay bare-keyed on both axes: an LDA filing names a budget LINE, never an appropriation or a component, so it is evidence for every program using the code; the sidecar declares that with `mentions_shared_code` and the /filing/ page already carries the shared-code note. Gate 21 leg n gains check 8 (no narrative or detail fact id on two member pages; a repeated mention only where the sidecar declares the rule) with a dated do-not-lower floor of 22 against a measured 27 member pages publishing their own J-book rows.
+  **Addendum 2026-09-12 (the narrative axis).** The sweep above covered the header, the WHO strip, member links and district links; it did not cover what the page says the J-book says. Measured read-only on the shipped corpus: all **13 of 13** shared codes published IDENTICAL `narratives` and IDENTICAL `details` on every member (55 narrative and 139 detail fact ids on more than one member page) — /program/3010-SCN/ rendered the Shipboard Tactical Communications mission paragraph and the OPN volume's money under the LPD Flight II heading, every citation resolving, because each row is individually true of something. Root cause: `_narratives_with_links` and the sidecar's `details` read a bare-`pe_bli` index, and the `owns_detail` gate that used to separate them stopped separating anything in Wave 5 (all ten account keys now carry real detail on BOTH sides). Now keyed by the member's own J-book DOCUMENT — its appropriation (account axis, `budget_line_details.account`, which is also how a narrative learns its account since `detail_narratives` has no such column) or its component (organization axis, `jbook_documents.org`) — through the same `split_key` `_awards_for` and `_concentration_for` use; the /years/ matrix's project rows and the detail display-dedupe key move to the same identity (both measured no-ops today), and `programs.json.narrative_count`, `fy2026_absent.has_narrative` and the dossier bundle's `projects`/`narratives` follow the sidecar. After: **0 of 13** codes cross-publish; each member publishes its own volume only (118 → 53 narrative rows, 298 → 134 detail rows across the 27 member pages). Seven rows the PROC_DoDEA volume files under code '30' belong to no member page (DoDEA has no `dim_programs` row) and now publish on NEITHER, with a dated count in the export log — never on all three. Lobbying `mentions` are bare-keyed in the mart (`fct_program_lobbying` has no account and no organization column, and nothing in a Senate LDA filing could populate one), so the exporter decides PER ROW from the mart's own evidence which member each is about: a `pe_literal` row names the budget LINE itself and is evidence for every program using the code (both members render it, and the /filing/ page already carries the shared-code note); a `multi_token`/`alias` row qualified by matching ONE title's terms and publishes only on the member whose own `dim_programs` title carries every one of them — on the other member the rendered badge ("2+ distinct, non-generic words from this program's title") would be false. The sidecar declares that basis per evidence tier in `mentions_shared_code`. Gate 21 leg n gains check 8 (no narrative or detail fact id on two member pages; every mention's basis declared, with the title test re-derived from `programs.json` titles so a wrong declaration fails) with a dated do-not-lower floor of 22 against a measured 27 member pages publishing their own J-book rows.
+
+  **Fix round 1, 2026-09-18 (the mention axis).** The addendum above originally declared one blanket rule for mentions — "an LDA filing names a budget LINE … so it is evidence for every program using the code" — and gate 21 leg n check 8 exempted repeated mentions on the strength of it. That rule is true only of `pe_literal` rows. Measured read-only on the shipped corpus: **7 of the 76** mention identities on shared codes are `multi_token` rows matched against ONE member's title — /program/0145-APN/ "F/A-18E/F (Fighter) Hornet" rendered **5** rows chipped `General|Purpose` (the sibling 0145-PANMC is "General Purpose Bombs") and /program/1350-WPN/ "Missile Industrial Facilities" rendered **2** chipped `Weapons|Ammunition` (sibling "Infantry Weapons Ammunition"), each badged "matched 2+ distinct, non-generic words from this program's title" beside a title carrying neither word. 2292's two members have identical titles, so all 18 of theirs are true on both. Narrowed to the per-row rule quoted above (0145-APN −5, 1350-WPN −2, 2292 unchanged at 18/18, 20/30/500 unchanged — they are `pe_literal` throughout; rows matching no member's title publish on NEITHER, dated count in the export log, measured 0 today), `mentions_shared_code` now declares `{evidence_kind: basis}` rather than `true`, and check 8 exempts only the "code" basis while re-deriving the title test for every other row from `programs.json`'s own titles. The matcher's own last-title-wins on shared codes is **#115**.
 - **#83 Two definitions of "account-split"** (`scripts/collision_keys.py` vs
   `_ProgramIdentity.is_account_split`) — fail-closed today; unify.
   **Status:** CLOSED 2026-09-10 — one rule, `govbudget.jbooks.collision_keys.classify_shared_keys` (an axis resolves a key only when every row's value is present and pairwise distinct; ACCOUNT, else ORGANIZATION, else UNRESOLVED); `_ProgramIdentity` and both link loaders import it, `scripts/collision_keys.py` deleted; the 13 live keys classify as before (10/3/0, 27 composite slugs); an unresolved key now stops export-site (`UnresolvedSharedKeyError`) and is excluded by the loaders; identity of the three callers' function objects and the two formerly divergent shapes are pinned by tests/test_collision_keys.py.
@@ -1382,7 +1384,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   decide whether an unattributable grain should mint a summary block and its
   citation rows at all (ROADMAP #82's "publishes on neither member" says no;
   dropping it removes citation rows nothing references, so it needs a build
-  to confirm the census).
+  to confirm the census). Same second half, measured 2026-09-12: the five
+  `30/DODEA` detail facts and two narratives that ROADMAP #82 sends to
+  NEITHER member keep live `citations.json` rows (3 details + both
+  narratives), and `/fact/{id8}` now renders "Appears on `/program/30/`" —
+  the disambiguation stub, which owns no sidecar and carries no `#fact-`
+  anchor. Pre-existing for every shared-code fact; newly the ONLY surface
+  these five have. Whatever the census decision is, it decides these too.
   **Status:** open (2026-09-12)
 
 - **#114 The five crosswalk counts are derived on the SITE side, not published
@@ -1401,6 +1409,42 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   defect the registry exists to close. If a third consumer ever needs these
   counts, move the `site_meta.json` write below section 11 rather than adding
   a second derivation.
+  **Status:** open (2026-09-18)
+
+- **#115 `build_program_terms` is last-title-wins on a shared BLI code, so one
+  member's title is never searched.** `src/govbudget/influence/mentions.py`
+  builds its term index as `result[pe_bli] = compiled` while iterating
+  `select pe_bli, title from dim_programs` (two rows on a shared code, via
+  `influence pull`/`rematch` in `cli.py`), so the second row simply
+  overwrites the first: on the 13 shared codes the matcher searches filing
+  text for exactly ONE arbitrary member's tokens and the other member's are
+  never candidates at all. (`fct_program_lobbying`'s `programs` CTE already
+  collapses the mart to `min(title)` per `pe_bli` for the same reason — the
+  mention row has no member identity to carry.) Measured 2026-09-18 by
+  running `build_program_terms` over today's `dim_programs`: `0145` indexes
+  `General, Purpose, Bombs, 0145` — "General Purpose Bombs", never "F/A-18E/F
+  (Fighter) Hornet" — and `1350` indexes `Missile, Industrial, Facilities,
+  1350`, while the SHIPPED mart's two `1350` rows carry `Weapons|Ammunition`,
+  tokens of the OTHER member ("Infantry Weapons Ammunition"). So which member
+  the index holds is not even stable between runs, and a rematch can silently
+  swap which member's lobbying rows exist.
+  Task 9b fix round 1 made the EXPORTER attribute each row to the member whose
+  own title carries the matched terms (so no page renders a false badge), but
+  the missing half is invisible from the sidecars: mentions that would have
+  matched the unsearched member exist in no row anywhere, and the mart cannot
+  say how many. The fix is a mart + matcher change — key the term index by
+  `(pe_bli, account/org)` or by `dim_programs` row, widen
+  `fct_program_lobbying`'s `programs` CTE past `min(title)`, and add the
+  member identity to the mention row — which changes the mention census on
+  /methodology/ and needs an `influence rematch` + `dbt build`, so it is not a
+  Task 9b change. Second half, same root: `/filing/{uuid}/`'s shared-code note
+  explains the chooser with the `pe_literal` reason in its `title` tooltip
+  ("Lobbying filings name a budget line, not an appropriation account, so this
+  mention cannot say which of the programs sharing the code it refers to") —
+  true of a `pe_literal` row, not of a `multi_token`/`alias` one, where the
+  matched terms DO say which member (the program page attributes on exactly
+  that, Task 9b fix round 1). Rendered prose, so it was left alone here; fix
+  it with the matcher, when the row itself can name its member.
   **Status:** open (2026-09-18)
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
