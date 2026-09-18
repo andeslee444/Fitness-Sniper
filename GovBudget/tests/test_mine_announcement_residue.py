@@ -17,12 +17,14 @@ import json
 
 import pytest
 
+import mine_announcement_residue as mar
 from mine_announcement_residue import (  # scripts/ on sys.path via tests/conftest.py:22
     BASIS_VOCAB,
     SERVICE_ORG,
     announced_value,
     build_name_index,
     chunk_records,
+    cmd_collect,
     collect_verdicts,
     has_deterministic_match,
     lexicon_index_lines,
@@ -541,3 +543,115 @@ def test_a_survivor_with_no_reason_says_so():
                                  indexes={"N": read_index_rows(INDEX_N)})
     assert result["surviving"] == [
         {"piid": "P1", "pe_bli": "0305220N", "reason": "(no reason given)"}]
+
+
+# --- Task 25b riders (fix-round re-review, approved before running `collect`
+# --- on the real wave4_verdicts/): five hardening fixes, each with its own
+# --- red-first test below.
+
+def test_collect_counts_a_non_dict_proposal_as_malformed_rather_than_crashing():
+    """Rider 1: a malformed `proposals` LIST entry ([null], ["text"]) used to
+    raise a bare AttributeError on `prop.get(...)` — aborting the whole
+    collection over one bad row in one chunk, the same failure mode already
+    fixed for a non-dict refute lens."""
+    queue = [_one_chunk(pairs=(("1", "P1"), ("2", "P2")))]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        None, "not a proposal", _link("2", "P2"),
+    ]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert [p["piid"] for p in packets] == ["P2"]
+    assert result["malformed_lens"] == 2
+    assert result["proposed"] == 1            # only the real proposal counts
+
+
+def test_a_non_string_reason_is_stringified_not_crashed_on():
+    """Rider 2: `reason` is only ever interpolated into the published
+    rationale, so a lens writing it as a number or list must be coerced with
+    str(...) instead of raising AttributeError on a bare `.strip()`."""
+    queue = [_one_chunk()]
+    verdicts = {"chunk_000_N.json": {"proposals": [_link(
+        "1", "P1", refute_a={"refuted": False, "reason": 12345},
+        refute_b={"refuted": False})]}}
+    _, result = collect_verdicts(queue, verdicts,
+                                 indexes={"N": read_index_rows(INDEX_N)})
+    assert result["surviving"] == [
+        {"piid": "P1", "pe_bli": "0305220N", "reason": "12345"}]
+
+
+def test_a_padded_pe_bli_is_stripped_everywhere_it_is_stored():
+    """Rider 3: index_key() already strips pe_bli for the validity check, but
+    the packet, the dedup pair key and the surviving row must publish the
+    STRIPPED value too — a padded " 0305220N " otherwise validates, survives,
+    and ships padded, so the loader (which keys on the raw string) drops it
+    while wave4_result.json's 'surviving' still counts it."""
+    queue = [_one_chunk()]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        _link("1", "P1", pe_bli=" 0305220N ")]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert packets[0]["pe_bli"] == "0305220N"
+    assert result["surviving"] == [
+        {"piid": "P1", "pe_bli": "0305220N", "reason": "holds"}]
+
+
+def test_cmd_collect_refuses_a_verdict_file_declaring_the_wrong_chunk_name(
+        tmp_path, monkeypatch):
+    """Rider 4: cmd_collect keys `verdicts` by the file's name on disk; if the
+    file's own declared `chunk` field disagreed, a second such file would
+    silently overwrite the first in that dict. The refusal that prevents this
+    (mine_announcement_residue.py's cmd_collect) had no test — only
+    collect_verdicts's separate 'unknown chunk' check did."""
+    queue_dir = tmp_path / "wave4_queue"
+    verdict_dir = tmp_path / "wave4_verdicts"
+    queue_dir.mkdir()
+    verdict_dir.mkdir()
+    chunk = _one_chunk()
+    (queue_dir / "chunk_000_N.json").write_text(json.dumps(
+        {"chunk": chunk["file"], "org": chunk["org"], "records": chunk["records"]}))
+    (verdict_dir / "chunk_000_N.json").write_text(json.dumps(
+        {"chunk": "chunk_999_N.json", "proposals": []}))
+    monkeypatch.setattr(mar, "QUEUE_DIR", queue_dir)
+    monkeypatch.setattr(mar, "VERDICT_DIR", verdict_dir)
+    monkeypatch.setattr(mar, "LEXICON_DIR", tmp_path / "wave4_lexicon")
+    monkeypatch.setattr(mar, "PACKET_DIR", tmp_path / "wave4_chunks")
+    monkeypatch.setattr(mar, "RESULT", tmp_path / "wave4_result.json")
+    with pytest.raises(SystemExit, match="chunk_999_N.json"):
+        cmd_collect()
+
+
+def test_a_digit_string_record_index_is_coerced_to_int():
+    """Rider 5: a lens sometimes writes record_index as the JSON string "1"
+    rather than the integer 1 — the most plausible formatting slip a
+    disambiguating lens can make. Before this fix it failed
+    isinstance(index, int) and raised, aborting the whole collection over one
+    string-vs-int slip."""
+    queue = [{"file": "chunk_000_N.json", "org": "N", "announced_value": 2,
+              "records": [
+                  dict(_rec("7", "the award paragraph", ["P1"], [2]),
+                       org="N", lake_piids=["P1"]),
+                  dict(_rec("7", "the modification paragraph", ["P1"], [1]),
+                       org="N", lake_piids=["P1"])]}]
+    prop = _link("7", "P1", record_index="1")
+    packets, _ = collect_verdicts(
+        queue, {"chunk_000_N.json": {"proposals": [prop]}},
+        indexes={"N": read_index_rows(INDEX_N)})
+    assert packets[0]["announcement_excerpt"] == "the modification paragraph"
+
+
+def test_a_non_digit_string_record_index_is_counted_not_raised():
+    """Rider 5: a record_index that is a string but not a digit-string is
+    content the refute lenses were meant to catch, not a protocol violation
+    worth aborting a 150-chunk collection over."""
+    queue = [{"file": "chunk_000_N.json", "org": "N", "announced_value": 2,
+              "records": [
+                  dict(_rec("7", "the award paragraph", ["P1"], [2]),
+                       org="N", lake_piids=["P1"]),
+                  dict(_rec("7", "the modification paragraph", ["P1"], [1]),
+                       org="N", lake_piids=["P1"])]}]
+    prop = _link("7", "P1", record_index="not-a-number")
+    packets, result = collect_verdicts(
+        queue, {"chunk_000_N.json": {"proposals": [prop]}},
+        indexes={"N": read_index_rows(INDEX_N)})
+    assert packets == []
+    assert result["malformed_lens"] == 1

@@ -336,6 +336,12 @@ def collect_verdicts(queue, verdicts, indexes=None):
             for piid in r["lake_piids"]:
                 by_pair[(str(r["article_id"]), piid)].append(i)
         for prop in returned.get("proposals", []):
+            if not isinstance(prop, dict):
+                # a malformed list entry ([null], ["text"]) used to raise a
+                # bare AttributeError on prop.get(...); counted alongside the
+                # other malformed-content failures instead
+                malformed_lens += 1
+                continue
             verdict = prop.get("verdict")
             if verdict not in counts:
                 raise ValueError(
@@ -347,6 +353,17 @@ def collect_verdicts(queue, verdicts, indexes=None):
             aid, piid = str(prop.get("article_id")), prop.get("piid")
             found = by_pair.get((aid, piid), [])
             index = prop.get("record_index")
+            if isinstance(index, str):
+                stripped_index = index.strip()
+                if stripped_index.isdigit():
+                    # the most plausible lens slip: JSON "12" instead of 12
+                    index = int(stripped_index)
+                else:
+                    # a non-numeric string is content the refute lenses were
+                    # meant to catch, not a protocol violation worth aborting
+                    # a 150-chunk collection over
+                    malformed_lens += 1
+                    continue
             if index is not None:
                 if not isinstance(index, int) or index not in found:
                     raise ValueError(
@@ -370,7 +387,12 @@ def collect_verdicts(queue, verdicts, indexes=None):
             else:
                 index = found[0]
             rec = records[index]
-            if not str(prop.get("pe_bli") or "").strip():
+            # compared AND stored stripped everywhere below: a padded
+            # " 0305220N " must not validate as a different key from the
+            # index's "0305220N", nor survive and publish padded while the
+            # loader (which keys on the raw string) drops it
+            pe_bli = str(prop.get("pe_bli") or "").strip()
+            if not pe_bli:
                 raise ValueError(
                     f"{chunk['file']}: proposal for article {aid} / PIID {piid} "
                     f"names no pe_bli; there is nothing to link the award to")
@@ -393,7 +415,7 @@ def collect_verdicts(queue, verdicts, indexes=None):
                     f"program_name {prop.get('program_name')!r}; the published "
                     f"rationale words it (\"program 'None' named for this award\")")
             if indexes is not None and index_key(
-                    prop["program_name"], prop["pe_bli"], prop["lexicon_doc"]
+                    prop["program_name"], pe_bli, prop["lexicon_doc"]
             ) not in indexes.get(chunk["org"], set()):
                 # counted as refuted, not raised — see the docstring
                 invalid_pe_bli += 1
@@ -420,7 +442,7 @@ def collect_verdicts(queue, verdicts, indexes=None):
                 malformed_lens += 1
             if not (a_ok and b_ok):
                 continue
-            pair = (prop["piid"], prop["pe_bli"])
+            pair = (prop["piid"], pe_bli)
             if pair in seen_pairs:
                 # the same PIID can carry several announcement paragraphs; the
                 # loader keeps the first packet per pair anyway (:270-273), so
@@ -430,7 +452,7 @@ def collect_verdicts(queue, verdicts, indexes=None):
             seen_pairs.add(pair)
             packets.append({
                 "piid": prop["piid"],
-                "pe_bli": prop["pe_bli"],
+                "pe_bli": pe_bli,
                 "program_name": prop.get("program_name"),
                 "match_basis": basis,
                 "date": rec.get("date"),
@@ -443,9 +465,10 @@ def collect_verdicts(queue, verdicts, indexes=None):
             })
             # the reason is interpolated into the published rationale
             # ("triage+adversarial refute survived — …"); an empty one printed a
-            # bare semicolon
-            reason = (a.get("reason") or b.get("reason") or "").strip()[:200]
-            surviving.append({"piid": prop["piid"], "pe_bli": prop["pe_bli"],
+            # bare semicolon, and a lens writing it as a number or list used to
+            # raise AttributeError on a bare .strip()
+            reason = str(a.get("reason") or b.get("reason") or "").strip()[:200]
+            surviving.append({"piid": prop["piid"], "pe_bli": pe_bli,
                               "reason": reason or "(no reason given)"})
     result = {
         "triaged": records_attempted,
