@@ -56,7 +56,7 @@ describe("ChartFigure caption placement", () => {
     expect(fig.firstElementChild!.tagName).not.toBe("FIGCAPTION");
   });
 
-  it("keeps the caption text, its id and its data-chart-desc identical in both placements", () => {
+  it("keeps the caption text, its id and its data-chart-desc identical in both placements; DEFAULT stays byte-identical, LAST gains only a top margin", () => {
     const first = renderFigure().querySelector("figcaption")!;
     const last = renderFigure({ captionPlacement: "last" }).querySelector(
       "figcaption",
@@ -66,8 +66,20 @@ describe("ChartFigure caption placement", () => {
       expect(cap.id).toBe(chartDescId("demo"));
       expect(cap.hasAttribute("data-chart-desc")).toBe(true);
     }
-    // Only the ORDER moves: the rendered attributes match byte for byte.
-    expect(last.outerHTML).toBe(first.outerHTML);
+    // The DEFAULT ("first") placement's caption is byte-identical to before
+    // fix round 2 — no new class, no new margin.
+    expect(first.outerHTML).toBe(
+      `<figcaption id="${chartDescId("demo")}" data-chart-desc="" class="mb-2 text-xs leading-5 text-muted-foreground ">${DESC}</figcaption>`,
+    );
+    // Task 21d fix round 2, item 5: "last" abutted the preceding element
+    // with a 0px gap (mb-2 is a BOTTOM margin). It gains `mt-3`; everything
+    // else — tag, id, data-chart-desc, text — stays identical to "first",
+    // so only the class attribute may differ between the two.
+    expect(last.className).toBe(
+      `mb-2 mt-3 text-xs leading-5 text-muted-foreground `,
+    );
+    const stripClass = (html: string) => html.replace(/\sclass="[^"]*"/, "");
+    expect(stripClass(last.outerHTML)).toBe(stripClass(first.outerHTML));
   });
 
   it("keeps the chart and the table view in their existing order under both placements", () => {

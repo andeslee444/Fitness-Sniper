@@ -92,3 +92,92 @@ describe("indexFoldFindings", () => {
     expect(indexFoldFindings([{ ...lineage390, top: 844 }])).toHaveLength(1);
   });
 });
+
+/**
+ * Task 21d fix round 2, item 1 (review finding). `block.querySelector(sel)
+ * ?? block` let the leg measure the WRAPPER when the row selector never
+ * appeared inside [data-first-data] — a `waitForSelector` timeout falls
+ * through silently, and `getBoundingClientRect()` on a `display:none` row
+ * returns an all-zero rect whose `top` (0) reads as comfortably above the
+ * fold. Both are vacuous passes. The `evaluate` in answerfold.mjs now
+ * returns a discriminated `{kind, top, rectWidth, rectHeight}` and these
+ * cases pin that `indexFoldFindings` turns "measured the wrapper, not a
+ * row" and "measured a row with no area" into findings, not silence.
+ */
+describe("indexFoldFindings — discriminated kind (block-only / zero-area / none)", () => {
+  it("fails a block-only measurement (waitForSelector timed out — only the wrapper was measured, never a row)", () => {
+    const found = indexFoldFindings([
+      {
+        url: "/years/",
+        width: 390,
+        height: 844,
+        top: 300,
+        kind: "block-only",
+        rectWidth: 320,
+        rectHeight: 40,
+      },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("/years/");
+    expect(found[0]).toContain("390x844");
+    expect(found[0]).toContain("block-only");
+  });
+
+  it("fails a zero-area first-data row even when its top is comfortably inside the viewport (the display:none / hidden-placeholder case)", () => {
+    const found = indexFoldFindings([
+      {
+        url: "/lineage/",
+        width: 390,
+        height: 844,
+        top: 0,
+        kind: "row",
+        rectWidth: 0,
+        rectHeight: 0,
+      },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("/lineage/");
+    expect(found[0]).toContain("zero-area");
+  });
+
+  it("fails a kind: \"none\" measurement (no [data-first-data] element) the same way the legacy top:null shape does", () => {
+    const found = indexFoldFindings([
+      {
+        url: "/coverage/",
+        width: 1440,
+        height: 900,
+        top: null,
+        kind: "none",
+        rectWidth: 0,
+        rectHeight: 0,
+      },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("/coverage/");
+    expect(found[0]).toContain("no [data-first-data]");
+  });
+
+  it("still passes a real row with nonzero area inside the viewport under the discriminated shape", () => {
+    expect(
+      indexFoldFindings([
+        {
+          url: "/coverage/",
+          width: 1440,
+          height: 900,
+          top: 420,
+          kind: "row",
+          rectWidth: 640,
+          rectHeight: 48,
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("keeps every PRE_FIX / POST_FIX fixture row (no `kind` field) working as a plain row measurement", () => {
+    // Legacy fixtures predate the discriminated shape and carry no `kind` or
+    // rect dimensions at all — `indexFoldFindings` must still treat them as
+    // ordinary row measurements rather than failing them as malformed.
+    expect(indexFoldFindings(POST_FIX)).toEqual([]);
+    expect(indexFoldFindings(PRE_FIX)).toHaveLength(8);
+  });
+});

@@ -89,8 +89,14 @@ export const INDEX_FOLD_PAGES = [
   "/coverage/",
 ];
 
-/** Inside [data-first-data], the element that IS the first row of data. */
-const FIRST_DATA_IN = "tbody tr, [data-lineage-edge]";
+/**
+ * Inside [data-first-data], the element that IS the first row of data. Kept
+ * as an array (not a comma-joined string parsed back apart) so the scoped
+ * wait below is derived without splitting a selector on `,` — a selector
+ * with its own comma inside `[]`/`""` would silently break that split.
+ */
+const FIRST_DATA_ROW_SELECTORS = ["tbody tr", "[data-lineage-edge]"];
+const FIRST_DATA_IN = FIRST_DATA_ROW_SELECTORS.join(", ");
 
 /**
  * The same thing, scoped, so the measurement can WAIT for it. /years/ is a
@@ -98,19 +104,32 @@ const FIRST_DATA_IN = "tbody tr, [data-lineage-edge]";
  * placeholder and no row; measuring then would read a near-empty wrapper and
  * pass vacuously. The wait is best-effort — a page that never renders a row
  * still falls through to the block itself, and a missing block is still a
- * failure below.
+ * failure below (kind: "block-only"), never a silent pass.
  */
-const FIRST_DATA_WAIT = FIRST_DATA_IN.split(",")
-  .map((sel) => `[data-first-data] ${sel.trim()}`)
-  .join(", ");
+const FIRST_DATA_WAIT = FIRST_DATA_ROW_SELECTORS.map(
+  (sel) => `[data-first-data] ${sel}`,
+).join(", ");
 
 /**
  * Round-3 judging leftover (ROADMAP.md:1606-1610): "the explanatory prose
  * demoted below the data it qualifies on five index pages". The durable
  * assertion is not a prose budget — it is that the page's first data ROW is
  * inside the initial viewport at both widths, the same measurement this gate
- * already makes for the three program-page answers. `top` is null when the
- * page declares no [data-first-data]; that is a failure, never a skip.
+ * already makes for the three program-page answers.
+ *
+ * Fix round 2, item 1 (review finding): `top` alone let this leg pass
+ * vacuously. Each row now carries a `kind` — "row" (a real first-data-row
+ * element was found), "block-only" (the [data-first-data] wrapper was
+ * measured because the row selector never appeared — a `waitForSelector`
+ * timeout falling through silently), or "none" (no [data-first-data] block
+ * at all) — mirroring the program legs' own idiom (:~179-183 above, a null
+ * `boundingBox()` is an error, never a skip). `kind` defaults to "row" when
+ * absent so every pre-existing fixture (no `kind` field) keeps behaving
+ * exactly as it always did. `rectWidth`/`rectHeight` (the measured element's
+ * OWN box, not the viewport) catch the other silent pass: a `display:none`
+ * row's `getBoundingClientRect()` is all zeros, so `top === 0` used to read
+ * as "comfortably above the fold" instead of "not actually rendered".
+ * `top` is null for "none"; that is a failure, never a skip.
  */
 export function indexFoldFindings(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -119,8 +138,23 @@ export function indexFoldFindings(rows) {
   const found = [];
   for (const r of rows) {
     const at = `${r.url} at ${r.width}x${r.height}`;
-    if (r.top === null || r.top === undefined) {
+    const kind = r.kind ?? "row";
+    if (kind === "none" || r.top === null || r.top === undefined) {
       found.push(`index-fold: ${at}: no [data-first-data] element — the page must declare the block this leg measures`);
+      continue;
+    }
+    if (kind === "block-only") {
+      found.push(
+        `index-fold: ${at}: kind=block-only — [data-first-data] never produced a data row ` +
+          `(${FIRST_DATA_IN}); only the wrapper was measured, which is a failure, not a pass`,
+      );
+      continue;
+    }
+    if (r.rectWidth === 0 || r.rectHeight === 0) {
+      found.push(
+        `index-fold: ${at}: kind=row, zero-area (width=${r.rectWidth}, height=${r.rectHeight}) — ` +
+          `the first data row has no rendered area (hidden or display:none), so its top is not meaningful`,
+      );
       continue;
     }
     if (r.top >= r.height) {
@@ -207,13 +241,43 @@ export async function runAnswerfoldGate({ baseUrl }) {
           await page
             .waitForSelector(FIRST_DATA_WAIT, { timeout: 15000 })
             .catch(() => {});
-          const top = await page.evaluate((sel) => {
+          // Discriminated result — see indexFoldFindings' doc comment. A
+          // `waitForSelector` timeout above falls through silently, so this
+          // must say WHAT it measured (a real row, only the wrapper, or
+          // nothing) rather than hand back a bare `top` that reads as fine
+          // either way.
+          const measured = await page.evaluate((sel) => {
             const block = document.querySelector("[data-first-data]");
-            if (!block) return null;
-            const el = block.querySelector(sel) ?? block;
-            return el.getBoundingClientRect().top;
+            if (!block) {
+              return { kind: "none", top: null, rectWidth: 0, rectHeight: 0 };
+            }
+            const el = block.querySelector(sel);
+            if (!el) {
+              const rect = block.getBoundingClientRect();
+              return {
+                kind: "block-only",
+                top: rect.top,
+                rectWidth: rect.width,
+                rectHeight: rect.height,
+              };
+            }
+            const rect = el.getBoundingClientRect();
+            return {
+              kind: "row",
+              top: rect.top,
+              rectWidth: rect.width,
+              rectHeight: rect.height,
+            };
           }, FIRST_DATA_IN);
-          foldRows.push({ url, width: vp.width, height: vp.height, top });
+          foldRows.push({
+            url,
+            width: vp.width,
+            height: vp.height,
+            top: measured.top,
+            kind: measured.kind,
+            rectWidth: measured.rectWidth,
+            rectHeight: measured.rectHeight,
+          });
         } catch (e) {
           errors.push(`${vpLabel} ${url}: ${e.message.split("\n")[0]}`);
         }
@@ -221,7 +285,13 @@ export async function runAnswerfoldGate({ baseUrl }) {
       errors.push(...indexFoldFindings(foldRows));
       notes.push(
         `${vpLabel} index-fold: ` +
-          foldRows.map((r) => `${r.url} ${r.top === null ? "MISSING" : Math.round(r.top)}`).join(", "),
+          foldRows
+            .map((r) => {
+              if (r.kind === "none") return `${r.url} MISSING`;
+              if (r.kind === "block-only") return `${r.url} BLOCK-ONLY(${Math.round(r.top)})`;
+              return `${r.url} ${Math.round(r.top)}`;
+            })
+            .join(", "),
       );
 
       await context.close();

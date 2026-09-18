@@ -84,15 +84,23 @@ export function ChartFigure({
   // HTML's <figure> content model allows the <figcaption> only as the FIRST
   // or LAST child — those are the two legal positions, and this prop picks
   // between them. Nothing else about the caption changes with it: same text,
-  // same id={chartDescId(id)}, same data-chart-desc, same classes, so gate 2
-  // leg (ch) (name/desc/caption/[data-amount]) and gate 6 leg (c1) (a figure
-  // must carry a description visible to sighted readers) see an identical
-  // element either way. Only the order moves.
+  // same id={chartDescId(id)}, same data-chart-desc, so gate 2 leg (ch)
+  // (name/desc/caption/[data-amount]) and gate 6 leg (c1) (a figure must
+  // carry a description visible to sighted readers) see an identical element
+  // either way. Only the order moves, with one declared exception: "last"
+  // gains a `mt-3` top margin. `mb-2` is a BOTTOM margin, so with the
+  // caption last it abutted whatever precedes it (a table disclosure, on
+  // /lineage/) with a 0px gap (fix round 1, concern 3) — the "first" branch
+  // keeps its exact pre-existing className.
+  const captionClassName =
+    captionPlacement === "last"
+      ? `mb-2 mt-3 text-xs leading-5 text-muted-foreground ${descClassName}`
+      : `mb-2 text-xs leading-5 text-muted-foreground ${descClassName}`;
   const caption = (
     <figcaption
       id={chartDescId(id)}
       data-chart-desc=""
-      className={`mb-2 text-xs leading-5 text-muted-foreground ${descClassName}`}
+      className={captionClassName}
     >
       {description}
     </figcaption>
