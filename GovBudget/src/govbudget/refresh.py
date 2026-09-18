@@ -332,12 +332,19 @@ def _check_duckdb() -> None:
     con.close()
 
 
-def preflight(*, root: Path, require_deploy: bool = True) -> list[str]:
+def preflight(
+    *, root: Path, require_deploy: bool = True, notes: list[str] | None = None
+) -> list[str]:
     """Return human-readable failures; an empty list is green.
 
     Never raises for a check failure — the caller records every failure in
     last_run.json, so the operator sees all of them at once instead of fixing
     them one run at a time.
+
+    `notes`, if given, receives non-failure information worth surfacing in the
+    run record's preflight detail — currently just the fact that preflight
+    created `logs/` itself (see R-20b-8 below). It is never a failure, so it
+    never goes in the returned list.
     """
     from govbudget import config
 
@@ -376,8 +383,14 @@ def preflight(*, root: Path, require_deploy: bool = True) -> list[str]:
     # missing has already lost its output by the time this code runs — the
     # Step 11 install snippet's own `mkdir -p "$PWD/logs"` is what prevents
     # that, and this mkdir cannot stand in for it.
+    logs_dir = root / "logs"
+    logs_already_there = logs_dir.exists()
     try:
-        (root / "logs").mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        if not logs_already_there:
+            print(f"preflight: created {root}/logs")
+            if notes is not None:
+                notes.append(f"created {root}/logs")
     except OSError as exc:
         failures.append(
             f"logs: cannot create {root}/logs ({type(exc).__name__}: {exc}) — "
@@ -627,6 +640,20 @@ def run_refresh(
     now = now or dt.datetime.now(dt.UTC)
     state_path = state_path or (config.DATA_DIR / "refresh" / "last_run.json")
 
+    # The plan and the confirmation gate come BEFORE the lock and BEFORE the
+    # run record exists. A run that never started is a run that never started
+    # regardless of why: a bad `--from`/`--until` (ValueError out of `_slice`,
+    # e.g. a typo'd stage name) and a declined or no-TTY confirmation
+    # (RefreshAborted out of `_confirm`, e.g. a plist that lost `--yes`) are
+    # both that species, so both must leave `data/refresh/last_run.json` — the
+    # one file LAUNCH.md Step 11 tells the operator to read — exactly as the
+    # previous run left it. Only once a human (or `--yes`) has actually agreed
+    # to run these stages does the lock, and then the record, come into
+    # existence.
+    planned = _slice(build_stages(root, now), from_stage, until_stage)
+    if not assume_yes and not dry_run:
+        _confirm(planned)
+
     # R-20b-7: a --dry-run takes NO lock. It runs no stage, writes no record
     # and touches nothing a concurrent run could collide with — and the moment
     # an operator most needs to read the plan is while a long refresh holds the
@@ -637,12 +664,11 @@ def run_refresh(
         state_path.parent / ".lock")
     try:
         # The record is the FIRST act after the lock, so every escape from here
-        # on writes `"ok": false`. Built later, an abort at the confirmation
-        # gate (a plist that lost `--yes`), a bad `--from` or an unreadable
-        # manifest would leave `data/refresh/last_run.json` — the one file
-        # LAUNCH.md Step 11 tells the operator to read — holding the PREVIOUS
-        # run's `"ok": true`. It starts false and is set true only by a stage
-        # loop that ran to the end without a failure.
+        # on writes `"ok": false`. A preflight failure, a stage failure, an
+        # unreadable manifest or a Ctrl-C mid-stage would otherwise leave
+        # `data/refresh/last_run.json` holding the PREVIOUS run's `"ok": true`.
+        # It starts false and is set true only by a stage loop that ran to the
+        # end without a failure.
         record: dict = {
             "started_at": now.isoformat(),
             "root": str(root),
@@ -667,10 +693,6 @@ def run_refresh(
         current: str | None = None      # the stage running right now, if any
         after_stages = False            # True once the graph is behind us
         try:
-            planned = _slice(build_stages(root, now), from_stage, until_stage)
-            if not assume_yes and not dry_run:
-                _confirm(planned)
-
             require_deploy = any(s.name == "deploy" for s in planned)
             before = drift_report(config.MANIFEST_PATH, now)
 
@@ -696,9 +718,11 @@ def run_refresh(
 
                 began = dt.datetime.now(dt.UTC)
                 if stage.name == "preflight":
-                    failures = preflight(root=root, require_deploy=require_deploy)
+                    notes: list[str] = []
+                    failures = preflight(
+                        root=root, require_deploy=require_deploy, notes=notes)
                     rc = 1 if failures else 0
-                    entry["detail"] = "; ".join(failures)
+                    entry["detail"] = "; ".join(failures + notes)
                     for f in failures:
                         print(f"PREFLIGHT FAIL: {f}", file=sys.stderr)
                 else:
@@ -708,7 +732,9 @@ def run_refresh(
                     (dt.datetime.now(dt.UTC) - began).total_seconds(), 1)
                 entry["status"] = "ok" if rc == 0 else "failed"
                 if rc != 0:
-                    record["ok"] = False
+                    # `record["ok"]` is not set here: `not aborted` below the
+                    # loop already covers it, and setting it twice invited a
+                    # reader to wonder whether the two could disagree.
                     record["failed_stage"] = stage.name
                     aborted = True
                     print(

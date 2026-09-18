@@ -379,6 +379,27 @@ def test_preflight_failure_aborts_before_any_stage(tmp_path, monkeypatch):
     assert recorded == []
 
 
+def test_run_refresh_puts_a_non_failure_preflight_note_in_the_stage_detail(
+    tmp_path, monkeypatch
+):
+    """A created `logs/` is not a failure (the stage still goes green), but it
+    is not nothing either: it belongs in the same `detail` field a preflight
+    failure would use, via the `notes` out-param `preflight()` takes."""
+
+    def fake_preflight(*, root, require_deploy, notes=None):
+        if notes is not None:
+            notes.append(f"created {root}/logs")
+        return []
+
+    monkeypatch.setattr(refresh, "preflight", fake_preflight)
+    monkeypatch.setattr(refresh, "_run", lambda argv, **kw: 0)
+    monkeypatch.setattr(config, "MANIFEST_PATH", tmp_path / "manifest.jsonl")
+    record = _refresh(tmp_path)
+    by_name = {s["name"]: s for s in record["stages"]}
+    assert by_name["preflight"]["status"] == "ok"
+    assert by_name["preflight"]["detail"] == f"created {ROOT}/logs"
+
+
 def test_no_tty_without_yes_refuses_to_start(tmp_path, calls, monkeypatch):
     # io.StringIO().isatty() is False — deterministic under any capture mode.
     monkeypatch.setattr(refresh.sys, "stdin", io.StringIO())
@@ -462,31 +483,35 @@ def test_the_lock_file_carries_the_pid_of_the_instance_holding_it(tmp_path):
         handle.close()
 
 
-def test_an_abort_at_the_confirmation_gate_overwrites_the_previous_runs_ok(
+def test_an_abort_at_the_confirmation_gate_leaves_the_previous_runs_ok_intact(
     tmp_path, calls, monkeypatch
 ):
-    """The record is created as the FIRST act after the lock. A plist or
-    refresh.sh that loses `--yes` aborts in `_confirm`, and without that
-    ordering `last_run.json` — the one file LAUNCH.md Step 11 tells the
-    operator to read — would still hold the previous month's `"ok": true`."""
+    """The plan and the confirmation gate run BEFORE the lock and BEFORE the
+    record exists. A plist or refresh.sh that loses `--yes` aborts in
+    `_confirm` without ever taking the lock, so a run that never started must
+    leave `last_run.json` — the one file LAUNCH.md Step 11 tells the operator
+    to read — exactly as the previous month's run left it, not overwritten
+    with `"ok": false`."""
     state = _previous_ok_record(tmp_path)
+    before = state.read_text()
     monkeypatch.setattr(refresh.sys, "stdin", io.StringIO())
     with pytest.raises(refresh.RefreshAborted):
         _refresh(tmp_path, assume_yes=False, state_path=state)
-    rec = json.loads(state.read_text())
-    assert rec["ok"] is False
-    assert "RefreshAborted" in rec["error"]
-    assert rec["failed_stage"] is None   # no stage ran; none is to blame
+    assert state.read_text() == before
     assert calls == []
 
 
-def test_a_bad_from_flag_also_overwrites_the_previous_runs_ok(tmp_path, calls):
+def test_a_bad_from_flag_also_leaves_the_previous_runs_ok_intact(
+    tmp_path, calls
+):
+    """`_slice` raises before the lock is even attempted — same species of
+    never-started run as a declined confirmation, so it must not overwrite the
+    previous run's record either."""
     state = _previous_ok_record(tmp_path)
+    before = state.read_text()
     with pytest.raises(ValueError):
         _refresh(tmp_path, from_stage="synk-archive", state_path=state)
-    rec = json.loads(state.read_text())
-    assert rec["ok"] is False
-    assert "ValueError" in rec["error"]
+    assert state.read_text() == before
 
 
 def test_an_escape_after_the_last_stage_blames_no_stage(
@@ -677,7 +702,7 @@ def test_preflight_calls_a_missing_lake_missing_not_locked(
 
 
 def test_preflight_creates_a_missing_logs_directory(
-    tmp_path, monkeypatch, local_checks_green
+    tmp_path, monkeypatch, local_checks_green, capsys
 ):
     """R-20b-8: preflight CREATES `logs/` instead of refusing to start.
 
@@ -686,11 +711,29 @@ def test_preflight_creates_a_missing_logs_directory(
     launchd needs is different and stays with the operator: it opens
     StandardOutPath/StandardErrorPath BEFORE exec and does not create missing
     parents, which is why the Step 11 install snippet keeps its own
-    `mkdir -p "$PWD/logs"`."""
+    `mkdir -p "$PWD/logs"`. Creating it is not silent: it prints one line and
+    hands the fact back through `notes` so the caller can put it in the run
+    record's preflight detail — it is not a failure, so it never goes in the
+    returned list."""
     (tmp_path / "logs").rmdir()
-    failures = refresh.preflight(root=tmp_path, require_deploy=False)
+    notes: list[str] = []
+    failures = refresh.preflight(root=tmp_path, require_deploy=False, notes=notes)
     assert failures == []
     assert (tmp_path / "logs").is_dir()
+    assert notes == [f"created {tmp_path}/logs"]
+    assert f"preflight: created {tmp_path}/logs" in capsys.readouterr().out
+
+
+def test_preflight_notes_nothing_when_logs_already_exists(
+    tmp_path, monkeypatch, local_checks_green, capsys
+):
+    """The pre-check is `exists()`, not "did mkdir raise": an already-there
+    `logs/` is silent, exactly as before R-20b-8 touched this path."""
+    notes: list[str] = []
+    failures = refresh.preflight(root=tmp_path, require_deploy=False, notes=notes)
+    assert failures == []
+    assert notes == []
+    assert "logs" not in capsys.readouterr().out
 
 
 # ── drift report ────────────────────────────────────────────────────────────

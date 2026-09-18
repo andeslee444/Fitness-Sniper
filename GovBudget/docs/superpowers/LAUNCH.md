@@ -639,10 +639,13 @@ When a domain is chosen:
 `govbudget refresh` is the monthly DATA refresh as one command — not the whole
 drill: the Step 0 link loaders, `migrate`, `oversight`, `states`,
 `entity-graph`, `lineage`, `dossiers` and the J-book/GAO ingests all stay
-operator-run. Known limitations below covers three of those (the Step 0 link
-loaders, the J-book/GAO ingests, the LDA manifest gap); the rest are Step 0's
-own procedure, which stays the reference for everything the orchestrator does
-not type. What it does run, in order: preflight -> the three
+operator-run. Known limitations below covers two of those: the Step 0 link
+loaders (second bullet) and the J-book/GAO ingests (third bullet). `dossiers`
+has its own procedure, Step 9 above. `migrate`, `oversight`, `states`,
+`entity-graph` and `lineage` are operator commands with no step of their own in
+this document — CLAUDE.md lists them. Step 0 is exclusively the budget→award
+link-loader order, not a catch-all reference for the rest. What it does run,
+in order: preflight -> the three
 USAspending/Treasury syncs -> (quarterly) the LDA pull -> the
 golden-fixture parser gate -> `jbooks export-facts` -> `build` ->
 `export-site` -> `npm run build` -> `npm run verify` ->
@@ -703,9 +706,12 @@ a label whose previous instance is still alive, so the monthly job simply stops
 happening. If a scheduled run's log goes quiet, check for a live process before
 assuming the schedule is fine.
 
-**Only one refresh runs at a time.** `run_refresh` takes an exclusive
-`flock` on `data/refresh/.lock` before anything else; a second invocation
-exits non-zero immediately and names the lock. `--dry-run` is the exception
+**Only one refresh runs at a time.** `run_refresh` builds the stage plan and
+runs the confirmation prompt first, and takes an exclusive `flock` on
+`data/refresh/.lock` only once that plan is confirmed — a bad
+`--from`/`--until` or a declined confirmation never reaches the lock at all. A
+second invocation that DOES reach it exits non-zero immediately and names the
+lock. `--dry-run` is the exception
 (ruling R-20b-7): it runs no stage and writes no record, so it takes no lock at
 all and the plan stays readable while a real refresh is running. This is not
 hypothetical — the monthly and quarterly jobs are different launchd labels, so
@@ -732,10 +738,15 @@ carries three alarms, each also printed to stderr as `DRIFT ALARM: ...`:
    past its window is named. **As of 2026-09-18 this alarm already fires on
    every run, `--dry-run` included:** `contracts`, `assistance` and `subawards`
    were last ingested 2026-06-11 — 99 days — against a monthly claim. That is a
-   true statement about the lake, not a bug. `contracts` and `assistance` clear
-   on the first successful monthly run; `subawards` cannot — the stage returns
-   early on an FY already in the manifest (first Known limitation below), so
-   its cadence alarm stands beside its stall alarm until `FY_END` moves.
+   true statement about the lake, not a bug. `contracts` and `assistance`
+   clear on the first monthly run that ingests a newly published archive; an
+   un-republished upstream leaves the cadence alarm standing (with a stall
+   alarm beside it) — `sync_archive` skips on `has_file(...)` and appends no
+   manifest record when it skips, so a "successful" (exit 0) monthly run does
+   not by itself move `newest_downloaded_at`. `subawards` cannot clear at all
+   on the current `FY_END` — the stage returns early on an FY already in the
+   manifest (first Known limitation below), so its cadence alarm stands beside
+   its stall alarm until `FY_END` moves.
 2. **Stall.** A sync stage that exits 0 without advancing its dataset's newest
    `downloaded_at` is named as skipped, not refreshed. `ingest_advanced` in the
    record says per dataset whether it actually moved.
@@ -754,10 +765,13 @@ ignore the failure. Alarms are printed and recorded, nothing more — so after a
 scheduled run the operator reads `data/refresh/last_run.json` (or
 `logs/refresh-*.err.log`). Nothing polls either file for you. That record is
 the last INVOCATION's outcome, not the last successful one: every path that
-leaves `run_refresh` once the lock is held writes it, an abort at the
-confirmation prompt and a Ctrl-C included, each with `"ok": false` and an
-`error` saying which. Only a refused second instance writes nothing at all —
-it must not overwrite the record of the run it just collided with.
+leaves `run_refresh` once the lock is held writes it — a preflight failure, a
+stage failure, an unreadable manifest and a Ctrl-C mid-stage all included —
+each with `"ok": false` and an `error` saying which. The plan and the
+confirmation prompt run BEFORE the lock, so a bad `--from`/`--until`, a
+declined confirmation and a no-TTY run without `--yes` are a run that never
+started and write nothing at all, the same as a refused second instance — none
+of them may overwrite the record of a run that actually happened.
 
 **What the `fixtures` stage is, and is not.** It runs `tests/influence`,
 `tests/jbooks`, `tests/oversight` and `tests/states` after the pulls and before
@@ -796,9 +810,10 @@ unavailable.)
   it marks the J-book and GAO cadence lines UNMETERED (the `unmetered` markers
   on `/methodology/`), while the LDA section states no cadence at all, so leg m
   never sees LDA and never marks it anything. Open under ROADMAP #8.
-- The quarterly stage passes `--years 2024 through the current calendar year`
-  explicitly rather than inheriting the CLI's hardcoded `--years 2024,2025,2026`
-  default, which a loaded job would still be using in 2027. The window grows at
+- The quarterly stage explicitly passes `--years` computed as 2024 through the
+  current calendar year (comma-joined, e.g. `2024,2025,2026,2027` in 2027)
+  rather than inheriting the CLI's hardcoded `--years 2024,2025,2026` default,
+  which a loaded job would still be using in 2027. The window grows at
   the end and never at the start: `influence pull` overwrites
   `lda_filings.parquet` in full, so a year the window stopped naming would be a
   year deleted from the corpus and from the citations that rest on it
