@@ -182,6 +182,73 @@ def test_unreadable_prior_partition_does_not_block_the_replacement(tmp_path):
     assert not (live / "corrupt.parquet").exists()
 
 
+# ── prior-partition counting must tolerate a partially-corrupt directory ────
+# (Fix round 1, item 1). Production contracts/assistance partitions ARE
+# multi-member: a single glob read over `*.parquet` is all-or-nothing, so one
+# junk member sitting next to a good 100-row part must not zero out the whole
+# prior count and let `if prior:` skip the guard.
+
+
+def test_partial_corruption_in_the_prior_partition_does_not_bypass_the_guard(tmp_path):
+    """Proof-it-can-fail: one good 100-row part + one junk part must still
+    total 100, so a 50-row (shrunk) fresh partition still trips the guard."""
+    parquet_dir, raw_dir = _seed_partition(tmp_path, 100)
+    live = parquet_dir / "contracts" / "fy=2024"
+    (live / "part_999_junk.parquet").write_bytes(b"not a parquet file")
+    shrunk = _zip(tmp_path, "shrunk.zip", _rows(50, prefix="S"))
+    with pytest.raises(PartitionShrinkError) as exc:
+        convert_zip_to_parquet(
+            shrunk, dataset="contracts", fiscal_year=2024,
+            parquet_dir=parquet_dir, raw_dir=raw_dir, required_columns=REQUIRED,
+        )
+    msg = str(exc.value)
+    assert "50" in msg and "100" in msg
+    # the good member and the junk member both survive the abort
+    assert _count(f"{live}/part_000.parquet") == 100
+    assert (live / "part_999_junk.parquet").exists()
+
+
+def test_a_prior_partition_with_every_member_unreadable_still_skips_the_guard(tmp_path, capsys):
+    """All-junk prior: the per-file fallback sums to 0, same ruling as a
+    single wholly-unreadable prior — the swap proceeds, with a WARNING per
+    skipped file."""
+    parquet_dir = tmp_path / "parquet"
+    live = parquet_dir / "contracts" / "fy=2024"
+    live.mkdir(parents=True)
+    (live / "part_000.parquet").write_bytes(b"junk one")
+    (live / "part_001.parquet").write_bytes(b"junk two")
+    convert_zip_to_parquet(
+        _zip(tmp_path, "fresh.zip", _rows(3)),
+        dataset="contracts", fiscal_year=2024,
+        parquet_dir=parquet_dir, raw_dir=tmp_path / "raw",
+        required_columns=REQUIRED,
+    )
+    assert _count(f"{parquet_dir}/contracts/fy=2024/*.parquet") == 3
+    assert capsys.readouterr().out.count("WARNING") >= 2
+
+
+def test_prior_partition_row_count_fallback_sums_only_the_readable_members(tmp_path):
+    """The fallback helper itself: two readable members (40 + 15 rows) plus
+    one junk member sums to 55, not 0 — the junk member costs only its own
+    rows."""
+    from govbudget.convert import _prior_partition_row_count
+
+    live = tmp_path / "fy=2024"
+    live.mkdir(parents=True)
+    con = duckdb.connect()
+    try:
+        con.execute(
+            f"copy (select * from range(40)) to '{live}/part_000.parquet' (format parquet)"
+        )
+        con.execute(
+            f"copy (select * from range(15)) to '{live}/part_001.parquet' (format parquet)"
+        )
+    finally:
+        con.close()
+    (live / "part_002_junk.parquet").write_bytes(b"not a parquet file")
+    assert _prior_partition_row_count(live) == 55
+
+
 # ── sync_archive (the guard reached through the real download path) ─────────
 
 AGENCIES = {
@@ -310,6 +377,90 @@ def test_mts_sync_allows_the_shrink_with_the_flag(tmp_path):
 
 
 # ── CLI surface ─────────────────────────────────────────────────────────────
+#
+# The parametrized tests below patch cmd_sync_subawards / cmd_sync_fiscaldata
+# WHOLESALE, so deleting `allow_shrink=getattr(...)` from cli.py:84 or :101
+# would leave this whole file green. The next two tests patch the UNDERLYING
+# function each command calls instead (mirroring
+# tests/test_archive_sync.py:90-113's `fake_sync` on `sync_archive_cmd`), so
+# the actual kwarg-threading at those two call sites is what's under test.
+
+
+def test_cmd_sync_subawards_threads_allow_shrink_to_convert_zip_to_parquet(tmp_path, monkeypatch):
+    """cli.py:84 — the getattr(args, "allow_corpus_shrink", False) kwarg on
+    the convert_zip_to_parquet call inside cmd_sync_subawards."""
+    import contextlib
+
+    from govbudget import cli, config
+    from govbudget import convert as convert_mod
+    from govbudget import download as download_mod
+    from govbudget.usaspending import subawards as subawards_mod
+
+    monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
+    monkeypatch.setattr(config, "PARQUET_DIR", tmp_path / "parquet")
+    monkeypatch.setattr(config, "MANIFEST_PATH", tmp_path / "manifest.jsonl")
+    monkeypatch.setattr(config, "MIN_FREE_GB", 0)
+    monkeypatch.setattr(cli, "_usaspending_client", lambda: contextlib.nullcontext(object()))
+    monkeypatch.setattr(
+        subawards_mod, "request_subaward_download",
+        lambda client, *, fiscal_year: {"file_name": f"subawards_fy{fiscal_year}.zip"},
+    )
+    monkeypatch.setattr(
+        subawards_mod, "poll_until_ready",
+        lambda client, file_name, **kw: f"https://example.invalid/{file_name}",
+    )
+    monkeypatch.setattr(
+        download_mod, "download_file",
+        lambda client, url, dest, **kw: ("deadbeef", 0),
+    )
+
+    seen = []
+
+    def fake_convert(zip_path, *, dataset, fiscal_year, parquet_dir, raw_dir,
+                      required_columns, allow_shrink=False):
+        seen.append(allow_shrink)
+        out_dir = parquet_dir / dataset / f"fy={fiscal_year}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return [out_dir / "part_000.parquet"]
+
+    monkeypatch.setattr(convert_mod, "convert_zip_to_parquet", fake_convert)
+
+    cli.cmd_sync_subawards(type("A", (), {"fy": 2025, "allow_corpus_shrink": True})())
+    cli.cmd_sync_subawards(type("A", (), {"fy": 2026, "allow_corpus_shrink": False})())
+    assert seen == [True, False]
+
+
+def test_cmd_sync_fiscaldata_threads_allow_shrink_to_sync_mts_outlays(tmp_path, monkeypatch):
+    """cli.py:101 — the getattr(args, "allow_corpus_shrink", False) kwarg on
+    the sync_mts_outlays call inside cmd_sync_fiscaldata."""
+    from govbudget import cli, config
+    from govbudget import fiscaldata as fiscaldata_mod
+
+    monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
+    monkeypatch.setattr(config, "PARQUET_DIR", tmp_path / "parquet")
+    monkeypatch.setattr(config, "MANIFEST_PATH", tmp_path / "manifest.jsonl")
+
+    seen = []
+
+    def fake_sync(client, *, parquet_dir, raw_dir, manifest_path, fy_start, allow_shrink=False):
+        seen.append(allow_shrink)
+        return parquet_dir / "mts_outlays" / "mts_table_5.parquet"
+
+    monkeypatch.setattr(fiscaldata_mod, "sync_mts_outlays", fake_sync)
+
+    cli.cmd_sync_fiscaldata(type("A", (), {"allow_corpus_shrink": True})())
+    cli.cmd_sync_fiscaldata(type("A", (), {"allow_corpus_shrink": False})())
+    assert seen == [True, False]
+
+
+def test_dbt_source_glob_does_not_match_the_mts_incoming_sibling():
+    """Pins the 'invisible to dbt' property the report claims: dbt's source
+    for mts_outlays globs '*.parquet' (dbt/models/sources.yml:17), which does
+    not match a crashed run's leftover mts_table_5.parquet.incoming sibling."""
+    import fnmatch
+
+    assert fnmatch.fnmatch("mts_table_5.parquet", "*.parquet")
+    assert not fnmatch.fnmatch("mts_table_5.parquet.incoming", "*.parquet")
 
 
 @pytest.mark.parametrize(

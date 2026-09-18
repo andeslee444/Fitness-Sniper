@@ -80,10 +80,11 @@ def sync_mts_outlays(
                 raise PartitionShrinkError(
                     f"mts_outlays: the pull returned {fresh:,} rows against the "
                     f"{prior:,} already on disk ({fresh / prior:.1%}), under the "
-                    f"{_MIN_PARTITION_RETENTION:.0%} retention floor of {floor:,}. "
-                    "Refusing to overwrite a larger file with a smaller one — "
-                    f"the prior parquet and {jsonl} are untouched. If the shrink "
-                    "is intended, re-run with --allow-corpus-shrink."
+                    f"{_MIN_PARTITION_RETENTION:.0%} retention floor of "
+                    f"{floor:,} rows. Refusing to overwrite a larger file with "
+                    f"a smaller one — the prior parquet is untouched; the "
+                    f"refused pull's {jsonl} is kept for inspection. If the "
+                    "shrink is intended, re-run with --allow-corpus-shrink."
                 )
 
     incoming_path.replace(out_path)

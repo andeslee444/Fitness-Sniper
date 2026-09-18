@@ -54,6 +54,39 @@ def parquet_row_count(glob_or_path: str) -> int:
         con.close()
 
 
+def _prior_partition_row_count(out_dir: Path) -> int:
+    """Row count of the partition already on disk at out_dir.
+
+    A single glob read (`read_parquet('{out_dir}/*.parquet', ...)`) is the
+    fast path, but it is all-or-nothing: DuckDB raises on the WHOLE read when
+    even one member is unreadable. Production contracts/assistance
+    partitions ARE multi-member, so a good 100-row part_000.parquet sitting
+    next to one junk part_001.parquet would otherwise count as 0 via
+    parquet_row_count's exception handling, and `if prior:` would skip the
+    guard entirely — a 10%-truncated upstream archive overwriting a
+    99%-intact FY. When the glob read fails, fall back to summing each
+    member individually through parquet_row_count, which already skips (and
+    prints one WARNING naming) any file it cannot read on its own — so one
+    bad file costs only its own rows. A prior where EVERY member fails still
+    totals 0: an unreadable prior is still not a veto (unchanged ruling,
+    same as the single wholly-junk-file case parquet_row_count already
+    handled).
+    """
+    con = duckdb.connect()
+    try:
+        return con.execute(
+            f"select count(*) from read_parquet("
+            f"'{_sql_path(out_dir)}/*.parquet', union_by_name=true)"
+        ).fetchone()[0]
+    except Exception:
+        pass
+    finally:
+        con.close()
+    return sum(
+        parquet_row_count(str(part)) for part in sorted(out_dir.glob("*.parquet"))
+    )
+
+
 def _sql_path(path: Path) -> str:
     """Escape a filesystem path for interpolation into a DuckDB SQL string literal."""
     return str(path).replace("'", "''")
@@ -129,7 +162,7 @@ def convert_zip_to_parquet(
         shutil.rmtree(extract_dir, ignore_errors=True)
 
     if out_dir.exists() and not allow_shrink:
-        prior = parquet_row_count(f"{_sql_path(out_dir)}/*.parquet")
+        prior = _prior_partition_row_count(out_dir)
         if prior:
             fresh = parquet_row_count(f"{_sql_path(tmp_dir)}/*.parquet")
             floor = int(prior * _MIN_PARTITION_RETENTION)
@@ -140,12 +173,12 @@ def convert_zip_to_parquet(
                     f"{fresh:,} rows against the {prior:,} already on disk "
                     f"({fresh / prior:.1%}), under the "
                     f"{_MIN_PARTITION_RETENTION:.0%} retention floor of "
-                    f"{floor:,}. Refusing to overwrite a larger partition with "
-                    "a smaller one — the live partition and the source zip are "
-                    "untouched, so re-running costs nothing. This is what a "
-                    "truncated upstream file looks like: the columns are all "
-                    "there, so the column check passes it. If the shrink is "
-                    "intended, re-run with --allow-corpus-shrink."
+                    f"{floor:,} rows. Refusing to overwrite a larger partition "
+                    "with a smaller one — the live partition and the source "
+                    "zip are untouched, so re-running costs nothing. This is "
+                    "what a truncated upstream file looks like: the columns "
+                    "are all there, so the column check passes it. If the "
+                    "shrink is intended, re-run with --allow-corpus-shrink."
                 )
 
     if out_dir.exists():
