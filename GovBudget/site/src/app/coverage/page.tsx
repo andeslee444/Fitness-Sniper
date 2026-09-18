@@ -219,10 +219,15 @@ export default function CoveragePage() {
                 it." (every row visibly prints "Derived from …"). Both were
                 restatements of things already on the page; no claim was
                 dropped. */}
+            {/* Chain-D fix round 1 (R-D-2b) takes §22a's third trim, the one
+                that round could not reach because it lives in this file: "—
+                the same files the pages themselves render from —". The <h2>
+                above and the rest of this sentence already say where the
+                figures come from and that a gate recomputes every one of them
+                from the shipped artifacts. */}
             <p className="text-sm leading-7">
-              Each coverage figure is read from the
-              data files this build shipped — the same files the pages themselves
-              render from — and a build-time gate recomputes all{" "}
+              Each coverage figure is read from the data files this build
+              shipped, and a build-time gate recomputes all{" "}
               {rows.length} rows independently and fails the build if any rendered
               figure disagrees with its source. A coverage page carrying a
               stale literal would refute its own argument, so this one is not
@@ -291,11 +296,29 @@ export default function CoveragePage() {
                 to, but a limit of what the source records contain" — the <h2>
                 directly above it says exactly that, and so does the target
                 paragraph further down. */}
+            {/* DEDUPE 2026-09-18 (chain-D fix round 1, R-D-2a). The bridge
+                row's blocker and target rendered TWICE on this page — once in
+                the map table's cells above and again here, verbatim — and a
+                page that states one thing twice is a page that will eventually
+                state it two ways (§P0-2). The long form stays in the TABLE
+                CELL, because that is where gate 14 leg cm reads it:
+                coverage.mjs finds the row by [data-coverage-row="bridge"],
+                then pins its
+                four phrases (account-code coarseness, hand adjudication, the
+                adversarial step, and that step BOUND to the links carrying a
+                per-award adjudication) inside [data-coverage-blocker], with
+                MIN_BLOCKER_CHARS/MIN_TARGET_CHARS floors on the same cells.
+                This section points at it instead. Not one word of either
+                string changed — lib/coverage-map is untouched — and
+                [data-coverage-crosswalk] below still restates the figure the
+                leg compares. Measured on the built page: −2,424 raw. Gzip
+                barely moves (−46), because the second copy compressed to a
+                back-reference; raw is what a duplicate paragraph really
+                costs. */}
             <p className="leading-7 text-muted-foreground">
-              This is the site&apos;s largest gap.
-            </p>
-            <p className="mt-3 leading-7 text-muted-foreground">
-              {crosswalk.blocker}
+              This is the site&apos;s largest gap; the crosswalk row of the
+              table above states what is in the way, and why no target is
+              dated.
             </p>
             {/* The File C negative result (spike 2026-09-01,
                 docs/superpowers/reviews/filec-program-activity-spike.md). Its
@@ -330,9 +353,6 @@ export default function CoveragePage() {
                   compares the two, because a page that states one number twice is
                   a page that will eventually state it two ways (§P0-2). */}
               <span data-coverage-crosswalk>{crosswalk.covered}</span>
-            </p>
-            <p className="mt-3 leading-7 text-muted-foreground">
-              {crosswalk.target}
             </p>
             {/* PM-S3 leftover: "crosswalked" is published with two
                 denominators — the bridge's and the district view's — and both

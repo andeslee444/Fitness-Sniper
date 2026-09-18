@@ -532,8 +532,14 @@ export default function MethodologyPage() {
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
                     data-seeds/gao_program_xwalk.csv
                   </code>
+                  {/* Chain-D fix round 1 (R-D-1): "Only the current edition
+                      is matched; " came off. The clause that follows states
+                      the same rule from the other side — an earlier edition
+                      renders ONLY under a ratified newer assessment, which is
+                      what "only the current edition is matched" means — and
+                      the count beside it is unchanged. */}
                   {gaoXwalk
-                    ? `. Only the current edition is matched; an earlier one renders only under a ratified newer assessment of the same program, and ${formatCount(gaoXwalk.unlinked_older_programs)} programs GAO assessed only earlier reach no page.`
+                    ? `. An earlier edition renders only under a ratified newer assessment of the same program, and ${formatCount(gaoXwalk.unlinked_older_programs)} programs GAO assessed only earlier reach no page.`
                     : "."}
                 </p>
                 {gaoXwalk && (
@@ -1128,11 +1134,20 @@ export default function MethodologyPage() {
                   specific awards, recipient families, and districts. That link is
                   an inference: we render the flow only for the high-confidence
                   crosswalk tier, whose evidence §4 grades. That covers{" "}
+                  {/* Chain-D fix round 1 (R-D-1): "; the tier is built from
+                      announcements naming a program and adjudicator-pinned
+                      account matches" came off — a one-clause summary of §4
+                      inside a sentence that has just told the reader §4 grades
+                      this evidence, and §4 states both paths at length (the
+                      announcement path and the per-award adjudications). 21b's
+                      correction is untouched: the sentence still says "spread
+                      across the service books" and never attributes the tier
+                      to one organization, which is what gate 24 leg (p3) and
+                      orgAttributionFindings care about. */}
                   {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs,
-                  spread across the service books; the tier is built from
-                  announcements naming a program and adjudicator-pinned account
-                  matches. Pages outside it say so in place of the flow: we
-                  could not defend the link, not that no money moved.
+                  spread across the service books. Pages outside it say so in
+                  place of the flow: we could not defend the link, not that no
+                  money moved.
                 </p>
               </section>
 
@@ -1344,8 +1359,13 @@ export default function MethodologyPage() {
                     <>
                       Some of it belongs to organizations with no usable FY2026
                       justification book in this corpus —{" "}
+                      {/* Chain-D fix round 1 (R-D-1): "rather than implying
+                          a narrative exists" came off. The paragraph's own
+                          closing sentence says it outright and unconditionally
+                          — "We never substitute generated prose for a missing
+                          source document" — two sentences later. */}
                       {uningestedClause} — and those pages name which case
-                      applies rather than implying a narrative exists. Which
+                      applies. Which
                       organizations appear here is read from the loaded books
                       at build time, not maintained by hand.{" "}
                     </>
@@ -1558,7 +1578,14 @@ export default function MethodologyPage() {
                   A program&rsquo;s own page (its &ldquo;Contractor
                   Concentration&rdquo; card) renders a pooled HHI computed
                   across every award year, on the basis and above the floor
-                  section 4 states — below it, no pooled index at all. The two
+                  {/* Chain-D fix round 1 (R-D-1): "— below it, no pooled
+                      index at all" came off. This sentence already points at
+                      §4 ("above the floor section 4 states"), and §4's own
+                      concentration passage — the one docs/methodology.md
+                      mirrors — states the below-floor behaviour in full:
+                      "below that floor it states the absence rather than
+                      substituting the wider figure". */}
+                  section 4 states. The two
                   are legitimately different
                   measures: a concentrated year can sit next to a competitive
                   pooled figure, or the reverse, with no error on either page.

@@ -408,6 +408,40 @@ export const PAGE_WEIGHT_BUDGET = [
   // file's /coverage/ note already rules out. Markup is not the lever here:
   // every repeated class string on the page is worth 12-46 gzip bytes in
   // total, and all 275 React text-boundary comments together only 327.
+  // TRIMMED 2026-09-18 (chain D fix round 1, controller ruling R-D-1).
+  // CEILINGS UNCHANGED at 155,000 / 42,500 — NO RAISE was ordered and none was
+  // taken. The chain-D build measured 152,483 / 42,562: 62 gzip OVER, from
+  // +3,568 source bytes across eight Group C/D commits (cfad4e75, c17f4f90,
+  // 7e304d81, 2946c210, 6c3cb61d, 428623ad, a1e8dc86, ee9dbee0).
+  //
+  // Four clauses came off, each one a restatement of a sentence beside it —
+  // no number, no tier name, no cited claim, and nothing that docs/
+  // methodology.md mirrors (its mirrored passage is §4's concentration
+  // paragraph, which is untouched):
+  //   1. "Only the current edition is matched; " — the clause after it says
+  //      the same rule from the other side.
+  //   2. "— below it, no pooled index at all" — §4, which that very sentence
+  //      points at, states the below-floor behaviour in full.
+  //   3. "rather than implying a narrative exists" — the paragraph's closing
+  //      sentence says it outright two sentences later.
+  //   4. "; the tier is built from announcements naming a program and
+  //      adjudicator-pinned account matches" — a one-clause summary of §4 in
+  //      a sentence that has just said §4 grades this evidence.
+  //
+  // MEASURED COST, for whoever adds the next sentence here: 202 source
+  // characters removed = 145 gzip on the built page, i.e. 0.72 gzip per
+  // source character — NOT the 0.40 the note above records. That 0.40 came
+  // from a 1,850-character trim whose text repeated elsewhere on the page and
+  // so compressed as back-references; short, unique clauses cost nearly twice
+  // that. Budget with 0.7, and re-measure.
+  //
+  // AND THE CEILING THIS ROUND COULD NOT REACH: R-D-1 asked for ≥250 gzip of
+  // headroom. It is arithmetically unreachable from those eight commits — all
+  // of them together moved this page 42,299 → 42,562, so reverting every
+  // character of their prose would land at 201 bytes of headroom, and part of
+  // that 263 is the corpus counts this page derives, not prose at all. Going
+  // further means cutting disclosure written before them, which this file's
+  // /coverage/ note rules out. The smaller true number is published here.
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "151,851 / 42,299" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
@@ -451,7 +485,58 @@ export const PAGE_WEIGHT_BUDGET = [
   // RE-MEASURED 2026-09-11 (chain B). CEILINGS UNCHANGED and the page is
   // inside them: 98,581 / 18,320, 430 gzip bytes of headroom — up 1,683 raw /
   // 215 gzip since 2026-09-03, unattributed. Nothing trimmed, nothing raised.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "98,581 / 18,320" },
+  // RAISED 2026-09-18 (chain D fix round 1, controller ruling R-D-2) — THE
+  // ONLY CEILING CHANGE ON THIS BRANCH, and it is a raise, so it is argued in
+  // the same breath as the change that needed it.
+  //
+  // The chain-D build measured this page at 102,194 / 20,473 against
+  // 101,500 / 18,750 — 694 raw and 1,723 gzip over. All of the growth is
+  // three plan-mandated DISCLOSURE tasks, each of which added prose this page
+  // exists to carry:
+  //   a1e8dc86 (Task 21b) +1,698 source bytes — the crosswalk-count registry
+  //     under #crosswalk: five counts, each with the unit one of them counts,
+  //     because "crosswalked" ships with two denominators and neither is the
+  //     other's subset. Gate 24 leg (p1) binds those data-crosswalk-count ids
+  //     to the shipped artifacts, so they cannot be shortened into one number.
+  //   c531fd14 (Task 21d) +854 — the caveat moved to sit directly under the
+  //     data it qualifies rather than above it. A move, not an addition, but
+  //     the wrapper it needed is not free.
+  //   0539aa9d (Task 22a) +2,494 — every promise row now says whether it is
+  //     scheduled, and the File C negative result is published with its public
+  //     evidence link instead of being left a silence.
+  // At this page's measured ~0.4 gzip per source character that predicts
+  // +2,018 gzip; the build measured +2,153. The earlier estimates (+26, +228)
+  // counted NET RENDERED characters and missed that every character ships
+  // twice, in the HTML and again in the RSC flight payload, with its markup.
+  //
+  // This file's /coverage/ note above rules out the obvious lever: "trimming
+  // /coverage/'s prose to buy back 13 bytes would cut disclosure to satisfy a
+  // budget, which is the wrong direction on the page whose job is stating what
+  // the corpus does and does not cover." That rule is why the ceiling moves
+  // and the disclosure does not.
+  //
+  // THE ALTERNATIVE, RECORDED FOR THE OWNER RATHER THAN TAKEN: move the
+  // #crosswalk section — its prose, the File C note and the five-count
+  // registry — to its own route, leaving /coverage/ the map table and the
+  // corpus counts. That is a routing change with its own gate work (leg (p1)
+  // and leg cm[bridge]'s restated-figure check both address /coverage/ by
+  // name today), so it is a decision, not a fix-round edit.
+  //
+  // What WAS bought back on the page itself, in the same round (R-D-2a/b):
+  //   - the bridge row's blocker and target rendered TWICE (the map table's
+  //     cells and again under #crosswalk). The long form now renders once, in
+  //     the table cell where gate 14 leg cm reads it, and #crosswalk points at
+  //     it: −2,424 raw on the built page, −46 gzip (a verbatim second copy
+  //     compresses to a back-reference, which is why the duplicate cost raw
+  //     and almost no gzip — worth knowing before anyone budgets a dedupe).
+  //   - §22a's third trim, "— the same files the pages themselves render
+  //     from —" in the ScopeNote's first paragraph: −50 rendered characters.
+  //
+  // New pair, ~3.6% over raw and ~1.5% over the post-trim gzip measurement
+  // rather than a round-number guess. The gzip headroom is deliberately the
+  // tighter of the two: this page grows a paragraph at a time and the next
+  // sentence on it should have to argue for itself.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_500, maxGzip: 20_750, measured: "98,581 / 18,320" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it

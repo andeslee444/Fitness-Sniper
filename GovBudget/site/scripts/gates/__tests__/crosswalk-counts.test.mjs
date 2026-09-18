@@ -189,7 +189,12 @@ describe("orgAttributionFindings", () => {
       orgAttributionFindings(
         [
           { url: "/district/", text: "District data reflects only high-confidence award crosswalk links. A budget line earns one only where the award record says more than an account code: a contract announcement that names the program, or an account plus program-specific tokens." },
-          { url: "/methodology/", text: "That covers 200 of 1,938 programs, spread across the service books; the tier is built from announcements naming a program and adjudicator-pinned account matches." },
+          // Chain-D fix round 1 trimmed the §4 summary clause off the end of
+          // this sentence (it restated the §4 reference the same sentence
+          // makes); the fixture follows the shipped wording, and the property
+          // under test is unchanged — the sentence names a mechanism, not an
+          // organization, so the leg must stay silent.
+          { url: "/methodology/", text: "That covers 200 of 1,938 programs, spread across the service books." },
         ],
         MIX,
       ),
