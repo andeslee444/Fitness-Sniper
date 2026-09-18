@@ -14,6 +14,7 @@ import {
   getTitleOverrides,
   getUningestedCoverageOrgs,
 } from "@/lib/data";
+import { crosswalkValue } from "@/lib/corpus";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
 import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
@@ -1389,7 +1390,7 @@ export default function MethodologyPage() {
                   (§4) links a program element to contractor families:{" "}
                   {formatCount(flowBridge.numerator ?? 0)} of {formatCount(flowBridge.denominator ?? 0)} crosswalked
                   PEs carry FY{flowMeta.budgetFy} request dollars (
-                  {flowMeta.bridge.highConfidencePeCount}{" "}at high confidence).
+                  {crosswalkValue("high-confidence-links")}{" "}at high confidence).
                   Everything else terminates in an explicit &ldquo;not yet
                   crosswalked&rdquo; band — {flowMeta.bridge.pctNotCrosswalked}%
                   of the request. That band is an honest statement about our

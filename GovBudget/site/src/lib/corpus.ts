@@ -367,3 +367,29 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
   }
   return rows;
 }
+
+/**
+ * One value out of the crosswalk-count registry, by id.
+ *
+ * THE POINT OF ROUTING EVERY PAGE THROUGH THIS. A crosswalk count read
+ * straight off `getFlowChartMeta().bridge` is a second, silent derivation of a
+ * number the registry already publishes — the shape this registry exists to
+ * remove, and the one gate 24 leg (p) binds. /methodology/ read
+ * `bridge.highConfidencePeCount` directly until 2026-09-18 while /coverage/
+ * rendered the same figure out of the registry; the digits agreed, which is
+ * exactly why nothing would have caught them drifting apart.
+ *
+ * Throws on an unknown id rather than rendering a blank: the registry's own
+ * invariants (above) are the check, and a page that silently states a stale or
+ * missing count is the defect, not the fallback.
+ */
+export function crosswalkValue(id: (typeof CROSSWALK_COUNT_IDS)[number] | string): number {
+  const row = getCrosswalkCounts().find((c) => c.id === id);
+  if (!row) {
+    throw new Error(
+      `[govbudget/corpus] no crosswalk count "${id}" — the registry publishes ` +
+        `${CROSSWALK_COUNT_IDS.join(", ")}.`,
+    );
+  }
+  return row.value;
+}

@@ -183,7 +183,20 @@ export default function DistrictIndexPage() {
               trusting this comment. The tier is NOT described as
               hand-adjudicated: 708 of the 768 links published at high come
               from the announcement path, which carries no per-link
-              adjudication (ROADMAP #109). */}
+              adjudication (ROADMAP #109).
+
+              WHAT THE DISJUNCTION BELOW LEAVES OUT, measured 2026-09-18 off
+              site_meta.link_adjudication.high.by_path: "an announcement that
+              names the program" is announcement+lexicon (708) and "an account
+              plus program-specific tokens" is account+tokens (34) — 742 of the
+              768 links published at high. The other 26 are adjudicator-pinned
+              account matches: account (3) and account+subagency (23), both
+              two-lens on every link. They are omitted deliberately — naming a
+              third path here would cost more than it tells a district reader,
+              and /methodology/ §4 states the full tier composition — but they
+              ARE links this sentence does not describe, so if that ratio moves
+              much off 742/768, re-word rather than leaving the reader with a
+              disjunction that has quietly stopped covering the tier. */}
           <p>
             District data reflects only high-confidence award crosswalk
             links. A budget line earns one only where the award record says

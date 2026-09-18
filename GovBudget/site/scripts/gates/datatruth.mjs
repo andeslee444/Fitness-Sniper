@@ -2235,8 +2235,17 @@ const CROSSWALK_CLAIM_PAGES = ["/flow/", "/district/", "/coverage/", "/methodolo
 
 /**
  * MIRROR of lib/corpus CROSSWALK_COUNT_IDS — the order /coverage/ renders and
- * the order (p1) binds. It is self-enforcing: the rendered list IS built from
- * that constant, so a divergence fails the slot check below by name.
+ * the order (p1) binds.
+ *
+ * NOTHING HERE ENFORCES THE MIRROR. A gate file cannot import from the site's
+ * TypeScript, so this list is a hand copy, and it was described as
+ * "self-enforcing" on the reasoning that /coverage/ builds its list from the
+ * same constant — true of the PAGE, and no help at all if someone edits
+ * lib/corpus and not this. What actually pins the two together is
+ * `src/lib/__tests__/corpus.test.ts` ("declares every crosswalk count the site
+ * publishes"), which asserts getCrosswalkCounts()'s ids ARE
+ * CROSSWALK_COUNT_IDS in order. Edit that constant and you edit this list and
+ * that test in the same change.
  */
 const CROSSWALK_COUNT_IDS = [
   "link-universe",
@@ -2272,15 +2281,17 @@ const CROSSWALK_CLAIM_RE = new RegExp(
 /** A ratio is ABOUT the crosswalk when one of these sits beside it. */
 const CROSSWALK_CUE = /crosswalk|follow-the-dollar|bridge/i;
 
-/** Characters either side of the ratio that the cue may sit in. Measured
- *  2026-09-18 over the built pages: the nine real claims are cued at 60, 80
- *  and 120 alike, and nothing else becomes cued at any of the three, so the
- *  window is not load-bearing at this value. */
+/** Characters either side of the ratio that the cue may sit in. Re-measured
+ *  2026-09-18 over the built pages, the sampled /program/ page included: all
+ *  TEN real claims are cued at 60, 80 and 120 alike, and nothing else becomes
+ *  cued at any of the three, so the window is not load-bearing at this value. */
 const CROSSWALK_CUE_WINDOW = 80;
 
 /** Non-vacuity floor for the LIVE sweep — passed in as `minClaims`, so the
- *  pure function stays testable at both settings (measured 2026-09-18: NINE crosswalk
- *  ratios across /flow/, /district/, /coverage/ and /methodology/). Below
+ *  pure function stays testable at both settings (re-measured 2026-09-18 at TEN
+ *  crosswalk ratios across /flow/ 1, /district/ 3, /coverage/ 1, /methodology/ 4
+ *  and the sampled /program/ page 1 — nine before that page joined the sweep).
+ *  Below
  *  this the matcher has stopped matching — a noun reword, a notation change —
  *  and (p2) would pass on an empty set, which is the shape leg (k2)'s own
  *  claims===0 guard exists for. RE-MEASURE if the pages change; do not lower
@@ -2293,21 +2304,49 @@ const MIN_CROSSWALK_CLAIMS = 6;
  *  export would otherwise make both pass on almost nothing. Do not lower. */
 const MIN_FLOW_SIDECARS = 120;
 
-/** Every integer the two derived link blocks publish. READ, never
- *  re-derived: leg (n) owns link_precision and leg (o) owns
- *  link_adjudication, and re-deriving either here is how one number acquires
- *  two sources. (p2) admits these so a /methodology/ sentence that states a
- *  block's own figure — "9,587 of the 12,595 links the crosswalk grades high
- *  or medium" — is not reported as a sixth undeclared denominator. */
-function publishedLinkFigures(meta) {
+/**
+ * The leaf fields of the two derived link blocks that the swept passages
+ * actually render. READ, never re-derived: leg (n) owns link_precision and leg
+ * (o) owns link_adjudication, and re-deriving either here is how one number
+ * acquires two sources. (p2) admits these so a /methodology/ sentence that
+ * states a block's own figure — "9,587 of the 12,595 links the crosswalk grades
+ * high or medium" — is not reported as a sixth undeclared denominator.
+ *
+ * ENUMERATED, NOT WALKED. What shipped walked both blocks and admitted every
+ * finite number anywhere inside them: 22 distinct integers on the 2026-09-18
+ * artifact, against the THREE the live claims cite (12,595 and 9,587 from here,
+ * 384 from the declared counts). Every one of the other nineteen — `unpinned`
+ * 8,474, every `by_method.*.adjudicated`, every `high.by_path.*` counter — was
+ * a standing free pass for a rotted literal that happened to collide with it,
+ * on a leg whose whole job is to catch exactly that.
+ *
+ * What is admitted, and which passage renders it:
+ *   link_adjudication.published          12,595  /methodology/ §4, "9,587 of the 12,595 links"
+ *   link_adjudication.adjudicated         9,587  that sentence's numerator
+ *   link_adjudication.high.published_high   768  §4's high-tier link count
+ *   link_adjudication.high.two_lens_high     60  the adjudicator-pinned half of it
+ *   link_adjudication.by_method.*.published      §4's per-method tier table
+ *   link_precision.methods.*.confirmed           §4's precision ratios ("51 of 54")
+ *   link_precision.methods.*.sampled             their denominators
+ *
+ * ADD A FIELD HERE when a passage starts rendering one — with the passage named
+ * above — rather than widening this back into a walk.
+ */
+export function publishedLinkFigures(meta) {
   const out = [];
-  const walk = (v) => {
+  const take = (v) => {
     if (typeof v === "number" && Number.isFinite(v)) out.push(v);
-    else if (Array.isArray(v)) v.forEach(walk);
-    else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk(meta?.link_adjudication ?? {});
-  walk(meta?.link_precision ?? {});
+  const adj = meta?.link_adjudication ?? {};
+  take(adj.published);
+  take(adj.adjudicated);
+  take(adj.high?.published_high);
+  take(adj.high?.two_lens_high);
+  for (const m of Object.values(adj.by_method ?? {})) take(m?.published);
+  for (const m of Object.values(meta?.link_precision?.methods ?? {})) {
+    take(m?.confirmed);
+    take(m?.sampled);
+  }
   return out;
 }
 
@@ -2365,11 +2404,28 @@ export function crosswalkClaimFindings(
             `means the scan is broken, not that the site went quiet`
         : `leg p2: ${pages.length} page(s) scanned and only ${claims} crosswalk ` +
             `claim(s) matched — below the do-not-lower floor of ${minClaims} ` +
-            `measured 2026-09-18 at 9. RE-MEASURE if the pages change; do not ` +
+            `measured 2026-09-18 at 10. RE-MEASURE if the pages change; do not ` +
             `lower it to fit`,
     );
   }
   return found;
+}
+
+/** Characters of context either side of the org name the (p3) finding quotes.
+ *  A rendered "sentence" is often the whole nav glued to the lede, so slicing
+ *  from its start quoted the page head and never the clause under complaint. */
+const ORG_QUOTE_WINDOW = 120;
+
+/** `s` as a literal inside a RegExp. Org names are sidecar data. */
+function escapeRe(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** A +/- `window` slice of `text` around `at`, elided where it was cut. */
+function quoteAround(text, at, window) {
+  const from = Math.max(0, at - window);
+  const to = Math.min(text.length, at + window);
+  return `${from > 0 ? "…" : ""}${text.slice(from, to).trim()}${to < text.length ? "…" : ""}`;
 }
 
 /**
@@ -2395,12 +2451,16 @@ export function orgAttributionFindings(pages, orgMix) {
       if (!CROSSWALK_CUE.test(sentence) && !/account structure|attribut/i.test(sentence)) continue;
       for (const [org, n] of Object.entries(orgMix)) {
         if (org.length < 3) continue;                     // 'N', 'F', 'A' are codes, not prose
-        if (!new RegExp(`\\b${org}\\b`, "i").test(sentence)) continue;
+        // Org names come off the sidecars' own `header.org`, so they are data,
+        // not a pattern: an "OSD (R&E)" or an "A+" would otherwise be spliced
+        // into the source of a RegExp and either throw or match the wrong text.
+        const hit = new RegExp(`\\b${escapeRe(org)}\\b`, "i").exec(sentence);
+        if (!hit) continue;
         if (n * 2 >= total) continue;                      // it really is the majority
         found.push(
-          `leg p3 (${p.url}): "${sentence.trim().slice(0, 140)}" attributes the crosswalk to ${org}, ` +
-            `which holds ${n} of ${total} flow sidecars. Name the mechanism (an announcement that ` +
-            `names the program, or account plus program tokens), not an organization`,
+          `leg p3 (${p.url}): "${quoteAround(sentence, hit.index, ORG_QUOTE_WINDOW)}" attributes the ` +
+            `crosswalk to ${org}, which holds ${n} of ${total} flow sidecars. Name the mechanism (an ` +
+            `announcement that names the program, or account plus program tokens), not an organization`,
         );
       }
     }
@@ -2507,18 +2567,26 @@ function runCrosswalkCountLeg(errors, notes) {
     }
     pages.push({ url, text: norm(root.text) });
   }
-  // one district DETAIL page as well: it carries its own attribution prose
-  const detailDir = path.join(outDir, "district");
-  if (fs.existsSync(detailDir)) {
+  // Two DETAIL pages as well, each the alphabetically first of its kind, and
+  // each carrying crosswalk prose the index pages do not:
+  //   /district/<first>/ — its own organization-attribution paragraph, which is
+  //     the only place (p3)'s target sentence lives outside the indexes.
+  //   /program/<first>/  — the follow-the-dollar emptyNote, "flows cover 200 of
+  //     1,938 programs", which renders on ~1,700 program pages and was entirely
+  //     outside the sweep until 2026-09-18. It is ONE template, so one sample
+  //     covers all of them; the note below prints which page was read.
+  for (const [dir, label] of [["district", "district"], ["program", "program"]]) {
+    const detailDir = path.join(outDir, dir);
+    if (!fs.existsSync(detailDir)) continue;
     const first = fs.readdirSync(detailDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()[0];
-    if (first) {
-      const p = path.join(detailDir, first, "index.html");
-      if (fs.existsSync(p)) {
-        const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
-        for (const el of root.querySelectorAll("script, style, noscript, template")) el.remove();
-        pages.push({ url: `/district/${first}/`, text: norm(root.text) });
-      }
+    if (!first) continue;
+    const dp = path.join(detailDir, first, "index.html");
+    if (!fs.existsSync(dp)) continue;
+    const root = parse(fs.readFileSync(dp, "utf8"), { comment: false });
+    for (const el of root.querySelectorAll("script, style, noscript, template, [data-historical-figures]")) {
+      el.remove();
     }
+    pages.push({ url: `/${label}/${first}/`, text: norm(root.text) });
   }
   if (pages.length === 0) {
     errors.push("leg p: no crosswalk-claim page built — the sweep is vacuous");

@@ -17,7 +17,11 @@ import "server-only";
  */
 
 import { formatCount } from "@/lib/format";
-import { getCrosswalkCounts } from "@/lib/corpus";
+// crosswalkValue is the registry's OWN accessor (lib/corpus): it throws
+// through the registry's invariants rather than falling back to a literal, and
+// it is the single read every page goes through, so a coverage note cannot
+// silently state a count the rest of the site has moved past.
+import { crosswalkValue } from "@/lib/corpus";
 import {
   getDetailGradeCount,
   getProgramsCount,
@@ -65,16 +69,6 @@ export interface Coverage {
    * "why <topic>? →"
    */
   linkText: string;
-}
-
-/**
- * One value out of the crosswalk-count registry (lib/corpus). Throws through
- * the registry's own invariants rather than falling back to a literal: a
- * coverage note that silently states a stale count is the defect leg (p)
- * exists to close.
- */
-function crosswalkValue(id: string): number {
-  return getCrosswalkCounts().find((c) => c.id === id)!.value;
 }
 
 export function getCoverage(id: CoverageId): Coverage {

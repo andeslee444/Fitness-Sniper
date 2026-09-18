@@ -14,7 +14,11 @@
  * exact glue shapes the 2026-09-12 build produces.
  */
 import { describe, it, expect } from "vitest";
-import { crosswalkClaimFindings, orgAttributionFindings } from "../datatruth.mjs";
+import {
+  crosswalkClaimFindings,
+  orgAttributionFindings,
+  publishedLinkFigures,
+} from "../datatruth.mjs";
 
 const DECLARED = {
   "link-universe": 444,
@@ -24,8 +28,11 @@ const DECLARED = {
   "district-linkable-unbridged": 34,
 };
 const CORPUS = { "index-rows": 1938, "program-pages": 2562, "detail-pages": 1936 };
-/** What site_meta.link_adjudication publishes — READ, never re-derived. */
-const PUBLISHED = [12595, 9587, 8474, 768, 60];
+/** The leaf fields of site_meta.link_adjudication that the swept pages render
+ *  — READ, never re-derived. 8,474 (`unpinned`) is deliberately NOT here: the
+ *  block holds it, no page states it as a ratio, and admitting it was a free
+ *  pass for any rotted literal that happened to equal it. */
+const PUBLISHED = [12595, 9587, 768, 60];
 
 describe("crosswalkClaimFindings", () => {
   it("accepts the two shipped ratios, because both are declared", () => {
@@ -202,5 +209,75 @@ describe("orgAttributionFindings", () => {
 
   it("fails a vacuously-empty org mix rather than passing", () => {
     expect(orgAttributionFindings([{ url: "/district/", text: "anything" }], {}).join(" ")).toContain("no flow sidecars");
+  });
+});
+
+describe("publishedLinkFigures", () => {
+  /** The 2026-09-18 artifact, trimmed to the fields that matter here. */
+  const META = {
+    link_adjudication: {
+      published: 12595,
+      adjudicated: 9587,
+      unpinned: 8474,
+      by_method: {
+        "account+subagency": { adjudicated: 9173, published: 9337 },
+        "announcement+lexicon": { adjudicated: 0, published: 708 },
+      },
+      high: {
+        published_high: 768,
+        two_lens_high: 60,
+        adjudicated_high: 60,
+        by_path: {
+          "account+tokens": { adjudicated: 34, high: 34, two_lens: 34 },
+          "announcement+lexicon": { adjudicated: 0, high: 708, two_lens: 0, with_match_basis: 384 },
+        },
+      },
+    },
+    link_precision: {
+      methods: {
+        "announcement+lexicon": { confirmed: 51, sampled: 54, judged: "2026-09-04" },
+        "fpds-ap": { confirmed: 94, sampled: 120, judged: "2026-09-04" },
+      },
+    },
+  };
+
+  it("admits the leaf fields the swept passages actually render", () => {
+    const got = publishedLinkFigures(META);
+    for (const n of [12595, 9587, 768, 60, 9337, 708, 51, 54, 94, 120]) {
+      expect(got).toContain(n);
+    }
+  });
+
+  /**
+   * THE DEFECT THIS CLOSES. The shipped version walked both blocks and pushed
+   * every finite number it found — 22 distinct integers on the 2026-09-18
+   * artifact — so `unpinned`, every `by_method.*.adjudicated` and every
+   * `high.by_path.*` counter became a free pass for any crosswalk ratio that
+   * happened to collide with one. None of them is stated as an `N of M` ratio
+   * on any swept page.
+   */
+  it("does NOT admit a number the block holds but no passage renders", () => {
+    const got = publishedLinkFigures(META);
+    for (const n of [8474, 9173, 34]) {
+      expect(got).not.toContain(n);
+    }
+  });
+
+  it("lets a claim through on a leaf, and reports the same claim on a non-leaf", () => {
+    const leaf = "9,587 of the 12,595 links the crosswalk grades high or medium carry an adjudication.";
+    expect(
+      crosswalkClaimFindings([{ url: "/methodology/", text: leaf }], DECLARED, CORPUS, publishedLinkFigures(META)),
+    ).toEqual([]);
+    // `unpinned` (8,474) and `by_method["account+subagency"].adjudicated`
+    // (9,173) are both in the block and both admitted by the old walk.
+    const nonLeaf = "8,474 of the 9,173 links the crosswalk grades medium sit unpinned.";
+    expect(
+      crosswalkClaimFindings([{ url: "/methodology/", text: nonLeaf }], DECLARED, CORPUS, publishedLinkFigures(META)),
+    ).toHaveLength(2);
+  });
+
+  it("returns nothing for a site_meta with no link blocks at all", () => {
+    expect(publishedLinkFigures({})).toEqual([]);
+    expect(publishedLinkFigures(undefined)).toEqual([]);
   });
 });

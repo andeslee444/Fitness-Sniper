@@ -41,8 +41,10 @@ import {
   getCorpus,
   corpusStatement,
   getCrosswalkCounts,
+  crosswalkValue,
   CROSSWALK_COUNT_IDS,
 } from "@/lib/corpus";
+import { getFlowChartMeta } from "@/lib/data";
 
 const SCOPE =
   "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project detail";
@@ -167,5 +169,34 @@ describe("getCrosswalkCounts", () => {
   it("throws when district-linkable exceeds the whole link universe", () => {
     state.flows = 500;
     expect(() => getCrosswalkCounts()).toThrow(/district-linkable/);
+  });
+});
+
+describe("crosswalkValue", () => {
+  it("is the one way a page reads a crosswalk count", () => {
+    expect(crosswalkValue("high-confidence-links")).toBe(240);
+    expect(crosswalkValue("district-linkable")).toBe(200);
+  });
+
+  /**
+   * THE DIVERGENCE THIS CLOSES. /methodology/ rendered
+   * `flowMeta.bridge.highConfidencePeCount` straight off the meta while
+   * /coverage/ rendered the same figure out of the registry — two reads of one
+   * number, which is the shape the crosswalk-count registry exists to remove.
+   * The page now goes through the registry, and this pins that the registry's
+   * `high-confidence-links` row IS that field: re-point the row at any other
+   * source and the page silently starts rendering a different digit than it
+   * did, which fails here instead.
+   */
+  it("keeps high-confidence-links bound to the bridge band /methodology/ used to read", () => {
+    state.bridge = { universePeCount: 444, crosswalkedPeCount: 384, highConfidencePeCount: 191 };
+    expect(crosswalkValue("high-confidence-links")).toBe(191);
+    expect(crosswalkValue("high-confidence-links")).toBe(
+      getFlowChartMeta().bridge.highConfidencePeCount,
+    );
+  });
+
+  it("throws on an id the registry does not publish, rather than rendering a blank", () => {
+    expect(() => crosswalkValue("no-such-count")).toThrow();
   });
 });
