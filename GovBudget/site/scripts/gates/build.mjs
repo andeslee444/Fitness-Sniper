@@ -432,11 +432,12 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // MEASURED COST, for whoever adds the next sentence here: 202 source
   // characters removed = 142 gzip, measured as 42,562 on the chain-D build
-  // against 42,420 on fix-round build 1, the pair fix round 1 stamped. Build
-  // 2 of that same source weighed 42,416 (build-id jitter), and fix round 2's
-  // two builds 42,415 and 42,417, once one of the four trim comments moved
-  // out from between two text runs and React stopped emitting a <!-- -->
-  // separator there. So read the trim as 142 gzip ±5; 0.70 gzip per source
+  // against 42,420 on fix-round build 1, the pair fix round 1 stamped. Every
+  // build of this page since has landed between 42,414 and 42,420: a few bytes
+  // of build-id jitter, plus the 1 gzip fix round 2 gave back when it moved
+  // one of the four trim comments out from between two text runs and React
+  // stopped emitting a <!-- --> separator there. So read the trim as 142 gzip
+  // ±5; 0.70 gzip per source
   // character, NOT the 0.40 the note above records. That 0.40 came
   // from a 1,850-character trim whose text repeated elsewhere on the page and
   // so compressed as back-references; short, unique clauses cost nearly twice
@@ -454,16 +455,17 @@ export const PAGE_WEIGHT_BUDGET = [
   // leg below errors when a recorded `measured:` gzip overstates live headroom
   // by 2x, i.e. as soon as the page weighs more than maxGzip - (maxGzip -
   // recorded)/2. At the 42,415 stamped below against a 42,500 ceiling that is
-  // 42,458 — about +42 gzip on the 42,417 the build at this commit weighed,
-  // half of the headroom the entry appears to offer. So the next editor has
-  // ~42 bytes before gate 1 goes red, and the fix when it does is a RESTAMP of
-  // the pair below, never a raise. Same arithmetic on /coverage/: ~152 of the
-  // 303 it has at 20,447.
+  // 42,458 — about +43 gzip on a page weighing what this one weighs, half the
+  // headroom the entry appears to offer. So the next editor has ~43 bytes
+  // before gate 1 goes red, not 85, and the fix when it fires is a RESTAMP of
+  // the pair below, never a raise. Same arithmetic on /coverage/: it trips at
+  // 20,598, ~150 above the stamp, not 305.
   //
-  // The stamped pair is fix round 2's BUILD 1 (42,415 / 20,445); its build 2,
-  // same source, weighed 42,417 / 20,447. Two bytes of build-id jitter each
-  // way is ordinary here and no build chases it: the leg errors only past 2x,
-  // and the numbers above are the arithmetic, not a promise of the byte.
+  // The stamped pair is one build's (fix round 2's first). Three builds of
+  // that same source weighed 42,415, 42,417 and 42,414 gzip, and /coverage/
+  // 20,445, 20,447 and 20,445 — so read a stamp as ±3 and do not spend a
+  // build chasing the byte: the leg errors only past 2x, and understating
+  // headroom costs nothing.
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "152,075 / 42,415" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
