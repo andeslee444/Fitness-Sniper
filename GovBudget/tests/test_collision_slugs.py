@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -510,6 +511,32 @@ def _make_collision_duckdb(db_path: Path) -> None:
         " ('3010', 8411.8, 'HUNTINGTON INGALLS INDUSTRIES', 3, 8, 3059296982.0,"
         "  8411.8, 'HUNTINGTON INGALLS INDUSTRIES', 3, 8, 3059296982.0)"
     )
+    # ROADMAP #82 (mention axis), fix round 1: lobbying rows on the shared
+    # code, one per evidence tier. fct_program_lobbying is keyed on the BARE
+    # pe_bli (it has no account column and a Senate LDA filing carries
+    # nothing that could populate one), so ALL FOUR of these arrive at both
+    # member pages and the exporter decides per row which page each is
+    # evidence about:
+    #   pe_literal  '3010'                      -> both (names the LINE)
+    #   multi_token 'Shipboard|Communications'  -> the OPN member only
+    #   alias       'Flight'                    -> the SCN member only
+    #   multi_token 'Orphan|Volume'             -> NEITHER, and counted
+    # The last is the mention-axis twin of the orphan J-book volume above:
+    # terms that match no member's title are evidence about no member.
+    _lob = (
+        ("11111111-1111-4111-8111-111111111111", "3010", "pe_literal"),
+        ("22222222-2222-4222-8222-222222222222", "Shipboard|Communications",
+         "multi_token"),
+        ("33333333-3333-4333-8333-333333333333", "Flight", "alias"),
+        ("44444444-4444-4444-8444-444444444444", "Orphan|Volume", "multi_token"),
+    )
+    for _uuid, _term, _kind in _lob:
+        con.execute(
+            "insert into fct_program_lobbying values"
+            " (?, '3010', 'LPD Flight II', ?, 'lobbied on the line',"
+            "  ?, 'ACME LOBBYING', 'acme', '2025', ?)",
+            (_uuid, _term, f"https://lda.senate.gov/filings/{_uuid}/", _kind),
+        )
     con.close()
 
 
@@ -828,3 +855,107 @@ def test_an_ordinary_programs_narratives_are_unchanged(collision_export):
     programs = json.loads((collision_export / "json" / "programs.json").read_text())
     by_slug = {p["slug"]: p for p in programs}
     assert by_slug["0601101E"]["narrative_count"] == len(side["narratives"])
+
+
+# ---------------------------------------------------------------------------
+# (d) ROADMAP #82, the MENTION axis (fix round 1): per-row attribution
+# ---------------------------------------------------------------------------
+#
+# fct_program_lobbying is keyed on the bare pe_bli, so every mention on a
+# shared code arrives at both members. WHICH member a row is evidence about
+# is decided from the mart's own evidence, never from the filing's text:
+# a `pe_literal` row names the budget LINE itself and is true of every
+# program using it; a `multi_token`/`alias` row qualified by matching ONE
+# title's terms and is evidence about the program whose title carries them —
+# which is exactly what the rendered badge claims ("2+ distinct, non-generic
+# words from this program's title").
+#
+# Measured 2026-09-18 on the shipped corpus: /program/0145-APN/ "F/A-18E/F
+# (Fighter) Hornet" rendered 5 rows badged `General|Purpose` (its SIBLING is
+# "General Purpose Bombs") and /program/1350-WPN/ "Missile Industrial
+# Facilities" rendered 2 badged `Weapons|Ammunition`.
+
+
+def _mention_terms(sidecar: dict) -> set:
+    return {m["matched_term"] for m in sidecar["mentions"]}
+
+
+def test_a_pe_literal_mention_publishes_on_every_member(collision_export):
+    """The filing's text contains the code '3010' itself, which names the
+    LINE and nothing finer — so it is evidence for both programs."""
+    for slug in ("3010-SCN", "3010-OPN"):
+        assert "3010" in _mention_terms(_sidecar(collision_export, slug))
+
+
+def test_a_multi_token_mention_publishes_only_on_the_member_it_matched(
+    collision_export,
+):
+    opn = _sidecar(collision_export, "3010-OPN")
+    scn = _sidecar(collision_export, "3010-SCN")
+    assert "Shipboard|Communications" in _mention_terms(opn)
+    assert "Shipboard|Communications" not in _mention_terms(scn)
+
+
+def test_an_alias_mention_publishes_only_on_the_member_it_matched(
+    collision_export,
+):
+    scn = _sidecar(collision_export, "3010-SCN")
+    opn = _sidecar(collision_export, "3010-OPN")
+    assert "Flight" in _mention_terms(scn)          # "LPD Flight II"
+    assert "Flight" not in _mention_terms(opn)
+
+
+def test_a_mention_matching_no_member_title_publishes_on_neither(
+    collision_export,
+):
+    """The mention-axis twin of the orphan volume: terms that appear in no
+    member's title are evidence about no member, so the row publishes
+    nowhere rather than on both."""
+    for slug in ("3010-SCN", "3010-OPN"):
+        assert "Orphan|Volume" not in _mention_terms(_sidecar(collision_export, slug))
+
+
+def test_mentions_shared_code_declares_the_basis_per_evidence_kind(
+    collision_export,
+):
+    """The declaration gate 21 leg n check 8 reads. A blanket `true` asserted
+    the pe_literal rule over every row, which is false for a multi_token
+    one."""
+    scn = _sidecar(collision_export, "3010-SCN")
+    opn = _sidecar(collision_export, "3010-OPN")
+    assert scn["mentions_shared_code"] == {"pe_literal": "code", "alias": "title"}
+    assert opn["mentions_shared_code"] == {
+        "pe_literal": "code", "multi_token": "title",
+    }
+
+
+def test_every_title_basis_mention_is_true_of_the_page_that_renders_it(
+    collision_export,
+):
+    """The property check 8 asserts on the built corpus, computed here from
+    the page's own title."""
+    programs = json.loads((collision_export / "json" / "programs.json").read_text())
+    by_slug = {p["slug"]: p for p in programs}
+    for slug in ("3010-SCN", "3010-OPN"):
+        side = _sidecar(collision_export, slug)
+        title = by_slug[slug]["title"]
+        checked = 0
+        for m in side["mentions"]:
+            if m["evidence_kind"] == "pe_literal":
+                continue
+            checked += 1
+            for term in m["matched_term"].split("|"):
+                assert re.search(
+                    r"(?<![A-Za-z0-9])" + re.escape(term) + r"(?![A-Za-z0-9])",
+                    title,
+                    re.IGNORECASE,
+                ), (slug, title, term)
+        assert checked, f"{slug} must render a title-basis mention to check"
+
+
+def test_an_ordinary_programs_mentions_are_unchanged(collision_export):
+    """Attribution runs only on a shared code; an unsplit program keeps the
+    bare-code list and declares nothing."""
+    side = _sidecar(collision_export, "0601101E")
+    assert _mention_terms(side) == {"darpa"}
+    assert "mentions_shared_code" not in side

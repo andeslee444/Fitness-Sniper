@@ -50,6 +50,13 @@ from govbudget.lineage.model import DISPLAY_NARRATIVE_FY
 # (jbooks.era_keys imports nothing from this module — no cycle.)
 from govbudget.jbooks.era_keys import is_era_procurement_key
 from govbudget.jbooks.collision_keys import SplitAxis, require_resolved
+# ROADMAP #82 (mention axis): the SAME word-boundary test the mention
+# matcher ran against the filing text, imported rather than mirrored so a
+# change to the matcher's boundary rule cannot silently disagree with the
+# exporter's per-member attribution (see _mention_is_about).
+from govbudget.influence.mentions import (
+    _build_word_boundary_re as _mention_word_re,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -9266,6 +9273,43 @@ def _write_all_sidecars(
             f" NEITHER member, never on both"
         )
 
+    # ROADMAP #82 (mention axis), dated 2026-09-18: the same "neither member
+    # rather than both" rule for lobbying rows. A `multi_token`/`alias` row on
+    # a shared code whose matched terms appear in NO member's title is
+    # evidence about none of them. That can happen: the mart is keyed on the
+    # bare code and its rows were written by an earlier `influence pull` /
+    # `rematch`, whose term index is last-title-wins on a shared code
+    # (ROADMAP #115) — measured 2026-09-18, the shipped `1350` rows carry
+    # `Weapons|Ammunition` while today's index for `1350` holds "Missile
+    # Industrial Facilities", so a title edit between runs can leave a row
+    # whose terms match no current member. Such a row publishes on NEITHER
+    # member and is counted here. Measured 2026-09-18: ZERO — every
+    # multi_token row on 0145, 1350 and 2292 matches exactly one member's
+    # title (2292's two members share a title, so both match). The count is
+    # printed only when it is non-zero, like the narrative census above.
+    _member_titles_by_pe: dict[str, list[str]] = defaultdict(list)
+    for _r in all_prog_rows:
+        if _r[0] in ident.split_pe_blis:
+            _member_titles_by_pe[_r[0]].append(_r[3])
+    _unattributed_mentions = 0
+    _unattributed_mention_where: set[str] = set()
+    for _pe in sorted(ident.split_pe_blis):
+        _titles = _member_titles_by_pe.get(_pe, [])
+        for _m in mentions_by_pe.get(_pe, []):
+            if not any(_mention_is_about(_m, _t) for _t in _titles):
+                _unattributed_mentions += 1
+                _unattributed_mention_where.add(
+                    f"{_pe}/{_m.get('matched_term')}"
+                )
+    if _unattributed_mentions:
+        print(
+            f"program_details (ROADMAP #82, mention axis, 2026-09-18):"
+            f" {_unattributed_mentions} lobbying mention row(s) on shared BLI"
+            f" codes matched no member program's title"
+            f" ({', '.join(sorted(_unattributed_mention_where))}) — published"
+            f" on NEITHER member, never on both"
+        )
+
     # Curated published labels (ROADMAP #10 option A). Loaded ONCE, here, and
     # threaded into every payload that NAMES a family to a reader. It never
     # replaces `display_name`: that field keeps meaning "the string USAspending
@@ -10242,6 +10286,11 @@ def _write_all_sidecars(
     _n_fy2026_absent = 0                       # ROADMAP #32(a) blast radius
     for r in all_prog_rows:
         pe_bli, org, account, account_title = r[0], r[1], r[7], r[8]
+        # title is the CORRECTED title (ROADMAP #39), the same string
+        # programs.json publishes — gate 21 leg n check 8 re-derives the
+        # mention title test from programs.json, so both sides read one
+        # string by construction.
+        title = r[3]
         is_split = pe_bli in ident.split_pe_blis
         slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
         # has_own_detail: for a split key, R-2/P-40 project detail
@@ -10272,6 +10321,15 @@ def _write_all_sidecars(
         # citation individually resolvable. `_details_for`/`_narratives_with_links`
         # resolve on the SAME axis `_awards_for` and `_concentration_for` use.
         own_details = _details_for(pe_bli, account, org) if owns_detail else []
+        # ROADMAP #82 (mention axis, fix round 1): on a shared code a lobbying
+        # row publishes only where it is evidence about THIS member (per-row,
+        # from the mart's evidence_kind + matched_term against this member's
+        # own title). Identity for every ordinary program — those rows are not
+        # on a shared code, so `is_split` is False and the bare-code list is
+        # passed through unchanged.
+        own_mentions = mentions_by_pe.get(pe_bli, [])
+        if is_split:
+            own_mentions = [m for m in own_mentions if _mention_is_about(m, title)]
         obj = {
             # ROADMAP #70: this member's own links. For a shared BLI code the
             # sibling's awards belong on the sibling's page, and the bare key
@@ -10279,21 +10337,23 @@ def _write_all_sidecars(
             "awards": _awards_for(pe_bli, account, org),
             "budget_lines": own_bl,
             "details": own_details,
-            # ROADMAP #82, the mention axis: mentions stay keyed by the BARE
-            # code on BOTH axes, deliberately. A Senate LDA filing names a
-            # budget line ("30"), never an appropriation account or a
-            # component — fct_program_lobbying has no account or organization
-            # column to key on and nothing in the filing could populate one —
-            # so the filing is evidence about the CODE, true of every program
-            # that uses it. Both members may render it, and the /filing/ page
-            # says so beside the mention (ROADMAP #82 Task 9's shared-code
-            # note). `mentions_shared_code` below is that rule declared in the
-            # payload so gate 21 leg n check 8 can exempt these rows by
-            # reading the claim rather than by hard-coding it.
-            "mentions": _build_mentions(
-                mentions_by_pe.get(pe_bli, []),
-                top200_family_keys,
-            ),
+            # ROADMAP #82, the mention axis: this member's OWN lobbying rows.
+            # The mart is keyed on the BARE code (fct_program_lobbying has no
+            # account and no organization column, and nothing in a Senate LDA
+            # filing could populate one), so which member a row is evidence
+            # about is decided here, PER ROW, from the mart's own evidence —
+            # see _mention_is_about. A `pe_literal` row names the budget line
+            # itself and is therefore true of every program that uses the
+            # code, so both members render it and the /filing/ page carries
+            # the shared-code note beside it (ROADMAP #82 Task 9); a
+            # `multi_token`/`alias` row qualified by matching ONE title's
+            # tokens, so it publishes only on the member whose own title
+            # carries every matched term — on the other member the rendered
+            # badge ("2+ distinct, non-generic words from this program's
+            # title") would be false. `mentions_shared_code` below declares
+            # that per-row basis in the payload, so gate 21 leg n check 8
+            # reads the claim instead of hard-coding it.
+            "mentions": _build_mentions(own_mentions, top200_family_keys),
             "narratives": (
                 _narratives_with_links(
                     pe_bli,
@@ -10307,7 +10367,15 @@ def _write_all_sidecars(
             "summary": _summary_block(pe_bli, slug),
         }
         if is_split and obj["mentions"]:
-            obj["mentions_shared_code"] = True
+            # {evidence_kind: basis} over the kinds THIS page publishes —
+            # "code" for pe_literal, "title" for every other tier. A blanket
+            # `true` was the earlier shape and it asserted the pe_literal rule
+            # over every row, which is false for the 7 multi_token rows
+            # measured on 0145/1350 (see _mention_basis).
+            obj["mentions_shared_code"] = {
+                str(m.get("evidence_kind")): _mention_basis(m.get("evidence_kind"))
+                for m in own_mentions
+            }
         if slug in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[slug]
             if slug in rva_by_pe:
@@ -13405,7 +13473,14 @@ def _emit_filing_sidecars(
 
     ROADMAP #82: mentions.shared_code is true when pe_bli is a code two
     programs share — the link is then the disambiguation stub and the page
-    says so beside it (a filing names a budget line, not an appropriation).
+    says so beside it. The reason the mention cannot name one program is the
+    mart's, not the filing's: fct_program_lobbying is keyed on the bare
+    pe_bli. It holds for a `pe_literal` row because the filing named the LINE
+    and nothing finer; for a `multi_token`/`alias` row the matched terms came
+    from ONE member's title, and which one is recoverable (the program page
+    does exactly that — see _mention_is_about) but is not carried on the row.
+    The rendered note's wording still states only the first case — ROADMAP
+    #115.
 
     Returns number of files written (0 when the lda parquets are absent).
     """
@@ -15243,6 +15318,77 @@ def refresh_usaspending_ids(
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(_json.dumps(cache, sort_keys=True, indent=2))
     return cache
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #82 (mention axis), fix round 1 — 2026-09-18
+# ---------------------------------------------------------------------------
+# On a shared BLI code the basis on which a lobbying row reaches a member page
+# is PER ROW, and the row's own `evidence_kind` (fct_program_lobbying, #52)
+# says which. Nothing here infers anything from the filing's text:
+#
+#   pe_literal          -> "code". The activity description contains the bare
+#                          budget-line code itself ("30"), which names the LINE
+#                          and nothing finer — fct_program_lobbying has no
+#                          account or organization column and nothing in a
+#                          Senate LDA filing could populate one. The row is
+#                          evidence about the CODE, true of every program that
+#                          uses it, so every member renders it.
+#   multi_token / alias -> "title". The row qualified by matching >=2 distinct
+#                          non-generic tokens of ONE program's title, or one
+#                          curated alias (influence/mentions.py find_mentions).
+#                          The mart is keyed on the bare code, so such a row
+#                          arrives at BOTH members whichever title it matched,
+#                          and `build_program_terms` is last-title-wins on a
+#                          shared code (ROADMAP #115) so only one member's
+#                          tokens were ever searched. It is evidence about the
+#                          member whose OWN dim_programs title carries every
+#                          matched term, and that is exactly what the rendered
+#                          badge claims — "at least two distinct, non-generic
+#                          words from this program's title"
+#                          (site/src/lib/evidence.ts). On a member whose title
+#                          carries none of them the badge is false, so the row
+#                          does not publish there.
+#
+# Measured 2026-09-18 on the shipped corpus (6 of the 13 shared codes carry
+# mentions): /program/0145-APN/ "F/A-18E/F (Fighter) Hornet" rendered 5 rows
+# matched `General|Purpose` (the sibling 0145-PANMC is "General Purpose
+# Bombs") and /program/1350-WPN/ "Missile Industrial Facilities" rendered 2
+# matched `Weapons|Ammunition` (sibling "Infantry Weapons Ammunition") —
+# 7 rendered rows whose badge named words that were not in the page's title.
+# 2292's two members have identical titles, so both keep all 18 of theirs;
+# 20/30/500 are pe_literal throughout and are untouched.
+
+
+def _mention_basis(evidence_kind: str | None) -> str:
+    """The basis a mention row publishes on: "code" or "title" (above)."""
+    return "code" if evidence_kind == "pe_literal" else "title"
+
+
+def _mention_terms(matched_term: str | None) -> list[str]:
+    """`matched_term` as the list of terms that had to match.
+
+    multi_token joins its tokens with "|" (influence/mentions.py); every other
+    tier stores a single term (the pe code, or a curated alias phrase).
+    """
+    return [t for t in (matched_term or "").split("|") if t]
+
+
+def _mention_is_about(mention: dict, title: str | None) -> bool:
+    """Is this lobbying row evidence about the program titled `title`?
+
+    True for every "code"-basis row (the filing names the shared line, which
+    every member uses). For a "title"-basis row, true only when the title
+    carries EVERY term in matched_term — same word-boundary test the matcher
+    used against the filing text, so the answer here is the answer that put
+    the row in the mart.
+    """
+    if _mention_basis(mention.get("evidence_kind")) == "code":
+        return True
+    terms = _mention_terms(mention.get("matched_term"))
+    if not terms or not title:
+        return False
+    return all(_mention_word_re(t).search(title) for t in terms)
 
 
 def _build_mentions(raw_mentions: list, top200_family_keys: set) -> list:

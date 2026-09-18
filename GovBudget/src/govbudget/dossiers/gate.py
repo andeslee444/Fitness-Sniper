@@ -328,7 +328,7 @@ def dossier_gate(
     total_claims = 0
     warehouse_claims = 0
 
-    for pe_bli, selected_page, _has_page_identity in _top_pages(top50_list):
+    for pe_bli, selected_page, has_page_identity in _top_pages(top50_list):
         # Sprint E (#67): a SPLIT key's sidecar is keyed by its page SLUG
         # ("3010-SCN"), not the bare pe_bli, because E3 gave each
         # (account, pe_bli) pair its own page and the page looks the dossier
@@ -344,13 +344,13 @@ def dossier_gate(
             # accounts each claim a dossier for the same key, which is a real
             # defect and must still read as missing.
             #
-            # ROADMAP #82 (2026-09-12): guarded on `_has_page_identity`. When
+            # ROADMAP #82 (2026-09-12): guarded on `has_page_identity`. When
             # the selection DID name a member, a lone sibling on disk is the
             # OTHER member's dossier, and accepting it would gate one
             # program's page against the other program's claims — the exact
             # substitution this leg exists to catch, performed by the leg.
             siblings = (
-                [] if _has_page_identity
+                [] if has_page_identity
                 else sorted(dossier_dir.glob(f"{pe_bli}-*.json"))
             )
             if len(siblings) == 1:
