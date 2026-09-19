@@ -1,0 +1,53 @@
+{
+ "chunk": "chunk_063_A.json",
+ "proposals": [
+  {
+   "record_index": 69,
+   "article_id": "613680",
+   "piid": "W900KK15D0006",
+   "pe_bli": "1780MA6600",
+   "program_name": "Combat Training Centers Support",
+   "lexicon_doc": "346",
+   "announcement_evidence": "procurement, delivery, installation, and testing of hardware to promote total life cycle support at the combat training centers and Joint Pacific Multinational Readiness Capability",
+   "lexicon_quote": "Combat Training Centers Support\t1780MA6600\t346\tCombat Training Centers Support",
+   "verdict": "weak",
+   "rationale": "This is the only record in the chunk where an index name genuinely appears: the announcement's 'the combat training centers' is the index row's own name less the trailing word 'Support', the contracting activity is PEO Simulation, Training and Instrumentation (which executes CTC instrumentation procurement), and 1780MA6600 is a procurement line facing a procurement action, so the appropriation direction is right. It still does not meet §1's standard. The phrase is used locatively — hardware installed 'at the combat training centers' — which is the §3 pattern of a facility the contract supports rather than the program the line funds; the item bought is unspecified 'hardware', the instrument is a ceiling IDIQ whose 'Funding and work location will be determined with each order', so no order is tied to this BLI; and 'total life cycle support' points at O&M sustainment at the training centers, precisely the appropriation-mismatch failure mode lens A hunts. The contract also covers the Joint Pacific Multinational Readiness Capability, a USARPAC capability outside the CTC program's own scope in 2015. Publishing the smaller true number, this is weak, not a link."
+  },
+  {
+   "record_index": 22,
+   "article_id": "2175622",
+   "piid": "W81XWH19D0006",
+   "pe_bli": "0604808A",
+   "program_name": "Render Safe Sets Kits and Outfits (RS-SKO)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "sets, kits and outfits to supply complete medical, surgical, pharmaceutical, dental, laboratory and veterinary equipment and material sets",
+   "lexicon_quote": "Render Safe Sets Kits and Outfits (RS-SKO)\t0604808A\t355\tLandmine Warfare/Barrier - Eng Dev",
+   "verdict": "wrong",
+   "rationale": "The only overlap with the index is the Army logistics term of art 'sets, kits and outfits', which the index carries solely inside 'Render Safe Sets Kits and Outfits (RS-SKO)' — an explosive-ordnance-disposal render-safe kit under the RDT&E engineering-development line 0604808A, Landmine Warfare/Barrier - Eng Dev. The award is a USAMRAA supply IDIQ for medical, surgical, pharmaceutical, dental, laboratory and veterinary equipment sets for Army medical units; nothing about it touches EOD render-safe work, and a supply/commodity IDIQ against an engineering-development line would fail on appropriation as well. This is §3's generic-commodity-services pattern compounded by a shared generic noun phrase, not a program name."
+  },
+  {
+   "record_index": 70,
+   "article_id": "620828",
+   "piid": "W9124915D0006",
+   "pe_bli": "2000I32000",
+   "program_name": "ELECTRONIC WARFARE AGILE",
+   "lexicon_doc": "346",
+   "announcement_evidence": "cyberspace and electronic warfare support",
+   "lexicon_quote": "ELECTRONIC WARFARE AGILE\t2000I32000\t346\tELECTRONIC WARFARE AGILE",
+   "verdict": "wrong",
+   "rationale": "'Electronic warfare' here is a mission area, not the program name: the announcement buys undifferentiated 'cyberspace and electronic warfare support' services through Army Contracting Command at Fort Gordon, with funding and work location determined per order. That is §3's generic-services / IDIQ-ceiling-with-no-named-program rejection. The index name is 'ELECTRONIC WARFARE AGILE', a specific procurement line, and the announcement neither names it nor names any item it funds; linking on the two shared English words would be exactly the weak-generic-name failure §3 forbids."
+  },
+  {
+   "record_index": 19,
+   "article_id": "1926294",
+   "piid": "W912ER19D0013",
+   "pe_bli": "0962C50700",
+   "program_name": "International Engineering Services Program (IESP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Foreign Military Sales (Saudi Arabia) contract for architect-engineer design, quality control, master planning, planning and programming documentation, transportation, force protection, construction phase services and subject matter expert support",
+   "lexicon_quote": "International Engineering Services Program (IESP)\t0962C50700\t345\tPatriot Mods",
+   "verdict": "wrong",
+   "rationale": "The words 'international' and 'engineering services' in an FMS A-E announcement invite a match to the index's 'International Engineering Services Program (IESP)', but that name belongs to 0962C50700 / Patriot Mods — the Patriot air-and-missile-defense modification line, whose IESP is the Patriot-specific international engineering services effort alongside MSE, PATRIOT PIP and the Air Defense Interrogator. This award is USACE Middle East District buying architect-engineer design, master planning and construction-phase services for Saudi Arabian facilities: §3 generic A-E and construction services, with no Patriot content whatsoever, and an FMS case funded by the customer rather than by this BLI. Refuted on identity and on money."
+  }
+ ]
+}

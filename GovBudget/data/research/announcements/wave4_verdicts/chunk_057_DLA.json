@@ -1,0 +1,53 @@
+{
+ "chunk": "chunk_057_DLA.json",
+ "proposals": [
+  {
+   "record_index": 59,
+   "article_id": "718163",
+   "piid": "SPE7LX16D0072",
+   "verdict": "wrong",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "lexicon_quote": "Battery Network (BATTNET)",
+   "announcement_evidence": "has been awarded a maximum $45,068,074 fixed-price with economic price adjustment, indefinite-quantity contract for storage batteries",
+   "rationale": "The only tie between this award and BATTNET is the commodity word 'batteries'; the announcement names no program at all. BATTNET is a ManTech RDT&E project under 0603680S (Manufacturing Technology Program) that develops battery manufacturing/sourcing technology, whereas this is a three-year indefinite-quantity supply contract for storage batteries bought with fiscal 2016-2019 defense working capital funds for the DLA supply chain itself ('Using customer is Defense Logistics Agency'). Rejected under §3: a commodity IDIQ with no named program, and the O&M/working-capital-versus-RDT&E appropriation mismatch that §1's lens A treats as the dominant failure mode. Recorded as wrong rather than omitted so the denominator shows the trap was seen and refused."
+  },
+  {
+   "record_index": 56,
+   "article_id": "3166646",
+   "piid": "SP470222D0004",
+   "verdict": "wrong",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "announcement_evidence": "has been awarded a maximum $45,100,000 firm-fixed-price, indefinite-delivery/indefinite-quantity contract for a fuel inventory management IT infrastructure",
+   "rationale": "Topic overlap only: the Energy Readiness Program is a Generic Logistics R&D Technology Demonstrations (0603712S) research line, and this award is a ten-year IT-infrastructure IDIQ for fuel inventory management let by the DLA Contracting Services Office on fiscal 2022-2025 defense working capital funds. The announcement never names ERP or any other program; 'fuel' is a commodity domain shared by DLA Energy's whole mission, not evidence that this contract funds this PE's own research work. Rejected under §3 (generic IT/services IDIQ with no named program) and under the appropriation test in §1's lens A."
+  },
+  {
+   "record_index": 8,
+   "article_id": "1694434",
+   "piid": "SPE1C119D1113",
+   "verdict": "wrong",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "lexicon_quote": "Military Uniform System Technology (MUST)",
+   "announcement_evidence": "has been awarded a maximum $47,951,352 firm-fixed-price, indefinite-delivery contract for blue poly/wool cloth",
+   "rationale": "A description-level temptation — MUST is the ManTech uniform-materials technology project and this contract buys uniform fabric — but the announcement names no program, and buying bolts of blue poly/wool cloth for Army dress uniforms on fiscal 2019-2023 defense working capital funds is DLA Troop Support's commodity supply mission, not the RDT&E manufacturing-technology work 0603680S funds. Rejected under §3: a commodity buy with no named program, and the name 'MUST' collides in this same index across two rows (Military Uniform System Technology and Military Unique Sustainment Technology), which is itself a signal that a description-only match cannot identify an owner."
+  },
+  {
+   "record_index": 30,
+   "article_id": "606777",
+   "piid": "SPE30015D3128",
+   "verdict": "wrong",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "lexicon_quote": "The Subsistence Network (SUBNET)",
+   "announcement_evidence": "has been awarded a maximum $46,859,081 fixed-price with economic-price-adjustment, indefinite-delivery/indefinite-quantity contract for prime vendor subsistence support for customers in Arizona area, zone one",
+   "rationale": "The word 'subsistence' here is the DLA commodity category (prime-vendor food distribution for a geographic zone), not the SUBNET research project name, which never appears. This is exactly §3's 'weak generic name used as an English word' pattern, compounded by the fact that the award is a working-capital prime-vendor food contract rather than anything the Manufacturing Technology Program element performs. No link."
+  }
+ ]
+}

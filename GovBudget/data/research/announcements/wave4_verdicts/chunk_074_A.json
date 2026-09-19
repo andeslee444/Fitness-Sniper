@@ -1,0 +1,134 @@
+{
+ "chunk": "chunk_074_A.json",
+ "proposals": [
+  {
+   "record_index": 4,
+   "article_id": "3806586",
+   "piid": "W15QKN22D0013",
+   "pe_bli": "3000GB3000",
+   "program_name": "MK-19 Grenade Machine Gun MODS",
+   "lexicon_doc": "350",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "for the MK19 Grenade Machine Gun",
+   "lexicon_quote": "MK-19 Grenade Machine Gun MODS",
+   "verdict": "link",
+   "rationale": "The paragraph names the weapon itself as the object of the buy — a $40,000,000 modification to an ACC-New Jersey IDIQ held by US Ordnance, the MK-19 Mod 3 producer — and the only normalisation needed is the hyphen the announcement drops (MK19 -> MK-19), so the basis is designator-normalized rather than an inferred alias. This is a hardware action, not engineering/logistics support of a platform the contract merely touches: the article the contract delivers is the program element's own end item. 3000GB3000 is the Army index's only MK-19 line, so no sibling PE owns the name and there is no variant ambiguity to resolve. The honest residual risk, which lens A should press, is that the line's title carries 'MODS': if the Army books whole-gun deliveries only against modification kits and this $40M covers new production under a different account, the appropriation would not belong to this line. I propose it because the designator identity is unambiguous and the work is the line's own article.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money fails on the MODS/end-item split the proposal itself flagged: 3000GB3000 is a doc-350 MODIFICATION account whose own narrative owns retrofit items (Mounted Machine Gun Optic, XM101 Programmer Unit), while the paragraph buys the weapon itself from US Ordnance, the MK19 Mod 3 producer — and the same doc 350 proves the Army books these separately, carrying 2472G13000 'M240 Medium Machine Gun (7.62mm)' as a whole-weapon line beside 'M777 Mods'/'M119 Modifications' as mod lines; the Army index offers no whole-gun MK-19 line at all, so the natural owner of a gun buy is simply absent and linking it to the MODS line books end-item (or FMS/spares) dollars on a retrofit account. The announcement compounds this by declining to identify the appropriation at all — 'Work locations and funding will be determined with each order' on a D-type IDIQ means the $40,000,000 P00003 is a ceiling action whose money is assigned per future order, so no appropriation-level assertion about this line is available from the text. Designator identity (MK19 -> MK-19) is not in dispute and the name is an end item rather than a platform the contract merely supports, but lens A asks whether THIS line's appropriation paid for the work, and on undetermined funding against a modification-only line the rubric's default to not linking governs."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "3000GB3000 is the only PE in the 1,439-row A index carrying the MK-19 designator (its other rows are that line's own MMO and XM101 PU subcomponents); the nearest names are different weapons (M240 2472G13000, M320/XM320 GLM 8181G01501, Grenades All Types 4582E34000, M119 3640GC0401), so no sibling owns the name, the only normalisation is the hyphen the announcement drops (MK19 -> MK-19) rather than an invented alias, no competing MK-19 variant or increment line exists to split the award against, the linking evidence is the object of the buy ('for the MK19 Grenade Machine Gun') and not the contractor name, and the PIID is the one cited in that same paragraph (W15QKN-22-D-0013) rather than borrowed from the digest's Fort Novosel construction paragraph; the residual 'MODS' title vs whole-gun-production scope doubt is an appropriation question belonging to lens A, not to lens B's identity question."
+   }
+  },
+  {
+   "record_index": 17,
+   "article_id": "2358917",
+   "piid": "W56HZV15C0099",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for engineering, logistics and fielding support for the Multiple Launch Rocket System Carrier",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "weak",
+   "rationale": "'Multiple Launch Rocket System' appears verbatim and BAE Systems Land and Armaments is the M270 carrier builder, and the fiscal 2020 weapons and tracked combat vehicle procurement funds would match the procurement-side MLRS Mods line rather than the RDT&E MLRS Product Improvement Program that owns the same name at 0603778A. But the object named is the CARRIER — the launcher vehicle the mods line rides on — and the work is engineering, logistics and fielding support, squarely inside the generic-services category §3 rejects. The announcement never says which increment (M270A1 sustainment or the A2 upgrade the index row names) the support serves, and in 2020 both were live, so the variant is unresolved. Name present, evidence short of the standard: weak, not a link."
+  },
+  {
+   "record_index": 19,
+   "article_id": "1206747",
+   "piid": "W31P4Q17D0027",
+   "pe_bli": "2690CE8710",
+   "program_name": "Avenger Production Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "to acquire engineering and technical services necessary to support the Avenger",
+   "lexicon_quote": "Avenger Production Improvement Program (PIP)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 on two counts. First, the name is a PLATFORM the contract supports, not the program the PE funds: the index does not own a row called 'Avenger', only the Avenger Fire Control Computer and the Avenger Production Improvement Program, and the announcement names neither — it names the air-defence system generically. Second, the object of the award is 'engineering and technical services', the generic-services pattern §3 rejects by design. It is additionally a foreign military sales (Iraq) action, so the money is the customer's, not the Army procurement line's. The same name is also owned by 0203801A, so even the identity is unresolved. No refute pass should be spent on it."
+  },
+  {
+   "record_index": 26,
+   "article_id": "1829432",
+   "piid": "W58RGZ17C0031",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for post-production system support, which includes integrated product support, of the AH-64 aircraft",
+   "lexicon_quote": "AH-64 MODS",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern. 'AH-64 aircraft' names the airframe the contract sustains, and the work — post-production system support and integrated product support for the Saudi Arabia National Guard's fleet — is sustainment of somebody else's aircraft, not the modification work the Army's AH-64 MODS line buys. Fiscal 2019 foreign military sales funds are explicitly the obligated money, so the appropriation is not this line's at all; publishing it would assert the Army modification line paid for Saudi fleet support. The index also carries AH-64E under two separate lines (2706AA6605 and 5757A05111), so the aircraft name alone does not identify an owner."
+  },
+  {
+   "record_index": 28,
+   "article_id": "1478347",
+   "piid": "W31P4Q18D0036",
+   "pe_bli": "0605G02510",
+   "program_name": "Calibration Sets Equipment (CALSETS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for multifunctional calibrator (model 5730A) and reference source (model 96040A)",
+   "lexicon_quote": "Calibration Sets Equipment (CALSETS)",
+   "verdict": "weak",
+   "rationale": "The items bought are exactly the class of article the CALSETS element of Test Equipment Modernization fields — a Fluke 5730A multifunction calibrator and 96040A reference source are laboratory calibration standards for Army TMDE. But the announcement names no program, no PE and no acronym; the only route to this line is a description-level inference about commercial catalogue equipment, and the index carries a second test-equipment family (Integrated Family Of Test Equipment, 0200MB4000) that could equally own a calibrator buy. A description-only match on generic commercial instruments is the kind of link that quietly erodes precision, and the project publishes the smaller true number, so this stays weak."
+  },
+  {
+   "record_index": 32,
+   "article_id": "1229651",
+   "piid": "W31P4Q17D0026",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for PATRIOT Advanced Capability-3 Missile Support Center post-production support for the calendar year 2017 recapitalization of enhanced launcher electronic system, field missile activities, and unscheduled maintenance",
+   "lexicon_quote": "PAC-3",
+   "verdict": "weak",
+   "rationale": "The identity is not in doubt — the announcement spells out the PAC-3 backronym in full and Lockheed Martin Grand Prairie is the PAC-3 producer — but what the money buys is not this line's own work. The object is the Missile Support Center's POST-PRODUCTION support: recapitalisation of enhanced launcher electronic system, field missile activities and unscheduled maintenance, with fiscal 2017 other and operation and maintenance (Army) funds obligated, on a foreign military sales vehicle covering seven customers. 8260C53101 is the MSE Missile procurement line; attaching O&M-funded sustainment of launchers and fielded rounds to it is precisely the appropriation failure the 2026-09-04 held-out study flagged. Launcher recapitalisation would also sit closer to Patriot Mods (0962C50700), which the index shows owns the International Engineering Services Program. Name yes, link no."
+  },
+  {
+   "record_index": 49,
+   "article_id": "3048409",
+   "piid": "W56HZV22C0012",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "for Abrams Systems technical support",
+   "lexicon_quote": "M1A2 System Enhancement Package (SEP)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3. 'Abrams' names the tank platform, and no row of this index is called 'Abrams' — the Abrams Upgrade Program owns named sub-efforts (M1A2 SEP, Ammunition Data Link, TIGER, DSESTS) and the announcement names none of them. The object is four words of generic technical support, the services pattern §3 rejects, and the obligated money is a blend of fiscal 2020 Foreign Military Sales (Kuwait), fiscal 2022 other procurement, Army and fiscal 2022 operation and maintenance, Army funds, so the action is not even single-appropriation. Linking it would assert the SEP upgrade line paid for undifferentiated platform support."
+  },
+  {
+   "record_index": 53,
+   "article_id": "606821",
+   "piid": "W31P4Q15C0065",
+   "pe_bli": "0173BZ0501",
+   "program_name": "Indirect Fire Protection Family Of Systems",
+   "lexicon_doc": "346",
+   "announcement_evidence": "continued software development, maintenance, and training on the Counter-Rocket Artillery Mortar Command and Control System",
+   "lexicon_quote": "Indirect Fire Protection Family Of Systems",
+   "verdict": "weak",
+   "rationale": "C-RAM command and control is genuinely part of the indirect-fire-protection family this line funds — the same row owns the Land-based Phalanx Weapon System, C-RAM's intercept element — so the subject matter is right. What is missing is the evidence standard: the announcement never names IFPC, the family of systems, or LPWS, so the only path is a description-level inference, and the C-RAM C2 software (a FAAD C2 derivative) could as easily execute a command-and-control line as this one. The work is also continued software development, maintenance and training drawing fiscal 2015 operations and maintenance (Army) alongside RDT&E, a mixed-colour sustainment action rather than the family's own procurement. Weak."
+  },
+  {
+   "record_index": 69,
+   "article_id": "918895",
+   "piid": "W52P1J16D0055",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "radar electronic units' production Lot 7 award in support of the Apache program office",
+   "lexicon_quote": "Fire Control Radar (FCR)",
+   "verdict": "weak",
+   "rationale": "Longbow LLC builds the Apache's fire control radar and the radar electronic unit is one of its line-replaceable units, so a production-lot award 'in support of the Apache program office' is hardware for the FCR the index attaches to AH-64 Apache Block IIIA Reman. Two things stop it short of a link. The announcement names neither the radar nor a line — 'radar electronic units' reaches the FCR only by description — and the index carries two Apache owners (2706AA6605 AH-64 MODS and 5757A05111 Reman), both of which buy or retrofit fire control radars, so a Lot 7 production buy could execute either, or a foreign military sales case. Uncertain between sibling lines is exactly where the rubric says not to link."
+  },
+  {
+   "record_index": 79,
+   "article_id": "1858910",
+   "piid": "W31P4Q19D0032",
+   "pe_bli": "2104C59300",
+   "program_name": "TOW 2 System Summary",
+   "lexicon_doc": "345",
+   "announcement_evidence": "engineering services for refinement and maintenance of the Tube-launched, Optically-tracked, Wireless-guided weapon systems",
+   "lexicon_quote": "TOW 2 System Summary",
+   "verdict": "weak",
+   "rationale": "The identification itself is solid and is the wave's paradigm alias case: the announcement spells the TOW backronym out in full (with defense.gov's own 'Wireless-guided' slip for wire-guided) and Raytheon Tucson is the TOW producer, so the system the index owns at 2104C59300 is unmistakably the subject. The award, though, is a cost-plus-fixed-fee buy of engineering services for refinement and maintenance — configuration management, fielding service, logistics support and contractor repair — which is the generic-services category §3 rejects, and no appropriation is stated, so there is nothing to show the money is the TOW 2 procurement line's rather than O&M sustainment. A true alias attached to a services action does not meet the link standard; weak."
+  }
+ ]
+}

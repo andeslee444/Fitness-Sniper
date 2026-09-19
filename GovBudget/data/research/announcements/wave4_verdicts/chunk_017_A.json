@@ -1,0 +1,377 @@
+{
+ "chunk": "chunk_017_A.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "3770767",
+   "piid": "W31P4Q23C0032",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Multiple Launch Rocket System requirements",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "rationale": "The announcement names only a bare 'Multiple Launch Rocket System requirements' with missile procurement, Army funds plus FMS Finland and Italy/UK cooperative funds, and the places of performance (Grand Prairie, Camden AR, New Boston TX) span both launcher work and rocket production. Three index rows compete for the bare name: 6552C67500 (MLRS Mods), 6005C64400 (Guided MLRS Rocket) and the RDT&E lines 0603778A/0205778A. Finland/Italy/UK are M270 launcher operators, which points at MLRS Mods, but the record never says M270A2 and never distinguishes launcher from rocket, so the evidence does not reach the standard of §1 that this action paid for THIS line's own work. Weak, not link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 2,
+   "article_id": "606787",
+   "piid": "W58RGZ06C0194",
+   "pe_bli": "4742A05001",
+   "program_name": "UH-72 LAKOTA LIGHT UTILITY HELICOPTER",
+   "lexicon_doc": "343",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "to procure forty-one 72A Lakota Helicopters",
+   "lexicon_quote": "UH-72 LAKOTA LIGHT UTILITY HELICOPTER",
+   "rationale": "The action procures forty-one UH-72A Lakota aircraft (the announcement drops the 'UH-' prefix and writes '72A Lakota Helicopters') plus their ARC-231 radios on the Airbus Lakota production contract W58RGZ-06-C-0194. 'Lakota' is owned by exactly one row in this org's index, 4742A05001 UH-72 LAKOTA LIGHT UTILITY HELICOPTER, so there is no alternative owner and no platform-vs-program ambiguity: the airframe being bought IS the line's end item. The one wrinkle is that the record labels the money 'other procurement funds' while 4742A05001 sits in the aircraft procurement volume (doc 343); I read that as the announcement's usual loose appropriation string rather than evidence of a different line, since no other index row could fund a buy of 41 Lakotas.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money colour fails both ways: the action obligates 'fiscal 2015 other procurement funds', never aircraft procurement, and the only federal account the lake records for W58RGZ-06-C-0194 is 021-2020 (O&M, Army), disjoint from the UH-72 line's 021-2031 Aircraft Procurement, Army — the O&M-attached-to-a-procurement-line failure mode, and a money_color_mismatch the loader would skip."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Name-column search of A.tsv finds exactly one owner of 'Lakota' / 'UH-72' (4742A05001) and no other light-utility-helicopter row; '72A' is the UH-72A designator of that same line, not a rival variant, and the linking evidence is the aircraft bought rather than the contractor name."
+   }
+  },
+  {
+   "record_index": 5,
+   "article_id": "3696684",
+   "piid": "W31P4Q23C0052",
+   "pe_bli": "8540C29600",
+   "program_name": "PRECISION STRIKE MISSILE (PRSM)",
+   "lexicon_doc": "345",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the Precision Strike Missile Early Operational Capability Lot 3 requirement",
+   "lexicon_quote": "PRECISION STRIKE MISSILE (PRSM)",
+   "rationale": "The announcement names the Precision Strike Missile by its full program name and buys Early Operational Capability Lot 3 rounds with fiscal 2023 and 2024 missile procurement, Army funds. The index carries PRECISION STRIKE MISSILE (PRSM) at 8540C29600 in the missile procurement volume (doc 345); the only other PrSM-bearing row, 0603464A, is the RDT&E Long Range Precision Fires Advanced Technology line, which a missile-procurement production lot does not execute. Procurement money, a procurement BLI, and a production lot of the line's own end item — this is the line's own work.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Announcement names fiscal 2023/2024 missile procurement, Army and the lake shows 021-2032 as the sole funding account, exactly the PRSM line's appropriation; the contract's own description is 'PRECISION STRIKE MISSILE (PRSM) EARLY OPERATIONAL CAPACITY (EOC) LOT 3' — production of the line's own end item, not a platform it supports, and PRSM is a single-program line, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The only other PrSM owner in the index is 0603464A ('Precision Strike Missile (PrSM) Advanced Development/PrSM Modular Payload', doc 351, RDT&E), whose name covers advanced development and modular payload, not an EOC production lot; the announcement's verbatim program name plus stated missile-procurement money leaves 8540C29600 as the only fit, and EOC Lot 3 is Increment 1 production, not a different increment."
+   }
+  },
+  {
+   "record_index": 7,
+   "article_id": "1648706",
+   "piid": "W56HZV17C0001",
+   "pe_bli": "2073GZ0410",
+   "program_name": "Paladin Integrated Management (PIM)",
+   "lexicon_doc": "350",
+   "match_basis": "llm-description",
+   "announcement_evidence": "production of the M109A7 Self-Propelled Howitzer and the M992A3 Carrier Ammunition Tracked vehicles",
+   "lexicon_quote": "Paladin Integrated Management (PIM)",
+   "rationale": "The M109A7 howitzer paired with the M992A3 CAT is the two-vehicle set that Paladin Integrated Management produces and nothing else in the index produces them: the only other M109 rows (2072GA0400, M109 FOV Modifications) name the M109A6, i.e. modifications to the in-service fleet, not new-build A7/A3 vehicles. The announcement never uses the words 'Paladin' or 'PIM', so the basis is description rather than name. The honest caveat is the money: the record says fiscal 2018 other procurement, Army while 2073GZ0410 is a weapons-and-tracked-combat-vehicle line (doc 350) — a lens-A question — but the work described is new-vehicle production, which is precisely PIM's own work.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement's 'other procurement, Army' string is clerical error, not evidence of another line: the lake funds W56HZV-17-C-0001 from 021-2033 (Procurement of W&TCV, Army), exactly PIM's appropriation, and the contract description — 'early procurement material to support the M109A7/M992A3 vehicle production' — is new-build production of the two vehicles PIM exists to produce, not sustainment and not a platform the contract merely supports."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No other index row can own new-build M109A7 + M992A3: the M109 rival 2072GA0400 names the M109A6 and is a FOV modifications line, 0203743A owns only 'PIM Improvement Program' (RDT&E, doc 359), and no row anywhere names M992 or Carrier Ammunition Tracked; the basis is description, so there is no alias to be invented, and the A7/A3 pair is PIM's own end item."
+   }
+  },
+  {
+   "record_index": 8,
+   "article_id": "2587188",
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the M270A2 Multiple Launch Rocket System",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "rationale": "The announcement names the M270A2 Multiple Launch Rocket System verbatim and obligates fiscal 2021 missile procurement, Army funds on Lockheed Martin Missiles and Fire Control's Grand Prairie launcher line. 6552C67500 (MLRS Mods) is the missile-procurement BLI whose narrative owns the M270A2 designator — the A1-to-A2 launcher recapitalisation is literally that line's product. The competing owner, 0603778A, names 'M270A1 and M270A2 Multiple Launch Rocket System (MLRS)' but is the RDT&E MLRS Product Improvement Program (doc 359); a procurement-funded production modification does not execute an RDT&E line, so the collision resolves cleanly toward 6552C67500.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 missile procurement, Army in the announcement and 021-2032 as the lake's sole funding account both match MLRS Mods' appropriation, and the contract description 'PRODUCTION OF M270A2 MULTIPLE LAUNCH ROCKET SYSTEM LAUNCHERS' is the launcher recapitalisation this modification line funds; 'MLRS Mods' aggregates only MLRS launcher content and is not a CATCHALL_TITLE rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The M270A2 name collides with exactly one other row, 0603778A 'M270A1 and M270A2 Multiple Launch Rocket System (MLRS)' (MLRS Product Improvement Program, doc 359, RDT&E); the announcement's string matches 6552C67500's own row verbatim and the FY21 missile-procurement colour picks the procurement modification line, while the other MLRS-family procurement rows (6200C02901 HIMARS, 6060C65405 RRPR) own no M270A2 name."
+   }
+  },
+  {
+   "record_index": 11,
+   "article_id": "646622",
+   "piid": "W31P4Q14C0093",
+   "pe_bli": "0962C50700",
+   "program_name": "International Engineering Services Program (IESP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "engineering services for calendar year 2016 for the PATRIOT program",
+   "lexicon_quote": "International Engineering Services Program (IESP)",
+   "rationale": "This is the twelve-nation FMS engineering-services contract that the Patriot Mods narrative describes as the International Engineering Services Program, so the identity is plausible. But the award is a year of engineering services, and the companion record on the same contract (record_index 12, article 606808) shows the money as operations and maintenance (Army) and other procurement — recurring sustainment engineering attached to a missile-procurement mods BLI, which is both §3's 'engineering support' pattern and lens A's stated failure mode. The announcement also never names IESP or any of the line's other owned elements (MSE, PIP, ADI, TPW, TPX-57); it names only the PATRIOT program in general. Weak. Record 12 carries the same (piid, pe_bli) pair and is not proposed separately.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 17,
+   "article_id": "3579690",
+   "piid": "W56HZV15C0095",
+   "pe_bli": "5731D15610",
+   "program_name": "The Joint Light Tactical Vehicle (JLTV)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Joint Light Tactical Vehicles",
+   "lexicon_quote": "The Joint Light Tactical Vehicle (JLTV)",
+   "rationale": "A production modification on Oshkosh's JLTV contract W56HZV-15-C-0095 naming Joint Light Tactical Vehicles and obligating fiscal 2024 other procurement, Army funds alongside Air Force, Marine Corps and EDI money. 5731D15610 (JOINT LIGHT TACTICAL VEHICLE FAMILY OF VEHICLES) is the other-procurement BLI that buys the vehicles, and the OPA colour matches doc 346. The other JLTV owner, 0605812A, is the RDT&E engineering-and-manufacturing-development line, which a full-rate vehicle buy does not execute. Records 16 (a correction to this same modification), 33, 51 and 71 share this PIID; I propose the pair once, from the record that states the vehicles and the appropriation most cleanly.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement explicitly names fiscal 2024 other procurement, Army among the payers and the lake's account list for the JLTV contract includes 021-2035, matching the JLTV FoV line's Other Procurement, Army colour; the vehicles being bought are the line's own end item, and the co-funding Air Force/Marine Corps colours are other services' shares of the same buy, not a different Army line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Only two rows own a JLTV name — 0605812A (EMD, doc 355, RDT&E) and the proposed 5731D15610 (doc 346) — and a procurement-funded production modification delivering vehicles cannot execute an EMD line; no variant or increment mismatch, and the evidence is the vehicle name, not Oshkosh."
+   }
+  },
+  {
+   "record_index": 20,
+   "article_id": "2534571",
+   "piid": "W31P4Q18C0130",
+   "pe_bli": "2605C70302",
+   "program_name": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "lexicon_doc": "345",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the procurement of Joint Air-to-Ground Munitions",
+   "lexicon_quote": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "rationale": "'Joint Air-to-Ground Munitions' is the announcement's own slip for the AGM-179 Joint Air-to-Ground Missile — same contractor (Lockheed Martin, Orlando), same production contract W31P4Q-18-C-0130, same programme. Two index rows own the AGM-179 name: 0605450A (RDT&E) and 2605C70302 (Joint Air-to-Ground MSLS (JAGM), doc 345, missile procurement). A procurement action for missile deliveries belongs to the procurement BLI, so the collision resolves to 2605C70302. The caveat for lens A is that the record labels the money 'procurement of ammunition (Army)' and 'procurement (defense-wide)' rather than missile procurement; the work described, however, is production of the line's own end item.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "W31P4Q-18-C-0130's own base description is 'HELLFIRE BUY 17 PRODUCTION' — the award's work belongs to the Hellfire line, not the JAGM line — and not one dollar named in this action is Army missile procurement (fiscal 2019/2020 procurement of ammunition, Army; 2019/2020 procurement, defense-wide; FY2010 FMS United Kingdom), which are the multi-customer Hellfire colours, so this obligation cannot be shown to have paid for 2605C70302's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Joint Air-to-Ground Munitions' is a real slip for the AGM-179 JAGM (same Lockheed Orlando production contract), not an invented alias; the name is owned by exactly two rows, 0605450A (RDT&E, doc 355) and 2605C70302 (procurement, doc 345), and a production procurement action picks the procurement BLI, while the Hellfire rows (1338C70000, 9157J01200) own no JAGM name."
+   }
+  },
+  {
+   "record_index": 21,
+   "article_id": "1493281",
+   "piid": "W56HZV12C0344",
+   "pe_bli": "6500GA0750",
+   "program_name": "Total Integrated Engine Revitalization (TIGER)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "total integrated engine revitalization automotive gas turbine hardware",
+   "lexicon_quote": "Total Integrated Engine Revitalization (TIGER)",
+   "rationale": "The announcement spells out Total Integrated Engine Revitalization, which the index owns exactly once, at 6500GA0750 (Abrams Upgrade Program), so the name evidence is as strong as it gets. What blocks a link is the money and the nature of the work: the record obligates fiscal 2018 Army working capital funds for AGT1500 overhaul hardware, i.e. depot recapitalisation financed through the working-capital fund, not the weapons-and-tracked-combat-vehicle procurement line's own upgrade buy. That is exactly the appropriation failure lens A exists to catch, so the honest verdict here is weak rather than link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 32,
+   "article_id": "699213",
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "recapitalized Heavy Expanded Mobility Tactical Trucks M985A4 (91)",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "rationale": "Oshkosh delivers 700 recapitalised HEMTT A4 variants (M985A4, M984A4, M978A4, M983A4, M1120A4 and self-recovery winch trucks) against fiscal 2016 other procurement funds. 8309DA0500 (Family Of Heavy Tactical Vehicles) is the other-procurement BLI whose narrative owns the HEMTT name and its A4 load-handling and light-equipment-transporter variants, and the OPA colour matches doc 346. The one alternative owner, 0604114A, names 'M983A4 Heavy Expanded Mobility Tactical Truck (HEMTT)' only as the carrier vehicle for the LTAMDS radar — the §3 platform trap — and this award buys the trucks themselves, not a radar they haul.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2016 other procurement funds are obligated on the action and the lake funds the contract from 021-2035 plus 097-0350 (NGREA), matching the FHTV line's Other Procurement, Army colour; the contract is the 'FAMILY OF HEAVY TACTICAL VEHICLE (FHTV) IV' requirements contract and HEMTT A4 recapitalisation is new-procurement work this line buys, not O&M sustainment."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The string the announcement prints, 'Heavy Expanded Mobility Tactical Truck(s)', is owned by only 8309DA0500 and by 0604114A, where it is the M983A4 prime mover for the LTAMDS radar (the §3 platform case, and this award buys the trucks); the same-volume rival 8992DA0924 (Modification Of In Svc Equip, doc 346) owns only the generic 'Family of Heavy Tactical Vehicles' name, which the announcement never uses, and the six A4 variants named are 8309DA0500's own rows — the residual risk is that 'recapitalized' could read as in-service modification work, but a 700-vehicle OEM delivery of complete trucks is a vehicle buy."
+   }
+  },
+  {
+   "record_index": 35,
+   "article_id": "1669872",
+   "piid": "W58RGZ17C0018",
+   "pe_bli": "9670A00005",
+   "program_name": "MQ-1C Gray Eagle",
+   "lexicon_doc": "343",
+   "announcement_evidence": "Gray Eagle performance-based logistics",
+   "lexicon_quote": "MQ-1C Gray Eagle",
+   "rationale": "Rejected by design under §3's generic-services pattern: the award is performance-based logistics, obligated with fiscal 2019 operations and maintenance, Army funds, which is fleet sustainment rather than any procurement or development line's own work — the O&M-on-a-procurement-line failure mode. It fails on identity grounds too: four separate index rows own 'MQ-1C Gray Eagle' (0305219A, 0756AA6601, 9000I49000 and 9670A00005), so even if a sustainment award could be linked there is no basis in the announcement for choosing among them.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 37,
+   "article_id": "1402841",
+   "piid": "W31P4Q16C0102",
+   "pe_bli": "6005C64400",
+   "program_name": "Guided Multiple Launch Rocket System (GMLRS)",
+   "lexicon_doc": "345",
+   "match_basis": "exact-name",
+   "announcement_evidence": "guided multiple launch rocket system unitary rockets",
+   "lexicon_quote": "GMLRS Unitary and the GMLRS Alternative Warhead (AW)",
+   "rationale": "The announcement procures insensitive-munitions motors and guided multiple launch rocket system unitary rockets — the GMLRS Unitary round that 6005C64400 (Guided MLRS Rocket) exists to buy, and whose narrative names both 'Guided Multiple Launch Rocket System (GMLRS)' and 'GMLRS Unitary and the GMLRS Alternative Warhead (AW)'. The name collides with 0205778A and 0603778A, but both are RDT&E lines (doc 359) and this is a production buy of rounds and motors, so the procurement BLI is the owner. Lens A should weigh that the record labels the money 'other procurement (Army)' while 6005C64400 sits in the missile procurement volume.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement's 'other procurement (Army)' string is contradicted by the lake, which funds W31P4Q-16-C-0102 from 021-2032 (Missile Procurement, Army), the GMLRS line's own appropriation, and the contract is 'GUIDED MULTIPLE LAUNCH ROCKET SYSTEMS FULL RATE PRODUCTION XI'; the rockets and IM motors are the line's end item and the bundled 'support services' are incidental to a production buy, not the substance of the award."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "GMLRS is a four-way name collision (0205778A and 0603778A, both RDT&E doc 359; 6200C02901, the HIMARS launcher line that names the rocket it fires; 6005C64400), but 'Unitary' is owned by exactly one row — 6005C64400's 'GMLRS Unitary and the GMLRS Alternative Warhead (AW)' — and an award for unitary rockets and their motors is that rocket line's own end item, not a launcher buy or a development effort."
+   }
+  },
+  {
+   "record_index": 44,
+   "article_id": "606871",
+   "piid": "W56HZV09D0159",
+   "pe_bli": "6866D15500",
+   "program_name": "Family Of Medium Tactical Veh (FMTV)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to add 698 FMTVs (Family of Medium Tactical Vehicles)",
+   "lexicon_quote": "Family Of Medium Tactical Veh (FMTV)",
+   "rationale": "The modification adds 698 new Family of Medium Tactical Vehicles trucks to Oshkosh's FMTV delivery-order contract — a buy of the vehicles themselves, which is the whole content of the 6866D15500 other-procurement line (doc 346), whose narrative owns FMTV, LMTV, MTV, LTAS and the load-handling variant. The competing owner, 8992DA0924, spells the name identically but is the Modification Of In Svc Equip line: adding new trucks to a production contract is not a modification of in-service equipment, and 0604604A is the RDT&E medium-tactical-vehicles line. Funding is 'determined with each order', so no appropriation colour contradicts the buy.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The action obligates nothing — 'funding and work location will be determined with each order' — so no appropriation can be shown to be this line's; W56HZV-09-D-0159 is a five-year requirements/IDIQ contract carrying zero obligation in every lake fiscal year and funding accounts spanning 021-2035, 021-2040 (RDT&E, Army) and 057-3080 (Other Procurement, Air Force), so a quantity-and-excise-tax ceiling add cannot be attributed to the FMTV OPA line's own work."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The announcement's printed string 'Family of Medium Tactical Vehicles' is owned VERBATIM by a different PE — 8992DA0924 'The Family of Medium Tactical Vehicles (FMTV)' (Modification Of In Svc Equip, doc 346, same procurement volume) — and near-verbatim by 0604604A; the proposed row spells it 'Medium Tactical Veh', so the evidence fits the rival at least as well, and with the record stating no appropriation at all ('funding and work location will be determined with each order') and no variant, work description or end-item detail beyond a count on a delivery-order contract, nothing in the announcement discriminates among the three owners — the only separator offered is the adjudicator's inference that adding trucks is not a modification, which the record does not state."
+   }
+  },
+  {
+   "record_index": 45,
+   "article_id": "3913138",
+   "piid": "W56HZV23C0024",
+   "pe_bli": "2944G80819",
+   "program_name": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Armored Multi-Purpose Vehicles",
+   "lexicon_quote": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "rationale": "BAE's York production contract delivers Armored Multi-Purpose Vehicles against fiscal 2024 weapons and tracked combat vehicle procurement, Army funds — the name is verbatim, the money colour is exactly the appropriation of 2944G80819 (doc 350, Armored Multi Purpose Vehicle), and the end item being produced is the line's own. The only other owner of the name, 0203735A (Combat Vehicle Improvement Programs), is an RDT&E line that also names an 'AMPV Improvement Program'; a WTCV-funded production modification does not execute it. Cleanest link in the chunk.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement names fiscal 2024 weapons and tracked combat vehicle procurement, Army, which is exactly account 2033A of the AMPV line, and the contract description ('early order material in support of the future purchase of 197 AMPVs and production-rate expansion') is the line's own production work; the lake records no funding accounts for this PIID, which money_color_ok treats as unknown rather than mismatched."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "AMPV is owned by exactly two rows, 0203735A (Combat Vehicle Improvement Programs, doc 359, RDT&E, which also carries a distinct 'AMPV Improvement Program' name the announcement never uses) and the proposed 2944G80819 (doc 350); the verbatim name plus WTCV procurement money for vehicle deliveries resolves to the procurement line with no variant ambiguity."
+   }
+  },
+  {
+   "record_index": 47,
+   "article_id": "1359746",
+   "piid": "W52P1J16D0055",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "announcement_evidence": "procurement of radar electronic units",
+   "lexicon_quote": "Longbow Hellfire XM299",
+   "rationale": "Rejected under lens B's 'the evidence is just a contractor name' pattern: the only occurrence of 'Longbow' in this record is Longbow LLC, the Lockheed Martin/Northrop Grumman joint venture that holds the contract, and the item procured is radar electronic units for the Apache fire-control radar — not the XM299 Longbow Hellfire launcher that 9157J01200 buys. Matching the JV's name to a missile-launcher BLI would assert an attribution the announcement does not support, so this is wrong rather than weak.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 55,
+   "article_id": "1328736",
+   "piid": "W58RGZ17D0092",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the Apache AH-64 helicopter",
+   "lexicon_quote": "AH-64 MODS",
+   "rationale": "The AH-64 is named, but it is named as the airframe the purchased item attaches to: Robertson supplies reduced-size crashworthy external and internal auxiliary fuel systems, largely for FMS customers (India, Indonesia, Qatar, United Kingdom), on an IDIQ whose work locations and funding are 'determined with each order'. That is §3's platform-the-contract-supports pattern, and the record offers no evidence that these tanks are bought under the AH-64 MODS BLI's own modification programme (whose named elements are the AH-64E and the Improved Tail Rotor Blade) rather than as FMS-funded equipment. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 64,
+   "article_id": "833614",
+   "piid": "W31P4Q14C0154",
+   "pe_bli": "3246E37300",
+   "program_name": "Rocket, Hydra 70, All Types",
+   "lexicon_doc": "349",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Hydra rockets (M151 quantity 80,448",
+   "lexicon_quote": "Rocket, Hydra 70, All Types",
+   "rationale": "The item list settles the identity beyond doubt: M151, M255A1, M274, M278 and M156 warheads on Mk66 Mod 4 motors are the Hydra 70 family, and the index carries exactly one owner, 3246E37300 (Rocket, Hydra 70, All Types) in the ammunition procurement volume (doc 349). The announcement writes 'Hydra rockets' rather than the full line title, hence llm-alias. Lens A should weigh that the record labels the fiscal 2010/2011/2014/2016 money 'other procurement funds' on a procurement-of-ammunition line, and that much of the buy is FMS; the work itself — producing the rockets the line buys — is the line's own.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "This modification is the Foreign Military Sales leg of the Hydra-70 contract — every named customer is foreign (Colombia, Afghanistan, Iraq, Qatar, UAE, India, Belgium) and the money is 'fiscal 2010, 2011, 2014 and 2016 other procurement funds', not Procurement of Ammunition, Army — so rockets bought on foreign cases (and FY2010/2011 Afghanistan/Iraq security-fund colours) are not the US Army PAA Hydra 70 line's own work, even though the parent contract also carries 021-2034."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Rocket, Hydra 70, All Types' (3246E37300) is the index's only rocket-bearing Hydra row — the other 'Hydra' hits are hydraulic test and petroleum equipment — and the M151/M255A1/M274/M278/M156 warheads on Mk66 Mod 4 motors are the Hydra 70 family itself; 'All Types' forecloses a variant/increment objection, and the evidence is the munition list, not the contractor."
+   }
+  },
+  {
+   "record_index": 65,
+   "article_id": "2629828",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "8750E27501",
+   "program_name": "The Precision Guidance Kit (PGK)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "the Precision Guidance Kit",
+   "lexicon_quote": "The Precision Guidance Kit (PGK)",
+   "rationale": "The name is exact and the money is right — fiscal 2021 procurement of ammunition, Army against an ammunition-procurement BLI — but two lines inside that same appropriation own 'Precision Guidance Kit (PGK)': 8750E27501 (Artillery Propellants, Fuzes and Primers, All Types) and 3102E89500 (Artillery Projectile, 155MM, All Types), with a third owner at 0604802A in RDT&E. PGK is a fuze, which favours 8750E27501, but the announcement gives no evidence for choosing, and a published link has to name one line. That is lens B's alternative-owner problem on its face, so weak. Record 61 (article 1763812, 'Precision Guidance Kit M1156') is the same PIID and is not proposed separately.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 68,
+   "article_id": "3308354",
+   "piid": "W31P4Q22D0021",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Phased Array Tracking Radar to Intercept on Target (PATRIOT) Advanced Capability-3 product assurance and launcher recapitalization",
+   "lexicon_quote": "PAC-3",
+   "rationale": "The announcement spells out the PAC-3 backronym, and 8260C53101 (MSE Missile) is the only index row that owns 'PAC-3'. The work, however, is product assurance and launcher recapitalisation, not a missile buy: launcher recapitalisation is Patriot Mods work (0962C50700), and the record states no appropriation at all ('work locations and funding will be determined with each order'). The §0 claim would be that this action paid for the MSE missile line's own work, and a mixed product-assurance/launcher-recap delivery order does not establish that. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 70,
+   "article_id": "605970",
+   "piid": "W31P4Q13C0129",
+   "pe_bli": "0648CC0007",
+   "program_name": "Command Launch Unit (CLU)",
+   "lexicon_doc": "345",
+   "match_basis": "exact-name",
+   "announcement_evidence": "137 command launch unit retrofits",
+   "lexicon_quote": "Command Launch Unit (CLU)",
+   "rationale": "The action buys 361 plus 189 plus 147 plus 20 Javelin Block 1 tactical missiles and 137 command launch unit retrofits on the Javelin JV's contract. 'Command launch unit' appears verbatim and is owned by two index rows: 0604611A (RDT&E JAVELIN) and 0648CC0007 (Javelin (AAWS-M) System Summary, doc 345, missile procurement). A firm-fixed-price production and retrofit buy of missiles and CLUs executes the procurement line, not the development line, so 0648CC0007 is the owner. Note that record 48 and record 56 sit on Javelin contracts too but name only 'GEU hybrid regulators' and 'Javelin Weapon System', neither of which is a name this org's index carries, so they get no proposal.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The lake funds W31P4Q-13-C-0129 from 021-2032 (Missile Procurement, Army) among others and describes it as 'UCA AWARD FY13 BLOCK 1 TACTICAL ROUNDS: US ARMY AND USMC' — the Army's 361 Block 1 missiles and 137 CLU retrofits are the Javelin procurement line's own end items, the 20 New Zealand/Jordan rounds are a trivial FMS fraction, and 'Javelin (AAWS-M) System Summary' aggregates only Javelin content, so it is not a §3 catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Command Launch Unit (CLU)' is owned by exactly two rows, 0604611A (JAVELIN, doc 355, RDT&E) and 0648CC0007 (Javelin (AAWS-M) System Summary, doc 345), and a firm-fixed-price buy of Block 1 tactical missiles plus CLU retrofits executes the procurement line; the announcement says plain CLU, not the later LWCLU variant, and although 'Javelin' also appears in the contractor's name the linking evidence is the retrofit item and the Block 1 rounds, not the contractor string."
+   }
+  },
+  {
+   "record_index": 73,
+   "article_id": "2694822",
+   "piid": "W31P4Q19C0101",
+   "pe_bli": "0603778A",
+   "program_name": "HIMARS Product Improvement Program",
+   "lexicon_doc": "359",
+   "announcement_evidence": "production of High Mobility Artillery Rocket Systems M142 launchers",
+   "lexicon_quote": "HIMARS Product Improvement Program",
+   "rationale": "HIMARS is named in full, but the award is production of M142 launchers, and the index has no name row for the HIMARS launcher buy itself: the procurement BLI 6200C02901 carries the HIMARS program title yet owns only the names 'Army Tactical Missile System (ATACMS)' and 'Guided MLRS (GMLRS)', neither of which this award funds, and 6580C67501 owns only modification sub-elements. The only HIMARS-bearing name row in the index is the RDT&E product-improvement programme at 0603778A, which a launcher production modification does not execute (even though the record does obligate some fiscal 2021 RDT&E, Army money alongside Marine Corps procurement and FMS Taiwan funds). Weak: the right line is not nameable from this index.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 77,
+   "article_id": "1939263",
+   "piid": "W58RGZ16C0023",
+   "pe_bli": "5757A05111",
+   "program_name": "AH-64E",
+   "lexicon_doc": "343",
+   "announcement_evidence": "to procure new-build Apache AH 64E helicopters",
+   "lexicon_quote": "AH-64E",
+   "rationale": "The announcement is explicit that these are new-build AH-64E aircraft, funded with fiscal 2018 and 2019 aircraft procurement, Army money. The two index rows that own 'AH-64E' are 5757A05111 (AH-64 Apache Block IIIA Reman) and 2706AA6605 (AH-64 MODS) — a remanufacture line and a modification line. The Apache new-build BLI is not present in this org's index, so linking a new-build buy to the reman line would assert the wrong line on the strength of a shared designator. Wrong by lens B's different-variant pattern rather than weak, because the record itself contradicts the candidate line.",
+   "verdict": "wrong"
+  }
+ ]
+}

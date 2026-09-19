@@ -1,0 +1,53 @@
+{
+ "chunk": "chunk_070_DLA.json",
+ "proposals": [
+  {
+   "record_index": 65,
+   "article_id": "3525097",
+   "piid": "SPE8E623D0001",
+   "verdict": "wrong",
+   "program_name": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "pe_bli": "0603712S",
+   "lexicon_doc": "105",
+   "announcement_evidence": "for all items under the classification of lumber, millwork and plywood for the Wood Products Tailored Logistics Support Program",
+   "lexicon_quote": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "rationale": "The only index name with real lexical purchase on this record is IMRLS, and the overlap is the two-word phrase 'Logistics Support' inside a different program's title. The award is a four-way multiple-award IDIQ commodity vehicle for lumber, millwork and plywood under DLA Troop Support's Tailored Logistics Support acquisition program, bought with defense working capital funds; the Generic Logistics R&D Technology Demonstrations line funds an RDT&E project, not a supply vehicle for wood products. This is rejected by two of the rubric's section 3 patterns at once: generic logistics services with no named program, and a name that is an acquisition vehicle the contract runs under rather than the program element the PE funds. No other record in this chunk names any DLA lexicon program."
+  },
+  {
+   "record_index": 69,
+   "article_id": "606782",
+   "piid": "SPE8E615D0004",
+   "verdict": "wrong",
+   "program_name": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "pe_bli": "0603712S",
+   "lexicon_doc": "105",
+   "announcement_evidence": "have been awarded a maximum $40,000,000 firm-fixed-price contract for a tailored logistics support contract for wood products for the East region",
+   "lexicon_quote": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "rationale": "Same rejection as record 65 and the same tempter: the record says 'tailored logistics support contract for wood products', which shares only the generic phrase 'logistics support' with IMRLS. The money is a four-way firm-fixed-price commodity award for wood products under solicitation SPE8E6-14-R-0010 on working capital funds, which is a supply acquisition, not the Generic Logistics R&D Technology Demonstrations RDT&E line. Rejected under section 3 as generic logistics services with no named program."
+  },
+  {
+   "record_index": 70,
+   "article_id": "606783",
+   "piid": "SPE8E615D0004",
+   "verdict": "wrong",
+   "program_name": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "pe_bli": "0603712S",
+   "lexicon_doc": "105",
+   "announcement_evidence": "have been awarded a maximum $40,000,000 firm-fixed-price contract for a tailored logistics support contract for wood products for the East region",
+   "lexicon_quote": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "rationale": "This record is the Feb. 6, 2015 re-announcement of the same wood-products award carried in record 69 (article 606782, Feb. 5, 2015), with the same PIID set; it is recorded separately because the collector indexes by record. The adjudication is identical: 'tailored logistics support' overlaps IMRLS only on the generic phrase 'logistics support', the award is a firm-fixed-price commodity supply vehicle on working capital funds, and section 3 rejects generic logistics services with no named program."
+  },
+  {
+   "record_index": 75,
+   "article_id": "3374189",
+   "piid": "SP450023D0013",
+   "verdict": "wrong",
+   "program_name": "Strategic Distribution & Disposition (SDD)",
+   "pe_bli": "0603712S",
+   "lexicon_doc": "216",
+   "announcement_evidence": "The contracting activity is the Defense Logistics Agency Disposition Services, Battle Creek, Michigan (SP4500-23-D-0013)",
+   "rationale": "The word 'Disposition' appears in this record only as part of the contracting office's name, 'Defense Logistics Agency Disposition Services', not as a description of the work. The work itself is an IDIQ for hazardous waste removal and disposal on working capital funds, which section 3 rejects as generic services with no named program, and the rubric treats evidence that is really an organisation or contractor name as a refutation rather than a match. Nothing in the text asserts that this award funds the Strategic Distribution & Disposition research project under Generic Logistics R&D Technology Demonstrations.",
+   "lexicon_quote": "Strategic Distribution & Disposition (SDD)"
+  }
+ ]
+}

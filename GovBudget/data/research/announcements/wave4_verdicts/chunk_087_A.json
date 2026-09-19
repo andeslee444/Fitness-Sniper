@@ -1,0 +1,290 @@
+{
+ "chunk": "chunk_087_A.json",
+ "proposals": [
+  {
+   "record_index": 13,
+   "article_id": "2532691",
+   "piid": "W56HZV21F0146",
+   "pe_bli": "4700MA6000",
+   "program_name": "The Modular Fuel System (MFS)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "production of the Modular Fuel System - Tank Rack Module",
+   "lexicon_quote": "The Modular Fuel System (MFS)",
+   "verdict": "link",
+   "rationale": "The award is a firm-fixed-price production contract for the Modular Fuel System Tank Rack Module, the fuel-distribution item that BLI 4700MA6000 (Distribution Systems, Petroleum & Water) buys and whose narrative owns the name 'The Modular Fuel System (MFS)'. Two other lines carry an MFS name: 1110MA4500 (Modification Of In-Svc Equipment, OPA-3) and 0604804A (RDT&E, and only for the M107 40gpm pump modification kit). The announcement's own word 'production' is the discriminator: this is new-build end items, not a modification of fielded equipment and not an engineering-development kit, so the procurement line that buys the MFS is the one whose own work this action pays for.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Production of MFS Tank Rack Modules is a procurement action and 4700MA6000's own narrative carries the TRM with an Army Acquisition Objective ('AAO: 114 ... The Modular Fuel System (MFS) Tank Rack Module (TRM) is a 2,500 gallon mobile storage'), so the procured end item is this OPA line's own buy, not a platform it supports; 'Distribution Systems, Petroleum & Water' is a six-system family line, not a CATCHALL_TITLE aggregate."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Name collision is total: BLI 1110MA4500 owns the byte-identical string 'The Modular Fuel System (MFS)' in the same lexicon doc 346, and 0604804A owns the only index row containing the announcement's own words 'Tank Rack Module'; the order names no appropriation ('funding will be determined with each order'), so nothing in the evidence picks 4700MA6000 over the other two owners."
+   }
+  },
+  {
+   "record_index": 14,
+   "article_id": "1460713",
+   "piid": "W91CRB18D0004",
+   "pe_bli": "8822G01101",
+   "program_name": "The Personnel Recovery Support System (PRSS)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "The Personnel Recovery Support System Personnel Recovery Device",
+   "lexicon_quote": "The Personnel Recovery Support System (PRSS)",
+   "verdict": "link",
+   "rationale": "The announcement names the Personnel Recovery Support System verbatim and buys its Personnel Recovery Device on an IDIQ. BLI 8822G01101 is a dedicated procurement line whose program title IS 'Personnel Recovery Support System (PRSS)' and whose narrative owns that exact name, so a device buy is that line's own end item rather than something it merely supports. The only other owner of the name is RDT&E PE 0604601A (Infantry Support Weapons); an indefinite-delivery production buy of fielded devices belongs to the procurement line, not the development PE.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The line's narrative says 'The Personnel Recovery Support System (PRSS) consists of several components that included Personnel Reco[very Device]', so the device the IDIQ buys is this dedicated OPA line's own component rather than a platform it supports; a hardware delivery contract is procurement-colored, which fits the procurement line and not the RDT&E alternative, and the BLI is single-program with no rollup character."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The only competing owner, 0604601A, is a seven-name Infantry Support Weapons development rollup that carries PRSS without the article, while 8822G01101 is a single-name line whose program title IS PRSS and whose row matches the announcement's 'The Personnel Recovery Support System' verbatim; the Personnel Recovery Device is that program's own end item, not a variant or a contractor name."
+   }
+  },
+  {
+   "record_index": 31,
+   "article_id": "1646068",
+   "piid": "W58RGZ18D0124",
+   "pe_bli": "3264AA0252",
+   "program_name": "Cargo Platform Health Environment (CPHE)",
+   "lexicon_doc": "343",
+   "match_basis": "exact-name",
+   "announcement_evidence": "cargo platform health environment kits for cargo helicopters",
+   "lexicon_quote": "Cargo Platform Health Environment (CPHE)",
+   "verdict": "link",
+   "rationale": "The announcement spells out 'cargo platform health environment kits for cargo helicopters', which is the CPHE modification kit for the CH-47. BLI 3264AA0252 (CH-47 Cargo Helicopter Mods, MYP) owns the name 'Cargo Platform Health Environment (CPHE)' in its own narrative, and no other line in this org's index carries that name. A firm-fixed-price buy of CPHE kits is exactly what a cargo-helicopter modifications procurement line funds: the kit, not the airframe, is the item, so this is not a platform the contract merely supports.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The procured item is the CPHE kit, not the helicopter: 3264AA0252's narrative is about 'integrating and fielding capability to the remaining fleet with Cargo Platform Health Environment (CPHE) and Improved Vibration Control System (IVCS)', and buying modification kits is exactly what an aircraft-procurement modifications line funds, so the cargo helicopter is the platform the kit goes on while the kit itself is this line's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Cargo Platform Health Environment (CPHE)' appears exactly once in the 1,439-row index, on 3264AA0252, whose other rows (CH-47F, CAAS, DAFCS, IVCS) confirm the cargo-helicopter airframe the announcement names; the alias is a verbatim four-word match with no alternative owner and no increment ambiguity."
+   }
+  },
+  {
+   "record_index": 38,
+   "article_id": "2167014",
+   "piid": "W15QKN20F0377",
+   "pe_bli": "8181G01501",
+   "program_name": "The M320 Grenade Launcher Module (GLM)",
+   "lexicon_doc": "350",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "40 mm M320 and 40 mm M320A1 grenade launchers",
+   "lexicon_quote": "The M320 Grenade Launcher Module (GLM)",
+   "verdict": "link",
+   "rationale": "'40 mm M320 and 40 mm M320A1 grenade launchers' is the M320 Grenade Launcher Module and its A1 variant; the announcement uses the fielded short form rather than the J-book's 'Grenade Launcher Module' phrasing, which is why the deterministic matcher left it in the residue. BLI 8181G01501 (XM320 Grenade Launcher Module) owns the name 'The M320 Grenade Launcher Module (GLM)' and is the only line in this index that does. A firm-fixed-price buy of the launchers themselves is that procurement line's own end item.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "A firm-fixed-price production buy of M320/M320A1 launchers is procurement-colored work against a dedicated procurement line whose title and narrative are the item itself ('The M320 Grenade Launcher Module (GLM) is a 40mm low-velocity grenade launching weapon system'), so the launcher is the program the line funds rather than a platform it supports, and the line is not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "8181G01501 is the only line in the index carrying any grenade-launcher name, and its row 'The M320 Grenade Launcher Module (GLM)' contains the designator 'M320' literally, so the alias is real rather than invented; the M320A1 is the same GLM in its standalone configuration and no separate index line owns an A1 variant."
+   }
+  },
+  {
+   "record_index": 76,
+   "article_id": "612902",
+   "piid": "W15QKN15D0063",
+   "pe_bli": "8181G01501",
+   "program_name": "The M320 Grenade Launcher Module (GLM)",
+   "lexicon_doc": "350",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "40mm M320/M320A1 grenade launchers and non-functional training displays",
+   "lexicon_quote": "The M320 Grenade Launcher Module (GLM)",
+   "verdict": "link",
+   "rationale": "Same item as record 38 under an earlier Capco contract: the award buys M320/M320A1 grenade launchers (plus non-functional training displays of the same launcher) and BLI 8181G01501 (XM320 Grenade Launcher Module) is the only line in this org's index whose narrative owns the M320 GLM name. The training displays are accessories of the same end item, not a separate training-devices program, so the action pays for this procurement line's own work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same end item and same line as record 38; the non-functional training displays are accessories of that launcher (J-book procurement lines routinely carry 'associated training devices'), so no part of the money is pulled to a separate training-devices program, and a launcher production buy remains the GLM procurement line's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same sole-owner situation as record 38, and the secondary item offers no rival: 'training display', 'non-functional' and 'nonfunctional' return zero rows across the entire index, so no training-devices line competes for this award's evidence."
+   }
+  },
+  {
+   "record_index": 40,
+   "article_id": "3347127",
+   "piid": "W56KGY23C0008",
+   "pe_bli": "9546B97600",
+   "program_name": "Terrestrial Layer Systems (TLS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "to support acquisition of the Terrestrial Layer System Brigade Combat Team",
+   "lexicon_quote": "Terrestrial Layer Systems (TLS)",
+   "verdict": "link",
+   "rationale": "TLS-BCT is the brigade-combat-team increment of the Terrestrial Layer System, and the awardee (Lockheed Martin, Liverpool/Syracuse, New York) is the TLS-BCT prime rather than a third-party services house. Three lines own a TLS name: RDT&E PEs 0304270A and 0609277A, and procurement BLI 9546B97600. The obligated money is fiscal 2022 other procurement, Army, which selects the procurement line, and 9546B97600's narrative owns the unqualified name 'Terrestrial Layer Systems (TLS)' (its other row, TLS EAB, is the echelon-above-brigade increment). The residual risk is the announcement's vague verb 'to support acquisition of', which is why the appropriation and the prime's identity carry the weight here.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The money color is stated and matches exactly — fiscal 2022 other procurement, Army against 9546B97600, whose lexicon_doc 346 is the Other Procurement, Army book — and the named thing (TLS BCT) is the program itself, not a platform the contract supports; the vague verb 'to support acquisition of' is the residual risk, but OPA dollars to the TLS-BCT prime at its own Syracuse EW facility are not the generic engineering-support or base-operations pattern §3 rejects, and the TLS line is program-specific rather than a catch-all."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Wrong increment: 9546B97600 owns exactly two names and the only increment it names is 'Terrestrial Layer System Echelon Above Brigade (TLS EAB)', while 'brigade combat' and 'BCT' return zero rows anywhere in the index, so the announcement's TLS-BCT matches no owned name and the unqualified TLS fallback is owned equally by RDT&E PEs 0304270A and 0609277A."
+   }
+  },
+  {
+   "record_index": 43,
+   "article_id": "2102247",
+   "piid": "W15QKN16D0051",
+   "pe_bli": "3181GZ1500",
+   "program_name": "M110A1 Squad Designated Marksman Rifle (SDMR)",
+   "lexicon_doc": "350",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the Compact Semi-Automatic Sniper Systems and the Squad Designated Marksman Rifle",
+   "lexicon_quote": "M110A1 Squad Designated Marksman Rifle (SDMR)",
+   "verdict": "link",
+   "rationale": "The announcement names the Squad Designated Marksman Rifle explicitly; the CSASS and the SDMR are both the Heckler & Koch G28-derived M110A1, and the awardee is H&K on the M110A1 IDIQ. BLI 3181GZ1500 (Sniper Rifles Modifications) is the only line in this index whose narrative owns 'M110A1 Squad Designated Marksman Rifle (SDMR)', alongside the M110 SASS and MK22 PSR, so the SDMR is an item this line itself funds rather than a platform it supports. The announcement drops the M110A1 prefix the J-book uses, which is why an alias judgement rather than a literal name match is required.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Mission mismatch of the §3 platform kind: 3181GZ1500 is 'Sniper Rifles Modifications', and every one of its lexicon rows reads as upgrade content — the narrative names the SDMR only inside 'The current Army fleet of sniper weapons, consisting of the M110 SASS, the M2010 ESR, the M107 LRSR, the MK22 PSR and the M110A1 SDMR, require continuous upgrades to the weapon, components, and…', with its own procured items being the Advanced Sniper Accessory Kit, Ballistic Weather Meter, spotting scope and tripod kits — so the rifles are the fielded fleet this line upgrades, not what it buys, while the announced action is a $33.5M increment on H&K's CSASS production IDIQ for whole rifles; that whole-rifle procurement sits on rifle lines of its own in this same index (8190G01506, 'Precision Sniper Rifle'), and the first-named half of the award, the Compact Semi-Automatic Sniper Systems, is not owned by 3181GZ1500 at all, so an unknown share of the money is another line's work and no appropriation is stated to corroborate."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Squad Designated Marksman Rifle' is a verbatim substring of 3181GZ1500's row and no other line in the index owns it; CSASS/'Compact' returns no weapons row at all, so the award's second named item has no rival owner either, and the dropped 'M110A1' prefix is the same weapon rather than a different variant."
+   }
+  },
+  {
+   "record_index": 45,
+   "article_id": "3072486",
+   "piid": "W31P4Q19C0076",
+   "pe_bli": "0648CC0007",
+   "program_name": "Lightweight Command Launch Units (LWCLU)",
+   "lexicon_doc": "345",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the low-rate initial production of lightweight command launch units in support of the Javelin Weapon System",
+   "lexicon_quote": "Lightweight Command Launch Units (LWCLU)",
+   "verdict": "link",
+   "rationale": "The announcement names lightweight command launch units, which BLI 0648CC0007 (Javelin (AAWS-M) System Summary) owns verbatim as 'Lightweight Command Launch Units (LWCLU)'. The competing owner is RDT&E PE 0604611A (JAVELIN), which carries the singular form; the obligated money is fiscal 2022 missile procurement, Army, and the work is low-rate initial production, so the procurement line is the one whose own work this action pays for. Javelin is named here as the system the LWCLU is a component of, and the LWCLU is itself the procured end item, so this is not a platform-support case.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 missile procurement, Army matches 0648CC0007's lexicon_doc 345 (Missile Procurement, Army), and the line's own narrative states it 'supports the production of 649 Lightweight Command Launch Units (LWCLU) and associated training devices', so LRIP of LWCLUs is literally this line's work; Javelin is named as the weapon system the LWCLU belongs to, and the line is the Javelin program's own summary line rather than a heterogeneous catch-all (it does not trip CATCHALL_TITLE)."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The only rival owner, RDT&E PE 0604611A, carries the singular 'Lightweight Command Launch Unit (LWCLU)' while 0648CC0007 carries the plural form the announcement uses, and the named fiscal 2022 missile procurement funds plus low-rate initial production settle the identity; LWCLU is a single item with no increment split in the index."
+   }
+  },
+  {
+   "record_index": 61,
+   "article_id": "2714840",
+   "piid": "W31P4Q08C0418",
+   "pe_bli": "0605457A",
+   "program_name": "Integrated Battle Command System (IBCS)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the Integrated Fires Mission Command Integrated Battle Command System Development Program",
+   "lexicon_quote": "Integrated Battle Command System (IBCS)",
+   "verdict": "link",
+   "rationale": "The announcement names the Integrated Battle Command System development program and obligates fiscal 2021 RDT&E, Army against Northrop Grumman's long-running IBCS development contract W31P4Q-08-C-0418 at Huntsville. Five lines own an IBCS name; the appropriation eliminates the three procurement lines (8930C61001, 9280BZ5075, 9301H37300), leaving 0605457A (Army Integrated Air and Missile Defense) and 0606118A (AIAMD Software Development & Integration). 0606118A is the later software-only carve-out, while the base IBCS development effort under this 2008 contract sits in the AIAMD development PE, which owns 'Integrated Battle Command System (IBCS)' outright. The two-way RDT&E collision is the weakest point of this proposal and is stated rather than hidden.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 RDT&E, Army obligated against an RDT&E program element (lexicon_doc 355), and the modification funds IBCS development on Northrop's long-running AIAMD development contract, which is the PE's centerpiece per its own narrative ('using the Integrated Battle Command System (IBCS) as the centerpiece'); AIAMD is a single program element with IBCS and RIG-360 as its products, not a rollup, and IBCS is the program rather than a platform the contract supports — the competing RDT&E owner 0606118A is an identity question for lens B, not a money-or-mission break."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Five PEs own an IBCS name (0605457A, 0606118A, 8930C61001, 9280BZ5075, 9301H37300, the last byte-identical to the proposed row), and after the RDT&E appropriation the announcement's words still cannot choose between 0605457A and 0606118A, which owns its own IBCS name for AIAMD software development work on the same Northrop development effort."
+   }
+  },
+  {
+   "record_index": 27,
+   "article_id": "1529001",
+   "piid": "H9222213D0013",
+   "pe_bli": "3484D15501",
+   "program_name": "The Army Infantry Squad Vehicle (ISV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "procurement of Army ground mobility vehicles 1.1 and associated kits",
+   "lexicon_quote": "The Army Infantry Squad Vehicle (ISV)",
+   "verdict": "weak",
+   "rationale": "BLI 3484D15501 carries the program title 'Ground Mobility Vehicles (GMV)', which is why this record surfaced, but the only name the line's narrative actually owns is 'The Army Infantry Squad Vehicle (ISV)' — a different vehicle from the SOCOM-derived GMV 1.1 this award buys, on a SOCOM contract number (H92222-13-D-0013). Matching the announcement to the line would mean matching the budget-line title rather than a name the PE owns, and the evidence does not distinguish an interim GMV 1.1 buy from the ISV program of record, so this does not meet the evidence standard."
+  },
+  {
+   "record_index": 28,
+   "article_id": "2590381",
+   "piid": "W56HZV21F0194",
+   "pe_bli": "2831MX0100",
+   "program_name": "Common Bridge Transporter (CBT)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "the M1977A4 Common Bridge Transporter",
+   "lexicon_quote": "Common Bridge Transporter (CBT)",
+   "verdict": "weak",
+   "rationale": "Four separate lines in this org's index own a Common Bridge Transporter name — 2831MX0100 (Tactical Bridging), 3542MA8890 (Tactical Bridge, Float-Ribbon), 3758G06520 (Bridge Supplemental Set) and 1110MA4500 (Modification Of In-Svc Equipment, OPA-3). The announcement gives only 'other procurement, Army', which is common to all four and therefore discriminates nothing, and names no bridge set, variant or increment that would pick one. With no way to say which line's own work the M1977A4 buy pays for, the correct outcome is not to link."
+  },
+  {
+   "record_index": 69,
+   "article_id": "3058489",
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "to recapitalize the Multiple Launch Rocket System into the M270A2 configuration",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "weak",
+   "rationale": "The name match is as clean as it gets — BLI 6552C67500 (MLRS Mods) owns 'The M270A2 Multiple Launch Rocket System (MLRS)' and M270A2 recapitalization is precisely that line's work — but the obligated money on this modification is fiscal 2022 Foreign Military Sales (United Kingdom) funds, not a U.S. appropriation. A published link asserts this action paid for the program element's own work; an FMS-funded recapitalization is paid by the partner nation against the same contract vehicle, so the money test in the rubric is not satisfied and the smaller true number is to withhold the link."
+  },
+  {
+   "record_index": 2,
+   "article_id": "3632853",
+   "piid": "W31P4Q24C0012",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "PATRIOT Cable Center of Excellence capability",
+   "verdict": "wrong",
+   "lexicon_quote": "PATRIOT Product Improvement Program (PIP)",
+   "rationale": "Rejected under the §3 platform pattern. The only candidate name is the word PATRIOT, which appears here as the weapon system a Polish cable-manufacturing facility will serve, not as a program element item; none of the names BLI 0962C50700 (Patriot Mods) or PE 0607865A (Patriot Product Improvement) actually own — PIP, MSE, IESP, ADI, TPW, TPX-57 — appears in the announcement. Hardware, services and documentation to stand up a partner nation's Cable Center of Excellence is a capability the contract supports rather than the U.S. line's own modification work."
+  },
+  {
+   "record_index": 30,
+   "article_id": "1973911",
+   "piid": "W31P4Q19C0018",
+   "pe_bli": "8082C14300",
+   "program_name": "M-SHORAD - Procurement",
+   "lexicon_doc": "345",
+   "announcement_evidence": "procurement of seven Enhanced Sentinel A3 Radars and associated spares in support of the European Deterrence Initiative and future Initial Maneuver-Short Range Air Defense battalions",
+   "lexicon_quote": "M-SHORAD - Procurement",
+   "verdict": "wrong",
+   "rationale": "Rejected under the §3 platform/supported-unit pattern. The procured item is the Enhanced Sentinel A3 radar, a program this org's index does not carry at all; M-SHORAD is named only as the future battalions the radars will be issued to, and the European Deterrence Initiative names the funding initiative, not a program element. BLI 8082C14300 (M-SHORAD - Procurement) buys the Stryker-based M-SHORAD system and the Stinger Vehicle Universal Launcher, not air-defence surveillance radars, so the award does not pay for that line's own work."
+  },
+  {
+   "record_index": 24,
+   "article_id": "3048409",
+   "piid": "W31P4Q21FB001",
+   "pe_bli": "6949AA0480",
+   "program_name": "UH-60M",
+   "lexicon_doc": "343",
+   "announcement_evidence": "technical support for the Utility Helicopters Project Office",
+   "lexicon_quote": "UH-60M",
+   "verdict": "wrong",
+   "rationale": "Rejected under the §3 generic-services pattern. The award buys technical support for a project office, not an end item or a development task, and it names an organisation rather than a program: the only candidate is the phrase 'Utility Helicopters' echoing the title of BLI 6949AA0480 (Utility Helicopter Mods), whose owned names are UH-60M and Upturned Exhaust Systems, neither of which appears. The funding line-up alone makes the point — FMS for fourteen countries plus OPA plus RDT&E plus O&M in one action is office-wide support spread across many lines, not one line's own work."
+  },
+  {
+   "record_index": 54,
+   "article_id": "1613795",
+   "piid": "W911W518D0002",
+   "pe_bli": "0304270A",
+   "program_name": "Army Reprogramming Analysis Team (ARAT)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "Electronic Warfare Integrated Reprogramming, analysis, production and process support services",
+   "lexicon_quote": "Army Reprogramming Analysis Team (ARAT)",
+   "verdict": "wrong",
+   "rationale": "Rejected under the §3 generic-services pattern. The announcement names a mission area (Electronic Warfare Integrated Reprogramming) and buys 'analysis, production and process support services' against an IDIQ with funding determined per order; it never names the Army Reprogramming Analysis Team or any other name a PE in this index owns. Three separate PEs own the ARAT name (0304270A, 0604270A and 0609278A), so even the description-level inference would not resolve to a single line."
+  },
+  {
+   "record_index": 75,
+   "article_id": "795646",
+   "piid": "W56HZV16C0174",
+   "pe_bli": "3446D15400",
+   "program_name": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "464 mine rollers, 300 brackets and manuals, and outside the continental U.S. training on the High Mobility Multi-purpose Wheeled-Vehicle (HMMWV)",
+   "lexicon_quote": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "verdict": "wrong",
+   "rationale": "Rejected under the §3 platform pattern. The procured items are mine rollers and mounting brackets; the HMMWV is named only as the vehicle the rollers bolt onto and the platform the overseas training is conducted on, so BLI 3446D15400 (HI MOB MULTI-PURP WHLD VEH) is a platform the contract supports rather than the program it funds. The action is additionally a foreign military sale to Afghanistan, so it does not buy HMMWVs for this U.S. procurement line at all."
+  }
+ ]
+}

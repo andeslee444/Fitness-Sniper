@@ -1,0 +1,380 @@
+{
+ "chunk": "chunk_078_A.json",
+ "proposals": [
+  {
+   "record_index": 3,
+   "article_id": "1403876",
+   "piid": "W31P4Q17C0194",
+   "pe_bli": "2104C59300",
+   "program_name": "TOW 2 System Summary",
+   "lexicon_doc": "345",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the procurement of Tube-launched Optically-tracked Wireless-guided missiles",
+   "lexicon_quote": "TOW 2 System Summary",
+   "verdict": "link",
+   "rationale": "The announcement spells out the TOW backronym rather than using the acronym ('Tube-launched Optically-tracked Wireless-guided missiles'), and the deliverable is the missile itself, produced by Raytheon Missile Systems at Tucson with Farmington, New Mexico as the second work site - the historic TOW production pair. 2104C59300 is the only line in this org's index that owns a TOW name, and the award buys that line's own end item rather than supporting a platform that carries it. One wrinkle lens A should weigh: the announcement records 'other procurement (Army)' obligations against what the index carries as a missile-procurement summary line, which is either an announcement mislabel or a genuine appropriation mismatch; the work identity is not in doubt, the appropriation label is.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement's 'other procurement (Army)' label is contradicted by the contract's own Treasury accounts - W31P4Q17C0194 carries 021-2017/2019-2032 and 021-2018/2020-2032 (Missile Procurement, Army, exactly the FY17/FY18 the announcement names) plus 017-1109 Procurement, Marine Corps, and no Other Procurement, Army at any point in its 105 transactions - so the TOW 2 System Summary line's own 2032A appropriation is what funded the action, and buying the TOW missile itself is that line's end item, not support to a platform or a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The spelled-out backronym is a real TOW alias, not an invention (Raytheon Tucson plus Farmington, New Mexico is the TOW production pair), and a full-index grep shows 2104C59300 is the ONLY line that owns any TOW name (its other row is ITAS, the TOW sight) - no competing owner, and the deliverable is the missile itself rather than a variant the row does not cover."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "3540301",
+   "piid": "W56HZV20C0124",
+   "pe_bli": "2944G80819",
+   "program_name": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for Armored Multi-Purpose Vehicle and Bradley Fighting Vehicle System transmissions and ancillary hardware",
+   "lexicon_quote": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "verdict": "link",
+   "rationale": "The announcement names the Armored Multi-Purpose Vehicle verbatim (the index row differs only by a leading article and the acronym gloss), and RENK America is the transmission supplier delivering that hardware into AMPV production. The obligation is 'weapons and tracked combat vehicle procurement, Army' - the same appropriation family as this WTCV procurement line - so this is hardware bought on the line that buys the vehicle, not O&M sustainment charged to a procurement line. I deliberately chose the dedicated AMPV procurement BLI over 0203735A 'Combat Vehicle Improvement Programs', which carries the same AMPV name but is an RDT&E line and is proposed separately below as wrong.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The FY2023 weapons and tracked combat vehicle procurement the announcement names is on the contract (021-2023/2023-2033 and 021-2023/2025-2033), matching the AMPV line's own 2033A account; government-furnished transmissions bought with the vehicle line's own procurement money are that line's production content rather than services supporting a platform, and 2944G80819 is a dedicated AMPV line, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name collision is real - 'The Armored Multi-Purpose Vehicle (AMPV)' appears verbatim at BOTH 2944G80819 (doc 350, WTCV procurement) and 0203735A (doc 359, Combat Vehicle Improvement Programs) - but the record resolves it on its own evidence rather than on a guess: the obligation is 'weapons and tracked combat vehicle procurement, Army', an appropriation the RDT&E PE cannot receive, and the deliverable is production hardware, so the two owners are not equally well supported."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "3540301",
+   "piid": "W56HZV20C0124",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for Armored Multi-Purpose Vehicle and Bradley Fighting Vehicle System transmissions and ancillary hardware",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)",
+   "verdict": "link",
+   "rationale": "The same award names the Bradley Fighting Vehicle System as the second recipient of the transmissions, and 1678GZ2400 (Bradley Program (MOD)) is the WTCV line that funds Bradley hardware after production ended - matching the 'weapons and tracked combat vehicle procurement, Army' obligation cited. This is a second, separate line funded by one contract action, which the announcement states explicitly rather than leaving to inference. It is the weaker of the two proposals on this record: Bradley transmissions could also be sustainment spares, and lens A should test whether the modification line or an O&M sustainment account is the real payer.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The same FY2023 W&TCV money on this contract matches the Bradley Program (MOD) line's 2033A account, and Bradley hardware procured after base production ended is precisely what the MOD line buys; the obligation the announcement names is procurement, not O&M, so the sustainment-on-a-procurement-line failure mode is absent even though the deliverable is a subsystem."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Bradley Fighting Vehicle (BFV)' is owned by 1678GZ2400 alone; the other Bradley-bearing lines in the index own different names (1382GZ3300 owns BFIST/BCD/FS3, 0604802A and 2650E08200 own 25mm BADGER cartridges), and nothing in the announcement mentions fire support or ammunition hardware, so no alternative owner takes this evidence equally well - the open question is appropriation/sustainment, which is lens A's."
+   }
+  },
+  {
+   "record_index": 21,
+   "article_id": "3217878",
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "for recapitalization of the Multiple Launch Rocket System into the M270A2 configuration",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "link",
+   "rationale": "The M270A2 designator appears in the announcement and in the lexicon row with identical spelling; only the word order differs ('the MLRS into the M270A2 configuration' vs 'The M270A2 Multiple Launch Rocket System'). 6552C67500 is the MLRS Mods procurement line, and recapitalizing fielded M270A1 launchers into the M270A2 configuration is exactly what a launcher modification line pays for; the obligation named is 'missile procurement, Army', the matching appropriation, and the work sites (Camden, Arkansas and Grand Prairie, Texas) are the Lockheed Martin launcher facilities. The RDT&E PE that carries the same designator, 0603778A, is proposed separately below as wrong.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The contract is funded exclusively from Missile Procurement, Army in FY2019, FY2020 and FY2021 (021-2019/2021-2032, 021-2020/2022-2032, 021-2021/2023-2032) - the exact years and the exact account the announcement names and the MLRS Mods line's own 2032A - and recapitalizing fielded launchers into the M270A2 configuration is the modification line's own work on its own end item."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A closer-looking competitor exists - 0603778A owns 'M270A1 and M270A2 Multiple Launch Rocket System (MLRS)' and four more MLRS names - but it is the RDT&E MLRS Product Improvement PE, and this action obligates 'missile procurement, Army' funds for recapitalizing fielded launchers into the A2 configuration, which is the procurement Mods line's own work; HIMARS Modifications (6580C67501) is a wheeled-launcher line and takes no M270 name."
+   }
+  },
+  {
+   "record_index": 25,
+   "article_id": "2360802",
+   "piid": "W56HZV20D0108",
+   "pe_bli": "0363G85200",
+   "program_name": "Medium Caliber Weapon System (MCWS)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to buy long lead items for the production of XM813 Cannons for the Stryker Medium Caliber Weapon System 30mm Lethality Upgrade program",
+   "lexicon_quote": "Medium Caliber Weapon System (MCWS)",
+   "verdict": "link",
+   "rationale": "The announcement names the Stryker Medium Caliber Weapon System explicitly, and 0363G85200 (Stryker Upgrade) is the only line in this org's index that owns the MCWS name - its rows include both 'Medium Caliber Weapon System (MCWS)' and 'Contractor Logistics Support for ICVVA1-30mm (MCWS)', confirming the 30mm lethality upgrade is this line's own scope. Long-lead procurement of the XM813 cannon is production material for that upgrade, not support to the Stryker platform generally, and it was awarded by ACC Detroit Arsenal, the Stryker buying activity.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No appropriation is stated and the IDIQ carries no funding-account data in the lake, so nothing contradicts the line's W&TCV colour; long-lead XM813 cannons are production material for the ICVVA1-30mm (formerly MCWS) content the line's own narrative describes, which makes the cannon the line's own scope rather than support to the Stryker platform, and 'Stryker Upgrade' is a named program line that CATCHALL_TITLE does not reach."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "0363G85200 is the sole owner of 'Medium Caliber Weapon System (MCWS)' in the index (it also carries 'Contractor Logistics Support for ICVVA1-30mm (MCWS)', confirming the 30mm upgrade is this line's own scope), no line anywhere owns the XM813 designator, and the medium-caliber AMMUNITION lines (0603639A, 2938ER8120) own cartridge names only - so the cannon buy cannot land equally well elsewhere."
+   }
+  },
+  {
+   "record_index": 36,
+   "article_id": "606814",
+   "piid": "W15P7T15C0005",
+   "pe_bli": "6458B95004",
+   "program_name": "Rifleman Radio (RR)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "software sustainment, logistics documentation, hardware, and enhancements to support the AN/PRC-154 and AN/PRC-154A versions of the Rifleman Radio",
+   "lexicon_quote": "Rifleman Radio (RR)",
+   "verdict": "link",
+   "rationale": "The announcement names the Rifleman Radio verbatim and pins it to the AN/PRC-154 and AN/PRC-154A nomenclature, and 6458B95004 (Handheld Manpack Small Form Fit) is the single line in this org's index that owns that name - no other PE carries it, so there is no alternative owner to resolve. The obligation is 'other procurement (Army)', the appropriation this procurement line is funded in, and the deliverables include hardware and enhancements, not only services. The soft spot lens A should press is the sustainment flavour of 'software sustainment, logistics documentation': if post-deployment software support for these radios is carried in an O&M account rather than on the procurement line, this becomes the 2026-09-04 failure mode.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "REFUTED on money and mission: the announced scope is majority post-production services - 'software sustainment, logistics documentation ... to support' already-fielded AN/PRC-154s under a cost-plus-fixed-fee contract - which is the sustainment-attached-to-a-procurement-line failure mode the 2026-09-04 study found, and the contract's Treasury detail carries O&M, Army (021-2015/2015-2020 and 021-2017/2017-2020) alongside its OPA, including in FY2015 where the announcement asserts other procurement (Army) and the only FY2015 account on the contract is O&M."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Rifleman Radio (RR)' occurs exactly once in the index, at 6458B95004, and the AN/PRC-154/154A nomenclature the announcement quotes is the JTRS HMS radio this line procures, so the alias is verified rather than asserted and there is no second owner or sibling increment (Leader Radio, SCDR, AGNR all sit on the same line) to divert it to."
+   }
+  },
+  {
+   "record_index": 40,
+   "article_id": "1749121",
+   "piid": "W15QKN15C0049",
+   "pe_bli": "0605018A",
+   "program_name": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "lexicon_doc": "355",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the Integrated Personnel and Pay System",
+   "lexicon_quote": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "verdict": "link",
+   "rationale": "The announcement uses the short form 'Integrated Personnel and Pay System' without the '-Army' suffix the lexicon row carries, which is why this is an alias rather than an exact-name match; there is no other DoD personnel-and-pay program the Army's own contracting command would buy under this title, and CACI was the IPPS-A Increment II development integrator. The appropriation decides which of the two lines that carry this name is meant: the announcement obligates 'research, development, test and evaluation funds', so the RDT&E PE 0605018A is the payer and the OPA line 9921B66701 is not (proposed separately below as wrong).",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The FY2019 RDT&E, Army account the announcement names is on the contract (021-2019/2020-2040), matching this PE's own 2040A account rather than the sibling OPA line's; the award is for the Integrated Personnel and Pay System itself, not a platform it supports, and 0605018A is a dedicated IPPS-A line with a single title."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The index does carry the identical name at two PEs - 0605018A (doc 355, RDT&E) and 9921B66701 (doc 346, OPA) - but the announcement obligates 'research, development, test and evaluation funds', which only the RDT&E line can take, and the dropped '-Army' suffix is a routine short form for a contract let by Army Contracting Command New Jersey to the IPPS-A integrator, not an invented alias."
+   }
+  },
+  {
+   "record_index": 49,
+   "article_id": "2220903",
+   "piid": "W56HZV20D0047",
+   "pe_bli": "4700MA6000",
+   "program_name": "The Mobile Tactical Retail Refueling System (MTRRS)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for mobile tactical retail refueling systems, authorized stockage list kits, production qualification testing (PQT) assets",
+   "lexicon_quote": "The Mobile Tactical Retail Refueling System (MTRRS)",
+   "verdict": "link",
+   "rationale": "The announcement names the mobile tactical retail refueling system verbatim (plural), and 4700MA6000 (Distribution Systems, Petroleum & Water) is the only line in this org's index that owns the MTRRS name. The award buys the end item itself plus its authorized stockage list kits and production qualification test assets - production and fielding work that belongs to the procurement line, not sustainment of something already fielded - and it was awarded by ACC Detroit Arsenal, the buying activity for tactical petroleum equipment.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No appropriation is stated and the IDIQ has no lake account data, so nothing contradicts the line's Other Procurement, Army colour; the award buys MTRRS end items, authorized stockage list kits and production qualification test assets - production and fielding of the system this line's own narrative names and describes - and although the line funds seven named systems it is a commodity procurement line, not a dollar-threshold catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Mobile Tactical Retail Refueling System (MTRRS)' appears once in the whole index; the other fuel-equipment lines own different end items (MFS at 1110MA4500, BFDS/TFDS at 0896D03900 and 1400D02001, TFDS/PEAK dev items at 0604804A) and none owns a retail-refueling name, so this evidence has exactly one possible owner - whether a multi-item distribution line is too broad a home is lens A's rollup question."
+   }
+  },
+  {
+   "record_index": 56,
+   "article_id": "1316834",
+   "piid": "W56HZV14D0066",
+   "pe_bli": "7495R05901",
+   "program_name": "The High Mobility Engineer Excavator (HMEE)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for up to 98 High Mobility Engineer Excavator Type-I vehicles",
+   "lexicon_quote": "The High Mobility Engineer Excavator (HMEE)",
+   "verdict": "link",
+   "rationale": "The announcement names the High Mobility Engineer Excavator verbatim and buys 98 Type-I vehicles from JCB, the HMEE producer. Three lines in this org's index carry the HMEE name, so the choice matters: 7495R05901 is the dedicated HMEE procurement line whose program_title is the program itself, while 1110MA4500 is an in-service modification line and 0387R02700 is a broad construction-equipment line - both proposed separately below as wrong. A buy of new vehicles is the dedicated line's own work. Note the announcement leaves funding to be determined with each order, so no appropriation is stated for lens A to test.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Buying up to 98 HMEE Type-I vehicles is the dedicated HMEE line's own end item in its natural Other Procurement, Army colour; funding is left to each order and the lake shows no account data for this IDIQ, so no appropriation evidence contradicts the line, and nothing in the scope is sustainment, generic services or platform support."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: three lines in this same index own the HMEE name - 7495R05901 (dedicated HMEE line), 0387R02700 ('CONSTRUCTION EQUIPMENT', which lists 'High Mobility Engineer Excavator (HMEE)' as one of its own procured items alongside ATC/T-5/T-9/DEUCE) and 1110MA4500 - and this announcement states no appropriation and no fiscal year at all ('work locations and funding will be determined with each order'), so the disambiguator that resolved the AMPV, M270A2 and IPPS-A collisions is simply absent here; a delivery order for 98 Type-I excavators reads equally well against the construction-equipment line, and the rubric's default when the owner cannot be picked from the record is not to link."
+   }
+  },
+  {
+   "record_index": 58,
+   "article_id": "1328736",
+   "piid": "W31P4Q15C0043",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to acquire 289 M299 legacy launchers and one lot of obsolete components",
+   "lexicon_quote": "Longbow Hellfire XM299",
+   "verdict": "link",
+   "rationale": "The announcement's 'M299 legacy launchers' and the lexicon's 'Longbow Hellfire XM299' are the same launcher designator with the developmental X prefix dropped after type classification - a designator normalization, not an alias guess - and 9157J01200's program_title is the guided missile launcher line itself. The award acquires 289 of the launchers as end items with Army and Air Force procurement funds, which is the procurement line's own buy, and Lockheed Martin Orlando is the M299 producer. The one thing lens A should check is the 'one lot of obsolete components' element, which reads as an end-of-life spares buy rather than new production.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The contract carries FY2017 Aircraft Procurement, Army (021-2017/2019-2031) - this line's own 2031A account - and FY2015 Aircraft Procurement, Air Force (057-2015/2017-3010), exactly the 'Army procurement; and Air Force procurement' the announcement names; acquiring 289 M299 launchers is the guided-missile-launcher line's own end item, and the single lot of obsolete components rides that same procurement buy rather than turning the action into O&M sustainment."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Longbow Hellfire XM299' is owned only by 9157J01200, whose program_title is the launcher itself, and the nearby Hellfire missile line (1338C70000) owns just 'Hellfire Sys Summary' with no launcher name - so launchers cannot be routed there; dropping the developmental X from XM299 to M299 is standard type-classification normalization, not an alias guess, though the Air Force share of the obligation is a partial-attribution point for lens A."
+   }
+  },
+  {
+   "record_index": 69,
+   "article_id": "781719",
+   "piid": "W15QKN12C0103",
+   "pe_bli": "8310G04700",
+   "program_name": "The M153 Common Remotely Operated Weapon Station (CROWS)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to exercise options for Common Remotely Operated Weapon Station (CROWS) 153A2A1 and CROWS M153A2 to M153A2E1 postproduction conversion",
+   "lexicon_quote": "The M153 Common Remotely Operated Weapon Station (CROWS)",
+   "verdict": "link",
+   "rationale": "The announcement carries both the full name and the acronym exactly as the lexicon row does, plus the M153A2 designator the row names, and 8310G04700 is the only line in this org's index that owns CROWS - there is no competing owner. The work is postproduction conversion of M153A2 stations to the M153A2E1 configuration, obligated with 'other procurement' funds, which is the procurement line paying for its own end item's configuration change rather than a platform the contract merely supports; Kongsberg is the CROWS producer and Johnstown, Pennsylvania is its CROWS plant.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement's 'other procurement' label does not match the CROWS line's W&TCV account, but the contract's Treasury detail carries FY2016 Procurement of W&TCV, Army (021-2016/2018-2033) and no Other Procurement, Army at any point, so the line's own appropriation is the procurement money on this award; postproduction conversion of M153A2 stations to the M153A2E1 configuration is capital modification of the line's own end item, not O&M sustainment, and 8310G04700 is a dedicated CROWS line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The announcement reproduces the full name, the acronym and the M153 designator, and 'The M153 Common Remotely Operated Weapon Station (CROWS)' occurs exactly once in the index with no other line owning any remotely-operated-weapon-station name; M153A2 to M153A2E1 is a configuration change within this line's own end item, not a different program or a competing variant."
+   }
+  },
+  {
+   "record_index": 16,
+   "article_id": "1953308",
+   "piid": "W56HZV19D0082",
+   "pe_bli": "7500K99300",
+   "program_name": "Tactical Advanced Land Inertial Navigator (TALIN)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "procurement of the commercial Tactical Advanced Land Inertial Navigator 5000 Inertial Navigation Unit",
+   "lexicon_quote": "Tactical Advanced Land Inertial Navigator (TALIN)",
+   "verdict": "weak",
+   "rationale": "The TALIN name is present verbatim and the lexicon row is real, but the row belongs to the Mortar Fire Control System line and the announcement says nothing about mortars: it is a commercial TALIN 5000 inertial navigation unit bought through ACC Warren, the ground-vehicle buying activity, with funding left to be determined per order. TALIN is a commodity navigator fitted to many Army systems, so naming it does not establish that this award paid for the mortar fire control line's own work. Under the rubric's evidence standard the attribution is unsupported, so this is weak rather than a link."
+  },
+  {
+   "record_index": 30,
+   "article_id": "2707824",
+   "piid": "W15QKN21D0041",
+   "pe_bli": "2790E55400",
+   "program_name": "Demolition Munitions, All Types",
+   "lexicon_doc": "349",
+   "announcement_evidence": "for the production, testing, packaging and delivery of blasting caps",
+   "lexicon_quote": "Demolition Munitions, All Types",
+   "verdict": "weak",
+   "rationale": "Blasting caps are demolition initiators and the index does carry a 'Demolition Munitions, All Types' row, but the announcement names no program at all - the only route to this line is a description match from the commodity to an 'All Types' rollup, which is the kind of broad budget line section 3 warns against and which would publish an attribution the announcement never makes. The award is also an IDIQ with work locations and funding determined with each order, so nothing ties any particular order to this line. Recorded as weak so the rejection is visible in the denominator, not as a link."
+  },
+  {
+   "record_index": 35,
+   "article_id": "947239",
+   "piid": "W912DY16F0274",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "announcement_evidence": "to advance high performance computing services, capabilities, infrastructure, and technologies",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "verdict": "weak",
+   "rationale": "The announcement repeatedly says 'high performance computing' but never names the High Performance Computing Modernization Program, and what it buys is 'next generation technical services' - management and technical support - which is precisely the generic engineering-support category section 3 rejects. The phrase match is to the commodity, not to the program, and the record gives no appropriation and no work location ('multiple locations') that would tie it to this PE. Weak, not a link."
+  },
+  {
+   "record_index": 15,
+   "article_id": "3540301",
+   "piid": "W56HZV20C0124",
+   "pe_bli": "0203735A",
+   "program_name": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "for Armored Multi-Purpose Vehicle and Bradley Fighting Vehicle System transmissions and ancillary hardware",
+   "lexicon_quote": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "verdict": "wrong",
+   "rationale": "This PE carries the identical AMPV name, so it is the collision lens B would find, but it is the RDT&E 'Combat Vehicle Improvement Programs' line while the award obligates weapons and tracked combat vehicle procurement funds for delivered transmissions and ancillary hardware. Attaching procurement hardware to an RDT&E improvement line is the appropriation mismatch the rubric singles out as the known failure mode, and the announcement offers no development content at all. Recorded as wrong so the correct AMPV owner (2944G80819) is not published alongside a second, contradictory claim."
+  },
+  {
+   "record_index": 16,
+   "article_id": "1953308",
+   "piid": "W56HZV19D0082",
+   "pe_bli": "7563AD9300",
+   "program_name": "Inertial Navigation Unit (INU)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "procurement of the commercial Tactical Advanced Land Inertial Navigator 5000 Inertial Navigation Unit",
+   "lexicon_quote": "Inertial Navigation Unit (INU)",
+   "verdict": "wrong",
+   "rationale": "'Inertial Navigation Unit' does appear verbatim in the announcement, but it is a generic component noun, not a program name - exactly the weak-generic-name pattern section 3 rejects, and the row belongs to a mortar fire control modification line that the announcement never mentions. Any commercial navigator purchase anywhere in the Army would match this string, which is why it cannot carry an attribution claim."
+  },
+  {
+   "record_index": 19,
+   "article_id": "710219",
+   "piid": "W58RGZ15C0017",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the continuation of the Apache Helicopter 64 (AH-64) Performance Based Logistics program",
+   "lexicon_quote": "AH-64 MODS",
+   "verdict": "wrong",
+   "rationale": "Two section 3 patterns apply at once: the AH-64 is the platform the contract supports rather than the program the line funds, and Performance Based Logistics is exactly the logistics-services category the rubric rejects by design. The award continues a sustainment arrangement at Boeing Mesa; nothing in it says a modification was bought or installed, so the only thing shared with the lexicon row is the platform designator."
+  },
+  {
+   "record_index": 21,
+   "article_id": "3217878",
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "0603778A",
+   "program_name": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "for recapitalization of the Multiple Launch Rocket System into the M270A2 configuration",
+   "lexicon_quote": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "wrong",
+   "rationale": "This RDT&E PE carries the same M270A1/M270A2 designators and is the collision on this record, but the award obligates fiscal 2019-2021 missile procurement, Army funds for recapitalizing fielded launchers - production work, not the product improvement program's development work. Publishing it would attach a procurement action to an RDT&E line, so the procurement mods line 6552C67500 is the only defensible owner here."
+  },
+  {
+   "record_index": 40,
+   "article_id": "1749121",
+   "piid": "W15QKN15C0049",
+   "pe_bli": "9921B66701",
+   "program_name": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for the Integrated Personnel and Pay System",
+   "lexicon_quote": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "verdict": "wrong",
+   "rationale": "The name matches as well as it does on the RDT&E line, which is the point - IPPS-A is carried by two lines in this org's index - but the announcement obligates research, development, test and evaluation funds, so the procurement line is not the payer for this action. Recorded as wrong rather than left silent so that the one surviving IPPS-A link is unambiguous about which of the two lines it names."
+  },
+  {
+   "record_index": 56,
+   "article_id": "1316834",
+   "piid": "W56HZV14D0066",
+   "pe_bli": "1110MA4500",
+   "program_name": "High Mobility Engineer Excavator (HMEE)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for up to 98 High Mobility Engineer Excavator Type-I vehicles",
+   "lexicon_quote": "High Mobility Engineer Excavator (HMEE)",
+   "verdict": "wrong",
+   "rationale": "The HMEE name is identical to the one on the dedicated line, but this row sits on 'Modification Of In-Svc Equipment (OPA-3)', a line that pays to modify equipment already in service; the award buys up to 98 new Type-I vehicles. A new-vehicle buy is not modification work, so this is the wrong member of the three-way HMEE name collision."
+  },
+  {
+   "record_index": 56,
+   "article_id": "1316834",
+   "piid": "W56HZV14D0066",
+   "pe_bli": "0387R02700",
+   "program_name": "High Mobility Engineer Excavator (HMEE)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for up to 98 High Mobility Engineer Excavator Type-I vehicles",
+   "lexicon_quote": "High Mobility Engineer Excavator (HMEE)",
+   "verdict": "wrong",
+   "rationale": "The third member of the HMEE collision: this row belongs to a broad CONSTRUCTION EQUIPMENT line that also carries cranes, rollers, compactors and the DEUCE earthmover. When a dedicated HMEE line exists in the same index and the award buys HMEE vehicles by name, attributing the action to the multi-item construction-equipment line would be a rollup attribution rather than a program one."
+  },
+  {
+   "record_index": 65,
+   "article_id": "606696",
+   "piid": "W56HZV14D0148",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for M230-30MM automatic guns and 32 spare parts in support of the Apache helicopter",
+   "lexicon_quote": "AH-64 MODS",
+   "verdict": "wrong",
+   "rationale": "The only tie to this line is the words 'in support of the Apache helicopter' - the platform the guns are fitted to, which section 3 rejects as a basis. The index carries no M230 name at all, the award is a requirements contract for guns and spare parts placed through ACC Tank and Automotive at Warren rather than the aviation buying activity, and 'spare parts' points at sustainment rather than at an aircraft modification line's own work."
+  },
+  {
+   "record_index": 72,
+   "article_id": "2460438",
+   "piid": "W58RGZ21C0013",
+   "pe_bli": "0604113A",
+   "program_name": "Future Tactical Unmanned Aircraft System (FTUAS)",
+   "lexicon_doc": "353",
+   "announcement_evidence": "for contractor logistics support for the Tactical Unmanned Aircraft System",
+   "lexicon_quote": "Future Tactical Unmanned Aircraft System (FTUAS)",
+   "verdict": "wrong",
+   "rationale": "The announcement's 'Tactical Unmanned Aircraft System' is a substring of the lexicon name only because the word 'Future' is missing, and that missing word is the whole difference: AAI/Textron's award is contractor logistics support for the legacy Shadow TUAS it already fields, obligated with fiscal 2021 operation and maintenance funds, while FTUAS is the later RDT&E replacement program. Two section 3 patterns apply - a different program/variant, and generic contractor logistics services on an RDT&E line."
+  }
+ ]
+}

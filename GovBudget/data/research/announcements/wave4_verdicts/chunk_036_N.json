@@ -1,0 +1,482 @@
+{
+ "chunk": "chunk_036_N.json",
+ "proposals": [
+  {
+   "record_index": 62,
+   "article_id": "3009811",
+   "piid": "N0001921C0044",
+   "pe_bli": "2327",
+   "program_name": "AGM-88G",
+   "lexicon_doc": "342",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "the production and delivery of an additional 42 Air-to-Ground Missile-88G Advanced Anti-Radiation Guided Missile-Extended Range all up rounds",
+   "lexicon_quote": "AGM-88G",
+   "verdict": "link",
+   "rationale": "The announcement spells the designator out as 'Air-to-Ground Missile-88G' and then gives the full program name, 'Advanced Anti-Radiation Guided Missile-Extended Range' - which is exactly the WPN line 2327 whose program title is 'AARGM-ER' and whose J-book narrative (doc 342) owns the name 'AGM-88G'. The action is a production option exercise for all up rounds plus manufacturing supplies, and the money named is 'Fiscal 2022 weapons procurement (Navy)', the same appropriation as the line (doc 342 = WPN_BA_Book). The one competing owner in this org's index is 0205601N 'Anti-Radiation Missile Improvement', which owns the generic 'AGM-88' and 'Advanced Anti-Radiation Guided Missile (AARGM)'; that is the RDT&E improvement line for the baseline AGM-88E, and neither the -88G suffix nor the Extended Range name belongs to it, so the production buy lands on 2327.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Weapons procurement (Navy) is the dominant money on the action ($53.6M FY22 WPN + $2.2M FY21 WPN of a $62.1M option) and doc 342 is the WPN book, so WPN money buys WPN line 2327's own all-up rounds; AARGM-ER is the program itself, not a platform it rides on, and the line is single-program, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The -88G/Extended Range identity is owned by exactly one line: 2327 holds the exact index name 'AGM-88G' (program title AARGM-ER, doc 342), while the competing 0205601N holds only the baseline 'AGM-88' and 'Advanced Anti-Radiation Guided Missile (AARGM)' and 6120 holds only 'High Speed Anti-Radiation Missile (HARM)'; the announcement's spelled-out 'Air-to-Ground Missile-88G ... Extended Range' is the more specific designator, the alias is real rather than invented, it is the right variant (not the -88E row), and it is not a contractor name."
+   }
+  },
+  {
+   "record_index": 11,
+   "article_id": "3894847",
+   "piid": "N0002420C2300",
+   "pe_bli": "2128",
+   "program_name": "Guided Missile Frigate (FFG 62 Class)",
+   "lexicon_doc": "341",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "engineering and class support requirements in support of detail design and construction of the Constellation-class guided-missile frigate",
+   "lexicon_quote": "Guided Missile Frigate (FFG 62 Class)",
+   "verdict": "link",
+   "rationale": "'Constellation-class guided-missile frigate' is the ship-class name for FFG 62; the SCN line 2128 (doc 341, program title 'FFG-Frigate') carries the name 'Guided Missile Frigate (FFG 62 Class)' in its own narrative. The award is an option under N00024-20-C-2300, the Constellation-class detail design and construction contract itself, for engineering and class support of that detail design and construction - i.e. the shipbuilding line's own work, not a service the line merely benefits from. The only alternative owner in this index is 0603599N 'Frigate Development' (name 'FFG 62'), an RDT&E line; detail design and construction is SCN work, so the procurement line is the right owner.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Every dollar obligated is shipbuilding and conversion (Navy) ($380,157 FY23 + $37.5M FY24) against SCN line 2128 (doc 341 = SCN_Book), the option is exercised under the Constellation-class detail design and construction contract itself, and FFG-Frigate is the single program that buys those hulls, so this is not generic engineering support borrowed onto a line it merely benefits."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "A different PE in this same index owns the bare class designator — 0603599N 'Frigate Development' carries the name 'FFG 62' — so 'Constellation-class guided-missile frigate' identifies the ship class, not either line, and the announced work ('engineering and class support requirements in support of detail design and construction') is precisely the kind of class engineering the RDT&E frigate-development line funds on this very contract; nothing in the identity evidence picks 2128 over 0603599N, only a funding/work-type argument does, which is not an identity discriminator."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "606838",
+   "piid": "N0002410C2310",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to exercise an option to procure two Main Reduction Gear (MRG) shipsets for Arleigh Burke (DDG 51) Class Destroyers",
+   "lexicon_quote": "DDG-51",
+   "verdict": "link",
+   "rationale": "'DDG 51' normalises to the index name 'DDG-51' on the SCN line 2122 (doc 341, program title 'DDG-51'). The announcement is explicit that the hardware is bought for the program itself, not for a supporting activity: the MRGs 'will be used for DDG 51 Class Guided Missile Destroyers procured in fiscal 2015' and 'will be provided as Government Furnished Equipment to the DDG 51 Class shipb[uilder]'. Government-furnished propulsion machinery for the ships the line buys is the line's own work, and no other PE or BLI in this org's index owns the DDG-51 designator as a ship-construction line (2122 is the only one; 0603564N owns only the narrower 'DDG-51 Flt III Concept Development').",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full $62,522,702 is FY15 shipbuilding and conversion (Navy) on SCN line 2122 (doc 341), and the gears are furnished as GFE into 'DDG 51 Class Guided Missile Destroyers procured in fiscal 2015' - end-cost hardware for the very hulls this line buys, so the appropriation, the program and the deliverable all belong to the line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Arleigh Burke (DDG 51) Class' normalises to the only bare 'DDG-51' row in the index (2122, doc 341); the two neighbouring owners are strictly narrower or a different activity — 0603564N owns only 'DDG-51 Flt III Concept Development' and 0900 owns 'DDG Modernization (DDG MOD) Program' (in-service modernization, excluded by the announcement's 'procured in fiscal 2015' new-construction GFE wording) — and the DDG 1000 rows (0204202N, 0947, 2119, 2851) are a different class, so identity does not split."
+   }
+  },
+  {
+   "record_index": 63,
+   "article_id": "2234393",
+   "piid": "N0002418C2307",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to fund capital expenditure projects for shipbuilding supplier industrial base efforts in support of the Arleigh Burke DDG 51 class destroyer program",
+   "lexicon_quote": "DDG-51",
+   "verdict": "link",
+   "rationale": "The announcement names 'the Arleigh Burke DDG 51 class destroyer program' verbatim, which normalises to the index name 'DDG-51' on SCN line 2122 (doc 341). The appropriation matches the line exactly - 'Fiscal 2013 and fiscal 2014 shipbuilding and conversion (Navy) funding in the amount of $62,000,000' - and the modification is placed on N00024-18-C-2307, a DDG 51 construction contract, to shore up that program's own supplier base. This is SCN money spent on the SCN line's named program, not O&M sustainment borrowed onto a procurement line.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The whole $62,000,000 is FY13/FY14 shipbuilding and conversion (Navy) - DDG-51 ship money - obligated on a DDG 51 construction contract for the named 'Arleigh Burke DDG 51 class destroyer program', so the supplier capital expenditure is executed inside line 2122's own SCN account rather than being O&M sustainment attached to a procurement line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The announcement names 'the Arleigh Burke DDG 51 class destroyer program' verbatim and 2122 is the sole holder of the bare 'DDG-51' name; no alternative owner competes for supplier-base money either, since the index's only industrial-base name ('Maritime Industrial Base (MIB)', 1045) belongs to COLUMBIA Class Submarine and 0900 DDG Mod covers in-service modernization rather than new-construction supplier capital expenditure, so the evidence does not link equally well elsewhere."
+   }
+  },
+  {
+   "record_index": 73,
+   "article_id": "1870180",
+   "piid": "N0002418C2313",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to exercise options for accomplishment of lead yard services (LYS) for the DDG 51-class destroyer program",
+   "lexicon_quote": "DDG-51",
+   "verdict": "link",
+   "rationale": "'DDG 51-class destroyer program' normalises to the index name 'DDG-51' on SCN line 2122 (doc 341). Lead yard services is not generic engineering support in the section 3 sense: it is a defined, program-specific element of a shipbuilding program, and the announcement enumerates exactly that - 'class flight and baseline upgrades and new technology support', 'acceptance trials; post-delivery test and trials; post-shakedown availability support'. The work is scoped to one named class and is executed under the DDG 51 construction line, so the award funds this line's own work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "All $58,345,440 obligated is FY15/16/17 shipbuilding and conversion (Navy) on SCN line 2122 (doc 341), and lead yard services is scoped in the announcement's own words to 'supporting DDG 51 Class ship construction and test and trials' - a defined element of this shipbuilding program paid from its own appropriation, not cross-program engineering support."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'DDG 51-class destroyer program' maps to the single bare 'DDG-51' row (2122, doc 341); no PE or BLI in this index owns 'lead yard services' or any other DDG-51 construction name, and although the LYS scope's 'class flight and baseline upgrades' phrase brushes against 0900 'DDG Modernization', 0900's name is qualified to the modernization program and does not own the DDG-51 designator, so the identity is not contested (whether LYS is §3 generic engineering support is a mission question, not lens B's)."
+   }
+  },
+  {
+   "record_index": 8,
+   "article_id": "2109345",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for combat system and engineering support of the Ship Self-Defense System",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "link",
+   "rationale": "'Ship Self-Defense System' is the announcement's rendering of the lexicon name 'Ships Self Defense System (SSDS)', which OPN line 5231 (doc 333, program title 'Ship Missile Support Equipment') owns in its own narrative; no other PE or BLI in this org's index carries the SSDS name (the only other 'self defense' row is 0605863N 'Self Defense Test Ship (SDTS)', a different thing). The work is combat system engineering for SSDS itself, not for a platform SSDS rides on, and this action names 'fiscal 2020 and 2019 other procurement (Navy)' among the funds obligated, so procurement money on a procurement line is actually present rather than assumed.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money and mission: the $4,707,191 obligated is an unbroken blend of FY20/19 O&M(N), RDT&E(N), OPN and FY18/17/16 SCN, so no stated share belongs to OPN line 5231; 'combat system and engineering support' of a fielded system is the O&M/RDT&E sustainment activity the rubric flags, and doc 333's BLI 5231 'Ship Missile Support Equipment' is a rollup equipment line carrying nine unrelated systems (AEGIS CS/AWS, MK 57 VLS, RHIMES, SLREOSS, FTIIP, FCLIP, SSDS, YOLO), not a program element whose own work this action funds."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Ship Self-Defense System' is the announcement's rendering of the index name 'Ships Self Defense System (SSDS)', and 5231 is the only row in this org's index that owns it; the only other 'self defense' row is 0605863N 'Self Defense Test Ship (SDTS)', a test asset, and the surface combat-system engineering lines (0604307N, 0205620N, 0603582N) own AEGIS/ASW names rather than SSDS, with no variant or increment (Mk 1 vs Mk 2) in dispute."
+   }
+  },
+  {
+   "record_index": 9,
+   "article_id": "2110663",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for Ship Self-Defense System combat system engineering support",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "link",
+   "rationale": "Same contract and same named program as record 8, announced a day later under a different article. 'Ship Self-Defense System' maps to the index name 'Ships Self Defense System (SSDS)' on OPN line 5231 (doc 333), the only line in this org's index that owns the name. The action explicitly obligates 'fiscal 2020 and 2019 other procurement (Navy)' funds alongside O&M, RDT&E and SCN, so part of this award is procurement money executing the procurement line's own named program.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted for the same reasons as record 8 - it is the identical action re-announced: O&M, RDT&E, OPN and SCN are pooled into one $4,707,191 obligation with no OPN share stated, the work is engineering support of an in-service combat system rather than procurement of the equipment BLI 5231 buys, and 'Ship Missile Support Equipment' is a nine-system rollup line, so the action cannot be said to have paid for this line's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Identity is the same as record 8 and equally unique: 'Ship Self-Defense System' matches only 'Ships Self Defense System (SSDS)' on 5231, with no competing owner and no variant shift; note that this article re-announces the same N00024-19-C-5603 modification as record 8 a day later, which is a de-duplication matter for the collector (same piid + pe_bli) rather than an identity failure."
+   }
+  },
+  {
+   "record_index": 23,
+   "article_id": "3256832",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to exercise options for Ship Self-Defense System combat system engineering support",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "link",
+   "rationale": "The program is named in the announcement's own words and matches the sole SSDS row in this org's index, on OPN line 5231 (doc 333). The funding breakdown names 'fiscal 2021 other procurement (Navy) funds in the amount of $1,200,000 (6%)', so OPN money - the line's own appropriation - is on the action, which is what separates this record from the sibling SSDS actions I marked weak for carrying no procurement colour at all.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on appropriation: the announcement's own breakout is 54% + 37% RDT&E(N), 3% SCN and only 6% ($1,200,000 of $64,089,885) other procurement (Navy), so 94% of the action pays for something other than OPN line 5231 - a 6% sliver cannot carry the claim that this action funded the procurement line's own work, and the line is in any case the multi-system 'Ship Missile Support Equipment' rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The announcement names 'Ship Self-Defense System' in its own words and 5231 remains the sole owner of the 'Ships Self Defense System (SSDS)' name in this index; the 2022 option is the same program on the same contract with no variant or increment change, and the AEGIS-named lines that also appear on 5231 or on 0604307N do not create a competing owner for the SSDS name."
+   }
+  },
+  {
+   "record_index": 46,
+   "article_id": "1652198",
+   "piid": "N0001919D0003",
+   "pe_bli": "0505",
+   "program_name": "F-18E/F and EA-18G Modernization and Sustainment",
+   "lexicon_doc": "330",
+   "match_basis": "llm-description",
+   "announcement_evidence": "F/A-18 E/F and EA-18G aircraft inspections, modifications and repairs as well as F/A-18 E/F and EA-18G Inner Wing Panel (IWP) modifications and repairs",
+   "lexicon_quote": "F-18E/F and EA-18G Modernization and Sustainment",
+   "verdict": "link",
+   "rationale": "The APN line 0505 (doc 330) is named for exactly the airframe pair the announcement names, and for exactly the activity it describes: modernisation and sustainment of F-18E/F and EA-18G. The designator pair is discriminating within this org's index - 0502 is 'F-18 A-D Unique' (legacy Hornets only) and 0525 is the generic 'F-18 Series' - so the E/F-plus-G pairing picks out 0505 and not a broader platform line. The scope is aircraft modification and remanufacture that 'will restore aircraft and IWP service life projections to new design specifications', i.e. the line's own modernisation work rather than a service supporting a platform. The contract is an IDIQ, but section 3 rejects IDIQ ceilings 'with no named program'; here the program line is named by both airframe and activity.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money and mission: 'No funds are being obligated at time of award' and no appropriation is named anywhere, so there is zero evidence any APN money touches this IDIQ ordering vehicle, and the scope - aircraft 'inspections, modifications and repairs' at Boeing Jacksonville to 'restore aircraft and IWP service life projections' - is depot-level maintenance, exactly the O&M-work-attached-to-a-procurement-line failure mode lens A tests for."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Other owners in this index fit the announcement's own words better than 0505's line title: 0525 'F-18 Series' owns 'OSIP 14-26 Service Life Modification (SLM)' — exactly the restore-service-life remanufacture the announcement describes — and 0702207N 'Depot Maintenance (Non-IF)' owns 'The F/A-18 and EA-18G Service Life Assessment Program (SLAP)', while 0204136N ('F/A-18 E/F/G' names) and 0604269N ('EA-18') also carry the airframe identity; the proposal matches no named program at all, only a description to a line title on an IDIQ with no funds obligated, so the evidence links elsewhere at least as well."
+   }
+  },
+  {
+   "record_index": 4,
+   "article_id": "2460438",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "cost-only modification to a previously awarded contract (N00024-19-C-5603) for Ship Self-Defense System Combat System engineering support",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "weak",
+   "rationale": "The name matches the sole SSDS row in this org's index, but the only SSDS line the index carries is the OPN BLI 5231 (doc 333), and this particular modification obligates no procurement money at all: 'Fiscal 2021 research, development, test and evaluation (Navy) ($774,608; 42%); 2018 shipbuilding and conversion (Navy) ($739,015; 40%); fiscal 2017 shipbuilding and conversion (Navy) ($193,452; 10%); and 2016 shipbuilding and conversion (Navy) ($154,739; 8%)'. Asserting that this action paid for an OPN line's own work would be asserting something the announcement's own money contradicts, so it stays below the standard."
+  },
+  {
+   "record_index": 35,
+   "article_id": "4001063",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "to exercise an option for Ship Self-Defense System combat system engineering support",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "weak",
+   "rationale": "Same name match as the linked SSDS records, but the money is 'fiscal 2025 research, development, test and evaluation (Navy) funds in the amount of $15,979,282 (98%); and fiscal 2025 operations and maintenance (Navy) funds in the amount of $366,865 (2%)' - RDT&E and O&M with no procurement colour, against an index that offers only the OPN BLI 5231 for SSDS. This is the appropriation-mismatch failure mode, so weak rather than link."
+  },
+  {
+   "record_index": 55,
+   "article_id": "2885691",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "to exercise options for Ship Self-Defense System (SSDS) combat system engineering support",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "weak",
+   "rationale": "This record even spells the acronym the way the lexicon row does, 'Ship Self-Defense System (SSDS)', so identity is not in doubt. What fails is appropriation: the obligation is 'fiscal 2022 research, development, test and evaluation (Navy) funds ... (91%); fiscal 2022 operations and maintenance (Navy) funds ... (8%)', and the only SSDS line in this org's index is an OPN procurement BLI. RDT&E engineering attached to a procurement line is the pattern the refute lens is built to catch."
+  },
+  {
+   "record_index": 71,
+   "article_id": "3631772",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "cost-only modification to a previously awarded contract (N00024-19-C-5603) for Ship Self-Defense System combat system engineering support",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "verdict": "weak",
+   "rationale": "Identity is clean, appropriation is not: the visible funding is 'fiscal 2023 research, development, test and evaluation (Navy) ... (69%); fiscal 2024 research, development, test and evaluation (Navy) ... (15%); fiscal 2024 operations and maintenance (Navy) ... (13%)' and the remainder is cut off by the record's 700-character window, so no procurement colour is on the evidence. With only an OPN BLI available for SSDS in this index, the attribution cannot be asserted at high confidence."
+  },
+  {
+   "record_index": 2,
+   "article_id": "1561988",
+   "piid": "N6893618D0029",
+   "pe_bli": "0604269N",
+   "program_name": "EA-18G AEA System Enhancements (ASE) and Integrated Capability Package (ICP-3)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "systems engineering and software development services in support of the EA-18G Airborne Electronic Attack aircraft ALQ-227 communications countermeasures set",
+   "lexicon_quote": "EA-18G AEA System Enhancements (ASE) and Integrated Capability Package (ICP-3)",
+   "verdict": "weak",
+   "rationale": "The RDT&E PE 0604269N is titled 'EA-18' and its narrative owns 'EA-18G AEA System Enhancements (ASE)', and the announcement's 'system improvement and demonstration products, such as prototypes, pre-production products' does read like that line's development work. But the only thing actually named is a subsystem the index does not carry (the ALQ-227 communications countermeasures set) plus the platform designator EA-18G, and EA-18G is owned in this same index by a second line, APN 0505 'F-18E/F and EA-18G Modernization and Sustainment'. A bare platform designator with a live cross-PE collision and no funding colour in the visible text does not meet the standard."
+  },
+  {
+   "record_index": 32,
+   "article_id": "2546009",
+   "piid": "N0038321FN700",
+   "pe_bli": "0525",
+   "program_name": "APG-73",
+   "lexicon_doc": "330",
+   "announcement_evidence": "for the repair of the APG-65/73 radar systems in support of the F/A-18 aircraft",
+   "lexicon_quote": "APG-73",
+   "verdict": "weak",
+   "rationale": "The designators match the index exactly - both 'APG-65' and 'APG-73' are names on APN line 0525 (doc 330, 'F-18 Series'). But the action is depot repair paid from 'Fiscal year 2021 working capital (Navy) funds', a revolving fund, not aircraft procurement. Repair work funded by the Navy Working Capital Fund is not the APN modification line's own work, which is the appropriation-mismatch pattern; the exact name match alone does not carry it."
+  },
+  {
+   "record_index": 34,
+   "article_id": "2848255",
+   "piid": "N0001920C0001",
+   "pe_bli": "0204136N",
+   "program_name": "F/A-18 Radar Upgrade",
+   "lexicon_doc": "340",
+   "announcement_evidence": "procure 19 AN/APG-79(V)4 radar systems and associated software in support of radar retrofit and integration into the F/A-18C/D aircraft on behalf of the Marine Corps",
+   "lexicon_quote": "F/A-18 Radar Upgrade",
+   "verdict": "weak",
+   "rationale": "PE 0204136N 'F/A-18 Squadrons' owns both 'F/A-18 Radar Upgrade' and 'F/A-18 RADAR Obsolescence Redesign', and a radar retrofit into F/A-18C/D is plainly that activity by description. The problem is direction of fit: this is a fixed-price-incentive option to buy 19 production radar sets, which is procurement, while 0204136N is an RDT&E line (doc 340), and the record's 700-character window is cut before any funding is stated. The specific designator AN/APG-79(V)4 is not in this org's index at all, so the match rests on a description rather than a name."
+  },
+  {
+   "record_index": 52,
+   "article_id": "783066",
+   "piid": "N0002413C5132",
+   "pe_bli": "0604307N",
+   "program_name": "The AEGIS Combat System (ACS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "other operation and maintenance efforts required for the Aegis development and test sites, including the Combat Systems Engineering Development Site, SPY-1A Test Facility, and the Naval Systems Computing Center",
+   "lexicon_quote": "The AEGIS Combat System (ACS)",
+   "verdict": "weak",
+   "rationale": "PE 0604307N is titled 'Surface Combatant Combat System Engineering' and the money named is 'Fiscal 2016 research, development, test and evaluatio[n]', so the appropriation fits. What does not clear the bar is the thing named: the announcement names development and test SITES (CSEDS, the SPY-1A Test Facility, the Naval Systems Computing Center), none of which is a name in this index, and the scope reads as facility support - 'technical engineering, configuration management, associated equipment/supplies, quality assurance, information assurance' - which section 3 rejects as generic engineering support. 'AEGIS' is also owned across at least four lines in this same index (0604307N, 0604501N, 2981 and 5231, with 'AEGIS Combat System (ACS)' appearing verbatim on both 0604307N and 5231), so the name does not by itself pick out an owner."
+  },
+  {
+   "record_index": 69,
+   "article_id": "606874",
+   "piid": "N0002413C5132",
+   "pe_bli": "0604307N",
+   "program_name": "The AEGIS Combat System (ACS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "other operation and maintenance efforts required for the Aegis development and test sites, including the Combat Systems Engineering Development Site, SPY-1A Test Facility, and the Naval Systems Computing Center",
+   "lexicon_quote": "The AEGIS Combat System (ACS)",
+   "verdict": "weak",
+   "rationale": "Same contract and same scope as record 52, and it fails for the same two reasons: the named objects are test facilities rather than any program name this index carries, and the AEGIS name collides across 0604307N, 0604501N, 2981 and 5231 - 'AEGIS Combat System (ACS)' is a row on two different lines. The record's visible text ends before any appropriation is stated, so there is not even a money-colour tiebreak here."
+  },
+  {
+   "record_index": 79,
+   "article_id": "1219170",
+   "piid": "N0002413C5132",
+   "pe_bli": "0604307N",
+   "program_name": "The AEGIS Combat System (ACS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "other operation and maintenance efforts required for the AEGIS development and test sites, including the Combat Systems Engineering Development Site, SPY-1A Test Facility and the Naval Systems Computing Center",
+   "lexicon_quote": "The AEGIS Combat System (ACS)",
+   "verdict": "weak",
+   "rationale": "Third announcement on the same AEGIS test-site support contract, and the same objection applies: what is named is a set of land-based development and test sites, not a program in this index, and the services listed are the generic engineering-support kind section 3 rejects. 'AEGIS' is owned by several lines here, so identity is unresolved even before appropriation is considered."
+  },
+  {
+   "record_index": 61,
+   "article_id": "3067663",
+   "piid": "N0002420C5101",
+   "pe_bli": "0604307N",
+   "program_name": "AEGIS Modernization (AMOD)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "for fiscal 2022 AEGIS modernization, DDG new construction, and Frigate new construction production requirements",
+   "lexicon_quote": "AEGIS Modernization (AMOD)",
+   "verdict": "weak",
+   "rationale": "'AEGIS modernization' matches the index name 'AEGIS Modernization (AMOD)' almost word for word, but that row sits on RDT&E PE 0604307N while this action is all procurement: 'fiscal 2022 other procurement (Navy) funds ... (69%); fiscal 2022 shipbuilding and conversion (Navy) funds ... (24%); and fiscal 2022 Defense-wide procurement funds ... (7%)'. Separately, the award bundles three programs in one sentence - AEGIS modernisation, DDG new construction and Frigate new construction - so even with the right appropriation the announcement does not attribute the dollars to any single line."
+  },
+  {
+   "record_index": 58,
+   "article_id": "2102247",
+   "piid": "N0003913D0013",
+   "pe_bli": "0605013N",
+   "program_name": "Next Generation Enterprise Network (NGEN)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "the previously awarded indefinite-delivery/indefinite-quantity contract with a maximum potential value for the existing Next Generation Enterprise Network contract",
+   "lexicon_quote": "Next Generation Enterprise Network (NGEN)",
+   "verdict": "weak",
+   "rationale": "The announcement names 'Next Generation Enterprise Network' exactly as the index row on RDT&E PE 0605013N 'Information Technology Development' spells it, but two things block a link. The name collides inside this same index - OPN BLI 8164 'Next Generation Enterprise Service' owns 'The Next Generation Network (NGEN)' and 'Navy Marine Corps Intranet (NMCI)' - and the work described, 'end user hardware seat services', is service delivery rather than IT development, which points at the procurement/service line rather than the RDT&E one. The modification also states 'No additional funding will be placed on contract or obligated at the time of modification award', so there is no money colour to break the tie."
+  },
+  {
+   "record_index": 75,
+   "article_id": "1001938",
+   "piid": "N0001915C0120",
+   "pe_bli": "0564",
+   "program_name": "E-6B",
+   "lexicon_doc": "330",
+   "announcement_evidence": "to exercise an option for logistics services in support of the Take Charge and Move Out and Airborne Command Post aircraft and support equipment",
+   "lexicon_quote": "E-6B",
+   "verdict": "weak",
+   "rationale": "'Take Charge and Move Out' is the TACAMO backronym and, with 'Airborne Command Post', identifies the E-6B - a real alias for the index rows 'E-6', 'E-6 Series' and 'E-6B' on APN line 0564 (doc 330). But the award is 'logistics services' funded by 'Fiscal 2017 operations and maintenance (Navy) funds', and 0564 is an aircraft procurement line. O&M sustainment attached to a procurement line is the named failure mode, and 'logistics' is itself on section 3's generic-services list, so this does not reach link."
+  },
+  {
+   "record_index": 3,
+   "article_id": "606800",
+   "piid": "N0002415C5327",
+   "pe_bli": "2290",
+   "program_name": "The MK-41 Vertical Launching System (VLS)",
+   "lexicon_doc": "342",
+   "announcement_evidence": "MK 41 Vertical Launching System (VLS) proprietary Baseline VII electronics and associated equipment and spares",
+   "lexicon_quote": "The MK-41 Vertical Launching System (VLS)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under section 3's catch-all pattern. The only MK 41 VLS row in this org's index sits on BLI 2290 whose program title is 'Other Missile Support', which CATCHALL_TITLE (load_announcement_links.py:103) matches on the leading 'Other' and the loader therefore excludes; a link here could never publish. Recording it as wrong rather than spending a refute pass on it."
+  },
+  {
+   "record_index": 31,
+   "article_id": "2460438",
+   "piid": "N0002420C5380",
+   "pe_bli": "2290",
+   "program_name": "The MK-41 Vertical Launching System (VLS)",
+   "lexicon_doc": "342",
+   "announcement_evidence": "to exercise options to procure MK 41 Vertical Launching System canisters and ancillary hardware",
+   "lexicon_quote": "The MK-41 Vertical Launching System (VLS)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design as a catch-all budget line. The appropriation would actually have fit - 'Fiscal 2021 weapons procurement (Navy) ($46,466,921; 73%)' against a WPN line (doc 342) - but BLI 2290's program title is 'Other Missile Support', which the loader's CATCHALL_TITLE regex excludes on the leading 'Other'. No other line in this index owns the MK 41 VLS name."
+  },
+  {
+   "record_index": 74,
+   "article_id": "3941402",
+   "piid": "N0002425C5314",
+   "pe_bli": "2290",
+   "program_name": "The MK-41 Vertical Launching System (VLS)",
+   "lexicon_doc": "342",
+   "announcement_evidence": "MK 41 Vertical Launching System (VLS) MK 25 canister production in support of fiscal 2024-2028 MK 41 VLS canister production requirements",
+   "lexicon_quote": "The MK-41 Vertical Launching System (VLS)",
+   "verdict": "wrong",
+   "rationale": "Same catch-all rejection as records 3 and 31: the sole MK 41 VLS name in this index belongs to BLI 2290 'Other Missile Support', a catch-all title the loader never publishes. The adjacent 'MK 57 Vertical Launch System (VLS)' row on 5231 is a different launcher (DDG 1000) and cannot stand in for it."
+  },
+  {
+   "record_index": 57,
+   "article_id": "3535498",
+   "piid": "N6600123D0022",
+   "pe_bli": "3057",
+   "program_name": "High Frequency Shipboard Automatic Link Extension Radio (HFSAR)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "production, integration support, production training support, and life cycle support for modern high frequency radio transceivers and associated hardware and software components",
+   "lexicon_quote": "High Frequency Shipboard Automatic Link Extension Radio (HFSAR)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design as a catch-all budget line: BLI 3057's program title is 'Communications Items Under $5M', which CATCHALL_TITLE matches on 'Under $'. The identity evidence was weak in any case - the announcement names no program, only 'modern high frequency radio transceivers', and the nearest other HF row in the index, 'Procurement of the High Frequency Sail Array (HFSA)' on 2150 'SSN Acoustic Equipment', is a submarine acoustic array, not a radio."
+  },
+  {
+   "record_index": 56,
+   "article_id": "3362281",
+   "piid": "N0001921C0041",
+   "pe_bli": "0560",
+   "program_name": "C-130J",
+   "lexicon_doc": "330",
+   "announcement_evidence": "risk reduction of the C-130J-30 aircraft in support of identifying if the aircraft can meet E-XX capability requirements",
+   "lexicon_quote": "C-130J",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under section 3's platform pattern. 'C-130J' is a real index name on APN line 0560 'C-130 Series', but here the C-130J-30 is only the candidate airframe being studied: the work is 'non-recurring engineering, to include studies, engineering analysis, airframe analysis, and risk reduction' to decide whether it can meet E-XX requirements. E-XX is the program being served and it does not appear anywhere in this org's index; the C-130 Series procurement line is a platform the effort references, not the line the award funds."
+  },
+  {
+   "record_index": 12,
+   "article_id": "1297072",
+   "piid": "N0038312D003D",
+   "pe_bli": "0525",
+   "program_name": "F-18 Series",
+   "lexicon_doc": "330",
+   "announcement_evidence": "for repair, replacement, and program support for auxiliary power units used on F/A-18 A/G models, P-3, and C-2 aircraft",
+   "lexicon_quote": "F-18 Series",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on two section 3 patterns at once. It is a performance-based logistics contract - generic logistics services - and the only names that surface are bare platform designators spanning three unrelated aircraft (F/A-18, P-3, C-2), so no single line's own work is identified. 'F-18 Series' on APN 0525 is the platform the components ride on, not the program the award funds."
+  },
+  {
+   "record_index": 38,
+   "article_id": "1035122",
+   "piid": "N0042117C0044",
+   "pe_bli": "0502",
+   "program_name": "F-18 A-D Unique",
+   "lexicon_doc": "330",
+   "announcement_evidence": "contractor maintenance and support services in support of F/A-18 C/D aircraft for the government of Kuwait under the Foreign Military Sales program",
+   "lexicon_quote": "F-18 A-D Unique",
+   "verdict": "wrong",
+   "rationale": "Rejected by design: the only candidate name is the platform designator behind APN line 0502 'F-18 A-D Unique', and the award is contractor maintenance - generic sustainment services - performed in Kuwait for a foreign government. It is paid entirely from 'Foreign military sales funds', so no US budget line's own work is being executed at all."
+  },
+  {
+   "record_index": 39,
+   "article_id": "1745521",
+   "piid": "N0042117C0044",
+   "pe_bli": "0502",
+   "program_name": "F-18 A-D Unique",
+   "lexicon_doc": "330",
+   "announcement_evidence": "to exercise an option for maintenance and support services for F/A-18 C/D and associated equipment in support of the government of Kuwait",
+   "lexicon_quote": "F-18 A-D Unique",
+   "verdict": "wrong",
+   "rationale": "Same contract and same rejection as record 38: platform-only name plus generic maintenance services, with 'Foreign Military Sales funds in the amount of $63,016,210' as the entire obligation. FMS-funded sustainment for another country's aircraft is not the APN line's own work."
+  },
+  {
+   "record_index": 14,
+   "article_id": "2410227",
+   "piid": "N0018921DZ007",
+   "pe_bli": "0604221N",
+   "program_name": "P-3 Modernization Program",
+   "lexicon_doc": "340",
+   "announcement_evidence": "develop a curriculum and facilitate training for P-3 aircrew positions including copilots, patrol plane commander, instructor pilot, flight engineer",
+   "lexicon_quote": "P-3 Modernization Program",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under the platform pattern. The only P-3 name this index carries is 'P-3 Modernization Program' on RDT&E PE 0604221N, and the announcement is not about modernising anything: it is aircrew курс development and training delivery in support of the Naval Education and Training Security Assistance Field Activity. P-3 is the airframe the training is about, not the program the award funds."
+  },
+  {
+   "record_index": 22,
+   "article_id": "909301",
+   "piid": "N0002412C2106",
+   "pe_bli": "0603570N",
+   "program_name": "Next Generation Fast Attack Nuclear Propulsion Development",
+   "lexicon_doc": "340",
+   "announcement_evidence": "for naval nuclear propulsion components",
+   "lexicon_quote": "Next Generation Fast Attack Nuclear Propulsion Development",
+   "verdict": "wrong",
+   "rationale": "The words 'nuclear propulsion' are the only overlap, and they point at a different program. The index row is an RDT&E development effort for a next-generation fast-attack plant on PE 0603570N 'Advanced Nuclear Power Systems'; the award is a component buy for the Naval Nuclear Propulsion Program funded by 'fiscal 2016 other procurement (Navy); and fiscal 2016 shipbuilding and conversion (Navy)'. The announcement deliberately withholds detail - 'No completion date or additional information is provided on Naval Nuclear Propulsion Program contracts' - so nothing supports attribution to this line."
+  },
+  {
+   "record_index": 70,
+   "article_id": "606818",
+   "piid": "N0002413C4404",
+   "pe_bli": "0933",
+   "program_name": "Landing Helicopter Assault (LHA) and Landing Helicopter Dock (LHD) Modernization Program",
+   "lexicon_doc": "333",
+   "announcement_evidence": "USS Makin Island (LHD 8) fiscal 2015 phased maintenance availability",
+   "lexicon_quote": "Landing Helicopter Assault (LHA) and Landing Helicopter Dock (LHD) Modernization Program",
+   "verdict": "wrong",
+   "rationale": "Rejected on the platform and appropriation patterns together. 'LHD' here is a hull-type designator for one ship, USS Makin Island, not the LHA/LHD Midlife modernization line named on OPN BLI 0933; the award is a phased maintenance availability, i.e. depot-level ship maintenance, funded by 'Fiscal 2015 operations and maintenance (Navy)'. O&M availability work on one hull is not the procurement line's own modernisation program."
+  }
+ ]
+}

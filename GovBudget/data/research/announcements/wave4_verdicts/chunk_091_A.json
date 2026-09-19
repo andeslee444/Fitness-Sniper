@@ -1,0 +1,210 @@
+{
+ "chunk": "chunk_091_A.json",
+ "proposals": [
+  {
+   "record_index": 18,
+   "article_id": "2662720",
+   "piid": "W58RGZ16C0023",
+   "pe_bli": "5757A05111",
+   "program_name": "AH-64E",
+   "lexicon_doc": "343",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to incorporate a directed change order for the remanufacture of twelve Apache aircraft and six-part numbers for the tail rotor blades",
+   "lexicon_quote": "AH-64E\t5757A05111\t343\tAH-64 Apache Block IIIA Reman",
+   "verdict": "link",
+   "rationale": "The operative word is 'remanufacture', and 5757A05111's line is titled 'AH-64 Apache Block IIIA Reman' - the announcement is buying whole remanufactured airframes ('twelve Apache aircraft'), which is that line's own end item and not a mod kit, a service tail, or a platform the contract merely supports. Money colour agrees exactly: the paragraph obligates 'Fiscal 2021 aircraft procurement (Army) funds' and budget_lines puts 5757A05111 in 2031A Aircraft Procurement, Army (doc 343). W58RGZ-16-C-0023 is Boeing Mesa's Apache remanufacture multiyear and Mesa is where the reman line is built, so prime and place of performance point at the same program. The one caveat a refute lens should weigh, and the reason I state it here rather than hide it: the index name 'AH-64E' is carried by two PEs - 5757A05111 (Reman) and 2706AA6605 (AH-64 MODS) - and the 'six-part numbers for the tail rotor blades' rider matches AH-64 MODS's own 'Improved Tail Rotor Blade (ITRB)' row; I read that rider as a directed change order riding on the reman contract rather than as the action's substance, and I file the competing PE separately below as weak.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the paragraph obligates fiscal 2021 aircraft procurement (Army) funds, budget_lines puts 5757A05111 in 2031A and the lake shows the award funded only from 021-2031, and 'remanufacture of twelve Apache aircraft' is the reman line's own end item (its narrative names the FY2017-FY2021 multiyear this PIID is), not a platform the contract merely supports and not a catch-all title."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The index assigns the name 'AH-64E' verbatim to TWO PEs - 5757A05111 (AH-64 Apache Block IIIA Reman, line 1149) and 2706AA6605 (AH-64 MODS, line 966) - and both sit in doc 343 / Aircraft Procurement, Army, so the 'fiscal 2021 aircraft procurement (Army)' colour lens P leans on cannot break the tie; worse, the announcement never writes 'AH-64E' at all, its only hook is the generic alias 'Apache aircraft' which names the platform both lines serve, and its second clause - 'six-part numbers for the tail rotor blades' - is 2706AA6605's own named item 'Improved Tail Rotor Blade (ITRB)' (line 967), so part of this very evidence links the action to the competing owner; 'remanufacture' is a real discriminator for the first clause but it does not resolve an exact same-appropriation name collision that lens P itself concedes, and the default on an unresolved alternative owner is refute."
+   }
+  },
+  {
+   "record_index": 58,
+   "article_id": "606850",
+   "piid": "W15QKN15C0049",
+   "pe_bli": "0605018A",
+   "program_name": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "The present contract is to procure a system integrator to develop and implement Increment II (release 2 through 5) of the Integrated Personnel and Pay System - Army (IPPS-A).",
+   "lexicon_quote": "Integrated Personnel and Pay System-Army (IPPS-A)\t0605018A\t355\tIntegrated Personnel and Pay System-Army (IPPS-A)",
+   "verdict": "link",
+   "rationale": "The announcement names the program in full and in its abbreviation, and the index row's name is the same string (only the spaces around the hyphen differ); 0605018A's line title is that same name, so this is a dedicated line, not a rollup or a catch-all. The name does collide - 9921B66701 (2035A Other Procurement, Army) owns it too - but the appropriation resolves the collision rather than leaving it open: the paragraph obligates 'fiscal 2014 and 2015 research, development, testing, and evaluation funds' and budget_lines puts 0605018A in 2040A RDT&E, Army (doc 355). The work matches that colour as well: a system integrator to develop and implement Increment II releases 2 through 5 is development of the program itself, not sustainment of a fielded system and not a services umbrella - CACI-ISS is being bought to build IPPS-A, so the action pays for this program element's own work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The appropriation is decisive rather than merely compatible: fiscal 2014/2015 RDT&E funds match 0605018A's 2040A (lake accounts include 021-2040) and rule out the procurement-side namesake 9921B66701 at 2035A, and buying a system integrator to develop and implement Increment II is this R-1 line's own 'design, development, integration, and deployment' work - not O&M sustainment, not a services umbrella, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name does collide - 9921B66701 carries the identical string (line 1433) - but that PE sits in doc 346 / Other Procurement, Army while the paragraph obligates 'fiscal 2014 and 2015 research, development, testing, and evaluation funds' and 0605018A sits in doc 355 / RDT&E, so the evidence does NOT link equally well to the other owner; there is no alias to invent (the announcement spells the index name out in full and then in acronym), no third PE in the index touches IPPS-A, Increment II release 2-5 is this program's own development increment rather than a separate variant with its own line, and the hook is the program's name, not the contractor CACI-ISS."
+   }
+  },
+  {
+   "record_index": 69,
+   "article_id": "3217878",
+   "piid": "W56HZV22F0413",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "was awarded a $31,917,256 modification (P00001) to contract W56HZV-22-F-0413 for M2A4 and M7A4 Bradley Fighting Vehicles",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)\t1678GZ2400\t350\tBradley Program (MOD)",
+   "verdict": "link",
+   "rationale": "'Bradley Fighting Vehicles' is the index row's own name and 1678GZ2400's line is 'Bradley Program (MOD)', the Army line that funds M2A4 Bradley upgrade/production; the award buys the vehicles themselves from BAE York, the Bradley integrator, so the named thing is the program the line funds and not a platform the contract supports. Money colour matches precisely: 'fiscal 2022 weapons and tracked combat vehicle procurement, Army funds' is 2033A, which is where budget_lines puts 1678GZ2400 (doc 350). Name collisions in this index are on different objects - 1382GZ3300 owns 'Bradley Fire Support Team (BFIST)', 0604802A a 25mm round, 2650E08200 the cartridge - so no other PE owns 'Bradley Fighting Vehicle'. The honest caveat: the M7A4 half of the buy is the BFIST variant, which is 1382GZ3300's line, so the attribution is partial rather than total; I record that competing line separately below as weak rather than claiming both.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 weapons and tracked combat vehicle procurement is 2033A, exactly where budget_lines puts 1678GZ2400 (lake: 021-2033 only), and the line's own narrative says it 'procures upgrades to the Bradley Fighting Vehicle. The Bradley A4 and associated Engineering Change Proposal', so M2A4 vehicles are the line's own end item; 'Bradley Program (MOD)' is a single-program modification line, not a catch-all, and the M7A4/BFIST overlap is an alternative-owner question for lens B, not a money-or-mission break."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No other PE in this index owns the name the announcement uses: 'The Bradley Fighting Vehicle (BFV)' belongs to 1678GZ2400 alone (line 894), while 1382GZ3300 owns only 'Bradley Fire Support Team (BFIST)', 'Bradley Common Display' and 'Fire Support Sensor System' - different names - and 0604802A / 2650E08200 own 25mm rounds, not the vehicle; the first-named end item M2A4 is the Bradley MOD line's own upgrade variant in the matching WTCV colour, and the M7A4 half, while genuinely the BFIST vehicle whose line 1382GZ3300 shares doc 350 so colour cannot separate them, makes the attribution PARTIAL rather than pointed at the wrong owner - lens P discloses it and files that line separately as weak, so identity grounds do not break this link."
+   }
+  },
+  {
+   "record_index": 79,
+   "article_id": "714975",
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to recapitalize heavy expanded mobility tactical trucks (HEMTTs) M1977A4 (M977A0/A2 to M1977A4) (44 each); and M1977A4 (M1977A0 VSE to M1977A4) (48 each)",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)\t8309DA0500\t346\tFamily Of Heavy Tactical Vehicles (FHTV)",
+   "verdict": "link",
+   "rationale": "The announcement writes the index row's name out in full, plural and with the acronym, and the work - recapitalizing 92 HEMTT trucks from A0/A2/VSE configurations to M1977A4 - is the FHTV line's own end item: HEMTT recapitalization is what 8309DA0500 buys, and Oshkosh is the HEMTT producer. Money colour matches: 'fiscal 2016 other procurement funds' is 2035A Other Procurement, Army, exactly where budget_lines puts 8309DA0500 (doc 346). The one collision in this index is 0604114A ('M983A4 Heavy Expanded Mobility Tactical Truck (HEMTT)', Lower Tier Air Missile Defense Sensor), where the HEMTT is the prime mover a radar rides on - the §3 platform pattern and an RDT&E line - so that PE is the wrong owner for a truck recapitalization buy and does not compete for this award.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2016 other procurement funds match 8309DA0500's 2035A (lake: 021-2035 present) and rule out the RDT&E HEMTT namesake 0604114A at 2040A; FHTV's own justification carries a HEMTT Extended Service/recapitalization sub-project, so recapitalizing 92 HEMTTs under the Oshkosh FHTV contract is this line's own procurement work, and a family line with named sub-projects is not a CATCHALL_TITLE rollup."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Lens P dismissed only the RDT&E collision (0604114A, doc 353) and never checked the end item: the trucks being bought are M1977A4s, i.e. the HEMTT-based Common Bridge Transporter, and 'Common Bridge Transporter (CBT)' is owned in this index by four OTHER PEs - 1110MA4500 'Heavy Tactical Common Bridge Transporter (CBT)' (Modification Of In-Svc Equipment, OPA-3, line 864), 2831MX0100 (Tactical Bridging), 3542MA8890 and 3758G06520 - every one of them in doc 346, the same Other Procurement, Army colour the paragraph cites, so money cannot discriminate; converting in-service M977A0/A2 and M1977A0 VSE trucks to M1977A4 reads as modification/recapitalization of in-service equipment at least as well as an FHTV new-line buy, and 8992DA0924 (doc 346, 'Modification Of In Svc Equip') even owns 'The Family of Heavy Tactical Vehicles (FHTV)' itself - multiple unresolved alternative owners on the same evidence, so refute."
+   }
+  },
+  {
+   "record_index": 7,
+   "article_id": "3723921",
+   "piid": "W56HZV24D0024",
+   "pe_bli": "7495R05901",
+   "program_name": "The High Mobility Engineer Excavator (HMEE)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for the High Mobility Engineer Excavator service life extension program and modernization",
+   "verdict": "weak",
+   "rationale": "The name is present in full and 7495R05901's line title is the program itself, but three PEs in this index carry HMEE as a name - 7495R05901 (High Mobility Engineer Excavator (HMEE)), 0387R02700 (CONSTRUCTION EQUIPMENT) and 1110MA4500 (Modification Of In-Svc Equipment (OPA-3)) - and all three sit in the same 2035A Other Procurement, Army book, so the account cannot separate them. The announced scope is the tie-breaker that fails: a service life extension program and modernization of fielded excavators is exactly the work the in-service modification line 1110MA4500 exists to fund, and it is at least as good a reading as the base procurement line I name here. The paragraph is an IDIQ with 'work locations and funding will be determined with each order' and obligates nothing, so there is no appropriation evidence to break the tie either. Under §1's standard the evidence identifies a program but not which line's own work was bought, so this does not reach link."
+  },
+  {
+   "record_index": 11,
+   "article_id": "1771302",
+   "piid": "W31P4Q16D0020",
+   "pe_bli": "9301H37300",
+   "program_name": "The Army Integrated Air and Missile Defense (AIAMD)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for the Army Integrated Air and Missile Defense plug and fight A-Kit materials and support",
+   "verdict": "weak",
+   "rationale": "The full program name appears verbatim, and plug-and-fight A-Kits are component hardware, which fits 9301H37300 ('AIAMD FAMILY OF SYSTEMS (FOS) COMPONENTS', 2035A) better than the alternatives - but four PEs in this index own the identical AIAMD name: 0605457A (RDT&E, 2040A), 8930C61001 (IFPC Inc 2-I, 2032A), 9280BZ5075 (IAMD Battle Command System, 2035A) and 9301H37300. The paragraph gives nothing to separate them: it is a modification to an IDIQ, 'work locations and funding will be determined with each order', and no appropriation is named at all, so the money-colour test that resolved the IPPS-A collision is unavailable here. Raytheon Huntsville is the Patriot ground-segment prime, which raises a further possibility that the A-Kits are Patriot-side integration hardware rather than FoS components. A four-way unresolved collision with no appropriation evidence is precisely the case §1 says not to publish."
+  },
+  {
+   "record_index": 41,
+   "article_id": "2629828",
+   "piid": "W56HZV21D0024",
+   "pe_bli": "0426MA9800",
+   "program_name": "Advanced Medium Mobile Power Sources (AMMPS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for the Light Tactical Trailer Heavy Chassis with Advanced Medium Mobile Power Sources integration kit",
+   "verdict": "weak",
+   "rationale": "The AMMPS name appears verbatim and 0426MA9800 ('Generators And Associated Equip', 2035A) is a plausible home for a trailer-mounted generator integration kit - 'associated equipment' is exactly the sort of item that line carries. What the award actually buys, though, is Light Tactical Trailer Heavy Chassis from a trailer maker, with the AMMPS integration kit as the interface; read strictly, AMMPS is the system the trailer is built to carry rather than the thing being procured, which is the §3 shape where the named program is what the contract supports. The competing RDT&E row (0603804A, 'Advance Medium Mobile Power Source (AMMPS)', 2040A) is a second owner of the name, and the paragraph obligates nothing ('work locations and funding will be determined with each order'), so neither scope nor appropriation settles it. Not enough for a published attribution."
+  },
+  {
+   "record_index": 51,
+   "article_id": "2139392",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "8750E27501",
+   "program_name": "The Precision Guidance Kit (PGK)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "modification (P00073) to contract W15QKN-13-C-0074 for Precision Guidance Kit M1156",
+   "verdict": "weak",
+   "rationale": "The name is exact and the item designator M1156 is unambiguous, but two things stop this short of a link. First, three PEs in this index own the PGK name - 8750E27501 ('Artillery Propellants, Fuzes and Primers, All', 2034A), 3102E89500 ('ARTILLERY PROJECTILE, 155MM, All Types', 2034A) and 0604802A ('Weapons and Munitions - Eng Dev', 2040A) - and nothing in the paragraph says whether the kits were bought on the fuze line or the projectile line. Second, the stated money colour matches none of them: 'fiscal 2020 other procurement, Army funds' is 2035A, while both ammunition candidates sit in 2034A Procurement of Ammunition, Army and the development candidate in 2040A. A production modification whose named appropriation belongs to a different book than every candidate line is the appropriation failure mode §1 lens A hunts for, so I do not propose it as a link."
+  },
+  {
+   "record_index": 54,
+   "article_id": "3758114",
+   "piid": "W31P4Q20C0024",
+   "pe_bli": "6870C88001",
+   "program_name": "LETHAL MINIATURE AERIAL MISSILE SYSTEM (LMAMS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "modification (P00044) to contract W31P4Q-20-C-0024 for the Switchblade Weapon System",
+   "verdict": "weak",
+   "rationale": "The identity here is clean and uncontested: AeroVironment's Switchblade is the Army's Lethal Miniature Aerial Missile System, LMAMS appears in exactly one row of this index (6870C88001), and the award buys the weapon system itself from the LMAMS prime through Army Contracting Command Redstone - so if any line owns Switchblade in this book it is this one. What I cannot establish is that this action paid THIS line: budget_lines puts 6870C88001 in 2032A Missile Procurement, Army, while the paragraph obligates 'fiscal 2023 other procurement, Army funds and Marine Corps funds' - 2035A plus a service that is not the Army at all. A contradicted money colour on an otherwise clean alias is the smaller-true-number case: the alias is real, the line's ownership of the appropriation is not shown, so this is recorded as weak rather than pushed at the refute lenses as a link."
+  },
+  {
+   "record_index": 69,
+   "article_id": "3217878",
+   "piid": "W56HZV22F0413",
+   "pe_bli": "1382GZ3300",
+   "program_name": "Bradley Fire Support Team (BFIST)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "for M2A4 and M7A4 Bradley Fighting Vehicles",
+   "verdict": "weak",
+   "rationale": "The M7A4 half of this buy is the Bradley Fire Support Team variant, whose own line is 1382GZ3300 in the same 2033A book, so part of the award's value plausibly belongs here rather than to Bradley Program (MOD). But the announcement never writes 'BFIST' or 'fire support' - it calls both vehicles 'Bradley Fighting Vehicles' - so the only route to this PE is outside knowledge that M7 is the BFIST designator, applied to an award that names the other line's program explicitly. §1's standard asks what the announcement's own words establish, and they do not establish this line's ownership; filing it as weak keeps the M7A4 share visible in the denominator without publishing a second claim on one paragraph."
+  },
+  {
+   "record_index": 74,
+   "article_id": "2309332",
+   "piid": "W912DY20F0508",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "announcement_evidence": "was awarded a $31,850,000 firm-fixed-price contract for high-performance computing modernization programs",
+   "verdict": "weak",
+   "rationale": "The announcement's phrase is the index row's name almost word for word, 0603461A's line title is the same string, and Liqid's composable infrastructure delivered to Aberdeen Proving Ground would be equipment for an Army DSRC - the program's own kind of work. The defect is the money: budget_lines puts 0603461A in 2040A RDT&E, and the paragraph obligates 'fiscal 2020 other procurement (Army) funds', 2035A. HPCMP is an RDT&E-funded program, so procurement dollars routed through USACE Huntsville more likely bought Army HPC equipment adjacent to the program than the RDT&E line's own content, and this is the exact O&M/procurement-on-an-RDT&E-line shape the 2026-09-04 held-out study found in three of six refutations. Exact name, wrong colour: weak."
+  },
+  {
+   "record_index": 75,
+   "article_id": "757116",
+   "piid": "W56HZV16C0028",
+   "pe_bli": "5225GZ3001",
+   "program_name": "Joint Assault Bridge (JAB)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "multi-year contract with options for 365 joint assault bridges with related services and test hardware",
+   "verdict": "weak",
+   "rationale": "'Joint assault bridges' is the index row's name and its line title, DRS is the JAB integrator, and JAB appears under exactly one PE here, so identity is not the problem. Two things are. The appropriation named - 'fiscal 2015 and 2016 research, development, testing, and evaluation; and other procurement (Army) funds', i.e. 2040A and 2035A - is neither of 5225GZ3001's book: budget_lines puts it in 2033A Procurement of W&TCV, Army. And the announced quantity does not survive arithmetic: 365 bridge vehicles for $31.8M is about $87,000 each, orders of magnitude below a JAB, so the paragraph's own description of what was bought is unreliable and the scope carries a services-and-test-hardware tail. A 2016 award on a program then still in development, with a stated colour that does not match the procurement line, is not evidence that this line's own work was paid for."
+  },
+  {
+   "record_index": 78,
+   "article_id": "3256358",
+   "piid": "W31P4Q20C0023",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "announcement_evidence": "modification (P00072) to contract W31P4Q-20-C-0023 to incrementally increase the annual award of Phased Array Tracking Radar to Intercept on Target Advanced Capability-3 missiles",
+   "verdict": "weak",
+   "rationale": "The backronym is spelled out and ends on 'Advanced Capability-3', which is PAC-3 and nothing else; PAC-3 occurs in exactly one row of this index (8260C53101, MSE Missile), and Lockheed Martin Grand Prairie is the PAC-3 missile prime, so the identity is as clean as the rubric's own worked example. The money is not: the only obligation named is 'fiscal 2023 Foreign Military Sales (Bahrain, Kuwait, Netherlands, Poland and Qatar) funds in the amount of $15,590,330', with no Army appropriation anywhere in the paragraph, so no dollar of 8260C53101's 2032A Missile Procurement, Army line is shown to have paid for this action - the same defect that refuted the FMS-only PAC-3 record in chunk_000_A. The paragraph also never names a configuration, so the MSE-versus-CRI question the line title turns on is left open. Identity yes, attribution no."
+  },
+  {
+   "record_index": 23,
+   "article_id": "606752",
+   "piid": "W31P4Q14C0124",
+   "pe_bli": "0603778A",
+   "program_name": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "for life cycle launcher support III which provides technical and maintenance support services for all U.S. Army high mobility artillery rocket system (HIMARS) fire control systems and launcher modules and M270A1 fire control systems",
+   "verdict": "wrong",
+   "rationale": "Rejected by §3 on two of its listed patterns. First, generic services: the award's entire content is 'technical and maintenance support services' for fielded launchers - a life-cycle support vehicle, not the development or production of any program element's content - and the named systems (HIMARS, M270A1) are the platforms that support sustains, not the work the line funds. Second, the money contradicts the line outright: the paragraph obligates 'fiscal 2014 and 2015 operations and maintenance (Army), and fiscal 2014 and 2015 military construction funds', while 0603778A ('MLRS Product Improvement Program') sits in 2040A RDT&E - O&M sustainment attached to an RDT&E line is the named failure mode in §1 lens A. This PE is the only one in the A index whose names carry the HIMARS and M270A1 strings the announcement uses, so it is the candidate the text points at, and it is the candidate §3 rejects."
+  },
+  {
+   "record_index": 18,
+   "article_id": "2662720",
+   "piid": "W58RGZ16C0023",
+   "pe_bli": "2706AA6605",
+   "program_name": "Improved Tail Rotor Blade (ITRB)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "six-part numbers for the tail rotor blades",
+   "verdict": "weak",
+   "rationale": "AH-64 MODS is the second owner of the 'AH-64E' name and it owns 'Improved Tail Rotor Blade (ITRB)' outright, so the tail-rotor-blade part numbers in this change order are a real reason to consider this PE alongside the remanufacture line - and its 2031A Aircraft Procurement, Army account matches the obligation just as well. But the announcement says only 'tail rotor blades', never 'improved' or ITRB, and the blades are a rider on an order whose stated purpose is remanufacturing twelve aircraft; attributing the action to the modification line would claim the mod line's content for what is plainly a reman change order. Recorded as weak so the competing owner is visible in the counts rather than asserted."
+  }
+ ]
+}

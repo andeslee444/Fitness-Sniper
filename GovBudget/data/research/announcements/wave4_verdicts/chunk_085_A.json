@@ -1,0 +1,191 @@
+{
+ "chunk": "chunk_085_A.json",
+ "proposals": [
+  {
+   "record_index": 38,
+   "article_id": "2882869",
+   "piid": "W31P4Q22F0045",
+   "pe_bli": "0200MB4000",
+   "program_name": "Wireless At-Platform Test Sets (WATS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "was awarded a $34,810,595 firm-fixed-price contract for wireless AT platform test sets",
+   "lexicon_quote": "tems (NGATS), 930 Maintenance Support Devices (MSD) and 280 Wireless At-Platform Test Sets (WATS) to support Base requirements and test and diagnostic equipm",
+   "verdict": "link",
+   "rationale": "The announcement's item of supply is the named end item of this procurement line, not a platform the contract merely supports: BLI 0200MB4000 (Integrated Family Of Test Equipment) owns the name 'Wireless At-Platform Test Sets (WATS)' in its own narrative, which states the line buys 280 WATS alongside NGATS and MSD. The announcement's phrase 'wireless AT platform test sets' is the same name with the hyphen and capitalisation dropped by the defense.gov copy desk (which is why the deterministic verbatim pass missed it and the record landed in the residue), so this is an alias of the lexicon name rather than a coincidental English phrase. The award is a firm-fixed-price production buy of that hardware placed by Army Contracting Command, Redstone Arsenal, against an existing contract - a procurement action against a procurement line, with no O&M sustainment or services framing anywhere in the paragraph. No other PE in this org's index carries the WATS name.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Survives lens A: the award's item of supply IS this line's own work, not a platform it supports - BLI 0200MB4000 (Integrated Family Of Test Equipment) is an Other Procurement, Army line whose own narrative procures 280 Wireless At-Platform Test Sets (WATS), and the announcement is a firm-fixed-price supply action for exactly that hardware placed by Army Contracting Command, Redstone Arsenal, with no O&M, sustainment, engineering-support or services framing anywhere in the paragraph; the announcement states no appropriation at all ('funding will be determined with each order'), so nothing in the text contradicts the line's procurement color, and the ordering-vehicle shape is not the section 3 IDIQ-umbrella reject because the vehicle names one program item rather than no program; IFTE is a named program of record with enumerated members (IFTE, MSD, NGATS, WATS), not a rollup or catch-all, and its title does not trip CATCHALL_TITLE."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Alias is real, not invented: A.tsv line 29 carries 'Wireless At-Platform Test Sets (WATS)' under 0200MB4000/doc 346 verbatim, and the lexicon quote is verbatim from that entry; the announcement's 'wireless AT platform test sets' is the same name with hyphen/case dropped, not an English phrase. No other PE in the org A index owns the WATS name (the only other test-equipment lines, 0605G02510 TEMOD and 6500GA0750, own CALSETS/CTE/GPETE/RTS and DSESTS - different named sets). The one genuine collision is outside the index: RDT&E PE 0604746A also owns 'Wireless At-platform Test Set (WATS)', but its narrative develops next-gen MSD and 'supporting capability enhancement of' WATS, while this record is a competitively solicited (five bids) firm-fixed-price buy of the sets themselves by ACC-Redstone - that evidence does not link there equally well, and 0604746A carries no doc_id so it is not proposable in any case. No variant/increment mismatch and the evidence is the item of supply, not the contractor name."
+   }
+  },
+  {
+   "record_index": 77,
+   "article_id": "606752",
+   "piid": "W56HZV10G0003",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Program (MOD)",
+   "lexicon_doc": "350",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for modification of 49 Bradley Fighting Vehicles from the M3A2 version to the M2A2 version and 49 final inspection records",
+   "lexicon_quote": "The Bradley Program (MOD) funding line procures upgrades to the Bradley Fighting Vehicle",
+   "verdict": "link",
+   "rationale": "This is not a contract that merely supports the Bradley platform - it physically reconfigures 49 already-fielded Bradley Fighting Vehicles from the M3A2 cavalry variant to the M2A2 infantry variant, which is exactly the work BLI 1678GZ2400's own narrative describes ('The Bradley Program (MOD) funding line procures upgrades to the Bradley Fighting Vehicle'). The vehicle name the announcement uses is the same org's own lexicon name under this BLI ('The Bradley Fighting Vehicle (BFV)'), and the modification framing is what ties the action to the MOD line rather than to a base procurement or an RDT&E line. The action is a modification to a TACOM firm-fixed-price basic contract with BAE Systems Land and Armaments at York, Pennsylvania, the Bradley production house, and is funded with fiscal 2014 procurement dollars, so it is a procurement action against a procurement line. The one soft spot lens A should test is that the paragraph writes the appropriation as 'other procurement funds' where Bradley modifications sit in Procurement of Weapons and Tracked Combat Vehicles; the vehicle-conversion work itself is unambiguously this line's own.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money color, the lens A ground the proposal itself flagged: the announcement obligates 'Fiscal 2014 other procurement funds' - Other Procurement, Army - while BLI 1678GZ2400 Bradley Program (MOD) sits in Procurement of Weapons and Tracked Combat Vehicles, Army (data/research/jbook_line_universe.json accounts: 'Procurement of W&TCV, Army'), so the only appropriation the announcement names is disjoint from this line's; the M3A2-to-M2A2 conversion work does match the MOD line's mission and the vehicle name is this BLI's own lexicon name, but the claim being published is that this action paid for THIS line's work, and the award's stated money color points at a different account, which is the exact failure mode the 2026-09-04 held-out study found - on a 2014 PIID whose lake-side funding accounts are likely NULL, money_color_ok() would treat the color as unknown and publish, so this lens is the only guard, and the rubric's default is to refute."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Name and quote are real: A.tsv line 895 'The Bradley Program (MOD)' / 1678GZ2400 / doc 350 matches the index row verbatim and the lexicon quote is verbatim. The Bradley name collisions in the index all resolve away from the alternatives: 1382GZ3300 owns only fire-support names (Bradley Fire Support Team (BFIST), Bradley Common Display, FS3) and this paragraph names no fire-support role - its stated end state is the plain M2A2 infantry variant, not an M7/BFIST; 0604802A and 2650E08200 own only the 25mm BADGER cartridge names, and 2650E08200's 'Bradley Fighting Vehicle (BFV)' lexicon entry is ownership='mentioned' (platform reference) and is correctly absent from the index. Within the index the BFV name and the MOD line belong to 1678GZ2400 alone. The M3A2-to-M2A2 conversion is a whole-vehicle reconfiguration of the named platform, so it is not a different variant's program but this line's own modification work; the evidence is the work description, not the BAE name. The FY2014 action against a modern-J-book narrative is inherent to the method rather than specific to this record, and the 'other procurement funds' wording is lens A's appropriation question, not an identity one."
+   }
+  },
+  {
+   "record_index": 24,
+   "article_id": "851031",
+   "piid": "W911W516D0001",
+   "pe_bli": "0605709A",
+   "program_name": "Army Foreign Materiel Program (FMP)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "offsite technical support to the National Ground Intelligence Center",
+   "lexicon_quote": "Acquisition and exploitation are executed according to Army Foreign Materiel Program (FMP) Plan prioritization and with the approval of the Army Deputy",
+   "verdict": "weak",
+   "rationale": "The described work - analysing and exploiting foreign military hardware for scientific and technical intelligence - is a close description of PE 0605709A ('Exploitation of Foreign Items'), whose lexicon name is the Army Foreign Materiel Program, and NGIC is the Army element that executes that program. But the announcement names an organisation (the National Ground Intelligence Center's foreign materiel directorate), not the program, so nothing in the text is the program name or a designator variant of it; and the vehicle is a cost-plus-fixed-fee IDIQ for 'offsite technical support' whose performance locations and funding are explicitly 'determined with each order', so no appropriation is stated and no dollar in the paragraph can be tied to this program element's own work. Under the rubric's evidence standard that is a support-services ceiling described by mission rather than an award that funds this line, and the project publishes the smaller true number, so this does not reach link."
+  },
+  {
+   "record_index": 60,
+   "article_id": "1284769",
+   "piid": "W58RGZ17C0010",
+   "pe_bli": "4742A05001",
+   "program_name": "UH-72 LAKOTA LIGHT UTILITY HELICOPTER",
+   "lexicon_doc": "343",
+   "announcement_evidence": "UH-72 Lakota contractor logistics support parts support and sustainment additional flying hours",
+   "lexicon_quote": "UH-72 LAKOTA LIGHT UTILITY HELICOPTER",
+   "verdict": "weak",
+   "rationale": "The name matches this org's index row exactly (UH-72 Lakota), and Airbus Helicopters is the program's prime, so the identity is not in doubt. What fails is the attribution: BLI 4742A05001 is the aircraft procurement line that buys Lakotas, while this modification buys contractor logistics support, parts support, sustainment and additional flying hours with fiscal 2017 operations and maintenance (Army) funds. That is the exact failure mode the rubric's lens A names - O&M sustainment attached to a procurement line - so the award pays for keeping fielded aircraft flying, not for this program element's own work. Name present, evidence short of the standard: weak, not link."
+  },
+  {
+   "record_index": 54,
+   "article_id": "2944164",
+   "piid": "W56HZV22F0153",
+   "pe_bli": "0604804A",
+   "program_name": "Modular Fuel System (MFS) Tank Rack Module (TRM) - M107 40gpm Pump Modification Kit",
+   "lexicon_doc": "355",
+   "announcement_evidence": "was awarded a $34,557,266 firm-fixed-price contract for tank rack module production",
+   "lexicon_quote": "Modular Fuel System (MFS) Tank Rack Module (TRM) - M107 40gpm Pump Modification Kit",
+   "verdict": "weak",
+   "rationale": "'Tank rack module' appears inside this index row's name, and the Modular Fuel System TRM is plausibly the same item the award produces. But the row names a specific M107 40gpm pump modification kit, not TRM production, and PE 0604804A is an RDT&E engineering-development line (Logistics and Engineer Equipment - Eng Dev) while this is a firm-fixed-price production order placed by Army Contracting Command, Detroit Arsenal, with work locations and funding determined per order. A production buy cannot fund an engineering-development program element's own work, and the announcement gives no appropriation to test that with, so the fragment name match does not meet the evidence standard."
+  },
+  {
+   "record_index": 1,
+   "article_id": "606781",
+   "piid": "W31P4Q15C0058",
+   "pe_bli": "8082C14300",
+   "program_name": "Stinger Vehicle Universal Launcher (SVUL)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "63 Stinger FIM-92 H Block 1 missiles (retrofit and Service Life Extension Program Stinger FIM-92EReprogrammable Microprocessor missiles)",
+   "lexicon_quote": "l be used to purchase 44 SGT STOUT systems, retrofit single Stinger Vehicle Universal Launcher (SVUL) systems to dual SVUL, initial spares, software maintenance,",
+   "verdict": "wrong",
+   "rationale": "The only 'Stinger' name this org's index carries is the Stinger Vehicle Universal Launcher, a launcher subsystem of the M-SHORAD procurement line, and the SVUL name does not appear in the announcement. The award buys and retrofits the FIM-92 missile round itself, plus air-to-air launchers, captive flight trainers and test equipment, on a foreign military sales case for Korea - a different item from the vehicle launcher that BLI 8082C14300 funds. Rejected under the rubric's reject-by-design pattern that the matched name is a component the contract merely shares a word with, not the program the PE funds; the Stinger missile line this award belongs to is not in this index."
+  },
+  {
+   "record_index": 51,
+   "article_id": "3143335",
+   "piid": "W31P4Q22F0131",
+   "pe_bli": "8082C14300",
+   "program_name": "Stinger Vehicle Universal Launcher (SVUL)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "modification (P00002) to contract W31P4Q-22-F-0131 for the procurement of Stinger missiles and associated equipment",
+   "lexicon_quote": "l be used to purchase 44 SGT STOUT systems, retrofit single Stinger Vehicle Universal Launcher (SVUL) systems to dual SVUL, initial spares, software maintenance,",
+   "verdict": "wrong",
+   "rationale": "Same rejection as record 1. The announcement procures Stinger missiles and associated equipment; the only Stinger name in this index is the Stinger Vehicle Universal Launcher, the dual-launcher hardware that BLI 8082C14300 (M-SHORAD - Procurement) buys for the SGT STOUT vehicle. The word 'Stinger' is shared, the item is not, and the announcement never names SVUL or M-SHORAD - the bare shared word is precisely the weak-name pattern the rubric rejects by design."
+  },
+  {
+   "record_index": 59,
+   "article_id": "1027598",
+   "piid": "W31P4Q16C0028",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Patriot performance-based logistics support for inventory management, repair and replacement of 136 stock and parts associated with the Patriot",
+   "lexicon_quote": " by improved operational effectiveness as identified in the PATRIOT Product Improvement Program (PIP); material deficiencies identified in the field; obsolescenc",
+   "verdict": "wrong",
+   "rationale": "'Patriot' appears only as the platform the contract supports. The award is performance-based logistics - inventory management and repair and replacement of 136 stock and part numbers - which is generic sustainment logistics, one of the service categories the rubric rejects by design. None of BLI 0962C50700's own names (PATRIOT Product Improvement Program, Missile Segment Enhancement, International Engineering Services Program, Tactical Planner Workstation, Air Defense Interrogator, TPX-57) appears in the paragraph, and the Patriot Mods line funds hardware upgrade kits rather than spares pipelines. Two PEs in this index also carry Patriot product-improvement names (0962C50700 and 0607865A), so even the platform word does not resolve to one owner."
+  },
+  {
+   "record_index": 76,
+   "article_id": "637649",
+   "piid": "W31P4Q16C0028",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "PATRIOT Performance Based Logistics support for inventory management and repair and replacement of 136 national stock numbers and part numbers",
+   "lexicon_quote": " by improved operational effectiveness as identified in the PATRIOT Product Improvement Program (PIP); material deficiencies identified in the field; obsolescenc",
+   "verdict": "wrong",
+   "rationale": "The base award for the same PBL contract as record 59, and it fails for the same reason: PATRIOT is named as the platform being sustained, the work is inventory management and repair and replacement of national stock numbers - generic logistics services under the rubric's reject-by-design list - and no name that BLI 0962C50700 owns appears in the text. That the paragraph cites fiscal 2016 other procurement funds does not rescue it, because the object of the spend is spares and repairs, not the Patriot Mods line's own upgrade content."
+  },
+  {
+   "record_index": 68,
+   "article_id": "1479983",
+   "piid": "W31P4Q15C0065",
+   "pe_bli": "0010I24000",
+   "program_name": "COUNTER-SMALL UNMANNED AERIAL SYSTEM (C-SUAS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "maintenance and training on the Counter-Rocket Artillery Mortar, Counter-Unmanned Aerial System, command and control system",
+   "lexicon_quote": "COUNTER-SMALL UNMANNED AERIAL SYSTEM (C-SUAS)",
+   "verdict": "wrong",
+   "rationale": "Rejected on two of the rubric's patterns at once. First, the work is maintenance and training - generic services - funded with fiscal 2018 operations and maintenance Army funds, so nothing here pays for a procurement or development line's own content. Second, the identity does not hold: the announcement names the C-RAM / Counter-UAS command and control system (the fire-control C2 that Northrop Grumman sustains), whereas the index name is the Counter-Small Unmanned Aerial System program, a distinct later program; and three separate rows in this org's index carry a C-sUAS name (0010I24000, 0219AD0500 and 0604531A), so the name does not resolve to a single owner even if the scope matched."
+  },
+  {
+   "record_index": 78,
+   "article_id": "3314133",
+   "piid": "W56HZV22C0012",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "modification (P00032) to contract W56HZV-22-C-0012 for option hours for Abrams system technical support",
+   "lexicon_quote": "The upgrade and assembly of 30 Abrams tank variants to the M1A2 System Enhancement Package (SEP)v3 configuration, which enhances tank survivability, the aut",
+   "verdict": "wrong",
+   "rationale": "'Abrams' appears only as the platform, and the object of the award is 'option hours for system technical support' - engineering support hours, which the rubric rejects by design as generic services. None of the names BLI 6500GA0750 actually owns (M1A2 System Enhancement Package, Total Integrated Engine Revitalization, Ammunition Data Link, Common Operating Environment, Direct Support Electrical Systems Test Set, Block 1 Second Generation FLIR) is named in the paragraph; the SEP row is cited here only to identify the line a reader might wrongly reach for. The funding mix (fiscal 2010 foreign military sales for Kuwait, Poland and Saudi Arabia plus fiscal 2021 and 2023 other procurement) further shows the hours are spread across FMS cases rather than buying this upgrade line's content."
+  },
+  {
+   "record_index": 3,
+   "article_id": "1303900",
+   "piid": "W911QY17D0021",
+   "pe_bli": "0604804A",
+   "program_name": "Army Standard Family of Rigid Wall Shelters (ASF-RWS)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "firm-fixed-price contract for engineering and design of Expeditionary Shelter Protection System",
+   "lexicon_quote": "Army Standard Family of Rigid Wall Shelters (ASF-RWS)",
+   "verdict": "wrong",
+   "rationale": "The only shelter name this index carries is the Army Standard Family of Rigid Wall Shelters, a different item from the Expeditionary Shelter Protection System the announcement names - the shared word is 'shelter'. Independently, the award is an indefinite-delivery ceiling for engineering and design with work locations and funding 'determined with each order' and no appropriation stated, which is the IDIQ-with-generic-engineering pattern the rubric rejects by design."
+  },
+  {
+   "record_index": 55,
+   "article_id": "1618359",
+   "piid": "W58RGZ18D0108",
+   "pe_bli": "4734R06701",
+   "program_name": "Family of All Terrain Cranes (FOATC)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "production of expeditionary cranes, field support package, stockage list, training and develop the associated technical publications for self-propelled crane aircraft maintenance and positioning increment II, type II expeditionary crane",
+   "lexicon_quote": "providing military support to civil authorities.\n\nFamily of All Terrain Cranes (FOATC) Type II Heavy Crane (T2HC) - The Type II Heavy Crane (T2HC)",
+   "verdict": "wrong",
+   "rationale": "A tempting near-miss: the index row's narrative names a 'Type II Heavy Crane' and the announcement names a 'type II expeditionary crane'. They are different programs. The award buys the Self-Propelled Crane Aircraft Maintenance and Positioning increment II crane, aviation ground support equipment bought through Army Contracting Command, Redstone Arsenal, whereas BLI 4734R06701 funds the engineer Family of All Terrain Cranes. The shared words 'type II' and 'crane' are the weak-generic-name pattern the rubric rejects by design, and the award is an indefinite-delivery contract with funding determined per order, so no appropriation ties it to this line either."
+  },
+  {
+   "record_index": 67,
+   "article_id": "2632139",
+   "piid": "W911NF18F0029",
+   "pe_bli": "0603766A",
+   "program_name": "Low Earth Orbit (LEO) / Intel Surv Recon (ISR)",
+   "lexicon_doc": "353",
+   "announcement_evidence": "research, development, test and evaluation support to intelligence, surveillance and reconnaissance (ISR) weapon systems",
+   "lexicon_quote": "Low Earth Orbit (LEO) / Intel Surv Recon (ISR)",
+   "verdict": "wrong",
+   "rationale": "The only thing shared with the index row is the bare acronym ISR, which the rubric treats as a weak generic name. The index name is a specific Low Earth Orbit ISR effort under the Tactical Electronic Surveillance System advanced-development line; the announcement buys open-ended 'research, development, test and evaluation support to intelligence, surveillance and reconnaissance weapon systems' - a support-services modification with no system, increment or program named. Even though the funds are fiscal 2021 RDT&E Army, an unnamed ISR support ceiling cannot be attributed to this or any single program element."
+  }
+ ]
+}

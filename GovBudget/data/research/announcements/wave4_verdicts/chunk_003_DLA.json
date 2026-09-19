@@ -1,0 +1,53 @@
+{
+ "chunk": "chunk_003_DLA.json",
+ "proposals": [
+  {
+   "record_index": 4,
+   "article_id": "4189244",
+   "piid": "SPRMM125DMC01",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "for various integrated weapons systems equipment and services in support of Virginia-class submarines and active surface ships",
+   "lexicon_quote": "Weapon System Sustainment (WSS)",
+   "rationale": "Rejected under §3 on three counts at once. It is the IDIQ-umbrella pattern the rubric rejects by design: a $5,000,000,000 six-awardee maximum-value ceiling (SPRMM1-25-D-MC01 through MC06) issued under one solicitation, naming no program at all. The only overlap with the index is the generic English phrase 'weapons systems' against the lexicon name 'Weapon System Sustainment (WSS)' — a weak generic name, not the program's own designator, and the announcement never writes 'Weapon System Sustainment' or 'WSS'. What it does name — Virginia-class submarines and active surface ships — is a PLATFORM the contract supplies, not the 0603712S RDT&E line's own work; and the award is a DLA Maritime supply-chain buy on working capital funds, which is the appropriation-mismatch failure mode Lens A exists to catch. No link."
+  },
+  {
+   "record_index": 36,
+   "article_id": "1509254",
+   "piid": "SPE60218D0482",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "Using customer is Defense Logistics Agency Energy. Type of appropriation is fiscal 2018 defense working capi",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "rationale": "Representative of the single largest trap family in this chunk: roughly nineteen records here are bulk fuel buys or 50-year utility-privatization contracts whose only tie to the index is the string 'Energy' in the contracting office name 'Defense Logistics Agency Energy'. That is a CONTRACTING ACTIVITY, not a program name — the announcement never writes 'Energy Readiness Program' or 'ERP', and §3 rejects weak generic names used as English words. The work bought is commodity jet fuel delivered to Turkey, Spain, Italy, Portugal, Greenland and the Central European Pipeline System on defense working capital funds, which cannot fund an RDT&E program element's own development work. The same reasoning disposes of records 10, 15, 17, 18, 23, 27, 28, 31, 34, 43, 45, 47, 52, 55, 61, 63, 64, 65 (fuel) and 29, 46, 48, 50, 53, 56, 66, 71, 72, 74 (utility privatization); one entry is filed rather than thirty so the trap is recorded without burning refute passes."
+  },
+  {
+   "record_index": 76,
+   "article_id": "1714535",
+   "piid": "N0002419C5412",
+   "pe_bli": "0603680S",
+   "program_name": "The Strategic Materials (SM)",
+   "lexicon_doc": "68",
+   "verdict": "wrong",
+   "announcement_evidence": "cost-plus-incentive contract for the engineering, manufacturing, and development of Standard Missile-2 Block IIIC",
+   "lexicon_quote": "The Strategic Materials (SM)",
+   "rationale": "Pure acronym collision, filed so the collision is on the record rather than left for a later matcher to rediscover. 'Standard Missile-2' normalises to SM-2, which a designator-variant matcher would collide with the ManTech project 'The Strategic Materials (SM)' — but the two share nothing except two letters, and §3 rejects weak generic designators used this way. The record is also not a DLA action at all: PIID N00024-19-C-5412 is a Naval Sea Systems Command award funded with fiscal 2019 and 2018 Navy RDT&E, sitting in this chunk only because the paragraph shares a daily-digest article_id (1714535) with a DLA item. A DLA 0603680S Manufacturing Technology line cannot be the funding line for a Navy missile EMD contract. No link."
+  },
+  {
+   "record_index": 78,
+   "article_id": "1714535",
+   "piid": "W52P1J12G0048",
+   "pe_bli": "0603712S",
+   "program_name": "Logistics Technology Research (LTR)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "for logistics support services, maintenance, supply, and transportation services",
+   "lexicon_quote": "Logistics Technology Research (LTR)",
+   "rationale": "Rejected as generic services under §3, the named-and-listed example ('engineering support, logistics, base operations'). The only overlap with the index is the common noun 'logistics', which appears in five separate index names (LTR, IMRLS, DLIR, MLN, SDD) precisely because it is a DLA-wide word rather than a program identity — that ambiguity is itself the reason the evidence standard is not met. The announcement names no program, and the work is theatre sustainment at Bagram, Afghanistan under an Army Contracting Command Rock Island order (W52P1J-12-G-0048) obligating fiscal 2019 Army operations and maintenance funds — O&M sustainment against an RDT&E line is exactly the attribution failure the rubric flags. Like record 76 this paragraph is in the chunk only through a shared daily-digest article_id. No link."
+  }
+ ]
+}

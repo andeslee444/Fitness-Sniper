@@ -1,0 +1,113 @@
+{
+ "chunk": "chunk_144_DLA.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "3077698",
+   "piid": "SPE30022D3346",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "has been awarded a maximum $19,838,000 fixed-price with economic-price-adjustment, indefinite-quantity contract for full-line food distribution",
+   "lexicon_quote": "The Subsistence Network (SUBNET)\t0603680S\t105\tManufacturing Technology Program",
+   "rationale": "The only route from this record to SUBNET is a description match on the word 'subsistence' implied by 'full-line food distribution' — the announcement never names SUBNET, the Subsistence Network, or any program at all. Section 3 rejects it twice over: the buy is a commodity food-distribution bridge contract with no named program, and the appropriation is stated as 'fiscal 2022 through 2023 defense working capital funds', i.e. DLA's revolving commodity account, whereas 0603680S is an RDT&E Manufacturing Technology line whose SUBNET project develops subsistence supply-chain technology rather than buying the food. Attaching a working-capital commodity distribution award to an RDT&E ManTech line is exactly the appropriation-mismatch failure mode the rubric names in section 1."
+  },
+  {
+   "record_index": 2,
+   "article_id": "2321448",
+   "piid": "SPE4AX20D9412",
+   "pe_bli": "0603712S",
+   "program_name": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "firm-fixed-price, requirements type prospective-price-determination contract for supply chain management, logistics support and individually priced parts",
+   "lexicon_quote": "Integrated Manufacturing Readiness Logistics Support (IMRLS)\t0603712S\t105\tGeneric Logistics R&D Technology Demonstrations",
+   "rationale": "'logistics support' here is ordinary English inside a parts-and-supply-chain services description, not the program name IMRLS, which the announcement never spells out or abbreviates. Section 3 rejects generic services — supply chain management and individually priced parts under defense working capital funds — and the shared words are a fragment of a longer designator, which is the weakest possible identity evidence. 0603712S funds generic logistics R&D technology demonstrations; a requirements contract for aviation spare parts does not fund that line's own work."
+  },
+  {
+   "record_index": 17,
+   "article_id": "628084",
+   "piid": "SPE7LX16D0023",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "has been awarded a maximum $19,526,167 fixed-price with price-redetermination, indefinite-quantity contract in support of multiple weapon systems programs",
+   "rationale": "'multiple weapon systems programs' is the announcement explicitly declining to name a program, which is the opposite of naming WSS; the phrase overlaps the lexicon name only because 'weapon system' is generic. Section 3 rejects both a weak generic name and an indefinite-quantity ceiling with no named program. The award is a Cummins engine-parts indefinite-quantity contract on fiscal 2016 through 2019 defense working capital funds through DLA Land and Maritime, not RDT&E work on the 0603712S logistics technology demonstration line.",
+   "lexicon_quote": "Weapon System Sustainment (WSS)\t0603712S\t105\tGeneric Logistics R&D Technology Demonstrations"
+  },
+  {
+   "record_index": 23,
+   "article_id": "2037058",
+   "piid": "SP470220C0004",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "cost-plus-fixed-fee, bridge contract for automated tank gauging, independent alarm system and overfill protection equipment maintenance",
+   "lexicon_quote": "Energy Readiness Program (ERP)\t0603712S\t216\tGeneric Logistics R&D Technology Demonstrations",
+   "rationale": "The only link would be a description match between fuel-infrastructure gauging equipment and the word 'Energy' in the lexicon name; the announcement names no program and never uses 'Energy Readiness Program' or 'ERP' (the acronym appears nowhere in the chunk at a word boundary). Section 3 rejects this as generic services — equipment maintenance under a bridge contract — and the money is DLA Energy working capital funds for sustaining existing tank-gauging hardware, not RDT&E funding a technology demonstration on 0603712S."
+  },
+  {
+   "record_index": 24,
+   "article_id": "3179685",
+   "piid": "SPE7LX23D0004",
+   "pe_bli": "0603712S",
+   "program_name": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "indefinite-quantity contract for integrated product support for line-side delivery of bench stock items for the maintenance/production lines at Anniston Army Depot, Alabama",
+   "lexicon_quote": "Integrated Manufacturing Readiness Logistics Support (IMRLS)\t0603712S\t105\tGeneric Logistics R&D Technology Demonstrations",
+   "rationale": "'integrated product support' and depot 'production lines' echo the words 'Integrated', 'Manufacturing Readiness' and 'Logistics Support' without the announcement ever naming IMRLS; this is word overlap across a long generic designator, not an alias. Section 3 rejects it as generic services — bench-stock line-side delivery at a depot — with no named program, and the appropriation is fiscal 2022 through 2025 defense working capital funds for depot materiel support rather than RDT&E on the 0603712S demonstration line."
+  },
+  {
+   "record_index": 40,
+   "article_id": "3000253",
+   "piid": "SP450022D0009",
+   "pe_bli": "0603712S",
+   "program_name": "Strategic Distribution & Disposition (SDD)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "firm-fixed-priced, indefinite-delivery/indefinite-quantity contract for removal, transportation and disposal of hazardous waste",
+   "lexicon_quote": "Strategic Distribution & Disposition (SDD)\t0603712S\t216\tGeneric Logistics R&D Technology Demonstrations",
+   "rationale": "The word 'Disposition' in this record belongs to the contracting organization ('the Defense Logistics Agency Disposition Services'), not to a named program, and section 3 treats an organization or contractor name as insufficient evidence; the announcement never says 'Strategic Distribution' or 'SDD'. The award is routine hazardous-waste removal and disposal services on defense working capital funds in Washington and Oregon — generic services under section 3 — while 0603712S funds logistics R&D technology demonstrations."
+  },
+  {
+   "record_index": 42,
+   "article_id": "1975222",
+   "piid": "SPRHA419C0021",
+   "pe_bli": "0603680S",
+   "program_name": "Advanced Microcircuit Emulation (AME)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "has been awarded a maximum $18,940,000 letter contract for circuit card assemblies",
+   "lexicon_quote": "Advanced Microcircuit Emulation (AME)\t0603680S\t105\tManufacturing Technology Program",
+   "rationale": "Only a description match connects 'circuit card assemblies' to Advanced Microcircuit Emulation; the announcement names no program and the token 'AME' never occurs at a word boundary in this chunk (it matches only inside 'Name' and 'American'). AME is a ManTech R&D project that develops emulation sources for obsolete microcircuits, whereas this is a sole-source letter contract buying finished circuit card assemblies for Air Force sustainment on fiscal 2019 defense working capital funds — a procurement of an end item attached to an RDT&E line, which section 1 names as the characteristic failure mode."
+  },
+  {
+   "record_index": 51,
+   "article_id": "2026407",
+   "piid": "SPE2D120D0003",
+   "pe_bli": "0603712S",
+   "program_name": "Medical Logistics Network (MLN)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "indefinite-delivery/indefinite-quantity contract for medical equipment",
+   "lexicon_quote": "Medical Logistics Network (MLN)\t0603712S\t216\tGeneric Logistics R&D Technology Demonstrations",
+   "rationale": "The record supports at most a description match between 'medical equipment' and the word 'Medical' in the lexicon name; neither 'Medical Logistics Network' nor 'MLN' appears. Section 3 rejects a commodity buy with no named program: this is a competitively awarded five-year medical-equipment supply contract through DLA Troop Support on fiscal 2020 through 2025 defense working capital funds, serving all services and federal civilian agencies, not RDT&E work on the 0603712S logistics technology demonstration line."
+  },
+  {
+   "record_index": 79,
+   "article_id": "1786958",
+   "piid": "SPE1C119D1138",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "indefinite-delivery/indefinite-quantity contract for Army Combat Uniform coats and the Improved Hot Weather Combat Uniform",
+   "lexicon_quote": "Military Uniform System Technology (MUST)\t0603680S\t216\tManufacturing Technology Program",
+   "rationale": "The Army Combat Uniform and the Improved Hot Weather Combat Uniform are end items this contract manufactures, not the ManTech project MUST, which the announcement never names; the match would be description-only. Section 3 rejects it because the named thing is the garment the contract supplies rather than the program the PE funds, and the appropriation is fiscal 2019 through 2021 defense working capital funds for clothing production, not RDT&E. The identity evidence is additionally unsafe: the same index carries two different 0603680S rows abbreviated MUST — 'Military Uniform System Technology' (doc 216) and 'Military Unique Sustainment Technology' (doc 105) — so even the acronym would not resolve to one lexicon row. The other twelve clothing and footwear records in this chunk (3, 9, 14, 26, 48, 52, 55, 56, 59, 60, 61, 64, 65, 72, 78) fail for the same reason and are left unproposed."
+  }
+ ]
+}

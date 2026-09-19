@@ -1,0 +1,342 @@
+{
+ "chunk": "chunk_118_A.json",
+ "proposals": [
+  {
+   "record_index": 6,
+   "article_id": "1746786",
+   "piid": "W31P4Q19F0196",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "lexicon_quote": "PAC-3\t8260C53101\t345\tMSE Missile",
+   "announcement_evidence": "contract for Phased Array Tracking Radar to Intercept on Target, Advanced Capability-3 and Missile Segment Enhancement",
+   "match_basis": "llm-alias",
+   "verdict": "weak",
+   "rationale": "The identity half is clean: the announcement spells out the PATRIOT backronym and ends on Advanced Capability-3, which is PAC-3, and 'PAC-3' is owned by exactly one row in this org's index (8260C53101, MSE Missile, doc 345); 'Missile Segment Enhancement' collides with 0962C50700 (Patriot Mods) but PAC-3 does not. The attribution half fails the section 1 standard. The action is a cost-plus-incentive-fee Foreign Military Sales contract for eleven customers, it states no deliverable at all beyond the two program names, and the only U.S. appropriation it names is 'other procurement, Army' while 8260C53101 is a doc-345 Missile Procurement, Army line - a money-colour conflict rather than mere silence, and the loader's own money-colour guard would be the one to catch it. The surviving PAC-3 links in chunks 000, 011, 014, 021, 026 and 112 all carry a production, delivery or missile-software object and missile-procurement or unnamed funding; this one carries neither, so it does not rise past weak."
+  },
+  {
+   "record_index": 8,
+   "article_id": "641766",
+   "piid": "W56HZV15C0155",
+   "pe_bli": "3446D15400",
+   "program_name": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "HI MOB MULTI-PURP WHLD VEH (HMMWV)\t3446D15400\t346\tHI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "announcement_evidence": "for 120 High Mobility Multipurpose Wheeled Vehicles",
+   "match_basis": "llm-alias",
+   "verdict": "weak",
+   "rationale": "The announcement spells out the vehicle the index abbreviates ('HI MOB MULTI-PURP WHLD VEH (HMMWV)'), AM General is the HMMWV prime, and 3446D15400 is the HMMWV procurement line itself, so this is not a platform-support case. What blocks it is whose quantities these are: the paragraph is explicit that this is a modification to a foreign military sales (Iraq) contract for 120 vehicles, i.e. a foreign customer's case, so the action does not buy the Army line's own end items even though 'fiscal 2016 other procurement funds' is recited. Three earlier chunks (011, 032, 068) reached weak on this same PIID and the same reasoning, and consistency with them is the conservative reading; the smaller true number stands."
+  },
+  {
+   "record_index": 9,
+   "article_id": "1656310",
+   "piid": "W56HZV17DB020",
+   "pe_bli": "0363G85200",
+   "program_name": "Stryker Double-V-Hull (DVH)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "Stryker Double-V-Hull (DVH)\t0363G85200\t350\tStryker Upgrade",
+   "announcement_evidence": "for upgrade of Stryker flat-bottom vehicles to the Double V-Hull Engineering Change Proposal 1 configuration",
+   "match_basis": "designator-normalized",
+   "verdict": "link",
+   "rationale": "The announced work is the hull conversion the Stryker Upgrade line exists to buy: 0363G85200's own narrative carries 'Stryker Double-V-Hull (DVH)', 'Double V Hull A1 (DVHA1)' and 'Production of Stryker DVH A1 Engineering Change Proposal (ECP)', and 'Double V-Hull Engineering Change Proposal 1' is that same configuration under its engineering-change name, so this is a designator variant rather than a different increment. No other PE in this index owns a Double-V-Hull name. General Dynamics Land Systems, Sterling Heights is the Stryker prime and the place of performance, the end item is the upgraded vehicle itself rather than a platform the contract merely supports, and the funds named are 'procurement of weapons and tracked vehicle' - the appropriation family a doc-350 (Procurement of W&TCV, Army) line sits in, so there is no O&M-on-a-procurement-line problem. Chunks 011_A and 032_A already made this same mapping for this PIID.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the announcement obligates 'fiscal 2018 and 2019 procurement of weapons and tracked vehicle funds', and the lake's own accounts on W56HZV17DB020 are 021-2033;021-2040, which intersect 0363G85200's budget_lines account 2033A (doc 350, Procurement of W&TCV, Army) - procurement money on a procurement line, not the O&M-on-a-procurement-line failure mode. The DVH Engineering Change Proposal 1 conversion is the Stryker Upgrade line's own end item being rebuilt at the Stryker prime's own plant, not a platform the contract merely supports, and 'Stryker Upgrade' is a named line that does not match CATCHALL_TITLE."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No other PE in A.tsv owns a Double-V-Hull name: 'Stryker Double-V-Hull (DVH)', 'Double V Hull A1 (DVHA1)', 'DVHA1' and 'Production of Stryker DVH A1 Engineering Change Proposal (ECP)' all sit at 0363G85200 alone, and the only other Stryker owners claim different things entirely - CPI2 at 0230GM0100 (also doc 350) and 'Stryker Infantry Carrier Vehicles (ICV)' at 0203735A (doc 359, RDT&E) - neither of which this announcement names. 'Double V-Hull Engineering Change Proposal 1' is the ECP increment the same PE's own rows already carry, not a competing increment, and the identifier is the configuration rather than General Dynamics' name. Consistent with the unrefuted mapping chunks 011_A and 032_A made on this same PIID."
+   }
+  },
+  {
+   "record_index": 13,
+   "article_id": "1011584",
+   "piid": "W56HZV13C0052",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)\t8309DA0500\t346\tFamily Of Heavy Tactical Vehicles (FHTV)",
+   "announcement_evidence": "armor B-kits for 370 Heavy Expanded Mobility Tactical Trucks and 188 Palletized Load Systems",
+   "verdict": "weak",
+   "rationale": "Both truck names in the paragraph (HEMTT and Palletized Load System) are names 8309DA0500's own narrative owns, so the surface match is real, but what the contract buys is add-on armor B-kits from Fidelity Technologies, a kit integrator rather than the truck builder. On the section 3 reading the trucks are the PLATFORM the kits ride on, not the end item this line procures, and armour-kit buys are usually carried on a separate armour or modification line; chunk_035_A reached weak on exactly this shape (underbody armour kits for the Family of Medium Tactical Vehicles). The funding recital is no help either - 'other funds' in fiscal 2016 and 2017, with no appropriation named that could be tested against a doc-346 Other Procurement, Army line. Weak, not a link."
+  },
+  {
+   "record_index": 14,
+   "article_id": "3495375",
+   "piid": "W56KGY23F0051",
+   "pe_bli": "9897K49000",
+   "program_name": "Mounted APNT System (MAPS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Mounted APNT System (MAPS)\t9897K49000\t346\tAssured Positioning, Navigation and Timing",
+   "announcement_evidence": "firm-fixed-price contract to procure Mounted Assured Positioning, Navigation and Timing System units",
+   "match_basis": "llm-alias",
+   "verdict": "link",
+   "rationale": "The announcement writes out in full the name the index abbreviates: 'Mounted Assured Positioning, Navigation and Timing System' is 'Mounted APNT System (MAPS)' and nothing else, and Collins Aerospace, Cedar Rapids is the MAPS producer. The name is a two-way collision - 0604120A (doc 353, the RDT&E PNT line) owns it as well - and the announcement resolves it: this is a firm-fixed-price action 'to procure ... units', production hardware rather than development, which belongs to the doc-346 Other Procurement, Army line 9897K49000 whose title is the PNT program itself rather than a rollup. Chunk_065_A linked this same PE for MAPS production support on weaker wording (engineering services in support of production); a unit buy is the stronger case.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money colour is disjoint, and the lake says so even though the text does not: all 12 lake rows on W56KGY23F0051 (Rockwell Collins, from 2023-08-16, totalling $24,932,490.87 - the announced amount to the dollar) carry exactly one federal account, 017-1109, Procurement, Marine Corps, while 9897K49000 is an Army Other Procurement line (budget_lines 2035A -> 021-2035). Not one dollar of this order is this line's money; money_color_ok({'017-1109'}, {'021-2035'}) is False, so load_announcement_links.py would skip the link as a money mismatch anyway. The award is an order (parent W56KGY22D0004) whose 'funding will be determined with each order' resolved to another service's appropriation, so the proposal's 'procurement action against a procurement line' argument fails on WHOSE procurement."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A real two-owner collision - 'Mounted APNT System (MAPS)' is an index row at BOTH 0604120A (doc 353, RDT&E) and the proposed 9897K49000 (doc 346, OPA) - so the spelled-out name cannot pick a line by itself; but the announcement's own object breaks the tie toward the procurement line, an FFP action 'to procure ... units' being a hardware buy that an RDT&E development line does not execute, and no generation or increment is named that would point elsewhere (both MAPS generations sit on this one OPA row, and 0604120A's competing claim rests on the same CDD). One caveat lens A should weigh rather than lens B: the accepted chunk_065_A precedent for this PE broke the identical collision with 'fiscal 2024 other procurement, Army funds' stated in the text, whereas this record defers funding to each order, so here the verb carries the resolution alone and the colour of money is untested."
+   }
+  },
+  {
+   "record_index": 14,
+   "article_id": "3495375",
+   "piid": "W56KGY23F0051",
+   "pe_bli": "0604120A",
+   "program_name": "Mounted APNT System (MAPS)",
+   "lexicon_doc": "353",
+   "lexicon_quote": "Mounted APNT System (MAPS)\t0604120A\t353\tAssured Positioning, Navigation and Timing (PNT)",
+   "announcement_evidence": "firm-fixed-price contract to procure Mounted Assured Positioning, Navigation and Timing System units",
+   "verdict": "weak",
+   "rationale": "Recorded so the collision is on the ledger rather than left invisible: 'Mounted APNT System (MAPS)' is owned by two PEs in this index, this doc-353 RDT&E line and the doc-346 procurement line 9897K49000. The discriminator is in the announcement itself - a firm-fixed-price order to procure units is production, not the advanced development this PE funds - so the RDT&E member is the one that does not survive. Named here as weak so the reader can see which member was chosen and why, not as a second link on the same dollars."
+  },
+  {
+   "record_index": 15,
+   "article_id": "2480599",
+   "piid": "W15P7T21F0002",
+   "pe_bli": "1982B07100",
+   "program_name": "Tactical Network Technology Mod In Svc",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Tactical Network Technology Mod In Svc\t1982B07100\t346\tTactical Network Technology Mod In Svc",
+   "announcement_evidence": "for system engineering and program management services for Product Manager Tactical Network - Mission Network and Tactical Network-Transport on the Move systems and equipment",
+   "match_basis": "llm-description",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on two section 3 patterns at once. First, generic services: the deliverable is 'system engineering and program management services', the paragraph's own words, which is precisely the engineering-support pattern the rubric excludes regardless of whose systems the support touches. Second, weak generic name: the only overlap with the index is the English phrase 'Tactical Network', which here names a PEO C3T product-management office (PM Tactical Network) rather than any of the items 1982B07100's narrative actually owns - Global Agile Integrated Transport, Regional Hub Nodes, the Satellite Transportable Terminal, the Scalable Network Node, the Tactical Hub Node. Publishing this would assert that a support-services task order executed a network-modification procurement line, which the announcement does not support even though the fiscal 2019 other procurement (Army) money is the right colour for that line."
+  },
+  {
+   "record_index": 21,
+   "article_id": "3353555",
+   "piid": "W912HZ23D0004",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "lexicon_quote": "High Performance Computing Modernization Program\t0603461A\t351\tHigh Performance Computing Modernization Program",
+   "announcement_evidence": "to provide subject matter expertise to the Department of Defense High Performance Computing Modernization Program",
+   "match_basis": "exact-name",
+   "verdict": "weak",
+   "rationale": "The program name is carried verbatim, the named beneficiary is the program this PE funds, and the contracting activity is the Corps' Engineer Research and Development Center at Vicksburg, which hosts one of the DoD Supercomputing Resource Centers - so this is not a coincidence of words. It still does not clear section 1. What is bought is 'subject matter expertise', undifferentiated consulting labour, on an indefinite-delivery vehicle whose work locations and funding are 'determined with each order', so no dollar of this ceiling is shown to execute the modernization program's own work rather than general advisory support; that is the generic-services pattern in section 3. Earlier chunks split on exactly this shape - 026_A called management-and-technical support wrong, 029_A, 065_A, 078_A, 091_A and 110_A called it weak, and 112_A linked only where the award bought the program's own computing systems. Weak is the consistent and the smaller call."
+  },
+  {
+   "record_index": 25,
+   "article_id": "792289",
+   "piid": "W52P1J15C0004",
+   "pe_bli": "5399AZ3537",
+   "program_name": "Common Infrared Countermeasures (CIRCM)",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Common Infrared Countermeasures (CIRCM)\t5399AZ3537\t343\tCommon Infrared Countermeasures (CIRCM)",
+   "announcement_evidence": "for infrared countermeasure flares",
+   "match_basis": "llm-description",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3 as a weak generic name, and recorded so the trap is on the ledger. 'Infrared countermeasure' here is an English category term attached to flares: Kilgore Flares, Toone, Tennessee makes expendable decoy flares, while every infrared-countermeasure row in this org's index names a directed-energy jammer - CIRCM at 5399AZ3537 and 0605035A, SIIRCM and ATIRCM at 5044AZ3507. Flares and a laser jammer are different articles of equipment, and the action is besides a foreign military sales modification for the UAE and Qatar. Chunk_112_A rejected the sibling contract W52P1J-15-C-0005 on this identical wording and reasoning; the same answer holds here."
+  },
+  {
+   "record_index": 29,
+   "article_id": "800513",
+   "piid": "W58RGZ14C0008",
+   "pe_bli": "9670A00005",
+   "program_name": "MQ-1C Gray Eagle",
+   "lexicon_doc": "343",
+   "lexicon_quote": "MQ-1C Gray Eagle\t9670A00005\t343\tMQ-1 UAV",
+   "announcement_evidence": "for an additional six months of logistics support for the Warrior A and Gray Eagle Block 0 unmanned aircraft systems",
+   "match_basis": "llm-designator-variant",
+   "verdict": "wrong",
+   "rationale": "This is the documented failure mode rather than a judgement call: the action buys 'an additional six months of logistics support' and obligates fiscal 2016 operations and maintenance (Army) funds, while 9670A00005 is a doc-343 Aircraft Procurement, Army line - O&M sustainment attached to a procurement line, which the 2026-09-04 held-out study found in three of six refutations. The identity is shaky too: 'Gray Eagle' is owned by four PEs in this index (0305219A, 0756AA6601, 9000I49000, 9670A00005) with no discriminator in the text, and the aircraft named are Warrior A and Gray Eagle Block 0, the earlier variants rather than the MQ-1C the index row designates. Chunks 021_A and 039_A rejected this same PIID on the same ground."
+  },
+  {
+   "record_index": 36,
+   "article_id": "698223",
+   "piid": "W911QY16D0025",
+   "pe_bli": "0050MA0780",
+   "program_name": "The Integrated Commercial Intrusion Detection System (ICIDS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The Integrated Commercial Intrusion Detection System (ICIDS)\t0050MA0780\t346\tPhysical Security Systems (OPA3)",
+   "announcement_evidence": "firm-fixed-price contract with options for the Integrated Commercial Intrusion Detection System",
+   "match_basis": "exact-name",
+   "verdict": "link",
+   "rationale": "The announcement carries the program's full name verbatim - the index row differs only by its leading article and the parenthetical acronym - and 0050MA0780 is the only PE in this index that owns it; the near-name 'Commercial Intrusion Detection Systems (CIDS)' sits under the same PE, so there is no alternative owner to weigh. Physical Security Systems (OPA3) is a doc-346 Other Procurement, Army line that buys ICIDS as its own end item, and it is a named line rather than a catch-all under the loader's title test. The buy is the system itself with options, not engineering support or sustainment of someone else's platform; the one caveat for the refute lenses is that funding and work location are deferred to each order, so no appropriation is stated to test - but section 3's exclusion is for IDIQ ceilings with NO named program, and this one names the program in its object.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The proposal's own stated caveat resolves in its favour: funding is deferred per order in the text, but every lake row on W911QY16D0025 carries 021-2035 (Other Procurement, Army), precisely 0050MA0780's 2035A - the money colour is affirmatively confirmed, not merely unrefuted. The object of the award is the named system itself ('firm-fixed-price contract with options for the Integrated Commercial Intrusion Detection System'), the end item this line buys, not a platform the contract supports and not engineering support or base operations; 'Physical Security Systems (OPA3)' is a named procurement line and does not match CATCHALL_TITLE (no '<$', no leading 'Other'/'Miscellaneous')."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Integrated Commercial Intrusion Detection System (ICIDS)' has exactly one owner in A.tsv, and the only near-name in the whole index, 'Commercial Intrusion Detection Systems (CIDS)', sits at that same 0050MA0780 alongside 'Automated Installation Entry (AIE)', so there is no alternative PE the string could be read onto. The announcement prints the name in full rather than an alias, names no increment (ICIDS-IV or otherwise) that would point to a different line, and the identifier is the system itself, not Minuteman Security Solutions' name."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "628838",
+   "piid": "W31P4Q13C0231",
+   "pe_bli": "0603778A",
+   "program_name": "Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "359",
+   "lexicon_quote": "Multiple Launch Rocket System (MLRS)\t0603778A\t359\tMLRS Product Improvement Program",
+   "announcement_evidence": "for 29,004 units for the demilitarization and disposal of Multiple Launch Rocket System M26 (H104) rocket pod containers, rockets, and components",
+   "match_basis": "exact-name",
+   "verdict": "wrong",
+   "rationale": "The index name appears verbatim, which is why this belongs on the ledger, but the work is the destruction of legacy M26 rockets and pod containers - demilitarization and disposal at Carthage, Missouri - not any improvement, development or production the MLRS Product Improvement Program funds. Disposal of a retired munition is the end of a program's life, not that program element's own work, and the money recited is 'other procurement funds' against an RDT&E (6.3) PE, a second mismatch. The M26 is also not the M270A1/M270A2 launcher family the index row's narrative describes. Chunk_112_A rejected this same PIID on the same grounds."
+  },
+  {
+   "record_index": 42,
+   "article_id": "3934198",
+   "piid": "W58RGZ25C0001",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Fire Control Radar (FCR)\t5757A05111\t343\tAH-64 Apache Block IIIA Reman",
+   "announcement_evidence": "contract for radar electronic units and peculiar ground support equipment spares",
+   "match_basis": "llm-description",
+   "verdict": "wrong",
+   "rationale": "Recorded because the pull is real and should be refused explicitly: Longbow LLC, Orlando is the joint venture that builds the Apache's Longbow fire control radar, and W58RGZ is the Redstone Apache activity, so a looser matcher would reach for 'Fire Control Radar (FCR)' under AH-64 Apache Block IIIA Reman. The announcement names no program at all - 'radar electronic units and peculiar ground support equipment spares' is a bare component-and-spares description, and inferring the program from the contractor's identity is exactly the 'evidence is just a contractor name' failure lens B exists to catch. The buy is spares and ground support equipment, the support tail rather than the remanufacture this line funds, and the whole obligation is fiscal 2025 Foreign Military Sales (Australia and Kuwait) money. Chunk_115_A rejected the same shape for the same contractor; chunk_011_A could only reach weak on this PIID where the text at least said 'fire control radar systems', and this paragraph does not."
+  },
+  {
+   "record_index": 43,
+   "article_id": "815105",
+   "piid": "W911QY16D0042",
+   "pe_bli": "9120M65800",
+   "program_name": "Multi Temperature Refrigerated Container System (MTRCS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Multi Temperature Refrigerated Container System (MTRCS)\t9120M65800\t346\tField Feeding Equipment",
+   "announcement_evidence": "for the engineering, design and production of the Multi-Temperature Refrigerated Container System",
+   "match_basis": "exact-name",
+   "verdict": "link",
+   "rationale": "The announcement names the program as written, the only difference from the index row being one hyphen in 'Multi-Temperature', and no other PE in this index owns the name. The object is the production of that system - 'engineering, design and production of the Multi-Temperature Refrigerated Container System' - so this is the line's own end item and not support of a platform some other line funds; MTRCS is the refrigerated container the Army's field-feeding equipment account buys, and 9120M65800 (Field Feeding Equipment, doc 346 Other Procurement, Army) is the line whose narrative owns it. The contracting activity, Army Contracting Command Natick, is the field-feeding and soldier-equipment activity, which corroborates rather than merely permits the mapping. The caveat for the refute lenses: options and per-order funding mean no appropriation is stated, so the money colour is untested rather than confirmed.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No appropriation is stated and the lake carries NULL federal_accounts_funding_this_award and $0 obligated across all 12 rows of W911QY16D0042, so the money colour is unknown rather than mismatched - the disposition this wave has consistently given per-order IDIQs whose object is the line's own end item (chunks 026_A, 032_A, 078_A, 094_A), and unlike the JPADS and MAGNA refutations nothing here points at a competing colour: MTRCS is an Army field-feeding item, not a joint or multi-service program, the award is its 'engineering, design and production' by a manufacturer rather than sustainment or spares, and ACC-Natick is the field-feeding activity. 9120M65800 (Field Feeding Equipment, 2035A) is a named OPA line, not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Multi Temperature Refrigerated Container System (MTRCS)' is owned by 9120M65800 alone. The other refrigeration and container rows in the index are different names at different PEs - 'The Containerized Ice Making System (CIMS)' and 'The Refrigeration Tool Kit (RTK)' at 1110MA4500, 'Rough Terrain Container Handler (RTCH)', the CTE/ECHU container rows at 8309DA0500, 'The Containerized Diver Recompression Chamber (CDRC)' at 9113R07005 - and none is the string the announcement prints; the two field-feeding RDT&E rows (0603118A, 0603747A) own only demonstration/menu-development names, not this system. No variant or increment is named, and the evidence is the program name, not Berg Manufacturing's."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "2362207",
+   "piid": "W911QY20C0102",
+   "pe_bli": "0603774A",
+   "program_name": "Integrated Visual Augmentation System (IVAS)",
+   "lexicon_doc": "353",
+   "lexicon_quote": "Integrated Visual Augmentation System (IVAS)\t0603774A\t353\tNight Vision Systems Advanced Development",
+   "announcement_evidence": "to develop a variety of technologies to support research and development concept prototype components for dismounted Soldier mission command systems, the Integrated Visual Augmentation System and Nett Warrior",
+   "match_basis": "exact-name",
+   "verdict": "link",
+   "rationale": "The announcement names IVAS in full and 0603774A is the only PE in this index that owns it. The money colour is the right way round for once: fiscal 2020 research, development, test and evaluation (Army) funds against a 6.3 advanced-development PE, with a cost-plus-fixed-fee instrument and 'research and development concept prototype components' as the object - prototype development is what an advanced-development line funds, so this is not O&M or production bolted onto the wrong appropriation. Two of the three things named fall inside this same PE, since its narrative also owns 'Soldier Borne Mission Command (SBMC)', the dismounted Soldier mission command work the paragraph leads with. The caveat the refute lenses should weigh, stated plainly: Nett Warrior belongs to different PEs, so attribution of the whole ceiling to this line is partial, and 'develop a variety of technologies' is broad enough that a reviewer could read it as development support rather than the program's own work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "This is the cleanest money case of the seven: fiscal 2020 research, development, test and evaluation (Army) funds at award, and all 44 lake rows on W911QY20C0102 carry 021-2040 (with 097-0400), intersecting 0603774A's 2040A - development money on a 6.3 advanced-development line, the exact opposite of the O&M-attached-to-RDT&E failure mode. Developing concept prototype components for dismounted Soldier mission command (the PE's own 'Soldier Borne Mission Command (SBMC)') and IVAS is the work this line exists to fund, so IVAS is not a fielded platform the contract merely services, and the deliverable is developed technology rather than the section 3 'engineering support' pattern. The residual the proposal names - Nett Warrior sits on a different line, so the $24.6M ceiling is only partly this line's, and only $2.1M was obligated at award - is a partial-attribution/alternative-owner question for lens B, not a money-or-mission break."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: the one sentence names three subjects and 0604818A (doc 355, Army Tactical Command & Control Hardware & Software) owns two of them - 'Nett Warrior (NW)' and 'Soldier Borne Mission Command (SBMC)', the latter a row 0603774A merely shares with it - so this evidence links that PE at least as well as the proposed one, and 8825R80501 (Ground Soldier System) owns 'Nett Warrior (NW)' as a third claimant. The appropriation cannot break the tie the way it does on the procurement cases in this wave: 0603774A (doc 353) and 0604818A (doc 355) are both RDT&E Army lines, so 'fiscal 2020 research, development, test and evaluation (Army)' fits either owner. IVAS itself appears as one of several programs the work is 'to support', with a small business developing 'a variety of technologies' rather than the line's own article, which is the same identity failure lens B refuted on the Nett Warrior collision in chunk_081_A."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "2362207",
+   "piid": "W911QY20C0102",
+   "pe_bli": "0604818A",
+   "program_name": "Nett Warrior (NW)",
+   "lexicon_doc": "355",
+   "lexicon_quote": "Nett Warrior (NW)\t0604818A\t355\tArmy Tactical Command & Control Hardware & Software",
+   "announcement_evidence": "to develop a variety of technologies to support research and development concept prototype components for dismounted Soldier mission command systems, the Integrated Visual Augmentation System and Nett Warrior",
+   "verdict": "weak",
+   "rationale": "Nett Warrior is named verbatim and the RDT&E funding points at this PE rather than at the procurement line 8825R80501 that owns the same name, so the member choice is defensible - but the name is a two-way collision and Nett Warrior is only the third of three systems the paragraph names, listed after the dismounted mission command work and IVAS that both sit under 0603774A. Claiming this ceiling for the Army Tactical Command and Control Hardware and Software line as well as for Night Vision Systems Advanced Development would count the same dollars twice on the strength of one trailing name. Recorded as weak so the collision and the choice are visible."
+  },
+  {
+   "record_index": 57,
+   "article_id": "2032038",
+   "piid": "W56HZV20D0016",
+   "pe_bli": "6866D15500",
+   "program_name": "Medium Tactical Vehicle (MTV)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Medium Tactical Vehicle (MTV)\t6866D15500\t346\tFamily Of Medium Tactical Veh (FMTV)",
+   "announcement_evidence": "for two commercial Medium Tactical Vehicle Variants and spare parts",
+   "match_basis": "llm-alias",
+   "verdict": "wrong",
+   "rationale": "The string 'Medium Tactical Vehicle' is in the index, which is the trap, but the article designated is different: Navistar Defense's 'commercial Medium Tactical Vehicle Variant' is a commercial-derivative truck sold through foreign military sales, not the Oshkosh-built Family of Medium Tactical Vehicles that 6866D15500 procures - chunk_110_A shows the underlying announcement for this same PIID was a Foreign Military Sales (Somalia) award for two vehicles, and rejected it on that ground. This record is besides only a correction notice restating the award amount: it carries no appropriation, no work location and no program context, so there is nothing in it that could bind two trucks for a foreign customer to this line's own quantities. Wrong, consistent with chunk_110_A."
+  },
+  {
+   "record_index": 67,
+   "article_id": "1154244",
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)\t8309DA0500\t346\tFamily Of Heavy Tactical Vehicles (FHTV)",
+   "announcement_evidence": "for recapitalized Heavy Expanded Mobility Tactical Trucks M984A4",
+   "match_basis": "exact-name",
+   "verdict": "link",
+   "rationale": "The truck's full name is carried verbatim and 8309DA0500's own narrative owns it, along with the Palletized Load System and the HEMTT A4 Load Handling System also named in this order; no other PE in this index owns 'Heavy Expanded Mobility Tactical Truck'. W56HZV-15-D-0031 is the Oshkosh Family of Heavy Tactical Vehicles recapitalization contract, the work is the M984A0/A2 to M984A4 conversion plus M984A4 self-recovery winches - the line's own end item being rebuilt, not a platform the contract merely supports - and the obligation is fiscal 2015 and 2017 other procurement, Army funds, the appropriation a doc-346 line sits in. Chunks 017_A, 021_A, 029_A, 072_A and 091_A all linked this PE on this same contract for this same recapitalization language.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement obligates 'fiscal 2015 and 2017 other procurement, Army funds' and the lake's accounts for W56HZV15D0031 are 021-2035;097-0350, intersecting 8309DA0500's 2035A: procurement money on a doc-346 Other Procurement, Army line. Recapitalizing M984A0/A2 to M984A4 HEMTTs, PLS M1075A1 and M984A4 self-recovery winches is the FHTV line's own end item rebuilt under a procurement-funded RECAP program - not an O&M sustainment tail dressed as procurement, and not a platform the contract merely supports, since the trucks are what the line buys. FHTV is a named family line, not a catch-all aggregate."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The HEMTT string does have a second owner, but the award's own words exclude it: 0604114A carries it only as 'M983A4 Heavy Expanded Mobility Tactical Truck (HEMTT)', the prime mover under the LTAMD Sensor RDT&E line (doc 353), while these are M984A4 wreckers obligated with fiscal 2015 and 2017 other procurement funds, and M984A4 is not a designator any other PE owns - unlike the M1977A4 Common Bridge Transporter that refuted chunk_091_A on this same contract. The paragraph never says 'Family of Heavy Tactical Vehicles', so the FHTV name collision with 8992DA0924 that refuted chunk_072_A does not arise here, and 0604622A (doc 355) owns only CTT/HTV/Leader-Follower names. One partial-overlap caveat for the record: the 50 M1075A0-to-M1075A1 conversions are the PLS Extended Service Program, a name 8331D16506 also owns, so the larger half of the buy is shared ground - but 8331D16506 owns only PLS names and cannot claim the M984A4s or the winches, making it a weaker claimant rather than an equal one, while every item named here is a row of 8309DA0500's own narrative."
+   }
+  },
+  {
+   "record_index": 67,
+   "article_id": "1154244",
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8331D16506",
+   "program_name": "The PLS Extended Service Program (ESP)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The PLS Extended Service Program (ESP)\t8331D16506\t346\tPLS ESP",
+   "announcement_evidence": "Palletized Load System M1075A1 (M1075A0 to M1975A1",
+   "verdict": "weak",
+   "rationale": "The M1075A0 to M1075A1 conversion in this order is literally what the PLS Extended Service Program does, and chunk_021_A linked this PE for that conversion on this same contract - but the name 'The PLS Extended Service Program (ESP)' is owned by BOTH 8331D16506 and 8309DA0500 in this index, and 'Palletized Load System (PLS)' is owned by 8309DA0500 as well, so nothing in the paragraph says which member funds the fifty trucks. This single delivery order is one mixed bill for HEMTT recapitalization, PLS recapitalization and winches, already attributed above to the Family of Heavy Tactical Vehicles line; attaching the same dollars to PLS ESP on an unresolved collision would double-count them. Weak."
+  },
+  {
+   "record_index": 74,
+   "article_id": "1960562",
+   "piid": "W56HZV15C0095",
+   "pe_bli": "5731D15610",
+   "program_name": "The Joint Light Tactical Vehicle (JLTV)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The Joint Light Tactical Vehicle (JLTV)\t5731D15610\t346\tJOINT LIGHT TACTICAL VEHICLE FAMILY OF VEHICL",
+   "announcement_evidence": "to provide total package fielding for the Joint Light Tactical Vehicle",
+   "match_basis": "exact-name",
+   "verdict": "link",
+   "rationale": "The program name is carried verbatim and the action is a modification to W56HZV-15-C-0095, the Oshkosh JLTV production contract that chunks 011, 014, 017, 021, 026, 072, 094, 101 and 112 have all linked to this same procurement line. Total package fielding is the delivery of the vehicles and their accompanying kits, publications and support to the gaining unit - procurement-funded fielding content of the buy itself, not an O&M sustainment tail - and the recital confirms it: fiscal 2019 other procurement, Army funds, the appropriation the doc-346 JLTV Family of Vehicles line sits in. Chunk_112_A linked the same PE on weaker wording for the same contract ('interim contractor support for fielding'). The name collides with the RDT&E EMD line 0605812A, and the procurement appropriation plus the production-contract context resolves it.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 other procurement, Army funds are obligated on this modification, and 021-2035 is among W56HZV15C0095's lake funding accounts, matching 5731D15610's 2035A. Total package fielding bought by modification to the JLTV production contract itself and paid from the same procurement appropriation as the vehicles is fielding content of the buy, not an O&M logistics or sustainment service, so it does not trip section 3's generic-services bar; the named thing is the program the line funds (the line's title IS the JLTV family of vehicles) rather than a platform the contract supports, and the line is a named program line, not a rollup. The contract's other accounts (017-1109 Marine Corps, RDT&E, etc.) belong to other actions on the joint vehicle - this action's stated money is Army OPA."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: 0605812A carries the bare 'Joint Light Tactical Vehicle', which is the exact string this announcement prints (the proposal's row is 'The Joint Light Tactical Vehicle (JLTV)'), and the object here is a fielding service - 'to provide total package fielding' - whose only program identifier is the platform name, so the evidence names the vehicle rather than either line's own work. That is precisely the dividing line this wave has already drawn on this very contract: chunk_072_A accepted a bare production modification because it 'contains no support verb', while chunk_112_A refuted 'interim contractor support for fielding for the Joint Light Tactical Vehicle' on identical fiscal 2019 other-procurement money. The proposal cites chunk_112_A as having linked that record on weaker wording; lens B refuted it there, so the cited precedent runs against this proposal rather than for it."
+   }
+  },
+  {
+   "record_index": 74,
+   "article_id": "1960562",
+   "piid": "W56HZV15C0095",
+   "pe_bli": "0605812A",
+   "program_name": "Joint Light Tactical Vehicle",
+   "lexicon_doc": "355",
+   "lexicon_quote": "Joint Light Tactical Vehicle\t0605812A\t355\tJoint Light Tactical Vehicle (JLTV) Engineering and Manufact",
+   "announcement_evidence": "to provide total package fielding for the Joint Light Tactical Vehicle",
+   "verdict": "weak",
+   "rationale": "The companion member of the JLTV name collision, recorded the way chunks 011_A, 021_A and 072_A recorded it on this contract. 0605812A funds JLTV engineering and manufacturing development; this action obligates fiscal 2019 other procurement, Army money for fielding vehicles already in production, which is not EMD work. The name is present, the ownership is not, so it stays weak rather than becoming a second link on the same dollars."
+  },
+  {
+   "record_index": 76,
+   "article_id": "606782",
+   "piid": "W15QKN15D0015",
+   "pe_bli": "3005GZ1700",
+   "program_name": "The Lightweight 155mm Howitzer (LW155)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "The Lightweight 155mm Howitzer (LW155)\t3005GZ1700\t350\tM777 Mods",
+   "announcement_evidence": "for upgrade and new equipment training and the assistance of field service representatives regarding support for the M777A2 and M111A1 howitzer",
+   "match_basis": "llm-designator-variant",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3's generic-services pattern. The M777A2 designator does point at the weapon 3005GZ1700's narrative calls 'The Lightweight 155mm Howitzer (LW155)' - the announcement never uses that name, only the designator - but what is bought is new equipment training and the assistance of field service representatives, instructor and advisory labour rather than any modification the M777 Mods line funds. The action is besides a foreign military sales contract for Australia with funding and work location determined at each order, so no doc-350 Procurement of W&TCV dollar is shown to move, and the howitzer is the platform the training supports rather than the article this line buys. No link."
+  }
+ ]
+}

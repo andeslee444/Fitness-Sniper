@@ -1,0 +1,89 @@
+{
+ "chunk": "chunk_043_DLA.json",
+ "proposals": [
+  {
+   "record_index": 65,
+   "article_id": "1327363",
+   "piid": "SPRBL117D0019",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "the production of non-rechargeable high capacity type 5795 and 5790 batteries",
+   "lexicon_quote": "Battery Network (BATTNET)",
+   "verdict": "wrong",
+   "rationale": "The only word connecting this record to the DLA index is the commodity noun 'batteries'; the announcement never names BATTNET or any Battery Network activity. BATTNET is a ManTech (0603680S) RDT&E project that develops battery manufacturing and qualification capability, whereas this is a five-year firm-fixed-price production buy of type 5795/5790 primary cells on fiscal 2017-2022 Army working capital funds. That is the §3 'generic commodity / the name is the thing the contract buys rather than the program the PE funds' pattern compounded by the appropriation mismatch lens A exists to catch (working-capital commodity procurement attached to an RDT&E line). Rejected."
+  },
+  {
+   "record_index": 24,
+   "article_id": "1677051",
+   "piid": "SPE1C119D1111",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "flame resistant coats for the Army Combat Uniform",
+   "lexicon_quote": "Military Uniform System Technology (MUST)",
+   "verdict": "wrong",
+   "rationale": "The record is the strongest clothing-side near-miss in the chunk (nine records in this chunk buy coats, trousers, parkas or sleep systems), and 'Army Combat Uniform' superficially touches the index name Military Uniform System Technology (MUST). But MUST is a ManTech research project that matures uniform manufacturing and materials technology; a DLA Troop Support indefinite-delivery buy of finished flame-resistant coats on fiscal 2019-2021 defense working capital funds funds none of that line's own work. §3 'the name is a commodity/platform the contract supplies, not the program the PE funds' — and the announcement never utters MUST or any alias of it. The same reasoning refuses records 2, 17, 18, 37, 49, 52, 59, 63 and 64, which are recorded here once rather than nine times. Rejected."
+  },
+  {
+   "record_index": 9,
+   "article_id": "1971381",
+   "piid": "SPE3S119DZ213",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "various bakery items for unitized group rations",
+   "lexicon_quote": "The Subsistence Network (SUBNET)",
+   "verdict": "wrong",
+   "rationale": "Subsistence is the commodity here, not a program name: the award buys bakery items for unitized group rations on fiscal 2019-2023 defense working capital funds. SUBNET is a ManTech project under 0603680S that works on subsistence supply-chain technology, and the announcement names neither SUBNET nor any recognisable alias of it — the overlap is the ordinary English word 'subsistence' being implied by 'rations'. That is exactly the §3 weak-generic-name pattern. The same refusal covers records 14, 27, 32, 36, 41, 43, 51, 58, 60, 66, 68 and 71 (food distribution and produce). Rejected."
+  },
+  {
+   "record_index": 19,
+   "article_id": "947239",
+   "piid": "SPE7L116D0014",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "the establishment of a total supply chain management initiative to support spare parts used at Anniston Army Depot's maintenance/manufacturing lines",
+   "lexicon_quote": "Weapon System Sustainment (WSS)",
+   "verdict": "wrong",
+   "rationale": "This is the chunk's closest thematic approach to the Generic Logistics R&D line (0603712S), whose index carries Weapon System Sustainment (WSS) and Integrated Manufacturing Readiness Logistics Support (IMRLS). But the announcement names no program at all — it describes a supply-chain management services vehicle for depot spare parts on fiscal 2016-2019 defense working capital funds. §3 rejects generic services (engineering support, logistics, base operations) by design, and 0603712S is itself a generic-demonstrations rollup whose title ('Generic Logistics R&D Technology Demonstrations') makes any description-based match a catch-all attribution rather than an assertion that this award paid for that line's work. Rejected."
+  },
+  {
+   "record_index": 74,
+   "article_id": "2563073",
+   "piid": "SP470221D0002",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "hydrant fueling automation maintenance",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "verdict": "wrong",
+   "rationale": "Fuel-infrastructure maintenance is not the Energy Readiness Program: the award is a competitively-acquired services IDIQ for maintaining hydrant fuelling automation at bases worldwide, on fiscal 2021-2022 defense working capital funds, while ERP is an RDT&E project under Generic Logistics R&D Technology Demonstrations. The only link is the word 'energy'/'fuel', which §3 treats as a weak generic name, and the contract is base-operations-style sustainment services, also rejected by design. The same refusal covers the utility-services and fuel-supply records in this chunk (6, 7, 13, 16, 20, 23, 26, 29, 30, 35, 38, 42, 44, 45, 67). Rejected."
+  },
+  {
+   "record_index": 73,
+   "article_id": "2309332",
+   "piid": "SPE2DH20D0046",
+   "pe_bli": "0603712S",
+   "program_name": "Medical Logistics Network (MLN)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "medical equipment and accessories for the Defense Logistics Agency electronic catalog",
+   "lexicon_quote": "Medical Logistics Network (MLN)",
+   "verdict": "wrong",
+   "rationale": "The DLA Electronic Catalog is a purchasing channel, not the Medical Logistics Network research project, and the announcement names no program. This is a competitively-awarded commodity IDIQ for medical equipment on fiscal 2020-2025 defense working capital funds; MLN sits in 0603712S RDT&E. Matching on the shared word 'medical' would be an §3 weak-generic-name link and would attach a working-capital commodity buy to an RDT&E line — the appropriation failure mode the rubric calls out. The same refusal covers records 0, 56, 61, 69, 70, 75, 76, 77, 78 and 79. Rejected."
+  },
+  {
+   "record_index": 10,
+   "article_id": "3564279",
+   "piid": "SP800024C0004",
+   "pe_bli": "0603680S",
+   "program_name": "The Strategic Materials (SM)",
+   "lexicon_doc": "68",
+   "announcement_evidence": "for RMI Titanium Co. LLC, Niles, Ohio (SP8000-23-C-0012) for $54,964,162 was announced with an incorrect award date, contract number, performance completion date, and funding information",
+   "lexicon_quote": "The Strategic Materials (SM)",
+   "verdict": "wrong",
+   "rationale": "The SP8000 PIID prefix belongs to DLA Strategic Materials, which invites a match to the index name 'The Strategic Materials (SM)', but the announcement itself is a CORRECTION notice that names no program, no commodity purpose and no work scope — it only restates an award date, contract number, completion date and funding. Inferring the program from a PIID prefix rather than from the announcement's words is not evidence under §1, and a titanium acquisition on fiscal 2024 defense working capital funds is stockpile procurement, not the ManTech 0603680S research project. Rejected."
+  }
+ ]
+}

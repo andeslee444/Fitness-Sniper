@@ -1,0 +1,161 @@
+{
+ "chunk": "chunk_127_A.json",
+ "proposals": [
+  {
+   "record_index": 34,
+   "article_id": "3137139",
+   "piid": "W56HZV20C0050",
+   "pe_bli": "5731D15610",
+   "program_name": "The Joint Light Tactical Vehicle (JLTV)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to exercise available options to support the fielding of Joint Light Tactical Vehicles, packaged and installed kits, and trailers",
+   "lexicon_quote": "The Joint Light Tactical Vehicle (JLTV)",
+   "verdict": "link",
+   "rationale": "The modification (P00315) exercises options on W56HZV-20-C-0050, the Oshkosh Defense JLTV production contract, for fielding of Joint Light Tactical Vehicles, packaged and installed kits, and trailers, and cites fiscal 2020 Other Procurement, Army funds alongside fiscal 2020 and 2022 Marine Corps procurement funds. 5731D15610 is the Army procurement line JOINT LIGHT TACTICAL VEHICLE FAMILY OF VEHICL, whose J-book narrative owns the name 'The Joint Light Tactical Vehicle (JLTV)'. The vehicles, kits and trailers delivered under the production contract are that line's own buy, not a platform the award merely supports and not a generic services action; the appropriation cited (procurement) matches the procurement BLI. The announcement's only departure from the lexicon name is the plural and the dropped article, so the basis is llm-alias rather than exact-name. The Marine Corps share of the funding is the joint program's normal cost split and does not move the Army-line attribution.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money color matches exactly — the announcement obligates fiscal 2020 other procurement, Army funds and 5731D15610's P-1 line is Other Procurement, Army (entity 5731D15610/A/2035A/01); the vehicles, packaged/installed kits and trailers delivered under Oshkosh's JLTV production contract W56HZV-20-C-0050 are the JLTV Family of Vehicles line's own procurement articles rather than a platform the action merely supports, the line is a named program (not a rollup and not CATCHALL_TITLE), and the concurrent Marine Corps procurement share is the joint program's normal cost split, not a competing appropriation."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The index does hold a second JLTV owner - 'Joint Light Tactical Vehicle' at 0605812A (doc 355, 'Joint Light Tactical Vehicle (JLTV) Engineering and Manufact') - and its name matches the announcement's words at least as closely, but that is the EMD RDT&E line while this action exercises production options for fielding of vehicles, kits and trailers obligated with fiscal 2020 Other Procurement, Army and Marine Corps procurement funds, so the evidence cannot land there; no other index row owns the JLTV name, the alias is the plural of the lexicon row rather than an invention, and the evidence is the program name plus the delivered end items, not merely Oshkosh's identity."
+   }
+  },
+  {
+   "record_index": 34,
+   "article_id": "3137139",
+   "piid": "W56HZV20C0050",
+   "pe_bli": "0605812A",
+   "program_name": "Joint Light Tactical Vehicle",
+   "lexicon_doc": "355",
+   "announcement_evidence": "to exercise available options to support the fielding of Joint Light Tactical Vehicles, packaged and installed kits, and trailers",
+   "lexicon_quote": "Joint Light Tactical Vehicle",
+   "verdict": "weak",
+   "rationale": "0605812A is the JLTV Engineering and Manufacturing Development RDT&E line, and its narrative owns the bare name 'Joint Light Tactical Vehicle', which the announcement does contain — so this is a genuine name collision across PEs. But the action is an options exercise for FIELDING production vehicles, kits and trailers, funded with fiscal 2020 Other Procurement, Army and Marine Corps procurement funds. Procurement money paying for production fielding cannot be the EMD line's own work; that is precisely the appropriation mismatch §1 names as the dominant failure mode. The name is present and the evidence does not meet the standard, so weak, not link — the procurement BLI 5731D15610 is where this action belongs."
+  },
+  {
+   "record_index": 59,
+   "article_id": "2766444",
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to support the production and fielding of the M270A2 Multiple Launch Rocket System",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "link",
+   "rationale": "Modification P00021 to W31P4Q-19-C-0077 supports the production and fielding of the M270A2 Multiple Launch Rocket System, funded with fiscal 2021 missile procurement, Army funds, awarded to Lockheed Martin Missile and Fire Control, Grand Prairie — the M270A2 launcher prime. 6552C67500 is the Missile Procurement, Army line 'MLRS Mods', whose narrative owns 'The M270A2 Multiple Launch Rocket System (MLRS)' along with the M270A2 recapitalization content (Common Fire Control System, Improved Armored Cabs, Increased Crew Protection Cab). The M270A2 is executed as a launcher mod/recapitalization, so the launchers being produced and fielded are this line's own product rather than a platform the contract merely supports, and the missile-procurement appropriation matches the procurement BLI. Both sides carry the designator M270A2 verbatim; only the leading article and trailing acronym differ, hence designator-normalized.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money color matches exactly — fiscal 2021 missile procurement, Army funds against 6552C67500, whose P-1 line 'MLRS Mods' sits in Missile Procurement, Army; the M270A2 is executed as a launcher recapitalization/modification (the same narrative owns CFCS, Improved Armored Cabs and Increased Crew Protection Cab), so producing and fielding M270A2 launchers at Lockheed Martin Missile and Fire Control is this mods line's own product, not support to a platform another line funds, and a mods line scoped to one launcher family is not a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A rival owner exists - 'M270A1 and M270A2 Multiple Launch Rocket System (MLRS)' plus 'Multiple Launch Rocket System (MLRS)' at 0603778A (doc 359, MLRS Product Improvement Program) - carrying the same M270A2 designator, but that is the RDT&E improvement line whereas the announcement obligates fiscal 2021 missile procurement, Army funds for production and fielding, which is the MIPA 'MLRS Mods' line's own content; the rocket lines (0205778A, 6005C64400) and HIMARS (6200C02901) own GMLRS/HIMARS names, not the M270A2 launcher, the designator is verbatim on both sides rather than an invented alias, and no variant/increment mismatch appears (M270A2 named explicitly on both sides)."
+   }
+  },
+  {
+   "record_index": 59,
+   "article_id": "2766444",
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "0603778A",
+   "program_name": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "to support the production and fielding of the M270A2 Multiple Launch Rocket System",
+   "lexicon_quote": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "weak",
+   "rationale": "0603778A 'MLRS Product Improvement Program' owns two names the announcement touches — 'M270A1 and M270A2 Multiple Launch Rocket System (MLRS)' and the bare 'Multiple Launch Rocket System (MLRS)' — so the designator collides across PEs exactly as lens B expects. But the announcement describes production and fielding funded with fiscal 2021 missile procurement, Army, not development work funded by RDT&E, so the evidence does not show this award paying for the PIP line's own work. Recorded as weak so the collision is on the record; the procurement line 6552C67500 carries the link."
+  },
+  {
+   "record_index": 52,
+   "article_id": "1838303",
+   "piid": "W912DY19F0296",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "match_basis": "exact-name",
+   "announcement_evidence": "firm-fixed-price contract for Department of Defense High Performance Computing Modernization Program",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "verdict": "link",
+   "rationale": "The award to Cray Inc. is for the DoD High Performance Computing Modernization Program's Technology Insertion, with work at Aberdeen Proving Ground and U.S. Army Corps of Engineers, Huntsville — HPCMP's standing contracting office — as the contracting activity. The program name appears verbatim, and Technology Insertion is the HPCMP's own annual acquisition of the supercomputers it operates at the DoD Supercomputing Resource Centers, an activity the same PE's narrative owns alongside 'Department of Defense Supercomputing Resource Centers' and 'Defense Research and Engineering Network (DREN)'. 0603461A is the only line in this org's index that owns this name; the 0602183A rows ('High Performance Computing for Aviation Applications', 'High Performance Computing for Rotorcraft Apl Tech') are a different, aviation-applied-research use of the same words and do not match the announcement's full program title. This is the program itself, not a platform the contract supports and not generic IT services. One caveat flagged for the refute lenses: the announcement cites fiscal 2018 Other Procurement, Army funds while 0603461A is an RDT&E program element, so the appropriation is not a clean match even though the work is unmistakably this program's own.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Wrong money color — the award obligates fiscal 2018 other procurement, Army funds while 0603461A is an RDT&E, Army program element, and this org's own index carries the procurement-side owner of the identical name (High Perf Computing Mod Pgm (HPCMP), pe_bli 3005B66501, lexicon_doc 346, P-1 line in Other Procurement, Army), so the Cray Technology Insertion hardware buy paid for the OPA line's work, not this RDT&E element's; load_announcement_links.money_color_ok() would skip it as money_color_mismatch on disjoint accounts (2035 vs 2040)."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "A different line in this same index owns the program: 3005B66501 (doc 346) is titled 'High Perf Computing Mod Pgm (HPCMP)' and owns both 'High Perf Computing Mod Pgm (HPCMP)' and 'DoD Supercomputing Resource Center (DRSC)', so the HPCMP Technology Insertion hardware delivered to the Aberdeen DSRC and obligated with fiscal 2018 Other Procurement, Army funds fits that procurement line at least as well as - and on appropriation better than - the RDT&E program element proposed; lens P's claim that 0603461A is 'the only line in this org's index that owns this name' is false, and with two index owners of the same program the announcement's words cannot say which one the award paid for."
+   }
+  },
+  {
+   "record_index": 46,
+   "article_id": "1402841",
+   "piid": "W912DY18F0045",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "firm-fixed-price contract for Department of Defense high-performance computing modernization program's technology insertion Navy Order 14",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "verdict": "link",
+   "rationale": "Silicon Graphics Federal is awarded HPCMP Technology Insertion 'Navy Order 14', performed at Stennis Space Center — the Navy DoD Supercomputing Resource Center — with U.S. Army Corps of Engineers, Huntsville as the contracting activity, the same office that executes HPCMP acquisitions. The Army is HPCMP's executive agent and 0603461A is the program element that funds it; its narrative owns both 'High Performance Computing Modernization Program' and 'Department of Defense Supercomputing Resource Centers', and the Technology Insertion hardware buys for those centers are the program's own work rather than support to some other line's platform. The announcement writes the name lowercased and hyphenated ('high-performance computing modernization program'), so the basis is llm-alias rather than exact-name. 'Navy Order 14' names the receiving center, not a Navy funding line — the announcement cites fiscal 2017 Other Procurement (Army) funds. Same caveat as the companion Cray record for the refute lenses: procurement funds cited against an RDT&E program element.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Wrong money color, same defect as the companion Cray record — fiscal 2017 other procurement (Army) funds obligated against an RDT&E, Army program element, while the OPA line that actually buys HPCMP Technology Insertion hardware for the DoD Supercomputing Resource Centers is in the same index (3005B66501, 'High Perf Computing Mod Pgm (HPCMP)', lexicon_doc 346, Other Procurement, Army), so the Silicon Graphics Federal Navy Order 14 buy is not 0603461A's own work and the accounts (2035 vs 2040) are disjoint."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Same alternative owner as the companion Cray record and a stronger one here: 3005B66501 (doc 346, 'High Perf Computing Mod Pgm (HPCMP)') owns the row 'DoD Supercomputing Resource Center (DRSC)', and this award is Technology Insertion hardware installed at the Stennis Navy DSRC obligated with fiscal 2017 Other Procurement (Army) funds - a procurement buy for a DSRC, which is that procurement line's own named content, while 0603461A is an RDT&E program element; the announcement's lowercased 'high-performance computing modernization program' names the program, not one of its two competing budget owners, so the evidence would link equally well elsewhere."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "606015",
+   "piid": "W15QKN14C0075",
+   "pe_bli": "2881R68400",
+   "program_name": "Grnd Standoff Mine Detectn Sysm (GSTAMIDS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "cost-plus-incentive-fee contract for an autonomous mine detection system that is being developed to provide the war fighter with capability to detect, mark and neutralize explosive hazards",
+   "lexicon_quote": "Grnd Standoff Mine Detectn Sysm (GSTAMIDS)",
+   "verdict": "weak",
+   "rationale": "The Carnegie Robotics award describes an autonomous mine detection system for detecting, marking and neutralizing explosive hazards, which reads at description level against the counter-explosive-hazard family 2881R68400 owns (GSTAMIDS, 'Explosive Hazard Pre-Detonation (EHP)', 'Mine Clearing Vehicle (MCV)', 'Route Clearance Virtual Clearance Training Suite (VCTS)'). But no owned name is actually present: 'explosive hazards' is the announcement's generic phrase and not the EHP program, and GSTAMIDS is never named. The award is a cost-plus-incentive-fee development contract funded with fiscal 2013 and 2014 RDT&E, Army, while 2881R68400 is a procurement BLI, so on top of the description-only resemblance there is the appropriation mismatch. Weak, not link — the project publishes the smaller true number."
+  },
+  {
+   "record_index": 10,
+   "article_id": "646622",
+   "piid": "W52P1J16C0003",
+   "pe_bli": "2472G13000",
+   "program_name": "M240 Medium Machine Gun (7.62mm)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "contract with options for 5.56mm, 7.62mm, and .50 caliber ammunition",
+   "lexicon_quote": "M240 Medium Machine Gun (7.62mm)",
+   "verdict": "wrong",
+   "rationale": "§3 pattern: the name is a PLATFORM (here a weapon) the contract merely supports, not the program the PE funds. The award buys 5.56mm, 7.62mm and .50 caliber cartridges from Olin Corp., Winchester Division under Other Procurement, Army; the only index row the text touches is 'M240 Medium Machine Gun (7.62mm)', where '7.62mm' is a calibre qualifier on a weapon program, not the ammunition the announcement funds. The ammunition lines this buy would belong to ('CTG, 7.62MM, All Types' 0612E02000, 'CTG, .50 Cal, All Types' 1722E08000) own only specific-round names (M80A1 EPR, M1158 ADVAP, SLAP) that this announcement never names, and the award spans three calibres, so no single line could take the action even if a name were present."
+  },
+  {
+   "record_index": 6,
+   "article_id": "1972824",
+   "piid": "W912QR19C0039",
+   "pe_bli": "0602146A",
+   "program_name": "Relay for Aerial to Non-line-of-sight Ground Environments (RANGE)",
+   "lexicon_doc": "351",
+   "announcement_evidence": "firm-fixed-price contract for construction of the digital air ground integration range",
+   "lexicon_quote": "Relay for Aerial to Non-line-of-sight Ground Environments (RANGE)",
+   "verdict": "wrong",
+   "rationale": "Two §3 patterns fire at once. First, weak generic name used as an English word: the only index token the text touches is the acronym RANGE inside 'Relay for Aerial to Non-line-of-sight Ground Environments (RANGE)', an applied-research networking effort under Network C3I Technology, while the announcement's 'range' is the physical training range at Fort Knox. Second, construction: this is a $22,896,809 firm-fixed-price MILCON award to P & R JV for building the digital air ground integration range, funded with fiscal 2019 military construction funds through USACE Louisville, which §3 rejects outright. Recorded so the trap is in the denominator rather than left to a string matcher."
+  },
+  {
+   "record_index": 36,
+   "article_id": "1459422",
+   "piid": "W56KGY18C0003",
+   "pe_bli": "0602146A",
+   "program_name": "Relay for Aerial to Non-line-of-sight Ground Environments (RANGE)",
+   "lexicon_doc": "351",
+   "announcement_evidence": "cost-plus-fixed-fee contract for engineering and sustainment support for the tactical operational light detection and range sensing capability",
+   "lexicon_quote": "Relay for Aerial to Non-line-of-sight Ground Environments (RANGE)",
+   "verdict": "wrong",
+   "rationale": "Same two §3 patterns as record 6. The acronym RANGE in 'Relay for Aerial to Non-line-of-sight Ground Environments (RANGE)' collides with 'range sensing' — the announcement's words for lidar — which is the weak-generic-name-as-English-word reject; no index row owns a lidar or light-detection name. Independently, the award to Johns Hopkins University Applied Physics Laboratory is for 'engineering and sustainment support', funded with fiscal 2018 operations and maintenance (Army), which is the generic-services reject and the O&M-sustainment-against-an-RDT&E-line failure mode in one."
+  }
+ ]
+}

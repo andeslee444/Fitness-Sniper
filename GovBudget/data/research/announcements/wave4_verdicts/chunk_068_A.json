@@ -1,0 +1,299 @@
+{
+ "chunk": "chunk_068_A.json",
+ "proposals": [
+  {
+   "record_index": 3,
+   "article_id": "2023490",
+   "piid": "W56HZV20D0015",
+   "pe_bli": "9462R70001",
+   "program_name": "Hydraulic Electric Pneumatic Petroleum Operated Equipment (HEPPOE)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Hydraulic, Electric, Pneumatic, Operated Equipment kits consisting of low technology equipment, which provides the military construction engineer with the tools that it takes to perform the most common type of engineer tasks",
+   "lexicon_quote": "Hydraulic Electric Pneumatic Petroleum Operated Equipment (HEPPOE)",
+   "verdict": "link",
+   "rationale": "The announcement spells out the HEPOE/HEPPOE kit name almost word-for-word (it drops only 'Petroleum' from the index spelling) and then describes exactly what the index row's parent line buys: engineer tool kits that give 'the military construction engineer with the tools that it takes to perform the most common type of engineer tasks', which is the Family Of Engr Combat and Construction Sets line (9462R70001). This is an end-item production buy of the kits themselves, not engineering support or an unnamed IDIQ ceiling, so the §3 generic-services and IDIQ-umbrella patterns do not apply; the contracting activity (ACC Warren, the ground-support-equipment buying command) fits the line. The one softness is that the announcement states no appropriation ('Work locations and funding will be determined with each order'), so the money color cannot be checked from the text alone.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The action buys the end item the line itself funds: 9462R70001 is an Other Procurement, Army line (account 2035A) whose own J-book narrative says 'The Hydraulic, Electric, Pneumatic, Petroleum Operated Equipment (HEPPOE) replaces two legacy systems', and the award is a firm-fixed-price buy of the HEPOE kits themselves from a tool-kit manufacturer through ACC Warren (TACOM), not engineering support, logistics or base operations, so the O&M-attached-to-a-procurement-line failure mode does not appear; the named thing is the program, not a platform the contract supports; 'Family Of Engr Combat and Construction Sets' is a named family line with three narrative-owned members, not a CATCHALL_TITLE rollup; the only softness is that funding is 'determined with each order' so the money color is unstated, which is absence of evidence rather than a mismatch."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner: the only index row carrying the HEPPOE/HEP-operated-equipment name is 9462R70001 (the near-miss 'Hydraulic System Test and Repair Unit (HSTRU)', 1110MA4500, is a hydraulic test unit, not engineer tool kits), the sibling kit names (FoPUK, VSECK) sit on the same pe_bli so they are not competing PEs, the alias is a real Army engineer tool-kit name rather than an invented one, no increment or variant is named, and the evidence is the object of purchase spelled out, not the contractor's name."
+   }
+  },
+  {
+   "record_index": 10,
+   "article_id": "2882869",
+   "piid": "W15QKN15C0049",
+   "pe_bli": "0605018A",
+   "program_name": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "continued research and development of the Integrated Personnel and Pay System-Army",
+   "lexicon_quote": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "verdict": "link",
+   "rationale": "The announcement names the program in full and identically to the index row, and the work it describes is the line's own work: 'continued research and development of the Integrated Personnel and Pay System-Army'. The appropriation cited, 'Fiscal 2022 research, development, test, and evaluation, Army funds', matches an RDT&E program element rather than the procurement/O&M members, which is what separates this row from the other index row carrying the identical name (9921B66701, proposed separately as weak). There is no platform, no rollup title and no generic-services framing here — CACI is the IPPS-A development prime and the contract is the IPPS-A development contract.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The strongest money match of the six: 0605018A is an RDT&E program element (exhibit_family rdte, no procurement account) and the announcement obligates 'Fiscal 2022 research, development, test, and evaluation, Army funds' for 'continued research and development of the Integrated Personnel and Pay System-Army', so the appropriation and the work are both the line's own; there is no platform in the text for the contract to merely support, and the PE's title is the program name itself rather than a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A second PE does own the identical name (9921B66701, doc 346), but the announcement's own words — not its appropriation — discriminate: it buys 'continued research and development of' IPPS-A, which is the RDT&E member's work (0605018A, R-2 doc 355), and 0605018A is named verbatim in the index with no competing increment row, so the evidence does not link the procurement member equally well."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "2046982",
+   "piid": "W15QKN14D0106",
+   "pe_bli": "0200MB4000",
+   "program_name": "Next Generation Automatic Test System (NGATS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the Next Generation Automated Test Systems to support repair capability for the Abrams tank, Bradley Fighting Vehicle and Stryker systems",
+   "lexicon_quote": "Next Generation Automatic Test System (NGATS)",
+   "verdict": "link",
+   "rationale": "The announcement names NGATS with a single word varied ('Automated' for the index's 'Automatic'), which is the ordinary press-release rendering of the same program; the index row sits under the Integrated Family Of Test Equipment (IFTE) line, and NGATS is IFTE's named next-generation tester. Critically, Abrams, Bradley and Stryker appear here only as the platforms NGATS is used to repair — the §3 platform pattern would reject a link to any of those three, but it does not reject the tester itself, which is the thing being bought. The softness is that the modification states no appropriation ('Work locations and funding will be determined with each order'), so money color is unverifiable from the text.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The object of purchase is the line's own end item, not the platforms: 0200MB4000 is an OPA line (account 2035A) whose narrative states the family is 'comprised of the Maintenance Support Device (MSD) and the Next Generation Automatic Test System (NGATS), as the authorized Army standard for field and sustainment' testing, and the mod buys the Next Generation Automated Test Systems, with Abrams, Bradley and Stryker appearing only as the platforms the tester repairs, so the §3 platform pattern rejects a link to those three but not to the tester; IFTE is a named four-member family line, not a catch-all; the mod states no appropriation ('funding will be determined with each order'), and while 'to support repair capability' describes the tester's purpose rather than a services scope, that unstated color is the one residual softness."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "NGATS has exactly one owner in the index (0200MB4000); the other test-equipment PE, 0605G02510 (TEMOD), owns CALSETS/CTE/GPETE/RTS and not this name, the 'Automated' vs 'Automatic' difference is a press-release rendering of a real program rather than a different variant, IFTE/MSD/WATS are same-pe_bli siblings rather than a rival PE, and the only other candidates the text offers (Abrams, Bradley, Stryker) are platforms §3 rejects, so nothing else takes this evidence equally well."
+   }
+  },
+  {
+   "record_index": 45,
+   "article_id": "3916067",
+   "piid": "W31P4Q23C0005",
+   "pe_bli": "2605C70302",
+   "program_name": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "lexicon_doc": "345",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Hellfire II Missiles and Joint Air-to-Ground Missiles",
+   "lexicon_quote": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "verdict": "link",
+   "rationale": "The announcement names Joint Air-to-Ground Missiles outright; the index row differs only by the AGM-179 designator prefix the announcement omits. This is a production modification (P00036) to Lockheed Martin Orlando, the JAGM prime, so the procurement member of the JAGM name collision (2605C70302, 'Joint Air-to-Ground MSLS (JAGM)') is the line the work belongs to rather than the RDT&E member 0605450A, which is proposed separately as weak. The one thing a refute lens should weigh: the money colors cited are 'procurement of ammunition, Army funds' and 'procurement, defense-wide funds', neither of which is the missile-procurement color a JAGM procurement BLI normally carries, so the appropriation check is the live risk on this proposal, not the identity check.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "REFUTED on money: BLI 2605C70302 sits in account 2032A, Missile Procurement, Army, per its own FY2026 J-book detail rows, but the announcement obligates the entire $42,028,845 from 'fiscal 2023 and 2024 procurement of ammunition, Army funds' (2034A) and 'fiscal 2022, 2023 and 2024 procurement, defense-wide funds' (a non-Army, defense-wide account), so not one announced dollar carries this line's appropriation — the Army Hellfire line 1338C70000 is also 2032A, so the ammunition color is not explained by the Hellfire half either, and the defense-wide color points at a customer outside the Army line entirely; compounding this, the mod covers two programs ('Hellfire II Missiles and Joint Air-to-Ground Missiles') so even the share attributable to JAGM is indeterminate from the text, which is exactly the appropriation failure the lens exists to catch."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Two different PEs own the byte-identical name 'The AGM-179 Joint Air-to-Ground Missile (JAGM)' — 0605450A (doc 355) and 2605C70302 (doc 345) — and the announcement's identity words ('Hellfire II Missiles and Joint Air-to-Ground Missiles') carry no production/RDT&E, lot or increment marker that picks a member, so only the appropriation (lens A's ground, not lens B's) separates them; worse, the same sentence names Hellfire II first and the index gives that a separate owner ('Hellfire Sys Summary', 1338C70000, doc 345), so this evidence links the combined $42.0M action to another PE at least as well as to this one."
+   }
+  },
+  {
+   "record_index": 46,
+   "article_id": "4164204",
+   "piid": "W909MY25D0003",
+   "pe_bli": "0426MA9800",
+   "program_name": "Power Distribution Illumination Systems Electrical (PDISE)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "firm-fixed-price contract for power distribution illumination systems",
+   "lexicon_quote": "Power Distribution Illumination Systems Electrical (PDISE)",
+   "verdict": "link",
+   "rationale": "The announcement's object of purchase is the program name itself, in order and in full apart from the trailing 'Electrical (PDISE)': 'power distribution illumination systems'. PDISE is a real named Army end item, not an English phrase pressed into service the way §3's 'STORM'/'SHIELD'/'Sentinel' examples are, and the index row sits under the Generators And Associated Equip line, which is where PDISE sets are bought. The buying office (ACC Aberdeen Proving Ground) is the PEO CS&CSS support-equipment command. Two caveats for the refute lenses: the same name is owned by an RDT&E PE (0604804A, 'PDISE expansion', proposed separately as weak), and this is a five-year IDIQ whose funding is 'determined with each order', so no appropriation is stated.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The line's own narrative buys this item: 0426MA9800 is an OPA line (account 2035A) whose narrative states it 'includes current associated power distribution equipment (Power Distribution Illumination Systems Electrical (PDISE)) as ASIOE to MEPGS systems', and the announcement's object of purchase is 'power distribution illumination systems' — the acronym's own expansion rather than ordinary English for facility electrical work — bought as end items through ACC Aberdeen Proving Ground, the PEO CS&CSS power-equipment command; no platform is being supported, and 'Generators And Associated Equip' is a named commodity family line (sixteen narrative-owned members) that does not match the loader's CATCHALL_TITLE pattern; the five-year IDIQ states no appropriation, which leaves the money unverified but not contradicted."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The one competing owner is 0604804A, whose name is the qualified 'Power Distribution Illumination Systems Electrical (PDISE) expansion' (an Eng Dev row), and the announcement carries no expansion or development language — it is a competitively bid five-year FFP hardware IDIQ whose object reproduces the unqualified PDISE name in order; PDISE is a real named end item, not a generic phrase, and every other 'power distribution' row (MPDS, MEPDS, PPDS) is a same-pe_bli sibling rather than a rival PE."
+   }
+  },
+  {
+   "record_index": 67,
+   "article_id": "1972824",
+   "piid": "W52P1J16D0050",
+   "pe_bli": "3102E89500",
+   "program_name": "The M795 High Explosive (HE)",
+   "lexicon_doc": "349",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "155mm High Explosive Projectile M795 Insensitive Munitions Explosive",
+   "lexicon_quote": "The M795 High Explosive (HE)",
+   "verdict": "link",
+   "rationale": "Every element of the index row appears in the announcement, only reordered: the M795 designator, the 155mm caliber that names the parent line, and 'High Explosive'. The money color matches exactly — 'Fiscal 2018 and 2019 procurement of ammunition, Army funds' against an ammunition-procurement BLI — so this is not the O&M-attached-to-procurement failure mode; it is a production order for the projectile the line funds, placed by ACC Rock Island with American Ordnance, the Iowa AAP operator. The parent title 'ARTILLERY PROJECTILE, 155MM, All Types' is a by-caliber line rather than a §3 catch-all: it does not match the loader's CATCHALL_TITLE pattern (less than / under / < $, ^other, ^miscellaneous), and the specific round is named.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both land on this line: 3102E89500 sits in account 2034A, Procurement of Ammunition, Army, and the announcement obligates 'Fiscal 2018 and 2019 procurement of ammunition, Army funds' — an exact color match, not O&M attached to a procurement line — for production of the round the narrative names under its own budget item code, '(E66800) PROJ, ARTY, 155MM HE, M795', placed with the Iowa AAP operator through ACC Rock Island; no platform stands between the contract and the program, and 'ARTILLERY PROJECTILE, 155MM, All Types' is a by-caliber aggregate that does not match CATCHALL_TITLE (less than / under / < $, ^other, ^miscellaneous), with the specific round named on both sides."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The M795 designator has exactly one owner in the index; the other 'High Explosive (HE)' rows belong to different calibers on different PEs (M720A1 60mm/0050E89600, M1 105mm/0530E15101, M933A1 120mm/6780E25500) and the other 155mm HE rows (M1128, XM113) are same-pe_bli siblings that the announcement does not name, so the caliber-plus-designator evidence cannot move elsewhere; the 'Insensitive Munitions Explosive' phrase describes the projectile's fill and does not transfer the award to the RDT&E 'Insensitive Munitions (IM) Integration Program' (0605805A), which is a standardization line, not the buyer of M795 rounds."
+   }
+  },
+  {
+   "record_index": 7,
+   "article_id": "605979",
+   "piid": "W15QKN12C0103",
+   "pe_bli": "8310G04700",
+   "program_name": "The M153 Common Remotely Operated Weapon Station (CROWS)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "depot support for the Common Remotely Operated Weapon Station",
+   "lexicon_quote": "The M153 Common Remotely Operated Weapon Station (CROWS)",
+   "verdict": "weak",
+   "rationale": "The name is present and unambiguous — the announcement writes out the CROWS name exactly as the index row does apart from the 'M153' designator — and Kongsberg is the CROWS manufacturer, so identity is not the problem. Attribution is. The work is 'depot support' and the money is 'Fiscal 2014 operations and maintenance (Army) funds', i.e. sustainment of fielded systems, while 8310G04700 is a procurement line that buys new weapon stations. That is precisely the O&M-sustainment-attached-to-a-procurement-line pattern the rubric flags as the dominant failure mode, so the evidence does not reach the standard for asserting this award executed the procurement line, and the smaller true number is the one that leaves it out."
+  },
+  {
+   "record_index": 10,
+   "article_id": "2882869",
+   "piid": "W15QKN15C0049",
+   "pe_bli": "9921B66701",
+   "program_name": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "continued research and development of the Integrated Personnel and Pay System-Army",
+   "lexicon_quote": "Integrated Personnel and Pay System-Army (IPPS-A)",
+   "verdict": "weak",
+   "rationale": "This is the second index row carrying the identical IPPS-A name, recorded here so the collision is visible rather than hidden. The announcement's own words settle which member the work belongs to: 'continued research and development' funded by 'Fiscal 2022 research, development, test, and evaluation, Army funds' points at the RDT&E program element 0605018A, not at this line. A name match alone, when another PE in the same index owns the same name and the appropriation picks the other one, does not meet the rubric's evidence standard."
+  },
+  {
+   "record_index": 45,
+   "article_id": "3916067",
+   "piid": "W31P4Q23C0005",
+   "pe_bli": "0605450A",
+   "program_name": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "Hellfire II Missiles and Joint Air-to-Ground Missiles",
+   "lexicon_quote": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "verdict": "weak",
+   "rationale": "The RDT&E member of the JAGM name collision, recorded so the collision is visible. The identical name sits on both 0605450A (development) and 2605C70302 (procurement). The announcement describes a delivery of missiles under a production contract modification and cites only procurement appropriations, with no development, test or engineering work mentioned, so the development line is not what this award executes even though the name matches it exactly."
+  },
+  {
+   "record_index": 45,
+   "article_id": "3916067",
+   "piid": "W31P4Q23C0005",
+   "pe_bli": "1338C70000",
+   "program_name": "Hellfire Sys Summary",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Hellfire II Missiles and Joint Air-to-Ground Missiles",
+   "lexicon_quote": "Hellfire Sys Summary",
+   "verdict": "weak",
+   "rationale": "The announcement does name Hellfire II missiles, and Lockheed Martin Orlando builds them, so there is a genuine candidate here. But the index row's name is the P-1 summary caption 'Hellfire Sys Summary' rather than a variant the announcement uses, and a summary line spanning the Hellfire family does not by itself tell us which member this action funds. The money makes it worse rather than better: 'procurement of ammunition, Army funds' and 'procurement, defense-wide funds' are not the missile-procurement color this line would carry, and the defense-wide share suggests a buy executed for another component. Short of that resolution the evidence stays below the standard."
+  },
+  {
+   "record_index": 45,
+   "article_id": "3916067",
+   "piid": "W31P4Q23C0005",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "announcement_evidence": "Hellfire II Missiles and Joint Air-to-Ground Missiles",
+   "lexicon_quote": "Longbow Hellfire XM299",
+   "verdict": "weak",
+   "rationale": "Recorded because 'Hellfire' appears in this index row too and a name-only matcher would fire on it. It should not: the XM299 is the Longbow Hellfire launcher carried on the aircraft, while the announcement buys missiles — a different item on a different line, and an aircraft-procurement document (343) at that. The shared word is the whole of the resemblance, which is not attribution."
+  },
+  {
+   "record_index": 46,
+   "article_id": "4164204",
+   "piid": "W909MY25D0003",
+   "pe_bli": "0604804A",
+   "program_name": "Power Distribution Illumination Systems Electrical (PDISE) expansion",
+   "lexicon_doc": "355",
+   "announcement_evidence": "firm-fixed-price contract for power distribution illumination systems",
+   "lexicon_quote": "Power Distribution Illumination Systems Electrical (PDISE) expansion",
+   "verdict": "weak",
+   "rationale": "The second PE owning the PDISE name, recorded so the collision is visible. This row is the development 'expansion' effort under Logistics and Engineer Equipment - Eng Dev; the announcement describes a five-year firm-fixed-price production IDIQ for the fielded item, with no development, prototyping or expansion work named. Procurement work against a development line does not meet the standard, so the production line 0426MA9800 carries the proposal instead."
+  },
+  {
+   "record_index": 51,
+   "article_id": "3400382",
+   "piid": "W31P4Q22C0047",
+   "pe_bli": "6552C67500",
+   "program_name": "Common Fire Control System (CFCS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Block III modernization of a common fire control system",
+   "lexicon_quote": "Common Fire Control System (CFCS)",
+   "verdict": "weak",
+   "rationale": "The name matches the index row word for word once case is set aside, and the surrounding facts fit: Lockheed Martin Missiles and Fire Control at Grand Prairie is the MLRS/HIMARS prime, W31P4Q is the Redstone missile buying office, and CFCS is carried under MLRS Mods. Two things hold it below the standard. The announcement writes the phrase in lower case as a common noun ('a common fire control system'), which is how a generic description reads rather than a program citation, and the money is 'Fiscal 2022 operation and maintenance, Army funds' against a procurement modification line — the O&M-on-a-procurement-line pattern again. Either alone would be arguable; together they make a published high-tier link an overstatement."
+  },
+  {
+   "record_index": 70,
+   "article_id": "1165420",
+   "piid": "W56HZV15C0155",
+   "pe_bli": "3446D15400",
+   "program_name": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "134 M1151A1B1 and 72 M1152 High Mobility Multipurpose Wheeled Vehicles for the government of Iraq",
+   "lexicon_quote": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "verdict": "weak",
+   "rationale": "The vehicles named are exactly the end item this line buys, and the M1151A1B1/M1152 designators leave no doubt about identity. But the announcement states the buy is a 'foreign military sales (Iraq)' action 'for the government of Iraq', and an FMS case is executed with the customer's funds through the FMS trust account, not by obligating the Army's own HMMWV procurement line. The vague 'Fiscal 2017 funds' citation names no Army appropriation to contradict that. The award therefore does not fund this line's own work, however well the item matches."
+  },
+  {
+   "record_index": 79,
+   "article_id": "631575",
+   "piid": "W31P4Q14C0066",
+   "pe_bli": "6060C65405",
+   "program_name": "Low Cost Reduced Range Practice Rocket (LCRRPR)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "low-cost, reduced-range practice rockets, download/demate effort, and integrated logistic support",
+   "lexicon_quote": "Low Cost Reduced Range Practice Rocket (LCRRPR)",
+   "verdict": "weak",
+   "rationale": "The item name is the index row's name almost exactly, hyphenation aside, and the parent line is MLRS Reduced Range Practice Rockets. Attribution is what fails: the announcement calls this a 'foreign military sales contract W31P4Q-14-C-0066 (Italy, Singapore)', so the rockets are being produced for two foreign customers rather than delivered against the Army's own RRPR line, and the appropriation cited, 'Fiscal 2014 other procurement funds', is not the missile-procurement color this line carries. Part of the action is also 'download/demate effort, and integrated logistic support', which is service work rather than the line's end item."
+  },
+  {
+   "record_index": 4,
+   "article_id": "1643658",
+   "piid": "W56HZV15C0119",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "184 Hydro Mechanically Propelled Transmissions for the Bradley and Multiple Launch Rocket Systems and ancillary hardware",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's first pattern: the name is a PLATFORM the contract supports, not the program the PE funds. What is being bought is 184 hydro-mechanical transmissions and ancillary hardware — a drivetrain component — and the Bradley is named only as one of two platforms those transmissions go into, the other being the MLRS carrier (proposed separately, also wrong). A component common to two unrelated platforms cannot be attributed to the Bradley Program (MOD) modification line on the strength of the platform's name appearing in the sentence, and the announcement cites 'other procurement, Army' funds rather than the combat-vehicle color this line carries."
+  },
+  {
+   "record_index": 4,
+   "article_id": "1643658",
+   "piid": "W56HZV15C0119",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "184 Hydro Mechanically Propelled Transmissions for the Bradley and Multiple Launch Rocket Systems and ancillary hardware",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern, same award as the Bradley proposal above: 'Multiple Launch Rocket Systems' names the carrier the transmissions are installed in, not the program this line funds. It is doubly wrong on identity — the index row is the M270A2 variant, and this 2015-2018 transmission contract predates the M270A2 configuration entirely, so the announcement is not about the increment the row names."
+  },
+  {
+   "record_index": 42,
+   "article_id": "2944164",
+   "piid": "W58RGZ22D0021",
+   "pe_bli": "6773A05009",
+   "program_name": "UH-60 Black Hawk L and V Models",
+   "lexicon_doc": "343",
+   "announcement_evidence": "non-personal technical services in support of sustainment of the H-60 Black Hawk helicopter",
+   "lexicon_quote": "UH-60 Black Hawk L and V Models",
+   "verdict": "wrong",
+   "rationale": "Rejected on two §3 patterns at once. The Black Hawk is the PLATFORM the contract supports rather than the program the line funds, and the thing actually purchased is 'non-personal technical services', which is the generic engineering-and-support-services category §3 rejects by design. The line 6773A05009 buys UH-60L and UH-60V aircraft; a services IDIQ supporting sustainment of the fielded fleet does not execute it, and the announcement names no appropriation at all since 'funding will be determined with each order'."
+  },
+  {
+   "record_index": 78,
+   "article_id": "2059429",
+   "piid": "W56HZV20C0052",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "to be used on the Army&#39;s Bradley family of vehicles, armored multi-purpose vehicle and Paladin family of vehicles",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern. The buy is T-161 double-pin track — pads, pins and shoe bodies — and the announcement itself lists three separate platforms the track fits: the Bradley family, the armored multi-purpose vehicle and the Paladin family. A consumable running-gear component shared across three vehicle families is not the Bradley Program (MOD) line's own work, and the platform name appearing in the usage list is exactly the evidence §3 tells us not to publish on."
+  },
+  {
+   "record_index": 78,
+   "article_id": "2059429",
+   "piid": "W56HZV20C0052",
+   "pe_bli": "2073GZ0410",
+   "program_name": "Paladin Integrated Management (PIM)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "to be used on the Army&#39;s Bradley family of vehicles, armored multi-purpose vehicle and Paladin family of vehicles",
+   "lexicon_quote": "Paladin Integrated Management (PIM)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern, same award as the Bradley proposal above. 'Paladin family of vehicles' names one of three platforms the T-161 track is fitted to; the index row names the Paladin Integrated Management program, which the announcement never mentions. Matching 'Paladin' the platform to PIM the program would be attributing a shared track buy to a howitzer recapitalization line on a single word."
+  }
+ ]
+}

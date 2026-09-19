@@ -1,0 +1,656 @@
+{
+ "chunk": "chunk_022_F.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "1843457",
+   "piid": "FA881119C0002",
+   "pe_bli": "NSSL00",
+   "program_name": "The National Security Space Launch (NSSL)",
+   "lexicon_doc": "416",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "National Security Space Launch Delta IV heavy launch services",
+   "rationale": "The announcement names the program in the organisation's own words - 'National Security Space Launch' - and the work bought is exactly what the NSSL procurement line buys: launch vehicle production services for a specific NSSL mission (NRO Launch Mission Two) under FA8811-19-C-0002, the NSSL Phase 1 launch services contract. The index row NSSL00 is the National Security Space Launch procurement BLI and the money cited is procurement money ('Fiscal 2019 missile'), not O&M, so this is a procurement action against a procurement line rather than sustainment pinned to an acquisition line. One caveat lens A should weigh: FY2019 NSSL bought launch with Missile Procurement, AF, whereas the BLI as it stands in the lexicon sits in the later Space Procurement account - the mission content is the same line, but the appropriation title moved between the award year and the edition the index was built from.",
+   "lexicon_quote": "The National Security Space Launch (NSSL)\tNSSL00\t416\tNational Security Space Launch",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken on money or mission: 'Fiscal 2019 missile procurement funds in the amount of $139,028,436' buys launch vehicle production services for NRO Launch Mission Two on the NSSL Phase 1 launch-services contract - procurement money buying the procurement line's own article, with NSSL the program itself (Delta IV Heavy is the vehicle, not a platform the line merely supports) and NSSL00 carrying one index name, so no rollup; the account caveat is recorded and does not refute: the FY2019 obligation ran through Missile Procurement, AF while the indexed BLI sits in the Space Procurement edition (doc 416), which is the same line migrating with the Space Force stand-up rather than a work-type mismatch, and a launch buy fits the procurement line rather than the EMD element 1206853SF."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name string is shared with 1206853SF (National Security Space Launch Program (SPACE) - EMD), but that owner is a development element and the paragraph's own words - launch-vehicle production services for a specific NRO mission, funded from 'Fiscal 2019 missile [procurement]' - cannot land there, so the name does not link equally well elsewhere; no third owner of 'NSSL' exists in the index (the account-title move is lens A's to weigh)."
+   }
+  },
+  {
+   "record_index": 0,
+   "article_id": "1843457",
+   "piid": "FA881119C0002",
+   "pe_bli": "1206853SF",
+   "program_name": "The National Security Space Launch (NSSL)",
+   "lexicon_doc": "417",
+   "announcement_evidence": "National Security Space Launch Delta IV heavy launch services",
+   "rationale": "The identical name 'The National Security Space Launch (NSSL)' is also owned by the Space Force RDT&E EMD line 1206853SF, so the name alone does not pick a line. This award is launch vehicle production services for an operational NRO mission, not engineering and manufacturing development, and the funds cited are procurement, so the EMD line is the wrong home even though the name matches. Recorded as weak so the collision is on the record rather than silently resolved.",
+   "lexicon_quote": "The National Security Space Launch (NSSL)\t1206853SF\t417\tNational Security Space Launch Program (SPACE) - EMD",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 1,
+   "article_id": "3304381",
+   "piid": "FA820423F0003",
+   "pe_bli": "MGBSD0",
+   "program_name": "LGM-35A Sentinel",
+   "lexicon_doc": "410",
+   "announcement_evidence": "This contract provides for licensing for the Sentinel systems from the cradle to the grave.",
+   "rationale": "'Sentinel' here is unambiguously the ICBM program and not the English word that section 3 warns about - the contracting activity is the Air Force Nuclear Weapons Center at Hill AFB, which runs Sentinel - so the name is real. But the thing bought is 'Software as a Service 2.0', enterprise licensing, which is the generic-services pattern, and the money obligated is fiscal 2023 RDT&E while MGBSD0 is the Ground Based Strategic Deterrent missile-procurement BLI. RDT&E-funded software licensing does not execute a procurement line, and the index carries no Sentinel RDT&E line for this org, so there is nowhere clean for this award to land. Weak.",
+   "lexicon_quote": "LGM-35A Sentinel\tMGBSD0\t410\tGround Based Strategic Deterrent",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 3,
+   "article_id": "606870",
+   "piid": "FA872609C0010",
+   "pe_bli": "834050",
+   "program_name": "Battlefield Airborne Communication Node (BACN)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "Battlefield Airborne Communication Node Joint Urgent Operational Need (BACN JUON) payload operations and support",
+   "rationale": "The program name is present verbatim, but two independent problems keep this off the published tier. The money is 'Fiscal 2015 operations and maintenance and overseas contingency operations funds' for payload operations and support in the CENTCOM theatre - the O&M-sustainment-on-an-acquisition-line failure mode - while 834050 is an Other Procurement BLI. And the name 'Battlefield Airborne Communication Node (BACN)' is owned by four separate lines in this org's index (0207238F, 834050, E011A0, E011A1, plus the catch-all OTHACF), so even if the appropriation fitted, the name does not select one of them. Weak.",
+   "lexicon_quote": "Battlefield Airborne Communication Node (BACN)\t834050\t411\tBattlefield Airborne Control Node (BACN)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 5,
+   "article_id": "1493281",
+   "piid": "FA714618D0360",
+   "pe_bli": "832050",
+   "program_name": "Battlefield Information Collection and Exploitation Systems (BICES)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "Battlefield Information Collection and Exploitation System Extended (US BICES-X) federated trusted network environment infrastructure",
+   "rationale": "This is the strongest non-link in the chunk: the announcement names two of this BLI's own lexicon entries in one phrase - 'Battlefield Information Collection and Exploitation System' and 'trusted network environment' - and 832050 owns both 'Battlefield Information Collection and Exploitation Systems (BICES)' and 'Trusted Network Environment (TNE)'. What stops it is the money and the verb: the award is an IDIQ for 'the operation, sustainment, maintenance and expansion' of the network, and the funds obligated are fiscal 2018 operations and maintenance on two task orders, against an Other Procurement line. That is precisely the O&M-attached-to-a-procurement-line pattern the held-out study found, so it is weak rather than link.",
+   "lexicon_quote": "Battlefield Information Collection and Exploitation Systems (BICES)\t832050\t411\tInternational Intel Tech & Architectures",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 7,
+   "article_id": "1717218",
+   "piid": "FA867219C0010",
+   "pe_bli": "SDB002",
+   "program_name": "GBU-53",
+   "lexicon_doc": "410",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "The contractor will provide low-rate initial production for 1,260 SDB II Lot Five munitions",
+   "rationale": "GBU-53 is the munition designator for Small Diameter Bomb II, which the announcement names in full ('Small Diameter Bomb (SDB) II'), and SDB002's own title is 'SMALL DIAMETER BOMB II', so the identity is not in doubt. The action is a low-rate initial production option for 1,260 Lot Five munitions plus containers and trainers - unit procurement of the weapon itself, which is exactly what a missile-procurement BLI buys - so the work belongs to this line's appropriation rather than to the RDT&E element. The named article is the program, not a platform the contract merely supports.",
+   "lexicon_quote": "GBU-53\tSDB002\t410\tSMALL DIAMETER BOMB II",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: the untruncated paragraph states 'Fiscal 2019 missile procurement funds in the amount of $141,447,329 are being obligated at the time of award' - the entire award value, procurement money on a Missile Procurement BLI (doc 410) - and the work is FFP low-rate initial production of 1,260 Lot Five munitions plus containers and trainers, i.e. unit procurement of the article the line exists to buy; SDB002 carries one index name and no catch-all title, and the munition is the item procured, not a platform the contract supports."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "0207327F owns 'GBU-53' verbatim and also owns 'SDB Increment II', which matches the announcement's 'Small Diameter Bomb (SDB) II' at least as well as the designator does, and this record's text is cut off before any appropriation is stated, so nothing in the paragraph picks the procurement BLI over the RDT&E element that owns the same name."
+   }
+  },
+  {
+   "record_index": 7,
+   "article_id": "1717218",
+   "piid": "FA867219C0010",
+   "pe_bli": "0207327F",
+   "program_name": "GBU-53",
+   "lexicon_doc": "412",
+   "announcement_evidence": "The contractor will provide low-rate initial production for 1,260 SDB II Lot Five munitions",
+   "rationale": "0207327F owns the same 'GBU-53' string and also 'SDB Increment II', so the name collides across the RDT&E element and the procurement BLI. The award is Lot Five LRIP hardware, not development, so the procurement line is the right home and the RDT&E element is the loser of the collision. Recorded as weak so the collision is visible in the counts.",
+   "lexicon_quote": "GBU-53\t0207327F\t412\tSmall Diameter Bomb (SDB)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 8,
+   "article_id": "1051724",
+   "piid": "FA872609C0010",
+   "pe_bli": "834050",
+   "program_name": "Battlefield Airborne Communication Node (BACN)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "Battle Field Airborne Communication Node payload, operations and support",
+   "rationale": "Same contract and same problem as record 3: the BACN name is present but the obligation is 'Fiscal 2017 overseas contingency operation; and operation and maintenance funds' for payload operations and support, which is O&M sustainment charged against an Other Procurement line, and the BACN name is owned by four lines in this index. Weak.",
+   "lexicon_quote": "Battlefield Airborne Communication Node (BACN)\t834050\t411\tBattlefield Airborne Control Node (BACN)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 13,
+   "article_id": "3386725",
+   "piid": "FA862923D5031",
+   "pe_bli": "0207457F",
+   "program_name": "WARHAWK and Special Warfare Assault Kit (SWAK)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "develop and sustain the system-of-systems Special Warfare Assault Kit",
+   "rationale": "The announcement names Special Warfare Assault Kit and Guardian Angel, both of which 0207457F owns, and describes 'special warfare acquisition growth and refresh'. But every name it matches on collides: SWAK is owned identically by 0207444F (Tactical Air Control Party-Mod) and Guardian Angel by 0207227F (Combat Rescue - Pararescue). The announcement itself says the contract supports three program families at once - special warfare growth and refresh, Guardian Angel, and tactical air control party modernization - so an attribution to any single element over-claims what the IDIQ is. Name present, evidence does not single out a line: weak.",
+   "lexicon_quote": "WARHAWK and Special Warfare Assault Kit (SWAK)\t0207457F\t412\tAir Force Special Warfare (SPECWAR)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 13,
+   "article_id": "3386725",
+   "piid": "FA862923D5031",
+   "pe_bli": "0207444F",
+   "program_name": "WARHAWK and Special Warfare Assault Kit (SWAK)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "tactical air control party modernization programs",
+   "rationale": "0207444F owns the identical SWAK string and its title is Tactical Air Control Party-Mod, which the announcement names as one of the supported programs. It is the other half of the SWAK collision and is named only as one member of a multi-program support IDIQ, so the same reasoning applies: weak, not link.",
+   "lexicon_quote": "WARHAWK and Special Warfare Assault Kit (SWAK)\t0207444F\t412\tTactical Air Control Party-Mod",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 14,
+   "article_id": "1634449",
+   "piid": "FA881013C0002",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "for space-based infrared system contractor logistics support",
+   "rationale": "SBIRS is named, but the action is an option exercise for 'operations, sustainment and factory infrastructure support services' with no funds obligated at award - contractor logistics support, which is sustainment, not modification hardware. SPCMOD is the Space Mods procurement BLI, a broad aggregate line whose lexicon carries SBIRS among two dozen unrelated sensor and ground entries. Sustainment services against an aggregate procurement line is the failure mode the rubric names, so weak.",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)\tSPCMOD\t416\tSpace Mods",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 19,
+   "article_id": "1017971",
+   "piid": "FA862511C6597",
+   "pe_bli": "C130J0",
+   "program_name": "C-130J",
+   "lexicon_doc": "407",
+   "announcement_evidence": "Contractor will provide two U.S. government-configured C-130J-30 aircraft.",
+   "rationale": "'C-130J' is an index name and it appears in the announcement, but it is owned three ways in this org's index - C130J0 (C-130J), C1300J (C-130J Mods) and 0401132F (C-130J Program) - so the name does not choose a line. More decisively, the award is 100 percent unclassified foreign military sales to France and is funded entirely by FMS France money, so it consumes no U.S. budget line at all. Weak.",
+   "lexicon_quote": "C-130J\tC130J0\t407\tC-130J",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 20,
+   "article_id": "1326276",
+   "piid": "FA881013C0002",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "Space-Based Infrared System (SBIRS) contractor logistics support",
+   "rationale": "Same contract and same reasoning as record 14: the SBIRS name is exact but the action is an option exercise for operations, sustainment and factory infrastructure support with no funds obligated, i.e. contractor logistics support charged against the Space Mods procurement aggregate. Weak.",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)\tSPCMOD\t416\tSpace Mods",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 21,
+   "article_id": "1792112",
+   "piid": "FA821319D0006",
+   "pe_bli": "356120",
+   "program_name": "DSU-33D",
+   "lexicon_doc": "409",
+   "announcement_evidence": "This contract provides for the replacement of the current DSU-33D/B height-of-burst sensor",
+   "rationale": "DSU-33D is a lexicon name for the Fuzes BLI and the string appears, but it appears as the item being REPLACED, not the item being bought: the contract buys the new Cockpit-Selectable Height-of-Burst Sensor, which the index does not carry under any name. Citing the superseded article as evidence for the award would make the citation say the opposite of what the paragraph says. Weak.",
+   "lexicon_quote": "DSU-33D\t356120\t409\tFuzes",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 25,
+   "article_id": "628550",
+   "piid": "FA868110D0071",
+   "pe_bli": "SDB000",
+   "program_name": "GBU-39",
+   "lexicon_doc": "410",
+   "announcement_evidence": "increase the contract ceiling for foreign military sales Small Diameter Bomb I (SDB I) production",
+   "rationale": "GBU-39 is the designator for Small Diameter Bomb I, which is named, and SDB000 is the SDB procurement BLI. But the modification only raises a ceiling for future foreign military sales procurements and the announcement states the contract is 95 percent foreign military sales, so the action is funded by foreign customers rather than by this U.S. line, and no funds are obligated against it. A ceiling increase for FMS is not execution of the U.S. budget line. Weak.",
+   "lexicon_quote": "GBU-39\tSDB000\t410\tSmall Diameter Bomb",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 30,
+   "article_id": "1825952",
+   "piid": "FA210318C0061",
+   "pe_bli": "354050",
+   "program_name": "B61-12 Life Extension Program (LEP)",
+   "lexicon_doc": "409",
+   "announcement_evidence": "for the B61-12 Life Extension Program",
+   "rationale": "The name 'B61-12 Life Extension Program' is verbatim in the announcement and 354050 owns it - but 354050's title is 'B61-12 Trainer', and the J-book narrative owns the LEP name only because the trainer line's narrative describes its parent program. The award is Lot 1 and Lot 2 long-lead for the Tail Kit Assembly, production hardware for the weapon itself, not trainers. This is the pattern where the lexicon name is the parent program the line supports rather than the line's own work, so weak.",
+   "lexicon_quote": "B61-12 Life Extension Program (LEP)\t354050\t409\tB61-12 Trainer",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 31,
+   "article_id": "958500",
+   "piid": "FA881013C0001",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "Space-Based Infrared System (SBIRS) contractor logistics support",
+   "rationale": "Third instance of the SBIRS contractor-logistics-support pattern (different contract number, FA8810-13-C-0001). Name exact, but the work is operations, sustainment and factory infrastructure support with no funds obligated, and the only home the index offers is the Space Mods procurement aggregate. Weak.",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)\tSPCMOD\t416\tSpace Mods",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 32,
+   "article_id": "621281",
+   "piid": "FA810715C0001",
+   "pe_bli": "B01B00",
+   "program_name": "B-1B",
+   "lexicon_doc": "407",
+   "announcement_evidence": "B-1 integrated battle station for the B-1 weapon system",
+   "rationale": "The Integrated Battle Station is a genuine B-1B modification and the funds are fiscal 2015 aircraft procurement, which fits an aircraft-procurement B-1B line. But the index carries no name for the Integrated Battle Station, and what the announcement actually contains is the bare platform token 'B-1' - not the index name 'B-1B', and not 'B-1B Modernization' (owned elsewhere, by RDT&E element 0101126F). A link here would rest on description alone against a platform-titled line, which is the pattern the rubric rejects. Weak.",
+   "lexicon_quote": "B-1B\tB01B00\t407\tB-1B",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 34,
+   "article_id": "2783328",
+   "piid": "FA880615C0001",
+   "pe_bli": "SPRNGE",
+   "program_name": "Launch and Test Range System (LTRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "in support of operations, maintenance and sustainment on the Launch and Test Range System",
+   "rationale": "The program name is present and SPRNGE owns it. But the announcement says in its own words what the money buys: 'operations, maintenance and sustainment', the seventh option period of the range operations services contract, with no funds obligated at award. That is range O&M, not procurement of range modernization hardware, so it does not execute this Space Procurement line. Weak.",
+   "lexicon_quote": "Launch and Test Range System (LTRS)\tSPRNGE\t416\tSpacelift Range System Space",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 35,
+   "article_id": "1792112",
+   "piid": "FA862019F2310",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for MQ-9 Block 5 procurement",
+   "rationale": "The announcement describes MQ-9 unmanned air vehicles, which matches the 'MQ-9 UAV' lexicon name in substance. But the award is explicitly '100 percent foreign military sales to the Netherlands' and is funded by FMS money, so it buys Dutch aircraft and consumes no U.S. element; and it is a procurement action against an RDT&E element in any case. Weak.",
+   "lexicon_quote": "MQ-9 UAV\t0205219F\t412\tMQ-9 UAV",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 36,
+   "article_id": "3415585",
+   "piid": "FA881018C0005",
+   "pe_bli": "1206443SF",
+   "program_name": "The Next-Gen OPIR GEO (NGG)",
+   "lexicon_doc": "417",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "post-launch activities for all three Next Generation Overhead Persistent Infrared Geosynchronous Space Vehicles",
+   "rationale": "'Next Generation Overhead Persistent Infrared Geosynchronous Space Vehicles' is the spelled-out form of the lexicon's 'Next-Gen OPIR GEO (NGG)', and the geosynchronous qualifier separates it cleanly from the Polar line (1206444SF) and the Ground line (1206440SF), so no other element in this index owns this name. The contract, FA8810-18-C-0005, is the Next-Gen OPIR GEO space vehicle contract; the modification funds program protection development and product support planning for those three GEO vehicles, and the money is fiscal 2023 research, development, test and evaluation - development work against the development element that owns it.",
+   "lexicon_quote": "The Next-Gen OPIR GEO (NGG)\t1206443SF\t417\tNext-Gen OPIR -- GEO",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: 'Fiscal 2023 research, development, test and evaluation funds in the amount of $28,727,026' is RDT&E money against an RDT&E element on that element's own space-vehicle development contract; the 'post-launch activities' and 'product support planning' wording is the nearest thing to a sustainment read, but the three GEO vehicles had not flown in 2023, so this is pre-launch acquisition-phase planning and program-protection development, not O&M sustainment of a fielded system, and 1206443SF owns a single name with no catch-all title."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Next-Gen OPIR GEO (NGG)' appears exactly once in the index; the sibling Polar (1206444SF), Ground (1206440SF) and parent Next Generation OPIR (1206442SF) rows own different names, and the announcement's 'Geosynchronous' excludes them."
+   }
+  },
+  {
+   "record_index": 37,
+   "article_id": "630619",
+   "piid": "FA872609C0010",
+   "pe_bli": "834050",
+   "program_name": "Battlefield Airborne Communication Node (BACN)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "Contractor will extend the services of the Battlefield Airborne Communication Node Payload.",
+   "rationale": "Third BACN paragraph on the same contract. The name is present but the action is definitization of a services extension with no funds obligated at award, so nothing identifies an appropriation, and the BACN name remains owned by four lines in this index. Weak.",
+   "lexicon_quote": "Battlefield Airborne Communication Node (BACN)\t834050\t411\tBattlefield Airborne Control Node (BACN)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 38,
+   "article_id": "2355497",
+   "piid": "FA882320C0004",
+   "pe_bli": "1206425SF",
+   "program_name": "Ground Based Optical Sensor System (GBOSS)",
+   "lexicon_doc": "417",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Ground-Based Electro Optical Deep Space Surveillance (GEODSS) System upgrade on Ground-Based Optical Sensor System (GBOSS) engineering and manufacturing development (EMD) pre-priced option",
+   "rationale": "The announcement names 'Ground-Based Optical Sensor System (GBOSS)' with only a hyphen separating it from the lexicon string 'Ground Based Optical Sensor System (GBOSS)', and no other element in this org's index owns that name. The action is the exercise of the GBOSS engineering and manufacturing development option - completing the integrated system design, developing software, building new European and Pacific sites - which is development work, and 1206425SF is the Space Force RDT&E element whose narrative owns GBOSS. GBOSS is the program the element funds, not a platform the contract supports, and the element is specific enough (its other named effort is DARC) not to read as a catch-all rollup.",
+   "lexicon_quote": "Ground Based Optical Sensor System (GBOSS)\t1206425SF\t417\tSpace Situation Awareness Systems",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: the untruncated paragraph states 'Fiscal 2020 research, development, test and evaluation funds in the amount of $12,000,000 are being obligated at the time of award' - RDT&E money against an RDT&E element - and the scope is the GBOSS engineering and manufacturing development option (complete the integrated design, develop software, build sites and sensor towers), which is development work, not sustainment; GBOSS is the program 1206425SF funds rather than a platform (GEODSS is the legacy system being upgraded under it), and the element names only two efforts (DARC, GBOSS), so it is not a rollup; that only $12M of the $119.2M mod is obligated at award is ordinary incremental funding and not a mismatch."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Ground Based Optical Sensor System (GBOSS)' occurs exactly once in the whole index and 'GEODSS' occurs nowhere, so no alternative PE owns the name, and the EMD option is the same GBOSS effort the row names rather than a different variant or increment."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "4033640",
+   "piid": "FA873021C0022",
+   "pe_bli": "833060",
+   "program_name": "The Three-Dimensional Expeditionary Long-Range Radar (3DELRR)",
+   "lexicon_doc": "411",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for Three-Dimensional Expeditionary Long-Range Radar",
+   "rationale": "The announcement names the program almost exactly as the lexicon does, and the appropriation settles the collision with the RDT&E element that shares the name: 'Fiscal 2025 other procurement funds in the amount of $118,379,696 are being obligated at the time of award', and 833060 is the Other Procurement BLI titled '3D Expeditionary Long-Range Radar'. A $118M other-procurement obligation on the 3DELRR production contract (FA8730-21-C-0022, Lockheed Martin at Liverpool, New York, the AN/TPY-4 production site) is this line's own work, not sustainment of something else.",
+   "lexicon_quote": "The Three-Dimensional Expeditionary Long-Range Radar (3DELRR)\t833060\t411\t3D Expeditionary Long-Range Radar",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken - the cleanest appropriation match in the set: 'Fiscal 2025 other procurement funds in the amount of $118,379,696' is the whole modification value, obligated against an Other Procurement BLI (doc 411) titled 3D Expeditionary Long-Range Radar, on the 3DELRR production contract at the Lockheed Liverpool, New York radar site; the radar is the article procured, the BLI carries one index name, and there is no catch-all or sustainment reading available."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The 3DELRR name is also owned by 0207455F (AN/TPY-4, Three Dimensional Long-Range Radar), but the record states the full award value is 'fiscal 2025 other procurement funds', which cannot be obligated on an RDT&E element, so the evidence does not link equally well to the collision row."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "4033640",
+   "piid": "FA873021C0022",
+   "pe_bli": "0207455F",
+   "program_name": "Three Dimensional Expeditionary Long Range Radar",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for Three-Dimensional Expeditionary Long-Range Radar",
+   "rationale": "0207455F owns essentially the same name (and the AN/TPY-4 designator), so the 3DELRR name is a two-line collision in this index. The fiscal 2025 other-procurement obligation puts this action on the procurement BLI rather than the RDT&E element, so the RDT&E side is recorded as weak rather than linked.",
+   "lexicon_quote": "Three Dimensional Expeditionary Long Range Radar\t0207455F\t412\tThree Dimensional Long-Range Radar (3DELRR)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 40,
+   "article_id": "2164680",
+   "piid": "FA870514C0001",
+   "pe_bli": "0303131F",
+   "program_name": "Global ASNT Inc 2",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for a global aircrew strategic network terminal",
+   "rationale": "'Global ASNT' is the lexicon's abbreviation of Global Aircrew Strategic Network Terminal, so the name is real and 0303131F (MEECN) owns it. Two things stop the link. The lexicon entry is specifically Increment 2 and the announcement names no increment; and the action exercises PRODUCTION option CLINs funded with 'Fiscal 2020 other procurement funds', which belongs on an Other Procurement MEECN line (834210) whose own lexicon does not carry GASNT at all. Name in one line, money in another: weak.",
+   "lexicon_quote": "Global ASNT Inc 2\t0303131F\t412\tMinimum Essential Emergency Communications Network (MEECN)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 42,
+   "article_id": "1638010",
+   "piid": "FA880615C0001",
+   "pe_bli": "SPRNGE",
+   "program_name": "Launch and Test Range System (LTRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "for support of operations, maintenance, and sustainment on the Launch and Test Range System",
+   "rationale": "Same contract and same reasoning as record 34: the LTRS name is present, but the modification exercises the fourth option period for operations, maintenance and sustainment of the ranges with no funds obligated at award. Range O&M services do not execute this Space Procurement line. Weak.",
+   "lexicon_quote": "Launch and Test Range System (LTRS)\tSPRNGE\t416\tSpacelift Range System Space",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 45,
+   "article_id": "1954307",
+   "piid": "FA821319C0038",
+   "pe_bli": "356120",
+   "program_name": "FMU-167 Hard Target Void Sensing Fuze (HTVSF)",
+   "lexicon_doc": "409",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for Hard Target Void Sensing Fuzes (HTVSF). This contract provides for the full rate production of Lot 2 and Lot 3 HTVSFs",
+   "rationale": "The cleanest link in the chunk. The announcement names the fuze exactly as the lexicon does apart from the FMU-167 designator prefix, and the index carries both 'FMU-167' and 'FMU-167 Hard Target Void Sensing Fuze (HTVSF)' on this one BLI, so no other line owns the name. The work is full-rate production of Lot 2 and Lot 3 fuzes plus spares and trainers, and the money is 'Fiscal 2017, 2018, and 2019 ammunition procurement funds in the amount of $109,929,339' - the whole announced value, procurement money buying the item the ammunition-procurement Fuzes BLI exists to buy. The fuze is the article procured, not a platform the contract supports.",
+   "lexicon_quote": "FMU-167 Hard Target Void Sensing Fuze (HTVSF)\t356120\t409\tFuzes",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: 'Fiscal 2017, 2018, and 2019 ammunition procurement funds in the amount of $109,929,339' is the entire award value obligated against a Procurement of Ammunition BLI (doc 409), and the work is FFP full-rate production of Lot 2 and Lot 3 FMU-167 fuzes plus spares and trainers - the item the line buys, not a platform it supports; 'Fuzes' aggregates twelve fuze designators but is a named commodity line whose narrative carries this exact item, not a dollar-threshold or 'Other' catch-all of the kind the rubric rejects."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'FMU-167' and 'FMU-167 Hard Target Void Sensing Fuze (HTVSF)' appear only on 356120; the other designators on that line are different fuzes, and no other PE in the index claims HTVSF or the spelled-out name."
+   }
+  },
+  {
+   "record_index": 48,
+   "article_id": "4017322",
+   "piid": "FA868925CB003",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for Canada MQ-9B remotely piloted aircraft systems hardware",
+   "rationale": "MQ-9B is the manufacturer's SkyGuardian variant sold to Canada as a Direct Commercial Sale, not the USAF MQ-9 the lexicon entry covers, and the award is entirely foreign military sales hardware funded with FMS money. Different variant and no U.S. line consumed. Weak.",
+   "lexicon_quote": "MQ-9 UAV\t0205219F\t412\tMQ-9 UAV",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 49,
+   "article_id": "2587188",
+   "piid": "FA821415C0001",
+   "pe_bli": "0101213F",
+   "program_name": "LGM-30G Flight Test Telemetry and Termination System (FT3)",
+   "lexicon_doc": "412",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the Flight Test Telemetry Termination Rapid Fielding Initiative (FT3 RFI)",
+   "rationale": "The announcement uses the program's own acronym twice - 'FT3 RFI' and 'the FT3 flight schedule' - and spells out Flight Test Telemetry Termination, which is the lexicon's 'LGM-30G Flight Test Telemetry and Termination System (FT3)'. FT3 appears exactly once in this org's whole index, so there is no alternative owner. The contracting activity is the Air Force Nuclear Weapons Center at Hill AFB and the contract is the Minuteman III integration contract FA8214-15-C-0001; the modification definitizes a change order implementing initiatives to meet the FT3 flight schedule, which is development and fielding work on the element that owns FT3. No funds are obligated at award, so the appropriation is not stated on the face of the paragraph - lens A should weigh that - but the work described is this element's own.",
+   "lexicon_quote": "LGM-30G Flight Test Telemetry and Termination System (FT3)\t0101213F\t412\tMinuteman Squadrons",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The weakest of the eleven on lens A's money leg but not refuted: 'No funds are being obligated at the time of award', so the appropriation is absent from the face of the paragraph and the vehicle (Boeing's FA8214-15-C-0001 ICBM integration support contract at Layton, Utah) is the kind of sustainment-heavy contract where O&M-funded work hides; against that, the modification is scoped solely to a named effort - the FT3 Rapid Fielding Initiative - which appears exactly once in this org's whole index and only on the RDT&E element 0101213F (the procurement line M30MLG 'MM III Modifications' does not name it), the change-order definitization is cost-plus-incentive-fee rather than the FFP form these production awards take, and 0101213F is a weapon-system element with ten named LGM-30G efforts, not a catch-all; no positive sustainment or platform evidence exists to break it."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'FT3' / 'Flight Test Telemetry and Termination System' appears once in the index; the only other Minuteman owner, M30MLG (MM III Modifications), owns 'LGM-30G' and MEECN but not FT3, and the announcement names FT3 twice rather than only the platform."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "606828",
+   "piid": "FA862512C6598",
+   "pe_bli": "0401134F",
+   "program_name": "The Large Aircraft Infrared Countermeasures (LAIRCM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "Contractor will provide Large Aircraft Infrared Countermeasures (LAIRCM) equipment and support in the calendar year 2015 base hardware buy.",
+   "rationale": "LAIRCM is named exactly and 0401134F is the element titled for it. But the award is a hardware buy funded with 'Fiscal 2013, 2014 and 2015 aircraft procurement, National Guard, Navy and overseas contingency operations funds' - a procurement action spread across several appropriations and services, charged against an RDT&E element, and this org's index offers no LAIRCM procurement BLI to catch it. Procurement money on a development line is the rubric's named failure mode, so weak.",
+   "lexicon_quote": "The Large Aircraft Infrared Countermeasures (LAIRCM)\t0401134F\t412\tLarge Aircraft IR Countermeasures (LAIRCM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 54,
+   "article_id": "755223",
+   "piid": "FA867516C0044",
+   "pe_bli": "0207163F",
+   "program_name": "Advanced Medium Range Air-to-Air Missile (AMRAAM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for the Advanced Medium-Range Air-to-Air Missile (AMRAAM) program",
+   "rationale": "The AMRAAM name matches the lexicon entry apart from one hyphen and the element is titled for it, so identity is solid. The obstacle is the appropriation: the announcement says 'Fiscal 2015 Air Force production and 2016 Navy production funds' are obligated, i.e. procurement money, and part of it is Navy, against an Air Force RDT&E element; this org's index carries no AMRAAM procurement BLI. A form-fit-function refresh of the guidance section could sit either side of the RDT&E/procurement line and the paragraph puts the money on the procurement side. Weak.",
+   "lexicon_quote": "Advanced Medium Range Air-to-Air Missile (AMRAAM)\t0207163F\t412\tAdvanced Medium Range Air-to-Air Missile (AMRAAM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 58,
+   "article_id": "1745521",
+   "piid": "FA868218C0009",
+   "pe_bli": "0207325F",
+   "program_name": "JASSM Extended Range (JASSM-ER)",
+   "lexicon_doc": "412",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "wings/chines to the Joint Air-to-Surface Standoff Missile - Extended Range baseline missile",
+   "rationale": "The announcement spells out 'Joint Air-to-Surface Standoff Missile - Extended Range', which is the lexicon's 'JASSM Extended Range (JASSM-ER)' on element 0207325F. The work is unambiguously development - 'design, development, integration and testing of subsystem design changes for the wings/chines' - and the paragraph states that 'Fiscal 2019 research, development, test and evaluation funds will provide funding for the contract'. RDT&E money doing RDT&E work on the element that owns the JASSM-ER name; the missile is the program the element funds, not a platform it supports. The procurement-side JASSM BLI (JASSM0) owns only the designator AGM-158D and so is not an alternative owner of this name.",
+   "lexicon_quote": "JASSM Extended Range (JASSM-ER)\t0207325F\t412\tJoint Air-to-Surface Standoff Missile (JASSM)",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: 'Fiscal 2019 research, development, test and evaluation funds will provide funding for the contract' against an RDT&E element, and the scope - 'design, development, integration and testing of subsystem design changes for the wings/chines' to the JASSM-ER baseline missile - is development work on the missile the element funds, not sustainment and not a platform the contract merely supports; 0207325F names only JASSM variants, so it is not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'JASSM Extended Range (JASSM-ER)' is owned only by 0207325F; the procurement line JASSM0 owns just the designator AGM-158D, which this announcement never uses, so the spelled-out Extended Range name has no alternative owner and is not a different variant."
+   }
+  },
+  {
+   "record_index": 59,
+   "article_id": "1155464",
+   "piid": "FA868217D0002",
+   "pe_bli": "0207325F",
+   "program_name": "The Joint Air-to-Surface Standoff Missile (JASSM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for Joint Air-to-Surface Standoff Missile (JASSM) production support",
+   "rationale": "The JASSM name is exact, but the award is an IDIQ ceiling for lifecycle support explicitly spanning 'JASSM, Long Range Anti-Ship Missile (Air Force Inventory), JASSM-Extended Range and any JASSM variant', with no funds obligated at award. A no-funds umbrella covering several programs across at least two budget lines is the generic-support pattern, not execution of this element. Weak.",
+   "lexicon_quote": "The Joint Air-to-Surface Standoff Missile (JASSM)\t0207325F\t412\tJoint Air-to-Surface Standoff Missile (JASSM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 61,
+   "article_id": "606697",
+   "piid": "FA868214D0029",
+   "pe_bli": "0207325F",
+   "program_name": "The Joint Air-to-Surface Standoff Missile (JASSM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for Joint Air to Surface Standoff Missile production support",
+   "rationale": "The 2014 predecessor of record 59: an IDIQ for 'JASSM system upgrades, integration, sustainment, management and logistical support' with no funds obligated at award. Generic lifecycle support with no appropriation named cannot be shown to fund this element's own work. Weak.",
+   "lexicon_quote": "The Joint Air-to-Surface Standoff Missile (JASSM)\t0207325F\t412\tJoint Air-to-Surface Standoff Missile (JASSM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 64,
+   "article_id": "3225002",
+   "piid": "FA861517C6047",
+   "pe_bli": "F01600",
+   "program_name": "Active Electronically Scanned Array (AESA)",
+   "lexicon_doc": "407",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for Active Electronically Scanned Array radars of Air Force F-16 aircraft",
+   "rationale": "The lexicon name appears verbatim in the announcement apart from the parenthetical acronym gloss, and the appropriation matches the line's account exactly: 'Fiscal 2023 aircraft procurement funds in the amount of $99,365,970 are being obligated at the time of award' against an Aircraft Procurement BLI. What is bought is 42 production radars plus initial and readiness spare kits for Air Force F-16s - retrofit radar sets, which is what an F-16 Modifications line procures - and the paragraph explicitly says the modification does not involve foreign military sales, so the whole obligation lands on this U.S. line. The AESA radar is the article procured, not a platform the contract merely supports.",
+   "lexicon_quote": "Active Electronically Scanned Array (AESA)\tF01600\t407\tF-16 Modifications",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: 'Fiscal 2023 aircraft procurement funds in the amount of $99,365,970' is the whole modification value obligated against an Aircraft Procurement BLI (doc 407), buying 42 production radars and spare kits - the retrofit article an F-16 Modifications line procures, with the F-16 the platform the line itself owns rather than one the contract merely supports, and F01600 naming only AESA and AGCAS, so no rollup; one defect noted without refuting, since the money leg stands on this record's own words: the proposal's rationale attributes the 'does not involve Foreign Military Sales' sentence to this paragraph, but that sentence appears only in record 65's text, not here."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "'Active Electronically Scanned Array (AESA)' is owned by two BLIs in the same aircraft-procurement document - F01600 (F-16 Modifications) and F0160P (F-16 Post Production Support) - so the appropriation cannot separate them, and the initial and readiness spare kits in this award read as post-production support: the evidence links equally well to F0160P."
+   }
+  },
+  {
+   "record_index": 64,
+   "article_id": "3225002",
+   "piid": "FA861517C6047",
+   "pe_bli": "F0160P",
+   "program_name": "Active Electronically Scanned Array (AESA)",
+   "lexicon_doc": "407",
+   "announcement_evidence": "for Active Electronically Scanned Array radars of Air Force F-16 aircraft",
+   "rationale": "F0160P (F-16 Post Production Support) owns the identical AESA name, so this is a real two-line collision inside the same appropriation. The award buys 42 production radars and spare kits, which is modification-kit procurement rather than post-production support, so the Modifications line is the better home and this one is recorded as weak so the collision is counted rather than hidden.",
+   "lexicon_quote": "Active Electronically Scanned Array (AESA)\tF0160P\t407\tF-16 Post Production Support",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 65,
+   "article_id": "3228209",
+   "piid": "FA861517C6047",
+   "pe_bli": "F01600",
+   "program_name": "Active Electronically Scanned Array (AESA)",
+   "lexicon_doc": "407",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for Active Electronically Scanned Array radars of Air Force F-16 aircraft",
+   "rationale": "The same award re-announced four days later under a different article, with the funding line spelled out more fully: 'Fiscal 2022 aircraft procurement funds in the amount of $93,738,340; and fiscal 2023 aircraft procure[ment]'. Aircraft procurement money buying 42 production radars and spare kits for Air Force F-16s is the F-16 Modifications line's own work, and the paragraph states the modification does not involve foreign military sales. Proposed separately from record 64 because the two paragraphs are distinct records sharing one PIID.",
+   "lexicon_quote": "Active Electronically Scanned Array (AESA)\tF01600\t407\tF-16 Modifications",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: 'Fiscal 2022 aircraft procurement funds in the amount of $93,738,340; and fiscal 2023 aircraft procurement funds in the amount of $5,627,630' sum to the full $99,365,970 modification, procurement money against an Aircraft Procurement BLI buying 42 production radars and spare kits for Air Force F-16s, with the paragraph stating the modification does not involve Foreign Military Sales so the whole obligation lands on this U.S. line; noted without refuting, because it is a collector concern rather than a lens A ground: this is the same P00076 action as record 64 re-announced four days later, so the two proposals must not be allowed to count the same $99.4M twice in a Related Awards tally."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Same collision as record 64: AESA is owned by both F01600 and F0160P, and the fuller FY2022/FY2023 aircraft-procurement funding line is common to both F-16 lines, so nothing in this paragraph picks F-16 Modifications over F-16 Post Production Support."
+   }
+  },
+  {
+   "record_index": 65,
+   "article_id": "3228209",
+   "piid": "FA861517C6047",
+   "pe_bli": "F0160P",
+   "program_name": "Active Electronically Scanned Array (AESA)",
+   "lexicon_doc": "407",
+   "announcement_evidence": "for Active Electronically Scanned Array radars of Air Force F-16 aircraft",
+   "rationale": "The same AESA name collision as on record 64: F0160P owns the identical string. Production radars and spare kits are modification procurement rather than post-production support, so this side of the collision is weak.",
+   "lexicon_quote": "Active Electronically Scanned Array (AESA)\tF0160P\t407\tF-16 Post Production Support",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 66,
+   "article_id": "946136",
+   "piid": "FA862511C6600",
+   "pe_bli": "0401134F",
+   "program_name": "The Large Aircraft Infrared Countermeasures (LAIRCM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for the acquisition of Large Aircraft Infrared Countermeasures (LAIRCM) Block 30 hardware as contractor furnished equipment",
+   "rationale": "LAIRCM is named exactly, but the award acquires Block 30 hardware as contractor furnished equipment for low-rate initial production Lot 1 and Lot 2 aircraft - procurement of installation hardware for another program's aircraft - while 0401134F is the LAIRCM RDT&E element and the index offers no LAIRCM procurement BLI. Procurement content against a development line, and the hardware rides on a platform the element does not fund. Weak.",
+   "lexicon_quote": "The Large Aircraft Infrared Countermeasures (LAIRCM)\t0401134F\t412\tLarge Aircraft IR Countermeasures (LAIRCM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 68,
+   "article_id": "3909038",
+   "piid": "FA868219D0013",
+   "pe_bli": "0207325F",
+   "program_name": "The Joint Air-to-Surface Standoff Missile (JASSM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "to increase the ceiling value for Joint Air to Surface Standoff Missile Foreign Military Sales production support and sustainment",
+   "rationale": "The JASSM name is present but the action is purely a ceiling increase for foreign military sales production support and sustainment to Finland, Poland, the Netherlands, Japan and Australia, with no funds obligated at award. FMS sustainment capacity is not execution of this U.S. development element. Weak.",
+   "lexicon_quote": "The Joint Air-to-Surface Standoff Missile (JASSM)\t0207325F\t412\tJoint Air-to-Surface Standoff Missile (JASSM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 71,
+   "article_id": "3880641",
+   "piid": "FA881018C0006",
+   "pe_bli": "1206444SF",
+   "program_name": "Next-Gen OPIR Polar (NGP)",
+   "lexicon_doc": "417",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Next Generation Overhead Persistent Infrared Polar Space Vehicles 1 and 2",
+   "rationale": "'Next Generation Overhead Persistent Infrared Polar' is the spelled-out form of the lexicon's 'Next-Gen OPIR Polar (NGP)', and the Polar qualifier distinguishes it from the GEO and Ground lines, so no other element owns this name. The contract FA8810-18-C-0006 is the Northrop Grumman Next-Gen OPIR Polar space vehicle contract; the modification adds scope to complete the design, build, integration and testing of the mission payload for Polar space vehicles 1 and 2, and 'Fiscal 2024 research and development funds in the amount of $39,597,988 are being obligated at the time of award'. Development money doing development work on the element that owns the name.",
+   "lexicon_quote": "Next-Gen OPIR Polar (NGP)\t1206444SF\t417\tNext-Gen OPIR -- Polar",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not broken: 'Fiscal 2024 research and development funds in the amount of $39,597,988' is development money against an RDT&E element, and the added scope - complete the design, build, integration and testing of the mission payload for Polar space vehicles 1 and 2 - is development of the vehicles the element funds, not sustainment; 1206444SF carries a single name and a specific title, so it is neither a rollup nor a platform match."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Next-Gen OPIR Polar (NGP)' is owned only by 1206444SF; the NGP acronym collision with 'Next Generation Penetrator' (0604327F) is defused because the announcement spells out 'Next Generation Overhead Persistent Infrared Polar', and the GEO/Ground/parent OPIR rows own different names."
+   }
+  },
+  {
+   "record_index": 72,
+   "article_id": "2835747",
+   "piid": "FA868221C0001",
+   "pe_bli": "0207325F",
+   "program_name": "JASSM Extended Range (JASSM-ER)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for 94 Lot 20 Joint Air-to-Surface Standoff Missile",
+   "rationale": "The JASSM-ER name matches 0207325F, but this is a Lot 20 production buy of 94 missiles with containers funded by 'Fiscal 2020-2022 missile procurement funds in the amount of $97,336,915' - the full announced value in procurement money against an RDT&E element. Unit procurement does not execute a development line. Weak.",
+   "lexicon_quote": "JASSM Extended Range (JASSM-ER)\t0207325F\t412\tJoint Air-to-Surface Standoff Missile (JASSM)",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 72,
+   "article_id": "2835747",
+   "piid": "FA868221C0001",
+   "pe_bli": "JASSM0",
+   "program_name": "AGM-158D",
+   "lexicon_doc": "410",
+   "announcement_evidence": "for 94 Lot 20 Joint Air-to-Surface Standoff Missile",
+   "rationale": "The missile-procurement BLI is where a Lot 20 buy funded by missile procurement money belongs, and its title is Joint Air-Surface Standoff Missile. But the only name this line owns in the index is the designator AGM-158D, which is the extended-range-plus variant, whereas the missiles awarded here are Joint Air-to-Surface Standoff Missile - Extended Range (AGM-158B). Proposing this pairing would assert an alias between two different variants, which is an invented identity, so the appropriation fit cannot rescue it. Weak.",
+   "lexicon_quote": "AGM-158D\tJASSM0\t410\tJoint Air-Surface Standoff Missile",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 73,
+   "article_id": "1112618",
+   "piid": "FA881117C0005",
+   "pe_bli": "GPSIII",
+   "program_name": "GPS III Space Segment",
+   "lexicon_doc": "416",
+   "announcement_evidence": "launch services to deliver a GPS III satellite to its intended orbit",
+   "rationale": "Rejected under the section 3 platform pattern: GPS III is named, but it is the satellite the contract carries, not the program the line funds. What is actually bought is 'launch vehicle production, mission integration, launch operations, spaceflight worthiness and mission unique activities' from Space Exploration Technologies - launch services, which belong to the launch program, while GPSIII is the GPS III space segment line that buys the satellites themselves. A link here would assert that a launch contract executed the satellite procurement line, which is exactly the platform-the-contract-supports failure the rubric rejects by design.",
+   "lexicon_quote": "GPS III Space Segment\tGPSIII\t416\tGPS III Space Segment",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 76,
+   "article_id": "650399",
+   "piid": "FA880708C0010",
+   "pe_bli": "GPSIII",
+   "program_name": "GPS III Space Segment",
+   "lexicon_doc": "416",
+   "announcement_evidence": "Global Positioning System (GPS) III contingency operations services and supplies to modify the current GPS control segment to operate all GPS III satellites",
+   "rationale": "GPS III is named, and the action rides on the GPS III space vehicle contract FA8807-08-C-0010, so this is closer than record 73. But the work described is ground: modifying the existing GPS control segment, buying satellite vehicle simulation modules, a GPS Simulator and updates to the GPS Positional Training Emulator. That is GPS III Contingency Operations, a control-segment effort, not procurement of the space segment the line funds, and the index carries a separate Space Mods entry for GPS Control Segment hardware. Name present, wrong half of the architecture: weak.",
+   "lexicon_quote": "GPS III Space Segment\tGPSIII\t416\tGPS III Space Segment",
+   "verdict": "weak"
+  }
+ ]
+}

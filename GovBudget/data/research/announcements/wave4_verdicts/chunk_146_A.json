@@ -1,0 +1,236 @@
+{
+ "chunk": "chunk_146_A.json",
+ "proposals": [
+  {
+   "record_index": 1,
+   "article_id": "3662152",
+   "piid": "W56HZV23C0024",
+   "pe_bli": "2944G80819",
+   "program_name": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for reactive armor kits, cold start kits and supplemental air transport kits for Armored Multi-Purpose Vehicles",
+   "lexicon_quote": "The Armored Multi-Purpose Vehicle (AMPV)\t2944G80819\t350\tArmored Multi Purpose Vehicle (AMPV)",
+   "verdict": "link",
+   "rationale": "The announcement names the program in the index's own words (differing only by the leading article and the acronym gloss), the awardee is BAE Systems Land & Armaments at York, Pennsylvania -- the AMPV prime -- and the action is a modification (P00006) to BAE's AMPV production contract W56HZV-23-C-0024. The money colour matches the line exactly: 'Fiscal 2023 and 2024 weapons and tracked combat vehicle procurement, Army funds in the amount of $19,500,242 were obligated', and 2944G80819 is the WTCV procurement BLI whose title is 'Armored Multi Purpose Vehicle (AMPV)' (doc 350). Reactive armor kits, cold start kits and air-transport kits delivered on the AMPV production contract are configuration content of the vehicle this line buys, not a service wrapped around someone else's platform. The only other owner of the name in this index is 0203735A, an RDT&E rollup ('Combat Vehicle Improvement Programs') that procurement appropriations do not fund; I record it separately as weak so the collision is visible.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money: the paragraph obligates 'Fiscal 2023 and 2024 weapons and tracked combat vehicle procurement, Army funds' and budget_lines puts 2944G80819 at account 2033A, exhibit P-1 (doc 350 = Procurement of Weapons and Tracked Combat Vehicles) -> 021-2033, the same appropriation the text names; the lake carries no funding account on W56HZV23C0024 (0 of 43 rows non-null), so money_color_ok treats the award colour as unknown rather than disjoint and the stated colour stands unrebutted, while the only competing owner of the AMPV name, 0203735A, is 2040A RDT&E and cannot spend WTCV procurement. Mission: reactive armor, cold start and supplemental air transport kits delivered by the AMPV prime (BAE Land & Armaments, York) as mod P00006 to the AMPV production contract are configuration content of the very vehicle this line buys -- no index row anywhere owns 'reactive armor', 'cold start' or 'air transport' kits, and the one plausible alternative WTCV owner, 6652GM1900 VEHICLE PROTECTION SYSTEMS, owns only active-protection names (MAC/MAF/LWR/TAP/VBK) -- so the AMPV is the program the PE funds, not a platform the award merely supports. Rollup: title 'Armored Multi Purpose Vehicle (AMPV)' is a single-program P-1 line, matches no CATCHALL_TITLE pattern and is not an org-split key. Precedent agrees: chunk_000_A record 60 accepted this same PE on this same contract on the same colour."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The collision is real but does not transfer the award: 0203735A (A.tsv:41, doc 359) owns the identical name and 'AMPV Improvement Program' (A.tsv:36), yet it is an RDT&E program element while this record obligates FY2023/2024 weapons and tracked combat vehicle PROCUREMENT, and 2944G80819 (A.tsv:994, doc 350) is the only procurement owner of the AMPV name; no index row owns 'reactive armor', 'cold start' or 'air transport kit', the name is the index's own wording rather than an invented alias, the M-variant is not contested by any competing row, and the evidence is the program name plus a production-contract mod, not merely BAE's contractor name."
+   }
+  },
+  {
+   "record_index": 1,
+   "article_id": "3662152",
+   "piid": "W56HZV23C0024",
+   "pe_bli": "0203735A",
+   "program_name": "The Armored Multi-Purpose Vehicle (AMPV)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "for reactive armor kits, cold start kits and supplemental air transport kits for Armored Multi-Purpose Vehicles",
+   "lexicon_quote": "The Armored Multi-Purpose Vehicle (AMPV)\t0203735A\t359\tCombat Vehicle Improvement Programs",
+   "verdict": "weak",
+   "rationale": "Recorded so the name collision is on the ledger rather than left invisible: 0203735A carries the identical AMPV name string, which is exactly what lens B hunts for, but its title is 'Combat Vehicle Improvement Programs', an RDT&E rollup. A kit buy obligated with 'weapons and tracked combat vehicle procurement, Army funds' on the prime's production contract cannot be paying an RDT&E improvement rollup's own work, and an armour/cold-start kit reading would at most point at a modification line, which this org's index does not carry for AMPV. The discriminator is the stated appropriation, and it selects the procurement member 2944G80819, so this member does not reach link."
+  },
+  {
+   "record_index": 6,
+   "article_id": "1746786",
+   "piid": "W31P4Q17C0042",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for Phased Array Tracking Radar to Intercept on Target missile support center, missile assessments, testing, recertification, and repair activities",
+   "lexicon_quote": "PATRIOT Product Improvement Program (PIP)\t0962C50700\t345\tPatriot Mods",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on two section 3 patterns. First, the evidence is the bare spelled-out PATRIOT platform name with no program qualifier: this index exposes Patriot through three PEs (Patriot Mods 0962C50700, Patriot Product Improvement 0607865A, and the MSE/PAC-3 side), and every name those lines own -- PIP, MSE, ADI, IESP, TPW, TPX-57, PCSB -- is absent from the text, so nothing in the announcement chooses an owner. Second, money and mission: a missile support centre with 'missile assessments, testing, recertification, and repair activities' is sustainment, and the obligation is 'Fiscal 2019 Foreign Military Sales; and operations and maintenance, Army funds' on a ten-country FMS modification -- O&M and foreign money attached to a missile-procurement modification line, which is precisely the failure mode the held-out study found. Raytheon Andover is the radar and ground-system house, not the interceptor line, so even the contractor points away from a missile BLI."
+  },
+  {
+   "record_index": 8,
+   "article_id": "3588619",
+   "piid": "W56KGY22F0074",
+   "pe_bli": "9897K49000",
+   "program_name": "Mounted APNT System (MAPS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for engineering services, configuration management and technical support for the Mounted Assured Position, Navigation and Timing System Gen II",
+   "lexicon_quote": "Mounted APNT System (MAPS)\t9897K49000\t346\tAssured Positioning, Navigation and Timing",
+   "verdict": "link",
+   "rationale": "The announcement writes out in full the acronym the index abbreviates: 'Mounted Assured Position, Navigation and Timing System' is 'Mounted APNT System (MAPS)' and nothing else, and MAPS GEN II is the fielded increment of that same system rather than a different program. The awardee is Collins Aerospace, Cedar Rapids, the MAPS producer, on MAPS contract W56KGY-22-F-0074, and the obligation is 'Fiscal 2023 other procurement, Army funds', which is exactly the appropriation of 9897K49000 (doc 346, 'Assured Positioning, Navigation and Timing'). The two-way collision with 0604120A (doc 353, the RDT&E PNT line) resolves on the same fact: OPA money is production money, not advanced development, and I record the RDT&E member separately as weak. One caveat lens A should test honestly: the scope is engineering services, configuration management and technical support rather than units of hardware, so the claim rests on those being the production-support content the procurement line funds for the system it buys -- the same reading two earlier chunks accepted for MAPS GEN II production support.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money holds on both sides independently: the text obligates 'Fiscal 2023 other procurement, Army funds' and all 20 lake rows on W56KGY22F0074 (Rockwell Collins/Collins Aerospace, $88.9M obligated) carry exactly one federal account, 021-2035, which is 9897K49000's own account 2035A -- procurement money on a doc-346 Other Procurement, Army line, with no O&M dollar anywhere in the action, so the held-out study's O&M-attached-to-a-procurement-line inversion is absent; this is the mirror image of the chunk_118_A refutation, where the same program name sat on an order funded from 017-1109 Procurement, Marine Corps, and the RDT&E competitor 0604120A is 2040A and excluded by colour. Mission: MAPS is the system this OPA line buys (its narrative enumerates ALTNAV/DAPS/MAPS), and engineering services, configuration management and technical support for MAPS GEN II charged to that line's own procurement appropriation is production-support content of the line, not work wrapped around some other program's platform. Rollup: 'Assured Positioning, Navigation and Timing' is a named P-1 line with named sub-efforts, not a threshold/'other'/'miscellaneous' aggregate. One caveat recorded rather than suppressed: unlike the accepted chunk_065_A precedent, whose text said 'in support of production', this paragraph names no hardware and no production, so the services-versus-generic-support reading rests on the appropriation the Army actually charged rather than on the words -- procurement colour verified on both sides is enough not to refute, but this is the thinnest of the three proposals."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The alias is genuine -- the announcement spells out in full the acronym A.tsv:1428 abbreviates -- and although 0604120A (A.tsv:566, doc 353) owns the identical 'Mounted APNT System (MAPS)' string, doc 346 is the Other Procurement Army volume and the record obligates FY2023 other procurement, which an RDT&E program element cannot take; within OPA 9897K49000 is the sole owner of the MAPS name (8662A01006 is aviation EGI/MAGNA, 0604805A is CMFF, 0205778A is GMLRS APNT), and no row in the index qualifies a GEN increment, so 'Gen II' names the fielded increment of the same system rather than a distinct program -- the residual doubt is the services scope, which is lens A's question, not identity."
+   }
+  },
+  {
+   "record_index": 8,
+   "article_id": "3588619",
+   "piid": "W56KGY22F0074",
+   "pe_bli": "0604120A",
+   "program_name": "Mounted APNT System (MAPS)",
+   "lexicon_doc": "353",
+   "announcement_evidence": "for engineering services, configuration management and technical support for the Mounted Assured Position, Navigation and Timing System Gen II",
+   "lexicon_quote": "Mounted APNT System (MAPS)\t0604120A\t353\tAssured Positioning, Navigation and Timing (PNT)",
+   "verdict": "weak",
+   "rationale": "Recorded so the collision is explicit: 'Mounted APNT System (MAPS)' is owned by two PEs in this index, this doc-353 RDT&E line and the doc-346 procurement line 9897K49000. The announcement itself supplies the discriminator -- 'Fiscal 2023 other procurement, Army funds' obligated against a fielded GEN II configuration -- and other-procurement money does not fund the advanced development this PE carries, so the RDT&E member is the one that does not survive."
+  },
+  {
+   "record_index": 14,
+   "article_id": "1402841",
+   "piid": "W56HZV12C0344",
+   "pe_bli": "6500GA0750",
+   "program_name": "Total Integrated Engine Revitalization (TIGER)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "for total integrated engine revitalization hardware services at Anniston Army Depot and TIGER field repair",
+   "lexicon_quote": "Total Integrated Engine Revitalization (TIGER)\t6500GA0750\t350\tAbrams Upgrade Program",
+   "verdict": "weak",
+   "rationale": "The name appears twice and verbatim -- spelled out and as the TIGER acronym -- and this index binds it to the Abrams Upgrade Program, so identity is not the problem. Money and mission are: the work is depot engine overhaul and field repair ('hardware services at Anniston Army Depot and TIGER field repair') and the obligation is 'Fiscal 2018 other procurement (Army); and Army working capital funds', whereas 6500GA0750 is a Weapons and Tracked Combat Vehicles line (doc 350). OPA plus working-capital depot money is sustainment of the fielded engine fleet, not the WTCV upgrade line's own content, which is the O&M-attached-to-a-procurement-line failure mode; earlier chunks recorded the same Anniston TIGER wording as weak for the same reason. Not linked -- the project publishes the smaller true number."
+  },
+  {
+   "record_index": 16,
+   "article_id": "3681801",
+   "piid": "W911QX24C0006",
+   "pe_bli": "9926BL5287",
+   "program_name": "Persistent Surveillance Systems (PSS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for wide-area persistent surveillance hostile fire and unmanned aerial system detection for aerostats, manned and unmanned air platforms, static ground positions and moving vehicles",
+   "lexicon_quote": "Persistent Surveillance Systems (PSS)\t9926BL5287\t346\tFAMILY OF PERSISTENT SURVEILLANCE CAP.",
+   "verdict": "weak",
+   "rationale": "Recorded because a name-only matcher would fire on 'persistent surveillance', and it should not: the phrase here is a capability description of what the sensor does ('wide-area persistent surveillance hostile fire and unmanned aerial system detection'), not the program name 'Persistent Surveillance Systems (PSS)' that 9926BL5287 owns, and the BLI it sits on is itself a family line ('FAMILY OF PERSISTENT SURVEILLANCE CAP.'). The action is a cost-plus-fixed-fee development contract to Logos Technologies running to 2029 with only $470,000 of 'operation and maintenance, Army' obligated against a $19,379,640 ceiling, so neither the appropriation nor the scope evidences this procurement family's own work. Under section 1's standard this is a description in the neighbourhood, not attribution."
+  },
+  {
+   "record_index": 17,
+   "article_id": "1532015",
+   "piid": "W52P1J18D0036",
+   "pe_bli": "9716BU4160",
+   "program_name": "Army Land Mobile Radio (LMR)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "to upgrade, expand and connect sites to the current Joint Japan Land Mobile Radio system and upgrade the Army backup core infrastructure in Japan",
+   "lexicon_quote": "Army Land Mobile Radio (LMR)\t9716BU4160\t346\tBase Support Communications",
+   "verdict": "weak",
+   "rationale": "'Land Mobile Radio' appears verbatim, but the system the announcement names is the Joint Japan Land Mobile Radio system -- a theatre installation network shared with other services -- rather than the 'Army Land Mobile Radio (LMR)' program this row owns, and the BLI it belongs to, 'Base Support Communications', is the broad installation-support line that section 3 treats as base operations rather than a named program. The award is also an indefinite-delivery vehicle in which 'Work locations and funding will be determined with each order', so no appropriation is stated at all and nothing shows this line's money paid for the action. Name present, attribution not evidenced."
+  },
+  {
+   "record_index": 29,
+   "article_id": "1302200",
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for 50 recapitalized M1120A4 Heavy Expanded Mobility Tactical Trucks",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)\t8309DA0500\t346\tFamily Of Heavy Tactical Vehicles (FHTV)",
+   "verdict": "link",
+   "rationale": "The end item is named in the index's own words with a unit count and an A4 variant designator -- '50 recapitalized M1120A4 Heavy Expanded Mobility Tactical Trucks' -- delivered by Oshkosh Defense on FHTV recapitalisation contract W56HZV-15-D-0031, and 8309DA0500 ('Family Of Heavy Tactical Vehicles (FHTV)') is the line whose narrative owns both the HEMTT name and its A4 load-handling variant, the M1120A4 being the HEMTT LHS. The appropriation matches the line's colour: 'Fiscal 2016 other procurement (Army) funds in the amount of $19,286,100 were obligated', and doc 346 is the other-procurement volume. The trucks themselves are the line's own end item, so this is not the platform trap. The one competing owner of the HEMTT name, 0604114A, carries 'M983A4 Heavy Expanded Mobility Tactical Truck (HEMTT)' only as the carrier vehicle for the Lower Tier Air Missile Defense sensor -- a platform that line rides on -- and this award buys recapitalised trucks, not a radar they haul, so the collision resolves against it.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money: the text obligates 'Fiscal 2016 other procurement (Army) funds in the amount of $19,286,100' and all 92 lake rows on W56HZV15D0031 (Oshkosh Defense) carry 021-2035;097-0350, intersecting 8309DA0500's account 2035A -> 021-2035, so procurement money lands on the doc-346 Other Procurement, Army line with no O&M inversion, while the only other owner of the HEMTT name, 0604114A, is 2040A RDT&E. Mission: 50 recapitalized M1120A4 Heavy Expanded Mobility Tactical Trucks are the FHTV line's own end item rebuilt under its procurement-funded RECAP program -- the M1120A4 is the HEMTT Load Handling System variant, a name the same PE's narrative separately owns ('The HEMTT A4 Load Handling System (LHS)') -- so the trucks are what the line buys, not a platform the award supports for somebody else's sensor. Rollup: 'Family Of Heavy Tactical Vehicles (FHTV)' is a defined vehicle-family P-1 line with its own enumerated members, matching no CATCHALL_TITLE pattern ('less than/under/< $', '^other', '^miscellaneous'). Precedent agrees twice over: chunk_118_A record 67 and chunk_072_A record 15 both accepted this PE on this very contract, including on pre-FY2017 money, and the fact that ingested budget_lines rows for this PE begin at FY2017 while the funds are FY2016 is a J-book edition coverage artefact, not an appropriation or mission defect lens A can refute on."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Both lens-B prongs resolve against the alternatives: the other owner of the HEMTT name, 0604114A (A.tsv:541, doc 353), carries only the M983A4 tractor as the LTAMDS carrier and is RDT&E, whereas this award buys M1120A4 trucks -- the A4 load-handling variant 8309DA0500 itself owns at A.tsv:1292 -- with FY2016 other procurement Army funds; the nearest same-appropriation candidate, 8992DA0924 'Modification Of In Svc Equip' (doc 346), owns only the FHTV family name and not HEMTT or the A4 LHS, and this action buys 50 whole recapitalised trucks by quantity rather than modification kits, while 0604622A (doc 355) owns only the generic 'Heavy Tactical Vehicles (HTV)' and is likewise RDT&E."
+   }
+  },
+  {
+   "record_index": 37,
+   "article_id": "2812420",
+   "piid": "W56HZV22D0004",
+   "pe_bli": "8309DA0500",
+   "program_name": "The Family of Heavy Tactical Vehicles (FHTV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for systems technical support services for the Family of Heavy Tactical Vehicles systems, trailers and associated kits",
+   "lexicon_quote": "The Family of Heavy Tactical Vehicles (FHTV)\t8309DA0500\t346\tFamily Of Heavy Tactical Vehicles (FHTV)",
+   "verdict": "weak",
+   "rationale": "The program name is verbatim and the awardee is the FHTV prime, but the scope is 'systems technical support services' -- the generic-services pattern section 3 rejects -- and the award is a cost-plus-fixed-fee indefinite-delivery vehicle running to 2028 in which 'Work locations and funding will be determined with each order', so no appropriation is stated and nothing ties the action to this BLI's own money rather than to O&M sustainment of the fielded fleet. The FHTV name is also owned by two other PEs in this index (8992DA0924, 'Modification Of In Svc Equip', and the RDT&E line 0604622A, which carries 'Heavy Tactical Vehicles (HTV)'), and a support-services ceiling with no funding line gives no basis to choose among them. Name present without the identification or the money the claim needs."
+  },
+  {
+   "record_index": 41,
+   "article_id": "4200823",
+   "piid": "W52P1J16D0055",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the LONGBOW Fire Control Radar",
+   "lexicon_quote": "Fire Control Radar (FCR)\t5757A05111\t343\tAH-64 Apache Block IIIA Reman",
+   "verdict": "weak",
+   "rationale": "'Fire Control Radar' matches the index name and Longbow LLC is indeed the Apache fire-control radar house, so the item is identifiable, but the row sits inside 'AH-64 Apache Block IIIA Reman' -- a line that buys remanufactured aircraft, of which an installed FCR is one component -- rather than a standalone radar line, so proposing it asserts the radar buy is that remanufacture line's own content. The announcement gives no appropriation at all ('Work locations and funding will be determined with each order' on delivery-order contract W52P1J-16-D-0055), and Longbow LLC's radar deliveries routinely serve foreign military sales cases as well as Army remanufacture, so nothing here shows which programme's money paid. An earlier chunk recorded the same 'fire control radar' evidence as weak for the same reasons; not linked."
+  },
+  {
+   "record_index": 41,
+   "article_id": "4200823",
+   "piid": "W52P1J16D0055",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the LONGBOW Fire Control Radar",
+   "lexicon_quote": "Longbow Hellfire XM299\t9157J01200\t343\tLauncher Guided Missile: Longbow Hellfire XM2",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3's weak-generic-name pattern, and recorded because the only index row containing 'Longbow' is this one and a name-only matcher would fire on it. The shared word denotes different things on each side: 9157J01200 is 'Launcher Guided Missile: Longbow Hellfire XM299', a missile launcher, while the announcement buys the LONGBOW Fire Control Radar, the Apache mast-mounted radar -- and 'Longbow' is also the awardee's own corporate name (Longbow LLC), which is the reject-by-design case of evidence that is just a contractor name. No attribution."
+  },
+  {
+   "record_index": 42,
+   "article_id": "1298418",
+   "piid": "W58RGZ17C0018",
+   "pe_bli": "9670A00005",
+   "program_name": "MQ-1C Gray Eagle",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the addition of 15,000 flight hours for the Gray Eagle unmanned aircraft systems performance-based logistics contract",
+   "lexicon_quote": "MQ-1C Gray Eagle\t9670A00005\t343\tMQ-1 UAV",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on section 3's generic-services pattern and on identity. The action buys flight hours under a performance-based logistics contract obligated with 'Fiscal 2017 operations and maintenance (Army) funds' -- fleet sustainment, not any procurement or development line's own work, the O&M-on-a-procurement-line failure mode -- and earlier chunks rejected the identically worded Gray Eagle PBL awards for exactly that. It fails on the alternative-owner test too: four separate rows in this index own the 'MQ-1C Gray Eagle' name (0305219A, 0756AA6601, 9000I49000 and 9670A00005), and a sustainment award gives no basis in the announcement for choosing among them."
+  },
+  {
+   "record_index": 61,
+   "article_id": "606853",
+   "piid": "W56HZV15C0119",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "transmissions and associated parts and test equipment for the Bradley Fighting Vehicle System",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)\t1678GZ2400\t350\tBradley Program (MOD)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design: the index name that appears -- 'Bradley Fighting Vehicle' -- is the PLATFORM the transmissions and 'associated parts and test equipment' feed, not the content of the program 1678GZ2400 ('Bradley Program (MOD)') funds, and section 3 rejects that pattern. The money confirms it: 'Fiscal 2015 other procurement funds in the amount of $18,565,974 were obligated', whereas the Bradley MOD line is a Weapons and Tracked Combat Vehicles line (doc 350); a 63-unit transmission and test-equipment buy on OPA money is component/spares procurement for the fielded fleet rather than a Bradley modification programme's own work. An earlier chunk rejected the same Bradley-transmission wording on the same two grounds."
+  },
+  {
+   "record_index": 72,
+   "article_id": "3314133",
+   "piid": "W31P4Q19C0059",
+   "pe_bli": "0648CC0007",
+   "program_name": "Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for contractor support services for the Javelin Weapon System",
+   "lexicon_quote": "Javelin Vehicle Platform Adapter Kit (JVPAK)\t0648CC0007\t345\tJavelin (AAWS-M) System Summary",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on two section 3 patterns. Money and mission: 'contractor support services for the Javelin Weapon System' funded by 'Fiscal 2023 operation and maintenance, Army funds; fiscal 2023 U.S. Marine Corps funds; fiscal 2023 Overseas Contingency Operations funds; fiscal 2023 Army National Guard funds; and fiscal 2023 Foreign Military Sales' is O&M and foreign sustainment attached to a missile-procurement line, not that line's own production content. Identity: this index carries no row whose name is the Javelin weapon system -- the only names 0648CC0007 owns are components (CLU, LWCLU, JVPAK), none of which the announcement mentions, and the same three names also sit on the RDT&E line 0604611A -- so proposing a component name would attach a program_name the announcement never evidences. 'Javelin' in the text is largely the awardee's own name (Raytheon/Lockheed Martin Javelin JV) as well."
+  },
+  {
+   "record_index": 73,
+   "article_id": "1854406",
+   "piid": "W58RGZ19F0045",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "announcement_evidence": "to implement, integrate, test, upgrade and field to the Longbow Crew Trainer Generation 4 and Generation 5",
+   "lexicon_quote": "Longbow Hellfire XM299\t9157J01200\t343\tLauncher Guided Missile: Longbow Hellfire XM2",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3's weak-generic-name pattern, the same call earlier chunks made on identical wording. The only index-bearing token is 'Longbow', and it denotes different things on each side: 9157J01200 is 'Launcher Guided Missile: Longbow Hellfire XM299', a missile launcher, while the announcement buys the Longbow Crew Trainer Generation 4 and 5 -- Apache aircrew training devices delivered by Boeing, the Apache airframe house. No index row in this org owns a crew-trainer name, and the 'fiscal 2018 aircraft procurement, Army' obligation belongs to a training-device line the index does not expose, so there is nothing to link to."
+  },
+  {
+   "record_index": 79,
+   "article_id": "1771302",
+   "piid": "W31P4Q19C0059",
+   "pe_bli": "0648CC0007",
+   "program_name": "Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for life cycle contractor support services for the Javelin Weapon System",
+   "lexicon_quote": "Javelin Vehicle Platform Adapter Kit (JVPAK)\t0648CC0007\t345\tJavelin (AAWS-M) System Summary",
+   "verdict": "wrong",
+   "rationale": "Same defect as record 72 on the same contract, a separate article and record: 'life cycle contractor support services for the Javelin Weapon System' is sustainment of fielded hardware, and the obligation is 'Fiscal 2019 operations and maintenance Army; and foreign military sales funds' across seventeen countries -- O&M and foreign money attached to a missile-procurement line, which section 3 rejects by design. The identity leg fails too: the index owns no whole-program Javelin name, only the components CLU, LWCLU and JVPAK, which the announcement never names and which are duplicated on the RDT&E line 0604611A. Note the record_index is what pins the citation here, since this chunk carries two records on contract W31P4Q-19-C-0059."
+  }
+ ]
+}

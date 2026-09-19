@@ -1,0 +1,833 @@
+{
+ "chunk": "chunk_002_N.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "3517358",
+   "piid": "N0002423C2305",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "for DDG 51 class ship construction did not include funding amounts",
+   "lexicon_quote": "DDG-51",
+   "rationale": "The announcement is a funding update on two multiyear contracts for construction of 10 DDG 51 class ships; the index's only owner of the DDG 51 designator as a program (rather than a design-study or modernization line) is SCN BLI 2122 'DDG-51', whose program title is the same. The announcement string 'DDG 51' differs from the index name only by the hyphen, and the action is ship construction paid from Shipbuilding and Conversion, Navy - the same appropriation family the 2122 line sits in (lexicon_doc 341). The competing DDG names in the index (0603564N 'DDG-51 Flt III Concept Development', 0900 'DDG Modernization (DDG MOD) Program') describe design studies and in-service modernization, neither of which builds new hulls.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "New-hull DDG 51 construction is Shipbuilding and Conversion, Navy work and BLI 2122 is the SCN destroyer-construction line (lexicon_doc 341 = SCN_Book, account 1611N); the ships are the line's own product, not a platform the contract merely supports, and 2122 is not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'DDG-51' is owned by exactly one index row (2122/341); the only other DDG-51 name, 0603564N 'DDG-51 Flt III Concept Development', is a preliminary-design study row and 0900 'DDG Modernization (DDG MOD) Program' is in-service modernization - neither owns new-hull construction, so the evidence does not link elsewhere."
+   }
+  },
+  {
+   "record_index": 5,
+   "article_id": "1647166",
+   "piid": "N0002418C2307",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "multiyear contract for construction of six DDG 51 class ships",
+   "lexicon_quote": "DDG-51",
+   "rationale": "A fixed-price-incentive multiyear award for construction of six DDG 51 class ships, two in fiscal 2018 and one each through fiscal 2022 - new-construction destroyers, which is precisely the work SCN BLI 2122 'DDG-51' buys. 'DDG 51 class' normalizes to the index name 'DDG-51'; no other index row owns the new-construction destroyer program (0603564N is concept development, 0900 is DDG Mod).",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement obligates fiscal 2018 shipbuilding and conversion (Navy) funding and the lake's funding accounts for N00024-18-C-2307 include 017-1611, BLI 2122's own appropriation; construction of six destroyers is exactly what that line buys."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same unique ownership: no other PE in the index owns 'DDG-51', and 'DDG 51 class ships' under construction is not the concept-development (0603564N) or DDG Mod (0900) scope."
+   }
+  },
+  {
+   "record_index": 8,
+   "article_id": "1647166",
+   "piid": "N0002418C2305",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "multiyear contract for construction of four DDG 51 class ships",
+   "lexicon_quote": "DDG-51",
+   "rationale": "Companion award to record 5 on the Bath Iron Works side of the same multiyear: construction of four DDG 51 class ships, one each fiscal 2019-2022. Ship construction against the SCN destroyer line 2122 'DDG-51'; the designator differs from the index name only by the hyphen.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same multiyear on the Bath Iron Works side: fiscal 2018 SCN funding obligated, lake accounts 017-1611 only, and four new-construction destroyers are the SCN 2122 line's product."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Bath Iron Works companion award to the same multiyear; 'DDG-51' has a single index owner and the construction scope excludes the two competing DDG-named lines."
+   }
+  },
+  {
+   "record_index": 55,
+   "article_id": "1720584",
+   "piid": "N0002418C2305",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "exercise the fiscal 2019 option for construction of a DDG 51 class ship (DDG 132)",
+   "lexicon_quote": "DDG-51",
+   "rationale": "Option exercise for construction of one named DDG 51 class hull (DDG 132) under the FY2018 multiyear. A single new-construction destroyer is the unit the SCN line 2122 'DDG-51' procures; the hull number confirms the class, and the appropriation is shipbuilding, matching lexicon_doc 341.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 shipbuilding and conversion (Navy) funding of $900.7M obligated for one named hull (DDG 132); procurement of a destroyer against the SCN destroyer line is the matching appropriation and the line's own mission."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "DDG 132 is a named hull of the DDG 51 class; no alternative index owner of the designator, and a single new-construction hull is not a design study or a modernization increment."
+   }
+  },
+  {
+   "record_index": 44,
+   "article_id": "655726",
+   "piid": "N0002416C4202",
+   "pe_bli": "2122",
+   "program_name": "DDG-51",
+   "lexicon_doc": "341",
+   "announcement_evidence": "non-recurring engineering of main reduction gears for DDG 51 Arleigh Burke class guided missile destroyers",
+   "lexicon_quote": "DDG-51",
+   "rationale": "The DDG 51 designator is present and unambiguous, but the award buys non-recurring engineering for a single propulsion component (main reduction gears) from a gear vendor, and the announcement states no appropriation. Component NRE can sit in an engineering or industrial-base line rather than the SCN hull line 2122, so the evidence does not establish that this action paid for the DDG-51 line's own work. Recorded as weak rather than linked.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 1,
+   "article_id": "4170827",
+   "piid": "N0002417C2100",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "construction of two fiscal 2024 Virginia-class submarines (SSN 812 and SSN 813)",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "The modification's first and largest named scope is construction of two fiscal 2024 Virginia-class submarines with hull numbers. SCN BLI 2013 'Virginia Class Submarine' is the line that buys those hulls and its program title is identical; the announcement's 'Virginia-class submarines' normalizes to the index name. The other Virginia names in the index (0604558N SPU/UDPI, 0942 support equipment, 9021 spares) are subsystem or support lines, not the construction program. PIID N00024-17-C-2100 is the Electric Boat construction contract carried in the record's lake_piids.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 and 2025 shipbuilding and conversion (Navy) funds are obligated and the lake shows 017-1611 on N00024-17-C-2100, matching BLI 2013's 1611N; the shipyard-productivity and workforce-investment riders are minority scope beside construction of the two hulls the line buys."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Virginia Class Submarine' has one index owner (2013/341); the other Virginia rows are longer subsystem names (0604558N SPU/UDPI, 0942 support equipment, 9021 spares) that the quoted construction-of-SSN-812/813 evidence does not match."
+   }
+  },
+  {
+   "record_index": 16,
+   "article_id": "2544067",
+   "piid": "N0002417C2100",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "exercise an option for the construction of one Block V Virginia-class submarine with Virginia Payload Module",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "Option exercise for construction of one Block V Virginia-class boat with the Virginia Payload Module - both the class name and VPM are names the 2013 row family owns ('Virginia Class Submarine' and 'VIRGINIA Payload Module (VPM)' are two rows of the same BLI). Fixed-price-incentive hull construction against the SCN submarine line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018-2021 shipbuilding and conversion (Navy) funds obligated for construction of one Block V hull - SCN money on the SCN Virginia line, and the boat is the line's product rather than a platform the contract supports."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Block V is an increment of the same class, not a different program, and 'VIRGINIA Payload Module (VPM)' is a sibling row of the SAME pe_bli 2013 - so the second name in the evidence points at the proposed line rather than away from it."
+   }
+  },
+  {
+   "record_index": 20,
+   "article_id": "1788196",
+   "piid": "N0002417C2100",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "associated with the Fiscal 2019 &ndash; Fiscal 2023 Virginia class submarines (SSNs 802 &ndash; 811)",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "Long Lead Time Material and Economic Ordering Quantity material for ten named Virginia class hulls (SSNs 802-811). The material is advance procurement for the boats SCN BLI 2013 'Virginia Class Submarine' buys, in the same appropriation family (lexicon_doc 341); the named class and hull numbers leave no ambiguity about which program consumes the material. Flagged for the refute lenses: Virginia advance procurement is carried on the class line's AP sibling BLI, which this index does not list separately.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018/2019 shipbuilding and conversion (Navy) funds; long lead time and EOQ material for named Virginia hulls is ship-construction material in the line's own appropriation, not O&M sustainment - the advance-procurement sibling the proposal flags sits inside the same SCN account, so it is an owner question for lens B, not a money-colour break."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Named class plus hull numbers SSN 802-811 identify the 2013 program uniquely; the advance-procurement sibling BLI the proposal flags is not an index row, so no alternative owner exists for lens B to prefer (the AP-vs-full-funding question is lens A's)."
+   }
+  },
+  {
+   "record_index": 22,
+   "article_id": "4227676",
+   "piid": "N0002424C2110",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "long lead time material and preliminary construction efforts associated with Virginia-class Block VI submarines",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "Long lead material and preliminary construction for Virginia-class Block VI boats - the next build block of the same class SCN BLI 2013 'Virginia Class Submarine' procures. Block VI is an increment of the line's own program, not a different program; the designator normalizes to the index name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2025 shipbuilding and conversion (Navy) funds (91%) obligated for long lead material and preliminary construction of Block VI boats; Block VI is an increment of the same SCN Virginia line, and the material is procurement, not sustainment."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Block VI is a build block of the Virginia class carried on the same line; the index holds no Block VI row and no competing class (0604850N 'SSN(X) Class Submarine Development' is a different class the announcement never names)."
+   }
+  },
+  {
+   "record_index": 34,
+   "article_id": "3862089",
+   "piid": "N0002424C2110",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "economic ordering quantity material in support of the planned Virginia Class Block VI submarines",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "Economic ordering quantity material for the planned Virginia Class Block VI submarines, on the same contract as record 22. The class is named verbatim and the material feeds construction of boats the SCN line 2013 buys.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 shipbuilding and conversion (Navy) funds obligated in full for EOQ material feeding the planned Block VI boats - same appropriation and same program as BLI 2013; the industrial-base framing is rationale, not a separate scope."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Names 'Virginia Class Block VI' verbatim on the same contract as record 22; sole index owner of the class name, no variant mismatch."
+   }
+  },
+  {
+   "record_index": 41,
+   "article_id": "3405033",
+   "piid": "N0002417C2100",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "long lead time material associated with the Virginia class submarines SSN 812 and SSN 813",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "Long lead time material for two named Virginia class hulls (SSN 812, SSN 813) - the same two boats record 1 later puts under construction. Named class plus hull numbers tie the action to the SCN Virginia Class Submarine line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 and 2023 shipbuilding and conversion (Navy) funds obligated for long lead material for SSN 812/813; SCN money for hulls the SCN Virginia line procures."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "SSN 812 and SSN 813 are named hulls of the class 2013 uniquely owns; no other index PE owns the bare class name."
+   }
+  },
+  {
+   "record_index": 62,
+   "article_id": "3930320",
+   "piid": "N0002417C2100",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "additional material in support of the planned Virginia Class submarines SSN 812 and SSN 813",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "Additional material for the planned Virginia Class submarines SSN 812 and SSN 813. Same class, same hulls, same construction contract as records 1 and 41; the material is bought for the hulls SCN BLI 2013 procures.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 shipbuilding and conversion (Navy) funds obligated for additional material for SSN 812/813 - the same appropriation and the same two hulls, so the action funds BLI 2013's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same two named hulls and same contract as records 1 and 41; unique index ownership of 'Virginia Class Submarine' leaves no alternative claimant."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "3547047",
+   "piid": "N0002420C2120",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "announcement_evidence": "lead yard support and development studies and design efforts related to Virginia Class submarines",
+   "lexicon_quote": "Virginia Class Submarine",
+   "rationale": "The class name is present and correct, but the announcement states the money is 99% fiscal 2023 research, development, test and evaluation (Navy) and only 1% shipbuilding and conversion. Lead yard support and design studies funded from RDT&E do not belong to the SCN procurement line 2013, and the index carries no Virginia lead-yard-support RDT&E row (0604558N owns only the SPU and UDPI payload subsystems). Recorded as weak: right class, wrong appropriation for the only line the index offers.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 4,
+   "article_id": "3253110",
+   "piid": "N0002417C2117",
+   "pe_bli": "1045",
+   "program_name": "COLUMBIA Class Submarine",
+   "lexicon_doc": "341",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "additional advance procurement, including advance construction and multi-program material-procurement, and production backup units; planned program equipment replacement and spare material for follow-on Columbia-class submarines",
+   "lexicon_quote": "COLUMBIA Class Submarine",
+   "rationale": "The modification buys missile tube long-lead material, advance procurement, advance construction, production backup units and spare material for follow-on Columbia-class submarines. SCN BLI 1045 'COLUMBIA Class Submarine' is the line that procures those boats, and two of its other index rows ('Missile Tube Module (MTM)', 'Maritime Industrial Base (MIB)') name the very scopes this announcement lists. The announcement's 'Columbia-class submarines' normalizes to the index name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The lake's funding accounts for N00024-17-C-2117 include 017-1612, the National Sea-Based Deterrence Fund, which is one of BLI 1045's own two accounts (1611N/1612N); the dominant scope - missile tube material and manufacturing, advance procurement, advance construction, production backup units, spares for follow-on Columbia hulls and submarine industrial base - maps to the line's own narrative rows (Missile Tube Module, Maritime Industrial Base), and the UK logistics/sustainment clause is a minority rider, not the award's purpose."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The only competing Columbia owner is 0603595N 'COLUMBIA Class Submarine Development', and the quoted evidence is procurement language (advance procurement, advance construction, production backup units, spare material) that the development row cannot claim, while 1045's own rows 'Missile Tube Module (MTM)' and 'Maritime Industrial Base (MIB)' name the announcement's other scopes."
+   }
+  },
+  {
+   "record_index": 6,
+   "article_id": "1320411",
+   "piid": "N0002417C2117",
+   "pe_bli": "0603595N",
+   "program_name": "COLUMBIA Class Submarine Development",
+   "lexicon_doc": "340",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Integrated Product and Process Development design completion for the Columbia-class ballistic missile submarines (SSBNs)",
+   "lexicon_quote": "COLUMBIA Class Submarine Development",
+   "rationale": "This is the design-completion award: Integrated Product and Process Development design completion, component and technology development, and missile tube module and reactor compartment bulkhead prototyping for the Columbia-class SSBNs. That is development work, so the owner is RDT&E program element 0603595N (program title 'Ohio Replacement'), whose own narrative name is 'COLUMBIA Class Submarine Development' - the announcement names the same program and the same development scope. The SCN line 1045 buys hulls and is not the right home for design completion and prototyping.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement obligates fiscal 2017 research, development, test and evaluation (Navy) funds alongside SCN, and design completion, component and technology development and prototyping is RDT&E work; PE 0603595N is the RDT&E,N line (1319N, lexicon_doc 340 = RDTEN_BA1-3_Book) and the lake shows 017-1319 on this PIID."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'COLUMBIA Class Submarine Development' is a real index row with a single owner and is not a string collision with 1045's 'COLUMBIA Class Submarine'; the evidence's operative scope (IPPD design completion, component and technology development, prototyping) is development work that none of 1045's rows own, so it does not link equally well to the construction line."
+   }
+  },
+  {
+   "record_index": 47,
+   "article_id": "4221136",
+   "piid": "N0002417C2117",
+   "pe_bli": "0603595N",
+   "program_name": "COLUMBIA Class Submarine Development",
+   "lexicon_doc": "340",
+   "announcement_evidence": "additional component development, class lead yard support, and Submarine Industrial Base (SIB) supplier development enhancements supporting Columbia-class ballistic missile submarines",
+   "lexicon_quote": "COLUMBIA Class Submarine Development",
+   "rationale": "Columbia-class is named and component development plus class lead yard support would fit the development PE, but the same sentence extends the award to 'the nuclear shipbuilding enterprise (Virginia-class submarines and Ford-class aircraft carriers)' and to Submarine Industrial Base supplier development, which is funded outside the Columbia development PE. A single action spanning three ship programs and an industrial-base account cannot be attributed cleanly to this line, so it is recorded as weak rather than linked.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 19,
+   "article_id": "3921460",
+   "piid": "N0003024C0100",
+   "pe_bli": "0101221N",
+   "program_name": "W-93 / Mk 7",
+   "lexicon_doc": "340",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "Trident II D5 missile production and deployed systems support and Warhead 93/Mark7 development",
+   "lexicon_quote": "W-93 / Mk 7",
+   "rationale": "The announcement names three scopes, one of which is 'Warhead 93/Mark7 development'. The index row 'W-93 / Mk 7' under RDT&E PE 0101221N (Strategic Sub & Weapons System Support) is the same warhead and reentry-body designator written in the J-book's own style; the announcement spells out what the index abbreviates. Development work against an RDT&E PE is the matching appropriation family, and no other PE in this index carries a W-93 or Mk 7 name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money colour: the only appropriation this action obligates is fiscal 2024 weapons procurement (Navy) ($143.5M), while PE 0101221N is an RDT&E, Navy line (account 1319N, lexicon_doc 340 = RDTEN_BA1-3_Book) - procurement money attached to an RDT&E line is the failure mode this lens exists for, no RDT&E dollars appear anywhere on the announcement, and the lake's funding accounts for N00030-24-C-0100 (097-0400 only) are disjoint from 017-1319, so the loader's money-colour guard would skip it as well."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'W-93 / Mk 7' has exactly one index owner; 'Warhead 93/Mark7' is a real spelled-out variant of that designator, and the only other Mk-numbered rows (1550 APOBS MK7 MOD1, 1250 'W76-1/Mk4A Reentry Body') are different weapons entirely."
+   }
+  },
+  {
+   "record_index": 19,
+   "article_id": "3921460",
+   "piid": "N0003024C0100",
+   "pe_bli": "1250",
+   "program_name": "TRIDENT II Mods",
+   "lexicon_doc": "342",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "Trident II D5 missile production and deployed systems support and Warhead 93/Mark7 development",
+   "lexicon_quote": "TRIDENT II Mods",
+   "rationale": "The award's other named scope is 'Trident II D5 missile production and deployed systems support'. Weapons Procurement BLI 1250, whose index name and program title are both 'TRIDENT II Mods', is the D5 line - its own narrative rows (Strategic Solid Rocket Motors, Mk6 MOD1 Guidance System, W76-1/Mk4A Reentry Body) are the D5 missile's production and modification content. Missile procurement against a weapons-procurement document (lexicon_doc 342) is the matching appropriation family. Flagged for the refute lenses: the index name says 'Mods' while the announcement says 'production', and this proposal and the W-93 proposal split one award across two lines.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 weapons procurement (Navy) is exactly BLI 1250's appropriation (1507N, lexicon_doc 342 = WPN_Book), and D5 missile production plus deployed-systems support is that line's own content (its narrative rows are the D5's solid rocket motors, Mk6 MOD1 guidance and W76-1/Mk4A RB); 'Trident II Mods' is a program line, not a catch-all. Noted for the record: the lake carries only 097-0400 on this PIID, so the loader's money-colour guard may still skip the link - that is a loader outcome, not a mission break in the announcement's own evidence."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'TRIDENT II Mods' is the index's only Trident II owner and its sibling rows (SSRM, Mk6 MOD1 GS, W76-1/Mk4A RB) are the D5 missile's own production content, so 'Trident II D5 missile production' is not a different variant; the TRIPER rows (0950, 5358) are planned-equipment-replacement lines that the evidence's missile-production clause does not reach."
+   }
+  },
+  {
+   "record_index": 45,
+   "article_id": "4202277",
+   "piid": "N0003022C1025",
+   "pe_bli": "0605518N",
+   "program_name": "The Conventional Prompt Strike (CPS)",
+   "lexicon_doc": "340",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "in support of missile and launching platform production for Conventional Prompt Strike",
+   "lexicon_quote": "The Conventional Prompt Strike (CPS)",
+   "rationale": "The announcement names Conventional Prompt Strike verbatim as the program the program management, engineering development, systems integration, long lead material and special tooling support. PE 0605518N is the CPS program element itself (program title 'CONVENTIONAL PROMPT STRIKE (CPS)'); the index name carries a leading 'The' from the narrative sentence, so this is an alias rather than a string-exact match. The other CPS names in the index (0204202N 'ZUMWALT Conventional Prompt Strike (CPS)', 0947, 2119, 5353) are DDG 1000 ship-integration and support-equipment lines - this Strategic Systems Programs contract with Lockheed Martin Space builds the missile itself, not the Zumwalt installation.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money colour: every dollar obligated on this action is fiscal 2024 and 2025 research, development, test and evaluation (ARMY) funds, but PE 0605518N is the NAVY CPS program element (account 1319N, lexicon_doc 340 = RDTEN_BA1-3_Book); the lake's funding accounts for N00030-22-C-1025 (021-2040, 021-2032, 097-0400) are disjoint from 017-1319, so the announced money belongs to the Army's side of the joint hypersonic program, not to this Navy line, and the loader's money-colour guard would skip it."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The announcement's literal name is 'Conventional Prompt Strike' with no qualifier, and three OTHER PEs own that exact string as an index row - 0947 'DDG 1000 Class Support Equipment', 2119 'DDG 1000' and 5353 'CPS Support Equipment' (plus 0204202N's 'ZUMWALT Conventional Prompt Strike (CPS)') - while the proposed row is distinguished only by a leading 'The' the announcement never says; with the scope explicitly covering 'launching platform production' and 'special tooling and equipment', the evidence links at least as well to 5353/2119 as to the missile PE."
+   }
+  },
+  {
+   "record_index": 69,
+   "article_id": "1768604",
+   "piid": "N0003019C0025",
+   "pe_bli": "0605518N",
+   "program_name": "The Conventional Prompt Strike (CPS)",
+   "lexicon_doc": "340",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Navy Intermediate Range Conventional Prompt Strike Weapon System flight test demonstrations",
+   "lexicon_quote": "The Conventional Prompt Strike (CPS)",
+   "rationale": "Large diameter rocket motors, missile body flight articles and support equipment for the Navy Intermediate Range Conventional Prompt Strike Weapon System - the CPS program named in full, funded with research, development, test and evaluation dollars, which matches the RDT&E CPS program element 0605518N. As in record 45, the DDG 1000 CPS rows describe integrating the weapon into Zumwalt, not developing the missile.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 and 2019 research, development, test and evaluation funds are obligated on a Navy Strategic Systems Programs contract for the Navy Intermediate Range CPS Weapon System's own flight-test hardware, and the lake shows 017-1319 on N00030-19-C-0025 - the Navy RDT&E account that funds PE 0605518N; development money on a development line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Unlike record 45, the evidence discriminates: large diameter rocket motors and missile body flight articles for flight test demonstrations, obligated with fiscal 2018 RDT&E funds, is missile development that the procurement-side CPS owners (0947, 2119, 5353) cannot claim, and the announcement never names Zumwalt or DDG 1000, which is what 0204202N's row requires."
+   }
+  },
+  {
+   "record_index": 51,
+   "article_id": "3962730",
+   "piid": "N0002425C5434",
+   "pe_bli": "2292",
+   "program_name": "The OTH Weapon Systems (WS)",
+   "lexicon_doc": "342",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Over the Horizon&ndash;Weapons System encanistered missiles, also known as the Naval Strike Missile",
+   "lexicon_quote": "The OTH Weapon Systems (WS)",
+   "rationale": "The announcement names the Over the Horizon-Weapons System and states in the same clause that it is the Naval Strike Missile. The index row 'The OTH Weapon Systems (WS)' under BLI 2292 with lexicon_doc 342 (weapons procurement) and program title 'Naval Strike Missile (NSM)' is that line; a firm-fixed-price multiyear buy of encanistered missiles for Navy ships is procurement, matching that document. The same BLI number also appears under lexicon_doc 339 on the Marine Corps side - this award is a NAVSEA shipboard OTH-WS buy, so the 342 row is the one named here, and lexicon_doc is what separates them.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement obligates fiscal 2024 weapons procurement (Navy) ($25.6M) alongside Marine Corps procurement, and WPN (1507N) is the appropriation of the lexicon_doc 342 member named here; buying encanistered OTH-WS missiles is that line's own product, not a platform it supports. Flagged rather than refuted: 89% of the obligation is Procurement, Marine Corps - the other member of this account-split BLI - and the lake carries only 017-1109/017-1319 on this PIID, so the member choice is lens B's call and the loader's money-colour guard may still skip it."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The OTH Weapon Systems (WS)' has one owner; the announcement's alternate name 'Naval Strike Missile' resolves to 'The Naval Strike Missile (NSM)' under the SAME pe_bli 2292 (a doc split, not a different PE) and to 6120, whose program title 'Spares and Repair Parts' a multiyear buy of encanistered missiles does not match."
+   }
+  },
+  {
+   "record_index": 53,
+   "article_id": "1870180",
+   "piid": "M6785419C0043",
+   "pe_bli": "4655",
+   "program_name": "Ground/Air Task Oriented Radar (G/ATOR)",
+   "lexicon_doc": "339",
+   "match_basis": "exact-name",
+   "announcement_evidence": "30 full-rate production Ground/Air Task Oriented Radar units",
+   "lexicon_quote": "Ground/Air Task Oriented Radar (G/ATOR)",
+   "rationale": "The announcement names Ground/Air Task Oriented Radar exactly as the index row does, and buys 30 full-rate production units plus spare parts and retrofit kits under Marine Corps Systems Command. Full-rate production units belong to the Marine Corps procurement line 4655 (lexicon_doc 339), not to the RDT&E PE 0204460M that owns the same name for development - that collision is resolved by the words 'full-rate production' and by the M67854 procurement vehicle.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 procurement (Marine Corps) funds are obligated and the lake shows 017-1109 on M67854-19-C-0043, matching BLI 4655's own 1109N appropriation (lexicon_doc 339 = PMC_Book); 30 full-rate production radars plus spares and retrofit kits are the procurement line's product, and the RDT&E twin (0204460M) is the wrong appropriation for this action."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A true exact-name collision exists - 0204460M owns 'Ground/Air Task Oriented Radar (G/ATOR)' identically - but the announcement's own words resolve it decisively: 30 full-rate production units with spare parts and retrofit kits on a firm-fixed-price M67854 vehicle under PEO Land Systems is the procurement line's work, not the development PE's."
+   }
+  },
+  {
+   "record_index": 79,
+   "article_id": "2913552",
+   "piid": "M6785422D2090",
+   "pe_bli": "4633",
+   "program_name": "Multi-Channel Handheld (MCHH)",
+   "lexicon_doc": "339",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "the purchase of multi-channel hand held (MCHH) radios",
+   "lexicon_quote": "Multi-Channel Handheld (MCHH)",
+   "rationale": "The announcement buys multi-channel hand held (MCHH) radios, vehicle installation kits and accessories; the index row 'Multi-Channel Handheld (MCHH)' under Marine Corps procurement BLI 4633 (program title 'Radio Systems') carries the identical acronym and the same expansion with different spacing. A firm-fixed-price purchase of radios against a procurement radio line is the matching appropriation family, and no other row in this index carries MCHH.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 procurement (Marine Corps) funds are obligated, matching BLI 4633's 1109N appropriation (lexicon_doc 339 = PMC_Book); MCHH is a named system of the Radio Systems line's own narrative rather than an aggregate, and because the IDIQ names its program the rubric's unnamed-ceiling reject does not apply - though only $1.13M of the $750M ceiling is obligated here."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Multi-Channel Handheld (MCHH)' appears once in the index; the only other handheld names (0206623M and 4733 'Next Generation Handheld Targeting System') are targeting systems, not radios, so the acronym has no competing owner."
+   }
+  },
+  {
+   "record_index": 13,
+   "article_id": "1298418",
+   "piid": "N0002417C2105",
+   "pe_bli": "2086",
+   "program_name": "CVN Refueling Overhauls",
+   "lexicon_doc": "341",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "USS George Washington (CVN 73) Refueling Complex Overhaul",
+   "lexicon_quote": "CVN Refueling Overhauls",
+   "rationale": "The award is the Refueling Complex Overhaul of one named carrier, obligating fiscal 2017 and 2016 shipbuilding and conversion (Navy) funds. SCN BLI 2086's index name and program title are both 'CVN Refueling Overhauls' - the line exists to buy exactly this event, and the announcement's 'Refueling Complex Overhaul' is the same thing in the contracting activity's wording. The appropriation stated in the announcement matches lexicon_doc 341.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2017 and 2016 shipbuilding and conversion (Navy) funds are obligated and the lake shows 017-1611 on N00024-17-C-2105; BLI 2086 exists to buy refueling complex overhauls, so the overhaul is the line's product and not O&M sustainment attached to a procurement line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'CVN Refueling Overhauls' is unique in the index; the other CVN-named rows are 0981 (a catch-all), 1000 'Ship Maintenance, Repair and Modernization' (which owns CVN 68, not CVN 73) and the Ford/CVN 80/81 construction lines - none owns a refueling complex overhaul."
+   }
+  },
+  {
+   "record_index": 54,
+   "article_id": "606864",
+   "piid": "N0002409C2116",
+   "pe_bli": "0604112N",
+   "program_name": "GERALD R FORD CI NUC AIRCRAFT CARRIER CVN 78-80",
+   "lexicon_doc": "340",
+   "announcement_evidence": "aircraft carrier USS John F. Kennedy (CVN 79) component and steel fabrication",
+   "lexicon_quote": "GERALD R FORD CI NUC AIRCRAFT CARRIER CVN 78-80",
+   "rationale": "CVN 79 falls inside the hull range the index name spells out (CVN 78-80), but 0604112N is the RDT&E program element for Ford-class development, while this action is labor, material and construction services for building the ship - shipbuilding and conversion work. The index carries no SCN row for CVN 79 (its carrier construction rows are 'CVN 80' under 2001 and 'CVN-81' under 2004, both different hulls), so no line here both owns the hull and matches the appropriation. Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 43,
+   "article_id": "3786556",
+   "piid": "N0002420C2300",
+   "pe_bli": "2128",
+   "program_name": "Guided Missile Frigate (FFG 62 Class)",
+   "lexicon_doc": "341",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "exercise options for detail design and construction of two Constellation-class guided-missile frigates, FFG 66 and FFG 67",
+   "lexicon_quote": "Guided Missile Frigate (FFG 62 Class)",
+   "rationale": "Detail design and construction of two named frigate hulls, FFG 66 and FFG 67, of the Constellation class. SCN BLI 2128's index name is 'Guided Missile Frigate (FFG 62 Class)' and its program title is 'FFG-Frigate'; FFG 66 and 67 are hulls of that FFG 62 class, so the announcement names the same program by its class name rather than its lead-ship designator. Ship construction against the frigate shipbuilding line, matching lexicon_doc 341.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 shipbuilding and conversion (Navy) funds obligated in full for detail design and construction of two frigate hulls; SCN money on the SCN frigate line, whose product is those hulls."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Guided Missile Frigate (FFG 62 Class)' has one owner; the competing frigate row 'FFG 62' under 0603599N 'Frigate Development' names a hull the announcement does not mention (it names FFG 66 and 67) and covers development, not detail design and construction."
+   }
+  },
+  {
+   "record_index": 74,
+   "article_id": "2171906",
+   "piid": "N0002420C2300",
+   "pe_bli": "2128",
+   "program_name": "Guided Missile Frigate (FFG 62 Class)",
+   "lexicon_doc": "341",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "detail design and construction (DD&amp;C) of the FFG(X) class of guided-missile frigates",
+   "lexicon_quote": "Guided Missile Frigate (FFG 62 Class)",
+   "rationale": "This is the original FFG(X) detail design and construction award on the same contract as record 43; FFG(X) is the pre-naming designator of the class the index row calls 'Guided Missile Frigate (FFG 62 Class)', and the lead ship FFG 62 was ordered under exactly this contract. The award builds the ships the SCN frigate line buys. The RDT&E row 'FFG 62' under 0603599N covers frigate development, not detail design and construction of hulls.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2020 shipbuilding and conversion (Navy) funds obligated for detail design and construction of the class; the post-delivery availability, class services, crew familiarization and training riders are ordinary SCN ship-construction scope, so nothing on this action belongs to another appropriation."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "FFG(X) is the real pre-naming designator of the class whose lead ship FFG 62 was ordered on this very contract, and the announcement says 'guided-missile frigates' verbatim; the alternative owner 0603599N 'FFG 62' is a development PE that DD&C of hulls does not belong to."
+   }
+  },
+  {
+   "record_index": 59,
+   "article_id": "3117351",
+   "piid": "N0002416C2229",
+   "pe_bli": "5025",
+   "program_name": "T-AO 205",
+   "lexicon_doc": "341",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "detail design and construction of fleet replenishment oilers T-AO 211 and 212",
+   "lexicon_quote": "T-AO 205",
+   "rationale": "Detail design and construction of fleet replenishment oilers T-AO 211 and 212, with an option for T-AO 213. SCN BLI 5025's program title is 'TAO Fleet Oiler' and its index name is the class lead ship 'T-AO 205'; hulls 211-213 are ships of that T-AO 205 class, so the announcement names later hulls of the line's own program. Construction against the shipbuilding document (lexicon_doc 341).",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 shipbuilding and conversion (Navy) funds obligated at 100% and the lake shows 017-1611 on N00024-16-C-2229; detail design and construction of fleet replenishment oilers is the TAO line's own product."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'T-AO 205' is the index's only T-AO row and its pe_bli 5025 carries the class program title 'TAO Fleet Oiler'; T-AO 211/212/213 are later hulls of that same class and same line, not a different variant, and no competing owner exists."
+   }
+  },
+  {
+   "record_index": 64,
+   "article_id": "3624785",
+   "piid": "N0002419C2227",
+   "pe_bli": "3043",
+   "program_name": "Expeditionary Fast Transport (EPF)",
+   "lexicon_doc": "341",
+   "match_basis": "exact-name",
+   "announcement_evidence": "three expeditionary medical ships, an Expeditionary Fast Transport variant",
+   "lexicon_quote": "Expeditionary Fast Transport (EPF)",
+   "rationale": "The announcement itself states the three expeditionary medical ships are an Expeditionary Fast Transport variant, which is the index name and program title of SCN BLI 3043 verbatim. Detail, design and construction of EPF-variant hulls, funded with fiscal 2023 shipbuilding and conversion dollars, is the work that line buys.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2023 and 2022 shipbuilding and conversion (Navy) funds obligated and the lake shows 017-1611 on N00024-19-C-2227; construction of EPF-variant hulls on the EPF contract is the SCN EPF line's own work, not support for a platform it merely funds."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The announcement itself asserts the expeditionary medical ships are an Expeditionary Fast Transport variant, the index name matches exactly and has a single owner, and the index carries no separate medical-ship row that could claim the award instead."
+   }
+  },
+  {
+   "record_index": 40,
+   "article_id": "3711706",
+   "piid": "N0001918C1046",
+   "pe_bli": "0145",
+   "program_name": "FA-18E/F",
+   "lexicon_doc": "330",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "This modification procures 10 F/A-18F Lot 46 aircraft, as well as two F/A-18F and five F/A-18E Lot 47 aircraft",
+   "lexicon_quote": "FA-18E/F",
+   "rationale": "Aircraft procurement: 17 F/A-18E and F airframes across Lots 46 and 47. The index row 'FA-18E/F' under BLI 0145 with lexicon_doc 330 (aircraft procurement) and program title 'F/A-18E/F (Fighter) Hornet' is the line that buys them; the announcement's designator differs only in slash placement. The other 0145 rows sit under lexicon_doc 338 and name bombs and fuzes, so the 330 row is the one this airframe buy belongs to.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 and 2023 aircraft procurement (Navy) funds are obligated and the lake shows 017-1506 on N00019-18-C-1046, matching the lexicon_doc 330 row's APN appropriation; 17 airframes are the line's product and the technical-data-package/sustainment rider is APN-funded and minority."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'FA-18E/F' has one owner (0145/330); the F/A-18 names under 0204136N, 0505 and 0525 are improvement, modernization and sustainment rows, and the quoted evidence is the Lot 46/47 airframe buy, which none of them owns."
+   }
+  },
+  {
+   "record_index": 65,
+   "article_id": "1545558",
+   "piid": "N0001917C0003",
+   "pe_bli": "0145",
+   "program_name": "FA-18E/F",
+   "lexicon_doc": "330",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "procurement of 15 F/A-18E and 3 F/A-18F Lot 42 full rate production aircraft for the Navy",
+   "lexicon_quote": "FA-18E/F",
+   "rationale": "Eighteen Lot 42 full-rate-production F/A-18E and F airframes explicitly for the Navy - the cleanest case for aircraft procurement BLI 0145 'FA-18E/F' (lexicon_doc 330). The designator differs from the index name only by the slash placement.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 aircraft procurement (Navy) funds obligated in full for 18 full-rate-production airframes; the lake carries 017-1506 on N00019-17-C-0003, the APN account behind the doc-330 FA-18E/F row."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Eighteen Lot 42 full-rate-production airframes explicitly for the Navy; the aircraft-procurement name has a single index owner and the modernization/sustainment F/A-18 rows cannot claim a production airframe buy."
+   }
+  },
+  {
+   "record_index": 27,
+   "article_id": "1561988",
+   "piid": "N0001918C1060",
+   "pe_bli": "0145",
+   "program_name": "FA-18E/F",
+   "lexicon_doc": "330",
+   "announcement_evidence": "production and delivery of 22 F/A-18E and six F/A-18F Super Hornets in support of the government of Kuwait",
+   "lexicon_quote": "FA-18E/F",
+   "rationale": "The airframe designator matches the index name, but the announcement says the 28 aircraft are produced in support of the government of Kuwait - a foreign military sale paid by the customer, not by the Navy aircraft procurement line. The action does not fund BLI 0145's own buy, so it is recorded as weak rather than linked.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 57,
+   "article_id": "625958",
+   "piid": "N0001914C0032",
+   "pe_bli": "0505",
+   "program_name": "F-18E/F and EA-18G Modernization and Sustainment",
+   "lexicon_doc": "330",
+   "announcement_evidence": "procurement of 15 Lot 38 full-rate production EA-18G aircraft",
+   "lexicon_quote": "F-18E/F and EA-18G Modernization and Sustainment",
+   "rationale": "EA-18G is named, and the only index row carrying that designator on the procurement side is BLI 0505, whose name and program title are both about modernization and sustainment of in-service F-18E/F and EA-18G aircraft. This award buys 15 new-production airframes and their airborne electronic attack kits, a different scope from the modernization line, and the index carries no EA-18G airframe procurement row. Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 71,
+   "article_id": "1617374",
+   "piid": "N0001918C1012",
+   "pe_bli": "0605414N",
+   "program_name": "MQ-25",
+   "lexicon_doc": "340",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "four MQ-25A unmanned air vehicles",
+   "lexicon_quote": "MQ-25",
+   "rationale": "Design, development, fabrication, test, verification, certification and delivery of four MQ-25A air vehicles plus carrier air wing integration - engineering and manufacturing development, which belongs to RDT&E program element 0605414N (program title 'Unmanned Carrier Aviation (UCA)'), whose index name is 'MQ-25'. The same name is owned by aircraft procurement BLI 0449; that line buys production aircraft, which this 2018 development award is not. 'MQ-25A' differs from the index name only by the variant letter.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 research, development, test and evaluation (Navy) funds are obligated and the lake shows only 017-1319 on N00019-18-C-1012 - PE 0605414N's own appropriation (lexicon_doc 340 = RDTEN_BA1-3_Book); EMD of four air vehicles is development work, and the APN alternative (BLI 0449) would need 1506N, which is absent from this award."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A true exact-name collision exists - 0449 owns the bare name 'MQ-25' on the aircraft-procurement side - but the record's own verbs resolve it: design, development, fabrication, test, verification and certification of four EMD air vehicles with carrier air wing integration to reach initial operational capability is the development PE's work, not a production aircraft buy, and MQ-25A is the same system as the index's MQ-25."
+   }
+  },
+  {
+   "record_index": 68,
+   "article_id": "2885691",
+   "piid": "N0001920C0009",
+   "pe_bli": "0147",
+   "program_name": "Joint Strike Fighter (JSF)",
+   "lexicon_doc": "330",
+   "announcement_evidence": "production of 105 Lot 17 Joint Strike Fighter aircraft",
+   "lexicon_quote": "Joint Strike Fighter (JSF)",
+   "rationale": "Joint Strike Fighter is named verbatim, but two rows of this index own that exact name - BLI 0147 'Joint Strike Fighter CV' and BLI 0152 'JSF STOVL' - and the award is long lead material for 105 Lot 17 aircraft spread across the Air Force, Navy, Marine Corps, non-DoD participants and FMS customers. Neither Navy line can be said to own the action, and most of the aircraft are not Navy at all. Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 11,
+   "article_id": "1863144",
+   "piid": "N0001918C1021",
+   "pe_bli": "0604840N",
+   "program_name": "F135 Engine Core Upgrade (ECU)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "production and delivery of 56 F135-PW-100 propulsion systems for the Air Force",
+   "rationale": "The only F135 name this index carries is 'F135 Engine Core Upgrade (ECU)', a development item inside the F-35 C2D2 RDT&E program element. This announcement buys production propulsion systems, overwhelmingly for the Air Force and for non-DoD participants and FMS customers, with NAVAIR acting only as the joint program office's contracting activity. Matching a production engine buy to an engine-upgrade development name is the §3 pattern of naming a different increment of a program the line does not fund, so this is rejected rather than linked.",
+   "lexicon_quote": "F135 Engine Core Upgrade (ECU)",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 18,
+   "article_id": "1975222",
+   "piid": "N0001918C1021",
+   "pe_bli": "0604840N",
+   "program_name": "F135 Engine Core Upgrade (ECU)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "definitizes the production and delivery of 112 F135-PW-100 propulsion systems for the Air Force",
+   "lexicon_quote": "F135 Engine Core Upgrade (ECU)",
+   "rationale": "Same rejection as record 11: the index's only F135 name is the Engine Core Upgrade development item under the F-35 C2D2 RDT&E PE, while this modification definitizes production propulsion systems for the Air Force, Marine Corps, Navy and FMS customers. Production airframe engines are not the ECU development effort the line funds - §3 different-increment pattern.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 26,
+   "article_id": "831039",
+   "piid": "N0001915C0004",
+   "pe_bli": "0604840N",
+   "program_name": "F135 Engine Core Upgrade (ECU)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "production of Low Rate Initial Production Lot 10 F135-PW-100 propulsion systems",
+   "lexicon_quote": "F135 Engine Core Upgrade (ECU)",
+   "rationale": "Components, parts and materials for Lot 10 low-rate initial production F135 propulsion systems. The only F135 name in the index is the Engine Core Upgrade, a later development effort in the F-35 C2D2 RDT&E line; LRIP production hardware is a different increment and a different appropriation, so the candidate name is rejected.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 60,
+   "article_id": "3425505",
+   "piid": "N0001920D0013",
+   "pe_bli": "0604840N",
+   "program_name": "F135 Engine Core Upgrade (ECU)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "procure F-135 propulsion system spare parts",
+   "lexicon_quote": "F135 Engine Core Upgrade (ECU)",
+   "rationale": "A ceiling increase to buy F-135 propulsion system spare parts, modules, support equipment and depot lay-in material for the Air Force, Marine Corps, Navy, FMS customers and non-DoD participants. Spares and depot material are sustainment, not the Engine Core Upgrade development the only F135 index row names - both a different increment and a different appropriation family. Rejected.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 75,
+   "article_id": "606718",
+   "piid": "N0001913C0016",
+   "pe_bli": "0604840N",
+   "program_name": "F135 Engine Core Upgrade (ECU)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "Low Rate Initial Production Lot VIII F135 propulsion systems contract",
+   "lexicon_quote": "F135 Engine Core Upgrade (ECU)",
+   "rationale": "Lot VIII low-rate initial production F135 propulsion systems, 19 of them for the Air Force and four for the Navy, six PW-600 for the Marine Corps plus partner and FMS engines. The index's sole F135 name is the Engine Core Upgrade development item in the F-35 C2D2 RDT&E line, which is not what a 2014 LRIP engine buy funds. Rejected.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 78,
+   "article_id": "2023490",
+   "piid": "N0001918C1021",
+   "pe_bli": "0604840N",
+   "program_name": "F135 Engine Core Upgrade (ECU)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "Lot 14 production and delivery of 48 F135-PW-100 propulsion systems for the Air Force",
+   "lexicon_quote": "F135 Engine Core Upgrade (ECU)",
+   "rationale": "Lot 14 production engines, funded in the announcement's own words with fiscal 2020 aircraft procurement (Air Force and Marine Corps) dollars - not Navy RDT&E, and not the Engine Core Upgrade development item that is the index's only F135 name. Rejected on the §3 different-increment pattern.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 10,
+   "article_id": "3916067",
+   "piid": "N0002424C2467",
+   "pe_bli": "0604567N",
+   "program_name": "LHA(R) FLT Design and Total Ship Integration",
+   "lexicon_doc": "340",
+   "announcement_evidence": "one amphibious assault ship (general purpose) replacement America class Flight 1 ship",
+   "lexicon_quote": "LHA(R) FLT Design and Total Ship Integration",
+   "rationale": "The announcement describes an amphibious assault ship (general purpose) replacement America class Flight 1 ship, which is the LHA(R) Flight 1 program the index name refers to. But 0604567N is the RDT&E ship-contract-design and live-fire test program element, and this action definitizes long lead material and buys detail design and construction of a hull - shipbuilding work. The index carries no SCN LHA row, so no line here both owns the ship and matches the appropriation. Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 17,
+   "article_id": "3202126",
+   "piid": "N0002420C2437",
+   "pe_bli": "0604567N",
+   "program_name": "LHA(R) FLT Design and Total Ship Integration",
+   "lexicon_doc": "340",
+   "announcement_evidence": "Amphibious Assault Ship (General Purpose) Replacement (LHA(R)) Flight 1 Ship (LHA 9)",
+   "lexicon_quote": "LHA(R) FLT Design and Total Ship Integration",
+   "rationale": "LHA(R) Flight 1 is named verbatim, with the hull number LHA 9, but this is a detail, design and construction modification - shipbuilding and conversion work - while 0604567N is the RDT&E ship contract design and live fire test and evaluation line. Right program family, wrong appropriation, and the index offers no SCN amphibious assault ship row. Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 39,
+   "article_id": "1217494",
+   "piid": "N0002416C2427",
+   "pe_bli": "0604567N",
+   "program_name": "LHA(R) FLT Design and Total Ship Integration",
+   "lexicon_doc": "340",
+   "announcement_evidence": "Landing Helicopter Assault (LHA) Replacement (LHA(R)) Flight 1 Amphibious Assault Ship (LHA 8)",
+   "lexicon_quote": "LHA(R) FLT Design and Total Ship Integration",
+   "rationale": "Same situation as records 10 and 17 for the first Flight 1 hull, LHA 8: the LHA(R) designator matches the index name, but the option exercised procures detail, design and construction of the ship, which the RDT&E design and live-fire line 0604567N does not fund. Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 28,
+   "article_id": "1444724",
+   "piid": "N0002416C2431",
+   "pe_bli": "3010",
+   "program_name": "LPD Flight II",
+   "lexicon_doc": "341",
+   "announcement_evidence": "the procurement of the detail design and construction of landing platform dock 29",
+   "lexicon_quote": "LPD Flight II",
+   "rationale": "The only LPD shipbuilding row in this index is SCN BLI 3010 'LPD Flight II', and the hull here is LPD 29 - the transition hull that precedes the Flight II ships that line buys. Attributing a named hull to the next increment's line is the variant mismatch the rubric rejects, and the index carries no LPD 17-class construction row (its 'LPD 17' names sit under the LX(R) RDT&E PE and an other-procurement support-equipment line). Recorded as weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 21,
+   "article_id": "2045874",
+   "piid": "N0002418C2301",
+   "pe_bli": "2127",
+   "program_name": "Littoral Combat Ship (LCS)",
+   "lexicon_doc": "341",
+   "announcement_evidence": "The MMSC is based on the freedom variant of the Navy Littoral Combat Ship class",
+   "lexicon_quote": "Littoral Combat Ship (LCS)",
+   "rationale": "Littoral Combat Ship appears only as the design parentage of the ship being built: the award is detail design and construction of four Multi Mission Surface Combatant ships procured by the Kingdom of Saudi Arabia under Foreign Military Sales. The LCS name here is the platform the design derives from, not the program the contract funds, which is the §3 platform pattern; and an FMS purchase does not pay for the SCN LCS line's own ships. Rejected.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 66,
+   "article_id": "3112446",
+   "piid": "N0001922D0011",
+   "pe_bli": "0560",
+   "program_name": "KC-130",
+   "lexicon_doc": "330",
+   "announcement_evidence": "depot-level engine repair services for the AE2100 D3 engine on the C/KC-130 aircraft",
+   "lexicon_quote": "KC-130",
+   "rationale": "The C/KC-130 designator matches the index name under aircraft procurement BLI 0560 'C-130 Series', but the award is depot-level engine repair services - sustainment performed for the Marine Corps and the government of Kuwait - and the aircraft is the platform the service supports, not the program the procurement line funds. Two §3 patterns at once (platform-not-program, and generic sustainment services), so it is rejected.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 76,
+   "article_id": "1621346",
+   "piid": "N0003913D0013",
+   "pe_bli": "8164",
+   "program_name": "The Next Generation Network (NGEN)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "the existing Next Generation Enterprise Network contract (N00039-13-D-0013)",
+   "lexicon_quote": "The Next Generation Network (NGEN)",
+   "rationale": "NGEN is named, and BLI 8164 (program title 'Next Generation Enterprise Service', index name 'The Next Generation Network (NGEN)') is the procurement line for that enterprise network. But this action only adds a twelve-month option period to the ordering vehicle - the announcement states no additional funding is placed on contract or obligated at the time of modification award - and NGEN service orders are paid mainly from operations and maintenance rather than from the procurement line. The other candidate, 0605013N, is an RDT&E IT development PE, which fits even less. Recorded as weak.",
+   "verdict": "weak"
+  }
+ ]
+}

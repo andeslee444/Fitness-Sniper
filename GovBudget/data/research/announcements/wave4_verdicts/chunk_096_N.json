@@ -1,0 +1,266 @@
+{
+ "chunk": "chunk_096_N.json",
+ "proposals": [
+  {
+   "record_index": 5,
+   "article_id": "2659241",
+   "piid": "N0002420C5203",
+   "pe_bli": "2606",
+   "program_name": "Planar Array Antenna Assembly (PAAA)",
+   "lexicon_doc": "333",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Planar Array Antenna Assembly production requirements to support the Cooperative Engagement Capability program",
+   "lexicon_quote": "Planar Array Antenna Assembly (PAAA)",
+   "verdict": "link",
+   "rationale": "The announcement names the deliverable and the program in the same clause: it exercises options for Planar Array Antenna Assembly production to support the Cooperative Engagement Capability program. BLI 2606 (lexicon doc 333) is the Cooperative Engagement Capability procurement line itself, and its own narrative enumerates 'Planar Array Antenna Assembly (PAAA)' alongside the CEC processor, the Data Distribution System and AN/USG-2B — so this is production of a component the line is written to buy, not a platform the contract merely supports. The buy is a production option (SCN 83% plus OPN 17%) against a procurement line, and the CEC name collisions in the index (0604234N E-2D CEC, 0303138N CEC Increment II, 0900 DDG Mod 'Procures CEC') are all consumers or host platforms of CEC rather than the PAAA hardware line, which only 2606 owns by name.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the archived body names fiscal 2021 other procurement (Navy) $5,121,030 (17%) alongside the SCN 83%, and OPN is the appropriation BLI 2606 executes, so the colors intersect rather than mismatch; the action is a firm-fixed-price production option for PAAA hardware that 2606's own narrative enumerates (no O&M, no sustainment language), the SCN share is the new-construction ship-set of the same CEC hardware rather than a different line's work, CEC is the program this line funds rather than a platform the contract merely supports, and 'Cooperative Engagement Capability' is a named program title with no dollar threshold and no Other/Miscellaneous stem."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"Planar Array Antenna Assembly (PAAA)\" appears exactly once in N.tsv (line 1439, 2606, doc 333) and the announcement names the deliverable verbatim; the CEC name does collide (0604234N \"E-2D Cooperative Engagement Capability (CEC)\", 0900 \"Procures Cooperative Engagement Capability (CEC)\", 0303138N \"CEC Increment II\") but none of those rows owns the PAAA hardware name, the announcement mentions no host platform, aircraft or DDG modernization to pull it toward them, and no variant/increment or contractor-name confusion is in play."
+   }
+  },
+  {
+   "record_index": 26,
+   "article_id": "614939",
+   "piid": "N0002413C2128",
+   "pe_bli": "0603595N",
+   "program_name": "Common Missile Compartment (CMC)",
+   "lexicon_doc": "340",
+   "match_basis": "exact-name",
+   "announcement_evidence": "continued procurement of integrated tube and hull E-fixtures in support of the Ohio Replacement Program common missile compartment",
+   "lexicon_quote": "Common Missile Compartment (CMC)",
+   "verdict": "link",
+   "rationale": "The announcement names the program element's own subject twice over — 'Ohio Replacement Program' is the PE title of 0603595N and 'common missile compartment' is verbatim the index name 'Common Missile Compartment (CMC)' that this PE's narrative owns. The E-fixtures are CMC development/production tooling, i.e. the line's own work rather than a platform the award merely supports, and the money color agrees: the record names 'fiscal 2015 research, development, test and evaluation (Navy) funding' against an RDT&E PE, so there is no O&M-on-RDT&E mismatch. No other row in this org's index carries the CMC name, so there is no alternative owner to resolve.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The obligated money is fiscal 2015 research, development, test and evaluation (Navy) funding against an RDT&E program element titled Ohio Replacement, so there is no O&M-on-RDT&E mismatch; integrated tube and hull E-fixtures are CMC development articles, i.e. the work this line is written to do, not a platform the contract supports, and the 50% UK foreign military sales share is co-funding of the same common missile compartment development rather than evidence the Navy half executes some other line; 'Ohio Replacement' is a specific program, not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"Common Missile Compartment (CMC)\" appears exactly once in N.tsv (line 682, 0603595N, doc 340) and the announcement supplies both halves of the identity — the PE title \"Ohio Replacement\" and the name \"common missile compartment\" — in the same clause; the only nearby owner, 1045 COLUMBIA Class Submarine (doc 341), carries \"Missile Tube Module (MTM)\", a different name on the procurement side, and the FY2015 RDT&E color points away from it, so there is no alternative owner and no increment/variant ambiguity."
+   }
+  },
+  {
+   "record_index": 30,
+   "article_id": "3593062",
+   "piid": "N0002423C5123",
+   "pe_bli": "0604307N",
+   "program_name": "The AEGIS Combat System (ACS)",
+   "lexicon_doc": "340",
+   "match_basis": "exact-name",
+   "announcement_evidence": "capability package development and fielding, system integration and fielding, and in-service sustainment in support of current configurations of the AEGIS combat system",
+   "lexicon_quote": "The AEGIS Combat System (ACS)",
+   "verdict": "link",
+   "rationale": "The work the announcement describes is the described work of this PE: 'capability package development and fielding' matches the index row 'AEGIS Capability Package (CP)' and 'AEGIS combat system' matches 'The AEGIS Combat System (ACS)', both owned by 0604307N, Surface Combatant Combat System Engineering — the combat-system engineering-agent line. The record names fiscal 2024 and fiscal 2023 RDT&E (Navy) funds, which is the appropriation an RDT&E development-and-integration PE executes; the SCN majority share is the shipboard-installation portion of the same effort. The competing owner is 5231 (Ship Missile Support Equipment, OPN), which carries 'AEGIS Combat System (ACS)' too, but that is an in-service procurement line and the announcement's own words are development, integration and fielding, which is 0604307N's work. Noted for the refute lenses: the SCN share is 61%, so if the money test is read strictly on the largest color this is the weakest part of the claim.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The full funding line puts 72% of the obligated money on shipbuilding and conversion (Navy) (61% FY2020 + 6% FY2018 + 5% FY2017) with only 26% RDT&E (Navy) touching this development PE, and the announcement's own scope names 'in-service sustainment ... in support of current configurations of the AEGIS combat system' — fielded-ship modernization and sustainment work carried by the ship lines, which is precisely the sustainment-attached-to-an-RDT&E-line failure mode lens A exists to catch; the award is predominantly not this line's work, and with a broad engineering-agent PE ('Surface Combatant Combat System Engineering') absorbing a mixed development/fielding/sustainment bundle I am not confident enough to let it publish."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Direct identical-name collision: N.tsv line 1948 gives \"AEGIS Combat System (ACS)\" to BLI 5231 (Ship Missile Support Equipment, doc 333), differing from 0604307N's row only by the leading article, and the announcement's own words \"in-service sustainment in support of current configurations of the AEGIS combat system\" describe the in-service line's work at least as well as the engineering agent's; \"capability package\" is likewise not exclusive, since 0604501N owns \"AEGIS Capability Build (ACB)\" and the majority 61% SCN share belongs to neither PE, so the evidence would link this award roughly equally well elsewhere and the collision is not resolved by the text."
+   }
+  },
+  {
+   "record_index": 68,
+   "article_id": "2555751",
+   "piid": "N0001920C0054",
+   "pe_bli": "0576",
+   "program_name": "AN/APR-39",
+   "lexicon_doc": "330",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "This modification exercises an option to procure the necessary weapon replaceable assemblies and AN/APR-39D(V)2 support equipment hardware, to include 27 processors, 108 antenna detectors, 82 radar receivers, 27 low band arrays, 16 battery handle assemblies, and 28 circuit card assemblies.",
+   "lexicon_quote": "AN/APR-39 Radar Warning Receiver (RWR)",
+   "verdict": "link",
+   "rationale": "AN/APR-39D(V)2 is the current production variant of the AN/APR-39 radar warning receiver, and BLI 0576 (Common ECM Equipment, aircraft procurement doc 330) is the line whose narrative names 'AN/APR-39', 'APR-39' and 'AN/APR-39 Radar Warning Receiver (RWR)' outright. The award is a production option for APR-39D(V)2 weapon replaceable assemblies and support-equipment hardware in enumerated quantities — hardware procurement against a hardware procurement line, not O&M sustainment and not a platform the contract supports. The designator variant suffix D(V)2 is the only distance between the announcement and the lexicon name, which is why the basis is llm-designator-variant rather than exact-name; no other row in this org's index carries an APR-39 designator, so there is no competing owner.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The archived body names fiscal 2021 aircraft procurement (Navy) funds of $27,222,324 (91% of the action) plus $1,794,568 aircraft procurement (Army) and $998,496 FMS, and BLI 0576 is an Aircraft Procurement, Navy line (doc 330) — an exact money-color match; the action is an option exercise to procure enumerated AN/APR-39D(V)2 weapon replaceable assemblies and support-equipment hardware, with the non-recurring engineering and logistics services explicitly ancillary to fabricating, testing and delivering that hardware rather than standalone O&M sustainment; the APR-39 is the equipment the line buys, not a platform it supports, and 'Common ECM Equipment' is a portfolio title that trips neither the dollar-threshold nor the Other/Miscellaneous catch-all stem while naming APR-39 outright."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "All four APR-39 rows in N.tsv (lines 519-521, 528: \"AN/APR-39\", \"AN/APR-39 Radar Warning Receiver (RWR)\", \"APR-39\", \"The AN/APR-39 Radar Signal Detecting Set (RSDS)\") belong to the single BLI 0576, so no other PE in this org's index owns the designator; AN/APR-39D(V)2 is a real suffix variant of that same family rather than an invented alias or a separate increment, the enumerated hardware (processors, antenna detectors, radar receivers, low band arrays) is RWR hardware, and the evidence is the designator, not the contractor name."
+   }
+  },
+  {
+   "record_index": 21,
+   "article_id": "606723",
+   "piid": "M6785415D7801",
+   "pe_bli": "6532",
+   "program_name": "Indoor Simulated Marksmanship Trainer (ISMT)",
+   "lexicon_doc": "339",
+   "match_basis": "exact-name",
+   "announcement_evidence": "firm-fixed-price, indefinite-delivery/indefinite-quantity contract for the procurement of 670 indoor simulated marksmanship trainers (ISMT), a three-dimensional, simulation-based system for indoor use capable of instructing in basic and advanced marksmanship",
+   "lexicon_quote": "Indoor Simulated Marksmanship Trainer (ISMT)",
+   "verdict": "link",
+   "rationale": "The announcement names the system and its acronym exactly as the index row reads, and the action is a quantity buy of 670 units awarded by Marine Corps Systems Command (PIID prefix M67854) — a Marine Corps procurement action against BLI 6532, the Procurement, Marine Corps Training Devices line (doc 339) whose narrative owns the ISMT name. The index collision is real and resolvable: 0206623M (Marine Corps Ground Combat/Supporting Arms Systems) carries the same ISMT name but is an RDT&E program element, and a 670-unit production buy is not RDT&E work. 'Training Devices' is a portfolio-style title but it is not a catch-all under the loader's rule (no dollar threshold, no 'Other'/'Miscellaneous' stem), and the ISMT is enumerated within it by name.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No lens A ground breaks: the archived body states 'No funding will be obligated at the time of award' so no appropriation is named at all, which the project's own money test treats as unknown-not-mismatched rather than a color conflict, and the buyer is Marine Corps Systems Command's Program Manager for Training Systems, whose procurement line for this hardware is PMC BLI 6532; the deliverable is the named line item itself (670 ISMT systems), not a platform the contract supports; and 'Training Devices' is a portfolio title that trips neither CATCHALL_TITLE stem while enumerating the ISMT by name, so the §3 IDIQ reject (which is conditioned on naming no program) does not reach it. Noted without refuting: the $32,732,081 figure is an options ceiling obligated later on individual delivery orders, so the dollar attributed to this line is a ceiling, not a payment."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name does collide — N.tsv line 250 gives the identical \"Indoor Simulated Marksmanship Trainer (ISMT)\" to 0206623M (doc 340, Marine Corps Ground Combat/Supporting Arms Systems) — but the announcement resolves it on its own words: a firm-fixed-price IDIQ for the procurement of 670 fielded units on an M67854 MARCORSYSCOM PIID is a production buy that an RDT&E program element does not fund, so the evidence does not link equally well to the RDT&E owner; the acronym is spelled out verbatim, it is not a contractor name or a variant mismatch, and \"Training Devices\" does not match CATCHALL_TITLE."
+   }
+  },
+  {
+   "record_index": 3,
+   "article_id": "4110191",
+   "piid": "N6600125D0010",
+   "pe_bli": "0977",
+   "program_name": "Maritime Expeditionary Standoff Response (MESR)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "systems engineering and support services in support of the Maritime Expeditionary Standoff Response remotely operated vehicle system produced by VideoRay",
+   "lexicon_quote": "Maritime Expeditionary Standoff Response (MESR)",
+   "verdict": "weak",
+   "rationale": "The MESR name is exact and the index carries it, but the evidence does not meet the standard. The award is an unfunded IDIQ ceiling for 'systems engineering and support services' — the generic-services shape §3 warns about — with no funds obligated at award and delivery orders to be issued against three different appropriations (other procurement, O&M, and RDT&E). Three separate index rows own the MESR name (0977 Underwater EOD Equipment, 8101 Training and Education Equipment, and 0603654N's 'EOD Response ROVs and Maritime Expeditionary Standoff Response System of Systems'), and nothing in the announcement says which of them pays. Naming one would assert an attribution the text does not support."
+  },
+  {
+   "record_index": 15,
+   "article_id": "637941",
+   "piid": "N0003016C0005",
+   "pe_bli": "5420",
+   "program_name": "Attack Weapon Control System (AWCS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "sustainment of the United States (U.S.) and United Kingdom (U.K.) SSBN Fire Control System (FCS), the U.S. SSGN Attack Weapon Control System, including training and support equipment",
+   "lexicon_quote": "Attack Weapon Control System (AWCS)",
+   "verdict": "weak",
+   "rationale": "'Attack Weapon Control System' appears verbatim and BLI 5420 (SSN Combat Control Systems) owns both that name and 'SSGN Attack Weapons Systems (AWS)'. But the AWCS is one strand of a Strategic Systems Programs multi-year contract whose stated bulk is U.S. and U.K. SSBN fire-control sustainment plus Ohio Replacement missile fire control — strategic-weapons work, not the SSN combat control line's own work — and the announcement gives no share for the SSGN portion. Attributing the whole action, or any stated amount, to 5420 would overstate what the text supports."
+  },
+  {
+   "record_index": 15,
+   "article_id": "637941",
+   "piid": "N0003016C0005",
+   "pe_bli": "0603595N",
+   "program_name": "Common Missile Compartment (CMC)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "Also included is the development of Missile Fire Control for the Ohio Replacement and U.K. Successor Common Missile Compartment Program through production of one U.K. SSBN system.",
+   "lexicon_quote": "Common Missile Compartment (CMC)",
+   "verdict": "weak",
+   "rationale": "The Ohio Replacement and Common Missile Compartment names both appear and 0603595N owns them, but the sentence attaches them to a subordinate scope item ('Also included is...') inside a contract whose primary subject is SSBN/SSGN fire-control sustainment, and the U.K. Successor CMC portion is explicitly foreign work. The record gives no obligation split, so there is no basis for saying this action funds the Ohio Replacement line's own work rather than touching it at the margin."
+  },
+  {
+   "record_index": 7,
+   "article_id": "3173663",
+   "piid": "N0001922C0051",
+   "pe_bli": "0505",
+   "program_name": "F-18E/F and EA-18G Modernization and Sustainment",
+   "lexicon_doc": "330",
+   "announcement_evidence": "This contract provides for the production, delivery, and installation of Airborne Electronic Attack Weapons Replacement Assemblies (WRA) 7s and 8s to include: 24 WRA-7 B-Kits, 24 WRA-8 B-Kits, 24 WRA-7 B-Kit Spares and 24 WRA-8 B-Kit Spares, as well as associated engineering, technical, and data support in support of EA-18G aircraft upgrades.",
+   "lexicon_quote": "F-18E/F and EA-18G Modernization and Sustainment",
+   "verdict": "weak",
+   "rationale": "This is an aircraft-procurement buy of EA-18G airborne electronic attack WRAs, and BLI 0505 is the APN modernization line whose name pairs F-18E/F with EA-18G. But the match rests on the aircraft designator, not on the item: the index does not carry WRA-7, WRA-8 or the ALQ-218 receiver family anywhere, and the adjacent AEA line 0513 (AEA Systems) enumerates only AN/ALQ-99 and Low Band Consolidated. On this evidence the EA-18G is the platform the hardware goes into, which is the §3 shape, and choosing between 0505 and 0513 would be a guess."
+  },
+  {
+   "record_index": 19,
+   "article_id": "3202126",
+   "piid": "N0001921C0081",
+   "pe_bli": "0182",
+   "program_name": "Air Expendable Countermeasures",
+   "lexicon_doc": "338",
+   "announcement_evidence": "This modification exercises an option for the manufacture and production of MJU-68/B Flare Infrared Countermeasures in support of the Joint Strike Fighter program",
+   "lexicon_quote": "Air Expendable Countermeasures",
+   "verdict": "weak",
+   "rationale": "BLI 0182 is the ammunition line for air expendable countermeasures and its narrative enumerates MJU-32, MJU-57, MJU-61, MJU-66, MJU-67, MJU-76, MJU-77 and MJU-78 plus an 'F-35 Active Expendable Device (AED)' entry — but not MJU-68/B. The link would therefore rest on a sibling-designator inference within a flare family rather than on the line's own words, which is exactly the variant substitution lens B is asked to catch; and the only program the announcement names outright, the Joint Strike Fighter, is the platform the flares are expended from. The majority of the buy is foreign-military quantities for seven partner governments, which weakens the claim that this action executes a U.S. Navy procurement line."
+  },
+  {
+   "record_index": 41,
+   "article_id": "2060522",
+   "piid": "N0002419C5509",
+   "pe_bli": "2981",
+   "program_name": "Dual Band Radar (DBR)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "to exercise the option for dual band radar design agent support efforts",
+   "lexicon_quote": "Dual Band Radar (DBR)",
+   "verdict": "weak",
+   "rationale": "'Dual band radar' matches the index name owned by BLI 2981 (In-Service Radars and Sensors), but the scope is 'design agent support efforts' — engineering support, the generic-services shape §3 rejects — and the money the record names is shipbuilding and conversion plus RDT&E (Navy), neither of which is the other-procurement color an in-service radars and sensors procurement line executes. The name is present; the attribution is not established."
+  },
+  {
+   "record_index": 52,
+   "article_id": "3461118",
+   "piid": "N0001921C0016",
+   "pe_bli": "0452",
+   "program_name": "MQ-9A",
+   "lexicon_doc": "330",
+   "announcement_evidence": "This modification exercises options to provide maintenance, supply chain and spares management, logistics, and sustainment support for the MQ-9 Reaper aircraft, and dual control mobile ground control stations to ensure they are mission capable for the Marine Corps.",
+   "lexicon_quote": "MQ-9A",
+   "verdict": "weak",
+   "rationale": "The MQ-9 designator matches the index rows exactly, but the scope is maintenance, spares management, logistics and sustainment paid with fiscal 2023 operation and maintenance funds, and 0452 is an aircraft procurement line — the O&M-sustainment-attached-to-a-procurement-line failure mode the held-out study found in half its refutations. The name also collides: 0452 (Marine Group 5 UAS) and 0507 (Marine Group 5 UAS Series) both carry MQ-9A, and the announcement gives nothing that picks between them."
+  },
+  {
+   "record_index": 66,
+   "article_id": "710219",
+   "piid": "M6785412D4153",
+   "pe_bli": "8164",
+   "program_name": "The Next Generation Network (NGEN)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "for a quantity of 27,961 general purpose laptops to support the Next Generation Enterprise Network Computer Refresh",
+   "lexicon_quote": "The Next Generation Network (NGEN)",
+   "verdict": "weak",
+   "rationale": "The announcement names NGEN, and the index carries the name at 8164 (Next Generation Enterprise Service, other procurement) and at 0605013N (Information Technology Development, RDT&E). Neither fits the action: the buy is 27,961 general purpose laptops awarded by Marine Corps Systems Command with fiscal 2016 procurement (Marine Corps) funds, so the executing line is a Marine Corps procurement account — the index's Marine Corps network line (4625, Marine Corps Enterprise Network) is the one whose color matches, and the announcement never names it. General purpose laptops are also commodity hardware rather than the named program's own work."
+  },
+  {
+   "record_index": 55,
+   "article_id": "2127392",
+   "piid": "N0001920C0001",
+   "pe_bli": "0525",
+   "program_name": "F-18 Series",
+   "lexicon_doc": "330",
+   "announcement_evidence": "fixed-price-incentive-fee contract to procure the replacement of nine Marine Corps AN/APG-79(V)4 radar systems for retrofitting into the F/A-18C/D all-weather combat jet aircraft",
+   "lexicon_quote": "F-18 Series",
+   "verdict": "weak",
+   "rationale": "This is an APN-funded radar retrofit buy and BLI 0525 is the F-18 Series aircraft procurement line, but the index carries only APG-65 and APG-73 for that line — not APG-79 — so the only thing actually matching is the aircraft series name, i.e. the platform the radar is installed in rather than the item the line is written to buy. Proposing APG-79 against a line whose narrative names two different radars would be a designator substitution, not a match."
+  },
+  {
+   "record_index": 49,
+   "article_id": "2220903",
+   "piid": "N3220520C4037",
+   "pe_bli": "3039",
+   "program_name": "The Expeditionary Mobile Base (ESB)",
+   "lexicon_doc": "341",
+   "announcement_evidence": "for a 120-calendar day shipyard availability for the post shakedown availability of the expeditionary sea base U.S. Ship Miguel Keith (T-ESB 5)",
+   "lexicon_quote": "The Expeditionary Mobile Base (ESB)",
+   "verdict": "weak",
+   "rationale": "BLI 3039 is the shipbuilding line for the Expeditionary Sea Base class and the announcement names the class and the hull, so the name is genuinely the program's. But a post-shakedown shipyard availability on a delivered hull is ship maintenance work let by Military Sealift Command, and the record does not name the appropriation, so there is no evidence that this action executes the construction line rather than a maintenance account. The named thing is the platform; the standard for saying the shipbuilding line paid for it is not met."
+  },
+  {
+   "record_index": 62,
+   "article_id": "1720584",
+   "piid": "N3220519C4150",
+   "pe_bli": "3039",
+   "program_name": "The Expeditionary Mobile Base (ESB)",
+   "lexicon_doc": "341",
+   "announcement_evidence": "firm-fixed-price contract for a 120-calendar day shipyard availability for the post shakedown of USNS Hershel &lsquo;Woody&rsquo; Williams (T-ESB 4)",
+   "lexicon_quote": "The Expeditionary Mobile Base (ESB)",
+   "verdict": "weak",
+   "rationale": "Same shape as the T-ESB 5 availability: the hull belongs to the Expeditionary Sea Base class that BLI 3039 builds, but the action is a post-shakedown shipyard availability on a delivered ship, let by Military Sealift Command, with no appropriation named in the record. The class name identifies the platform, not the work the shipbuilding line funds."
+  },
+  {
+   "record_index": 64,
+   "article_id": "3786556",
+   "piid": "N3220524C4073",
+   "pe_bli": "8109",
+   "program_name": "USNS COMFORT (USFFC)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "for a 156-calendar day shipyard availability for the regular overhaul and dry dock availability of Military Sealift Command&rsquo;s hospital ship USNS Comfort (T-AH 20)",
+   "lexicon_quote": "USNS COMFORT (USFFC)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3: the name is a PLATFORM the contract supports, not the program the line funds. BLI 8109 is Medical Support Equipment, an other-procurement line that buys medical equipment installed aboard the hospital ships; this award is a 156-day regular overhaul and drydocking of the ship itself, paid with Navy working capital funds, which is neither that line's work nor its appropriation. Linking it would assert that a procurement line for medical equipment paid for a drydock availability."
+  },
+  {
+   "record_index": 34,
+   "article_id": "4221136",
+   "piid": "N0002418C2406",
+   "pe_bli": "0946",
+   "program_name": "LPD 17",
+   "lexicon_doc": "333",
+   "announcement_evidence": "to add an additional air conditioning plant in support of Landing Platform Dock (LPD) 31 and 32",
+   "lexicon_quote": "LPD 17",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 on two counts. The LPD designator names the ship class the change order supports, and the index's LPD rows at 0946 are the LPD Class Support Equipment other-procurement line for LPD 17 and LPD 18 — different hulls from the LPD 31 and 32 named here, and a different kind of work. The action is an unpriced change order under the Flight II construction contract funded with fiscal 2022 and fiscal 2023 shipbuilding and conversion (Navy) money, so neither the hull, the work nor the money color belongs to 0946."
+  }
+ ]
+}

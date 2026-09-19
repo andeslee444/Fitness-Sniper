@@ -1,0 +1,115 @@
+{
+ "chunk": "chunk_138_A.json",
+ "proposals": [
+  {
+   "record_index": 66,
+   "article_id": "3210913",
+   "piid": "W56HZV16C0028",
+   "pe_bli": "5225GZ3001",
+   "program_name": "Joint Assault Bridge (JAB)",
+   "lexicon_doc": "350",
+   "match_basis": "exact-name",
+   "announcement_evidence": "modification (P00113) to contract W56HZV-16-C-0028 for the Joint Assault Bridge program",
+   "lexicon_quote": "Joint Assault Bridge (JAB)\t5225GZ3001\t350\tJoint Assault Bridge",
+   "verdict": "link",
+   "rationale": "The announcement names the Joint Assault Bridge verbatim and names nothing else: the entire modification is 'for the Joint Assault Bridge program', so this is not an IDIQ umbrella paragraph and not a platform the contract merely supports — JAB is the end item the line buys. DRS Sustainment Systems, Bridgeton, Missouri, is the JAB prime (Leonardo DRS integrates the Heavy Assault Scissor Bridge onto the M1 chassis), and ACC Detroit Arsenal is the JAB contracting activity, so the contractor, the contracting office and the named program all agree. Identity is unambiguous: all three 'Joint Assault Bridge' index rows (Bridge Launch Mechanism, Heavy Assault Scissor Bridge, Joint Assault Bridge (JAB)) sit on the single BLI 5225GZ3001 whose program title is literally 'Joint Assault Bridge', so no other PE in this org's index owns the name and there is no increment/variant ambiguity. 5225GZ3001 is a named single-program procurement line in doc 350 (Weapons and Tracked Combat Vehicles, Army), not a rollup or a catch-all, and a production/modification action against the program's own production contract is that line's own work. The one soft spot I flag honestly for the refute lenses: the paragraph says 'Work locations and funding will be determined with each order' and names no appropriation at all, so the money colour cannot be confirmed from the text and must be checked against the lake's funding accounts for W56HZV-16-C-0028.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not refuted on money or mission: the lake row for the exact modification named in the paragraph (P00113, 2022-11-04, $20,266,144.72 — the announced amount to the cent) reads 'THIS JAB REQUIREMENT IS TO ORDER 17 JABS' and carries funding account 021-2033, which is exactly the appropriation of 5225GZ3001 (budget_lines account 2033A, exhibit P-1, organization ARMY, title 'Joint Assault Bridge'), so the announcement's missing appropriation — lens P's flagged soft spot, the boilerplate 'funding will be determined with each order' — is resolved in the proposal's favour rather than against it; the action is a production buy of 17 of the line's own end items (PSC 'BRIDGES, FIXED AND FLOATING'), not O&M sustainment bolted onto a procurement line, the JAB is the item the line buys and not a platform the contract merely supports, and 5225GZ3001 is a named single-program P-1 line (its three index rows BLM/HASB/JAB are the same bridge's subassemblies, not a portfolio), escapes CATCHALL_TITLE and is not an org-split code 20/30/500 — the one honest caveat, that the mod also carries 021-2020 (O&M, Army) as a second accounting line, does not break it because the procurement account that matches the line is present and the described work is procurement of the end item."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Identity is unambiguous: the announcement names 'Joint Assault Bridge' verbatim, and every row in A.tsv carrying that name (Joint Assault Bridge (JAB), Bridge Launch Mechanism, Heavy Assault Scissor Bridge — the JAB's own subsystems) sits on the one BLI 5225GZ3001 in doc 350 whose program title is literally 'Joint Assault Bridge', so no other PE owns the name, the nearest neighbours own different named items (4872G84900 Assault Breacher Vehicle; 2831MX0100 Tactical Bridging; 3542MA8890 Tactical Bridge Float-Ribbon; 3758G06520 Bridge Supplemental Set), there is no increment/variant to confuse, the code appears in only one doc so it is not a shared/collision code, and the evidence is the program name rather than DRS's corporate identity."
+   }
+  },
+  {
+   "record_index": 1,
+   "article_id": "2878567",
+   "piid": "W56HZV22D0017",
+   "pe_bli": "1110MA4500",
+   "program_name": "The Rapidly Emplaced Bridge System (REBS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "firm-fixed-price contract for the modernization of the Rapidly Emplaced Bridging System",
+   "lexicon_quote": "The Rapidly Emplaced Bridge System (REBS)\t1110MA4500\t346\tModification Of In-Svc Equipment (OPA-3)",
+   "verdict": "link",
+   "rationale": "The announcement's 'Rapidly Emplaced Bridging System' is the same program as the index's 'Rapidly Emplaced Bridge System (REBS)' — the Army writes the name both ways for the identical GDELS-built scissor bridge, which is why I record llm-alias rather than exact-name. The contractor is General Dynamics European Land Systems-Bridge Systems, Kaiserslautern, the REBS manufacturer, and the contracting activity is ACC Detroit Arsenal, the ground-combat-systems office that owns REBS, so contractor and office both corroborate the identity rather than merely resembling it. What makes this the line's own work is that the award is specifically 'the modernization of' an in-service REBS fleet and 1110MA4500 is the Other Procurement, Army line for Modification Of In-Svc Equipment whose own narrative owns REBS: a modernization action against a modification-of-in-service-equipment line is precisely that line's stated purpose, not sustainment bolted onto an RDT&E or new-buy line. Identity is clean: no other row in this org's index carries a Rapidly Emplaced Bridge/Bridging name, and the separate bridging line 2831MX0100 (Tactical Bridging) owns only Common Bridge Transporter and Dry Support Bridge, so there is no alternative owner. Two risks I flag for the refute lenses: 1110MA4500 is a modification portfolio line carrying several named items rather than a single-program line, and the paragraph names no appropriation ('Work locations and funding will be determined with each order'), so the money colour has to come from the lake rather than the text.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money and on rollup: all six lake transactions for W56HZV-22-D-0017 carry federal_action_obligation $0.00 and NULL federal_accounts_funding_this_award, so nothing whatsoever ties this indefinite-delivery ceiling to 1110MA4500's OPA appropriation (budget_lines account 2035A -> 021-2035) — the loader's money_color_ok would wave it through only because the award's accounts are UNKNOWN, which is the absence of evidence, not a match, and the paragraph itself names no appropriation ('funding will be determined with each order'), so the claim 'this contract action paid for this program element's own work' rests on no obligated dollar at all; worse, the lake's own descriptions straddle two money colours, the base action being 'MODERNIZATION OF THE RAPIDLY EMPLACED BRIDGE SYSTEM (REBS). REPAIR AND UPGRADES OF VERSION 1 AND VERSION 2 OF THE REBS' — repair of already-fielded units is O&M sustainment, precisely the failure mode lens A hunts — while PT0003 and P00005 call the same vehicle a 'CONTRACT TO PROCURE SYSTEMS', which would belong on a REBS procurement line rather than an in-service-modification line, directly contradicting lens P's central argument that a modernization action is this line's own stated purpose; and 1110MA4500 'Modification Of In-Svc Equipment (OPA-3)' is a portfolio rollup, owning 30 unrelated named end items in this very index (containerized ice-making systems, rough-terrain forklifts, logistic support vessels, mine clearing line charges, breathing apparatus), escaping the CATCHALL_TITLE regex only because its title happens not to start with 'Other' or carry a '<$', while doc 346 also carries dedicated bridging procurement lines (2831MX0100 Tactical Bridging, 3542MA8890 Tactical Bridge Float-Ribbon, 3758G06520 Bridge Supplemental Set) that share names such as Dry Support Bridge and Common Bridge Transporter with the modification line — so the modification line is demonstrably not the exclusive owner of a given bridge's work, and the smaller true number is to publish nothing here."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The alias is real, not invented — 'Rapidly Emplaced Bridging System' is the Army's other wording for the same GDELS scissor bridge the index calls 'The Rapidly Emplaced Bridge System (REBS)' — and a grep for 'emplaced'/'rapidly' across the whole wave4 lexicon returns exactly one row, 1110MA4500 doc 346, so no alternative owner exists and this evidence cannot link equally well elsewhere (2831MX0100 Tactical Bridging owns CBT/DSB/ATE/ATP, 3542MA8890 owns IRB/BEB/CBT, 3758G06520 owns BSS/BPD/OCS — none names REBS); the code is single-doc so not a collision code, and the award names the program itself rather than resting on the contractor, which matters because GDELS's dual-owned Dry Support Bridge (1110MA4500 and 2831MX0100) would have been the collision risk had the contractor been the only evidence. The 30-name modification-portfolio/rollup worry and the unnamed appropriation are lens A's grounds, not lens B's, and I leave them to that lens."
+   }
+  },
+  {
+   "record_index": 32,
+   "article_id": "2684977",
+   "piid": "W56HZV15C0099",
+   "pe_bli": "0603778A",
+   "program_name": "Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "modification (P00187) to contract W56HZV-15-C-0099 for logistics support for the Multiple Launch Rocket System",
+   "lexicon_quote": "Multiple Launch Rocket System (MLRS)\t0603778A\t359\tMLRS Product Improvement Program",
+   "verdict": "weak",
+   "rationale": "The bare name 'Multiple Launch Rocket System' does appear verbatim, and 0603778A is the row whose name column carries it verbatim, but the evidence does not reach the standard of §1 in two independent ways, so I record weak rather than link. First, identity: the MLRS name is a six-way collision in this org's index — 0603778A (MLRS Product Improvement Program, RDT&E), 6552C67500 (MLRS Mods, which owns 'The M270A2 Multiple Launch Rocket System (MLRS)'), 6005C64400 and 0205778A (GMLRS rocket), 6060C65405 (Reduced Range Practice Rockets) and 6200C02901 (HIMARS) — and the paragraph never says M270, M270A2, GMLRS or rocket, so nothing in it picks out which member the action executes. Second, money and mission: the work described is 'logistics support', and the obligation is fiscal 2019/2020/2021 other procurement, Army — OPA money, which matches neither 0603778A's RDT&E appropriation nor the missile-procurement volume the MLRS Mods and GMLRS lines sit in. BAE Systems Land & Armaments, San Jose, builds the M270 launcher carrier, which hints at the launcher rather than the rocket, but a hint from the contractor's product line is not the announcement naming the program, and sustainment logistics attached to a development or procurement line is exactly the failure mode the rubric warns about. Recorded weak so the collision and the money mismatch are visible in the denominator without asserting attribution."
+  },
+  {
+   "record_index": 69,
+   "article_id": "1545558",
+   "piid": "W31P4Q18D0039",
+   "pe_bli": "0605502A",
+   "program_name": "Small Business Technology Transfer (STTR)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "cost-plus-fixed-fee contract for Phase III Small Business Technology Transfer Research High Fidelity Obscurant Modeling for the Aviation, Missile, Research, Development, and Engineering Center",
+   "lexicon_quote": "Small Business Technology Transfer (STTR)\t0605502A\t359\tSmall Business Innovative Research",
+   "verdict": "weak",
+   "rationale": "'Small Business Technology Transfer' is a verbatim name hit — it appears in the announcement and is the index name for 0605502A ('Small Business Innovative Research') — but the name identifies a funding mechanism, not the work the award pays for, so the attribution claim fails §1's standard. The announcement's own words defeat the link: a Phase III STTR action is by design the phase funded outside the SBIR/STTR set-aside, with the using program paying for it, so naming Phase III is positive evidence that this money is NOT the 0605502A line's own dollars. On top of that, 0605502A is a mechanism-wide aggregate spanning every SBIR/STTR topic the Army runs rather than a program line with its own product, and the actual subject of the contract — High Fidelity Obscurant Modeling for the Aviation, Missile, Research, Development and Engineering Center — is a modelling service for a research centre, which is the generic-services pattern §3 rejects. No other row in this org's index owns an STTR name, so this is not a collision problem; it is that the only name present cannot carry an attribution. Recorded weak so the verbatim hit is counted in the denominator and not mistaken for a linkable record."
+  },
+  {
+   "record_index": 11,
+   "article_id": "3206710",
+   "piid": "W58RGZ22F0293",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the Manned/Unmanned Teaming hardware and technical and engineering support for the Apache attack helicopter",
+   "verdict": "wrong",
+   "rationale": "§3 rejects this by design under the first pattern: the name the announcement supplies is the Apache attack helicopter, a PLATFORM the contract supports, while the index name it would be matched to ('AH-64 MODS' / 'AH-64E' at 2706AA6605) is a modification program, and the paragraph never says the hardware is an AH-64 MODS deliverable. The thing actually bought — Manned/Unmanned Teaming hardware plus technical and engineering support from L3 Technologies, Salt Lake City — appears nowhere in this org's index: the only Teaming names it carries are 6.2 applied-research entries (Aviation Teaming Autonomy Concepts & Technologies, Intelligent Unmanned Aerial System Teaming Technologies, Adv Teaming for Tactical Aviation Operations Tech at 0602183A/0602345A), which a hardware-plus-engineering-support task order against an Apache platform contract plainly does not execute. The second half of the description is generic engineering support, the §3 generic-services pattern. Identity is unsound as well: 'AH-64E' is owned by two different PEs in this index (2706AA6605 AH-64 MODS and 5757A05111 AH-64 Apache Block IIIA Reman), so even the platform designator would not resolve to one owner. No refute pass is needed."
+  },
+  {
+   "record_index": 29,
+   "article_id": "606825",
+   "piid": "W56HZV15D0041",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for repair of various Integrated Helmet and Display Sight System components for AH-64 Apache pilots and crew",
+   "verdict": "wrong",
+   "rationale": "Same §3 platform rejection: the only index-bearing name in the paragraph is the AH-64 Apache airframe, and the airframe is the platform this repair contract supports, not the program 2706AA6605 funds. The named end item, the Integrated Helmet and Display Sight System, is absent from this org's index entirely — the nearest aircrew entry is 'Rotary Wing Helmet (RWH)' at 6380AZ3110 (Aircrew Integrated Systems), a different helmet program that the announcement does not name and whose name IHADSS is not an alias for. The action itself is component repair placed with International Enterprises, Talladega, through ACC Warren with funding 'determined with each order', i.e. depot-style sustainment with no appropriation stated, which is the money-and-mission failure mode rather than a procurement line's own work. 'AH-64E' is additionally a two-PE collision (2706AA6605 and 5757A05111) in this index, so the platform designator could not be resolved to one owner even if a platform match were allowed. No refute pass is needed."
+  },
+  {
+   "record_index": 2,
+   "article_id": "841464",
+   "piid": "W58RGZ15C0078",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for version six software integration effort; radar electronic unit full-rate production lots 5-6b awarded as an unpriced change order",
+   "verdict": "wrong",
+   "rationale": "The only reason 'Longbow' appears anywhere near this record is that Longbow LLC is the awardee, and §3 rejects evidence that is just a contractor name. The index row it would collide with, 'Longbow Hellfire XM299' at 9157J01200 (Launcher Guided Missile: Longbow Hellfire XM299), is a missile-launcher line and has nothing to do with what this modification buys — version six software integration and radar electronic unit full-rate production lots 5-6b, i.e. Apache fire-control radar work. The paragraph names no program at all in its own words: 'radar electronic unit' is a component description, and the closest index name, 'Fire Control Radar (FCR)' at 5757A05111, is neither written nor implied by the text and belongs to an aircraft remanufacture line whose own work this unpriced change order does not describe. The stated money is 'fiscal 2014 other funds', an unidentifiable colour that corroborates nothing. Proposing either row would be an attribution built on a coincidence of the contractor's corporate name, so this is wrong and needs no refute pass."
+  },
+  {
+   "record_index": 68,
+   "article_id": "3446601",
+   "piid": "W912EP23C0016",
+   "pe_bli": "0155K35110",
+   "program_name": "The Small Tactical Optical Rifle Mounted (STORM)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "firm-fixed-price contract for coastal storm risk management and beach renourishment",
+   "verdict": "wrong",
+   "rationale": "This is the exact case §3 names as a reject by design — 'STORM' used as an English word rather than as the program acronym. The index acronym for 0155K35110 ('The Small Tactical Optical Rifle Mounted (STORM)', a rifle-mounted laser rangefinder) matches the text only because the paragraph says 'coastal storm risk management'; nothing about a rifle optic is present. Everything else in the record confirms the mismatch: Weeks Marine, Covington, Louisiana, is dredging and renourishing Vilano Beach, Florida, for the Corps of Engineers Jacksonville District with fiscal 2023 civil flood control and coastal emergencies funds, which is civil works construction — also the construction pattern §3 rejects — and is not the procurement appropriation a soldier-optics BLI sits in. I record it rather than drop it so the acronym-collision class is visible in the denominator. No refute pass is needed."
+  }
+ ]
+}

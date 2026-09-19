@@ -1,0 +1,29 @@
+{
+ "chunk": "chunk_095_DLA.json",
+ "proposals": [
+  {
+   "record_index": 5,
+   "article_id": "606810",
+   "piid": "SPE60015D7512",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "announcement_evidence": "Direct Energy Business, Woodbridge, New Jersey, has been awarded a maximum $30,925,617 fixed-price with economic-price-adjustment contract for direct supply natural gas.",
+   "verdict": "wrong",
+   "rationale": "The only string in this record that touches the DLA index is the bare word 'Energy', and it occurs twice for reasons that are not the program: once inside the contractor's corporate name ('Direct Energy Business') and once as the contracting activity, 'the Defense Logistics Agency Energy, Fort Belvoir, Virginia' — an organisation, not a program element. Section 3 rejects both patterns by design (evidence that is just a contractor name; generic commodity/services supply). The award itself is a two-year competitive commodity buy of direct-supply natural gas for Army, Navy, Air Force and federal civilian customers funded out of fiscal 2015 multi-agency funds; nothing in it belongs to the RDT&E line 0603712S 'Generic Logistics R&D Technology Demonstrations', whose ERP project is an energy-readiness research demonstration. No candidate program name from the index actually appears, so this is recorded as wrong rather than weak."
+  },
+  {
+   "record_index": 29,
+   "article_id": "3225002",
+   "piid": "SP450023D0002",
+   "pe_bli": "0603712S",
+   "program_name": "Strategic Distribution & Disposition (SDD)",
+   "lexicon_doc": "216",
+   "lexicon_quote": "Strategic Distribution & Disposition (SDD)",
+   "announcement_evidence": "Willow Environmental Inc., Coraopolis, Pennsylvania, has been awarded a maximum $30,017,208 indefinite-delivery/indefinite-quantity contract for hazardous waste removal and disposal.",
+   "verdict": "wrong",
+   "rationale": "The word 'disposal'/'Disposition' is the sole overlap with the index entry 'Strategic Distribution & Disposition (SDD)', and it appears here only as the ordinary English description of the work ('hazardous waste removal and disposal') and as the name of the DLA field activity that let the contract ('the Defense Logistics Agency Disposition Services'). An organisation name and a common noun are not the program name, and section 3 rejects generic services (waste removal, base-support services) outright. The action is a 30-month competitive IDIQ for hazardous waste removal at Navy, Coast Guard, Air National Guard and Army sites, paid from fiscal 2023-2025 working capital funds — not RDT&E work on the 0603712S logistics technology demonstration line. Recorded as wrong; no index program name is present."
+  }
+ ]
+}

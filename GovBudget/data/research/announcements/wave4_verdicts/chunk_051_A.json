@@ -1,0 +1,227 @@
+{
+ "chunk": "chunk_051_A.json",
+ "proposals": [
+  {
+   "record_index": 33,
+   "article_id": "3804866",
+   "piid": "W56HZV16C0028",
+   "pe_bli": "5225GZ3001",
+   "program_name": "Joint Assault Bridge (JAB)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "Joint Assault Bridge (JAB)",
+   "match_basis": "exact-name",
+   "announcement_evidence": "a $49,194,148 modification (P00143) to contract W56HZV-16-C-0028 for Joint Assault Bridge systems",
+   "verdict": "link",
+   "rationale": "The announcement names the program itself, not a platform it supports: 'Joint Assault Bridge systems' is the exact name the index row carries for BLI 5225GZ3001, whose program_title is likewise 'Joint Assault Bridge'. The money color corroborates the attribution rather than contradicting it - the action obligates 'Fiscal 2024 weapons and tracked combat vehicle procurement, Army funds', and 5225GZ3001 sits in lexicon_doc 350, the WTCV J-book, so the award's appropriation belongs to this line's own appropriation family. DRS Sustainment Systems is the JAB prime under the W56HZV (Detroit Arsenal, combat vehicles) contracting office, and the work location (West Plains, Missouri) is the JAB production site. No other pe_bli in this org's index owns 'Joint Assault Bridge'; the only sibling names under 5225GZ3001 (Bridge Launch Mechanism, Heavy Assault Scissor Bridge) are the JAB's own subsystems, so there is no cross-PE collision to resolve. The presence of FMS (Romania) money alongside the Army procurement money does not break the link because US WTCV procurement funds are explicitly named in the same obligation sentence.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money color is named and matches: FY2024 weapons and tracked combat vehicle procurement, Army funds against 5225GZ3001, a WTCV line in lexicon_doc 350 (the doc holding Abrams, Bradley, AMPV, ABV), and the scope is the end item itself ('Joint Assault Bridge systems') from the JAB prime under the Detroit Arsenal combat-vehicle office, not a platform the contract merely supports; the line title 'Joint Assault Bridge' is a single-program line, not a rollup or catch-all, and the FMS (Romania) share does not displace the US WTCV procurement funds named in the same obligation sentence."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Joint Assault Bridge' occurs in exactly one index row (5225GZ3001, doc 350) and no other pe_bli carries JAB or Heavy Assault Scissor Bridge; the other bridge lines (1110MA4500, 2831MX0100, 3542MA8890, 3758G06520) own only CBT/DSB/REBS/IRB/BSS names, so nothing else in the index could take this evidence, and no variant/increment ambiguity exists."
+   }
+  },
+  {
+   "record_index": 42,
+   "article_id": "606812",
+   "piid": "W15P7T15C0002",
+   "pe_bli": "6458B95004",
+   "program_name": "Handheld Manpack Small Form Fit (HMS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Handheld Manpack Small Form Fit (HMS)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to support software, logistics documentation, and hardware for the manpack radio",
+   "verdict": "link",
+   "rationale": "'The manpack radio' is the Army's standing shorthand for the Manpack member of the Handheld/Manpack/Small Form Fit family (AN/PRC-155), which is exactly what BLI 6458B95004 funds - the index row's name is 'Handheld Manpack Small Form Fit (HMS)' and its sibling names (Rifleman Radio, Leader Radio, Single Channel Data Radio) are the other members of that same family, confirming the row is the HMS program and not a generic radio line. General Dynamics C4 Systems, Scottsdale, was the HMS Manpack prime, and the W15P7T contracting office is PEO C3T at Aberdeen, the HMS program office. Appropriation agrees: the action obligates 'Fiscal 2014 and fiscal 2015 other procurement (Army) funds' and 6458B95004 is an OPA line in lexicon_doc 346, so procurement money is attached to a procurement line rather than the O&M-on-RDT&E failure mode. 'Manpack' appears under exactly one pe_bli in this index, so there is no alternative owner. The work described - hardware, software and logistics documentation for the radio - is the program's own production and fielding work, not generic engineering support.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Appropriation agrees on its face - 'Fiscal 2014 and fiscal 2015 other procurement (Army) funds' obligated against 6458B95004, an OPA line in lexicon_doc 346 - so the O&M-sustainment-on-a-procurement-line failure mode does not arise; the manpack radio is the end item this HMS line procures rather than a platform the contract supports, and hardware plus its software load and logistics data on a production C-type contract with the Manpack prime is procurement content, not detached services; the HMS line is a named radio family (Manpack, Rifleman, Leader, SCDR, AGNR), not a catch-all budget line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Manpack' appears in exactly one index row set (6458B95004, whose siblings Rifleman Radio, Leader Radio, SCDR, AGNR are the other HMS family members), the alias is real rather than invented (the manpack radio is the AN/PRC-155 HMS Manpack), MNVR/mid-tier appears nowhere in the index so no competing 2015 GD radio program exists here, and the only other radio-family row, JTRS under 7264B24400 'ARMY LINK 16 SYSTEMS', is a Link 16 terminal line that this evidence does not fit equally well."
+   }
+  },
+  {
+   "record_index": 49,
+   "article_id": "1584490",
+   "piid": "W15P7T14DC006",
+   "pe_bli": "0604270A",
+   "program_name": "Project DX5 Electronic Warfare Planning and Management Tool (EWPMT)",
+   "lexicon_doc": "355",
+   "lexicon_quote": "Project DX5 Electronic Warfare Planning and Management Tool (EWPMT)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the development of Electronic Warfare Program Management Tool, Capability Drop 4 (CD4) along with interim contractor support required for the maintenance and fielding of CD3 through CD4",
+   "verdict": "link",
+   "rationale": "The announcement renders the expansion slightly wrong ('Program Management' for 'Planning and Management'), but the referent is unmistakable: 'Capability Drop' numbering is EWPMT's own increment nomenclature, Raytheon Fort Wayne was the EWPMT prime, and W15P7T is the PEO C3T contracting office that ran EWPMT. The index row under 0604270A is named 'Project DX5 Electronic Warfare Planning and Management Tool (EWPMT)', so the PE's own J-book narrative owns this name. The decisive discriminator against the two other index owners of the EWPMT string is appropriation and work type: the action obligates 'Fiscal 2018 research, development, test and evaluation funds' and is explicitly 'for the development of ... Capability Drop 4', which belongs to the RDT&E line (0604270A, lexicon_doc 355, 'Electronic Warfare Development'), not to the procurement line 8488K00002 nor to 0604103A, whose own index name is 'GNSS Operational Assessment Tool (GOAT)' rather than EWPMT. The interim contractor support for CD3-CD4 is fielding of the increment this same line develops, not detached sustainment.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The obligation is 'Fiscal 2018 research, development, test and evaluation funds' against 0604270A, an RDT&E line in lexicon_doc 355, and the stated scope is 'the development of ... Capability Drop 4', so RDT&E money sits on an RDT&E line doing development work; the interim contractor support for CD3-CD4 is fielding of the increment this same line develops (interim by definition, before transition to a sustainment base), not O&M sustainment smuggled onto an RDT&E line; EWPMT is the program itself rather than a platform supported, and the attribution lands on the PE's own named project DX5, not on 'Electronic Warfare Development' as an undifferentiated bucket."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Three index entries own the EWPMT string, and the proposal's discriminator does not separate them: 0604103A (doc 353) is itself an RDT&E line whose entire program_title is 'Electronic Warfare Planning and Management Tool (EWPMT)', so 'fiscal 2018 RDT&E for the development of EWPMT CD4' fits it at least as well as Project DX5 under 0604270A (whose own title is only the generic 'Electronic Warfare Development'); with the announcement also garbling the expansion ('Program Management' for 'Planning and Management') there is no in-text evidence choosing between the two RDT&E owners, and the procurement line 8488K00002 is the only rival the money color actually excludes."
+   }
+  },
+  {
+   "record_index": 19,
+   "article_id": "1327363",
+   "piid": "W52P1J17D0094",
+   "pe_bli": "2948BB8500",
+   "program_name": "The Wideband SATCOM Operational Management System (WSOMS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The Wideband SATCOM Operational Management System (WSOMS)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to provide support for the Wideband Satellite Communications Trend Analysis and Anomaly Resolution System/Wideband Satellite Communications Operational Management System Mediated Interoperability Infrastructure subsystem",
+   "verdict": "link",
+   "rationale": "The announcement spells out 'Wideband Satellite Communications Operational Management System', which is the same system the index row names as 'The Wideband SATCOM Operational Management System (WSOMS)' - the only difference is that the announcement expands the SATCOM contraction, so this is an alias of one name rather than a resemblance between two. The named thing is a subsystem the PE itself owns: BLI 2948BB8500 is 'Defense Enterprise Wideband Satcom Systems' and its sibling index names (DEWSS, the Digital Communications Satellite Subsystem, the Modernization of Enterprise Terminals) are the same enterprise wideband SATCOM control segment WSOMS belongs to. Because the announcement names the specific subsystem and its Mediated Interoperability Infrastructure, this is not the section-3 'generic engineering support with no named program' pattern. No other pe_bli in this index carries any Wideband/WSOMS name. Caveat for the refute lenses: the record states only 'Work locations and funding will be determined with each order', so no appropriation is named and the money-color check cannot be run from the announcement text alone.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "REFUTED on money and mission: the record names no appropriation at all ('Work locations and funding will be determined with each order'), so the money-color test cannot be satisfied, and everything the text does say points away from the OPA procurement line - the scope verb is 'to provide support for' a subsystem rather than procurement of the line's own end items, the vehicle is a five-year hybrid cost/cost-plus-fixed-fee/FFP task-order IDIQ let by ACC Rock Island to a services integrator, which is the archetype of O&M-type sustainment support attached to a procurement line (the failure mode the 2026-09-04 held-out study found in 3 of 6 refutations); with the named thing being a system the contract supports and no evidence any order carries OPA money, the rubric's default to refute when uncertain applies."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The announcement's spelled-out 'Wideband Satellite Communications Operational Management System' matches the one index row carrying WSOMS (2948BB8500, doc 346) by expansion of the SATCOM contraction, not by resemblance; no other pe_bli owns any WSOMS/Wideband-operational-management name (0303142A owns only SATCOM Ground Environment/SFF/EDIM/NCW/RAM, 2912B56000 only AN/TSC-156E/DKET/PTW/STS/RAM), the MII subsystem is a subsystem of that same system rather than a different variant, and the evidence is the system name, not the contractor's."
+   }
+  },
+  {
+   "record_index": 25,
+   "article_id": "3002680",
+   "piid": "W912DY22F0191",
+   "pe_bli": "0603461A",
+   "program_name": "Department of Defense Supercomputing Resource Centers",
+   "lexicon_doc": "351",
+   "lexicon_quote": "Department of Defense Supercomputing Resource Centers",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for various technical support elements required for the management and operation of five high-performance computing centers",
+   "verdict": "link",
+   "rationale": "The announcement describes rather than names, but the description resolves to exactly one thing in this index. 'Five high-performance computing centers' operated for the Army with work at Vicksburg (ERDC), Stennis (Navy), Wright-Patterson (AFRL) and Aberdeen Proving Ground (ARL) is the DoD Supercomputing Resource Center network - the index row under BLI 0603461A is literally named 'Department of Defense Supercomputing Resource Centers', and its siblings (DREN, HASI, High Performance Computing Modernization Program) are the other components of the same HPCMP line, for which the Army is executive agent through ERDC. The contracting activity named in the record is the Corps of Engineers' ERDC, which manages HPCMP. Appropriation agrees: the action obligates 'Fiscal 2022 research, development, test and evaluation, Army funds' against 0603461A, an RDT&E line in lexicon_doc 351, so this is RDT&E money on an RDT&E line. The support is for operating the PE's own centers, which is the line's own work, not base operations or generic IT services attached to an unrelated line.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money color is named and consistent: 'Fiscal 2022 research, development, test and evaluation, Army funds' against 0603461A, an RDT&E line in lexicon_doc 351, and operating the DoD Supercomputing Resource Centers is the HPCMP line's own RDT&E-funded content rather than base operations attached to an unrelated line - the four named work sites (ERDC Vicksburg, Navy Stennis, AFRL Wright-Patterson, ARL Aberdeen) are DSRCs the index row itself names, and 'five high-performance computing centers' matches the DSRC count, so the description resolves to the line's own facilities, not a platform it merely supports; HPCMP is a named program with named components (DREN, DSRCs, HASI), not a catch-all. (Noted but not refuting: W912DY is the USACE Engineering and Support Center, Huntsville, not ERDC as the rationale states - a detail error in the prose, not in the money-and-mission fit.)"
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A second owner of the name does exist - 3005B66501 'DoD Supercomputing Resource Center (DRSC)' (doc 346, OPA) - but the announcement's own words resolve it: 'fiscal 2022 research, development, test and evaluation, Army funds' and technical support for management and operation (services, not equipment) fit the RDT&E HPCMP line 0603461A and not the procurement BLI, and the description 'five high-performance computing centers' with Vicksburg/Stennis/Wright-Patterson/Aberdeen resolves uniquely to the DSRC network rather than to any other index name."
+   }
+  },
+  {
+   "record_index": 34,
+   "article_id": "645117",
+   "piid": "W91CRB16D0008",
+   "pe_bli": "8827R80800",
+   "program_name": "The Universal Battery Charger (UBC)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The Universal Battery Charger (UBC)",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for universal battery chargers (UBC), UBC battery interfaces, UBC soft covers, UBC hard covers and/or accessory kits",
+   "verdict": "link",
+   "rationale": "The announcement names the item and its acronym exactly as the index row does: 'universal battery chargers (UBC)' against 'The Universal Battery Charger (UBC)', and the accessory list (interfaces, soft and hard covers, kits) is the UBC's own end-item configuration rather than a platform the contract merely supports. The owning line, BLI 8827R80800 'Mobile Soldier Power' (lexicon_doc 346, Other Procurement Army), is the soldier-power procurement line whose sibling names - Conformal Wearable Battery, Squad Power Management, Platoon Power Generator, Lightweight Tactical Power Source - are the same soldier-power family the UBC belongs to. Flagging the collision honestly for Lens B: 0604827A ('Soldier Systems - Warrior Dem/Val', lexicon_doc 355) also carries a 'Universal Battery Charger (UBC)' row. The discriminator is work type - this is a firm-fixed-price multi-year IDIQ production buy of fielded chargers and accessory kits run out of Army Contracting Command Aberdeen, which is procurement execution belonging to the procurement line, not the RDT&E demonstration/validation line.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No appropriation is named ('Funding and work location will be determined with each order'), but unlike a support-services vehicle the work type here is intrinsically procurement - a firm-fixed-price multi-year IDIQ delivering universal battery chargers and their interfaces, covers and accessory kits - so the deliverables are the end items that 8827R80800 'Mobile Soldier Power' (OPA, lexicon_doc 346) funds, and no O&M-sustainment-on-a-procurement-line inversion is present; the UBC is the item bought, not a platform the contract supports, and Mobile Soldier Power is a named soldier-power line (CWB, SPM, PPG, LWTPS, UBC), not a catch-all. The competing 0604827A 'Soldier Systems - Warrior Dem/Val' row is an RDT&E dem/val line, which a fielded FFP production buy does not fit, so on lens A grounds the procurement line is the better appropriation match; the identity/alternative-owner question belongs to lens B."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Exact-name collision across two PEs - 8827R80800 'The Universal Battery Charger (UBC)' (doc 346) and 0604827A 'Universal Battery Charger (UBC)' (doc 355) - and this announcement carries nothing that picks between them: it states 'Funding and work location will be determined with each order', so there is no appropriation, no work site and no production-vs-development language in the text, leaving only an out-of-text inference from contract type, which is not evidence that links the award to this line rather than the other owner of the same name."
+   }
+  },
+  {
+   "record_index": 47,
+   "article_id": "3774828",
+   "piid": "W31P4Q19C0003",
+   "pe_bli": "9280BZ5075",
+   "program_name": "IAMD Battle Command Systems (IBCS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "IAMD Battle Command Systems (IBCS)",
+   "announcement_evidence": "for the Integrated Air and Missile Defense Battle Command System",
+   "verdict": "weak",
+   "rationale": "The name evidence is strong - the announcement names IBCS in full and Northrop Grumman Huntsville on W31P4Q-19-C-0003 is the IBCS prime - but two things stop this short of the rubric's standard for a published attribution claim. First, identity is not resolvable to one line: five different pe_blis in this org's index own an IBCS name (0605457A 'Integrated Battle Command System (IBCS)', 0606118A 'Integrated Air and Missile Battle Command System (IBCS)', 8930C61001 'IAMD Battle Command System (IBCS)', 9280BZ5075 'IAMD Battle Command Systems (IBCS)', 9301H37300 'Integrated Battle Command System (IBCS)'), and the announcement gives nothing that picks among the RDT&E development line, the software integration line, the IFPC increment and the two procurement lines. Second, the only money named in the action is 'Fiscal 2024 Foreign Military Sales (Poland) funds' - a foreign customer's money buying IBCS for Poland, which does not execute any US program element's own appropriation. Proposing 9280BZ5075 as the nearest procurement owner would assert more than the record supports, so this is recorded as weak rather than link."
+  },
+  {
+   "record_index": 41,
+   "article_id": "1248427",
+   "piid": "W56HZV17D0078",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Program (MOD)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "The Bradley Program (MOD)",
+   "announcement_evidence": "for 276 Bradley engineering change proposal 1 kits and installation; and two spare parts kits",
+   "verdict": "weak",
+   "rationale": "Substantively this looks like the Bradley modification line's own work - ECP1 kits installed on fielded Bradleys are precisely what BLI 1678GZ2400 'Bradley Program (MOD)' funds, and the index row names 'The Bradley Program (MOD)' and 'The Bradley Fighting Vehicle (BFV)' under it - but the money color contradicts the attribution, which is the exact failure mode the 2026-09-04 held-out study found. The action obligates 'Fiscal 2017 other procurement (Army) funds', while 1678GZ2400 sits in lexicon_doc 350, the Weapons and Tracked Combat Vehicles J-book; an OPA obligation cannot execute a WTCV line's own appropriation, and the loader's own money-color check would be the thing deciding this rather than the name. The announcement also names no program title of its own - 'Bradley' here is the vehicle the kits go onto - so the evidence is a platform word plus a modification description, not the program name. Recorded weak: the smaller true number is preferable to a high-tier claim resting on an appropriation the record itself contradicts."
+  },
+  {
+   "record_index": 15,
+   "article_id": "2642813",
+   "piid": "W58RGZ21C0016",
+   "pe_bli": "5757A05111",
+   "program_name": "AH-64E",
+   "lexicon_doc": "343",
+   "lexicon_quote": "AH-64E",
+   "announcement_evidence": "for the AH-64 Apache Modernized Target Acquisition Designation Sight/Pilot Night Vision Sensor performance-based logistics program",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3's platform pattern, twice over. The only Apache names this org's index carries are 'AH-64E' and 'Fire Control Radar (FCR)' under BLI 5757A05111, whose program_title is 'AH-64 Apache Block IIIA Reman' - an aircraft procurement/remanufacture line. The announcement names the AH-64 Apache as the aircraft the M-TADS/PNVS sight rides on, not as the program the contract funds; the thing actually bought is a performance-based logistics arrangement for the sight subsystem, and the index carries no TADS, PNVS or M-TADS name under any pe_bli. The funding line compounds it: 'Fiscal 2021 Army working capital funds' is depot/sustainment money, and attaching a working-capital PBL sustainment action to a procurement remanufacture line is the O&M-on-the-wrong-appropriation pattern the rubric rejects by design. There is no line in this index whose own work this award executes."
+  },
+  {
+   "record_index": 44,
+   "article_id": "3652144",
+   "piid": "W58RGZ21C0015",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Longbow Hellfire XM299",
+   "announcement_evidence": "for aircraft and longbow crew trainers",
+   "verdict": "wrong",
+   "rationale": "The only 'Longbow' name in this org's index is 'Longbow Hellfire XM299' under BLI 9157J01200, whose program_title is 'Launcher Guided Missile: Longbow Hellfire XM2' - a missile launcher, not a training device. The announcement's 'longbow crew trainers' are Apache Longbow Crew Trainer simulators built by Boeing Mesa; the shared word 'Longbow' is the Apache's radar designation appearing in two unrelated product names, which is the section-3 weak-name pattern (a word doing the work a program name would have to do). I also checked the training-device lines in this index (2062NA0100 'Training Devices, Nonsystem' carries BEMT, CBCSE and MSTC; 2079NA2000 carries RVCT) and none of them names an Apache or Longbow crew trainer, so there is no correct owner to propose instead. The record also names no appropriation, leaving nothing to corroborate an attribution even if a name had matched."
+  },
+  {
+   "record_index": 40,
+   "article_id": "1866245",
+   "piid": "W58RGZ19D0083",
+   "pe_bli": "6773A05009",
+   "program_name": "UH-60 Black Hawk L and V Models",
+   "lexicon_doc": "343",
+   "lexicon_quote": "UH-60 Black Hawk L and V Models",
+   "announcement_evidence": "for maintenance and overhaul of the display unit for the UH- 60 Blackhawk helicopter",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3's platform pattern. The announcement names the UH-60 Blackhawk as the helicopter whose display unit is being maintained and overhauled - the aircraft the contract supports, not a program element's own work - and depot maintenance and overhaul of a component is sustainment, which no aircraft procurement line executes. The name is also owned three ways in this index (6771AA0005 'UH-60 Blackhawk M Model (MYP)', 6773A05009 'UH-60 Black Hawk L and V Models', 6949AA0480 'Utility Helicopter Mods'), and the announcement gives no model, block or modification that would pick among them; 'UH- 60 Blackhawk helicopter' names the fleet, not a line. A high-tier link here would assert that a repair-and-overhaul IDIQ paid for an aircraft procurement line's own work, which the record does not support."
+  },
+  {
+   "record_index": 63,
+   "article_id": "1588257",
+   "piid": "W911QY18D0223",
+   "pe_bli": "8635G15325",
+   "program_name": "The Modular Handgun System (MHS)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "The Modular Handgun System (MHS)",
+   "announcement_evidence": "for the Modular Handgun Holster to be used with the Modular Handgun System M17 and M18 pistols",
+   "verdict": "wrong",
+   "rationale": "Rejected under section 3's platform pattern, with the announcement stating the relationship itself: the item bought is the Modular Handgun Holster, and the MHS M17/M18 pistols are named only as the weapons the holster is 'to be used with'. The index name under BLI 8635G15325 is 'The Modular Handgun System (MHS)' and its program_title is 'Handgun' (lexicon_doc 350, WTCV) - a weapons line that funds the pistols, not the individual-equipment carriage gear that accompanies them. The index carries no holster, Soldier Protection System or individual-equipment name that would own this award, and the record states only 'Work locations and funding will be determined with each order', so no appropriation corroborates an attribution either. Linking the holster buy to the Handgun line would publish an accessory purchase as execution of the weapon program's own work."
+  },
+  {
+   "record_index": 31,
+   "article_id": "3049924",
+   "piid": "W15QKN22D0018",
+   "pe_bli": "6580G02200",
+   "program_name": "Mortar Stowage System (MSS)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "Mortar Stowage System (MSS)",
+   "announcement_evidence": "to manufacture, produce, inspect, store, stage and ship mortar systems",
+   "verdict": "wrong",
+   "rationale": "Recorded as a documented near-miss rather than a candidate. 'Mortar systems' in the announcement is a weapon-category phrase, not a program name - the section-3 weak-generic-name pattern - and although 'Mortar Systems' happens to be the program_title of BLI 6580G02200, the two names that line's own narrative owns are 'M326 Mortar Stowage Kit (MSK)' and 'Mortar Stowage System (MSS)', neither of which the announcement mentions. The record names no mortar designator (no M120, M224, M252, no fire-control system) that could be normalized against any index name, and it states only 'Work locations and funding will be determined with each order', so there is no appropriation to test either. I checked the other mortar-bearing lines in this index (0050E89600, 3584E76000, 6780E25500 ammunition types; 5726K99200 and 7563AD9300 fire control) and none matches the announcement's wording. No link is proposable from this record."
+  },
+  {
+   "record_index": 14,
+   "article_id": "961138",
+   "piid": "W911NF16D0037",
+   "pe_bli": "9164BU8100",
+   "program_name": "Cross Domain Solution (CDS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Cross Domain Solution (CDS)",
+   "announcement_evidence": "to fabricate, integrate, verify, operate, and validate controlled interfaces and Lazarus Cross Domain Solution",
+   "verdict": "wrong",
+   "rationale": "'Cross domain solution' is a capability category, not a program name - the section-3 weak-generic-name pattern - and the index bears this out by carrying it under two unrelated pe_blis: 'Cross Domain Solution (CDS)' and 'Tactical Cross Domain Solution (TACDS)' under 9164BU8100 'COTS Communications Equipment', and 'Cross Domain Solution Suite (CDSS)' under 0287BZ6100 'MULTI-DOMAIN INTELLIGENCE'. The distinguishing word in the announcement is 'Lazarus', a specific product name that appears nowhere in this org's index, so the only thing the record and the index share is the generic category. The award itself is an order-dependent development and integration IDIQ out of Army Contracting Command Research Triangle Park with funding 'determined with each order', giving no appropriation to corroborate an attribution. Proposing either owner would be picking one of two colliding generic rows on no evidence."
+  }
+ ]
+}

@@ -1,0 +1,182 @@
+{
+ "chunk": "chunk_005_DISA.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "2037058",
+   "piid": "HC102820D0001",
+   "pe_bli": "18",
+   "program_name": "Defense Information System Network",
+   "lexicon_doc": "83",
+   "verdict": "wrong",
+   "announcement_evidence": "support services for the operation, defense, and sustainment of the Department of Defense Information Network/Defense Information System Network",
+   "lexicon_quote": "The Defense Information Systems Network (DISN) is the Department of Defense's (DoD's) consolidated secure",
+   "rationale": "The index name 'Defense Information System Network' appears verbatim, so a name matcher fires here, but §3 rejects this on two patterns. First, platform-not-program: BLI 18 is the DISA procurement line that BUYS DISN transport equipment, while GSM-O II is a $6.52B services vehicle that operates, defends and sustains the network the line procures — the network is the thing the contract supports, not the work the line funds. Second, generic services / IDIQ ceiling: the announced action is a competitive single-award IDIQ ceiling for 'support services', a mix of fixed-price and cost pricing, with no delivery order and no named procurement item. The same name is also carried by a second PE in this org's index ('Defense Information Systems Network (DISN)', 0303126K, doc 104), so even a clean services-to-line story could not say which member it means. No proposal survives."
+  },
+  {
+   "record_index": 2,
+   "article_id": "2873570",
+   "piid": "HC102822D0001",
+   "pe_bli": "18",
+   "program_name": "Defense Information System Network",
+   "lexicon_doc": "83",
+   "verdict": "wrong",
+   "announcement_evidence": "technology refreshment, implementation, integration, and transition to operations activities in support of the Department of Defense Information Network/Defense Information System Network",
+   "lexicon_quote": "The Defense Information Systems Network (DISN) is the Department of Defense's (DoD's) consolidated secure",
+   "rationale": "Same reject as record 0 and for the same two §3 patterns. The exact index name appears, but the award is a $400,000,000 IDIQ ceiling for 'Technologies Refreshment and Implementation-Global Solutions Management' — integration and transition-to-operations activities performed IN SUPPORT OF the DODIN/DISN, i.e. the network is the platform the services vehicle supports rather than the program element's own procurement. The ceiling carries no named item and no obligated delivery order, which is the generic-services/IDIQ-umbrella pattern §3 rejects by design. The 18 / 0303126K name collision applies here as well."
+  },
+  {
+   "record_index": 9,
+   "article_id": "1617374",
+   "piid": "HC101318C0001",
+   "pe_bli": "92",
+   "program_name": "Senior Leadership Enterprise",
+   "lexicon_doc": "83",
+   "verdict": "weak",
+   "announcement_evidence": "to provide senior leaders and their support staff with Ku-band and Ka-band communications utilizing ViaSat subscription service while travelling via aircraft",
+   "lexicon_quote": "Senior Leadership Enterprise",
+   "rationale": "A description-only candidate, and the evidence does not reach §1's standard. The announcement never names 'Senior Leadership Enterprise'; it describes senior-leader airborne Ku/Ka-band communications, which merely shares the subject matter of BLI 92's title. The lexicon carries nothing but the bare BLI title for this line — there is no narrative sentence describing what the Senior Leadership Enterprise buys, so there is nothing to test the description against, and the match would rest entirely on my inference. The money also points away: the action is funded by fiscal 2018 and 2019 operations and maintenance for a commercial subscription service, while BLI 92 is a procurement line that buys terminals and capability, not airtime. Recorded so the denominator shows the candidate was seen and declined."
+  },
+  {
+   "record_index": 16,
+   "article_id": "2829348",
+   "piid": "HC104722D0001",
+   "pe_bli": "98",
+   "program_name": "Fourth Estate Network Optimization (4ENO)",
+   "lexicon_doc": "83",
+   "verdict": "wrong",
+   "announcement_evidence": "audiovisual, visual information, video teleconference, and videophone support services in support of the Defense Information Systems Agency and the Department of Defense Fourth Estate agencies",
+   "lexicon_quote": "Fourth Estate Network Optimization (4ENO)",
+   "rationale": "The string 'Fourth Estate' appears, which is what makes this worth recording, but it names the CUSTOMER COMMUNITY served — 'the Department of Defense Fourth Estate agencies' — not the 4ENO program. §3's generic-services pattern then disposes of it outright: the award is a $40,000,000 ceiling for non-personal audiovisual, visual information, video teleconference and videophone support services at DISA headquarters, which is exactly the base-operations/support-services category the rubric rejects. Nothing here funds network optimization of the Fourth Estate's IT infrastructure."
+  },
+  {
+   "record_index": 18,
+   "article_id": "1618359",
+   "piid": "HC101318C0002",
+   "pe_bli": "92",
+   "program_name": "Senior Leadership Enterprise",
+   "lexicon_doc": "83",
+   "verdict": "weak",
+   "announcement_evidence": "to provide senior leaders and their support staff with high throughput military Ka-band communications while traveling via aircraft",
+   "lexicon_quote": "Senior Leadership Enterprise",
+   "rationale": "Same description-only candidate as record 9, on the L-3 airborne Ka-band contract. The name 'Senior Leadership Enterprise' is absent from the announcement and the lexicon row offers only the bare BLI title, so there is no narrative text against which to test whether BLI 92 funds airborne senior-leader communications service. The action exercises an option funded by fiscal 2019 operations and maintenance — a recurring service payment, not the procurement BLI's own buy. Below §1's standard; recorded, not linked."
+  },
+  {
+   "record_index": 19,
+   "article_id": "2624233",
+   "piid": "HC104721D0002",
+   "pe_bli": "0303153K",
+   "program_name": "DoD Electromagnetic Environmental Effects (E3) Program",
+   "lexicon_doc": "104",
+   "verdict": "wrong",
+   "announcement_evidence": "electromagnetic spectrum services applied engineering, spectrum and electromagnetic environmental effects engineering analysis support in support of the Defense Information Systems Agency (DISA)/Defense Spectrum Organization",
+   "lexicon_quote": "DoD Electromagnetic Environmental Effects (E3) Program",
+   "rationale": "The announcement contains the substantive core of the index name — 'electromagnetic environmental effects' — and names the Defense Spectrum Organization, which is this PE's program title, so the candidate is real rather than imagined. §3 rejects it anyway under the generic-services pattern: the award is an engineering-support services IDIQ ('applied engineering', 'engineering analysis support') with a $500 minimum guarantee, i.e. an analytical labor vehicle for the DSO rather than the E3 Program's own development work. The appropriation compounds it — fiscal 2021 operation and maintenance funds against 0303153K, an RDT&E program element, which is the money-and-mission mismatch the rubric singles out. The lexicon row is also only the program's bare title, giving no narrative claim that E3 owns this analysis contract."
+  },
+  {
+   "record_index": 21,
+   "article_id": "788413",
+   "piid": "HC101316C0008",
+   "pe_bli": "92",
+   "program_name": "Senior Leadership Enterprise",
+   "lexicon_doc": "83",
+   "verdict": "weak",
+   "announcement_evidence": "to provide senior leaders and their support staff with Ku-band and Ka-band communications utilizing ViaSat subscription service while travelling via aircraft",
+   "lexicon_quote": "Senior Leadership Enterprise",
+   "rationale": "The ViaSat award on contract HC101316C0008, same description-only candidate as record 9. The BLI title is never spoken in the announcement, the lexicon holds no descriptive narrative for BLI 92 to compare against, and the action is fiscal 2016 operations and maintenance funding for a commercial subscription service rather than a procurement buy on a procurement line. Does not meet §1's standard."
+  },
+  {
+   "record_index": 31,
+   "article_id": "1192914",
+   "piid": "HC101316C0008",
+   "pe_bli": "92",
+   "program_name": "Senior Leadership Enterprise",
+   "lexicon_doc": "83",
+   "verdict": "weak",
+   "announcement_evidence": "to provide senior leaders and their support staff with Ku-band and Ka-band communications utilizing ViaSat subscription service while travelling via aircraft",
+   "lexicon_quote": "Senior Leadership Enterprise",
+   "rationale": "The option-one modification paragraph on the same ViaSat contract HC101316C0008 that record 21 awards — recorded separately because it is its own queued record and its own article, and because the (article_id, PIID) pair for this vehicle appears in two records of this chunk. The adjudication is identical to record 21 and to record 9: description-only inference, no name in the announcement, no narrative in the lexicon row, and fiscal 2017 operations and maintenance money on a procurement BLI. Weak, not a link."
+  },
+  {
+   "record_index": 38,
+   "article_id": "606859",
+   "piid": "HC101315C0006",
+   "pe_bli": "92",
+   "program_name": "Senior Leadership Enterprise",
+   "lexicon_doc": "83",
+   "verdict": "weak",
+   "announcement_evidence": "to provide airborne broadband satellite communications enterprise service for U.S. senior leaders conducting official travel on Air Mobility Command and Air Combat Command aircraft fleets",
+   "lexicon_quote": "Senior Leadership Enterprise",
+   "rationale": "The Boeing Service Co. airborne broadband SATCOM award is the closest of the senior-leader records to BLI 92's title, since it uses both 'enterprise service' and 'senior leaders'. It is still a description-only match: the announcement names no program, the lexicon row supplies only the bare BLI title, and the beneficiaries are AMC and ACC aircraft fleets — platforms the service rides on. Fiscal 2015 operations and maintenance funding for an enterprise SERVICE does not read as the procurement line's own buy. Below §1's standard."
+  },
+  {
+   "record_index": 39,
+   "article_id": "2336534",
+   "piid": "HC108420D0009",
+   "pe_bli": "0303140K",
+   "program_name": "Endpoint Security Solutions (ESS)",
+   "lexicon_doc": "281",
+   "verdict": "wrong",
+   "announcement_evidence": "for Enterprise Storage Solutions (ESS) III for Defense Information Systems Agency",
+   "rationale": "A pure acronym collision, and the clearest false positive in the chunk. The announcement's 'ESS' expands to Enterprise STORAGE Solutions — disk capacity for DISA's Operations Center data centres — while the index's ESS expands to Endpoint SECURITY Solutions, a cyber-defence capability under the Information Systems Security Program. The expansions share no content word. §3's weak-generic-name pattern covers it: the three letters are not evidence of attribution. The same collision exists against 'Endpoint Security System (ESS)' at pe_bli 09 / doc 159, and is refuted there for the identical reason; I record it once rather than twice.",
+   "lexicon_quote": "Description: Endpoint Security Solutions (ESS) provides counters exploitation and destructive malware, con"
+  },
+  {
+   "record_index": 42,
+   "article_id": "1209799",
+   "piid": "HC104715C4000",
+   "pe_bli": "18",
+   "program_name": "Transport Network Systems (TNS)",
+   "lexicon_doc": "45",
+   "verdict": "wrong",
+   "announcement_evidence": "the addition of three sites in Belgium to the existing Department of Defense Information Network 100G Packet-Optical Transport Network",
+   "lexicon_quote": "Procurement of three Transport Network Systems (TNS) suites composed of multiple modems, servers",
+   "rationale": "Tempting on the money — the action is funded by fiscal 2016 procurement funds and BLI 18 is a DISA procurement line — which is why it is worth recording rather than silently dropping. The name evidence refutes it under §3's weak-generic-name pattern: the only overlap is the ordinary English phrase 'transport network', and the two things named are different. The lexicon's TNS is a procurement of discrete suites 'composed of multiple modems, servers'; the announcement buys the extension of a 100G packet-optical fibre transport service to three sites in Belgium on a Sprint telecommunications contract. Generic infrastructure vocabulary is not an alias."
+  },
+  {
+   "record_index": 62,
+   "article_id": "4090817",
+   "piid": "HC102822C0006",
+   "pe_bli": "0305172K",
+   "program_name": "Secure Web Services (SWS)",
+   "lexicon_doc": "104",
+   "match_basis": "exact-name",
+   "verdict": "link",
+   "announcement_evidence": "the development and deployment of the Secure Integrated Cloud, the Joint Access Database Environment, and the encompassing system architecture known as Secure Web Services",
+   "lexicon_quote": "plementing, and sustaining the DoD SAP IT Enterprise called Secure Web Services (SWS). As such, CESO offers a suite of web-enabled enterprise cap",
+   "rationale": "The index name appears verbatim, and it appears in the same distinctive construction the J-book narrative uses: the narrative describes 'the DoD SAP IT Enterprise called Secure Web Services (SWS)' and the announcement describes 'the encompassing system architecture known as Secure Web Services'. Both treat SWS as a named enterprise architecture rather than a description of web security, which is what separates this from a weak generic name — the award also names two of the architecture's components, the Secure Integrated Cloud and the Joint Access Database Environment, so the referent is pinned. The work funded is the architecture's own development and deployment, not support for a platform that merely uses it, and the contract type matches: a cost-plus-fixed-fee development contract whose modification is 'funded by fiscal 2025 operations and maintenance; and research, development, test and evaluation funds' against 0305172K, an RDT&E program element for Combined Advanced Applications. No other PE in this org's index carries the name 'Secure Web Services', and the DISA contracting office issuing it is consistent with the line's owner.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money color fails on lens A's own test: all 30 lake transactions on HC102822C0006 (2022-02-28 to 2025-08-12, $59.06M obligated) carry federal account 097-4930 (Defense Working Capital Fund, DITCO Fort Meade), while every 0305172K budget line FY2017-FY2026 names only account 0400D = 097-0400 (RDT&E Defense-Wide) — known and disjoint, so money_color_ok() is False and load_announcement_links.py would skip this as money_color_mismatch rather than publish it; the announcement's prose 'operations and maintenance; and research, development, test and evaluation funds' is not the award's recorded appropriation, and the action itself is a FAR 52.217-8 option-to-extend-SERVICES six-month period-of-performance mod, i.e. the sustainment-attached-to-an-RDT&E-line shape the 2026-09-04 held-out study found in 3 of 6 refutations."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Secure Web Services' is the only occurrence of that name in the 84-row DISA index (row 36, 0305172K/doc 104) and the only one in the whole lexicon corpus, owned not merely mentioned; the nearest index neighbours (Zero Trust Commercial Cloud Lab 0303140K, Forward Web Proxy 96) share no name, the announcement pins the referent with two further proper names (Secure Integrated Cloud, Joint Access Database Environment) that no other row carries, no variant/increment marker is present, and the evidence is the program name rather than the contractor's; the 2019 sibling record's 'National Leadership Capability Command office' sponsorship is an appropriation/mission question for lens A, not an alternative index owner."
+   }
+  },
+  {
+   "record_index": 70,
+   "article_id": "1829432",
+   "piid": "HC102819C0008",
+   "pe_bli": "0305172K",
+   "program_name": "Secure Web Services (SWS)",
+   "lexicon_doc": "104",
+   "verdict": "weak",
+   "announcement_evidence": "development and deployment of the Secure Integration Cloud, the Joint Access Database Environment and the encompassing system architecture known as Secure Web Services",
+   "lexicon_quote": "plementing, and sustaining the DoD SAP IT Enterprise called Secure Web Services (SWS). As such, CESO offers a suite of web-enabled enterprise cap",
+   "rationale": "The name evidence here is as exact as record 62's — the same Georgia Tech effort, the same architecture, the same phrasing — but the money does not clear §1's standard for THIS action, so I decline the link rather than spend a refute pass on it. The announcement states the face value is 'funded by fiscal 2019 operations and maintenance funds' only, with no RDT&E slice, while 0305172K is an RDT&E program element; an O&M-only action attached to an RDT&E line is precisely the attribution failure the held-out study found most often. It is also stated as supporting the 'National Leadership Capability Command office', a DISA mission area distinct from the SAP IT enterprise the lexicon narrative attributes SWS to, which leaves open that this base contract sits on a DISA O&M account rather than on this PE. Record 62 carries the same program on money that does match, so the smaller true number is one link on this program, not two."
+  },
+  {
+   "record_index": 76,
+   "article_id": "3858619",
+   "piid": "HC101320C0005",
+   "pe_bli": "92",
+   "program_name": "Senior Leadership Enterprise",
+   "lexicon_doc": "83",
+   "verdict": "weak",
+   "announcement_evidence": "to exercise a fourth option year for Naval Senior Leadership Communication &ndash; Aircraft satellite communications services",
+   "lexicon_quote": "Senior Leadership Enterprise",
+   "rationale": "This is the strongest-looking of the senior-leader records because the announcement names a program outright, but the program it names belongs to someone else: 'Naval Senior Leadership Communication - Aircraft' is a Navy line that DISA's contracting organisation is merely awarding on behalf of, not DISA's own Senior Leadership Enterprise BLI. The shared words are 'senior leadership communication', which is the generic subject both lines occupy. As with the other BLI 92 candidates the lexicon supplies only the bare title, giving no narrative claim of ownership, and the action is a fiscal 2024 operations and maintenance option exercise for satellite communications SERVICES against a procurement line. Recorded as weak; a different owner plus description-only evidence is not a link."
+  }
+ ]
+}

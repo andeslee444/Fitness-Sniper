@@ -1,0 +1,173 @@
+{
+ "chunk": "chunk_143_A.json",
+ "proposals": [
+  {
+   "record_index": 7,
+   "article_id": "606872",
+   "piid": "W9113M12C0055",
+   "pe_bli": "0208053A",
+   "program_name": "The Joint Tactical Ground Station (JTAGS)",
+   "lexicon_doc": "359",
+   "match_basis": "exact-name",
+   "announcement_evidence": "pre-planned product improvement of the Joint Tactical Ground Station system",
+   "lexicon_quote": "The Joint Tactical Ground Station (JTAGS) is a post-production, Acquisition Category (ACAT) III",
+   "verdict": "link",
+   "rationale": "The announcement spells the index name verbatim -- 'Joint Tactical Ground Station' -- and the work announced is pre-planned product improvement (P3I), i.e. development of the JTAGS system itself, not support to a platform that merely hosts it. Money colour agrees: the record states 'Fiscal 2015 research, development, testing, and evaluation funding for engineering services', and 0208053A is the Army RDT&E line whose own narrative (doc 359) describes JTAGS as 'a post-production, Acquisition Category (ACAT) III' program -- exactly the operational-systems-development posture a P3I action executes. The contracting activity, Army Space and Missile Defense Command, is JTAGS's own command. Within this org's index no other pe_bli owns the name; the only other JTAGS row in the lexicon is 1208053SF, a Space Force line that is not in A.tsv and is therefore out of scope for this proposal.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money colour and mission both hold: FY2015 RDT&E dollars on an RDT&E operational-systems PE whose own index carries the project name 'Joint Tact Grd Station-P3I' for exactly the announced pre-planned product improvement, JTAGS is the program itself rather than a platform the contract supports, doc 359 is a single-program line not a rollup, and the 'engineering services' phrase describes the technical-directive funding mechanism on that named-system P3I contract, not a program-less services vehicle."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Name is real and exact in the index (A.tsv line 57) and 0208053A is its only owner in this org's index; the sole other JTAGS owner, 1208053SF (doc 417), is a Space Force line in F.tsv and out of scope, and the record's FY2015 Army RDT&E money and Army SMDC contracting activity point at the Army line, not the post-transfer Space Force one, with no variant/increment mismatch (P3I of a post-production ACAT III program is what this line funds)."
+   }
+  },
+  {
+   "record_index": 31,
+   "article_id": "4064292",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "8750E27501",
+   "program_name": "The Precision Guidance Kit (PGK)",
+   "lexicon_doc": "349",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for precision guidance kits. Work will be performed in Plymouth, Minnesota, with an estimated completion date of May 21, 2028. Fiscal 2025 procurement of ammunition, Army funds",
+   "lexicon_quote": "The Precision Guidance Kit (PGK) is a course correcting fuze that provides precision accurac",
+   "verdict": "link",
+   "rationale": "The announcement names the end item and nothing else -- 'precision guidance kits' -- and the appropriation it names, 'procurement of ammunition, Army', is the appropriation 8750E27501 ('Artillery Propellants, Fuzes and Primers, All') is funded from, so this is a procurement action against a procurement line rather than O&M sustainment bolted onto one. Doc 349's narrative for this BLI defines PGK as its own subject: 'The Precision Guidance Kit (PGK) is a course correcting fuze that provides precision accurac[y]' -- PGK is a fuze, and this is the fuze line. On the collision lens B will find: 3102E89500 ('ARTILLERY PROJECTILE, 155MM, All Types') also carries the name, but its narrative mentions PGK only in a list of fuzes the projectile is used with ('...as well as Precision Guidance Kit (PGK)'), which is the section 3 'name is a thing the line merely supports' pattern read from the other side; the defining, owning narrative is this one. Northrop Grumman's Plymouth, Minnesota plant on W15QKN-13-C-0074 is the PGK production line, and the contracting activity is Picatinny/Newark, which buys Army ammunition.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Procurement money against a procurement line with no O&M-sustainment mismatch: 'Fiscal 2025 procurement of ammunition, Army' is the PAA appropriation this ammunition BLI is funded from, the kits are the end item bought rather than a platform merely supported, and doc 349's narrative for this BLI defines PGK as a course-correcting fuze, so a fuze buy is this line's own work; the title 'Artillery Propellants, Fuzes and Primers, All' is a multi-item ammunition BLI but not a catch-all (no threshold, 'Other' or 'Miscellaneous'), and the same-appropriation 3102E89500 collision is lens B's ground, not lens A's."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name does collide three ways in A.tsv (0604802A doc 355, 3102E89500 doc 349, 8750E27501 doc 349), but the collisions resolve away from the alternatives rather than equally: the announcement's 'procurement of ammunition, Army' excludes the RDT&E Project S36 line, and 3102E89500's own lexicon quote lists PGK only among fuzes its 155mm projectile is used with, while the defining sentence 'The Precision Guidance Kit (PGK) is a course correcting fuze' sits on the proposed fuze line whose title is 'Artillery Propellants, Fuzes and Primers' -- and 'precision guidance kits' names the kit itself, not LR-PGK or any other variant, so the evidence is not a bare contractor name."
+   }
+  },
+  {
+   "record_index": 37,
+   "article_id": "3862089",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "8750E27501",
+   "program_name": "The Precision Guidance Kit (PGK)",
+   "lexicon_doc": "349",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for precision guidance kits. Work will be performed in Plymouth, Minnesota, with an estimated completion date of May 21, 2028. Fiscal 2023 ammunition procurement, Army funds",
+   "lexicon_quote": "The Precision Guidance Kit (PGK) is a course correcting fuze that provides precision accurac",
+   "verdict": "link",
+   "rationale": "Same contract and same reasoning as record 31, on an earlier modification (P00097) of W15QKN-13-C-0074: the announcement names 'precision guidance kits' as the item bought and 'Fiscal 2023 ammunition procurement, Army funds' as the money, which is the appropriation 8750E27501 is funded from. Doc 349's narrative for this BLI owns PGK as its own subject ('a course correcting fuze'), while the competing 3102E89500 row only mentions PGK among the fuzes its 155mm projectile is used with. Proposed separately from record 31 because it is a separate announced action, per the rubric's one-proposal-per-(record, pe_bli) rule; the collector will resolve the two to the same (piid, pe_bli) pair on load.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same money-and-mission test as record 31 and it passes identically: 'Fiscal 2023 ammunition procurement, Army' is the PAA appropriation of this fuzes/propellants BLI, the announcement buys the kits themselves on the same Plymouth production contract, doc 349 owns PGK as its own defined subject, and nothing here is O&M bolted onto a procurement line or a catch-all title."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same identity test as record 31 on the earlier modification of the same contract and it survives for the same reason: 'Fiscal 2023 ammunition procurement' excludes 0604802A's RDT&E PGK project, the competing PAA line 3102E89500 only mentions PGK in a list of fuzes its projectile accepts, and the index's defining PGK sentence belongs to 8750E27501; the announcement names the kit, not LR-PGK or another increment."
+   }
+  },
+  {
+   "record_index": 22,
+   "article_id": "2626194",
+   "piid": "W56HZV21F0232",
+   "pe_bli": "8309DA0500",
+   "program_name": "Palletized Load System (PLS)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "firm-fixed-price contract for new M1076A0 Palletized Load System trailers",
+   "lexicon_quote": "Systems include the Heavy Expanded Mobility Tactical Truck (HEMTT) and the Palletized Load System (PLS).",
+   "verdict": "link",
+   "rationale": "The announcement names the index name verbatim -- 'Palletized Load System' -- as the system whose hardware is being bought, and the appropriation it names, 'Fiscal 2019 other procurement, Army funds', is the appropriation the Family of Heavy Tactical Vehicles BLI is funded from, so a new-build hardware buy is executing a procurement line with procurement money. Oshkosh Defense is the FHTV/PLS prime and the contracting activity is Detroit Arsenal, which owns tactical wheeled vehicles. The discriminator against the collision: the index carries PLS twice, here and at 8331D16506 ('PLS ESP'), whose narrative describes the Extended Service Program as a 'Recapitalization' effort -- recapitalising trucks already in service. The announcement says 'new M1076A0 ... trailers', which is new procurement, not recap, so the FHTV production line rather than the ESP line is the one whose own work this funds. The honest caveat for lens A to weigh: FHTV is a family line covering HEMTT as well as PLS, and the M1076 trailer is not itself named in either narrative row -- if lens A reads FHTV as a rollup, this does not survive, and that reading is defensible.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Appropriation agrees (FY2019 other procurement, Army on an OPA procurement BLI) and the action is new-build hardware, not O&M sustainment or recapitalisation; the trailer is PLS's own hardware rather than a separate platform the contract supports, and doc 346's FHTV narrative itself buys PLS trailers and their CTE/E-CHU kits as owned items while the 8331D16506 row records the ESP line being consolidated into DA0500 -- so PLS trailer procurement is this line's own work. FHTV is a named family program of record, not a catch-all (CATCHALL_TITLE does not match it and the loader does not exclude it); the family breadth plus the M1076 designator being absent from both narrative rows makes this the weakest of the four on the rollup ground, but not enough to break it on lens A's terms."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "A different PE in the same index owns the name more strongly: 8331D16506 ('PLS ESP', doc 346) carries 'The Palletized Load System (PLS)' with the defining sentence 'is a 16.5-ton, 10-wheel drive truck', whereas the proposed 8309DA0500 row's own quote is family membership ('Systems include the Heavy Expanded Mobility Tactical Truck (HEMTT) and the Palletized Load System (PLS)'); the announcement offers only the bare name plus 'M1076A0', which appears in neither narrative, both PEs are 'other procurement, Army' so the money colour does not discriminate, and the new-build-vs-recap discriminator fails because 8309DA0500 itself also owns 'The PLS Extended Service Program (ESP)' (A.tsv line 1295) and a doc-346 row states the ESP program was consolidated into DA0500 -- so this evidence would link the award to 8331D16506 at least as well."
+   }
+  },
+  {
+   "record_index": 45,
+   "article_id": "1262973",
+   "piid": "W15QKN13C0050",
+   "pe_bli": "6780E25500",
+   "program_name": "The M933A1 120mm High Explosive (HE)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "181,901 120mm high explosive shell bodies, full range practice charge and additional 120mm HE/FRPC fuse adapters",
+   "lexicon_quote": "stem.  (E25502) CTG, MORTAR, 120MM HE M933 SERIES W/PD FUZE The M933A1 120mm High Explosive (HE) cartridge with the M783 Point Detonating/ Delay (PD/DLY) Fu",
+   "verdict": "weak",
+   "rationale": "The item descriptions line up with this BLI's family -- '120mm high explosive' and 'full range practice' are the two cartridge types doc 349 names under 120MM Mortar, All Types ('The M933A1 120mm High Explosive (HE)' and 'The M931 Full Range Practice Round (FRPR)'), and FRPC is mortar rather than tank terminology, which rules out the 1120E22203 tank-cartridge line. But the evidence does not meet section 1's standard: the announcement names no index name -- no M933A1, no M931 -- only the generic type words, so nothing distinguishes this from another 120mm HE variant; the buy is 'shell bodies' and 'fuse adapters', metal components rather than the cartridges the line procures; and the money is recorded only as 'Fiscal 2017 Other funds', which names no appropriation and so cannot corroborate a Procurement of Ammunition line. Not linked: the project publishes the smaller true number."
+  },
+  {
+   "record_index": 74,
+   "article_id": "2952403",
+   "piid": "W31P4Q19C0059",
+   "pe_bli": "0648CC0007",
+   "program_name": "Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "life cycle contractor support services for the Javelin Weapon System",
+   "lexicon_quote": "a variety of platforms and remote weapon stations using the Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on two section 3 patterns. First, money and mission: the announced work is 'life cycle contractor support services' funded by 'Fiscal 2022 operation and maintenance, Army; overseas contingency operations; United States Marine Corps; Army National Guard; and Foreign Military Sales' -- O&M sustainment attached to a procurement line (0648CC0007, Javelin (AAWS-M) System Summary) and, on the RDT&E side, to 0604611A, which is the exact failure mode the 2026-09-04 held-out study found in three of six refutations. Second, identity: this org's index carries no row named 'Javelin' or 'Javelin Weapon System' -- only the subcomponents CLU, LWCLU and JVPAK, none of which the announcement names -- and the string 'Javelin' in this record is largely the contractor's own name, 'Raytheon/Lockheed Martin Javelin JV', which section 3 and lens B both treat as no evidence at all."
+  },
+  {
+   "record_index": 69,
+   "article_id": "637451",
+   "piid": "W58RGZ13C0028",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "management and logistics functions for the fire control radar on all U.S. Apache AH-64D helicopters",
+   "lexicon_quote": "ternal Fuel Systems (RCEFS). Capability Version 6 includes Fire Control Radar (FCR) enhancements, Maritime Targeting Mode, Expanded Link-16",
+   "verdict": "wrong",
+   "rationale": "Rejected by design. The named thing is a subsystem of a platform the contract supports -- the announcement buys 'management and logistics functions' for the radar fitted to AH-64D airframes, not the Block IIIA remanufacture line's own work. The variant is also wrong: 5757A05111 is 'AH-64 Apache Block IIIA Reman' and its narrative places FCR enhancements in the AH-64E Capability Version 6, while the announcement is explicit that the fleet is 'all U.S. Apache AH-64D helicopters'. Money colour disagrees as well -- 'Fiscal 2016 other procurement funds' against an Aircraft Procurement, Army line. Finally, the one distinctive-looking token in the record, 'Longbow', is the contractor's name (Longbow LLC, the Lockheed Martin/Northrop Grumman joint venture), not evidence for the 9157J01200 Longbow Hellfire XM299 launcher line; lens B's 'the evidence is just a contractor name' pattern applies directly."
+  },
+  {
+   "record_index": 41,
+   "article_id": "3423366",
+   "piid": "W31P4Q19C0003",
+   "pe_bli": "0604760A",
+   "program_name": "Distributive Interactive Simulations (DIS) - Eng Dev",
+   "lexicon_doc": "355",
+   "announcement_evidence": "the Distributed Interactive Simulation based Systems Integration Laboratory",
+   "lexicon_quote": "Distributive Interactive Simulations (DIS) - Eng Dev",
+   "verdict": "wrong",
+   "rationale": "Rejected by design as a weak generic name. 'Distributed Interactive Simulation' in this announcement is the IEEE simulation interoperability standard used adjectivally to describe a Systems Integration Laboratory built for Poland -- work performed in Poland, paid with 'Fiscal 2022 Foreign Military Sales (Poland) funds' on a Redstone air-and-missile-defence contract. Army PE 0604760A's own narrative owns a different set of things entirely (OneSAF program management, the Army Geospatial Enterprise, GGDM, the SIMCI OIPT projects); nothing in it funds a foreign customer's integration lab, and FMS money is not this line's appropriation. The string similarity is coincidence between a standard's name and a PE's title, which is precisely what section 3 tells the lens not to publish."
+  },
+  {
+   "record_index": 51,
+   "article_id": "1565812",
+   "piid": "W56HZV17C0067",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "for Abrams systems technical support",
+   "lexicon_quote": "The upgrade and assembly of 30 Abrams tank variants to the M1A2 System Enhancement Package (SEP)v3 configuration, which enhances tank survivability, the aut",
+   "verdict": "wrong",
+   "rationale": "Rejected by design. 'Abrams' is the platform the contract supports, not a program this index names: every name 6500GA0750 owns is a subsystem or configuration (ADL, Block 1 FLIR, COE, DSESTS, M1A2 SEP, TIGER), and the announcement names none of them -- it says only 'Abrams systems technical support'. The word Abrams reaches the index through the program_title column, not the name column, so there is no name to copy. Money colour compounds it: 'Fiscal 2018 operations and maintenance (Army) funds' is O&M sustainment attached to a Weapons and Tracked Combat Vehicles procurement line, the lens A failure mode. Recorded so the near-miss is visible in the denominator; no refute pass should be spent on it."
+  },
+  {
+   "record_index": 75,
+   "article_id": "605998",
+   "piid": "W81XWH14C0062",
+   "pe_bli": "7500MN1000",
+   "program_name": "Analyzer Traumatic Brain Injury (ATBI)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "assessing and verifying traumatic brain injury (TBI) biomarkers",
+   "lexicon_quote": "nd urinalysis. FY 2024 began the initial procurement of the Analyzer Traumatic Brain Injury (ATBI) Block 1.\n* Medical Logistics - Includes capabilities to pro",
+   "verdict": "wrong",
+   "rationale": "Rejected by design: the shared words are a subject area, not a program name. The announcement funds research -- 'assessing and verifying traumatic brain injury (TBI) biomarkers' and developing assays for a commercial Abbott i-Stat device -- with 'Fiscal 2014 research, development, test and evaluation funds' through Army Medical Research Acquisition Activity. 7500MN1000 is an Other Procurement, Army line (Combat Support Medical) whose narrative records 'FY 2024 began the initial procurement of the Analyzer Traumatic Brain Injury (ATBI) Block 1' -- a fielded analyzer bought a decade after this award, not the biomarker science. Name absent from the announcement, money colour disjoint, ten-year gap; no link."
+  },
+  {
+   "record_index": 50,
+   "article_id": "3597706",
+   "piid": "W15QKN24C0005",
+   "pe_bli": "0604115A",
+   "program_name": "Lightweight Polymers for Modern Small Caliber Apps - Ammo Casing Only",
+   "lexicon_doc": "353",
+   "announcement_evidence": "assist with technology transfer in the area of advanced lightweight polymer optics",
+   "lexicon_quote": "Lightweight Polymers for Modern Small Caliber Apps - Ammo Casing Only",
+   "verdict": "wrong",
+   "rationale": "Rejected by design: the overlap is the material word 'lightweight polymer', and the index row scopes itself out of this award in its own title. The announcement buys technology transfer for 'advanced lightweight polymer optics'; the 0604115A row is 'Lightweight Polymers for Modern Small Caliber Apps - Ammo Casing Only', i.e. polymer cartridge cases for small-calibre ammunition, and the trailing 'Ammo Casing Only' is an explicit exclusion of everything else. Optics are not ammunition casings. Both sides happen to be RDT&E, Army, which is exactly why this pair is worth recording as refuted rather than left silent -- money colour alone would not have caught it."
+  }
+ ]
+}

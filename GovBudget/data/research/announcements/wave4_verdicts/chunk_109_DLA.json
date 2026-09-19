@@ -1,0 +1,50 @@
+{
+ "chunk": "chunk_109_DLA.json",
+ "proposals": [
+  {
+   "record_index": 71,
+   "article_id": "1326276",
+   "piid": "SP470117D1134",
+   "pe_bli": "0603680S",
+   "program_name": "The Casting (CAST)",
+   "lexicon_doc": "68",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for research and development of innovative castings technologies",
+   "lexicon_quote": "The Casting (CAST) program works to ensure a stable, reliable, and competitive",
+   "verdict": "link",
+   "rationale": "This is the only record in the chunk whose work is R&D rather than a Defense Working Capital Fund commodity buy, and the announcement states its own appropriation and customer: 'Using customer is the Defense Logistics Agency Research and Development Program Office. Type of appropriation is fiscal 2017 research and development funds.' The subject matter is a verbatim description of the DLA ManTech casting line the index carries under 0603680S: a cost-sharing consortium IDIQ with Advanced Technology International for 'research and development of innovative castings technologies', against a PE whose own narrative (doc 68) says the CAST program 'works to ensure a stable, reliable, and competitive' casting industrial base, and whose adjacent FORGE row in the same document speaks of 'quality of castings critical to DOD weapon systems'. So the appropriation matches the line's colour (RDT&E work on an RDT&E line, not O&M sustainment attached to one), the named thing is the program's own technical content rather than a platform the contract merely supports, and 'Manufacturing Technology Program' is a real PE, not a catch-all title. On identity: the DLA index carries castings under exactly one PE, and the only other 'castings' name anywhere in the lexicon is 'AM-Enhanced Lattice Castings' at 0603838D8Z, a different organisation's defence-wide ManTech line — the announcement's explicit naming of the Defense Logistics Agency Research and Development Program Office as the using customer anchors this award to DLA rather than to that OSD line. match_basis is llm-description because the announcement describes the program's work rather than printing the string 'CAST'.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the announcement declares its own colour ('fiscal 2017 research and development funds', customer 'Defense Logistics Agency Research and Development Program Office') and 0603680S is an RDT&E Defense-Wide line (account 0400D, DLA) carrying $31.3M in FY2017, so a cost-shared $25M 3+2-year castings R&D ceiling is RDT&E work on an RDT&E line at a plausible scale, not O&M sustainment attached to it; castings R&D is the line's own technical content (doc 68's IBA Line of Effort lists 'Castings (Procurement Readiness Optimization-Advanced Casting Technology)' and its accomplishment narrative says 'The CAST program continued research and development efforts focused on ensuring a viable and competitive metal casting industrial base'), not a platform the contract merely supports; 'Manufacturing Technology Program' is a real PE with its own mission narrative, does not match CATCHALL_TITLE (load_announcement_links.py:103), and is not an org-split code 20/30/500; the IDIQ is scoped to one named technology area rather than being a §3 generic-services/no-named-program umbrella. The only weakness found is lake-side, not mission-side: SP470117D1134 has a single 2017-09-26 transaction with $0 obligated and NULL federal_accounts_funding_this_award, so money_color_ok passes on unknown accounts and the Related Awards row will carry $0 - thin evidence, but no appropriation mismatch and no lens-A refutation."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No other PE can claim this name or this evidence: 'The Casting (CAST)' is a verbatim row of DLA.tsv (0603680S, doc 68), and a grep for cast/forg across all 13 wave-4 lexicon TSVs puts castings and forging at that PE alone — the only other 'CAST' string anywhere is DARPA's unrelated CASTLE acronym, excluded in any case by the record's DEFENSE LOGISTICS AGENCY service, its SP4701 DLA contracting PIID and the announcement naming the Defense Logistics Agency Research and Development Program Office as using customer; the only other DLA R&D line, 0603712S, carries purely logistics-side names (DART, ERP, MLN, SDD, WSS, LTR, IMRLS, AMTR, DLIR) and none touching metals manufacturing, so 'research and development of innovative castings technologies' does not fit it equally, and this index's one real collision (DLIR at both 0603680S and 0603712S) is not the name proposed; broader same-PE names (ManTech, EMT) would resolve to the identical pe_bli so the attribution is unchanged while CAST is the most specific row; no variant or increment is in play and the evidence is the stated scope rather than the contractor's name — the rationale's aside placing 'AM-Enhanced Lattice Castings' at 0603838D8Z matches no row of any wave-4 lexicon TSV, but it concerns a PE outside the proposable set and is not the basis of the link."
+   }
+  },
+  {
+   "record_index": 74,
+   "article_id": "1952112",
+   "piid": "SPE4AX18D9450",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "engineering and supply chain analysis sustainment support and for various spare parts",
+   "lexicon_quote": "r through the Logistics Technology Research (LTR), formally Weapon System Sustainment (WSS), portfolio of projects.. - Logistics Operations Innovation",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 on two of its listed patterns. First, generic services: the award is for 'engineering and supply chain analysis sustainment support and for various spare parts' with no named program at all — only the ordinary word 'sustainment' overlaps the index name 'Weapon System Sustainment (WSS)', and the lexicon's own quote shows WSS is a retired label for a research portfolio ('formally Weapon System Sustainment (WSS), portfolio of projects'), not a sustainment-services contract vehicle. Second, appropriation: the announcement says 'Type of appropriation is fiscal 2019 warstopper funds and defense working capital funds', i.e. a revolving-fund spares and support buy, which is precisely the O&M-sustainment-attached-to-an-RDT&E-line failure mode; 0603712S is a Generic Logistics R&D Technology Demonstrations line. No link."
+  },
+  {
+   "record_index": 57,
+   "article_id": "606868",
+   "piid": "SPE1C114D1048",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "exercising the first one-year option period of a one-year base contract (SPE1C1-14-D-1048) with four one-year option periods for working uniforms",
+   "lexicon_quote": "try partners and customers. It includes the MANTECH program Military Uniform System Technology (MUST) (formerly Customer Driven Uniform Manufacturing) and the De",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's weak-generic-name pattern: 'uniform' here is an English word naming the garment being bought ('working uniforms', elsewhere in the chunk 'Navy working uniform blouses and trousers'), not the ManTech project 'Military Uniform System Technology (MUST)', whose narrative describes a manufacturing-technology research effort formerly called Customer Driven Uniform Manufacturing. The award is a firm-fixed-price IDIQ option exercise paid from 'fiscal 2015 through fiscal 2016 defense working capital funds' — a clothing commodity purchase through DLA Troop Support, which does not fund the ManTech line's own work. This record is recorded as the representative refutation for the same pattern running through the chunk's other apparel awards (records 1, 9, 11, 16, 19, 23, 38, 39, 44, 47, 48, 51, 55, 56, 58, 63, 66, 69); none of them is proposed. The remaining 77 records name no program the DLA index carries: they are fuel, natural gas and utility-privatisation awards, subsistence and medical-catalogue buys, tyres, bearings, valves, track shoe and spare-parts buys, and platform-named spares (A-10, F/A-18, MV-22, M1 Abrams) whose platforms are not DLA lexicon programs, so they receive no proposal. The five DLA index rows carrying pe_bli '500' were excluded on sight as org-split collision codes."
+  }
+ ]
+}

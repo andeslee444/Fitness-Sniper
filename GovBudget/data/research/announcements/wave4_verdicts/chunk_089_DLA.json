@@ -1,0 +1,53 @@
+{
+ "chunk": "chunk_089_DLA.json",
+ "proposals": [
+  {
+   "record_index": 59,
+   "article_id": "3098509",
+   "piid": "SPE7LX22D0133",
+   "pe_bli": "0603712S",
+   "program_name": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "integrated product support for line-side delivery of bench stock items for the maintenance/production lines at Red River Army Depot, Texarkana, Texas",
+   "lexicon_quote": "Integrated Manufacturing Readiness Logistics Support (IMRLS)",
+   "verdict": "wrong",
+   "rationale": "This is the closest wording in the whole chunk to any DLA lexicon name, and it still fails. The announcement says 'integrated product support', a standard acquisition-logistics phrase, not 'Integrated Manufacturing Readiness Logistics Support' or 'IMRLS'; the shared words 'integrated' and 'support' are the entire overlap. The work bought is line-side delivery of bench stock consumables at a depot maintenance line, which is exactly the rubric's Section 3 'generic services: engineering support, logistics, base operations' reject pattern, and the award is an estimated-value indefinite-quantity vehicle on fiscal 2022-2025 defense working capital funds, i.e. revolving-fund supply support rather than the RDT&E Generic Logistics R&D Technology Demonstrations line 0603712S funds. Recorded as wrong so the reject is visible in the denominator rather than silently dropped."
+  },
+  {
+   "record_index": 22,
+   "article_id": "1468905",
+   "piid": "SP330018D5005",
+   "pe_bli": "0603712S",
+   "program_name": "Strategic Distribution & Disposition (SDD)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "has been awarded a maximum $33,000,000 firm-fixed-price contract, with a cost reimbursement line for travel, for a voice pick system",
+   "lexicon_quote": "Strategic Distribution & Disposition (SDD)",
+   "verdict": "wrong",
+   "rationale": "The only hook to the SDD line is that the buyer is Defense Logistics Agency Distribution, New Cumberland, and the item is warehouse voice-picking equipment; the announcement never names 'Strategic Distribution & Disposition' or 'SDD'. Under Section 3 an organisational affiliation plus a generic commodity buy is not a program name, and the defense working capital funds cited are the distribution depot's revolving fund, not the RDT&E demonstrations line. Linking here would assert that a warehouse picking system purchase paid for 0603712S's own research work, which the text does not support. Recorded as wrong to document that the distribution family was examined and rejected."
+  },
+  {
+   "record_index": 79,
+   "article_id": "4030756",
+   "piid": "SPE60225D0750",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "have each been awarded a fixed-price with economic-price-adjustment, requirements contract under solicitation SPE602-24-R-0705 for Lubricity Improver additives and fuel system icing inhibitors",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "verdict": "wrong",
+   "rationale": "Stands in for the whole DLA Energy family in this chunk (fuel, natural gas, marine gas oil, utility privatization at records 6, 7, 9, 14, 28, 31, 55, 60, 67, 73, 78). None of them names 'Energy Readiness Program' or 'ERP'; they are commodity requirements contracts for fuel and fuel additives, or 50-year utility service contracts on service operations-and-maintenance funds. Section 3 rejects generic commodity and base-utility services with no named program, and an O&M or working-capital commodity purchase attached to an RDT&E line is precisely the appropriation mismatch the rubric calls out. Recorded as wrong rather than left silent so the energy family shows up in the counts."
+  },
+  {
+   "record_index": 10,
+   "article_id": "2222335",
+   "piid": "SPE1C120D1258",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "has been awarded a maximum $33,645,750 firm-fixed-price, indefinite-delivery/indefinite-quantity contract for trousers",
+   "lexicon_quote": "Military Uniform System Technology (MUST)",
+   "verdict": "wrong",
+   "rationale": "Stands in for the clothing and textile family that dominates this chunk (records 0, 3, 12, 19, 20, 25, 26, 27, 29, 32, 37, 38, 42, 43, 49, 53, 54, 56, 61, 64, 70, 77). The index name 'Military Uniform System Technology (MUST)' funds uniform manufacturing technology research under the ManTech program element; these awards buy finished garments, boots and pouches in quantity on fiscal 2020-2021 defense working capital funds. The word 'uniform' appearing in a garment procurement is not the program name, and Section 3's generic-commodity reject plus the RDT&E-versus-revolving-fund appropriation mismatch both apply. Note also that the index carries two distinct MUST rows (Military Uniform System Technology and Military Unique Sustainment Technology) on the same PE, so even a genuine 'MUST' mention here could not be resolved to one row. Recorded as wrong to document the family."
+  }
+ ]
+}

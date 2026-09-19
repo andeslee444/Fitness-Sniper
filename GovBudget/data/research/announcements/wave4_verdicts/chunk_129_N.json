@@ -1,0 +1,398 @@
+{
+ "chunk": "chunk_129_N.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "1532850",
+   "piid": "N0002417C6259",
+   "pe_bli": "0604503N",
+   "program_name": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "lexicon_doc": "340",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the procurement of Technical Insertion-18/20 acoustic rapid commercial-off-the-shelf insertion systems, pre-cable kits, spares and production support",
+   "lexicon_quote": "Acoustic Rapid COTS Insertion (A-RCI) | 0604503N | 340 | Submarine SWFTS Modernization",
+   "rationale": "The announcement spells out the A-RCI acronym in lowercase English — 'acoustic rapid commercial-off-the-shelf insertion systems' is exactly Acoustic Rapid COTS Insertion, the name PE 0604503N's own narrative owns, and no other row in this org's index carries that name or any A-RCI/AN-BQQ-10 alias. The contract's subject is the program itself, not a platform it supports: Lockheed Martin Manassas is the SWFTS/A-RCI integrator and Technical Insertion-18/20 is the A-RCI hardware-refresh build that 'Submarine SWFTS Modernization' exists to fund. The residual risk, which Lens A should test, is appropriation: the retained text is cut at 'Fiscal 2' so the colour of money is unknown, and the words 'procurement' and 'production support' could point at an OPN submarine-combat-systems line rather than this RDT&E PE — but this org's index carries no such procurement line for A-RCI, and the cost-plus-incentive-fee vehicle is consistent with the development/integration line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Production money attached to an RDT&E line: the award's own words are \"the procurement of Technical Insertion-18/20 ... systems, pre-cable kits, spares and production support\" — hardware, spares and production support, not the development/integration work doc 340 (RDT&E,N) PE 0604503N funds — the retained text is cut at \"Fiscal 2\" so the colour of money cannot be verified at all, and lens P's load-bearing premise that \"this org's index carries no such procurement line for A-RCI\" is false: BLI 0840 (doc 333, OPN, \"Sub Periscope, Imaging and Supt Equip Prog\") owns \"Submarine Warfare Federated Tactical Systems (SWFTS)\" and \"The Submarine Support Equipment Program (SSEP)\", and BLI 2150 (doc 333, OPN, \"SSN Acoustic Equipment\") owns SSN acoustic-array procurement, so a procurement home for exactly this buy exists in this very index."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The alias is real and uniquely owned: PE 0604503N's own narrative writes 'AN/BQQ-10(V) Acoustic Rapid Commercial Off The Shelf (COTS) Insertion (A-RCI)' and 'Technical Insertion (TI)/Advanced Processing Build (APB)', so TI-18/20 is this program's own build vocabulary, not a different variant; a full scan of N.tsv for A-RCI / 'acoustic rapid' / COTS / BQQ-10 returns only 0604503N's rows, and the nearest procurement neighbours own different names (BLI 2150 'SSN Acoustic Equipment' owns only LVA/LCCA/HFSA; BLI 0840 and 0950 own SWFTS and CCS but never A-RCI), so no other PE in this index would take this evidence."
+   }
+  },
+  {
+   "record_index": 43,
+   "article_id": "1593295",
+   "piid": "N0003018C0100",
+   "pe_bli": "1250",
+   "program_name": "TRIDENT II Mods",
+   "lexicon_doc": "342",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "for long lead material and the labor, planning, and scheduling necessary to support the fiscal 2019 Trident II missile production schedule",
+   "lexicon_quote": "TRIDENT II Mods | 1250 | 342 | Trident II Mods",
+   "rationale": "The designator 'Trident II' appears verbatim and normalizes to the index row 'TRIDENT II Mods' (BLI 1250, doc 342 = Weapons Procurement, Navy). Three independent facts line the award up with that line: the announcement states 'Fiscal 2018 weapons procurement (Navy) funds', the contracting activity is Strategic Systems Programs — the office that executes BLI 1250 — and Lockheed Martin Space Systems, Sunnyvale is the D5 prime. D5 missile production long-lead is carried in the WPN Trident II Mods line rather than a separate production BLI, so this is the program's own work paid from its own appropriation, not sustainment bolted onto a procurement line. Lens A should confirm the Mods-line-funds-production premise; Lens B should note that no other row in this index carries a bare 'Trident II' name (the 'STRIDENT' diver-sensor rows are a substring coincidence, and 'Trident Warrior'/'TRIPER' are different programs).",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The record states its own colour of money — \"Fiscal 2018 weapons procurement (Navy) funds\" — and doc 342 is the WPN book, so the appropriation is verified rather than inferred; BLI 1250 is the only Trident II line in the org index and its sibling names (Mk4B Shape Stable Nose Tip, Mk6 MOD1 Guidance System, Strategic Solid Rocket Motors, W76-1/Mk4A Reentry Body) are D5 missile production hardware, so long-lead for the D5 production schedule is this line's own work, not O&M sustainment and not a platform the contract merely supports; \"Trident II Mods\" is not a catch-all (it does not match CATCHALL_TITLE) and the contracting activity, Strategic Systems Programs, is the office that executes the line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No other index row owns 'Trident II': the other Trident hits are a different program (Trident Warrior 0606355N), a different one (TRIPER at 0950/5358), a scholarship line (8101) or a substring coincidence (STRIDENT diver sensors), and the only other plausible WPN alternative, BLI 2420 'Weapons Industrial Facilities', owns just 'Allegany Ballistics Laboratory (ABL)' and 'The Weapons Industrial Facility (WIF)'; BLI 1250's own justification states 'Funding in the TRIDENT II Mods line is required to continue the procurement of TRIDENT II missiles', so the 'Mods' suffix is not a different variant from the missile production the award funds."
+   }
+  },
+  {
+   "record_index": 60,
+   "article_id": "1273544",
+   "piid": "N0003016C0100",
+   "pe_bli": "1250",
+   "program_name": "TRIDENT II Mods",
+   "lexicon_doc": "342",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "for long lead material and the labor, planning and scheduling necessary to support the fiscal 2018 Trident II D5 missile production schedule",
+   "lexicon_quote": "TRIDENT II Mods | 1250 | 342 | Trident II Mods",
+   "rationale": "Same structure as record 43 one year earlier and on a separate contract: 'Trident II D5' normalizes to the index row 'TRIDENT II Mods', the stated money is 'Fiscal 2017 weapons procurement (Navy)' which matches doc 342 (WPN), the contracting activity is Strategic Systems Programs, and the contractor is the D5 prime at Sunnyvale. The buy is long-lead material for the D5 production schedule — the line's own work, with no platform standing between the award and the program. Lens B should check the same collision question: 'Trident II' is owned only by BLI 1250 in this org's index.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same verified structure one year earlier on a separate contract: the record states \"Fiscal 2017 weapons procurement (Navy) funds\", matching doc 342 (WPN), the buy is long-lead material for the \"fiscal 2018 Trident II D5 missile production schedule\" — the missile itself, which is the program rather than a platform it supports — Strategic Systems Programs is the contracting activity, and BLI 1250 \"Trident II Mods\" is a specific weapon-system line carrying D5 production content (SSRM, Mk4B SSNT, Mk6 Mod1 GS, W76-1/Mk4A RB), not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same identity test as record 43 and it passes the same way: 'Trident II D5' is owned in this index only by BLI 1250, whose narrative covers TRIDENT II (D5) and the D5LE/D5LE2 line and whose justification says the line procures TRIDENT II missiles, so the D5 designator is the line's own missile rather than a rival increment; no other N.tsv row carries 'D5' (the MD-5 rows are an unrelated carrier-aviation ground station), and this is a distinct PIID and fiscal year from record 43, not a duplicate."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "4186522",
+   "piid": "N0002425C5315",
+   "pe_bli": "2290",
+   "program_name": "The MK-41 Vertical Launching System (VLS)",
+   "lexicon_doc": "342",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "for MK 41 Vertical Launching System MK 29 Mod 0 and Mod 1 canister production MK 41 VLS canister production requirements",
+   "lexicon_quote": "The MK-41 Vertical Launching System (VLS) | 2290 | 342 | Other Missile Support",
+   "rationale": "'MK 41 Vertical Launching System' is the index name 'The MK-41 Vertical Launching System (VLS)' with only the hyphen normalized away, and BLI 2290 is the single row in this org's index that carries it — the only near neighbour, 'MK 57 Vertical Launch System (VLS)' at 5231, is a different launcher for a different ship class, so there is no collision to resolve. The award buys MK 29 canisters, which are VLS-program hardware rather than a platform the contract merely supports, and BLI 2290 sits in doc 342 (Weapons Procurement, Navy), the appropriation that funds VLS canister production. Lens A should weigh two things: the retained text is cut at 'Fisc' so no colour of money is quoted, and 48% of the buy is Japan FMS — though the US share is the majority (52%) and the FMS split does not make the US portion someone else's line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "BLI 2290's program_title \"Other Missile Support\" is a catch-all rollup, which §3 rejects by design and the loader enforces: CATCHALL_TITLE (load_announcement_links.py:103) matches on ^other\\b, line 265-266 removes such PEs from `display`, and the pair is skipped as not_display_or_catchall — this link can never publish, so the MK-41 name being uncollided does not save it; on top of that the appropriation is unverifiable (the retained text stops at \"Fisc\"), and 48% of the award is Japan FMS money, which is not a US appropriation line at all."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "BLI 2290's title is 'Other Missile Support', a rollup that the loader itself classes as a catch-all — CATCHALL_TITLE at scripts/load_announcement_links.py:103 matches '^other\\b', and line 265 does 'display -= catchall', so this link would always be dropped as not_display_or_catchall and can never publish; rubric §3 rejects catch-all budget lines by design, and the lens-B reading is the same: a catch-all's narrative catalogues MK-41 VLS alongside Standard Missile, Tomahawk, ESSM and VLA, so the name appearing there does not establish that this line, rather than the missile programs it supports, owns the MK 29 canister buy. (The name itself is otherwise uncontested — MK 57 VLS at 5231 and LMVLS at 0204202N are different launchers.)"
+   }
+  },
+  {
+   "record_index": 56,
+   "article_id": "682238",
+   "piid": "N0002416C6304",
+   "pe_bli": "4225",
+   "program_name": "Airborne Mine Neutralization System (AMNS)",
+   "lexicon_doc": "342",
+   "match_basis": "exact-name",
+   "announcement_evidence": "The Archerfish Destructors are a component of the airborne mine neutralization system.",
+   "lexicon_quote": "Airborne Mine Neutralization System (AMNS) | 4225 | 342 | Airborne Mine Neutralization Systems",
+   "rationale": "The announcement names the program itself, in the index's own words: 'the airborne mine neutralization system' is the row name at BLI 4225 case-insensitively, and the announcement volunteers the attribution rather than leaving it to inference. Archerfish is the AMNS destructor, so the contract buys the program's own expendable hardware — this is not a platform the award supports. The name does collide with 4248 ('Airborne MCM', doc 333 = OPN), but the announcement resolves it: 'Fiscal 2014, 2015 and 2016 weapons procurement (Navy) funding' matches doc 342, the WPN book that BLI 4225 lives in, not the OPN member of the pair. Lens B should confirm that reading of the two AMNS owners.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The record states \"Fiscal 2014, 2015 and 2016 weapons procurement (Navy) funding\", which is doc 342 (WPN) — the book BLI 4225 lives in — so the appropriation is verified from the announcement and simultaneously excludes the OPN twin at 4248 (doc 333); the work is expendable ordnance, Archerfish destructors and fiber optic spools, which the announcement itself calls \"a component of the airborne mine neutralization system\", i.e. the program's own end item rather than a platform the contract supports or O&M sustainment bolted onto a procurement line; \"Airborne Mine Neutralization Systems\" is a specific system line, not a catch-all, and 4225's own narrative names the OPN Launch and Handling System separately, confirming the WPN line is the destructor buy's home."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name collision is real — 'Airborne Mine Neutralization System (AMNS)' is owned by both 4225 and 4248 — but the announcement resolves it: 'Fiscal 2014, 2015 and 2016 weapons procurement (Navy) funding' is account 1507N, and 4225 carries 1507N / doc 342 (WPN_Book.pdf) while 4248 carries 1810N / doc 333 (OPN_BA1_Book.pdf), so the OPN member cannot be the owner; 4225's own narrative names '[P5 / ARCHERFISH Destructor]: AN/ASQ-235 - Airborne Mine Neutralization System (AMNS)' and its justification funds 'procurement of 62 Archerfish Destructors', which is exactly this award's item, so it is neither an invented alias, a wrong variant, nor a bare contractor name."
+   }
+  },
+  {
+   "record_index": 11,
+   "article_id": "2046982",
+   "piid": "N0017418D0018",
+   "pe_bli": "4205",
+   "program_name": "Phalanx Close-In Weapon System (CIWS)",
+   "lexicon_doc": "342",
+   "announcement_evidence": "to exercise option year two ordering period for Close-In Weapons System waterfront installation support",
+   "lexicon_quote": "Phalanx Close-In Weapon System (CIWS) | 4205 | 342 | CIWS Mods",
+   "rationale": "The name is plainly present, but the evidence does not reach the §1 standard on either leg. First, the name collides: 'Close-In Weapons System (CIWS)' is also a row at BLI 6120 ('Spares and Repair Parts'), so the index alone cannot say which line an installation award belongs to, and the text names neither an appropriation nor a ship alteration that would decide it — the retained text ends at 'No contract fu', i.e. no funds were obligated on this option-year action at all. Second, the work purchased is waterfront installation support services under an IDIQ ordering period, which sits close to §3's generic-services pattern rather than to the CIWS Mods line's own hardware. Recording as weak rather than link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 17,
+   "article_id": "1648706",
+   "piid": "N0002418C5407",
+   "pe_bli": "2356",
+   "program_name": "SM-2",
+   "lexicon_doc": "342",
+   "announcement_evidence": "for procurement of fiscal 2018 Navy Standard Missile-2 and Standard Missile-6 depot- and intermediate-level provisioned items ordered spares",
+   "lexicon_quote": "SM-2 | 2356 | 342 | Standard Missiles Mods",
+   "rationale": "'Standard Missile-2' is a clean designator variant of the index name 'SM-2', but the money defeats the attribution on its face: the announcement states 'Fiscal 2018 operations and maintenance (Navy) funding in the amount of $22,619,574 will be obligate[d]', and BLI 2356 is a Weapons Procurement line (doc 342). O&M sustainment attached to a procurement line is exactly the failure mode the rubric's Lens A description calls out, and the item bought — depot- and intermediate-level provisioned-items-ordered spares — is sustainment stock rather than the Standard Missiles Mods line's own work. Weak, not link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 17,
+   "article_id": "1648706",
+   "piid": "N0002418C5407",
+   "pe_bli": "2234",
+   "program_name": "SM-6",
+   "lexicon_doc": "342",
+   "announcement_evidence": "for procurement of fiscal 2018 Navy Standard Missile-2 and Standard Missile-6 depot- and intermediate-level provisioned items ordered spares",
+   "lexicon_quote": "SM-6 | 2234 | 342 | Standard Missile",
+   "rationale": "Same award, second named missile. 'Standard Missile-6' is a designator variant of the index name 'SM-6' at BLI 2234, but the same two objections apply and they are decisive: the stated appropriation is fiscal 2018 operations and maintenance (Navy) while BLI 2234 is Weapons Procurement (doc 342), and the deliverable is depot/intermediate-level spares, not SM-6 rounds. A further weakness is that the award is undivided between two missile programs, so even if an appropriation matched, the announcement gives no basis for apportioning it to this line. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 68,
+   "article_id": "1972824",
+   "piid": "N0002418C5407",
+   "pe_bli": "2356",
+   "program_name": "SM-2",
+   "lexicon_doc": "342",
+   "announcement_evidence": "for procurement of fiscal 2019 Navy Standard Missile-2 and Standard Missile-6 depot and intermediate level provisioned items ordered spares",
+   "lexicon_quote": "SM-2 | 2356 | 342 | Standard Missiles Mods",
+   "rationale": "The fiscal 2019 twin of record 17 on the same contract N00024-18-C-5407. The designator match to 'SM-2' is good, but the purchase is explicitly 'provisioned items ordered spares material to support the depot and intermediate level repair, maintenance, and recertification' — sustainment stock, the class of work the rubric treats as belonging to a maintenance appropriation rather than to the Standard Missiles Mods procurement line. The retained text is cut before the funding sentence, so nothing rebuts the fiscal 2018 sibling's stated O&M colour of money. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 68,
+   "article_id": "1972824",
+   "piid": "N0002418C5407",
+   "pe_bli": "2234",
+   "program_name": "SM-6",
+   "lexicon_doc": "342",
+   "announcement_evidence": "for procurement of fiscal 2019 Navy Standard Missile-2 and Standard Missile-6 depot and intermediate level provisioned items ordered spares",
+   "lexicon_quote": "SM-6 | 2234 | 342 | Standard Missile",
+   "rationale": "Same award, second named missile, same objections: the deliverable is depot- and intermediate-level repair and recertification spares rather than SM-6 procurement, the award is undivided between SM-2 and SM-6 so no share can be attributed to this line, and the retained text stops before any appropriation is named. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 20,
+   "article_id": "1909668",
+   "piid": "N0002416C5102",
+   "pe_bli": "5231",
+   "program_name": "AEGIS Weapon System (AWS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "This contract provides for the completion of the development and fielding of the AEGIS Baseline 9 AEGIS Weapon System and integrated AEGIS Combat System",
+   "lexicon_quote": "AEGIS Weapon System (AWS) | 5231 | 333 | Ship Missile Support Equipment",
+   "rationale": "The announcement uses the index's exact singular name, 'AEGIS Weapon System', and the stated 'Fiscal 2018 other procuremen[t]' money matches doc 333 (OPN), which is where BLI 5231 sits — so the case is better than most. What holds it back is an unresolved owner question of precisely the kind Lens B exists for: PE 0604307N ('Surface Combatant Combat System Engineering') owns 'AEGIS Weapons System (AWS)' and 'AEGIS Modernization (AMOD)' as well, and the announcement describes the work as 'development and fielding', which points at the RDT&E owner even as the money points at the OPN owner. With the award split across two plausible owners on its own words, the rubric's default applies. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 39,
+   "article_id": "3979543",
+   "piid": "N0002425C6303",
+   "pe_bli": "0603502N",
+   "program_name": "The Mine Sweep Payload Delivery System (PDS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "for production of mine hunt payload delivery system production and engineering support",
+   "lexicon_quote": "The Mine Sweep Payload Delivery System (PDS) | 0603502N | 340 | Surface and Shallow Water Mine Countermeasures",
+   "rationale": "The announcement's 'mine hunt payload delivery system' is one word away from the index's 'Mine Sweep Payload Delivery System' — the same towed-PDS family but the hunting variant rather than the sweeping one, which is the different-variant objection the rubric names. The appropriation cuts the other way too: the award obligates 'Fiscal 2025 other procurement (Navy)' funds while PE 0603502N is an RDT&E line (doc 340). A production buy on a development PE, against a variant the narrative does not name, does not meet the standard. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 53,
+   "article_id": "1361386",
+   "piid": "N0001916C0002",
+   "pe_bli": "0604274N",
+   "program_name": "Next Generation Jammer (NGJ)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "for the hardware and software requirements needed to deliver the Ground Power and Cooling System (GPCS) in support of the Next Generation Jammer modification",
+   "lexicon_quote": "Next Generation Jammer (NGJ) | 0604274N | 340 | Next Generation Jammer (NGJ)",
+   "rationale": "'Next Generation Jammer' is named verbatim, but three rows in this org's index own it — 0591 (procurement), 0604274N (RDT&E) and 0604282N (Increment II) — and the announcement gives nothing that picks one: the retained text is cut before any appropriation, and 'the Next Generation Jammer modification' does not say which increment. The deliverable is also one step removed from the jammer itself: ground power carts, cooling carts and connector kits are pod support equipment, closer to §3's engineering-and-support pattern than to the NGJ line's own end item. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 62,
+   "article_id": "1772993",
+   "piid": "N0042119C0008",
+   "pe_bli": "0525",
+   "program_name": "OSIP 24-00 Joint Helmet Mounted Cueing System (JHMCS)",
+   "lexicon_doc": "330",
+   "announcement_evidence": "for the production and delivery of 132 Joint Helmet Mounted Cueing System (JHMCS), Night Vision Cueing and Display Systems (NVCD)",
+   "lexicon_quote": "OSIP 24-00 Joint Helmet Mounted Cueing System (JHMCS) | 0525 | 330 | F-18 Series",
+   "rationale": "This is a genuine production buy of the named end item, not platform support, which is why it is not a §3 reject — but the identity question is wide open. Four rows across four different lines carry JHMCS or its improved variant: 0525 ('F-18 Series', doc 330), 0575 ('Aviation Life Support Mods'), 0604264N ('Air Crew Systems Development') and 4268 ('Aviation Support Equipment', doc 333, whose row even names the NVCD). The retained text stops before the funding sentence, and 111 of the 132 units are Australia and Switzerland FMS, so neither appropriation nor quantity picks an owner. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 48,
+   "article_id": "1729037",
+   "piid": "M6785419F2025",
+   "pe_bli": "4767",
+   "program_name": "MTC-X Small Form Factor (SFF)",
+   "lexicon_doc": "339",
+   "announcement_evidence": "for the purchase of Small Form Factor suite production, acquisition, engineering management support, logistics, and sustainment support services",
+   "lexicon_quote": "MTC-X Small Form Factor (SFF) | 4767 | 339 | DCGS-MC",
+   "rationale": "The appropriation fits well — the award obligates fiscal 2018 and 2019 'procurement (Marine Corps)' funds and BLI 4767 sits in doc 339, the Marine Corps procurement book — and MARCORSYSCOM is the buying activity. The problem is the name. 'Small Form Factor' on its own is a hardware form-factor descriptor, the §3 weak-generic-name pattern, and the announcement never supplies the 'MTC-X' or 'DCGS-MC' qualifier that makes the index row a program rather than a shape. Half the purchase is also engineering management, logistics and sustainment services. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 2,
+   "article_id": "648781",
+   "piid": "N0001916D1003",
+   "pe_bli": "0502",
+   "program_name": "F-18 A-D Unique",
+   "lexicon_doc": "330",
+   "announcement_evidence": "depot-level maintenance support and sustainment for up to four F/A-18A/B/C/D aircraft",
+   "lexicon_quote": "F-18 A-D Unique | 0502 | 330 | F-18 A-D Unique",
+   "rationale": "Rejected under §3's platform pattern, twice over. The only index name this record touches is the aircraft designator itself, and the F/A-18A-D is the platform the contract services, not a program element whose work is being bought — the deliverables are high-flight-hour inspections, recurring inspections and liaison engineering. That is also §3's generic-services pattern (depot maintenance), and the announcement's own money confirms the mismatch by naming fiscal 2016 operation and maintenance (Navy) alongside aircraft procurement.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 21,
+   "article_id": "4121138",
+   "piid": "N0038325FV60Y",
+   "pe_bli": "0525",
+   "program_name": "F-18",
+   "lexicon_doc": "330",
+   "announcement_evidence": "in support of the F/A-18 aircraft",
+   "lexicon_quote": "F-18 | 0525 | 330 | F-18 Series",
+   "rationale": "Rejected under §3's platform pattern. The award buys hydraulic piston assemblies, disc brake stators and wheel-and-brake systems — commodity spares whose only tie to the index is the aircraft they fit — and the phrase 'in support of the F/A-18 aircraft' is the textbook case of a platform the contract supports rather than the program a line funds. The funding is 'annual working capital funds (Navy)', a revolving fund rather than any procurement line, which independently rules out attribution to BLI 0525.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 37,
+   "article_id": "645117",
+   "piid": "N0038311G001H",
+   "pe_bli": "0525",
+   "program_name": "F-18",
+   "lexicon_doc": "330",
+   "announcement_evidence": "for repair of various parts in support of the F/A-18 aircraft",
+   "lexicon_quote": "F-18 | 0525 | 330 | F-18 Series",
+   "rationale": "Rejected under §3's platform pattern and the generic-services pattern together: 'repair of various parts' names no program at all, and the F/A-18 appears only as the aircraft the parts belong to. As with record 21 the money is fiscal 2016 working capital funds (Navy), the Navy Working Capital Fund rather than an appropriation any J-book line carries, so there is no procurement line for this action to attach to.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 52,
+   "article_id": "2080211",
+   "piid": "N0038320F0A30",
+   "pe_bli": "0502",
+   "program_name": "F-18 A-D Unique",
+   "lexicon_doc": "330",
+   "announcement_evidence": "for the procurement of trailing edge flaps in support of the F/A-18 C-D aircraft",
+   "lexicon_quote": "F-18 A-D Unique | 0502 | 330 | F-18 A-D Unique",
+   "rationale": "Rejected under §3's platform pattern: trailing edge flaps are a structural spare and the F/A-18 C-D is the platform they fit, not the program being funded. The money settles it independently — the announcement states 'Switzerland (100%) funds will be used under the Foreign Military Sales program', so no US appropriation, and therefore no US program element, pays for this action at all.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 78,
+   "article_id": "1316834",
+   "piid": "N0001916G0001",
+   "pe_bli": "0525",
+   "program_name": "F-18 Series",
+   "lexicon_doc": "330",
+   "announcement_evidence": "This modification provides for the procurement of engineering, logistics and program management support for the F/A-18A-D, E-F and G aircraft",
+   "lexicon_quote": "F-18 Series | 0525 | 330 | F-18 Series",
+   "rationale": "Rejected under §3 on both listed grounds: the work is 'engineering, logistics and program management support', the enumerated generic-services pattern, and the only index name in reach is the aircraft series the support is rendered to. The award also spans three different aircraft variants owned by three different lines with no apportionment, and its fiscal 2017 operations and maintenance (Navy) funding is the wrong colour of money for an APN line.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 26,
+   "article_id": "961138",
+   "piid": "N0001916G0001",
+   "pe_bli": "0505",
+   "program_name": "F-18E/F and EA-18G Modernization and Sustainment",
+   "lexicon_doc": "330",
+   "announcement_evidence": "into the F/A-18E/F and EA-18G flight control computer operational flight program (FCC OFP)",
+   "lexicon_quote": "F-18E/F and EA-18G Modernization and Sustainment | 0505 | 330 | F-18E/F and EA-18G Modernization and Sustainm",
+   "rationale": "Rejected under §3's platform pattern. The program the award actually funds is MAGIC CARPET (Maritime Augmented Guidance with Integrated Controls for Carrier Approach and Recovery), and no row in this org's index carries that name or its acronym — the only thing the index matches is the aircraft pair whose flight control computer receives the change. Attaching the award to the F-18E/F line would be attributing a named program's work to the platform it is installed on.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 3,
+   "article_id": "1379839",
+   "piid": "N0002411C2300",
+   "pe_bli": "0603581N",
+   "program_name": "Littoral Combat Ship (LCS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "to exercise an option for class services in support of foreign military sales for the Littoral Combat Ship program",
+   "lexicon_quote": "Littoral Combat Ship (LCS) | 0603581N | 340 | Littoral Combat Ship (LCS)",
+   "rationale": "Rejected on two §3 grounds. 'Class services' is the generic-services pattern — no named system, only programme-office support — and the money is 'Foreign military sales funds for the Kingdom of Saudi Arabia', which means no US appropriation and hence no US program element funds this action. The LCS name here denotes the ship class the services support rather than work PE 0603581N pays for.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 6,
+   "article_id": "3787731",
+   "piid": "N0002418C2300",
+   "pe_bli": "0603581N",
+   "program_name": "Littoral Combat Ship (LCS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "to exercise an option for industrial post-delivery availability support for the Freedom-variant Littoral Combat Ship USS Cleveland (LCS 31)",
+   "lexicon_quote": "Littoral Combat Ship (LCS) | 0603581N | 340 | Littoral Combat Ship (LCS)",
+   "rationale": "Rejected under §3's platform pattern: the subject is one named hull, USS Cleveland (LCS 31), and the work is a post-delivery availability — ship work on a platform, not the LCS development line's own work. The stated money is 'Fiscal 2024 shipbuilding and conversion (Navy) post-delivery funds', which belongs to the SCN account, not to the RDT&E PE 0603581N.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 31,
+   "article_id": "1364144",
+   "piid": "N0002416C2302",
+   "pe_bli": "0603581N",
+   "program_name": "Littoral Combat Ship (LCS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "to exercise options for post-shakedown availabilities (PSAs) for USS Little Rock (LCS 9) and USS Sioux City (LCS 11)",
+   "lexicon_quote": "Littoral Combat Ship (LCS) | 0603581N | 340 | Littoral Combat Ship (LCS)",
+   "rationale": "Rejected under §3's platform pattern. Two named hulls receive post-shakedown availabilities — correction of trial-card deficiencies, new work and engineering-change incorporation — which is shipyard work on delivered platforms, not the program element's own development or production content. The only index name present is the ship class itself.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 38,
+   "article_id": "805384",
+   "piid": "N0002412C4309",
+   "pe_bli": "5231",
+   "program_name": "AEGIS Weapon System (AWS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "to exercise options for lifetime sustainment and support services for installed Aegis Weapon Systems (AWS)",
+   "lexicon_quote": "AEGIS Weapon System (AWS) | 5231 | 333 | Ship Missile Support Equipment",
+   "rationale": "The name matches exactly, but §3 rejects the award: what is bought is 'lifetime sustainment and support services' plus 'logistics and sustainment support for the in-service Aegis ship fleet', which is the enumerated generic-services pattern — engineering support and logistics for fielded equipment, not the procurement line's own end item. The name is also owned by PE 0604307N as well, so even on the merits the announcement could not say which line pays.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 35,
+   "article_id": "1330165",
+   "piid": "M6785417F4102",
+   "pe_bli": "0605013N",
+   "program_name": "Next Generation Enterprise Network (NGEN)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "for a quantity of 27,013 general purpose laptops to support the Next Generation Enterprise Network mandatory Windows 10 transition",
+   "lexicon_quote": "Next Generation Enterprise Network (NGEN) | 0605013N | 340 | Information Technology Development",
+   "rationale": "Rejected under §3's platform pattern. NGEN is named, but it is the network the laptops connect to; the award buys 27,013 commercial general-purpose laptops, a commodity whose tie to the named program is the transition it enables. The money confirms the mismatch: fiscal 2016 and 2017 'procurement (Marine Corps)' funds against an RDT&E Navy PE. The name is additionally owned by BLI 8164 ('Next Generation Enterprise Service'), so even the identity is unresolved.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 44,
+   "article_id": "3486121",
+   "piid": "N0002421C2201",
+   "pe_bli": "0603581N",
+   "program_name": "Gun Weapon System (GWS)",
+   "lexicon_doc": "340",
+   "announcement_evidence": "for the exercise of options for procurement and installation of six Gun Weapon Systems onto the Island Class patrol boats with spares",
+   "lexicon_quote": "Gun Weapon System (GWS) | 0603581N | 340 | Littoral Combat Ship (LCS)",
+   "rationale": "Rejected under §3's weak-generic-name pattern: 'Gun Weapon System' is a descriptive category, and this org's index carries it three times over under different owners (0603581N for LCS, 0603795N for the MK 38 MOD 4, 3620 for Coast Guard equipment), none of which the announcement identifies. The money is decisive on its own — 'Foreign Military Financing (Ukraine) funds' pays for guns fitted to ex-Coast-Guard Island Class patrol boats, so no US program element funds this action.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 72,
+   "article_id": "1398382",
+   "piid": "N0002415C2414",
+   "pe_bli": "0946",
+   "program_name": "LPD 17",
+   "lexicon_doc": "333",
+   "announcement_evidence": "services for LPD-17 class Integrated Shipboard Electronic systems",
+   "lexicon_quote": "LPD 17 | 0946 | 333 | LPD Class Support Equipment",
+   "rationale": "Rejected on both §3 grounds. The award is an option year for 'life cycle engineering and support' — post-delivery planning, logistics, homeport technical support, data maintenance, obsolescence management — the enumerated generic-services pattern; and the only index name in reach, 'LPD 17', denotes the ship class the services are rendered to, the platform pattern. The hull designator is also owned by PE 0604454N ('LX (R)') as well as BLI 0946.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 9,
+   "article_id": "621498",
+   "piid": "N0003014C0006",
+   "pe_bli": "5358",
+   "program_name": "Strategic Weapons System (SWS)",
+   "lexicon_doc": "333",
+   "announcement_evidence": "flight test instrumentation management and support, SSBN replacement program support, data recording subsystem operational support, engineered refueling overhaul support, and strategic weapon system training",
+   "lexicon_quote": "Strategic Weapons System (SWS) | 5358 | 333 | Strategic Missile Systems Equip",
+   "rationale": "Rejected under §3's generic-services pattern. The phrase 'strategic weapon system training' is the only thing resembling an index name, and it appears as the last item in a bundle of five distinct support activities — flight test instrumentation management, SSBN replacement support, data recording subsystem support, engineered refuelling overhaul support and training — spanning several programs with no apportionment. A lowercase descriptive phrase inside a support-services list is not the named program the rubric requires, and 'Strategic Weapons System (SWS)' is in any case owned by BLI 1045 as well as 5358.",
+   "verdict": "wrong"
+  }
+ ]
+}

@@ -1,0 +1,71 @@
+{
+ "chunk": "chunk_020_DCSA.json",
+ "proposals": [
+  {
+   "record_index": 20,
+   "article_id": "3235034",
+   "piid": "HS002123C0006",
+   "pe_bli": "0303430V",
+   "program_name": "Background Investigation Enterprise Systems (BIES)",
+   "lexicon_doc": "65",
+   "match_basis": "llm-alias",
+   "verdict": "link",
+   "announcement_evidence": "has been awarded a $10,364,858, firm-fixed-price contract (HS0021-23-C-0006) to provide Defense Counterintelligence and Security Agency (DCSA) Background Investigation Enterprise System (BIES) Dashboard Management Reporting System (DMRS) support services.",
+   "lexicon_quote": "Background Investigation Enterprise Systems (BIES)",
+   "rationale": "The announcement names the program outright, in words and by acronym: the whole stated requirement is support for a named BIES component, the Dashboard Management Reporting System, not agency-wide services that merely touch it. The index carries 'Background Investigation Enterprise Systems (BIES)' under PE 0303430V, Federal Investigative Services Information Technology, lexicon doc 65; the only difference from the announcement's string is the singular 'System', so the basis is llm-alias rather than exact-name. No other PE in this org's index carries the BIES name, and this is a single-award FFP contract with a named system in its scope line, so none of the section 3 rejects apply (no IDIQ umbrella, no platform the contract merely supports, no catch-all title, no generic services with no named program). The one thing a refute lens should press: the obligation named in the record is 'fiscal 2023 DCSA defense working capital funds in the amount of $3,359,974', so whether that money belongs to this budget line's own appropriation is the point most likely to break the link.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Wrong color of money: PE 0303430V is a Research, Development, Test & Eval, Defense-Wide line (jbook_line_universe.jsonl accounts), but this action obligates 'fiscal 2023 DCSA defense working capital funds' for BIES/DMRS 'support services' — customer-funded revolving-fund sustainment, not this RDT&E line's own appropriation, which is exactly the O&M-sustainment-on-an-RDT&E-line failure mode lens A exists to catch; the proposal's own rationale named this as the breaking point and the record confirms it."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Identity holds on lens B grounds: \"Background Investigation Enterprise System (BIES)\" appears in the announcement in full words AND by acronym, and BIES occurs exactly once across all 17 rows of the DCSA index (0303430V, doc 65) - no other PE in the org owns the name, no index row owns \"Dashboard Management Reporting System\"/DMRS, the named subsystem pins the scope to that one program rather than to a sibling row (DISS/NBIS/SWFT) or a sibling PE (0302609V CTAP, 0305327V Insider Threat, 0305146V DJCA, 0307609V NISS), the evidence is the requirement line and not the contractor name (Copper River Cyber Solutions is distinct), and the only divergence from the index string is singular vs plural \"System(s)\", which is a spelling variant and not a different variant or increment - so llm-alias is the right basis and no alternative owner exists."
+   }
+  },
+  {
+   "record_index": 12,
+   "article_id": "3143335",
+   "piid": "HS002121C0006",
+   "pe_bli": "0303430V",
+   "program_name": "Background Investigation Enterprise Systems (BIES)",
+   "lexicon_doc": "65",
+   "match_basis": "llm-alias",
+   "verdict": "link",
+   "announcement_evidence": "This modification exercises Option Period I to continue to fulfill requirements of the DCSA Background Investigation System Enterprises Program Management Office for technical support services (distributed and mainframe).",
+   "lexicon_quote": "Background Investigation Enterprise Systems (BIES)",
+   "rationale": "The announcement writes the same program's own words in a different order — 'Background Investigation System Enterprises Program Management Office' is DCSA's BIES program office — and the requirement is that program office's technical support services for its distributed and mainframe environment, i.e. the computing environment of the named system rather than a generic agency services ceiling. The index row is the same one record 20 matches (PE 0303430V, Federal Investigative Services Information Technology, lexicon doc 65), and no competing PE in this org's index owns the BIES name. I rate it link rather than weak because the program office is named, not merely alluded to, but it is the weaker of the two BIES proposals in this chunk on two counts a refute lens should test: the identity rests on a word-order variant rather than the acronym, and the record text is truncated before its funding sentence, so the appropriation behind this option exercise is not visible in the evidence and the O&M-on-a-development-line failure mode cannot be ruled out from the record alone.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Same appropriation break, now visible: the chunk text truncates before the funding sentence, but the full record (data/research/announcements/records.jsonl, article 3143335) ends 'Fiscal 2022 defense working capital funds in the amount of $13,593,485 were obligated at time of award' — DWCF sustainment money against an RDT&E,DW line — and the parent award (article 2780513, same PIID) was likewise DWCF-funded; the scope is also generic 'technical support services (distributed and mainframe)' for a program office, i.e. the section 3 generic-support reject rather than the PE's own development work."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The evidence names an OFFICE, not the program, and does not single out the BIES row the citation card would print: \"Background Investigation System Enterprises Program Management Office\" is the office that runs the whole background-investigation systems portfolio, which in this same index is four differently-documented rows under 0303430V - BIES (doc 65), National Background Investigation Services (doc 65), The National Background Investigation Services/NBIS (doc 102) and DISS (doc 102), plus SWFT (doc 65) - so \"technical support services (distributed and mainframe)\" for that office links equally well to those rows (and to the legacy OPM-inherited mainframe applications that no index row names at all, which is what \"mainframe\" most plausibly denotes against a BIES/NBIS modernization line); the identity rests on a word-order scramble with no acronym to anchor it, and this chunk shows DCSA announcements use \"background investigation\" as a MISSION descriptor for plainly non-program work (records 3, 7, 13, 22, 25, 27 - credit reports, degree verification, investigative surge support), so the phrase is not self-evidently the BIES program name; uncertain identity defaults to refuted."
+   }
+  },
+  {
+   "record_index": 14,
+   "article_id": "4121138",
+   "piid": "HS002125CE005",
+   "pe_bli": "0303430V",
+   "program_name": "National Background Investigation Services",
+   "lexicon_doc": "65",
+   "verdict": "weak",
+   "announcement_evidence": "in support of the personnel security systems environment, which provides background investigations for federal employees and contractors",
+   "lexicon_quote": "National Background Investigation Services",
+   "rationale": "Recorded as weak so the chunk shows this near-miss was read and declined rather than missed. The award is a sole-source DCSA contract for the background-investigation systems environment, which is a description of what the National Background Investigation Services line does, but the announcement names no program at all — 'the personnel security systems environment' is the agency's own mission phrasing, and the index row it would have to match is a named system. A description that fits a mission is not evidence that the action funds this program element's own work, and the project publishes the smaller true number, so this does not reach link."
+  },
+  {
+   "record_index": 11,
+   "article_id": "2444963",
+   "piid": "HS002121C0002",
+   "pe_bli": "0305327V",
+   "program_name": "DITMAC System of System (DSoS)",
+   "lexicon_doc": "102",
+   "verdict": "wrong",
+   "announcement_evidence": "The contract provides for seamlessly vetting personnel for access, preserving the adjudicative decision and identifying and mitigating insider threat risk.",
+   "lexicon_quote": "DITMAC System of System (DSoS)",
+   "rationale": "The only thing tying this contract to PE 0305327V is the phrase 'insider threat risk', which is the PE's program title used here as ordinary English mission prose — section 3's weak-generic-name reject, the same pattern as 'Sentinel' or 'SHIELD' used as a word. None of the names the index actually carries for that line (DITMAC System of System, Behavioral Threat Analysis Capability, Ocular-motor Deception Detection) appears anywhere in the record, and the scope described is personnel vetting and adjudication support services funded with fiscal 2021 operation and maintenance funds, which is the O&M-services-attached-to-a-development-line failure mode. One proposal covers this PIID: records 10, 16 and 17 are option-exercise modifications to this same contract HS002121C0002 and are rejected for the identical reason, and the rubric allows at most one proposal per (piid, pe_bli)."
+  }
+ ]
+}

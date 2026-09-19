@@ -1,0 +1,29 @@
+{
+ "chunk": "chunk_099_N.json",
+ "proposals": [
+  {
+   "record_index": 63,
+   "article_id": "606727",
+   "piid": "M6785415D7900",
+   "pe_bli": "6532",
+   "program_name": "Range and Training Area Management (RTAM)",
+   "lexicon_doc": "339",
+   "lexicon_quote": "ems and to support Project Tripoli priorities.    Range and Training Area Management (RTAM) - The Marine Corps' training resources play a critical role",
+   "announcement_evidence": "technical support for the Range and Training Area Management Division",
+   "verdict": "wrong",
+   "rationale": "The index name 'Range and Training Area Management (RTAM)' (BLI 6532, Training Devices) appears verbatim in the announcement, so this is the one record in the chunk with a real string hit — but §3 rejects it on the generic-services pattern, and secondarily on the platform/owner pattern. The award is a $30,000,000 firm-fixed-price IDIQ ceiling 'to procure technical support', with 'No funds are being obligated at the time of award', i.e. an unpriced services vehicle rather than a contract action that buys this procurement line's own end items. And the phrase the announcement uses is 'the Range and Training Area Management Division's range managers Toolkit': the matched words name a Marine Corps organisational Division (and a software toolkit it owns), not the RTAM program element the PE funds — the same failure mode as naming a platform a contract merely supports. Lens A's named hazard also applies on its face: BLI 6532 is a Marine Corps procurement line, while worldwide technical-support services of this shape are O&M-funded work. Publishing a high-tier 'this action paid for RTAM's own work' claim on this evidence would widen the claim past what the paragraph supports, so it does not link."
+  },
+  {
+   "record_index": 77,
+   "article_id": "941172",
+   "piid": "N3943016D1831",
+   "pe_bli": "1130",
+   "program_name": "The Standard Navy Double Lock Recompression Chamber System (SNDLRCS)",
+   "lexicon_doc": "333",
+   "lexicon_quote": "cluded from P40a mandated by the FY25 Reconciliation Bill)  The Standard Navy Double Lock Recompression Chamber System (SNDLRCS) is a conventional chamber designed and built using standard",
+   "announcement_evidence": "Such systems include: recompression chamber facilities",
+   "verdict": "wrong",
+   "rationale": "BLI 1130 (Diving and Salvage Equipment) owns 'The Standard Navy Double Lock Recompression Chamber System (SNDLRCS)' and 'The Transportable Recompression Chamber System (TRCS)', and the announcement does say 'recompression chamber facilities' — but that is the generic equipment category, not either program's own name, and §3 rejects the record on the generic-services pattern regardless. The scope is 'hyperbaric systems support services' and 'inspection, maintenance, repair, overhaul, design, fabrication and installation of hyperbaric systems at various Department of Defense installations worldwide' under a $30,000,000 multiple-award IDIQ ceiling naming no program: maintenance and overhaul of installed chamber facilities across DoD sites, not procurement of SNDLRCS or TRCS units. This is exactly Lens A's documented failure mode — O&M-shaped sustainment services hung on a procurement line — and Lens B's 'the evidence is a category word, not an alias'. No link."
+  }
+ ]
+}

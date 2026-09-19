@@ -1,0 +1,388 @@
+{
+ "chunk": "chunk_110_A.json",
+ "proposals": [
+  {
+   "record_index": 13,
+   "article_id": "2707824",
+   "piid": "W56HZV21C0110",
+   "pe_bli": "0605625A",
+   "program_name": "Optionally Manned Fighting Vehicle (OMFV)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "was awarded a $26,600,000 firm-fixed-price contract for the Optionally Manned Fighting Vehicle Phase 2 concept design",
+   "lexicon_quote": "Optionally Manned Fighting Vehicle (OMFV)",
+   "rationale": "The announcement names the program verbatim as the object of the award, not as a platform the work merely supports: the deliverable IS the OMFV Phase 2 concept design. The money matches the line: FY2021 research, development, test and evaluation, Army funds against 0605625A, an RDT&E program element whose own J-book narrative owns the name 'Optionally Manned Fighting Vehicle (OMFV)'. Detroit Arsenal is the OMFV contracting activity and the concept-design phase is exactly the work the Manned Ground Vehicle PE funded in FY2021. No other PE in this org's index carries the OMFV name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "FY2021 RDT&E, Army money obligated against an RDT&E program element: appropriation and line type agree, the deliverable IS the OMFV Phase 2 concept design rather than a platform the work supports, and 'Manned Ground Vehicle' is a named development line (two names in the index), not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Optionally Manned Fighting Vehicle (OMFV)' is a single row in the A index (0605625A, doc 355); no other PE owns the name, the only nearby name is 'The Bradley Fighting Vehicle (BFV)' on a different vehicle, and the evidence is the program name itself rather than a contractor or a variant designator."
+   }
+  },
+  {
+   "record_index": 14,
+   "article_id": "2707824",
+   "piid": "W56HZV21C0111",
+   "pe_bli": "0605625A",
+   "program_name": "Optionally Manned Fighting Vehicle (OMFV)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "BAE Systems Land and Armaments L.P, Sterling Heights, Michigan, was awarded a $26,600,000 firm-fixed-price contract for the Optionally Manned Fighting Vehicle Phase 2 concept design",
+   "lexicon_quote": "Optionally Manned Fighting Vehicle (OMFV)",
+   "rationale": "One of five parallel concept-design contracts awarded the same day for the same named program. The award's object is the OMFV Phase 2 concept design itself, funded with FY2021 RDT&E, Army money against an RDT&E PE whose narrative owns the exact name. This is not an IDIQ umbrella with no named program (the §3 reject pattern): each of the five is a discrete firm-fixed-price contract for a named development effort. No competing PE in the index owns the OMFV name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same money test passes: FY2021 RDT&E, Army on an RDT&E PE, a discrete firm-fixed-price development contract for the named program itself, no O&M sustainment or services content and no IDIQ ceiling, so none of the §3 patterns or lens A grounds bite."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same unique-name finding: the index carries OMFV on 0605625A only, 'Phase 2 concept design' is a phase of that named program rather than a different increment with its own line, and the identifying evidence is the program name, not 'BAE Systems'."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "2707824",
+   "piid": "W56HZV21C0112",
+   "pe_bli": "0605625A",
+   "program_name": "Optionally Manned Fighting Vehicle (OMFV)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "General Dynamics Land Systems Inc., Sterling Heights, Michigan, was awarded a $26,600,000 firm-fixed-price contract for the Optionally Manned Fighting Vehicle Phase 2 concept design",
+   "lexicon_quote": "Optionally Manned Fighting Vehicle (OMFV)",
+   "rationale": "The program name appears verbatim as the subject of the award. FY2021 RDT&E, Army funds on an RDT&E program element (0605625A, Manned Ground Vehicle) whose J-book narrative owns 'Optionally Manned Fighting Vehicle (OMFV)' — appropriation type and line type agree, which is the money test Lens A applies. The named thing is the program, not a platform the contract supports.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "RDT&E appropriation on an RDT&E line, Detroit Arsenal contracting a concept design — the object of the award is the program the PE funds, not a platform the contract merely supports, and the PE is not a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner: OMFV appears once in the index and the announcement spells the name in full, so this evidence could not link the award equally well to any other PE in the org."
+   }
+  },
+  {
+   "record_index": 16,
+   "article_id": "2707824",
+   "piid": "W56HZV21C0113",
+   "pe_bli": "0605625A",
+   "program_name": "Optionally Manned Fighting Vehicle (OMFV)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Oshkosh Defense LLC, Oshkosh, Wisconsin, was awarded a $26,600,000 firm-fixed-price contract for the Optionally Manned Fighting Vehicle Phase 2 concept design",
+   "lexicon_quote": "Optionally Manned Fighting Vehicle (OMFV)",
+   "rationale": "Same named development effort, separate PIID and separate contractor. The work purchased is the OMFV concept design, the appropriation cited is FY2021 RDT&E, Army, and 0605625A is the RDT&E PE whose own narrative carries the name. Nothing here is generic services, construction or a ceiling action, so no §3 pattern applies.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Identical appropriation/line agreement (FY2021 RDT&E, Army → 0605625A); the purchased work is OMFV concept design, which is this line's own development work, so the money-and-mission lens finds nothing to break."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Unique index name, verbatim in the announcement; the alias is not invented (match_basis is exact-name) and no competing fighting-vehicle PE in the index carries 'Optionally Manned'."
+   }
+  },
+  {
+   "record_index": 17,
+   "article_id": "2707824",
+   "piid": "W56HZV21C0116",
+   "pe_bli": "0605625A",
+   "program_name": "Optionally Manned Fighting Vehicle (OMFV)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Point Blank Enterprises Inc., Miami Lakes, Florida, was awarded a $26,600,000 firm-fixed-price contract for the Optionally Manned Fighting Vehicle Phase 2 concept design",
+   "lexicon_quote": "Optionally Manned Fighting Vehicle (OMFV)",
+   "rationale": "The fifth of the five same-day OMFV Phase 2 concept-design contracts. The contractor is an unexpected one for a fighting-vehicle design award, but the evidence standard here is what the announcement says the award buys, and it says the OMFV Phase 2 concept design, funded with FY2021 RDT&E, Army money against the RDT&E PE that owns the name. The identity of the program is not in doubt and no other PE in the index owns it.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The unexpected contractor is an identity question, not a money-and-mission one: the appropriation cited is FY2021 RDT&E, Army against an RDT&E PE and the stated deliverable is the OMFV Phase 2 concept design, which is the PE's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The unexpected contractor (Point Blank Enterprises) is not the evidence — the named program is, and OMFV resolves to exactly one PE in the index, so identity and ownership are both unambiguous."
+   }
+  },
+  {
+   "record_index": 25,
+   "article_id": "3814112",
+   "piid": "W912HZ24F0199",
+   "pe_bli": "3005B66501",
+   "program_name": "High Perf Computing Mod Pgm (HPCMP)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "was awarded a $26,489,184 firm-fixed-price contract for the High-Performance Computing Modernization Program",
+   "lexicon_quote": "High Perf Computing Mod Pgm (HPCMP)",
+   "rationale": "The announcement names the program as the object of the award, and the index row is the same program under its abbreviated budget-line spelling, so the alias is the budget document's own contraction rather than an invented one. The money test decides which of the two HPCMP lines this is: the award cites fiscal 2024 other procurement, Army funds, which belongs to the procurement line 3005B66501 and not to the RDT&E PE 0603461A that carries the fully spelled name (proposed separately as weak). The contracting activity is the Corps of Engineers' Engineer Research and Development Center, the Army's executive agent for HPCMP hardware buys, and the deliverable is the computing capability itself, not engineering support around it.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "FY2024 other procurement, Army funds land on the B-prefix Other Procurement, Army line item of the same name — appropriation and line type agree exactly — and the FFP buy is HPCMP's own supercomputing hardware at the Aberdeen DSRC, contracted by the program's executive agent, not services around a platform."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Name collision with a better-matching owner: the announcement's verbatim string 'High-Performance Computing Modernization Program' is an EXACT index row on a different PE (0603461A, doc 351), while this proposal reaches 3005B66501 only by alias — the name evidence links elsewhere at least as well, and only the appropriation (lens A's test, not lens B's) separates the twins."
+   }
+  },
+  {
+   "record_index": 25,
+   "article_id": "3814112",
+   "piid": "W912HZ24F0199",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "announcement_evidence": "was awarded a $26,489,184 firm-fixed-price contract for the High-Performance Computing Modernization Program",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "rationale": "Recorded so the collision is visible rather than silently resolved. This PE carries the program's fully spelled name, so the string match is stronger here than on the procurement line, but the announcement obligates fiscal 2024 other procurement, Army funds, and a procurement action does not pay for an RDT&E program element's own work — the money mismatch the 2026-09-04 held-out study found in half its refutations. The name is present, the attribution is not established, so this does not meet the §1 standard.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 27,
+   "article_id": "2073298",
+   "piid": "W912DY20F0126",
+   "pe_bli": "3005B66501",
+   "program_name": "High Perf Computing Mod Pgm (HPCMP)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "was awarded a $26,480,000 firm-fixed-price contract for Department of Defense high performance computing modernization",
+   "lexicon_quote": "High Perf Computing Mod Pgm (HPCMP)",
+   "rationale": "The announcement writes the program's name in lower case but writes it in full and names no other object for the award; Cray delivering at Stennis Space Center under Corps of Engineers contracting is an HPCMP supercomputing resource centre buy, which is the work this line funds. The appropriation cited is fiscal 2020 other procurement, Army, matching the procurement line 3005B66501 rather than the RDT&E PE that carries the same program's name. The alias is a case-and-spacing variant of the budget line's own title, not a resemblance between two different programs.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "FY2020 other procurement, Army on the OPA HPCMP line; a Cray system delivered at the Stennis DSRC under Corps of Engineers contracting is precisely the capability this procurement line buys, with no O&M sustainment and no platform standing between the award and the program."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Same two-owner collision, and weaker text: 'Department of Defense high performance computing modernization' matches 0603461A's exact row name and its 'Department of Defense Supercomputing Resource Centers' row (Cray at Stennis) as well as or better than 3005B66501's contracted title, so the name cannot pick the line."
+   }
+  },
+  {
+   "record_index": 27,
+   "article_id": "2073298",
+   "piid": "W912DY20F0126",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "announcement_evidence": "was awarded a $26,480,000 firm-fixed-price contract for Department of Defense high performance computing modernization",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "rationale": "The RDT&E half of the HPCMP collision, recorded for transparency. Fiscal 2020 other procurement, Army funds cannot be said to pay for an RDT&E program element's own work, and the announcement's phrasing is descriptive lower-case prose rather than a titled program reference, so the identity evidence is weaker here than the money evidence is against it.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 28,
+   "article_id": "3456563",
+   "piid": "W912HZ23F0188",
+   "pe_bli": "3005B66501",
+   "program_name": "High Perf Computing Mod Pgm (HPCMP)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "was awarded a $26,480,000 firm-fixed-price contract to support the High Performance Computing Modernization Program",
+   "lexicon_quote": "High Perf Computing Mod Pgm (HPCMP)",
+   "rationale": "The word 'support' here is not the §3 generic-services pattern: this is a firm-fixed-price hardware delivery by Hewlett Packard Enterprise at Stennis Space Center, contracted by the Engineer Research and Development Center and obligated with fiscal 2023 other procurement, Army funds, which is precisely what the HPCMP procurement line buys. The program is named in full, and the procurement appropriation selects this line over the RDT&E PE that carries the same name (proposed separately as weak).",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The word 'support' does not make this the §3 generic-services pattern: procurement dollars (FY2023 other procurement, Army) cannot buy engineering-support labor, and a firm-fixed-price HPE delivery at the Stennis DSRC against the matching OPA line is the line's own hardware buy."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The announcement names 'the High Performance Computing Modernization Program' verbatim, which is an exact index row under 0603461A (doc 351); a second PE owning the identical name is the collision lens B exists to catch, and 'to support' further weakens which line's own work is bought."
+   }
+  },
+  {
+   "record_index": 28,
+   "article_id": "3456563",
+   "piid": "W912HZ23F0188",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "announcement_evidence": "was awarded a $26,480,000 firm-fixed-price contract to support the High Performance Computing Modernization Program",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "rationale": "The competing owner of the HPCMP name, recorded so the choice is auditable. The exact name sits on this RDT&E PE, but the award obligates fiscal 2023 other procurement, Army funds, so the action does not fund this line's own work. Name present, attribution not established.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 33,
+   "article_id": "1604905",
+   "piid": "W31P4Q15C0102",
+   "pe_bli": "2605C70302",
+   "program_name": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "lexicon_doc": "345",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "was awarded a $26,436,939 modification (P00053) to contract W31P4Q-15-C-0102 for procurement of Joint-Air-to-Ground missiles",
+   "lexicon_quote": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "rationale": "The announcement's 'Joint-Air-to-Ground missiles' is the program's own name with an added hyphen and a plural, awarded to Lockheed Martin Orlando — the JAGM prime — through Redstone Arsenal, so identity is not in doubt and the alias is a punctuation variant rather than a resemblance. The action is explicitly a procurement of the missiles themselves, which points at the procurement budget line 2605C70302 rather than the RDT&E PE 0605450A that owns the same name (proposed separately as weak). One caveat for the refute lenses: the announcement cites fiscal 2017 other procurement, Army funds, where a JAGM missile buy would normally be missile procurement, so the appropriation label and the line are not a perfect match even though both are procurement.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Appropriation mismatch on the face of the announcement: FY2017 'other procurement (Army)' funds were obligated, but 2605C70302 is a C-prefix Missile Procurement, Army line — a JAGM missile buy on this line would carry missile procurement money, so the cited appropriation does not belong to this line and the award cannot be shown to have paid for its work."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The index carries the IDENTICAL name string 'The AGM-179 Joint Air-to-Ground Missile (JAGM)' on two PEs — 0605450A (doc 355) and 2605C70302 (doc 345) — so 'Joint-Air-to-Ground missiles' links equally well to the other owner; the proposal's own admission that the cited other-procurement appropriation is not missile procurement removes the only tiebreak."
+   }
+  },
+  {
+   "record_index": 33,
+   "article_id": "1604905",
+   "piid": "W31P4Q15C0102",
+   "pe_bli": "0605450A",
+   "program_name": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "for procurement of Joint-Air-to-Ground missiles",
+   "lexicon_quote": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "rationale": "The RDT&E side of the JAGM name collision, recorded so the resolution is visible. The announcement says the action procures missiles and obligates procurement-account funds; buying end items does not pay for a development program element's own work, so the attribution claim fails even though the name match is identical to the one accepted on the procurement line.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 35,
+   "article_id": "3036361",
+   "piid": "W15QKN18C0073",
+   "pe_bli": "6552C67500",
+   "program_name": "Improved Armored Cabs (IAC)",
+   "lexicon_doc": "345",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for Improved Armored Cab Modification kits and fielding spares parts kits for the Multiple Launch Rocket System M270A2",
+   "lexicon_quote": "Improved Armored Cabs (IAC)",
+   "rationale": "This is the strongest kind of evidence the rubric contemplates: the announcement names not just the platform but the specific modification the line funds. 'Improved Armored Cab Modification kits' is the singular of the index name 'Improved Armored Cabs (IAC)', which this PE's own narrative owns alongside 'The M270A2 Multiple Launch Rocket System (MLRS)' — the very launcher the announcement names. The money agrees: fiscal 2022 missile procurement, Army funds buying production kits and fielding spares against MLRS Mods, a procurement line. The RDT&E twin 0603778A also carries an M270A2 name and is proposed separately as weak.",
+   "verdict": "link",
+   "refute_b": {
+    "refuted": false,
+    "reason": "The discriminating name is unique: 'Improved Armored Cabs (IAC)' appears on 6552C67500 alone (the only other 'armored cab' string in the index is none), and although 0603778A also owns an M270A1/M270A2 MLRS name, it does not own the IAC modification, so the kit evidence cannot link equally well there."
+   }
+  },
+  {
+   "record_index": 35,
+   "article_id": "3036361",
+   "piid": "W15QKN18C0073",
+   "pe_bli": "0603778A",
+   "program_name": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "for Improved Armored Cab Modification kits and fielding spares parts kits for the Multiple Launch Rocket System M270A2",
+   "lexicon_quote": "M270A1 and M270A2 Multiple Launch Rocket System (MLRS)",
+   "rationale": "Recorded because this PE owns an M270A2 designator name too. The award buys production modification kits and fielding spares with missile procurement funds, which is fielding, not product-improvement development, so it does not pay this RDT&E line's own work. The specific named article, the Improved Armored Cab, belongs to the procurement line's narrative, which is where the link was proposed.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 50,
+   "article_id": "1750408",
+   "piid": "W31P4Q13C0129",
+   "pe_bli": "0648CC0007",
+   "program_name": "Command Launch Unit (CLU)",
+   "lexicon_doc": "345",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Raytheon/Lockheed Martin Javelin JV, Tucson, Arizona, was awarded a $26,182,720 modification (P00136) to contract W31P4Q-13-C-0129 to procure Command Launch Unit retrofits",
+   "lexicon_quote": "Command Launch Unit (CLU)",
+   "rationale": "'Command Launch Unit' is the index name verbatim, and the identity is nailed down by the awardee being the Javelin joint venture itself, contracting through Redstone Arsenal — the CLU here can only be the Javelin CLU, not some other command launch unit. The action procures retrofits of the end item, which is the fielding work the Javelin system procurement line funds, so the procurement summary 0648CC0007 is the right owner rather than the RDT&E PE 0604611A that carries the same CLU name (proposed separately as weak). Caveat for the refute lenses: the announcement cites other procurement, Army funds where Javelin buys are normally missile procurement.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Two lens-A grounds converge: FY2018 'other procurement, Army' money is cited against a CC-prefix Missile Procurement, Army line (Javelin CLU procurement is MPA, so the appropriation does not match), and 0648CC0007 is the 'Javelin (AAWS-M) System Summary' rollup rather than the line that funds CLU retrofits."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "'Command Launch Unit (CLU)' is an identical index row on two PEs — 0604611A (JAVELIN, doc 355) and 0648CC0007 (doc 345) — and the Javelin JV contractor identifies the system, not the line, so the announcement's words would link the retrofit award to the other owner exactly as well."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "1750408",
+   "piid": "W31P4Q13C0129",
+   "pe_bli": "0604611A",
+   "program_name": "Command Launch Unit (CLU)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "to procure Command Launch Unit retrofits",
+   "lexicon_quote": "Command Launch Unit (CLU)",
+   "rationale": "The Javelin RDT&E PE owns the identical CLU name, so it is recorded rather than quietly dropped. The announcement describes procurement of retrofit hardware against a procurement appropriation; that does not fund a development line's own work, so the attribution fails here while the name match alone would have looked just as good as on the procurement line.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 62,
+   "article_id": "2634734",
+   "piid": "W56HZV21F0234",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "for procurement of M978A4 Heavy Expanded Mobility Tactical Truck Tankers, M984A4 Heavy Expanded Mobility Tactical Truck Wreckers and M1070A1 Heavy Equipment Transporters",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "rationale": "The HEMTT name and the heavy equipment transporter both appear verbatim and both belong to this line's narrative, so the identity is real. What fails is the money: the award is obligated entirely with fiscal 2010 Foreign Military Sales (Egypt) funds, a customer-funded case, so the action buys trucks for Egypt rather than paying for the Army's own Family of Heavy Tactical Vehicles line. Under the §1 attribution standard that is not this program element's own work, so it stays below link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 69,
+   "article_id": "2035907",
+   "piid": "W91CRB20C5008",
+   "pe_bli": "9060B28501",
+   "program_name": "Advanced Field Artillery Tactical Data System (AFATDS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "Foreign Military Sales (Poland and Romania) contract for field artillery C3, Advanced Field Artillery Tactical Data System",
+   "lexicon_quote": "Advanced Field Artillery Tactical Data System (AFATDS)",
+   "rationale": "The full program name is present verbatim and this Fire Support C2 Family line owns it, but two things hold the proposal below link. The funding is entirely Foreign Military Sales money for Poland and Romania, so the action pays for partner-nation systems rather than this line's own work — the appropriation failure mode Lens A hunts. And the same name is owned by a second program element in this org's index (0203728A, the JADOCS narrative), so even the identity resolution is contested. Default to not linking.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 7,
+   "article_id": "2026407",
+   "piid": "W56HZV20D0016",
+   "pe_bli": "6866D15500",
+   "program_name": "Medium Tactical Vehicle (MTV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "firm-fixed-price Foreign Military Sales (Somalia) contract for two commercial Medium Tactical Vehicle Variants -- the 6x6 General Transport Truck and the 6x6 Wrecker Vehicle Recovery Truck, and spare parts",
+   "lexicon_quote": "Medium Tactical Vehicle (MTV)",
+   "rationale": "Rejected under the §3 weak-generic-name pattern. The announcement uses 'Medium Tactical Vehicle' as an English size descriptor for two commercial trucks bought for Somalia, explicitly qualifying them as 'commercial ... Variants', which is the opposite of the Army's FMTV program of record that this line funds. The award is also wholly Foreign Military Sales work, so even if the name were the program's, the action would not pay for this line's own work.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 51,
+   "article_id": "2362207",
+   "piid": "W56HZV20D0113",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "to provide test, teardown and evaluation and repair of the components of the Integrated Helmet and Display Sight System of the AH-64 Apache attack helicopter",
+   "lexicon_quote": "AH-64 MODS",
+   "rationale": "Rejected under the §3 platform pattern, twice over. The AH-64 designator appears only as the aircraft the equipment is fitted to, not as the program being funded, and the thing actually named — the Integrated Helmet and Display Sight System — appears nowhere in this org's index under any program element. The work itself is depot test, teardown and repair of components, which is sustainment services rather than the modification work the AH-64 MODS line funds.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 57,
+   "article_id": "1032766",
+   "piid": "W58RGZ13D0119",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "to increase the ceiling, making the estimated face value $61,071,361 for Apache simulation and modeling, acquisition and training for the AH-64 helicopter",
+   "lexicon_quote": "AH-64 MODS",
+   "rationale": "Rejected under two §3 patterns at once. The action is a ceiling increase on an indefinite-delivery contract whose work locations and funding 'will be determined with each order' and which cites no appropriation at all, which is the IDIQ-ceiling pattern the rubric rejects by design. The content is simulation, modeling and training services, generic services around a platform, and the AH-64 designator here names the helicopter the services support, not the modification program element.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 2,
+   "article_id": "694393",
+   "piid": "W909MY16C0010",
+   "pe_bli": "0214KA4510",
+   "program_name": "Forward Looking Infrared (IFLIR)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "to design, develop, fabricate and qualify a production Dewar cooler bench to improve the Army's existing third generation forward looking infrared sensor technology",
+   "lexicon_quote": "Forward Looking Infrared (IFLIR)",
+   "rationale": "Rejected under the §3 weak-generic-name pattern: 'forward looking infrared' is used here as the name of a sensor technology class, qualified as 'third generation', not as a reference to the IFLIR program of record that this line funds. The work is component science — designing and qualifying a Dewar cooler bench — paid with fiscal 2016 research, development, test and evaluation funds, whereas 0214KA4510 is a procurement line, so the money test fails as well.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 58,
+   "article_id": "694393",
+   "piid": "W909MY16C0009",
+   "pe_bli": "0214KA4510",
+   "program_name": "Forward Looking Infrared (IFLIR)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "to design, develop, fabricate and qualify a producible Dewar cooler bench to improve the Army's existing third generation forward looking infrared sensor technology",
+   "lexicon_quote": "Forward Looking Infrared (IFLIR)",
+   "rationale": "The companion award to record 2 in the same daily digest, rejected for the same reasons: the phrase names a generation of sensor technology rather than the IFLIR program, and the action is RDT&E-funded component development of a Dewar cooler bench, which cannot pay a procurement line's own work. The §3 weak-generic-name pattern applies.",
+   "verdict": "wrong"
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+{
+ "chunk": "chunk_115_A.json",
+ "proposals": [
+  {
+   "record_index": 3,
+   "article_id": "606752",
+   "piid": "W52P1J11C0005",
+   "pe_bli": "4370EA0575",
+   "program_name": "Ammunition Supply Point (ASP)",
+   "lexicon_doc": "349",
+   "lexicon_quote": "Ammunition Supply Point (ASP)",
+   "announcement_evidence": "for ammunition supply point and theater area storage support to the 1st Theater Support Command, Camp Arifjan, Kuwait",
+   "match_basis": "exact-name",
+   "verdict": "wrong",
+   "rationale": "The index name 'Ammunition Supply Point (ASP)' appears in the announcement as an exact lowercase string, which is precisely the string-resemblance trap the rubric warns about. Section 3 rejects it on two patterns at once. First, generic services / base operations: what Leidos is being paid for is manning and operating a theater storage yard in Kuwait for the 1st Theater Support Command, not producing or fielding the Ammunition Peculiar Equipment the PE buys; the phrase names a FACILITY at Camp Arifjan, not the procurement program. Second, the award is 'Fiscal 2015 operations and maintenance (Army) funds' obligated against a modification to a services contract, while 4370EA0575 is a procurement line — O&M sustainment attached to a procurement line is the documented failure mode from the 2026-09-04 held-out study. Publishing this would assert that overseas theater ammunition storage support paid for Ammunition Peculiar Equipment's own work, which the evidence does not support."
+  },
+  {
+   "record_index": 6,
+   "article_id": "1037823",
+   "piid": "W58RGZ17C0027",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Fire Control Radar (FCR)",
+   "announcement_evidence": "to provide live cycle contractor support for the fire control radar and unmanned aerial system tactical common data link assembly",
+   "match_basis": "exact-name",
+   "verdict": "wrong",
+   "rationale": "Longbow LLC is the real builder of the AH-64 Apache's Longbow fire control radar and the contracting office (W58RGZ, Redstone) is the Apache activity, so the surface match to the index row 'Fire Control Radar (FCR)' under AH-64 Apache Block IIIA Reman is not accidental. It still fails Section 3. The thing purchased is 'live [life] cycle contractor support' — logistics/CLS for already-fielded hardware — which is the 'generic services: engineering support, logistics' pattern; the FCR is named only as the equipment being sustained, i.e. a subsystem of a PLATFORM the contract supports rather than the remanufacture work 5757A05111 funds. The funding line reinforces it: 'Fiscal 2017 other funds', a sustainment-style appropriation, against an Aircraft Procurement Army remanufacture line. A published link here would claim a CLS contract paid for Apache Block IIIA remanufacture, which is a different claim from the one the announcement supports."
+  },
+  {
+   "record_index": 0,
+   "article_id": "2132503",
+   "piid": "W58RGZ20F0332",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Fire Control Radar (FCR)",
+   "announcement_evidence": "was awarded a $25,025,452 firm-fixed-price contract for radar hardware repair and support",
+   "match_basis": "llm-description",
+   "verdict": "wrong",
+   "rationale": "Recorded so the near-miss is on the ledger rather than left for a looser matcher to find: the same contractor (Longbow LLC, Orlando) and the same Apache contracting office (W58RGZ, Redstone) as record 6, and the funds are 'Fiscal 2018 aircraft procurement, Army' — the appropriation 5757A05111 actually sits in, which is what makes this tempting. It is still rejected under Section 3. The announcement names NO program: 'radar hardware repair and support' is a bare description, the word 'radar' never appears as a designator, and repair-and-support is the generic-services pattern. Inferring 'Fire Control Radar (FCR)' and therefore AH-64 Apache Block IIIA Reman from the contractor's identity alone is exactly the 'evidence is just a contractor name' failure lens B exists to catch. No link; the smaller true number stands."
+  }
+ ]
+}

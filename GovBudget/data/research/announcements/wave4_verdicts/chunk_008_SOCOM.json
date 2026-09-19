@@ -1,0 +1,507 @@
+{
+ "chunk": "chunk_008_SOCOM.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "3112446",
+   "piid": "FA863722DB001",
+   "pe_bli": "0201ARMOWT",
+   "program_name": "OA-1K",
+   "lexicon_doc": "53",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "in support of Armed Overwatch",
+   "lexicon_quote": "ate Production in 3rd QTR FY 2027. The Armed Overwatch program will procure 6 SO-peculiar OA-1K aircraft in FY 2026.",
+   "rationale": "This is the USSOCOM Armed Overwatch aircraft award (FA8637-22-D-B001, July 2022) and the announcement says procurement funds were obligated at award alongside RDT&E, for 'the procurement of up to 75 aircraft'. The index row's name is the designator OA-1K, which the 2022 announcement does not yet use, but the alias is the budget line's OWN words: 0201ARMOWT's narrative reads 'The Armed Overwatch program will procure 6 SO-peculiar OA-1K aircraft', so OA-1K and Armed Overwatch are the same acquisition, not a resemblance I supplied. 0201ARMOWT is Procurement, Defense-Wide (0300D) titled 'Armed Overwatch/Targeting' — the dedicated procurement line for this program, not a rollup — and Armed Overwatch is the program itself, not a platform the contract merely supports.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Announcement obligates procurement funds at award and 0201ARMOWT is the P-1 line (account 0300D, SOCOM) titled 'Armed Overwatch/Targeting' with one index name — a dedicated, non-catch-all procurement line — and the contract procures up to 75 Armed Overwatch aircraft, i.e. the program's own end item, not a platform it supports."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The only other index owner of the Armed Overwatch name is 1160403BB, and that is the same program's RDT&E project rather than a rival owner: 0201ARMOWT's own program title is 'Armed Overwatch/Targeting', the paragraph obligates procurement funds, and OA-1K is the real designator of the Armed Overwatch aircraft, not an invented alias or a different variant."
+   }
+  },
+  {
+   "record_index": 0,
+   "article_id": "3112446",
+   "piid": "FA863722DB001",
+   "pe_bli": "1160403BB",
+   "program_name": "Armed Overwatch/Targeting, Program Number 814",
+   "lexicon_doc": "111",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Research, development, test, and evaluation; and procurement funds in the amount of $170,000,000 were obligated at time of the award",
+   "lexicon_quote": "Armed Overwatch/Targeting, Program Number 814",
+   "rationale": "The RDT&E half of the same award. The announcement states RDT&E funds were obligated at award, and PE 1160403BB (RDT&E, Defense-Wide 0400D, 'Aviation Systems') carries a project whose own title is 'Armed Overwatch/Targeting, Program Number 814' — the announcement's phrase 'Armed Overwatch' is the head of that project title. This is proposed alongside the 0201ARMOWT procurement proposal deliberately: the announcement names BOTH colors of money, so the R line and the P line of one program each executed part of this action rather than one of them being the wrong owner. Caveat for the refute lenses: 'Aviation Systems' is a multi-project PE, so if the standard is that only a single-program line may be named, this is the weaker of the two.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement names RDT&E among the funds obligated at award and 1160403BB is R-1/0400D, so the color matches; 'Aviation Systems' is a multi-project PE but its own narrative owns project 814 'Armed Overwatch/Targeting', so the R dollars on this action execute that project rather than a title-based catch-all (CATCHALL_TITLE does not match)."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The collision is real (0201ARMOWT's program title is the identical string 'Armed Overwatch/Targeting'), but the paragraph obligates BOTH RDT&E and procurement funds, so the R half resolves to this project; the name is copied verbatim from the index row, no other PE carries project 814, and no variant or increment differs."
+   }
+  },
+  {
+   "record_index": 2,
+   "article_id": "2906241",
+   "piid": "H9240222D0001",
+   "pe_bli": "1160431BB",
+   "program_name": "Counter Uncrewed Aerial System (CUxS), Program Number 717",
+   "lexicon_doc": "111",
+   "announcement_evidence": "for a counter-unmanned systems, systems integration partner (SIP)",
+   "rationale": "The counter-UAS name is present in substance, but the evidence does not meet the standard. The announcement names no program — it describes a capability area ('counter-unmanned systems') and a contracting role ('systems integration partner'), which is the §3 weak-generic-name pattern; the $967.6M figure is an IDIQ maximum ceiling, not an obligation; and the only money actually obligated is fiscal 2022 operations and maintenance against an RDT&E PE, the exact O&M-on-an-R-line failure mode the rubric flags. The other index owner of the CUAS name, 0204WARSYS, is the 'Warrior Systems <$5M' catch-all the loader excludes, so it is not proposed.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 6,
+   "article_id": "3630282",
+   "piid": "H9240124D0001",
+   "pe_bli": "1160431BB",
+   "program_name": "Next Generation Tactical Communications (NGTC), Program Number 798",
+   "lexicon_doc": "73",
+   "announcement_evidence": "the continued procurement of next generation tactical communications radios and associated sustainment and support services",
+   "rationale": "The NGTC name appears almost verbatim, but the money points the other way: this is a procurement-funded radio buy ('Fiscal 2024 procurement funds ... are being obligated'), and the only non-catch-all index owner of the NGTC name is PE 1160431BB, an RDT&E line (0400D, 'Warrior Systems'). The procurement owner of the same name is 0204WARSYS, 'Warrior Systems <$5M', which the loader's CATCHALL_TITLE rule excludes, so no publishable line can carry this action. Recorded as weak rather than link so a production radio buy is not asserted to execute an R line.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 11,
+   "article_id": "2365695",
+   "piid": "H9240320D0006",
+   "pe_bli": "1160431BB",
+   "program_name": "SOF Personal Equipment Advanced Requirements (SPEAR), Program Number 807",
+   "lexicon_doc": "111",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Special Operations Forces Personal Equipment Advance Requirements (SPEAR) tactical stand-alone and modular supplemental armor protection ballistic plates",
+   "rationale": "The announcement spells out the program name and gives the acronym verbatim — 'Special Operations Forces Personal Equipment Advance Requirements (SPEAR)' against the index's 'SOF Personal Equipment Advanced Requirements (SPEAR)' — an acronym-identical alias where SOF is simply expanded. The appropriation matches: fiscal 2020 RDT&E funds were obligated at award, and 1160431BB is RDT&E, Defense-Wide (0400D). SPEAR is the program the PE funds, not a platform the contract supports, and the only competing index owner of the SPEAR name is a catch-all '<$5M' line. Caveat for lens A: the $450M ceiling is a plate-production vehicle, so only the obligated RDT&E dollars clearly belong to this line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The only money the announcement names is 'Fiscal 2020 research, development, testing and evaluation funds ... obligated at the time of award', and 1160431BB is R-1/0400D 'Warrior Systems' owning SPEAR project 807 — the plates are SPEAR's own item, not a platform; the $450M FFP ceiling is production-shaped but the government itself assigned the at-award obligation to RDT&E, so there is no color mismatch to break."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "SPEAR appears on exactly one index row (1160431BB) — lens P's supposed '<$5M' competitor does not exist in this index — the announcement spells the program name out with the identical acronym, and the evidence is the program name, not the contractor's."
+   }
+  },
+  {
+   "record_index": 13,
+   "article_id": "3731560",
+   "piid": "H9240324D0002",
+   "pe_bli": "0204TACVEH",
+   "program_name": "Non-Standard Commercial Vehicle (NSCV)",
+   "lexicon_doc": "92",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the acquisition of non-standard commercial vehicles (NSCV)-life cycle replacement and ancillary vehicle modifications",
+   "rationale": "The announcement names the program and its acronym exactly as the index row does, and the scope — acquisition and lifecycle replacement of USSOCOM's NSCV fleet with armament, communications and modification packages — is precisely what 0204TACVEH's narrative describes ('Non-Standard Commercial Vehicle (NSCV), Program Number 804. Program provides a base vehicle that...'). 0204TACVEH is Procurement, Defense-Wide (0300D, 'Tactical Vehicles'), which is the right color for a $350M vehicle-buy vehicle; the other index owner, 1160480BB, is an RDT&E line running under $10M a year and cannot be executing fleet replacement at this scale.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "REFUTED on money: the full announcement names NO appropriation at all, and the only obligation it states is $647,357 'for program management support', with the scope adding fleet lifecycle replacement plus program management, test support, driver new equipment training, engineering changes, system technical services, parts and shipping — sustainment/services content attached to a 0300D procurement line, the exact 2026-09-04 failure mode, and the lake carries no federal_accounts_funding_this_award for H9240324D0002 so the loader's money-color guard cannot catch it either (contrast record 22, whose 2016 NSCV award says 'procurement appropriation' outright)."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "1160480BB owns the identical index name 'Non-Standard Commercial Vehicle (NSCV)' and this paragraph supplies nothing that picks between them — no appropriation color is stated anywhere in the record and the only obligation named is $647,357 of 'program management support' — so the same evidence would link the award to the RDT&E line equally well."
+   }
+  },
+  {
+   "record_index": 14,
+   "article_id": "2932911",
+   "piid": "H9222217D0021",
+   "pe_bli": "1160431BB",
+   "program_name": "Next Generation Tactical Communications (NGTC), Program Number 798",
+   "lexicon_doc": "73",
+   "announcement_evidence": "the Special Operations Forces Tactical Communications Next Generation Manpack, AN/PRC 167 radios and ancillary equipment",
+   "rationale": "Same pattern as record 6 and weaker: the announcement says 'Tactical Communications Next Generation Manpack', not the NGTC program name, and the action is a ceiling increase with no funds obligated at all ('No funds are being obligated via this modification'), so there is no appropriation to place on any line. The only non-catch-all owner of the name is an RDT&E PE while the action is a continued purchase of production radios.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 15,
+   "article_id": "3804866",
+   "piid": "H9240824D4343",
+   "pe_bli": "2012C130J",
+   "program_name": "Silent Knight Radar (SKR)",
+   "lexicon_doc": "167",
+   "announcement_evidence": "sustainment, support, research, development, and supplemental objectives related to the Silent Knight radar systems",
+   "rationale": "The Silent Knight Radar name is unambiguous, but the attribution is not: four SOCOM lines in this index own the identical name — 0201RWUPGR, 1000CV2200, 1160403BB and 2012C130J — because SKR is installed on MH-47/MH-60, CV-22 and AC/MC-130J alike. The announcement names a PEO (Fixed Wing), which narrows it toward the AC/MC-130J line but does not name a platform or a variant, and the money obligated is fiscal 2024 operations and maintenance on an initial task order for sustainment — the O&M-sustainment pattern the rubric treats as a refutation. Weak: a real name with no evidence that resolves WHICH line's own work was paid for.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 16,
+   "article_id": "2829348",
+   "piid": "H9240822D0001",
+   "pe_bli": "1160403BB",
+   "program_name": "Integrated Tactical Mission Systems (ITMS), Program Number 789",
+   "lexicon_doc": "111",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Integrated Tactical Mission Systems engineering and integration support",
+   "rationale": "The program name appears verbatim ('Integrated Tactical Mission Systems'); the index row adds only the acronym and the J-book project number. The work described — bringing SOF 'a system-of-system aircraft computer interface allowing multiple, contrasting systems to better communicate' — is development of the ITMS system itself, not the generic engineering-support pattern §3 rejects, and the appropriation matches exactly: fiscal 2022 RDT&E funds were obligated at award against an RDT&E PE (0400D, 'Aviation Systems'). Note the index carries two rows for this same name and PE (docs 187 and 111); doc 111 is cited here.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "'Fiscal 2022 research, development, test and evaluation funds ... obligated at the time of award' matches 1160403BB (R-1/0400D), and the engineering/integration work builds the named ITMS capability itself (project 789 in this PE's narrative) rather than being the §3 generic-services pattern of engineering support with no named program."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Both index rows carrying the ITMS name (projects 780 and 789) belong to the same PE 1160403BB, so there is no alternative owner to lose the award to, the program name appears in full rather than as a contractor or generic phrase, and the doc-111/doc-187 choice cannot change the published attribution."
+   }
+  },
+  {
+   "record_index": 18,
+   "article_id": "781719",
+   "piid": "H9222216C0078",
+   "pe_bli": "0305208BB",
+   "program_name": "The All Source Information Fusion (ASIF)",
+   "lexicon_doc": "223",
+   "announcement_evidence": "All Source Information Fusion (ASIF) software licenses and the associated support services",
+   "rationale": "The name match is as good as it gets — ASIF appears in full with its acronym and is owned by exactly one PE in this index — but the money refutes the attribution. 0305208BB is an RDT&E PE (0400D, 'Distributed Common Ground/Surface Systems') whose FY2024 actual is $6.2M, while this is a $222.1M firm-fixed-price licence-and-support contract funded with fiscal 2016 operations and maintenance. A sustainment-colored award two orders of magnitude larger than the R line cannot be that line's own work; recorded as weak rather than link on the smaller-true-number rule.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 19,
+   "article_id": "2854300",
+   "piid": "H9224120F0020",
+   "pe_bli": "0610MH47",
+   "program_name": "MH-47G",
+   "lexicon_doc": "92",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to procure six MH47-G renew rotary wing aircraft and eight spare shipsets",
+   "rationale": "'MH47-G' is the unhyphenated spelling of the index designator MH-47G. The action procures whole renew airframes, which is what the dedicated MH-47 Chinook procurement line funds — its narrative is about the authorized MH-47G fleet and the legacy sheet-metal airframes being replaced ('ARSOA is authorized 69 highly specialized MH-47G Chinook aircraft, 61 of the legacy airframes were of sheet metal construction'). The appropriation matches: 'Fiscal 2021 procurement' funds (Procurement, Defense-Wide 0300D) are obligated alongside Army aircraft procurement, and 0610MH47 is that 0300D line. The competing owner, 0201RWUPGR ('Rotary Wing Upgrades and Sustainment'), funds upgrades to fielded aircraft, not new airframes — proposed separately as weak so the collision is on the record.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "'Fiscal 2021 procurement; and aircraft procurement, Army funds' matches 0610MH47 (P-1/0300D 'MH-47 Chinook'), and the lake confirms the PIID's funding accounts are 021-2031;097-0300; buying six complete renew airframes is the aircraft line's own end item, and the line carries a single index name so it is no rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "0201RWUPGR also owns 'MH-47G' and both lines are procurement, so money color cannot separate them — but the action buys six complete 'renew' airframes plus eight spare shipsets, which is the dedicated 'MH-47 Chinook' line's business rather than 'Rotary Wing Upgrades and Sustainment', and 'MH47-G' is a spelling of the same designator, not a different variant."
+   }
+  },
+  {
+   "record_index": 19,
+   "article_id": "2854300",
+   "piid": "H9224120F0020",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "MH-47G",
+   "lexicon_doc": "92",
+   "announcement_evidence": "to procure six MH47-G renew rotary wing aircraft and eight spare shipsets",
+   "rationale": "Recorded as the alternative owner of the same designator so the name collision is visible in the denominator. 0201RWUPGR owns 'MH-47G' in its narrative, but its line title is 'Rotary Wing Upgrades and Sustainment' and its narrative is about correcting deficiencies and obsolescence on fielded aircraft; this action buys six renew airframes and spare shipsets, which belongs to the MH-47 Chinook procurement line instead. Name present, evidence points elsewhere — weak, not link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 21,
+   "article_id": "2952403",
+   "piid": "H9224120F0020",
+   "pe_bli": "0610MH47",
+   "program_name": "MH-47G",
+   "lexicon_doc": "92",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to procure six MH47-G renew rotary wing aircraft in support of U.S. Special Operations Command",
+   "rationale": "The fiscal 2022 tranche of the same MH-47G renew delivery order (H92241-20-F-0020) as record 19, and the same reasoning: 'MH47-G' normalizes to the index designator MH-47G, the action procures complete renew airframes rather than upgrade kits, and 'Fiscal 2022 procurement' (Procurement, Defense-Wide 0300D) is the color 0610MH47 'MH-47 Chinook' carries. The record index matters here because this is a distinct paragraph and article from record 19 against the identical PIID.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same delivery order, fiscal 2022 tranche: 'Fiscal 2022 procurement and Army funds' obligated against a 0300D aircraft procurement line whose lake accounts include 097-0300, procuring whole MH-47G renew airframes — the line's own procurement, not sustainment or support of a platform."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same collision and same resolution as record 19 on a distinct FY2022 paragraph against the identical PIID: the competing owner 0201RWUPGR is the upgrades-and-sustainment line while this action procures whole renew aircraft, and no other PE or variant claims the MH-47G designator."
+   }
+  },
+  {
+   "record_index": 21,
+   "article_id": "2952403",
+   "piid": "H9224120F0020",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "MH-47G",
+   "lexicon_doc": "92",
+   "announcement_evidence": "to procure six MH47-G renew rotary wing aircraft in support of U.S. Special Operations Command",
+   "rationale": "Alternative owner of the MH-47G designator, recorded for the same reason as on record 19: 0201RWUPGR's narrative owns the name but the line funds upgrades and sustainment of fielded MH-47Gs, while this action buys renew airframes. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 22,
+   "article_id": "836904",
+   "piid": "H9222216D0043",
+   "pe_bli": "0204TACVEH",
+   "program_name": "Non-Standard Commercial Vehicle (NSCV)",
+   "lexicon_doc": "92",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for the purchase of non-standard commercial vehicles in support of U.S. Special Operations Command",
+   "rationale": "The program name appears in full (the announcement spells it out and then describes exactly the NSCV concept: modified commercial trucks and SUVs that keep the OEM profile while accepting armor, heavy-duty suspension, run-flats and communications). The appropriation is unambiguous — fiscal 2016 procurement funds obligated at award and the announcement states the contract 'will be funded at the delivery order level with procurement appropriation' — matching 0204TACVEH, Procurement, Defense-Wide (0300D, 'Tactical Vehicles'), whose narrative owns NSCV as Program Number 804. Note this record shares article 836904 with record 23, which is why the record index is carried.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement states 'fiscal 2016 procurement funds in the amount of $709,765 being obligated at time of award' and 'This contract will be funded at the delivery order level with procurement appropriation', matching 0204TACVEH (P-1/0300D 'Tactical Vehicles'), and the work is the purchase of the NSCVs the line's own narrative owns as Program 804."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The NSCV name does collide with 1160480BB, but unlike record 13 this paragraph states 'fiscal2016 procurement funds' obligated at award, which picks the procurement line over its RDT&E twin; the announcement also describes the NSCV concept itself rather than naming a contractor or a different variant."
+   }
+  },
+  {
+   "record_index": 23,
+   "article_id": "836904",
+   "piid": "H9222216C0096",
+   "pe_bli": "1160483BB",
+   "program_name": "Dry Combat Submersible (DCS)",
+   "lexicon_doc": "187",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for the design, development, construction, test, production and sustainment of the dry combat submersible system",
+   "rationale": "The dry combat submersible is named in full and is a program, not a platform a support contract touches: this is the DCS development award itself, described as filling a capability gap for surface-launched dry submersibles. The work named first is design, development, construction and test, and the announcement obligates fiscal 2016 RDT&E funds at award — matching 1160483BB, RDT&E Defense-Wide (0400D, 'Maritime Systems'), whose narrative carries 'Dry Combat Submersible (DCS), Program Number 816'. The procurement sibling 2010US owns the same name and is proposed separately as weak.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full announcement says 'Fiscal 2016 research, development, test, and evaluation funds in the amount of $26,845,792 are being obligated at time of award' — matching 1160483BB (R-1/0400D 'Maritime Systems', project 816 DCS) — and the lake's accounts for this PIID (097-0100;097-0300;097-0400) intersect it; the later O&M/procurement tranches do not break the at-award action, and DCS is the program being designed and built, not a platform supported."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "2010US owns the identical index name 'Dry Combat Submersible (DCS)' under 'Underwater Systems', and the record text names no appropriation color at all — lens P's 'fiscal 2016 RDT&E funds' does not appear in the paragraph — while the announced scope explicitly includes 'production and sustainment', so the same evidence links the competing procurement owner at least as well."
+   }
+  },
+  {
+   "record_index": 23,
+   "article_id": "836904",
+   "piid": "H9222216C0096",
+   "pe_bli": "2010US",
+   "program_name": "Dry Combat Submersible (DCS)",
+   "lexicon_doc": "92",
+   "announcement_evidence": "for the design, development, construction, test, production and sustainment of the dry combat submersible system",
+   "rationale": "The alternative owner: 2010US is the Procurement, Defense-Wide line 'Underwater Systems' and its narrative also carries 'Dry Combat Submersible (DCS), Program Number 816'. The announcement does mention production, and the full article says later-year procurement funds would be used, but the funds obligated at award are RDT&E and the record text visible here names no procurement color, so the evidence does not place this action on the P line. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 29,
+   "article_id": "1884099",
+   "piid": "H9222216D0033",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "Silent Knight Radar (SKR)",
+   "lexicon_doc": "92",
+   "announcement_evidence": "for continued low-rate initial production of the Silent Knight Radar system",
+   "rationale": "A genuine named program and the right color of money (fiscal 2019 procurement funds obligated), but the name is owned by four lines in this index — 0201RWUPGR, 1000CV2200, 2012C130J and 1160403BB — because the same radar is installed on MH-47/MH-60, CV-22 and AC/MC-130J. The announcement names no platform, variant or PEO, so nothing in the evidence says which line's own procurement this LRIP lot executed. Weak by the collision, not by the name.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 30,
+   "article_id": "2628039",
+   "piid": "H9224121D0001",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "Improved Rotary Wing Electro-Optical Sensor (IRES)",
+   "lexicon_doc": "92",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the Improved Rotary-wing Electro-optical/Infra-red Sensor (IRES) program",
+   "rationale": "The announcement's 'Improved Rotary-wing Electro-optical/Infra-red Sensor (IRES)' and the index's 'Improved Rotary Wing Electro-Optical Sensor (IRES)' are the same program — identical acronym, identical head words, differing only in hyphenation and the added Infra-red. The announcement calls it 'the ... program', not a platform, and the money is exactly this line's: 'Fiscal 2020 and 2021 procurement, defense-wide funds ... obligated at the time of award for IRES sensors and associated program management' against 0201RWUPGR, Procurement Defense-Wide (0300D), whose narrative lists IRES among the rotary-wing upgrades it buys. The competing owner 1160403BB is the RDT&E line, which the procurement color rules out.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "'Fiscal 2020 and 2021 procurement, defense-wide funds ... obligated at the time of award for IRES sensors' is exactly 0201RWUPGR's color (P-1/0300D); buying the IRES sensors is the upgrade this line procures and its narrative names IRES, so the line is a program-grouping BLI, not a title-based catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "IRES is owned by both 0201RWUPGR and 1160403BB, but the paragraph states 'Fiscal 2020 and 2021 procurement, defense-wide funds ... for IRES sensors', which rules out the RDT&E twin; the hyphenation and added 'Infra-red' are the same program under the same acronym, not a different increment."
+   }
+  },
+  {
+   "record_index": 31,
+   "article_id": "1902689",
+   "piid": "H9240319D0004",
+   "pe_bli": "1160431BB",
+   "program_name": "SOF Personal Equipment Advanced Requirements (SPEAR), Program Number 807",
+   "lexicon_doc": "111",
+   "announcement_evidence": "for the purchase of SOF personal equipment advance requirements (SPEAR) coxswain helmet systems",
+   "rationale": "Same program name as record 11 and the same single non-catch-all owner, but the money is the other way round: fiscal 2019 operations and maintenance funds are obligated for a helmet purchase 'in support of ... USSOCOM procurement division', against an RDT&E PE. That is the O&M-attached-to-an-R-line failure mode, so this is recorded as weak even though the name itself is solid.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 32,
+   "article_id": "2027618",
+   "piid": "H9240318D0002",
+   "pe_bli": "5000C13000",
+   "program_name": "C-130 Low Cost Modifications (LCM)",
+   "lexicon_doc": "92",
+   "announcement_evidence": "for operational flight program upgrades on SOF C-130 fixed wing aircraft along with systems engineering and integration support activities",
+   "rationale": "Rejected by design on two §3 patterns at once. The only thing the announcement names that the index carries is the PLATFORM, 'SOF C-130 fixed wing aircraft' — the C-130 Low Cost Modifications program itself is never named — and the work as described is operational flight program upgrades plus 'systems engineering and integration support activities encompassing multiple third party systems sources', which is the generic engineering-support pattern. Naming a platform a modification contract touches is not evidence that this budget line's own work was paid for.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 33,
+   "article_id": "3291712",
+   "piid": "H9224123D0003",
+   "pe_bli": "0207NSAV",
+   "program_name": "C-27J",
+   "lexicon_doc": "92",
+   "announcement_evidence": "to design, modify, integrate and install the 1.2+ avionics update package on the C27J fixed wing aircraft",
+   "rationale": "The designator matches (C27J normalizes to the index's C-27J) and 0207NSAV's narrative does say the line funds C-27J aircraft, but the appropriation refutes the attribution: the announcement obligates fiscal 2021-2023 aircraft procurement, Army funds and procurement, construction and improvement, Coast Guard funds — neither of which is Procurement, Defense-Wide (0300D), the account 0207NSAV executes. The record text is also truncated before that sentence, so the visible evidence is only that a C-27J fleet avionics refresh was bought. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 36,
+   "article_id": "3779333",
+   "piid": "H9240324D0003",
+   "pe_bli": "1160431BB",
+   "program_name": "Ground Organic Precision Strike System (GOPSS), Program Number 710",
+   "lexicon_doc": "73",
+   "announcement_evidence": "GOLAM II munitions, spares, engineering change proposals, new equipment training, conversion from organic precision fires",
+   "rationale": "The announcement's 'organic precision fires-mounted' and 'medium range precision strike system' brush against two 1160431BB projects — GOPSS and Precision Strike Systems (PSS) — but it never names either, and the thing actually bought is GOLAM II munitions, a name the index does not carry. Only one proposal per (record, pe_bli) is permitted and both candidates sit on 1160431BB, so GOPSS is carried here with PSS noted. Add that this is a munitions buy against an RDT&E line whose procurement counterpart is the excluded 'ORDNANCE ITEMS <$5M' catch-all, and the evidence falls short. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 38,
+   "article_id": "2861637",
+   "piid": "H9240118D0005",
+   "pe_bli": "1160431BB",
+   "program_name": "Satellite Deployable Node (SDN), Program Number 757",
+   "lexicon_doc": "111",
+   "announcement_evidence": "Special Operations Forces (SOF) Deployable Node (SDN) satellite communications systems",
+   "rationale": "The acronym SDN matches and the subject is plainly the same family of satellite communications terminals, but the announcement expands SDN as 'SOF Deployable Node' rather than the index's 'Satellite Deployable Node', and the action is a ceiling increase for the continued purchase of SDN-L terminals, ancillary equipment and spares funded with 'operational and maintenance; and procurement' money — production and sustainment colors against an RDT&E PE. The procurement owner of the same name is the excluded 'Warrior Systems <$5M' catch-all. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 40,
+   "article_id": "1797925",
+   "piid": "H9222214D0061",
+   "pe_bli": "1160431BB",
+   "program_name": "SOF Personal Equipment Advanced Requirements (SPEAR), Program Number 807",
+   "lexicon_doc": "111",
+   "announcement_evidence": "for the purchase of SOF Personal Equipment Advance Requirements Tactical Standalone (SPEAR) and Modular Supplemental Armor Protection (MASP) ballistic plates",
+   "rationale": "The SPEAR name is present exactly as in record 11, but this action is a $50M ceiling increase with 'No money was obligated at the time of award' — there is no appropriation at all to place on the RDT&E line, and a bulk ballistic-plate purchase is procurement in substance. With no money color to check, the safe verdict is weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 42,
+   "article_id": "1782108",
+   "piid": "H9240319D0002",
+   "pe_bli": "1160431BB",
+   "program_name": "Advanced Sniper Rifle (ASR)",
+   "lexicon_doc": "111",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for the purchase of advanced sniper rifles in support of U.S. Special Operations Command",
+   "rationale": "The index name appears verbatim but for the plural, and ASR is a specific SOCOM weapon program, not a generic phrase: 1160431BB's narrative lists it among the items it develops and tests ('testing of the Suppressed Upper Receiver Group (SURG), Advanced Sniper Rifle (ASR), Machine Gun (MG) Barrel...'). The appropriation matches the line — fiscal 2019 research, development, test and evaluation funds obligated at award against an RDT&E PE (0400D). The only competing owner of the ASR name is the 'Warrior Systems <$5M' catch-all the loader excludes.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "'Fiscal 2019 research, development, test and evaluation funds ... obligated at the time of award' matches 1160431BB (R-1/0400D 'Warrior Systems'), whose narrative owns ASR testing; the rifles are the program's own item and the competing ASR owner 0204WARSYS is the '<$5M' catch-all the loader excludes, so no procurement-line alternative was wrongly bypassed."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The only other owner of the ASR name is 0204WARSYS 'Warrior Systems <$5M', a catch-all the loader excludes by design, leaving 1160431BB the sole publishable owner; 'advanced sniper rifles' names the actual SOCOM ASR program this Barrett award bought, not a generic phrase or the contractor."
+   }
+  },
+  {
+   "record_index": 44,
+   "article_id": "747606",
+   "piid": "H9222216D0033",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "Silent Knight Radar (SKR)",
+   "lexicon_doc": "92",
+   "announcement_evidence": "for continued low-rate initial production of the Silent Knight Radar system",
+   "rationale": "The 2016 original of the same Silent Knight LRIP contract adjudicated at record 29, and it fails for the same reason: fiscal 2015 and 2016 procurement funds are obligated, but four lines in this index own the name 'Silent Knight Radar (SKR)' and the announcement names no installing platform, so the evidence cannot say whose procurement this was. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 48,
+   "article_id": "805384",
+   "piid": "H9222216D0042",
+   "pe_bli": "1160431BB",
+   "program_name": "Counter Radio Controlled-Improvised Explosive Device (RC-IED)",
+   "lexicon_doc": "281",
+   "announcement_evidence": "technical and programmatic assistance, to include training for radio-controlled improvised explosive devices, electronic countermeasures",
+   "rationale": "Reject-by-design under §3's generic-services pattern. The RC-IED subject matter appears, but what was bought is 'technical and programmatic assistance', training, 'systems engineering support, systems analysis, strategic project support, telecommunications analysis and technical support; and other similar and related support services' — a support-services ceiling, not the RC-IED program's own materiel work. A subject-matter-support contract naming a capability area does not show that this program element's work was funded.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 49,
+   "article_id": "2318657",
+   "piid": "H9222213D0013",
+   "pe_bli": "0204TACVEH",
+   "program_name": "Ground Mobility Vehicle (GMV)",
+   "lexicon_doc": "53",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "for the production of Ground Mobility Vehicle 1.1",
+   "rationale": "The announcement names the variant 'Ground Mobility Vehicle 1.1' and this line's own narrative names the same variant: 'Ground Mobility Vehicle (GMV) 1.1. Program Number 803. The GMV 1.1 is a USSOCOM specific...'. That resolves the collision with 1160480BB, whose narrative owns the RDT&E 'GMV Medium Version 1.1 effort' — the action here is production, which belongs on 0204TACVEH, Procurement Defense-Wide (0300D, 'Tactical Vehicles'), not on a $9M-a-year R line. The variant number is the reason the match basis is a designator variant rather than a bare name match.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The action is a ceiling increase for the PRODUCTION of GMV 1.1 — procurement work — and although the announcement names no color, the lake's funding accounts for H92222-13-D-0013 are 021-2035;097-0300;097-0400, which intersect 0204TACVEH's 0300D; nothing here is O&M sustainment."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "1160480BB owns the identical index name 'Ground Mobility Vehicle (GMV)', the paragraph states no appropriation color, and lens P's own rationale concedes that 1160480BB's narrative claims the 'GMV Medium Version 1.1' effort — so the '1.1' designator variant, which is the entire basis of the match, points at both PEs equally."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "2081595",
+   "piid": "H9224120D0001",
+   "pe_bli": "1160403BB",
+   "program_name": "EW-RFCM, Program Number 768",
+   "lexicon_doc": "111",
+   "announcement_evidence": "for the Suite of Integrated Radio Frequency Countermeasures program",
+   "rationale": "Reject-by-design under §3's generic-services pattern. The announcement itself says what the modification buys: 'program management, contractor logistics support, field service representatives and travel' — sustainment services, not the countermeasures line's own development. The name link is also indirect: the index carries the abbreviation 'EW-RFCM', not 'Suite of Integrated Radio Frequency Countermeasures', so proposing it would rest on my expansion of an abbreviation plus a services ceiling increase.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 51,
+   "article_id": "1718270",
+   "piid": "H9224119D0002",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "A/MH-6 Mission Enhanced Little Bird (MELB)",
+   "lexicon_doc": "92",
+   "match_basis": "exact-name",
+   "announcement_evidence": "for the production of Mission Enhanced Little Bird (MELB) kits to upgrade the A/MH-6",
+   "rationale": "Every element of the index name appears in the announcement — 'Mission Enhanced Little Bird (MELB)' and 'A/MH-6' — and the work is upgrade-kit production, which is exactly what this line's narrative describes ('Low Cost Modifications (LCM) include modifications to the A/MH-6 Mission Enhanced Little Bird (MELB)...'). The appropriation matches: fiscal 2018 procurement funds obligated at award, with task orders 'funded with procurement appropriations', against 0201RWUPGR, Procurement Defense-Wide (0300D, 'Rotary Wing Upgrades and Sustainment'). No other PE in this index owns the MELB name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "'Fiscal 2018 procurement funds ... obligated at the time of award' plus 'Individual task orders will be funded with procurement appropriations' matches 0201RWUPGR (P-1/0300D 'Rotary Wing Upgrades and Sustainment'), and producing MELB upgrade kits for the A/MH-6 is literally the upgrade content that line buys."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "0201RWUPGR is the only index owner of the MELB name; the A/MH-6M rows at 1160403BB are differently named increments (Block 3.0, Block R) that the announcement never mentions, so there is no alternative owner and no variant mismatch."
+   }
+  },
+  {
+   "record_index": 55,
+   "article_id": "1091427",
+   "piid": "H9222216D0033",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "Silent Knight Radar (SKR)",
+   "lexicon_doc": "92",
+   "announcement_evidence": "full-Rate production of the Silent Knight Radar system",
+   "rationale": "The third paragraph in this chunk against the same Silent Knight production contract (H92222-16-D-0033), and it fails identically: fiscal 2016 and 2017 procurement funds are obligated for LRIP II radars, but 0201RWUPGR, 1000CV2200, 2012C130J and 1160403BB all own the name and the announcement names no aircraft, so no single line can be shown to have been paid. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 57,
+   "article_id": "606881",
+   "piid": "H9224115D0005",
+   "pe_bli": "0201RWUPGR",
+   "program_name": "Silent Knight Radar (SKR)",
+   "lexicon_doc": "92",
+   "announcement_evidence": "to provide lifecycle contractor support for the Multi-Mode Radar, and Silent Knight Radar",
+   "rationale": "Reject-by-design under §3's generic-services pattern: this is lifecycle contractor support funded with fiscal 2015 operations and maintenance on the first task order — sustainment services for two radars at once, one of which (Multi-Mode Radar) is not in this index at all. On top of the services character, the SKR name is owned by four lines here, so even a services link could not be attributed. Wrong rather than weak because the rubric rejects the services shape outright.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 76,
+   "article_id": "624437",
+   "piid": "H9222216D0002",
+   "pe_bli": "020401INTL",
+   "program_name": "DISTRIBUTED COMMON GROUND/SURFACE SYSTEM",
+   "lexicon_doc": "92",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to support the USSOCOM Distributed Common Ground/Surface Systems Special Operations Forces program",
+   "rationale": "The announcement names the program explicitly — 'the USSOCOM Distributed Common Ground/Surface Systems Special Operations Forces program' — and the index row for 020401INTL is that name exactly (the comparison is case-insensitive). The tool being bought, the All-Source Analytical Environment, is software fielded into DCGS-SOF, so this is the line's own capability rather than a platform it supports; it is also a different product from the ASIF licences in record 18, so the two do not collide. Appropriation matches: fiscal 2015 procurement funds obligated, and 020401INTL is Procurement, Defense-Wide (0300D). Note the announcement covers two PIIDs; only H92222-16-D-0002 is in this record's lake_piids.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "'Fiscal 2015 procurement funds ... obligated to satisfy the minimum guarantee' matches 020401INTL (P-1/0300D, titled 'Distributed Common Ground/Surface Systems'), and the All-Source Analytical Environment is software procured INTO DCGS-SOF — the line's own capability — not a platform the contract merely services; only $5,000 was obligated at award, a dollar-quality caveat the rubric does not measure, not an attribution error."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "020401INTL is the sole index owner of the name 'DISTRIBUTED COMMON GROUND/SURFACE SYSTEM'; 0305208BB merely shares the program title while its index name is ASIF, a different Palantir product matched to a different award in this chunk, and 'Fiscal 2015 procurement funds' points to the procurement line (the record's contractor field reads Berico while the lake PIID is Orbis's -D-0002, but both halves of the announcement buy the same AAE tool, so the owner is unchanged)."
+   }
+  }
+ ]
+}

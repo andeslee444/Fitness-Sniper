@@ -1,0 +1,65 @@
+{
+ "chunk": "chunk_064_DLA.json",
+ "proposals": [
+  {
+   "record_index": 5,
+   "article_id": "3265442",
+   "piid": "SP470123D0002",
+   "pe_bli": "0603712S",
+   "program_name": "Medical Logistics Network (MLN)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "for medical freight transportation",
+   "lexicon_quote": "Medical Logistics Network (MLN)",
+   "verdict": "wrong",
+   "rationale": "The only tie between this record and the index is the English words 'medical' and (implicitly) logistics; the announcement names no program at all. It is a six-awardee multiple-award IDIQ ceiling for commercial air cargo carriage of medical freight, competed under SP4701-22-R-0029 and funded from defense working capital funds, i.e. exactly the '§3 generic services / IDIQ ceiling with no named program' reject pattern, compounded by the 'weak generic name' pattern (a common noun standing in for an acronym the text never uses). MLN is an RDT&E technology-demonstration project inside 0603712S Generic Logistics R&D Technology Demonstrations; a commercial airlift transportation ceiling does not fund that line's own work. Recorded as wrong rather than silently dropped because 'medical logistics' is the most obvious llm-description trap in this chunk."
+  },
+  {
+   "record_index": 20,
+   "article_id": "606697",
+   "piid": "SPE30014D3041",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "contract for prime vendor subsistence support",
+   "lexicon_quote": "The Subsistence Network (SUBNET)",
+   "verdict": "wrong",
+   "rationale": "This is the single record in the chunk whose text shares a substantive word with an index name ('subsistence'), and it is still a word overlap, not a program name: the announcement never says SUBNET or 'Subsistence Network'. It is a DLA Troop Support prime-vendor food distribution IDIQ on fiscal 2014 defense working capital funds, whereas SUBNET is a ManTech research project inside 0603680S (RDT&E). §3's 'weak generic names' pattern applies (the word used in its ordinary English sense), and the appropriation mismatch is the Lens A failure mode — buying food through a prime vendor does not fund the ManTech line's own work. The same reasoning covers the other subsistence records in this chunk (14, 25, 31, 32, 35, 72), which are not separately proposed because none contains even this much of a candidate name."
+  },
+  {
+   "record_index": 22,
+   "article_id": "1860387",
+   "piid": "SPE60219D0480",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "under solicitation SPE602-19-R-0701 for fuel",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "verdict": "wrong",
+   "rationale": "Proposed only to record the rejection of the largest trap in this chunk: eleven records here are DLA Energy awards (fuel, retail electricity, LNG, utility privatization) and a description-based matcher would reach for 'Energy Readiness Program' on the contracting activity's name alone. The announcement names no program; it is a competed bulk-fuel commodity buy delivering into overseas Defense Fuel Support Points on defense working capital funds. ERP is an RDT&E technology-demonstration project under 0603712S. §3 rejects this twice over — generic commodity/services with no named program, and a weak generic name used as an English phrase — and the working-capital/O&M-to-RDT&E appropriation mismatch is the 2026-09-04 held-out study's documented failure mode. Records 18, 19, 21, 26, 30, 39, 53, 63, 70 and 71 fall under the same reasoning and get no separate proposal."
+  },
+  {
+   "record_index": 54,
+   "article_id": "1854406",
+   "piid": "SPE7LX19D0142",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "contract for storage battery",
+   "lexicon_quote": "Battery Network (BATTNET)",
+   "verdict": "wrong",
+   "rationale": "'Storage battery' is the federal supply class of the item being bought, not the name BATTNET, which the announcement never uses. This is a competed DLA Land and Maritime commodity contract on defense working capital funds for batteries as spare stock; BATTNET is a ManTech research project inside 0603680S (RDT&E) concerned with the industrial base for battery production. §3's weak-generic-name pattern applies — the shared word 'battery' is the commodity, and buying the article is not funding the research line that studies its manufacture."
+  },
+  {
+   "record_index": 56,
+   "article_id": "655054",
+   "piid": "SPRMM116DY004",
+   "pe_bli": "0603680S",
+   "program_name": "Advanced Microcircuit Emulation (AME)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "for weapons systems electron tubes",
+   "lexicon_quote": "Advanced Microcircuit Emulation (AME)",
+   "verdict": "wrong",
+   "rationale": "Recorded to close off the obsolete-electronics description trap: AME (and DMEA/MPW under 0603720S) address diminishing-manufacturing-sources microelectronics, and 'weapons systems electron tubes' is the kind of legacy-parts language a description matcher will reach for. But the announcement names no program, and electron tubes are not microcircuits — this is a two-awardee competed IDIQ for spare tubes on working capital funds, with no emulation, design or foundry work in scope. §3 rejects it as a generic commodity buy with no named program; the same applies to the other electronics-parts records here (16, 27, 48, 51), which are not separately proposed."
+  }
+ ]
+}

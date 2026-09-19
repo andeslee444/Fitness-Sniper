@@ -1,0 +1,96 @@
+{
+ "chunk": "chunk_135_DLA.json",
+ "proposals": [
+  {
+   "record_index": 57,
+   "article_id": "1455383",
+   "piid": "SPRBL118A0001",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "match_basis": "llm-description",
+   "announcement_evidence": "blanket purchase agreement for interoperable absorbed glass mat batteries",
+   "lexicon_quote": "Battery Network (BATTNET) | Manufacturing Technology Program",
+   "verdict": "wrong",
+   "rationale": "The only tie between this award and BATTNET is the English word 'batteries'; the announcement never names the Battery Network, BATTNET, or any ManTech project. §3 rejects this on two counts: the evidence is a commodity description rather than a program name, and the award is a DLA Land and Maritime blanket purchase agreement for off-the-shelf absorbed glass mat batteries funded with Army working capital funds, i.e. a supply-chain buy, not work performed on the RDT&E Manufacturing Technology line 0603680S that BATTNET belongs to. Linking it would attach a working-capital commodity purchase to an RDT&E program element — the exact appropriation mismatch the rubric's lens A calls out."
+  },
+  {
+   "record_index": 43,
+   "article_id": "1177766",
+   "piid": "SPM1C113D1052",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for blue, shade 451, poly/wool cloth",
+   "lexicon_quote": "Military Uniform System Technology (MUST) | Manufacturing Technology Program",
+   "verdict": "wrong",
+   "rationale": "A description-only resemblance between uniform cloth and the ManTech project 'Military Uniform System Technology (MUST)'; the announcement names no program at all, only a fabric specification. This is an option-year modification on a DLA Troop Support fixed-price-with-EPA cloth contract paid from defense working capital funds — the Defense Logistics Agency buying uniform material, not funding MUST's manufacturing-technology development on PE 0603680S. §3 rejects it as a generic commodity buy whose evidence is a materiel description. The same reasoning disposes of every other clothing and footwear record in this chunk (indices 0, 9, 30, 38, 45, 52, 53, 76)."
+  },
+  {
+   "record_index": 3,
+   "article_id": "2954546",
+   "piid": "SPE3S122DZ149",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for production and delivery of Meals, Ready-to-Eat beverage components",
+   "lexicon_quote": "The Subsistence Network (SUBNET) | Manufacturing Technology Program",
+   "verdict": "wrong",
+   "rationale": "Subsistence is the commodity class, not the program: the announcement names no SUBNET, no Subsistence Network and no ManTech effort, only the ration items being produced. This is a five-year DLA Troop Support IDIQ for MRE beverage components on defense working capital funds — the subsistence supply chain itself, not the RDT&E subsistence-network project on PE 0603680S. §3 rejects it as a commodity purchase matched only by description. The other ration and food-distribution records in this chunk (indices 6, 8, 19, 34, 72, 73) fail identically."
+  },
+  {
+   "record_index": 60,
+   "article_id": "2089858",
+   "piid": "SPE2DH20D0030",
+   "pe_bli": "0603712S",
+   "program_name": "Medical Logistics Network (MLN)",
+   "lexicon_doc": "216",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for hospital equipment and accessories for the Defense Logistics Agency electronic catalog",
+   "lexicon_quote": "Medical Logistics Network (MLN) | Generic Logistics R&D Technology Demonstrations",
+   "verdict": "wrong",
+   "rationale": "Medical materiel sold through the DLA electronic catalog is not the Medical Logistics Network R&D effort; the announcement names no program, only the catalog the items are listed in. The award is a competitive IDIQ for commercial hospital equipment on defense working capital funds, which cannot be work performed on the Generic Logistics R&D Technology Demonstrations line 0603712S. §3 rejects it as a commodity buy with description-only evidence, and lens A's appropriation test refutes it as well. Records 17, 59, 62, 64, 65, 66, 78 and 79 are the same catalog-medical pattern and fail for the same reason."
+  },
+  {
+   "record_index": 71,
+   "article_id": "1772993",
+   "piid": "SPE1C117CB003",
+   "pe_bli": "0603712S",
+   "program_name": "Strategic Distribution & Disposition (SDD)",
+   "lexicon_doc": "216",
+   "match_basis": "llm-description",
+   "announcement_evidence": "for warehousing, storage, logistics and distribution functions",
+   "lexicon_quote": "Strategic Distribution & Disposition (SDD) | Generic Logistics R&D Technology Demonstrations",
+   "verdict": "wrong",
+   "rationale": "The words 'logistics and distribution' are a service description, not the name of the SDD research project. §3 rejects generic services — warehousing, storage and distribution functions performed under an option-year modification on a fixed-price-with-EPA services contract are operating work paid from defense working capital funds, not development on the RDT&E line 0603712S. Nothing in the announcement names Strategic Distribution & Disposition or any research activity, so a link here would assert that an outsourced warehousing contract funded SDD's own work."
+  },
+  {
+   "record_index": 46,
+   "article_id": "1933591",
+   "piid": "SPE60719D0119",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "match_basis": "llm-description",
+   "announcement_evidence": "fixed-price with economic-price-adjustment contract for fuel",
+   "lexicon_quote": "Energy Readiness Program (ERP) | Generic Logistics R&D Technology Demonstrations",
+   "verdict": "wrong",
+   "rationale": "'Fuel' matches the Energy Readiness Program only as a topic word; the announcement names no program and describes a bulk fuel supply contract awarded by DLA Energy on defense working capital funds. §3 rejects it as a commodity purchase with description-only evidence, and the appropriation test refutes it independently: buying fuel for the working-capital fuel account is not execution of the RDT&E Generic Logistics R&D line 0603712S. The remaining DLA Energy fuel, propellant, natural gas and utility records in this chunk (indices 5, 18, 26, 39, 44, 51, 54, 67, 68, 75, 77) are rejected on the same basis."
+  },
+  {
+   "record_index": 2,
+   "article_id": "606756",
+   "piid": "SPE7LX15D0055",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "match_basis": "llm-description",
+   "announcement_evidence": "long-term contract for high mobility multi-purpose wheeled vehicle spare parts",
+   "lexicon_quote": "Weapon System Sustainment (WSS) | Generic Logistics R&D Technology Demonstrations",
+   "verdict": "wrong",
+   "rationale": "HMMWV is a PLATFORM the spare-parts contract supports, and 'sustainment' is a generic English description rather than the WSS project name — both are §3 rejections, and WSS under 'Generic Logistics R&D Technology Demonstrations' reads as a catch-all label besides. The award is a sole-source long-term spares contract on fiscal 2015 defense working capital funds, the classic O&M/working-capital sustainment action wrongly attached to an RDT&E line that the 2026-09-04 held-out study flagged. Every spare-parts and repair-parts record in this chunk (indices 4, 12, 13, 20, 22, 23, 24, 27, 28, 29, 32, 33, 35, 40, 47, 48, 49, 50, 55, 61, 69, 70, 74) fails the same test, and none of them names a DLA program element in the index."
+  }
+ ]
+}

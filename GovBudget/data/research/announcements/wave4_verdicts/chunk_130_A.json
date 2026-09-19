@@ -1,0 +1,86 @@
+{
+ "chunk": "chunk_130_A.json",
+ "proposals": [
+  {
+   "record_index": 74,
+   "article_id": "2552501",
+   "piid": "W31P4Q08C0418",
+   "pe_bli": "0605457A",
+   "program_name": "Integrated Battle Command System (IBCS)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to refresh services and to extend the period of performance for development of the Integrated Battle Command System",
+   "lexicon_quote": "Integrated Battle Command System (IBCS)",
+   "verdict": "link",
+   "rationale": "The announcement names the program element's own lexicon name verbatim, character for character, and names it as the thing being DEVELOPED, not as a platform the contract merely supports: 'development of the Integrated Battle Command System.' The appropriation matches the line's own colour of money — 'Fiscal 2021 research, development, test and evaluation, Army funds' obligated against an RDT&E PE (0605457A, Army Integrated Air and Missile Defense), so this is not the O&M-sustainment-on-an-RDT&E-line failure mode. 0605457A is a named program (AIAMD), not a rollup or catch-all. On the collision risk lens B will test: five index rows across five PEs carry an IBCS name, but three of them (8930C61001 IFPC Inc 2-I, 9280BZ5075 IAMD Battle Command System, 9301H37300 AIAMD FOS Components) are procurement lines that FY21 RDT&E dollars cannot fund, and the fifth (0606118A) owns the differently-worded row 'Integrated Air and Missile Battle Command System (IBCS)' for a software development and integration line, whereas the announcement's string matches 0605457A's row exactly. W31P4Q-08-C-0418 is the long-running AIAMD development contract and Northrop Grumman Systems Corp., Huntsville, is its prime; a period-of-performance extension on that contract funds this line's own development work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money colour matches — FY2021 RDT&E Army funds obligated against an RDT&E PE (0605457A, Army Integrated Air and Missile Defense), not O&M sustainment on a development line; the announcement's own words tie the obligation to 'development of the Integrated Battle Command System', and IBCS is the thing being developed rather than a platform the contract merely supports (0605457A's lexicon row calls IBCS 'the centerpiece' of AIAMD, and eleven sibling modifications on W31P4Q-08-C-0418 — P00138 'IBCS development contract engineering and manufacturing development phase', P00163 'develop and test improved software and production representative hardware', P00218 FY2021 RDT&E 'IBCS Development Program' — establish it as the AIAMD/IBCS EMD development contract, RDT&E-funded throughout); 0605457A is a single named program, not a rollup, catch-all title, or an org-split BLI code (20/30/500). The 'refresh services' phrase is technology refresh inside that EMD scope, bound in the same sentence to a period-of-performance extension for development. Alternative-owner risk from the four other index rows carrying an IBCS name is lens B's question and is left to lens B."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name is real and 0605457A's own (doc 355, FY2026 RDTE BA5A narrative carries 'Integrated Battle Command System (IBCS)' verbatim), and none of the four colliding index rows is an equally good owner of a March-2021 action obligating FY21 RDT&E Army funds: 9301H37300 (identical string, doc 346), 9280BZ5075 and 8930C61001 are procurement BLIs whose budget_lines rows begin FY2025/FY2026, and the one other RDT&E claimant, 0606118A 'Integrated Air and Missile Battle Command System (IBCS)', exists in budget_lines only for FY2026 because 0605457A's own narrative states 'In FY 2026, funds were realigned to PE 0606118A, AIAMD Software Development & Integration' — so it is a FY2026 split-off that could not have carried FY2021 dollars, while 0605457A runs FY2017-FY2026 with a $193.9M FY2021 base; the announcement names no variant or increment and rests on the program name plus developmental scope, not on 'Northrop Grumman'. Residual risk noted but not refuting: a reader working from FY2026 books alone might now associate IBCS software work with 0606118A, and the pre-existing W31P4Q08C0418 rows in budget_line_awards are low-confidence account-family (097-0400 DARPA) links that neither support nor contest this identity."
+   }
+  },
+  {
+   "record_index": 11,
+   "article_id": "2341844",
+   "piid": "W31P4Q19C0071",
+   "pe_bli": "1338C70000",
+   "program_name": "Hellfire Sys Summary",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for engineering services in support of the Hellfire and Joint-Air-to-Ground missiles",
+   "lexicon_quote": "Hellfire Sys Summary",
+   "verdict": "weak",
+   "rationale": "The name 'Hellfire' is present and the index carries it at 1338C70000, but the evidence does not reach the standard in section 1. The action is 'engineering services in support of' TWO named missile programs at once (Hellfire and JAGM), so no share of it can be attributed to this line's own work from the announcement alone. Worse for attribution, the obligation is split across four appropriations belonging to three services — 'Fiscal 2018 and 2020 missile procurement (Air Force) funds; 2019 research, development, test and evaluation (Navy) funds; 2020 operations and maintenance (Army) funds; and 2018 and 2020 missile procurement (Army) funds' — so most of the money on this action is demonstrably not this Army procurement line's. Engineering support is also one of the generic-service shapes section 3 treats with suspicion. A second index row, 'Longbow Hellfire XM299' at 9157J01200, owns a Hellfire name too. Not proposed as a link."
+  },
+  {
+   "record_index": 11,
+   "article_id": "2341844",
+   "piid": "W31P4Q19C0071",
+   "pe_bli": "2605C70302",
+   "program_name": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for engineering services in support of the Hellfire and Joint-Air-to-Ground missiles",
+   "lexicon_quote": "The AGM-179 Joint Air-to-Ground Missile (JAGM)",
+   "verdict": "weak",
+   "rationale": "'Joint-Air-to-Ground missiles' in the announcement is the JAGM program under a hyphenation variant, and the index carries a JAGM name here, but the same three defects apply as for the Hellfire half of this paragraph: the engineering-services action covers two programs jointly, the obligation is spread over Air Force missile procurement, Navy RDT&E, Army O&M and Army missile procurement, and 'engineering services' is the generic-service shape. There is also an unresolved owner collision within the index itself — 0605450A (Joint Air-to-Ground Missile (JAGM), RDT&E, doc 355) owns the identical row string 'The AGM-179 Joint Air-to-Ground Missile (JAGM)' — and the announcement gives no way to say which of the two lines paid. Not proposed as a link."
+  },
+  {
+   "record_index": 38,
+   "article_id": "2066978",
+   "piid": "W31P4Q19C0005",
+   "pe_bli": "0604531A",
+   "program_name": "Counter-small Unmanned Aircraft Systems (C-sUAS)",
+   "lexicon_doc": "353",
+   "announcement_evidence": "for a six-month extension for support to the Counter-Unmanned Aerial System, Expeditionary, Low Slow Small Unmanned Aerial System Integrated Defeat System program",
+   "lexicon_quote": "Counter-small Unmanned Aircraft Systems (C-sUAS)",
+   "verdict": "weak",
+   "rationale": "The announcement does name a counter-small-UAS program explicitly, so a candidate name is genuinely present, but this is precisely the name-collision case lens B exists to catch and it cannot be resolved from the text. Nine rows across nine different PEs in this one org's index carry a C-sUAS name — 0010I24000 and 0219AD0500 (procurement), 0602135A and 0602150A (applied research), 0603135A (advanced technology), 0604531A (advanced development), 0609135A (agile development), 9216C82200 (missile procurement) and 7000I47000 — and the announcement's phrase ('Counter-Unmanned Aerial System, Expeditionary, Low Slow Small Unmanned Aerial System Integrated Defeat System') matches none of them verbatim. The obligation itself is split three ways across colours of money — 'research, development, test and evaluation; operations and maintenance, Army; and other procurement, Army funds in the combined amount' — so it straddles the RDT&E and procurement lines rather than sitting on one, and a six-month period-of-performance extension is sustainment-shaped. Publishing the smaller true number, this does not survive as a link."
+  },
+  {
+   "record_index": 55,
+   "article_id": "1185557",
+   "piid": "W56HZV13C0052",
+   "pe_bli": "8309DA0500",
+   "program_name": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "armor B-kits for 120 Heavy Expanded Mobility Tactical Truck A4 and 183 M915A5 trucks",
+   "lexicon_quote": "Heavy Expanded Mobility Tactical Truck (HEMTT)",
+   "verdict": "weak",
+   "rationale": "The index name appears verbatim in the announcement and the appropriation is procurement ('Fiscal 2017 other procurement (Army) funds'), which would fit an OPA line, yet the work is the wrong work for this line. 8309DA0500 (Family Of Heavy Tactical Vehicles) buys the vehicles; this action buys add-on armor B-kits retrofitted onto trucks already in the fleet, which is modification of in-service equipment — the same org's index carries a separate line for exactly that, 1110MA4500 'Modification Of In-Svc Equipment (OPA-3)'. The award is also not confined to HEMTTs: 183 of the 303 vehicle sets are M915A5 line-haul tractors, which no row of 8309DA0500 names, so the HEMTT name covers well under half the buy and the announcement gives no split. A name is present; the evidence that this action funds THIS line's own work is not."
+  },
+  {
+   "record_index": 32,
+   "article_id": "3073993",
+   "piid": "W58RGZ22F0130",
+   "pe_bli": "5757A05111",
+   "program_name": "AH-64E",
+   "lexicon_doc": "343",
+   "announcement_evidence": "to procure modernized day sensor assembly kits and spares for Apache helicopters",
+   "lexicon_quote": "AH-64E",
+   "verdict": "wrong",
+   "rationale": "Rejected under the first reject-by-design pattern in section 3: the only index anchor in this paragraph is the PLATFORM the contract supports, not the program the PE funds. 'Apache helicopters' names the airframe that receives the hardware; the thing actually bought is modernized day sensor assembly kits, a targeting-sight subsystem, and no row of 5757A05111 (whose rows are 'AH-64E' and 'Fire Control Radar (FCR)') names a day sensor assembly. Attaching this to the AH-64 Apache Block IIIA Reman procurement line would assert that a reman line paid for a sensor kit program's hardware. Two further defects confirm the rejection: 'AH-64E' also sits on 2706AA6605 (AH-64 MODS), so even the platform designator does not resolve to one owner, and part of the obligation is 'Fiscal 2010 Foreign Military Sales (Egypt) funds', which is a foreign customer's money rather than this line's. No refute pass is needed."
+  }
+ ]
+}

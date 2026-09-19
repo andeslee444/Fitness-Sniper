@@ -1,0 +1,209 @@
+{
+ "chunk": "chunk_081_A.json",
+ "proposals": [
+  {
+   "record_index": 6,
+   "article_id": "3597319",
+   "piid": "W56HZV23C0078",
+   "pe_bli": "3700GA0570",
+   "program_name": "The M88 Heavy Equipment Recovery Combat Utility Lift and Evacuation System (HERCULES)",
+   "lexicon_doc": "350",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "M88A2 Heavy Equipment Recovery Combat Utility Lift and Evacuation System vehicles",
+   "lexicon_quote": "The M88 Heavy Equipment Recovery Combat Utility Lift and Evacuation System (HERCULES)",
+   "verdict": "link",
+   "rationale": "The announcement spells out the program's full name verbatim and differs from the index row only by the fielded variant suffix (M88A2 vs M88), so this is a designator variant of the same line, not a resemblance. The award is for the vehicles themselves (a P00001 modification to buy M88A2 HERCULES), not for support of a platform the line merely touches, and the obligated money is 'Fiscal 2023 weapons and tracked combat vehicle procurement, Army funds' — the same W&TCV appropriation the procurement BLI 3700GA0570 (IMPROVED RECOVERY VEHICLE (M88 HERCULES)) sits in, so appropriation and work match. The index carries the HERCULES name under exactly one pe_bli, so there is no alternative owner to disambiguate, and the title is a specific end item, not a catch-all.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the P00001 modification buys M88A2 HERCULES vehicles themselves with 'Fiscal 2023 weapons and tracked combat vehicle procurement, Army' money, and 3700GA0570's budget lines are all 'Procurement of Weapons and Tracked Combat Vehicles, Army' (the lake's only funding account for W56HZV23C0078 is 021-2033, base description 'M88A2 - UCA CONTRACT AWARD'). The named thing is this line's own end item, not a platform the contract merely supports, and IMPROVED RECOVERY VEHICLE (M88 HERCULES) is a single end-item line, not a rollup or CATCHALL_TITLE match."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The index carries 'M88'/'HERCULES' on only one pe_bli (rows 1100-1102, all 3700GA0570); no competing owner, no rival variant row (no M88A3 line in the index), and the announcement spells the program name verbatim rather than resting on the contractor's identity, so the A2 suffix is a fielded variant of the same vehicle line, not a different program."
+   }
+  },
+  {
+   "record_index": 19,
+   "article_id": "3857095",
+   "piid": "W58RGZ24F0222",
+   "pe_bli": "3264AA0252",
+   "program_name": "Common Avionics Architecture System (CAAS)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "cost-plus-fixed-fee contract for Common Avionics Architecture System updates",
+   "lexicon_quote": "Common Avionics Architecture System (CAAS)",
+   "verdict": "weak",
+   "rationale": "The exact name is present, but the index carries 'Common Avionics Architecture System (CAAS)' under TWO pe_blis in this same org (3264AA0252 'CH-47 Cargo Helicopter Mods (MYP)' and 6775A05101 'CH-47 Helicopter'), and the announcement names no platform, increment or appropriation at all — 'work locations and funding will be determined with each order'. CAAS is a cockpit suite that rides on several Army rotorcraft, so nothing in the paragraph says which of the two lines paid, and §1's standard is attribution, not string resemblance. Recording the name as seen without asserting a link."
+  },
+  {
+   "record_index": 19,
+   "article_id": "3857095",
+   "piid": "W58RGZ24F0222",
+   "pe_bli": "6775A05101",
+   "program_name": "Common Avionics Architecture System (CAAS)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "cost-plus-fixed-fee contract for Common Avionics Architecture System updates",
+   "lexicon_quote": "Common Avionics Architecture System (CAAS)",
+   "verdict": "weak",
+   "rationale": "Same collision from the other side: this row of the index owns the identical name 'Common Avionics Architecture System (CAAS)' under the CH-47 Helicopter line, and the announcement gives no platform, no increment and no appropriation to choose between the two owners. A name that two PEs both claim, with an unfunded IDIQ-style task order behind it, cannot support the claim that this action paid for THIS line's own work."
+  },
+  {
+   "record_index": 38,
+   "article_id": "3689903",
+   "piid": "W91CRB24C0011",
+   "pe_bli": "8825R80501",
+   "program_name": "Nett Warrior (NW)",
+   "lexicon_doc": "346",
+   "match_basis": "exact-name",
+   "announcement_evidence": "technical and production support for the Nett Warrior Tactical Capability Suite and other systems",
+   "lexicon_quote": "Nett Warrior (NW)",
+   "verdict": "link",
+   "rationale": "'Nett Warrior' is a distinctive program name carried verbatim in the index, and the announcement names it as the subject of the work rather than as a platform the contract happens to touch. The index carries the name under two pe_blis, and the appropriation resolves which: the obligated money is 'Fiscal 2024 other procurement, Army funds', and 8825R80501 (Ground Soldier System) is the OPA procurement BLI that funds Nett Warrior, while the other owner (0604818A) is an RDT&E PE. The contracting activity — Army Contracting Command, Aberdeen Proving Ground — is PEO Soldier's buying office for this line. The work is production support for the named system, not base operations or a bare IDIQ ceiling. The trailing 'and other systems' is the one soft spot and is why the appropriation, not the phrasing, carries the attribution.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted as §3 generic technical/engineering support rather than the Ground Soldier System line's own work: the announcement itself scopes the award as 'technical and production support for the Nett Warrior Tactical Capability Suite and other systems', the lake's base description for W91CRB24C0011 is 'SOLDIER SYSTEM INTEGRATION / TEST / PRODUCTION TECHNICAL SERVICES (SSITS)' — a PEO Soldier-wide services vehicle — and its recorded funding spans three appropriations (021-2031 Aircraft Procurement, 021-2035 Other Procurement, 021-2040 RDT&E), so the single OPA obligation cannot be claimed as one BLI's own content. The OPA money color does match 8825R80501, but a multi-appropriation labor-support contract naming this program as one of several does not support the claim that the action paid for this line's work."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Genuine two-owner collision: 'Nett Warrior (NW)' is an index row under BOTH 0604818A (doc 355, Army Tactical Command & Control Hardware & Software) and 8825R80501 (doc 346, Ground Soldier System), and on identity evidence alone the announcement links equally well to either — it names no increment, no variant and no phase, the subject is a 'Tactical Capability Suite' (the C2/software face of Nett Warrior, alongside that PE's Soldier Borne Mission Command and Mobile/Handheld Computing Environment rows), the scope is broadened by 'and other systems', and ACC-Aberdeen Proving Ground is the buying office for both lines; the only separator lens P offers is the appropriation, which is lens A's ground, so lens B is left with an unresolved alternative owner."
+   }
+  },
+  {
+   "record_index": 38,
+   "article_id": "3689903",
+   "piid": "W91CRB24C0011",
+   "pe_bli": "0604818A",
+   "program_name": "Nett Warrior (NW)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "technical and production support for the Nett Warrior Tactical Capability Suite and other systems",
+   "lexicon_quote": "Nett Warrior (NW)",
+   "verdict": "weak",
+   "rationale": "This is the losing side of the 'Nett Warrior' name collision. The name matches exactly, but 0604818A (Army Tactical Command & Control Hardware & Software) is an RDT&E program element and the announcement obligates 'other procurement, Army funds' for production support — development money is not what paid for this action. Recorded so the collision is visible in the counts rather than silently resolved."
+  },
+  {
+   "record_index": 39,
+   "article_id": "636392",
+   "piid": "W31P4Q15C0022",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "software support to Qatar&rsquo;s PATRIOT program",
+   "lexicon_quote": "PATRIOT Product Improvement Program (PIP)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern. What the announcement names is the PATRIOT system family — and explicitly a foreign customer's copy of it ('Qatar's PATRIOT program') — not any program name this org's index actually owns. No index row is named 'PATRIOT'; the rows under Patriot Mods and Patriot Product Improvement are specific efforts (PIP, PCSB, MSE, IESP, ADI, TPX-57, UTDM) and none of them appears in the paragraph. On top of the name failure, this is a Foreign Military Sales modification funding Qatar's case, so it does not pay for a U.S. program element's own work even if the family name matched."
+  },
+  {
+   "record_index": 58,
+   "article_id": "2095544",
+   "piid": "W31P4Q18A0018",
+   "pe_bli": "7265C12000",
+   "program_name": "Lower Tier Air Missile Defense Sensor (LTAMDS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for technical engineering services in support of the Lower Tier Project Office",
+   "lexicon_quote": "Lower Tier Air Missile Defense Sensor (LTAMDS)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's generic-services pattern. The only 'Lower Tier' string in the paragraph names the Lower Tier Project Office — an ORGANIZATION inside PEO Missiles and Space — not the LTAMDS program the index rows own, and 'technical engineering services' is precisely the engineering-support category §3 excludes. The funding line confirms the mismatch rather than fixing it: the modification draws Missile Procurement, O&M, RDT&E and FMS money for sixteen countries simultaneously, which is a project-office support vehicle spanning many lines, not an action attributable to LTAMDS's own work. The same name also collides across 0604114A and 7265C12000, so even a real name match would not resolve to one owner."
+  },
+  {
+   "record_index": 65,
+   "article_id": "2786993",
+   "piid": "W58RGZ21F0144",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for the Manned Unmanned Teaming hardware and technical/engineering support for the Apache attack helicopter",
+   "lexicon_quote": "AH-64 MODS",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern. The only index-adjacent name in the paragraph is 'Apache attack helicopter' — the airframe the work supports — and the index carries AH-64 names under two separate pe_blis (2706AA6605 AH-64 MODS and 5757A05111 AH-64 Apache Block IIIA Reman). 'Manned Unmanned Teaming' itself appears nowhere in this org's index, so the thing actually bought has no lexicon owner; what remains is a platform name plus 'technical/engineering support', which §3 rejects twice over. No appropriation is stated ('work locations and funding will be determined with each order'), so there is nothing to bind the action to a modification line."
+  },
+  {
+   "record_index": 66,
+   "article_id": "615285",
+   "piid": "W58RGZ15C0067",
+   "pe_bli": "0605035A",
+   "program_name": "The Common Infrared Countermeasure (CIRCM)",
+   "lexicon_doc": "355",
+   "match_basis": "exact-name",
+   "announcement_evidence": "engineering and manufacturing development and low-rate initial production of the Common Infrared Countermeasure program",
+   "lexicon_quote": "The Common Infrared Countermeasure (CIRCM)",
+   "verdict": "link",
+   "rationale": "The announcement names the program itself — 'the Common Infrared Countermeasure program' — as the object of the award, matching the index row's name verbatim, and the phase it names decides the appropriation question: engineering and manufacturing development plus low-rate initial production is RDT&E work, and the obligated money is 'Fiscal 2015 research, development, testing, and evaluation funds', which belongs to the RDT&E program element 0605035A whose J-book narrative owns the name. Northrop Grumman Rolling Meadows was the CIRCM EMD contractor and Army Contracting Command Redstone Arsenal is the buying office for this line. The name does collide with the procurement BLI 5399AZ3537, which is proposed separately as weak; the RDT&E funding line is what separates them.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not refuted on lens A's grounds: the announced obligation is 'Fiscal 2015 research, development, testing, and evaluation funds' for engineering and manufacturing development of the Common Infrared Countermeasure program, which is exactly the work RDT&E PE 0605035A funds (its budget lines are all 'Research, Development, Test and Evaluation, Army' and its narratives carry the CIRCM name); the program itself is the object of the award, not a platform it supports, and the PE is a single-program line. One caveat that does not break it here: the LRIP options belong to the Aircraft Procurement line, and every post-FY2016 obligation the lake records on this PIID ($77.5M) sits in 021-2031 Aircraft Procurement, Army, so a load-time money-color check against the award's recorded accounts may still drop the link even though the announced action's money and phase match the RDT&E line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name does collide — 5399AZ3537 (doc 343) carries 'Common Infrared Countermeasures (CIRCM)' too — but the alternative owner is the same program's procurement half, not a different program, and the announcement separates them in its own identity evidence rather than only by money: it names engineering and manufacturing development, which is by definition the RDT&E line's own work, at a 2015 date when CIRCM was in EMD; the LRIP option is unfunded at award, and the neighbouring infrared-countermeasure rows (ATIRCM/SIIRCM under 5044AZ3507) are distinct names, so no third owner competes."
+   }
+  },
+  {
+   "record_index": 66,
+   "article_id": "615285",
+   "piid": "W58RGZ15C0067",
+   "pe_bli": "5399AZ3537",
+   "program_name": "Common Infrared Countermeasures (CIRCM)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "engineering and manufacturing development and low-rate initial production of the Common Infrared Countermeasure program",
+   "lexicon_quote": "Common Infrared Countermeasures (CIRCM)",
+   "verdict": "weak",
+   "rationale": "The losing side of the CIRCM name collision. The name matches, but 5399AZ3537 is the procurement BLI and this 2015 award obligates 'research, development, testing, and evaluation funds' for EMD and low-rate initial production — the money came from the RDT&E element, not from procurement. Recorded to keep the collision visible in the verdict counts."
+  },
+  {
+   "record_index": 68,
+   "article_id": "3253110",
+   "piid": "W15QKN23D0007",
+   "pe_bli": "0200MB4000",
+   "program_name": "Next Generation Automatic Test System (NGATS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "firm-fixed-price contract for the Next Generation Automated Test System",
+   "lexicon_quote": "Next Generation Automatic Test System (NGATS)",
+   "verdict": "link",
+   "rationale": "The announcement and the index row differ by one inflection of the same word — 'Automated' against the J-book's 'Automatic' — in an otherwise five-word-identical, highly distinctive program name, which is an alias of the same system rather than a coincidental overlap. The award is FOR the system ('a contract for the Next Generation Automated Test System'), not support of a platform that uses it, so §3's platform pattern does not apply and a program is named, so the IDIQ-with-no-named-program pattern does not apply either. The name appears under exactly one pe_bli in this org's index — 0200MB4000, Integrated Family Of Test Equipment (IFTE), the Army test-equipment procurement line whose narrative carries NGATS as the IFTE successor — so there is no alternative owner. The weakness lens A should weigh is that no appropriation is stated; funding is set per order.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The stated weakness resolves in the proposal's favor: although the announcement names no appropriation ('funding will be determined with each order'), the NGATS delivery orders placed under W15QKN23D0007 in the lake (W15QKN23F0086 and W15QKN23F0593, both 'NGATS DELIVERY ORDER') are funded from 021-2035 Other Procurement, Army — the appropriation every 0200MB4000 budget line sits in — so the money color matches and the O&M-sustainment-on-a-procurement-line failure mode is absent. The award is for the named end item itself rather than support of a platform, and 'Integrated Family Of Test Equipment (IFTE)' is a named equipment family with NGATS as a member, not a §3 catch-all (CATCHALL_TITLE does not match it); the residual weakness is only that the base D-contract PIID itself carries $0 obligations, which is an evidence-strength issue, not an appropriation or mission mismatch."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Next Generation Automatic Test System (NGATS)' is an index row under exactly one pe_bli (line 28, 0200MB4000), and the only other Army test-equipment line in the index, 0605G02510 (TEMOD), owns a disjoint set of named members (CALSETS, CTE, GPETE, TS-4549 RTS) that the announcement does not name, so the evidence does not link elsewhere equally well; the 'Automated' vs 'Automatic' difference is one inflection inside an otherwise identical five-word distinctive name rather than an invented alias, no variant or increment is at issue, and the evidence is the program name, not the contractor's."
+   }
+  },
+  {
+   "record_index": 74,
+   "article_id": "1236003",
+   "piid": "W58RGZ17D0055",
+   "pe_bli": "9556A01002",
+   "program_name": "Remote Operations Video Enhanced Receiver (ROVER)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "cost-plus-fixed-fee contract for remote operated video enhanced receiver engineering technical services",
+   "lexicon_quote": "Remote Operations Video Enhanced Receiver (ROVER)",
+   "verdict": "weak",
+   "rationale": "The spelled-out name is present as a near-variant ('remote operated' for the index's 'Remote Operations'), and only one pe_bli owns it, so identity is not the problem. Attribution is: what was bought is 'engineering technical services', the support category §3 excludes, and no appropriation is named — 'Fiscal 2018 funds will be determined with each order' on a five-year IDIQ. A services ceiling against a procurement modification line (9556A01002, UAS MODS) is exactly the appropriation-mismatch failure mode the rubric warns about, and nothing in the paragraph shows this action paid for that line's own work. Not proposed as a link."
+  },
+  {
+   "record_index": 75,
+   "article_id": "1771302",
+   "piid": "W81XWH19C0071",
+   "pe_bli": "7500MN1000",
+   "program_name": "Analyzer Traumatic Brain Injury (ATBI)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "firm-fixed-price contract for development of a Traumatic Brain Injury Diagnostic Assay",
+   "lexicon_quote": "Analyzer Traumatic Brain Injury (ATBI)",
+   "verdict": "weak",
+   "rationale": "The subject matter overlaps — the index row 'Analyzer Traumatic Brain Injury (ATBI)' under Combat Support Medical and the announcement's 'Traumatic Brain Injury Diagnostic Assay' are both TBI point-of-care diagnostics — but they are not the same article: an analyzer instrument is not the assay run on it, and the announcement names no analyzer. The appropriation points the other way as well: this is 'development' obligating 'research, development, test and evaluation funds' through U.S. Army Medical Research Acquisition Activity, while 7500MN1000 is a procurement BLI. Shared topic plus an RDT&E development award against a procurement line does not meet §1's standard."
+  },
+  {
+   "record_index": 76,
+   "article_id": "1245541",
+   "piid": "W58RGZ17C0010",
+   "pe_bli": "4742A05001",
+   "program_name": "UH-72 LAKOTA LIGHT UTILITY HELICOPTER",
+   "lexicon_doc": "343",
+   "announcement_evidence": "in support of the UH-72 Lakota contractor logistics support, parts support, and sustainment",
+   "lexicon_quote": "UH-72 LAKOTA LIGHT UTILITY HELICOPTER",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's generic-services pattern, in its textbook form. The designator matches the index row exactly, but what the modification buys is contractor logistics support, parts support and sustainment billed against a flying-hour rate — operating cost for a fielded fleet, not the aircraft the procurement line buys. The funding says so outright: 'Fiscal 2017 operations and maintenance (Army) funds', O&M sustainment attached to an aircraft-procurement BLI, which is the exact refutation the 2026-09-04 held-out study found in half its cases. The platform name being right is not the claim being published."
+  }
+ ]
+}

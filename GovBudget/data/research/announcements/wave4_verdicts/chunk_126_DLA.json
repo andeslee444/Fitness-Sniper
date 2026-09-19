@@ -1,0 +1,65 @@
+{
+ "chunk": "chunk_126_DLA.json",
+ "proposals": [
+  {
+   "record_index": 58,
+   "article_id": "1863144",
+   "piid": "SPE7LX19D0158",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "has been awarded a maximum $21,773,792 firm-fixed-price contract for storage batteries",
+   "lexicon_quote": "Battery Network (BATTNET)",
+   "rationale": "Nearest candidate in the whole chunk on the word 'batteries', and it fails §3. The announcement names no program at all: it buys a commodity class (storage batteries) sole-source from Optima Batteries under fiscal 2019-2022 defense working capital funds, through DLA Land and Maritime. BATTNET is a Manufacturing Technology R&D project inside PE 0603680S; a DWCF commodity replenishment buy does not fund an RDT&E ManTech project's own work, which is precisely the appropriation mismatch the rubric's lens A rejects. Single-word overlap with a program's title word is not a program name. Recorded as wrong so the near-miss is on the record, not as a candidate link."
+  },
+  {
+   "record_index": 41,
+   "article_id": "1349680",
+   "piid": "SP330018D5002",
+   "pe_bli": "0603712S",
+   "program_name": "Strategic Distribution & Disposition (SDD)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "indefinite-delivery/indefinite-quantity contract for warehouse and distribution operations",
+   "lexicon_quote": "Strategic Distribution & Disposition (SDD)",
+   "rationale": "Reject-by-design under §3 'generic services: engineering support, logistics, base operations'. The award is a five-year IDIQ for warehouse and distribution operations for DLA Distribution on defense working capital funds; the only thing linking it to SDD is the English word 'distribution'. SDD is a logistics technology demonstration project in the RDT&E line 0603712S, not a contract vehicle for running warehouses. No program name appears in the announcement, so the evidence never reaches §1's standard. Representative of the several warehousing/distribution records in this chunk (5, 6, 61), all rejected on the same pattern."
+  },
+  {
+   "record_index": 22,
+   "article_id": "2408669",
+   "piid": "SPE30021D3301",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "fixed-price with economic-price-adjustment, indefinite-quantity contract for full-line food distribution",
+   "lexicon_quote": "The Subsistence Network (SUBNET)",
+   "rationale": "Reject-by-design under §3 generic services. A 102-day bridge contract for full-line food distribution to Army/Navy/Air Force/Marine Corps sites, on fiscal 2021 defense working capital funds, names no program; the tie to SUBNET would be a subject-matter inference from 'food' alone, which is llm-description at its weakest and is refuted by appropriation as well — SUBNET is a ManTech R&D project in PE 0603680S, not the mechanism that buys subsistence for resale. Representative of the subsistence records in this chunk (11, 20, 38, 43, 44, 63, 74), all rejected on the same pattern."
+  },
+  {
+   "record_index": 17,
+   "article_id": "2564678",
+   "piid": "SPE1C121D1456",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "verdict": "wrong",
+   "announcement_evidence": "has been awarded a maximum $22,633,569 firm-fixed-price, indefinite-delivery/indefinite-quantity contract for trousers",
+   "lexicon_quote": "Military Uniform System Technology (MUST)",
+   "rationale": "Reject-by-design: the announcement buys the end item, not the program. A competitive DWCF clothing buy for trousers from DLA Troop Support does not fund the ManTech textile technology project MUST inside PE 0603680S — the relationship is that MUST develops manufacturing technology for uniforms, exactly the 'platform the contract merely supports rather than the program itself' failure mode, compounded by the working-capital-fund vs RDT&E appropriation mismatch. The announcement names no program. Representative of the ~17 clothing/textile records in this chunk (1, 3, 15, 19, 32, 34, 40, 47, 48, 50, 52, 54, 57, 60, 71, 76), all rejected on the same pattern."
+  },
+  {
+   "record_index": 39,
+   "article_id": "3260235",
+   "piid": "SP470423F0017",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "verdict": "wrong",
+   "announcement_evidence": "for financial improvement and audit readiness support for Data Team and Audit Response and Sustainment services",
+   "lexicon_quote": "Weapon System Sustainment (WSS)",
+   "rationale": "Reject-by-design under §3 generic services. The only textual hook is the word 'Sustainment', which here labels an audit-response service line on a GSA schedule task order for DLA financial improvement and audit readiness support — an accounting/audit service, not weapon system sustainment research. WSS is a logistics R&D project in PE 0603712S; the task order runs on fiscal 2023-2024 defense working capital funds. A shared English word inside an unrelated service description is not an alias and never reaches §1's evidence standard."
+  }
+ ]
+}

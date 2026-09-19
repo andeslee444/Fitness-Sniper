@@ -1,0 +1,194 @@
+{
+ "chunk": "chunk_055_A.json",
+ "proposals": [
+  {
+   "record_index": 9,
+   "article_id": "931992",
+   "piid": "W31P4Q16C0133",
+   "pe_bli": "0648CC0007",
+   "program_name": "Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "life cycle support repair and support the Javelin hardware",
+   "lexicon_quote": "Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's generic-services pattern: the action is FMS life-cycle support, repair and sustainment of already-fielded hardware, not the procurement or development work either Javelin line funds, and the announcement's only funding colors are prior-year 'other' and operations and maintenance, Army. The word 'Javelin' in the text is also largely the contractor's own name ('Raytheon/Lockheed Martin Javelin JV'), which §1 lens B names as an evidence failure. No name this org's index actually owns for Javelin (Command Launch Unit (CLU), Javelin Vehicle Platform Adapter Kit (JVPAK), Lightweight Command Launch Unit (LWCLU)) appears anywhere in the paragraph, and the bare word 'Javelin' is owned identically by two PEs (0604611A and 0648CC0007), so even a sympathetic reading could not say which line is meant."
+  },
+  {
+   "record_index": 11,
+   "article_id": "2321448",
+   "piid": "W911SR20D0003",
+   "pe_bli": "1110MA4500",
+   "program_name": "The M41A1 Protection Assessment Test System (PATS)",
+   "lexicon_doc": "346",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "approximately 3,500 M41A1 protection assessment test systems conformance testing certifications, technical documentation and logistics support equipment",
+   "lexicon_quote": "The M41A1 Protection Assessment Test System (PATS)",
+   "verdict": "link",
+   "rationale": "The announcement names the item by its full designator and full name - 'M41A1 protection assessment test systems' - and the index row it matches is the same string normalized (leading article dropped, singular, trailing acronym parenthesis removed); the designator M41A1 carries the identification, not a resemblance between English words. The buy is the end item itself (roughly 3,500 units plus their conformance testing certifications, technical documentation and logistics support equipment), not support for a platform that merely uses it, so §3's platform pattern does not apply. The name is unique in this org's index: exactly one row carries 'M41A1' or 'Protection Assessment', so there is no alternative owner for lens B to find, and PATS is the mask-fit/protection-assessment test set whose own J-book narrative under 1110MA4500 names it. The award is an Other Procurement Army-side IDIQ whose funding is determined with each order, so no funding color in the paragraph contradicts the OPA-3 modification line (lexicon_doc 346 is the OPA book); the residual risk lens A should test is that 1110MA4500 is a 'Modification Of In-Svc Equipment' line while this action reads as a new-production buy.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money color and work species both fail: the lake's only funding account for W911SR20D0003 (4 transactions, W6QK ACC-APG Edgewood, $0 obligated) is 097-0100 = Defense-Wide, the CBDP/JPEO-CBRND appropriation, while 1110MA4500 sits in budget_lines account 2035A -> 021-2035 Other Procurement, Army, so money_color_ok({'097-0100'}, {'021-2035'}) returns False and the pair would be dropped as money_color_mismatch and could never publish; separately, doc 346's narrative for this line is a rollup of a dozen unrelated modification items (MWMSS, ARSS, FSRS, FIRES/SCBA, MHE RTCH/ATLAS/LCRTF, construction equipment, Army watercraft ECP/MWO, M139 Volcano, MICLIC, Force Provider, field feeding) in which 'Modification Item #6 CBRN Soldier Protection M41A1 PATS (PEO Joint Program Office Biological Defense)' carries no FY2026 request at all, and the line funds ECP/MWO modification of already-fielded equipment, not the new-production buy of ~3,500 PATS end items plus conformance certifications and logistics support equipment that this $48.2M FFP IDIQ covers - a ceiling larger than the entire line's FY15-FY20 run ($1.5M-$9.8M/yr) across all of its items."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name is real and uniquely owned: 'M41A1', 'PATS' and 'Protection Assessment' each match exactly one row of A.tsv (line 880, 1110MA4500, doc 346), the announcement spells the full name out with the same designator rather than using the bare acronym, no other Army test-equipment or CBRN line in the index (0200MB4000, 0605G02510, 6500GA0750, 4516M01001) owns it, there is no competing M41 variant row, and the evidence is the item description rather than the contractor name."
+   }
+  },
+  {
+   "record_index": 25,
+   "article_id": "1006508",
+   "piid": "W15P7T17D0002",
+   "pe_bli": "9903BC4000",
+   "program_name": "The Resilient Anti-Jam Modem (RAM)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "the advanced high frequency secure, mobile, anti-jam, reliable, tactical-terminal system",
+   "lexicon_quote": "The Resilient Anti-Jam Modem (RAM)",
+   "verdict": "wrong",
+   "rationale": "Rejected on two §3 patterns at once. First, the only token shared with any index row is 'anti-jam', which the announcement uses as an ordinary descriptive adjective inside a spelled-out system description - precisely the 'weak generic name used as an English word' pattern. Second, the action is 'maintenance, repair and support services', which §3 rejects as generic services. Substantively the paragraph spells out SMART-T (Secure Mobile Anti-jam Reliable Tactical Terminal), and this org's index carries no SMART-T name at all: the EHF SATELLITE COMMUNICATION line's only owned name is the Resilient Anti-Jam Modem, a different item. Proposing it would be attaching an award to a line on the strength of a shared adjective."
+  },
+  {
+   "record_index": 28,
+   "article_id": "1316834",
+   "piid": "W56JSR17D0018",
+   "pe_bli": "0962C50700",
+   "program_name": "TPX-57",
+   "lexicon_doc": "345",
+   "announcement_evidence": "AN/TPX-57(V)1; AN/TPX-57(V)2",
+   "lexicon_quote": "TPX-57",
+   "verdict": "weak",
+   "rationale": "The designator match itself is real and unambiguous - 'TPX-57' is a name the Patriot Mods narrative owns and it is the only row in this org's index carrying that string, so identity is not the problem. Attribution is. The $48,000,000 ceiling is a single hybrid IDIQ covering seven distinct things at once (AN/UPR-3 Cooperative Aviation Surveillance Sensor, Avenger/Stinger MANPADS, AN/TPX-57(V)1, AN/TPX-57(V)2, AN/TPX-58(V)1, AN/TPX-59 and ADI KIV-77), with work locations and funding 'determined with each order' and no dollar figure apportioned to any one of them. Nothing in the paragraph supports the published claim that this contract action paid for the Patriot Mods line's own work rather than for the six other systems in the same basket, so the evidence does not meet §1's standard even though the alias does."
+  },
+  {
+   "record_index": 35,
+   "article_id": "1981471",
+   "piid": "W56HZV17C0001",
+   "pe_bli": "2073GZ0410",
+   "program_name": "Paladin Integrated Management (PIM)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "long lead material associated with the build of the Self Propelled Howitzer, Carrier-Ammunition Tracked vehicle",
+   "lexicon_quote": "Paladin Integrated Management (PIM)",
+   "verdict": "weak",
+   "rationale": "The description fits PIM well - BAE Systems Land & Armaments at York, Pennsylvania building a paired self-propelled howitzer and Carrier, Ammunition, Tracked vehicle is the M109A7/M992A3 pairing that only the Paladin Integrated Management program produces - but the paragraph never says Paladin, PIM or M109A7, so the identification is inference from contractor and vehicle pairing rather than from a name the announcement carries. Two things stop me short of a link. The generic phrase 'Self Propelled Howitzer' is also owned by a different row in this same index ('M109A6 Self-Propelled Howitzer (SPH)', 2072GA0400, a different variant on a different line), which is exactly the alternative-owner failure lens B looks for. And the obligation is fiscal 2019 other procurement, Army funds, while PIM vehicle production sits in the Weapons and Tracked Combat Vehicles book (lexicon_doc 350) - the appropriation mismatch that the 2026-09-04 held-out study found in half its refutations. Default to not linking."
+  },
+  {
+   "record_index": 53,
+   "article_id": "606008",
+   "piid": "W58RGZ14D0116",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "auxiliary fuel systems including reduced size crashworthy external fuel systems and internal auxiliary fuel system combo packs for the Apache AH-64 helicopter",
+   "lexicon_quote": "AH-64 MODS",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's first pattern: the only name present is the airframe the contract supports, not the program the PE funds. The announcement's own grammar makes this explicit - the fuel systems are bought 'for the Apache AH-64 helicopter', with the platform in the prepositional object. What is procured is a family of auxiliary and external fuel tanks, for domestic use and foreign military sales to Saudi Arabia, Indonesia and the Republic of Korea, under an IDIQ whose performance location and funding are determined with each order; nothing ties the ceiling to the AH-64 MODS line's own modification content rather than to FMS kit sales. The bare designator 'AH-64' is additionally carried by two PEs in this index (2706AA6605 and 5757A05111), so even the platform reading has no single owner."
+  },
+  {
+   "record_index": 54,
+   "article_id": "1558220",
+   "piid": "W31P4Q18D0027",
+   "pe_bli": "8082C14300",
+   "program_name": "Stinger Vehicle Universal Launcher (SVUL)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "the procurement of Stinger flight motors",
+   "lexicon_quote": "Stinger Vehicle Universal Launcher (SVUL)",
+   "verdict": "weak",
+   "rationale": "'Stinger' appears in the announcement and in exactly one name this org's index owns, but the two refer to different things: the index row is the Stinger Vehicle Universal Launcher, the vehicle-mounted launcher assembly the M-SHORAD procurement line funds, while the award buys flight motors - the rocket motor of the missile itself, from Aerojet Rocketdyne at Camden. A missile-component buy is not the launcher program's own work, and this index carries no row for the Stinger missile or its motor, so there is no line here that the award can honestly be said to execute. The shared token is the whole of the resemblance, which does not meet §1's standard."
+  },
+  {
+   "record_index": 58,
+   "article_id": "606010",
+   "piid": "W15QKN14D0069",
+   "pe_bli": "1120E22203",
+   "program_name": "The 105mm M393A3 (CA32)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "105mm M724A1E1 kinetic energy target practice discarding sabot with tracer",
+   "lexicon_quote": "The 105mm M393A3 (CA32)",
+   "verdict": "weak",
+   "rationale": "The cartridge family is right - a 105mm tank training round belongs in 'Cartridges, Tank, 105MM And 120MM, All Types' rather than in the artillery 105mm line - but the specific designator the announcement carries, M724A1E1, is not a name this org's index owns anywhere. The only 105mm names the tank-cartridge line owns are the M393A3 (CA32) and the M1147 Advanced Multi-Purpose round, both different cartridges; matching on the shared caliber alone would be a caliber match dressed as a program match. Publishing this would assert that a training-round buy paid for the M393A3's own work, which the paragraph does not support."
+  },
+  {
+   "record_index": 59,
+   "article_id": "715828",
+   "piid": "W56HZV16D0035",
+   "pe_bli": "0363G85200",
+   "program_name": "Stryker Double-V-Hull (DVH)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "retrofitting the Stryker fleet",
+   "lexicon_quote": "Stryker Double-V-Hull (DVH)",
+   "verdict": "weak",
+   "rationale": "The announcement names the fleet, not a program: 'retrofitting the Stryker fleet to maintain the appropriate vehicles' configuration' describes configuration-maintenance work across the whole fleet, with funding and work location determined with each order. The Stryker Upgrade line owns sixteen distinct names in this index (DVH, DVHA1, ICVVA1, MCWS and the rest), and the paragraph matches none of them - it names no hull variant, no A1 configuration and no engineering change proposal. Attaching a fleet-wide retrofit IDIQ to the Double-V-Hull upgrade specifically would be reading a variant into the text that is not there, and 'Stryker' by itself is owned by three different PEs in this index (0203735A, 0230GM0100, 0363G85200)."
+  },
+  {
+   "record_index": 65,
+   "article_id": "606818",
+   "piid": "W58RGZ13C0109",
+   "pe_bli": "9670A00005",
+   "program_name": "MQ-1C Gray Eagle",
+   "lexicon_doc": "343",
+   "announcement_evidence": "the full-rate production II Gray Eagle unmanned aircraft system - acquisition of ground equipment",
+   "lexicon_quote": "MQ-1C Gray Eagle",
+   "verdict": "weak",
+   "rationale": "'Gray Eagle' is a real designator variant of the index name 'MQ-1C Gray Eagle', and full-rate production II points at the aircraft procurement line rather than at a modification line, so MQ-1 UAV is the most plausible owner. Two problems keep this off a link. The name 'MQ-1C Gray Eagle' is owned identically by three separate PEs in this org's index (0756AA6601 Gray Eagle Mods2, 9000I49000 GRAY EAGLE MODIFICATIONS and 9670A00005 MQ-1 UAV), with a fourth PE owning the bare 'MQ-1C' - the multi-owner collision §1 lens B is built to catch, and nothing in the paragraph chooses between them. And the obligation is fiscal 2014 other procurement (Army) funds, while every Gray Eagle line in this index sits in the aircraft book (lexicon_doc 343); the money color does not match the line. Default to not linking."
+  },
+  {
+   "record_index": 66,
+   "article_id": "1890122",
+   "piid": "W58RGZ16C0023",
+   "pe_bli": "5757A05111",
+   "program_name": "AH-64E",
+   "lexicon_doc": "343",
+   "announcement_evidence": "Version 6/Improved Drive System-enhancement cut-in on the Apache Attack Helicopter (AH)-64E production line",
+   "lexicon_quote": "AH-64E",
+   "verdict": "weak",
+   "rationale": "The designator AH-64E is stated outright, the money color matches (aircraft procurement, Army plus FMS, and both candidate lines are in the aircraft book), and Boeing at Mesa on W58RGZ-16-C-0023 is the Apache production/remanufacture prime - so this is the closest near-link in the chunk. What defeats it is that 'AH-64E' is owned verbatim by two different PEs in this index, 2706AA6605 (AH-64 MODS) and 5757A05111 (AH-64 Apache Block IIIA Reman), and the award's own description straddles them: a Version 6 / Improved Drive System enhancement 'cut-in' is modification content, while 'production line' points at the remanufacture line. The action also funds Apache Longbow Crew Trainers, a training-device scope that belongs to neither line. With two owners and mixed scope the paragraph cannot say which line's own work was paid for."
+  },
+  {
+   "record_index": 70,
+   "article_id": "2516375",
+   "piid": "W15QKN21D0013",
+   "pe_bli": "2790E55400",
+   "program_name": "Demolition Munitions, All Types",
+   "lexicon_doc": "349",
+   "announcement_evidence": "the production, testing, packaging and delivery of M19, M21 and M23 blasting cap assemblies",
+   "lexicon_quote": "Demolition Munitions, All Types",
+   "verdict": "weak",
+   "rationale": "Blasting cap assemblies are demolition initiators, so the ammunition line that owns 'Demolition Munitions, All Types' and 'Modernized Demolition Initiators (MDI)' is the plausible home for this buy, and Ensign-Bickford at Simsbury on a Picatinny/Newark ammunition IDIQ fits. But the match is entirely my own description-level inference: the words 'demolition', 'munition' and 'initiator' appear nowhere in the paragraph, and the designators that do appear - M19, M21, M23 - are not names this org's index owns. The one initiator name the line does own, MDI, is the modernized item that replaced these legacy caps, so naming it would assert the wrong increment. Description-level matches to an 'All Types' aggregate line are exactly where a link stops being an attribution claim, so this does not meet §1's standard."
+  },
+  {
+   "record_index": 73,
+   "article_id": "618197",
+   "piid": "W58RGZ13C0109",
+   "pe_bli": "9000I49000",
+   "program_name": "MQ-1C Gray Eagle",
+   "lexicon_doc": "343",
+   "announcement_evidence": "an improved Gray Eagle engineering change proposal applicable to 19 aircraft, four lots of ground support equipment, and one lot of unique initial spares",
+   "lexicon_quote": "MQ-1C Gray Eagle",
+   "verdict": "weak",
+   "rationale": "An engineering change proposal applied to fielded aircraft is modification content, which points at GRAY EAGLE MODIFICATIONS rather than at the MQ-1 UAV production line - but the same two defects as record 65 apply and are if anything sharper here. 'MQ-1C Gray Eagle' is owned identically by three PEs in this index, and the two modification lines (0756AA6601 Gray Eagle Mods2 and 9000I49000 GRAY EAGLE MODIFICATIONS) are near-duplicates of each other, so even after narrowing to modifications the paragraph cannot say which of the two it executes. The obligation is fiscal 2015 other procurement funds against lines that sit in the aircraft book. The action is also an undefinitized modification to the same production contract as record 65, spanning aircraft, ground support equipment and initial spares at once."
+  },
+  {
+   "record_index": 78,
+   "article_id": "606696",
+   "piid": "W58RGZ14D0116",
+   "pe_bli": "6773A05009",
+   "program_name": "UH-60 Black Hawk L and V Models",
+   "lexicon_doc": "343",
+   "announcement_evidence": "the UH60 helicopter T700 common fuel control",
+   "lexicon_quote": "UH-60 Black Hawk L and V Models",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3's platform pattern. The only index-owned string the paragraph evokes is the airframe designator, written 'UH60', and it appears as the platform that the purchased component serves; what is actually bought is a T700 engine fuel control unit from Woodward, an engine accessory that this org's index carries no name for at all. The announcement names no model - not UH-60L, UH-60V or UH-60M - so even the platform reading has no single owner among the four UH-60 rows in this index, and funding and work location are determined with each order under a multiyear IDIQ. A component-for-a-platform buy is not the platform line's own work."
+  },
+  {
+   "record_index": 79,
+   "article_id": "1744377",
+   "piid": "W91CRB19D0007",
+   "pe_bli": "0604808A",
+   "program_name": "Next Generation Advanced Bomb Suit (NGABS)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "Generation II advanced bomb suit systems",
+   "lexicon_quote": "Next Generation Advanced Bomb Suit (NGABS)",
+   "verdict": "weak",
+   "rationale": "The phrases are close - 'Generation II advanced bomb suit' against 'Next Generation Advanced Bomb Suit (NGABS)' - and Med-Eng is the bomb-suit vendor, so the resemblance is genuine rather than coincidental. It still fails §1's standard on two counts. 'Generation II' and 'Next Generation' are not the same increment on their face, and treating them as one is exactly the variant/increment substitution lens B is asked to break; nothing in the paragraph establishes that the fielded Gen II suit is the item NGABS developed. More decisively, 0604808A is an RDT&E engineering-development line (Landmine Warfare/Barrier - Eng Dev, lexicon_doc 355) while this is a firm-fixed-price production and delivery IDIQ for finished suits - procurement work hung on an RDT&E line is the documented failure mode, so the smaller true number is to leave it unlinked."
+  }
+ ]
+}

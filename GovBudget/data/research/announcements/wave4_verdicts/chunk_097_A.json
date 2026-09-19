@@ -1,0 +1,116 @@
+{
+ "chunk": "chunk_097_A.json",
+ "proposals": [
+  {
+   "record_index": 3,
+   "article_id": "1161148",
+   "piid": "W909MY17D0002",
+   "pe_bli": "9012R42501",
+   "program_name": "The Deployable Power Generation and Distribution System (DPGDS)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the recapitalization of the deployable power generation and distribution systems prime power unit or MEP-PU-810 A and B",
+   "lexicon_quote": "The Deployable Power Generation and Distribution System (DPGDS)\t9012R42501\t346\tTactical Electric Power Recapitalization",
+   "verdict": "link",
+   "rationale": "The paragraph names the program in the line's own words: 9012R42501's narrative owns 'The Deployable Power Generation and Distribution System (DPGDS)' and the announcement buys 'the recapitalization of the deployable power generation and distribution systems prime power unit' — the same name modulo the leading article, the plural and the trailing acronym, which is why the deterministic token-n-gram pass could not fire on it. Two independent anchors confirm the identity rather than a coincidence of common words: the same pe_bli also owns 'MEP-PU-810C/D Power Unit (PU)' and the announcement names MEP-PU-810 A and B, the same prime power unit family; and the line's title is literally 'Tactical Electric Power Recapitalization' while the contract's stated purpose is recapitalization of those units. The named thing is the end item the line itself buys, not a platform the contract merely supports, and a fixed-price-incentive recapitalization buy out of ACC Fort Belvoir is procurement-coloured work against a procurement book (doc 346, Other Procurement Army). No other PE in this org's index carries the DPGDS name or the MEP-PU-810 designator. The one loose thread for the refute lenses: the lexicon row names the C/D variant while the announcement names A and B — recapitalising the older A/B units is what this line does, so the identity does not rest on the letter suffix, but a lens that reads C/D as a distinct increment should say so.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the line's own title IS the contract's purpose (9012R42501 'Tactical Electric Power Recapitalization' in doc 346, Other Procurement Army, whose sibling titles are OPA end-item lines) and the award is a fixed-price-incentive recapitalization of the MEP-PU-810 prime power units the line owns, so this is procurement-coloured end-item work against a procurement line, not O&M sustainment bolted onto it; the named thing is the line's own end item, not a platform the contract merely supports, and 'Tactical Electric Power Recapitalization' is a specific recap BLI, not a rollup or CATCHALL title. The one money gap I record rather than hide: the paragraph names no appropriation and says 'funding will be determined with each order' on a -D delivery-order vehicle, so the OPA colour is inferred from the line and the work, not stated — nothing in the text points at O&M, but a per-order O&M overhaul funding line would break this, and the A/B-vs-C/D variant question is lens B's."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner: 'Deployable Power Generation and Distribution System'/DPGDS and the MEP-PU-810 designator each appear exactly once in the A index, both under 9012R42501, and the nearest rival family (0426MA9800 'Generators And Associated Equip', 16 generic power names incl. PPDS/TEP/TPPT) owns neither string, so the evidence cannot link elsewhere equally well; the A/B vs C/D suffix is not a different increment but the legacy units this 'Tactical Electric Power Recapitalization' line exists to recapitalize, which the paragraph's own word 'recapitalization' confirms."
+   }
+  },
+  {
+   "record_index": 75,
+   "article_id": "1330165",
+   "piid": "W56KGY17C0020",
+   "pe_bli": "0023A01001",
+   "program_name": "The Common Sensor Payload (CSP)",
+   "lexicon_doc": "343",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the purchase of 21 Common Sensor Payload systems to meet an increased production requirement of the Army Gray Eagle",
+   "lexicon_quote": "The Common Sensor Payload (CSP)\t0023A01001\t343\tMQ-1 PAYLOAD",
+   "verdict": "link",
+   "rationale": "The announcement names the program itself, not a platform: what is bought is 21 Common Sensor Payload systems, and 0023A01001's title is 'MQ-1 PAYLOAD' with the CSP as the name its own J-book narrative owns — the award buys this line's end item. The platform reference ('the Army Gray Eagle', i.e. MQ-1C) is what ties the payload buy to the MQ-1 payload line rather than to a general sensor account, and Raytheon McKinney is the CSP producer, with a production-quantity buy (21 systems, 'increased production requirement') rather than engineering or logistics support. The index carries the CSP name under one other PE (8000I48000, FUTURE UNMANNED AERIAL SYSTEMS (UAS) FAMILY) — proposed separately as wrong — but a 2017 Gray Eagle production increase belongs to the MQ-1 payload line, while the Future UAS Family line covers the later FTUAS/Launched Effects generation. One discrepancy the refute lenses should weigh honestly: the paragraph cites 'other procurement, Army funds' for the obligation while lexicon_doc 343 is the Aircraft Procurement Army book, so if the lake's funding accounts confirm OPA this is a money-colour mismatch and the link should not survive.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money-colour mismatch, stated in the announcement's own words: the obligation is 'Fiscal 2017 other procurement, Army funds in the amount of $14,590,381', i.e. OPA, while the proposed line 0023A01001 'MQ-1 PAYLOAD' sits in lexicon_doc 343, which its sibling titles (AH-64 MODS, CH-47 Helicopter, Gray Eagle Mods2, GRAY EAGLE MODIFICATIONS, MQ-1 UAV, HADES) identify as Aircraft Procurement, Army — an APA line's own buy would obligate APA. The mission leg is fine (the contract buys 21 Common Sensor Payload systems, the line's end item, with Gray Eagle named only as the host platform), but lens A's question is whether the action paid for THIS line's appropriation and the paragraph says it did not; the proposal itself conceded this turns on the funding colour. No OPA-side CSP owner exists in the A index to rescue it, and an unexplained appropriation conflict cannot be resolved in the claim's favour — publish the smaller true number."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Exact-name collision: 'The Common Sensor Payload (CSP)' is owned verbatim by two PEs in this index — 0023A01001 (MQ-1 PAYLOAD) and 8000I48000 (FUTURE UNMANNED AERIAL SYSTEMS (UAS) FAMILY), both doc 343 — so the announcement's only program-name evidence links equally well to either, and the sole tie-breaker offered is the platform mention 'Army Gray Eagle', which §3 treats as weak evidence rather than as identification of the funding line; the paragraph's 'other procurement, Army' colour also fits neither Aircraft Procurement line, leaving a third, off-index owner live, so the default (do not link) governs."
+   }
+  },
+  {
+   "record_index": 75,
+   "article_id": "1330165",
+   "piid": "W56KGY17C0020",
+   "pe_bli": "8000I48000",
+   "program_name": "The Common Sensor Payload (CSP)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "the purchase of 21 Common Sensor Payload systems to meet an increased production requirement of the Army Gray Eagle",
+   "lexicon_quote": "The Common Sensor Payload (CSP)\t8000I48000\t343\tFUTURE UNMANNED AERIAL SYSTEMS (UAS) FAMILY",
+   "verdict": "wrong",
+   "rationale": "Recorded so the name collision on this record is visible in the denominator rather than resolved silently. The index carries the identical name 'The Common Sensor Payload (CSP)' under two PEs, and this is the alternative owner: a 2017 buy of 21 CSP units against an increased Gray Eagle production requirement is MQ-1 payload procurement, whereas 8000I48000 is the Future Unmanned Aerial Systems (UAS) Family line whose other owned names (Future Unmanned Aerial Systems (UAS), Launched Effects) place it in the later FTUAS/LE generation, years after this action. Attributing the award here would be the alternative-owner failure lens B exists to catch, so it is refused by lens P rather than passed on."
+  },
+  {
+   "record_index": 63,
+   "article_id": "3187615",
+   "piid": "W519TC23C0001",
+   "pe_bli": "0608041A",
+   "program_name": "DCO Cyberspace Analytics Big Data Platform (BDP)",
+   "lexicon_doc": "359",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "contractor support of the Cyberspace Analytics program for Program Executive Office, Enterprise Information Systems",
+   "lexicon_quote": "DCO Cyberspace Analytics Big Data Platform (BDP)\t0608041A\t359\tDefensive CYBER - Software Prototype Development",
+   "verdict": "link",
+   "rationale": "'Cyberspace Analytics' is a program name, not an English description, and it appears in this org's index exactly once: 0608041A ('Defensive CYBER - Software Prototype Development') owns 'DCO Cyberspace Analytics Big Data Platform (BDP)', with Gabriel Nimbus, DCODE and the Garrison DCO Platform as its sibling names — no other PE in the A index carries it, so there is no alternative owner to weigh. The announcement's own organisational anchor matches: PM Defensive Cyber Operations sits under PEO Enterprise Information Systems, which the paragraph names, and the work is performed at Linthicum Heights by the platform's development contractor. The money colour also points at this line rather than at the procurement-side DCO lines: the obligation is fiscal 2022 research, development, test and evaluation, Army — the colour of a BA-8 software prototype line (doc 359, RDT&E). The wording 'contractor support of' is the one thing lens A should press on, since §3 rejects generic engineering support; here the support is the named program's own software development, not base operations, logistics or an unnamed IDIQ ceiling.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The appropriation matches on the paragraph's own statement — 'Fiscal 2022 research, development, test and evaluation, Army funds' obligated against 0608041A in lexicon_doc 359, the RDT&E book (sibling titles: Electronic Warfare Agile Development, Counter-UAS Agile Development, AIAMD Software Development), and a BA-8 software-prototype line is exactly where RDTE,A software development belongs; the colour also discriminates in the link's favour against the procurement-side sibling 0128B63000 'Defensive CYBER Operations' in doc 346 (OPA), which this obligation cannot be paying. 'Contractor support of the Cyberspace Analytics program' is not the §3 generic-services pattern: the support is the named program's own software development by the platform's developer at Linthicum Heights, not engineering support, logistics, base operations, construction or an unnamed IDIQ ceiling, and Cyberspace Analytics is the program itself rather than a platform the contract supports. 0608041A carries eight named products but has a specific mission-area title, not a CATCHALL line; that the PE is a BA-8 portfolio is the residual concern I flag, and whether a sibling name is the better owner is lens B's."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Cyberspace Analytics' occurs exactly once in the A index and is a verbatim substring of 0608041A's own name 'DCO Cyberspace Analytics Big Data Platform (BDP)', so the alias is real rather than invented; no competing PE owns it (0128B63000 owns only 'Defensive CYBER Operations (DCO)', 0305251A owns Agile Solutions Pursuit/PCTE, 0604115A owns 'Tactical Analytics Architecture (TA2)'), the near-name 'Cyber Analytics (CA)' sits under this same PE, and the BDP-to-Gabriel-Nimbus succession is also inside this PE, so no variant reading moves the link; the evidence is the program name plus the PEO EIS anchor, not the contractor's name."
+   }
+  },
+  {
+   "record_index": 55,
+   "article_id": "606852",
+   "piid": "W31P4Q11C0242",
+   "pe_bli": "1338C70000",
+   "program_name": "Hellfire Sys Summary",
+   "lexicon_doc": "345",
+   "announcement_evidence": "reconfigure 200 air training missiles (ATM-114Q-6) to air-to-ground missiles (AGM-114R-9B-1)",
+   "lexicon_quote": "Hellfire Sys Summary\t1338C70000\t345\tHellfire Sys Summary",
+   "verdict": "weak",
+   "rationale": "The AGM-114 designator is HELLFIRE and nothing else, and Lockheed Martin Orlando is the missile's prime, so a designator-variant reading (ATM-114Q-6 / AGM-114R-9B-1 to the index's 'Hellfire Sys Summary') is available — but it does not meet §1's standard. The announcement never names HELLFIRE or any program, the only candidate row is a system-summary line whose name and program title are the same rollup string rather than a named program element, and the action is reconfiguration of 200 missiles the Army already owns from training to tactical configuration, i.e. a modification of existing assets rather than the line's own production. The cited money compounds the doubt: fiscal 2015 other procurement funds against a missile-procurement book (doc 345). Publishing the smaller true number, this is recorded and not linked."
+  },
+  {
+   "record_index": 36,
+   "article_id": "3312026",
+   "piid": "W911NF23D0001",
+   "pe_bli": "0601104A",
+   "program_name": "Institute for Soldier Nanotechnologies",
+   "lexicon_doc": "351",
+   "announcement_evidence": "basic scientific research into molecular and atomic scale mechanisms underpinning nanoscience phenomena",
+   "lexicon_quote": "Institute for Soldier Nanotechnologies\t0601104A\t351\tUniversity and Industry Research Centers",
+   "verdict": "weak",
+   "rationale": "Every circumstantial feature fits the Institute for Soldier Nanotechnologies, the MIT university research center 0601104A's narrative owns: the recipient is MIT, the work is basic (6.1-style) nanoscience research, the vehicle is a cost-no-fee ACC-Aberdeen Proving Ground contract, and 0601104A is the University and Industry Research Centers line that funds exactly such centers. But the record names neither the institute nor any program, so the attribution would rest entirely on inferring which MIT basic-research vehicle this is — ACC-APG runs several, and 0601102A (Defense Research Sciences) and 0601103A (University Research Initiatives) fund MIT basic research too. An llm-description match at this strength is inference rather than attribution, and the rubric's default when uncertain is not to link."
+  },
+  {
+   "record_index": 77,
+   "article_id": "605999",
+   "piid": "W15QKN14D0017",
+   "pe_bli": "2790E55400",
+   "program_name": "Demolition Munitions, All Types",
+   "lexicon_doc": "349",
+   "announcement_evidence": "procure M303 blasting demolition kits",
+   "lexicon_quote": "Demolition Munitions, All Types\t2790E55400\t349\tDemolition Munitions, All Types",
+   "verdict": "weak",
+   "rationale": "The purchased item is demolition materiel and the index carries a demolition line — 2790E55400 'Demolition Munitions, All Types', whose owned names include Modernized Demolition Initiators — and the contracting activity (ACC Picatinny) is the Army's ammunition command, so the pairing is plausible. It is not sufficient. The announcement names no program: 'M303 blasting demolition kits' is an item designator that appears nowhere in the index, and the candidate row is an all-types family aggregate whose name equals its program title, which is the rollup shape lens A is asked to break links on (it escapes the loader's CATCHALL_TITLE regex only because the title says 'All Types' rather than naming a dollar threshold). No appropriation is stated, and the M303 kit is a SOF-fielded item that may not be bought on this Army line at all. Recorded, not linked."
+  }
+ ]
+}

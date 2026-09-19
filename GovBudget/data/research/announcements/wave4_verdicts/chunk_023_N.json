@@ -1,0 +1,570 @@
+{
+ "chunk": "chunk_023_N.json",
+ "proposals": [
+  {
+   "record_index": 1,
+   "article_id": "2782087",
+   "piid": "N0001920C0001",
+   "pe_bli": "0525",
+   "program_name": "APG-73",
+   "lexicon_doc": "330",
+   "lexicon_quote": "APG-73",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "This modification adds scope to procure 36 AN/APG-79(V)4 radar systems in support of radar integration into the C/F-18A aircraft for the government of Canada",
+   "verdict": "wrong",
+   "rationale": "The only APG-series names this org's index carries are APG-65 and APG-73 under BLI 0525 (F-18 Series). AN/APG-79(V)4 is a different radar and is not an index name; treating it as a designator variant of APG-73 is exactly the invented-variant error lens B exists to catch. Independently, the buy is a 100% Government of Canada purchase for CF-18A integration, so no U.S. Navy procurement line executes it."
+  },
+  {
+   "record_index": 5,
+   "article_id": "3337781",
+   "piid": "N0002419C4313",
+   "pe_bli": "2127",
+   "program_name": "Littoral Combat Ship (LCS)",
+   "lexicon_doc": "341",
+   "lexicon_quote": "Littoral Combat Ship (LCS)",
+   "announcement_evidence": "to exercise options for the accomplishment of the planning yard services for the Littoral Combat Ship in-service ships",
+   "verdict": "wrong",
+   "rationale": "Reject by design (rubric section 3, platform): the Littoral Combat Ship is the ship class the planning-yard contract supports, not the program SCN line 2127 funds. Line 2127 buys LCS hulls; this action buys design/planning services for hulls already delivered and in service, and the announcement states no funding was obligated at award."
+  },
+  {
+   "record_index": 7,
+   "article_id": "606010",
+   "piid": "N0002408C4410",
+   "pe_bli": "1610",
+   "program_name": "LSD Midlife & Modernization",
+   "lexicon_doc": "333",
+   "lexicon_quote": "LSD Midlife & Modernization",
+   "announcement_evidence": "for USS Pearl Harbor (LSD 52) fiscal 2014 extended dry-dock phased maintenance availability",
+   "verdict": "wrong",
+   "rationale": "Reject by design (rubric section 3, platform): LSD 52 is the hull the availability maintains. The index name 'LSD Midlife & Modernization' is an OPN modernization program; a fiscal 2014 extended dry-dock phased maintenance availability is depot maintenance funded largely with O&M,N, so the award does not execute the modernization line's own work even though the LSD designator appears."
+  },
+  {
+   "record_index": 8,
+   "article_id": "1846374",
+   "piid": "N0001916D1002",
+   "pe_bli": "0148",
+   "program_name": "Laser Joint Direct Attack Munition (LJDAM)",
+   "lexicon_doc": "338",
+   "lexicon_quote": "Laser Joint Direct Attack Munition (LJDAM)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "This modification increases the ceiling of the contract to procure up to 12,000 additional Precision Laser Guidance Sets for the Laser Joint Direct Attack Munition",
+   "verdict": "link",
+   "rationale": "The announcement names the Laser Joint Direct Attack Munition in full; the index carries exactly that name ('Laser Joint Direct Attack Munition (LJDAM)') under ammunition line 0148, whose title is JDAM. The item procured - Precision Laser Guidance Sets - is the laser guidance kit that turns a JDAM into an LJDAM, i.e. the line's own end item rather than a platform the contract supports. This is an IDIQ ceiling increase, but it is not the section-3 'IDIQ ceiling with no named program' pattern: the scope names one munition program and one article. Only BLI 0148 owns the LJDAM name in this index, so there is no cross-PE collision.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The full paragraph ends 'No funds are being obligated at time of award; funds will be obligated on individual delivery orders as they are issued' - a bare IDIQ ceiling raise that names no appropriation and pays for nothing, so nothing ties the action to ammunition line 0148's account rather than to Air Force JDAM money or FMS orders placed later on the same vehicle."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Only BLI 0148 carries the LJDAM name in the index (line 31), and the same line owns DSU-38/40/42 - DSU-38 IS the Precision Laser Guidance Set the announcement buys - so the article as well as the name belongs to 0148; the one other laser row, 'The Laser Guided Training Round (LGTR)' under 0160 Practice Bombs, is a different munition."
+   }
+  },
+  {
+   "record_index": 9,
+   "article_id": "606777",
+   "piid": "N0001914C0075",
+   "pe_bli": "2301",
+   "program_name": "UGM-109E",
+   "lexicon_doc": "342",
+   "lexicon_quote": "UGM-109E",
+   "announcement_evidence": "to exercise an option for the procurement of 100 Tomahawk Block IV All-Up-Round missiles",
+   "verdict": "weak",
+   "rationale": "Tomahawk Block IV is UGM-109E/RGM-109E, and UGM-109E is an index name, but it sits under WPN line 2301 whose title is 'Tomahawk Mods' - a modification line. This award buys 100 new all-up-round missiles, which is new-missile procurement, not modification of fielded rounds; the index carries no Tomahawk new-buy line for this org, and the only other Tomahawk owner (0204229N) is an RDT&E element. The evidence therefore does not establish that this procurement executes the mods line."
+  },
+  {
+   "record_index": 10,
+   "article_id": "1030113",
+   "piid": "N0001916D1000",
+   "pe_bli": "0566",
+   "program_name": "VH-3D",
+   "lexicon_doc": "330",
+   "lexicon_quote": "VH-3D",
+   "announcement_evidence": "to exercise an option for VH-3D/VH-60 Executive Helicopter Special Progressive Aircraft Rework sustainment support services",
+   "verdict": "weak",
+   "rationale": "VH-3D is carried verbatim by aircraft-modification line 0566 (Executive Helicopters Series), so the name is genuinely present. But the scope the announcement describes is contractor sustainment support services - 'security, project engineering, integrated logistics support, VIP Helicopter training, and program support' - with no funding obligated at award. That is the O&M-sustainment-attached-to-a-procurement-line failure mode; the aircraft-modification line funds VH-3D/VH-60N airframe modifications, not a services option."
+  },
+  {
+   "record_index": 11,
+   "article_id": "3942448",
+   "piid": "N0002423C5403",
+   "pe_bli": "2242",
+   "program_name": "Rolling Airframe Missile (RAM)",
+   "lexicon_doc": "342",
+   "lexicon_quote": "Rolling Airframe Missile (RAM)",
+   "announcement_evidence": "to procure additional Rolling Airframe Missile Block 2B Guided Missile Round Pack and special tooling/test equipment",
+   "verdict": "weak",
+   "rationale": "The RAM name is exact and WPN line 2242 is the RAM buy line, but the announcement states this is 'a 100% purchase for the German Navy under a cooperative Memorandum of Understanding (MOU)' and that German MOU funds are what will be obligated. No U.S. appropriation executes this action, so it cannot be evidence that U.S. WPN line 2242 paid for this work."
+  },
+  {
+   "record_index": 12,
+   "article_id": "1498891",
+   "piid": "N0002414C5315",
+   "pe_bli": "0604522N",
+   "program_name": "AN/SPY-6",
+   "lexicon_doc": "340",
+   "lexicon_quote": "AN/SPY-6",
+   "announcement_evidence": "to exercise an option for Air and Missile Defense Radar Program (AMDR) low rate initial production (LRIP)",
+   "verdict": "weak",
+   "rationale": "AMDR is the program that produces AN/SPY-6, which is an index name under RDT&E element 0604522N (Air and Missile Defense Radar (AMDR) System), so the alias is real. But the money is explicit and wrong for that line: 'Fiscal 2018 shipbuilding and conversion (Navy) funding in the amount of $136,529,350', buying an LRIP radar to be installed on a DDG Flight III hull. SCN-funded production hardware for a ship is not the RDT&E element's own work."
+  },
+  {
+   "record_index": 13,
+   "article_id": "4170827",
+   "piid": "N0002422C6419",
+   "pe_bli": "3117",
+   "program_name": "MK-48 Torpedo",
+   "lexicon_doc": "342",
+   "lexicon_quote": "MK-48 Torpedo",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "the production, spares, production support material, engineering support, and hardware repair of components for MK 48 Heavyweight Torpedo All Up Round",
+   "verdict": "link",
+   "rationale": "'MK 48 Heavyweight Torpedo All Up Round' normalizes to the index name 'MK-48 Torpedo' (hyphen only), which WPN line 3117 owns under the title MK-48 Torpedo. The scope is all-up-round production plus spares and production support material - the procurement line's own end item - and the appropriation matches: 'Fiscal 2025 weapons procurement (Navy) in the amount of $104,699,420'. The adjacent MK-48 owners in the index are the ADCAP RDT&E element and the ADCAP Mods line; neither fits new AUR production, so 3117 is the correct member of the MK-48 family.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Weapons procurement (Navy) money carries the action ($104,699,420 FY25 plus $2,469,840 FY23, 79% of the total) and it buys MK-48 all-up-round production and production support material - the WPN line's own end item, not a platform it supports."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The index has three other MK-48 owners - 0205632N 'MK-48 ADCAP' (RDT&E), 3225 'MK-48 Torpedo ADCAP Mods' and 6120 CBASS under Spares and Repair Parts - but the exact string 'MK-48 Torpedo' is owned only by 3117, the stated fiscal 2025 weapons procurement money rules out the RDT&E element, and the article is an All Up Round (a complete torpedo) rather than a mod kit or a spare, which separates it from 3225 and 6120."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "2023490",
+   "piid": "N0002415C4301",
+   "pe_bli": "1045",
+   "program_name": "COLUMBIA Class Submarine",
+   "lexicon_doc": "341",
+   "lexicon_quote": "COLUMBIA Class Submarine",
+   "announcement_evidence": "to continue performance of the repair, maintenance, upgrades and modernization efforts on the USS Columbus (SSN 762) Engineered Overhaul",
+   "verdict": "wrong",
+   "rationale": "Name-collision trap, not a link: USS Columbus (SSN 762) is a Los Angeles-class attack submarine and has nothing to do with the COLUMBIA-class SSBN line 1045. The action is an engineered overhaul funded with 'Fiscal 2020 operation and maintenance (Navy) funds', i.e. depot maintenance on one in-service hull. Recording this is the point: a fuzzy matcher reading 'Columbus' as 'COLUMBIA' would produce a confident and completely false attribution."
+  },
+  {
+   "record_index": 16,
+   "article_id": "1399347",
+   "piid": "N0003918D0001",
+   "pe_bli": "0204311N",
+   "program_name": "The Integrated Common Processor (ICP)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "The Integrated Common Processor (ICP)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for integrated common processors (ICP) on behalf of the Program Executive Office Submarines",
+   "verdict": "link",
+   "rationale": "The announcement names the article by name and acronym ('integrated common processors (ICP)') and then defines it: 'The ICP program provides a common Integrated Undersea Surveillance Systems (IUSS) signal processing and display system software and hardware suite for Surveillance Towed Array Sensor System ships and IUSS shore sites.' The index carries 'The Integrated Common Processor (ICP)' under element 0204311N, Integrated Surveillance System, which is the Navy's IUSS line and also owns SURTASS and the IUSS Detect/Classif System - the same programme family the announcement describes. No other PE in this index owns the ICP name, so there is no collision to resolve. SURTASS is named here only as the ships the processors serve, so the link is placed on ICP, not on the platform.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The full paragraph ends 'No funding will be obligated on the base contract award. Funds will be obligated as individual delivery orders are issued' - a five-year sole-source ID/IQ ordering vehicle with no appropriation named and zero obligation, and the ICP suites it will deliver to fielded SURTASS ships and IUSS shore sites are procurement/fielding hardware rather than element 0204311N's own funded work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Integrated Common Processor' is owned by 0204311N alone; the only other ICP in the index (0604269N, line 894) expands to EA-18G 'Integrated Capability Package (ICP-3)', an acronym collision with a different expansion on an aircraft EW line, and the announcement spells the name out and places it under PEO Submarines' IUSS mission, which is 0204311N's own scope. SURTASS is owned by four PEs but the link is placed on ICP, not on SURTASS."
+   }
+  },
+  {
+   "record_index": 19,
+   "article_id": "2414815",
+   "piid": "N0003019C0001",
+   "pe_bli": "0603595N",
+   "program_name": "Common Missile Compartment (CMC)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "Common Missile Compartment (CMC)",
+   "announcement_evidence": "to meet guidance requirements for operations on the Common Missile Compartment for the U.S. Columbia-class program and the United Kingdom Dreadnought-class program",
+   "verdict": "weak",
+   "rationale": "The Common Missile Compartment is an exact index name under 0603595N (Ohio Replacement), but the award is Strategic Systems Programs guidance research whose stated scope spans three things - CMC guidance requirements, 'the hypersonic guidance, navigation and control application', and support to the Navy's hypersonic flight experiment - the latter two belonging to the Conventional Prompt Strike element, not Ohio Replacement. CMC is the compartment the guidance work is sized for rather than the article being developed, and the announcement does not separate the money, so the evidence does not carry an attribution to this line."
+  },
+  {
+   "record_index": 20,
+   "article_id": "3348502",
+   "piid": "N0002420C5380",
+   "pe_bli": "2290",
+   "program_name": "The MK-41 Vertical Launching System (VLS)",
+   "lexicon_doc": "342",
+   "lexicon_quote": "The MK-41 Vertical Launching System (VLS)",
+   "announcement_evidence": "for MK 41 vertical launching system (VLS) canister production and ancillary hardware",
+   "verdict": "wrong",
+   "rationale": "Reject by design (rubric section 3, catch-all line): the only index owner of the MK-41 VLS name is WPN line 2290, whose title is 'Other Missile Support'. CATCHALL_TITLE in load_announcement_links.py matches '^other\\b', so the loader excludes 2290 and a link here could never publish - proposing it would only burn a refute pass. The designator match itself is clean (MK 41 / MK-41) and the appropriation would have fit (fiscal 2023 weapons procurement (Navy), 58%), which is precisely why it is worth recording as a rejection rather than silence."
+  },
+  {
+   "record_index": 22,
+   "article_id": "1639534",
+   "piid": "N0002409C6247",
+   "pe_bli": "0604777N",
+   "program_name": "AN/BVY-1 Integrated Submarine Imaging System (ISIS)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "AN/BVY-1 Integrated Submarine Imaging System (ISIS)",
+   "announcement_evidence": "for engineering services to support the AN/BVY-1 Integrated Submarine Imaging System",
+   "verdict": "weak",
+   "rationale": "The AN/BVY-1 designator narrows ISIS to element 0604777N, which is the only index row carrying it, so the identity side is as good as it gets. The money is the problem: 'Fiscal 2015, 2016, 2017 and 2018 shipbuilding and conversion (Navy); fiscal 2016, 2017 and 2018 other procurement' - SCN and OPN paying for engineering services booked against an RDT&E element. The ISIS name is also owned by 0604503N and by OPN line 0840 (Sub Periscope, Imaging and Supt Equip Prog), so the procurement colour points away from the element proposed here."
+  },
+  {
+   "record_index": 24,
+   "article_id": "2555751",
+   "piid": "N0002420C5400",
+   "pe_bli": "2242",
+   "program_name": "Rolling Airframe Missile (RAM)",
+   "lexicon_doc": "342",
+   "lexicon_quote": "Rolling Airframe Missile (RAM)",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "to exercise options for fiscal 2021 for the Rolling Airframe Missile Block 2/2A Guided Missile Round Pack, spare replacement components and recertification",
+   "verdict": "link",
+   "rationale": "'Rolling Airframe Missile Block 2/2A Guided Missile Round Pack' is the index name 'Rolling Airframe Missile (RAM)' plus a block designator, and WPN line 2242 (title 'Ram') is the RAM buy line. The article procured is the guided missile round pack itself - the line's own end item, not a platform it rides on - and the announcement puts 66% of the buy with the U.S. government, with the FMS share (Japan, Turkey, UAE) broken out separately, so a U.S. weapons-procurement action is genuinely present. The only other RAM row in the index is under a spares-and-repair-parts rollup, which does not fit a missile round buy.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 weapons procurement (Navy) funds of $84,339,000 (65%) dominate the obligation against WPN line 2242, buying the RAM guided missile round pack itself; the $1,815,763 of O&M (1%) for recertification is too small to make this an O&M action on a procurement line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "There is a genuine exact-name collision - 'Rolling Airframe Missile (RAM)' appears at both 2242 (title 'Ram') and 6120 (title 'Spares and Repair Parts'), and 6120 is NOT caught by the loader's CATCHALL_TITLE regex, so it is a live alternative owner that the announcement's 'spare replacement components' would fit - but the head article of the buy is the Block 2/2A Guided Missile Round Pack, a complete missile round rather than a spare part, which is the named buy line's own end item; the CIWS 'RAM Defense Capability (CRDC)' row at 4205 is a different system."
+   }
+  },
+  {
+   "record_index": 25,
+   "article_id": "627910",
+   "piid": "N0002411C6294",
+   "pe_bli": "0604503N",
+   "program_name": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to exercise options for fiscal 2016 Acoustic Rapid Commercial Off-The-Shelf (COTS) Insertion (A-RCI) system engineering and technical support",
+   "verdict": "link",
+   "rationale": "The announcement spells out the acronym the index abbreviates: 'Acoustic Rapid Commercial Off-The-Shelf (COTS) Insertion (A-RCI)' is the index name 'Acoustic Rapid COTS Insertion (A-RCI)'. Element 0604503N (Submarine SWFTS Modernization) is the only PE in this index that owns the A-RCI name, so there is no collision. The scope is the element's own development work - continuing the development and production of A-RCI systems and the common acoustics processing that goes with it - rather than engineering support to a platform: A-RCI is itself the sonar system the line modernises.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The funding sentence names fiscal 2016 research, development, test and evaluation (Navy) first among the obligated colours, and the described work - continuing development and production of A-RCI and common acoustics processing for Technology Insertions 12-14 - is the SWFTS modernisation element's own development product, not sustainment of a platform."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The alias is real and unique: the announcement spells out 'Acoustic Rapid Commercial Off-The-Shelf (COTS) Insertion (A-RCI)' and 0604503N is the only PE in the index carrying that name (line 964, alongside AN/BQQ-10, the A-RCI sonar's own designation); no OPN sonar line (2150 SSN Acoustic Equipment, 0941, 0840) owns the A-RCI name, and no variant/increment ambiguity arises because the FY16 option is the same A-RCI system."
+   }
+  },
+  {
+   "record_index": 28,
+   "article_id": "1830734",
+   "piid": "N0002418C2207",
+   "pe_bli": "5035",
+   "program_name": "Towing, Salvage, and Rescue Ship (ATS)",
+   "lexicon_doc": "341",
+   "lexicon_quote": "Towing, Salvage, and Rescue Ship (ATS)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to exercise options for construction of two towing, salvage and rescue ships",
+   "verdict": "link",
+   "rationale": "The announcement's 'towing, salvage and rescue ships' is the index name 'Towing, Salvage, and Rescue Ship (ATS)' in the plural, and SCN line 5035 carries that name as both its name row and its title. The action is construction of two of those ships - the line's own end item, with the ship class not merely supported but bought - and the appropriation matches exactly: 'Fiscal 2018, 2019, and 2016 shipbuilding and conversion (Navy) funding ... will be obligated at time of award'. No other PE in the index owns this name.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018/2019/2016 shipbuilding and conversion (Navy) money obligated against SCN line 5035 to build two towing, salvage and rescue ships - the line's own end item bought with its own appropriation; this is hull construction, not the facility construction §3 rejects."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Towing, Salvage, and Rescue Ship (ATS)' is owned by exactly one PE (5035), where it is both the name row and the line title; the only other salvage rows in the index sit under 1130 'Diving and Salvage Equipment' and are diving gear, not ships, so nothing else in the index could take this award."
+   }
+  },
+  {
+   "record_index": 29,
+   "article_id": "606734",
+   "piid": "N0002411C6294",
+   "pe_bli": "0604503N",
+   "program_name": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for fiscal 2015 acoustic rapid commercial-off-the-shelf (COTS) insertion (A-RCI) system engineering and technical support",
+   "verdict": "link",
+   "rationale": "Same programme, earlier option year on the same contract: the announcement spells out A-RCI in full and then describes the element's own work - 'the development and production of the A-RCI and common acoustics processing for Technology Insertion 12 (TI12) through Technology Insertion 14 (TI14) for the U.S. submarine fleet'. Technology Insertion builds are the SWFTS modernisation element's development product, and 0604503N is the sole index owner of the A-RCI name.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2015 research, development, test and evaluation money is explicitly part of the obligation, and the scope is development and production of A-RCI and common acoustics processing for TI12 through TI14 - the element's own technology-insertion builds."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same unique-owner finding as record 25 on the same contract: A-RCI is named only at 0604503N, and the Technology Insertion 12-14 builds named here are increments OF A-RCI rather than a different program, so no alternative PE and no variant mismatch."
+   }
+  },
+  {
+   "record_index": 32,
+   "article_id": "3738931",
+   "piid": "N0002419C5603",
+   "pe_bli": "5231",
+   "program_name": "Ships Self Defense System (SSDS)",
+   "lexicon_doc": "333",
+   "lexicon_quote": "Ships Self Defense System (SSDS)",
+   "announcement_evidence": "for ship self-defense system combat system engineering support",
+   "verdict": "weak",
+   "rationale": "'ship self-defense system' matches the index name 'Ships Self Defense System (SSDS)', but that name sits on OPN line 5231 (Ship Missile Support Equipment) while the stated money is the opposite colour: 'Fiscal 2024 research, development, test and evaluation (Navy) funds ... (97%); and fiscal 2024 shipbuilding and conversion (Navy) funds ... (3%)'. Combat system engineering support paid almost entirely with RDT&E is not the OPN support-equipment line's own work, and no RDT&E element in this index owns the SSDS name."
+  },
+  {
+   "record_index": 35,
+   "article_id": "926748",
+   "piid": "N0002409C6247",
+   "pe_bli": "0604777N",
+   "program_name": "The Integrated Submarine Imaging System (ISIS)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "The Integrated Submarine Imaging System (ISIS)",
+   "announcement_evidence": "to exercise an option for engineering services and support of the Integrated Submarine Imaging Systems (ISIS) program",
+   "verdict": "weak",
+   "rationale": "Unlike the AN/BVY-1 paragraphs on this same contract, this one names only 'Integrated Submarine Imaging Systems (ISIS)', a name three different lines in this index own - 0604503N, 0604777N and OPN line 0840. With no designator to break the collision and the scope being engineering services rather than an article, the evidence cannot say which line the money executes."
+  },
+  {
+   "record_index": 36,
+   "article_id": "1482549",
+   "piid": "N0002417C2117",
+   "pe_bli": "1045",
+   "program_name": "COLUMBIA Class Submarine",
+   "lexicon_doc": "341",
+   "lexicon_quote": "COLUMBIA Class Submarine",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the purchase of missile tube long-lead-time material in support of the Columbia-class fleet ballistic missile submarines",
+   "verdict": "link",
+   "rationale": "'Columbia-class fleet ballistic missile submarines' is the index name 'COLUMBIA Class Submarine' in running prose, and the same SCN line 1045 separately owns 'Missile Tube Module (MTM)' - which is exactly what this modification buys long-lead material for. The appropriation is stated and matches the line's account: 'Fiscal 2018 shipbuilding and conversion (Navy)'. The competing Columbia owner in the index is RDT&E element 0603595N (Ohio Replacement); SCN advance procurement of missile tube material belongs to the shipbuilding line, so the money colour resolves the collision in favour of 1045. The U.K. share (28%) is broken out separately, leaving a real U.S. SCN action.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 shipbuilding and conversion (Navy) money against SCN line 1045 buying missile tube long-lead material - the same line's index owns 'Missile Tube Module (MTM)', so the article bought is the line's own content rather than a platform the contract merely supports, and the 28% U.K. share is broken out separately."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The paragraph names a second index-owned program - 'Common Missile Compartment', owned by 0603595N (Ohio Replacement) - so an alternative owner is genuinely in view, but the exact string 'COLUMBIA Class Submarine' belongs only to 1045 (0603595N's row is the distinct 'COLUMBIA Class Submarine Development'), 1045 separately owns 'Missile Tube Module (MTM)' which is the article bought, and the stated fiscal 2018 shipbuilding and conversion money separates a materiel purchase from the RDT&E development element."
+   }
+  },
+  {
+   "record_index": 37,
+   "article_id": "1747970",
+   "piid": "N0002419C4452",
+   "pe_bli": "0603564N",
+   "program_name": "DDG-51 Flt III Concept Development",
+   "lexicon_doc": "340",
+   "lexicon_quote": "DDG-51 Flt III Concept Development",
+   "announcement_evidence": "was awarded a $126,171,106 cost-plus-award-fee contract for DDG 51 class integrated planning yard services",
+   "verdict": "wrong",
+   "rationale": "Reject by design (rubric section 3, platform): the DDG 51 class is the ship class the planning yard serves. The only DDG-51 name in this index is 'DDG-51 Flt III Concept Development' under 0603564N (Ship Preliminary Design & Feasibility Studies), which funds pre-design studies for a future flight - not design, planning and material support for maintenance and modernisation of the in-service fleet, which the announcement funds with 'fiscal 2019 operations and maintenance (Navy); and fiscal 2019 other procurement (Navy)'."
+  },
+  {
+   "record_index": 39,
+   "article_id": "1003484",
+   "piid": "N0002411C6294",
+   "pe_bli": "0604503N",
+   "program_name": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to exercise options for Acoustic - Rapid Commercial-Off-The-Shelf (COTS) Insertion (A-RCI) systems engineering and technical support",
+   "verdict": "link",
+   "rationale": "Third option year on the same A-RCI contract line, with the acronym spelled out again and the work described as the element's own: the contractor 'will perform engineering services to continue the development and production of COTS Insertion A-RCI Systems.' A-RCI is the sonar system itself - 'a sonar system that integrates and improves towed array, hull array, sphere array, and other ship sensor processing' - not a platform the contract supports, and 0604503N is the only index owner of the name.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2017 research, development, test and evaluation funds are named in the obligation alongside older SCN money, and the work is engineering to continue development and production of A-RCI systems - the RDT&E element's own product line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Third option year on the same contract and the same finding: the announcement spells the acronym out, 0604503N is the sole index owner of the A-RCI name, and the evidence is the program name rather than the contractor's - Lockheed Martin appears in the index nowhere as a program name."
+   }
+  },
+  {
+   "record_index": 45,
+   "article_id": "3479250",
+   "piid": "N0001919C0079",
+   "pe_bli": "2301",
+   "program_name": "Maritime Strike Tomahawk (MST)",
+   "lexicon_doc": "342",
+   "lexicon_quote": "Maritime Strike Tomahawk (MST)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "This modification adds scope to procure 42 Maritime Strike Tomahawk Seeker (MST) suites for the Navy in support of MST Low Rate Production Three, to be installed into Tactical Tomahawk Missiles in the recertification effort",
+   "verdict": "link",
+   "rationale": "'Maritime Strike Tomahawk Seeker (MST)' carries the index name 'Maritime Strike Tomahawk (MST)' with 'Seeker' inserted. MST is owned by two lines in this index - RDT&E element 0204229N and WPN line 2301, 'Tomahawk Mods' - and the announcement resolves the collision itself: this is Low Rate Production Three of seeker suites 'to be installed into Tactical Tomahawk Missiles in the recertification effort', i.e. a production kit inserted into fielded rounds, which is the definition of the Tomahawk modification line rather than of development. The buy is explicitly 'for the Navy'.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The entire $124,286,356 is fiscal 2023 weapons procurement (Navy), and it buys 42 MST seeker suites to be installed into fielded Tactical Tomahawk missiles during recertification - procurement money buying modification kits against the Tomahawk Mods procurement line."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED on the alternative-owner ground: the exact string 'Maritime Strike Tomahawk (MST)' is owned by TWO PEs in this index - RDT&E element 0204229N (line 123, Tomahawk/TMPC) and WPN line 2301 (line 1399, Tomahawk Mods) - and nothing in the record breaks the tie, because the paragraph states no appropriation; worse, the evidence tilts the other way, since the award is a cost-plus-incentive-fee/cost-plus-fixed-fee modification to NAVAIR development contract N00019-19-C-0079 and the named article is the MST *Seeker*, the development element's own product, so the choice of 2301 over 0204229N rests on inference about what a Low Rate Production lot must be funded with rather than on the announcement's words."
+   }
+  },
+  {
+   "record_index": 48,
+   "article_id": "3958758",
+   "piid": "N0003025C6304",
+   "pe_bli": "1250",
+   "program_name": "TRIDENT II Mods",
+   "lexicon_doc": "342",
+   "lexicon_quote": "TRIDENT II Mods",
+   "announcement_evidence": "for systems engineering and integration support services and special studies in support of the U.S. Trident II (D5) Strategic Weapon System Program and D5 Life Extension 2 Strategic Systems Programs Alteration",
+   "verdict": "weak",
+   "rationale": "Trident II (D5) is named and WPN line 1250 ('TRIDENT II Mods') is the obvious candidate, but the award buys 'systems engineering and integration support services and special studies' - engineering support, which rubric section 3 treats as generic unless it is the line's own article - and the announcement obligates nothing that identifies an appropriation. The index's other Trident owners are the OPN strategic missile support-equipment line and elements whose names (Reentry Body Assembly, W-93 / Mk 7) do not appear here, so the evidence does not pin the money to the mods line."
+  },
+  {
+   "record_index": 49,
+   "article_id": "3199240",
+   "piid": "N0002420C2120",
+   "pe_bli": "2013",
+   "program_name": "Virginia Class Submarine",
+   "lexicon_doc": "341",
+   "lexicon_quote": "Virginia Class Submarine",
+   "announcement_evidence": "for lead yard support and development studies and design efforts related to Virginia-class submarines",
+   "verdict": "weak",
+   "rationale": "'Virginia-class submarines' matches the index name on SCN line 2013, but the only appropriation the announcement names is the wrong colour for that line: 'Fiscal 2022 research, development, test, and evaluation funding in the amount of $10,000,000 will be obligated at time of award'. Lead yard support and development studies read as the New Design SSN RDT&E element's work, and the two RDT&E Virginia names in this index (Secondary Propulsion Unit, Undersea Dominance Payload Integration) are not what the announcement describes, so no line can be identified on this evidence."
+  },
+  {
+   "record_index": 50,
+   "article_id": "606795",
+   "piid": "N0001914C0075",
+   "pe_bli": "2301",
+   "program_name": "UGM-109E",
+   "lexicon_doc": "342",
+   "lexicon_quote": "UGM-109E",
+   "announcement_evidence": "for the procurement of 114 Tomahawk Block IV All Up Round missiles for the Navy",
+   "verdict": "weak",
+   "rationale": "Same contract and same problem as the 100-missile option: Tomahawk Block IV is UGM-109E, an index name, but its line 2301 is titled 'Tomahawk Mods' and this action buys 114 new all-up-round missiles rather than modifying fielded ones. This org's index carries no Tomahawk new-buy procurement line, so the correct outcome is no link."
+  },
+  {
+   "record_index": 51,
+   "article_id": "1377618",
+   "piid": "N0002417C6259",
+   "pe_bli": "0604503N",
+   "program_name": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "Acoustic Rapid COTS Insertion (A-RCI)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to exercise an option period for the procurement of Technical Insertion 18-20 Acoustic Rapid Commercial Off-the-Shelf Insertion engineering services",
+   "verdict": "link",
+   "rationale": "The strongest of the A-RCI paragraphs on money: the announcement names Technical Insertion 18-20 A-RCI work and then states 'Fiscal 2018 research, development test and evaluation funding in the amount of $11,028,049 will be obligated at time of award' - RDT&E money against RDT&E element 0604503N, which is the sole index owner of the A-RCI name. Technology-insertion builds are the SWFTS modernisation element's own development product.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "One hundred percent of the obligation is fiscal 2018 research, development test and evaluation funding against RDT&E element 0604503N, for named Technical Insertion 18-20 A-RCI work - the element's own development build, not generic engineering support with no program named."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "A different contract but the same unique name: A-RCI is owned only by 0604503N, Technical Insertion 18-20 is an increment of that same system, and the stated fiscal 2018 research, development test and evaluation funding matches the only PE that owns the name, so there is no second candidate to prefer."
+   }
+  },
+  {
+   "record_index": 56,
+   "article_id": "742294",
+   "piid": "N0001915C0123",
+   "pe_bli": "2327",
+   "program_name": "AGM-88E Advanced Anti-Radiation Guided Missile (AARGM)",
+   "lexicon_doc": "342",
+   "lexicon_quote": "AGM-88E Advanced Anti-Radiation Guided Missile (AARGM)",
+   "announcement_evidence": "AGM-88B high-speed anti-radiation missiles into 145 full-rate production Lot 5 advanced anti-radiation guided missile all-up-rounds and 12 captive air training missiles",
+   "verdict": "weak",
+   "rationale": "The index row does carry 'AGM-88E Advanced Anti-Radiation Guided Missile (AARGM)', but it sits under WPN line 2327 whose title is AARGM-ER - the extended-range increment (AGM-88G), a different variant from the Lot 5 baseline AARGM all-up-rounds this 2016 award converts from AGM-88B seekers. Increment mismatch is a lens-B refutation, and the only other AARGM owner in the index is RDT&E element 0205601N (Anti-Radiation Missile Improvement), which a full-rate production buy does not execute. Part of the buy is also for the government of Italy."
+  },
+  {
+   "record_index": 57,
+   "article_id": "639591",
+   "piid": "N0001911C0045",
+   "pe_bli": "0145",
+   "program_name": "FA-18E/F",
+   "lexicon_doc": "330",
+   "lexicon_quote": "FA-18E/F",
+   "announcement_evidence": "for the procurement of 30 F414-GE-400 install engines and associated devices, and three spare engines for the F/A-18 aircraft",
+   "verdict": "weak",
+   "rationale": "F414-GE-400 is not an index name, and the announcement says only 'the F/A-18 aircraft' - it never writes E/F, while the index name is 'FA-18E/F'. Inferring E/F from the engine type is an inference about the platform, not evidence that this aircraft-procurement line paid for the engines; the same engine also flies on EA-18G, which the index books under a different line. Fiscal 2015 aircraft procurement (Navy) money fits an APN line but does not choose between them."
+  },
+  {
+   "record_index": 62,
+   "article_id": "962429",
+   "piid": "N0002416C2427",
+   "pe_bli": "0604567N",
+   "program_name": "LHA(R) FLT Design and Total Ship Integration",
+   "lexicon_doc": "340",
+   "lexicon_quote": "LHA(R) FLT Design and Total Ship Integration",
+   "announcement_evidence": "for additional long lead time material in support of Landing Helicopter Assault (LHA) Replacement (LHA(R)) Flight 1 Amphibious Assault Ship (LHA 8)",
+   "verdict": "wrong",
+   "rationale": "The LHA(R) designator matches, but the index's only LHA(R) row is an RDT&E design-and-total-ship-integration effort under 0604567N (Ship Contract Design/Live Fire T&E), and this award buys shipbuilding long-lead material - machinery control components, cargo and aircraft elevators, gas turbines, refrigeration units - for hull LHA 8. Procurement of construction material is not the design element's own work, and this org's index carries no SCN amphibious assault ship line for LHA 8 (the other LHA name, 0933 LHA/LHD Midlife, is a modernisation line for ships already in service)."
+  },
+  {
+   "record_index": 63,
+   "article_id": "1256248",
+   "piid": "N0002409C6247",
+   "pe_bli": "0604777N",
+   "program_name": "The Integrated Submarine Imaging System (ISIS)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "The Integrated Submarine Imaging System (ISIS)",
+   "announcement_evidence": "to exercise an option for engineering services and support of the Integrated Submarine Imaging Systems program",
+   "verdict": "weak",
+   "rationale": "Bare 'Integrated Submarine Imaging Systems' with no AN/BVY-1 designator, and three lines in this index own that name (0604503N, 0604777N, OPN line 0840). The announcement's own gloss - 'The Integrated Submarine Imaging System provides visual and other capabilities for Navy submarines' - adds nothing that discriminates between them, and the scope is engineering services, so no line can be identified."
+  },
+  {
+   "record_index": 68,
+   "article_id": "606023",
+   "piid": "N0002409C6247",
+   "pe_bli": "0604777N",
+   "program_name": "AN/BVY-1 Integrated Submarine Imaging System (ISIS)",
+   "lexicon_doc": "340",
+   "lexicon_quote": "AN/BVY-1 Integrated Submarine Imaging System (ISIS)",
+   "announcement_evidence": "to exercise an option for engineering services and support of the AN/BVY-1 Integrated Submarine Imaging System and on board repair part kits",
+   "verdict": "weak",
+   "rationale": "The AN/BVY-1 designator again isolates element 0604777N as the one index row carrying it, so identity is clean. But the article bought is engineering services plus on-board repair part kits - sustainment, not development - and this 2014 paragraph names no appropriation at all. On the same contract the 2018 paragraph shows the money is SCN and OPN, which points away from an RDT&E element, so the safer verdict here is the same."
+  },
+  {
+   "record_index": 69,
+   "article_id": "3251958",
+   "piid": "N0001919D0003",
+   "pe_bli": "0505",
+   "program_name": "F-18E/F and EA-18G Modernization and Sustainment",
+   "lexicon_doc": "330",
+   "lexicon_quote": "F-18E/F and EA-18G Modernization and Sustainment",
+   "announcement_evidence": "This modification exercises options that provides inspections, modifications and repairs on the F/A-18 E/F and EA-18G",
+   "verdict": "weak",
+   "rationale": "The aircraft pair matches the index name almost word for word, which is why this one is tempting. But the scope is 'inspections, modifications and repairs' performed at Boeing's Jacksonville depot, and the announcement says 'No funds are being obligated at time of award. Funds will be obligated on individual orders as they are issued.' Depot inspection and repair is commonly O&M work, and O&M sustainment attached to an aircraft-modification procurement line is the exact failure mode the held-out study found; with no appropriation stated, the evidence does not clear it."
+  },
+  {
+   "record_index": 71,
+   "article_id": "710219",
+   "piid": "N0002416C2431",
+   "pe_bli": "3010",
+   "program_name": "LPD Flight II",
+   "lexicon_doc": "341",
+   "lexicon_quote": "LPD Flight II",
+   "announcement_evidence": "for procurement of long lead time material and advance construction activities in support of LPD 28, Amphibious Transport Dock Ship class",
+   "verdict": "wrong",
+   "rationale": "Wrong increment: LPD 28 is the last Flight I San Antonio-class hull, while SCN line 3010 funds LPD Flight II, which begins at LPD 30. The index carries no Flight I LPD construction line for this org - its other LPD names (LPD 17, LPD 18) sit on the OPN class-support-equipment line 0946 and on the LX(R) design element - so fiscal 2016 SCN long-lead material for LPD 28 has no line here to attach to."
+  },
+  {
+   "record_index": 74,
+   "article_id": "823199",
+   "piid": "N0002410C2118",
+   "pe_bli": "2013",
+   "program_name": "VIRGINIA Payload Module (VPM)",
+   "lexicon_doc": "341",
+   "lexicon_quote": "VIRGINIA Payload Module (VPM)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for the manufacturing of Virginia Payload Module and South Dakota Insertion prototype materials in support of Virginia Class Submarines",
+   "verdict": "link",
+   "rationale": "'Virginia Payload Module' is the index name 'VIRGINIA Payload Module (VPM)' apart from capitalisation, and the same SCN line 2013 separately owns 'Acoustic Superiority (AS)' - the programme the announcement's second article, the South Dakota Insertion, belongs to. Both articles named are therefore the line's own content rather than a platform it merely supports, and the action is a modification to the Virginia-class construction contract N00024-10-C-2118 manufacturing that material. The competing Virginia owners in the index are OPN class support equipment and the New Design SSN element, neither of which builds hull modules.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The only money obligated is fiscal 2016 research, development, test and evaluation (Navy) - $15,903,000 - for manufacturing prototype materials 'in support of Virginia Class Submarines', i.e. RDT&E development work attached to SCN shipbuilding line 2013; that is exactly the wrong-appropriation failure mode, and the prototype material belongs to a development element rather than to the construction line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'VIRGINIA Payload Module (VPM)' appears at 2013 only; the competing Virginia rows are 0604558N (New Design SSN - Secondary Propulsion Unit and 'Undersea Dominance Payload Integration', a payload-integration name distinct from the hull module), 0942 Virginia Class Support Equipment, 9021 VACL spares and the two Photonics Mast Variant rows, none of which owns the VPM name, and the second article named (South Dakota Insertion) maps to 'Acoustic Superiority (AS)' on the same 2013 line rather than to any rival PE."
+   }
+  },
+  {
+   "record_index": 75,
+   "article_id": "3273802",
+   "piid": "N0042122C0013",
+   "pe_bli": "0525",
+   "program_name": "F-18 Series",
+   "lexicon_doc": "330",
+   "lexicon_quote": "F-18 Series",
+   "announcement_evidence": "to provide maintenance, operation, and management support services for the F/A-18 organizational level, intermediate level, and missile maintenance repair and storage facilities for the government of Kuwait",
+   "verdict": "wrong",
+   "rationale": "Two independent rejections. Rubric section 3 generic services: this is organisational- and intermediate-level maintenance and facility management, not an article of the F-18 Series modification line. And the money is foreign: 'Foreign Military Sales customer funds in the amount of $77,115,421 will be obligated at the time of award', for the government of Kuwait, so no U.S. aircraft-procurement line executes it."
+  },
+  {
+   "record_index": 77,
+   "article_id": "961138",
+   "piid": "N0001915D5501",
+   "pe_bli": "4269",
+   "program_name": "ARC-210",
+   "lexicon_doc": "333",
+   "lexicon_quote": "ARC-210",
+   "announcement_evidence": "to exercise an option for the procurement of additional AN/ARC-210 radios and ancillary equipment for various domestic and foreign military sales aircraft",
+   "verdict": "wrong",
+   "rationale": "The ARC-210 name is carried by this index only as a component of OPN line 4269, the Unmanned Carrier Aviation mission control system, where it is the radio inside the MD-5 ground control station. This award buys AN/ARC-210 radios 'for various domestic and foreign military sales aircraft' - a common-equipment buy across the fleet with no connection to the UCA mission control line. Linking a shared radio to whichever line happens to list it as a component is attribution by component name, which the rubric rejects."
+  }
+ ]
+}

@@ -1,0 +1,281 @@
+{
+ "chunk": "chunk_058_F.json",
+ "proposals": [
+  {
+   "record_index": 6,
+   "article_id": "798095",
+   "piid": "FA821316D0005",
+   "pe_bli": "356010",
+   "program_name": "BBU-35 Impulse Cartridge (MG62)",
+   "lexicon_doc": "409",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "replenishment of BBU-35 A/B impulse cartridges",
+   "lexicon_quote": "BBU-35 Impulse Cartridge (MG62)",
+   "rationale": "The announcement is a replenishment buy of the BBU-35 A/B impulse cartridge itself, and BLI 356010 (Expendable Countermeasures, doc 409) owns the name 'BBU-35 Impulse Cartridge (MG62)' in its own P-1 narrative. The designator normalizes cleanly (BBU-35 A/B -> BBU-35); it is the item the line procures, not a platform the contract merely supports, and no other row in this org's index carries a BBU-35 name. Ammunition-procurement work against an ammunition-procurement line, so the appropriation matches. The paragraph also notes FMS participation by twelve partners, but it is a partial-FMS replenishment contract (not the '100 percent foreign military sales' wording used elsewhere in this chunk), so the Air Force share funds this line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Not refuted, though this is the weakest money case of the eight: the untruncated paragraph ends 'No funds are being obligated at the time of award' and the lake records $0 and no federal accounts on FA8213-16-D-0005, so no US appropriation is stated anywhere - but nothing named CONFLICTS with ammunition procurement either, and the object of the buy is the line's own end item, BBU-35 A/B impulse cartridges, which BLI 356010 (Expendable Countermeasures) names verbatim in its own doc 409 narrative, with no services, sustainment, platform-support or rollup content and no CATCHALL_TITLE match; the twelve-country FMS sentence uses the announcer's partial-participation wording, not the '100 percent foreign military sales' phrasing that appears elsewhere in this same chunk, and the sibling BBU-48 replenishment IDIQ from the same Hill AFB office (record 34) obligates fiscal 2016 ammunition procurement funds, showing this family of ceiling vehicles executes on this line's appropriation with FMS riding alongside - so the unquantified US share is a partial-attribution caveat, the same one the wave kept on the unfunded GMLRS and JLTV production ceilings, not the appropriation mismatch lens A exists to catch."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "BBU-35 is a real designator written verbatim in the announcement and appears exactly once in the org's index (356010, doc 409); the sibling rows are other cartridges (BBU-36/46/48/59/63), no other pe_bli carries any BBU name, and the only A/B difference is the item's own modification suffix, not a competing variant."
+   }
+  },
+  {
+   "record_index": 34,
+   "article_id": "1032766",
+   "piid": "FA821317D0001",
+   "pe_bli": "356010",
+   "program_name": "BBU-48 Impulse Cartridge (SS27)",
+   "lexicon_doc": "409",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "replenishment of BBU-48 A/B impulse cartridges",
+   "lexicon_quote": "BBU-48 Impulse Cartridge (SS27)",
+   "rationale": "Same structure as the BBU-35 award and stronger on money: the paragraph states 'Fiscal 2016 ammunition procurement funds in the amount of $3,529,200 are being obligated', which is exactly the appropriation that funds BLI 356010 (Expendable Countermeasures). The index row 'BBU-48 Impulse Cartridge (SS27)' is the item being replenished, the designator normalizes (BBU-48 A/B -> BBU-48), and BBU-48 appears under no other pe_bli in this org's index.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money is stated on the proposed PIID itself - 'Fiscal 2016 ammunition procurement funds in the amount of $3,529,200 are being obligated to CAPCO LLC' (FA8213-17-D-0001) - and ammunition procurement is exactly the appropriation of doc 409 where BLI 356010 sits, so procurement money buys the procurement line's own article: BBU-48 A/B impulse cartridges are a verbatim named item of Expendable Countermeasures, not a platform the contract supports, and the line is a dedicated countermeasures BLI rather than a rollup or catch-all; the Saudi/UAE/Egypt/NATO FMS participation rides alongside the named US obligation rather than replacing it."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "BBU-48 appears once in the index, under 356010 doc 409, and the announcement writes the designator itself; no alternative owner exists and the A/B suffix is the same item, so the evidence cannot link elsewhere."
+   }
+  },
+  {
+   "record_index": 36,
+   "article_id": "1559427",
+   "piid": "FA881018C0006",
+   "pe_bli": "1206444SF",
+   "program_name": "Next-Gen OPIR Polar (NGP)",
+   "lexicon_doc": "417",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Next Generation Overhead Persistent Infrared Polar Space Vehicles 1 and 2",
+   "lexicon_quote": "Next-Gen OPIR Polar (NGP)",
+   "rationale": "The announcement spells out in full the program the index abbreviates: 'Next Generation Overhead Persistent Infrared Polar' is 'Next-Gen OPIR Polar (NGP)', owned by PE 1206444SF (Next-Gen OPIR -- Polar). The work described - system and payload requirements analysis and risk reduction leading to a system requirements review for polar space vehicles 1 and 2 - is that program element's own development work, not support to a platform, and 'Fiscal 2018 research, development, test and evaluation funds' are obligated against an RDT&E line. The sibling Next-Gen OPIR PEs in the index (1206442SF, 1206443SF GEO, 1206440SF Ground) own different names and the announcement is explicitly Polar, so no other PE claims it.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Development money on a development line: the paragraph obligates 'Fiscal 2018 research, development, test and evaluation funds in the amount of $9,000,000' and the lake's accounts for FA8810-18-C-0006 are 057-3600;057-3620, intersecting the Space Force RDT&E appropriation of PE 1206444SF (doc 417, Next-Gen OPIR -- Polar) - the 3600F-to-3620F shift is the AF-to-Space Force vintage difference this wave has already ruled is not a different line's money, and this is the same contract earlier chunks accepted twice; system and payload requirements analysis and risk reduction to SRR for Polar Space Vehicles 1 and 2 is the element's own hardware development, no sustainment tail, and 1206444SF is a single-program element, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The alias is real (the announcement spells out 'Overhead Persistent Infrared' for OPIR) and 'Polar' is the discriminator: 1206444SF is the only index row carrying a Next-Gen OPIR Polar name, while the sibling OPIR PEs own only GEO (1206443SF), Ground (1206440SF) and facility/SMI names (1206442SF), none of which this evidence would match."
+   }
+  },
+  {
+   "record_index": 47,
+   "article_id": "1594882",
+   "piid": "FA853418F0073",
+   "pe_bli": "845420",
+   "program_name": "Basic Expeditionary Airfield Resources (BEAR)",
+   "lexicon_doc": "411",
+   "match_basis": "exact-name",
+   "announcement_evidence": "basic expeditionary airfield resources power units",
+   "lexicon_quote": "Basic Expeditionary Airfield Resources (BEAR)",
+   "rationale": "The delivery order buys 'basic expeditionary airfield resources power units' - the announcement writes the program name exactly as the index row carries it (case aside), and BEAR power units are the end items BLI 845420 (Mobility Equipment, doc 411) procures. The paragraph obligates 'Fiscal 2018 procurement funds in the amount of $46,760,000', a procurement action against a procurement line, so the appropriation matches. BEAR appears under no other pe_bli in this org's index; the only nearby rows (Expeditionary Airfield Lighting System, Deployable C3 Expeditionary Airfield Basing Assets ISSP) are different items.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full $46,760,000 is obligated as 'Fiscal 2018 procurement funds' against a procurement line - BLI 845420 sits in doc 411, Air Force Other Procurement - and generators for basic expeditionary airfield resources are the end item that line buys, with BEAR named in its own narrative; the delivery order is 100 percent BEAR power units with no services, sustainment or platform-support content, and although 'Mobility Equipment' carries five named items (BEAR, EALS, MAAS, RALS, ROWPU) it is a functional equipment line with named programs, not a §3 catch-all (it does not match CATCHALL_TITLE), and the whole action executes the BEAR share of it."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Basic Expeditionary Airfield Resources' is written out exactly in the announcement and occurs once in the index, under 845420 doc 411; the other expeditionary-airfield rows (EALS same PE, Deployable C3 ISSP under 861900, 3DELRR rows) are different names this evidence does not match."
+   }
+  },
+  {
+   "record_index": 48,
+   "article_id": "615285",
+   "piid": "FA862815C2251",
+   "pe_bli": "B05200",
+   "program_name": "The B-52H Combat Network Communication Technology (CONECT)",
+   "lexicon_doc": "407",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "seven full-rate production Combat Network Communication Technology upgrade kits for the B-52 bomber",
+   "lexicon_quote": "The B-52H Combat Network Communication Technology (CONECT)",
+   "rationale": "The award buys full-rate-production CONECT upgrade kits plus 21 retrofit kits for the B-52, which is precisely the modification BLI B05200 (B-52, doc 407) funds - the index row names CONECT as that line's own content. The only normalization is the aircraft designator (B-52 vs B-52H). This is a production buy of the program's kits, not engineering support to the airframe, so it is the program the line funds rather than a platform the contract supports. CONECT is carried by no other pe_bli in this index; the B-52 RDT&E PE 0101113F owns other B-52 names (AEHF Integration, Crypto Modernization, RMP) but not CONECT.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money color is verified twice and matches: the untruncated paragraph obligates the entire $46,719,474 in 'fiscal 2015 aircraft procurement funds' and the lake stamps FA8628-15-C-2251 with federal account 057-3010 (Aircraft Procurement, Air Force), which is doc 407's appropriation where BLI B05200 (B-52) sits; the article bought is CONECT itself - seven full-rate-production upgrade kits plus 21 retrofit kits - which the line's own narrative names, so the B-52 is not a platform standing in for the program (the line IS the B-52 modification line), the support-equipment and installation-engineering content rides the kit buy rather than constituting it, and the RDT&E sibling 0101113F owns other B-52 names but not CONECT."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "CONECT appears once in the index (B05200, doc 407) and the announcement writes 'Combat Network Communication Technology' in full; the RDT&E B-52 PE 0101113F owns ten other B-52 names but not CONECT, and B-52 vs B-52H is the same airframe, not a different variant."
+   }
+  },
+  {
+   "record_index": 61,
+   "article_id": "1391570",
+   "piid": "FA873017C0038",
+   "pe_bli": "E00300",
+   "program_name": "Airborne Warning and Control System (AWACS)",
+   "lexicon_doc": "407",
+   "match_basis": "exact-name",
+   "announcement_evidence": "low-rate initial production of the airborne warning and control system diminishing manufacturing sources replacement of avionics for global operations and navigation program",
+   "lexicon_quote": "Airborne Warning and Control System (AWACS)",
+   "rationale": "The definitization covers low-rate initial production of the AWACS DMS Replacement of Avionics for Global Operations and Navigation modification, and BLI E00300 (E-3, doc 407) is the E-3/AWACS modification procurement line that owns the name 'Airborne Warning and Control System (AWACS)' in its own P-1 narrative. Here AWACS is not a platform the contract merely supports: the line's entire content is E-3 modifications and this is production of one of them, with 'Fiscal 2017 procurement funds in the amount of $4,001,650' obligated - a procurement action against a procurement line. No other pe_bli in this org's index carries an AWACS name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Procurement money against the procurement modification line that owns this work: 'Fiscal 2017 procurement funds in the amount of $4,001,650' are obligated and the lake carries federal account 057-3010 (Aircraft Procurement, Air Force) on FA8730-17-C-0038, the appropriation of doc 407 where BLI E00300 (E-3) sits; the definitized effort is low-rate initial production of an E-3 avionics modification (the DMS Replacement of Avionics for Global Operations and Navigation), which is precisely what an E-3 modification BLI funds, so AWACS here is the system the line modifies rather than a platform the contract merely supports, and the index shows no separate DMS/DRAGON owner and no rollup - E00300's only other name is the sibling AWACS Communication Integration Program."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Airborne Warning and Control System' is spelled out in the announcement and only E00300 (doc 407) carries an AWACS name in this index; the sibling row ACIP is a different modification the paragraph does not describe, and no other PE or program_title in F.tsv mentions AWACS or E-3, so the evidence has no alternative owner."
+   }
+  },
+  {
+   "record_index": 70,
+   "article_id": "1194658",
+   "piid": "FA881013C0001",
+   "pe_bli": "MSSBIR",
+   "program_name": "GEO-5",
+   "lexicon_doc": "416",
+   "match_basis": "llm-description",
+   "announcement_evidence": "production of the fifth and sixth Space Based Infrared System geosynchronous missile-warning satellites",
+   "lexicon_quote": "GEO-5",
+   "rationale": "The modification funds production of the fifth and sixth SBIRS geosynchronous missile-warning satellites; 'GEO-5' is exactly the fifth of those vehicles and is owned by BLI MSSBIR (SBIR High (Space), doc 416), the space-procurement line that buys SBIRS GEO satellites. The money agrees: 'Fiscal 2017 space procurement funds in the amount of $12,190,000' - procurement dollars against a procurement line, for the article the line buys. The name 'Space Based Infrared Systems (SBIRS)' does collide with SPCMOD (Space Mods), but SPCMOD is a modification line and this is new-vehicle production, and 'GEO-5' itself is carried only by MSSBIR, so the specific name resolves the owner.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Space procurement money buying the space-procurement line's own article: 'Fiscal 2017 space procurement funds in the amount of $12,190,000' are obligated and the lake's accounts for FA8810-13-C-0001 are 057-3020;057-3021;057-3022, intersecting doc 416's space procurement appropriation where BLI MSSBIR (SBIR High (Space)) sits; the contract is the GEO 5/6 production contract and the announcement's own framing is 'production of the fifth and sixth' SBIRS geosynchronous satellites, so GEO-5 is the vehicle the line buys rather than a platform the award supports, and the added subsystem integration and propulsion changes are pre-delivery production content, not sustainment of a fielded system (whether the Space Mods line SPCMOD is the better owner is an identity question for lens B, and in any case sits in the same appropriation, so it is not a money break)."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The only program name the announcement actually writes is 'Space Based Infrared System', and that name is owned in this same index by a DIFFERENT pe_bli (SPCMOD, 'Space Based Infrared Systems (SBIRS)', doc 416) — an exact-name owner beats the proposal's inferred 'GEO-5', a string the announcement never uses; the action also covers the fifth AND sixth vehicles, so the single-vehicle row GEO-5 does not identify the award."
+   }
+  },
+  {
+   "record_index": 73,
+   "article_id": "3363641",
+   "piid": "FA881422C0004",
+   "pe_bli": "1206427SF",
+   "program_name": "Rapid On-Orbit Space Technology Evaluation Ring (ROOSTER)",
+   "lexicon_doc": "417",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "Rapid On-orbit Space Technology Evaluation Ring 4 (ROOSTER-4), a self-propulsive secondary payload adapter for deploying small satellites",
+   "lexicon_quote": "Rapid On-Orbit Space Technology Evaluation Ring (ROOSTER)",
+   "rationale": "The modification develops, delivers, launches and supports ROOSTER-4, the fourth article of the ROOSTER series that PE 1206427SF (Space Systems Prototype Transitions) names as its own in the index; the only difference from the index row is the increment number. The work is prototype development and on-orbit demonstration - the program element's own work, not support to a host platform - and 'Fiscal 2023 research, development, test and evaluation funds in the amount of $29,132,816' are obligated against an RDT&E line. ROOSTER appears under no other pe_bli in this org's index.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "RDT&E money on an RDT&E element: 'Fiscal 2023 research, development, test and evaluation funds in the amount of $29,132,816' are obligated against PE 1206427SF (doc 417, Space Force RDT&E, Space Systems Prototype Transitions), with U.S. Space Force Space Systems Command as the contracting activity; developing, delivering, launching and providing initial on-orbit support for ROOSTER-4 is the prototype element's own work - a payload adapter it builds, not a host platform it supports - and although the element carries a second named prototype (Assault Breaker II), a prototype-transition line whose narrative names ROOSTER by name is a named program element, not a §3 catch-all, and the obligation is proportionate to the line rather than dwarfing it."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The announcement spells out 'Rapid On-orbit Space Technology Evaluation Ring' in full, matching the one ROOSTER row in the index (1206427SF, doc 417); the index row carries no increment number, so it names the series of which ROOSTER-4 is an article rather than a competing variant, and nothing else in F.tsv owns the name."
+   }
+  },
+  {
+   "record_index": 0,
+   "article_id": "2696307",
+   "piid": "FA865021D2622",
+   "pe_bli": "0901226F",
+   "program_name": "Analytical Framework for Simulation Integration and Modeling (AFSIM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "research, development, and expansion of the advanced framework for simulation, integration, and modeling",
+   "lexicon_quote": "Analytical Framework for Simulation Integration and Modeling (AFSIM)",
+   "rationale": "The name is genuinely present - the paragraph spells out AFSIM's expansion in lowercase - but the evidence does not reach the standard for asserting this award funds PE 0901226F's own work. The action is a $48M ceiling IDIQ for a differently named effort (REBASE) carrying a single $1,066,444 initial task order, awarded by AFRL at Wright-Patterson (FA8650), while 0901226F is the Air Force Studies and Analysis Agency line; the paragraph names no appropriation at all, so nothing ties the ceiling to AF/A9's budget line rather than to an AFRL S&T line. Under the rubric's default this stays short of a link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 19,
+   "article_id": "1891418",
+   "piid": "FA880719C0002",
+   "pe_bli": "1203164SF",
+   "program_name": "The Military Global Positioning System User Equipment (MGUE)",
+   "lexicon_doc": "417",
+   "announcement_evidence": "the design, develop and test of modernized Global Positioning System receivers that are intended for future military applications to the PDR level",
+   "lexicon_quote": "The Military Global Positioning System User Equipment (MGUE)",
+   "rationale": "The description of modernized military GPS receivers is adjacent to the GPS user-equipment line, but the announcement names no program - it describes a next-generation ASIC preliminary design review, not MGUE, and gives no increment, card or receiver designator that the index row would own. A description this generic could equally sit under a receiver-card development line or an ASIC technology effort, so naming 1203164SF would be an inference about attribution the paragraph does not support.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 56,
+   "article_id": "1866245",
+   "piid": "FA880719C0001",
+   "pe_bli": "1203164SF",
+   "program_name": "The Military Global Positioning System User Equipment (MGUE)",
+   "lexicon_doc": "417",
+   "announcement_evidence": "Next Generation Application Specific Integrated Circuit Preliminary Design Review (PDR)",
+   "lexicon_quote": "The Military Global Positioning System User Equipment (MGUE)",
+   "rationale": "The companion award to record 19 (same effort, second vendor) and it fails for the same reason: the paragraph describes modernized GPS receivers to the PDR level but never names MGUE or any increment the index row covers. The evidence is a capability description, not a program name, so the attribution to PE 1203164SF's own work is not established.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 30,
+   "article_id": "1912513",
+   "piid": "FA880619C0004",
+   "pe_bli": "1206770SF",
+   "program_name": "Enterprise Ground Services (EGS)",
+   "lexicon_doc": "417",
+   "announcement_evidence": "supporting the enterprise ground system and defensive cyber operations",
+   "lexicon_quote": "Enterprise Ground Services (EGS)",
+   "rationale": "'Enterprise ground system' is close to the index row 'Enterprise Ground Services (EGS)', but the award is support services - 'cross-domain solutions, design, integration and rapid delivery team services' - split across two different efforts (the ground system and defensive cyber operations), which is the generic engineering-and-integration-support pattern the rubric rejects. Nothing in the paragraph apportions the work to the EGS program element's own content rather than to the directorate that hosts it, so this does not reach a link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 32,
+   "article_id": "621045",
+   "piid": "FA881013C0002",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "space-based infrared system highly elliptical orbit sensor support",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)",
+   "rationale": "The SBIRS name is present, but the work is fiscal 2016 contractor logistics support: on-orbit sustainment and infrastructure support, failure review board anomaly resolution, and interim contractor support to sustain factory facilities and equipment. That is sustainment, not the modification content BLI SPCMOD (Space Mods) funds, and it is the exact appropriation-mismatch failure mode the rubric warns about. Default to not linking.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 66,
+   "article_id": "3692775",
+   "piid": "FA882321C0001",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "space-based infrared system contractor logistics support, product support integration, and contract evolution",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)",
+   "rationale": "Same pattern as record 32: the announcement names SBIRS, but the action is contractor logistics support and product support integration for the fielded constellation - sustainment of an on-orbit system rather than the modification work SPCMOD (Space Mods) funds. Procurement dollars are obligated, yet nothing identifies them as this modification line's own content, so the attribution is not established.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 42,
+   "article_id": "620608",
+   "piid": "FA852215C0008",
+   "pe_bli": "0101113F",
+   "program_name": "ALQ-172",
+   "lexicon_doc": "412",
+   "announcement_evidence": "engineering services applicable to the AN/ALQ-172 line replaceable unit (LRU)-8 countermeasures phased array antenna",
+   "lexicon_quote": "ALQ-172",
+   "rationale": "The designator is exact - AN/ALQ-172 is the index row ALQ-172, owned by PE 0101113F (B-52 Squadrons) - but the money refuses the claim: the award obligates 'Fiscal 2015 consolidated sustainment activity group-engineering funds in the amount of $47,000,000', a depot working-capital sustainment appropriation, for non-recurring engineering to redesign a legacy LRU to its existing specification. Sustainment engineering funded by CSAG-E does not fund an RDT&E program element's own work, so this stops short of a link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 77,
+   "article_id": "4227676",
+   "piid": "FA868223CB001",
+   "pe_bli": "LRASM0",
+   "program_name": "AGM-158C",
+   "lexicon_doc": "410",
+   "announcement_evidence": "the Long-Range Anti-Ship Missile (LRASM) Lots Seven and Eight for the conversion of 10 LRASM missiles from the C-1 configuration to the C-3 configuration",
+   "lexicon_quote": "AGM-158C",
+   "rationale": "LRASM is AGM-158C and the index carries it under BLI LRASM0, so the identity is not in doubt - but the appropriation is: the paragraph obligates 'Fiscal 2024 and 2025 Navy weapons procurement funds in the amount of $5,400,000; and $3,150,000'. The Air Force line LRASM0 is not what pays for this conversion, so the award does not fund this line's own work even though the Air Force is the contracting activity.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 26,
+   "article_id": "1619824",
+   "piid": "FA811918D0004",
+   "pe_bli": "B00200",
+   "program_name": "B-2A",
+   "lexicon_doc": "407",
+   "announcement_evidence": "repair and overhaul services for the B-2 digital countermeasure receiver",
+   "lexicon_quote": "B-2A",
+   "rationale": "Rejected by design on two of the rubric's patterns at once. First, the only name the index offers here is the airframe designator B-2A - the B-2 is the platform this repair contract supports, not the program BLI B00200 funds. Second, the action is a requirements contract for depot repair and overhaul services with 'no funds obligated at the time of award, however, working capital funds will be obligated on the subsequent task orders' - generic sustainment services paid from working capital, which cannot fund a procurement line's own content.",
+   "verdict": "wrong"
+  }
+ ]
+}

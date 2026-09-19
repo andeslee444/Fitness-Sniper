@@ -1,0 +1,89 @@
+{
+ "chunk": "chunk_007_DTRA.json",
+ "proposals": [
+  {
+   "record_index": 3,
+   "article_id": "1939263",
+   "piid": "HDTRA119D0007",
+   "pe_bli": "0605000BR",
+   "program_name": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "lexicon_doc": "108",
+   "lexicon_quote": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "announcement_evidence": "research and development, to develop and advance the Defense Threat Reduction Agency&rsquo;s (DTRA&#39;s) weapons of mass destruction operational support capabilities",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 'IDIQ ceilings with no named program' (and 'generic services'). This is a $240,000,000 maximum-ceiling cost-plus-fixed-fee IDIQ for 24/7/365 technical reachback and decision-support analysis; no program element, project or system named in the DTRA index appears anywhere in the paragraph. The only textual tie to the index is DTRA's boilerplate mission phrase 'weapons of mass destruction operational support capabilities', which is not the name 'Counter Weapons of Mass Destruction (CWMD) Systems Development' and which would equally match the three other CWMD-titled DTRA lines in the index (0602718BR Applied Research, 0603160BR Advanced Technology Development). A ceiling that has not yet been ordered against cannot be asserted to fund THIS line's own work, so no link is proposed."
+  },
+  {
+   "record_index": 4,
+   "article_id": "3652144",
+   "piid": "HDTRA124D0001",
+   "pe_bli": "0605000BR",
+   "program_name": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "lexicon_doc": "108",
+   "lexicon_quote": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "announcement_evidence": "The contract provides for research, development, test, and evaluation in support of counter proliferation to combat weapons of mass destruction.",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 'IDIQ ceilings with no named program'. The award is a $200,000,000 maximum-ceiling IDIQ with a five-year base and five-year option ordering period; the RDT&E appropriation makes a DTRA PE line superficially plausible, but the scope sentence states only the agency's mission ('counter proliferation to combat weapons of mass destruction') and names no program, project or system carried by the index. The phrase is head-word overlap with the index name, not the name itself, and it is equally consistent with 0601000BR (Basic Research for Countering WMD), 0602718BR and 0603160BR — a three-way ambiguity the announcement gives no way to resolve. Publishing at high under announcement+lexicon would assert attribution the paragraph does not support."
+  },
+  {
+   "record_index": 29,
+   "article_id": "3661176",
+   "piid": "HDTRA124C0014",
+   "pe_bli": "0605000BR",
+   "program_name": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "lexicon_doc": "108",
+   "lexicon_quote": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "announcement_evidence": "This effort will support the Defense Threat Reduction Agency (DTRA) goal of providing counter weapons of mass destruction capabilities to meet current threats and challenges specifically through the development of a timely and effective biological defense solution for Lassa virus infection.",
+   "verdict": "weak",
+   "rationale": "A definite, non-IDIQ R&D contract (an oral TLR7 agonist therapeutic for Lassa Fever) funded with fiscal 2024 research and development funds, so an RDT&E line is the right family — but the only tie to the index is DTRA's generic mission sentence, matched by description alone. The index carries no biological-countermeasure name, and medical countermeasure development of this kind is normally a Chemical and Biological Defense Program activity rather than the CWMD Systems Development PE. Description-only evidence that names no project and cannot distinguish 0605000BR from 0602718BR or 0603160BR does not meet §1's evidence standard, so this is weak, not a link."
+  },
+  {
+   "record_index": 32,
+   "article_id": "2684977",
+   "piid": "HDTRA121C0054",
+   "pe_bli": "0605000BR",
+   "program_name": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "lexicon_doc": "108",
+   "lexicon_quote": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "announcement_evidence": "in the countering weapons of mass destruction, countering improvised threats, and countering improvised threat networks mission domains that RD supports",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 'Generic services: engineering support, logistics, base operations…'. The award buys advisory and assistance services — scientific and technical subject-matter expertise supplied to DTRA's Research and Development Directorate across the full CBRNE spectrum. Staff support to a directorate is not the work of any one program element; the 'countering weapons of mass destruction' phrase here names a mission domain the directorate supports, not the index program 'Counter Weapons of Mass Destruction (CWMD) Systems Development'. The same sentence lists two further mission domains (countering improvised threats, threat networks) that no DTRA index line owns, which confirms the paragraph is describing a directorate's remit rather than a funded line."
+  },
+  {
+   "record_index": 34,
+   "article_id": "2793408",
+   "piid": "HDTRA121C0068",
+   "pe_bli": "50",
+   "program_name": "DTRA CYBER ACTIVITIES",
+   "lexicon_doc": "165",
+   "lexicon_quote": "DTRA CYBER ACTIVITIES",
+   "announcement_evidence": "expand the current capacity on the Defense Threat Reduction Agency&rsquo;s cyber assessment tools",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 'Catch-all budget lines' together with 'Generic services'. 'DTRA Cyber Activities' is the title of an agency-wide budget activity, not a named program, so matching it is matching a rollup; the announcement never uses that name and reaches it only by description ('cyber assessment tools', 'analytical suite of technologies'). The appropriations cited also cut against a single line — fiscal 2021 annual funds and fiscal 2021 procurement funds, and the procurement share would belong to the Major Equipment BLI, which is one of the org-split codes that can never publish. The nearer-named index row under the same BLI, 'Enterprise Security Incident Event Manager (SIEM)', is a different system and is not mentioned. No link."
+  },
+  {
+   "record_index": 37,
+   "article_id": "2603752",
+   "piid": "HDTRA121C0042",
+   "pe_bli": "0605000BR",
+   "program_name": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "lexicon_doc": "108",
+   "lexicon_quote": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "announcement_evidence": "in the countering weapons of mass destruction, countering improvised threats, and countering improvised threat networks mission domains that RD supports",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 'Generic services'. ARServices is providing programmatic, financial and policy expertise — advisory and assistance staff support — to DTRA's Research and Development Directorate, the same directorate-support pattern as record 32 and with the same wording. Programmatic and financial support to a directorate is overhead spread across that directorate's portfolio, not the own-work of the CWMD Systems Development program element, and the announcement names no program, project or system from the index. The mission-domain phrase is a description of what the directorate covers, so even a description-basis match would assert attribution the paragraph does not make."
+  },
+  {
+   "record_index": 39,
+   "article_id": "613681",
+   "piid": "HDTRA115C0061",
+   "pe_bli": "0605000BR",
+   "program_name": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "lexicon_doc": "108",
+   "lexicon_quote": "Counter Weapons of Mass Destruction (CWMD) Systems Development",
+   "announcement_evidence": "advocacy for process creation or improvement for Countering WMD",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 'Generic services'. The contract buys technical expertise, policy knowledge, operational proficiency, a collective training capability, deployed assistance teams and process advocacy — training and support services, with fiscal 2015 operations and maintenance funds named first in the obligation sentence. O&M sustainment/support attached to an RDT&E systems-development line is precisely the appropriation mismatch the refute rubric flags, and 'Countering WMD' here is the mission the support serves, not the index name 'Counter Weapons of Mass Destruction (CWMD) Systems Development'. No link."
+  }
+ ]
+}

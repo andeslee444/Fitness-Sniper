@@ -1,0 +1,278 @@
+{
+ "chunk": "chunk_104_A.json",
+ "proposals": [
+  {
+   "record_index": 25,
+   "article_id": "606022",
+   "piid": "W56HZV14C0238",
+   "pe_bli": "2072GA0400",
+   "program_name": "M109A6 Self-Propelled Howitzer (SPH)",
+   "lexicon_doc": "350",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "68 fire control system kits, spares, and installation, as well as providing system training and field maintenance training for the M109A6 Paladin",
+   "lexicon_quote": "M109A6 Self-Propelled Howitzer (SPH)",
+   "rationale": "The announcement carries the designator M109A6 verbatim and the deliverable is 68 fire control system KITS plus installation — i.e. a modification kit installed on fielded M109A6 self-propelled howitzers, which is exactly the work BLI 2072GA0400 'M109 FOV Modifications' funds, and the index row for that BLI is the M109A6 SPH itself. The alternative owner in this org's index, 'Paladin Integrated Management (PIM)' (2073GZ0410), is excluded by the announcement's own words: PIM is the M109A7 recapitalization, and this award names M109A6. The action is a procurement buy of hardware kits against a procurement modification line. Caveat for the refute lenses: the announcement labels the money 'Fiscal 2012 other procurement (Army)', while an M109 FOV modification line is normally weapons-and-tracked-combat-vehicle procurement — an appropriation-color question I cannot settle from the announcement text.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money color: the announcement books the entire $28,467,875 to Fiscal 2012 Other Procurement, Army, but BLI 2072GA0400 (M109 FOV Modifications) is funded in Weapons and Tracked Combat Vehicles, Army (budget_lines.account 2033A), and the lake carries no federal account for W56HZV14C0238 to correct the prose — the only money statement available assigns this action to an appropriation that does not reach this line, and an exact mission fit cannot carry the attribution claim past that."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"M109A6\" appears in exactly one index row and it is this BLI's; the only competing name, \"Paladin Integrated Management (PIM)\" (2073GZ0410), shares only the loose token \"Paladin\" and is the M109A7 recap, which the announcement's own A6 designator excludes, and the fire-control-kit language collides with no other owner (DFCS rows belong to M777 and M119, different howitzers the announcement never names)."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "606770",
+   "piid": "W31P4Q15C0043",
+   "pe_bli": "9157J01200",
+   "program_name": "Longbow Hellfire XM299",
+   "lexicon_doc": "343",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "320 Launchers and 4 Launcher Electronic Assembly (LEAs) in support of the Joint Attack Munitions Systems (JAMS) M299 HELLFIRE launchers, spares and engineering support",
+   "lexicon_quote": "Longbow Hellfire XM299",
+   "rationale": "The index row for 9157J01200 is literally the launcher line 'Launcher Guided Missile: Longbow Hellfire XM2', whose name is 'Longbow Hellfire XM299'; M299 is the fielded designator of that same XM299 launcher, so this is a designator variant rather than a resemblance. The deliverable is the launchers themselves (320 launchers plus 4 Launcher Electronic Assemblies) — the end item the BLI buys — not a platform the contract merely supports, and it is distinct from the missile line 'Hellfire Sys Summary' (1338C70000) that also carries the Hellfire name in this org's index. US procurement and RDT&E funds are explicitly obligated alongside the foreign military sales cases, so the action is not purely customer-funded. Caveat for the refute lenses: the contract is captioned as an FMS (Korea, Indonesia, Qatar, Singapore) multi-year award, and the announcement's 'other procurement' label may not be the appropriation that carries this launcher line.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money and customer: the action is a foreign military sales case (Korea, Indonesia, Qatar, Singapore), i.e. launchers bought for foreign customers rather than this line's US quantities, and the announcement books it to other procurement and RDT&E — neither is the Aircraft Procurement, Army account (2031A) that funds BLI 9157J01200; 021-2031 appears only in the award-level FPDS union across 96 transactions, $107.8M and three services (017/021/057), so it cannot be attributed to this $28.2M action."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "XM299→M299 is the standard X-prefix-dropped type-classification variant, not an invented alias, and \"Longbow Hellfire XM299\" is the only launcher name in the index; the two other Hellfire-bearing rows (1338C70000 \"Hellfire Sys Summary\", 0603116A \"CL-20 Hellfire Warhead Demo\") are missile/warhead lines that the deliverable — 320 launchers and 4 LEAs — does not fit, so the evidence does not link equally well elsewhere."
+   }
+  },
+  {
+   "record_index": 41,
+   "article_id": "1236003",
+   "piid": "W58RGZ17D0081",
+   "pe_bli": "9556A01002",
+   "program_name": "Remote Operations Video Enhanced Receiver (ROVER)",
+   "lexicon_doc": "343",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "remote operated video enhanced receiver hardware production",
+   "lexicon_quote": "Remote Operations Video Enhanced Receiver (ROVER)",
+   "rationale": "The announcement spells the program out word for word except for one inflection ('remote operated' for 'Remote Operations'), and the contractor — L3 Technologies, Salt Lake City — is the ROVER producer, so the identity is not in doubt. Crucially the work is HARDWARE PRODUCTION, not support: a production buy against the UAS MODS procurement line the index says owns the ROVER name, which is the case the rubric's §0 claim is about. 'UAS MODS' is a real modification line and not a title the loader treats as a catch-all. The same BLI also owns OSRVT, a sibling name, but the announcement names ROVER's words and not OSRVT's, so there is no ambiguity about which of the two this is.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Procurement hardware production against a procurement line (2031A): the UAS MODS narrative itself makes ROVER the line's own component ('OSRVT ... consists of a base system with Remote Operations Video Enhanced Receiver (ROVER) 6 and 6S transceiver') and dates OSRVT MODS in this APE to FY 2017, matching a FY2018-funded 2017 award; no platform-support gap, no catch-all/rollup title, and 'funds determined with each order' is unknown money, which money_color_ok treats as not-mismatched rather than as a mismatch."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"ROVER\" and the spelled-out receiver name occur in exactly one index row across the whole org index, the sibling name OSRVT sits on the SAME pe_bli so it is not an alternative owner, the announcement's words match ROVER's and not OSRVT's, and the evidence is the item bought rather than the contractor's name."
+   }
+  },
+  {
+   "record_index": 63,
+   "article_id": "4230482",
+   "piid": "W912HZ25F0211",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Modernization Program",
+   "lexicon_doc": "351",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the Department of Defense High Performance Computing Modernization Program",
+   "lexicon_quote": "High Performance Computing Modernization Program",
+   "rationale": "The announcement states the purpose of the award as the program itself — the index name appears verbatim inside the announcement's own phrase — and the contracting activity is the U.S. Army Corps of Engineers' Engineer Research and Development Center, which is the organisation that runs HPCMP; the work is performed at Stennis Space Center, one of the DoD Supercomputing Resource Centers that the same BLI's index carries as a second name. This is a purchase of the program's own computing capability, not a platform the award supports and not generic services. Caveat for the refute lenses: the announcement labels the money 'Fiscal 2025 other procurement, Army' while 0603461A is an RDT&E program element, so an appropriation-color refutation is available on this one and the loader's own money-color check may in any case skip it.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Procurement money on an RDT&E line — the announcement obligates Fiscal 2025 Other Procurement, Army while 0603461A is an RDT&E, Army program element (budget_lines.account 2040A), which is the 2026-09-04 held-out study's money-color failure mode; the lake holds no federal account for W912HZ25F0211 to reconcile it, so the hardware buy is not shown to execute this PE's own appropriation even though it serves the program's DSRCs."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "A different PE in this same index owns this program: 3005B66501 (doc 346) is titled \"High Perf Computing Mod Pgm (HPCMP)\" and also carries \"DoD Supercomputing Resource Center (DRSC)\", so both of lens P's anchors — the HPCMP name and the Stennis DSRC location — fit that BLI at least as well, and the announcement's \"Fiscal 2025 other procurement, Army\" money fits the procurement line better than the RDT&E PE, making the choice between the two owners undecidable from the announcement."
+   }
+  },
+  {
+   "record_index": 78,
+   "article_id": "1824510",
+   "piid": "W58RGZ19D0070",
+   "pe_bli": "6380AZ3110",
+   "program_name": "Rotary Wing Helmet (RWH)",
+   "lexicon_doc": "343",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the Head Gear Unit 56/P Rotary Wing Helmet",
+   "lexicon_quote": "Rotary Wing Helmet (RWH)",
+   "rationale": "The index name appears in the announcement verbatim apart from the parenthetical acronym, and the announcement additionally spells out the designator — Head Gear Unit 56/P is the HGU-56/P, the Army aircrew rotary-wing helmet that BLI 6380AZ3110 'Aircrew Integrated Systems' buys, and Gentex Corp. is its manufacturer. The award is a firm-fixed-price production buy of that end item, not sustainment or support services, so it is a procurement action against a procurement line. Although the vehicle is an indefinite-delivery contract with funding determined per order, §3's IDIQ rejection is aimed at ceilings that name no program; this one names its program explicitly. No other row in this org's index carries the Rotary Wing Helmet name.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The Aircrew Integrated Systems justification says the funds 'support the procurement of NW-A, Rotary Wing Helmet (RWH), and ACE', so the HGU-56/P is the line's own end item and not a platform the contract merely supports; the line is Aircraft Procurement, Army (2031A) and the award is a firm-fixed-price production buy of that item, with funding determined per order — unknown, not mismatched — and 'Aircrew Integrated Systems' is a named program line, not a catch-all or rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"Rotary Wing Helmet\" appears verbatim in one index row only, and the announcement independently corroborates it with the HGU-56/P designator spelled out; the one genuinely colliding name in this space, \"Aircrew Combat Equipment (ACE)\" (shared with 0604601A), is not the name being matched here."
+   }
+  },
+  {
+   "record_index": 28,
+   "article_id": "1330165",
+   "piid": "W52P1J16D0050",
+   "pe_bli": "3102E89500",
+   "program_name": "The M795 High Explosive (HE)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "acquisition of Trinitrotoluene that will support load, assemble and pack of M795 155mm projectile",
+   "lexicon_quote": "The M795 High Explosive (HE)",
+   "rationale": "The M795 designator is present verbatim and the 155mm projectile BLI 3102E89500 genuinely owns an M795 row, but the announcement's own words say the award buys Trinitrotoluene — a bulk explosive commodity — that 'will support' M795 load-assemble-and-pack downstream. The M795 is named as the consumer of the material, not as the thing being bought, which is the same shape as §3's platform pattern one level down the bill of materials; the contract (W52P1J-16-D-0050) is a general TNT acquisition vehicle and nothing in the text confines this modification to M795 fill. The appropriation label compounds the doubt: the announcement says 'other procurement, Army' where an ammunition projectile line would be procurement of ammunition. Under the rubric's instruction to default to not linking when uncertain, this is weak rather than a link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 40,
+   "article_id": "1435155",
+   "piid": "W58RGZ17D0006",
+   "pe_bli": "9556A01002",
+   "program_name": "The One System Remote Video Terminal (OSRVT)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "contractor logistics support of fielded One System remote video terminal systems",
+   "lexicon_quote": "The One System Remote Video Terminal (OSRVT)",
+   "rationale": "The program name is present almost verbatim and Textron Systems is the OSRVT producer, so identity is not the problem. The problem is what the award pays for: contractor logistics support of ALREADY FIELDED terminals is operations-and-maintenance sustainment, and 9556A01002 'UAS MODS' is a procurement modification line. That is precisely the failure mode the 2026-09-04 held-out study found in three of six refutations — O&M sustainment attached to a procurement line — so the announcement does not establish that this action paid for the UAS MODS line's own work. Funding is left to each order, which removes even the chance to check the money color from the text. Name present, evidence short of §1's standard.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 44,
+   "article_id": "1133007",
+   "piid": "W56HZV15C0155",
+   "pe_bli": "3446D15400",
+   "program_name": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "procure 150 M1151A1B1 High Mobility Multipurpose Wheeled vehicles for the government of Iraq",
+   "lexicon_quote": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "rationale": "The announcement spells out High Mobility Multipurpose Wheeled vehicles, which is the index name for BLI 3446D15400 expanded, and the M1151A1B1 is an HMMWV variant — the identity is solid. What fails is the attribution claim itself: this is a foreign military sales (Iraq) modification procuring vehicles 'for the government of Iraq', so the action is paid for out of the FMS customer's case, not out of the Army's HMMWV budget line, and publishing it would assert that this contract action funded the US line's own work when it did not. The announcement's funding sentence names only 'Fiscal 2016 funds' with no appropriation, which does nothing to rebut that. Weak rather than link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 50,
+   "article_id": "621045",
+   "piid": "W56HZV14C0298",
+   "pe_bli": "3700GA0570",
+   "program_name": "The M88 Heavy Equipment Recovery Combat Utility Lift and Evacuation System (HERCULES)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "a M88A2 heavy equipment recovery combat utility lift evacuation system Hercules vehicle",
+   "lexicon_quote": "The M88 Heavy Equipment Recovery Combat Utility Lift and Evacuation System (HERCULES)",
+   "rationale": "The announcement writes out the index name nearly word for word, so this is as close to an exact-name case as the chunk contains. It still does not meet §1's standard, because the announcement says exactly whose options are being exercised: a MARINE CORPS option for one M88A2 and Australian FMS case AT-B-UIZ for six more vehicles and spares. Neither buyer is the Army line 3700GA0570 'IMPROVED RECOVERY VEHICLE (M88 HERCULES)', and the record text is truncated before any funding sentence that might show Army procurement money. A link here would attribute another service's and a foreign customer's purchases to this program element.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 65,
+   "article_id": "606727",
+   "piid": "W909MY15D0001",
+   "pe_bli": "6500GA0750",
+   "program_name": "Block 1 Second Generation Forward Looking Infra-Red (FLIR)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "Horizontal Technology Integration Second Generation Forward Looking Infrared program",
+   "lexicon_quote": "Block 1 Second Generation Forward Looking Infra-Red (FLIR)",
+   "rationale": "The phrase 'Second Generation Forward Looking Infrared' appears in the announcement and the Abrams Upgrade Program's index carries a Block 1 Second Generation FLIR row, but the announcement's program is the HORIZONTAL TECHNOLOGY INTEGRATION second-gen FLIR — deliberately a cross-platform sensor program, of which the Abrams Block 1 installation is only one consumer. The award is a multiyear IDIQ for manufacturing, support services, program and configuration management across that whole program, with funding and work location determined per order, so nothing ties this money to the Abrams line's own work. This org's index also carries 'Forward Looking Infrared (IFLIR)' under 0214KA4510, a live name collision that the evidence cannot resolve. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 76,
+   "article_id": "822083",
+   "piid": "W58RGZ15C0078",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "Radar Electronic Unit full-rate production Lots 5, 6, and 6b",
+   "lexicon_quote": "Fire Control Radar (FCR)",
+   "rationale": "Longbow LLC builds the Apache's Longbow fire control radar and the Radar Electronic Unit is a component of it, so the description points at the FCR name the index gives BLI 5757A05111. But the announcement never says fire control radar, never says Apache or AH-64, and names only a subassembly's production lots; the inference runs through outside knowledge of the contractor rather than through the announcement's own words, which is below §1's evidence standard. Which line funds REU full-rate production — the Apache Block IIIA Reman aircraft buy, an AH-64 mods line, or a radar line of its own — is not determinable from this text, and the same index carries AH-64E under two different BLIs, so collision risk is real. Weak.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 5,
+   "article_id": "1393710",
+   "piid": "W31P4Q16C0028",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Patriot performance based logistics (PBL) support for inventory management as well as the repair and replacement of 136 stock and parts associated with Patriot PBL",
+   "lexicon_quote": "PATRIOT Product Improvement Program (PIP)",
+   "rationale": "Rejected by design. The only Patriot word in the announcement is the platform name; the work is performance-based logistics — inventory management and repair/replacement of stock and parts — which is §3's 'generic services: engineering support, logistics' pattern attached to a platform the contract merely supports, not to any of the named improvement efforts (PIP, MSE, ADI, TPW, TPX-57) that the index says 0962C50700 owns. The money confirms it: 'Fiscal 2018 Army working capital fund' is revolving sustainment money, not the procurement modification line's appropriation. No proposal on this record can survive.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 27,
+   "article_id": "605976",
+   "piid": "W31P4Q12G0001",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "announcement_evidence": "the Launcher Modification Kit Phase II Redesign for the Patriot PAC-3",
+   "lexicon_quote": "PAC-3",
+   "rationale": "Rejected by design under §3's platform pattern. 'PAC-3' does appear verbatim and the index does give that name to 8260C53101 'MSE Missile', but the announcement says what is being bought: a LAUNCHER Modification Kit Phase II Redesign. The launcher is the equipment the PAC-3 missile is fired from, so PAC-3 here names the system the modification supports rather than the missile line the BLI funds; launcher modification kits belong to the Patriot Mods family (0962C50700), not to the MSE missile buy. Compounding it, the action is a modification to a foreign military sales (Kuwait) contract, so the money is the customer's. Wrong.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 30,
+   "article_id": "613467",
+   "piid": "W56HZV08D0159",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "X1100-3B Abrams M1A2 tank transmissions",
+   "lexicon_quote": "M1A2 System Enhancement Package (SEP)",
+   "rationale": "Rejected by design under §3's platform pattern. The M1A2 designator appears, and the index gives 'M1A2 System Enhancement Package (SEP)' to the Abrams Upgrade Program, but the award buys X1100-3B transmissions — a replacement automotive component for the tank — and the announcement never mentions the SEP upgrade, TIGER, or any other effort the index says that BLI owns. Abrams M1A2 is the platform the transmissions go into, not the program element's own work, and this org's index carries no standalone 'Abrams' row that a transmission buy could honestly be attached to.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 77,
+   "article_id": "1771302",
+   "piid": "W56HZV17C0067",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "Abrams systems technical support",
+   "lexicon_quote": "M1A2 System Enhancement Package (SEP)",
+   "rationale": "Rejected by design on two §3 patterns at once. 'Abrams systems technical support' is generic engineering support named against a platform — the announcement gives no program, subsystem or increment at all — and Abrams is the platform the support sustains rather than the upgrade program 6500GA0750 funds. The funding line makes it worse rather than better: other procurement Army, O&M Army, O&M Marine Corps and foreign military sales money combined in one modification, so no single line's own work can be asserted. Wrong.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 32,
+   "article_id": "3773612",
+   "piid": "W900KK24C0028",
+   "pe_bli": "5757A05111",
+   "program_name": "AH-64E",
+   "lexicon_doc": "343",
+   "announcement_evidence": "Targeted Fidelity Apache Tactical Trainer simulators, the Tactical Control Centre, and the Network Simulation Environment",
+   "lexicon_quote": "AH-64E",
+   "rationale": "Rejected by design under §3's platform pattern. Apache is the aircraft the trainers simulate; what is delivered is simulator hardware, a Tactical Control Centre and a Network Simulation Environment, none of which is the AH-64E remanufacture work that 5757A05111 funds, and the announcement never uses the AH-64E designator the index row carries. The award is also Fiscal 2024 Foreign Military Sales (Netherlands) money with delivery partly to Kooiweg, Netherlands, so it does not pay for a US program element's own work. Note too that 'AH-64E' is a colliding name in this org's index, appearing under both 5757A05111 and 2706AA6605.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 42,
+   "article_id": "1701429",
+   "piid": "W9113M19F0015",
+   "pe_bli": "0603466A",
+   "program_name": "Optimized High Energy Laser Source Advanced Technology",
+   "lexicon_doc": "351",
+   "announcement_evidence": "high energy laser lethality assessment and program support",
+   "lexicon_quote": "Optimized High Energy Laser Source Advanced Technology",
+   "rationale": "Rejected by design under §3's weak-generic-name and generic-services patterns. 'High energy laser' is used here as an English technology phrase, not as a program name: the deliverable is lethality assessment and PROGRAM SUPPORT, a cost-plus analytic services contract with no program, increment or system named. Several rows in this org's index contain the same phrase (Optimized High Energy Laser Source Advanced Technology under 0603466A, IFPC High Energy Laser and Joint Laser Weapon System under 0604019A), and nothing in the announcement chooses among them — which is itself the sign that no link is warranted.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 53,
+   "article_id": "2642813",
+   "piid": "W15P7T21F0121",
+   "pe_bli": "1989B11200",
+   "program_name": "TACTICAL NETWORK COMMUNICATION",
+   "lexicon_doc": "346",
+   "announcement_evidence": "post deployment software support service for the product manager Tactical Network Transport - On The Move system and equipment",
+   "lexicon_quote": "TACTICAL NETWORK COMMUNICATION",
+   "rationale": "Rejected by design under §3's weak-generic-name pattern. The words 'Tactical Network' overlap with two index entries in this org (TACTICAL NETWORK COMMUNICATION under 1989B11200 and Tactical Network Technology Mod In Svc under 1982B07100), but the announcement names a different string — Tactical Network Transport - On The Move, a product manager's portfolio — and matching on the shared generic words would be exactly the invented-alias trap. Separately, post-deployment software support is sustainment service work rather than the procurement line's own content, and funding is left to each order. Wrong.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 79,
+   "article_id": "3899963",
+   "piid": "W91CRB24C5022",
+   "pe_bli": "0140KA3500",
+   "program_name": "BINOCULAR NIGHT OBSERVATION DEVICE (BINOD)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "AN/PVS-14 Monocular Night Vision Devices",
+   "lexicon_quote": "BINOCULAR NIGHT OBSERVATION DEVICE (BINOD)",
+   "rationale": "Rejected by design. The tempting match is the BLI TITLE 'Night Vision Devices' echoing the announcement's closing words, but the rubric only allows the names the index carries, and 0140KA3500 owns just two: the BINOCULAR Night Observation Device and the Laser Target Locator Module. The announcement buys AN/PVS-14 MONOCULAR devices — the announcement's own adjective rules out the binocular device — so the apparent match is the catch-all title, not a program name, which is §3's weak-generic-name pattern. The action is also Fiscal 2010 Foreign Military Sales money, so it does not pay for this line's work in any case.",
+   "verdict": "wrong"
+  }
+ ]
+}

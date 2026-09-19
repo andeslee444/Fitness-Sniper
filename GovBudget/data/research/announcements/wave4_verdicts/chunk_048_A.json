@@ -1,0 +1,230 @@
+{
+ "chunk": "chunk_048_A.json",
+ "proposals": [
+  {
+   "record_index": 17,
+   "article_id": "3430146",
+   "piid": "W31P4Q23F0104",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "lexicon_quote": "PAC-3",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "associated engineering support for Terminal High Altitude Air Defense 5.0 Patriot Advanced Capability-3 missile segment enhancement component development",
+   "verdict": "link",
+   "rationale": "The announcement spells out the designator the index row abbreviates: 'Patriot Advanced Capability-3 missile segment enhancement' is PAC-3 MSE, and 'PAC-3' is owned in this org's index by exactly one line, 8260C53101 (program title 'MSE Missile', lexicon_doc 345 = Missile Procurement, Army). The money color agrees with that line: the record states 'Fiscal 2023 missile procurement, Army funds in the amount of $49,950,000 were obligated at the time of the award', so a missile-procurement action sits against a missile-procurement line rather than O&M sustainment charged to a development line. The contractor, Lockheed Martin Missiles and Fire Control at Grand Prairie, Texas, is the PAC-3 MSE prime, and the work described is component development for that missile segment, i.e. the MSE Missile line's own article. Two caveats I hand to the refute lenses rather than hide: (a) the sibling name 'Missile Segment Enhancement (MSE)' is also owned by 0962C50700 (Patriot Mods), which I record separately as a weak, though the unique 'PAC-3' string points here; (b) the work is styled 'engineering support', which §3 rejects when no program is named — here a program is named explicitly, so the generic-services pattern does not fire on its own terms.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money color agrees exactly and in full: the announcement obligates the entire $49,950,000 in 'Fiscal 2023 missile procurement, Army' funds and lexicon_doc 345 is Missile Procurement Army, the appropriation the MSE Missile line holds; the work described is development of the PAC-3 missile-segment-enhancement component itself, i.e. this line's own end item rather than a platform it merely supports, and 'MSE Missile' is a specific item line, not a rollup or a CATCHALL_TITLE aggregate. The 'engineering support' phrasing is the one tension, but §3 rejects generic services where no program is named and here the program and the component under development are named explicitly, so the pattern does not fire on its own terms."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The name is shared: 'Missile Segment Enhancement (MSE)' is owned by two PEs in this index — 8260C53101 (MSE Missile) and 0962C50700 (Patriot Mods), both lexicon_doc 345 — and the announcement's own words are 'Patriot Advanced Capability-3 missile segment enhancement', so the evidence links the award to Patriot Mods exactly as well as here; worse, the award's stated subject is 'Terminal High Altitude Air Defense 5.0' interoperability, and no THAAD row exists anywhere in A.tsv, so the program the money actually names is not in this org's index at all."
+   }
+  },
+  {
+   "record_index": 17,
+   "article_id": "3430146",
+   "piid": "W31P4Q23F0104",
+   "pe_bli": "0962C50700",
+   "program_name": "Missile Segment Enhancement (MSE)",
+   "lexicon_doc": "345",
+   "lexicon_quote": "Missile Segment Enhancement (MSE)",
+   "announcement_evidence": "associated engineering support for Terminal High Altitude Air Defense 5.0 Patriot Advanced Capability-3 missile segment enhancement component development",
+   "verdict": "weak",
+   "rationale": "Recorded so the collision is visible in the denominator rather than buried. The exact name 'Missile Segment Enhancement (MSE)' is carried by TWO lines in this org's index at the same lexicon_doc 345: 0962C50700 (Patriot Mods) and 8260C53101 (MSE Missile). The announcement's phrase 'missile segment enhancement component development' matches both equally, and both are Missile Procurement, Army lines, so the money color cannot separate them either. I resolved the record to 8260C53101 only because the announcement also spells out 'Patriot Advanced Capability-3', and 'PAC-3' is owned uniquely by that line; nothing in the announcement names Patriot modification work as such. Against Patriot Mods alone the evidence does not meet §1's standard, so this is weak, not a link."
+  },
+  {
+   "record_index": 9,
+   "article_id": "2918328",
+   "piid": "W15QKN22D0010",
+   "pe_bli": "2472G13000",
+   "program_name": "M240 Medium Machine Gun (7.62mm)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "M240 Medium Machine Gun (7.62mm)",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "firm-fixed-price contract for M240L medium machine guns and titanium receivers",
+   "verdict": "link",
+   "rationale": "The award buys the exact end item the line is named for: the M240L is the lightweight variant of the M240 7.62mm medium machine gun, and the titanium receiver is the component that makes it the L variant, so this is a designator variant of the index name rather than an alias or a resemblance. The pairing is one-to-one: 'M240' appears in this org's index only at 2472G13000, whose program title is the weapon itself, 'M240 Medium Machine Gun (7.62mm)' (lexicon_doc 350, Weapons and Tracked Combat Vehicles procurement) — not a rollup, not a family line, and not a catch-all under CATCHALL_TITLE. The action is a firm-fixed-price procurement of complete weapons from FN America, the M240 producer, awarded through ACC-New Jersey, which is the buying command for small arms; a procurement action against a procurement line is the configuration the 2026-09-04 held-out study found does NOT fail. The name is a weapon the PE buys, not a platform the contract merely supports.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The object bought is the line's own end item verbatim — 'M240L medium machine guns and titanium receivers' against the WTCV line titled 'M240 Medium Machine Gun (7.62mm)' at lexicon_doc 350 (Procurement of Weapons and Tracked Combat Vehicles) — so this is new-weapon procurement against a weapon-procurement line, not O&M sustainment attached to an investment line, and the name is the item itself rather than a platform the contract supports; the line is a single-item line, not a rollup or catch-all. Funding is 'determined with each order', so no appropriation is stated, but nothing in the record points at a competing color and complete centrally-managed small arms are bought on this appropriation."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner: 'M240' occurs on exactly one index row (2472G13000, program title 'M240 Medium Machine Gun (7.62mm)'), the other machine-gun rows are MK-19 at 3000GB3000 and the 7.62mm cartridge line 0612E02000, neither of which the announcement names; M240L is a real lightweight variant of that same weapon rather than an invented alias or a separately-lined increment, and the evidence names the end item and its titanium receivers, not merely the contractor."
+   }
+  },
+  {
+   "record_index": 20,
+   "article_id": "2416815",
+   "piid": "W58RGZ21D0010",
+   "pe_bli": "5397AZ3517",
+   "program_name": "Limited Interim Missile Warning System (LIMWS)",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Limited Interim Missile Warning System (LIMWS)",
+   "match_basis": "llm-description",
+   "announcement_evidence": "firm-fixed-price contract for the Common Missile Warning System",
+   "verdict": "link",
+   "rationale": "This is a description match, not a name match, and I state the awkwardness plainly so lens B can judge it. The award is for the Common Missile Warning System; the only index row whose PROGRAM TITLE is 'CMWS' is 5397AZ3517 at lexicon_doc 343 (Aircraft Procurement, Army), but the name that line's narrative owns is its interim sibling, LIMWS. The attribution still holds on the rubric's terms — the claim is that the action paid for this line's work: BAE Systems of Nashua, New Hampshire is the CMWS (AN/AAR-57) producer, W58RGZ is Army Aviation and Missile Command, and CMWS hardware is bought under the aircraft-procurement CMWS line. The competing exact-name hit, 'Common Missile Warning System (CMWS)' at 6038E46900, is an ammunition family line ('Signals, All Types') that names CMWS only as the system its decoy flares serve; I file that one as wrong below. Risk the refute lenses should weigh: the printed name would read LIMWS on a CMWS award, and this is an IDIQ whose funding is 'determined with each order', so the appropriation is not stated in the announcement.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The money test cannot place this action on the Aircraft Procurement Army line: the record states 'Work locations and funding will be determined with each order', so a five-year AMCOM FFP IDIQ 'for the Common Missile Warning System' — a system fielded since the mid-2000s and by 2020 substantially in the sustainment/spares-and-repairs phase — is as plausibly OMA-funded sustainment as procurement-line production, which is precisely the O&M-on-an-investment-line failure mode the 2026-09-04 held-out study found. Compounding it on mission grounds, the index row this link rides on names LIMWS, an interim sibling system, so the description names no work the row itself owns and the 'own work' claim rests entirely on the line's title; default-to-refuted applies."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "A different PE owns the announcement's exact name: 'Common Missile Warning System (CMWS)' is an index row under 6038E46900 (lexicon_doc 349), while the only name 5397AZ3517 owns is 'Limited Interim Missile Warning System (LIMWS)' — a different system, not a variant spelling of CMWS — so the announcement names a system this line's narrative does not own and the card would print LIMWS on a CMWS award; that the rival owner also looks wrong does not make this one right, and the bare 'for the Common Missile Warning System' with funding 'determined with each order' gives nothing else to separate them."
+   }
+  },
+  {
+   "record_index": 20,
+   "article_id": "2416815",
+   "piid": "W58RGZ21D0010",
+   "pe_bli": "6038E46900",
+   "program_name": "Common Missile Warning System (CMWS)",
+   "lexicon_doc": "349",
+   "lexicon_quote": "Common Missile Warning System (CMWS)",
+   "announcement_evidence": "firm-fixed-price contract for the Common Missile Warning System",
+   "verdict": "wrong",
+   "rationale": "Rejected by the §3 platform pattern, and it is the trap an exact-string matcher would fall into on this record. The name matches the announcement exactly, but the line it belongs to is 6038E46900 'Signals, All Types' at lexicon_doc 349 (Procurement of Ammunition, Army): a family ammunition line for signals and decoy flares whose narrative names CMWS because CMWS is the aircraft system that cues and dispenses those countermeasures. The award buys the warning system itself from its producer through AMCOM, not ammunition — so CMWS here is the platform the ammo line supports, not the program that line funds. An 'All Types' family line is also the aggregate shape §3 warns against, even though its title does not trip CATCHALL_TITLE. No refute pass should be spent on it."
+  },
+  {
+   "record_index": 55,
+   "article_id": "606788",
+   "piid": "W56HZV14C0054",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "M1A2 System Enhancement Package (SEP)",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "modification (P00005) to contract W56HZV-14-C-0054 to acquire six M1A2 Systems Enhanced Package v2 Abrams tanks",
+   "verdict": "link",
+   "rationale": "The announcement's 'M1A2 Systems Enhanced Package v2' is the same configuration as the index name 'M1A2 System Enhancement Package (SEP)' with the increment suffix attached and the words transposed, which is a designator variant rather than an invented alias. The line is 6500GA0750, program title 'Abrams Upgrade Program' at lexicon_doc 350 (Weapons and Tracked Combat Vehicles procurement) — the line that produces and converts M1A2 SEP tanks; acquiring six SEPv2 tanks is that line's own article, not a platform it merely supports. The contractor and places of performance match the Abrams industrial base exactly: General Dynamics Land Systems with work at Lima, Ohio; Scranton, Pennsylvania; and Anniston, Alabama. 'M1A2' and 'Abrams' appear in this org's index only at this line, so there is no alternative owner. One item for lens A: the obligation sentence reads 'Fiscal 2014 other procurement funds in the amount of $6,019,674', which is a smaller, differently-colored increment than the $49,771,971 modification; if the loader's money-color test binds on that OPA string it may not intersect a WTCV line's accounts.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The work — a modification 'to acquire six M1A2 Systems Enhanced Package v2 Abrams tanks' from General Dynamics Land Systems with performance at Lima, Scranton and Anniston — is the Abrams Upgrade Program's own article and belongs to WTCV (lexicon_doc 350), the appropriation that produces and converts M1A2 SEP tanks; no other Army line buys that end item, the line is not a rollup or catch-all, and the tanks are the program's product rather than a platform the contract supports. The stated 'Fiscal 2014 other procurement funds in the amount of $6,019,674' is a $6.0M increment of a $49.8M action in a sibling investment appropriation (doc 346 family, the color that funds installed OPA kit), not O&M and not evidence that the tank buy itself was OPA-funded, so it does not overturn an otherwise exact end-item match."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No competing owner and no variant problem: 'M1A2 System Enhancement Package (SEP)' appears only at 6500GA0750 and 'Abrams' nowhere else in the index, SEPv2 is an increment of that same package rather than a separately-owned program, and the only other 'SEP' in A.tsv is 'The Soldier Enhancement Program (SEP)' at 0604601A, which the announcement's spelled-out 'Systems Enhanced Package v2 Abrams tanks' excludes; the evidence names six tanks bought, not just General Dynamics."
+   }
+  },
+  {
+   "record_index": 62,
+   "article_id": "3216713",
+   "piid": "W56HZV22F0413",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "(W56HZV-22-F-0413), for Bradley Fighting Vehicles, included an incorrect award amount",
+   "verdict": "link",
+   "rationale": "The record is a correction paragraph, but it carries both halves the claim needs: the PIID and the object of the award, 'Bradley Fighting Vehicles'. That string is the index name 'The Bradley Fighting Vehicle (BFV)' in plural without the article, which is a surface variant of the same program name, so llm-alias rather than exact-name. The line is 1678GZ2400, program title 'Bradley Program (MOD)' at lexicon_doc 350 (WTCV procurement), and BAE Systems Land and Armaments at York, Pennsylvania is the Bradley plant — the Army does not buy new-build Bradleys, it funds vehicle production and remanufacture through this line, so a $49,699,881 vehicle award to the York plant is this line's own work. The name is not shared: other Bradley strings in the index sit on different lines for different things (Bradley Fire Support Team at 1382GZ3300, the 25mm BADGER cartridge at 0604802A and 2650E08200), and none of them is what this award names. IBAS shares 1678GZ2400 but is a subsystem, not a competing owner.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The record is a two-sentence correction that states no appropriation at all and describes the work only as 'for Bradley Fighting Vehicles' — the platform's name, not any modification, remanufacture or A4-conversion article that the 'Bradley Program (MOD)' WTCV line actually funds — so the money-color test has nothing to bind on. BAE Land & Armaments' York work spans OMA-funded Bradley reset and depot overhaul alongside WTCV-funded MOD conversions, and on this text an O&M sustainment order cannot be distinguished from a procurement-line order, which is the exact failure mode lens A guards; default-to-refuted applies."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Bradley Fighting Vehicle (BFV)' is owned by exactly one index row, 1678GZ2400, and the plural without the article is a surface variant rather than an invented alias; the other Bradley-bearing rows name different things owned by different lines (Bradley Fire Support Team and Bradley Common Display at 1382GZ3300, the 25mm BADGER cartridge at 0604802A and 2650E08200) and none of them is what this correction names, so no alternative owner in this index takes the evidence, and the paragraph supplies the object of the award rather than only a contractor name."
+   }
+  },
+  {
+   "record_index": 21,
+   "article_id": "2993412",
+   "piid": "W15QKN22D0013",
+   "pe_bli": "3000GB3000",
+   "program_name": "MK-19 Grenade Machine Gun MODS",
+   "lexicon_doc": "350",
+   "lexicon_quote": "MK-19 Grenade Machine Gun MODS",
+   "announcement_evidence": "firm-fixed-price contract for the MK19 MOD 3 Grenade Machine Gun, spare parts kits and spare barrel assemblies",
+   "verdict": "weak",
+   "rationale": "The designator matches after hyphen normalization (MK19 in the announcement, MK-19 in the index) and it is the only MK-19 owner in this org's index, so the identity side is clean. What fails §1's standard is the attribution: 3000GB3000 is a MODIFICATIONS line — its program title is 'MK-19 Grenade Machine Gun MODS' and the other name it owns is the Mounted Machine Gun Optic, i.e. it funds upgrades to fielded guns. The award is a firm-fixed-price buy of complete MK19 MOD 3 weapons plus spare parts kits and spare barrel assemblies, which is whole-weapon procurement and spares, not modification work, and nothing in the announcement ties the buy to an upgrade or conversion effort. Note also that 'MOD 3' here is the weapon's own model designation, not the budget line's 'MODS' — a matcher reading those two as the same word would be reading a coincidence. Default to not linking."
+  },
+  {
+   "record_index": 8,
+   "article_id": "2557357",
+   "piid": "W15QKN21D0028",
+   "pe_bli": "3181GZ1500",
+   "program_name": "MK22 Precision Sniper Rifle (PSR)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "MK22 Precision Sniper Rifle (PSR)",
+   "announcement_evidence": "procurement of Multi-Role Adaptive Rifle/MK22 Advanced Sniper Rifles, spare parts, accessories, tools, and conversion kits",
+   "verdict": "weak",
+   "rationale": "A real name is present — 'MK22' is in the announcement and the index row is 'MK22 Precision Sniper Rifle (PSR)' — but the record cannot be resolved to one line, which is exactly the alternative-owner hazard §1 hands to lens B. Two lines in this org's index at lexicon_doc 350 own the same rifle: 3181GZ1500, whose program title is 'Sniper Rifles Modifications' (it also owns M107 LRSR, M110 SASS, M2010 ESR, M110A1 SDMR and the Advanced Sniper Accessory Kit), and 8190G01506, whose program title is 'Precision Sniper Rifle' and whose names are 'The Precision Sniper Rifle (PSR)' and 'Sniper Weapon System (SWS)'. The award to Barrett, the MRAD producer, mixes both shapes of work in one sentence: new rifles and spare parts, which belong to the base procurement line, and conversion kits and accessories, which belong to the modifications line. With no appropriation named in the announcement and the dollars undivided, I cannot say which line's own work was paid for, so neither gets a link."
+  },
+  {
+   "record_index": 40,
+   "article_id": "3490188",
+   "piid": "W15QKN23D0039",
+   "pe_bli": "7500K99300",
+   "program_name": "Tactical Advanced Land Inertial Navigator (TALIN)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Tactical Advanced Land Inertial Navigator (TALIN)",
+   "announcement_evidence": "firm-fixed-price contract for eTALIN II 6000 Inertial Navigation Units",
+   "verdict": "weak",
+   "rationale": "'eTALIN II 6000' is a plausible designator variant of the index name TALIN (Honeywell's enhanced TALIN inertial navigation unit), so the string side is defensible. The attribution is not. 7500K99300 is 'Mortar Fire Control System' (lexicon_doc 346, Other Procurement, Army), and TALIN is named there as a COMPONENT that system uses — the inverse of the §3 platform pattern but the same defect: buying the component in bulk is not evidence that this particular system's line paid for it. TALIN-family inertial navigation units are common fire-control hardware across several Army programs, the announcement names no mortar system, no fire-control program and no appropriation ('work locations and funding will be determined with each order'), and it is an IDIQ ceiling awarded through ACC-New Jersey, which buys for artillery and mortars alike. Not enough to assert this line's own work."
+  },
+  {
+   "record_index": 40,
+   "article_id": "3490188",
+   "piid": "W15QKN23D0039",
+   "pe_bli": "7563AD9300",
+   "program_name": "Inertial Navigation Unit (INU)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Inertial Navigation Unit (INU)",
+   "announcement_evidence": "firm-fixed-price contract for eTALIN II 6000 Inertial Navigation Units",
+   "verdict": "wrong",
+   "rationale": "Rejected by the §3 weak-generic-name pattern. The index row's name is the bare component noun 'Inertial Navigation Unit (INU)', and the announcement's 'Inertial Navigation Units' matches it only because both are using the ordinary English term for a class of hardware bought by many programs — the same failure mode as 'STORM', 'SHIELD' or 'Sentinel' used as words. An exact-string matcher scores this as a perfect hit, which is precisely why it needs to be on the record as refused rather than silently dropped: the line is 7563AD9300 'Mortar Fire Control Systems Modifications', and nothing in the announcement ties a Honeywell INU buy to mortar fire-control modifications. No refute pass should be spent on it."
+  },
+  {
+   "record_index": 11,
+   "article_id": "2092565",
+   "piid": "W900KK20D0006",
+   "pe_bli": "0604258A",
+   "program_name": "Unmanned Aerial System - Target (UAS-T)",
+   "lexicon_doc": "359",
+   "lexicon_quote": "Unmanned Aerial System - Target (UAS-T)",
+   "announcement_evidence": "Unmanned Aerial Systems - Targets, depot level repair and maintenance, storage of government furnished equipment, base operations services, field operations services",
+   "verdict": "weak",
+   "rationale": "The announcement contains the index name almost verbatim — it calls the MQM-171 'Broadsword' an 'Unmanned Aerial Systems - Targets' — and the buying office, Army PEO Simulation, Training and Instrumentation, is the targets community, so the name is genuinely present. Two things keep it below §1's standard. First, 0604258A 'Target Systems Development' is an RDT&E development line at lexicon_doc 359, while this action procures production MQM-170 and MQM-171 target vehicles for the targets management office and 'other Department of Defense customers'; charging a production and sustainment order-dependent contract to a development PE is the appropriation failure mode the 2026-09-04 held-out study found in half its refutations. Second, most of what the award actually buys is the §3 generic-services list — depot level repair and maintenance, storage of government furnished equipment, base operations services, field operations services, training execution and inventory support. The specific names in the record, MQM-170 'Outlaw' and MQM-171 'Broadsword', are in no row of this org's index."
+  },
+  {
+   "record_index": 51,
+   "article_id": "783066",
+   "piid": "W56KGY16D0006",
+   "pe_bli": "9926BL5287",
+   "program_name": "Persistent Surveillance Systems (PSS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Persistent Surveillance Systems (PSS)",
+   "announcement_evidence": "Persistent Surveillance and Dissemination System of Systems (PSDS2) operations and sustainment support",
+   "verdict": "wrong",
+   "rationale": "Rejected on two §3 patterns at once. The line 9926BL5287 is 'FAMILY OF PERSISTENT SURVEILLANCE CAP.' — a family rollup at lexicon_doc 346 whose name 'Persistent Surveillance Systems (PSS)' is itself a category label, so a link against it would assert only that an award has something to do with persistent surveillance, which is content-free in the way the catch-all bullet describes (its title does not happen to trip CATCHALL_TITLE, so it is worth recording rather than assuming the loader drops it). And the announced program is a DIFFERENT system: PSDS2, the Persistent Surveillance and Dissemination System of Systems, not PSS. On top of both, the award is explicitly 'operations and sustainment support' — O&M-shaped services hung on a procurement family line, the exact configuration lens A is told to break."
+  },
+  {
+   "record_index": 58,
+   "article_id": "612903",
+   "piid": "W56KGY15D0016",
+   "pe_bli": "9926BL5287",
+   "program_name": "Persistent Surveillance Systems (PSS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Persistent Surveillance Systems (PSS)",
+   "announcement_evidence": "technical support for the Persistent Ground Surveillance system",
+   "verdict": "wrong",
+   "rationale": "The same family-rollup refusal as record 51, recorded separately because a token matcher fires twice in this chunk and the denominator should show it. The announced system is the Persistent Ground Surveillance system (PGSS), a different program from the index name 'Persistent Surveillance Systems (PSS)'; the words they share are the category, not the program. The owning line 9926BL5287 'FAMILY OF PERSISTENT SURVEILLANCE CAP.' is a family aggregate, and the award itself is 'services and materials technical support' — the generic-services pattern in §3, with no named article, no appropriation stated and funding 'determined with each order'."
+  },
+  {
+   "record_index": 23,
+   "article_id": "605989",
+   "piid": "W15QKN14D0082",
+   "pe_bli": "8082C14300",
+   "program_name": "Stinger Vehicle Universal Launcher (SVUL)",
+   "lexicon_doc": "345",
+   "lexicon_quote": "Stinger Vehicle Universal Launcher (SVUL)",
+   "announcement_evidence": "multiyear foreign military sales contract (Korea and Finland) for Stinger M934E6 fuses (legacy), M934E7 fuses (proximity capability), warhead body assemblies (legacy), and warhead body assemblies (proximity capability)",
+   "verdict": "wrong",
+   "rationale": "Rejected by the §3 platform pattern. 'Stinger' is the only token this record shares with any row of this org's index, and the row it lands on is 'Stinger Vehicle Universal Launcher (SVUL)' at 8082C14300, whose program title is 'M-SHORAD - Procurement' — a vehicle launcher bought under the Maneuver Short-Range Air Defense line. The award buys neither launchers nor M-SHORAD hardware: it buys M934E6 and M934E7 fuses and warhead body assemblies for Stinger missiles, under a multiyear foreign military sales contract for Korea and Finland, from Lockheed Martin Sippican through Picatinny. The missile is the platform the SVUL line supports, not the article this contract paid for, and an FMS munitions buy is not M-SHORAD procurement's own work. No refute pass should be spent on it."
+  }
+ ]
+}

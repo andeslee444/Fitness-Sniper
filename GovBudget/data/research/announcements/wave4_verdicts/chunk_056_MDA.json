@@ -1,0 +1,632 @@
+{
+ "chunk": "chunk_056_MDA.json",
+ "proposals": [
+  {
+   "record_index": 1,
+   "article_id": "1834495",
+   "piid": "HQ014711C0006",
+   "pe_bli": "0603915C",
+   "program_name": "BMDS Targets Program",
+   "lexicon_doc": "277",
+   "match_basis": "llm-description",
+   "announcement_evidence": "the contractor will provide Intercontinental Ballistic Missile (ICBM) target capability upgrade kits and associated nonrecurring engineering",
+   "lexicon_quote": "BMDS Targets Program",
+   "verdict": "link",
+   "rationale": "HQ0147-11-C-0006 is MDA's target-vehicle contract with Orbital Sciences, and this modification buys ICBM target capability upgrade kits plus the nonrecurring engineering to build them. PE 0603915C is titled 'Ballistic Missile Defense Targets' and the index row it owns is 'BMDS Targets Program' — the line whose own work is producing the target vehicles MDA flies in BMDS intercept tests. The announcement names no other program, the money is fiscal 2019 research, development, test and evaluation, matching an RDT&E program element rather than a procurement BLI, and no other PE in this index owns targets (the only neighbouring rows, MBRV-5/7/8 and 'Modified Ballistic Re-Entry Vehicles', sit under the same 0603915C). The match is by description rather than by name, so it rests on the phrase 'ICBM target ... kits' being MDA target-program work and nothing else.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 RDT&E obligated against an RDT&E element; ICBM target capability upgrade kits and their nonrecurring engineering are the targets line's own article of production, not a platform it supports, and 0603915C 'Ballistic Missile Defense Targets' is a dedicated line, not a rollup or CATCHALL_TITLE match."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner exists: every targets name in the MDA index (BMDS Targets Program, MBRV-5/7/8, Modified Ballistic Re-Entry Vehicles) sits on 0603915C, so 'ICBM target capability upgrade kits' has no competing PE and no rival variant, and the evidence is scope language rather than the contractor's identity."
+   }
+  },
+  {
+   "record_index": 6,
+   "article_id": "3804866",
+   "piid": "HQ014719D0003",
+   "pe_bli": "0604876C",
+   "program_name": "BMDS Integrated Master Test Plan (IMTP)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "This extension will allow for the uninterrupted execution of MDA&#39;s Integrated Master Test Plan",
+   "lexicon_quote": "BMDS Integrated Master Test Plan (IMTP)",
+   "verdict": "weak",
+   "rationale": "The announcement does name the Integrated Master Test Plan, which the index carries as 'BMDS Integrated Master Test Plan (IMTP)' under 0604876C. But the IMTP is named only as the schedule this ID/IQ extension protects, not as the thing the award funds: the scope is agency-wide modeling and simulation truth and element representations for MDA as a whole, while 0604876C is the narrow 'Ballistic Missile Defense Terminal Defense Segment Test' line (THAAD testing). The IMTP is an agency-level document referenced by many PEs, so the name in the text does not establish that this award paid for the Terminal Defense Segment Test line's own work. Evidence falls short of the §1 standard; not proposed as a link."
+  },
+  {
+   "record_index": 7,
+   "article_id": "1040146",
+   "piid": "HQ014712C0014",
+   "pe_bli": "0603884C",
+   "program_name": "Upgraded Early Warning Radar (UEWR)",
+   "lexicon_doc": "210",
+   "announcement_evidence": "the contractor will implement a data processor and signal processor equipment suite modernization at Thule Air Force Station, Greenland",
+   "lexicon_quote": "Upgraded Early Warning Radar (UEWR)",
+   "verdict": "weak",
+   "rationale": "Thule is a UEWR site and Raytheon Woburn is the UEWR contractor, so the work is almost certainly the Upgraded Early Warning Radar upgrade that 0603884C's narrative owns. Two things keep it below the §1 standard. First, the announcement never names UEWR or any program at all — the only handle is the site name, which is an inference about which radar sits there rather than evidence about which line pays. Second, the money is Air Force fiscal 2016 and 2017 procurement funds, and 0603884C is an RDT&E program element; attaching procurement-funded fielding work to an RDT&E line is exactly the appropriation mismatch the refute pass is built to catch. Recorded as weak rather than proposed."
+  },
+  {
+   "record_index": 9,
+   "article_id": "654181",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "support of advanced concept initiatives by the Aegis Ballistic Missile Defense (ABMD) Program Office to identify technology for introduction into present and future ABMD baselines and upgrades",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "link",
+   "rationale": "The announcement spells out 'Aegis Ballistic Missile Defense' in full, abbreviating it ABMD; the index row under 0603892C (program title 'AEGIS BMD') is 'Aegis Ballistic Missile Defense (BMD)', so ABMD is the announcement's own abbreviation of the indexed name rather than an invented alias. HQ0276-10-C-0001 is the Aegis BMD development contract, and the scope — identifying technology for introduction into present and future ABMD baselines and upgrades — is development work on the Aegis BMD baselines themselves, which is what this PE funds (the same PE carries a row named 'Aegis Ballistic Missile Defense (BMD) Technology Design and Insertion' describing precisely this activity). Aegis BMD is not a platform this contract merely supports: the contract is the program's own development vehicle.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No funding sentence survives in this record's truncated text, but the scope — identifying technology for insertion into present and future ABMD baselines on MDA's own Aegis BMD development contract (HQ0276 prefix, MDA Dahlgren) — is development work this PE funds and is not O&M or base-support services; the identical scope in record 74 obligates RDT&E, and Aegis BMD is the program itself rather than a platform the contract merely supports."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Aegis Ballistic Missile Defense (BMD)' is an exact three-way collision (0603892C, 0604878C 'Aegis BMD Test', MD90 'Aegis BMD Hardware and Software'), but the scope — identifying technology for introduction into ABMD baselines and upgrades — matches only 0603892C, which alone owns 'Aegis Ballistic Missile Defense (BMD) Technology Design and Insertion'; a test PE and a hardware procurement BLI do not fit this evidence equally well."
+   }
+  },
+  {
+   "record_index": 10,
+   "article_id": "3154083",
+   "piid": "HQ085422C0003",
+   "pe_bli": "0604102C",
+   "program_name": "Missile Defense System (MDS)",
+   "lexicon_doc": "318",
+   "announcement_evidence": "the contractor will work with the Missile Defense Agency (MDA) to evolve analysis capability to model the Missile Defense System",
+   "lexicon_quote": "Missile Defense System (MDS)",
+   "verdict": "wrong",
+   "rationale": "The index does carry a row literally named 'Missile Defense System (MDS)', but it belongs to 0604102C 'Guam Defense Development', where MDS is the Guam-specific system. In this announcement 'the Missile Defense System's (MDS) expected performance' is the generic whole-of-agency system being modelled for the Director for Engineering's Quick Reaction Team — the §3 weak-generic-name pattern, a common English/agency phrase that happens to collide with a specific indexed program name. Nothing in the record mentions Guam, and the SAIC QRT analysis contract has no Guam scope, so proposing 0604102C would attribute a general analysis award to an unrelated regional line. Rejected by design."
+  },
+  {
+   "record_index": 11,
+   "article_id": "3800758",
+   "piid": "HQ085124C0002",
+   "pe_bli": "0604880C",
+   "program_name": "Aegis Ashore Missile Defense Test Complex (AAMDTC)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "the contractor will provide operations and sustainment and logistics services to the Aegis Combat System and its elements/sub elements at Aegis Ashore Missile Defense Test Complex-Pacific Missile Range Facility in Kauai, Hawaii",
+   "lexicon_quote": "Aegis Ashore Missile Defense Test Complex (AAMDTC)",
+   "verdict": "weak",
+   "rationale": "The indexed name appears essentially verbatim, and 0604880C 'Land-Based SM-3 (LBSM3)' is the line whose narrative owns the AAMDTC. What keeps this below the standard is the nature of the work: operations, sustainment and logistics services for the Aegis Combat System installed at the complex, i.e. O&M-style sustainment of a facility, attached to an RDT&E program element — the exact failure mode the held-out study found. Read strictly, AAMDTC here is the location where sustainment is performed and the platform (Aegis Combat System) is the thing supported, not the PE's own development work. Recorded weak."
+  },
+  {
+   "record_index": 14,
+   "article_id": "3857095",
+   "piid": "HQ014719D0002",
+   "pe_bli": "0603890C",
+   "program_name": "Objective Simulation Framework (OSF)",
+   "lexicon_doc": "210",
+   "announcement_evidence": "the development and sustainment of the Missile Defense Agency&#39;s (MDA) Objective Simulation Framework Modeling and Simulation System",
+   "lexicon_quote": "Objective Simulation Framework (OSF)",
+   "verdict": "weak",
+   "rationale": "The announcement names the Objective Simulation Framework outright and the award is its development and sustainment contract, so the name evidence is strong — but the identity evidence is not. Four index rows across three different PEs own this name: 'Objective Simulation Framework (OSF)' under 0603890C (BMD Enabling Programs), under 0603892C (AEGIS BMD, plus 'M&S Objective Simulation Framework (OSF)' and 'Modeling & Simulation Objective Simulation Framework' on the same PE), and under 0604879C (BMD Sensor Test). Nothing in the record — no appropriation, no segment, no baseline — says which of them pays for this agency-wide M&S contract, and 0603890C is itself a broad enabling-programs rollup. A name collision this wide cannot be resolved from the announcement, so no link is proposed."
+  },
+  {
+   "record_index": 16,
+   "article_id": "909301",
+   "piid": "HQ027616C0001",
+   "pe_bli": "MD73",
+   "program_name": "Aegis Ashore Phase III",
+   "lexicon_doc": "95",
+   "match_basis": "llm-description",
+   "announcement_evidence": "the installation, integration, and testing of Aegis Ashore equipment in a deckhouse and deckhouse support building",
+   "lexicon_quote": "Aegis Ashore Phase III",
+   "verdict": "link",
+   "rationale": "The award installs, integrates and tests the Aegis Ashore deckhouse equipment at the Aegis Ashore site in Poland, and is paid with fiscal 2015 defense-wide procurement funds. Poland (Redzikowo) is European Phased Adaptive Approach Phase 3 — Romania/Deveselu is Phase 2 — so the indexed procurement line 'Aegis Ashore Phase III' (MD73) is the line that buys exactly this hardware installation. The appropriation agrees: defense-wide procurement money against a procurement BLI, not an RDT&E element, which is why the RDT&E alternative 0604880C (AAMDS/LBSM3) is not proposed. The match is by description — the announcement says 'Poland', not 'Phase III' — but the site-to-phase identity is definitional rather than inferred, and no other index row covers Aegis Ashore procurement.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2015 defense-wide procurement obligated against a procurement BLI — the money color matches; installing, integrating and testing the Aegis Ashore deckhouse equipment is MD73's own article of purchase, funded as procurement rather than MILCON, so the §3 construction pattern does not apply."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The announcement never says 'Phase III' — the phrase it does use, 'Aegis Ashore', is owned by a DIFFERENT PE in two index rows ('Aegis Ashore Missile Defense System (AAMDS)' and 'Aegis Ashore Missile Defense Test Complex (AAMDTC)', both 0604880C), with 'Land Based SM-3 Site Activation' (0603892C) also covering installation at a land-based site, so MD73 is selected only by an unstated Poland-to-EPAA-Phase-3 inference rather than by any name the text contains."
+   }
+  },
+  {
+   "record_index": 17,
+   "article_id": "643381",
+   "piid": "HQ014712C0014",
+   "pe_bli": "0603884C",
+   "program_name": "Upgraded Early Warning Radar (UEWR)",
+   "lexicon_doc": "210",
+   "announcement_evidence": "the contractor will implement a data processor and signal processor equipment suite modernization at Royal Air Force Fylingdales, United Kingdom",
+   "lexicon_quote": "Upgraded Early Warning Radar (UEWR)",
+   "verdict": "weak",
+   "rationale": "Same pattern as the Thule modification on the same contract: RAF Fylingdales is a UEWR site and the processor-suite modernization is the UEWR upgrade, but the announcement names no program, so the only link is an inference from the site, and the modification is paid with fiscal 2014 and 2015 procurement funds against the RDT&E element 0603884C. Name evidence absent plus appropriation mismatch keeps it below the §1 standard."
+  },
+  {
+   "record_index": 24,
+   "article_id": "1632076",
+   "piid": "HQ014711C0006",
+   "pe_bli": "0603915C",
+   "program_name": "BMDS Targets Program",
+   "lexicon_doc": "277",
+   "match_basis": "llm-description",
+   "announcement_evidence": "the contractor will provide three Intercontinental Ballistic Missile (ICBM) target kits (Stage 0 conversion kits) and associated support services",
+   "lexicon_quote": "BMDS Targets Program",
+   "verdict": "link",
+   "rationale": "Three ICBM target kits (Stage 0 conversion kits) delivered under MDA's Orbital targets contract HQ0147-11-C-0006, with fiscal 2018 research, development, test and evaluation funds. PE 0603915C is titled 'Ballistic Missile Defense Targets' and owns the index row 'BMDS Targets Program'; producing target vehicles for BMDS flight tests is that line's own work, not a platform it supports. No other PE in this index funds targets, and the RDT&E appropriation matches the RDT&E element. Description-based match: the announcement says 'ICBM target kits', which is the targets program in MDA's own vocabulary.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 RDT&E against the RDT&E targets element; three ICBM target kits (Stage 0 conversion kits) are the line's own deliverable, and the PE is a dedicated targets line, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same clean field as the other targets records: 0603915C is the sole owner of every targets name in the index, 'three ICBM target kits (Stage 0 conversion kits)' names no rival program, and the sibling MBRV rows that could otherwise compete are on the same PE."
+   }
+  },
+  {
+   "record_index": 29,
+   "article_id": "756280",
+   "piid": "HQ014716C0036",
+   "pe_bli": "0305103C",
+   "program_name": "DoD CI in Cyberspace Initiative",
+   "lexicon_doc": "210",
+   "announcement_evidence": "advisory and assistance services for counterintelligence in support of technical, engineering, advisory and management support",
+   "lexicon_quote": "DoD CI in Cyberspace Initiative",
+   "verdict": "wrong",
+   "rationale": "The only counterintelligence-flavoured row in this index is 'DoD CI in Cyberspace Initiative' under 0305103C (program title 'Cyber Security Initiative'), and this award is a Defense Agency Counterintelligence Program support contract — a different thing that merely shares the letters CI. Two §3 patterns apply at once: the work is generic advisory and assistance services (the TEAMS A&AS vehicle, not a named program), and treating the announcement's counterintelligence mission as the indexed cyberspace initiative would be an invented alias. Rejected by design."
+  },
+  {
+   "record_index": 30,
+   "article_id": "606725",
+   "piid": "HQ027610C0005",
+   "pe_bli": "0603892C",
+   "program_name": "Standard Missile-3 (SM-3) Block IIA Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "This modification is to align the test program with the hardware delivery schedule for the Standard Missile-3 Block IIA program, which is currently executed under CLIN 0003 (Block IIA All Up Round Development and Integration)",
+   "lexicon_quote": "Standard Missile-3 (SM-3) Block IIA Development",
+   "verdict": "link",
+   "rationale": "The announcement names the Standard Missile-3 Block IIA program in full and identifies the CLIN as Block IIA All Up Round Development and Integration; the index row 'Standard Missile-3 (SM-3) Block IIA Development' under 0603892C (AEGIS BMD) is the same name with the designator in parentheses. Fiscal 2015 research, development, test and evaluation funds are obligated, matching an RDT&E development line, which also resolves the one real collision risk: the index's other Block IIA row, 'SM-3 Block IIA' under MD14, is the procurement BLI, and this is development money on the SM-3 IIA development contract HQ0276-10-C-0005. The work — aligning the test program with IIA hardware deliveries — is the development line's own activity.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2015 RDT&E against an RDT&E element, which is also the discriminator against the MD14 procurement BLI; aligning the IIA test program to hardware deliveries on the SM-3 IIA development contract is the development line's own work, not support of a platform."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Standard Missile-3 (SM-3) Block IIA Development' occurs once, under 0603892C; the only same-designator rival owner is MD14 'SM-3 Block IIA' (procurement), and the announcement pins both the increment (Block IIA, CLIN 0003 All Up Round Development and Integration) and the RDT&E character, so the name is real, unshared in kind, and not a different variant."
+   }
+  },
+  {
+   "record_index": 33,
+   "article_id": "2634734",
+   "piid": "HQ027616C0001",
+   "pe_bli": "MD73",
+   "program_name": "Aegis Ashore Phase III",
+   "lexicon_doc": "95",
+   "announcement_evidence": "the contractor will provide Poland AAEA engineering and security support, AAEA test and site updates, risk mitigation support, and continued completion effort for the Aegis Ashore Poland site",
+   "lexicon_quote": "Aegis Ashore Phase III",
+   "verdict": "weak",
+   "rationale": "Same contract and same site as the Poland deckhouse award, but the scope here is the Aegis Ashore Engineering Agent role — engineering and security support, risk mitigation and site updates — which is §3 generic services attached to a site rather than the procurement of the Phase III system itself. The announcement also names no program, only the site and the AAEA contract role, and gives no appropriation in the recorded text to confirm a procurement BLI. Weak."
+  },
+  {
+   "record_index": 37,
+   "article_id": "1796426",
+   "piid": "HQ027718C0001",
+   "pe_bli": "0604115C",
+   "program_name": "The Low Power Laser Demonstrator (LPLD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will complete their laser scaling and beam control critical design review in support of the Low Power Laser Demonstrator risk reduction",
+   "lexicon_quote": "The Low Power Laser Demonstrator (LPLD)",
+   "verdict": "link",
+   "rationale": "The announcement names the Low Power Laser Demonstrator explicitly; the index row differs only by a leading article and the parenthetical acronym, so this is the same program named, not a resemblance. LPLD appears exactly once in this org's index — under 0604115C 'Technology Maturation Initiatives' — so there is no alternative owner to weigh. The award is the laser scaling and beam control critical design review, i.e. the demonstrator's own risk-reduction development, paid with fiscal 2019 research, development, test and evaluation funds against an RDT&E element. Contractor identity is not doing the work here: the program is named in the scope sentence itself.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 RDT&E against an RDT&E element; a laser-scaling and beam-control critical design review is the demonstrator's own development rather than engineering-support services, and 0604115C is a named-initiative PE whose own narrative owns the LPLD row — its title does not match the loader's CATCHALL_TITLE."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Low Power Laser Demonstrator (LPLD)' appears exactly once in the MDA index (0604115C), the neighbouring directed-energy rows (DEDD, NPB) are on that same PE, and the alias differs from the announcement only by a leading article and the acronym — the program is named in the scope sentence, not inferred from Lockheed Martin's identity."
+   }
+  },
+  {
+   "record_index": 41,
+   "article_id": "1796426",
+   "piid": "HQ027718C0002",
+   "pe_bli": "0604115C",
+   "program_name": "The Low Power Laser Demonstrator (LPLD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will complete their laser scaling and beam control critical design review in support of the Low Power Laser Demonstrator risk reduction",
+   "lexicon_quote": "The Low Power Laser Demonstrator (LPLD)",
+   "verdict": "link",
+   "rationale": "One of three parallel LPLD risk-reduction awards announced the same day, this one to General Atomics under HQ0277-18-C-0002. The Low Power Laser Demonstrator is named in the scope sentence, the index carries it once under 0604115C 'Technology Maturation Initiatives', and the critical design review for laser scaling and beam control is the demonstrator's own development work, funded with fiscal 2019 RDT&E money against an RDT&E line. The record_index matters here because the same article carries three records with different PIIDs.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 RDT&E against an RDT&E element; the General Atomics leg buys the same LPLD critical design review, which is the demonstrator program's own risk-reduction development, and the PE is not a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Distinct PIID (HQ0277-18-C-0002, General Atomics) on the same uncontested name: LPLD has one owner in the index, no PE competes for it, and no increment or variant distinction is at stake across the three parallel awards."
+   }
+  },
+  {
+   "record_index": 42,
+   "article_id": "1796426",
+   "piid": "HQ027718C0003",
+   "pe_bli": "0604115C",
+   "program_name": "The Low Power Laser Demonstrator (LPLD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will complete their laser scaling and beam control critical design review in support of the Low Power Laser Demonstrator risk reduction",
+   "lexicon_quote": "The Low Power Laser Demonstrator (LPLD)",
+   "verdict": "link",
+   "rationale": "The Boeing leg of the same three-way LPLD risk-reduction competition, under HQ0277-18-C-0003. The program is named in the announcement's own scope sentence, LPLD is unique to 0604115C in this index, and fiscal 2019 RDT&E funds are obligated against an RDT&E program element. Nothing in the paragraph is generic services or platform support — the deliverable is the demonstrator's critical design review.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 RDT&E against an RDT&E element; the Boeing leg's deliverable is the LPLD critical design review — the program's own development work, with no generic-services, construction or unnamed-umbrella scope in the paragraph."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Boeing's leg under HQ0277-18-C-0003; the name LPLD is unique to 0604115C, is spelled out in the announcement's own scope sentence, and carries no competing variant, so neither an invented alias nor an alternative owner can be shown."
+   }
+  },
+  {
+   "record_index": 44,
+   "article_id": "1829432",
+   "piid": "HQ027610C0005",
+   "pe_bli": "0603892C",
+   "program_name": "Standard Missile-3 (SM-3) Block IIA Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "a modification (P00155) to the previously awarded sole-source, cost-plus-incentive-fee Standard Missile-3 Block IIA contract (HQ0276-10-C-0005)",
+   "lexicon_quote": "Standard Missile-3 (SM-3) Block IIA Development",
+   "verdict": "link",
+   "rationale": "The announcement identifies the vehicle as the Standard Missile-3 Block IIA contract by name and describes additional Ballistic Missile Defense upgrades and flight test support under it. The index row 'Standard Missile-3 (SM-3) Block IIA Development' sits on 0603892C (AEGIS BMD); fiscal 2019 research, development, test and evaluation funds are obligated, which both matches the RDT&E element and separates it from the procurement row 'SM-3 Block IIA' under MD14. Upgrades and flight test support to the IIA missile are the development line's own work rather than support of a platform that merely carries it.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 RDT&E against an RDT&E element (separating it from procurement BLI MD14); BMD upgrades and flight test on the SM-3 Block IIA development contract are the development line's own activity, and flight testing of the missile under development is not generic support."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The vehicle is named 'the Standard Missile-3 Block IIA contract', matching the single index row that carries that name (0603892C); the one rival owner of the designator, MD14, is the Block IIA procurement BLI and this is RDT&E on the IIA development contract, and 0604878C 'Aegis BMD Test' owns no SM-3 name that 'flight test support' could attach to."
+   }
+  },
+  {
+   "record_index": 48,
+   "article_id": "2103659",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "under the Aegis Combat Weapon System Development Contract HQ0276-10-C-0001, which covers multiple Aegis Weapon System baselines and platforms",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "weak",
+   "rationale": "Unlike the ABMD advanced-concept modifications on the same contract, this paragraph never names Aegis Ballistic Missile Defense; it names the Aegis Combat Weapon System and says the contract covers multiple Aegis Weapon System baselines and platforms, and the identified money ($42.6M) is for Aegis Ashore Japan initial operational capability planning. That is a different effort with a different sponsor, and the announcement's own words describe the platform-wide vehicle rather than the BMD line's work. Recorded weak rather than linked."
+  },
+  {
+   "record_index": 49,
+   "article_id": "4180309",
+   "piid": "HQ014711C0006",
+   "pe_bli": "0603915C",
+   "program_name": "BMDS Targets Program",
+   "lexicon_doc": "277",
+   "match_basis": "llm-description",
+   "announcement_evidence": "to manufacture and provide target systems for Intermediate Range Ballistic Missiles (IRBM) and Intercontinental Ballistic Missiles (ICBM), including the necessary execution, analysis, services and support thereof",
+   "lexicon_quote": "BMDS Targets Program",
+   "verdict": "link",
+   "rationale": "The scope is the manufacture and delivery of IRBM and ICBM target systems on MDA's targets contract HQ0147-11-C-0006 — the bridge modification that carries the program from December 2025 to September 2026. PE 0603915C is titled 'Ballistic Missile Defense Targets' and owns 'BMDS Targets Program'; target-vehicle manufacture is that element's own work, and no other PE in this index funds targets. The match rests on the description rather than a spelled-out program name, but 'target systems' for IRBM/ICBM classes is unambiguous MDA targets-program vocabulary.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The truncated text carries no funding sentence, so the appropriation cannot be read off this record, but manufacturing IRBM and ICBM target systems on MDA's targets contract is 0603915C's own work, the same contract's other actions in this chunk obligate RDT&E, and nothing in the paragraph is O&M sustainment or an unnamed ceiling action."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Target systems for IRBM and ICBM' has exactly one candidate owner in this index — 0603915C, which holds every targets row — so there is no collision to exploit; the match is descriptive but not transferable to any other PE."
+   }
+  },
+  {
+   "record_index": 50,
+   "article_id": "3921460",
+   "piid": "HQ027619C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis BMD 6.x Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "This modification increases the ceiling of Contract Line-Item Numbers 4005, 4007, 4008, and 4009 to support BMD 6.0.1 development scope",
+   "lexicon_quote": "Aegis BMD 6.x Development",
+   "verdict": "link",
+   "rationale": "BMD 6.0.1 is a 6.x Aegis BMD baseline, and the index carries 'Aegis BMD 6.x Development' under 0603892C (AEGIS BMD) — the '6.x' form is the J-book's own way of naming the family this increment belongs to, so 6.0.1 is a designator variant of the indexed line rather than a different program. The announcement frames the modification as additional scope on the Aegis BMD Weapon Systems contract HQ0276-19-C-0001 and obligates fiscal 2024 research, development, test and evaluation funds, matching an RDT&E development element. Neighbouring rows (4.x, 5.0, 5.x) fix the baseline unambiguously, so no other increment competes for this award.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 RDT&E obligated against an RDT&E element; a CLIN ceiling increase that names BMD 6.0.1 development scope on the Aegis BMD Weapon Systems contract is not the §3 'IDIQ ceiling with no named program' pattern, and baseline development is the PE's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Both 6.x rows ('Aegis BMD 6.x Development' and 'Aegis Ballistic Missile Defense 6.x Development') sit on 0603892C, so no other PE owns the name; BMD 6.0.1 is a member of the 6.x family the J-book itself names, and the 4.x / 5.0 / 5.x rows that could represent a different increment are on the same PE, leaving no rival baseline."
+   }
+  },
+  {
+   "record_index": 51,
+   "article_id": "3922974",
+   "piid": "HQ027619C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "to provide additional scope on their existing contract for Aegis BMD Weapon Systems (HQ027619C0001)",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "weak",
+   "rationale": "This record is the October 1 correction notice for the September 30 modification adjudicated at record_index 50 — same contract, same dollars, same PIID, different article. On its own the paragraph carries no scope at all: it names the Aegis BMD Weapon Systems contract only to identify which announcement is being corrected, and drops the 6.0.1 baseline detail that made the original linkable. A citation quoting this paragraph would show a funding-amount correction, not evidence that the award funds the Aegis BMD line, so it is recorded weak and the substantive link is left on record 50."
+  },
+  {
+   "record_index": 52,
+   "article_id": "1618359",
+   "piid": "HQ027718C0001",
+   "pe_bli": "0604115C",
+   "program_name": "The Low Power Laser Demonstrator (LPLD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will complete their tailored concept design review in support of the Low Power Laser Demonstrator post-preliminary design review risk reduction",
+   "lexicon_quote": "The Low Power Laser Demonstrator (LPLD)",
+   "verdict": "link",
+   "rationale": "The earlier (2018) tranche of the same LPLD risk-reduction effort to Lockheed Martin under HQ0277-18-C-0001: the tailored concept design review supports the Low Power Laser Demonstrator's post-preliminary-design-review risk reduction, naming the program directly. LPLD is owned by exactly one index row, under 0604115C 'Technology Maturation Initiatives', and fiscal 2018 research, development, test and evaluation funds are obligated against that RDT&E element. Design-review work on the demonstrator is the program's own development, not support of a platform.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 RDT&E against an RDT&E element; the tailored concept design review supporting LPLD post-PDR risk reduction is the demonstrator's own development, and the PE is a named-initiative line rather than a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The 2018 tranche names the Low Power Laser Demonstrator directly; the name is unique to 0604115C in this index, the alias is the indexed string minus its article, and the earlier concept-design-review increment is the same program, not a different one."
+   }
+  },
+  {
+   "record_index": 56,
+   "article_id": "3110781",
+   "piid": "HQ085121C0002",
+   "pe_bli": "0604181C",
+   "program_name": "Glide Phase Intercept (GPI)",
+   "lexicon_doc": "97",
+   "announcement_evidence": "This modification extends and expands performance of the Aegis Weapon System to accommodate glide phase development",
+   "lexicon_quote": "Glide Phase Intercept (GPI)",
+   "verdict": "weak",
+   "rationale": "'Glide phase development' is close to the indexed 'Glide Phase Intercept (GPI)' under 0604181C (Hypersonic Defense), and hypersonic defense money does pay for Aegis integration of GPI. But what the announcement actually buys is an extension and expansion of the Aegis Weapon System contract so the weapon system can accommodate that development — the §3 pattern where the named capability rides on a platform the contract supports, with the Aegis Weapon System, not GPI, as the article of work. The index also offers a second glide-phase row on the same PE ('Regional Glide Phase Weapon System'), and nothing in the text chooses between them. Weak."
+  },
+  {
+   "record_index": 57,
+   "article_id": "822083",
+   "piid": "HQ014712D0001",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "a task order for Terminal High Altitude Area Defense (THAAD) system development, support and integration under a previously-awarded sole-source, indefinite-delivery/indefinite-quantity (IDIQ) contract (HQ0147-12-D-0001)",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "link",
+   "rationale": "The task order is for THAAD system development, support and integration, and the index row under 0603881C (program title 'Ballistic Missile Defense Terminal Defense Segment') is 'The Terminal High Altitude Area Defense (THAAD)' — the same name, differing only by the leading article. Fiscal 2016 research, development, test and evaluation funds are obligated, which matches the RDT&E element and separates this from the THAAD procurement BLI MD07, whose index name is the AN/TPY-2 radar rather than the system. This is a task order under an IDIQ, but not the §3 umbrella case: the order names its program and its scope is THAAD system development, the Terminal Defense Segment line's own work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2016 RDT&E obligated against the RDT&E Terminal Defense Segment element; THAAD is the program 0603881C funds rather than a platform the contract supports, and §3's umbrella pattern does not apply because the order names its program and scope on a sole-source THAAD-dedicated vehicle — though the same paragraph also raises the IDIQ ceiling by $205M, which lens A does not measure."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Terminal High Altitude Area Defense (THAAD)' is owned only by 0603881C — MD07's index name is 'AN/TPY-2' (not THAAD) and 0604876C's only name is the Integrated Master Test Plan — and the task order spells the program out itself, so the name is neither invented nor shared and the IDIQ is THAAD's own sole-source vehicle rather than an unnamed umbrella."
+   }
+  },
+  {
+   "record_index": 59,
+   "article_id": "1618359",
+   "piid": "HQ027718C0002",
+   "pe_bli": "0604115C",
+   "program_name": "The Low Power Laser Demonstrator (LPLD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will complete their tailored concept design review in support of the Low Power Laser Demonstrator post-preliminary design review risk reduction",
+   "lexicon_quote": "The Low Power Laser Demonstrator (LPLD)",
+   "verdict": "link",
+   "rationale": "General Atomics Electromagnetic Systems' leg of the 2018 LPLD concept-design-review tranche, under HQ0277-18-C-0002. The Low Power Laser Demonstrator is named in the scope sentence, it is unique to 0604115C in this index, the money is fiscal 2018 research, development, test and evaluation against an RDT&E element, and the deliverable is the demonstrator's own design review. Distinct record and distinct PIID from the two sibling records in the same article.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2018 RDT&E named in the record against an RDT&E element; the same LPLD concept-design-review scope, which is the demonstrator program's own development rather than support of a platform."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "General Atomics Electromagnetic Systems' leg under HQ0277-18-C-0002; LPLD is named in the scope sentence, has a single owner in the index, and the record is distinguishable from its two article-siblings by PIID, so no alternative owner or variant confusion arises."
+   }
+  },
+  {
+   "record_index": 60,
+   "article_id": "1439295",
+   "piid": "HQ014712C0005",
+   "pe_bli": "0603884C",
+   "program_name": "AN/TPY-2",
+   "lexicon_doc": "277",
+   "announcement_evidence": "for Army Navy/Transportable Radar engineering services for software development and maintenance relating to the foreign military sale (FMS) case to the United Arab Emirates (UAE)",
+   "lexicon_quote": "AN/TPY-2",
+   "verdict": "weak",
+   "rationale": "'Army Navy/Transportable Radar' is the announcement spelling out AN/TPY-2, so a designator match is available — but two things defeat it. The name is owned by four index rows across four different PEs (0603884C, 0603881C, MD07 and MD11), and nothing in the paragraph chooses among them. And the work is UAE Foreign Military Sales-funded software engineering services: UAE FMS funds pay for it, so the award does not fund any US program element's own work, which is the claim a published link makes. Weak."
+  },
+  {
+   "record_index": 61,
+   "article_id": "1729037",
+   "piid": "HQ027616C0001",
+   "pe_bli": "MD73",
+   "program_name": "Aegis Ashore Phase III",
+   "lexicon_doc": "95",
+   "announcement_evidence": "the contractor will provide Poland Aegis Ashore Engineering Agent (AAEA) engineering and security support, AAEA test and site updates, risk mitigation support, and continued completion effort for the Aegis Ashore Poland site",
+   "lexicon_quote": "Aegis Ashore Phase III",
+   "verdict": "weak",
+   "rationale": "The 2019 AAEA modification on the same Poland contract: engineering and security support, test and site updates and risk mitigation for the Aegis Ashore Poland site. As with the 2021 modification, the scope is engineering support services attached to a site rather than the procurement of the Phase III system, the announcement names no program, and no appropriation in the recorded text confirms a procurement BLI. Below the §1 standard."
+  },
+  {
+   "record_index": 62,
+   "article_id": "2190758",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "under Aegis Combat Weapon System development contract HQ0276-10-C-0001, which covers multiple Aegis Weapon System baselines and platforms",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "weak",
+   "rationale": "The May 2020 twin of record 48: the paragraph names the Aegis Combat Weapon System development contract and says outright that it covers multiple Aegis Weapon System baselines and platforms, with the identified obligation ($64.9M under CLIN 0135) attached to Aegis Ashore Japan initial operational capability planning. Aegis Ballistic Missile Defense is never named, and a contract that spans several baselines and platforms is the wrong evidence for asserting that this money funded the Aegis BMD line specifically. Weak."
+  },
+  {
+   "record_index": 65,
+   "article_id": "606813",
+   "piid": "F0470102C0009",
+   "pe_bli": "1206895C",
+   "program_name": "The Missile Defense Space Center (MDSC)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "Work will be performed at the Missile Defense Space Center at Colorado Springs, Colorado",
+   "lexicon_quote": "The Missile Defense Space Center (MDSC)",
+   "verdict": "wrong",
+   "rationale": "The award is on-orbit operations and sustainment for the Space Tracking and Surveillance System, which this index does not carry at all. The only indexed name the paragraph contains is 'Missile Defense Space Center', and it appears solely as the place of performance — the §3 pattern where the named thing is a facility the contract is performed at rather than the program the PE funds. Linking STSS sustainment to MDSC would attribute a satellite operations contract to the center that hosts the console, and the neighbouring row 'The Missile Defense Tracking System (MTS)' is a different space program, not STSS. Rejected by design."
+  },
+  {
+   "record_index": 67,
+   "article_id": "2099625",
+   "piid": "F0470102C0009",
+   "pe_bli": "1206895C",
+   "program_name": "The Missile Defense Space Center (MDSC)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "The work will be performed at the Missile Defense Space Center, Colorado Springs, Colorado",
+   "lexicon_quote": "The Missile Defense Space Center (MDSC)",
+   "verdict": "wrong",
+   "rationale": "The 2020 option exercise on the same STSS on-orbit operations and sustainment contract. Space Tracking and Surveillance System is absent from this org's index, and the only indexed name present — the Missile Defense Space Center — is again the place of performance, not the funded program. Same §3 facility-as-name rejection as record 65."
+  },
+  {
+   "record_index": 69,
+   "article_id": "1618359",
+   "piid": "HQ027718C0003",
+   "pe_bli": "0604115C",
+   "program_name": "The Low Power Laser Demonstrator (LPLD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will complete their tailored concept design review in support of the Low Power Laser Demonstrator",
+   "lexicon_quote": "The Low Power Laser Demonstrator (LPLD)",
+   "verdict": "link",
+   "rationale": "Boeing's leg of the 2018 LPLD concept-design-review tranche, under HQ0277-18-C-0003. The Low Power Laser Demonstrator is named in the scope sentence, the index carries it once, on 0604115C 'Technology Maturation Initiatives', and fiscal 2018 research, development, test and evaluation funds are obligated against that RDT&E element. The deliverable is the demonstrator's own post-PDR risk-reduction design review.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "This record is truncated before its funding sentence, so the appropriation is not stated here, but it is the third leg of the same FY2018 LPLD design-review tranche whose siblings (records 52 and 59) obligate RDT&E, and the deliverable is the demonstrator's own post-PDR design review, not O&M or generic services."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Boeing's leg under HQ0277-18-C-0003 on the same singly-owned name; the announcement names the demonstrator rather than relying on the contractor, and nothing in the index offers a second PE that could claim LPLD."
+   }
+  },
+  {
+   "record_index": 70,
+   "article_id": "606864",
+   "piid": "HQ027615C0005",
+   "pe_bli": "MD09",
+   "program_name": "SM-3",
+   "lexicon_doc": "95",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "the contractor will perform Standard Missile-3 Block IB production support and engineering efforts",
+   "lexicon_quote": "SM-3",
+   "verdict": "link",
+   "rationale": "'Standard Missile-3' is the spelled-out form of the designator the index carries as 'SM-3'; the row sits on MD09 (program title 'Aegis BMD'), the MDA procurement line that buys SM-3 rounds. The appropriation is the discriminator that makes this attributable rather than merely resembling: fiscal 2015 defense-wide procurement funds pay for Block IB production support, which belongs to a procurement BLI and not to the RDT&E rows that also carry SM-3 names under 0603892C. Block IB also separates it from MD14, the index's Block IIA procurement line. The work is production support for the missile itself, the line's own article of purchase.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2015 defense-wide procurement obligated against a procurement BLI — the money color both matches and is what separates this from the RDT&E SM-3 rows; production support and engineering for SM-3 Block IB is a cost element of the line that buys the round, so the named article is the item procured, not a platform supported."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'SM-3' is a genuine two-PE collision (0603892C doc 267 and MD09 doc 95), but the announcement's own words resolve it without outside help: 'Block IB' excludes MD14's Block IIA line, and defense-wide procurement funds for production support exclude the RDT&E element, leaving MD09 as the only procurement owner of the designator."
+   }
+  },
+  {
+   "record_index": 72,
+   "article_id": "1188022",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will provide support of advanced concept initiatives by the Aegis Ballistic Missile Defense (ABMD) Program Office to identify technology for introduction into present and future ABMD baselines and upgrades",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "link",
+   "rationale": "The May 2017 option exercise (CLIN 0110) of the same advanced-concept-initiatives scope: the announcement spells out Aegis Ballistic Missile Defense and abbreviates it ABMD, matching the index row 'Aegis Ballistic Missile Defense (BMD)' on 0603892C (AEGIS BMD). Identifying technology for introduction into present and future ABMD baselines and upgrades is the technology design and insertion activity this PE's narrative owns, performed on the Aegis BMD development contract itself, so the program is the article of work rather than a platform being supported.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "No funding sentence survives in the truncated text, so the appropriation is not stated here; the CLIN 0110 option exercises the same ABMD technology-insertion scope on MDA's Aegis BMD development contract, which is 0603892C's own named activity (the identical scope in record 74 obligates RDT&E), and the PE is not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same three-way name collision as record 9, and resolved the same way — technology introduction into ABMD baselines and upgrades is the work 0603892C's own 'Technology Design and Insertion' row describes, while 0604878C is a test PE and MD90 a hardware BLI; the CLIN 0110 option is the same effort, not a different increment."
+   }
+  },
+  {
+   "record_index": 73,
+   "article_id": "1219170",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will provide support of advanced concept initiatives by the Aegis Ballistic Missile Defense (ABMD) program office to identify technology for introduction into present and future ABMD baselines and upgrades",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "link",
+   "rationale": "The June 2017 option exercise (CLIN 0111) of the same scope, a separate modification with its own announcement. The indexed name is spelled out in the text and abbreviated ABMD; the scope is introduction of technology into Aegis BMD baselines and upgrades under the Aegis BMD development contract HQ0276-10-C-0001, which is the work 0603892C funds. Recorded separately from records 9, 72 and 74 because each is a distinct modification on the same contract.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Appropriation not stated in this record's truncated text; the CLIN 0111 option exercise carries the same ABMD technology-insertion scope on the Aegis BMD development contract — development work 0603892C funds — with no O&M, logistics or base-support content in the paragraph."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The CLIN 0111 option repeats the identical scope; the colliding owners (0604878C test, MD90 procurement) still do not fit advanced-concept technology insertion, and the record is separable from its three siblings on the same contract by record_index and article_id."
+   }
+  },
+  {
+   "record_index": 74,
+   "article_id": "605977",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "for support of advanced concept initiatives by the Aegis Ballistic Missile Defense (ABMD) Program Office to identify technology for introduction into present and future ABMD Baselines and upgrades",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "verdict": "link",
+   "rationale": "The 2014 option exercise (P00148) of the same advanced-concept-initiatives line of effort, and the clearest of the four on appropriation: fiscal year 2014 research, development, test and evaluation funds are obligated at award, matching the RDT&E element 0603892C. The announcement spells out Aegis Ballistic Missile Defense, abbreviating it ABMD, and the scope is technology introduction into ABMD baselines and upgrades — the AEGIS BMD line's own development work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal year 2014 RDT&E obligated against an RDT&E element; introducing technology into ABMD baselines and upgrades is a named activity of this PE (its index also carries 'Aegis Ballistic Missile Defense (BMD) Technology Design and Insertion'), performed on the program's own development contract."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The 2014 P00148 option carries the same spelled-out name and the same technology-insertion scope; of the three PEs owning 'Aegis Ballistic Missile Defense (BMD)', the RDT&E obligation removes MD90 outright and the scope removes the Aegis BMD Test element, so the name collision does not put the award anywhere else."
+   }
+  },
+  {
+   "record_index": 75,
+   "article_id": "928112",
+   "piid": "HQ014714C0011",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the contractor will produce two additional Lot 8 Interceptors and provide associated production support efforts for the Missile Defense Agency Terminal High Altitude Area Defense Project Office",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "weak",
+   "rationale": "THAAD is named in full, but what the announcement buys is Lot 8 interceptor production under fixed-price-incentive-firm-target contract line items — procurement of end items, not the development work that the RDT&E element 0603881C funds. Attaching interceptor production to an RDT&E line is the appropriation failure mode the refute pass exists to catch, and the index offers no THAAD procurement row to redirect it to: the only MD07 row is named AN/TPY-2, the radar, which this award does not buy. Recorded weak rather than forced onto either line."
+  },
+  {
+   "record_index": 77,
+   "article_id": "1080326",
+   "piid": "F0470102C0009",
+   "pe_bli": "1206895C",
+   "program_name": "The Missile Defense Space Center (MDSC)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "The work will be performed at the Missile Defense Space Center, Colorado Springs, Colorado",
+   "lexicon_quote": "The Missile Defense Space Center (MDSC)",
+   "verdict": "wrong",
+   "rationale": "The 2017 option exercise on the same STSS on-orbit operations and sustainment contract F04701-02-C-0009. Space Tracking and Surveillance System is not in this index; the Missile Defense Space Center appears only as the place of performance, which §3 rejects as a facility the contract is performed at rather than the program the PE funds. Same rejection as records 65 and 67."
+  },
+  {
+   "record_index": 78,
+   "article_id": "3857095",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "for the acquisition of Terminal High Altitude Area Defense (THAAD) Configuration 3.1 Part A Ground Modernization equipment to support the U.S. government",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "weak",
+   "rationale": "THAAD is named in full and Configuration 3.1 is a real THAAD ground modernization increment, but the announcement's own words are 'the acquisition of ... equipment' procured 'under a firm-fixed-price contract line item' on the $8.35B THAAD production contract HQ0147-17-C-0032. That is procurement of fielded ground equipment against an RDT&E program element, and the index carries no THAAD ground-modernization row and no THAAD procurement row other than the AN/TPY-2 radar under MD07. Recorded weak rather than linked to a line whose appropriation does not match."
+  }
+ ]
+}

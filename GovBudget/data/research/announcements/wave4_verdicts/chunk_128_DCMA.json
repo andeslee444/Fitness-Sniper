@@ -1,0 +1,29 @@
+{
+ "chunk": "chunk_128_DCMA.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "4218062",
+   "piid": "S5121A23C0007",
+   "pe_bli": "0605013BL",
+   "program_name": "The DCMA IT Modernization Analytics Initiative (MAI)",
+   "lexicon_doc": "101",
+   "announcement_evidence": "professional consulting and support services to assist with the full range of business intelligence program/project management services necessary to implement the Defense Contract Management Agency data strategic direction",
+   "lexicon_quote": "The DCMA IT Modernization Analytics Initiative (MAI)",
+   "verdict": "wrong",
+   "rationale": "The only index row this record could plausibly attract is the analytics line: the award buys business-intelligence program/project management consulting in support of DCMA's 'data strategic direction', which a description-level matcher would happily read as the DCMA IT Modernization Analytics Initiative. It is rejected on two of the rubric's reject-by-design patterns. First, §3 'generic services': the announcement names no program at all — it is professional consulting and support services with an open-ended scope ('expected to evolve over the contract's period of performance'), sold under an 8(a) set-aside, which is a labour vehicle rather than the work of a named program element. Second, the money is wrong for this line in exactly the way §1's Lens A describes: the obligation is 'Fiscal 2025 operations and maintenance funds in the amount of $5,780,673', i.e. O&M sustainment attached to 0605013BL, an RDT&E 'Information Technology Development' program element. Neither MAI nor any of the other three index names (IWMS, MOCAS, TMS) appears in the text, so there is no alias, designator or name evidence to fall back on. No link."
+  },
+  {
+   "record_index": 2,
+   "article_id": "4121138",
+   "piid": "S5121A25CE002",
+   "pe_bli": "0605013BL",
+   "program_name": "Mechanization of Contract Administration Services (MOCAS)",
+   "lexicon_doc": "213",
+   "announcement_evidence": "defense agencies initiative financial system services support",
+   "lexicon_quote": "Mechanization of Contract Administration Services (MOCAS)",
+   "verdict": "wrong",
+   "rationale": "The record names a financial system, which is the functional tempt toward MOCAS, DCMA's contract administration and payment system, and the stray word 'initiative' is a second false friend pointing at 'The DCMA IT Modernization Analytics Initiative (MAI)'. Both are rejected. The named system is the Defense Agencies Initiative (DAI), the DoD-wide ERP financial system owned and funded elsewhere — it is not MOCAS, not MAI, and it is not a name this org's index carries; §3's 'the name is a platform/system the contract merely supports, not the program the PE funds' applies, and proposing a program the announcement never names would be an invention. The scope is also generic sustainment labour ('financial system services support'), and the obligation is 'Fiscal 2025 operations and maintenance funds in the amount of $2,424,161' against 0605013BL, an RDT&E IT-development line — the O&M-on-RDT&E mismatch Lens A exists to catch. No link."
+  }
+ ]
+}

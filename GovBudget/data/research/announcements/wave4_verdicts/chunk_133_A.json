@@ -1,0 +1,210 @@
+{
+ "chunk": "chunk_133_A.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "2017225",
+   "piid": "W56HZV15C0095",
+   "pe_bli": "5731D15610",
+   "program_name": "The Joint Light Tactical Vehicle (JLTV)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The Joint Light Tactical Vehicle (JLTV)",
+   "announcement_evidence": "contractor support, labor hours, material and travel for the Marine Corps' efforts for the Joint Light Tactical Vehicle",
+   "verdict": "wrong",
+   "match_basis": "exact-name",
+   "rationale": "The index name appears verbatim, but the action is rejected by design twice over. First, §3 generic services: what is bought is 'contractor support, labor hours, material and travel', not JLTV vehicles or JLTV program work — the vehicle is the platform the support surrounds. Second, the announcement states the obligation is 'Fiscal 2020 procurement, Marine Corps funds', so this action spent Marine Corps procurement money on the Marine Corps' own JLTV effort; it cannot have paid for the Army line 5731D15610's own work, which is the claim a published link makes. (The index also carries 'Joint Light Tactical Vehicle' under RDT&E 0605812A, a second owner, but the funding fact alone settles it.)"
+  },
+  {
+   "record_index": 1,
+   "article_id": "620608",
+   "piid": "W56HZV09D0159",
+   "pe_bli": "6866D15500",
+   "program_name": "Family Of Medium Tactical Veh (FMTV)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Family Of Medium Tactical Veh (FMTV)",
+   "announcement_evidence": "an additional 84 Family of Medium Tactical Vehicles and 59 B-kits (supplemental armor)",
+   "verdict": "weak",
+   "rationale": "The program name is present and the buy is genuinely FMTV trucks, but the evidence does not meet the §1 standard on two counts. (a) It is an explicit foreign military sales modification (Djibouti, Jordan, Kenya, Tunisia, Uganda, Ethiopia) and 'Funding and work location will be determined with each order' — no US appropriation is named, and FMS buys are paid from the customer's case funds, not from this Army procurement line. (b) 'FMTV' collides three ways in this org's index: 6866D15500 (Family Of Medium Tactical Veh), RDT&E 0604604A (Medium Tactical Vehicles) and 8992DA0924 (Modification Of In Svc Equip); the announcement gives nothing that picks one. Not linkable on this record."
+  },
+  {
+   "record_index": 7,
+   "article_id": "1878725",
+   "piid": "W56HZV19F0468",
+   "pe_bli": "8309DA0500",
+   "program_name": "Palletized Load System (PLS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Palletized Load System (PLS)",
+   "announcement_evidence": "a $21,709,189 fixed-price-incentive contract for Palletized Load System Trailers",
+   "verdict": "weak",
+   "rationale": "'Palletized Load System' is an exact index name and the money is 'Fiscal 2017 and 2019 other procurement, Army funds', so the appropriation type is right. What blocks a link is identity of the owning line: the same name is owned by two PEs in this org's index — 8309DA0500 (Family Of Heavy Tactical Vehicles, which buys the PLS truck and trailer family) and 8331D16506 (PLS ESP, which funds recapitalisation). The announcement says only 'Palletized Load System Trailers' with no indication whether these are new-build trailers under FHTV or ESP deliveries, so the evidence cannot choose between the two owners. Default to not linking."
+  },
+  {
+   "record_index": 11,
+   "article_id": "2777767",
+   "piid": "W31P4Q21D0023",
+   "pe_bli": "9266AD5070",
+   "program_name": "Air Missile Defense Work Station (AMDWS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Air Missile Defense Work Station (AMDWS)",
+   "announcement_evidence": "a $21,678,810 hybrid (cost-no-fee and cost-plus-fixed-fee) contract for the Air and Missile Defense Workstation Block VI",
+   "verdict": "link",
+   "match_basis": "llm-alias",
+   "rationale": "The announcement names one specific end item, the Air and Missile Defense Workstation, which is the same proper name as the index row 'Air Missile Defense Work Station (AMDWS)' with only spacing and an inserted 'and' differing — an alias of the identical system, not a resemblance. AMDWS is the workstation component of the AMDPCS programme, and 9266AD5070 ('AIR & MSL Defense Planning & Control Sys') carries both 'Air Missile Defense Work Station (AMDWS)' and 'The Air Missile Defense Planning and Control System (AMDPCS)' as its own names; no other PE in this org's index owns AMDWS, so there is no alternative owner. The award buys the Block VI build of that workstation, i.e. this line's own end item, not support services wrapped around a platform. Caveat for the refute lenses: the contract is an IDIQ whose 'work locations and funding will be determined with each order', so no appropriation is stated on the face of the announcement, and the cost-type structure could indicate a development rather than a procurement build.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "No appropriation appears on the face of the announcement ('work locations and funding will be determined with each order') and the award is a hybrid cost-no-fee/cost-plus-fixed-fee IDIQ — a development/services vehicle, not a delivery of production articles — whereas 9266AD5070 is an Other Procurement, Army line (lexicon doc 346, the OPA book); a cost-type buy of an AMDWS 'Block VI' software block is most plausibly RDT&E work attached to a procurement line, which is exactly the color-of-money failure lens A tests for, and the uncertainty is not resolvable from the record."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'AMDWS' / 'Air Missile Defense Work Station' occurs exactly once in A.tsv (row 1380, 9266AD5070, which also owns AMDPCS); the announcement's 'Air and Missile Defense Workstation' is that same proper name modulo spacing and an inserted 'and', not an invented alias, and the only other workstation name in the index ('Tactical Planner Workstation (TPW)', Patriot Mods) is a different system, so no other PE in this org's index could take this award and no index line owns a competing AMDWS block variant."
+   }
+  },
+  {
+   "record_index": 15,
+   "article_id": "2634734",
+   "piid": "W58RGZ21D0023",
+   "pe_bli": "5397AZ3517",
+   "program_name": "Limited Interim Missile Warning System (LIMWS)",
+   "lexicon_doc": "343",
+   "lexicon_quote": "Limited Interim Missile Warning System (LIMWS)",
+   "announcement_evidence": "life cycle contractor support for the Limited Interim Missile Warning System quick reaction capability",
+   "verdict": "weak",
+   "rationale": "The identity side is clean: the full index name appears verbatim, and 5397AZ3517 (CMWS) is the only PE in this org's index that owns LIMWS. The attribution side fails the §1 standard. What is bought is 'life cycle contractor support' for an already-fielded quick reaction capability — sustainment services, which is exactly the failure mode §1 names for lens A (O&M sustainment hung on a procurement line). No appropriation is stated ('work locations and funding will be determined with each order'), so nothing shows this action obligated the aircraft-procurement line's own money rather than O&M. Name present, attribution unproven."
+  },
+  {
+   "record_index": 18,
+   "article_id": "873473",
+   "piid": "W31P4Q16C0029",
+   "pe_bli": "0962C50700",
+   "program_name": "International Engineering Services Program (IESP)",
+   "lexicon_doc": "345",
+   "lexicon_quote": "International Engineering Services Program (IESP)",
+   "announcement_evidence": "technical assistance in the training, planning, fielding, deployment, operation, maintenance and sustainment of the PATRIOT missile system, associated equipment, and logistics support",
+   "verdict": "wrong",
+   "rationale": "Recorded as a reject so the near-match is on the ledger. A careless matcher would attach this to Patriot Mods (0962C50700), whose narrative owns the International Engineering Services Program — the Patriot foreign-customer engineering services programme this UAE case superficially resembles. §3 rejects it on two listed patterns. (a) The only thing the announcement names is 'the PATRIOT missile system', the PLATFORM the contract supports; it never names IESP or any other index name. (b) The scope is squarely generic services — training, planning, fielding, operation, maintenance, sustainment and logistics support. It is also a foreign military sales case (U.A.E.), so the work serves a customer's Patriot fleet rather than this modification line's own content."
+  },
+  {
+   "record_index": 27,
+   "article_id": "2088143",
+   "piid": "W15QKN20D0020",
+   "pe_bli": "3005GZ1700",
+   "program_name": "Digital Fire Control System (DFCS)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "Digital Fire Control System (DFCS)",
+   "announcement_evidence": "mission system computers, chief of section displays (CSD) and CSD chargers for the M777A2 Digital Fire Control System",
+   "verdict": "link",
+   "match_basis": "exact-name",
+   "rationale": "The announcement writes the index name in full and attaches the platform designator that resolves the one collision in the index: 'Digital Fire Control System (DFCS)' is owned by both 3005GZ1700 (M777 Mods) and 3640GC0401 (M119 Modifications), and the text says M777A2, which is precisely the line whose programme title is M777 Mods. The items bought — mission system computers, chief-of-section displays and their chargers — are DFCS components, i.e. the modification content the line funds, not support services and not a platform the contract merely surrounds. The contract is firm-fixed-price hardware, consistent with a procurement modification line. Caveat: the award is an IDIQ whose funding is 'determined with each order', so no appropriation is named on the face of the announcement.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Firm-fixed-price delivery of enumerated DFCS hardware (mission system computers, chief-of-section displays, CSD chargers) is a procurement action against 3005GZ1700 'M777 Mods', a Weapons & Tracked Combat Vehicles line (doc 350) whose own narrative content is the M777A2 digital fire control retrofit; the deliverables are the modification line's end items, not support services wrapped around the howitzer platform, and a single-platform Mods line is not a §3 catch-all — the per-order funding language does not disqualify it because §3 rejects IDIQs naming no program, and this one names the program."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Digital Fire Control System (DFCS)' does collide across two PEs (3005GZ1700 M777 Mods, 3640GC0401 M119 Modifications), but the announcement itself writes 'M777A2', and 3005GZ1700 is the line whose other index name is 'The Lightweight 155mm Howitzer (LW155)' — i.e. the M777 — while 3640GC0401 covers the 105mm M119, which cannot own an M777A2 CSD and mission-computer buy, so the one collision in the index is resolved by the announcement's own designator rather than by the proposer's judgement."
+   }
+  },
+  {
+   "record_index": 42,
+   "article_id": "615103",
+   "piid": "W52P1J15C0063",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)",
+   "announcement_evidence": "contact maintenance, technical inspections and functional testing and maintenance of Army Prepositioned Stock and Theater Sustainment Stock Bradley tracked vehicles",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under two §3 patterns. The Bradley is here the PLATFORM the contract supports — the work is contact maintenance, technical inspection and functional testing of prepositioned and theater-sustainment-stock vehicles in Kuwait, i.e. depot-style upkeep of an existing fleet, which is also the 'generic services / logistics' pattern. Nothing in the text points at the modification content 1678GZ2400 (Bradley Program (MOD)) actually funds. The announcement confirms the mismatch: 'Fiscal 2015 operations and maintenance (Army) funds' — O&M sustainment money hung on a procurement modification line is exactly the failure the rubric tells lens A to break."
+  },
+  {
+   "record_index": 45,
+   "article_id": "852455",
+   "piid": "W91QUZ07D0005",
+   "pe_bli": "9875W30001",
+   "program_name": "Global Combat Support System-Army (GCSS-A)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Global Combat Support System-Army (GCSS-A)",
+   "announcement_evidence": "services related to the development, sustainment, fielding, training, and maintenance of the Global Support System-Army enterprise resources planning program",
+   "verdict": "weak",
+   "rationale": "The announcement's 'Global Support System-Army enterprise resources planning program' is plainly GCSS-Army with a dropped word, so the identity is recognisable — but the evidence does not meet the §1 standard. Two PEs in this org's index own the name: 9875W30001 (Global Combat Support System-Army (GCSS-A)) and RDT&E 0303141A (Global Combat Support System). The award is a bundle of services spanning both sides of that split — 'development, sustainment, fielding, training, and maintenance' — and the obligations named are themselves split across FY2016 O&M, FY2015 RDT&E and FY2014 'operations and procurement', so no single line can be shown to have paid for this action. Services of this shape also sit close to the §3 generic-services pattern. Not linkable."
+  },
+  {
+   "record_index": 46,
+   "article_id": "1970213",
+   "piid": "W912JC19C5716",
+   "pe_bli": "6500GA0750",
+   "program_name": "Total Integrated Engine Revitalization (TIGER)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "Total Integrated Engine Revitalization (TIGER)",
+   "announcement_evidence": "engine parts for the Advanced Gas Turbine-1500 tank engine rebuild",
+   "verdict": "wrong",
+   "rationale": "Logged as a reject because the AGT1500 is the engine the TIGER programme under Abrams Upgrade (6500GA0750) revitalises, so this record invites a false attachment. §3 rejects it: the announcement names only the engine — a component of the Abrams PLATFORM — and never the programme (no 'integrated engine revitalization', no TIGER); and the buy is spare 'engine parts' for a rebuild, i.e. sustainment material rather than the upgrade content the line funds. Decisively, it is a foreign military sales contract for Kuwait and Saudi Arabia let by the U.S. Property and Fiscal Office, Topeka, so the money is customer case money, not this Army line's own."
+  },
+  {
+   "record_index": 54,
+   "article_id": "1206747",
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8331D16506",
+   "program_name": "The PLS Extended Service Program (ESP)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "The PLS Extended Service Program (ESP)",
+   "announcement_evidence": "51 recapitalized palletized load systems M1075A1 (M1075A0 to M1975A1)",
+   "verdict": "link",
+   "match_basis": "llm-description",
+   "rationale": "The announcement describes the programme rather than naming it: recapitalising 51 M1075A0 Palletized Load System trucks to the M1075A1 configuration IS the PLS Extended Service Program, and 8331D16506 is the line whose programme title is literally 'PLS ESP'. The deliverable is the recapitalised vehicles themselves — the line's own end item, not support services and not a platform the contract merely surrounds — and the obligation is 'Fiscal 2015 other procurement (Army) funds', a procurement appropriation matching a procurement line. Caveat for the refute lenses: 'The PLS Extended Service Program (ESP)' also appears in 8309DA0500's (Family Of Heavy Tactical Vehicles) narrative, so the name collides; I read the FHTV narrative as cross-referencing the ESP while the dedicated 'PLS ESP' line is its owner, but that judgement is the weakest link in this proposal.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement obligates 'Fiscal 2015 other procurement (Army) funds' and 8331D16506 ('PLS ESP') sits in the Other Procurement, Army book (doc 346), so the appropriation matches on the face of the record; recapitalizing 51 M1075A0 trucks to the M1075A1 configuration is the Extended Service Program's own deliverable rather than sustainment services attached to a platform the contract merely supports, and the line is single-program, not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED — the identical string 'The PLS Extended Service Program (ESP)' is owned by two PEs in this index (row 1295 → 8309DA0500 'Family Of Heavy Tactical Vehicles (FHTV)' and row 1298 → 8331D16506 'PLS ESP'), as is 'Palletized Load System (PLS)' (rows 1288 and 1297), and the announcement's words — '51 recapitalized palletized load systems M1075A1 (M1075A0 to M1975A1)', a description carrying no increment, block or appropriation cue that separates the two — would link this award to the FHTV line exactly as well as to the dedicated ESP line; the proposal's own rationale concedes the tie, and on a tied owner with match_basis 'llm-description' the rubric's default to not linking governs."
+   }
+  },
+  {
+   "record_index": 55,
+   "article_id": "1297072",
+   "piid": "W31P4Q17C0173",
+   "pe_bli": "8260C53101",
+   "program_name": "PAC-3",
+   "lexicon_doc": "345",
+   "lexicon_quote": "PAC-3",
+   "announcement_evidence": "the purchase of PATRIOT Advanced Capability-3 contractor field support services",
+   "verdict": "wrong",
+   "rationale": "The alias is genuine — 'PATRIOT Advanced Capability-3' spelled out is the index name PAC-3 — but §3 rejects the award on the generic-services pattern: what is purchased is 'contractor field support services', fielded-system field and logistics support across eleven sites and six countries, not missiles. 8260C53101's programme title is 'MSE Missile', a missile procurement line; field support services are not that line's content, and a cost-plus-fixed-fee services action partly for foreign customers (South Korea, Saudi Arabia, Taiwan) cannot be said to have paid for the MSE missile buy. The stated 'other procurement (Army)' obligation does not match a missile-procurement line either."
+  },
+  {
+   "record_index": 69,
+   "article_id": "613467",
+   "piid": "W56HZV12C0344",
+   "pe_bli": "6500GA0750",
+   "program_name": "Total Integrated Engine Revitalization (TIGER)",
+   "lexicon_doc": "350",
+   "lexicon_quote": "Total Integrated Engine Revitalization (TIGER)",
+   "announcement_evidence": "integrated engine revitalization of AGT 1500 engines",
+   "verdict": "link",
+   "match_basis": "llm-alias",
+   "rationale": "The announcement uses three of the four words of the programme's own name and applies them to exactly the engine the programme covers: 'integrated engine revitalization of AGT 1500 engines' is the Total Integrated Engine Revitalization (TIGER) effort under 6500GA0750 (Abrams Upgrade Program), and the contractor, Honeywell Aerospace, is the AGT1500 manufacturer. No other PE in this org's index owns TIGER or any engine-revitalization name, so there is no competing owner. The deliverable is the revitalised engines themselves, the upgrade content the line funds, not support services. Two caveats for the refute lenses: this record's paragraph is one of two in the article (the second, to Odyssey International, is Letterkenny construction under W911N2-12-D-0040 and is not what this proposal reads), and the stated obligation is 'other procurement funds', which does not obviously name the weapons-and-tracked-combat-vehicles appropriation an Abrams upgrade line sits in.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Stated appropriation mismatch: the announcement obligates 'Fiscal 2015 other procurement funds' (Other Procurement, Army) while 6500GA0750 'Abrams Upgrade Program' is a Weapons & Tracked Combat Vehicles line (doc 350, sitting with Bradley/Stryker/M777 Mods, not with the OPA doc-346 lines), so the money named does not belong to this line's appropriation; the work — revitalizing existing AGT1500 engines — is overhaul/recapitalization of fielded assets rather than the M1A2 upgrade content the WTCV line funds, compounding the mismatch."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Total Integrated Engine Revitalization (TIGER)' appears exactly once in A.tsv (row 1175, 6500GA0750 Abrams Upgrade Program); no other index row owns TIGER, the AGT1500, or any engine-revitalization or engine-overhaul name, and 6500GA0750 is the only Abrams-titled line in the org's index, so there is no alternative owner — the announcement's 'integrated engine revitalization of AGT 1500 engines' reproduces three of the programme name's four words applied to the engine the programme covers, which is a real alias rather than a contractor-name inference, and the cited PIID W56HZV12C0344 is the Honeywell paragraph the evidence quotes, not the Odyssey Letterkenny construction paragraph sharing the article."
+   }
+  },
+  {
+   "record_index": 71,
+   "article_id": "1236003",
+   "piid": "W911QY17C0086",
+   "pe_bli": "2300M90101",
+   "program_name": "Non-Intrusive Inspection System (NIIS)",
+   "lexicon_doc": "346",
+   "lexicon_quote": "Non-Intrusive Inspection System (NIIS)",
+   "announcement_evidence": "a repair parts package for the sustainment of Iraqi-owned Z-Backscatter vans with low-energy, non-intrusive inspection equipment screening systems",
+   "verdict": "wrong",
+   "rationale": "Logged as a reject because 'non-intrusive inspection equipment screening systems' brushes against the index name Non-Intrusive Inspection System (NIIS) under 2300M90101 (Base Defense Systems). §3 rejects it: the phrase in the announcement is a generic English description of a scanning van, not a programme name, and the hardware is the Z-Backscatter van, a commercial platform the contract supports. It is also a foreign military sales contract for Iraq buying repair parts to sustain equipment the announcement expressly calls 'Iraqi-owned', so no US Army base-defense procurement line's own work was paid for by this action."
+  }
+ ]
+}

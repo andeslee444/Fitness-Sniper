@@ -1,0 +1,410 @@
+{
+ "chunk": "chunk_012_DARPA.json",
+ "proposals": [
+  {
+   "record_index": 3,
+   "article_id": "685580",
+   "piid": "HR001116C0049",
+   "pe_bli": "0602702E",
+   "program_name": "Vertical Take-Off and Landing (VTOL) Technology Demonstrator",
+   "lexicon_doc": "209",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Phases II and III of the vertical take-off and landing X-plane research portfolio",
+   "lexicon_quote": "Vertical Take-Off and Landing (VTOL) Technology Demonstrator",
+   "verdict": "link",
+   "rationale": "The award is the Aurora Flight Sciences Phase II/III contract for DARPA's VTOL X-Plane, and the index carries exactly one row whose subject is a vertical take-off and landing flight demonstrator: 'Vertical Take-Off and Landing (VTOL) Technology Demonstrator' under PE 0602702E Tactical Technology. No other DARPA PE in the index owns a VTOL line, so there is no cross-PE collision to resolve. The money is RDT&E ('fiscal 2015 research and development funds' and 'fiscal 2016 research and development funds'), which matches a 6.2 applied-research line, and the work purchased is the demonstrator itself (design, build and flight of the X-plane) rather than sustainment or support of a fielded platform, so this is the program the PE funds, not a platform the contract merely supports. Match is by alias: the announcement calls it the 'vertical take-off and landing X-plane research portfolio' where the J-book calls the same effort a 'Technology Demonstrator'.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2015/2016 research and development funds against a DARPA RDT&E line, and the CPFF contract buys Phases II and III of the X-plane demonstrator itself (the thing PE 0602702E Tactical Technology's own narrative names), not sustainment of or support to a fielded aircraft; Tactical Technology is a named program element, not a catch-all title."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Vertical Take-Off and Landing (VTOL) Technology Demonstrator' appears exactly once in the DARPA index (0602702E, doc 209); no other PE owns a VTOL or X-plane demonstrator name, the alias is the real Aurora VTOL X-Plane program, and the evidence is the program name, not the contractor."
+   }
+  },
+  {
+   "record_index": 5,
+   "article_id": "3459164",
+   "piid": "HR001117C0025",
+   "pe_bli": "0603286E",
+   "program_name": "More Opportunities with HAWC (MoHAWC)",
+   "lexicon_doc": "20",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "more opportunities with the Hypersonic Airbreathing Weapon Concept Program",
+   "lexicon_quote": "More Opportunities with HAWC (MoHAWC)",
+   "verdict": "link",
+   "rationale": "The announcement spells out the program name the index abbreviates: 'more opportunities with the Hypersonic Airbreathing Weapon Concept Program' is MoHAWC written long-hand, and the mod is against HR0011-17-C-0025, the Raytheon HAWC contract. Two PEs in the index carry the MoHAWC row (0603286E Advanced Aerospace Systems and 0603468E Advanced Complex Systems, both in lexicon doc 20), but the collision resolves in favour of 0603286E: that PE uniquely owns the parent program 'The Hypersonic Air-breathing Weapon Concept (HAWC)' (doc 276), the mod extends the HAWC contract itself, and the July 2023 obligation of fiscal 2022/2023 RDT&E predates the newer Advanced Complex Systems line. The work bought is flight-test continuation of the hypersonic airbreathing demonstrator — the PE's own RDT&E work, not O&M sustainment. I have emitted the 0603468E row separately as weak so the collision is visible.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2022 and 2023 research and development funds obligated on the HAWC contract itself for continued hypersonic airbreathing demonstrator work — RDT&E money on an RDT&E line, the program's own content rather than O&M support of a platform, and Advanced Aerospace Systems is a real program element, so lens A finds nothing to break (the 0603286E vs 0603468E ownership question is lens B's)."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The matched name 'More Opportunities with HAWC (MoHAWC)' is owned by TWO PEs in the SAME lexicon document 20 — 0603286E Advanced Aerospace Systems and 0603468E Advanced Complex Systems — and the announcement contains nothing that picks between them; the proposal's tiebreak rests on the parent HAWC row and an assumed transfer date, not on the award evidence, so this evidence links 0603468E equally well."
+   }
+  },
+  {
+   "record_index": 5,
+   "article_id": "3459164",
+   "piid": "HR001117C0025",
+   "pe_bli": "0603468E",
+   "program_name": "More Opportunities with HAWC (MoHAWC)",
+   "lexicon_doc": "20",
+   "announcement_evidence": "more opportunities with the Hypersonic Airbreathing Weapon Concept Program",
+   "lexicon_quote": "More Opportunities with HAWC (MoHAWC)",
+   "verdict": "weak",
+   "rationale": "The MoHAWC name is genuinely present in this record, and PE 0603468E Advanced Complex Systems carries an identical index row in the same lexicon document as 0603286E — a real cross-PE name collision. But nothing in the announcement attributes the July 2023 obligation to Advanced Complex Systems rather than Advanced Aerospace Systems, and the parent HAWC program (and this contract's original scope) sits only under 0603286E. The evidence names a program, not a line, so it does not meet the standard for asserting that this action paid for 0603468E's own work."
+  },
+  {
+   "record_index": 5,
+   "article_id": "3459164",
+   "piid": "HR001117C0025",
+   "pe_bli": "0603739E",
+   "program_name": "Portable Optical Integrated Network Transceivers (POINT)",
+   "lexicon_doc": "297",
+   "announcement_evidence": "Point Mugu, California",
+   "lexicon_quote": "Portable Optical Integrated Network Transceivers (POINT)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under §3's weak-generic-name pattern: the only occurrence of the index designator 'POINT' in this record is the place name 'Point Mugu, California' in the place-of-performance list. It is an English word (here a proper noun of a Navy test range), not a mention of the Portable Optical Integrated Network Transceivers program, and the announcement's actual subject is a hypersonic airbreathing weapon effort with no relation to optical transceivers. Recorded so the substring artefact is visibly refused rather than silently absent."
+  },
+  {
+   "record_index": 7,
+   "article_id": "2466843",
+   "piid": "HR001120C0038",
+   "pe_bli": "0602025E",
+   "program_name": "Faithful Integration Reverse-engineering and Emulation (FIRE)",
+   "lexicon_doc": "20",
+   "announcement_evidence": "Lockheed Martin Corp., Missiles and Fire Control, Grand Prairie, Texas",
+   "lexicon_quote": "Faithful Integration Reverse-engineering and Emulation (FIRE)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under §3's weak-generic-name pattern. The index designator 'FIRE' appears in this record only inside the contractor's division name 'Lockheed Martin Corp., Missiles and Fire Control' and in the program the award actually funds, 'the integrated OpFires system' — neither is the Faithful Integration Reverse-engineering and Emulation program, which is a microelectronics reverse-engineering effort. OpFires itself is not a row in DARPA's index, so this record carries no proposable program; the only candidate the index offers is this English-word collision, and it is refused."
+  },
+  {
+   "record_index": 8,
+   "article_id": "2793408",
+   "piid": "HR001121C0206",
+   "pe_bli": "0603766E",
+   "program_name": "Disaggregated Strike Group - Manta Ray*",
+   "lexicon_doc": "297",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the Manta Ray Phase 2 program",
+   "lexicon_quote": "Disaggregated Strike Group - Manta Ray*",
+   "verdict": "link",
+   "rationale": "The announcement names 'the Manta Ray Phase 2 program' and describes energy-harvesting and control-software development for the long-endurance UUV; the index carries that effort under PE 0603766E Network-Centric Warfare Technology as 'Disaggregated Strike Group - Manta Ray*', the J-book project heading whose short name the announcement uses. Exactly one PE in the org's index owns any Manta Ray row, so there is no alternative owner to weigh. The obligation is 'fiscal 2021 research, development, test, and engineering funds', matching the RDT&E line, and the purchased work is development of the demonstrator vehicle's own subsystems — the program itself, not support to a platform the PE merely touches.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 research, development, test and engineering funds on a DARPA RDT&E line, and the contract develops the Manta Ray demonstrator's own control software and energy-harvesting module — subsystems of the program element's demonstrator, not services supporting some other platform; Network-Centric Warfare Technology is a named PE, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Manta Ray' appears in exactly one index row ('Disaggregated Strike Group - Manta Ray*', 0603766E doc 297); no competing PE owns the name, 'Phase 2' is a phase of that same program rather than a separate increment line, and the evidence quoted is the program name plus its UUV subsystem work."
+   }
+  },
+  {
+   "record_index": 13,
+   "article_id": "3621056",
+   "piid": "HR001123C0012",
+   "pe_bli": "0603286E",
+   "program_name": "Control of Revolutionary Aircraft with Novel Effectors (CRANE)",
+   "lexicon_doc": "20",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Option 1 of the Control of Revolutionary Aircraft with Novel Effectors program",
+   "lexicon_quote": "Control of Revolutionary Aircraft with Novel Effectors (CRANE)",
+   "verdict": "link",
+   "rationale": "The announcement spells the index name in full, so the identity is not in doubt; the question is which of the three PEs carrying a CRANE row funds it. The December 2023 mod exercises Option 1 of the X-plane build phase on Aurora's HR001123C0012 with RDT&E money, which is 6.3 advanced technology development work, and PE 0603286E Advanced Aerospace Systems is the established aerospace demonstration line that also owns the sibling X-plane efforts (SPRINT, ANCILLARY, TERN, HAWC). PE 0602702E's CRANE row belongs to an earlier lexicon document, when CRANE was still a 6.2 Tactical Technology concept study, and 0603468E Advanced Complex Systems is the newer line the aerospace demonstrations later transferred into. Both alternatives are emitted separately as weak so the collision is on the record.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The truncated record does not print the funding line, but the action is a DARPA option exercise on the CRANE X-plane build contract and DARPA is funded only from RDT&E, so there is no O&M-on-an-RDT&E-line failure available; the work purchased is the demonstrator aircraft the PE exists to build, and Advanced Aerospace Systems is not a catch-all — the choice among the three CRANE PEs is lens B's ground, not lens A's."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "CRANE is carried by THREE PEs in the index — 0602702E (doc 96), 0603286E (doc 20) and 0603468E (doc 20), the latter two in the same J-book edition — so an exact-name match on 'Control of Revolutionary Aircraft with Novel Effectors' identifies the program but not its owner, and the December 2023 announcement offers no fact that selects 0603286E over 0603468E."
+   }
+  },
+  {
+   "record_index": 13,
+   "article_id": "3621056",
+   "piid": "HR001123C0012",
+   "pe_bli": "0603468E",
+   "program_name": "Control of Revolutionary Aircraft with Novel Effectors (CRANE)",
+   "lexicon_doc": "20",
+   "announcement_evidence": "Option 1 of the Control of Revolutionary Aircraft with Novel Effectors program",
+   "lexicon_quote": "Control of Revolutionary Aircraft with Novel Effectors (CRANE)",
+   "verdict": "weak",
+   "rationale": "PE 0603468E Advanced Complex Systems carries a CRANE row identical to 0603286E's in the same lexicon document, so the name alone cannot separate them. The announcement offers no budget-line evidence — it names a contract, a phase option and RDT&E funds, none of which distinguish Advanced Complex Systems from Advanced Aerospace Systems — and the December 2023 award predates the portfolio's move into the newer line. Name present, attribution not established."
+  },
+  {
+   "record_index": 13,
+   "article_id": "3621056",
+   "piid": "HR001123C0012",
+   "pe_bli": "0602702E",
+   "program_name": "Control of Revolutionary Aircraft with Novel Effectors (CRANE)",
+   "lexicon_doc": "96",
+   "announcement_evidence": "Option 1 of the Control of Revolutionary Aircraft with Novel Effectors program",
+   "lexicon_quote": "Control of Revolutionary Aircraft with Novel Effectors (CRANE)",
+   "verdict": "weak",
+   "rationale": "PE 0602702E Tactical Technology owns a CRANE row, but in an older lexicon document, from the period when CRANE was a 6.2 design-and-concept effort. The action adjudicated here is an option exercise on the full-scale X-plane build, which is 6.3 work, so attributing it to the 6.2 applied-research line risks exactly the appropriation mismatch §1 lens A is meant to catch. The name is present; the evidence does not support the line."
+  },
+  {
+   "record_index": 14,
+   "article_id": "2878567",
+   "piid": "HR001122C0021",
+   "pe_bli": "0603766E",
+   "program_name": "Disaggregated Strike Group - Manta Ray*",
+   "lexicon_doc": "297",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the Manta Ray Phase 2 program",
+   "lexicon_quote": "Disaggregated Strike Group - Manta Ray*",
+   "verdict": "link",
+   "rationale": "Second Phase 2 performer on the same DARPA program: Northrop Grumman is bought 'developing, fabricating, and testing a full-scale demonstration system of a long-endurance unmanned underwater vehicle (UUV)' under 'the Manta Ray Phase 2 program'. The index carries Manta Ray at exactly one PE, 0603766E Network-Centric Warfare Technology, under the J-book heading 'Disaggregated Strike Group - Manta Ray*', so there is no competing owner. Funding is 'research, development, test, and engineering funds', consistent with the RDT&E line, and the deliverable is the demonstrator the program element exists to build.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 and 2022 research, development, test and engineering funds against an RDT&E program element, buying development, fabrication and testing of the full-scale long-endurance UUV demonstration system — the program's own deliverable, not support to a platform the PE merely touches."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same unique-owner test as record 8: the only Manta Ray row in the DARPA index is 0603766E doc 297, no other PE claims the name, and the announcement names the program ('Manta Ray Phase 2 program') rather than resting on the contractor."
+   }
+  },
+  {
+   "record_index": 22,
+   "article_id": "2054955",
+   "piid": "HR001120C0038",
+   "pe_bli": "0602716E",
+   "program_name": "Faithful Integration Reverse-engineering and Emulation (FIRE)",
+   "lexicon_doc": "20",
+   "announcement_evidence": "the Operational Fires Integrated Weapon System Phase 3 program",
+   "lexicon_quote": "Faithful Integration Reverse-engineering and Emulation (FIRE)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under §3's weak-generic-name pattern. The index designator 'FIRE' matches only because the award funds 'the Operational Fires Integrated Weapon System Phase 3 program' (OpFires), a ground-launched hypersonic weapon effort, and because the contractor is Lockheed Martin 'Missiles and Fire Control' — neither is the Faithful Integration Reverse-engineering and Emulation microelectronics program. OpFires has no row in DARPA's index, so this record has no proposable program; the only index candidate is this English-word collision and it is refused."
+  },
+  {
+   "record_index": 23,
+   "article_id": "1973911",
+   "piid": "HR001116C0110",
+   "pe_bli": "0603286E",
+   "program_name": "The Hypersonic Air-breathing Weapon Concept (HAWC)",
+   "lexicon_doc": "276",
+   "match_basis": "exact-name",
+   "announcement_evidence": "a research project under the Hypersonic Air-breathing Weapon Concept, Phase II program",
+   "lexicon_quote": "The Hypersonic Air-breathing Weapon Concept (HAWC)",
+   "verdict": "link",
+   "rationale": "The announcement carries the index name verbatim, hyphenation included: 'a research project under the Hypersonic Air-breathing Weapon Concept, Phase II program'. Exactly one PE in the org's index owns HAWC — 0603286E Advanced Aerospace Systems — so there is no alternative owner and no ambiguity about which line the name belongs to. The obligation is fiscal 2019 research and development funds on a Lockheed Martin development contract for continued Phase II work on the demonstrator vehicle, which is the program element's own RDT&E content rather than support of a fielded system.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2019 research and development funds on a CPFF development mod to the HAWC contract; 'continued support for a research project under' the program is R&D content bought under the program itself, not generic engineering-services or logistics support, and the money color matches the RDT&E line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'The Hypersonic Air-breathing Weapon Concept (HAWC)' occurs once in the index (0603286E doc 276); the only other HAWC-bearing name, 'More Opportunities with HAWC (MoHAWC)', is a distinct follow-on effort and does not match this 2019 'Phase II' award, so no alternative owner competes for this name."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "3760676",
+   "piid": "HR001124C0325",
+   "pe_bli": "0603286E",
+   "program_name": "SPeed and Runway INdependent Technologies (SPRINT) X-Plane Demonstration Project",
+   "lexicon_doc": "20",
+   "match_basis": "exact-name",
+   "announcement_evidence": "Phase 1B of the Speed and Runway Independent Technologies program",
+   "lexicon_quote": "SPeed and Runway INdependent Technologies (SPRINT) X-Plane Demonstration Project",
+   "verdict": "link",
+   "rationale": "The announcement names the program in full — 'Phase 1B of the Speed and Runway Independent Technologies program' — matching the index row's leading name exactly (the index appends 'X-Plane Demonstration Project'). Two PEs carry the SPRINT row in the same lexicon document, 0603286E Advanced Aerospace Systems and 0603468E Advanced Complex Systems; I resolve to 0603286E because the April 2024 mod obligates fiscal 2024 RDT&E on the X-plane design phase, and Advanced Aerospace Systems is the line that carried DARPA's X-plane demonstrations in that budget year, with Advanced Complex Systems the newer recipient of the transferred portfolio. The purchased work is the demonstrator aircraft itself, the program's own content. The 0603468E alternative is emitted separately as weak.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2024 research, development, test and engineering funds obligated on Phase 1B of the SPRINT X-plane design effort — RDT&E money buying the demonstrator the program element funds, no sustainment component and no catch-all title; which of the two SPRINT PEs owns it is lens B's question."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The SPRINT X-Plane row is duplicated across 0603286E and 0603468E inside the SAME lexicon document 20, so the announcement's full-name match ('Phase 1B of the Speed and Runway Independent Technologies program') would link 0603468E exactly as well; the proposal's budget-year reasoning is external inference, not evidence in the record."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "3760676",
+   "piid": "HR001124C0325",
+   "pe_bli": "0603468E",
+   "program_name": "SPeed and Runway INdependent Technologies (SPRINT) X-Plane Demonstration Project",
+   "lexicon_doc": "20",
+   "announcement_evidence": "Phase 1B of the Speed and Runway Independent Technologies program",
+   "lexicon_quote": "SPeed and Runway INdependent Technologies (SPRINT) X-Plane Demonstration Project",
+   "verdict": "weak",
+   "rationale": "PE 0603468E Advanced Complex Systems carries an identical SPRINT row in the same lexicon document as 0603286E, which is a genuine cross-PE collision the announcement cannot break: it names a contract, a phase and fiscal 2024 RDT&E funds, none of which identify a budget line. Since the fiscal 2024 action fits the established Advanced Aerospace Systems line, the claim that it paid for Advanced Complex Systems' own work is not supported by this evidence."
+  },
+  {
+   "record_index": 41,
+   "article_id": "2921115",
+   "piid": "HR001122C0023",
+   "pe_bli": "0603760E",
+   "program_name": "Mission Integrated Network Control (MINC)",
+   "lexicon_doc": "20",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to support the Mission-Integrated Network Control (MINC) program",
+   "lexicon_quote": "Mission Integrated Network Control (MINC)",
+   "verdict": "link",
+   "rationale": "The announcement gives both the full name and the acronym — 'to support the Mission-Integrated Network Control (MINC) program' — which matches the index row word for word apart from one hyphen, and the acronym MINC matches exactly. Exactly one PE in DARPA's index owns MINC: 0603760E Command, Control and Communications Systems, which is the right home for a tactical networking program. The award is a competitive BAA contract (HR001121S0028) obligating fiscal 2021 and 2022 research, development, test and engineering funds to a performer developing the MINC capability, so the action buys the program element's own R&D content, not sustainment of a fielded network.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 and 2022 research, development, test and engineering funds on a competitively awarded BAA (HR001121S0028) performer contract; a BAA buys the program's own research, so 'to support the MINC program' is not the generic-services pattern §3 rejects, and Command, Control and Communications Systems is a named RDT&E line, not a rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Across the ~30 'network' rows in the DARPA index only one is MINC — 'Mission Integrated Network Control (MINC)' at 0603760E doc 20 — so there is no rival owner; the announcement supplies both the spelled-out name and the acronym, which is program evidence rather than a contractor or a generic word."
+   }
+  },
+  {
+   "record_index": 56,
+   "article_id": "2887134",
+   "piid": "HR001122C0024",
+   "pe_bli": "0603760E",
+   "program_name": "Mission Integrated Network Control (MINC)",
+   "lexicon_doc": "20",
+   "match_basis": "exact-name",
+   "announcement_evidence": "to support the Mission-Integrated Network Control program",
+   "lexicon_quote": "Mission Integrated Network Control (MINC)",
+   "verdict": "link",
+   "rationale": "Second performer on the same program under the same broad agency announcement (HR001121S0028): Peraton Labs is awarded a cost-plus-fixed-fee contract 'to support the Mission-Integrated Network Control program', the index name verbatim apart from one hyphen. Only PE 0603760E Command, Control and Communications Systems carries a MINC row, so there is no competing owner. Fiscal 2021 and 2022 research, development, test and engineering funds are obligated, matching the RDT&E line, and the work is development of the MINC capability itself.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Same money and mission as the sibling MINC award: fiscal 2021 and 2022 RDT&E funds on a competitive BAA performer contract developing the MINC capability itself, matching the appropriation of PE 0603760E, with no platform-support or O&M content to break it on."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same unique-owner result as record 41 — MINC is owned only by 0603760E — and the Peraton award names 'the Mission-Integrated Network Control program' under the same BAA HR001121S0028, so no other PE in the index could take this evidence."
+   }
+  },
+  {
+   "record_index": 61,
+   "article_id": "2473002",
+   "piid": "HR001120C0008",
+   "pe_bli": "0603766E",
+   "program_name": "The System of Systems-Enhanced Small Unit (SESU)",
+   "lexicon_doc": "307",
+   "match_basis": "exact-name",
+   "announcement_evidence": "previously awarded System of Systems Enhanced Small Unit (SESU) contract HR0011-20-C-0008",
+   "lexicon_quote": "The System of Systems-Enhanced Small Unit (SESU)",
+   "verdict": "link",
+   "rationale": "The announcement names the contract by the program it belongs to — 'previously awarded System of Systems Enhanced Small Unit (SESU) contract HR0011-20-C-0008' — matching this index row exactly apart from a leading article and a hyphen, acronym included. SESU appears only under PE 0603766E Network-Centric Warfare Technology in the index (twice, in two lexicon documents, both the same PE), so there is no cross-PE collision; I cite the doc-307 row because its singular 'Small Unit' wording is the one the announcement uses. Fiscal 2021 research and development funds are obligated on a development contract for the SESU system, the program element's own work.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2021 research and development funds on a modification to the SESU development contract — RDT&E money on an RDT&E line, buying the system-of-systems the program element itself develops rather than sustainment of a fielded unit capability; both SESU index rows sit under this same PE, so no rollup or appropriation mismatch arises."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "SESU appears twice in the index but BOTH rows are 0603766E (docs 276 and 307), so there is no cross-PE collision and the doc choice cannot change the published owner; the announcement names the program and its acronym explicitly alongside the PIID."
+   }
+  },
+  {
+   "record_index": 65,
+   "article_id": "658913",
+   "piid": "HR001115C0081",
+   "pe_bli": "0602702E",
+   "program_name": "Multi-Azimuth Defense Fast Intercept Round Engagement System (MAD-FIRES)",
+   "lexicon_doc": "276",
+   "match_basis": "exact-name",
+   "announcement_evidence": "exercising option one for the Multi Azimuth Defense Fast Intercept Round Engagement System (MAD-FIRES) program",
+   "lexicon_quote": "Multi-Azimuth Defense Fast Intercept Round Engagement System (MAD-FIRES)",
+   "verdict": "link",
+   "rationale": "The announcement carries the index name in full with the acronym, differing only by one hyphen. Two PEs own a MAD-FIRES row, but in different lexicon documents: 0602702E Tactical Technology and 0603766E Network-Centric Warfare Technology. This February 2016 action exercises option one on HR0011-15-C-0081, the earliest phase of the program, obligating fiscal 2015 RDT&E — the period when MAD-FIRES sat in the 6.2 Tactical Technology portfolio, before the later maturation years reflected in the Network-Centric row. The work bought is development of the guided-round engagement system itself, the program's own content rather than support to a host platform. The 0603766E alternative is emitted separately as weak.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2015 research, development, test and evaluation funds exercising option one on the MAD-FIRES development contract; the guided-round engagement system is the DARPA program itself, not a host platform the contract supports, and Tactical Technology is a named applied-research line — the 0602702E vs 0603766E ownership split is lens B's ground."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "MAD-FIRES is owned by two different PEs in the index — 0602702E Tactical Technology (doc 276) and 0603766E Network-Centric Warfare Technology (doc 96) — and the 2016 announcement names only the program, not a budget line; the proposal separates them by assumed J-book vintage, which the award evidence does not support, so the same quote links 0603766E equally well."
+   }
+  },
+  {
+   "record_index": 65,
+   "article_id": "658913",
+   "piid": "HR001115C0081",
+   "pe_bli": "0603766E",
+   "program_name": "Multi-Azimuth Defense Fast Intercept Round Engagement System (MAD-FIRES)",
+   "lexicon_doc": "96",
+   "announcement_evidence": "exercising option one for the Multi Azimuth Defense Fast Intercept Round Engagement System (MAD-FIRES) program",
+   "lexicon_quote": "Multi-Azimuth Defense Fast Intercept Round Engagement System (MAD-FIRES)",
+   "verdict": "weak",
+   "rationale": "PE 0603766E Network-Centric Warfare Technology also owns a MAD-FIRES row, so the name alone cannot decide the line. The announcement gives only fiscal 2015 RDT&E on an option-one exercise at the very start of the program, which fits the earlier 6.2 Tactical Technology placement better than the Network-Centric line; nothing in the text ties the money to this PE. Name present, attribution unproven."
+  },
+  {
+   "record_index": 67,
+   "article_id": "1855659",
+   "piid": "HR001119C0073",
+   "pe_bli": "0601101E",
+   "program_name": "Advanced Inertial MEMS Sensors (AIMS)",
+   "lexicon_doc": "209",
+   "announcement_evidence": "The SafeDocs program aims to develop novel verified programming methodologies",
+   "lexicon_quote": "Advanced Inertial MEMS Sensors (AIMS)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under §3's weak-generic-name pattern: the index designator 'AIMS' matches only the ordinary English verb in 'The SafeDocs program aims to develop novel verified programming methodologies'. The award funds Safe Documents (SafeDocs), a high-assurance parser program that has no row anywhere in DARPA's index, and has nothing to do with inertial MEMS sensors. Recorded so the substring artefact is visibly refused."
+  },
+  {
+   "record_index": 77,
+   "article_id": "3348502",
+   "piid": "HR001123C0058",
+   "pe_bli": "0603286E",
+   "program_name": "Collaborative Operations in Denied Environment (CODE)",
+   "lexicon_doc": "276",
+   "announcement_evidence": "Modeling and Simulation Integration Environment Infrastructure (MSIE) as code",
+   "lexicon_quote": "Collaborative Operations in Denied Environment (CODE)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design under §3's weak-generic-name pattern: the index designator 'CODE' matches only the software sense of the word in 'Modeling and Simulation Integration Environment Infrastructure (MSIE) as code'. The award funds Phase III of the Secure Advanced Framework for Simulation and Modeling (SAFE-SiM), which has no row in DARPA's index, and is unrelated to the Collaborative Operations in Denied Environment autonomy program. Recorded so the substring artefact is visibly refused."
+  },
+  {
+   "record_index": 78,
+   "article_id": "954619",
+   "piid": "HR001114C0054",
+   "pe_bli": "0603766E",
+   "program_name": "Hybrid Multi Material Rotor Full Scale Demonstration (HyDem)",
+   "lexicon_doc": "276",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "a research project under the HyDem Phase 3 program",
+   "lexicon_quote": "Hybrid Multi Material Rotor Full Scale Demonstration (HyDem)",
+   "verdict": "link",
+   "rationale": "The announcement names the program by its acronym only — 'a research project under the HyDem Phase 3 program' — and HyDem is the designator the index row carries parenthetically; the record's own description confirms the expansion, since it buys work to 'ready multi-material propulsor technology for transition through risk reduction testing and analysis, design optimization', which is precisely the Hybrid Multi Material Rotor Full Scale Demonstration. Exactly one PE in the index owns HyDem, 0603766E Network-Centric Warfare Technology, so there is no alternative owner. Fiscal 2016 research and development funds are obligated on the demonstration effort itself.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2016 research and development funds on a CPFF mod whose stated work is risk-reduction testing, analysis and design optimization of the multi-material propulsor technology — the demonstration program's own R&D content on an RDT&E line, not sustainment of a submarine platform, and the PE is a named element rather than a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'HyDem' is a real designator carried parenthetically by exactly one index row ('Hybrid Multi Material Rotor Full Scale Demonstration (HyDem)', 0603766E doc 276), the record's own 'multi-material propulsor technology' wording confirms the expansion, and no other PE owns the acronym or the expanded name."
+   }
+  },
+  {
+   "record_index": 79,
+   "article_id": "4077166",
+   "piid": "HR001123C0054",
+   "pe_bli": "0603766E",
+   "program_name": "Advanced Propulsor, Experimental (APEX)",
+   "lexicon_doc": "20",
+   "match_basis": "exact-name",
+   "announcement_evidence": "contract HR001123C0054 for the Advanced Propulsor, Experimental model",
+   "lexicon_quote": "Advanced Propulsor, Experimental (APEX)",
+   "verdict": "link",
+   "rationale": "The announcement carries the index name verbatim, comma included: 'contract HR001123C0054 for the Advanced Propulsor, Experimental model'. Two PEs carry an APEX row, so the collision has to be resolved: 0603766E Network-Centric Warfare Technology owns APEX across three separate lexicon documents (20, 171, 96) and is the line that holds DARPA's undersea portfolio (NOMARS, Manta Ray, POSYDON, Tactical Undersea Network Architecture), which fits a submarine propulsor built by General Dynamics Applied Physical Sciences in Groton; 0603467E DARPA Advanced Technology Development carries APEX only in the newest document and reads as the later transfer line. The mod obligates fiscal 2025 research, development, test and engineering funds on the experimental propulsor itself — the program's own RDT&E content. The 0603467E alternative is emitted separately as weak.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Fiscal 2025 research, development, test and engineering funds obligated for the experimental propulsor model itself — RDT&E money buying the program's own article, with no O&M or platform-support element; the 0603766E vs 0603467E collision is an identity/owner question for lens B, not a money-and-mission defect."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "'Advanced Propulsor, Experimental (APEX)' is owned by two PEs inside the same lexicon document 20 — 0603467E DARPA Advanced Technology Development and 0603766E Network-Centric Warfare Technology — and the announcement (a Groton propulsor mod) names neither line; the portfolio-adjacency argument for 0603766E is inference outside the evidence, so 0603467E is linked equally well by the same words."
+   }
+  },
+  {
+   "record_index": 79,
+   "article_id": "4077166",
+   "piid": "HR001123C0054",
+   "pe_bli": "0603467E",
+   "program_name": "Advanced Propulsor, Experimental (APEX)",
+   "lexicon_doc": "20",
+   "announcement_evidence": "contract HR001123C0054 for the Advanced Propulsor, Experimental model",
+   "lexicon_quote": "Advanced Propulsor, Experimental (APEX)",
+   "verdict": "weak",
+   "rationale": "PE 0603467E DARPA Advanced Technology Development carries an APEX row identical to 0603766E's in the same lexicon document, a genuine same-edition collision the announcement cannot break — it names a contract and fiscal 2025 RDT&E funds, never a budget line. The contract itself dates from 2023, when APEX sat in the long-standing Network-Centric Warfare Technology line, and 'DARPA Advanced Technology Development' is a broad line whose claim to this specific action is unevidenced. Name present, attribution not established."
+  }
+ ]
+}

@@ -1,0 +1,2481 @@
+{
+ "triaged": 11775,
+ "verdict_counts": {
+  "link": 1086,
+  "weak": 1185,
+  "wrong": 916
+ },
+ "proposed": 1086,
+ "surviving": [
+  {
+   "piid": "W31P4Q24C0022",
+   "pe_bli": "8260C53101",
+   "reason": "The paragraph is cut off before any appropriation is stated, but silence is not a money-colour mismatch and nothing else points away: budget_lines puts 8260C53101 in 2032A Missile Procurement, Army (B"
+  },
+  {
+   "piid": "W31P4Q20C0023",
+   "pe_bli": "8260C53101",
+   "reason": "'Fiscal 2023 missile procurement, Army funds' is account 2032A, exactly where budget_lines places 8260C53101, and the stated deliverable is PAC-3 missile production \u2014 this line's own end item, not O&M"
+  },
+  {
+   "piid": "W31P4Q23D0003",
+   "pe_bli": "6005C64400",
+   "reason": "Funding is deferred to each order, but no appropriation is named that conflicts with 2032A Missile Procurement, Army, where budget_lines puts 6005C64400 (BA02 Other missiles); 'Lots 18 and 19' is full"
+  },
+  {
+   "piid": "W31P4Q21D0003",
+   "pe_bli": "6005C64400",
+   "reason": "The AW and Unitary rocket pods are 6005C64400's own end item (its narrative row names both) and every line in play is Missile Procurement, Army 2032A, so no appropriation boundary is crossed; the LCRR"
+  },
+  {
+   "piid": "W56HZV23F0294",
+   "pe_bli": "5731D15610",
+   "reason": "No appropriation is stated, but a firm-fixed-price buy of Joint Light Tactical Vehicles, trailers and kits is precisely the end item of 5731D15610, which budget_lines places in 2035A Other Procurement"
+  },
+  {
+   "piid": "W56KGY18D0002",
+   "pe_bli": "9690BZ7316",
+   "reason": "A firm-fixed-price commercial item that is 'a combined hardware and software solution' fielded as DCGS-A Capability Drop 1 is the system 9690BZ7316 buys under 2035A Other Procurement, Army, BA02 Commu"
+  },
+  {
+   "piid": "W31P4Q23C0008",
+   "pe_bli": "2611C72100",
+   "reason": "'Fiscal 2023 missile procurement, Army funds in the amount of $275,270,424' is account 2032A, exactly where budget_lines puts 2611C72100, so procurement money is spent against a procurement line; the "
+  },
+  {
+   "piid": "W56HZV23C0024",
+   "pe_bli": "2944G80819",
+   "reason": "'Fiscal 2023 and 2024 weapons and tracked combat vehicle procurement, Army funds' is account 2033A, exactly where budget_lines puts 2944G80819 (BA01 Tracked combat vehicles, doc 350 = Procurement of W"
+  },
+  {
+   "piid": "W31P4Q25C0003",
+   "pe_bli": "0604182A",
+   "reason": "'Fiscal 2024 research, development, test and evaluation, Army funds' on a cost-plus-fixed-fee instrument is 0604182A's own colour of money (doc 353 = RDTE Vol 2 BA 4A), and the common hypersonic glide"
+  },
+  {
+   "piid": "W31P4Q18C0130",
+   "pe_bli": "1338C70000",
+   "reason": "This is the one Hellfire action in the chunk that names the line's own colour of money \u2014 'fiscal 2020 missile procurement, Army funds' is account 2032A, where budget_lines puts 1338C70000 \u2014 and the sc"
+  },
+  {
+   "piid": "W31P4Q20D0039",
+   "pe_bli": "8082C14300",
+   "reason": "The modification to the M-SHORAD production IDIQ buys 'SGT Stout systems' first, which is the end item of 8082C14300 in 2032A Missile Procurement, Army, and SGT Stout is the program itself rather than"
+  },
+  {
+   "piid": "FA821324DB002",
+   "pe_bli": "353620",
+   "reason": "Full text obligates fiscal 2022-24 procurement funds first and the substance is JDAM tail-kit production on the JDAM ammunition-procurement line (doc 409 is the ammunition book: Rockets, Cartridges, G"
+  },
+  {
+   "piid": "FA821324DB006",
+   "pe_bli": "SDB000",
+   "reason": "Full text obligates fiscal 2022, 2023 and 2024 missile procurement funds and BLI SDB000 sits in doc 410, the missile procurement book, so the color of money matches; Lots 20-29 production and delivery"
+  },
+  {
+   "piid": "FA821315D0002",
+   "pe_bli": "353620",
+   "reason": "Full text obligates fiscal 2017-19 ammunition funds (plus fiscal 2019 O&M and FMS) for the Lot 23 delivery order, and ammunition procurement is exactly BLI 353620's appropriation in doc 409; the ceili"
+  },
+  {
+   "piid": "FA862622D0010",
+   "pe_bli": "0604010F",
+   "reason": "No funds are obligated at award, but technology maturation and risk reduction for a prototype phase is unambiguously RDT&E activity and PE 0604010F sits in doc 412, the RDT&E book, so no appropriation"
+  },
+  {
+   "piid": "FA862622D0002",
+   "pe_bli": "0604010F",
+   "reason": "Same NGAP prototype phase on the second vendor's contract: design, analysis, rig testing, prototype engine build and testing are RDT&E activities against an RDT&E element (doc 412), no funds obligated"
+  },
+  {
+   "piid": "FA881018C0006",
+   "pe_bli": "1206444SF",
+   "reason": "Fiscal 2020 research, development, test and evaluation funds are obligated against PE 1206444SF in doc 417, the Space Force RDT&E book, and the Phase One scope is design/development, critical-path fli"
+  },
+  {
+   "piid": "FA868224CB001",
+   "pe_bli": "LRASM0",
+   "reason": "Fiscal 2024 and 2025 Air Force missile procurement funds are obligated and BLI LRASM0 sits in doc 410, the missile procurement book, so the appropriation matches; LRASM Production Lot Nine plus Lot 10"
+  },
+  {
+   "piid": "FA881018C0005",
+   "pe_bli": "1206443SF",
+   "reason": "The full text obligates fiscal 2024 research, development, test and evaluation funds ($183,649,905) against the RDT&E element 1206443SF (doc 417), which closes the O&M-sustainment-on-a-development-lin"
+  },
+  {
+   "piid": "N0002423C2305",
+   "pe_bli": "2122",
+   "reason": "New-hull DDG 51 construction is Shipbuilding and Conversion, Navy work and BLI 2122 is the SCN destroyer-construction line (lexicon_doc 341 = SCN_Book, account 1611N); the ships are the line's own pro"
+  },
+  {
+   "piid": "N0002418C2307",
+   "pe_bli": "2122",
+   "reason": "The announcement obligates fiscal 2018 shipbuilding and conversion (Navy) funding and the lake's funding accounts for N00024-18-C-2307 include 017-1611, BLI 2122's own appropriation; construction of s"
+  },
+  {
+   "piid": "N0002418C2305",
+   "pe_bli": "2122",
+   "reason": "Same multiyear on the Bath Iron Works side: fiscal 2018 SCN funding obligated, lake accounts 017-1611 only, and four new-construction destroyers are the SCN 2122 line's product."
+  },
+  {
+   "piid": "N0002417C2100",
+   "pe_bli": "2013",
+   "reason": "Fiscal 2024 and 2025 shipbuilding and conversion (Navy) funds are obligated and the lake shows 017-1611 on N00024-17-C-2100, matching BLI 2013's 1611N; the shipyard-productivity and workforce-investme"
+  },
+  {
+   "piid": "N0002424C2110",
+   "pe_bli": "2013",
+   "reason": "Fiscal 2025 shipbuilding and conversion (Navy) funds (91%) obligated for long lead material and preliminary construction of Block VI boats; Block VI is an increment of the same SCN Virginia line, and "
+  },
+  {
+   "piid": "N0002417C2117",
+   "pe_bli": "1045",
+   "reason": "The lake's funding accounts for N00024-17-C-2117 include 017-1612, the National Sea-Based Deterrence Fund, which is one of BLI 1045's own two accounts (1611N/1612N); the dominant scope - missile tube "
+  },
+  {
+   "piid": "N0002417C2117",
+   "pe_bli": "0603595N",
+   "reason": "The announcement obligates fiscal 2017 research, development, test and evaluation (Navy) funds alongside SCN, and design completion, component and technology development and prototyping is RDT&E work;"
+  },
+  {
+   "piid": "N0003024C0100",
+   "pe_bli": "1250",
+   "reason": "Fiscal 2024 weapons procurement (Navy) is exactly BLI 1250's appropriation (1507N, lexicon_doc 342 = WPN_Book), and D5 missile production plus deployed-systems support is that line's own content (its "
+  },
+  {
+   "piid": "N0003019C0025",
+   "pe_bli": "0605518N",
+   "reason": "Fiscal 2018 and 2019 research, development, test and evaluation funds are obligated on a Navy Strategic Systems Programs contract for the Navy Intermediate Range CPS Weapon System's own flight-test ha"
+  },
+  {
+   "piid": "N0002425C5434",
+   "pe_bli": "2292",
+   "reason": "The announcement obligates fiscal 2024 weapons procurement (Navy) ($25.6M) alongside Marine Corps procurement, and WPN (1507N) is the appropriation of the lexicon_doc 342 member named here; buying enc"
+  },
+  {
+   "piid": "M6785419C0043",
+   "pe_bli": "4655",
+   "reason": "Fiscal 2019 procurement (Marine Corps) funds are obligated and the lake shows 017-1109 on M67854-19-C-0043, matching BLI 4655's own 1109N appropriation (lexicon_doc 339 = PMC_Book); 30 full-rate produ"
+  },
+  {
+   "piid": "M6785422D2090",
+   "pe_bli": "4633",
+   "reason": "Fiscal 2022 procurement (Marine Corps) funds are obligated, matching BLI 4633's 1109N appropriation (lexicon_doc 339 = PMC_Book); MCHH is a named system of the Radio Systems line's own narrative rathe"
+  },
+  {
+   "piid": "N0002417C2105",
+   "pe_bli": "2086",
+   "reason": "Fiscal 2017 and 2016 shipbuilding and conversion (Navy) funds are obligated and the lake shows 017-1611 on N00024-17-C-2105; BLI 2086 exists to buy refueling complex overhauls, so the overhaul is the "
+  },
+  {
+   "piid": "N0002420C2300",
+   "pe_bli": "2128",
+   "reason": "Fiscal 2024 shipbuilding and conversion (Navy) funds obligated in full for detail design and construction of two frigate hulls; SCN money on the SCN frigate line, whose product is those hulls."
+  },
+  {
+   "piid": "N0002416C2229",
+   "pe_bli": "5025",
+   "reason": "Fiscal 2022 shipbuilding and conversion (Navy) funds obligated at 100% and the lake shows 017-1611 on N00024-16-C-2229; detail design and construction of fleet replenishment oilers is the TAO line's o"
+  },
+  {
+   "piid": "N0002419C2227",
+   "pe_bli": "3043",
+   "reason": "Fiscal 2023 and 2022 shipbuilding and conversion (Navy) funds obligated and the lake shows 017-1611 on N00024-19-C-2227; construction of EPF-variant hulls on the EPF contract is the SCN EPF line's own"
+  },
+  {
+   "piid": "N0001918C1046",
+   "pe_bli": "0145",
+   "reason": "Fiscal 2022 and 2023 aircraft procurement (Navy) funds are obligated and the lake shows 017-1506 on N00019-18-C-1046, matching the lexicon_doc 330 row's APN appropriation; 17 airframes are the line's "
+  },
+  {
+   "piid": "N0001917C0003",
+   "pe_bli": "0145",
+   "reason": "Fiscal 2018 aircraft procurement (Navy) funds obligated in full for 18 full-rate-production airframes; the lake carries 017-1506 on N00019-17-C-0003, the APN account behind the doc-330 FA-18E/F row."
+  },
+  {
+   "piid": "N0001918C1012",
+   "pe_bli": "0605414N",
+   "reason": "Fiscal 2018 research, development, test and evaluation (Navy) funds are obligated and the lake shows only 017-1319 on N00019-18-C-1012 - PE 0605414N's own appropriation (lexicon_doc 340 = RDTEN_BA1-3_"
+  },
+  {
+   "piid": "HQ085621C0003",
+   "pe_bli": "0604874C",
+   "reason": "The full announcement obligates \"Fiscal 2021 research and development funds in the amount of $291,930,500\" \u2014 RDT&E money on an RDT&E line for technology development and risk reduction of NGI itself, w"
+  },
+  {
+   "piid": "HQ085621C0001",
+   "pe_bli": "0604874C",
+   "reason": "Identical money and mission to the Northrop half of the same competition: \"Fiscal 2021 research and development funds in the amount of $291,930,500 are being obligated on this award\", a cost-reimburse"
+  },
+  {
+   "piid": "HQ085622D0001",
+   "pe_bli": "0604874C",
+   "reason": "The full text obligates \"fiscal 2022 research, development, test and evaluation funds in the amount of $76,355,001\" plus only a $200,000 O&M sliver (0.3% of obligations), so the RDT&E line's appropria"
+  },
+  {
+   "piid": "HQ085120C0002",
+   "pe_bli": "MD09",
+   "reason": "The full text states \"FY 2019 and 2020 procurement, defense-wide and FMS funds in the amount of $1,052,637,366 will be obligated at time of award\" \u2014 procurement, Defense-wide money against a procureme"
+  },
+  {
+   "piid": "HQ085124C0001",
+   "pe_bli": "MD14",
+   "reason": "\"Fiscal 2023 and 2024 procurement, Defense wide funds in the amount of $583,732,034; and $383,265,085\" are obligated against the SM-3 IIA procurement BLI for manufacture and assembly of Block IIA all-"
+  },
+  {
+   "piid": "HQ085122C0001",
+   "pe_bli": "MD14",
+   "reason": "\"Fiscal 2021 procurement, Defense wide funds in the amount of $250,391,077; and fiscal 2022 procurement, Defense wide funds in the amount of $384,131,553\" are obligated at award \u2014 procurement money on"
+  },
+  {
+   "piid": "HQ027615C0003",
+   "pe_bli": "0603892C",
+   "reason": "The appropriation the proposal flagged as unverified is in the full text: \"Fiscal 2017 research, development, test and evaluation funds in the amount of $45,000,000 will be obligated for this effort\" "
+  },
+  {
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "reason": "\"Fiscal 2016 research, development, Test and evaluation funds in the amount of $61,017,741 are being obligated at the time of award\" \u2014 RDT&E money for Baseline 5.1 Increment-2 development on the Aegis"
+  },
+  {
+   "piid": "HQ014719C0005",
+   "pe_bli": "0603915C",
+   "reason": "The appropriation the proposal asked lens A to check is in the full text: \"Fiscal 2023 research, development, test and evaluations funds will be used on this effort; the initial funding amount is $6,0"
+  },
+  {
+   "piid": "HQ014714C0001",
+   "pe_bli": "0603915C",
+   "reason": "\"Fiscal 2019 research, development, test and evaluation funds in the amount of $22,469,742 are being obligated on this award\" \u2014 RDT&E money buying six Medium Range Ballistic Missile targets plus nonre"
+  },
+  {
+   "piid": "FA863722DB001",
+   "pe_bli": "0201ARMOWT",
+   "reason": "Announcement obligates procurement funds at award and 0201ARMOWT is the P-1 line (account 0300D, SOCOM) titled 'Armed Overwatch/Targeting' with one index name \u2014 a dedicated, non-catch-all procurement "
+  },
+  {
+   "piid": "FA863722DB001",
+   "pe_bli": "1160403BB",
+   "reason": "The announcement names RDT&E among the funds obligated at award and 1160403BB is R-1/0400D, so the color matches; 'Aviation Systems' is a multi-project PE but its own narrative owns project 814 'Armed"
+  },
+  {
+   "piid": "H9240320D0006",
+   "pe_bli": "1160431BB",
+   "reason": "The only money the announcement names is 'Fiscal 2020 research, development, testing and evaluation funds ... obligated at the time of award', and 1160431BB is R-1/0400D 'Warrior Systems' owning SPEAR"
+  },
+  {
+   "piid": "H9240822D0001",
+   "pe_bli": "1160403BB",
+   "reason": "'Fiscal 2022 research, development, test and evaluation funds ... obligated at the time of award' matches 1160403BB (R-1/0400D), and the engineering/integration work builds the named ITMS capability i"
+  },
+  {
+   "piid": "H9224120F0020",
+   "pe_bli": "0610MH47",
+   "reason": "'Fiscal 2021 procurement; and aircraft procurement, Army funds' matches 0610MH47 (P-1/0300D 'MH-47 Chinook'), and the lake confirms the PIID's funding accounts are 021-2031;097-0300; buying six comple"
+  },
+  {
+   "piid": "H9222216D0043",
+   "pe_bli": "0204TACVEH",
+   "reason": "The announcement states 'fiscal 2016 procurement funds in the amount of $709,765 being obligated at time of award' and 'This contract will be funded at the delivery order level with procurement approp"
+  },
+  {
+   "piid": "H9224121D0001",
+   "pe_bli": "0201RWUPGR",
+   "reason": "'Fiscal 2020 and 2021 procurement, defense-wide funds ... obligated at the time of award for IRES sensors' is exactly 0201RWUPGR's color (P-1/0300D); buying the IRES sensors is the upgrade this line p"
+  },
+  {
+   "piid": "H9240319D0002",
+   "pe_bli": "1160431BB",
+   "reason": "'Fiscal 2019 research, development, test and evaluation funds ... obligated at the time of award' matches 1160431BB (R-1/0400D 'Warrior Systems'), whose narrative owns ASR testing; the rifles are the "
+  },
+  {
+   "piid": "H9224119D0002",
+   "pe_bli": "0201RWUPGR",
+   "reason": "'Fiscal 2018 procurement funds ... obligated at the time of award' plus 'Individual task orders will be funded with procurement appropriations' matches 0201RWUPGR (P-1/0300D 'Rotary Wing Upgrades and "
+  },
+  {
+   "piid": "H9222216D0002",
+   "pe_bli": "020401INTL",
+   "reason": "'Fiscal 2015 procurement funds ... obligated to satisfy the minimum guarantee' matches 020401INTL (P-1/0300D, titled 'Distributed Common Ground/Surface Systems'), and the All-Source Analytical Environ"
+  },
+  {
+   "piid": "N0001917C0015",
+   "pe_bli": "0164",
+   "reason": "Full text: fiscal 2024 aircraft procurement (Navy) $132,100,000 obligated \u2014 APN money for production and delivery of five CMV-22B airframes against the APN V-22 buy line; airframe buy, not modificatio"
+  },
+  {
+   "piid": "N0001924C0061",
+   "pe_bli": "0604282N",
+   "reason": "Full text: fiscal 2024 RDT&E (Navy) $66,000,000 and fiscal 2023 RDT&E (Navy) $10,226,989 \u2014 RDT&E money against an RDT&E PE for EMD test articles and prototype pods; the EA-18G is the host platform but"
+  },
+  {
+   "piid": "N0003022C0100",
+   "pe_bli": "1250",
+   "reason": "Full text: fiscal 2023 weapons procurement (Navy) $90,134,878 (61% of obligations) alongside fiscal 2023 O&M (Navy) $57,014,441 \u2014 the dominant named appropriation is WPN, BLI 1250's own, so the O&M sh"
+  },
+  {
+   "piid": "N0003018C0100",
+   "pe_bli": "1250",
+   "reason": "Full text: fiscal 2019 weapons procurement (Navy) $412,117,013 (73%) plus $9,717,587 OPN and UK $137,787,474 \u2014 WPN dominates the obligations and Magna/Sunnyvale/Kingsport production sites carry 50% of"
+  },
+  {
+   "piid": "N0003020C0100",
+   "pe_bli": "1250",
+   "reason": "Full text: fiscal 2021 weapons procurement (Navy) $477,091,291 plus fiscal 2020 WPN $8,003,070 and UK $73,747,000 \u2014 essentially all US money is WPN, BLI 1250's own appropriation, and no O&M is obligat"
+  },
+  {
+   "piid": "N0003016C0100",
+   "pe_bli": "1250",
+   "reason": "Full text: fiscal 2017 weapons procurement (Navy) $453,981,651 (84% of obligations) plus UK $50,714,400 and fiscal 2017 O&M $36,138,000 \u2014 WPN dominates, and Magna plus Sunnyvale carry 55% of the work,"
+  },
+  {
+   "piid": "N0003017C0100",
+   "pe_bli": "1250",
+   "reason": "Full text: fiscal 2018 weapons procurement (Navy) $513,353,956 (98% of obligations) with only $8,663,021 OPN and $308,008 RDT&E \u2014 a WPN option exercise against the WPN Trident II Mods line, with Magna"
+  },
+  {
+   "piid": "N0001921C0021",
+   "pe_bli": "0604282N",
+   "reason": "Full text: fiscal 2020 RDT&E (Navy) $20,377,862 obligated \u2014 RDT&E money for EMD pod simulators, prototype pods and technique development systems against an RDT&E PE; the jammer program itself, not a p"
+  },
+  {
+   "piid": "N0003019C0100",
+   "pe_bli": "1250",
+   "reason": "Full text names only fiscal 2019 weapons procurement (Navy) $38,341,216 and UK $4,165,366 \u2014 the sole US appropriation on the action is WPN, BLI 1250's own; the deployed-site work share (Cape Canaveral"
+  },
+  {
+   "piid": "N0002420C2120",
+   "pe_bli": "2013",
+   "reason": "Full text: FY2020/2021/2016/2019/2018 shipbuilding and conversion (Navy) total 97% with only $3,165,077 (3%) RDT&E \u2014 lead yard support and class design effort paid from the Virginia line's own SCN mon"
+  },
+  {
+   "piid": "N0003021C0100",
+   "pe_bli": "1250",
+   "reason": "Full text names fiscal 2021 weapons procurement (Navy) $4,560,560 as the only obligation \u2014 small, but it is WPN, BLI 1250's own appropriation, with no O&M attached, and the production sites (Magna, De"
+  },
+  {
+   "piid": "N0002424C5408",
+   "pe_bli": "2307",
+   "reason": "Full text: fiscal 2025 weapons procurement (Navy) $221,564,000 (50%) plus consortium partner 'other customer funds' (45% + 5%) \u2014 the single US appropriation is WPN, BLI 2307's own, buying new Block II"
+  },
+  {
+   "piid": "N0001916C0002",
+   "pe_bli": "0604274N",
+   "reason": "No funds are obligated at award, but unlike the record 55 IDIQ this is a fixed-scope increase to the NGJ Mid-Band EMD contract buying System Demonstration Test Articles and test pods for IOT&E \u2014 devel"
+  },
+  {
+   "piid": "FA880721C0005",
+   "pe_bli": "1203164SF",
+   "reason": "Mission is the line's own content \u2014 MGUE Inc 2 receiver-card development, not a platform MGUE rides on \u2014 and the scope ('design, develop, build, integrate, qualify' on CPIF/CPAF) is RDT&E work against"
+  },
+  {
+   "piid": "FA868118C0021",
+   "pe_bli": "0604033F",
+   "reason": "The announcement obligates fiscal 2018 RDT&E funds against an RDT&E prototyping element and the work (critical design review, test, production-readiness support) is pre-production development; ARRW is"
+  },
+  {
+   "piid": "FA863417C2650",
+   "pe_bli": "0207171F",
+   "reason": "Fiscal 2016 RDT&E funds of $78,204,519 against an RDT&E element whose title IS 'F-15 EPAWSS', and the work is EMD of EPAWSS itself ('planning, design development, integration, testing and risk reducti"
+  },
+  {
+   "piid": "FA868118D0018",
+   "pe_bli": "353020",
+   "reason": "Fiscal 2018 production funds against an Air Force ammunition-procurement line, buying the very article that line procures (BLU-137/B penetrator warhead bodies, 300 guaranteed plus up to 3,500); no pla"
+  },
+  {
+   "piid": "FA868118D0017",
+   "pe_bli": "353020",
+   "reason": "Same solicitation, second awardee, distinct PIID: fiscal 2018 production funds of $15,015,500 against the ammunition-procurement General Purpose Bombs line for production of BLU-137/B warhead bodies \u2014"
+  },
+  {
+   "piid": "FA880710C0001",
+   "pe_bli": "1206423SF",
+   "reason": "The action modifies the OCX prime contract itself \u2014 the contract this element funds \u2014 and delivers a hardware baseline change 'for all OCX Block 1 Deliverable Environments', i.e. pre-delivery developm"
+  },
+  {
+   "piid": "FA873918C5030",
+   "pe_bli": "0102110F",
+   "reason": "The announced action is the BASIC award \u2014 non-developmental item integration of four aircraft, with fiscal 2018 research/development funds ($98,000,000) obligated at award \u2014 which is exactly the RDT&E"
+  },
+  {
+   "piid": "FA868123CB001",
+   "pe_bli": "SDB002",
+   "reason": "Fiscal 2023/2024 Air Force procurement MISSILE funding ($101,394,424 + $183,097,105) against a missile-procurement line buying Lot 10 all-up rounds, containers and trainers \u2014 the munition itself; the "
+  },
+  {
+   "piid": "W31P4Q17C0006",
+   "pe_bli": "8260C53101",
+   "reason": "The lake's funding accounts for W31P4Q17C0006 are 021-2032 (Missile Procurement, Army), exactly the 2032A appropriation BLI 8260C53101 sits in, so the paragraph's 'other procurement (Army)' wording is"
+  },
+  {
+   "piid": "W31P4Q19C0011",
+   "pe_bli": "8260C53101",
+   "reason": "The lake shows 021-2032 (Missile Procurement, Army) among W31P4Q19C0011's funding accounts, matching 8260C53101's 2032A, so the paragraph's 'other procurement, Army' line does not defeat the money tes"
+  },
+  {
+   "piid": "W15QKN22D0002",
+   "pe_bli": "2348EA4000",
+   "reason": "Full-rate production of M72 LAW variants and shoulder-launched-munitions training items is ammunition-procurement work, matching 2348EA4000's 2034A (Procurement of Ammunition, Army); the lake reports "
+  },
+  {
+   "piid": "W56HZV09D0159",
+   "pe_bli": "6866D15500",
+   "reason": "W56HZV09D0159's lake funding accounts include 021-2035 (Other Procurement, Army), matching 6866D15500's 2035A, and the announcement's own word is 'procurement of Family of Medium Tactical Vehicles var"
+  },
+  {
+   "piid": "W56HZV17C0001",
+   "pe_bli": "2073GZ0410",
+   "reason": "The paragraph names fiscal 2022 weapons and tracked combat vehicle procurement and the lake confirms 021-2033 on W56HZV17C0001, matching 2073GZ0410's 2033A; M109A7 and M992A3 deliveries with Total Pac"
+  },
+  {
+   "piid": "W56HZV15C0095",
+   "pe_bli": "5731D15610",
+   "reason": "The announcement states other procurement, Army among the obligated funds and the lake confirms 021-2035 on W56HZV15C0095, matching 5731D15610's 2035A; procuring JLTVs and associated kits is this line"
+  },
+  {
+   "piid": "W31P4Q17C0194",
+   "pe_bli": "2104C59300",
+   "reason": "The announcement states missile procurement (Army) and the lake confirms 021-2032 on W31P4Q17C0194, matching 2104C59300's 2032A; buying TOW tactical, obsolescence-and-safety and practice missiles is t"
+  },
+  {
+   "piid": "W56HZV17DB020",
+   "pe_bli": "0363G85200",
+   "reason": "Fiscal 2018-19 procurement of weapons and tracked vehicle funds are stated and the lake confirms 021-2033 on W56HZV17DB020, matching 0363G85200's 2033A; converting flat-bottom hulls to the Double V-Hu"
+  },
+  {
+   "piid": "W56HZV19C0036",
+   "pe_bli": "7181G80820",
+   "reason": "Fiscal 2023-24 weapons and tracked combat vehicle procurement is stated and the lake confirms 021-2033 on W56HZV19C0036, matching 7181G80820's 2033A; low-rate initial production of the M10 Booker is t"
+  },
+  {
+   "piid": "HR001116C0049",
+   "pe_bli": "0602702E",
+   "reason": "Fiscal 2015/2016 research and development funds against a DARPA RDT&E line, and the CPFF contract buys Phases II and III of the X-plane demonstrator itself (the thing PE 0602702E Tactical Technology's"
+  },
+  {
+   "piid": "HR001121C0206",
+   "pe_bli": "0603766E",
+   "reason": "Fiscal 2021 research, development, test and engineering funds on a DARPA RDT&E line, and the contract develops the Manta Ray demonstrator's own control software and energy-harvesting module \u2014 subsyste"
+  },
+  {
+   "piid": "HR001122C0021",
+   "pe_bli": "0603766E",
+   "reason": "Fiscal 2021 and 2022 research, development, test and engineering funds against an RDT&E program element, buying development, fabrication and testing of the full-scale long-endurance UUV demonstration "
+  },
+  {
+   "piid": "HR001116C0110",
+   "pe_bli": "0603286E",
+   "reason": "Fiscal 2019 research and development funds on a CPFF development mod to the HAWC contract; 'continued support for a research project under' the program is R&D content bought under the program itself, "
+  },
+  {
+   "piid": "HR001122C0023",
+   "pe_bli": "0603760E",
+   "reason": "Fiscal 2021 and 2022 research, development, test and engineering funds on a competitively awarded BAA (HR001121S0028) performer contract; a BAA buys the program's own research, so 'to support the MINC"
+  },
+  {
+   "piid": "HR001122C0024",
+   "pe_bli": "0603760E",
+   "reason": "Same money and mission as the sibling MINC award: fiscal 2021 and 2022 RDT&E funds on a competitive BAA performer contract developing the MINC capability itself, matching the appropriation of PE 06037"
+  },
+  {
+   "piid": "HR001120C0008",
+   "pe_bli": "0603766E",
+   "reason": "Fiscal 2021 research and development funds on a modification to the SESU development contract \u2014 RDT&E money on an RDT&E line, buying the system-of-systems the program element itself develops rather th"
+  },
+  {
+   "piid": "HR001114C0054",
+   "pe_bli": "0603766E",
+   "reason": "Fiscal 2016 research and development funds on a CPFF mod whose stated work is risk-reduction testing, analysis and design optimization of the multi-material propulsor technology \u2014 the demonstration pr"
+  },
+  {
+   "piid": "N0003015C0100",
+   "pe_bli": "1250",
+   "reason": "The announcement's own words are 'new procurement of Trident II (D5) missile production, D5 life extension development and production' \u2014 missile hardware against the line that funds D5 hardware; the D"
+  },
+  {
+   "piid": "N0001918D0001",
+   "pe_bli": "0525",
+   "reason": "Inducting airframes, extending them 6,000\u219210,000 flight hours and incorporating Block III avionics is aircraft-modification work, which is what the APN 'F-18 Series' modification line buys via OSIP 14"
+  },
+  {
+   "piid": "N0003025C6005",
+   "pe_bli": "0605518N",
+   "reason": "Money colour is stated and agrees: fiscal 2025 research, development, test and evaluation funds, and the scope (inertial navigation measurement and analysis, GPS applications, EO alternate navigation,"
+  },
+  {
+   "piid": "N0002418C2106",
+   "pe_bli": "2086",
+   "reason": "The named scope is RCOH advance planning \u2014 material forecasting, long-lead-time material procurement, pre-overhaul tests and inspections for fiscal 2019-2020 \u2014 which is how the SCN 'CVN Refueling Over"
+  },
+  {
+   "piid": "N0001920D0008",
+   "pe_bli": "2301",
+   "reason": "Recertification and modernization of 166 existing Block IV all-up rounds is modification work against a WPN 'Tomahawk Mods' line \u2014 the work type and the line agree, which is the opposite of the sustai"
+  },
+  {
+   "piid": "N0003019C0015",
+   "pe_bli": "0603595N",
+   "reason": "The dominant scope is technical engineering, design and development engineering and component/full-scale test and evaluation engineering for the Common Missile Compartment, which is RDT&E work on the "
+  },
+  {
+   "piid": "N0002415C5408",
+   "pe_bli": "2234",
+   "reason": "The record names 'fiscal 2016 options for Standard Missile-6 production and spares requirements' \u2014 procurement of the missile the WPN Standard Missile line buys, with spares incidental to the producti"
+  },
+  {
+   "piid": "N0002417C6327",
+   "pe_bli": "5509",
+   "reason": "Full-rate production of JCREW I1B1 systems is procurement-type work and the record names fiscal 2017 other procurement (Navy) among its funds, so Navy procurement money buys production hardware on a N"
+  },
+  {
+   "piid": "M6785416C0006",
+   "pe_bli": "2025",
+   "reason": "Firm-fixed-price exercise of options for 27 full-rate-production ACV personnel variants and 17 command variants with fielding and support \u2014 vehicle procurement against the Procurement, Marine Corps li"
+  },
+  {
+   "piid": "W31P4Q15C0151",
+   "pe_bli": "1338C70000",
+   "reason": "Hellfire II missile hardware/component production is the Hellfire system line's own product, not a platform it supports, and although the paragraph cites only other procurement (Army) the lake shows W"
+  },
+  {
+   "piid": "W56HZV14C0002",
+   "pe_bli": "2073GZ0410",
+   "reason": "The paragraph's vague 'other funds' is uninformative but not contradictory \u2014 W56HZV-14-C-0002 carries 021-2033 in the lake, matching 2073GZ0410 \u2014 and Paladin Integrated Management LRIP option 2 for 30"
+  },
+  {
+   "piid": "W56HZV18C0133",
+   "pe_bli": "1678GZ2400",
+   "reason": "Fiscal 2018 procurement of weapons and tracked combat vehicles funds is 1678GZ2400's own 021-2033 colour, confirmed by the lake for W56HZV-18-C-0133, and Bradley production is the Bradley Program (MOD"
+  },
+  {
+   "piid": "W900KK17D0003",
+   "pe_bli": "2062NA0100",
+   "reason": "Funding is deferred to each order, but the lake shows W900KK-17-D-0003 carries 021-2035, matching 2062NA0100's 2035A, and an I-MILES VTESS acquisition run by PEO STI is the non-system training device "
+  },
+  {
+   "piid": "W31P4Q12C0265",
+   "pe_bli": "2104C59300",
+   "reason": "Unlike record 0, the lake shows W31P4Q-12-C-0265 funded by 021-2032 (Missile Procurement, Army) alongside the FMS share, intersecting 2104C59300's 2032A, and FMS production of TOW missiles is the TOW "
+  },
+  {
+   "piid": "W15QKN20D0003",
+   "pe_bli": "8750E27501",
+   "reason": "The lake carries no funding accounts for W15QKN-20-D-0003 so the money guard passes unverified, but the work itself is unambiguously the line's colour \u2014 Modular Artillery Charge Systems with metal con"
+  },
+  {
+   "piid": "W31P4Q19C0077",
+   "pe_bli": "6552C67500",
+   "reason": "Fiscal 2020 missile procurement (Army) matches 6552C67500's 2032A and the lake shows W31P4Q-19-C-0077 funded by 021-2032 alone; buying 44 M270A2 launchers is the MLRS Mods line's own output, since the"
+  },
+  {
+   "piid": "FA867225CB001",
+   "pe_bli": "SDB002",
+   "reason": "FY25 Air Force missile procurement ($220.1M) buying SDB II all-up rounds and containers against SDB002, whose line is 3020F Missile Procurement, Air Force ('Other missiles') \u2014 procurement money on a p"
+  },
+  {
+   "piid": "FA881018C0002",
+   "pe_bli": "1206422SF",
+   "reason": "FY18 RDT&E funding development and fabrication of WSF-M Space Vehicle 1 against 1206422SF 'Weather System Follow-on', an RDT&E line (SDD/ACD&P) \u2014 development money on a development line building the p"
+  },
+  {
+   "piid": "FA210319D3000",
+   "pe_bli": "0604932F",
+   "reason": "FY19 research and development funds ($6.34M), awarded by the AIR FORCE NUCLEAR WEAPONS CENTER \u2014 LRSO's own program office \u2014 against 0604932F (3600F RDT&E, System Development & Demonstration, 'Long Ran"
+  },
+  {
+   "piid": "FA867220C0005",
+   "pe_bli": "SDB002",
+   "reason": "FY20 production funding ($265.3M) definitizing SDB II Lot 6 against SDB002 = 3020F Missile Procurement, Air Force \u2014 production money on a procurement line, and StormBreaker/GBU-53/B is the line's own "
+  },
+  {
+   "piid": "FA867221C0005",
+   "pe_bli": "SDB002",
+   "reason": "FY21 Air Force missile procurement ($129.7M) for Lot 7 all-up rounds and containers against the 3020F Missile Procurement line SDB002 \u2014 exact appropriation match and the program's own end item; the Na"
+  },
+  {
+   "piid": "FA862018F2364",
+   "pe_bli": "PRDTB2",
+   "reason": "FY17/FY18 AIRCRAFT PROCUREMENT ($40.9M) retrofitting 122 already-fielded MQ-9s against PRDTB2, a 3010F Aircraft Procurement line under 'Modification of inservice aircraft' titled 'MQ-9 Mods' \u2014 a procu"
+  },
+  {
+   "piid": "FA821317F1001",
+   "pe_bli": "353620",
+   "reason": "FY16/17/19 procurement funds ($195.0M) producing additional JDAM tail kits against 353620 = 3011F Procurement of Ammunition, Air Force, titled 'Joint Direct Attack Munition' \u2014 procurement money on the"
+  },
+  {
+   "piid": "FA863421C2702",
+   "pe_bli": "F15EWS",
+   "reason": "FY20 production funding ($92.6M) for EPAWSS LRIP Group A/B kits, support equipment and mod-line standup installed on EXISTING F-15s against F15EWS = 3010F Aircraft Procurement, 'Modification of inserv"
+  },
+  {
+   "piid": "FA868223CB001",
+   "pe_bli": "LRASM0",
+   "reason": "FY24 U.S. Air Force MISSILE PROCUREMENT ($78.3M) for 61 Lot 8 rounds with containers and initial spares against LRASM0 = 3020F Missile Procurement, Air Force ('Other missiles') \u2014 procurement money on "
+  },
+  {
+   "piid": "FA881119C0002",
+   "pe_bli": "NSSL00",
+   "reason": "The full article obligates fiscal 2019 MISSILE PROCUREMENT funds of $144.6M to buy launch vehicle production services for NRO Launch Mission Three against NSSL00 'National Security Space Launch', now "
+  },
+  {
+   "piid": "N0002423C6411",
+   "pe_bli": "3117",
+   "reason": "Money color holds exactly: the full announcement obligates fiscal 2024 weapons procurement (Navy) $157,933,050 (65%) and fiscal 2023 weapons procurement (Navy) $12,061,788 (5%) plus foreign-partner fu"
+  },
+  {
+   "piid": "N0002420C5519",
+   "pe_bli": "2312",
+   "reason": "The announcement obligates fiscal 2024 other procurement (Navy) $120,151,209 (49%) alongside SCN, and 2312 is an OPN 1810N BA02 line titled 'AN/SLQ-32' \u2014 the lake shows 017-1810 as the sole funding ac"
+  },
+  {
+   "piid": "N0002418C2406",
+   "pe_bli": "3010",
+   "reason": "100% fiscal 2022 shipbuilding and conversion (Navy) funding, and the doc-341 member of the shared BLI code 3010 is 1611N Shipbuilding and Conversion, Navy BA03 Amphibious ships ('LPD Flight II'), whic"
+  },
+  {
+   "piid": "N0002418C5432",
+   "pe_bli": "2292",
+   "reason": "The announcement names the line's own appropriation in its own words \u2014 'fiscal 2023 weapons procurement (Navy) funds in the amount of $53,905,631 (23%)' \u2014 which is the 1507N member doc 342 resolves 22"
+  },
+  {
+   "piid": "N0001921C0053",
+   "pe_bli": "0591",
+   "reason": "100% fiscal 2022 aircraft procurement (Navy) $226,732,672 against 0591 in 1506N Aircraft Procurement, Navy BA05 Modification of aircraft, titled 'Next Generation Jammer (NGJ)' \u2014 procurement money on a"
+  },
+  {
+   "piid": "N0001919D0012",
+   "pe_bli": "4048",
+   "reason": "Nothing contradicts the line's money color \u2014 the action states 'no funds will be obligated at the time of award' and the lake records no accounts, which leaves the award's appropriation unknown rather"
+  },
+  {
+   "piid": "N0001918C1061",
+   "pe_bli": "0145",
+   "reason": "100% fiscal 2021 aircraft procurement (Navy) $219,999,984, and 017-1506 is the only account the lake records for N00019-18-C-1061, matching the APN member (1506N BA01 Combat aircraft, 'F/A-18E/F (Figh"
+  },
+  {
+   "piid": "N0003021C0008",
+   "pe_bli": "1250",
+   "reason": "The announcement states the line's appropriation outright \u2014 'fiscal 2021 weapons procurement (Navy) funds in the amount of $204,283,080' (98%) plus $3,235,000 of United Kingdom funds \u2014 and 1250 sits i"
+  },
+  {
+   "piid": "N0002413C2128",
+   "pe_bli": "0603595N",
+   "reason": "The funding sentence names '2017 research, development, test, and evaluation (Navy)' among the appropriations and the lake carries 017-1319 (with 017-1612) on N00024-13-C-2128, matching the RDTEN acco"
+  },
+  {
+   "piid": "N0002419C5406",
+   "pe_bli": "4205",
+   "reason": "O&M (Navy) does appear in the six-source funding mix, but '2019 weapons procurement (Navy)' is named alongside it and the lake carries 017-1507 among the contract's accounts, the WPN account 4205 sits"
+  },
+  {
+   "piid": "W31P4Q23C0052",
+   "pe_bli": "8540C29600",
+   "reason": "Announcement names fiscal 2023/2024 missile procurement, Army and the lake shows 021-2032 as the sole funding account, exactly the PRSM line's appropriation; the contract's own description is 'PRECISI"
+  },
+  {
+   "piid": "W56HZV15D0031",
+   "pe_bli": "8309DA0500",
+   "reason": "Fiscal 2016 other procurement funds are obligated on the action and the lake funds the contract from 021-2035 plus 097-0350 (NGREA), matching the FHTV line's Other Procurement, Army colour; the contra"
+  },
+  {
+   "piid": "W31P4Q16C0102",
+   "pe_bli": "6005C64400",
+   "reason": "The announcement's 'other procurement (Army)' string is contradicted by the lake, which funds W31P4Q-16-C-0102 from 021-2032 (Missile Procurement, Army), the GMLRS line's own appropriation, and the co"
+  },
+  {
+   "piid": "W31P4Q13C0129",
+   "pe_bli": "0648CC0007",
+   "reason": "The lake funds W31P4Q-13-C-0129 from 021-2032 (Missile Procurement, Army) among others and describes it as 'UCA AWARD FY13 BLOCK 1 TACTICAL ROUNDS: US ARMY AND USMC' \u2014 the Army's 361 Block 1 missiles "
+  },
+  {
+   "piid": "N0002416C5408",
+   "pe_bli": "2307",
+   "reason": "Funding accounts are 017-1507 (WPN) plus 017-1810, matching BLI 2307 (WPN, doc 342), and the lake's transaction for this action is captioned 'FY16-17 MYP ESSM' with claimant MISSILE AND SPACE SYSTEMS "
+  },
+  {
+   "piid": "N0001917C0090",
+   "pe_bli": "0576",
+   "reason": "The award's only account is 017-1506 (APN), matching BLI 0576 (doc 330) and independently excluding the RDT&E owner PE 0604270N; the lake's transaction is 'FRP-16 OPTION EXERCISE' at $168,801,314 with"
+  },
+  {
+   "piid": "N0002415C5406",
+   "pe_bli": "4205",
+   "reason": "This is the closest call on the O&M-sustainment failure mode because the scope names 'system overhauls', and the award does carry 021-2020 and 097-4930 alongside Navy money - but 017-1507 (WPN) is amo"
+  },
+  {
+   "piid": "N0002421C2209",
+   "pe_bli": "5035",
+   "reason": "The lake's transaction for this action (P00004, 2022-07-22, $156,171,650) is 'DD&C T-ATS SHIP 3' with claimant SHIPS and PSC SPECIAL SERVICE VESSELS, and BLI 5035 is the SCN line for that ship class ("
+  },
+  {
+   "piid": "N0002418C5392",
+   "pe_bli": "0603925N",
+   "reason": "Funding accounts are 017-1319 (RDT&E, Navy) and 017-1804, so the development money matches the RDT&E line (doc 340), and the work - a cost-plus-incentive-fee contract to develop, manufacture and deliv"
+  },
+  {
+   "piid": "N0003014C0100",
+   "pe_bli": "1250",
+   "reason": "Tested exactly the mixed-appropriation worry lens P recorded: the award's accounts are 017-1507 (WPN) and 017-1804 (OPN) with NO RDT&E account at all, so the 'D5 Life Extension development' words do n"
+  },
+  {
+   "piid": "N0002423C5123",
+   "pe_bli": "0604307N",
+   "reason": "The 'in-service sustainment' words invited the O&M failure mode, but the announcement's own breakdown names fiscal 2024 RDT&E (Navy) at 53% plus SCN shares and no O&M at all, the award's accounts incl"
+  },
+  {
+   "piid": "W31P4Q11C0242",
+   "pe_bli": "1338C70000",
+   "reason": "Missile production against the missile-procurement line that buys that missile: 2,109 Hellfire II all-up rounds obligated with fiscal 2012-2015 procurement appropriations (no FMS funds named in the ob"
+  },
+  {
+   "piid": "W58RGZ13C0109",
+   "pe_bli": "9670A00005",
+   "reason": "Acquiring 19 Gray Eagle air vehicles with SATCOM air data terminals, initial spares and ground support equipment is the MQ-1 UAV aircraft-procurement line buying its own article; the 'other procuremen"
+  },
+  {
+   "piid": "W56HZV23F0395",
+   "pe_bli": "1678GZ2400",
+   "reason": "Producing M2A4 vehicles is the article the Bradley Program (MOD) line funds, not a platform the contract merely supports; the announcement names no appropriation at all ('funding will be determined wi"
+  },
+  {
+   "piid": "W58RGZ18C0007",
+   "pe_bli": "4742A05001",
+   "reason": "Procurement of 15 UH-72 aircraft with fiscal 2018 aircraft procurement, Army funds against the UH-72 Lakota aircraft-procurement line (the PIID's only funding account is 021-2031 APA) is an exact acco"
+  },
+  {
+   "piid": "W56HZV17C0242",
+   "pe_bli": "3700GA0570",
+   "reason": "Procurement of M88A2 HERCULES vehicles is the Improved Recovery Vehicle line's own article; the 'other procurement (Army)' label sits on a contract whose only funding account is 021-2033 W&TCV -- this"
+  },
+  {
+   "piid": "FA882320C0004",
+   "pe_bli": "1206425SF",
+   "reason": "Not broken: the untruncated paragraph states 'Fiscal 2020 research, development, test and evaluation funds in the amount of $12,000,000 are being obligated at the time of award' - RDT&E money against "
+  },
+  {
+   "piid": "FA873021C0022",
+   "pe_bli": "833060",
+   "reason": "Not broken - the cleanest appropriation match in the set: 'Fiscal 2025 other procurement funds in the amount of $118,379,696' is the whole modification value, obligated against an Other Procurement BL"
+  },
+  {
+   "piid": "FA821319C0038",
+   "pe_bli": "356120",
+   "reason": "Not broken: 'Fiscal 2017, 2018, and 2019 ammunition procurement funds in the amount of $109,929,339' is the entire award value obligated against a Procurement of Ammunition BLI (doc 409), and the work"
+  },
+  {
+   "piid": "FA821415C0001",
+   "pe_bli": "0101213F",
+   "reason": "The weakest of the eleven on lens A's money leg but not refuted: 'No funds are being obligated at the time of award', so the appropriation is absent from the face of the paragraph and the vehicle (Boe"
+  },
+  {
+   "piid": "FA868218C0009",
+   "pe_bli": "0207325F",
+   "reason": "Not broken: 'Fiscal 2019 research, development, test and evaluation funds will provide funding for the contract' against an RDT&E element, and the scope - 'design, development, integration and testing"
+  },
+  {
+   "piid": "N0002422C6419",
+   "pe_bli": "3117",
+   "reason": "Weapons procurement (Navy) money carries the action ($104,699,420 FY25 plus $2,469,840 FY23, 79% of the total) and it buys MK-48 all-up-round production and production support material - the WPN line'"
+  },
+  {
+   "piid": "N0002420C5400",
+   "pe_bli": "2242",
+   "reason": "Fiscal 2021 weapons procurement (Navy) funds of $84,339,000 (65%) dominate the obligation against WPN line 2242, buying the RAM guided missile round pack itself; the $1,815,763 of O&M (1%) for recerti"
+  },
+  {
+   "piid": "N0002411C6294",
+   "pe_bli": "0604503N",
+   "reason": "The funding sentence names fiscal 2016 research, development, test and evaluation (Navy) first among the obligated colours, and the described work - continuing development and production of A-RCI and "
+  },
+  {
+   "piid": "N0002418C2207",
+   "pe_bli": "5035",
+   "reason": "Fiscal 2018/2019/2016 shipbuilding and conversion (Navy) money obligated against SCN line 5035 to build two towing, salvage and rescue ships - the line's own end item bought with its own appropriation"
+  },
+  {
+   "piid": "N0002417C6259",
+   "pe_bli": "0604503N",
+   "reason": "One hundred percent of the obligation is fiscal 2018 research, development test and evaluation funding against RDT&E element 0604503N, for named Technical Insertion 18-20 A-RCI work - the element's ow"
+  },
+  {
+   "piid": "N0002413C5116",
+   "pe_bli": "0604307N",
+   "reason": "No appropriation is named only because the action realigns ceiling onto an existing incrementally funded line item of the very contract that records 5 and 56 show is funded with RDT&E(N); the scope is"
+  },
+  {
+   "piid": "M6785407C2072",
+   "pe_bli": "4655",
+   "reason": "Procurement (Marine Corps) funds total $86,708,959 of the $108.9M obligated (80%) on the PMC G/ATOR line whose own title is the radar being bought, and the action is an explicit LRIP production option"
+  },
+  {
+   "piid": "N0001919C0019",
+   "pe_bli": "0515",
+   "reason": "FY2020 aircraft procurement (Navy) $28,000,000 is the entire US appropriation on this Block II LRIP IV production buy, matching the APN line whose own title is the item procured; the $84M Foreign Mili"
+  },
+  {
+   "piid": "N0002416C6412",
+   "pe_bli": "3225",
+   "reason": "The entire $105,668,584 is FY2021 weapons procurement (Navy) on the WPN line 'MK-48 Torpedo ADCAP Mods', and Mod 7 CBASS kits plus Mod 7 guidance-and-control sections are that line's own conversion-ki"
+  },
+  {
+   "piid": "W56HZV22F0413",
+   "pe_bli": "1678GZ2400",
+   "reason": "\"Fiscal 2022 and 2023 procurement of weapons and tracked combat vehicles, Army funds\" is account 2033A, exactly where budget_lines puts 1678GZ2400, and the lake shows PZ0002 ($113,072,578.48) carrying"
+  },
+  {
+   "piid": "W15QKN15C0049",
+   "pe_bli": "0605018A",
+   "reason": "The only money the paragraph obligates is \"research, development, test and evaluation funds in the amount of $5,000,000\" - RDT&E, Army is account 2040A, which is 0605018A's own colour (lexicon_doc 355"
+  },
+  {
+   "piid": "W31P4Q19C0055",
+   "pe_bli": "0962C50700",
+   "reason": "\"Fiscal 2020 missile procurement, Army; and 2010 Foreign Military Sales (Netherlands) funds in the amount of $108,321,679\" is account 2032A, exactly where budget_lines puts 0962C50700 (Patriot Mods), "
+  },
+  {
+   "piid": "W911QY16D0051",
+   "pe_bli": "9140MA7804",
+   "reason": "No appropriation is named (\"funding and work location will be determined with each order\") and the lake carries no funding accounts for W911QY-16-D-0051, so silence is not a money-colour mismatch (chu"
+  },
+  {
+   "piid": "N0002416C4202",
+   "pe_bli": "2122",
+   "reason": "Money and mission both hold: the archived announcement obligates 100% fiscal 2016/2017 shipbuilding and conversion (Navy) ($98,099,229) and BLI 2122's own account is 1611N (SCN), and it states the MRG"
+  },
+  {
+   "piid": "N0001915C0104",
+   "pe_bli": "0576",
+   "reason": "100% fiscal 2015 aircraft procurement (Navy) ($97,303,380) against BLI 0576, account 1506N (APN), for manufacture and delivery of 46 full-rate-production Lot XII jammers: procurement money, procuremen"
+  },
+  {
+   "piid": "M6785418D1354",
+   "pe_bli": "4733",
+   "reason": "Not refuted: the only obligation named is fiscal 2018 procurement (Marine Corps) $367,432, matching BLI 4733's account 1109N (PMC), awarded by Marine Corps Systems Command, and the scope \u2014 refresh kit"
+  },
+  {
+   "piid": "N0001920C0054",
+   "pe_bli": "0576",
+   "reason": "Not refuted: aircraft procurement (Navy) supplies $74,137,081 of the $91,166,757 obligated (81%: FY2019 $2,270,819 plus FY2020 $71,866,262) against BLI 0576's account 1506N, and the work is fabricate,"
+  },
+  {
+   "piid": "FA868217C0037",
+   "pe_bli": "LRASM0",
+   "reason": "The announcement names no appropriation, but the lake's accounts for FA8682-17-C-0037 (017-1507;057-3020;057-3600) contain 057-3020, which matches LRASM0's 3020F, so Air Force missile procurement mone"
+  },
+  {
+   "piid": "W31P4Q15C0102",
+   "pe_bli": "2605C70302",
+   "reason": "Not refuted: the award's funding accounts include 021-2017/2019-2032 and 021-2018/2020-2032, Missile Procurement Army \u2014 exactly 2605C70302's appropriation \u2014 mod P00069 obligates $91,250,000 dollar-for"
+  },
+  {
+   "piid": "W15P7T12CC015",
+   "pe_bli": "8386BA5500",
+   "reason": "Not refuted: the contract's base description is the counterfire-radar enhancement replacing the aging AN/TPQ-36(V)8 and AN/TPQ-37 with 32 accelerated Initial Production ('IP') systems, and its funding"
+  },
+  {
+   "piid": "W58RGZ06C0194",
+   "pe_bli": "4742A05001",
+   "reason": "Not refuted: the award's base description is 'light utility helicopter', USAspending stamps it 'UH-72 LUH', and its single funding account is 021-2015/2015-2020, Aircraft Procurement Army \u2014 4742A05001"
+  },
+  {
+   "piid": "N0001918C1004",
+   "pe_bli": "0604840N",
+   "reason": "Full announcement names fiscal 2018 RDT&E (Air Force, Navy) with a $14,223,730 Navy share, matching RDT&E,N PE 0604840N (doc 340 is the RDT&E,N book); the scope is Block 4 pre-modernization requiremen"
+  },
+  {
+   "piid": "N0001923C0040",
+   "pe_bli": "2004",
+   "reason": "Fiscal 2023 shipbuilding and conversion (Navy) $70,000,000 is the only appropriation on the action and doc 341 is the SCN book, so SCN money lands on the SCN CVN-81 line; the EMALS energy storage subs"
+  },
+  {
+   "piid": "M6785416C0006",
+   "pe_bli": "0605611M",
+   "reason": "Full text obligates fiscal 2022 RDT&E (Marine Corps) $30,152,264, matching RDT&E PE 0605611M (Marine Corps Assault Vehicles System Development & Demonstration); post-CDR design and development, produc"
+  },
+  {
+   "piid": "N0001922C0042",
+   "pe_bli": "0576",
+   "reason": "Fiscal 2025 aircraft procurement (Navy) $62,476,075 is the largest color on the action and doc 330 is the APN book, so APN money lands on APN BLI 0576; the buy is weapon replaceable assemblies (120 AT"
+  },
+  {
+   "piid": "N0002418C2300",
+   "pe_bli": "2127",
+   "reason": "Fiscal 2017 shipbuilding and conversion (Navy) is the only appropriation named on the action, matching SCN BLI 2127 (Littoral Combat Ship); class design agent work and the integrated data/product mode"
+  },
+  {
+   "piid": "N0002410C2310",
+   "pe_bli": "2122",
+   "reason": "Full text names fiscal 2016 shipbuilding and conversion (Navy) alongside fiscal 2016 other procurement (Navy), so SCN is on the action and intersects SCN BLI 2122; procuring main reduction gear shipse"
+  },
+  {
+   "piid": "N0002424C2313",
+   "pe_bli": "2122",
+   "reason": "Every one of the seven appropriations obligated is shipbuilding and conversion (Navy), fiscal 2015 through 2022, matching SCN BLI 2122 exactly; lead yard support is the design and engineering the cons"
+  },
+  {
+   "piid": "N0002416C6423",
+   "pe_bli": "3215",
+   "reason": "Money color is exact: every treasury account on N00024-16-C-6423 is 1507N (WPN, FY16-FY21), the sole appropriation of BLI 3215 under lexicon_doc 342, and the lake's own base description is 'MK54 LWT C"
+  },
+  {
+   "piid": "N0002414C5106",
+   "pe_bli": "0900",
+   "reason": "The award's funding accounts include 017-1810 (OPN) in six consecutive years, which is BLI 0900's own appropriation, and the announcement names fiscal 2018 and 2017 other procurement (Navy) explicitly"
+  },
+  {
+   "piid": "N0002418C2230",
+   "pe_bli": "5113",
+   "reason": "Every treasury account on N00024-18-C-2230 is 1611N (SCN, FY17-FY20), BLI 5113's sole appropriation, and the base description is 'APL(S) CRAFT NO. 1' under PSC 'barges and lighters, special purpose' -"
+  },
+  {
+   "piid": "W56HZV14D0066",
+   "pe_bli": "7495R05901",
+   "reason": "No appropriation is stated and the lake carries no funding accounts for W56HZV14D0066, so nothing contradicts the line's 2035A Other Procurement, Army. Buying HMEE Type-1 vehicles from JCB is exactly "
+  },
+  {
+   "piid": "FA868118C0009",
+   "pe_bli": "356120",
+   "reason": "Lot 14 delivery of an end-item fuze is procurement-coloured content against an Ammunition Procurement line whose commodity is fuzes and whose own rows include FMU-152A; 'Fuzes' is a real BLI, not a \u00a73"
+  },
+  {
+   "piid": "FA862516C6599",
+   "pe_bli": "0401319F",
+   "reason": "Fiscal 2018 research and development funds are obligated for engineering and manufacturing development \u2014 detailed design, modification, testing, certification and fielding \u2014 against the RDT&E PE whose"
+  },
+  {
+   "piid": "FA853420C0001",
+   "pe_bli": "845100",
+   "reason": "'Production, integration' of laser systems and vehicles is end-item equipment delivery against the Other Procurement equipment line that owns RADBO and its companion Zeus IIA laser; the trailing 'sust"
+  },
+  {
+   "piid": "FA877020D0004",
+   "pe_bli": "0708610F",
+   "reason": "Fiscal 2020 RDT&E funds are obligated against an RDT&E operational-systems-development line whose own narrative enumerates IMLCI by name, and the contract is FOR that initiative rather than generic IT"
+  },
+  {
+   "piid": "FA821321D0002",
+   "pe_bli": "356010",
+   "reason": "Fiscal year 2020 ammunition procurement funds are obligated to buy flares against the Ammunition Procurement line 'Expendable Countermeasures', whose own rows are MJU-62 and MJU-73 \u2014 appropriation, co"
+  },
+  {
+   "piid": "FA830723DB006",
+   "pe_bli": "MC0MSE",
+   "reason": "Fiscal 2023 Space Force procurement funds are obligated for procurement and delivery of an AES-256 cryptographic engine against the Space Force procurement line 'Spaceborne Equip (Comsec)'; the IDIQ n"
+  },
+  {
+   "piid": "N0002417C6307",
+   "pe_bli": "0604536N",
+   "reason": "Funding is 100% RDT&E(N) (fiscal 2021 $17,900,000 at 62% plus fiscal 2022 $11,100,000 at 38%) against an RDT&E,N prototyping line; design, manufacture and test of an XLUUV test asset is prototype work"
+  },
+  {
+   "piid": "N0001920C0002",
+   "pe_bli": "0576",
+   "reason": "Untruncated paragraph obligates fiscal 2021 aircraft procurement (Navy) $72,362,191 (100%) and 0576 is an Aircraft Procurement, Navy line (doc 330); full-rate-production jammers and spare WRAs are pro"
+  },
+  {
+   "piid": "N0016723D0004",
+   "pe_bli": "1045",
+   "reason": "The whole obligation is fiscal 2023 National Sea-Based Deterrence Fund $7,075,000 (100%), and 1045's own accounts are the National Sea-Based Det Fd and SCN \u2014 the fund that exists only to build this cl"
+  },
+  {
+   "piid": "N0003023C6008",
+   "pe_bli": "1250",
+   "reason": "Fiscal 2025 weapons procurement (Navy) $62,006,868 (91% of the announced value) is obligated at award with the remainder incrementally funded, against the WPN Trident II line; production of the D5 gui"
+  },
+  {
+   "piid": "N0003023C0100",
+   "pe_bli": "1250",
+   "reason": "Fiscal 2024 weapons procurement (Navy) $60,427,889 is 90% of the action with only a $7,011,869 (10%) O&M(N) tail, so procurement money dominates on a procurement line; D5 missile production is the Tri"
+  },
+  {
+   "piid": "N0002422C6305",
+   "pe_bli": "1601",
+   "reason": "Funding is 100% other procurement (Navy) (fiscal 2024 $11,135,465 at 17% plus fiscal 2025 $54,574,062 at 83%) against 1601, an OPN line (doc 333); production of the MCM USVs plus engineering changes i"
+  },
+  {
+   "piid": "W31P4Q19C0076",
+   "pe_bli": "0648CC0007",
+   "reason": "Survives lens A, and the appropriation lens P flagged is an error in the announcement prose rather than a real conflict: the lake shows modification PZ0092 itself, dated 2023-06-23, described 'FY19-20"
+  },
+  {
+   "piid": "W91CRB25C5007",
+   "pe_bli": "0605018A",
+   "reason": "Survives lens A. The contract is the program's own work, not a platform it supports: FPDS names it 'INTEGRATED PERSONNEL AND PAY SYSTEM-ARMY TOTAL SOLUTION...' and later mods call it the 'IPPS-A INC I"
+  },
+  {
+   "piid": "W91CRB25C5007",
+   "pe_bli": "9921B66701",
+   "reason": "Survives lens A as the procurement half of the same award. This line is Other Procurement, Army (2035A -> 021-2035) BA02 Communications and electronics equipment, and the contract's accounts 021-2020;"
+  },
+  {
+   "piid": "N0001921C0044",
+   "pe_bli": "2327",
+   "reason": "Weapons procurement (Navy) is the dominant money on the action ($53.6M FY22 WPN + $2.2M FY21 WPN of a $62.1M option) and doc 342 is the WPN book, so WPN money buys WPN line 2327's own all-up rounds; A"
+  },
+  {
+   "piid": "N0002418C2313",
+   "pe_bli": "2122",
+   "reason": "All $58,345,440 obligated is FY15/16/17 shipbuilding and conversion (Navy) on SCN line 2122 (doc 341), and lead yard services is scoped in the announcement's own words to 'supporting DDG 51 Class ship"
+  },
+  {
+   "piid": "N0002420C6312",
+   "pe_bli": "0605512N",
+   "reason": "Appropriation matches exactly (fiscal 2021 RDT&E obligated against RDT&E PE 0605512N, lexicon_doc 340 = RDTEN book), the entire scope is the MUSV program itself on the MUSV prime's own development con"
+  },
+  {
+   "piid": "N0002422C5400",
+   "pe_bli": "2242",
+   "reason": "Fiscal 2023 weapons procurement (Navy) is 87% of the obligation and BLI 2242 'Ram' lives in the weapons-procurement book (lexicon_doc 342 = WPN), so money color and line agree; guided missile round pa"
+  },
+  {
+   "piid": "M6785415C0230",
+   "pe_bli": "0204460M",
+   "reason": "Fiscal 2015 RDT&E (Marine Corps) funds against the RDT&E PE 0204460M (lexicon_doc 340, rdte family) is a clean color match, and Increment II GWLR software, technical data packages, anti-tamper plannin"
+  },
+  {
+   "piid": "N0002421C6412",
+   "pe_bli": "0604601N",
+   "reason": "Fiscal 2020 RDT&E (Navy) funds against RDT&E PE 0604601N 'Mine Development' (lexicon_doc 340) match in color, and non-functional glide kits, prototype articles and shipping containers are development "
+  },
+  {
+   "piid": "W31P4Q23C0008",
+   "pe_bli": "0604182A",
+   "reason": "Money and mission both hold: the announcement names 'Fiscal 2023 research, development, test and evaluation, Army funds' first on a cost-plus-fixed-fee development action and the award's own funding a"
+  },
+  {
+   "piid": "W52P1J20C0035",
+   "pe_bli": "3102E89500",
+   "reason": "The announcement names 'Fiscal 2019, 2020 and 2021 procurement of ammunition, Army funds', which is exactly 3102E89500's account (2034A = 021-2034), so the money color matches on the announcement's ow"
+  },
+  {
+   "piid": "W56HZV17D0078",
+   "pe_bli": "1678GZ2400",
+   "reason": "The unstated funding ('determined with each order') is settled by the award itself: every transaction on W56HZV-17-D-0078 carries one federal account, 021-2033 (Procurement of Weapons and Tracked Comb"
+  },
+  {
+   "piid": "W31P4Q14C0154",
+   "pe_bli": "3246E37300",
+   "reason": "'Fiscal 2014 other procurement funds' in the announcement is imprecise, but the award's accounts include 021-2034 (Procurement of Ammunition, Army), the sole account of 3246E37300 (Rocket, Hydra 70, A"
+  },
+  {
+   "piid": "W56HZV20C0124",
+   "pe_bli": "2944G80819",
+   "reason": "Money color is stated and confirmed: 'Fiscal 2022 and 2023 procurement of weapons and tracked combat vehicles, Army funds' matches 2944G80819's sole account (2033A = 021-2033), which is also among the"
+  },
+  {
+   "piid": "FA868113C0029",
+   "pe_bli": "356120",
+   "reason": "Money and mission agree: 'Fiscal 2013, 2014 and 2015 ammunition procurement funds in the amount of $45,635,806' (plus FY15 OCO) is the appropriation of BLI 356120, which sits in doc 409, the Air Force"
+  },
+  {
+   "piid": "FA821320C0005",
+   "pe_bli": "356120",
+   "reason": "The announcement names 'Fiscal 2018 ammunition procurement funds' \u2014 the appropriation BLI 356120 executes (doc 409, ammunition procurement) \u2014 and the deliverable is the fuze itself, a cockpit-selectab"
+  },
+  {
+   "piid": "N0003918D0009",
+   "pe_bli": "2657",
+   "reason": "Not refuted on money/mission: the obligated money is fiscal 2017 other procurement (Navy) and BLI 2657 is a 1810N OPN line (BA-02 Communications and electronics equipment) whose own P-3A cost code (1R"
+  },
+  {
+   "piid": "W15QKN18C0073",
+   "pe_bli": "6552C67500",
+   "reason": "Money and mission both land on this line: the announcement names \"fiscal 2024 missile procurement, Army funds\" and 6552C67500 (doc 345) is a Missile Procurement, Army line, and the match holds at cost"
+  },
+  {
+   "piid": "W56HZV16C0028",
+   "pe_bli": "5225GZ3001",
+   "reason": "Appropriation matches the line exactly \u2014 \"weapons and tracked combat vehicle procurement, Army funds\" against 5225GZ3001 (doc 350) in Procurement of Weapons and Tracked Combat Vehicles, Army \u2014 and the"
+  },
+  {
+   "piid": "N0001914C0032",
+   "pe_bli": "0145",
+   "reason": "The whole $54,390,678 is fiscal 2013 and 2014 aircraft procurement (Navy), which is the appropriation of doc-330 line 0145 F/A-18E/F (Fighter) Hornet, and the work is full-rate production of the very "
+  },
+  {
+   "piid": "N6449819D4017",
+   "pe_bli": "0900",
+   "reason": "The full text supplies the appropriation the chunk excerpt cut off \u2014 fiscal 2018 other procurement (Navy), $2,140,000 \u2014 and OPN is the appropriation of doc-333 line 0900 DDG Mod, so there is no color "
+  },
+  {
+   "piid": "N0003017C0008",
+   "pe_bli": "1250",
+   "reason": "The 'failure verification, test, repair and recertification' language invites the O&M-sustainment-on-a-procurement-line failure mode, but the announcement names no O&M at all: $45,663,167 is fiscal 20"
+  },
+  {
+   "piid": "N0003918D0008",
+   "pe_bli": "2657",
+   "reason": "Other procurement (Navy) is named in the obligation, and OPN is the appropriation of doc-333 line 2657, whose narrative owns GPNTS by name; the deliverable is GPNTS hardware production units, which is"
+  },
+  {
+   "piid": "FA881917C0004",
+   "pe_bli": "CTRSPC",
+   "reason": "Procurement money on a procurement line: fiscal 2016 missile/other procurement funds ($41,004,278) buy Block 10.2 CCS systems and depot spares, which is Counterspace Systems' own end-item work rather "
+  },
+  {
+   "piid": "FA854017D0005",
+   "pe_bli": "833140",
+   "reason": "Not the O&M-only pattern: the full text obligates fiscal 2015 OTHER PROCUREMENT funds alongside the fiscal 2017 O&M, 'production' is named in the scope, and 833140 is the Other Procurement AF line tha"
+  },
+  {
+   "piid": "FA873017C0018",
+   "pe_bli": "0207455F",
+   "reason": "Fiscal 2017 RESEARCH, DEVELOPMENT, TEST AND EVALUATION funds obligated on an engineering and manufacturing development contract delivering three production-representative units -- development money ag"
+  },
+  {
+   "piid": "FA852316F0049",
+   "pe_bli": "0604201F",
+   "reason": "The full text obligates fiscal 2016, 2017 and 2018 RDT&E funds ($12,613,581) for design, test, LRU-level qualification and a formal engineering change proposal -- development money against a developme"
+  },
+  {
+   "piid": "FA873016D0007",
+   "pe_bli": "837100",
+   "reason": "Fiscal 2015 PROCUREMENT funds against an Other Procurement AF BLI, and the thing bought is the embedded voice/data/video communications suite itself -- the M1145 HMMWV is the host being fitted out, no"
+  },
+  {
+   "piid": "FA881013C0001",
+   "pe_bli": "SPCMOD",
+   "reason": "The entire $49,719,633 is fiscal 2016 SPACE PROCUREMENT money obligated at award for S2E2 Increment 3, a survivability upgrade to the fielded SBIRS system -- buying a modification to a fielded space s"
+  },
+  {
+   "piid": "W56HZV17C0108",
+   "pe_bli": "6500GA0750",
+   "reason": "The announcement's 'other procurement (Army)' wording is the only thing pointing away from 6500GA0750, and the contract's own record contradicts it: all 27 lake transaction rows on W56HZV17C0108 carry"
+  },
+  {
+   "piid": "M6785421D0073",
+   "pe_bli": "3006",
+   "reason": "Full-rate production and delivery of Stinger launcher hardware bought by Marine Corps Systems Command (M67854) for PM Ground Based Air Defense / MADIS is production work against the PMC Ground Based A"
+  },
+  {
+   "piid": "N0002412C2115",
+   "pe_bli": "2013",
+   "reason": "Fiscal 2025 shipbuilding and conversion (Navy) money against the SCN line that builds the hull: the post-delivery work period is part of the new-construction program's own delivery scope on the Block "
+  },
+  {
+   "piid": "N6134021C0023",
+   "pe_bli": "4204",
+   "reason": "Fiscal 2025 other procurement (Navy) $48,819,538 (97% of obligations, the remainder a small RDT&E sliver) against the OPN weapons-range line, buying installation and testing of BARSTUR, BSURE and the "
+  },
+  {
+   "piid": "N0001421D7003",
+   "pe_bli": "0603680N",
+   "reason": "Fiscal 2021 research, development, test and evaluation (Navy) funds obligated against an RDT&E program element, and the work \u2014 operating the ONR ManTech Electronics Manufacturing Center to 'develop na"
+  },
+  {
+   "piid": "N0002418C6258",
+   "pe_bli": "0840",
+   "reason": "All obligated money is procurement-type \u2014 fiscal 2024 OPN $24,879,577 (79%) plus SCN $6.45M (21%), with no O&M \u2014 and the scope includes 'component procurements' for ISIS, which is the hardware the OPN"
+  },
+  {
+   "piid": "W15QKN22D0010",
+   "pe_bli": "2472G13000",
+   "reason": "The object bought is the line's own end item verbatim \u2014 'M240L medium machine guns and titanium receivers' against the WTCV line titled 'M240 Medium Machine Gun (7.62mm)' at lexicon_doc 350 (Procureme"
+  },
+  {
+   "piid": "W56HZV14C0054",
+   "pe_bli": "6500GA0750",
+   "reason": "The work \u2014 a modification 'to acquire six M1A2 Systems Enhanced Package v2 Abrams tanks' from General Dynamics Land Systems with performance at Lima, Scranton and Anniston \u2014 is the Abrams Upgrade Prog"
+  },
+  {
+   "piid": "N0010420DVQ01",
+   "pe_bli": "0182",
+   "reason": "Ammunition money on an ammunition line for the line's own article: lexicon doc 338 is Procurement of Ammunition, Navy and Marine Corps (JDAM, 5in/54 gun ammunition, mortars, pyrotechnics), the announc"
+  },
+  {
+   "piid": "N0002421C2106",
+   "pe_bli": "2086",
+   "reason": "Shipbuilding money on the shipbuilding line that funds this exact overhaul: doc 341 is Shipbuilding and Conversion, Navy, the announcement obligates 'Fiscal 2025 shipbuilding and conversion (Navy) fun"
+  },
+  {
+   "piid": "M6785424F1003",
+   "pe_bli": "2212",
+   "reason": "Marine Corps procurement money on the Marine Corps procurement line that buys this article: doc 339 is Procurement, Marine Corps, the announcement obligates 'Fiscal 2023 procurement (Marine Corps) fun"
+  },
+  {
+   "piid": "M6785424F1000",
+   "pe_bli": "2212",
+   "reason": "The money-and-mission test is identical to record 43 and passes the same way: the entire $49,413,549 is 'Fiscal 2023 procurement (Marine Corps) funds ... obligated at time of award' against PMC line 2"
+  },
+  {
+   "piid": "FA862018F2363",
+   "pe_bli": "0205219F",
+   "reason": "Money and mission both sit on this line: fiscal 2017/2018 research and development funds ($9,864,489) on a CPFF order placed by AFLCMC for MQ-9 software development itself, against the MQ-9's own RDT&"
+  },
+  {
+   "piid": "W15P7T15C0002",
+   "pe_bli": "6458B95004",
+   "reason": "Appropriation agrees on its face - 'Fiscal 2014 and fiscal 2015 other procurement (Army) funds' obligated against 6458B95004, an OPA line in lexicon_doc 346 - so the O&M-sustainment-on-a-procurement-l"
+  },
+  {
+   "piid": "W912DY22F0191",
+   "pe_bli": "0603461A",
+   "reason": "Money color is named and consistent: 'Fiscal 2022 research, development, test and evaluation, Army funds' against 0603461A, an RDT&E line in lexicon_doc 351, and operating the DoD Supercomputing Resou"
+  },
+  {
+   "piid": "N0001921F0316",
+   "pe_bli": "0515",
+   "reason": "Procurement action against a procurement line: the announcement obligates FY2021 aircraft procurement (Navy) funds and BLI 0515 is a P-1 line in APN 1506N (BA 'Modification of aircraft') whose own doc"
+  },
+  {
+   "piid": "HQ014711C0006",
+   "pe_bli": "0603915C",
+   "reason": "Fiscal 2019 RDT&E obligated against an RDT&E element; ICBM target capability upgrade kits and their nonrecurring engineering are the targets line's own article of production, not a platform it support"
+  },
+  {
+   "piid": "HQ027610C0005",
+   "pe_bli": "0603892C",
+   "reason": "Fiscal 2015 RDT&E against an RDT&E element, which is also the discriminator against the MD14 procurement BLI; aligning the IIA test program to hardware deliveries on the SM-3 IIA development contract "
+  },
+  {
+   "piid": "HQ027718C0001",
+   "pe_bli": "0604115C",
+   "reason": "Fiscal 2019 RDT&E against an RDT&E element; a laser-scaling and beam-control critical design review is the demonstrator's own development rather than engineering-support services, and 0604115C is a na"
+  },
+  {
+   "piid": "HQ027718C0002",
+   "pe_bli": "0604115C",
+   "reason": "Fiscal 2019 RDT&E against an RDT&E element; the General Atomics leg buys the same LPLD critical design review, which is the demonstrator program's own risk-reduction development, and the PE is not a c"
+  },
+  {
+   "piid": "HQ027718C0003",
+   "pe_bli": "0604115C",
+   "reason": "Fiscal 2019 RDT&E against an RDT&E element; the Boeing leg's deliverable is the LPLD critical design review \u2014 the program's own development work, with no generic-services, construction or unnamed-umbr"
+  },
+  {
+   "piid": "HQ027619C0001",
+   "pe_bli": "0603892C",
+   "reason": "Fiscal 2024 RDT&E obligated against an RDT&E element; a CLIN ceiling increase that names BMD 6.0.1 development scope on the Aegis BMD Weapon Systems contract is not the \u00a73 'IDIQ ceiling with no named "
+  },
+  {
+   "piid": "HQ014712D0001",
+   "pe_bli": "0603881C",
+   "reason": "Fiscal 2016 RDT&E obligated against the RDT&E Terminal Defense Segment element; THAAD is the program 0603881C funds rather than a platform the contract supports, and \u00a73's umbrella pattern does not app"
+  },
+  {
+   "piid": "HQ027615C0005",
+   "pe_bli": "MD09",
+   "reason": "Fiscal 2015 defense-wide procurement obligated against a procurement BLI \u2014 the money color both matches and is what separates this from the RDT&E SM-3 rows; production support and engineering for SM-3"
+  },
+  {
+   "piid": "FA821316D0005",
+   "pe_bli": "356010",
+   "reason": "Not refuted, though this is the weakest money case of the eight: the untruncated paragraph ends 'No funds are being obligated at the time of award' and the lake records $0 and no federal accounts on F"
+  },
+  {
+   "piid": "FA821317D0001",
+   "pe_bli": "356010",
+   "reason": "Money is stated on the proposed PIID itself - 'Fiscal 2016 ammunition procurement funds in the amount of $3,529,200 are being obligated to CAPCO LLC' (FA8213-17-D-0001) - and ammunition procurement is"
+  },
+  {
+   "piid": "FA853418F0073",
+   "pe_bli": "845420",
+   "reason": "The full $46,760,000 is obligated as 'Fiscal 2018 procurement funds' against a procurement line - BLI 845420 sits in doc 411, Air Force Other Procurement - and generators for basic expeditionary airfi"
+  },
+  {
+   "piid": "FA862815C2251",
+   "pe_bli": "B05200",
+   "reason": "Money color is verified twice and matches: the untruncated paragraph obligates the entire $46,719,474 in 'fiscal 2015 aircraft procurement funds' and the lake stamps FA8628-15-C-2251 with federal acco"
+  },
+  {
+   "piid": "FA873017C0038",
+   "pe_bli": "E00300",
+   "reason": "Procurement money against the procurement modification line that owns this work: 'Fiscal 2017 procurement funds in the amount of $4,001,650' are obligated and the lake carries federal account 057-3010"
+  },
+  {
+   "piid": "FA881422C0004",
+   "pe_bli": "1206427SF",
+   "reason": "RDT&E money on an RDT&E element: 'Fiscal 2023 research, development, test and evaluation funds in the amount of $29,132,816' are obligated against PE 1206427SF (doc 417, Space Force RDT&E, Space Syste"
+  },
+  {
+   "piid": "N0001914C0032",
+   "pe_bli": "0720",
+   "reason": "NOT REFUTED on money or mission: the untruncated paragraph (data/raw/announcements/606797.html) obligates 'fiscal 2013 and 2014 aircraft procurement (Navy) and foreign military sales funds in the amou"
+  },
+  {
+   "piid": "N0003920D0065",
+   "pe_bli": "0604280N",
+   "reason": "NOT REFUTED on money or mission: the untruncated paragraph (data/raw/announcements/2294813.html) obligates 'fiscal 2020 research, development, test and evaluation (Navy) funds in the amount of $6,470,"
+  },
+  {
+   "piid": "N0002417C2301",
+   "pe_bli": "2127",
+   "reason": "NOT REFUTED on money or mission: the announcement states its own colour in full - 'Fiscal 2019 shipbuilding and conversion (Navy) funding in the amount of $4,999,660 (99.9%)' plus 'Fiscal 2024 shipbui"
+  },
+  {
+   "piid": "N0002418C6405",
+   "pe_bli": "3215",
+   "reason": "NOT REFUTED, though this is the closest call of the nine: the untruncated paragraph (data/raw/announcements/1950681.html) obligates 'FMS funding in the amount of $36,031,476; and fiscal 2019 weapons p"
+  },
+  {
+   "piid": "W56HZV20F0150",
+   "pe_bli": "8309DA0500",
+   "reason": "The announcement states fiscal 2018 and 2020 Other Procurement, Army funds obligated, which is exactly account 2035A that 8309DA0500 carries, and the work is fixed-price-incentive production of HEMTTs"
+  },
+  {
+   "piid": "N0017423D0005",
+   "pe_bli": "0266",
+   "reason": "Money color is exact - the announcement obligates fiscal 2023 and fiscal 2021 Procurement of Ammunition (Navy and Marine Corps), and lexicon_doc 338 is PANMC_Book while budget_lines puts BLI 0266 in a"
+  },
+  {
+   "piid": "N0001914C0044",
+   "pe_bli": "0151",
+   "reason": "Fiscal 2015 procurement of ammunition (Navy and Marine Corps) plus FY2015 OCO (an OCO designation of the same appropriation, not a different color) matches lexicon_doc 338 = PANMC_Book and BLI 0151's "
+  },
+  {
+   "piid": "N0002424C2106",
+   "pe_bli": "2086",
+   "reason": "Fiscal 2024 shipbuilding and conversion (Navy) funds against BLI 2086, whose account is 1611N and whose lexicon_doc 341 is SCN_Book - an exact appropriation fit; long-lead-time material to make ready "
+  },
+  {
+   "piid": "N0002417C5409",
+   "pe_bli": "2234",
+   "reason": "The full announcement obligates fiscal 2017 weapons procurement (Navy), lexicon_doc 342 is WPN_Book and BLI 2234 sits in account 1507N, and the lake shows 017-1507 among this PIID's funding accounts -"
+  },
+  {
+   "piid": "W912CH25F0154",
+   "pe_bli": "3484D15501",
+   "reason": "A firm-fixed-price buy of the end item itself (Infantry Squad Vehicles) against the other-procurement line whose narrative owns ISV \u2014 procurement work on a procurement line, no O&M or sustainment cont"
+  },
+  {
+   "piid": "W31P4Q08C0418",
+   "pe_bli": "0605457A",
+   "reason": "Fiscal 2016/2017 RDT&E funds obligated for the AIAMD IBCS Phase II engineering and manufacturing effort on the original AIAMD development contract \u2014 EMD money on the EMD line (0605457A, doc 355); the "
+  },
+  {
+   "piid": "W56KGY24F0035",
+   "pe_bli": "9897K49000",
+   "reason": "Fiscal 2024 other procurement, Army funds obligated explicitly 'in support of production' of MAPS GEN II against the OPA line (doc 346) that buys MAPS \u2014 production engineering is that procurement line"
+  },
+  {
+   "piid": "W900KK17D0005",
+   "pe_bli": "2062NA0100",
+   "reason": "The dominant verb is 'procurement and deployment of the Common Battle Command Simulation Equipment hardware and software licenses' \u2014 the exact equipment 2062NA0100 (Training Devices, Nonsystem, doc 34"
+  },
+  {
+   "piid": "W56HZV14C0015",
+   "pe_bli": "3542MA8890",
+   "reason": "Fiscal 2019 other procurement, Army funds obligated for delivery of bridge erection boats and crew protection kits against 3542MA8890 (Tactical Bridge, Float-Ribbon, doc 346 OPA), whose narrative owns"
+  },
+  {
+   "piid": "W52P1J17C0022",
+   "pe_bli": "0604822A",
+   "reason": "The only appropriation named is fiscal 2017 research, development, test and evaluation funds, obligated against 0604822A, the GFEBS RDT&E PE (doc 355) \u2014 RDT&E money on an RDT&E line, and the leading v"
+  },
+  {
+   "piid": "W52P1J16D0050",
+   "pe_bli": "3102E89500",
+   "reason": "Fiscal 2017-2019 procurement of ammunition, Army funds obligated for M795 155mm projectile load, assemble and pack at Iowa AAP against 3102E89500 (ARTILLERY PROJECTILE, 155MM, All Types, doc 349) \u2014 am"
+  },
+  {
+   "piid": "N0002418C6410",
+   "pe_bli": "3215",
+   "reason": "The announcement obligates fiscal 2022 (98%) and fiscal 2021 (2%) weapons procurement (Navy) funds \u2014 100% of the money is WPN, the appropriation of lexicon_doc 342 \u2014 and BLI 3215's own narrative under"
+  },
+  {
+   "piid": "N0003022C1005",
+   "pe_bli": "5420",
+   "reason": "Other procurement (Navy) dominates the obligation ($29,254,382 of $43,973,717) and BLI 5420 is an OPN line whose own narrative owns both 'Attack Weapon Control System (AWCS)' and the 'life-cycle opera"
+  },
+  {
+   "piid": "N0002417C6308",
+   "pe_bli": "0604536N",
+   "reason": "Design efforts plus delivery of a technical data package, explicitly 'Phase I of a competitive two-phased acquisition approach', is prototype development, which can only be RDT&E \u2014 the appropriation o"
+  },
+  {
+   "piid": "FA853214D0004",
+   "pe_bli": "000071",
+   "reason": "Not refuted on lens A: the award manufactures the named end item itself (50 AN/USM-670A JSECST, 13 laboratory testers, 430 retrofit kits), and BLI 000071's own P-1 narrative procures JSECST under its "
+  },
+  {
+   "piid": "FA862010G3038",
+   "pe_bli": "PRDTB2",
+   "reason": "Not refuted on lens A: the lake's funding accounts for FA862010G3038 include 057-3010, exactly PRDTB2's appropriation (3010F Aircraft Procurement), and retrofit kits for already-fielded Block 1 aircra"
+  },
+  {
+   "piid": "FA881920F1005",
+   "pe_bli": "1203622SF",
+   "reason": "Not refuted on lens A: the task order's funding accounts (057-3600; 057-3620; 097-0400) intersect 1203622SF's 3620F, matching the announcement's own 'operations and maintenance AND research and develo"
+  },
+  {
+   "piid": "FA821717C0003",
+   "pe_bli": "1203176F",
+   "reason": "Not refuted on lens A: the lake's only funding account for FA821717C0003 is 057-3600, exactly 1203176F's 3600F, so the money color matches cleanly, and development, certification, integration, testing"
+  },
+  {
+   "piid": "W56HZV20D0015",
+   "pe_bli": "9462R70001",
+   "reason": "The action buys the end item the line itself funds: 9462R70001 is an Other Procurement, Army line (account 2035A) whose own J-book narrative says 'The Hydraulic, Electric, Pneumatic, Petroleum Operate"
+  },
+  {
+   "piid": "W15QKN14D0106",
+   "pe_bli": "0200MB4000",
+   "reason": "The object of purchase is the line's own end item, not the platforms: 0200MB4000 is an OPA line (account 2035A) whose narrative states the family is 'comprised of the Maintenance Support Device (MSD) "
+  },
+  {
+   "piid": "W909MY25D0003",
+   "pe_bli": "0426MA9800",
+   "reason": "The line's own narrative buys this item: 0426MA9800 is an OPA line (account 2035A) whose narrative states it 'includes current associated power distribution equipment (Power Distribution Illumination "
+  },
+  {
+   "piid": "N6660417DD701",
+   "pe_bli": "5661",
+   "reason": "Fiscal 2017 other procurement (Navy) is the appropriation the announcement names, matching OPN line 5661 (1810N), and hardware design, fabrication, logistics and installation of SMMTT systems is the t"
+  },
+  {
+   "piid": "N0018924FR517",
+   "pe_bli": "7025",
+   "reason": "Fiscal 2024 other procurement (Navy) in the full amount of $42,428,541 matches OPN line 7025 (1810N), and the lake tags the award transaction 'NADACS NSY IMPLEMENTATION' - the line's own named system "
+  },
+  {
+   "piid": "N0002420C6319",
+   "pe_bli": "0603178N",
+   "reason": "Fiscal 2020 RDT&E (Navy) is the only appropriation named, and the lake carries 017-1319 alone on N00024-20-C-6319, matching RDT&E PE 0603178N (1319N), a line whose own title and mission narrative are "
+  },
+  {
+   "piid": "N0002413C6292",
+   "pe_bli": "2136",
+   "reason": "Fiscal 2017 other procurement (Navy) plus FMS against OPN line 2136 (1810N), whose narrative makes the MFTA the AN/SQQ-89A(V)15's own 'tactical towed array sensor' - the TB-37 production units are the"
+  },
+  {
+   "piid": "N0002418C2312",
+   "pe_bli": "2122",
+   "reason": "99% of the named funding is fiscal 2016, 2017 and 2018 shipbuilding and conversion (Navy) ($20,577,566 of $20,695,637) and the lake carries 017-1611 alone across all 47 rows of N00024-18-C-2312, match"
+  },
+  {
+   "piid": "N0001917C0081",
+   "pe_bli": "5112",
+   "reason": "Archived text confirms 100% SCN (FY17 $16,356,288 + FY18 $24,534,432), BLI 5112's own appropriation; despite the words 'in support of', the MT7 engines are four-per-craft propulsion delivered to Textr"
+  },
+  {
+   "piid": "W56HZV19F0194",
+   "pe_bli": "8309DA0500",
+   "reason": "Money and mission both hold: the paragraph obligates 'Fiscal 2019 other procurement Army funds in the amount of $40,946,478' and jbook_line_universe gives 8309DA0500 exactly one account, Other Procure"
+  },
+  {
+   "piid": "N6833521D0064",
+   "pe_bli": "4213",
+   "reason": "Procurement of Moriah Wind System end items plus teardown/T&E against BLI 4213, a procurement line (title 'Aircraft Support Equipment', not a CATCHALL_TITLE match); ALRE is the program whose equipment"
+  },
+  {
+   "piid": "N0002422C2313",
+   "pe_bli": "0603564N",
+   "reason": "Fiscal 2023 RDT&E funds against an RDT&E PE whose title ('Ship Preliminary Design & Feasibility Studies') is literally the work described \u2014 surface combatant design, engineering and feasibility studie"
+  },
+  {
+   "piid": "N0002424C2461",
+   "pe_bli": "5112",
+   "reason": "Fiscal 2022, 2023 and 2024 shipbuilding and conversion (Navy) funds obligated for production of composite components of LCAC 100 class craft \u2014 SCN money on the SCN Ship to Shore Connector line, buildi"
+  },
+  {
+   "piid": "FA812415D0001",
+   "pe_bli": "0207268F",
+   "reason": "Money and mission both hold: the announcement obligates fiscal 2015 RDT&E funds and 0207268F is an RDT&E, Air Force line (057-3600, BA7 Operational Systems Development), so this is not the O&M-sustain"
+  },
+  {
+   "piid": "FA714624F0012",
+   "pe_bli": "0305600F",
+   "reason": "The award's own funding account in the lake is 057-3600 (RDT&E, Air Force), which is exactly 0305600F's appropriation (3600F, BA7), and the announcement obligates fiscal 2024 RDT&E - the money positiv"
+  },
+  {
+   "piid": "FA862015G4040",
+   "pe_bli": "PRDTB2",
+   "reason": "PRDTB2 is Aircraft Procurement, Air Force (057-3010) in budget activity 'Modification of inservice aircraft', the announcement obligates fiscal 2016 procurement funds, and the award's lake accounts in"
+  },
+  {
+   "piid": "FA853319D0009",
+   "pe_bli": "222000",
+   "reason": "222000 is a P-1 procurement line (057-3020, Missile Procurement, Air Force) and the action is production of end items under an indefinite-delivery requirements contract - 'production of the following "
+  },
+  {
+   "piid": "N0017816D3000",
+   "pe_bli": "5231",
+   "reason": "Money and mission both hold: the paragraph names fiscal 2016 other procurement (Navy) and 5231 is an OPN line, and the deliverable - display/processing hardware and test bed simulators - is literally "
+  },
+  {
+   "piid": "W56HZV20C0124",
+   "pe_bli": "1678GZ2400",
+   "reason": "The same FY2023 W&TCV money on this contract matches the Bradley Program (MOD) line's 2033A account, and Bradley hardware procured after base production ended is precisely what the MOD line buys; the "
+  },
+  {
+   "piid": "W56HZV20D0108",
+   "pe_bli": "0363G85200",
+   "reason": "No appropriation is stated and the IDIQ carries no funding-account data in the lake, so nothing contradicts the line's W&TCV colour; long-lead XM813 cannons are production material for the ICVVA1-30mm"
+  },
+  {
+   "piid": "W56HZV20D0047",
+   "pe_bli": "4700MA6000",
+   "reason": "No appropriation is stated and the IDIQ has no lake account data, so nothing contradicts the line's Other Procurement, Army colour; the award buys MTRRS end items, authorized stockage list kits and pr"
+  },
+  {
+   "piid": "W31P4Q15C0043",
+   "pe_bli": "9157J01200",
+   "reason": "The contract carries FY2017 Aircraft Procurement, Army (021-2017/2019-2031) - this line's own 2031A account - and FY2015 Aircraft Procurement, Air Force (057-2015/2017-3010), exactly the 'Army procure"
+  },
+  {
+   "piid": "W15QKN12C0103",
+   "pe_bli": "8310G04700",
+   "reason": "The announcement's 'other procurement' label does not match the CROWS line's W&TCV account, but the contract's Treasury detail carries FY2016 Procurement of W&TCV, Army (021-2016/2018-2033) and no Oth"
+  },
+  {
+   "piid": "FA880725FB017",
+   "pe_bli": "1206761SF",
+   "reason": "The appropriation sentence the proposal could not see resolves in its favour \u2014 the full paragraph obligates 'Fiscal 2025 research, development, test and evaluations funds in the amount of $37,296,196'"
+  },
+  {
+   "piid": "FA870513C0005",
+   "pe_bli": "1203001SF",
+   "reason": "Money colour matches the line: 'Fiscal 2019 research, development, test and evaluation funding in the amount of $1,000,000 is being obligated at the time of award' against PE 1203001SF, the FAB-T RDT&"
+  },
+  {
+   "piid": "FA880712C0013",
+   "pe_bli": "1203164SF",
+   "reason": "'Fiscal 2014 research, development, test and evaluation funds in the amount of $16,719,409 are being obligated at the time of award' \u2014 development money against 1203164SF, the NAVSTAR GPS (User Equipm"
+  },
+  {
+   "piid": "FA861517C6047",
+   "pe_bli": "0207133F",
+   "reason": "'Fiscal 2022 and 2023 research, development, test and evaluation funds in the amount of $4,471,000 are being obligated at time of award' against 0207133F, an Air Force RDT&E line (doc 412), for electr"
+  },
+  {
+   "piid": "FA830717F0004",
+   "pe_bli": "1206443SF",
+   "reason": "'Fiscal 2019 research and development funds in the amount of $12,726,494.04 are being obligated at the time of award' against 1206443SF, the Next-Gen OPIR GEO RDT&E line, and the modification buys add"
+  },
+  {
+   "piid": "N0002413C5403",
+   "pe_bli": "2234",
+   "reason": "The announcement obligates fiscal 2015 weapons procurement (Navy) among its colours and BLI 2234 (Standard Missile) is the WPN line that bought the SM-6 round in that window, so 'engineering and techn"
+  },
+  {
+   "piid": "N0002415C4103",
+   "pe_bli": "2013",
+   "reason": "The full text obligates the entire $37,566,503 in fiscal 2018 shipbuilding and conversion (Navy) - the SCN account BLI 2013 sits in - for long-lead material and manufacture of four ship sets of propul"
+  },
+  {
+   "piid": "N6833522D0011",
+   "pe_bli": "4213",
+   "reason": "Production and delivery of up to 16 approach lighting systems with accessories, data and interim spares is procurement-appropriation work matching an APN support-equipment line, and it buys EAF field "
+  },
+  {
+   "piid": "N0001923C0049",
+   "pe_bli": "2830",
+   "reason": "The entire $36,776,321 is fiscal 2023 other procurement (Navy), exactly the appropriation the OPN Afloat ATC Equipment line sits in, and the buy is two SPN-50(V)1 radars with checkout, onboard repair-"
+  },
+  {
+   "piid": "N0017819D4000",
+   "pe_bli": "0604230N",
+   "reason": "The obligated money is fiscal 2018 RDT&E (Navy) against an RDT&E program element, so there is no O&M-on-an-RDT&E-line mismatch, and the contract's entire object is the IDS program's own technology ref"
+  },
+  {
+   "piid": "W56HZV23C0078",
+   "pe_bli": "3700GA0570",
+   "reason": "Money and mission both hold: the P00001 modification buys M88A2 HERCULES vehicles themselves with 'Fiscal 2023 weapons and tracked combat vehicle procurement, Army' money, and 3700GA0570's budget line"
+  },
+  {
+   "piid": "W58RGZ15C0067",
+   "pe_bli": "0605035A",
+   "reason": "Not refuted on lens A's grounds: the announced obligation is 'Fiscal 2015 research, development, testing, and evaluation funds' for engineering and manufacturing development of the Common Infrared Cou"
+  },
+  {
+   "piid": "W15QKN23D0007",
+   "pe_bli": "0200MB4000",
+   "reason": "The stated weakness resolves in the proposal's favor: although the announcement names no appropriation ('funding will be determined with each order'), the NGATS delivery orders placed under W15QKN23D0"
+  },
+  {
+   "piid": "N0002412C5231",
+   "pe_bli": "2606",
+   "reason": "Fiscal 2015 other procurement (Navy) money buying production planar array antenna assemblies lands on procurement BLI 2606 (doc 333 = OPN) whose title is simply 'Cooperative Engagement Capability' and"
+  },
+  {
+   "piid": "N0003015C0005",
+   "pe_bli": "0603595N",
+   "reason": "A cost-plus-fixed-fee engineering effort integrating strategic weapon system subsystems into the common missile compartment, gas dynamic and nozzle-shield testing, and an integrated test facility 'com"
+  },
+  {
+   "piid": "N0001919C0014",
+   "pe_bli": "0604282N",
+   "reason": "Cost-plus-fixed-fee 'demonstration and test of existing technologies' toward an airborne low-band jamming solution is risk-reduction development, the appropriation type an RDT&E PE funds; NGJ Low Band"
+  },
+  {
+   "piid": "N0002411C2300",
+   "pe_bli": "2127",
+   "reason": "Every obligated dollar is fiscal 2015/2016 shipbuilding and conversion (Navy), which is exactly what SCN BLI 2127 'Littoral Combat Ship' (doc 341) carries, so a ship-construction change order sits on "
+  },
+  {
+   "piid": "N0001919C0007",
+   "pe_bli": "0505",
+   "reason": "Fiscal 2019 and 2020 aircraft procurement (Navy) funds buying modification kits land on APN BLI 0505 (doc 330) whose title is 'F-18E/F and EA-18G Modernization and Sustainment' - the announcement's 'E"
+  },
+  {
+   "piid": "N0001919C0015",
+   "pe_bli": "0604282N",
+   "reason": "Identical money-and-mission posture to record 39 (the paired Northrop Grumman half of the same day's Low Band demonstration awards, distinct PIID): cost-plus-fixed-fee demonstration and test of existi"
+  },
+  {
+   "piid": "N0001919C0073",
+   "pe_bli": "0145",
+   "reason": "Fiscal 2020 aircraft procurement (Navy) is exactly the appropriation BLI 0145 (doc 330, F/A-18E/F (Fighter) Hornet) lives in, and the ACMCs are production-configuration hardware delivered into the air"
+  },
+  {
+   "piid": "N0002422C2253",
+   "pe_bli": "5113",
+   "reason": "100% fiscal 2022 shipbuilding and conversion (Navy), exactly the SCN appropriation BLI 5113 lives in under doc 341; the two YRBM hulls are the Service Craft line's own product, ship construction under"
+  },
+  {
+   "piid": "W31P4Q22F0045",
+   "pe_bli": "0200MB4000",
+   "reason": "Survives lens A: the award's item of supply IS this line's own work, not a platform it supports - BLI 0200MB4000 (Integrated Family Of Test Equipment) is an Other Procurement, Army line whose own narr"
+  },
+  {
+   "piid": "FA821322D0003",
+   "pe_bli": "356010",
+   "reason": "Money and mission both sit on the line: the archived paragraph obligates 'Fiscal 2021 ammunition, Air Force funds' against ammunition-procurement BLI 356010 (doc 409), and the contract buys the BBU-35"
+  },
+  {
+   "piid": "FA821920C0001",
+   "pe_bli": "0101328F",
+   "reason": "The full paragraph states 'Fiscal 2020 research, development, test and evaluation funds are being used' on a cost-type TMRR modification building two prototype RVs \u2014 RDT&E money and development-phase "
+  },
+  {
+   "piid": "FA875025CB064",
+   "pe_bli": "0603032F",
+   "reason": "The archived paragraph completes the truncated fund line as 'Fiscal 2025 Air Force research, development, test and evaluation funds in the amount of $397,085 are being obligated' with the Air Force Re"
+  },
+  {
+   "piid": "FA880816C0005",
+   "pe_bli": "1206761SF",
+   "reason": "'Fiscal 2016 research, development, test and evaluation funds in the amount of $11,000,000 are being obligated' \u2014 RDT&E money against an RDT&E PE whose program title is literally 'Protected Tactical S"
+  },
+  {
+   "piid": "W91CRB18D0004",
+   "pe_bli": "8822G01101",
+   "reason": "The line's narrative says 'The Personnel Recovery Support System (PRSS) consists of several components that included Personnel Reco[very Device]', so the device the IDIQ buys is this dedicated OPA lin"
+  },
+  {
+   "piid": "W58RGZ18D0124",
+   "pe_bli": "3264AA0252",
+   "reason": "The procured item is the CPHE kit, not the helicopter: 3264AA0252's narrative is about 'integrating and fielding capability to the remaining fleet with Cargo Platform Health Environment (CPHE) and Imp"
+  },
+  {
+   "piid": "W15QKN20F0377",
+   "pe_bli": "8181G01501",
+   "reason": "A firm-fixed-price production buy of M320/M320A1 launchers is procurement-colored work against a dedicated procurement line whose title and narrative are the item itself ('The M320 Grenade Launcher Mo"
+  },
+  {
+   "piid": "W15QKN15D0063",
+   "pe_bli": "8181G01501",
+   "reason": "Same end item and same line as record 38; the non-functional training displays are accessories of that launcher (J-book procurement lines routinely carry 'associated training devices'), so no part of "
+  },
+  {
+   "piid": "N0025324C0001",
+   "pe_bli": "3215",
+   "reason": "Fiscal 2023 and 2024 weapons procurement (Navy) funds execute BLI 3215 under lexicon_doc 342, which programs.json shows as account 1507N Weapons Procurement, Navy titled 'MK-54 Torpedo Mods' \u2014 WPN mon"
+  },
+  {
+   "piid": "N0002424C2312",
+   "pe_bli": "2122",
+   "reason": "Every obligated dollar is shipbuilding and conversion (Navy) \u2014 FY2022 $11,468,018, FY2020 $3,316,802, FY2019 $2,455,946, FY2017 $520,557, FY2023 $205,418 \u2014 which is the appropriation that executes SCN"
+  },
+  {
+   "piid": "N0042125F0029",
+   "pe_bli": "0560",
+   "reason": "Fiscal 2025 aircraft procurement (Navy) funds ($33,458,722, the whole action) execute BLI 0560 'C-130 Series', the APN line that carries C-130 fleet modification work (same book, lexicon_doc 330, as t"
+  },
+  {
+   "piid": "N0016719D0006",
+   "pe_bli": "1045",
+   "reason": "The award obligates fiscal 2019 National Sea-Based Deterrence Fund money ($12,497,115), the account that builds the Columbia class and therefore the appropriation behind BLI 1045 'COLUMBIA Class Subma"
+  },
+  {
+   "piid": "N6449819D4011",
+   "pe_bli": "0900",
+   "reason": "Procurement-shaped supply contract delivering the named DVSS hardware to bases/shipyards for the DDG Mod line's own alteration installations (0900 = DDG Mod, doc 333 procurement J-book); the IDIQ name"
+  },
+  {
+   "piid": "FA880721C0003",
+   "pe_bli": "1203164SF",
+   "reason": "Appropriation matches exactly - fiscal 2025 Space Force research, development, test and evaluation funds ($24,683,500) obligated at award against a Space Force RDT&E program element - and the delivera"
+  },
+  {
+   "piid": "FA873018F0061",
+   "pe_bli": "837100",
+   "reason": "The full announcement obligates 100% procurement money - fiscal 2020 other procurement $1,189,383 plus fiscal 2021 other procurement $29,717,322, with no O&M on the action - against Other Procurement "
+  },
+  {
+   "piid": "N0002423C6308",
+   "pe_bli": "1611",
+   "reason": "77% of the obligation is other procurement (Navy) (62% FY25 + 15% FY24) against BLI 1611, an OPN 1810N BA-01 line (doc 333 = OPN_BA1_Book), and the remaining 23% is procurement (Marine Corps), so no O"
+  },
+  {
+   "piid": "N0017814D3036",
+   "pe_bli": "5231",
+   "reason": "All named funds are procurement (FY14/17 OPN and FY15/16 SCN) - no O&M - and the OPN share matches BLI 5231's own account (OPN 1810N BA-04, doc 333); the 5231 narrative opens 'provides procurement and"
+  },
+  {
+   "piid": "N0002413C5212",
+   "pe_bli": "2606",
+   "reason": "The obligation is 42% other procurement (Navy) against BLI 2606, itself an OPN 1810N BA-02 line (doc 333), with the rest SCN new-construction installs and only $7,597 of O&M out of ~$2.9M, so this is "
+  },
+  {
+   "piid": "N0001919F0046",
+   "pe_bli": "0576",
+   "reason": "100% of the obligation is fiscal 2019 aircraft procurement (Navy), matching BLI 0576's APN 1506N BA-05 account (doc 330), with no O&M despite the 'Repair of Repairables' phrasing; the line's own justi"
+  },
+  {
+   "piid": "N0002416C4316",
+   "pe_bli": "2086",
+   "reason": "100% fiscal 2021 shipbuilding and conversion (Navy) against BLI 2086, an SCN 1611N BA-02 line (doc 341 = SCN_Book), so the 'repair and maintenance' wording is SCN-funded RCOH work, not O&M sustainment"
+  },
+  {
+   "piid": "W56HZV23D0003",
+   "pe_bli": "9462R70001",
+   "reason": "No appropriation conflict is available to break it on: funding is per-order and the lake carries no funding accounts for this PIID, so the money color is unknown rather than mismatched, and the line i"
+  },
+  {
+   "piid": "W15QKN15D0004",
+   "pe_bli": "8750E27501",
+   "reason": "Funding is determined per order and the lake shows no funding accounts for W15QKN15D0004, so there is no appropriation to contradict the line's PAA color (8750E27501 = 2034A, Procurement of Ammunition"
+  },
+  {
+   "piid": "W909MY22D0003",
+   "pe_bli": "8827R80800",
+   "reason": "Funding is per-order and the lake returns no funding accounts for this PIID, so the money color is unverifiable rather than wrong, and the line's own color (8827R80800 = 2035A, OPA BA3 'Other support "
+  },
+  {
+   "piid": "W58RGZ18C0043",
+   "pe_bli": "6818AA0050",
+   "reason": "Although funding is per-order in the text, the lake shows 021-2031 among this PIID's funding accounts, which is precisely this line's account (6818AA0050 = 2031A, Aircraft Procurement Army BA04), so t"
+  },
+  {
+   "piid": "N0002420C5203",
+   "pe_bli": "2606",
+   "reason": "Money and mission both hold: the archived body names fiscal 2021 other procurement (Navy) $5,121,030 (17%) alongside the SCN 83%, and OPN is the appropriation BLI 2606 executes, so the colors intersec"
+  },
+  {
+   "piid": "M6785415D7801",
+   "pe_bli": "6532",
+   "reason": "No lens A ground breaks: the archived body states 'No funding will be obligated at the time of award' so no appropriation is named at all, which the project's own money test treats as unknown-not-mism"
+  },
+  {
+   "piid": "W909MY17D0002",
+   "pe_bli": "9012R42501",
+   "reason": "Money and mission both hold: the line's own title IS the contract's purpose (9012R42501 'Tactical Electric Power Recapitalization' in doc 346, Other Procurement Army, whose sibling titles are OPA end-"
+  },
+  {
+   "piid": "W519TC23C0001",
+   "pe_bli": "0608041A",
+   "reason": "The appropriation matches on the paragraph's own statement \u2014 'Fiscal 2022 research, development, test and evaluation, Army funds' obligated against 0608041A in lexicon_doc 359, the RDT&E book (sibling"
+  },
+  {
+   "piid": "FA821317D0006",
+   "pe_bli": "356010",
+   "reason": "Exact appropriation match \u2014 Air Force fiscal 2016/2017 ammunition procurement against 356010 (Procurement of Ammunition, Air Force) \u2014 and the contract is the outright purchase of the MJU-66/B flare, t"
+  },
+  {
+   "piid": "N0001918C1055",
+   "pe_bli": "0576",
+   "reason": "Money and mission both hold: the paragraph obligates fiscal 2017 and 2019 aircraft procurement (Navy) funds and BLI 0576 Common ECM Equipment is an Aircraft Procurement, Navy line (lexicon_doc 330), s"
+  },
+  {
+   "piid": "N0002411C6410",
+   "pe_bli": "3215",
+   "reason": "The full paragraph (truncated in the chunk at 700 chars) obligates 'fiscal 2015 weapons procurement (Navy), foreign military sales, and fiscal 2015 operation and maintenance (Navy) funding', and lexic"
+  },
+  {
+   "piid": "N0001919C0083",
+   "pe_bli": "0204229N",
+   "reason": "Money color is read, not inferred: fiscal 2021 ($9,654,124) and fiscal 2020 ($1,758,642) research, development, test and evaluation (Navy) funds against RDT&E, Navy PE 0204229N (doc 340); the modifica"
+  },
+  {
+   "piid": "N0001917C0029",
+   "pe_bli": "0720",
+   "reason": "Fiscal 2017 aircraft procurement (Navy) funds of $29,464,211 against BLI 0720 War Consumables, an Aircraft Procurement, Navy line (doc 330): procurement money on a procurement line in the same appropr"
+  },
+  {
+   "piid": "N0002422C5514",
+   "pe_bli": "0604501N",
+   "reason": "Fiscal 2024 research, development, test, and evaluation (Navy) funds of $1,399,140 against RDT&E, Navy PE 0604501N (doc 340), which is exactly what separates it from the OPN co-owner BLI 2981 In-Servi"
+  },
+  {
+   "piid": "W56HZV19F0195",
+   "pe_bli": "8309DA0500",
+   "reason": "Money and mission both hold: Fiscal 2017 other procurement Army funds are obligated against an Other Procurement, Army line (doc 346 is the OPA book), the object bought is recapitalized HEMTTs themsel"
+  },
+  {
+   "piid": "W909MY22D0001",
+   "pe_bli": "0426MA9800",
+   "reason": "The award is production of the end items the line buys \u2014 3kW tactical quiet generator sets plus power distribution units, both owned by 0426MA9800's own lexicon (TQG, MPDS/MEPDS/PDISE) \u2014 so it cannot "
+  },
+  {
+   "piid": "N0003017C0017",
+   "pe_bli": "0603595N",
+   "reason": "The whole action is engineering to integrate the D5 missile and reentry subsystems into the Common Missile Compartment, funded with fiscal 2019 RDT&E (Navy) $5,845,800 plus UK cost-share \u2014 the appropr"
+  },
+  {
+   "piid": "N0010423DC901",
+   "pe_bli": "0182",
+   "reason": "The award manufactures the MJU-77/B flare itself, the line's own product, and the funds are fiscal 2022/2023 procurement of ammunition (Navy and Marine Corps) \u2014 account 1508N, exactly BLI 0182's appro"
+  },
+  {
+   "piid": "W58RGZ17D0081",
+   "pe_bli": "9556A01002",
+   "reason": "Procurement hardware production against a procurement line (2031A): the UAS MODS narrative itself makes ROVER the line's own component ('OSRVT ... consists of a base system with Remote Operations Vide"
+  },
+  {
+   "piid": "W58RGZ19D0070",
+   "pe_bli": "6380AZ3110",
+   "reason": "The Aircrew Integrated Systems justification says the funds 'support the procurement of NW-A, Rotary Wing Helmet (RWH), and ACE', so the HGU-56/P is the line's own end item and not a platform the cont"
+  },
+  {
+   "piid": "N0001924C0004",
+   "pe_bli": "0160",
+   "reason": "Stated FY2022/2023/2024 procurement of ammunition (Navy and Marine Corps) money against lexicon_doc 338, which is the PANMC book, and the award produces the 5,697 LGTR BDU-59C/B rounds themselves; 016"
+  },
+  {
+   "piid": "FA868116C0002",
+   "pe_bli": "353020",
+   "reason": "Fiscal 2019 procurement funds in the full amount buy a quantity of BLU-134/B warheads against an ammunition procurement BLI (doc 409) whose own narrative owns the ILW name; the warhead is the program'"
+  },
+  {
+   "piid": "FA868119C0015",
+   "pe_bli": "353020",
+   "reason": "A firm-fixed-price buy of BLU 111 Engineering Change Proposal warhead assemblies with fiscal 2018/2019/2020 procurement funds in the full amount is procurement money against the procurement line that "
+  },
+  {
+   "piid": "FA881922C0001",
+   "pe_bli": "CTRSPC",
+   "reason": "Fiscal 2024 procurement funds ($20,985,270) against a space procurement line whose narrative owns the CCS name; the 'space systems engineering' header is contradicted by the announcement's own body \u2014 "
+  },
+  {
+   "piid": "N0002414C5315",
+   "pe_bli": "0604522N",
+   "reason": "Money color matches: the announced mod's own FPDS line (P00083, 2019-07-19, 'AMDR EMD (BASE) - PMRF GENERATOR REA SETTLEMENT MOD') sits on a contract funded from 017-1319 RDT&E,N, which is PE 0604522N"
+  },
+  {
+   "piid": "N0002409C4137",
+   "pe_bli": "2013",
+   "reason": "The full announcement obligates 'fiscal 2015 shipbuilding and conversion (Navy) funding in the amount of $26,775,439' -- the entire action is SCN, BLI 2013's own account (1611N) -- for a propulsor and"
+  },
+  {
+   "piid": "N0002418C2205",
+   "pe_bli": "5113",
+   "reason": "Fiscal 2018 and 2019 shipbuilding and conversion (Navy) funds of $13,339,017 and $13,371,205 (FPDS 017-1611 only, transaction '90 ASD HARBOR TUG (YT)') on BLI 5113's own SCN account, for detail design"
+  },
+  {
+   "piid": "N0001917C0022",
+   "pe_bli": "0160",
+   "reason": "'Fiscal 2015 and 2017 procurement ammunition (Navy and Marine Corps) funds in the amount of $26,587,722' -- the whole action is PANMC, BLI 0160's own account (1508N; FPDS confirms 017-1508, transactio"
+  },
+  {
+   "piid": "SP470117D1134",
+   "pe_bli": "0603680S",
+   "reason": "Money and mission both hold: the announcement declares its own colour ('fiscal 2017 research and development funds', customer 'Defense Logistics Agency Research and Development Program Office') and 06"
+  },
+  {
+   "piid": "W56HZV21C0110",
+   "pe_bli": "0605625A",
+   "reason": "FY2021 RDT&E, Army money obligated against an RDT&E program element: appropriation and line type agree, the deliverable IS the OMFV Phase 2 concept design rather than a platform the work supports, and"
+  },
+  {
+   "piid": "W56HZV21C0111",
+   "pe_bli": "0605625A",
+   "reason": "Same money test passes: FY2021 RDT&E, Army on an RDT&E PE, a discrete firm-fixed-price development contract for the named program itself, no O&M sustainment or services content and no IDIQ ceiling, so"
+  },
+  {
+   "piid": "W56HZV21C0112",
+   "pe_bli": "0605625A",
+   "reason": "RDT&E appropriation on an RDT&E line, Detroit Arsenal contracting a concept design \u2014 the object of the award is the program the PE funds, not a platform the contract merely supports, and the PE is not"
+  },
+  {
+   "piid": "W56HZV21C0113",
+   "pe_bli": "0605625A",
+   "reason": "Identical appropriation/line agreement (FY2021 RDT&E, Army \u2192 0605625A); the purchased work is OMFV concept design, which is this line's own development work, so the money-and-mission lens finds nothin"
+  },
+  {
+   "piid": "W56HZV21C0116",
+   "pe_bli": "0605625A",
+   "reason": "The unexpected contractor is an identity question, not a money-and-mission one: the appropriation cited is FY2021 RDT&E, Army against an RDT&E PE and the stated deliverable is the OMFV Phase 2 concept"
+  },
+  {
+   "piid": "N0003016C0005",
+   "pe_bli": "5420",
+   "reason": "Procurement work against a procurement line: the announcement calls the scope 'new procurement efforts' for the SSGN attack weapon control system with its training and support equipment, and the lake "
+  },
+  {
+   "piid": "N0003016C0005",
+   "pe_bli": "0603595N",
+   "reason": "Development work against a development line: the announcement's scope for this leg is 'the missile fire control for the U.S. Ohio Replacement and UK Successor common missile compartment program develo"
+  },
+  {
+   "piid": "N0001914D0008",
+   "pe_bli": "0160",
+   "reason": "The announcement obligates fiscal 2016 procurement of ammunition (Navy and Marine Corps) funds, which is BLI 0160's account 1508N, and the buy is 7,365 BDU-59B/B training rounds plus their containers "
+  },
+  {
+   "piid": "N0003018C0005",
+   "pe_bli": "5420",
+   "reason": "Not the O&M-on-a-procurement-line failure mode: the announcement names fiscal 2018 other procurement (Navy) funds (plus a small RDT&E increment) and the lake records 017-1810 (OPN) among this PIID's f"
+  },
+  {
+   "piid": "N0001920D0051",
+   "pe_bli": "0702207N",
+   "reason": "The scope - fatigue-life assessment of the structure, change proposals, and planning the physical modification for life extension - is analytical depot-maintenance engineering, which is precisely what"
+  },
+  {
+   "piid": "W31P4Q23F0003",
+   "pe_bli": "8260C53101",
+   "reason": "Money and mission both hold: the announcement obligates fiscal 2023 missile procurement, Army (plus FMS) funds and 8260C53101 sits in lexicon_doc 345, this org's missile-procurement book (Hellfire, GM"
+  },
+  {
+   "piid": "FA821319D0011",
+   "pe_bli": "356010",
+   "reason": "Ammunition-procurement money on an ammunition-procurement line (FY18 ammunition procurement funds obligated at award; BLI 356010 Expendable Countermeasures, doc 409, whose sibling rows are the other M"
+  },
+  {
+   "piid": "FA868119C0016",
+   "pe_bli": "353020",
+   "reason": "Procurement funds fully obligated at award against BLI 353020 General Purpose Bombs (doc 409, which enumerates BLU-109/111/117/129/137/138/140), and the work is production of the BLU-111 warhead assem"
+  },
+  {
+   "piid": "N0002422C6407",
+   "pe_bli": "3215",
+   "reason": "Entire obligation is weapons procurement (Navy) \u2014 '$11,535,520 (98%)' fiscal 2020 plus '$279,074 (2%)' fiscal 2021 \u2014 against the WPN MK-54 Torpedo Mods line, and the action is a full-rate production c"
+  },
+  {
+   "piid": "N0003016C0015",
+   "pe_bli": "0603595N",
+   "reason": "'Fiscal 2016 research, development, test and evaluation (Navy) funds in the amount of $25,624,032' is the whole obligation, matching RDT&E PE 0603595N exactly; the work is design and development engin"
+  },
+  {
+   "piid": "N0002415C5346",
+   "pe_bli": "2981",
+   "reason": "'Fiscal 2018 other procurement (Navy) in the amount of $25,371,034' is the full obligation against the OPN line, and producing four AN/SPS-48G radar modification kits is precisely what the ROAR projec"
+  },
+  {
+   "piid": "M6785417C6002",
+   "pe_bli": "0206313M",
+   "reason": "Both obligations are 'research, development, test and evaluation (Marine Corps)' ($130,000 + $25,116,336 = the announced $25,246,336) against an RDT&E,MC program element executed by Marine Corps Syste"
+  },
+  {
+   "piid": "N0003920D0021",
+   "pe_bli": "2657",
+   "reason": "Lens P's quote checks out verbatim in the full text \u2014 'Fiscal 2024 other procurement (Navy) in the amount of $2,066,449 will be obligated at the time of award' \u2014 so the only money named is OPN, the sa"
+  },
+  {
+   "piid": "W911QY16D0025",
+   "pe_bli": "0050MA0780",
+   "reason": "The proposal's own stated caveat resolves in its favour: funding is deferred per order in the text, but every lake row on W911QY16D0025 carries 021-2035 (Other Procurement, Army), precisely 0050MA0780"
+  },
+  {
+   "piid": "W911QY16D0042",
+   "pe_bli": "9120M65800",
+   "reason": "No appropriation is stated and the lake carries NULL federal_accounts_funding_this_award and $0 obligated across all 12 rows of W911QY16D0042, so the money colour is unknown rather than mismatched - t"
+  },
+  {
+   "piid": "N0002416C2309",
+   "pe_bli": "2127",
+   "reason": "Money and mission agree: the full funding sentence is FY2017 SCN $13,786,204 plus FY2012 SCN $5,999,684 plus FY2017 OPN $1,445,382 -- 93% shipbuilding and conversion against an SCN line (doc 341) -- a"
+  },
+  {
+   "piid": "N0017814D3048",
+   "pe_bli": "5231",
+   "reason": "Money and mission agree: fiscal 2014 other procurement (Navy) is obligated against an OPN line (doc 333), the deliverable is SSDS Mk2 production hardware (production, assembly, configuration, alignmen"
+  },
+  {
+   "piid": "N6833524D0003",
+   "pe_bli": "4213",
+   "reason": "Not refuted on lens A grounds despite two real weaknesses: no funds are obligated at award so the announcement states no appropriation to test, and the BLI title is broad -- but 'Aircraft Support Equi"
+  },
+  {
+   "piid": "FA821424C0003",
+   "pe_bli": "0101213F",
+   "reason": "RDT&E money against an R-1 line (3600F) that names the effort itself: 'Fiscal 2024 research, development, test and evaluation funds in the amount of $11,654,691' matches the lake's $11.95M obligated o"
+  },
+  {
+   "piid": "W911QY15D0047",
+   "pe_bli": "0050MA0780",
+   "reason": "No money-color conflict \u2014 the announcement names no appropriation ('funding will be determined with each order'), which is unknown rather than disjoint, and AIE is procured under Other Procurement, Ar"
+  },
+  {
+   "piid": "N0003922C0001",
+   "pe_bli": "0605013N",
+   "reason": "The award names FY2022 RDT&E (Navy) funds alongside O&M, so it is not the O&M-only-attached-to-an-RDT&E-line failure mode, and PE 0605013N (1319N, present FY2017-FY2026) owns ADE in its BUPERS IT miss"
+  },
+  {
+   "piid": "N0002413C2402",
+   "pe_bli": "0604567N",
+   "reason": "FY2014 RDT&E money against an RDT&E PE (1319N) carried continuously FY2017-FY2026 whose LHA(R) project narrative \"provides the contract design, development, and testing efforts for the ... LHA(R)\"; an"
+  },
+  {
+   "piid": "N0002419C5313",
+   "pe_bli": "0266",
+   "reason": "Exact money colour \u2014 FY2021 procurement of ammunition (Navy and Marine Corps) against the PANMC line 1508N, continuous since FY2017 \u2014 and the line's own justification itemises \"2.5) ALaMO MK332 (BA59)"
+  },
+  {
+   "piid": "W58RGZ17D0033",
+   "pe_bli": "8659AA0723",
+   "reason": "Money and mission hold: 8659AA0723 is an Aircraft Procurement, Army line (2031A, BA-02) whose own narrative places Blue Force Tracking - 2 under Army Aviation/FVL, and the award buys 859 BFT-2 aircraf"
+  },
+  {
+   "piid": "W56HZV19F0285",
+   "pe_bli": "8309DA0500",
+   "reason": "Exact money-color match \u2014 fiscal 2019 other procurement, Army funds obligated against an Other Procurement, Army line \u2014 and the FHTV narrative carries the HEMTT Extended Service Program, a recapitaliz"
+  },
+  {
+   "piid": "W912DY18F0038",
+   "pe_bli": "3005B66501",
+   "reason": "The money color is the deciding fit rather than a problem: fiscal 2017 other procurement (Army) matches the Other Procurement, Army line 3005B66501, whose justification funds HPC systems at DoD Superc"
+  },
+  {
+   "piid": "W31P4Q17C0193",
+   "pe_bli": "6870C88001",
+   "reason": "Not refuted on money or mission: the award is production hardware for the loitering munition itself, from the prime via ACC Redstone, against Missile Procurement, Army line 6870C88001 whose narrative "
+  },
+  {
+   "piid": "FA880712C0012",
+   "pe_bli": "1203164SF",
+   "reason": "Fiscal 2015 RDT&E money against an RDT&E program element, and the PE's own mission text records the February 2014 USD(AT&L) direction to accelerate MGUE 'to provide test units faster' \u2014 the very work "
+  },
+  {
+   "piid": "FA868119C0013",
+   "pe_bli": "353020",
+   "reason": "Fiscal 2018/2019/2020 procurement funds obligated in full for additional BLU-111 ECP warhead assemblies, and doc 409's General Purpose Bombs narrative carries BLU-111/MK-82 as one of its own weapon-sy"
+  },
+  {
+   "piid": "FA880813C0001",
+   "pe_bli": "1206432SF",
+   "reason": "Fiscal 2017 RDT&E money against an RDT&E line (BA5, System Development and Demonstration), and PE 1206432SF's own narrative lists Ground Control as one of EPS's four segments and funds the EPS Control"
+  },
+  {
+   "piid": "FA880818C0002",
+   "pe_bli": "1206432SF",
+   "reason": "The PE's mission text states EPS-R 'developed and acquired two Extremely High Frequency (EHF) payloads that are hosted on Space Norway-procured spacecraft' and its Space Segment accomplishment reads '"
+  },
+  {
+   "piid": "FA881018C0005",
+   "pe_bli": "1206440SF",
+   "reason": "Fiscal 2025 RDT&E funds against an RDT&E line, and 'Relay Ground Station - Asia (RGS-A)' is a named accomplishment of PE 1206440SF ('the Asia ground station portion of the FORGE - RGS architecture'), "
+  },
+  {
+   "piid": "W56HZV20C0050",
+   "pe_bli": "5731D15610",
+   "reason": "Money color matches exactly \u2014 the announcement obligates fiscal 2020 other procurement, Army funds and 5731D15610's P-1 line is Other Procurement, Army (entity 5731D15610/A/2035A/01); the vehicles, pa"
+  },
+  {
+   "piid": "N0002416C6304",
+   "pe_bli": "4225",
+   "reason": "The record states \"Fiscal 2014, 2015 and 2016 weapons procurement (Navy) funding\", which is doc 342 (WPN) \u2014 the book BLI 4225 lives in \u2014 so the appropriation is verified from the announcement and simu"
+  },
+  {
+   "piid": "FA880820C0047",
+   "pe_bli": "1206855SF",
+   "reason": "Fiscal 2025 RDT&E funds ($22,202,823, the full announced amount) are obligated for a rapid-prototyping special study \u2014 development money against the Space Force RDT&E line 1206855SF (doc 417), not the"
+  },
+  {
+   "piid": "FA820420F0077",
+   "pe_bli": "0101213F",
+   "reason": "The 'ground subsystems sustainment contract' wording is only the vehicle: the task order's content is a Fast Rising B-Plug service life extension \u2014 development work \u2014 and the only appropriation the an"
+  },
+  {
+   "piid": "W15QKN20D0020",
+   "pe_bli": "3005GZ1700",
+   "reason": "Firm-fixed-price delivery of enumerated DFCS hardware (mission system computers, chief-of-section displays, CSD chargers) is a procurement action against 3005GZ1700 'M777 Mods', a Weapons & Tracked Co"
+  },
+  {
+   "piid": "N6833520D0935",
+   "pe_bli": "0205633N",
+   "reason": "Development work on a development line: PE 0205633N's own CASS project narrative reads \"The Fourth Generation Electro-Optical (EO4) development project consists of the design and development of the la"
+  },
+  {
+   "piid": "N6134012G0001",
+   "pe_bli": "0705",
+   "reason": "100% fiscal 2016 aircraft procurement (Navy) against BLI 0705, which sits in 1506N/APN, and the line's own narrative says NASMP \"investments modernize F/A-18E/F, EA-18G, F-35, E-2 ... through obsolesc"
+  },
+  {
+   "piid": "N6833517D0021",
+   "pe_bli": "2820",
+   "reason": "BLI 2820's own narrative carries a LANDING SYSTEMS section funding \"Precision Approach Radars (PAR), Tactical Air Navigation (TACAN) systems, Instrument Landing Systems (ILS), and other air navigation"
+  },
+  {
+   "piid": "N0001923F2574",
+   "pe_bli": "0160",
+   "reason": "100% fiscal 2023 procurement of ammunition (Navy and Marine Corps) against BLI 0160 in 1508N/PANMC, and the line's own narrative singles this item out \u2014 the munitions on the line are bought by Joint M"
+  },
+  {
+   "piid": "FA867515D0135",
+   "pe_bli": "0207163F",
+   "reason": "Money is the weak leg but not broken: the untruncated article ends 'No additional funds are being obligated at the time of award' and the lake carries $0.00 obligated and NULL federal_accounts_funding"
+  },
+  {
+   "piid": "FA868118C0038",
+   "pe_bli": "353190",
+   "reason": "Procurement dollars on a procurement line with no ambiguity: the announcement's 'fiscal 2016 production funds' resolve in the lake to federal account 057-3011 (Procurement of Ammunition, Air Force), e"
+  },
+  {
+   "piid": "FA880819C0004",
+   "pe_bli": "1206432SF",
+   "reason": "The strongest of the eight on lens A: the PE's own doc-417 planned-program narrative reads 'Modify and upgrade the existing EPS Control and Planning Segment (CAPS) to provide command and control and X"
+  },
+  {
+   "piid": "FA930425D5001",
+   "pe_bli": "0604256F",
+   "reason": "Not refuted: the appropriation is stated AND obligated in the line's own colour - 'Fiscal 2024, research, development, test and evaluation funds in the amount of $10,359' against 0604256F's 3600F RDT&"
+  },
+  {
+   "piid": "N0002421C5408",
+   "pe_bli": "2307",
+   "reason": "Money and mission agree: the action obligates '$4,033,942 (19%)' of fiscal 2023 weapon procurement (Navy) -- the appropriation of the doc-342 weapons-procurement BLI dedicated to ESSM (program title '"
+  },
+  {
+   "piid": "N0002415C6318",
+   "pe_bli": "4248",
+   "reason": "The full paragraph names 'Fiscal 2016 other procurement (Navy); and fiscal 2016 operations and maintenance (Navy)' \u2014 OPN leads and 1810N is exactly BLI 4248's account (lake award accounts 017-1319;017"
+  },
+  {
+   "piid": "N6893614D0018",
+   "pe_bli": "0604269N",
+   "reason": "Nothing breaks on lens A's grounds: the announcement states no appropriation ('No funds will be obligated at time of award'), but the lake shows the vehicle funded by 017-1319 (RDT&E,N = PE 0604269N's"
+  },
+  {
+   "piid": "N0002411C6404",
+   "pe_bli": "3225",
+   "reason": "Fiscal 2015 weapons procurement (Navy) leads the funding sentence and 1507N is BLI 3225's own account (the lake carries no accounts for this PIID, which the loader treats as unknown rather than mismat"
+  },
+  {
+   "piid": "N0038320F0QW0",
+   "pe_bli": "0515",
+   "reason": "The strongest money case in the set: 'Aircraft procurement funds (Navy) in the full amount of $20,019,391' matches BLI 0515's 1506N exactly, and the lake confirms delivery order 0 (2020-09-21) obligat"
+  },
+  {
+   "piid": "N0002413C2108",
+   "pe_bli": "2086",
+   "reason": "The full paragraph obligates the entire $20,000,000 from fiscal 2016 shipbuilding and conversion (Navy), which is BLI 2086's own 1611N account (the 017-1804 in the contract's award-level accounts is n"
+  },
+  {
+   "piid": "FA853216F0018",
+   "pe_bli": "845550",
+   "reason": "Exact color match: the announcement obligates fiscal 2016 OTHER procurement funds and 845550 is a procurement BLI (exhibit_family=procurement, doc 411, Other Procurement AF), the deliverable IS the eq"
+  },
+  {
+   "piid": "FA881118C0003",
+   "pe_bli": "NSSL00",
+   "reason": "'Fiscal 2021 space procurement funds' belongs to NSSL00, a procurement line (exhibit_family=procurement, doc 416), and that same reading is what excludes the RDT&E twin 1206853SF; the lake's PSC for F"
+  },
+  {
+   "piid": "FA880619C0003",
+   "pe_bli": "1206770SF",
+   "reason": "Fiscal 2019 research and development funds against an RDT&E line (1206770SF, exhibit_family=rdte, doc 417) and the lake corroborates the color \u2014 accounts 057-3600;057-3620 (AF and Space Force RDT&E), "
+  },
+  {
+   "piid": "N0002420C6407",
+   "pe_bli": "4225",
+   "reason": "The dominant colour is the line's - 62% + 28% + 1% weapons procurement (Navy) against 9% O&M, and lake accounts 017-1507;017-1804 intersect 4225's 1507N - and the O&M slice is not sustainment bolted o"
+  },
+  {
+   "piid": "N0001916C0032",
+   "pe_bli": "0604274N",
+   "reason": "Development money on a development line ('Fiscal 2016 research, development, testing and evaluation (Navy) funds', lake 017-1319, vs 0604274N's 1319N in doc 340), with no O&M component, and the platfo"
+  },
+  {
+   "piid": "N0001422C1024",
+   "pe_bli": "0101224N",
+   "reason": "RDT&E,N money (FY2021 $324 + FY2022 $900,000 obligated) against the RDT&E,N line 0101224N (1319N, doc 340) with the lake's funding accounts null for N0001422C1024, so the colour is consistent and unfa"
+  },
+  {
+   "piid": "N0001916C0020",
+   "pe_bli": "0182",
+   "reason": "Exact colour match on the whole action - 'Fiscal 2017 procurement ammunition (Navy and Marine Corps) funds in the amount of $19,667,739', none of it O&M, and lake accounts 017-1508 for N0001916C0020 i"
+  },
+  {
+   "piid": "W9113M12C0055",
+   "pe_bli": "0208053A",
+   "reason": "Money colour and mission both hold: FY2015 RDT&E dollars on an RDT&E operational-systems PE whose own index carries the project name 'Joint Tact Grd Station-P3I' for exactly the announced pre-planned "
+  },
+  {
+   "piid": "W15QKN13C0074",
+   "pe_bli": "8750E27501",
+   "reason": "Procurement money against a procurement line with no O&M-sustainment mismatch: 'Fiscal 2025 procurement of ammunition, Army' is the PAA appropriation this ammunition BLI is funded from, the kits are t"
+  },
+  {
+   "piid": "N0016420FJ268",
+   "pe_bli": "0532",
+   "reason": "Money and mission agree: the funding is 100% aircraft procurement (Navy) (FY2020 53% / FY2019 47%, and the lake's only funding account for this PIID is 017-1506 = APN), while 0532 is the APN BA-05 'Mo"
+  },
+  {
+   "piid": "N0002415C5408",
+   "pe_bli": "2356",
+   "reason": "Money and mission agree: the untruncated funding sentence is 100% weapons procurement (Navy) -- FY2016 $8,936,126 + FY2018 $8,885,768 + FY2017 $1,492,977 = the full $19,314,871, and the lake carries 0"
+  },
+  {
+   "piid": "N0003923C9000",
+   "pe_bli": "0204311N",
+   "reason": "Money and mission agree: the untruncated funding sentence names FY2022 RDT&E (Navy) and FY2023 RDT&E (Navy) ahead of FY2023 O&M, FY2023 procurement and FMS, so the line's own 1319N colour is present a"
+  },
+  {
+   "piid": "N0002419C6269",
+   "pe_bli": "2013",
+   "reason": "Money and mission agree: FY2020 shipbuilding and conversion (Navy) (lake carries 017-1611) buying eight multi-function modular masts for new-construction Virginia-class Block V hulls that this same SC"
+  },
+  {
+   "piid": "W56KGY22F0074",
+   "pe_bli": "9897K49000",
+   "reason": "Money holds on both sides independently: the text obligates 'Fiscal 2023 other procurement, Army funds' and all 20 lake rows on W56KGY22F0074 (Rockwell Collins/Collins Aerospace, $88.9M obligated) car"
+  },
+  {
+   "piid": "N0002416C5102",
+   "pe_bli": "0604307N",
+   "reason": "RDT&E money on an RDT&E line: the paragraph's funding sentence begins 'Fiscal 2018 resear[ch...]' and the PIID's lake funding accounts include 017-1319, matching 0604307N's 1319N; Baseline 9 capabilit"
+  },
+  {
+   "piid": "N6278619F0055",
+   "pe_bli": "2127",
+   "reason": "The paragraph obligates fiscal 2013 and 2019 shipbuilding and conversion (Navy) funds and the PIID's lake accounts include 017-1611, matching BLI 2127's 1611N \u2014 FY2013 is the year LCS-15 was appropria"
+  },
+  {
+   "piid": "N0002421C4106",
+   "pe_bli": "2013",
+   "reason": "The cleanest money color in the set: the paragraph obligates fiscal 2021 shipbuilding and conversion (Navy) funds and 017-1611 is the ONLY funding account the lake carries for N0002421C4106, exactly B"
+  },
+  {
+   "piid": "M6785421F2019",
+   "pe_bli": "4767",
+   "reason": "Procurement money on a procurement line: the paragraph obligates $17,940,000 of fiscal 2021 procurement (Marine Corps) funds and the PIID's lake funding accounts carry 017-1109, matching BLI 4767's 11"
+  },
+  {
+   "piid": "N0016721F0120",
+   "pe_bli": "2013",
+   "reason": "The paragraph states the full colour itself \u2014 fiscal 2021 and fiscal 2020 advanced procurement shipbuilding and conversion (Navy) funds \u2014 which is exactly BLI 2013's 1611N, and advance procurement of "
+  },
+  {
+   "piid": "N0002413C6412",
+   "pe_bli": "3215",
+   "reason": "The truncated funding sentence is settled by the lake and it also resolves the shared BLI: 017-1507 (Weapons Procurement, Navy) is the ONLY funding account on N0002413C6412, matching the 1507N 'MK-54 "
+  },
+  {
+   "piid": "FA861517C6051",
+   "pe_bli": "0207133F",
+   "reason": "Money colour holds on lake evidence despite the announcement obligating nothing: all 129 lake rows for FA8615-17-C-6051 (2016-11-22 to 2025-12-23, $153,539,531 obligated, Raytheon) carry federal_accou"
+  },
+  {
+   "piid": "FA853315D0001",
+   "pe_bli": "845420",
+   "reason": "The appropriation question, which the announcement leaves open ('No funds are being obligated at the time of award. Individual delivery orders will be issued'), is answered affirmatively by the lake: "
+  },
+  {
+   "piid": "FA867815C0069",
+   "pe_bli": "10TRGT",
+   "reason": "Money colour matches exactly and settles the RDT&E/procurement collision in the proposal's favour: the announcement obligates 'fiscal 2016 procurement funds in the amount of $17,785,195', all 26 lake "
+  },
+  {
+   "piid": "FA861223CB002",
+   "pe_bli": "0604003F",
+   "reason": "The announcement names its own appropriation - 'Fiscal 2023 research, development, test and evaluation funds are being obligated at the time of award' - and budget_lines puts 0604003F on 3600F = 057-3"
+  }
+ ],
+ "refuted_a": 196,
+ "refuted_b": 227,
+ "missing_lens": 4,
+ "malformed_lens": 0,
+ "invalid_verdict": 0,
+ "invalid_verdict_examples": [],
+ "invalid_record_index": 2,
+ "invalid_record_index_examples": [
+  {
+   "chunk": "chunk_090_N.json",
+   "piid": "N0017417C0022",
+   "pe_bli": "1250",
+   "article_id": "1330165",
+   "record_index": 33,
+   "candidates": [
+    31
+   ]
+  },
+  {
+   "chunk": "chunk_090_N.json",
+   "piid": "N0003017C0002",
+   "pe_bli": "1250",
+   "article_id": "962429",
+   "record_index": 31,
+   "candidates": [
+    33
+   ]
+  }
+ ],
+ "unknown_article_piid": 0,
+ "unknown_article_piid_examples": [],
+ "ambiguous_record": 0,
+ "ambiguous_record_examples": [],
+ "missing_pe_bli": 0,
+ "missing_pe_bli_examples": [],
+ "invalid_match_basis": 1,
+ "invalid_match_basis_examples": [
+  {
+   "chunk": "chunk_049_N.json",
+   "piid": "M0026425D0003",
+   "pe_bli": "0605873M",
+   "basis": null
+  }
+ ],
+ "missing_lexicon_doc": 0,
+ "missing_lexicon_doc_examples": [],
+ "missing_program_name": 0,
+ "missing_program_name_examples": [],
+ "invalid_pe_bli": 0,
+ "malformed_file": 0,
+ "duplicate_pairs": 269,
+ "records_attempted": 11775,
+ "chunks_attempted": [
+  "chunk_000_A.json",
+  "chunk_001_F.json",
+  "chunk_002_N.json",
+  "chunk_003_DLA.json",
+  "chunk_004_WHS.json",
+  "chunk_005_DISA.json",
+  "chunk_006_MDA.json",
+  "chunk_007_DTRA.json",
+  "chunk_008_SOCOM.json",
+  "chunk_009_N.json",
+  "chunk_010_F.json",
+  "chunk_011_A.json",
+  "chunk_012_DARPA.json",
+  "chunk_013_N.json",
+  "chunk_014_A.json",
+  "chunk_015_F.json",
+  "chunk_016_N.json",
+  "chunk_017_A.json",
+  "chunk_018_DHRA.json",
+  "chunk_019_N.json",
+  "chunk_020_DCSA.json",
+  "chunk_021_A.json",
+  "chunk_022_F.json",
+  "chunk_023_N.json",
+  "chunk_024_DLA.json",
+  "chunk_025_N.json",
+  "chunk_026_A.json",
+  "chunk_027_N.json",
+  "chunk_028_F.json",
+  "chunk_029_A.json",
+  "chunk_030_N.json",
+  "chunk_031_N.json",
+  "chunk_032_A.json",
+  "chunk_033_F.json",
+  "chunk_034_N.json",
+  "chunk_035_A.json",
+  "chunk_036_N.json",
+  "chunk_037_DLA.json",
+  "chunk_038_N.json",
+  "chunk_039_A.json",
+  "chunk_040_F.json",
+  "chunk_041_N.json",
+  "chunk_042_A.json",
+  "chunk_043_DLA.json",
+  "chunk_044_N.json",
+  "chunk_045_F.json",
+  "chunk_046_A.json",
+  "chunk_047_N.json",
+  "chunk_048_A.json",
+  "chunk_049_N.json",
+  "chunk_050_F.json",
+  "chunk_051_A.json",
+  "chunk_052_DLA.json",
+  "chunk_053_A.json",
+  "chunk_054_N.json",
+  "chunk_055_A.json",
+  "chunk_056_MDA.json",
+  "chunk_057_DLA.json",
+  "chunk_058_F.json",
+  "chunk_059_N.json",
+  "chunk_060_A.json",
+  "chunk_061_N.json",
+  "chunk_062_F.json",
+  "chunk_063_A.json",
+  "chunk_064_DLA.json",
+  "chunk_065_A.json",
+  "chunk_066_N.json",
+  "chunk_067_F.json",
+  "chunk_068_A.json",
+  "chunk_069_N.json",
+  "chunk_070_DLA.json",
+  "chunk_071_N.json",
+  "chunk_072_A.json",
+  "chunk_073_N.json",
+  "chunk_074_A.json",
+  "chunk_075_F.json",
+  "chunk_076_DLA.json",
+  "chunk_077_N.json",
+  "chunk_078_A.json",
+  "chunk_079_F.json",
+  "chunk_080_N.json",
+  "chunk_081_A.json",
+  "chunk_082_N.json",
+  "chunk_083_DLA.json",
+  "chunk_084_N.json",
+  "chunk_085_A.json",
+  "chunk_086_F.json",
+  "chunk_087_A.json",
+  "chunk_088_N.json",
+  "chunk_089_DLA.json",
+  "chunk_090_N.json",
+  "chunk_091_A.json",
+  "chunk_092_F.json",
+  "chunk_093_N.json",
+  "chunk_094_A.json",
+  "chunk_095_DLA.json",
+  "chunk_096_N.json",
+  "chunk_097_A.json",
+  "chunk_098_F.json",
+  "chunk_099_N.json",
+  "chunk_100_N.json",
+  "chunk_101_A.json",
+  "chunk_102_DLA.json",
+  "chunk_103_N.json",
+  "chunk_104_A.json",
+  "chunk_105_N.json",
+  "chunk_106_F.json",
+  "chunk_107_A.json",
+  "chunk_108_N.json",
+  "chunk_109_DLA.json",
+  "chunk_110_A.json",
+  "chunk_111_N.json",
+  "chunk_112_A.json",
+  "chunk_113_F.json",
+  "chunk_114_N.json",
+  "chunk_115_A.json",
+  "chunk_116_DLA.json",
+  "chunk_117_N.json",
+  "chunk_118_A.json",
+  "chunk_119_N.json",
+  "chunk_120_F.json",
+  "chunk_121_A.json",
+  "chunk_122_N.json",
+  "chunk_123_A.json",
+  "chunk_124_N.json",
+  "chunk_125_F.json",
+  "chunk_126_DLA.json",
+  "chunk_127_A.json",
+  "chunk_128_DCMA.json",
+  "chunk_129_N.json",
+  "chunk_130_A.json",
+  "chunk_131_F.json",
+  "chunk_132_N.json",
+  "chunk_133_A.json",
+  "chunk_134_N.json",
+  "chunk_135_DLA.json",
+  "chunk_136_F.json",
+  "chunk_137_N.json",
+  "chunk_138_A.json",
+  "chunk_139_N.json",
+  "chunk_140_A.json",
+  "chunk_141_F.json",
+  "chunk_142_N.json",
+  "chunk_143_A.json",
+  "chunk_144_DLA.json",
+  "chunk_145_N.json",
+  "chunk_146_A.json",
+  "chunk_147_N.json",
+  "chunk_148_F.json",
+  "chunk_149_A.json"
+ ],
+ "chunks_queued": 306
+}

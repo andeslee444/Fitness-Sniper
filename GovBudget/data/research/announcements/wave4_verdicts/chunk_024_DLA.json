@@ -1,0 +1,77 @@
+{
+ "chunk": "chunk_024_DLA.json",
+ "proposals": [
+  {
+   "record_index": 24,
+   "article_id": "2780513",
+   "piid": "SPE7LX21D0087",
+   "pe_bli": "0603712S",
+   "program_name": "Weapon System Sustainment (WSS)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "multiple weapon systems program support",
+   "lexicon_quote": "Weapon System Sustainment (WSS)",
+   "verdict": "wrong",
+   "rationale": "The only candidate in the index is 'Weapon System Sustainment (WSS)' under 0603712S (Generic Logistics R&D Technology Demonstrations), and the announcement never names it — the phrase 'multiple weapon systems program support' is a generic description of an ADS distribution vehicle, not a program name. This is the §3 'generic services / IDIQ ceiling with no named program' pattern exactly: a four-year DLA Land and Maritime base contract with three two-year option periods, fixed-price with economic-price-adjustment, on fiscal 2021 through 2025 defense working capital funds — a supply-chain vehicle, not RDT&E project work on 0603712S. The appropriation mismatch alone (working capital fund commodity support attached to an RDT&E line) is the failure mode the rubric calls out, and the descriptive overlap between 'weapon systems ... support' and 'Weapon System Sustainment' is string resemblance, not attribution. Recorded as a rejection so the denominator reflects that this record was read and considered."
+  },
+  {
+   "record_index": 18,
+   "article_id": "2637207",
+   "piid": "SP470119C0024",
+   "pe_bli": "0708047S",
+   "program_name": "The Defense Property Accountability System (DPAS)",
+   "lexicon_doc": "270",
+   "announcement_evidence": "technical and functional services for the Defense Agencies Initiative",
+   "lexicon_quote": "The Defense Property Accountability System (DPAS)",
+   "verdict": "wrong",
+   "rationale": "This is the one record in the chunk that names a defense business system by name, and it is the wrong one: the announcement names the 'Defense Agencies Initiative' (DAI), the DoD ERP financial-management system, while the closest index row is 'The Defense Property Accountability System (DPAS)' under 0708047S — a different system with a different function (property accountability, not financial management). Treating DAI as an alias of DPAS would be an invented alias, which Lens B rejects by design. The award is also generic support work ('technical and functional services') on a CACI option exercise funded with fiscal 2021 operation and maintenance funds plus RDT&E, with the Defense Logistics Agency as using customer — generic services under §3. No proposal survives; logged so the near-miss is visible rather than silently dropped."
+  },
+  {
+   "record_index": 0,
+   "article_id": "1007938",
+   "piid": "SPE60017D8003",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "the supply and delivery of retail electricity and ancillary/incidental services",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "verdict": "wrong",
+   "rationale": "The index carries 'Energy Readiness Program (ERP)' under 0603712S, and this is the highest-value of the chunk's several DLA Energy electricity and natural-gas buys (records 0, 34, 52, 62, 72), so it is the most tempting description-level match. The announcement names no program at all: it is a multiple-award, firm-fixed-price requirements contract under solicitation SPE600-16-R-0413 for retail electricity commodity supply. 'Energy' as an English word in a commodity purchase is the §3 weak-generic-name pattern, and a defense-working-capital commodity buy cannot fund an RDT&E technology-demonstration line. Rejected; the same reasoning disposes of every other electricity/natural-gas/fuel record in this chunk, none of which gets its own proposal because none carries a candidate name."
+  },
+  {
+   "record_index": 6,
+   "article_id": "1049000",
+   "piid": "SPM1C113D1020",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "four one-year option periods for various uniforms",
+   "lexicon_quote": "Military Uniform System Technology (MUST)",
+   "verdict": "wrong",
+   "rationale": "The index carries 'Military Uniform System Technology (MUST)' under 0603680S (Manufacturing Technology Program), and this chunk contains seven DLA Troop Support uniform buys (records 2, 3, 6, 8, 12, 14, 17, 20, 73); this is the largest, so it stands for all of them. The announcement names no program — 'various uniforms' is the item being bought, not a program element — and the award is a firm-fixed-price IDIQ option exercise on fiscal 2017 through 2018 defense working capital and FMS funds. Buying uniforms is not funding the ManTech research project that develops uniform manufacturing technology; this is the §3 'the name is a thing the contract supplies, not the program the PE funds' pattern plus an RDT&E/working-capital appropriation mismatch. No link. The other uniform records get no proposal at all, since no index name appears in their text either."
+  },
+  {
+   "record_index": 27,
+   "article_id": "3535498",
+   "piid": "SPE30020D3269",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "two 18-month option periods for full‐line food distribution",
+   "lexicon_quote": "The Subsistence Network (SUBNET)",
+   "verdict": "wrong",
+   "rationale": "The index carries 'The Subsistence Network (SUBNET)' under 0603680S, and this chunk has several subsistence awards (records 16, 27, 47, 76 — fresh fruits and vegetables, full-line food distribution). The announcement never says 'Subsistence Network' or 'SUBNET'; it describes a fixed-price with economic-price-adjustment indefinite-quantity food-distribution option exercise on fiscal 2023 through 2025 defense working capital funds. Food distribution is the commodity mission, not the ManTech research project that builds subsistence logistics technology — §3's platform/thing-supplied rejection, compounded by the working-capital vs RDT&E mismatch. Note also that record 27 and record 39 share article_id 3535498, which is precisely why record_index carries the proposal. Rejected."
+  },
+  {
+   "record_index": 41,
+   "article_id": "1474871",
+   "piid": "SPM2D109D8349",
+   "pe_bli": "0603712S",
+   "program_name": "Medical Logistics Network (MLN)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "patient monitoring systems, subsystems, accessories, consumables and training",
+   "lexicon_quote": "Medical Logistics Network (MLN)",
+   "verdict": "wrong",
+   "rationale": "The index carries 'Medical Logistics Network (MLN)' under 0603712S, and this chunk has four medical-materiel awards (records 29, 41, 42, 43 patient monitoring; 49, 58 ventilators; 71 spinal orthopedic packages). This is the largest of the patient-monitoring line and stands for all of them. The announcement names no program: it is the ninth one-year option on a Philips fixed-price-with-EPA contract for patient monitoring equipment, on fiscal 2018 through 2019 defense working capital funds. Buying monitors is not funding the logistics R&D technology demonstration that would build a medical logistics network — the name is not present and the description-level overlap ('medical' plus 'logistics agency') is exactly the resemblance the rubric refuses to treat as attribution. Rejected; the remaining medical records get no proposal because no index name appears in them."
+  }
+ ]
+}

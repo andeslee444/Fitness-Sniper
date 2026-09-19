@@ -1,0 +1,308 @@
+{
+ "chunk": "chunk_107_A.json",
+ "proposals": [
+  {
+   "record_index": 30,
+   "article_id": "4121138",
+   "piid": "W58RGZ25D0019",
+   "pe_bli": "5212AZ3100",
+   "program_name": "Aviation Ground Power Unit (AGPU)",
+   "lexicon_doc": "343",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "production of the Aviation Ground Power Unit 1.1",
+   "lexicon_quote": "procurement dollars in the amount of $29.489M will procure Aviation Ground Power Unit (AGPU) 1.1 systems.  The Army Requirement Oversight Committee (ARO",
+   "verdict": "link",
+   "rationale": "This is a digest article with three paragraphs; the AGPU paragraph is Sun Test Systems Inc., Huntsville, Alabama, and its own contract number is W58RGZ-25-D-0019 (the chunk text is truncated just before it, but records.jsonl carries the full paragraph and ACC Redstone Arsenal as the contracting activity, which matches the aviation ground-support portfolio). The announcement names the article being produced by its exact designator, 'Aviation Ground Power Unit 1.1', and the procurement line 5212AZ3100 (Common Ground Equipment) says in its own narrative that its procurement dollars 'will procure Aviation Ground Power Unit (AGPU) 1.1 systems' - so the designator variant in the announcement is the line's own words, not an inferred resemblance. The award is for production, which is the procurement line's job rather than the Aviation Ground Support Equipment RDT&E line's; the one weakness a refute lens should weigh is that this is an IDIQ whose funding is determined with each order, so no appropriation colour is stated on the face of the announcement.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both hold: the paragraph's scope is 'production of the Aviation Ground Power Unit 1.1' and the lake's base description for W58RGZ25D0019 reads 'AIRCRAFT PROCUREMENT APPROPRIATIONS FOR A SOLE SOURCE FIVE-YEAR IDIQ PRODUCTION CONTRACT OF THE AVIATION GROUND POWER UNIT, VERSION 1.1 (AGPU 1.1)' with PSC 'Aircraft Ground Servicing Equipment', which is exactly 5212AZ3100's own account (2031A, Aircraft Procurement, Army) and exactly what doc 343's justification says its procurement dollars buy ('will procure Aviation Ground Power Unit (AGPU) 1.1 systems'); AGPU is the article being produced, not a platform the contract merely supports, and Common Ground Equipment names AGPU 1.1 as its near-term priority rather than reading as a rollup or CATCHALL_TITLE line; the IDIQ's silence on colour does not cut the other way, because the only rival owner of the AGPU 1.1 designator (0605830A) sits in 2040A RDT&E and could not pay for an aircraft-procurement production award."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "A different PE in the same index owns the announcement's exact designator: A.tsv row 'Aviation Ground Power Unit Next Generation (AGPU 1.1)' belongs to 0605830A (doc 355, Aviation Ground Support Equipment, ownership 'own', kind 'project'), while the proposed row is the plain 'Aviation Ground Power Unit (AGPU)' under 5212AZ3100 and reaches '1.1' only through its narrative sentence - the announcement's words 'Aviation Ground Power Unit 1.1' are literally the OTHER line's name, so the evidence links at least as well, arguably better, to 0605830A; nothing on the face of the award breaks the tie, because the paragraph (verified in records.jsonl: Sun Test Systems Inc., Huntsville, W58RGZ-25-D-0019, ACC Redstone Arsenal) states 'work locations and funding will be determined with each order' - no appropriation colour at all - and its cost-plus-fixed-fee component is as consistent with the RDT&E increment as with production."
+   }
+  },
+  {
+   "record_index": 65,
+   "article_id": "4230482",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "8750E27501",
+   "program_name": "The Precision Guidance Kit (PGK)",
+   "lexicon_doc": "349",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "development, qualification, and production of M1156E5 precision guidance kit",
+   "lexicon_quote": "The Precision Guidance Kit (PGK) is a course correcting fuze that provides precision accurac",
+   "verdict": "link",
+   "rationale": "The announcement names 'precision guidance kit' outright and gives the Army's own designator for it, M1156E5 (PGK is the M1156 course-correcting fuze), and the action is a Northrop Grumman production/qualification mod obligating fiscal 2025 ammunition procurement, Army funds. 8750E27501 (Artillery Propellants, Fuzes and Primers) is the ammunition-procurement line whose narrative describes PGK as its own item - 'a course correcting fuze' - so the money colour on the award (procurement of ammunition) and the line agree. Three PEs in this index carry a PGK name, which a refute lens must test: 0604802A is RDT&E Eng Dev and cannot be paid with ammunition procurement funds, and 3102E89500's PGK sentence is a compatibility mention inside the 155mm projectile line ('as well as Precision Guidance Kit (PGK)') rather than a statement that the projectile line buys the kit. The fuze line is the one that buys the fuze.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The appropriation match is exact rather than merely compatible: the announcement obligates fiscal 2025 ammunition procurement, Army, the lake shows W15QKN13C0074 funded from 021-2034 and nothing else with PSC 'Fuzes and Primers' and base description 'TO AWARD PRODUCTION EFFORT FOR THE PRECISION GUIDANCE KIT (PGK)', and 8750E27501 is the 2034A Procurement of Ammunition, Army line whose own sub-item E99250 is 'ARTY, FUZE, PRECISION GUIDANCE KIT (PGK)' and whose narrative names the exact variant awarded ('The M1156E5, to become M1156A2 post Type Classification, will include anti-jam capability'); the kit is the item procured, not a platform the contract supports, and the line is a named fuze/propellant commodity line with per-item dollars rather than a catch-all — the development-and-qualification words in the scope raise no colour problem because the whole obligation is ammunition procurement, and the one same-account rival (3102E89500, the 155mm projectile line) is separated by mission, since the fuze line buys the fuze."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "The name is owned three times over in this one index and the announcement's evidence does not pick between the owners: 0604802A (doc 355, Weapons and Munitions - Eng Dev) owns the byte-identical string 'The Precision Guidance Kit (PGK)' plus 'Long Range-Precision Guidance Kit (LR-PGK) Development', and 3102E89500 (doc 349) owns 'Precision Guidance Kit (PGK)', alongside the proposed 8750E27501 row; the announcement offers only the bare phrase 'precision guidance kit' and the increment designator M1156E5, which NO index row names, and its own verbs - 'development, qualification, and production' against a 2013 ACC-Newark development contract being modified (P00099) - match the Eng Dev owner's project language at least as well as the fuze-procurement line, so the only thing separating the three owners is appropriation colour, which is lens A's ground and not identity evidence."
+   }
+  },
+  {
+   "record_index": 27,
+   "article_id": "2158770",
+   "piid": "W52P1J20C0014",
+   "pe_bli": "2948BB8500",
+   "program_name": "The Modernization of Enterprise Terminals (MET)",
+   "lexicon_doc": "346",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "sustainment and support for the fielded modernization of enterprise terminals and AN/GSC-52 medium satellite communications terminal modernization programs",
+   "lexicon_quote": "The Modernization of Enterprise Terminals (MET), BB8501/Enterprise Wideband Satellite Terminal Digital EQ,",
+   "verdict": "link",
+   "rationale": "The announcement spells the program name out in the line's own words - 'modernization of enterprise terminals' is MET, and AN/GSC-52 is the legacy enterprise terminal MET replaces - so this is a named program, not an unnamed services ceiling. 2948BB8500 (Defense Enterprise Wideband Satcom Systems) owns MET in its narrative. The award obligates fiscal 2020 other procurement, Army alongside O&M, so procurement colour is present on the action and intersects the line. The honest weakness for a refute lens is the word 'sustainment': part of the money is O&M, and O&M sustainment attached to a procurement line is the documented failure mode - if the refuting lens reads the whole scope as post-fielding sustainment rather than the modernization programme itself, this should fall.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted as the documented failure mode — O&M sustainment attached to a procurement line: the award's own words buy 'sustainment and support for the fielded' MET and AN/GSC-52 programs on a cost-no-fee/cost-plus-fixed-fee vehicle, the announcement names operations and maintenance, Army first and gives no separate OPA figure, and the lake confirms the species with base description 'MET SUSTAINMENT SUPPORT UCA', a services PSC ('IT and Telecom - Annual Software Maintenance Service Plans'), and 14 funding accounts spanning Navy 017, Army O&M 021-2020, Air Force 057 and Defense-wide 097 against $262M of lifetime obligations — a joint post-fielding support vehicle, not the $45M of BB8416 acquisition work that 2948BB8500 (2035A, Other Procurement, Army) budgets; that 021-2035 appears somewhere in that account list clears the loader's mechanical guard but does not make this action the line's own work, and 2948BB8500 is in any case the DEWSS parent that doc 346 says 'consists of' four separately budgeted efforts (B08900, BB8416, BB8501, BB8509), so post-fielding sustainment charged partly to the aggregate does not support the claim that this action paid for this program element's own work."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner survives inspection: 2948BB8500 is the ONLY row in A.tsv whose name contains 'Enterprise Terminals' ('The Modernization of Enterprise Terminals (MET)', doc 346, ownership 'own'), the bare acronym MET does collide with 'The Medium Equipment Trailer (MET)' (8309DA0500) and 'M1311 Medium Equipment Trailer (MET)' (8992DA0924) but that collision is unreachable because the announcement spells the program out in full, and AN/GSC-52 is the legacy enterprise terminal MET replaces rather than a rival program name (no index row owns 'GSC-52'); the alias is real, not invented, and this is not a variant/increment mismatch or a contractor-name match. Two caveats I could not convert into a refutation and that lens A should weigh: the lexicon quote trails into a sibling BLI ('MET, BB8501/Enterprise Wideband Satellite Terminal Digital EQ') and the row is flagged name_repaired, so the P-doc sentence may enumerate the BB85xx family rather than assert BB8500 alone - but BB8501 is not an index row, so there is no better owner to prefer; and the F index carries 'AIR FORCE WIDEBAND ENTERPRISE TERMINALS (AFWET)' (MILSAT, doc 416) whose narrative also names MET, which is a cross-org mention, not an owner this Army-let action (ACC Rock Island, OMA + other procurement, Army) could be reassigned to. The scope word 'sustainment' on a fielded program is the real hazard here and it is lens A's question, not mine."
+   }
+  },
+  {
+   "record_index": 47,
+   "article_id": "958500",
+   "piid": "W56HZV16C0190",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "45 sets of Abrams M1A2 System Enhanced Package legacy components",
+   "lexicon_quote": "The upgrade and assembly of 30 Abrams tank variants to the M1A2 System Enhancement Package (SEP)v3 configuration, which enhances tank survivability, the aut",
+   "verdict": "weak",
+   "rationale": "The name match is as close as this chunk gets - 'Abrams M1A2 System Enhanced Package' against the index's 'M1A2 System Enhancement Package (SEP)', one word apart, with ACC Warren as the contracting activity - but the money says this is not the Abrams Upgrade Program's own work. The announcement obligates fiscal 2016 operations and maintenance, Army funds, while 6500GA0750 is a procurement (WTCV) line; a buy of 45 sets of legacy components on O&M reads as replenishment for fielded tanks, not as the upgrade line executing SEP conversions. Appropriations are not fungible, so the claim 'this action paid for this line's own work' cannot be sustained on the announcement's own funding sentence. Recording it weak rather than link keeps the published number the smaller true one."
+  },
+  {
+   "record_index": 24,
+   "article_id": "3444761",
+   "piid": "W909MY23C0004",
+   "pe_bli": "0214KA4510",
+   "program_name": "Forward Looking Infrared (IFLIR)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "Third Generation Forward Looking Infrared low-rate initial production technical, engineering, test, and logistics services",
+   "lexicon_quote": "Forward Looking Infrared (IFLIR)",
+   "verdict": "weak",
+   "rationale": "'Forward Looking Infrared' appears in the announcement and in the index, but the two carry different program designations: the announcement is Third Generation FLIR entering low-rate initial production at Raytheon McKinney, while the index row is Improved Forward Looking Infrared (IFLIR). The index row is also a bare title - its lexicon quote is the title itself, with no narrative body naming a sensor generation - so there is nothing in the PE's own words to confirm that its IFLIR and the announcement's Third Generation FLIR are the same increment. A second FLIR owner exists in this same index (Block 1 Second Generation FLIR under the Abrams Upgrade Program), which is direct evidence that generation labels here distinguish programs rather than decorate one. Scope is also mostly technical, engineering, test and logistics services. Not enough to assert attribution."
+  },
+  {
+   "record_index": 9,
+   "article_id": "1641072",
+   "piid": "W31P4Q13C0129",
+   "pe_bli": "0648CC0007",
+   "program_name": "Command Launch Unit (CLU)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Javelin weapons system full-rate production",
+   "lexicon_quote": "The system consists of a reusable Command Launch Unit (CLU) with a built-in-test (BIT), and a modular missile encased i",
+   "verdict": "weak",
+   "rationale": "The announcement names the Javelin weapon system, and 0648CC0007 is the Javelin (AAWS-M) procurement summary, but the only names this index lets me propose for that PE are its components - Command Launch Unit (CLU), JVPAK and LWCLU - and the announcement names none of them; the bare 'Javelin (AAWS-M)' row is not in the index, so proposing a component name here would attach a program_name the announcement never uses. The money points the same way: this is a foreign military sales mod (Australia, Estonia, Lithuania, Turkey, Taiwan, Ukraine) for full-rate production articles delivered to those customers, and the obligation is fiscal 2018 other procurement, Army rather than missile procurement. Both the identity and the money fall short of the standard."
+  },
+  {
+   "record_index": 23,
+   "article_id": "618381",
+   "piid": "W31P4Q15C0043",
+   "pe_bli": "1338C70000",
+   "program_name": "Hellfire Sys Summary",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Hellfire missile launch electronic assemblies and upper harnesses",
+   "lexicon_quote": "Hellfire Sys Summary",
+   "verdict": "weak",
+   "rationale": "'Hellfire' is present, but the index row for 1338C70000 is a bare system-summary title whose lexicon quote is the title itself, so the PE offers no narrative sentence tying it to launch electronic assemblies or harnesses. The hardware named is launcher-side, which in this index belongs nearer to 9157J01200 (Longbow Hellfire XM299, 'Launcher Guided Missile') than to the missile summary - a live alternative-owner problem. And the action is a foreign military sales mod for Pakistan, Qatar and Tunisia: the articles are the customers', not the US line's, so the assertion that this contract paid for this program element's own work is not supported. Weak rather than link."
+  },
+  {
+   "record_index": 48,
+   "article_id": "3301223",
+   "piid": "W56HZV23C0003",
+   "pe_bli": "6500GA0750",
+   "program_name": "M1A2 System Enhancement Package (SEP)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "M1A1 Abrams turret armor swaps",
+   "lexicon_quote": "The upgrade and assembly of 30 Abrams tank variants to the M1A2 System Enhancement Package (SEP)v3 configuration, which enhances tank survivability, the aut",
+   "verdict": "weak",
+   "rationale": "The only Abrams name this index carries is M1A2 System Enhancement Package (SEP), and the announcement is explicitly about M1A1 turret armor swaps - a different variant, which is exactly the identity failure the rubric asks the refute lenses to look for. The funding compounds it: fiscal 2022 Special Defense Acquisition Fund and fiscal 2023 Foreign Military Sales (Poland) money, neither of which is the US Abrams Upgrade Program procurement line. A careless matcher would link this on the word 'Abrams'; it should not publish."
+  },
+  {
+   "record_index": 30,
+   "article_id": "4121138",
+   "piid": "W58RGZ25D0019",
+   "pe_bli": "0605830A",
+   "program_name": "Aviation Ground Power Unit Next Generation (AGPU 1.1)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "production of the Aviation Ground Power Unit 1.1",
+   "lexicon_quote": "Aviation Ground Power Unit Next Generation (AGPU 1.1)",
+   "verdict": "weak",
+   "rationale": "Recorded so the alternative owner is visible rather than silently dropped. This RDT&E line carries the closest literal name in the index - 'AGPU 1.1' appears in the row itself - but the award is for production of the article, which is procurement work, and 5212AZ3100's narrative states that its procurement dollars buy AGPU 1.1 systems. Two PEs owning the same designator at different life-cycle stages is a genuine collision; the production wording resolves it toward the procurement line, so this one is weak and the procurement proposal is the one offered as a link."
+  },
+  {
+   "record_index": 65,
+   "article_id": "4230482",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "3102E89500",
+   "program_name": "Precision Guidance Kit (PGK)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "development, qualification, and production of M1156E5 precision guidance kit",
+   "lexicon_quote": ", electronic time and short intrusion proximity) as well as Precision Guidance Kit (PGK).  It is used for conventional fire support for harassment a",
+   "verdict": "weak",
+   "rationale": "Recorded to make the PGK name collision explicit. This 155mm projectile line does carry a PGK name, but its own sentence mentions the kit as a fuzing option the projectile can be fitted with ('as well as Precision Guidance Kit (PGK)'), not as an item this line procures. The award buys the kit itself, so the fuze line 8750E27501 is the owner; linking the projectile line as well would double-count one action across two budget lines."
+  },
+  {
+   "record_index": 65,
+   "article_id": "4230482",
+   "piid": "W15QKN13C0074",
+   "pe_bli": "0604802A",
+   "program_name": "The Precision Guidance Kit (PGK)",
+   "lexicon_doc": "355",
+   "announcement_evidence": "development, qualification, and production of M1156E5 precision guidance kit",
+   "lexicon_quote": "hicle when integrated with a mobility system.\n\nProject S36, The Precision Guidance Kit (PGK): The Precision Guidance Kit (PGK) Project supports developm",
+   "verdict": "weak",
+   "rationale": "Recorded as the third PGK owner. The announcement does say 'development, qualification', which superficially fits an Eng Dev project, but the only money obligated is fiscal 2025 ammunition procurement, Army - RDT&E work is not paid from the ammunition procurement appropriation, and this is the O&M/RDT&E-versus-procurement mismatch the rubric singles out, run the other way. The action belongs to the procurement side."
+  },
+  {
+   "record_index": 50,
+   "article_id": "3779333",
+   "piid": "W912CH24D0004",
+   "pe_bli": "3446D15400",
+   "program_name": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "engineering, logistics, and related technical support functions for all variants of the High Mobility Multipurpose Wheeled Vehicle Family of Vehicles",
+   "lexicon_quote": "HI MOB MULTI-PURP WHLD VEH (HMMWV)",
+   "verdict": "wrong",
+   "rationale": "Rejected by design on two of the section 3 patterns at once. First, generic services: the scope is 'engineering, logistics, and related technical support functions', on an IDIQ whose work locations and funding are determined with each order and with no appropriation named on the face of the announcement. Second, the named thing is the platform the contract supports - all variants of the HMMWV family - rather than the procurement line's own buy. The index row is itself only the budget-line title. This is the pattern that would inflate a platform's page with support contracts that bought no vehicles."
+  },
+  {
+   "record_index": 78,
+   "article_id": "2085466",
+   "piid": "W15P7T20F0005",
+   "pe_bli": "1989B11200",
+   "program_name": "TACTICAL NETWORK COMMUNICATION",
+   "lexicon_doc": "346",
+   "announcement_evidence": "Year 11 system engineering and program management services for product manager tactical network, systems, and equipment",
+   "lexicon_quote": "TACTICAL NETWORK COMMUNICATION",
+   "verdict": "wrong",
+   "rationale": "Section 3 generic services. The scope is system engineering and program management support for a product manager's office, not a named program's own content, and 'tactical network' here is the office's name rather than a system the line funds. The index row is a bare budget-line title with no narrative sentence to anchor an alias, and at least two other PEs in this index carry tactical-network names (1982B07100 Tactical Network Technology Mod In Svc, 9164BU8100 Integrated Tactical Network), so the phrase cannot identify an owner even if the services exclusion did not already apply."
+  },
+  {
+   "record_index": 68,
+   "article_id": "815105",
+   "piid": "W52P1J11C0005",
+   "pe_bli": "4370EA0575",
+   "program_name": "Ammunition Supply Point (ASP)",
+   "lexicon_doc": "349",
+   "announcement_evidence": "support to the 1 st Theater Support Command, Ammunition Supply Point",
+   "lexicon_quote": "tions, including deployment, operations, and support of the Ammunition Supply Point (ASP) suites. The ASP suites include APE, which will increase the",
+   "verdict": "wrong",
+   "rationale": "Section 3 generic services, with the name used in its ordinary sense. The award is O&M-funded maintenance, supply and transportation support to a theater support command's ammunition supply point in Kuwait - a place and a logistics activity - while the index row means the Ammunition Peculiar Equipment program's ASP equipment suites. The string matches; the referent does not."
+  },
+  {
+   "record_index": 46,
+   "article_id": "3763548",
+   "piid": "W912EP24C0008",
+   "pe_bli": "0155K35110",
+   "program_name": "The Small Tactical Optical Rifle Mounted (STORM)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "coastal storm risk management and beach dune restoration",
+   "lexicon_quote": "Close Combat Soldier in the area of situational awareness.  The Small Tactical Optical Rifle Mounted (STORM) Micro-Laser Rangefinder (MLRF) is a weapon-mounted, multi-f",
+   "verdict": "wrong",
+   "rationale": "The exact reject-by-design example section 3 names: STORM used as an English word. This is a Corps of Engineers beach-dune restoration contract for coastal storm risk management in Flagler Beach, Florida; the lexicon's STORM is a weapon-mounted micro-laser rangefinder. Recorded so the trap is visible in the counts rather than passing silently."
+  },
+  {
+   "record_index": 26,
+   "article_id": "3786556",
+   "piid": "W912QR24C0008",
+   "pe_bli": "0303142A",
+   "program_name": "SATCOM Ground Environment (SPACE)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "Patrick Space Force Base",
+   "lexicon_quote": "Project 253, Dscs-Dcs (Phase II), SATCOM Ground Environment (SPACE) - This funding supports Joint and Next Generation Command a",
+   "verdict": "wrong",
+   "rationale": "Same section 3 pattern as STORM - an acronym that is also an ordinary word. The only occurrence of 'SPACE' in this record is the installation name Patrick Space Force Base; the award is a hangar renovation funded with Air Force Reserve O&M. No program is named anywhere in the paragraph."
+  },
+  {
+   "record_index": 58,
+   "article_id": "606843",
+   "piid": "W909MY15D0006",
+   "pe_bli": "2956B85800",
+   "program_name": "Scalable Class of Unified Terminals (SCOUT)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "Long Range Advanced Scout Surveillance System (LRAS3)",
+   "lexicon_quote": "Transportable Tactical Command Communications (T2C2) and Scalable Class of Unified Terminals (SCOUT) provide a suite of expeditionary and mobile satellite termi",
+   "verdict": "wrong",
+   "rationale": "Acronym collision, rejected by design. The announcement is about LRAS3 sight sensors being updated from Block 0 to Block 1 Netted configuration; 'Scout' here is part of Long Range Advanced Scout Surveillance System, while the index's SCOUT is a satellite terminal family. LRAS3 itself is not carried anywhere in this org's index, so the record has no honest owner to propose - the only reason it produces a candidate at all is substring resemblance."
+  },
+  {
+   "record_index": 51,
+   "article_id": "1479983",
+   "piid": "W31P4Q15C0065",
+   "pe_bli": "0010I24000",
+   "program_name": "COUNTER-SMALL UNMANNED AERIAL SYSTEM (C-SUAS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "Counter-Rocket Artillery Mortar command and control system tactical defense measures contract by 21 months and include Counter-Unmanned Aerial System capability",
+   "lexicon_quote": "COUNTER-SMALL UNMANNED AERIAL SYSTEM (C-SUAS)",
+   "verdict": "wrong",
+   "rationale": "The contract is a Counter-Rocket, Artillery, Mortar command-and-control extension; C-RAM is not carried in this index, and the counter-UAS words appear only as capability language being folded into that extension alongside 'emerging technologies in sensors and electronic warfare' - which is the generic-scope pattern section 3 rejects. The index row is a bare procurement-line title for Counter-Small UAS, a different program, and the only money obligated is $2,000,000 of fiscal 2018 RDT&E against a procurement line. Name, scope and money all fail."
+  },
+  {
+   "record_index": 20,
+   "article_id": "1035122",
+   "piid": "W31P4Q13C0111",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "depot level diagnosis and repair capability for PATRIOT secondary items",
+   "lexicon_quote": " by improved operational effectiveness as identified in the PATRIOT Product Improvement Program (PIP); material deficiencies identified in the field; obsolescenc",
+   "verdict": "wrong",
+   "rationale": "Section 3 platform pattern. PATRIOT is named as the system whose secondary items get a depot diagnosis and repair capability - sustainment of the fielded platform, not execution of the Patriot Mods line's own content, and none of the names this PE owns (PIP, MSE, TPW, ADI, TPX-57, IESP) appears in the announcement. It is also a foreign military sales mod for Israel, Korea, Kuwait, Saudi Arabia, the UAE, Taiwan and the Netherlands, with only vague 'fiscal 2017 other funds' obligated."
+  },
+  {
+   "record_index": 71,
+   "article_id": "620435",
+   "piid": "W31P4Q15C0153",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "combined crypto modernization Phase 1 and spares supporting the Patriot system",
+   "lexicon_quote": "-8.1) and Hardware (H/W), Cryptographic Modernization Kits, Missile Segment Enhancement (MSE) Launching station upgrades; Radar Digital Sidelobe Cancelle",
+   "verdict": "wrong",
+   "rationale": "Section 3 platform pattern, and it is a close call worth stating: the Patriot Mods narrative does list Cryptographic Modernization Kits among the things it funds, so the subject matter overlaps. But the announcement's own words are 'supporting the Patriot system' - Patriot is the platform the crypto work supports - and none of the six names this index lets me propose for 0962C50700 is crypto modernization, so any link would have to publish a program_name the announcement never uses. Declining rather than stretching an owned name over adjacent subject matter."
+  },
+  {
+   "record_index": 72,
+   "article_id": "620608",
+   "piid": "W31P4Q15C0153",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "combined crypto modernization Phase 1 and spares supporting the Patriot system",
+   "lexicon_quote": "-8.1) and Hardware (H/W), Cryptographic Modernization Kits, Missile Segment Enhancement (MSE) Launching station upgrades; Radar Digital Sidelobe Cancelle",
+   "verdict": "wrong",
+   "rationale": "Same award as record 71 republished under a second article id (the identical W31P4Q-15-C-0153 paragraph appears in four daily digests in this chunk). Rejected on the same section 3 platform ground: the crypto modernization supports the Patriot system, and no name owned by 0962C50700 appears in the text."
+  },
+  {
+   "record_index": 73,
+   "article_id": "620828",
+   "piid": "W31P4Q15C0153",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "combined crypto modernization Phase 1 and spares supporting the Patriot system",
+   "lexicon_quote": "-8.1) and Hardware (H/W), Cryptographic Modernization Kits, Missile Segment Enhancement (MSE) Launching station upgrades; Radar Digital Sidelobe Cancelle",
+   "verdict": "wrong",
+   "rationale": "Third republication of the same W31P4Q-15-C-0153 paragraph. Rejected on the section 3 platform pattern for the same reason as records 71 and 72; recorded per record so the counts show the duplication rather than hiding it."
+  },
+  {
+   "record_index": 74,
+   "article_id": "621281",
+   "piid": "W31P4Q15C0153",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "combined crypto modernization phase 1 and spares supporting the Patriot system",
+   "lexicon_quote": "-8.1) and Hardware (H/W), Cryptographic Modernization Kits, Missile Segment Enhancement (MSE) Launching station upgrades; Radar Digital Sidelobe Cancelle",
+   "verdict": "wrong",
+   "rationale": "Fourth republication of the same W31P4Q-15-C-0153 paragraph (this printing lowercases 'phase 1'). Same section 3 platform rejection: Patriot is the system the crypto modernization supports, and the announcement names none of the six programs 0962C50700 owns in this index."
+  }
+ ]
+}

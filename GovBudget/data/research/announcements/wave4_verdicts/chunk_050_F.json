@@ -1,0 +1,182 @@
+{
+ "chunk": "chunk_050_F.json",
+ "proposals": [
+  {
+   "record_index": 0,
+   "article_id": "3178203",
+   "piid": "FA489019C0003",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "announcement_evidence": "MQ9 Aircrew Training and Courseware Development Contract",
+   "lexicon_quote": "\"MQ-9 UAV\" (program_title: \"MQ-9 UAV\")",
+   "verdict": "wrong",
+   "rationale": "The designator MQ9 appears and the index carries \"MQ-9 UAV\" under 0205219F, but §3's platform pattern rejects this: the MQ-9 is the aircraft the aircrew-training and courseware contract supports, not the program element's own work. The announcement states the obligation is fiscal 2022 operations and maintenance funds for the exercise of Option Year Four of a training/courseware services contract at Creech, Holloman, March ARB and Hancock ANGB; O&M training services attached to an RDT&E operational-system-development line is exactly the appropriation mismatch §1's Lens A names. The name also collides with \"MQ-9 Mods\" (PRDTB2, doc 407), so even a sympathetic reading could not resolve which line the money belongs to. No link."
+  },
+  {
+   "record_index": 1,
+   "article_id": "1487244",
+   "piid": "FA300213D0012",
+   "pe_bli": "F01500",
+   "program_name": "F-15E",
+   "lexicon_doc": "407",
+   "announcement_evidence": "Royal Saudi Air Force F-15SA OEM",
+   "lexicon_quote": "\"F-15E\" (program_title: \"F-15\")",
+   "verdict": "wrong",
+   "rationale": "F-15SA is a designator variant that would tempt a match against the index's \"F-15E\" row, but §3 rejects it twice over: the F-15 is the platform the OEM support contract serves rather than the program the line funds, and the F-15SA is a distinct Saudi variant, not the USAF F-15E this Aircraft Procurement line buys. The announcement is explicit that the action \"involves foreign military sales to Saudi Arabia\" and that \"Foreign military sales funds in the amount of $49,534,984 are being obligated at the time of award\" — FMS money, performed in Khamis, Saudi Arabia, never flows from a U.S. program element, so no U.S. line paid for this work. No link."
+  },
+  {
+   "record_index": 18,
+   "article_id": "1425283",
+   "piid": "FA862018F2363",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "This contract provides for tasks necessary to develop, field, and sustain Air Force Special Operations Command and Air Combat Command MQ-9 software development.",
+   "lexicon_quote": "\"MQ-9 UAV\" (program_title: \"MQ-9 UAV\")",
+   "verdict": "link",
+   "rationale": "The announcement names the MQ-9 as the subject of the development work itself, not as a platform some other service supports: the order buys development, fielding and sustainment of MQ-9 software. Normalising the designator, \"MQ-9\" is the index row \"MQ-9 UAV\" with its generic type suffix dropped, and 0205219F is the MQ-9 program element itself — a program-named line, not a rollup or catch-all title. Money and mission agree: the announcement obligates \"Fiscal 2017 and 2018 research and development funds in the amount of $9,864,489\" against a cost-plus-fixed-fee order placed by Air Force Life Cycle Management Center, i.e. RDT&E dollars on an RDT&E operational-system-development line that funds precisely MQ-9 software. The only same-name collision in this org's index is \"MQ-9 Mods\" (PRDTB2, doc 407, procurement), which the R&D appropriation excludes; \"MQ-9 System Lifecycle Agile Modernization (SLAM)\" sits under this same 0205219F, so it creates no cross-PE ambiguity.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money and mission both sit on this line: fiscal 2017/2018 research and development funds ($9,864,489) on a CPFF order placed by AFLCMC for MQ-9 software development itself, against the MQ-9's own RDT&E line (0205219F carried $167.2M FY17 and $184.4M FY18 actuals, and its FY26 narratives include MQ-9 Upgrade, MQ-9 SLAM and Squadron Operations Center software content), so the MQ-9 is the funded program rather than a platform the contract merely supports, and \"MQ-9 UAV\" is a program-named line, not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"MQ-9 UAV\" is owned by 0205219F alone (the only other 0205219F row, MQ-9 SLAM, is the same PE); the one cross-PE MQ-9 name in the index is \"MQ-9 Mods\" (PRDTB2, doc 407), a distinct modifications name that the announcement's own \"research and development funds\" and software-development content do not fit, so the evidence does not link this award equally well there, the designator is real rather than invented, no MQ-9 variant or increment is named, and the quoted evidence is the work description, not the contractor."
+   }
+  },
+  {
+   "record_index": 49,
+   "article_id": "2567831",
+   "piid": "FA811821D0004",
+   "pe_bli": "B00200",
+   "program_name": "B-2A",
+   "lexicon_doc": "407",
+   "announcement_evidence": "remanufacture and repair of the B-2 Hydraulic Servocylinder",
+   "lexicon_quote": "\"B-2A\" (program_title: \"B-2A\")",
+   "verdict": "wrong",
+   "rationale": "\"B-2\" normalises onto the index's \"B-2A\" row, but §3's platform pattern rejects the match: the contract buys depot remanufacture and repair of one component, the hydraulic servocylinder, and the B-2A is the aircraft that component comes off — not the modification program the Aircraft Procurement line funds. The funding line confirms the mismatch: \"Fiscal 2021 working capital funds will be used with no funds being obligated at the time of award\" and the buyer is Air Force Sustainment Center at Tinker AFB, so this is working-capital depot sustainment, not procurement of a B-2A modification. No link."
+  },
+  {
+   "record_index": 53,
+   "article_id": "612900",
+   "piid": "FA821413C0001",
+   "pe_bli": "0101213F",
+   "program_name": "LGM-30G",
+   "lexicon_doc": "412",
+   "announcement_evidence": "systems engineering, technical assistance support, training, and development in performing integration, sustaining engineering and program management support functions for the Minuteman III weapon system",
+   "lexicon_quote": "\"LGM-30G\" (program_title: \"Minuteman Squadrons\")",
+   "verdict": "weak",
+   "rationale": "A real program name is present — Minuteman III is the LGM-30G the index carries under 0101213F — so this is not a phantom alias, but the evidence does not reach §1's standard for saying this action paid for that line's own work. What is bought is systems engineering and technical assistance, sustaining engineering and program management support, which §3 lists among generic services (engineering support), and the announcement obligates \"Fiscal 2015 operations and maintenance and research and development funds in the amount of $16,723,542\" — a mixed O&M/RDT&E obligation, and O&M sustainment attached to an RDT&E line is the failure mode the held-out study found. The name also collides across this org's own index: \"LGM-30G\" appears under both 0101213F (doc 412, Minuteman Squadrons) and M30MLG (doc 410, MM III Modifications), and nothing in the text resolves which of the two the money belongs to. Weak, not link."
+  },
+  {
+   "record_index": 56,
+   "article_id": "2452534",
+   "piid": "FA868218C0009",
+   "pe_bli": "0207325F",
+   "program_name": "The Joint Air-to-Surface Standoff Missile (JASSM)",
+   "lexicon_doc": "412",
+   "match_basis": "exact-name",
+   "announcement_evidence": "the Joint Air-to-Surface Standoff Missile Group One development",
+   "lexicon_quote": "\"The Joint Air-to-Surface Standoff Missile (JASSM)\" (program_title: \"Joint Air-to-Surface Standoff Missile (JASSM)\")",
+   "verdict": "link",
+   "rationale": "The announcement spells the program's full name out verbatim — \"the Joint Air-to-Surface Standoff Missile Group One development\" — matching the index row under 0207325F apart from the leading article and the parenthetical acronym, so the name is the program itself and not a platform the contract merely supports. The work named is the program's own development content: \"risk reduction testing, cyber testing and coatings to support the Group One development effort.\" The money agrees with the line: \"Fiscal 2020 research, development, test and funds in the amount of $5,338,074\" on a cost-plus-incentive-fee/cost-plus-fixed-fee development modification, i.e. RDT&E dollars against the JASSM RDT&E program element, whose title names the program rather than a catch-all. The only other JASSM-family row in this org's index is \"AGM-158D\" under JASSM0 (doc 410, procurement); the announcement names no AGM-158 variant and the obligation is RDT&E, so the procurement line is not the owner.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "A development modification to the JASSM development contract for the program's own Group One development work (risk reduction testing, cyber testing, coatings) funded with fiscal 2020 RDT&E ($5,338,074) on the JASSM RDT&E line, which carried $73.5M in FY2020 actuals and whose narratives cover exactly this content (\"Advanced Survivability, Integration, and Test\"); the smaller fiscal 2019 other-procurement tranche is a secondary color that does not displace the RDT&E match, the missile is the program not a supported platform, and the line's title names the program."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "\"The Joint Air-to-Surface Standoff Missile (JASSM)\" is a unique name row in the index, held only by 0207325F, which also owns AGM-158A/B/D and JASSM-ER; the procurement line JASSM0 owns only the variant name \"AGM-158D\" and LRASM0 only \"AGM-158C\", neither of which the announcement names, and \"Group One\" is a grouping inside the JASSM development effort rather than a separate indexed program, so no alternative owner fits this evidence."
+   }
+  },
+  {
+   "record_index": 59,
+   "article_id": "3824019",
+   "piid": "FA868924C2025",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "announcement_evidence": "Belgium Sustainment Contractor Logistics Support in support of MQ-9B SkyGuardian aircraft",
+   "lexicon_quote": "\"MQ-9 UAV\" (program_title: \"MQ-9 UAV\")",
+   "verdict": "wrong",
+   "rationale": "Three §3 patterns reject this at once. The aircraft is the platform the contract supports, not the program the line funds; the work is contractor logistics support — \"depot repair, engineering services, field team support, and software maintenance services\" — which is generic logistics; and the announcement is explicit that \"This contract involves Foreign Military Sales (FMS) to Belgium\" with \"FMS funds in the amount of $21,632,163 are being obligated at the time of award\", so no U.S. program element paid for it. The MQ-9B SkyGuardian is also a distinct export variant rather than the USAF MQ-9 this RDT&E line funds. No link."
+  },
+  {
+   "record_index": 62,
+   "article_id": "4001063",
+   "piid": "FA868922C2017",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "announcement_evidence": "to exercise an option for continued sustainment of the French Air Force MQ-9 unmanned aerial system program fleet",
+   "lexicon_quote": "\"MQ-9 UAV\" (program_title: \"MQ-9 UAV\")",
+   "verdict": "wrong",
+   "rationale": "The MQ-9 designator matches the index row, but §3's platform pattern and the FMS test both reject the link: what is bought is continued sustainment of a foreign operator's fleet, so the MQ-9 is the airframe being supported rather than the development program 0205219F funds. The announcement states \"This contract involves Foreign Military Sales (FMS) to France\" and that \"FMS funds in the amount of $48,482,812 are being obligated at the time of award\" — the entire face value is FMS money, which never comes out of a U.S. program element. No link."
+  },
+  {
+   "record_index": 77,
+   "article_id": "2670768",
+   "piid": "FA865021D2620",
+   "pe_bli": "0901226F",
+   "program_name": "Analytical Framework for Simulation Integration and Modeling (AFSIM)",
+   "lexicon_doc": "412",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "This contract involves research, development, and expansion of the advanced framework for simulation, integration, and modeling, which is a modular, object-oriented multi-domain operations modeling, simulation, and analysis framework.",
+   "lexicon_quote": "\"Analytical Framework for Simulation Integration and Modeling (AFSIM)\" (program_title: \"Air Force Studies and Analysis Agency\")",
+   "verdict": "link",
+   "rationale": "The announcement never writes the acronym, but it spells the program out: \"the advanced framework for simulation, integration, and modeling\" is AFSIM, differing from the index row's expansion only in the first word, and the announcement's own gloss — \"a modular, object-oriented multi-domain operations modeling, simulation, and analysis framework\" — is AFSIM's standing description, which is why this is an alias match rather than a coincidence of common words. The named thing is a software framework, so there is no platform-versus-program confusion, and the line's work is exactly what is bought: \"completing research and development for redefining the basic analytical and simulation environment (REBASE)\" is R&D on that framework. The appropriation agrees — the initial task orders are \"Foundation I research and development\" and \"Expansion I research and development\", RDT&E content against an RDT&E program element (doc 412). 0901226F is the only PE in this org's index that owns any AFSIM-shaped name, so there is no competing owner; its title names the owning analysis agency rather than a catch-all dollar threshold.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The money cannot be this line's: Air Force Research Laboratory awarded the REBASE IDIQ and the single FY2021 RDT&E obligation of $2,800,000 is more than double 0901226F's entire FY2021 actual of $1.151M (the PE runs $0.87M-$1.5M a year through FY2024 and only reaches $9.9M/$14.8M in FY2025/26, which is the edition whose narrative owns the AFSIM name), so a $48M AFRL ceiling in 2021 was funded by AFRL's own RDT&E lines; 0901226F is in any case an agency-titled management-support M&S studies line — a rollup of the analysis agency's model portfolio (AFSIM, STORM, AD-ARM, Joint M&S Gateway) — not the program element that bought this development."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The alias is real, not invented — \"advanced framework for simulation, integration, and modeling\" is the standing alternate expansion of AFSIM and the announcement's own gloss is AFSIM's canonical description — and AFSIM appears exactly once in the whole index, under 0901226F; every other modeling/simulation row (JSE across six PEs, STORM under this same PE, CAVE, DMOC Replay Tool, C2SET, WIE) carries a different program name that this evidence does not fit, so there is no competing owner and no variant/increment confusion."
+   }
+  },
+  {
+   "record_index": 78,
+   "article_id": "2676201",
+   "piid": "FA865021D2621",
+   "pe_bli": "0901226F",
+   "program_name": "Analytical Framework for Simulation Integration and Modeling (AFSIM)",
+   "lexicon_doc": "412",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "This contract involves research, development and expansion of the advanced framework for simulation, integration and modeling, which is a modular, object-oriented multi-domain operations modeling, simulation and analysis framework.",
+   "lexicon_quote": "\"Analytical Framework for Simulation Integration and Modeling (AFSIM)\" (program_title: \"Air Force Studies and Analysis Agency\")",
+   "verdict": "link",
+   "rationale": "This is the second REBASE ceiling award, to a different contractor on a different contract number, and it carries the same alias evidence: the announcement writes out \"the advanced framework for simulation, integration and modeling\" and glosses it as \"a modular, object-oriented multi-domain operations modeling, simulation and analysis framework\", which identifies AFSIM, the name 0901226F's own narrative owns. The purchased work is the framework's own development — \"completing research and development for redefining the basic analytical and simulation environment (REBASE)\" with an initial \"Foundation I research and development\" task order — so this is not engineering support wrapped around someone else's program, and the content is RDT&E against an RDT&E line. No other PE in this org's index carries an AFSIM-shaped name, and the subject is software, not a platform.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Same appropriation failure as the companion REBASE award: AFRL is the contracting activity and the FY2021 RDT&E obligation of $1,000,000 consumes most of 0901226F's whole FY2021 actual of $1.151M while the $48M ceiling is roughly forty times the line's annual funding, so this award's work does not belong to this line's appropriation in 2021 (the PE's AFSIM narrative is FY26-edition content, four years later), and the PE is an agency-level M&S studies rollup rather than the program that funded the development."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same identity test as the companion REBASE award and the same result: the spelled-out \"advanced framework for simulation, integration and modeling\" plus the modular/object-oriented/multi-domain gloss identifies AFSIM, a name held by 0901226F and by no other PE in the index; the differing contractor (Stellar Science rather than InfoScitex) is not the evidence being relied on, and no other indexed simulation program answers to this description."
+   }
+  },
+  {
+   "record_index": 79,
+   "article_id": "2678227",
+   "piid": "FA865021D2621",
+   "pe_bli": "0901226F",
+   "program_name": "Analytical Framework for Simulation Integration and Modeling (AFSIM)",
+   "lexicon_doc": "412",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "This contract involves research, development, and expansion of the advanced framework for simulation, integration, and modeling, which is a modular, object-oriented multi-domain operations modeling, simulation, and analysis framework.",
+   "lexicon_quote": "\"Analytical Framework for Simulation Integration and Modeling (AFSIM)\" (program_title: \"Air Force Studies and Analysis Agency\")",
+   "verdict": "link",
+   "rationale": "This record is the re-announcement of the Stellar Science REBASE award one day later (same contract FA8650-21-D-2621 and same task order), and it is proposed separately because the rubric keys a proposal to the paragraph actually read. The alias evidence is identical and slightly fuller here: the announcement spells out \"the advanced framework for simulation, integration, and modeling\", glosses it as \"a modular, object-oriented multi-domain operations modeling, simulation, and analysis framework\", and then calls the award \"This REBASE contract\". That framework is AFSIM, the name this org's index attaches to 0901226F and to no other PE. The work is research and development on the framework itself, RDT&E content on an RDT&E line, with no platform standing between the award and the program.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "The re-announcement of the same Stellar Science REBASE ceiling carries the same defect: AFRL-awarded, $48,000,000 ceiling with a $1,000,000 FY2021 RDT&E obligation against a program element whose entire FY2021 actual was $1.151M and which only grew to fund AFSIM in the FY2025/26 books, so the award's dollars belong to AFRL's RDT&E lines, not to this agency-titled management-support/M&S studies rollup."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "On lens B's grounds the identity is the same and still sound — the AFSIM expansion and gloss appear verbatim, the announcement additionally calls it \"This REBASE contract\", and AFSIM has exactly one owner in the index — so no alternative PE is available; that this paragraph re-announces record 78's same contract and task order a day later is a duplication concern for the collector, not an identity or alternative-owner refutation."
+   }
+  }
+ ]
+}

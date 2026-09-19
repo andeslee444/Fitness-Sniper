@@ -1,0 +1,29 @@
+{
+ "chunk": "chunk_018_DHRA.json",
+ "proposals": [
+  {
+   "record_index": 1,
+   "article_id": "3400382",
+   "piid": "H9821023C0011",
+   "program_name": "The Defense Sexual Assault Incident Database (DSAID)",
+   "pe_bli": "0808737SE",
+   "lexicon_doc": "66",
+   "verdict": "wrong",
+   "announcement_evidence": "Rape, Abuse, and Incest National Network, Washington, D.C., is awarded a $61,560,778 firm-fixed-price contract for Department of Defense (DOD) Safe Helpline (SHL) services.",
+   "lexicon_quote": "The Defense Sexual Assault Incident Database (DSAID)",
+   "rationale": "Recorded as wrong rather than silently dropped because this is the one record in the chunk whose subject matter (DoD sexual assault prevention and response) overlaps the only name PE 0808737SE owns, so a description-basis lens could reach for it. It does not survive: the announcement names the DOD Safe Helpline, a confidential worldwide crisis-intervention service (telephone/online helpline, text-for-information, mobile self-care app, peer support) operated by an outside non-profit, and never names DSAID or anything resembling an incident-reporting database. The only bridge is the phrase 'in support of the department's Sexual Assault Prevention and Response program' -- SAPR is the policy program the helpline supports, not the program element line, which is §3's 'the name is a PLATFORM/parent activity the contract supports, not the program the PE funds' pattern. It is additionally a purchased victim-support service, i.e. §3 generic services, with no named development item."
+  },
+  {
+   "record_index": 10,
+   "article_id": "3141819",
+   "piid": "H9821020F0240",
+   "program_name": "The Defense Travel System (DTS)",
+   "pe_bli": "0605803SE",
+   "lexicon_doc": "66",
+   "verdict": "wrong",
+   "announcement_evidence": "CACI Enterprise Solutions Inc., Chantilly, Virginia, is awarded a firm-fixed-price contract modification (P00005) in the amount of $8,561,933 to a previously awarded contract (H98210-20-F-0240) for the Traveler Assistance Center (TAC) to provide travel support across the Department of Defense.",
+   "lexicon_quote": "The Defense Travel System (DTS)",
+   "rationale": "Recorded as wrong because 'travel support across the Department of Defense' is the obvious description-basis trap against the one travel name in the DHRA index, and I want the rejection on the record. The announcement names the Traveler Assistance Center, a help-desk/support organisation, and never names DTS; the TAC is at most a service wrapped around the system, which is §3's 'supports rather than is the program' pattern, and help-desk support is §3 generic services. It fails independently on appropriation: 'Fiscal 2022 operations and maintenance funds are being used for this modification', an O&M sustainment action proposed against RDT&E line 0605803SE -- the exact O&M-on-an-RDT&E-line failure mode §1 names. No link."
+  }
+ ]
+}

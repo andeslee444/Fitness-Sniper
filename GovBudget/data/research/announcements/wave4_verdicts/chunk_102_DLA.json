@@ -1,0 +1,89 @@
+{
+ "chunk": "chunk_102_DLA.json",
+ "proposals": [
+  {
+   "record_index": 78,
+   "article_id": "2945663",
+   "piid": "SP470122C0025",
+   "pe_bli": "0603680S",
+   "program_name": "Manufacturing Technology Program (ManTech)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "cost-plus-fixed-fee contract for research and development services",
+   "lexicon_quote": "Manufacturing Technology Program (ManTech)",
+   "verdict": "wrong",
+   "rationale": "This is the only record in the chunk funded with RDT&E money and the only one that could reach a DLA R&D line at all: the National Center for Defense Manufacturing and Machining is the consortium operator most associated with DLA manufacturing-technology work, the using customer is DLA, and the appropriation is fiscal 2021 through 2023 research, development, test and evaluation funds. It is still a §3 rejection by design. The paragraph's entire scope of work is the phrase 'research and development services' — a generic services description naming no program, no project and no technology area. Nothing in the announcement says ManTech, Manufacturing Technology, or any of the eighteen project names the 0603680S row owns; the only manufacturing word in the text is inside the contractor's own corporate name, which §1/Lens B names explicitly as evidence that is just a contractor name. Linking here would assert that this award paid for 0603680S's own work on the strength of who the awardee is, which is exactly the attribution claim the rubric forbids inferring from a vendor's identity."
+  },
+  {
+   "record_index": 78,
+   "article_id": "2945663",
+   "piid": "SP470122C0025",
+   "pe_bli": "0603712S",
+   "program_name": "Logistics Technology Research (LTR)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "cost-plus-fixed-fee contract for research and development services",
+   "lexicon_quote": "Logistics Technology Research (LTR)",
+   "verdict": "wrong",
+   "rationale": "The same record considered against DLA's other RDT&E line, because 0603712S 'Generic Logistics R&D Technology Demonstrations' is a literal description of 'research and development services' bought by DLA on RDT&E funds. That symmetry is the refutation, not the evidence: a paragraph whose only work statement is 'research and development services' fits 0603680S and 0603712S equally well, and a proposal that cannot tell two candidate lines apart cannot assert that the award funded THIS line's own work. §3 also rejects it outright as generic services with no named program, and the 0603712S row title is itself a generic demonstrations rollup of the kind Lens A treats as a catch-all. Recorded so the chunk's one RDT&E record shows as weighed against both DLA R&D lines and rejected on both."
+  },
+  {
+   "record_index": 14,
+   "article_id": "2129070",
+   "piid": "SPE7LX20D0096",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "indefinite-delivery/indefinite-quantity contract for batteries",
+   "lexicon_quote": "Battery Network (BATTNET)",
+   "verdict": "wrong",
+   "rationale": "A commodity word shared with a program name is not a program name. The announcement buys 'batteries' from EnerSys on a sole-source firm-fixed-price IDIQ against fiscal 2020 through 2023 defense working capital funds, with DLA itself as the using customer — a supply-chain purchase of finished cells for resale through the DLA inventory. BATTNET is a ManTech R&D project inside 0603680S that develops battery manufacturing capability; the string 'Battery Network', 'BATTNET' and any ManTech reference are absent from the text. Lens A's appropriation test is decisive on its own: working-capital stock funds buying an end item cannot be paying for an RDT&E line's own development work. Recorded as wrong so the naive stem match 'batteries' -> 'Battery Network' is shown as considered and refused."
+  },
+  {
+   "record_index": 67,
+   "article_id": "1089787",
+   "piid": "SPE7LX17D0026",
+   "pe_bli": "0603680S",
+   "program_name": "Battery Network (BATTNET)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "firm-fixed-price contract for non-rechargeable batteries",
+   "lexicon_quote": "Battery Network (BATTNET)",
+   "verdict": "wrong",
+   "rationale": "The second battery commodity buy in the chunk, rejected on the same ground as record 14. Saft America is supplying non-rechargeable batteries to the Army and Air Force on fiscal 2017 through 2020 defense working capital funds through DLA Land and Maritime — a production purchase of a catalog item. The 0603680S BATTNET row names a manufacturing-technology development project, and neither 'Battery Network' nor 'BATTNET' nor any development language appears in the announcement. The only bridge between the two is the English word battery, which §3 treats as a weak generic name and Lens A refutes as procurement money attached to an RDT&E line."
+  },
+  {
+   "record_index": 5,
+   "article_id": "2916618",
+   "piid": "SPE1C121D1413",
+   "pe_bli": "0603680S",
+   "program_name": "Military Uniform System Technology (MUST)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "for various types of trousers",
+   "lexicon_quote": "Military Uniform System Technology (MUST)",
+   "verdict": "wrong",
+   "rationale": "Representative of the large garment block in this chunk (records 5, 7, 17, 28, 33, 35, 39, 51, 53, 65, 66, 68 are all coats, trousers, parkas, jackets, load-carrying gear or footwear bought through DLA Troop Support), every one of which a stem matcher could push at the 0603680S 'Military Uniform System Technology (MUST)' row. This one exercises the first option period of an IDIQ for various types of trousers on fiscal 2022 through 2023 defense working capital funds for the Army. MUST is a ManTech project developing uniform-production technology; the announcement names no program, no technology and no development effort, only a clothing item and an option exercise. §3 rejects it as a commodity buy with no named program, and Lens A refutes the appropriation: stock-funded garment production is not RDT&E work on 0603680S. The identically shaped garment records are rejected on the same ground and are not separately proposed."
+  },
+  {
+   "record_index": 13,
+   "article_id": "2234393",
+   "piid": "SPE30020D3279",
+   "pe_bli": "0603680S",
+   "program_name": "The Subsistence Network (SUBNET)",
+   "lexicon_doc": "105",
+   "announcement_evidence": "indefinite-quantity contract for full-line food distribution",
+   "lexicon_quote": "The Subsistence Network (SUBNET)",
+   "verdict": "wrong",
+   "rationale": "Representative of the subsistence block (records 13, 15, 59, 74 are full-line food distribution or dairy contracts through DLA Troop Support), which a description matcher could push at the 0603680S 'The Subsistence Network (SUBNET)' row because DLA calls this commodity class subsistence. This record is a 262-day sole-source bridge contract for full-line food distribution in Florida, Cuba and the Bahamas on fiscal 2020 and 2021 defense working capital funds. SUBNET is a ManTech project; the words 'Subsistence Network' and 'SUBNET' never appear, and a bridge contract to keep food moving to installations is distribution, not a manufacturing-technology development effort. §3 rejects it as a commodity/logistics buy with no named program, and Lens A refutes working-capital distribution money against an RDT&E line."
+  },
+  {
+   "record_index": 41,
+   "article_id": "2939663",
+   "piid": "SPE60222D0460",
+   "pe_bli": "0603712S",
+   "program_name": "Energy Readiness Program (ERP)",
+   "lexicon_doc": "216",
+   "announcement_evidence": "for jet fuel",
+   "lexicon_quote": "Energy Readiness Program (ERP)",
+   "verdict": "wrong",
+   "rationale": "Representative of the fuel and energy block (records 2, 9, 19, 26, 27, 31, 36, 41, 44, 62, 64 are jet fuel, marine gas oil, natural gas, fuel additive or airport fuel-support awards, and records 3, 10, 22, 46, 57, 70 are DLA Energy water and wastewater utility contracts), all of which a description matcher could push at the 0603712S 'Energy Readiness Program (ERP)' row because the contracting activity and the using customer are both named Defense Logistics Agency Energy. That is an organisation name, not a program name: the announcement buys jet fuel under solicitation SPE602-22-R-0705 on fiscal 2022 defense working capital funds for a seven-month period. 'Energy Readiness Program' and 'ERP' do not appear, and §3 rejects the pairing as a commodity purchase with no named program while Lens A refutes stock-funded fuel against an RDT&E demonstrations line."
+  }
+ ]
+}

@@ -1,0 +1,248 @@
+{
+ "chunk": "chunk_113_F.json",
+ "proposals": [
+  {
+   "record_index": 32,
+   "article_id": "1934626",
+   "piid": "FA821319D0011",
+   "pe_bli": "356010",
+   "program_name": "MJU-52A",
+   "lexicon_doc": "409",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "MJU-52 A/B aircraft decoy flares",
+   "lexicon_quote": "MJU-52A",
+   "verdict": "link",
+   "rationale": "The announcement buys the decoy flare item itself, not support for a platform: 'indefinite-delivery/indefinite-quantity contract for MJU-52 A/B aircraft decoy flares. This contract provides a highly specialized decoy with the capability to protect military aircraft from Man Portable Air Defense Systems and air-to-air missiles.' The designator MJU-52 A/B normalizes to the index name MJU-52A, which BLI 356010 (Expendable Countermeasures, Ammunition Procurement, Air Force) owns in its own narrative alongside the other MJU-series flares and RR-series chaff. Money colour agrees with the line: 'Fiscal 2018 ammunition procurement funds in the amount of $5,280,860 are being obligated at the time of award.' This is an ammunition-procurement action against the ammunition-procurement line that buys exactly this item, so it is not an IDIQ umbrella paragraph despite the IDIQ vehicle - a named end item is being bought and procurement money is obligated at award. No other PE in the F index carries the name MJU-52A.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Ammunition-procurement money on an ammunition-procurement line (FY18 ammunition procurement funds obligated at award; BLI 356010 Expendable Countermeasures, doc 409, whose sibling rows are the other MJU flares and RR chaff), and the flare itself is the end item bought rather than a platform the contract supports, so the IDIQ vehicle is not a no-named-program umbrella."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "MJU-52A appears exactly once in the F index (356010, Expendable Countermeasures, doc 409) and no other PE owns any MJU-series designator; the announcement's 'MJU-52 A/B' is the full nomenclature of that same item, not a different variant (the nearest other row, AECM at 000074 War Consumables, owns no MJU designator and would need description-level reasoning, so the evidence does not link equally well elsewhere), and the evidence is the item designator, not the contractor name."
+   }
+  },
+  {
+   "record_index": 73,
+   "article_id": "2111974",
+   "piid": "FA868119C0016",
+   "pe_bli": "353020",
+   "program_name": "BLU-111",
+   "lexicon_doc": "409",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "This contract provides for the additional procurement of BLU 111 Engineering Change Proposal warhead assemblies.",
+   "lexicon_quote": "BLU-111",
+   "verdict": "link",
+   "rationale": "A firm-fixed-price buy of the warhead itself: 'additional procurement of BLU 111 Engineering Change Proposal warhead assemblies', with 'Fiscal 2018, 2019 and 2020 procurement funds in the full amount are being obligated at the time of award.' The announcement's unhyphenated 'BLU 111' normalizes to the index name BLU-111, which BLI 353020 (General Purpose Bombs, Ammunition Procurement, Air Force) owns in its own narrative alongside BLU-109/117/129/137/138/140. The work is production of the warhead body, not engineering support for a platform that carries it, and procurement dollars are obligated against a procurement line, so the appropriation-mismatch failure mode does not apply. BLU-111 appears under no other PE in the F index.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Procurement funds fully obligated at award against BLI 353020 General Purpose Bombs (doc 409, which enumerates BLU-109/111/117/129/137/138/140), and the work is production of the BLU-111 warhead assemblies themselves, not sustainment or support of a carrying platform, so neither the appropriation-mismatch nor the platform failure mode applies."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "BLU-111 appears exactly once in the F index (353020, General Purpose Bombs, doc 409) alongside the rest of the BLU family, and no other PE carries a BLU-111 row; 'BLU 111 Engineering Change Proposal' is an ECP to that same designator rather than a different BLU number or increment, and the designator is the announcement's own words, not the contractor's."
+   }
+  },
+  {
+   "record_index": 59,
+   "article_id": "2109345",
+   "piid": "FA854019C0001",
+   "pe_bli": "0604201F",
+   "program_name": "Embedded GPS/INS - Modernized (EGI-M)",
+   "lexicon_doc": "412",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "embedded Global Positioning System/Inertial Navigation System engineering, manufacturing and development",
+   "lexicon_quote": "Embedded GPS/INS - Modernized (EGI-M)",
+   "verdict": "link",
+   "rationale": "The announcement spells out the EGI-M acronym in full and names the acquisition phase: a change order to FA8540-19-C-0001 for 'embedded Global Positioning System/Inertial Navigation System engineering, manufacturing and development', incorporating 'System Requirements Document Version 3.2.1' and 'Statement of Work Revision 4' - i.e. the EMD contract for the embedded GPS/INS receiver itself, not integration of it onto a host aircraft. 'Fiscal 2020 research and development funds in the amount of $7,500,000 are being obligated at the time of award', which is the right colour of money for an RDT&E line, and PE 0604201F (PNT Resiliency, Mods, and Improvements) owns 'Embedded GPS/INS - Modernized (EGI-M)' in its own narrative next to MAGR-2K-M, PNT SDUE, SDAE and EAJ - the PNT user-equipment development portfolio. Flagged honestly for lens B: PE 0207138F (F-22A Squadrons) carries a differently-worded row, 'Embedded GPS/Inertial Navigation System (INS) Modernization (EGI-M)', whose wording is closer to the announcement's phrasing; I judge that row to be the F-22's integration of EGI-M rather than the EGI-M development contract, but the collision is real and lens B should weigh it.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "FY20 research and development funds on an RDT&E PE for the embedded GPS/INS engineering, manufacturing and development contract itself (SRD v3.2.1, SOW Rev 4) — the EGI-M receiver is the program, not a platform the award merely supports, and 'PNT Resiliency, Mods, and Improvements' names EGI-M alongside five other distinct efforts so it is not a threshold/'other' catch-all; the rival 0207138F (F-22A Squadrons) row is the platform line, and that owner collision is lens B's question, not lens A's."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Real name collision: EGI-M appears twice in the F index - 'Embedded GPS/INS - Modernized (EGI-M)' at 0604201F and 'Embedded GPS/Inertial Navigation System (INS) Modernization (EGI-M)' at 0207138F (F-22A Squadrons), and the announcement's spelled-out 'embedded Global Positioning System/Inertial Navigation System' matches the 0207138F wording at least as closely; the text names no platform, increment or discriminator, so this evidence would link the award equally well to the other owner - default refuted under uncertainty."
+   }
+  },
+  {
+   "record_index": 0,
+   "article_id": "1405313",
+   "piid": "FA867515C0022",
+   "pe_bli": "0207163F",
+   "program_name": "Advanced Medium Range Air-to-Air Missile (AMRAAM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "special tooling and test equipment, for the Advanced Medium Range Air-to-Air Missile Lots 28-30 production",
+   "lexicon_quote": "Advanced Medium Range Air-to-Air Missile (AMRAAM)",
+   "verdict": "weak",
+   "rationale": "The name matches the index row exactly - the announcement writes 'Advanced Medium Range Air-to-Air Missile' and PE 0207163F carries that string verbatim - but the evidence does not show this action funding that line's own work. The buy is 'special tooling and test equipment' for 'Lots 28-30 production' and the money is explicitly production money: 'Fiscal 2017 production funds in the amount of $16,691,712 are being obligated at the time of award, and the remaining $9,075,056 is from foreign military sales sources.' 0207163F is an RDT&E program element; missile-procurement tooling for full-rate production lots plus FMS is the O&M/procurement-money-on-an-RDT&E-line failure mode the 2026-09-04 held-out study found. The F index carries no AMRAAM procurement BLI to link instead, so the correct outcome is no published link rather than a forced one."
+  },
+  {
+   "record_index": 4,
+   "article_id": "630185",
+   "piid": "FA867515C0022",
+   "pe_bli": "0207163F",
+   "program_name": "Advanced Medium Range Air-to-Air Missile (AMRAAM)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "for the Advanced Medium-Range Air-to-Air Missile production lots 28-30 contract",
+   "lexicon_quote": "Advanced Medium Range Air-to-Air Missile (AMRAAM)",
+   "verdict": "weak",
+   "rationale": "Same contract (FA8675-15-C-0022) and same problem as record 0, one modification earlier. The name is present nearly verbatim ('Advanced Medium-Range Air-to-Air Missile'), but the described work is 'special tooling and special test equipment in support of form, fit, function, refresh (F3R) transition to full-rate production' funded by 'Fiscal 2015 production funds', against an RDT&E program element. Production tooling for a full-rate production transition is procurement work, not the RDT&E line's own work, so the attribution claim a published link would make does not hold."
+  },
+  {
+   "record_index": 11,
+   "article_id": "3299767",
+   "piid": "FA857123D0001",
+   "pe_bli": "000071",
+   "program_name": "Versatile Digital Automatic Test Station (VDATS)",
+   "lexicon_doc": "407",
+   "announcement_evidence": "procurement of replenishment spare parts and components for the Versatile Depot Automatic Test System (VDATS)",
+   "lexicon_quote": "Versatile Digital Automatic Test Station (VDATS)",
+   "verdict": "weak",
+   "rationale": "The acronym is identical and the expansions are two renderings of the same Air Force depot test station ('Versatile Depot Automatic Test System' in the announcement, 'Versatile Digital Automatic Test Station' in BLI 000071's narrative), so the identity is not in doubt. What fails is the money and the nature of the buy: the contract is for 'replenishment spare parts and components' to 'be used on multiple aviation platforms in support of depot maintenance', and 'Fiscal 2023 Depot Maintenance Activity Group funds will be obligated upon availability for delivery orders'. DMAG is a working-capital fund; BLI 000071 (Aircraft Replacement Support Equip) is Aircraft Procurement, Air Force. Sustainment spares bought with depot working capital do not execute the procurement line that buys the stations, which is exactly the colour-of-money failure the loader's money_color check exists to catch."
+  },
+  {
+   "record_index": 19,
+   "article_id": "2365695",
+   "piid": "FA330020F0114",
+   "pe_bli": "834010",
+   "program_name": "Student Information System (AUSIS)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "configure a government-provided student lifecycle management &ldquo;commercial off-the-shelf&rdquo; student information system",
+   "lexicon_quote": "Student Information System (AUSIS)",
+   "verdict": "weak",
+   "rationale": "The description is a close functional fit: Headquarters Air University buying configuration of a COTS 'student information system' that 'will manage the complete student lifecycle from application for admission through program completion', and BLI 834010 (General Information Technology) owns a cluster of Air University systems including 'Student Information System (AUSIS)'. Two things keep it below the bar. First, the money is wrong for the line: 'Fiscal 2020 operations and maintenance funds in the amount of $25,206,173 are being obligated' against an Other Procurement, Air Force line. Second, the announcement never names a system, and 834010's narrative carries four adjacent Air University candidates (AUSIS, AUSMS, AUSRIS and CDSAR) that the announcement's generic wording cannot choose between, so a link would be asserting a specific program the evidence does not name."
+  },
+  {
+   "record_index": 21,
+   "article_id": "805384",
+   "piid": "FA881008C0002",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "Remote Sensing Systems Directorate&rsquo;s Space Based Infra-Red Systems (SBIRS) follow-on production",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)",
+   "verdict": "weak",
+   "rationale": "The name is present essentially verbatim and the money colour is right in kind ('Fiscal 2016 space procurement funds in the amount of $25,195,531'), but the only F-index row carrying SBIRS is BLI SPCMOD, whose title is 'Space Mods' and whose narrative names 26 unrelated systems (SOON, RIMS, PARCS, BMEWS, UEWR, GPS ground antennas, SLBM, SSAO and others). That is a modifications rollup, and the award is described as 'follow-on production' of the SBIRS GEO satellites - production of the system, not a modification executed by the Space Mods line. The SBIRS High procurement line in this index (MSSBIR) carries only the name 'GEO-5', which the announcement never uses. Neither candidate meets the standard, so nothing should publish."
+  },
+  {
+   "record_index": 28,
+   "article_id": "1400564",
+   "piid": "FA872316D0001",
+   "pe_bli": "1203873SF",
+   "program_name": "COBRA DANE (CD)",
+   "lexicon_doc": "417",
+   "announcement_evidence": "required to ensure the Cobra Dane radar maintains operational capability",
+   "lexicon_quote": "COBRA DANE (CD)",
+   "verdict": "weak",
+   "rationale": "'Cobra Dane radar' is an exact-name hit on the row COBRA DANE (CD) that PE 1203873SF (Ballistic Missile Defense Radars) owns, and no other PE in the F index carries that name. The evidence still falls short: the modification is scoped 'to support in-scope requirements, which are required to ensure the Cobra Dane radar maintains operational capability' - sustainment of a fielded sensor - while 1203873SF is an RDT&E program element, and the announcement discloses no appropriation at all ('No funds' language is absent and no fiscal-year funds are named), so nothing in the text ties the action to that line's own development work. Keeping an operational radar running is the paradigm case of O&M work hung on an RDT&E line."
+  },
+  {
+   "record_index": 33,
+   "article_id": "1936972",
+   "piid": "FA821319D0011",
+   "pe_bli": "356010",
+   "program_name": "MJU-52A",
+   "lexicon_doc": "409",
+   "announcement_evidence": "was awarded a $25,000,000 contract for MJU-52 A/B aircraft decoy flares included an incorrect amount of funds being obligated at the time of award",
+   "lexicon_quote": "MJU-52A",
+   "verdict": "weak",
+   "rationale": "This is the Aug. 16, 2019 correction to the Aug. 14, 2019 announcement already proposed at record 32, on the same contract FA8213-19-D-0011. It repeats the item name and restates the obligation ('The correct amount of fiscal 2018 ammunition procurement funds being obligated at the time of award is actually $5,281,631'), so the name and money evidence are genuinely present - but it adds no independent attribution evidence, and publishing it alongside record 32 would put two Related Awards citations on BLI 356010's page for one contract action. Recorded as weak rather than link so the surviving count stays one link per contract action, which is the smaller true number."
+  },
+  {
+   "record_index": 36,
+   "article_id": "2364180",
+   "piid": "FA821720D0006",
+   "pe_bli": "837300",
+   "program_name": "F Atmospheric Early Warning System (AEWS)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "the Atmospheric Early Warning System AN/FPS-117 radar program",
+   "lexicon_quote": "F Atmospheric Early Warning System (AEWS)",
+   "verdict": "weak",
+   "rationale": "The announcement names the program in full - 'the Atmospheric Early Warning System AN/FPS-117 radar program' - and BLI 837300 (Base Comm Infrastructure) owns that name in its narrative alongside North Warning System and Joint Surveillance System, the two AN/FPS-117 networks. The blocker is the money and the work: the contract is a ceiling IDIQ for 'contractor logistics support and radar hardware/spares procurement', and what is actually obligated is 'Fiscal 2020 operations and maintenance funds in the amount of $3,946,336' against an Other Procurement, Air Force line. Contractor logistics support paid from O&M does not execute the procurement line, and no procurement obligation is disclosed, so the attribution claim cannot be made on this text."
+  },
+  {
+   "record_index": 37,
+   "article_id": "2397509",
+   "piid": "FA821720D0006",
+   "pe_bli": "837300",
+   "program_name": "F Atmospheric Early Warning System (AEWS)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "the Atmospheric Early Warning System AN/FPS-117 Radar program",
+   "lexicon_quote": "F Atmospheric Early Warning System (AEWS)",
+   "verdict": "weak",
+   "rationale": "Re-announcement of the same contract FA8217-20-D-0006 a month after record 36, with identical scope, identical ceiling and the identical obligation line ('Fiscal 2020 operations and maintenance funds in the amount of $3,946,336'). It fails for the same reason - O&M-funded contractor logistics support cannot be attributed to an Other Procurement, Air Force line - and in addition it would duplicate record 36's citation on the same PIID, so it should not publish on either ground."
+  },
+  {
+   "record_index": 9,
+   "article_id": "2329454",
+   "piid": "FA489016C0012",
+   "pe_bli": "T03800",
+   "program_name": "T-38",
+   "lexicon_doc": "407",
+   "announcement_evidence": "for the T‐38 aircraft maintenance program.&nbsp; The modification will provide intermediate and organizational maintenance of T‐38 aircraft",
+   "lexicon_quote": "T-38",
+   "verdict": "wrong",
+   "rationale": "Rejected under two §3 patterns at once. First, platform: the T-38 designator here names the aircraft the contract maintains, not a program BLI T03800 funds - 'intermediate and organizational maintenance of T-38 aircraft for Air Combat Command, Air Force Materiel Command and Air Force Global Strike Command' is fleet upkeep at five bases, while T03800 is the T-38 modifications procurement line whose narrative owns items like the Video Data Transfer Unit. Second, generic services: aircraft maintenance is exactly the logistics/sustainment category §3 excludes, and the funding confirms it - 'Fiscal 2021 operations and maintenance funds will be used'. A link would assert that a base-level maintenance contract executed the T-38 modification line, which is false."
+  },
+  {
+   "record_index": 12,
+   "article_id": "606734",
+   "piid": "FA810606D0001",
+   "pe_bli": "0302015F",
+   "program_name": "E-4B National Airborne Operations Center (NAOC)",
+   "lexicon_doc": "412",
+   "announcement_evidence": "product service integrator for the E-4B platform. Contractor will exercise option year 10 of the contract for the E-4B platform consisting of sustainment, programmed depot maintenance, modification and related support",
+   "lexicon_quote": "E-4B National Airborne Operations Center (NAOC)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 as a platform the contract supports rather than the program a PE funds: the announcement says so in its own words, twice calling the subject 'the E-4B platform' and scoping the option to 'sustainment, programmed depot maintenance, modification and related support' - the definition of generic sustainment services. The funding seals it: 'Fiscal 2015 operations and maintenance funds' against PE 0302015F, an RDT&E program element whose narrative owns E-4B Aircraft Modernization, the Systems Integration Laboratory and Survivable SHF. A product-support-integrator option year does not pay for that line's development work."
+  },
+  {
+   "record_index": 24,
+   "article_id": "1327363",
+   "piid": "FA881013C0002",
+   "pe_bli": "SPCMOD",
+   "program_name": "Space Based Infrared Systems (SBIRS)",
+   "lexicon_doc": "416",
+   "announcement_evidence": "in support of the Space Based Infrared System contractor logistics support, and legacy sustainment baseline system",
+   "lexicon_quote": "Space Based Infrared Systems (SBIRS)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 generic services: the modification is for 'operations and maintenance studies and modifications in support of the Space Based Infrared System contractor logistics support, and legacy sustainment baseline system', funded by 'Fiscal 2017 operations and maintenance funds in the amount of $25,129,090'. Contractor logistics support and legacy sustainment are the excluded category, and SBIRS here names the on-orbit system the support contract keeps running. The only F-index row carrying the SBIRS name is BLI SPCMOD ('Space Mods'), a 26-name modifications rollup - a catch-all owner, and the second §3 ground for refusing this one."
+  },
+  {
+   "record_index": 25,
+   "article_id": "4024737",
+   "piid": "FA873025FB003",
+   "pe_bli": "834530",
+   "program_name": "Kessel Run All-Domain Operations Suite (KRADOS)",
+   "lexicon_doc": "411",
+   "announcement_evidence": "technical engineering services in platform engineering, secure application delivery, application migration, and services development in support of Kessel Run operations",
+   "lexicon_quote": "Kessel Run All-Domain Operations Suite (KRADOS)",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 generic services, and on identity. 'Kessel Run' in this announcement is the Air Force software organisation at Hanscom, not the KRADOS product: the buy is 'cloud computing and IT integration 2.0' providing 'technical engineering services in platform engineering, secure application delivery, application migration, and services development in support of Kessel Run operations', ordered off 'the Platform One Software DevSecOps services basic ordering agreements'. That is engineering support to a software factory's own operations, not delivery of the Kessel Run All-Domain Operations Suite that BLI 834530 (Air & Space Operations Center) funds. Matching the organisation's name to a product that borrows it is the alias-is-not-the-program trap."
+  },
+  {
+   "record_index": 63,
+   "article_id": "1392667",
+   "piid": "FA862015G4040",
+   "pe_bli": "0205219F",
+   "program_name": "MQ-9 UAV",
+   "lexicon_doc": "412",
+   "announcement_evidence": "MQ-9 contractor logistics support phase 2.&nbsp; The contractor will provide an additional period of contractor logistics support for the French air force.",
+   "lexicon_quote": "MQ-9 UAV",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 on both the platform and the generic-services patterns, and refuted a third way by the customer. The option buys 'an additional period of contractor logistics support for the French air force' on French MQ-9s, and 'This contract involves 100 percent foreign military sales to France.' A wholly FMS-funded sustainment option obligates no U.S. appropriation at all, so it cannot have paid for PE 0205219F's work; MQ-9 here is simply the airframe the logistics contract supports."
+  },
+  {
+   "record_index": 69,
+   "article_id": "1167080",
+   "piid": "FA850517F0004",
+   "pe_bli": "F01500",
+   "program_name": "F-15E",
+   "lexicon_doc": "407",
+   "announcement_evidence": "F-15 C/E Aircraft Structural Integrity Program (ASIP) services",
+   "lexicon_quote": "F-15E",
+   "verdict": "wrong",
+   "rationale": "Rejected under §3 as a platform plus generic engineering services. The task order buys 'F-15 C/E Aircraft Structural Integrity Program (ASIP) services' - 'force management execution to include implementation of an individual aircraft tracking program, collection and processing of Loads/Environmental Spectra survey data, aircraft structural records collection... inspections, and repairs, and recertification support'. That is airworthiness engineering and records management for the fleet, the excluded services category, and the F-15 designator names the aircraft being tracked rather than a program BLI F01500 funds. ASIP itself appears nowhere in the F index."
+  }
+ ]
+}

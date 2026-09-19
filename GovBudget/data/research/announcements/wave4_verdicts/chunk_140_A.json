@@ -1,0 +1,101 @@
+{
+ "chunk": "chunk_140_A.json",
+ "proposals": [
+  {
+   "record_index": 2,
+   "article_id": "2985205",
+   "piid": "W31P4Q19C0092",
+   "pe_bli": "6200C02901",
+   "program_name": "Army Tactical Missile System (ATACMS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Army Tactical Missile System service life extension",
+   "lexicon_quote": "Army Tactical Missile System (ATACMS)",
+   "verdict": "wrong",
+   "rationale": "The announcement names ATACMS verbatim, and exactly one index row carries that name - but it belongs to pe_bli 6200C02901, whose program_title is 'High Mobility Artillery Rocket System (HIMARS'. That line procures HIMARS launchers and its narrative names ATACMS only as a munition the launcher fires, so the award does not pay for THIS line's own work: this is the Section 3 reject-by-design pattern where the announced name is a platform/munition the PE's narrative mentions rather than the program the PE funds. Second, independent ground: the money is 'Fiscal 2010 Foreign Military Sales (Romania and Taiwan) funds in the amount of $20,131,385', i.e. foreign customer money, which executes no U.S. program element's appropriation at all. No ATACMS service-life-extension line exists in this org's index, so there is nothing else to propose."
+  },
+  {
+   "record_index": 6,
+   "article_id": "3917690",
+   "piid": "W31P4Q22F0131",
+   "pe_bli": "8082C14300",
+   "program_name": "Stinger Vehicle Universal Launcher (SVUL)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "Stinger Block I Missiles",
+   "lexicon_quote": "Stinger Vehicle Universal Launcher (SVUL)",
+   "verdict": "wrong",
+   "rationale": "The only index row in this org containing 'Stinger' is the Stinger Vehicle Universal Launcher (SVUL) owned by pe_bli 8082C14300, program_title 'M-SHORAD - Procurement'. The award buys Stinger Block I missiles (all-up rounds) from Raytheon Missile Defense; the SVUL is the vehicle launcher M-SHORAD procures to shoot them. That is Section 3's platform/supported-item rejection in its cleanest form - the shared token 'Stinger' is not the program this BLI funds, and Stinger missile procurement has its own budget line that this index does not carry. The announcement also states 'Work locations and funding will be determined with each order', so it names no appropriation that could corroborate the M-SHORAD line."
+  },
+  {
+   "record_index": 8,
+   "article_id": "1525992",
+   "piid": "W31P4Q16C0102",
+   "pe_bli": "0205778A",
+   "program_name": "Guided Multiple Launch Rocket System (GMLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "modular rocket pod and launch tubes for Guided Multiple Launch Rocket System",
+   "lexicon_quote": "Guided Multiple Launch Rocket System (GMLRS)",
+   "verdict": "weak",
+   "rationale": "The exact name 'Guided Multiple Launch Rocket System' is present and the money color is right (Fiscal 2018 research, development, test and evaluation funds), but four PEs in this one org's index own that identical string - 0205778A (GMLRS, RDT&E), 0603778A (MLRS Product Improvement Program, RDT&E), 6005C64400 (Guided MLRS Rocket, procurement) and 6200C02901 (HIMARS, procurement) - and the announcement gives nothing that picks one: it names no PE, no project and no budget line, only 'research, development, test and evaluation funds'. The two RDT&E candidates are both plausible and pull in opposite directions: a modular rocket pod and launch tubes are the rocket-to-launcher interface, and the phrase 'adaptable to future missions' describes family-level launcher hardware, which is what 0603778A's own rows (M270A1/M270A2, HIMARS PIP) cover, while 0205778A's rows are rocket-internal improvements (alternative warhead, APNT, proximity sensor). I cannot establish which line's own work this paid for, so this does not meet the Section 1 evidence standard and I am not proposing it as a link."
+  },
+  {
+   "record_index": 23,
+   "article_id": "1709400",
+   "piid": "W9128F19D0024",
+   "pe_bli": "3002BD3000",
+   "program_name": "Management System (SMS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "management system implementation on roads, parking areas and airfields",
+   "lexicon_quote": "Management System (SMS)",
+   "verdict": "wrong",
+   "rationale": "A string match exists only because one index row at pe_bli 3002BD3000 ('Automated Data Processing Equip') is truncated down to the generic words 'Management System (SMS)'. The award is a four-way multiple-award IDIQ for pavement management-system implementation, testing and maintenance on roads, parking areas and airfields, let by the Corps of Engineers, Omaha, with 'Work locations and funding will be determined with each order'. That is two Section 3 rejections at once: a weak generic name used in its ordinary English sense, and an IDIQ ceiling for construction-support services naming no program. It has no relation to Army automated data processing equipment procurement."
+  },
+  {
+   "record_index": 32,
+   "article_id": "2358917",
+   "piid": "W52P1J19F0370",
+   "pe_bli": "2607C71300",
+   "program_name": "Long Range Precision Munition (LRPM)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "design a long-range precision artillery production line at Iowa Army Ammunition Plant",
+   "lexicon_quote": "Long Range Precision Munition (LRPM)",
+   "verdict": "wrong",
+   "rationale": "'long-range precision artillery' overlaps word-for-word with the index's 'Long Range Precision Munition (LRPM)' rows, but LRPM is the unmanned-aircraft launched-effects munition those lines fund, not artillery, and the award funds neither: it pays American Ordnance to DESIGN A PRODUCTION LINE at Iowa Army Ammunition Plant. That is Section 3's construction/industrial-base rejection - an ammunition-plant facility action attributed to a munition procurement line would assert the line bought rounds it did not buy. The money ('Fiscal 2020 procurement of ammunition (Army)') is also a different account family from the missile procurement BLI carrying this name."
+  },
+  {
+   "record_index": 36,
+   "article_id": "2590381",
+   "piid": "W31P4Q21C0042",
+   "pe_bli": "0603464A",
+   "program_name": "Precision Strike Missile (PrSM) Advanced Development/PrSM Modular Payload",
+   "lexicon_doc": "351",
+   "announcement_evidence": "development, testing and qualification of the Precision Strike Missile system",
+   "lexicon_quote": "Precision Strike Missile (PrSM) Advanced Development/PrSM Modular Payload",
+   "verdict": "weak",
+   "rationale": "This is the best candidate in the chunk and still falls short. The announcement names the Precision Strike Missile system and the money is 'Fiscal 2021 research, development, test and evaluation, Army', which matches an RDT&E line rather than the procurement BLI. But the only PrSM row this org's index carries on the RDT&E side belongs to pe_bli 0603464A, a budget-activity-3 advanced-technology line ('Long Range Precision Fires Advanced Technology') whose own PrSM work is specifically 'Advanced Development/PrSM Modular Payload' - the follow-on payload and advanced-development effort - whereas this 2021 action buys long-lead material for development, testing and qualification of the baseline missile, i.e. the mainline engineering-and-manufacturing-development program, whose PE does not appear in this index at all. Attributing baseline-missile long-lead hardware to the advanced-technology line would widen the claim beyond what the text supports, so I am not proposing it as a link."
+  },
+  {
+   "record_index": 36,
+   "article_id": "2590381",
+   "piid": "W31P4Q21C0042",
+   "pe_bli": "8540C29600",
+   "program_name": "PRECISION STRIKE MISSILE (PRSM)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "development, testing and qualification of the Precision Strike Missile system",
+   "lexicon_quote": "PRECISION STRIKE MISSILE (PRSM)",
+   "verdict": "wrong",
+   "rationale": "This is the case-insensitive exact-name candidate - the index row name 'PRECISION STRIKE MISSILE (PRSM)' at pe_bli 8540C29600 is the same string the announcement uses - and it is exactly the trap the rubric's Lens A failure mode describes, inverted: 8540C29600 is a procurement BLI, while the award is paid with 'Fiscal 2021 research, development, test and evaluation, Army funds in the amount of $20,000,000' for long-lead material supporting development, testing and qualification. RDT&E work charged to a procurement line is a money-color mismatch the loader's own account check would reject, and in FY2021 PrSM had no procurement being executed. The name matching perfectly is not evidence of attribution."
+  },
+  {
+   "record_index": 72,
+   "article_id": "4084611",
+   "piid": "W31P4Q25F0061",
+   "pe_bli": "0607865A",
+   "program_name": "PATRIOT Component Software Builds (PCSB)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "PATRIOT missile software support services",
+   "lexicon_quote": "PATRIOT Component Software Builds (PCSB)",
+   "verdict": "weak",
+   "rationale": "The announcement names PATRIOT and the money is 'Fiscal 2025 research, development, test and evaluation, Army', which points at the RDT&E line 0607865A ('Patriot Product Improvement') rather than the procurement lines 0962C50700 ('Patriot Mods') or 8260C53101 ('MSE Missile'). But no name this org's index carries actually appears in the text: PCSB, the PATRIOT Product Improvement Program (PIP), the Effector Product Improvement (DJ6) and Upper-Tier Debris Mitigation are all specific items, and the announcement says only 'PATRIOT missile software support services' - a generic support-services scope attached to a system name, which Section 3 rejects on its own. The remaining pull toward a particular line comes from the awardee (Lockheed Martin, Grand Prairie, the PAC-3/MSE house) rather than from the announcement's words, and a contractor's identity is not evidence of which program element's own work was funded. Not proposed as a link."
+  }
+ ]
+}

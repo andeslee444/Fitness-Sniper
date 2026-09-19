@@ -1,0 +1,228 @@
+{
+ "chunk": "chunk_149_A.json",
+ "proposals": [
+  {
+   "record_index": 9,
+   "article_id": "686338",
+   "piid": "W31P4Q16C0077",
+   "pe_bli": "0205778A",
+   "program_name": "Guided Multiple Launch Rocket System (GMLRS)",
+   "lexicon_doc": "359",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "qualifying insensitive munitionspropulsion systems and the integration/test support required for component and system qualification testing Guided Multiple-Launch Rocket System",
+   "lexicon_quote": "Guided Multiple Launch Rocket System (GMLRS)\t0205778A\t359\tGuided Multiple-Launch Rocket System (GMLRS)",
+   "rationale": "The paragraph carries the program name in full, differing from the index name only by the hyphen in 'Multiple-Launch', and the work is development rather than production: qualifying insensitive-munitions propulsion systems plus the integration and test support for component- and system-level qualification, bought from Aerojet Rocketdyne (the GMLRS rocket-motor producer) with 'fiscal 2016 research, development, testing, and evaluation funds'. The RDT&E colour forecloses the two procurement owners of this name in this index (6005C64400 Guided MLRS Rocket, 6200C02901 HIMARS), leaving the two doc-359 RDT&E lines. Of those, 0205778A is the line whose whole program title is GMLRS and whose own content is the rocket itself (alternative warhead, APNT, proximity sensor), while 0603778A is the MLRS Product Improvement Program, whose named items are launcher efforts. An IM rocket-motor qualification is the GMLRS rocket line's own work, so I link 0205778A and record the 0603778A collision as a separate weak proposal rather than resolving it silently.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Money colour holds exactly: the announcement obligates fiscal 2016 RDT&E funds and all 7 lake rows on W31P4Q16C0077 carry federal account 021-2040 and nothing else, which is the sole account of 0205778A (dim_programs: 2040A, Research, Development, Test and Evaluation, Army, exhibit_family rdte, 3 projects, title 'Guided Multiple-Launch Rocket System (GMLRS)'); mission holds too - GMLRS is the end item this PE funds, not a platform the contract merely supports, and the lake's own words for this PIID are 'the IM contract is an R&D effort to acquire two qualified sources capable of producing rocket motors for the Guided Multiple-Launch Rocket System (GMLRS)' and 'GMLRS insensitive munitions propulsion system manufacturing, integration, and qualification test support', PSC 'Guided Missiles', so the integration/test support is that named program's own qualification work, not §3 generic engineering services, and this is a single fixed-price-incentive contract with named scope rather than an IDIQ umbrella; the line is not a rollup or catch-all (specific single-program title, no '<$'/'other'/'miscellaneous' CATCHALL_TITLE match), and pe_bli is not 20/30/500. One note passed on rather than used as a refutation: both doc-359 candidates (0205778A and 0603778A, MLRS Product Improvement Program) sit in the same account 2040A, so appropriation colour cannot discriminate them - the collision the proposal flagged is lens B's identity question, not lens A's."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "Four PEs in this index own the name 'Guided Multiple Launch Rocket System (GMLRS)' and one of them, 0603778A (MLRS Product Improvement Program), carries a byte-identical name row in the same document (359) and the same RDT&E appropriation, so the funding colour does not separate it from 0205778A; the paragraph offers no increment or variant designator, and an insensitive-munitions propulsion requalification of an existing rocket motor reads as a product improvement, which fits the 0603778A line at least as well — the choice rests on outside inference rather than the announcement's own words."
+   }
+  },
+  {
+   "record_index": 9,
+   "article_id": "686338",
+   "piid": "W31P4Q16C0077",
+   "pe_bli": "0603778A",
+   "program_name": "Guided Multiple Launch Rocket System (GMLRS)",
+   "lexicon_doc": "359",
+   "announcement_evidence": "qualifying insensitive munitionspropulsion systems and the integration/test support required for component and system qualification testing Guided Multiple-Launch Rocket System",
+   "lexicon_quote": "Guided Multiple Launch Rocket System (GMLRS)\t0603778A\t359\tMLRS Product Improvement Program",
+   "rationale": "Recorded so the collision is visible rather than silently resolved: 0603778A (MLRS Product Improvement Program) owns the identical index name 'Guided Multiple Launch Rocket System (GMLRS)' and is likewise a doc-359 RDT&E line, so the fiscal 2016 RDT&E colour does not separate it from 0205778A. What separates them is content — this award qualifies an insensitive-munitions propulsion system for the rocket, whereas 0603778A's named items are launcher product improvements (M270A1/M270A2 MLRS, HIMARS PIP, MLRS PIP). It is the weaker of the two claims on the same name, so weak, not a link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 26,
+   "article_id": "606696",
+   "piid": "W31P4Q14C0154",
+   "pe_bli": "3246E37300",
+   "program_name": "Rocket, Hydra 70, All Types",
+   "lexicon_doc": "349",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "to exercise a fiscal 2014 option for the fiscal 14-18 Hydra-70 Rocket System, which includes M151 high explosive Rockets, M255A1 rockets and M274 smoke signal practice rockets",
+   "lexicon_quote": "Rocket, Hydra 70, All Types\t3246E37300\t349\tRocket, Hydra 70, All Types",
+   "rationale": "The option exercise buys the Hydra 70 rocket family itself — M151 high-explosive, M255A1 and M274 smoke-signal practice rockets are all Hydra 70 rounds, produced by GD-OTS Williston, the Hydra 70 producer — and 3246E37300 ('Rocket, Hydra 70, All Types', doc 349) is the index's only Hydra rocket row; the other 'Hydra' hits are hydraulic test and petroleum equipment. Only the hyphen differs between the announcement's 'Hydra-70' and the index's 'Hydra 70', and 'All Types' is the ammunition book's family convention, not a CATCHALL_TITLE match (no '<$', 'other' or 'miscellaneous'). Two notes for the collector. First, unlike the modifications on this same contract that chunk_032_A held at weak, no foreign customer appears in this paragraph. Second, this (piid, pe_bli) pair is already carried by chunk_039_A's link on the base award of W31P4Q-14-C-0154, whose lens A ruled on this identical 'other procurement funds' wording (the award's accounts include 021-2034, Procurement of Ammunition, Army) and did not refute — so this is the same true claim seen from a second paragraph, not a new one, and it should be deduplicated rather than counted twice.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The announcement's unqualified 'fiscal 2014 other procurement funds' is loose wording, not the OPA-vs-other-account mismatch chunk_000_A refuted on: all 216 lake rows for W31P4Q14C0154 carry federal accounts 017-1508, 021-2034, 057-3011 and 097-0300 - Other Procurement, Army (021-2035) appears nowhere, while 021-2034 Procurement of Ammunition, Army is present throughout and is the sole account of 3246E37300 (dim_programs: 2034A, exhibit_family procurement), so the line's own appropriation is on the award and load_announcement_links.money_color_ok would intersect; mission is an exact end-item match rather than platform support - the exercised option buys the Hydra 70 rockets themselves (M151 HE, M255A1, M274 smoke signal practice are all Hydra 70 rounds) from GD-OTS Williston, the Hydra 70 producer, and the lake's later descriptions on this same multiyear contract read 'HYDRA ROCKET SYSTEM FY14-18' and 'HYDRA-70 ROCKET AND MOTORS'; 'All Types' denotes one product family and does not match CATCHALL_TITLE ((less than|under|<)\\s*\\$|^other|^miscellaneous), the line is not a rollup, and pe_bli is not 20/30/500. Two caveats recorded rather than used to refute: the FY2014 action itself (P00001) predates the lake's fy=2017 window so its own funding line cannot be read directly - the evidence is the contract it modifies, which is also a joint-service buy carrying Navy/AF ammunition accounts alongside the Army's; and the duplicate the proposal flagged needs no refutation, because mine_announcement_residue.collect already dedups by (piid, pe_bli) into duplicate_pairs, so refuting here would mislabel a true claim as refuted_a instead."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "3246E37300 is the index's only owner of the Hydra 70 name (the other 'Hydra' rows, 1110MA4500 HSTRU and 9462R70001 HEPPOE, are hydraulic-equipment lines), no row anywhere in the index names M151, M255A1, M274, APKWS or 2.75-inch, the alias is the real family designator differing only by a hyphen, all three named rounds are Hydra 70 configurations so no variant mismatch arises, the title does not trip CATCHALL_TITLE, and the evidence is the program name itself rather than the contractor."
+   }
+  },
+  {
+   "record_index": 8,
+   "article_id": "3437927",
+   "piid": "W31P4Q20C0024",
+   "pe_bli": "6870C88001",
+   "program_name": "LETHAL MINIATURE AERIAL MISSILE SYSTEM (LMAMS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for Switchblade Weapon System procurement",
+   "lexicon_quote": "LETHAL MINIATURE AERIAL MISSILE SYSTEM (LMAMS)\t6870C88001\t345\tLETHAL MINIATURE AERIAL MISSILE SYSTEM (LMAMS",
+   "rationale": "The identity is not in doubt: Switchblade is AeroVironment's name for the loitering munition the Army buys as its Lethal Miniature Aerial Missile System, the contractor named here is AeroVironment itself, the buying activity is ACC Redstone, and LMAMS appears in exactly one row of this org's index. The money is what fails. The announcement obligates 'Fiscal 2023 Foreign Military Sales funds in the amount of $18,861,420' — the entire action — so nothing in it executes the US LMAMS procurement line's own appropriation. This is the same PIID and the same reason chunk_035_A and chunk_091_A already held Switchblade modifications at weak; the wave's one Switchblade link (chunk_123_A) was production hardware on a different PIID.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 20,
+   "article_id": "1186836",
+   "piid": "W56HZV17C0090",
+   "pe_bli": "6866D15500",
+   "program_name": "Medium Tactical Vehicle (MTV)",
+   "lexicon_doc": "346",
+   "match_basis": "designator-normalized",
+   "announcement_evidence": "firm-fixed-price foreign military sales (Iraq) contract for 115 medium tactical vehicles",
+   "lexicon_quote": "Medium Tactical Vehicle (MTV)\t6866D15500\t346\tFamily Of Medium Tactical Veh (FMTV)",
+   "rationale": "'115 medium tactical vehicles' does overlap the index name 'Medium Tactical Vehicle (MTV)' under 6866D15500 (Family Of Medium Tactical Veh, doc 346), and Navistar builds medium trucks, but two things keep it off the link list. The phrase is a vehicle-class description rather than a program name, and the class is owned three ways in this index (6866D15500, the RDT&E line 0604604A and the in-service modification line 8992DA0924), so nothing selects an owner. And the action is explicitly a 'foreign military sales (Iraq)' contract obligating 'fiscal 2015 other funds' — trucks built for a foreign case, not the FMTV line's own buy.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 29,
+   "article_id": "3821857",
+   "piid": "W31P4Q23C0032",
+   "pe_bli": "6552C67500",
+   "program_name": "The M270A2 Multiple Launch Rocket System (MLRS)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for M270A2 spare parts",
+   "lexicon_quote": "The M270A2 Multiple Launch Rocket System (MLRS)\t6552C67500\t345\tMLRS Mods",
+   "rationale": "The M270A2 designator matches the index name for 6552C67500 (MLRS Mods, doc 345), the line chunk_014_A linked for launcher recapitalisation, and Lockheed Martin Grand Prairie is the right plant. Two reasons to hold back. Every dollar belongs to a partner — 'fiscal 2024 Cooperative Partner United Kingdom funds and fiscal 2024 Cooperative Partner Italy funds' — so the action does not execute the US missile-procurement line's own appropriation. And what it buys is spare parts, sustainment support rather than the modification programme's own recapitalisation content. 0603778A also owns an M270A2 name, which is a second reason not to publish on a designator alone.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 48,
+   "article_id": "3910169",
+   "piid": "W91CRB24C5034",
+   "pe_bli": "9060B28501",
+   "program_name": "Advanced Field Artillery Tactical Data System (AFATDS)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "firm-fixed-price contract for International Field Artillery Tactical Data Systems",
+   "lexicon_quote": "Advanced Field Artillery Tactical Data System (AFATDS)\t9060B28501\t346\tFire Support C2 Family",
+   "rationale": "'International Field Artillery Tactical Data Systems' is the export configuration of AFATDS, and AFATDS is an index name under 9060B28501 (Fire Support C2 Family, doc 346) and also under 0203728A (JADOCS, doc 359), so the name is a collision as well as a variant. The announcement names the international variant rather than AFATDS itself and funds it wholly from 'Fiscal 2024 Foreign Military Sales (Georgia)'. It therefore fails lens B's variant test and lens A's appropriation test at once: a Georgian FMS buy of IFATDS is not the US Fire Support C2 line's own work.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 58,
+   "article_id": "2544067",
+   "piid": "W56KGY19F0022",
+   "pe_bli": "9690BZ7316",
+   "program_name": "Distributed Common Ground System-Army (DCGS-A)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "to provide deployable embedded-trainer services for the Distributed Common Ground System-Army",
+   "lexicon_quote": "Distributed Common Ground System-Army (DCGS-A)\t9690BZ7316\t346\tDCGS-A-INTEL",
+   "rationale": "Identity and ownership are clean — the paragraph carries the program name in full and DCGS-A appears in exactly one index row (9690BZ7316, DCGS-A-INTEL, doc 346), so there is no competing owner. What the award buys is not that line's end item: 'deployable embedded-trainer services' on an order-driven vehicle where 'work locations and funding will be determined with each order', with no appropriation stated anywhere in the paragraph. Nothing shows this modification executing the DCGS-A procurement line rather than an O&M training-support tail, and services against a procurement line with the money colour unstated is precisely the failure mode lens A exists to catch (compare chunk_079_F's AF DCGS operations weak). Identity without money is weak, not a link.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 5,
+   "article_id": "3890651",
+   "piid": "W58RGZ24F0451",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "cost-plus-fixed-fee contract for Apache Attack Helicopter support",
+   "lexicon_quote": "AH-64 MODS\t2706AA6605\t343\tAH-64 MODS",
+   "rationale": "Two §3 patterns at once. The only index-bearing token is the Apache attack helicopter, named as the platform the contract supports rather than as any program content, and the object of the award is the bare word 'support' with no program, increment, subsystem or end item — the generic-services rejection. Funding is not even stated ('work locations and funding will be determined with each order'), and none of the names 2706AA6605 actually owns (AH-64 MODS, AH-64E, Improved Tail Rotor Blade) appears in the paragraph. Same rejection chunk_000_A and chunk_011_A recorded for AH-64 support-services paragraphs.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 16,
+   "article_id": "2329454",
+   "piid": "W81XWH20C0031",
+   "pe_bli": "0603461A",
+   "program_name": "High Performance Computing Applications Software Initiative (HASI)",
+   "lexicon_doc": "351",
+   "announcement_evidence": "multifaceted artificial intelligence initiative at the Biotechnology High-Performance Computing Software Applications Institute",
+   "lexicon_quote": "High Performance Computing Applications Software Initiative (HASI)\t0603461A\t351\tHigh Performance Computing Modernization Program",
+   "rationale": "Recorded because the strings nearly collide and a token matcher would fire on them: the announcement's 'Biotechnology High-Performance Computing Software Applications Institute' against the index's 'High Performance Computing Applications Software Initiative (HASI)' under 0603461A (High Performance Computing Modernization Program, doc 351). They are different things. BHSAI is the Army medical research institute at Bethesda, this award is medical research let by Army Medical to the Henry M. Jackson Foundation, and the money is 'Defense Health Program and research, development, test and evaluation (Army)' — not the HPCMP line, whose own named content is DREN, the DoD Supercomputing Resource Centers and HASI. Different organisation, different appropriation, no program of 0603461A named.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 37,
+   "article_id": "2518088",
+   "piid": "W31P4Q19C0059",
+   "pe_bli": "0648CC0007",
+   "program_name": "Javelin Vehicle Platform Adapter Kit (JVPAK)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for support services for the Javelin Weapon System",
+   "lexicon_quote": "Javelin Vehicle Platform Adapter Kit (JVPAK)\t0648CC0007\t345\tJavelin (AAWS-M) System Summary",
+   "rationale": "'Support services for the Javelin Weapon System' names the system, not a program this index carries: the Javelin-bearing rows under 0648CC0007 (Javelin (AAWS-M) System Summary, doc 345) and 0604611A (JAVELIN, doc 355) are the Command Launch Unit, the Lightweight CLU and the Javelin Vehicle Platform Adapter Kit, and the announcement names none of them. The object is bare support services — §3's generic-services rejection — and the money is 'fiscal 2021 operation and maintenance, Army and Foreign Military Sales' for fourteen partner nations, i.e. sustainment for a fielded system rather than the procurement line's own buy. Record 72 is a barer paragraph on the same contract that names no program at all, so it gets no proposal.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 44,
+   "article_id": "954619",
+   "piid": "W56HZV15C0099",
+   "pe_bli": "1678GZ2400",
+   "program_name": "The Bradley Fighting Vehicle (BFV)",
+   "lexicon_doc": "350",
+   "announcement_evidence": "for system technical support and sustainment system technical support for the Bradley vehicles",
+   "lexicon_quote": "The Bradley Fighting Vehicle (BFV)\t1678GZ2400\t350\tBradley Program (MOD)",
+   "rationale": "'System technical support and sustainment system technical support' is the engineering-support pattern §3 rejects by design, and 'the Bradley vehicles' is the platform the support attends to rather than named content of 1678GZ2400 (Bradley Program (MOD), doc 350), whose index names are the Bradley Fighting Vehicle, the Bradley Program (MOD) itself and the Improved Bradley Acquisition Subsystem. The colour is a further mismatch: 'fiscal 2015 and 2016 other procurement (Army) funds' against a doc-350 weapons-and-tracked-combat-vehicles line. The Bradley links elsewhere in this wave (chunk_014_A, chunk_021_A) were M2A4/M7A4 vehicle production with WTCV money; STS hours are not that. This is the same rejection the repeated 'Abrams systems technical support' paragraphs received in chunk_032_A, chunk_060_A, chunk_074_A, chunk_085_A and chunk_104_A.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 62,
+   "article_id": "606695",
+   "piid": "W31P4Q14C0090",
+   "pe_bli": "8082C14300",
+   "program_name": "Stinger Vehicle Universal Launcher (SVUL)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "1,000 Stinger flight motors required to support the service life extension program of 850 Stinger Block 1 missiles",
+   "lexicon_quote": "Stinger Vehicle Universal Launcher (SVUL)\t8082C14300\t345\tM-SHORAD - Procurement",
+   "rationale": "The only Stinger row in this org's index is 'Stinger Vehicle Universal Launcher (SVUL)' under 8082C14300 (M-SHORAD - Procurement, doc 345) — a vehicle launcher. This award buys 1,000 Stinger flight motors for the service-life extension of 850 Stinger Block 1 missiles at McAlester Army Ammunition Plant, i.e. missile components, and the index carries no Stinger missile line at all. Recorded as wrong so the substring collision is visible: the bare word 'Stinger' must not be allowed to attach a missile SLEP buy to the M-SHORAD launcher line, and the 2014 action long predates M-SHORAD.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 64,
+   "article_id": "811006",
+   "piid": "W56HZV16D0041",
+   "pe_bli": "8309DA0500",
+   "program_name": "The Family of Heavy Tactical Vehicles (FHTV)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "indefinite-delivery/indefinite-quantity contract for systems technical support for heavy tactical vehicles",
+   "lexicon_quote": "The Family of Heavy Tactical Vehicles (FHTV)\t8309DA0500\t346\tFamily Of Heavy Tactical Vehicles (FHTV)",
+   "rationale": "Two §3 rejections together: 'systems technical support' is generic engineering support, and the vehicle is an indefinite-delivery/indefinite-quantity contract where 'funding and work location will be determined with each order' — an IDIQ ceiling with no named program. The vehicle class echoes 8309DA0500's own title (Family Of Heavy Tactical Vehicles, doc 346), but none of the named items that line funds — HEMTT, PLS, EHETS, Forward Repair System, MCRS, the A4 load handling system — appears, and STS hours are support to the fielded fleet rather than the family line's procurement content. The FHTV links in this wave (chunk_017_A, chunk_021_A) were recapitalised HEMTT and PLS vehicle deliveries with OPA money.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 65,
+   "article_id": "606741",
+   "piid": "W58RGZ13C0028",
+   "pe_bli": "5757A05111",
+   "program_name": "Fire Control Radar (FCR)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "the management and logistics for all U.S. government Apache AH-64D helicopter fire control radar units",
+   "lexicon_quote": "Fire Control Radar (FCR)\t5757A05111\t343\tAH-64 Apache Block IIIA Reman",
+   "rationale": "'Fire Control Radar (FCR)' is a real index name, but it sits under 5757A05111, AH-64 Apache Block IIIA Reman (doc 343) — the line that remanufactures aircraft into the E-model configuration. What this option year buys is 'management and logistics' for the fielded AH-64D Longbow fire control radar fleet, which trips §3's logistics rejection and lens B's variant objection at once (D-model sustainment, not Block IIIA reman). 'Fiscal 2015 other procurement funds' is also the wrong colour for an aircraft-procurement reman line, and the paragraph names no content of that line.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 70,
+   "article_id": "612887",
+   "piid": "W31P4Q12C0238",
+   "pe_bli": "0962C50700",
+   "program_name": "PATRIOT Product Improvement Program (PIP)",
+   "lexicon_doc": "345",
+   "announcement_evidence": "for depot level diagnostics and repair of major PATRIOT missile system items",
+   "lexicon_quote": "PATRIOT Product Improvement Program (PIP)\t0962C50700\t345\tPatriot Mods",
+   "rationale": "The evidence is the bare platform name. 'Major PATRIOT missile system items' does not choose among the Patriot-bearing owners in this index (0962C50700 Patriot Mods, 0607865A Patriot Product Improvement, 8260C53101 PAC-3/MSE), and none of the names 0962C50700 owns — PIP, Missile Segment Enhancement, International Engineering Services Program, Tactical Planner Workstation, Air Defense Interrogator, TPX-57 — appears in the paragraph. The work is depot-level diagnostics and repair across a dozen fielded sites funded from 'fiscal 2015 operations and maintenance (Army)': O&M sustainment attached to a procurement line, the failure mode the rubric's lens A exists to catch. Same rejection chunk_000_A recorded for its bare-PATRIOT paragraphs.",
+   "verdict": "wrong"
+  },
+  {
+   "record_index": 71,
+   "article_id": "1972824",
+   "piid": "W52P1J19F0793",
+   "pe_bli": "2706AA6605",
+   "program_name": "AH-64 MODS",
+   "lexicon_doc": "343",
+   "announcement_evidence": "for Modernized Target Acquisition Designation Sight Pilot Night Vision Sensor Systems, subcomponent production, and technical services for the Apache attack helicopter",
+   "lexicon_quote": "AH-64 MODS\t2706AA6605\t343\tAH-64 MODS",
+   "rationale": "M-TADS/PNVS is not a name this index carries — the Apache rows are AH-64 MODS, AH-64E and Improved Tail Rotor Blade (2706AA6605) plus Fire Control Radar (5757A05111) — so the only index-bearing token is 'the Apache attack helicopter', named explicitly as the platform the sight systems are for, which is §3's platform rejection verbatim (the same shape as chunk_000_A's T700-engine rejection). The action is also wholly foreign-funded, a Foreign Military Sales (Netherlands and United Arab Emirates) award with work locations and funding determined per order, so it could not be the Army modification line's own work even if a TADS row existed.",
+   "verdict": "wrong"
+  }
+ ]
+}

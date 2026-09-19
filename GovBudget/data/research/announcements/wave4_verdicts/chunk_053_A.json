@@ -1,0 +1,74 @@
+{
+ "chunk": "chunk_053_A.json",
+ "proposals": [
+  {
+   "record_index": 78,
+   "article_id": "606695",
+   "piid": "W911NF14D0006",
+   "pe_bli": "0601121A",
+   "program_name": "Cyber Collaborative Research Alliance",
+   "lexicon_doc": "351",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "research performed under the cyber security collaborative research alliance",
+   "lexicon_quote": "Cyber Collaborative Research Alliance",
+   "rationale": "The announcement names the funded effort by the program's own name, differing only by the word 'security' that the Army Research Laboratory's public name for the alliance carries (Cyber Security Collaborative Research Alliance) and the index row drops — an alias, not a resemblance. The index row for pe_bli 0601121A carries the name 'Cyber Collaborative Research Alliance' and its program_title is that same alliance, so the line is the alliance itself rather than a rollup that happens to contain it; no other pe_bli in the org-A index owns any 'Collaborative Research Alliance' name (0601104A owns only the separate 'Distributed Analytics and Information Science International Technology Alliance (ITA)'), so there is no competing owner. The work and the money colour agree with the line: a cost-plus-fixed-fee research contract, competed with 17 offers, let by Army Contracting Command's Research Triangle Park division — the contracting office that buys ARL's extramural basic research — against a 6.1 basic-research program element whose entire content is that alliance. Nothing here is a platform the contract merely supports, and nothing is generic engineering or logistics support.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money leg fails on timing and scale: PE 0601121A is a FY2020 new start (warehouse decade series carries affirmative $0 for FY2018 and FY2019 from the FY2020/FY2021 R-1 editions, first money $4.982M in FY2020, ~$5.0-5.5M/yr since, $36.9M total FY2020-FY2026), while this $48.5M cost-plus-fixed-fee award ran 2014-09-26 to 2019-09-25 — the line carried nothing anywhere in the contract's period of performance and its whole seven-year funding is smaller than the announced ceiling, so this action was paid by the earlier Army 6.1 line that carried the CRA consortia before the dedicated PE was stood up, not by this line's own work (mission and appropriation colour do match, and the PE is neither a platform nor a rollup — the refutation rests solely on the money)."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The name is uniquely owned: 'Cyber Collaborative Research Alliance' is the only 'research alliance' name in the org-A index besides 0601104A's separately named ITA, and it is 0601121A's own program_title, so no other PE owns it; the alias is real (ARL's public name, Cyber Security Collaborative Research Alliance, differs only by the dropped adjective), the announcement names no 0601104A center/alliance, there is no competing variant or increment, and the evidence is the effort's name rather than the contractor's."
+   }
+  },
+  {
+   "record_index": 60,
+   "article_id": "1276614",
+   "piid": "W15P7T17D0164",
+   "pe_bli": "9810BA9350",
+   "program_name": "AN/TSC-156E",
+   "lexicon_doc": "346",
+   "announcement_evidence": "testing, inspection, and upgrades to the Marines Corp AN/TSC-156C terminals, and the Army AN/TSC-156B/D terminals",
+   "lexicon_quote": "AN/TSC-156E",
+   "rationale": "A real designator is present — AN/TSC-156, the Phoenix SHF satellite terminal — but three things keep it below the evidence standard. First, the announcement names the B, C and D variants and the index owns only the E; the E is the modernised terminal and a link would assert that work on the older fielded variants executes the E line. Second, the name collides: 'AN/TSC-156E' appears in this org's index under two different pe_bli codes, 9810BA9350 ('SHF Term') and 2912B56000 ('SATELLITE COMMUNICATIONS'), and nothing in the announcement says which of the two owns this action. Third, the described work is testing, inspection and upgrade of already-fielded terminals — sustainment-shaped effort of the kind that attaches to operations money rather than to a procurement line — and half of it is explicitly Marine Corps, not Army. Recorded as weak rather than link; the smaller true number is the one to publish here.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 63,
+   "article_id": "4018295",
+   "piid": "W31P4Q25C0014",
+   "pe_bli": "0605G02510",
+   "program_name": "General-Purpose Electronic Test Equipment (GPETE)",
+   "lexicon_doc": "346",
+   "announcement_evidence": "General Electronic Test Station equipment, hardware, software, upgrades and spare parts",
+   "lexicon_quote": "General-Purpose Electronic Test Equipment (GPETE)",
+   "rationale": "The announcement's 'General Electronic Test Station' reads at first like the index's 'General-Purpose Electronic Test Equipment (GPETE)' under Test Equipment Modernization, but the resemblance is in the English words, not in the item. GPETE/TEMOD is the Army's common maintenance and calibration test-equipment line in Other Procurement; this action is funded with fiscal 2025 missile procurement plus Foreign Military Sales to Saudi Arabia, Switzerland, Kuwait, Qatar and the United Arab Emirates and is let by Army Contracting Command at Redstone Arsenal, which places it in the guided-missile test-station world rather than in common-use shop test equipment. The money colour and the buying command both point away from the line, so the match does not meet the evidence standard even though a candidate name is nearby.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 62,
+   "article_id": "1922486",
+   "piid": "W58RGZ19D0109",
+   "pe_bli": "6380AZ3110",
+   "program_name": "Aircrew Combat Equipment (ACE)",
+   "lexicon_doc": "343",
+   "announcement_evidence": "Air Soldier System engineering services",
+   "lexicon_quote": "Aircrew Combat Equipment (ACE)",
+   "rationale": "'Air Soldier System' is a genuine Army aircrew-equipment program and the Aircrew Integrated Systems line (6380AZ3110) is the plausible home for it, but the index does not carry 'Air Soldier System' or any alias of it under this or any other pe_bli — the only names the line owns are 'Aircrew Combat Equipment (ACE)' and 'Rotary Wing Helmet (RWH)', neither of which the announcement mentions. Linking would rest on my own description-level inference about what the line contains rather than on a name the program's own narrative owns. The award is also hybrid cost-no-fee and cost-plus-fixed-fee engineering services, which does not sit naturally against a procurement line. Recorded as weak so the read is visible without publishing an unsupported attribution.",
+   "verdict": "weak"
+  },
+  {
+   "record_index": 55,
+   "article_id": "2500379",
+   "piid": "W15QKN21D0012",
+   "pe_bli": "2790E55400",
+   "program_name": "Demolition Munitions, All Types",
+   "lexicon_doc": "349",
+   "announcement_evidence": "the production and delivery of the Receiver Radio Firing Device, Nonelectric Blasting Cap Actuating M17A1 and the Trainer, Receiver, Radio Firing Device, Nonexplosive M85A1",
+   "lexicon_quote": "Demolition Munitions, All Types",
+   "rationale": "The items bought — a radio firing device that actuates a nonelectric blasting cap, and its nonexplosive trainer — are demolition initiation hardware, and the Demolition Munitions, All Types line owns the name 'Modernized Demolition Initiators (MDI)'. But the announcement names neither 'Modernized Demolition Initiators' nor 'Demolition Munitions', and the M17A1 radio firing device is a distinct nomenclature from the MDI shock-tube initiator family, so the only route to a link is my own inference that the two belong to the same budget line. That is description-level reasoning against an 'All Types' aggregate title, which is exactly where an attribution claim is least defensible even though the loader's catch-all filter does not exclude this title. Weak, not link.",
+   "verdict": "weak"
+  }
+ ]
+}

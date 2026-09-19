@@ -1,0 +1,695 @@
+{
+ "chunk": "chunk_006_MDA.json",
+ "proposals": [
+  {
+   "record_index": 1,
+   "article_id": "2547591",
+   "piid": "HQ085621C0003",
+   "pe_bli": "0604874C",
+   "program_name": "Next Generation Interceptor Development (NGI)",
+   "lexicon_doc": "97",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "technology development and risk reduction of the Next Generation Interceptor (NGI) All-Up-Round",
+   "lexicon_quote": "Next Generation Interceptor Development (NGI)",
+   "verdict": "link",
+   "rationale": "One of the two competitive NGI development awards. The announcement names the program outright — technology development and risk reduction of the Next Generation Interceptor (NGI) All-Up-Round — and 'Next Generation Interceptor Development (NGI)' is owned by exactly one row in the MDA index, PE 0604874C 'Improved Homeland Defense Interceptors' (doc 97); no other PE in this org's index carries NGI (0603882C carries only the predecessor Redesigned Kill Vehicle, a different program). The work is developmental (cost-plus-award-fee/fixed-fee/incentive-fee technology development and risk reduction), so it belongs to an RDT&E line rather than a procurement BLI, and 0604874C is the RDT&E line that funds NGI's own work. Not an IDIQ umbrella paragraph: a single competitive development contract for one named program.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full announcement obligates \"Fiscal 2021 research and development funds in the amount of $291,930,500\" — RDT&E money on an RDT&E line for technology development and risk reduction of NGI itself, which is the contract's whole object and not a platform it merely supports; 0604874C is a named interceptor PE, not a rollup or catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Single-owner name: 'Next Generation Interceptor Development (NGI)' is one row in the whole index (0604874C, doc 97) and no other MDA PE carries any NGI string (0603882C carries only the predecessor RKV, which is itself shared with 0604874C); the announcement writes both the designator and its expansion, so the alias is not invented, and it names the AUR program itself rather than a different variant or a contractor."
+   }
+  },
+  {
+   "record_index": 2,
+   "article_id": "2547591",
+   "piid": "HQ085621C0001",
+   "pe_bli": "0604874C",
+   "program_name": "Next Generation Interceptor Development (NGI)",
+   "lexicon_doc": "97",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "technology development and risk reduction of the Next Generation Interceptor (NGI) All-Up-Round",
+   "lexicon_quote": "Next Generation Interceptor Development (NGI)",
+   "verdict": "link",
+   "rationale": "The Lockheed Martin half of the same two-award NGI competition, a separate record with its own PIID (HQ085621C0001) in the same daily article — hence a separate proposal carrying its own record_index. Same reasoning as the Northrop record: the announcement names the Next Generation Interceptor (NGI) as the thing being developed, 'Next Generation Interceptor Development (NGI)' is uniquely owned in this index by PE 0604874C (doc 97), and a cost-reimbursement technology-development-and-risk-reduction contract is RDT&E work against an RDT&E line. No competing owner and no appropriation mismatch.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "Identical money and mission to the Northrop half of the same competition: \"Fiscal 2021 research and development funds in the amount of $291,930,500 are being obligated on this award\", a cost-reimbursement development phase for NGI on an RDT&E line whose own program is NGI — no sustainment content, no platform-support framing, no catch-all PE."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same identity finding as the Northrop half on its own PIID: NGI has exactly one owner in this index (0604874C, doc 97), the announcement spells 'Next Generation Interceptor (NGI)' out itself, and nothing in the index would take this evidence to a competing PE — the two-award competition does not create a second owner, only a second record."
+   }
+  },
+  {
+   "record_index": 3,
+   "article_id": "3110781",
+   "piid": "HQ085622D0001",
+   "pe_bli": "0604874C",
+   "program_name": "Ground-Based Midcourse Defense Weapon System (GWS)",
+   "lexicon_doc": "172",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "design, develop, test, and field the next Ground-Based Midcourse Defense (GMD) Weapon System (GWS) Program",
+   "lexicon_quote": "Ground-Based Midcourse Defense Weapon System (GWS)",
+   "verdict": "link",
+   "rationale": "The announcement's own words name the GWS Program as the object of the contract, not merely as context: the contractor will 'design, develop, test, and field the next Ground-Based Midcourse Defense (GMD) Weapon System (GWS) Program', covering GWS software and hardware. The index string 'Ground-Based Midcourse Defense Weapon System (GWS)' differs from the announcement's phrasing only by the inserted '(GMD)' expansion, and GWS is owned by exactly one row in this org's index — PE 0604874C, doc 172. The bare name 'GMD' is a four-way collision in this index (0603882C, 0604874C, 0604887C, MD08), which is why this proposal rests on GWS and not on GMD. It is an IDIQ with a ceiling, but §3 rejects IDIQ ceilings with NO named program; here one named program is the entire subject of the contract, and Delivery Order 0001 ($716,090,100) was issued against it at award. The residual risk lens A should test is whether GWS development is carried on 0603882C rather than 0604874C; the lexicon assigns the name to 0604874C alone, which is the evidence available here.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full text obligates \"fiscal 2022 research, development, test and evaluation funds in the amount of $76,355,001\" plus only a $200,000 O&M sliver (0.3% of obligations), so the RDT&E line's appropriation carries the action; GWS design/development/integration is the contract's entire subject rather than a platform it supports, and delivery orders were issued at award, so this is not a §3 bare-ceiling paragraph (whether 0604874C or 0603882C owns GWS is lens B's question, not lens A's)."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'Ground-Based Midcourse Defense Weapon System (GWS)' is owned by exactly one row (0604874C, doc 172) and the announcement uses GWS as the contract's proper subject, so the proposal does not lean on the four-way 'GMD' collision (0603882C, 0604874C, 0604887C, MD08). Residual, not a refutation: 0603882C is the midcourse segment line and the GWS award succeeds the GMD development/sustainment contract, so a different edition could seat the weapon system there — but no row in this index assigns GWS anywhere but 0604874C."
+   }
+  },
+  {
+   "record_index": 5,
+   "article_id": "2127392",
+   "piid": "HQ085120C0002",
+   "pe_bli": "MD09",
+   "program_name": "SM-3",
+   "lexicon_doc": "95",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the procurement, manufacture and assembly of the Standard Missile-3 Block IB all up rounds",
+   "lexicon_quote": "SM-3",
+   "verdict": "link",
+   "rationale": "A sole-source multi-year (FY2019-2023) contract for 'the procurement, manufacture and assembly of the Standard Missile-3 Block IB all up rounds'. 'SM-3' is a two-way name collision in this index — 0603892C (AEGIS BMD, RDT&E) and MD09 (Aegis BMD procurement, doc 95) — but the appropriation resolves it: this is a multi-year PROCUREMENT of fielded all-up rounds, not development, so it funds the procurement BLI's own work and not the RDT&E development line (0603892C's SM-3 Block IB row is explicitly 'Standard Missile-3 (SM-3) Block IB Development'). SM-3 is a hardware designator, not a generic English word, so §3's weak-generic-name pattern does not apply. The record's visible text does not print the appropriation title, so lens A should confirm the funds are procurement, Defense-wide rather than RDT&E.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full text states \"FY 2019 and 2020 procurement, defense-wide and FMS funds in the amount of $1,052,637,366 will be obligated at time of award\" — procurement, Defense-wide money against a procurement BLI, buying the very article (SM-3 Block IB all-up rounds) that MD09 funds; no RDT&E/O&M mismatch and no platform-support problem."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "'SM-3' is a real two-way collision (0603892C doc 267 / MD09 doc 95), but the competing owner's Block IB strings are all development or component rows ('Standard Missile-3 (SM-3) Block IB Development', Guidance Section, Threat Upgrade) while this action is a five-year FY19-23 multi-year buy for 'procurement, manufacture and assembly' of fielded all-up rounds with no development scope named; MD09 is the only SM-3 line in the procurement family (MD14 covers IIA only), so the evidence does not land elsewhere equally well."
+   }
+  },
+  {
+   "record_index": 7,
+   "article_id": "3850293",
+   "piid": "HQ085124C0001",
+   "pe_bli": "MD14",
+   "program_name": "SM-3 Block IIA",
+   "lexicon_doc": "95",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the manufacture and assembly of Standard Missile-3 Block IIA All-Up Rounds",
+   "lexicon_quote": "SM-3 Block IIA",
+   "verdict": "link",
+   "rationale": "Manufacture and assembly of SM-3 Block IIA all-up rounds, with the appropriation stated in the record itself: 'Fiscal 2023 and 2024 procurement, Defense wide funds' obligated at award (plus a separable JMOD FMS tranche). 'SM-3 Block IIA' as a standalone name is owned by exactly one row, MD14 (doc 95, program title 'SM-3 IIAs'), the procurement BLI; 0603892C's Block IIA rows are all explicitly development or RDT&E all-up-round rows, so the procurement/RDT&E split separates the two owners cleanly. The announcement writes the designator out in full ('Standard Missile-3 Block IIA'), which is the index name with the manufacturer abbreviation expanded. A production buy against the production line: no appropriation mismatch and no platform-support problem.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "\"Fiscal 2023 and 2024 procurement, Defense wide funds in the amount of $583,732,034; and $383,265,085\" are obligated against the SM-3 IIA procurement BLI for manufacture and assembly of Block IIA all-up rounds — the production line paying for its own production; the JMOD FMS tranche is separately identified and does not displace the appropriated obligation."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Standalone 'SM-3 Block IIA' is owned only by MD14 (doc 95, 'SM-3 IIAs'); every competing IIA string sits on 0603892C as a development row or a fiscal-year-tagged RDT&E AUR row (FY 2016, FY16, FY18), and this is an FY2023/FY2024 procurement, Defense-wide buy — wrong year and wrong appropriation family for those rows, so no alternative owner fits the same evidence."
+   }
+  },
+  {
+   "record_index": 11,
+   "article_id": "2329454",
+   "piid": "HQ014712D0001",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Terminal High Altitude Area Defense element development and support services",
+   "verdict": "link",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "A modification to the THAAD element DEVELOPMENT contract (HQ0147-12-D-0001) 'for Terminal High Altitude Area Defense element development and support services', providing 'additional incremental development, support to flight and ground test programs'. The name 'Terminal High Altitude Area Defense (THAAD)' is owned in this index by exactly one PE, 0603881C 'Ballistic Missile Defense Terminal Defense Segment' (doc 267) — MD07's program title is THAAD but the only name its narrative owns is AN/TPY-2, so there is no competing procurement owner for the THAAD name. Crucially this is element development, not interceptor production, so it is the one flavour of THAAD award in this chunk whose work matches an RDT&E line rather than a procurement BLI. It is an IDIQ ceiling modification, but the program is named and specific, so §3's 'IDIQ ceilings with no named program' does not apply. Lens A should weigh the 'responsive support to warfighter requirements to sustain the Ballistic Missile Defense System' clause, which carries a sustainment flavour alongside the development scope.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money: the full announcement says \"No funding is being obligated at the time of award\" — the $911,765,000 is purely an IDIQ ceiling raise ($2.335B to $3.247B) that moves no dollars to 0603881C at all, and the scope it buys expressly includes \"responsive support to warfighter requirements to sustain the Ballistic Missile Defense System throughout the acquisition life cycle\", i.e. life-cycle sustainment attached to an RDT&E line — the exact failure mode lens A tests for."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "THAAD is a single-owner name here: 'The Terminal High Altitude Area Defense (THAAD)' appears once (0603881C, doc 267) and every other THAAD-bearing row (TFCC, ITI, Layered Homeland Defense) is on the same PE. MD07's program title is THAAD but the only name its narrative owns is AN/TPY-2, and it is the procurement BLI, so 'element development and support services' does not link there equally well; the announcement spells the name out in full, so the alias is real."
+   }
+  },
+  {
+   "record_index": 12,
+   "article_id": "3063103",
+   "piid": "HQ085122C0001",
+   "pe_bli": "MD14",
+   "program_name": "SM-3 Block IIA",
+   "lexicon_doc": "95",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the manufacture and assembly of Standard Missile-3 Block IIA All-Up Rounds",
+   "lexicon_quote": "SM-3 Block IIA",
+   "verdict": "link",
+   "rationale": "The 2022 sole-source SM-3 Block IIA all-up-round production award, with the appropriation printed in the record: 'Fiscal 2021 procurement, Defense wide funds' and 'fiscal 2022 procurement, Defense wide funds' obligated at award. Same reasoning as the 2024 award on HQ085124C0001: 'SM-3 Block IIA' standing alone is owned only by MD14 (doc 95), the procurement BLI, while 0603892C's Block IIA rows are development/RDT&E rows, so appropriation and name agree on the same line. Production of fielded rounds against the production BLI — no rollup, no platform-support issue.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "\"Fiscal 2021 procurement, Defense wide funds in the amount of $250,391,077; and fiscal 2022 procurement, Defense wide funds in the amount of $384,131,553\" are obligated at award — procurement money on the procurement BLI for the rounds that BLI exists to buy; no sustainment leakage, no rollup PE."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "Same identity finding as the 2024 IIA award: 'SM-3 Block IIA' standing alone is MD14's only, the record prints fiscal 2021 and fiscal 2022 procurement, Defense-wide funds, and 0603892C's IIA rows are development or FY16/FY18 RDT&E AUR rows that do not match this action's years or appropriation."
+   }
+  },
+  {
+   "record_index": 13,
+   "article_id": "1771302",
+   "piid": "HQ014712D0001",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Terminal High Altitude Area Defense element development and support services",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "link",
+   "rationale": "An earlier modification (P00044) to the same THAAD element development IDIQ, a distinct record with its own announced value, 'for Terminal High Altitude Area Defense element development and support services' exercising an option for 'additional incremental development, support to flight and ground test programs'. THAAD is a single-owner name in this index (0603881C, doc 267) and incremental development plus flight/ground test support is exactly the RDT&E work the Terminal Defense Segment line funds — not the procurement of interceptors that dominates the rest of this chunk. Same sustainment-clause caveat for lens A as the P00049 record.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money for the same reason as the P00049 modification: the full text reads \"No funding is being obligated at the time of award\" — $830,583,480 of IDIQ ceiling headroom ($1.504B to $2.335B) with zero obligation to 0603881C, and the option exercised covers \"responsive support to Warfighter requirements to sustain the Ballistic Missile Defense System throughout the acquisition life cycle\", sustainment scope on an RDT&E development line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "P00044 on the same THAAD element development IDIQ; the name question has the same clean answer — one owner for the THAAD name (0603881C, doc 267), MD07 owning only AN/TPY-2, and no variant mismatch, since the announcement's 'additional incremental development' is the same element the index row names."
+   }
+  },
+  {
+   "record_index": 14,
+   "article_id": "1292624",
+   "piid": "HQ027615C0003",
+   "pe_bli": "0603892C",
+   "program_name": "Standard Missile-3 (SM-3) Block IIA Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "the contractor will manufacture 17 Standard Missile-3 Block IIA missiles",
+   "lexicon_quote": "Standard Missile-3 (SM-3) Block IIA Development",
+   "verdict": "link",
+   "rationale": "Definitization of the undefinitized action on HQ0276-15-C-0003, the SM-3 Block IIA DEVELOPMENT contract: 17 Block IIA missiles plus 'production support and engineering efforts', 'obsolescence monitoring' and 'technical baseline engineering support'. In 2015-2017 the Block IIA round was still an RDT&E development article — the sibling record on this same PIID (record 17) states 'Fiscal 2016 research, development, test and evaluation funds' — so the development line 0603892C (AEGIS BMD, doc 277), whose narrative owns 'Standard Missile-3 (SM-3) Block IIA Development' and also 'FY16 SM-3 Block IIA RDT&E All Up Rounds', is the line whose own work this pays for; MD14 is the later procurement BLI and would be the appropriation-wrong owner here. The record's own visible text does not print the appropriation, which is the one thing lens A should check.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The appropriation the proposal flagged as unverified is in the full text: \"Fiscal 2017 research, development, test and evaluation funds in the amount of $45,000,000 will be obligated for this effort\" — RDT&E money on the RDT&E development line to manufacture 17 development Block IIA rounds, with production support, obsolescence monitoring and quality assurance as ancillary content of that same RDT&E article buy rather than a separate sustainment effort."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "MD14 'SM-3 Block IIA' is the competing owner, but this modification definitizes the Dec. 8, 2015 undefinitized action on HQ0276-15-C-0003 — the same 17 missiles whose award record (record 17) prints 'Fiscal 2016 research, development, test and evaluation funds' — and 0603892C owns the matching strings by fiscal year and by activity ('FY16 SM-3 Block IIA RDT&E All Up Rounds', 'Includes Manufacturing of SM-3 Block IIA All Up Round (AUR)'). Contract identity, not just the name, picks the development line."
+   }
+  },
+  {
+   "record_index": 16,
+   "article_id": "606839",
+   "piid": "HQ027615C0005",
+   "pe_bli": "MD09",
+   "program_name": "SM-3",
+   "lexicon_doc": "95",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "procure an initial quantity of 44 Standard Missile-3 Block IB all-up rounds (AURs)",
+   "lexicon_quote": "SM-3",
+   "verdict": "link",
+   "rationale": "An undefinitized action to 'procure an initial quantity of 44 Standard Missile-3 Block IB all-up rounds (AURs)', with the government intending to buy up to 52 rounds on definitization. This is a buy of fielded Block IB rounds, so the procurement BLI MD09 (doc 95), whose narrative owns 'SM-3', is the line funding its own work; the competing owner of the bare name 'SM-3' is 0603892C, whose Block IB row is explicitly a development row, so the appropriation separates them. The third-stage rocket motor reliability-growth work bundled into the same action is production-support content rather than a separate program. Lens A should confirm the funds are procurement rather than RDT&E, which the 700-character record text does not reach.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The full text confirms what the truncated record omitted: \"Fiscal 2015 defense-wide procurement funds in the amount of $401,753,989 are being obligated at time of award\" — procurement money on a procurement BLI to buy 44 fielded Block IB all-up rounds; the third-stage rocket motor reliability-growth item is bundled production content, not a separate appropriation's work."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: the bare name 'SM-3' is a two-way collision and the announcement's own variant string 'Standard Missile-3 Block IB' matches the COMPETING owner's rows more literally than MD09's bare 'SM-3' — 0603892C owns 'Standard Missile-3 (SM-3) Block IB Development', 'SM-3 Manufacturing' and the Block IB Guidance Section / Threat Upgrade rows. The action also bundles 'third stage rocket motor reliability growth/design enhancements', development work those rows would own, and this 2015 UCA prints no appropriation, so nothing in the evidence chooses MD09 over 0603892C."
+   }
+  },
+  {
+   "record_index": 17,
+   "article_id": "633402",
+   "piid": "HQ027615C0003",
+   "pe_bli": "0603892C",
+   "program_name": "Standard Missile-3 (SM-3) Block IIA Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "manufacture, assemble, test, and deliver 17 Standard Missile-3 Block IIA missiles",
+   "lexicon_quote": "Standard Missile-3 (SM-3) Block IIA Development",
+   "verdict": "link",
+   "rationale": "The strongest SM-3 Block IIA record in the chunk because the record itself prints the appropriation: 'Fiscal 2016 research, development, test and evaluation funds in the amount of $10,000,000 will be obligated at the time of award' against a contract to 'manufacture, assemble, test, and deliver 17 Standard Missile-3 Block IIA missiles'. RDT&E money buying 17 Block IIA rounds is precisely what 0603892C's narrative describes — the index carries both 'Standard Missile-3 (SM-3) Block IIA Development' and 'FY16 SM-3 Block IIA RDT&E All Up Rounds' on this PE (doc 277), and this is an FY2016 RDT&E all-up-round action. The procurement BLI MD14 is excluded by appropriation, so the two-way subject overlap resolves cleanly.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The record prints the appropriation itself — \"Fiscal 2016 research, development, test and evaluation funds in the amount of $10,000,000 will be obligated at the time of award\" — RDT&E money manufacturing 17 Block IIA development missiles on the Block IIA development line; the missile is the program, not a platform the contract supports."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "MD14 is the only competing IIA owner, and this record prints 'Fiscal 2016 research, development, test and evaluation funds' against a row 0603892C owns by that very fiscal year ('FY16 SM-3 Block IIA RDT&E All Up Rounds', plus 'FY 2016 SM-3 Block IIA All Up Round (AUR)'); no other PE in this index owns an FY16 IIA all-up-round name, so the evidence does not transfer."
+   }
+  },
+  {
+   "record_index": 20,
+   "article_id": "1968631",
+   "piid": "HQ014718D0002",
+   "pe_bli": "0603884C",
+   "program_name": "AN/TPY-2",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "research and development support for the Army Navy Transportable Radar Surveillance Control Model-2 and Sea-Based X-Band radar",
+   "lexicon_quote": "AN/TPY-2",
+   "verdict": "link",
+   "rationale": "The announcement spells the designator out longhand — 'Army Navy Transportable Radar Surveillance Control Model-2' is AN/TPY-2 — and names Sea-Based X-Band radar in the same clause. Both names are four-way and two-way collisions on their own (AN/TPY-2 at 0603881C, 0603884C, MD07, MD11; SBX at 0603884C and 0603907C), but 0603884C 'Ballistic Missile Defense Sensors' (doc 277) is the ONLY PE in this org's index whose narrative owns both names, and the award is a single R&D-support action covering both radars together, so the pairing is what disambiguates. The stated work — 'research and development support' — matches an RDT&E sensors line rather than a procurement radar BLI. The refute lenses should weigh the tail of the scope (warfighter support, engineering services, test SME support, cybersecurity), which drifts toward the generic-services pattern §3 rejects, and the fact that this is a ceiling increase on an IDIQ.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money and mission: the full text says \"No task orders are being issued at this time\", so the $500,615,405 is ceiling headroom only ($461.5M to $962.1M) with nothing obligated to 0603884C, and the scope is the §3 generic-services list almost verbatim — \"continued product improvement, warfighter support, engineering services, Ballistic Missile Defense System test subject matter experts (SME) support, modeling and simulation SME support, and cybersecurity\" — support services to two radars whose work splits across sensor lines (SBX carries its own PE, 0603907C) rather than this line's own development."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: neither radar in the evidence is uniquely 0603884C's. 'AN/TPY-2' is owned by four PEs (0603881C, 0603884C, MD07, MD11) and Sea-Based X-Band has its own dedicated program element — 0603907C 'Sea Based X-Band Radar (SBX)', rows 'The Sea Based X-Band Radar (SBX)' (doc 97) and 'X-Band Radar (XBR)' (doc 277). The pairing argument shows only that 0603884C owns both strings; this ceiling increase buys R&D support for two radar programs that each have their own line, plus product improvement, warfighter support, engineering services, test/M&S SME support and cybersecurity, so the same evidence links at least as well to 0603907C for the SBX half and to MD11 or 0603881C for the AN/TPY-2 half."
+   }
+  },
+  {
+   "record_index": 24,
+   "article_id": "1066215",
+   "piid": "HQ014712D0001",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "Terminal High Altitude Area Defense element development and support services",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "link",
+   "rationale": "The 2017 option exercise (P00031) on the same THAAD element development IDIQ, again 'for Terminal High Altitude Area Defense element development and support services' providing 'additional incremental development, support to flight and ground test programs'. Single-owner name (0603881C, doc 267) and developmental work on an RDT&E line. Distinguished from the dozen THAAD interceptor-production records in this chunk, which are procurement actions and are proposed only as weak because this index carries no procurement BLI that owns the THAAD name.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money exactly as the other two THAAD ceiling modifications: \"No funding is being obligated at the time of award\" — $345,580,000 of IDIQ ceiling raise ($995.2M to $1.341B) with no dollars reaching 0603881C, on an option whose scope includes \"responsive support to warfighter requirements to sustain the Ballistic Missile Defense System throughout the acquisition life cycle\", sustainment work attached to an RDT&E line."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "P00031 on the same THAAD element development IDIQ; identity is unchanged — one owner of the THAAD name (0603881C, doc 267), MD07 owning only AN/TPY-2, the announcement spelling the name out, and no different variant or increment named."
+   }
+  },
+  {
+   "record_index": 32,
+   "article_id": "931992",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis BMD 5.x Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "Aegis Ballistic Missile Defense (ABMD) Continuation of Baseline 5.1, Increment-2 development",
+   "lexicon_quote": "Aegis BMD 5.x Development",
+   "verdict": "link",
+   "rationale": "The record names a specific Aegis BMD baseline under development — 'Continuation of Baseline 5.1, Increment-2 development' — and states the appropriation, 'Fiscal 2016 research, development' funds. Baseline 5.1 is a 5.x baseline, and 'Aegis BMD 5.x Development' is owned only by 0603892C (AEGIS BMD, doc 277); the bare name 'Aegis Ballistic Missile Defense (BMD)' is a three-way collision (0603892C, 0604878C Aegis BMD Test, MD90 procurement), which is why this proposal rests on the baseline designator instead. Development work with RDT&E funds against the Aegis BMD development line: appropriation, work and name all point to the same PE. The secondary 'Adaptation of Aegis Ashore' clause could implicate 0604880C (Land-Based SM-3), but the contract line item cited is the ABMD 5.1 baseline, so no second proposal is made.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "\"Fiscal 2016 research, development, Test and evaluation funds in the amount of $61,017,741 are being obligated at the time of award\" — RDT&E money for Baseline 5.1 Increment-2 development on the Aegis BMD development line, and the Aegis Ashore adaptation named alongside it is folded into the same deliverable (\"these efforts will provide a certified ABMD 5.1 baseline\"), so it is not a second line's work riding on this action."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "The bare 'Aegis Ballistic Missile Defense (BMD)' is a three-way collision (0603892C, 0604878C Aegis BMD Test, MD90 procurement), but the proposal rests on the baseline designator and every 4.x/5.0/5.x/6.x development row in the index sits on 0603892C, so the baseline family has a single owner; the record's stated product ('a certified ABMD 5.1 baseline') and its fiscal 2016 research-and-development funds keep the test and procurement owners out. Residual, not a refutation: the same CLIN also buys 'Adaptation of Aegis Ashore', a name 0604880C owns (AAMDS / LBSM3), but it is the second of two efforts and not the modification's stated outcome."
+   }
+  },
+  {
+   "record_index": 37,
+   "article_id": "3348502",
+   "piid": "HQ014719C0005",
+   "pe_bli": "0603915C",
+   "program_name": "Modified Ballistic Re-Entry Vehicles (MBRV)",
+   "lexicon_doc": "277",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "five subscale MBRV-11 vehicles (Modified Ballistic Re-Entry Vehicle-11)",
+   "lexicon_quote": "Modified Ballistic Re-Entry Vehicles (MBRV)",
+   "verdict": "link",
+   "rationale": "The announcement names and expands the designator itself: 'five subscale MBRV-11 vehicles (Modified Ballistic Re-Entry Vehicle-11)'. MBRV is a single-owner family in this index — 0603915C 'Ballistic Missile Defense Targets' carries 'Modified Ballistic Re-Entry Vehicles (MBRV)' (doc 277) plus the MBRV-5, MBRV-7 and MBRV-8 variant rows — so MBRV-11 is a further variant of the same family and no other PE owns the name. The work is to 'procure, manufacture, and assemble hardware and perform required testing' plus launch vehicle integration and flight execution, which is the targets program's own development work, not support to a platform it merely serves. Lens A should confirm the appropriation is RDT&E; the 700-character record stops before the funding sentence.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The appropriation the proposal asked lens A to check is in the full text: \"Fiscal 2023 research, development, test and evaluations funds will be used on this effort; the initial funding amount is $6,057,000\" — RDT&E money on the RDT&E targets line to build and fly the targets program's own article (MBRV-11), not support to a platform the line merely serves; BMD Targets is a specific mission PE, not a catch-all."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "MBRV is a single-owner family: 0603915C carries the family row plus MBRV-5, -7 and -8, and no other PE in this index owns any MBRV string. MBRV-11 is a further variant of that same family rather than another program's designator, the announcement expands the acronym itself ('Modified Ballistic Re-Entry Vehicle-11'), and match_basis declares the variant step honestly."
+   }
+  },
+  {
+   "record_index": 39,
+   "article_id": "1882708",
+   "piid": "HQ014714C0001",
+   "pe_bli": "0603915C",
+   "program_name": "BMDS Targets Program",
+   "lexicon_doc": "277",
+   "match_basis": "llm-description",
+   "announcement_evidence": "six additional Medium Range Ballistic Missile targets and associated nonrecurring engineering",
+   "lexicon_quote": "BMDS Targets Program",
+   "verdict": "link",
+   "rationale": "An option exercise for 'six additional Medium Range Ballistic Missile targets and associated nonrecurring engineering' from MDA's targets prime, with 'Fiscal 2019 research, development, test and evaluation funds' obligated. The index name matched is a description-level one — 'BMDS Targets Program' at 0603915C 'Ballistic Missile Defense Targets' (doc 277) — rather than a designator, so match_basis is llm-description; but the object bought IS ballistic missile defense targets, the PE is the targets line and no other PE in this org's index owns a targets name. RDT&E funds against an RDT&E targets line. The weaker leg for the refute lenses is that 'Medium Range Ballistic Missile target' is a class of article rather than the index's own program string, so the link rests on subject identity rather than on a name quote.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "\"Fiscal 2019 research, development, test and evaluation funds in the amount of $22,469,742 are being obligated on this award\" — RDT&E money buying six Medium Range Ballistic Missile targets plus nonrecurring engineering from MDA's targets prime on the RDT&E targets line; the object bought is the line's own deliverable, so lens A's appropriation, platform and rollup tests all pass (the description-level name quality is lens B's question)."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No competing owner exists: 0603915C is the only PE in this index with any targets name, and the test PEs (0603914C, 0604876C, 0604879C, 0604887C) own test infrastructure names, not target articles. The link is description-level rather than a name quote — which is exactly what match_basis llm-description declares — but lens B's question about alternative ownership has a clean answer, and the evidence is the article bought, not a contractor name."
+   }
+  },
+  {
+   "record_index": 40,
+   "article_id": "2005134",
+   "piid": "HQ027610C0001",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis BMD 5.x Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-designator-variant",
+   "announcement_evidence": "scope supporting Aegis Ballistic Missile Defense, including additional upgrades to Baseline 5.4",
+   "lexicon_quote": "Aegis BMD 5.x Development",
+   "verdict": "link",
+   "rationale": "A modification to the Aegis BMD development prime contract providing 'scope supporting Aegis Ballistic Missile Defense, including additional upgrades to Baseline 5.4, flight test, ground test, post-certification engineering, in-service support, and future studies'. Baseline 5.4 is a 5.x baseline and 'Aegis BMD 5.x Development' is owned only by 0603892C (doc 277), which avoids the three-way collision on the bare 'Aegis Ballistic Missile Defense (BMD)' name. Baseline upgrades and post-certification engineering are development work on the Aegis BMD development line. The clause the refute lenses should press on is 'in-service support', which is the O&M-sustainment-on-an-RDT&E-line failure mode; it is one item in a predominantly developmental scope, and the record does not print the appropriation.",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Refuted on money: the full text obligates three appropriations at once — \"Fiscal 2019 and 2020 research, development, test and evaluation; fiscal 2018, 2019 and 2020 procurement defense wide; and fiscal 2020 operations and maintenance funds in the amount of $12,080,453\" — against a scope that explicitly names \"in-service support\" alongside flight/ground test and future studies, so the action mixes O&M sustainment and procurement into a claim on an RDT&E development line and cannot be said to pay for 0603892C's own work."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: the modification's scope is a grab-bag whose parts are owned by different PEs in this same index — 'flight test, ground test' sits with 0604878C 'Aegis BMD Test' (which owns both 'Aegis Ballistic Missile Defense (BMD)' doc 97 and 'Aegis BMD Ground Test (GT)'), 'in-service support' with MD90 'Aegis BMD Hardware and Software', and only 'additional upgrades to Baseline 5.4' points at the 5.x development row. The headline name the announcement actually uses is the bare three-way-collided 'Aegis Ballistic Missile Defense', the record prints no appropriation, and one designator inside a mixed scope does not make 0603892C the unique owner of this action."
+   }
+  },
+  {
+   "record_index": 62,
+   "article_id": "1357776",
+   "piid": "HQ027615C0003",
+   "pe_bli": "0603892C",
+   "program_name": "Standard Missile-3 (SM-3) Block IIA Development",
+   "lexicon_doc": "277",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "transition the Standard Missile-3 Block IIA program into production",
+   "lexicon_quote": "Standard Missile-3 (SM-3) Block IIA Development",
+   "verdict": "link",
+   "rationale": "Engineering services, analysis and material 'necessary to transition the Standard Missile-3 Block IIA program into production' — manufacturing readiness level compliance, sustained rate capability, tactical configuration readiness — on HQ0276-15-C-0003, the Block IIA development contract. Production-readiness engineering is development-line work by definition (the program has not yet transitioned), so 0603892C's 'Standard Missile-3 (SM-3) Block IIA Development' (doc 277) is the line whose own work this funds, not the MD14 procurement BLI that later buys the rounds. The named program is the contract's whole subject rather than a platform it supports. The record text stops before the appropriation sentence, which lens A should verify.",
+   "refute_a": {
+    "refuted": false,
+    "reason": "The appropriation the proposal left open is stated in the full text: \"Fiscal 2017 research, development, test and evaluation funds in the amount of $13,817,608 will be obligated at the time of award\" — RDT&E money on the Block IIA development contract, so the production-readiness engineering is funded by the development line rather than the MD14 production BLI, and the named program is the contract's entire subject, not a platform it supports."
+   },
+   "refute_b": {
+    "refuted": true,
+    "reason": "REFUTED: the announcement names its subject as 'the Standard Missile-3 Block IIA program' being transitioned 'into production' — manufacturing readiness levels, sustained rate capability of two all-up rounds per month, tactical configuration readiness — and the closer index name for that is MD14's standalone 'SM-3 Block IIA' (program title 'SM-3 IIAs'), not 0603892C's row, which the announcement's words do not call development. Sharing a PIID with the FY2016 RDT&E all-up-round mods is weak identity evidence for new October-2017 scope, since a later mod on an existing vehicle can be funded from the procurement line that existed by then; nothing in this record breaks the tie toward the development PE."
+   }
+  },
+  {
+   "record_index": 0,
+   "article_id": "3144699",
+   "piid": "HQ085622D0002",
+   "pe_bli": "0603882C",
+   "program_name": "The Ground-based Midcourse Defense (GMD)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "overall Ground-Based Midcourse Defense (GMD) Element engineering, integration",
+   "verdict": "weak",
+   "lexicon_quote": "The Ground-based Midcourse Defense (GMD)",
+   "rationale": "The $5.021B GMD system integration, test and readiness (SITR) IDIQ names GMD unambiguously, but the name cannot be attributed to a single line from this index: 'The Ground-based Midcourse Defense (GMD)' is carried by 0603882C (Midcourse Defense Segment), 0604874C (Improved Homeland Defense Interceptors) and MD08 (procurement), and 0604887C carries 'Ground Based Midcourse Defense (GMD)' as well — a four-way owner collision with three of the four sharing the RDT&E appropriation, so the appropriation cannot break the tie the way it does for the SM-3 records. The scope compounds it: alongside element engineering and integration the contractor performs 'day-to-day systems operations and readiness' and 'routine maintenance', which is sustainment work whose home line is not established by the announcement. Name present, attribution not established — weak, not a link."
+  },
+  {
+   "record_index": 6,
+   "article_id": "4257577",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the production of Terminal High Altitude Area Defense (THAAD) Interceptors to support the U.S. government",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "A $2.06B modification for THAAD interceptor PRODUCTION under fixed-price incentive line items. THAAD is a single-owner name in this index, but its only owner is 0603881C, an RDT&E line ('Ballistic Missile Defense Terminal Defense Segment'), while this is a procurement action buying fielded interceptors — exactly the appropriation mismatch the 2026-09-04 held-out study identified as the dominant failure mode. The index carries no procurement BLI that owns the THAAD name (MD07's program title is THAAD but the only name its narrative owns is AN/TPY-2, a radar), so there is no line to attribute this production buy to. Weak: the name is present, the evidence does not establish that this action funds 0603881C's own work."
+  },
+  {
+   "record_index": 8,
+   "article_id": "1911093",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the procurement of Terminal High Altitude Area Defense (THAAD) Interceptor support items",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Procurement of THAAD interceptor support items under a Foreign Military Sales case to Saudi Arabia, funded by KSA FMS money. Two independent reasons not to link: the appropriation is FMS customer funds rather than the PE's own appropriation, so the action does not pay for 0603881C's own work; and even setting FMS aside, this is a procurement action and 0603881C is the RDT&E Terminal Defense Segment line, with no procurement BLI in this index owning the THAAD name. Weak."
+  },
+  {
+   "record_index": 9,
+   "article_id": "2985205",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the production of Terminal High Altitude Area Defense (THAAD) Interceptors and associated one-shot devices",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "THAAD interceptor and one-shot-device production for the U.S. government and the Saudi FMS case, procured 'under fixed-price incentive (firm target) contract line items'. Same failure as the other THAAD production modifications on HQ0147-17-C-0032: the only index owner of the THAAD name is the RDT&E line 0603881C, and a production buy split between procurement funds and an FMS case does not fund that development line's own work. Weak."
+  },
+  {
+   "record_index": 10,
+   "article_id": "2123763",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the production of Terminal High Altitude Area Defense (THAAD) interceptors and associated one-shot devices",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "An option exercise for THAAD interceptor production supporting the U.S. government and the Saudi FMS case. Procurement-appropriation action against the only index line that owns the THAAD name, 0603881C, which is RDT&E; no procurement BLI in this org's index owns 'THAAD'. Weak on appropriation mismatch."
+  },
+  {
+   "record_index": 18,
+   "article_id": "639406",
+   "piid": "HQ014714C0011",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "Missile Defense Agency Terminal High Altitude Area Defense Project Office",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Production of Lot 7 and Lot 8 THAAD interceptors and one-shot devices, with 'Fiscal 2015 procurement funds' and 'fiscal 2016 procurement funds' obligated at award. The THAAD name appears only as the name of the buying project office, and the appropriation is procurement while the sole index owner of the THAAD name (0603881C) is an RDT&E line. Both the weaker evidence form and the appropriation mismatch keep this below the link standard."
+  },
+  {
+   "record_index": 19,
+   "article_id": "3255710",
+   "piid": "HQ085121C0002",
+   "pe_bli": "0604102C",
+   "program_name": "Provide Aegis Guam System (AGS)",
+   "lexicon_doc": "58",
+   "announcement_evidence": "expands performance of the Aegis Weapon System to implement Integrated Air and Missile Defense capabilities into an Aegis Guam System",
+   "verdict": "weak",
+   "lexicon_quote": "Provide Aegis Guam System (AGS)",
+   "rationale": "The announcement names an 'Aegis Guam System' and obligates 'fiscal 2023 research, development, test and evaluation funds', and 'Provide Aegis Guam System (AGS)' is the only index row carrying that exact phrase (0604102C, Guam Defense Development, doc 58). But a second RDT&E line in the same index owns the same subject under different strings — 0603892C carries 'Guam Defense Aegis BMD Development' and 'Guam Defense Aegis Fire Control Software Upgrades' — and both are RDT&E, so the appropriation cannot separate them the way it separates the SM-3 development and procurement lines. With two plausible RDT&E owners for Aegis-for-Guam work and an FY2023 action that predates the Guam Defense Development line's own budget history, the attribution is not established. Weak."
+  },
+  {
+   "record_index": 22,
+   "article_id": "1425283",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "production of additional Lot 10 Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "An option exercise for additional Lot 10 THAAD interceptors and one-shot devices 'under fixed-price incentive-firm target contract line item numbers' — a production buy. The THAAD name's only owner in this index is the RDT&E line 0603881C, and no procurement BLI here owns the name, so the action cannot be attributed to a line as funding its own work. Weak on appropriation mismatch."
+  },
+  {
+   "record_index": 26,
+   "article_id": "3015543",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "produce and deliver Terminal High Altitude Area Defense (THAAD) Interceptors and associated one-shot devices",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Option exercise to produce and deliver THAAD interceptors for U.S. government requirements, with fiscal 2022 procurement funds obligated at award. Procurement action; the sole index owner of the THAAD name is the RDT&E Terminal Defense Segment line 0603881C. Weak on appropriation mismatch, as with every THAAD production modification in this chunk."
+  },
+  {
+   "record_index": 29,
+   "article_id": "2006604",
+   "piid": "HQ027615C0003",
+   "pe_bli": "0603892C",
+   "program_name": "Standard Missile-3 (SM-3) Block IIA Development",
+   "lexicon_doc": "277",
+   "announcement_evidence": "manufacture, assemble, test and deliver 20 Standard Missile-3 Block IIA missiles",
+   "verdict": "weak",
+   "lexicon_quote": "Standard Missile-3 (SM-3) Block IIA Development",
+   "rationale": "A 2019 cost-only modification lifting a 'pacing items only' restriction on CLIN 0014 so the contractor can build 20 SM-3 Block IIA missiles plus four under a Japanese FMS case. The name is present and the PIID is the Block IIA development contract, but by FY2019 Block IIA all-up rounds were being bought on the procurement BLI (MD14) as well, the record prints no appropriation, and part of the quantity is FMS-funded. With the development line (0603892C) and the procurement line (MD14) both plausible and nothing in the record to separate them, the attribution is not established. Weak."
+  },
+  {
+   "record_index": 34,
+   "article_id": "645922",
+   "piid": "HQ014714C0011",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "production of 20 additional Lot 8 Interceptors and associated production support efforts for the Missile Defense Agency Terminal High Altitude Area Defense Project Office",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Production of 20 additional Lot 8 THAAD interceptors with fiscal 2016 procurement funds. The THAAD name appears as the buying project office's name, and the only index line owning it is RDT&E (0603881C) while the action is procurement. Weak on both the evidence form and the appropriation mismatch."
+  },
+  {
+   "record_index": 36,
+   "article_id": "3376850",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the production of Terminal High Altitude Area Defense (THAAD) Interceptors and associated one-shot devices",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "THAAD interceptor production modification P00062, procured 'under fixed-price incentive (firm target) contract line items'. Procurement action against an index whose only THAAD-name owner is the RDT&E line 0603881C. Weak on appropriation mismatch."
+  },
+  {
+   "record_index": 38,
+   "article_id": "1510894",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "the production of additional THAAD Lot 10 interceptors, one-shot devices",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Additional Lot 10 THAAD interceptor production with fiscal 2018 procurement funds obligated at award. The acronym THAAD is used directly, but the only line in this index that owns the name is RDT&E (0603881C) and this is a procurement buy of fielded rounds. Weak on appropriation mismatch."
+  },
+  {
+   "record_index": 42,
+   "article_id": "605994",
+   "piid": "HQ014714C0011",
+   "pe_bli": "0603881C",
+   "program_name": "THAAD Fire Control (TFCC)",
+   "lexicon_doc": "288",
+   "announcement_evidence": "manufacturing and delivery of U. S. government Terminal High Altitude Area Defense (THAAD) ground components",
+   "verdict": "weak",
+   "lexicon_quote": "THAAD Fire Control (TFCC)",
+   "rationale": "Manufacture and delivery of THAAD ground components — launchers, peculiar support equipment, and 'THAAD fire control and communication spares' — with 'Fiscal 2014 procurement funds in the amount of $124,600,000' obligated at award. The nearest index name, 'THAAD Fire Control (TFCC)', sits on the RDT&E line 0603881C, while this buys production hardware and spares with procurement money; spares procurement is also the sustainment-against-a-development-line pattern. Weak."
+  },
+  {
+   "record_index": 49,
+   "article_id": "606758",
+   "piid": "HQ014712G9000",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "United Arab Emirates (UAE) Terminal High Altitude Area Defense (THAAD)",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Support services and equipment to field the THAAD Weapon System for the United Arab Emirates under FMS case AE-B-UAF. The money is the FMS customer's, not the PE's appropriation, so the action does not pay for 0603881C's own work; and the scope is fielding/logistics support to a weapon system the contract merely supports, which §3 treats as a platform-support rejection. Weak."
+  },
+  {
+   "record_index": 53,
+   "article_id": "3946889",
+   "piid": "HQ086225C0001",
+   "pe_bli": "0603907C",
+   "program_name": "The Sea Based X-Band Radar (SBX)",
+   "lexicon_doc": "97",
+   "announcement_evidence": "Sea-based X-band (SBX) radar mission integration",
+   "verdict": "weak",
+   "lexicon_quote": "The Sea Based X-Band Radar (SBX)",
+   "rationale": "A competitive follow-on for SBX radar mission integration providing 'communication operations and integration support for the entire SBX vessel', with fiscal 2025 RDT&E funds. SBX is a two-way owner collision in this index — 0603907C, the dedicated Sea Based X-Band Radar line (doc 97), and 0603884C, the Ballistic Missile Defense Sensors line (doc 277) — and both are RDT&E, so appropriation cannot break the tie. The scope is also communications operations and integration SUPPORT to the vessel rather than the radar program's own development, edging toward §3's generic-services and platform-support rejections. Weak."
+  },
+  {
+   "record_index": 54,
+   "article_id": "2994560",
+   "piid": "HQ014717C0032",
+   "pe_bli": "0603881C",
+   "program_name": "THAAD Fire Control (TFCC)",
+   "lexicon_doc": "288",
+   "announcement_evidence": "the production of Terminal High Altitude Area Defense (THAAD) ground equipment",
+   "verdict": "weak",
+   "lexicon_quote": "THAAD Fire Control (TFCC)",
+   "rationale": "Production of THAAD ground equipment — six launchers, 'THAAD Fire Control and Communication (TFCC)', and peculiar support equipment — 'under firm-fixed-price and fixed-price incentive (firm target) contract line items'. The announcement's TFCC matches the index row 'THAAD Fire Control (TFCC)', but that row belongs to the RDT&E line 0603881C while this is production hardware bought on procurement-type line items, and no procurement BLI in this index owns a THAAD name. Weak on appropriation mismatch."
+  },
+  {
+   "record_index": 61,
+   "article_id": "2460438",
+   "piid": "HQ014714C0004",
+   "pe_bli": "0603915C",
+   "program_name": "BMDS Targets Program",
+   "lexicon_doc": "277",
+   "announcement_evidence": "targets and countermeasures highly specialized services",
+   "verdict": "weak",
+   "lexicon_quote": "BMDS Targets Program",
+   "rationale": "A ceiling modification for 'targets and countermeasures highly specialized services', extending the period of performance 'to allow for additional work in support of specific Joint Emergent Operational Need activities and other mission-related efforts'. The subject touches the targets program (0603915C), but the record names no program — it names a services category — and 'other mission-related efforts' is exactly the open-ended services scope §3 rejects. The evidence does not establish that this action funds the targets line's own work rather than agency-wide emergent-need tasking. Weak."
+  },
+  {
+   "record_index": 67,
+   "article_id": "1215932",
+   "piid": "HQ014717C0040",
+   "pe_bli": "0603907C",
+   "program_name": "The Sea Based X-Band Radar (SBX)",
+   "lexicon_doc": "97",
+   "announcement_evidence": "sea-based X-band (SBX) radar mission integration",
+   "verdict": "weak",
+   "lexicon_quote": "The Sea Based X-Band Radar (SBX)",
+   "rationale": "The predecessor of the SBX mission-integration contract, providing 'communication operations and support for the SBX Strategic Mission' with fiscal 2017 RDT&E funds. Same two problems as the follow-on: SBX is owned by both 0603907C (doc 97) and 0603884C (doc 277), both RDT&E, so the collision is unresolved; and communications operations and support to the SBX vessel is support to a platform rather than the program's own development work. Weak."
+  },
+  {
+   "record_index": 71,
+   "article_id": "1474871",
+   "piid": "HQ014714C0011",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "associated peculiar support equipment for the Terminal High Altitude Area Defense system",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Production of additional transportable missile round pallets, spares and peculiar support equipment for THAAD 'under firm-fixed-price contract line item numbers', with fiscal 2017 procurement funds obligated. Pallets, spares and support equipment are sustainment/production items bought with procurement money, while the only index owner of the THAAD name is the RDT&E line 0603881C. Weak on appropriation mismatch."
+  },
+  {
+   "record_index": 72,
+   "article_id": "606011",
+   "piid": "HQ014712C0006",
+   "pe_bli": "MD11",
+   "program_name": "AN/TPY-2",
+   "lexicon_doc": "95",
+   "announcement_evidence": "production of an ANTPY-2 Float Cooling Equipment Unit #2",
+   "verdict": "weak",
+   "lexicon_quote": "AN/TPY-2",
+   "rationale": "Production of AN/TPY-2 float cooling and electronic equipment units, spares and reliability improvements, with 'Fiscal 2014 procurement funds in the amount of $53,252,500' obligated at award. The designator normalises cleanly (ANTPY-2 to AN/TPY-2), and the procurement appropriation correctly points at a procurement BLI — but this index carries AN/TPY-2 on TWO procurement BLIs, MD07 (THAAD, doc 95) and MD11 (BMDS AN/TPY-2 Radars, doc 95), as well as on 0603881C and 0603884C. With two same-appropriation owners of the identical name and nothing in the announcement saying whether the radar is a THAAD-associated or a forward-based BMDS unit, the attribution is not established. Weak."
+  },
+  {
+   "record_index": 79,
+   "article_id": "3168041",
+   "piid": "HQ085321C0002",
+   "pe_bli": "0603881C",
+   "program_name": "The Terminal High Altitude Area Defense (THAAD)",
+   "lexicon_doc": "267",
+   "announcement_evidence": "Terminal High Altitude Area Defense (THAAD) Software Operator Trainer (TSOT) and THAAD Radar Virtual Trainer (TRVT)",
+   "verdict": "weak",
+   "lexicon_quote": "The Terminal High Altitude Area Defense (THAAD)",
+   "rationale": "Development, production and installation of THAAD training devices (TSOT and TRVT) plus courseware and operator manuals, under a Foreign Military Sales case to Saudi Arabia. The money is the FMS customer's, so the action does not fund the PE's own work, and training devices for a fielded weapon system are support to the platform rather than the development line's program content. Weak."
+  },
+  {
+   "record_index": 41,
+   "article_id": "858289",
+   "piid": "HQ014712D0005",
+   "pe_bli": "0603907C",
+   "program_name": "X-Band Radar (XBR)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "engineering support and Ballistic Missile Defense System test planning, execution and analysis for X-Band radars",
+   "verdict": "wrong",
+   "lexicon_quote": "X-Band Radar (XBR)",
+   "rationale": "The candidate name 'X-Band Radar (XBR)' appears in the index (0603907C) and the announcement says 'X-Band radars', but §3 rejects this by design on two counts. First, generic services: the scope is 'software maintenance, models and simulations, engineering support and Ballistic Missile Defense System test planning, execution and analysis' — maintenance and engineering support, not a named program's own content — delivered as a ceiling increase on an IDIQ with 'no task orders being issued at this time'. Second, the name as used is a generic radar class covering the contractor's delivered and accepted radars, not the SBX program that 0603907C funds, so matching it to that line would attribute Raytheon Woburn radar-sustainment work to the sea-based X-band radar line. Reject."
+  },
+  {
+   "record_index": 45,
+   "article_id": "3575266",
+   "piid": "HQ085624C0001",
+   "pe_bli": "0603882C",
+   "program_name": "The Ground-based Midcourse Defense (GMD)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "in direct support of the operational Ground-Based Midcourse Defense weapon system",
+   "verdict": "wrong",
+   "lexicon_quote": "The Ground-based Midcourse Defense (GMD)",
+   "rationale": "GMD is named, but the announcement names it as the thing the contract SUPPORTS, not the thing it funds — the contractor provides '24 hours a day, seven days a week maintenance, repair, and sustainment services for the facilities, real property, and building equipment at the Missile Defense Complex and Cantonment area in Fort Greely, Alaska'. That is facility maintenance and base operations support, two of §3's reject-by-design patterns (generic services; the name is a platform the contract merely supports rather than the program the PE funds), and the phrase 'under the Missile Defense Agency (MDA) mission umbrella' confirms the GMD reference is contextual framing. GMD is additionally a four-way owner collision in this index. Reject."
+  },
+  {
+   "record_index": 52,
+   "article_id": "3502908",
+   "piid": "HQ085823C0005",
+   "pe_bli": "0604102C",
+   "program_name": "Missile Defense System (MDS)",
+   "lexicon_doc": "318",
+   "announcement_evidence": "development and deployment of the integrated, layered Missile Defense System",
+   "verdict": "wrong",
+   "lexicon_quote": "Missile Defense System (MDS)",
+   "rationale": "'Missile Defense System (MDS)' is literally an index name (0604102C, Guam Defense Development), which is precisely the trap: the announcement uses the phrase as the agency-wide system this advisory contract supports, while the index row belongs to the Guam defence line. The scope is §3 generic services through and through — 'expert independent advice, assessment, assistance, documentation, and recommendations regarding strategic, technical, programmatic, operational, policy, and organizational matters' including 'assessments for policy development, acquisition planning, engineering, and testing'. No named program funds its own work here. Reject."
+  },
+  {
+   "record_index": 58,
+   "article_id": "710219",
+   "piid": "HQ014716C0030",
+   "pe_bli": "0603892C",
+   "program_name": "Aegis Ballistic Missile Defense (BMD)",
+   "lexicon_doc": "277",
+   "announcement_evidence": "three operational elements within the Ballistic Missile Defense System (BMDS), Aegis BMD, Ground-based Midcourse De",
+   "verdict": "wrong",
+   "lexicon_quote": "Aegis Ballistic Missile Defense (BMD)",
+   "rationale": "'Aegis BMD' and 'Ground-based Midcourse Defense' both appear, but only as a list of the operational elements this TEAMS Warfighter Integration Support contract touches. The contract itself is §3 generic services: 'requirement support for definition, planning, deployment, life-cycle management, operations support, readiness, situational awareness and transition of Missile Defense Agency-developed capabilities to the military services', supporting the Warfighter Strategic Integration Directorate. The named elements are platforms the contract supports rather than programs it funds, and the bare 'Aegis Ballistic Missile Defense (BMD)' name is itself a three-way owner collision (0603892C, 0604878C, MD90). Reject."
+  }
+ ]
+}

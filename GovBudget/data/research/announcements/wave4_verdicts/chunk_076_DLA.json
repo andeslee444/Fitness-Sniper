@@ -1,0 +1,26 @@
+{
+ "chunk": "chunk_076_DLA.json",
+ "proposals": [
+  {
+   "record_index": 42,
+   "article_id": "606728",
+   "piid": "SPE7MX15D0008",
+   "pe_bli": "0603680S",
+   "program_name": "Advanced Microcircuit Emulation (AME)",
+   "lexicon_doc": "105",
+   "match_basis": "llm-alias",
+   "announcement_evidence": "to maintain, enhance, and demonstrate advanced microcircuit emulation technology capability and to continue with basic technology and production development",
+   "lexicon_quote": "tteries (Battery Network), Additive Manufacturing (AM), and Advanced Microcircuit Emulation (AME). -The 3D Technical Data Modernization / Model Based Enter",
+   "rationale": "The announcement's statement of work is the AME program's own work, not a commodity buy: SRI International is contracted \"to maintain, enhance, and demonstrate advanced microcircuit emulation technology capability and to continue with basic technology and production development\" — i.e. sustaining and advancing the emulation capability itself, which is what PE 0603680S (DLA Manufacturing Technology Program) funds; the PE's own narrative names AME among the efforts it owns (doc 105). The basis is llm-alias rather than exact-name because the announcement spells the program name out without the parenthetical acronym the index row carries, so the deterministic n-gram pass did not fire and the citation card must not claim the announcement named the program as written. §3 does not reject it: AME is a technology program, not a platform the contract merely supports; the work is specifically named, not engineering/logistics support or an unnamed IDIQ ceiling; the name is not a weak English word; \"Manufacturing Technology Program\" is not a CATCHALL_TITLE; and the code is not 20/30/500. No other row in the DLA index owns this name. One doubt I flag rather than hide, and it is squarely lens A's question: the appropriation line reads \"fiscal 2015 direct site funds\" and the contracting activity is DLA Land and Maritime, so the money colour is not stated as the RDT&E appropriation that 0603680S sits in — if that funding reads as DLA operating/working-capital money rather than the ManTech RDT&E line, this is the money-colour failure mode and should be refuted.",
+   "verdict": "link",
+   "refute_a": {
+    "refuted": true,
+    "reason": "Money colour fails: the announcement's own appropriation is \"fiscal 2015 direct site funds\" — a phrase that occurs exactly once in the whole 23,824-record queue and is not the RDT&E,DW appropriation PE 0603680S sits in (the one genuinely RDT&E record in this chunk says \"research, development, test and evaluation funds\" outright, and every other DLA record here is working-capital/customer money); the sole-source requirements-type maximum-ceiling vehicle out of the SPE7MX (Land and Maritime) commodity office with Army, Navy, Air Force and Marine Corps as using customers is the DLA supply-chain production/ordering function rather than the ManTech RDT&E line's own work, so under default-to-refuted this is the customer-funded-sustainment-attached-to-an-RDT&E-line failure mode, notwithstanding that the AME mission match and the lexicon row themselves are sound."
+   },
+   "refute_b": {
+    "refuted": false,
+    "reason": "No alternative owner exists: \"Advanced Microcircuit Emulation (AME)\" appears under exactly one pe_bli (0603680S) in the whole 10,464-row lexicon, and every narrative body in the loaded corpus containing \"microcircuit emulation\" is a 0603680S narrative (docs 216, 270, 281, 291, 301, 311, 319, 105, 182, 68) — DMEA's microelectronics line 0603720S never says emulation or microcircuit in any of its 45 narratives, so the announcement's words cannot link it equally well; the alias is real, not invented (the announcement literally reads \"advanced microcircuit emulation technology capability\", the index name minus its parenthetical acronym, and the row carries no weak_name flag); the evidence is the statement of work, not the contractor name; and the one era/variant alternative — the FY2017 DLA book (doc 216, the book closest to this FY2015 award) calls the same microcircuit-emulation line of effort \"Material Acquisition Electronics\" — is itself an index row carrying the SAME pe_bli 0603680S, so the PE-level attribution is identical under either name. Lens P's \"fiscal 2015 direct site funds\" money-colour doubt is real but is lens A's question, not mine, and I leave it to that lens."
+   }
+  }
+ ]
+}
