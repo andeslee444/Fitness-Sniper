@@ -3748,7 +3748,7 @@ export function runCoverageNoteLeg({
     }
     // The edition the org's sentences name. Without it the page renders a
     // yearless "FY" — program-tier.setOrgAbsences KEEPS such an entry on
-    // purpose (program-tier.ts:153-161); the refusal is at the sentence, in
+    // purpose (program-tier.ts:153-160); the refusal is at the sentence, in
     // orgAbsenceWording, so an org whose pages are never rendered never
     // reaches it and this check is the only door that sees the record. The
     // leg would also match a marker built from `undefined` against every
@@ -3757,10 +3757,10 @@ export function runCoverageNoteLeg({
       errors.push(
         `program-skeleton(o): site_meta.org_absences["${org}"] carries fy ` +
           `${JSON.stringify(entry?.fy)}. Every absence sentence names the ` +
-          `edition (two of the three MARKERS below carry it), and all of them ` +
-          `take the year from this field — re-run export-site; an export made ` +
-          `before the fiscal year joined the payload (Group C polish, ` +
-          `2026-09-18) does not write it`,
+          `edition (two of the three MARKERS this leg matches carry it), and ` +
+          `all of them take the year from this field — re-run export-site; an ` +
+          `export made before the fiscal year joined the payload (Group C ` +
+          `polish, 2026-09-18) does not write it`,
       );
     }
     if (ingested.has(org)) {

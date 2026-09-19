@@ -449,7 +449,7 @@ describe("leg o — proof it can fail", () => {
 
   it("fails when an entry carries no fy — the sentences would name no year", () => {
     // An export made before the fy field. setOrgAbsences KEEPS such an entry
-    // (program-tier.ts:153-161) and program-tier.orgAbsenceWording throws
+    // (program-tier.ts:153-160) and program-tier.orgAbsenceWording throws
     // when the sentence is built, so a build that produced these pages had an
     // fy — but an org whose pages are never rendered reaches no sentence, and
     // then this check is the only one that sees the record. It also names the
