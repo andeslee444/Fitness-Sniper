@@ -333,10 +333,14 @@ def test_config_lake_path_is_a_noop_without_a_symlink(tmp_path, parts):
 #      from fragments would escape the census, and there is none today;
 #   2. `writes_file_path` inspects only the FIRST `insert into … (cols)` and
 #      the first `update … set …` in a literal — both regexes `search` once.
-#      A literal holding two statements whose SECOND is the file_path writer
-#      is therefore invisible to it. That shape does not exist today (limit 1
-#      is why), and a multi-statement literal is the thing to look at by hand
-#      if this census ever disagrees with a grep.
+#      One of EACH kind is inspected, though, and the insert check falls
+#      through to the update check: a literal whose first statement is an
+#      innocent insert and whose second is `update … set file_path = …` IS
+#      caught. What escapes is a writer that repeats a kind already matched —
+#      a second insert after an insert, a second update after an update. That
+#      shape does not exist today (limit 1 is why), and a multi-statement
+#      literal is the thing to look at by hand if this census ever disagrees
+#      with a grep. The test below plants both shapes.
 # ---------------------------------------------------------------------------
 
 #: (module path relative to the package, function) for every site that writes
@@ -449,3 +453,34 @@ def test_the_census_sees_a_fifth_writer_in_either_sql_shape(tmp_path):
         ("cli.py", "sneaky_update"),
         ("jbooks/loader.py", "sneaky_insert"),
     }
+
+
+def test_the_census_blind_spot_is_a_repeat_of_the_same_statement_kind(tmp_path):
+    """Limit 2, stated exactly: which multi-statement literal escapes.
+
+    The comment above used to say a literal whose SECOND statement is the
+    writer is invisible. It is not: `writes_file_path` searches once for an
+    insert and, failing that, once for an update, so a mixed literal is still
+    caught. Only a repeat of a kind already matched hides. Both are planted
+    here so the stated limit is a test rather than a reading of the regexes.
+    """
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "mixed.py").write_text(
+        "def caught(con, p, doc_id):\n"
+        "    con.execute(\n"
+        '        "insert into scrape_runs (note) values (%s);"\n'
+        '        " update jbook_documents set file_path=%s where id=%s",\n'
+        "        ('x', str(p), doc_id),\n"
+        "    )\n"
+    )
+    (pkg / "repeat.py").write_text(
+        "def hidden(con, p):\n"
+        "    con.execute(\n"
+        '        "insert into scrape_runs (note) values (%s);"\n'
+        '        " insert into jbook_documents (org, file_path) values (%s,%s)",\n'
+        "        ('x', 'X', str(p)),\n"
+        "    )\n"
+    )
+
+    assert _file_path_writer_census(pkg) == {("mixed.py", "caught")}

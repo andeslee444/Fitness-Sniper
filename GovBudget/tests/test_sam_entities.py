@@ -15,6 +15,7 @@ so that a shape surprise is loud instead of silent.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -621,6 +622,55 @@ def test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does(
     assert picks[0] == picks[1], "an exact tie must not depend on row order"
     assert picks[0]["TIED"] == "PB", "the tie resolves to max(uei), as the mart does"
     assert picks[0]["CLEAR"] == "PC"
+    # WHICH UEI, said by the fixture. The two readings of "the one whose UEI
+    # sorts highest" disagree here on purpose: the tied member whose own
+    # recipient_uei sorts highest is U2, whose registration is PA, and the
+    # mart takes max(coalesce(parent_uei, recipient_uei)) = PB, which is U1's.
+    # That is why every published sentence about this pick says REGISTRATION
+    # UEI — site/src/components/sam-registration.tsx's last sentence, the
+    # citation formula in export_site.py, and /methodology/ §4.
+    assert max("U1", "U2") == "U2"
+    assert picks[0]["TIED"] != "PA", (
+        "the tie must break on the registration UEI, not on the tied member's"
+        " own recipient_uei"
+    )
+
+
+def test_no_pick_rule_surface_reclaims_the_display_name_identity():
+    """The withdrawn identity stays withdrawn where the pick rule is TAUGHT.
+
+    Group C polish corrected the rendered surfaces (the /company/ note, the
+    citation formula, /methodology/ §4) and the model header, and each of
+    those carries its own negative assertion. These two carry none, and they
+    are the files the next editor of the pick rule reads: leg e4's docstring,
+    which polices the registration, and the mart's dbt description, which is
+    published verbatim on /data/'s sibling surfaces. Both said the
+    registration is "the one the heading is built from"/"the rn=1 member
+    display_name is read from" until fix round 1.
+
+    Phrase-matched on purpose, and narrowly: export_site.py QUOTES the old
+    wording inside the comment recording the correction, so a blanket grep for
+    the words would red on the fix itself.
+    """
+    root = Path(__file__).resolve().parents[1]
+    withdrawn = re.compile(
+        r"no longer the one its own heading is built from"
+        r"|rn\s*=\s*1 member .?display_name.? is read from"
+        r"|registration that name is read from",
+        re.IGNORECASE,
+    )
+    for rel, must_say in (
+        ("src/govbudget/verify_phase2.py", "dominant registration"),
+        ("dbt/models/marts/schema.yml", "ties broken"),
+    ):
+        text = (root / rel).read_text(encoding="utf-8")
+        assert not withdrawn.search(text), (
+            f"{rel} states the display_name/registration identity again;"
+            " dim_entities.sql's header says nothing may"
+        )
+        assert must_say.lower() in text.lower(), (
+            f"{rel} no longer states the rule it replaced the identity with"
+        )
 
 
 # ---------------------------------------------------------------------------

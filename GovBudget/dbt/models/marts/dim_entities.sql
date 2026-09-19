@@ -2,7 +2,9 @@
 --
 -- ROADMAP #10 adds the SAM.gov registration of the family's DOMINANT member,
 -- joined on `dominant_registration_uei` below: `max(...) filter (rk = 1)`, the
--- highest UEI among the TIED top members. That is NOT always the rn=1 row
+-- highest REGISTRATION UEI (coalesce(parent_uei, recipient_uei)) among the
+-- TIED top members — not the highest recipient_uei, which on a tie across two
+-- different parents is a different member. That is NOT always the rn=1 row
 -- `display_name` is taken from. The two name the same member wherever the top
 -- member is unique — every published family today — but on an exact tie they
 -- can differ, so nothing rendered may say this registration is the one the

@@ -1545,8 +1545,11 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     # The tie-break, not an identity the mart does not hold to: display_name
     # comes from rn = 1 and this UEI from max(uei) filter (rk = 1), so on an
     # exact obligation tie they name different members. Twin of the last
-    # sentence in site/src/components/sam-registration.tsx.
-    assert "ties broken by the highest UEI" in row["formula"]
+    # sentence in site/src/components/sam-registration.tsx — and it names WHICH
+    # UEI the max() sorts on, because a tied member's own recipient_uei can
+    # order the other way (tests/test_sam_entities.py::
+    # test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does).
+    assert "ties broken by the highest registration UEI" in row["formula"]
     assert "registered name is read from" not in row["formula"]
     assert "api_key" not in row["formula"] and "api_key" not in row["inputs"]
 

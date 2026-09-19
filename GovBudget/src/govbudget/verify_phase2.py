@@ -76,10 +76,14 @@ def sam_gate(duckdb_path: Path, *, top_n: int = 200) -> dict:
 
     What it catches, and it is the real failure mode: a SAM parquet built
     before a lake refresh moved a family's dominant member, so the page cites a
-    registration that is no longer the one its own heading is built from. The
-    re-derivation deliberately shares `dominant_parent_ueis()` with the extract
-    — this is a STALENESS check, not an independent reimplementation of the
-    pick rule.
+    registration that is no longer this family's dominant registration
+    (`max(coalesce(parent_uei, recipient_uei)) filter (rk = 1)`). NOT "the one
+    its own heading is built from": `display_name` keeps rn = 1, so on an exact
+    obligation tie the heading can name a different tied member — the identity
+    the Group C polish withdrew from every surface that states this pick. This
+    leg never reads display_name. The re-derivation deliberately shares
+    `dominant_parent_ueis()` with the extract — this is a STALENESS check, not
+    an independent reimplementation of the pick rule.
 
     SCOPE IS THE CURRENT TOP-N, AND ONLY THAT. The published set moves with
     every lake refresh, so a family fetched while it was rank 180 can be rank

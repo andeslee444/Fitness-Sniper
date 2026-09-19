@@ -7,7 +7,7 @@ models:
         description: "SAM.gov Unique Entity Identifier for the recipient. Must be unique — duplicates cause fan-out double-counting in obligation aggregation."
         data_tests: [unique, not_null]
   - name: dim_entities
-    description: "One row per company family. ROADMAP #10: the sam_* columns carry the SAM.gov Entity Management record of the family's DOMINANT registration (the rn=1 member display_name is read from) — enrichment only, never an input to worst_confidence, because recipient_parent_name IS the SAM registration name. All NULL until `govbudget sam extract` has reached the family; an absent extract parquet is substituted by a typed zero-row relation (macro sam_entities_relation)."
+    description: "One row per company family. ROADMAP #10: the sam_* columns carry the SAM.gov Entity Management record of the family's DOMINANT registration (the largest member by obligations, ties broken to the highest registration UEI — which is NOT always the rn=1 row display_name is taken from, so nothing rendered may say the two are the same member; see the model's own header) — enrichment only, never an input to worst_confidence, because recipient_parent_name IS the SAM registration name. All NULL until `govbudget sam extract` has reached the family; an absent extract parquet is substituted by a typed zero-row relation (macro sam_entities_relation)."
     columns:
       - name: family_key
         description: "Unique — a duplicate means the SAM LEFT JOIN fanned out (entities.parquet carried two rows for one sam_uei) and every /companies/ figure is double-counting."

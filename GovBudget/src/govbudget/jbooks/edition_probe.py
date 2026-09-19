@@ -287,7 +287,9 @@ def record_org_absences(manifest_path: Path, fiscal_year: int,
     for that sentence: `export_site._org_absences` publishes {org: {rule, fy,
     checked_on, checked_url}} into `site_meta.org_absences`, and each RULE
     selects its own true sentence on the org's program pages (`fy` is the
-    edition the reader is told about, so no year is typed into the site). The
+    edition the reader is told about, so no year is typed into THOSE
+    sentences — other rendered sentences still carry FY2026 literals this
+    payload does not reach). The
     `reason` text stays here, for the operator; only the rule and the probe
     stamp are published.
 

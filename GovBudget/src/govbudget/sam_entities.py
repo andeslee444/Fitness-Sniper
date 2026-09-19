@@ -11,7 +11,9 @@ docs/superpowers/reviews/10-entity-resolution-spike.md §4.
 WHAT THIS IS. A bounded enrichment: for each of the 200 published families,
 the SAM registration record of the family's DOMINANT member — the one
 `dim_entities.dominant_registration_uei` names, i.e. the largest by
-obligations with ties broken to the highest UEI — giving registration status,
+obligations with ties broken to the highest registration UEI (the max() runs
+over coalesce(parent_uei, recipient_uei), not over the tied member's own
+recipient_uei) — giving registration status,
 CAGE, UEI, legal business name, business types, primary NAICS and expiration.
 `display_name` is taken from rn = 1 and so can name a DIFFERENT tied member;
 nothing published may claim the two are the same row (see

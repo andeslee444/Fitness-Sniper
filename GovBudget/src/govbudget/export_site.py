@@ -4464,13 +4464,17 @@ def _build_derived_citation_rows(
             ))
 
         # ---- SAM.gov registration facts (ROADMAP #10) ----
-        # The formula says "ties broken by the highest UEI" rather than "the
-        # one this family's registered name is read from", which is what it
-        # said until the Group C polish: dim_entities takes display_name from
-        # rn = 1 and this registration from max(uei) filter (rk = 1), so on an
-        # exact obligation tie they are two different members. Same correction
-        # as site/src/components/sam-registration.tsx's last sentence — the two
-        # are twins and move together.
+        # The formula says "ties broken by the highest registration UEI"
+        # rather than "the one this family's registered name is read from",
+        # which is what it said until the Group C polish: dim_entities takes
+        # display_name from rn = 1 and this registration from max(uei) filter
+        # (rk = 1), so on an exact obligation tie they are two different
+        # members. REGISTRATION UEI, said out loud, because the max() runs over
+        # coalesce(parent_uei, recipient_uei) and not over the tied member's
+        # own recipient_uei — two tied members with different parents can order
+        # the two ways round. Same correction as
+        # site/src/components/sam-registration.tsx's last sentence and the
+        # /methodology/ §4 clause — the three are twins and move together.
         #
         # kind='derived' with URL inputs, deliberately NOT a new citation kind:
         # _verify_derived rule 5 shape-checks URL-input rows and accepts a
@@ -4509,7 +4513,8 @@ def _build_derived_citation_rows(
                 (
                     f"SAM.gov Entity Management registration for UEI {uei} — the"
                     f" registration of the member holding the most obligations in"
-                    f" family {fk}, ties broken by the highest UEI as"
+                    f" family {fk}, ties broken by the highest registration"
+                    f" UEI as"
                     f" dim_entities does. {legal}; CAGE {cage or 'not recorded'}; status"
                     f" {status}; expires {expires or 'not recorded'}; primary"
                     f" NAICS {naics or 'not recorded'}; business types"
