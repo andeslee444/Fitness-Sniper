@@ -183,16 +183,20 @@ models:
         data_tests: [not_null]
         description: "Unit label: thousands_usd | hhi_dollars | dollars"
   - name: fct_district_programs
-    description: "High-confidence dollar grain per (pop_district, pe_bli). Only confidence='high' awards to avoid 14.7x multi-count fanout from medium rows. 267 rows, 106 districts, 17 programs (per recon §B). NOT summable at district grain — an award matched to N program elements appears N times with the same dollars; use fct_district_totals for the district headline (#51)."
+    description: "High-confidence dollar grain per (pop_state, pop_district, pe_bli, account) — the MEMBER grain (Task 27, 2026-09-19). Only confidence='high' awards to avoid 14.7x multi-count fanout from medium rows. Measured read-only 2026-09-19: 608 rows, 189 districts, 317 program elements. NOT summable at district grain — an award matched to N program elements appears N times with the same dollars; use fct_district_totals for the district headline (#51)."
     columns:
+      - name: pop_state
+        data_tests: [not_null]
       - name: pop_district
         data_tests: [not_null]
       - name: pe_bli
         data_tests: [not_null]
+      - name: account
+        description: "The member appropriation account whose high-confidence links produced these dollars ('1506N'), for the pe_bli values two programs share. NULL — and so NOT not_null-tested — for every code that names one program (597 of the 608 rows measured read-only 2026-09-19); a NULL on a SHARED code names both members, which is the case assert_district_programs_single_member_high_links still guards. The exporter turns (pe_bli, account) into the member's page slug through _ProgramIdentity.slug; the slug itself is never computed here."
       - name: total_obligation
-        description: "Sum of all transaction obligations for this (district, program) combination. Positive and negative values possible (de-obligations)."
+        description: "Sum of all transaction obligations for this (district, program element, account) combination. Positive and negative values possible (de-obligations; 11 of the 608 rows are negative, measured read-only 2026-09-19)."
   - name: fct_district_totals
-    description: "District HEADLINE grain (#51) — one row per (pop_state, pop_district), dollars counted once per distinct award. The sum-safe companion to fct_district_programs: that model is per (district, pe_bli) and an award matched to N program elements appears N times with the same dollars, so summing it double-counts (AK-00 measured 5.0x — one $209.3M DARPA award attributed whole to five program elements, publishing $1.05B). assert_district_totals_no_double_count pins every district total to the sum of its DISTINCT awards. Unique on (pop_state, pop_district) — NOT pop_district alone, which is not globally unique (a bare '90' MULTI-STATE/unknown-state code appears against more than one raw pop_state label)."
+    description: "District HEADLINE grain (#51) — one row per (pop_state, pop_district), dollars counted once per distinct award. The sum-safe companion to fct_district_programs: that model is per (district, pe_bli, account) and an award matched to N program elements appears N times with the same dollars, so summing it double-counts (AK-00 measured 5.0x — one $209.3M DARPA award attributed whole to five program elements, publishing $1.05B). assert_district_totals_no_double_count pins every district total to the sum of its DISTINCT awards. Unique on (pop_state, pop_district) — NOT pop_district alone, which is not globally unique (a bare '90' MULTI-STATE/unknown-state code appears against more than one raw pop_state label)."
     columns:
       - name: pop_state
         data_tests: [not_null]
@@ -201,7 +205,7 @@ models:
       - name: award_count
         description: "count(distinct award_id_piid) contributing to this district's total — the number of distinct high-confidence-crosswalked awards, never a program-element count."
       - name: total_obligation
-        description: "Sum of obligation dollars across this district's DISTINCT awards (never per program element). This is the figure /district/ publishes as 'linkable obligations' — do not re-derive it by summing fct_district_programs."
+        description: "Sum of obligation dollars across this district's DISTINCT awards (never per program element). This is the figure /district/ publishes as 'linkable obligations' — do not re-derive it by summing fct_district_programs (per (district, pe_bli, account))."
   - name: fct_district_totals_by_year
     description: "ROADMAP #6 — the district headline per fiscal year. Grain (pop_state, pop_district, fiscal_year); dollars counted once per award per year, so total_obligation sums across a district's years back to fct_district_totals.total_obligation (measured 2026-09-10: agreement under 1e-4 over 153 districts, the residue being float64 accumulation noise that varies run to run; pinned at a 0.01 tolerance by assert_district_by_year_reconciles). 924 rows, 153 districts, FY2017-FY2026. fiscal_year is the AWARD ACTION year from fct_award_transactions, never fct_budget_to_awards.fiscal_year (the J-book edition of the link)."
     columns:
@@ -218,7 +222,7 @@ models:
       - name: positive_obligation
         description: "Gross obligations for the same district-year — sum of positive transactions only, before deobligations are netted out. Context for a negative or shrunken net figure; never the headline."
   - name: fct_district_programs_by_year
-    description: "ROADMAP #6 — the fiscal_year x pe_bli district breakdown the entry's third clause asked for. Grain (pop_state, pop_district, pe_bli, fiscal_year), same high-confidence join, predicate and min()-aggregated labels as fct_district_programs. 1,984 rows, 153 districts, 203 program elements, FY2017-FY2026. NOT summable at district grain (an award matched to N program elements appears N times with the same dollars) — use fct_district_totals_by_year for any district-level year figure."
+    description: "ROADMAP #6 — the fiscal_year x pe_bli district breakdown the entry's third clause asked for. Grain (pop_state, pop_district, pe_bli, account, fiscal_year), same high-confidence join, predicate and min()-aggregated labels as fct_district_programs — the two move in lockstep, because assert_district_by_year_reconciles joins them on that grain. Measured read-only 2026-09-19: 3,290 rows, 189 districts, 317 program elements, FY2017-FY2026. NOT summable at district grain (an award matched to N program elements appears N times with the same dollars) — use fct_district_totals_by_year for any district-level year figure."
     columns:
       - name: pop_state
         data_tests: [not_null]
@@ -226,10 +230,12 @@ models:
         data_tests: [not_null]
       - name: pe_bli
         data_tests: [not_null]
+      - name: account
+        description: "The member appropriation account, exactly as in fct_district_programs — NULL for every code that names one program, so no not_null test."
       - name: fiscal_year
         data_tests: [not_null]
       - name: total_obligation
-        description: "Net obligations for this (district, program element, year). Can be negative (174 of 1,984 cells are, on the 2026-09-10 corpus)."
+        description: "Net obligations for this (district, program element, account, year). Can be negative (274 of the 3,290 cells are, measured read-only 2026-09-19)."
       - name: positive_obligation
         description: "Gross obligations for the same cell, before deobligations are netted out."
   - name: fct_family_obligations_by_year

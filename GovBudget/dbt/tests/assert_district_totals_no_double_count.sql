@@ -1,7 +1,10 @@
 -- No district total may exceed the sum of its DISTINCT awards.
--- fct_district_programs is per (district, pe_bli); one award matched to N
--- program elements produces N rows carrying the same dollars, so any sum over
--- that model double-counts. This asserts the headline model does not (#51).
+-- fct_district_programs is per (district, pe_bli, account); one award matched
+-- to N program elements produces N rows carrying the same dollars, so any sum
+-- over that model double-counts. This asserts the headline model does not
+-- (#51). The account joined that grain in Task 27 (2026-09-19) and can only
+-- widen the fan-out, never narrow it: it splits a shared code's row in two
+-- without changing which awards each side counts.
 with truth as (
     select t.pop_district, t.award_id_piid, sum(t.obligation) as obl
     from {{ ref('fct_award_transactions') }} t
