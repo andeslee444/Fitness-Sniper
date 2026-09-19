@@ -192,11 +192,20 @@ def test_collect_identifies_the_record_by_article_AND_piid():
     assert packets[0]["announcement_excerpt"] == "the second award paragraph"
 
 
-def test_collect_refuses_an_ambiguous_record_unless_the_index_says_which():
-    """17 of the queue's 31,693 (article_id, PIID) keys name two records of the
+def test_collect_counts_an_ambiguous_record_or_a_bad_record_index_and_never_raises():
+    """Task 25b prep: was `test_collect_refuses_an_ambiguous_record_unless_the_
+    index_says_which`, asserting `pytest.raises(ValueError, match="record_
+    index")`. Rewritten for the fix-forward ruling that EVERY per-proposal
+    validation in collect_verdicts counts and skips instead of aborting the
+    150-chunk run.
+
+    17 of the queue's 31,693 (article_id, PIID) keys name two records of the
     same chunk — a modification paragraph citing the vehicle its award
     paragraph announced. Which paragraph the card quotes is then a coin flip,
-    so the collector refuses until the proposal says."""
+    so the collector counts `ambiguous_record` until the proposal says which,
+    and counts `invalid_record_index` (the chunk_090_N.json shape) when the
+    index it gives names a record of the chunk that is not one of the pair's
+    candidates."""
     queue = [{"file": "chunk_000_N.json", "org": "N", "announced_value": 2,
               "records": [
                   dict(_rec("7", "the award paragraph", ["P1"], [2]),
@@ -208,14 +217,23 @@ def test_collect_refuses_an_ambiguous_record_unless_the_index_says_which():
             "program_name": "Triton", "lexicon_doc": "601", "rationale": "…",
             "refute_a": {"refuted": False, "reason": "holds"},
             "refute_b": {"refuted": False}}
-    with pytest.raises(ValueError, match="record_index"):
-        collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [prop]}})
+    packets, result = collect_verdicts(
+        queue, {"chunk_000_N.json": {"proposals": [prop]}})
+    assert packets == []
+    assert result["ambiguous_record"] == 1
+    assert result["ambiguous_record_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+         "article_id": "7", "candidates": [0, 1]}]
     packets, _ = collect_verdicts(
         queue, {"chunk_000_N.json": {"proposals": [{**prop, "record_index": 1}]}})
     assert packets[0]["announcement_excerpt"] == "the modification paragraph"
-    with pytest.raises(ValueError, match="record_index"):
-        collect_verdicts(
-            queue, {"chunk_000_N.json": {"proposals": [{**prop, "record_index": 9}]}})
+    packets, result = collect_verdicts(
+        queue, {"chunk_000_N.json": {"proposals": [{**prop, "record_index": 9}]}})
+    assert packets == []
+    assert result["invalid_record_index"] == 1
+    assert result["invalid_record_index_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+         "article_id": "7", "record_index": 9, "candidates": [0, 1]}]
 
 
 def test_collect_counts_a_packet_with_no_match_basis_rather_than_raising():
@@ -248,21 +266,34 @@ def test_collect_counts_a_packet_with_no_match_basis_rather_than_raising():
     assert "subaward-description-exact" not in BASIS_VOCAB
 
 
-def test_collect_refuses_a_proposal_that_names_no_pe():
+def test_collect_counts_a_proposal_that_names_no_pe_and_never_raises():
+    """Task 25b prep: was `test_collect_refuses_a_proposal_that_names_no_pe`,
+    asserting `pytest.raises(ValueError, match="pe_bli")`. Rewritten: a
+    missing/blank pe_bli is content the refute lenses were meant to catch, not
+    a broken protocol, so it counts under `missing_pe_bli` — distinct from
+    `invalid_pe_bli`, which is a PRESENT but wrong/invented code."""
     queue = [{"file": "chunk_000_N.json", "org": "N", "announced_value": 1,
               "records": [dict(_rec("1", "t", ["P1"], [1]), org="N", lake_piids=["P1"])]}]
     verdicts = {"chunk_000_N.json": {"proposals": [
         {"article_id": "1", "piid": "P1", "verdict": "link",
          "match_basis": "llm-alias", "lexicon_doc": "601", "rationale": "…",
          "refute_a": {"refuted": False}, "refute_b": {"refuted": False}}]}}
-    with pytest.raises(ValueError, match="pe_bli"):
-        collect_verdicts(queue, verdicts)
+    packets, result = collect_verdicts(queue, verdicts)
+    assert packets == []
+    assert result["missing_pe_bli"] == 1
+    assert result["missing_pe_bli_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": None,
+         "article_id": "1"}]
 
 
-def test_collect_refuses_a_packet_with_no_lexicon_doc():
-    """collision_account_for (load_announcement_links.py:126-146) returns None
-    without one, and the link is dropped under skipped['collision_unresolved'];
-    for every other key it is the evidence chain the rationale prints."""
+def test_collect_counts_a_packet_with_no_lexicon_doc_and_never_raises():
+    """Task 25b prep: was `test_collect_refuses_a_packet_with_no_lexicon_doc`,
+    asserting `pytest.raises(ValueError, match="lexicon_doc")`. Rewritten:
+    collision_account_for (load_announcement_links.py:126-146) returns None
+    without one and the link is dropped under
+    skipped['collision_unresolved'] anyway, so this is content the refute
+    lenses were meant to catch, not a broken protocol — counted under
+    `missing_lexicon_doc`, never raised."""
     queue = [{"file": "chunk_000_N.json", "org": "N", "announced_value": 1,
               "records": [dict(_rec("1", "t", ["P1"], [1]), org="N", lake_piids=["P1"])]}]
     verdicts = {"chunk_000_N.json": {"proposals": [
@@ -270,8 +301,12 @@ def test_collect_refuses_a_packet_with_no_lexicon_doc():
          "match_basis": "llm-alias", "program_name": "Triton", "lexicon_doc": "  ",
          "rationale": "…", "refute_a": {"refuted": False},
          "refute_b": {"refuted": False}}]}}
-    with pytest.raises(ValueError, match="lexicon_doc"):
-        collect_verdicts(queue, verdicts)
+    packets, result = collect_verdicts(queue, verdicts)
+    assert packets == []
+    assert result["missing_lexicon_doc"] == 1
+    assert result["missing_lexicon_doc_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+         "lexicon_doc": "  "}]
 
 
 def test_collect_accepts_a_partial_run_and_says_exactly_what_ran():
@@ -460,27 +495,44 @@ def test_chunk_records_ranks_by_top_record_even_when_another_chunk_sums_higher()
     assert [c["announced_value"] for c in chunks] == [150, 199]
 
 
-def test_collect_refuses_a_lexicon_doc_that_reads_as_absent_to_the_loader():
-    """load_announcement_links._packet_value (:112-122) maps '' and the literal
-    'None' back to absent, so accepting either here publishes a card whose
-    evidence chain names no document — and drops the link outright on an
-    account-split key (skipped['collision_unresolved'])."""
+def test_collect_counts_a_lexicon_doc_that_reads_as_absent_and_never_raises():
+    """Task 25b prep: was `test_collect_refuses_a_lexicon_doc_that_reads_as_
+    absent_to_the_loader`, asserting `pytest.raises(ValueError, match=
+    "lexicon_doc")`. Rewritten: load_announcement_links._packet_value
+    (:112-122) maps '' and the literal 'None' back to absent, so accepting
+    either here would publish a card whose evidence chain names no document
+    and would drop the link outright on an account-split key
+    (skipped['collision_unresolved']) — but that is content the refute lenses
+    were meant to catch, not a broken protocol, so it counts under
+    `missing_lexicon_doc` and the run continues."""
     queue = [_one_chunk()]
     for bad in ("None", "none", "null", "  "):
-        with pytest.raises(ValueError, match="lexicon_doc"):
-            collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [
-                _link("1", "P1", lexicon_doc=bad)]}})
+        packets, result = collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [
+            _link("1", "P1", lexicon_doc=bad)]}})
+        assert packets == []
+        assert result["missing_lexicon_doc"] == 1
+        assert result["missing_lexicon_doc_examples"] == [
+            {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+             "lexicon_doc": bad}]
 
 
-def test_collect_refuses_a_proposal_with_no_program_name():
-    """load_announcement_links.py:348 interpolates it into the published
-    rationale — without one the card reads "program 'None' named for this
-    award"."""
+def test_collect_counts_a_proposal_with_no_program_name_and_never_raises():
+    """Task 25b prep: was `test_collect_refuses_a_proposal_with_no_program_
+    name`, asserting `pytest.raises(ValueError, match="program_name")`.
+    Rewritten: load_announcement_links.py:348 interpolates it into the
+    published rationale — without one the card would read "program 'None'
+    named for this award" — but that is content the refute lenses were meant
+    to catch, not a broken protocol, so it counts under `missing_program_name`
+    and the run continues."""
     queue = [_one_chunk()]
     for bad in (None, "", "None"):
-        with pytest.raises(ValueError, match="program_name"):
-            collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [
-                _link("1", "P1", program_name=bad)]}})
+        packets, result = collect_verdicts(queue, {"chunk_000_N.json": {"proposals": [
+            _link("1", "P1", program_name=bad)]}})
+        assert packets == []
+        assert result["missing_program_name"] == 1
+        assert result["missing_program_name_examples"] == [
+            {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+             "program_name": bad}]
 
 
 def test_collect_counts_an_invented_or_foreign_pe_as_refuted_and_never_raises():
@@ -706,3 +758,146 @@ def test_collect_counts_an_invalid_match_basis_and_never_raises():
     ]
     assert result["verdict_counts"] == {"link": 3, "weak": 1, "wrong": 1}
     assert result["proposed"] == 3
+
+
+# --- Task 25b prep round 2: the very next real 150-chunk run aborted on the
+# --- next per-proposal validation after invalid_match_basis was fixed —
+# --- chunk_090_N.json swaps articles 1330165/962429 between records 31 and
+# --- 33 for N0017417C0022/N0003017C0002 (2 of 1,086 `link` proposals; every
+# --- other link resolved). Ruling: EVERY per-proposal validation in
+# --- collect_verdicts that raised ValueError now counts and skips instead,
+# --- in the invalid_match_basis idiom, so one bad row never aborts the whole
+# --- collection.
+
+def test_cmd_collect_counts_the_chunk_090_family_and_prints_every_counter(
+        tmp_path, monkeypatch, capsys):
+    """One chunk exercising every record-identity failure the chunk_090 abort
+    family covers, plus weak/wrong rows that must never be checked at all:
+
+      * a valid link (P0) — the only survivor;
+      * the chunk_090 shape — record_index (2) names a record of the chunk,
+        just not the one holding the proposal's own (article_id, PIID) pair
+        (P1) — counted under invalid_record_index;
+      * a (article_id, PIID) pair naming no record of the chunk at all (P9)
+        — counted under unknown_article_piid;
+      * an ambiguous pair (P4, two records) with no record_index to say which
+        — counted under ambiguous_record;
+      * weak/wrong rows carrying none of the `link` fields — proof those
+        proposals are still never checked.
+
+    Run through cmd_collect (not the bare function) so the printed summary
+    line's wording — which must name every new counter, per the fix-forward
+    ruling — is pinned too."""
+    queue_dir = tmp_path / "wave4_queue"
+    verdict_dir = tmp_path / "wave4_verdicts"
+    lexicon_dir = tmp_path / "wave4_lexicon"
+    packet_dir = tmp_path / "wave4_chunks"
+    result_path = tmp_path / "wave4_result.json"
+    queue_dir.mkdir()
+    verdict_dir.mkdir()
+    lexicon_dir.mkdir()
+
+    records = [
+        dict(_rec("1", "the valid award paragraph", ["P0"], [500]),
+             org="N", lake_piids=["P0"]),                      # index 0
+        dict(_rec("2", "the record the proposal actually names", ["P1"], [400]),
+             org="N", lake_piids=["P1"]),                      # index 1
+        dict(_rec("3", "the record a swapped index wrongly points at", ["P2"],
+                  [300]), org="N", lake_piids=["P2"]),          # index 2
+        dict(_rec("4", "the award paragraph of an ambiguous pair", ["P4"],
+                  [200]), org="N", lake_piids=["P4"]),          # index 3
+        dict(_rec("4", "the modification paragraph of an ambiguous pair",
+                  ["P4"], [100]), org="N", lake_piids=["P4"]),  # index 4
+    ]
+    (queue_dir / "chunk_000_N.json").write_text(json.dumps(
+        {"chunk": "chunk_000_N.json", "org": "N", "records": records}))
+    (lexicon_dir / "N.tsv").write_text(INDEX_N)
+
+    base = {"pe_bli": "0305220N", "verdict": "link", "match_basis": "llm-alias",
+            "program_name": "Triton", "lexicon_doc": "601", "rationale": "…",
+            "refute_a": {"refuted": False, "reason": "holds"},
+            "refute_b": {"refuted": False, "reason": "holds"}}
+    proposals = [
+        {**base, "article_id": "1", "piid": "P0"},                    # valid
+        {**base, "article_id": "2", "piid": "P1", "record_index": 2},  # chunk_090 shape
+        {**base, "article_id": "9", "piid": "P9"},                     # unknown pair
+        {**base, "article_id": "4", "piid": "P4"},                     # ambiguous
+        {"article_id": "1", "piid": "P0", "verdict": "weak"},          # never checked
+        {"article_id": "1", "piid": "P0", "verdict": "wrong"},         # never checked
+    ]
+    (verdict_dir / "chunk_000_N.json").write_text(json.dumps(
+        {"chunk": "chunk_000_N.json", "proposals": proposals}))
+
+    monkeypatch.setattr(mar, "QUEUE_DIR", queue_dir)
+    monkeypatch.setattr(mar, "VERDICT_DIR", verdict_dir)
+    monkeypatch.setattr(mar, "LEXICON_DIR", lexicon_dir)
+    monkeypatch.setattr(mar, "PACKET_DIR", packet_dir)
+    monkeypatch.setattr(mar, "RESULT", result_path)
+
+    assert cmd_collect() == 0     # no exception of any kind
+
+    result = json.loads(result_path.read_text())
+    assert result["verdict_counts"] == {"link": 4, "weak": 1, "wrong": 1}
+    assert result["proposed"] == 4
+    assert result["surviving"] == [
+        {"piid": "P0", "pe_bli": "0305220N", "reason": "holds"}]
+
+    assert result["invalid_record_index"] == 1
+    assert result["invalid_record_index_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+         "article_id": "2", "record_index": 2, "candidates": [1]}]
+
+    assert result["unknown_article_piid"] == 1
+    assert result["unknown_article_piid_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P9", "pe_bli": "0305220N",
+         "article_id": "9"}]
+
+    assert result["ambiguous_record"] == 1
+    assert result["ambiguous_record_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P4", "pe_bli": "0305220N",
+         "article_id": "4", "candidates": [3, 4]}]
+
+    # nothing else fired
+    assert result["invalid_verdict"] == 0
+    assert result["missing_pe_bli"] == 0
+    assert result["invalid_match_basis"] == 0
+    assert result["missing_lexicon_doc"] == 0
+    assert result["missing_program_name"] == 0
+    assert result["invalid_pe_bli"] == 0
+    assert result["malformed_file"] == 0
+
+    # the packets file on disk holds only the survivor
+    packets = json.loads((packet_dir / "chunk_000.json").read_text())
+    assert [p["piid"] for p in packets] == ["P0"]
+
+    # the printed summary line names every new counter, whether it fired or not
+    out = capsys.readouterr().out
+    for label in ("invalid verdict 0", "invalid record_index 1",
+                  "unknown article/PIID 1", "ambiguous record 1",
+                  "missing pe_bli 0", "missing lexicon_doc 0",
+                  "missing program_name 0"):
+        assert label in out, f"{label!r} missing from summary line: {out!r}"
+
+
+def test_collect_counts_an_unrecognized_verdict_and_never_raises():
+    """Any other per-proposal raise found in the loop: a lens that writes a
+    `verdict` outside {'link','weak','wrong'} used to raise
+    `ValueError('... expected one of ...')`, aborting the whole 150-chunk
+    collection on one bad row exactly like the shapes above. Counted under
+    `invalid_verdict` instead, and the real proposals in the same chunk are
+    still processed."""
+    queue = [_one_chunk(pairs=(("1", "P1"), ("2", "P2")))]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        _link("1", "P1"),
+        {**_link("2", "P2"), "verdict": "maybe"},
+    ]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert [p["piid"] for p in packets] == ["P1"]
+    assert result["invalid_verdict"] == 1
+    assert result["invalid_verdict_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P2", "pe_bli": "0305220N",
+         "verdict": "maybe"}]
+    # an invalid verdict is not tallied into verdict_counts at all — it names
+    # no bucket the proposer's three-way vocabulary recognizes
+    assert result["verdict_counts"] == {"link": 1, "weak": 0, "wrong": 0}

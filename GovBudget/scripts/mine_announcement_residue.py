@@ -279,27 +279,62 @@ def collect_verdicts(queue, verdicts, indexes=None):
     Acceptance: verdict == 'link' AND refute_a.refuted is False AND
     refute_b.refuted is False. Anything else — 'weak', 'wrong', a refutation,
     a lens that never ran, a malformed verdict — does not survive, and the
-    counts say which. Raises ValueError on a proposal the loader could not
-    publish honestly (no lexicon_doc, no program_name, or a pe_bli/piid the
-    queue chunk does not contain) and on a verdict file naming a chunk this
-    queue does not hold (the numbering is derived from the universe, so a
+    counts say which. Raises ValueError ONLY on a verdict file naming a chunk
+    this queue does not hold (the numbering is derived from the universe, so a
     re-queue renumbers everything; silently ignoring such a file would drop
-    real adjudications).
+    real adjudications) — a whole-run, file-level refusal, never a
+    per-proposal one.
 
-    Three failures are COUNTED rather than raised, because they are content the
-    refute lenses were meant to catch rather than a broken protocol, and a raise
-    would block a whole 150-chunk collection on one bad row: a `link` proposal
-    whose `match_basis` is missing or outside BASIS_VOCAB (`invalid_match_basis`
-    — the proposer only records a basis for `link` verdicts, so `weak`/`wrong`
-    proposals are never checked at all; each miss is recorded in
-    `invalid_match_basis_examples` alongside the count, because a basis a
-    citation card cannot word is the exact failure Task 25b's report discloses),
-    a (program_name, pe_bli, lexicon_doc) triple that is not a row of that org's
-    index (`invalid_pe_bli` — an invented code, another org's code, an invented
-    doc id or a name that PE does not own; load_announcement_links.py:289 drops
-    them anyway, so the harm is to the 'surviving' count Task 25b publishes) and
-    a verdict file carrying no `proposals` LIST (`malformed_file` — the chunk is
-    NOT attempted, so a crashed lens cannot read as an adjudicated dry chunk).
+    EVERY per-proposal validation failure is COUNTED rather than raised,
+    because each is content the refute lenses were meant to catch rather than
+    a broken protocol, and a raise would block a whole 150-chunk collection on
+    one bad row — which is exactly what happened live: the real run aborted on
+    chunk_090_N.json, which swaps articles 1330165/962429 between records 31
+    and 33 for N0017417C0022/N0003017C0002 (2 of the run's 1,086 `link`
+    proposals; every other link resolved). Each failure records an example
+    alongside its count — `<counter>_examples`, a list of
+    `{chunk, piid, pe_bli, ...detail}` — because a basis, an index or a program
+    name a citation card cannot word is the exact failure Task 25b's report
+    discloses:
+
+      invalid_verdict      — `verdict` is not one of 'link'/'weak'/'wrong'.
+      invalid_record_index — `record_index` is not among the records of that
+                              chunk holding the proposal's (article_id, PIID)
+                              pair — the chunk_090 shape: the index names a
+                              record of the chunk, just not the right one.
+      unknown_article_piid — the (article_id, PIID) pair is not a lake PIID of
+                              any record in that chunk.
+      ambiguous_record     — the pair names more than one record of the chunk
+                              (a modification paragraph citing the vehicle its
+                              award paragraph announced) and the proposal
+                              carries no usable `record_index` to say which.
+      missing_pe_bli       — `pe_bli` is missing or blank; there is nothing to
+                              link the award to. Distinct from `invalid_pe_bli`
+                              below, which is a PRESENT but wrong code.
+      invalid_match_basis  — a `link` proposal whose `match_basis` is missing
+                              or outside BASIS_VOCAB (the proposer only records
+                              a basis for `link` verdicts, so `weak`/`wrong`
+                              proposals are never checked for one at all).
+      missing_lexicon_doc  — `lexicon_doc` is absent or reads as absent to the
+                              loader's `_packet_value` (''/'none'/'null', any
+                              case, or whitespace-only); a shared BLI code
+                              cannot be resolved without it.
+      missing_program_name — `program_name` is absent or reads as absent; the
+                              published rationale words it ("program 'None'
+                              named for this award").
+      invalid_pe_bli       — a (program_name, pe_bli, lexicon_doc) triple that
+                              is not a row of that org's index: an invented
+                              code, another org's code, an invented doc id or a
+                              name that PE does not own. load_announcement_
+                              links.py:289 drops them anyway, so the harm is to
+                              the 'surviving' count Task 25b publishes.
+      malformed_file        — a verdict file carrying no `proposals` LIST; the
+                              chunk is NOT attempted, so a crashed lens cannot
+                              read as an adjudicated dry chunk.
+
+    A skipped proposal — any counter above — is dropped from `packets` and
+    from `surviving`, exactly like a refuted one; the printed summary and
+    wave4_result.json's counts say how many and why.
 
     A chunk with no verdict file is skipped, not failed: the run protocol stops
     when three consecutive rounds return nothing, and `records_attempted` /
@@ -314,8 +349,18 @@ def collect_verdicts(queue, verdicts, indexes=None):
     counts = {"link": 0, "weak": 0, "wrong": 0}
     refuted_a = refuted_b = missing_lens = malformed_lens = duplicate_pairs = 0
     invalid_pe_bli = malformed_file = invalid_match_basis = 0
+    invalid_verdict = invalid_record_index = unknown_article_piid = 0
+    ambiguous_record = missing_pe_bli = missing_lexicon_doc = 0
+    missing_program_name = 0
     packets, surviving, attempted_files = [], [], []
     invalid_match_basis_examples = []
+    invalid_verdict_examples = []
+    invalid_record_index_examples = []
+    unknown_article_piid_examples = []
+    ambiguous_record_examples = []
+    missing_pe_bli_examples = []
+    missing_lexicon_doc_examples = []
+    missing_program_name_examples = []
     records_attempted = 0
     seen_pairs: set[tuple[str, str]] = set()
     for chunk in queue:
@@ -350,9 +395,15 @@ def collect_verdicts(queue, verdicts, indexes=None):
                 continue
             verdict = prop.get("verdict")
             if verdict not in counts:
-                raise ValueError(
-                    f"{chunk['file']}: proposal for {prop.get('piid')} carries "
-                    f"verdict {verdict!r}; expected one of {sorted(counts)}")
+                # an unrecognized verdict is content a broken lens produced,
+                # not a protocol violation — counted and skipped rather than
+                # aborting a 150-chunk collection over one bad row
+                invalid_verdict += 1
+                invalid_verdict_examples.append({
+                    "chunk": chunk["file"], "piid": prop.get("piid"),
+                    "pe_bli": prop.get("pe_bli"), "verdict": verdict,
+                })
+                continue
             counts[verdict] += 1
             if verdict != "link":
                 continue
@@ -372,24 +423,37 @@ def collect_verdicts(queue, verdicts, indexes=None):
                     continue
             if index is not None:
                 if not isinstance(index, int) or index not in found:
-                    raise ValueError(
-                        f"{chunk['file']}: proposal carries record_index "
-                        f"{index!r}, which is not a record of that chunk holding "
-                        f"article {aid} / PIID {piid}")
+                    # the chunk_090_N.json shape: record_index names a record
+                    # of this chunk, just not one holding this (article_id,
+                    # PIID) pair — counted, never raised, so one swapped index
+                    # cannot abort the whole 150-chunk collection
+                    invalid_record_index += 1
+                    invalid_record_index_examples.append({
+                        "chunk": chunk["file"], "piid": piid,
+                        "pe_bli": prop.get("pe_bli"), "article_id": aid,
+                        "record_index": index, "candidates": found,
+                    })
+                    continue
             elif not found:
-                raise ValueError(
-                    f"{chunk['file']}: proposal names article "
-                    f"{prop.get('article_id')} / PIID {prop.get('piid')}, which is "
-                    f"not a lake PIID of any record in that chunk")
+                # the pair names no record of this chunk at all
+                unknown_article_piid += 1
+                unknown_article_piid_examples.append({
+                    "chunk": chunk["file"], "piid": piid,
+                    "pe_bli": prop.get("pe_bli"), "article_id": aid,
+                })
+                continue
             elif len(found) > 1:
                 # 17 of the queue's 31,693 (article_id, PIID) keys, across 16
                 # chunks: a modification paragraph naming the same vehicle as
-                # its award paragraph. The excerpt would be a coin flip.
-                raise ValueError(
-                    f"{chunk['file']}: article {aid} / PIID {piid} appears in "
-                    f"{len(found)} records of that chunk (record_index {found}); "
-                    f"the proposal must carry record_index to say which "
-                    f"paragraph it read")
+                # its award paragraph. The excerpt would be a coin flip
+                # without a record_index to say which paragraph it read.
+                ambiguous_record += 1
+                ambiguous_record_examples.append({
+                    "chunk": chunk["file"], "piid": piid,
+                    "pe_bli": prop.get("pe_bli"), "article_id": aid,
+                    "candidates": found,
+                })
+                continue
             else:
                 index = found[0]
             rec = records[index]
@@ -399,9 +463,14 @@ def collect_verdicts(queue, verdicts, indexes=None):
             # loader (which keys on the raw string) drops it
             pe_bli = str(prop.get("pe_bli") or "").strip()
             if not pe_bli:
-                raise ValueError(
-                    f"{chunk['file']}: proposal for article {aid} / PIID {piid} "
-                    f"names no pe_bli; there is nothing to link the award to")
+                # missing/blank, not a wrong-but-present code (invalid_pe_bli
+                # below): there is nothing to link the award to
+                missing_pe_bli += 1
+                missing_pe_bli_examples.append({
+                    "chunk": chunk["file"], "piid": piid,
+                    "pe_bli": prop.get("pe_bli"), "article_id": aid,
+                })
+                continue
             basis = prop.get("match_basis")
             if basis not in BASIS_VOCAB:
                 # content the refute lenses were meant to catch, not a broken
@@ -414,17 +483,24 @@ def collect_verdicts(queue, verdicts, indexes=None):
                 })
                 continue
             if reads_as_absent(prop.get("lexicon_doc")):
-                raise ValueError(
-                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
-                    f"lexicon_doc {prop.get('lexicon_doc')!r}, which the loader's "
-                    f"_packet_value reads as no lexicon_doc; a shared BLI code "
-                    f"cannot be resolved without it, and the citation card would "
-                    f"name no document")
+                # the loader's _packet_value reads this as no lexicon_doc; a
+                # shared BLI code cannot be resolved without it, and the
+                # citation card would name no document
+                missing_lexicon_doc += 1
+                missing_lexicon_doc_examples.append({
+                    "chunk": chunk["file"], "piid": piid, "pe_bli": pe_bli,
+                    "lexicon_doc": prop.get("lexicon_doc"),
+                })
+                continue
             if reads_as_absent(prop.get("program_name")):
-                raise ValueError(
-                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
-                    f"program_name {prop.get('program_name')!r}; the published "
-                    f"rationale words it (\"program 'None' named for this award\")")
+                # the published rationale words it ("program 'None' named for
+                # this award")
+                missing_program_name += 1
+                missing_program_name_examples.append({
+                    "chunk": chunk["file"], "piid": piid, "pe_bli": pe_bli,
+                    "program_name": prop.get("program_name"),
+                })
+                continue
             if indexes is not None and index_key(
                     prop["program_name"], pe_bli, prop["lexicon_doc"]
             ) not in indexes.get(chunk["org"], set()):
@@ -490,8 +566,22 @@ def collect_verdicts(queue, verdicts, indexes=None):
         "refuted_b": refuted_b,
         "missing_lens": missing_lens,
         "malformed_lens": malformed_lens,
+        "invalid_verdict": invalid_verdict,
+        "invalid_verdict_examples": invalid_verdict_examples,
+        "invalid_record_index": invalid_record_index,
+        "invalid_record_index_examples": invalid_record_index_examples,
+        "unknown_article_piid": unknown_article_piid,
+        "unknown_article_piid_examples": unknown_article_piid_examples,
+        "ambiguous_record": ambiguous_record,
+        "ambiguous_record_examples": ambiguous_record_examples,
+        "missing_pe_bli": missing_pe_bli,
+        "missing_pe_bli_examples": missing_pe_bli_examples,
         "invalid_match_basis": invalid_match_basis,
         "invalid_match_basis_examples": invalid_match_basis_examples,
+        "missing_lexicon_doc": missing_lexicon_doc,
+        "missing_lexicon_doc_examples": missing_lexicon_doc_examples,
+        "missing_program_name": missing_program_name,
+        "missing_program_name_examples": missing_program_name_examples,
         "invalid_pe_bli": invalid_pe_bli,
         "malformed_file": malformed_file,
         "duplicate_pairs": duplicate_pairs,
@@ -695,7 +785,14 @@ def cmd_collect() -> int:
           f"refuted A {result['refuted_a']:,} / B {result['refuted_b']:,}; "
           f"missing a lens {result['missing_lens']:,}; "
           f"malformed a lens {result['malformed_lens']:,}; "
+          f"invalid verdict {result['invalid_verdict']:,}; "
+          f"invalid record_index {result['invalid_record_index']:,}; "
+          f"unknown article/PIID {result['unknown_article_piid']:,}; "
+          f"ambiguous record {result['ambiguous_record']:,}; "
+          f"missing pe_bli {result['missing_pe_bli']:,}; "
           f"invalid match_basis {result['invalid_match_basis']:,}; "
+          f"missing lexicon_doc {result['missing_lexicon_doc']:,}; "
+          f"missing program_name {result['missing_program_name']:,}; "
           f"not in the org index {result['invalid_pe_bli']:,}; "
           f"malformed verdict files {result['malformed_file']:,}; "
           f"duplicate pairs {result['duplicate_pairs']:,}; "
