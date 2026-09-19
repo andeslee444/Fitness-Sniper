@@ -354,3 +354,42 @@ describe("gate 24 leg n — the pre-existing directions still hold", () => {
     expect(errors.join("\n")).toMatch(/pre-2026-09-04 flat shape/);
   });
 });
+
+describe("gate 24 leg n — the announcement tier stays pinned to its own draw", () => {
+  // FIX ROUND 1, ITEM 3. The pin lives at the export call site
+  // (`_link_precision_for_export` passes `_PINNED_PRECISION_SAMPLES`).
+  // Deleting that kwarg leaves the constant — and, before this check, every
+  // gate — untouched, and the tier republishes the wave-4 sample's 48/55: a
+  // draw over ONE wave's links under the whole tier's name. This binds the
+  // SHIPPED artifact, so the edit cannot reach production green.
+  it("passes when the tier's figure comes from the 2026-09-04 draw", () => {
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH,
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it("FAILS when the tier's figure comes from the wave sample instead", () => {
+    const unpinned = {
+      link_precision: {
+        ...LIVE_META.link_precision,
+        methods: {
+          ...LIVE_META.link_precision.methods,
+          "announcement+lexicon": {
+            confirmed: 48, sampled: 55, sample_id: "2026-09-12",
+            judged: "2026-09-19",
+          },
+        },
+      },
+    };
+    const { errors } = run({
+      siteMeta: unpinned,
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH.replace(
+        "announcement+lexicon 51/54", "announcement+lexicon 48/55"),
+    });
+    expect(errors.join(" ")).toMatch(/pinned to the 2026-09-04 draw/);
+  });
+});

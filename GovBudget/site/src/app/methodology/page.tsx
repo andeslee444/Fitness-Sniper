@@ -293,16 +293,42 @@ export default function MethodologyPage() {
   // pinned to the 2026-09-04 stratified draw over the whole announcement
   // tier, which was sampled before this pass's newest links existed. A pair
   // renders only when its own sample carries both halves and a judged date.
+  // `drawn` is the size of the DRAW and `sampled` what still publishes: five
+  // of the 60 judged links left the corpus, which moves the pair from 51/60
+  // to 48/55. The sentence states both, so the exclusion is visible rather
+  // than hidden inside a smaller denominator. `sampled_at` is the date the
+  // verdicts were RECORDED (adjudicated_at is set at load time), and the
+  // sentence says "recorded" for that reason.
   const annScopePrecision =
     annScope?.precision?.sampled != null &&
     annScope.precision.confirmed != null &&
+    annScope.precision.drawn != null &&
     annScope.precision.sampled_at
       ? {
+          drawn: annScope.precision.drawn,
           sampled: annScope.precision.sampled,
           confirmed: annScope.precision.confirmed,
           sampled_at: annScope.precision.sampled_at,
         }
       : null;
+  // THE SAMPLING FRAME of the tier-wide figure (fix round 1, item 2). The
+  // announcement tier's precision above is pinned to the 2026-09-04 draw,
+  // which was made over the tier as it then stood. This pass added links to
+  // that tier afterwards: `links_new_this_pass` is how many, derived, and the
+  // tier paragraph says so. Every number in the tier sentence was true; what
+  // was missing — and lived only in docs/methodology.md — is that a third of
+  // the tier was never eligible for the draw. Renders only when the tier
+  // actually publishes a pinned figure and the pass added links to it.
+  const annTierDrawDate =
+    linkPrecision?.methods?.["announcement+lexicon"]?.sample_id ?? null;
+  const annNewLinks =
+    annScope?.links_new_this_pass != null && annScope.links_new_this_pass > 0
+      ? annScope.links_new_this_pass
+      : null;
+  const annDrawGap = annNewLinks != null && annTierDrawDate ? {
+    count: annNewLinks,
+    drawnOn: annTierDrawDate,
+  } : null;
   // ROADMAP #109: per-award hand-adjudication COVERAGE, which the section's
   // opening sentence claimed rather than measured. It said "every published
   // link was individually hand-adjudicated … a link is published as high only
@@ -1029,7 +1055,7 @@ export default function MethodologyPage() {
                       ? `the remaining ${formatCount(annScope!.records_remaining!)} records (${annScope!.pct_value_remaining}% of that value) were not attempted.`
                       : "none is left unattempted."}{" "}
                     {annScopePrecision
-                      ? `Its most recent round carries its own measurement: two independent reviewers judged a random draw of its links on ${annScopePrecision.sampled_at} and confirmed ${formatCount(annScopePrecision.confirmed)} of the ${formatCount(annScopePrecision.sampled)} that publish — those links only, not the path as a whole.`
+                      ? `Its most recent round carries its own measurement: two independent reviewers judged a random draw of ${formatCount(annScopePrecision.drawn)} of its links, recorded ${annScopePrecision.sampled_at}, and confirmed ${formatCount(annScopePrecision.confirmed)} of the ${formatCount(annScopePrecision.sampled)} that publish${annScopePrecision.drawn > annScopePrecision.sampled ? " — the others no longer publish and count in neither direction" : ""}; those links only, not the path as a whole.`
                       : "Its most recent round has not yet been measured on a held-out sample of its own."}
                   </p>
                 )}
@@ -1063,6 +1089,17 @@ export default function MethodologyPage() {
                     the corpus no longer publishes is counted in neither
                     direction:{" "}
                     {linkPrecisionText}.
+                    {annDrawGap && (
+                      <span data-announcement-draw-gap="">
+                        {" "}
+                        The announcement tier&apos;s figure comes from the{" "}
+                        {annDrawGap.drawnOn} draw, which predates{" "}
+                        {formatCount(annDrawGap.count)} of the links now
+                        publishing under that tier: the LLM-alias pass&apos;s
+                        most recent round added them, and the round&apos;s own
+                        held-out sample above measures its links instead.
+                      </span>
+                    )}
                     {linkPrecisionUnmeasured && (
                       <>
                         {" "}

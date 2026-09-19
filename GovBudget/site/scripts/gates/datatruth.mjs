@@ -168,15 +168,20 @@
  *      describing a residue whose selection code was never committed. This leg
  *      recomputes every figure in that paragraph from
  *      site_meta.announcement_llm_scope and requires the rendered
- *      [data-announcement-scope] text to state it — and to render NOTHING
- *      when no pass is recorded. It binds one more pair in the same slot
- *      order: the pass's OWN held-out precision. Leg (n)'s tier figure is
- *      pinned to the 2026-09-04 stratified draw over the whole announcement
- *      tier, which was sampled before this pass's most recent round existed,
- *      so the round is measured by its own sample and the leg fails either
- *      direction of confusion — a rendered pair the block does not hold, or a
- *      measured round the paragraph calls unmeasured. See leg q's own block
- *      at the bottom.
+ *      [data-announcement-scope] text to state each one IN ITS OWN CLAUSE —
+ *      anchored to the words around it, in render order, with no number the
+ *      block does not carry — so two figures swapped between clauses fail
+ *      even though both still appear. The same slots carry the pass's OWN
+ *      held-out precision: leg (n)'s tier figure is pinned to the 2026-09-04
+ *      stratified draw over the whole announcement tier, which was sampled
+ *      before this pass's most recent round existed, so the round is measured
+ *      by its own sample and the leg fails either direction of confusion — a
+ *      rendered pair the block does not hold, or a measured round the
+ *      paragraph calls unmeasured. It also binds the FRAME: the tier's draw
+ *      predates the links this pass added to the tier, and
+ *      [data-announcement-draw-gap] must say how many. An empty block after
+ *      2026-09-19 is a stale export, not an empty corpus, and fails. See leg
+ *      q's own block at the bottom.
  *  (r) DISTRICT BY-YEAR CELLS vs THE LAKE (ROADMAP #6). Gate 9 leg f proves
  *      the by-year rows are INTERNALLY consistent — they sum to the headline
  *      the page renders above them. An exporter that read the wrong mart, or a
@@ -2768,6 +2773,20 @@ const MIN_PUBLISHED_LINK_METHODS = 4;
  *  RUBRICS; export_site._link_precision_block's default). */
 const PUBLISHED_RUBRIC = "attribution";
 
+/** Published tier -> the study run its /methodology/ figure MUST come from:
+ *  the gate-side twin of export_site._PINNED_PRECISION_SAMPLES, bound against
+ *  the shipped artifact.
+ *
+ *  WHY (fix round 1, item 3). The pin is passed by the export call site, and
+ *  the test that claimed to protect it only asserted the constant's value —
+ *  deleting the kwarg left every test green and would have republished the
+ *  announcement tier's precision from the wave-4 sample, a draw over ONE
+ *  wave's links, under the tier's name. The unpinned block measures 48/55
+ *  against the pinned 56/60. This check reads what actually shipped, so the
+ *  edit fails a gate as well as a unit test. Change it only with a fresh draw
+ *  over the tier itself, and change both sides together. */
+const PINNED_PRECISION_SAMPLES = { "announcement+lexicon": "2026-09-04" };
+
 /** The paragraph must name the question in the words the packets ask the
  *  adjudicator: "program attribution" and "execute this program element",
  *  in that order, within one sentence. */
@@ -2843,6 +2862,26 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
   const figures = linkPrecision.methods ?? {};
   const methods = Object.keys(figures).sort();
   const unmeasured = [...(linkPrecision.unmeasured ?? [])].sort();
+
+  // A pinned tier publishes its OWN draw's figure or none at all. (A tier the
+  // pin left unmeasured is not an error here — `_link_precision_block` reports
+  // it in `unmeasured`, and the sweep below makes the page name it.)
+  for (const [method, run] of Object.entries(PINNED_PRECISION_SAMPLES)) {
+    const got = figures[method];
+    if (!got) continue;
+    if (got.sample_id !== run) {
+      errors.push(
+        `leg n: site_meta.link_precision publishes "${method}" ` +
+          `${got.confirmed}/${got.sampled} from sample ` +
+          `${JSON.stringify(got.sample_id)}, and that tier is pinned to the ` +
+          `${run} draw over the tier itself. A later run is a narrower ` +
+          `population under the tier's name — the species leg n exists for. ` +
+          `Re-run export-site (the call site passes ` +
+          `export_site._PINNED_PRECISION_SAMPLES), or, if the tier was ` +
+          `genuinely re-drawn, move the pin on both sides`,
+      );
+    }
+  }
 
   if (methods.length === 0) {
     if (paragraphExists) {
@@ -4369,32 +4408,87 @@ function runDistrictYearLeg(errors, notes) {
 // leg q — announcement LLM-alias pass scope (findings log :118-119)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** The figures leg q requires the paragraph to state, in RENDER order. The
- *  page renders each one through formatCount (toLocaleString("en-US")), as a
- *  bare number + '%', as an ISO date, or — for the pass's own precision — as
- *  the composite "<confirmed> of the <sampled>" the sentence reads with, so
- *  the formatting here has to match those exactly. A composite slot rather
- *  than two loose integers: "48" and "55" are substrings of plenty of other
- *  numbers, and the one thing this leg exists to catch is a PAIR from another
- *  population. */
-function announcementScopeFigures(scope) {
+/** The date the announcement LLM-pass scope block first shipped. From here an
+ *  EMPTY `site_meta.announcement_llm_scope` is not "no pass yet" — a pass is
+ *  recorded — it is a stale export or a database restored without the table,
+ *  and the page has silently dropped a disclosure. Same dated-floor idiom as
+ *  leg p2's MIN_CROSSWALK_CLAIMS and leg p3's MIN_FLOW_SIDECARS: the shape
+ *  that once passed vacuously fails after the date it stopped being possible. */
+const ANNOUNCEMENT_SCOPE_FIRST_SHIPPED = "2026-09-19";
+
+/** The SLOTS leg q requires the paragraph to state, in RENDER order — each
+ *  figure anchored to the words around it, never a bare number.
+ *
+ *  WHY ANCHORED (fix round 1, item 4). The leg used to test
+ *  `paragraphText.includes(figure)` for each figure: presence, anywhere, in
+ *  any order. Swap the two percentage interpolations in the JSX and the page
+ *  reads "15,604 have been through an LLM-assisted alias pass — 10.9% of the
+ *  residue by announced value; the remaining 12,740 records (89.1% of that
+ *  value) were not attempted" — both strings still present, leg green, claim
+ *  false. Each slot below pins its figure to its own clause, and the leg
+ *  additionally requires the slots to appear in this order, so a figure
+ *  rendered in another figure's place fails twice over. Leg n's idiom, which
+ *  anchors each pair to its method name.
+ *
+ *  The page renders every number through formatCount (toLocaleString("en-US"))
+ *  and every share as a bare number + '%', so the formatting here has to match
+ *  exactly. The precision pair stays a composite — "48" and "55" are
+ *  substrings of plenty of other numbers, and a PAIR from another population
+ *  is the one thing this half of the leg exists to catch. */
+function announcementScopeSlots(scope) {
+  const n = (v) => Number(v).toLocaleString("en-US");
+  const pct = (v) => `${Number(v)}%`;
+  const slots = [
+    ["records_total", `covered all ${n(scope.records_total)} archived`],
+    ["records_deterministic", `${n(scope.records_deterministic)} named a program`],
+    ["records_residue", `Of the ${n(scope.records_residue)} that did not`],
+    ["records_attempted", `${n(scope.records_attempted)} have been through`],
+    ["pct_value_attempted",
+     `${pct(scope.pct_value_attempted)} of the residue by announced value`],
+  ];
+  if (scope.records_remaining > 0) {
+    slots.push(["records_remaining",
+                `the remaining ${n(scope.records_remaining)} records`]);
+    slots.push(["pct_value_remaining",
+                `(${pct(scope.pct_value_remaining)} of that value)`]);
+  }
+  const p = scope.precision;
+  if (p) {
+    slots.push(["precision.drawn", `a random draw of ${n(p.drawn)} of its links`]);
+    slots.push(["precision.sampled_at", `recorded ${p.sampled_at}`]);
+    slots.push(["precision.pair", `${n(p.confirmed)} of the ${n(p.sampled)}`]);
+  }
+  return slots.map(([label, text]) => ({ label, text }));
+}
+
+/** Every NUMBER token the block licenses the paragraph to render, as the page
+ *  formats it. The reverse direction of the slot sweep (leg n's idiom): a
+ *  figure in the paragraph that the block does not carry is a literal someone
+ *  typed, which is the species this leg was built for. */
+function announcementScopeTokens(scope) {
   const n = (v) => Number(v).toLocaleString("en-US");
   const pct = (v) => `${Number(v)}%`;
   const out = [
-    n(scope.records_total),
-    n(scope.records_deterministic),
-    n(scope.records_residue),
-    n(scope.records_attempted),
+    n(scope.records_total), n(scope.records_deterministic),
+    n(scope.records_residue), n(scope.records_attempted),
     pct(scope.pct_value_attempted),
   ];
   if (scope.records_remaining > 0) {
     out.push(n(scope.records_remaining), pct(scope.pct_value_remaining));
   }
   const p = scope.precision;
-  if (p) {
-    out.push(p.sampled_at, `${n(p.confirmed)} of the ${n(p.sampled)}`);
-  }
-  return out;
+  if (p) out.push(n(p.drawn), n(p.sampled), n(p.confirmed));
+  return new Set(out);
+}
+
+/** Number-shaped tokens in `text`, with `dates` (ISO, which tokenize into
+ *  three integers) removed first. */
+function numericTokens(text, dates) {
+  let scan = text;
+  for (const d of dates) if (d) scan = scan.split(d).join(" ");
+  return [...new Set(
+    [...scan.matchAll(/\d[\d,]*(?:\.\d+)?%?/g)].map((m) => m[0]),
+  )];
 }
 
 /** The shape the rendered precision sentence states a pair in. Used only to
@@ -4428,12 +4522,14 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
   let siteMeta;
   let paragraphText = null;
   let paragraphExists = false;
+  let drawGapText = null;
   let methodologyBuilt = true;
 
   if (injected) {
     siteMeta = injected.siteMeta ?? {};
     paragraphText = injected.paragraphText ?? null;
     paragraphExists = injected.paragraphText != null;
+    drawGapText = injected.drawGapText ?? null;
     methodologyBuilt = injected.methodologyBuilt ?? true;
   } else {
     const siteMetaPath = path.join(jsonDir, "site_meta.json");
@@ -4452,19 +4548,26 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
     const el = methodRoot?.querySelector("[data-announcement-scope]");
     paragraphExists = el != null;
     paragraphText = el ? norm(el.text) : null;
+    const gap = methodRoot?.querySelector("[data-announcement-draw-gap]");
+    drawGapText = gap ? norm(gap.text) : null;
   }
 
   const scope = siteMeta.announcement_llm_scope ?? {};
   if (scope.records_total == null) {
-    if (paragraphExists) {
-      errors.push(
-        "leg q (/methodology/): [data-announcement-scope] renders while " +
-          "site_meta.announcement_llm_scope carries no pass — the paragraph " +
-          "must stay absent until one is recorded",
-      );
-    } else {
-      notes.push("leg q: no announcement LLM pass recorded; paragraph absent ✓");
-    }
+    // NOT a note. A pass has been recorded since the date below, so an empty
+    // block is a stale export or a database restored without
+    // announcement_llm_scope — and the page then drops the disclosure with
+    // every gate green, which is the vacuity this leg exists to refuse.
+    errors.push(
+      "leg q (/methodology/): site_meta.announcement_llm_scope carries no " +
+        `pass. One has been recorded since ${ANNOUNCEMENT_SCOPE_FIRST_SHIPPED}, ` +
+        "so an empty block is a stale export or a database restored without " +
+        "the table — re-run export-site against a warehouse whose Postgres " +
+        "holds the scope row" +
+        (paragraphExists
+          ? ". [data-announcement-scope] renders anyway, from nothing"
+          : ", and [data-announcement-scope] has silently disappeared"),
+    );
     return;
   }
   if (!methodologyBuilt) {
@@ -4484,11 +4587,12 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
   // rather than quietly dropping the sentence.
   const precision = scope.precision ?? null;
   if (precision && (precision.confirmed == null || precision.sampled == null ||
-                    !precision.sampled_at)) {
+                    precision.drawn == null || !precision.sampled_at)) {
     errors.push(
       `leg q: site_meta.announcement_llm_scope.precision is partial ` +
         `(${JSON.stringify(precision)}) — the exporter writes confirmed, ` +
-        `sampled and sampled_at together or writes null; re-run export-site`,
+        `sampled, drawn and sampled_at together or writes null; re-run ` +
+        `export-site`,
     );
     return;
   }
@@ -4502,13 +4606,56 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
     );
     return;
   }
-  const figures = announcementScopeFigures(scope);
-  const missing = figures.filter((f) => !paragraphText.includes(f));
+  // ── every figure in its OWN clause, in render order ────────────────────
+  const slots = announcementScopeSlots(scope);
+  const missing = slots.filter((s) => !paragraphText.includes(s.text));
   if (missing.length) {
     errors.push(
       `leg q (/methodology/): [data-announcement-scope] does not state ` +
-        `${missing.join(", ")} — site_meta says ` +
-        `${figures.join(" / ")} (as_of ${scope.as_of})`,
+        `${missing.map((s) => `${s.label} ("${s.text}")`).join(", ")} — ` +
+        `site_meta says ${slots.map((s) => s.text).join(" / ")} ` +
+        `(as_of ${scope.as_of})`,
+    );
+    return;
+  }
+  let at = -1;
+  for (const slot of slots) {
+    const where = paragraphText.indexOf(slot.text);
+    if (where <= at) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-scope] states ` +
+          `${slot.label} ("${slot.text}") out of render order — the figures ` +
+          `must appear in the order the block lists them, or two of them have ` +
+          `been swapped between clauses and each still "appears" in the ` +
+          `paragraph`,
+      );
+      return;
+    }
+    at = where;
+  }
+  // Diagnosed BEFORE the stray sweep: when the block holds no pair, a pair in
+  // the paragraph is not just an unbacked number, it is another population's
+  // precision — the one way this page could hand a reader the tier's figure
+  // for the round's links, and the diagnosis worth printing.
+  if (!precision && ANNOUNCEMENT_PAIR_RE.test(paragraphText)) {
+    errors.push(
+      "leg q (/methodology/): [data-announcement-scope] states a " +
+        "confirmed/sampled pair while site_meta records no held-out sample " +
+        "of this pass's own links — the tier-wide study measures a different " +
+        "population and is never this figure",
+    );
+    return;
+  }
+  // …and NO figure the block does not carry (leg n's reverse direction).
+  const stray = numericTokens(
+    paragraphText, [precision?.sampled_at],
+  ).filter((t) => !announcementScopeTokens(scope).has(t));
+  if (stray.length) {
+    errors.push(
+      `leg q (/methodology/): [data-announcement-scope] states ` +
+        `${stray.join(", ")}, which site_meta.announcement_llm_scope does not ` +
+        `carry — every number in this paragraph is derived, so an extra one ` +
+        `is a literal someone typed`,
     );
     return;
   }
@@ -4527,15 +4674,8 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
     return;
   }
   if (!precision) {
-    if (ANNOUNCEMENT_PAIR_RE.test(paragraphText)) {
-      errors.push(
-        "leg q (/methodology/): [data-announcement-scope] states a " +
-          "confirmed/sampled pair while site_meta records no held-out sample " +
-          "of this pass's own links — the tier-wide study measures a different " +
-          "population and is never this figure",
-      );
-      return;
-    }
+    // (the "states a pair anyway" direction is checked above, before the
+    // stray sweep, so the pair gets its own diagnosis)
     if (!/not yet been measured|not yet measured/i.test(paragraphText)) {
       errors.push(
         "leg q (/methodology/): no held-out sample has measured the pass's " +
@@ -4545,16 +4685,87 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
       return;
     }
     notes.push(
-      `leg q: [data-announcement-scope] states all ${figures.length} derived ` +
-        `figure(s) (as_of ${scope.as_of}); the newest round is not measured ` +
-        `and the paragraph says so ✓`,
+      `leg q: [data-announcement-scope] states all ${slots.length} derived ` +
+        `figure(s), each in its own clause and in render order (as_of ` +
+        `${scope.as_of}); the newest round is not measured and the paragraph ` +
+        `says so ✓`,
     );
     return;
   }
+  // ── the sampling FRAME of the tier-wide figure (fix round 1, item 2) ────
+  //
+  // /methodology/ publishes the announcement tier's precision from the
+  // 2026-09-04 draw, pinned. That draw was made over the tier as it then
+  // stood; every link this pass added to the tier afterwards is inside the
+  // population the figure names and outside the one it measured. The count is
+  // derived (announcement_llm_scope.links_new_this_pass), and the tier
+  // paragraph has to carry it — the disclosure existed only in
+  // docs/methodology.md, which a reader of the page never sees.
+  const tierDraw =
+    siteMeta.link_precision?.methods?.["announcement+lexicon"]?.sample_id ?? null;
+  const newLinks =
+    scope.links_new_this_pass != null && scope.links_new_this_pass > 0
+      ? scope.links_new_this_pass
+      : null;
+  const gapRequired = newLinks != null && tierDraw != null;
+  if (gapRequired && drawGapText == null) {
+    errors.push(
+      `leg q (/methodology/): the announcement tier's figure comes from the ` +
+        `${tierDraw} draw and ${newLinks.toLocaleString("en-US")} of the ` +
+        `tier's links post-date it (announcement_llm_scope.` +
+        `links_new_this_pass), but no [data-announcement-draw-gap] clause ` +
+        `renders — the reader is handed a precision figure for a population ` +
+        `a third of which the draw could not reach`,
+    );
+    return;
+  }
+  if (!gapRequired && drawGapText != null) {
+    errors.push(
+      `leg q (/methodology/): [data-announcement-draw-gap] claims the tier's ` +
+        `draw predates links this pass added, and site_meta carries no such ` +
+        `count (links_new_this_pass ${JSON.stringify(scope.links_new_this_pass)}` +
+        `, tier draw ${JSON.stringify(tierDraw)})`,
+    );
+    return;
+  }
+  if (gapRequired) {
+    const want = `predates ${newLinks.toLocaleString("en-US")} of the links`;
+    if (!drawGapText.includes(want)) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-draw-gap] does not state ` +
+          `"${want}" — site_meta.announcement_llm_scope.links_new_this_pass ` +
+          `is ${newLinks}`,
+      );
+      return;
+    }
+    if (!drawGapText.includes(`${tierDraw} draw`)) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-draw-gap] does not name ` +
+          `the ${tierDraw} draw the announcement tier's figure is pinned to`,
+      );
+      return;
+    }
+    const gapStray = numericTokens(drawGapText, [tierDraw]).filter(
+      (t) => t !== newLinks.toLocaleString("en-US"),
+    );
+    if (gapStray.length) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-draw-gap] states ` +
+          `${gapStray.join(", ")}, which nothing in site_meta backs`,
+      );
+      return;
+    }
+  }
   notes.push(
-    `leg q: [data-announcement-scope] states all ${figures.length} derived ` +
-      `figure(s) (as_of ${scope.as_of}), including this pass's own ` +
-      `${precision.confirmed}/${precision.sampled} from sample ` +
-      `${precision.sample_id} ✓`,
+    `leg q: [data-announcement-scope] states all ${slots.length} derived ` +
+      `figure(s), each in its own clause and in render order (as_of ` +
+      `${scope.as_of}), including this pass's own ` +
+      `${precision.confirmed}/${precision.sampled} of ${precision.drawn} drawn ` +
+      `from sample ${precision.sample_id}` +
+      (gapRequired
+        ? `; [data-announcement-draw-gap] states the ${newLinks} tier link(s) ` +
+          `the ${tierDraw} draw predates`
+        : "") +
+      ` ✓`,
   );
 }

@@ -362,6 +362,16 @@ export interface SiteMeta {
     pct_value_attempted?: number;
     pct_value_remaining?: number;
     /**
+     * Links the corpus publishes under `announcement+lexicon` that only THIS
+     * pass produced. `link_precision` above publishes the announcement tier's
+     * precision from the 2026-09-04 stratified draw, pinned to it; that draw
+     * was made over the tier as it then stood, and this many of the tier's
+     * links post-date it. The page states the count beside the tier figure so
+     * the sampling frame is visible — the figures were never wrong, the frame
+     * was undisclosed. Null on a row written before migration 017.
+     */
+    links_new_this_pass?: number | null;
+    /**
      * The held-out sample of the links this pass's newest wave produced —
      * a DIFFERENT measurement from `link_precision` above, which sampled the
      * whole announcement tier on 2026-09-04, before these links existed. It is
@@ -372,7 +382,20 @@ export interface SiteMeta {
      */
     precision?: {
       sample_id?: string;
+      /**
+       * `max(adjudicated_at)`, which scripts/precision_study.py sets to
+       * `now()` when the verdicts are LOADED — the date they were recorded,
+       * not a date the reviewers stamped. The page says "recorded", which is
+       * what the column means.
+       */
       sampled_at?: string | null;
+      /**
+       * The size of the DRAW — judged attribution verdicts in the run, before
+       * the published-links join. `sampled` is smaller whenever the corpus has
+       * stopped publishing a judged link (60 drawn, 55 publishing, 2026-09-19),
+       * and a reader shown only `sampled` cannot see that those links left.
+       */
+      drawn?: number;
       sampled?: number;
       confirmed?: number;
     } | null;

@@ -183,17 +183,22 @@ individually hand-adjudicated … a link publishes as high only if neither
 link the crosswalk grades high or medium. Backlog #109 carries the remaining
 five-path evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
-J-book pages also name. 60 of the 768 links published at high carry a
-per-award hand adjudication, all 60 challenged by two independent
-adversarial reviewers; the other 708 rest on the announcement+lexicon path.
-(Measured 2026-09-11 over the MART — the tier a reader meets, not
+J-book pages also name. 62 of the 1,135 links published at high carry a
+per-award hand adjudication, 61 of them challenged by two independent
+adversarial reviewers; the other 1,073 rest on the announcement+lexicon path.
+(Re-measured 2026-09-19, when the announcement pass's wave 4 added 367 links
+to that path; on 2026-09-11 the tier stood at 768 links, 60 adjudicated, all
+60 two-lens. These figures are derived on the page and only mirrored here, so
+the page moves with the corpus and this paragraph is re-stated when it does.
+The census is taken over the MART — the tier a reader meets, not
 `budget_line_awards`: dbt demotes an unadjudicated `account+tokens` high row
 to medium and Postgres has no column for it, so re-deriving the tier there
-counts 881 links where the site publishes 768. Of the 708, a match basis is
-recorded on 384 — `site_meta.link_adjudication.high.by_path` carries the
-figure and gate 24 leg o binds every number the sentence states, plus the
-rule that each path publishing at high with no adjudication is NAMED. This
-replaced "adversarially verified", which was true of 60 of 768.)
+counted 881 links against the 768 the site published on 2026-09-11. Of the
+1,075 announcement links, a match basis is recorded on 749 —
+`site_meta.link_adjudication.high.by_path` carries the figure and gate 24 leg
+o binds every number the sentence states, plus the rule that each path
+publishing at high with no adjudication is NAMED. This replaced
+"adversarially verified", which was true of 60 of 768.)
 *Medium*: most such links are
 account-based — the award drew from the same appropriation account as the
 program, usually under the same sub-agency — an association, not evidence
@@ -255,7 +260,11 @@ is derived from `site_meta.announcement_llm_scope` (written by
 precision sample, recomputed against the rendered page by gate 24 leg q), never
 typed here or there. That round's precision is measured on ITS links alone: the
 tier-wide study further down sampled the announcement tier on 2026-09-04,
-before those links existed, and stays pinned to that draw. Correction,
+before those links existed, and stays pinned to that draw. /methodology/
+states, derived, how many of the tier's links post-date that draw, beside the
+tier's own figure — the numbers there were never wrong, but until 2026-09-19
+the page did not say that a third of the tier had not been eligible for the
+sample. Correction,
 2026-09-19: until this date the page carried four literals from 2026-09-02
 instead — "3,840 … about 88% … 12,811 … ~12%" — describing a residue whose
 selection code was never committed and which no later reconstruction
