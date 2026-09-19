@@ -901,3 +901,44 @@ def test_collect_counts_an_unrecognized_verdict_and_never_raises():
     # an invalid verdict is not tallied into verdict_counts at all — it names
     # no bucket the proposer's three-way vocabulary recognizes
     assert result["verdict_counts"] == {"link": 1, "weak": 0, "wrong": 0}
+
+
+# --- Fix round 1, item 1 (Critical). `residue_manifest.json`'s earlier_pass
+# --- published an ENTRY count (3,840 over 3,832 distinct keys) that was never
+# --- intersected with TODAY's residue, and scripts/load_announcement_scope.py
+# --- added it to wave 4's record count and published the sum as a subset of
+# --- records_residue. Two ways that overstates: a duplicated paragraph counts
+# --- twice, and a record the lexicon has since learned to match
+# --- deterministically has left the residue altogether. The manifest now
+# --- publishes the intersection, and the loader reads THAT.
+
+def test_the_earlier_pass_counts_only_distinct_records_still_in_the_residue():
+    residue = [
+        dict(_rec("111", "attempted and still in the residue", ["P"], [10]),
+             lake_piids=["P"]),
+        # the same key twice — 8 of the real 3,840 entries are duplicates
+        dict(_rec("111", "attempted and still in the residue", ["P"], [10]),
+             lake_piids=["P"]),
+        dict(_rec("333", "never attempted", ["P"], [70]), lake_piids=["P"]),
+    ]
+    attempted = {
+        record_key(_rec("111", "attempted and still in the residue", ["P"], [10])),
+        # attempted by the earlier pass, but the lexicon matches it today, so
+        # select_residue has dropped it: it is NOT part of records_residue
+        record_key(_rec("222", "attempted, since matched deterministically",
+                        ["P"], [500])),
+    }
+    assert mar.earlier_pass_in_residue(residue, attempted) == (1, 10)
+
+
+def test_the_earlier_pass_value_of_a_duplicated_key_is_counted_once():
+    """Two residue entries share a key and disagree on the announced value
+    (the key is the first 200 characters; the amounts come from the whole
+    paragraph). The smaller one is published — the figure is a numerator over
+    the residue's value and must never be the larger reading."""
+    residue = [
+        dict(_rec("111", "x" * 200 + " tail A", ["P"], [90]), lake_piids=["P"]),
+        dict(_rec("111", "x" * 200 + " tail B", ["P"], [40]), lake_piids=["P"]),
+    ]
+    attempted = {record_key(_rec("111", "x" * 200, ["P"], [0]))}
+    assert mar.earlier_pass_in_residue(residue, attempted) == (1, 40)

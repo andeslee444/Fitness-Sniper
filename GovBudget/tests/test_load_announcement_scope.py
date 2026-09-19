@@ -15,14 +15,24 @@ they check:
 import psycopg
 import pytest
 
-from load_announcement_scope import check_precision_sample, scope_row  # scripts/ (conftest)
+from load_announcement_scope import (  # scripts/ on sys.path via tests/conftest.py
+    check_precision_sample,
+    new_links_published,
+    scope_row,
+)
 
 MANIFEST = {
     "records_with_lake_piid": 100,
     "records_deterministic": 40,
     "records_residue": 60,
     "value_residue": 1000,
-    "earlier_pass": {"name": "wave2-llm-alias", "records": 10, "value": 400},
+    # 12 ENTRIES / 500 handed to the earlier pass, of which 10 records / 400
+    # are still in today's residue: two entries duplicate a key, and one record
+    # the lexicon now matches deterministically has left the residue. Only the
+    # in-residue pair may be added to wave 4's count (fix round 1, item 1).
+    "earlier_pass": {"name": "wave2-llm-alias", "records": 12,
+                     "distinct_records": 11, "value": 500,
+                     "records_in_residue": 10, "value_in_residue": 400},
     "chunks": [
         {"file": "chunk_000_A.json", "records": 5, "announced_value": 100},
         {"file": "chunk_001_A.json", "records": 7, "announced_value": 250},
@@ -38,12 +48,14 @@ def test_only_the_adjudicated_chunks_count():
          "records_attempted": 12},
         "2026-09-19",
     )
-    as_of, total, deterministic, residue, attempted, v_residue, v_attempted, note, sid = row
+    (as_of, total, deterministic, residue, attempted, v_residue, v_attempted,
+     note, sid, new_links) = row
     assert (as_of, total, deterministic, residue) == ("2026-09-19", 100, 40, 60)
+    # the earlier pass's IN-RESIDUE 10 / 400, never its 12 entries / 500
     assert attempted == 10 + 12          # earlier pass + the two chunks
     assert (v_residue, v_attempted) == (1000, 400 + 350)
     assert "2 of 3 chunks adjudicated" in note
-    assert sid is None
+    assert (sid, new_links) == (None, None)
 
 
 def test_a_chunk_the_manifest_does_not_know_is_refused():
@@ -121,3 +133,76 @@ def test_an_audit_rubric_sample_is_refused(sample):
         pg.commit()
         with pytest.raises(SystemExit, match="rule-fired"):
             check_precision_sample(pg, sid, RESULT)
+
+
+def test_a_manifest_without_the_in_residue_fields_is_refused():
+    """The earlier pass's ENTRY count is not a subset of today's residue — it
+    double-counts duplicate paragraphs and includes records the lexicon has
+    since learned to match. A manifest generated before
+    `mine_announcement_residue.earlier_pass_in_residue` existed carries only
+    the entry count, and the loader must stop rather than publish it as a
+    share OF the residue."""
+    stale = {**MANIFEST,
+             "earlier_pass": {"name": "wave2-llm-alias", "records": 12, "value": 500}}
+    with pytest.raises(SystemExit, match="records_in_residue"):
+        scope_row(stale,
+                  {"chunks_attempted": ["chunk_000_A.json"], "records_attempted": 5},
+                  "2026-09-19")
+
+
+# ── the frame the tier-wide draw could not cover (fix round 1, item 2) ───────
+#
+# /methodology/ publishes the announcement tier's precision from the
+# 2026-09-04 stratified draw over the tier as it stood. This pass adds links to
+# that tier AFTER the draw, and the page has to say how many — derived, not
+# typed. `new_links_published` is where the count comes from: pairs this wave
+# produced that no earlier wave did, and that the corpus publishes today under
+# announcement+lexicon.
+
+
+@pytest.fixture()
+def published_links(pg_dsn):
+    org = "LAS-new-links"
+    rows = [
+        # (piid, pe_bli, method, confidence)
+        ("LAS-NEW-1", "0603286E", "announcement+lexicon", "high"),
+        ("LAS-OLD-1", "0603286E", "announcement+lexicon", "high"),
+        ("LAS-LOW-1", "0603286E", "announcement+lexicon", "low"),
+        ("LAS-SUB-1", "0603286E", "subaward+lexicon", "medium"),
+    ]
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("delete from budget_line_awards where organization = %s", (org,))
+        for piid, pe, method, conf in rows:
+            pg.execute(
+                "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+                " organization, award_piid, method, confidence)"
+                " values (%s, 'R-1', 2026, %s, %s, %s, %s)",
+                (pe, org, piid, method, conf))
+        pg.commit()
+    yield pg_dsn
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("delete from budget_line_awards where organization = %s", (org,))
+        pg.commit()
+
+
+WAVE4 = {"surviving": [
+    {"piid": "LAS-NEW-1", "pe_bli": "0603286E"},   # counted
+    {"piid": "LAS-OLD-1", "pe_bli": " 0603286E "},  # an earlier wave has it too
+    {"piid": "LAS-LOW-1", "pe_bli": "0603286E"},   # not published
+    {"piid": "LAS-SUB-1", "pe_bli": "0603286E"},   # published, other tier
+    {"piid": "LAS-GONE", "pe_bli": "0603286E"},    # no row at all
+]}
+EARLIER = [{"surviving": [{"piid": "LAS-OLD-1", "pe_bli": "0603286E"}]}]
+
+
+def test_only_this_waves_own_published_announcement_links_are_counted(published_links):
+    with psycopg.connect(published_links) as pg:
+        assert new_links_published(pg, WAVE4, EARLIER) == 1
+
+
+def test_a_wave_that_added_no_link_of_its_own_counts_zero(published_links):
+    """Every survivor is one an earlier wave already produced: the tier's draw
+    predates none of them, and the page must not claim a frame gap."""
+    earlier = [{"surviving": WAVE4["surviving"]}]
+    with psycopg.connect(published_links) as pg:
+        assert new_links_published(pg, WAVE4, earlier) == 0

@@ -212,6 +212,31 @@ def announced_value(rec: dict) -> int:
     return int(amounts[0]) if amounts else 0
 
 
+def earlier_pass_in_residue(residue, attempted) -> tuple[int, int]:
+    """(records, announced value) of the EARLIER pass that are still residue.
+
+    The earlier pass's own entry count is not a subset of today's residue and
+    must never be added to one: 8 of its 3,840 entries are duplicate keys, and
+    a record it attempted may since have gained a deterministic owned-name
+    match, which drops it out of `records_residue` altogether. Both errors run
+    the same way — they inflate `records_attempted` / `value_attempted`, which
+    /methodology/ publishes as a share OF the residue, and shrink the
+    unattempted tail. So: distinct residue keys the earlier pass attempted,
+    and their announced value counted once per key.
+
+    A key that appears twice in the residue with two different announced
+    values keeps the SMALLER one: the figure is a numerator over the residue's
+    value, and the smaller true number is the one that publishes.
+    """
+    value_by_key: dict[tuple[str, str], int] = {}
+    for rec in residue:
+        key = record_key(rec)
+        value = announced_value(rec)
+        value_by_key[key] = min(value_by_key.get(key, value), value)
+    shared = set(value_by_key) & set(attempted)
+    return len(shared), sum(value_by_key[k] for k in shared)
+
+
 def select_residue(records, *, lake, name_index, attempted, orgs_with_lexicon):
     """(residue, queued) in ONE pass — see the module docstring for the rules.
 
@@ -640,9 +665,10 @@ def cmd_queue(chunk_size: int) -> int:
     lakecon.close()
 
     # 3,840 entries carrying 3,832 distinct keys — 8 paragraphs are exact
-    # duplicates across articles. The disclosure figure is the ENTRY count (the
-    # records the wave-2 pass was actually handed, and the denominator of its
-    # $1.9545e12); the set is what rule 3 excludes by.
+    # duplicates across articles. `attempted_entries` / `attempted_value` are
+    # what the wave-2 pass was HANDED (the denominator of its $1.9545e12); the
+    # set is what rule 3 excludes by, and — intersected with today's residue
+    # below — what /methodology/ may add to wave 4's count.
     attempted = set()
     attempted_entries = 0
     attempted_value = 0
@@ -660,6 +686,11 @@ def cmd_queue(chunk_size: int) -> int:
     residue_all, queued = select_residue(
         records, lake=lake, name_index=name_index,
         attempted=attempted, orgs_with_lexicon=orgs_with_lexicon)
+    # Fix round 1, item 1: the two figures the scope loader is allowed to add
+    # to wave 4's, because they are a subset of records_residue / value_residue
+    # by construction. The pass's own totals are kept beside them, unchanged,
+    # as the record of what it was handed.
+    earlier_records, earlier_value = earlier_pass_in_residue(residue_all, attempted)
     chunks = chunk_records(queued, size=chunk_size)
 
     QUEUE_DIR.mkdir(parents=True, exist_ok=True)
@@ -714,7 +745,9 @@ def cmd_queue(chunk_size: int) -> int:
         "value_residue": sum(announced_value(r) for r in residue_all),
         "earlier_pass": {"name": "wave2-llm-alias", "records": attempted_entries,
                          "distinct_records": len(attempted),
-                         "value": attempted_value},
+                         "value": attempted_value,
+                         "records_in_residue": earlier_records,
+                         "value_in_residue": earlier_value},
         "records_queued": len(queued),
         "value_queued": sum(announced_value(r) for r in queued),
         "chunk_size": chunk_size,
@@ -724,7 +757,9 @@ def cmd_queue(chunk_size: int) -> int:
     print(f"records {len(records):,}; with lake PIID {with_lake:,}; "
           f"deterministic {manifest['records_deterministic']:,}; "
           f"residue {len(residue_all):,} (${manifest['value_residue']/1e12:.4f}T); "
-          f"already attempted {attempted_entries:,} ({len(attempted):,} distinct); "
+          f"already attempted {attempted_entries:,} ({len(attempted):,} distinct, "
+          f"{earlier_records:,} still in the residue "
+          f"(${earlier_value/1e12:.4f}T)); "
           f"queued {len(queued):,} in "
           f"{len(chunks)} chunks -> {QUEUE_DIR}")
     return 0

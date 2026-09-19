@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-12",
+ "generated_at": "2026-09-19",
  "records_total": 34542,
  "records_with_lake_piid": 32852,
  "records_deterministic": 4508,
@@ -9,7 +9,9 @@
   "name": "wave2-llm-alias",
   "records": 3840,
   "distinct_records": 3832,
-  "value": 1954546396259
+  "value": 1954546396259,
+  "records_in_residue": 3829,
+  "value_in_residue": 1944162628883
  },
  "records_queued": 23824,
  "value_queued": 1611957275563,
