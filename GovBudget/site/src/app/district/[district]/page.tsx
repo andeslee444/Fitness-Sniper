@@ -245,9 +245,9 @@ export default async function DistrictDetailPage({ params }: Props) {
               <p className="text-2xl font-bold tabular-nums">
                 {/* Derived 'district' aggregate citation — the award-DISTINCT
                     total for this district, from fct_district_totals (#51).
-                    fct_district_programs is per (district, pe_bli) and NOT
-                    summable: an award matched to N program elements appears N
-                    times with the same dollars there. State A when the
+                    fct_district_programs is per (district, pe_bli, account)
+                    and NOT summable: an award matched to N program elements
+                    appears N times with the same dollars there. State A when the
                     citation resolves; honest state C otherwise. */}
                 <Cite
                   value={detail.total_linkable_dollars}
@@ -449,7 +449,9 @@ export default async function DistrictDetailPage({ params }: Props) {
             <tbody className="divide-y divide-border">
               {detail.programs.map((prog) => (
                 <tr
-                  key={prog.pe_bli}
+                  // Task 27: the split key, not the pe_bli — a district can
+                  // hold one row per member of a shared budget-line code.
+                  key={prog.split_key}
                   className="hover:bg-muted/40 transition-colors"
                   data-sort-value={String(prog.total_obligation ?? -Infinity)}
                 >
@@ -460,8 +462,12 @@ export default async function DistrictDetailPage({ params }: Props) {
                     >
                       {prog.title}
                     </Link>
+                    {/* The MEMBER's code: '0145-APN' / '0145-PANMC' where two
+                        programs share '0145', the bare code everywhere else.
+                        Printing the bare code on both rows would name neither
+                        member (Task 27). */}
                     <span className="ml-2 font-mono text-xs text-muted-foreground">
-                      {prog.pe_bli}
+                      {prog.split_key}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">

@@ -290,7 +290,10 @@ function runDistrictTotalsFixLeg(districtDirs, districtOutDir, errors, notes) {
         sharedAwardOk++;
       } else if (sharedAwardFailures.length < 5) {
         sharedAwardFailures.push(
-          `${pop_district}/${prog.pe_bli}: shared_award_count=${prog.shared_award_count} but no matching [data-shared-award-count] on the built page`
+          // Task 27: the SPLIT KEY names the member — a district can hold one
+          // row per member of a shared budget-line code, so "${pop_district}/0145"
+          // would name two rows and send the reader to the wrong one.
+          `${pop_district}/${prog.split_key ?? prog.pe_bli}: shared_award_count=${prog.shared_award_count} but no matching [data-shared-award-count] on the built page`
         );
       }
     }

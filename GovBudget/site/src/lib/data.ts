@@ -2748,6 +2748,11 @@ export function getDistrictIndex(): DistrictIndex {
 // ── districts/{pop_district}.json ─────────────────────────────────────────────
 
 export interface DistrictProgram {
+  /** Task 27: the member appropriation account whose high-confidence links
+   *  produced these dollars ('1506N'), for the pe_bli values two programs
+   *  share. null for every code that names one program — and for a row that
+   *  names no one member, which keeps the disambiguation stub. */
+  account: string | null;
   award_count: number;
   fact_id: string | null;
   organization: string;
@@ -2758,6 +2763,11 @@ export interface DistrictProgram {
    *  underlying awards is ALSO crosswalked to. 1 means "not shared"; >1 is
    *  the AK-00 tell — one award attributed whole to each of N elements. */
   shared_award_count: number;
+  /** Task 27: this row's address — the member's page slug ('0145-APN'), equal
+   *  to pe_bli for every code that names one program. A district can hold one
+   *  row per member of a shared code, so pe_bli no longer identifies a row:
+   *  key the table and label the code by THIS. */
+  split_key: string;
   title: string;
   total_obligation: number | null;
   transaction_count: number;
