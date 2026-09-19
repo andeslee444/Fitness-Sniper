@@ -221,6 +221,7 @@ def test_precision_counts_only_published_announcement_links_of_that_run(sampled)
     assert precision == {
         "sample_id": "ALS-2026-09-12",
         "sampled_at": "2026-09-19",
+        "drawn": 5,
         "sampled": 3,
         "confirmed": 2,
     }
@@ -267,3 +268,92 @@ def test_the_announcement_tier_is_pinned_at_the_export_call_site():
     """The pin is policy, not a default: it lives in one named constant the
     exporter passes, so removing it is a visible edit and this test fails."""
     assert export_site._PINNED_PRECISION_SAMPLES["announcement+lexicon"] == "2026-09-04"
+
+
+# ---------------------------------------------------------------------------
+# Fix round 1: the draw size, the frame the tier draw could not cover, and the
+# pin bound at the CALL SITE rather than at the constant
+# ---------------------------------------------------------------------------
+
+
+def test_precision_states_the_draw_it_came_from_not_only_what_publishes(sampled):
+    """The published pair counts judged links the corpus STILL publishes, so
+    the denominator is smaller than the draw. `drawn` is the draw: five
+    attribution verdicts were judged under this run, three of them on links
+    that publish today. Without it the page can say "48 of the 55" and never
+    show the reader the five links that left."""
+    with psycopg.connect(sampled) as pg:
+        _row(pg, "ALS-2026-09-12")
+    with psycopg.connect(sampled) as pg:
+        precision = _announcement_llm_scope(pg)["precision"]
+    assert (precision["drawn"], precision["sampled"], precision["confirmed"]) == (5, 3, 2)
+
+
+def test_the_audit_rubric_verdict_is_not_part_of_the_draw(sampled):
+    """`drawn` counts the run's ATTRIBUTION verdicts — the question the
+    published pair answers. The fixture's one `rule-fired` row answers another
+    one and is in neither number."""
+    with psycopg.connect(sampled) as pg:
+        _row(pg, "ALS-2026-09-12")
+        n = pg.execute(
+            "select count(*) from link_precision_samples where sample_id = %s",
+            ("ALS-2026-09-12",)).fetchone()[0]
+    assert n == 6                       # 5 attribution + 1 rule-fired
+    with psycopg.connect(sampled) as pg:
+        assert _announcement_llm_scope(pg)["precision"]["drawn"] == 5
+
+
+def test_links_new_this_pass_is_published_when_the_row_carries_it(clean):
+    """The tier-wide precision draw (2026-09-04) predates the links this pass
+    added to the tier; the page states how many, so a reader can see the frame.
+    NULL on a row written before migration 017, and the page then says
+    nothing."""
+    with psycopg.connect(clean) as pg:
+        pg.execute(INSERT, ("2026-09-11", 32852, 4508, 28344, 3840,
+                            3839300000000, 1954500000000, "before 017"))
+        pg.commit()
+    with psycopg.connect(clean) as pg:
+        assert _announcement_llm_scope(pg)["links_new_this_pass"] is None
+    with psycopg.connect(clean) as pg:
+        pg.execute(INSERT + " ", ("2026-09-12", 32852, 4508, 28344, 15604,
+                                  3839296125017, 3422307000911, "with 017"))
+        pg.execute("update announcement_llm_scope set links_new_this_pass = 367"
+                   " where as_of = '2026-09-12'")
+        pg.commit()
+    with psycopg.connect(clean) as pg:
+        assert _announcement_llm_scope(pg)["links_new_this_pass"] == 367
+
+
+class _RecordingPg:
+    """A `pg` that answers nothing and remembers every query's parameters —
+    enough to prove which RUN the exporter asked the precision tally for."""
+
+    def __init__(self):
+        self.params = []
+
+    def execute(self, sql, params=None):
+        self.params.append(params)
+        return self
+
+    def fetchall(self):
+        return []
+
+    def fetchone(self):
+        return None
+
+
+def test_the_export_call_site_asks_for_the_pinned_run(clean):
+    """R-25b-1, bound where it can break. The pin is not a default inside
+    `_link_precision_block`: the EXPORT CALL SITE passes it, and deleting that
+    kwarg would silently republish the announcement tier's figure from the
+    wave-4 sample — a narrower population under the tier's name. The test used
+    to assert the constant's value, which that edit leaves untouched. This one
+    runs the function the exporter calls and watches the run it asks Postgres
+    for."""
+    recorder = _RecordingPg()
+    export_site._link_precision_for_export(
+        recorder, published_methods={"announcement+lexicon"})
+    asked = [p.get("sample_id") for p in recorder.params if isinstance(p, dict)]
+    assert export_site._PINNED_PRECISION_SAMPLES["announcement+lexicon"] in asked, (
+        "the exporter never asked for the pinned run — "
+        f"runs asked for: {asked}")

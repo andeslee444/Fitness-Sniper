@@ -2495,11 +2495,8 @@ def export_site(
     # last adjudication, 2026-09-01, when the corpus had grown since).
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
     with psycopg.connect(dsn) as pg_precision:
-        link_precision = _link_precision_block(
-            pg_precision,
-            published_methods=published_link_methods,
-            pinned_samples=_PINNED_PRECISION_SAMPLES,
-        )
+        link_precision = _link_precision_for_export(
+            pg_precision, published_link_methods)
         link_adjudication = _link_adjudication_block(
             pg_precision,
             high_links=published_high_links,
@@ -2902,6 +2899,30 @@ _PRECISION_RUBRICS = ("attribution", "rule-fired")
 _PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
 
 
+def _link_precision_for_export(pg, published_methods: set[str] | None) -> dict:
+    """`_link_precision_block` AS THE EXPORT CALLS IT — with the pin.
+
+    The pin is policy, not a default: `_link_precision_block` takes each
+    method's latest run unless told otherwise, and the wave-4 sample
+    (`2026-09-12`) is a draw over ONE wave's links. Left unpinned it becomes
+    the announcement tier's published precision the moment it loads — a
+    narrower population under the tier's name.
+
+    This exists as a named function so the kwarg can be TESTED. Asserting
+    `_PINNED_PRECISION_SAMPLES["announcement+lexicon"] == "2026-09-04"` does
+    not protect anything: deleting `pinned_samples=…` from the call site
+    leaves the constant intact and every test green
+    (tests/test_export_site_announcement_scope.py exercises this function and
+    watches which run it asks Postgres for; gate 24 leg n binds the sample_id
+    the shipped site_meta reports for the pinned tier).
+    """
+    return _link_precision_block(
+        pg,
+        published_methods=published_methods,
+        pinned_samples=_PINNED_PRECISION_SAMPLES,
+    )
+
+
 def _published_link_methods(duckdb_path) -> set[str]:
     """Every fct_budget_to_awards `method` the site actually PUBLISHES — i.e.
     carries at least one high- or medium-confidence row in the mart.
@@ -3094,7 +3115,7 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
 
 def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
     """The held-out precision pair for the links ONE announcement pass
-    produced: ``{sample_id, sampled_at, sampled, confirmed}``, or None.
+    produced: ``{sample_id, sampled_at, drawn, sampled, confirmed}``, or None.
 
     None when the scope row names no run, or when the run it names judged no
     link the corpus still publishes under `announcement+lexicon` — the page
@@ -3107,6 +3128,18 @@ def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
     Only `attribution` verdicts count (migration 015) — a `rule-fired` verdict
     answers whether the mechanical rule fired, which this route has none of.
 
+    `drawn` is that rule made visible: the run's judged attribution verdicts
+    BEFORE the published-links join. The wave-4 run drew 60 and 55 of them
+    publish today, so the pair is 48 of 55 (87.3%) where the raw verdicts read
+    51 of 60 (85.0%). A reader who is shown only the smaller denominator
+    cannot see that five links left it, so the page states the draw too.
+
+    `sampled_at` is `max(adjudicated_at)`, and that column is set to `now()`
+    when the verdicts are LOADED (scripts/precision_study.py, on insert and on
+    conflict) — it is the date the verdicts were recorded, not a date the
+    reviewers stamped. The page says "recorded", which is what the column
+    means; re-loading the same file would move it.
+
     scripts/load_announcement_scope.py is the write-time twin: it refuses to
     record a run whose sampled pairs are not the pass's own survivors, so
     "joined to the wave's links" is enforced where the row is written and this
@@ -3114,6 +3147,12 @@ def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
     """
     if not sample_id:
         return None
+    drawn_row = pg.execute(
+        "select count(*) from link_precision_samples"
+        " where sample_id = %s and rubric = 'attribution'"
+        "   and verdict is not null",
+        (sample_id,),
+    ).fetchone()
     confirmed, sampled, judged_at = pg.execute(
         "select count(*) filter (where s.verdict = 'confirmed'), count(*),"
         "       max(s.adjudicated_at)"
@@ -3131,6 +3170,7 @@ def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
     return {
         "sample_id": sample_id,
         "sampled_at": judged_at.date().isoformat() if judged_at else None,
+        "drawn": int(drawn_row[0]),
         "sampled": int(sampled),
         "confirmed": int(confirmed),
     }
@@ -3143,10 +3183,22 @@ def _announcement_llm_scope(pg) -> dict:
 
         {"as_of": "2026-09-19", "records_total": 32852,
          "records_deterministic": 4508, "records_residue": 28344,
-         "records_attempted": 15615, "records_remaining": 12729,
-         "pct_value_attempted": 89.4, "pct_value_remaining": 10.6,
+         "records_attempted": 15604, "records_remaining": 12740,
+         "pct_value_attempted": 89.1, "pct_value_remaining": 10.9,
+         "links_new_this_pass": 367,                      # or None
          "precision": {"sample_id": "2026-09-12", "sampled_at": "2026-09-19",
-                       "sampled": 60, "confirmed": 51}}   # or None
+                       "drawn": 60, "sampled": 55, "confirmed": 48}}  # or None
+
+    The precision pair is 48/55, not the 51/60 the verdict rows hold: only
+    judged links the corpus STILL publishes count (see
+    `_announcement_scope_precision`), and five of the 60 no longer do. `drawn`
+    carries the 60 so the page can show the reader both.
+
+    `links_new_this_pass` is how many of the links the corpus publishes under
+    `announcement+lexicon` only this pass produced — the part of the tier that
+    post-dates the pinned 2026-09-04 tier-wide draw, and which that draw
+    therefore could not have sampled. NULL on a row written before migration
+    017.
 
     ALL keys or none — /methodology/ and gate 24 leg q both key off
     ``records_total`` being present, so a partial block would make the page
@@ -3176,13 +3228,14 @@ def _announcement_llm_scope(pg) -> dict:
     """
     row = pg.execute(
         "select as_of, records_total, records_deterministic, records_residue,"
-        " records_attempted, value_residue, value_attempted, precision_sample_id"
+        " records_attempted, value_residue, value_attempted,"
+        " precision_sample_id, links_new_this_pass"
         " from announcement_llm_scope order by as_of desc limit 1"
     ).fetchone()
     if row is None:
         return {}
     (as_of, total, deterministic, residue, attempted,
-     value_residue, value_attempted, precision_sample_id) = row
+     value_residue, value_attempted, precision_sample_id, links_new) = row
     if attempted > residue:
         raise ValueError(
             f"announcement_llm_scope {as_of}: records_attempted {attempted} "
@@ -3204,6 +3257,7 @@ def _announcement_llm_scope(pg) -> dict:
         "records_remaining": int(residue - attempted),
         "pct_value_attempted": pct_attempted,
         "pct_value_remaining": round(100.0 - pct_attempted, 1),
+        "links_new_this_pass": int(links_new) if links_new is not None else None,
         "precision": _announcement_scope_precision(pg, precision_sample_id),
     }
 
