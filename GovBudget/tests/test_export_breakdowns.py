@@ -137,13 +137,16 @@ def _make_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE dim_programs ("
         "  pe_bli varchar, org varchar, exhibit_family varchar, title varchar,"
-        "  project_count integer, fy2024_actual_millions double, fully_reconciled boolean"
+        "  project_count integer, fy2024_actual_millions double,"
+        "  fully_reconciled boolean, account varchar, account_title varchar"
         ")"
     )
     con.execute(
         "INSERT INTO dim_programs VALUES "
-        "('0601101E', 'DARPA', 'rdte', 'DARPA Research', 1, 100.0, true),"
-        "('0602025E', 'DARPA', 'rdte', 'DARPA Manufacturing', 1, 50.0, false)"
+        "('0601101E', 'DARPA', 'rdte', 'DARPA Research', 1, 100.0, true,"
+        " NULL, NULL),"
+        "('0602025E', 'DARPA', 'rdte', 'DARPA Manufacturing', 1, 50.0,"
+        " false, NULL, NULL)"
     )
     con.execute(
         "CREATE TABLE fct_district_programs ("

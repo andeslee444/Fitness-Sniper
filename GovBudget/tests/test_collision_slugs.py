@@ -182,6 +182,35 @@ def test_an_ordinary_code_carrying_an_account_keeps_its_pre_task_27_fact_id():
         ident, "VA", "VA-08", "3010", SCN) == f"VA|VA-08|3010|{SCN}"
 
 
+def test_a_pair_the_identity_never_published_falls_back_on_both_halves():
+    """Task 27 fix round 2 (R-27-8, item 2) — the PREDICATE was not the last
+    word, so sharing it was not enough.
+
+    _member_split_key has a tail round 1 left out of the shared question: an
+    account-split code carrying an account dim_programs has never published
+    finds no pair in ident.accounts(pe_bli) and falls back to the bare
+    pe_bli — while _district_program_key, satisfied by the predicate alone,
+    went on appending that account. The row would then have rendered under
+    the disambiguation stub at /program/3010/ while its /fact/{id} had
+    rotated to a key nothing else mints: an address and a fact id
+    disagreeing about whether this row names a member, which is exactly
+    what R-27-2' set out to make impossible. One function now returns the
+    member (or None) and both halves fall back together.
+
+    0 rows today: measured read-only 2026-09-19, each of the 11
+    account-bearing district rows finds its (pe_bli, account) pair in
+    dim_programs (exactly one row per pair).
+    """
+    from govbudget.export_site import _district_program_key, _member_split_key
+
+    ident = _district_identity()
+    # '3010' IS account-split, but '9999X' is not one of its accounts.
+    assert [a for a, *_ in ident.accounts("3010")] == [SCN, OPN]
+    assert _member_split_key(ident, "3010", "9999X") == "3010"
+    assert _district_program_key(
+        ident, "VA", "VA-08", "3010", "9999X") == "VA|VA-08|3010"
+
+
 # The 11 account-bearing rows of fct_district_programs at the member grain,
 # measured read-only against data/duckdb/govbudget.duckdb on 2026-09-19
 # (0145 x2, 2292, 3010, 3215 x7). These are the rows whose /fact/{id}
@@ -578,13 +607,18 @@ def _seed_split_key_jbooks(dsn: str) -> None:
 
 def _make_collision_duckdb(db_path: Path) -> None:
     """The shared 1-row mart fixture, widened to the E1 (account, pe_bli)
-    grain and given 3010's two members plus one account-keyed link each."""
+    grain and given 3010's two members plus one account-keyed link each.
+
+    Task 27 fix round 2 (2026-09-19): the base fixture's dim_programs now
+    declares `account`/`account_title` itself — a dim_programs PRESENT
+    without them is a stale mart the exporter refuses — so the two
+    `alter table … add column` lines that used to bolt them on here are
+    gone. Only the member rows below are still this fixture's own.
+    """
     from jbooks.test_export_site_pg import _make_test_duckdb
 
     _make_test_duckdb(db_path)
     con = duckdb.connect(str(db_path))
-    con.execute("alter table dim_programs add column account varchar")
-    con.execute("alter table dim_programs add column account_title varchar")
     con.execute(
         "insert into dim_programs (pe_bli, title, org, exhibit_family,"
         " project_count, fy2024_actual_millions, fully_reconciled, account,"

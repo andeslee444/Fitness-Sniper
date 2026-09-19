@@ -129,8 +129,14 @@ def _make_test_duckdb(db_path: Path) -> None:
     con = duckdb.connect(str(db_path))
 
     # 1. dim_programs
-    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
-    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    #    `account`/`account_title` are the member identity the exporter
+    #    resolves a district row's program page with. Since Task 27 fix
+    #    round 2 (2026-09-19) a dim_programs that is PRESENT without them is
+    #    a stale mart and stops the export, so every fixture declares them —
+    #    NULL here, which is what an ordinary code that names ONE program
+    #    carries.
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean, account varchar, account_title varchar)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true,NULL,NULL)")
 
     # 2. fct_budget_to_awards  (live cols: pe_bli,exhibit,fiscal_year,organization,award_piid,recipient_name,recipient_uei,method,account,confidence,program_title)
     #    `account` is the member appropriation a link resolved to — NULL for
@@ -1077,9 +1083,9 @@ def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     db.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db))
     # Copy _make_test_duckdb but add a second dim_programs row with no matching details
-    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
-    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
-    con.execute("insert into dim_programs values ('9999ZZZZ','Orphan Program','DARPA','rdte',0,0.0,false)")
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean, account varchar, account_title varchar)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true,NULL,NULL)")
+    con.execute("insert into dim_programs values ('9999ZZZZ','Orphan Program','DARPA','rdte',0,0.0,false,NULL,NULL)")
     # Build the rest of the tables
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
@@ -1132,8 +1138,8 @@ def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
     db = tmp_path / "wh.duckdb"
     db.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db))
-    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
-    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,0.0,false)")
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean, account varchar, account_title varchar)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,0.0,false,NULL,NULL)")
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
@@ -1223,12 +1229,12 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     db = tmp_path / "wh.duckdb"
     db.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db))
-    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
-    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean, account varchar, account_title varchar)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true,NULL,NULL)")
     # OSD program — direct join
-    con.execute("insert into dim_programs values ('OSDPROG1','OSD Program','OSD','rdte',1,10.0,false)")
+    con.execute("insert into dim_programs values ('OSDPROG1','OSD Program','OSD','rdte',1,10.0,false,NULL,NULL)")
     # DPAP program — forward-translated to OSD
-    con.execute("insert into dim_programs values ('DPAPPROG1','DPAP Program','DPAP','rdte',1,5.0,false)")
+    con.execute("insert into dim_programs values ('DPAPPROG1','DPAP Program','DPAP','rdte',1,5.0,false,NULL,NULL)")
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
     # fy2526_change = fy2026_total - fy2025_total = 295000 - 293145 = 1855
@@ -1366,8 +1372,8 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     db = tmp_path / "wh.duckdb"
     db.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db))
-    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
-    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean, account varchar, account_title varchar)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true,NULL,NULL)")
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     # Award whose recipient_name matches 'Lockheed Martin' (the display_name we'll seed)
     con.execute("insert into fct_budget_to_awards values ('0601101E','R-1',2026,'DARPA','W911QX-24-C-0001','Lockheed Martin','UEI123','account+subagency','medium','Defense Research Sciences')")
@@ -1453,8 +1459,8 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     db = tmp_path / "wh.duckdb"
     db.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db))
-    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
-    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean, account varchar, account_title varchar)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true,NULL,NULL)")
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
     con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")

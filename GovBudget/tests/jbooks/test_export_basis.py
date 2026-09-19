@@ -143,15 +143,21 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db_path))
 
+    # account/account_title: the member identity the exporter resolves a
+    # program page with. A dim_programs PRESENT without them is a stale mart
+    # and stops the export (Task 27 fix round 2, 2026-09-19), so the fixture
+    # declares them — NULL, which is what a code naming ONE program carries.
     con.execute(
         "create table dim_programs (pe_bli varchar, title varchar, org varchar,"
         " exhibit_family varchar, project_count integer,"
-        " fy2024_actual_millions double, fully_reconciled boolean)"
+        " fy2024_actual_millions double, fully_reconciled boolean,"
+        " account varchar, account_title varchar)"
     )
     con.execute(
         f"insert into dim_programs values"
-        f" ('{PE}','F-35','{ORG}','procurement',0,5247.070,false),"
-        f" ('{SPARSE_PE}','Sparse Line','{ORG}','rdte',0,100.0,false)"
+        f" ('{PE}','F-35','{ORG}','procurement',0,5247.070,false,NULL,NULL),"
+        f" ('{SPARSE_PE}','Sparse Line','{ORG}','rdte',0,100.0,false,"
+        f"  NULL,NULL)"
     )
 
     con.execute(

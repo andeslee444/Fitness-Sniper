@@ -720,10 +720,11 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE dim_programs (pe_bli varchar, title varchar, org varchar,"
         " exhibit_family varchar, project_count integer, fy2024_actual_millions double,"
-        " fully_reconciled boolean)"
+        " fully_reconciled boolean, account varchar, account_title varchar)"
     )
     con.execute(
-        "INSERT INTO dim_programs VALUES ('0603760E', 'Command Control', 'DARPA', 'rdte', 5, 100.0, true)"
+        "INSERT INTO dim_programs VALUES ('0603760E', 'Command Control',"
+        " 'DARPA', 'rdte', 5, 100.0, true, NULL, NULL)"
     )
 
     # fct_budget_trajectory
@@ -1145,6 +1146,89 @@ class TestBuildUsaspendingCitationRows:
             _build_usaspending_citation_rows(duckdb_path=db_path)
         assert "account" in str(exc.value)
         assert "govbudget build" in str(exc.value)
+
+    def _district_only_duckdb(self, tmp_path, name, *, account, dim_programs=None):
+        """A lake with ONE post-Task-27 fct_district_programs row, and
+        dim_programs exactly as the caller asks for it (absent when None).
+        """
+        db_path = tmp_path / name
+        con = duckdb.connect(str(db_path))
+        if dim_programs is not None:
+            con.execute(f"CREATE TABLE dim_programs ({dim_programs})")
+        con.execute(
+            "CREATE TABLE fct_district_programs (pop_state varchar,"
+            " pop_district varchar, pe_bli varchar, account varchar,"
+            " program_title varchar, organization varchar,"
+            " transaction_count integer, award_count integer,"
+            " recipient_count integer, total_obligation double)"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES"
+            " ('VA', 'VA-08', '3010', ?, 'LPD Flight II', 'N',"
+            " 3, 3, 3, 900000.0)",
+            [account],
+        )
+        con.close()
+        return db_path
+
+    def test_a_dim_programs_without_the_identity_columns_raises(self, tmp_path):
+        """Task 27 fix round 2 (R-27-8): a dim_programs that is PRESENT but
+        predates the account identity must stop the export.
+
+        Before this, _fetch_program_identity caught ANY exception from its
+        read and returned the EMPTY identity — so a partially rebuilt mart
+        (`dbt run --select fct_district_programs`, or any pre-E3 warehouse)
+        silently reverted every district row to the pre-Task-27 address and
+        the pre-Task-27 fact id, with no print and no gate able to see it
+        for the 11 real rows.
+        """
+        for cols, missing in (
+            ("pe_bli varchar, title varchar, org varchar", "account"),
+            ("pe_bli varchar, account varchar, org varchar", "account_title"),
+        ):
+            db_path = self._district_only_duckdb(
+                tmp_path, f"no-{missing}.duckdb", account=None,
+                dim_programs=cols,
+            )
+            with pytest.raises(RuntimeError) as exc:
+                _build_usaspending_citation_rows(duckdb_path=db_path)
+            assert missing in str(exc.value), missing
+            assert "dim_programs" in str(exc.value)
+            assert "govbudget build" in str(exc.value)
+
+    def test_an_absent_dim_programs_still_exports_null_account_rows(self, tmp_path):
+        """R-27-8 is narrow: an ABSENT dim_programs keeps the empty identity.
+
+        Six district-mart fixtures build no dim_programs at all and carry
+        NULL-account rows only; with no member to name, the empty identity
+        is the right answer and the row keeps its pre-Task-27 fact id. (A
+        real export never reaches here with dim_programs missing — it is a
+        required mart and export_site raises on it first.)
+        """
+        db_path = self._district_only_duckdb(
+            tmp_path, "no-dim.duckdb", account=None)
+        rows = _build_usaspending_citation_rows(duckdb_path=db_path)
+        fids = {r[0] for r in rows}
+        assert fact_id_usaspending(
+            "district_program", "VA|VA-08|3010", "total_obligation") in fids
+
+    def test_an_absent_dim_programs_with_an_account_bearing_row_raises(
+        self, tmp_path,
+    ):
+        """R-27-8, belt and braces: the empty identity is only honest while
+        no district row names a member.
+
+        A row carrying an account with nothing to resolve it against would
+        publish under the bare key — the fused shape Task 27 removed — so
+        the minting site raises instead, naming the row.
+        """
+        db_path = self._district_only_duckdb(
+            tmp_path, "no-dim-account.duckdb", account="1611N")
+        with pytest.raises(RuntimeError) as exc:
+            _build_usaspending_citation_rows(duckdb_path=db_path)
+        msg = str(exc.value)
+        for token in ("VA", "VA-08", "3010", "1611N", "govbudget build"):
+            assert token in msg, token
 
     def test_query_body_is_valid_json(self, tmp_path):
         """All query_body fields parse as JSON dicts."""
@@ -1626,10 +1710,11 @@ def _make_trajectory_duckdb(
     con.execute(
         "CREATE TABLE dim_programs (pe_bli varchar, org varchar, exhibit_family varchar,"
         " title varchar, project_count integer, fy2024_actual_millions double,"
-        " fully_reconciled boolean)"
+        " fully_reconciled boolean, account varchar, account_title varchar)"
     )
     con.execute(
-        "INSERT INTO dim_programs VALUES ('0601101E', 'DARPA', 'rdte', 'Defense Research', 1, 700.0, true)"
+        "INSERT INTO dim_programs VALUES ('0601101E', 'DARPA', 'rdte',"
+        " 'Defense Research', 1, 700.0, true, NULL, NULL)"
     )
 
     # fct_program_concentration (stub)
@@ -1767,7 +1852,7 @@ class TestFy2526ChangeInputs:
         con.execute(
             "CREATE TABLE dim_programs (pe_bli varchar, org varchar, exhibit_family varchar,"
             " title varchar, project_count integer, fy2024_actual_millions double,"
-            " fully_reconciled boolean)"
+            " fully_reconciled boolean, account varchar, account_title varchar)"
         )
         for tbl, cols in [
             ("fct_program_concentration", "pe_bli varchar, hhi_all double, top_family_all varchar, family_count_all integer, award_count_all integer, program_dollars_all double, hhi_high double, top_family_high varchar, family_count_high integer, award_count_high integer, program_dollars_high double"),
@@ -2013,7 +2098,7 @@ def _make_agency_duckdb(tmp_path: Path) -> tuple[Path, list]:
     con = duckdb.connect(str(db_path))
     con.execute(
         "INSERT INTO dim_programs VALUES "
-        "('0601102E', 'DARPA', 'rdte', 'Program Two', 1, 300.0, false)"
+        "('0601102E', 'DARPA', 'rdte', 'Program Two', 1, 300.0, false, NULL, NULL)"
     )
     con.close()
 
@@ -2097,7 +2182,7 @@ class TestConcentrationTwoBases:
         con.execute(
             "CREATE TABLE dim_programs (pe_bli varchar, org varchar, exhibit_family varchar,"
             " title varchar, project_count integer, fy2024_actual_millions double,"
-            " fully_reconciled boolean)"
+            " fully_reconciled boolean, account varchar, account_title varchar)"
         )
         for tbl, cols in [
             ("fct_improper_exposure", "agency_code varchar, derived_improper_amount_usd double, weighted_rate_pct double"),

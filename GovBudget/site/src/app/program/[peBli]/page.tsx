@@ -588,8 +588,9 @@ export default async function ProgramPage({
   }
 
   // Follow-the-dollar (Task 6b): only the 17 crosswalked programs have a
-  // flows sidecar. The cited per-district table needs the (district, pe_bli)
-  // USAspending fact_ids in the page slice.
+  // flows sidecar. The cited per-district table needs the
+  // (district, pe_bli, account) USAspending fact_ids in the page slice —
+  // the member grain since Task 27.
   const flowData = getFlowData(peBli);
   if (flowData) {
     for (const row of flowData.districtRows) {

@@ -325,6 +325,18 @@ class _ProgramIdentity:
     def accounts(self, pe_bli: str) -> list[tuple[str, str, str, bool]]:
         return self._by_pe.get(pe_bli, [])
 
+    def is_empty(self) -> bool:
+        """True when dim_programs gave this map NOTHING — no pe_bli has an
+        identity here, so no row can name a member and every split key
+        collapses to its bare pe_bli.
+
+        _fetch_program_identity returns such a map when dim_programs is
+        absent, which is legitimate for a fixture lake that never built it
+        (Task 27 fix round 2, R-27-8). It stops being legitimate the moment
+        a district row carries an account — see _district_program_key, the
+        one place that asks."""
+        return not self._by_pe
+
     def is_split(self, pe_bli: str) -> bool:
         return pe_bli in self.split_pe_blis
 
@@ -468,28 +480,61 @@ def shared_code_program_label(titles: list[str | None]) -> str | None:
     return " / ".join(seen)
 
 
-def _district_row_names_a_member(ident, pe_bli: str, account: str | None) -> bool:
-    """Does THIS fct_district_programs row name ONE member of a shared code?
+def _district_row_member_slug(ident, pe_bli: str, account: str | None) -> str | None:
+    """The member page slug THIS fct_district_programs row names, or None.
 
-    The single predicate both halves of a district row's identity dispatch on
+    The single ANSWER both halves of a district row's identity dispatch on
     — its ADDRESS (_member_split_key) and its FACT-ID KEY
     (_district_program_key). Fix round 1, 2026-09-19 (R-27-2'): the two were
     written apart and agreed only because of a data property — measured
     read-only against the shipped warehouse 2026-09-19, all 11 account-bearing
     district rows sit on account-split codes and no ordinary code carries an
     account — so an ordinary code that ever acquired one would have kept its
-    address while silently rotating its /fact/{id} permalink. One predicate
-    makes that agreement structural instead of incidental.
+    address while silently rotating its /fact/{id} permalink. Fix round 2
+    (R-27-8, item 2) closes the other half of that hole: the shared PREDICATE
+    was not the last word, because the account lookup below can still come up
+    empty, and round 1 left the address falling back to the bare pe_bli there
+    while the key went on appending the account. Resolving the member in ONE
+    place makes the two fall back together.
 
-    False, therefore, in three cases, all of which keep the bare key:
+    None — the bare key, the disambiguation stub, the pre-Task-27 fact id —
+    in four cases:
 
       · an ordinary pe_bli — there is no member to name;
       · an ORGANIZATION-split code ('20', '30', '500'), whose members share
         one account ('0300D'), so an account cannot name one of them;
       · an account-NULL row on an account-split code, which names BOTH
-        members (the case the narrowed singular test guards in dbt).
+        members (the case the narrowed singular test guards in dbt);
+      · an account-split code carrying an account dim_programs has never
+        published — an account the identity map has never seen cannot name a
+        member of it. 0 rows today: measured read-only 2026-09-19, each of
+        the 11 account-bearing district rows finds its (pe_bli, account) pair
+        in dim_programs, exactly one row per pair.
+
+    The (pe_bli, account) -> account_title lookup runs over ident's own
+    dim_programs rows, and is consulted ONLY for account-split keys, where
+    the pair is unique by construction (dim_programs is not unique on
+    (pe_bli, account) globally: the three org-split keys publish 2-3 rows
+    under 0300D each).
     """
-    return account is not None and ident.is_account_split(pe_bli)
+    if account is None or not ident.is_account_split(pe_bli):
+        return None
+    for acct, account_title, organization, _has_detail in ident.accounts(pe_bli):
+        if acct == account:
+            return ident.slug(pe_bli, acct, account_title, organization)
+    return None
+
+
+def _district_row_names_a_member(ident, pe_bli: str, account: str | None) -> bool:
+    """Does THIS fct_district_programs row name ONE member of a shared code?
+
+    The predicate form of _district_row_member_slug, for the caller that
+    needs the question rather than the answer (_district_program_key, which
+    appends the row's own account rather than its slug). It asks that one
+    function and nothing else, so the four "no" cases listed there are the
+    four cases that keep the bare key.
+    """
+    return _district_row_member_slug(ident, pe_bli, account) is not None
 
 
 def _district_program_key(
@@ -514,8 +559,23 @@ def _district_program_key(
     the old ids are listed in the task report. They are 0145 in MA-06 and
     MO-01, 2292 in AZ-07, 3010 in MS-04, and 3215 in MA-08, MD-03, MO-01,
     PA-14, RI-01, VA-10 and WA-06 (measured read-only 2026-09-19).
+
+    Belt and braces (fix round 2, R-27-8): an EMPTY identity map answers "no
+    member" for every row, which is the honest answer only while no row has
+    a member to name. A row that carries an account against an empty map
+    would publish under the bare key — Task 27's fused shape, restored
+    silently — so this raises instead, naming the row. dim_programs being
+    absent is what empties the map, and _fetch_program_identity says why
+    that is allowed to happen at all.
     """
     base = f"{pop_state}|{pop_district}|{pe_bli}"
+    if account is not None and ident.is_empty():
+        raise RuntimeError(
+            f"district row {base}|{account} carries an appropriation account"
+            " but dim_programs published no program identity at all, so this"
+            " row would publish under the bare pe_bli — the pre-Task-27"
+            " fused key. Run `govbudget build` before export-site."
+        )
     if not _district_row_names_a_member(ident, pe_bli, account):
         return base
     return f"{base}|{account}"
@@ -526,26 +586,15 @@ def _member_split_key(ident, pe_bli: str, account: str | None) -> str:
 
     Returns `ident.slug(pe_bli, account, account_title, organization)` — the
     SAME call program pages resolve their own slug with — when this row names
-    one member of a shared code, and the bare pe_bli otherwise. Which rows
-    those are is _district_row_names_a_member's question, asked here and by
-    _district_program_key so an address and a fact id can never disagree
-    about whether a row names a member; the three "otherwise" cases (an
-    ordinary code, an organization-split code, an account-NULL row on a
-    shared code) all keep the disambiguation stub rather than guess.
-
-    The (pe_bli, account) -> account_title lookup runs over ident's own
-    dim_programs rows, and is consulted ONLY for account-split keys, where
-    the pair is unique by construction (dim_programs is not unique on
-    (pe_bli, account) globally: the three org-split keys publish 2-3 rows
-    under 0300D each).
+    one member of a shared code, and the bare pe_bli otherwise. WHICH member,
+    if any, is _district_row_member_slug's answer, taken here and (as a
+    predicate) by _district_program_key, so an address and a fact id can
+    never disagree about whether a row names a member. Since fix round 2
+    (R-27-8) that holds for all four "otherwise" cases, including the one
+    round 1 left diverging: a (pe_bli, account) pair absent from the identity
+    map now drops BOTH halves back to the bare key, not just this one.
     """
-    if not _district_row_names_a_member(ident, pe_bli, account):
-        return pe_bli
-    for acct, account_title, organization, _has_detail in ident.accounts(pe_bli):
-        if acct == account:
-            return ident.slug(pe_bli, acct, account_title, organization)
-    # An account the identity map has never seen cannot name a member of it.
-    return pe_bli
+    return _district_row_member_slug(ident, pe_bli, account) or pe_bli
 
 
 def _query_with_account_fallback(
@@ -580,9 +629,12 @@ def _query_with_account_fallback(
         return out
 
 
-def _require_account_column(con, table: str) -> bool:
-    """True when `table` exists and carries the `account` column Task 27's
-    district surfaces read. False when the TABLE ITSELF is absent.
+def _require_account_column(
+    con, table: str, *, columns: tuple[str, ...] = ("account",),
+) -> bool:
+    """True when `table` exists and carries every one of `columns` — the
+    account identity Task 27's district surfaces read. False when the TABLE
+    ITSELF is absent.
 
     Fix round 1, 2026-09-19: the district reads below used to fall back to an
     account-less query and splice None into every row. For a mart that never
@@ -597,6 +649,11 @@ def _require_account_column(con, table: str) -> bool:
     The table being ABSENT is a different thing and keeps its old behaviour:
     a fixture lake that never built the mart publishes nothing from it, and
     every caller here already degrades to an empty list.
+
+    Fix round 2, 2026-09-19 (R-27-8): `columns` generalizes the same probe to
+    dim_programs, whose `account` AND `account_title` are what resolve a
+    district row's member at all — see _fetch_program_identity. The two
+    tables fail for one reason and the message says it once.
     """
     try:
         cols = {
@@ -604,11 +661,12 @@ def _require_account_column(con, table: str) -> bool:
         }
     except Exception:
         return False
-    if "account" not in cols:
+    missing = [c for c in columns if c not in cols]
+    if missing:
         raise RuntimeError(
-            f"{table} carries no `account` column: this warehouse predates"
-            " Task 27 (2026-09-19), so every shared budget-line code's two"
-            " members would publish fused under one title. Run"
+            f"{table} carries no `{missing[0]}` column: this warehouse"
+            " predates Task 27 (2026-09-19), so every shared budget-line"
+            " code's two members would publish fused under one title. Run"
             " `govbudget build` before export-site."
         )
     return True
@@ -618,13 +676,34 @@ def _fetch_program_identity(con) -> _ProgramIdentity:
     """Read dim_programs once for the (pe_bli, account, organization)
     identity map.
 
-    Degrades to an empty identity (no split keys — every pe_bli byte-for-
-    byte pre-E3) when dim_programs is absent or lacks the account/
-    account_title/org columns — the same defensive shape every other mart
-    reader in this module uses (e.g. _program_trajectory_index), so a
-    minimal test fixture database that never needed dim_programs for its
-    own narrow assertion is not newly forced to define one.
+    ABSENT dim_programs → an empty identity (no split keys — every pe_bli
+    byte-for-byte pre-E3), the same defensive shape every other mart reader
+    in this module uses (e.g. _program_trajectory_index), so a minimal test
+    fixture database that never needed dim_programs for its own narrow
+    assertion is not newly forced to define one. A real export never gets
+    here that way: dim_programs is a required mart and export_site raises
+    "required mart missing" before any of this runs.
+
+    PRESENT dim_programs without `account` or `account_title` → RAISES (fix
+    round 2, 2026-09-19, R-27-8). Until then this caught ANY exception from
+    the read, so a warehouse whose dim_programs predates the account
+    identity — a pre-E3 lake, or a partial rebuild such as
+    `--select fct_district_programs` — handed every consumer the empty map
+    and silently reverted every district row to the pre-Task-27 address AND
+    the pre-Task-27 fact id. Nothing printed, and the one gate that can see
+    the damage (gate 9 leg g rule 5, two members sharing a split key) only
+    fires when both members of a code reach one district — 0 rows today, so
+    the degradation was invisible for all 11 real rows.
+
+    The remaining except is narrow on purpose: `org` and `exhibit_family`
+    are read here too, and a dim_programs missing one of THOSE keeps the old
+    empty-identity behaviour rather than newly stopping exports that never
+    needed a member identity.
     """
+    if not _require_account_column(
+        con, "dim_programs", columns=("account", "account_title"),
+    ):
+        return _ProgramIdentity([])
     try:
         rows = con.execute(
             "select pe_bli, account, account_title, org,"
@@ -13609,14 +13688,16 @@ def _emit_district_sidecars(
         # program then defaults to shared_award_count=1, as before.
         fanout_rows = []
     # MAX, not last-wins. Two fanout rows collapse onto one key whenever
-    # _member_split_key declines to name a member on both — an org-split code
+    # _district_row_member_slug returns None for both — an org-split code
     # (one account for both members), or an account-split code carrying an
-    # account dim_programs has never published. A dict comprehension would
-    # then publish whichever row the query happened to return last, and the
-    # page renders this number in a sentence ("this award, matched to N
-    # programs"). max() is what the query's own max(f.pe_fanout) means.
-    # Unreachable on today's corpus: measured read-only 2026-09-19, no
-    # (district, pe_bli) pair carries more than one account row.
+    # account dim_programs has never published (the tail fix round 2 pulled
+    # into that one function, so the fact id falls back with the address).
+    # A dict comprehension would then publish whichever row the query
+    # happened to return last, and the page renders this number in a
+    # sentence ("this award, matched to N programs"). max() is what the
+    # query's own max(f.pe_fanout) means. Unreachable on today's corpus:
+    # measured read-only 2026-09-19, no (district, pe_bli) pair carries more
+    # than one account row (608 member rows over 608 distinct triples).
     shared_count_by_key: dict[tuple, int] = {}
     for r in fanout_rows:
         _k = (r[0], _member_split_key(ident, r[1], r[2]))

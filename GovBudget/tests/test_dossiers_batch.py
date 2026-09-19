@@ -197,10 +197,14 @@ def site_fixture(tmp_path):
 def fixture_duckdb(tmp_path):
     db = tmp_path / "fixture.duckdb"
     con = duckdb.connect(str(db))
+    # account/account_title: the member identity the exporter resolves a
+    # program page with. A dim_programs PRESENT without them is a stale mart
+    # and stops the export (Task 27 fix round 2, 2026-09-19), so the fixture
+    # declares them — NULL, which is what a code naming ONE program carries.
     con.execute("create table dim_programs (pe_bli varchar, org varchar,"
                 " exhibit_family varchar, project_count bigint,"
                 " fy2024_actual_millions double, fully_reconciled boolean,"
-                " title varchar)")
+                " title varchar, account varchar, account_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar,"
                 " organization varchar, fy2024_actuals double,"
                 " fy2025_total double, fy2026_total double,"
@@ -210,8 +214,8 @@ def fixture_duckdb(tmp_path):
         (PE2, "OSD", "Joint Hypersonic Technology", "OSD", 500.0),
     ]
     for pe, org, title, wb, total in rows:
-        con.execute("insert into dim_programs values (?,?,?,?,?,?,?)",
-                    [pe, org, "rdte", 1, 1.0, True, title])
+        con.execute("insert into dim_programs values (?,?,?,?,?,?,?,?,?)",
+                    [pe, org, "rdte", 1, 1.0, True, title, None, None])
         con.execute("insert into fct_budget_trajectory values (?,?,?,?,?,?,?)",
                     [pe, wb, 1.0, 1.0, total, 0.0, 0.0])
     con.close()

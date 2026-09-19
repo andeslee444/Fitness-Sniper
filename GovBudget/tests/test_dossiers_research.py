@@ -62,11 +62,14 @@ def fixture_duckdb(tmp_path):
     # account/account_title (Sprint E, ROADMAP #67 — E1's dim_programs/
     # fct_budget_trajectory re-grain): every row carries a real account
     # value now, so top50()'s account-qualified join has something to match
-    # on even for these ordinary (non-split) fixture rows.
+    # on even for these ordinary (non-split) fixture rows. account_title
+    # joined them in Task 27 fix round 2 (2026-09-19): the exporter reads
+    # both to resolve a member's page, and a dim_programs PRESENT without
+    # either is a stale mart that stops the export.
     con.execute("create table dim_programs (pe_bli varchar, org varchar,"
                 " exhibit_family varchar, project_count bigint,"
                 " fy2024_actual_millions double, fully_reconciled boolean,"
-                " title varchar, account varchar)")
+                " title varchar, account varchar, account_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar,"
                 " organization varchar, fy2024_actuals double,"
                 " fy2025_total double, fy2026_total double,"
@@ -83,8 +86,9 @@ def fixture_duckdb(tmp_path):
     ]
     for pe, org, title, wb, total in rows:
         account = f"ACCT-{pe}"
-        con.execute("insert into dim_programs values (?,?,?,?,?,?,?,?)",
-                    [pe, org, "rdte", 1, 1.0, True, title, account])
+        con.execute("insert into dim_programs values (?,?,?,?,?,?,?,?,?)",
+                    [pe, org, "rdte", 1, 1.0, True, title, account,
+                     f"Account {account}"])
         if wb is not None:
             con.execute("insert into fct_budget_trajectory values (?,?,?,?,?,?,?,?)",
                         [pe, wb, 1.0, 1.0, total, 0.0, 0.0, account])
