@@ -183,18 +183,19 @@ individually hand-adjudicated … a link publishes as high only if neither
 link the crosswalk grades high or medium. Backlog #109 carries the remaining
 five-path evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
-J-book pages also name. 62 of the 1,135 links published at high carry a
-per-award hand adjudication, 61 of them challenged by two independent
+J-book pages also name. 60 of the 1,133 links published at high carry a
+per-award hand adjudication, all 60 of them challenged by two independent
 adversarial reviewers; the other 1,073 rest on the announcement+lexicon path.
-(Re-measured 2026-09-19, when the announcement pass's wave 4 added 367 links
-to that path; on 2026-09-11 the tier stood at 768 links, 60 adjudicated, all
+(Re-measured 2026-09-19 (chain C), from the export's own
+`site_meta.link_adjudication.high`, after the announcement pass's wave 4 added
+367 links to that path; on 2026-09-11 the tier stood at 768 links, 60 adjudicated, all
 60 two-lens. These figures are derived on the page and only mirrored here, so
 the page moves with the corpus and this paragraph is re-stated when it does.
 The census is taken over the MART — the tier a reader meets, not
 `budget_line_awards`: dbt demotes an unadjudicated `account+tokens` high row
 to medium and Postgres has no column for it, so re-deriving the tier there
 counted 881 links against the 768 the site published on 2026-09-11. Of the
-1,075 announcement links, a match basis is recorded on 749 —
+1,074 announcement links, a match basis is recorded on 748 —
 `site_meta.link_adjudication.high.by_path` carries the figure and gate 24 leg
 o binds every number the sentence states, plus the rule that each path
 publishing at high with no adjudication is NAMED. This replaced
