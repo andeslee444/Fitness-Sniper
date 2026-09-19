@@ -735,6 +735,59 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   states. A sweep over rendered text may lose a finding to glue; it must never
   invent one.
 
+- **2026-09-19: the disclosure that stopped the pass short of its own residue,
+  and the sample that could have quietly re-labelled a tier (Task 25b).**
+  /methodology/ had said since 2026-09-02 that an LLM-alias pass covered "the
+  3,840 unmatched records that carry about 88% of the residue by announced
+  value; the 12,811 smaller records carrying the remaining ~12% were not
+  attempted" — four literals, none derived, describing a residue whose
+  selection code was never committed. Re-deriving the selection (Task 25a)
+  does not reproduce it: the records that join the award lake are 32,852, the
+  deterministic pass matched 4,508, and the residue is **28,344**, of which
+  3,840 had been attempted — so the unattempted tail was never 12,811 but
+  about 24,500, roughly **1.9×** the published figure. Wave 4 adjudicated 150
+  of 306 queued chunks (11,775 records, four workflow runs), 453 distinct
+  (PIID, PE) pairs survived two adversarial lenses, and the unchanged loader —
+  run with ALL FOUR wave result files, because it deletes the whole
+  announcement/subaward partition before inserting — published
+  **1,075 announcement+lexicon** links (708 before) and 114 `subaward+lexicon`
+  (113 before), with no `ContradictoryAccountError` and no guard weakened.
+  Scope is a derived block now (migration 016 `announcement_llm_scope` + `load_announcement_scope.py` +
+  `site_meta.announcement_llm_scope`), and gate 24 leg (q) recomputes every
+  figure in the paragraph against the rendered text, in slot order, and fails
+  a paragraph that renders with no pass recorded.
+  The second half is the lesson, and it is about the MEASUREMENT, not the
+  prose. Wave 4's links were sampled fresh — 60 survivors drawn at random,
+  each judged by two independent lenses (sample `2026-09-12`, rubric
+  `attribution`): 51 confirmed, 9 refuted; 55 of the 60 publish, so the
+  derived pair is **48 of 55**. Loading that sample under the existing
+  machinery would have made it the ANNOUNCEMENT TIER's published precision the
+  moment it landed, because `_link_precision_block` takes each method's LATEST
+  run: a 60-link draw from one wave would have replaced a 60-link draw over
+  the whole tier, under the tier's name, with every gate green — the same
+  species as the withdrawn `fpds-ap+account` figure that leg (n) exists for.
+  The tier is therefore PINNED to its own 2026-09-04 draw
+  (`_PINNED_PRECISION_SAMPLES`), the wave's pair is published beside the scope
+  counts where the sentence says whose links it measured, and a pinned tier
+  whose run judged nothing it still publishes is reported UNMEASURED rather
+  than falling back. Third, an arithmetic trap the prose had to dodge: 10.6%
+  of the residue BY ANNOUNCED VALUE is 44.9% of it by RECORDS, so every
+  percentage clause on the page names the measure it is a share of.
+  Fourth, measured after the load and not predicted by anyone: the ANNOUNCEMENT
+  TIER's pinned figure still moved, 51/54 → **56/60**, and the FPDS tier's
+  94/120 → **89/114**. Not one announcement-drawn verdict changed (still 51 of
+  54 published). The loader upserts on `(pe_bli, exhibit, fiscal_year,
+  award_piid)` with `do update set method=…, confidence=…`, so an announcement
+  link lands ON a row another route already owned: **60** of the 1,189 rebuilt
+  rows carry a created_at older than this run (45 were `fpds-ap` medium, 13
+  `fpds-ap` low, 1 `account` low, 1 `account+subagency` medium), six of them in
+  the 2026-09-04 sample. Counting each sampled link under the tier it publishes
+  under TODAY — the rule built for the withdrawn `fpds-ap+account` tier — then
+  moves those six figures between tiers. The lesson: this loader does not only
+  ADD links, it re-attributes existing ones, so a wave's effect cannot be read
+  off the announcement row count alone, and the precision table can move
+  without any verdict changing.
+
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
 - **#70 Collision-key program pages (E3).** 8 numeric pe_blis carry two
@@ -1474,6 +1527,28 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   export's mention census line. Decide the grain with the matcher fix above,
   when the row can name its own member.
   **Status:** open (2026-09-18)
+
+- **#116 Announcement LLM-alias pass: the residue tail, and the 156 chunks
+  wave 4 did not reach.** Wave 4 adjudicated 150 of the 306 queued chunks —
+  11,775 of the 28,344 residue records — so with the earlier 2026-09-02 pass
+  the route has now been through 15,615 records, 89.4% of the residue by
+  announced value; 12,729 records (10.6% of that value) have not been
+  attempted. The remainder is queued in
+  `data/research/announcements/wave4_queue/` (gitignored; regenerate with
+  `uv run python scripts/mine_announcement_residue.py queue`, which re-derives
+  the residue and its 306 chunks from `records.jsonl` and rewrites
+  `residue_manifest.json`), and the published figure
+  on /methodology/ moves on its own when more chunks are collected and
+  `scripts/load_announcement_scope.py` re-runs — the page states no literal to
+  edit. This is the COUNT half of #100, which holds the stopping RULE: the
+  owner decision there (keep going, or publish the stopping rule as
+  deliberate) is unchanged by wave 4 and now has a derived number in front of
+  it. Precision of what wave 4 added is measured, on its own held-out sample
+  and not on the tier's: 48 of the 55 sampled links that publish were
+  confirmed (sample `2026-09-12`, rubric `attribution`) — lower than the
+  announcement tier's own 2026-09-04 draw (56 of 60), which is the number to
+  weigh before queueing wave 5.
+  Effort: days (one workflow run per ~50 chunks). **Status:** open (2026-09-19).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
