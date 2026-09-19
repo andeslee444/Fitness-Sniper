@@ -7305,10 +7305,11 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         )
 
         # fct_district_totals (#51): the award-DISTINCT district headline.
-        # fct_district_programs is per (district, pe_bli) — an award matched
-        # to N program elements appears N times with the same dollars, so the
-        # raw per-program sum below (dist_raw_sum) double-counts (AK-00 read
-        # $1.05B off one $209.3M award attributed to five program elements).
+        # fct_district_programs is per (district, pe_bli, account) — an
+        # award matched to N program elements appears N times with the same
+        # dollars there, so the raw per-program sum below (dist_raw_sum)
+        # double-counts (AK-00 read $1.05B off one $209.3M award attributed
+        # to five program elements).
         # total_linkable_dollars is read from fct_district_totals instead of
         # that sum, by construction agreeing with _emit_district_sidecars.
         try:
@@ -12207,8 +12208,10 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
     - Family-year: top-200 families (by total_obligation) × all years from
       fct_family_obligations_by_year — one citation per (family_key, fiscal_year).
       query_body = {'filters': {'recipient_search_text': [UEIs], 'time_period': [...]}}.
-    - District programs: all 267 rows from fct_district_programs — one citation
-      per (pop_state, pop_district, pe_bli).
+    - District programs: every fct_district_programs row — one citation per
+      (pop_state, pop_district, pe_bli, account), the mart's own grain since
+      Task 27; the key comes from _district_program_key and the award_ids
+      filter is narrowed to the row's own account.
       query_body = {'filters': {'place_of_performance_locations': [...], 'award_ids': [...]}}.
 
     Never fails export: network errors or missing data → skip silently.
@@ -13414,8 +13417,8 @@ def _emit_district_sidecars(
 
     #51: total_linkable_dollars is read from fct_district_totals (one row per
     district, dollars counted once per award) rather than summed from
-    fct_district_programs (per (district, pe_bli) — an award matched to N
-    program elements appears N times with the same dollars). Each per-program
+    fct_district_programs (per (district, pe_bli, account) — an award
+    matched to N program elements appears N times with the same dollars). Each per-program
     row keeps its own total_obligation exactly as before, plus a new
     shared_award_count: the largest number of program elements any one of its
     underlying awards is ALSO matched to, so the page can say "this award,
@@ -13654,9 +13657,9 @@ def _emit_district_sidecars(
             # names.
             title = _mart_title
         else:
-            # No member named: the both-members label over the stub link, or
-            # — for the ~1,930 ordinary codes — the one title prog_titles has
-            # always given them.
+            # No member named: the both-members label over the stub link,
+            # or — for every code that names ONE program — the one title
+            # prog_titles has always given it.
             title = prog_titles.get(pe_bli, _mart_title or "")
 
         # Compute the usaspending fact_id for this (district, program member)
