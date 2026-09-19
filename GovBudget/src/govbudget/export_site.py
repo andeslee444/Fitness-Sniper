@@ -468,8 +468,32 @@ def shared_code_program_label(titles: list[str | None]) -> str | None:
     return " / ".join(seen)
 
 
+def _district_row_names_a_member(ident, pe_bli: str, account: str | None) -> bool:
+    """Does THIS fct_district_programs row name ONE member of a shared code?
+
+    The single predicate both halves of a district row's identity dispatch on
+    — its ADDRESS (_member_split_key) and its FACT-ID KEY
+    (_district_program_key). Fix round 1, 2026-09-19 (R-27-2'): the two were
+    written apart and agreed only because of a data property — measured
+    read-only against the shipped warehouse 2026-09-19, all 11 account-bearing
+    district rows sit on account-split codes and no ordinary code carries an
+    account — so an ordinary code that ever acquired one would have kept its
+    address while silently rotating its /fact/{id} permalink. One predicate
+    makes that agreement structural instead of incidental.
+
+    False, therefore, in three cases, all of which keep the bare key:
+
+      · an ordinary pe_bli — there is no member to name;
+      · an ORGANIZATION-split code ('20', '30', '500'), whose members share
+        one account ('0300D'), so an account cannot name one of them;
+      · an account-NULL row on an account-split code, which names BOTH
+        members (the case the narrowed singular test guards in dbt).
+    """
+    return account is not None and ident.is_account_split(pe_bli)
+
+
 def _district_program_key(
-    pop_state: str, pop_district: str, pe_bli: str, account: str | None,
+    ident, pop_state: str, pop_district: str, pe_bli: str, account: str | None,
 ) -> str:
     """The fact-id key for ONE fct_district_programs row (Task 27).
 
@@ -480,14 +504,21 @@ def _district_program_key(
     shape or an input chip loses its label, or worse, a figure resolves to
     another member's citation. This is that shape, in one place.
 
-    An account-NULL row (every code that names ONE program — 597 of the 608
-    rows measured read-only 2026-09-19) keeps the pre-Task-27 triple BYTE FOR
-    BYTE, so every /fact/{id} permalink minted before the account joined the
-    mart's grain still resolves. A row that names a member appends its
-    account, because the two members of a shared code are two facts.
+    A row that names no member — every ordinary code, plus the two cases
+    _district_row_names_a_member lists beside it — keeps the pre-Task-27
+    triple BYTE FOR BYTE, so ITS /fact/{id} permalink still resolves. 597 of
+    the 608 rows measured read-only 2026-09-19 are in that class.
+
+    The other 11 ROTATE, once, on 2026-09-19, and their pre-Task-27 ids stop
+    resolving: naming the member is worth one broken permalink per row, and
+    the old ids are listed in the task report. They are 0145 in MA-06 and
+    MO-01, 2292 in AZ-07, 3010 in MS-04, and 3215 in MA-08, MD-03, MO-01,
+    PA-14, RI-01, VA-10 and WA-06 (measured read-only 2026-09-19).
     """
     base = f"{pop_state}|{pop_district}|{pe_bli}"
-    return base if account is None else f"{base}|{account}"
+    if not _district_row_names_a_member(ident, pe_bli, account):
+        return base
+    return f"{base}|{account}"
 
 
 def _member_split_key(ident, pe_bli: str, account: str | None) -> str:
@@ -495,16 +526,12 @@ def _member_split_key(ident, pe_bli: str, account: str | None) -> str:
 
     Returns `ident.slug(pe_bli, account, account_title, organization)` — the
     SAME call program pages resolve their own slug with — when this row names
-    one member of a shared code, and the bare pe_bli otherwise. "Otherwise"
-    is three cases, all of which must keep the disambiguation stub rather
-    than guess:
-
-      · an ordinary pe_bli (ident.slug returns the bare key there anyway);
-      · an ORGANIZATION-split code ('20', '30', '500'), whose members share
-        one account ('0300D') — an account cannot name one of them, which is
-        what ident.is_account_split is asked here;
-      · an account-NULL row on an account-split code, which names BOTH
-        members (the case the narrowed singular test guards in dbt).
+    one member of a shared code, and the bare pe_bli otherwise. Which rows
+    those are is _district_row_names_a_member's question, asked here and by
+    _district_program_key so an address and a fact id can never disagree
+    about whether a row names a member; the three "otherwise" cases (an
+    ordinary code, an organization-split code, an account-NULL row on a
+    shared code) all keep the disambiguation stub rather than guess.
 
     The (pe_bli, account) -> account_title lookup runs over ident's own
     dim_programs rows, and is consulted ONLY for account-split keys, where
@@ -512,7 +539,7 @@ def _member_split_key(ident, pe_bli: str, account: str | None) -> str:
     (pe_bli, account) globally: the three org-split keys publish 2-3 rows
     under 0300D each).
     """
-    if account is None or not ident.is_account_split(pe_bli):
+    if not _district_row_names_a_member(ident, pe_bli, account):
         return pe_bli
     for acct, account_title, organization, _has_detail in ident.accounts(pe_bli):
         if acct == account:
@@ -551,6 +578,40 @@ def _query_with_account_fallback(
             r.insert(account_index, None)
             out.append(tuple(r))
         return out
+
+
+def _require_account_column(con, table: str) -> bool:
+    """True when `table` exists and carries the `account` column Task 27's
+    district surfaces read. False when the TABLE ITSELF is absent.
+
+    Fix round 1, 2026-09-19: the district reads below used to fall back to an
+    account-less query and splice None into every row. For a mart that never
+    had the column that is exactly right, and for THESE marts it is exactly
+    wrong: `account` has been part of fct_district_programs' declared grain
+    since Task 27, so a warehouse without it predates the grain change, and
+    reading it that way republishes the fused shape this task removed — both
+    members of a shared budget-line code summed under one member's title,
+    every district_program fact id back on the pre-Task-27 triple, no print,
+    no error and no gate able to see it. So it raises.
+
+    The table being ABSENT is a different thing and keeps its old behaviour:
+    a fixture lake that never built the mart publishes nothing from it, and
+    every caller here already degrades to an empty list.
+    """
+    try:
+        cols = {
+            d[0] for d in con.execute(f"select * from {table} limit 0").description
+        }
+    except Exception:
+        return False
+    if "account" not in cols:
+        raise RuntimeError(
+            f"{table} carries no `account` column: this warehouse predates"
+            " Task 27 (2026-09-19), so every shared budget-line code's two"
+            " members would publish fused under one title. Run"
+            " `govbudget build` before export-site."
+        )
+    return True
 
 
 def _fetch_program_identity(con) -> _ProgramIdentity:
@@ -7289,19 +7350,21 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         # float accumulation, same fact-id attach rule (usaspending rows are
         # emitted for every non-null total_obligation — see
         # _build_usaspending_citation_rows).
-        # `account` (Task 27) is read through the module's standard fallback:
-        # a fixture schema predating it carries no member information at all,
-        # so None there is exactly right and every key below stays the
-        # pre-Task-27 triple.
-        dp_rows = _query_with_account_fallback(
-            con,
-            "select pop_state, pop_district, pe_bli, account, total_obligation"
-            " from fct_district_programs"
-            " order by pop_state, pop_district, total_obligation desc nulls last",
-            "select pop_state, pop_district, pe_bli, total_obligation"
-            " from fct_district_programs"
-            " order by pop_state, pop_district, total_obligation desc nulls last",
-            3,
+        # `account` (Task 27) is REQUIRED here — see _require_account_column.
+        # A mart that predates it raises rather than silently re-fusing a
+        # shared code's members under one key.
+        # `ident` answers _district_program_key's one question — does this row
+        # name a member — the same way the sidecar emitter asks it.
+        ident = _fetch_program_identity(con)
+        dp_rows = (
+            con.execute(
+                "select pop_state, pop_district, pe_bli, account,"
+                " total_obligation from fct_district_programs"
+                " order by pop_state, pop_district,"
+                " total_obligation desc nulls last"
+            ).fetchall()
+            if _require_account_column(con, "fct_district_programs")
+            else []
         )
 
         # fct_district_totals (#51): the award-DISTINCT district headline.
@@ -7337,7 +7400,7 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                 usas_fid = fact_id_usaspending(
                     "district_program",
                     _district_program_key(
-                        pop_state, pop_district, pe_bli, account),
+                        ident, pop_state, pop_district, pe_bli, account),
                     "total_obligation",
                 )
                 dist_cited_raw[pop_district] = (
@@ -7369,7 +7432,8 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                     true_linkable,
                     f"fct_district_totals.total_obligation for"
                     f" pop_district={pop_district!r} — the award-distinct"
-                    f" total across {n_progs} crosswalked program elements;"
+                    f" total across {n_progs} crosswalked program rows"
+                    f" (a shared code's members count once each);"
                     f" supersedes summing fct_district_programs.total_obligation,"
                     f" which counts an award once per matched program element (#51)",
                 ),
@@ -12288,14 +12352,21 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
 
         # ---- District programs: every fct_district_programs row ----
         # One row per (state, district, pe_bli, account) since Task 27.
-        dp_rows = _query_with_account_fallback(
-            con,
-            "select pop_state, pop_district, pe_bli, account, total_obligation"
-            " from fct_district_programs",
-            "select pop_state, pop_district, pe_bli, total_obligation"
-            " from fct_district_programs",
-            3,
+        # `account` is required, not optional — see _require_account_column.
+        ident = _fetch_program_identity(con)
+        dp_rows = (
+            con.execute(
+                "select pop_state, pop_district, pe_bli, account,"
+                " total_obligation from fct_district_programs"
+            ).fetchall()
+            if _require_account_column(con, "fct_district_programs")
+            else []
         )
+        # The PIID filter below narrows on fct_budget_to_awards.account, which
+        # a post-Task-27 warehouse always carries (it is the column the mart
+        # above grains on). Asked once, loudly, rather than per row.
+        _links_have_account = bool(dp_rows) and _require_account_column(
+            con, "fct_budget_to_awards")
 
         for pop_state, pop_district, pe_bli, account, total_obl in dp_rows:
             if total_obl is None:
@@ -12303,13 +12374,17 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
 
             # Get top award PIIDs for this (district, program) to anchor the
             # filter. Task 27: the link query narrows to THIS member's
-            # account. Before it did, a shared code's citation body listed
-            # BOTH members' PIIDs under one member's figure — a filter a
-            # reader could run and get a different number than the page
-            # shows. IS NOT DISTINCT FROM so an account-NULL row (every
-            # ordinary code) matches the account-NULL links it is built from,
-            # which is the pre-Task-27 result for all of them. The fallback
-            # covers a fixture schema with no account column at all.
+            # account. The pre-Task-27 query filtered on pe_bli alone, so the
+            # day both members' awards reach one district it would list the
+            # sibling's PIIDs under this member's figure — a filter a reader
+            # could run and get a different number than the page shows. It
+            # had not happened yet: all 11 shared-code bodies are byte-
+            # identical before and after (measured read-only 2026-09-19; no
+            # district holds two members of one code, so the district-scoped
+            # join could not reach the sibling). IS NOT DISTINCT FROM so an
+            # account-NULL row (every ordinary code) matches the account-NULL
+            # links it is built from, which is the pre-Task-27 result for all
+            # of them.
             try:
                 piids = con.execute(
                     "select distinct t.award_id_piid"
@@ -12321,23 +12396,13 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
                     " where t.pop_state=? and t.pop_district=?"
                     " limit 25",
                     [pe_bli, account, pop_state, pop_district],
-                ).fetchall()
+                ).fetchall() if _links_have_account else []
                 piid_list = [r[0] for r in piids if r[0]]
             except Exception:
-                try:
-                    piids = con.execute(
-                        "select distinct t.award_id_piid"
-                        " from fct_award_transactions t"
-                        " join (select distinct award_piid from fct_budget_to_awards"
-                        "       where confidence='high' and pe_bli=?) b"
-                        "   on t.award_id_piid = b.award_piid"
-                        " where t.pop_state=? and t.pop_district=?"
-                        " limit 25",
-                        [pe_bli, pop_state, pop_district],
-                    ).fetchall()
-                    piid_list = [r[0] for r in piids if r[0]]
-                except Exception:
-                    piid_list = []
+                # fct_award_transactions or fct_budget_to_awards absent — the
+                # citation ships with no award_ids, as it always has. A
+                # PRESENT table with no `account` raised above instead.
+                piid_list = []
 
             query_body = _json.dumps({
                 "filters": {
@@ -12351,7 +12416,7 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
             }, sort_keys=True)
 
             key_str = _district_program_key(
-                pop_state, pop_district, pe_bli, account)
+                ident, pop_state, pop_district, pe_bli, account)
             fid = fact_id_usaspending("district_program", key_str, "total_obligation")
             rows.append(_null_usaspending_row(
                 fid, query_body, f"{total_obl:.3f}", "USD",
@@ -13460,19 +13525,18 @@ def _emit_district_sidecars(
     # ---- District program rows from fct_district_programs ----
     # ORDER BY is a published contract (data-sort-order="total_obligation:desc",
     # gate 24 leg f) and _build_geography_citation_rows' own read mirrors it.
-    dp_rows = _query_with_account_fallback(
-        con,
-        "select pop_state, pop_district, pe_bli, account, program_title,"
-        "       organization, transaction_count, award_count,"
-        "       recipient_count, total_obligation"
-        " from fct_district_programs"
-        " order by pop_state, pop_district, total_obligation desc nulls last",
-        "select pop_state, pop_district, pe_bli, program_title,"
-        "       organization, transaction_count, award_count,"
-        "       recipient_count, total_obligation"
-        " from fct_district_programs"
-        " order by pop_state, pop_district, total_obligation desc nulls last",
-        3,
+    # `account` is REQUIRED (see _require_account_column): a mart without it
+    # predates Task 27 and would re-fuse a shared code's members here.
+    dp_rows = (
+        con.execute(
+            "select pop_state, pop_district, pe_bli, account, program_title,"
+            "       organization, transaction_count, award_count,"
+            "       recipient_count, total_obligation"
+            " from fct_district_programs"
+            " order by pop_state, pop_district, total_obligation desc nulls last"
+        ).fetchall()
+        if _require_account_column(con, "fct_district_programs")
+        else []
     )
 
     # ---- fct_district_totals (#51): the award-DISTINCT district headline ----
@@ -13502,61 +13566,61 @@ def _emit_district_sidecars(
     # code. The fan-out numerator stays on the bare pe_bli: "how many program
     # elements is this award also matched to" is a question about elements,
     # and two members of one code are one element to an award.
-    fanout_rows = _query_with_account_fallback(
-        con,
-        """
-        with award_fanout as (
-            select award_piid, count(distinct pe_bli) as pe_fanout
-            from fct_budget_to_awards
-            where confidence = 'high'
-            group by 1
-        ),
-        detail as (
-            select t.pop_district, b.pe_bli, b.account, t.award_id_piid
-            from fct_award_transactions t
-            join (
-                select distinct award_piid, pe_bli, account
-                from fct_budget_to_awards
-                where confidence = 'high'
-            ) b on t.award_id_piid = b.award_piid
-            where t.pop_district is not null
-            group by 1, 2, 3, 4
+    #
+    # `account` on fct_budget_to_awards is REQUIRED once there are district
+    # rows to attach counts to — the mart above already proved this warehouse
+    # is post-Task-27. With no district rows there is nothing to count, so the
+    # query is skipped rather than run for its side effects.
+    _fanout_ready = bool(dp_rows) and _require_account_column(
+        con, "fct_budget_to_awards")
+    try:
+        fanout_rows = (
+            con.execute(
+                """
+                with award_fanout as (
+                    select award_piid, count(distinct pe_bli) as pe_fanout
+                    from fct_budget_to_awards
+                    where confidence = 'high'
+                    group by 1
+                ),
+                detail as (
+                    select t.pop_district, b.pe_bli, b.account, t.award_id_piid
+                    from fct_award_transactions t
+                    join (
+                        select distinct award_piid, pe_bli, account
+                        from fct_budget_to_awards
+                        where confidence = 'high'
+                    ) b on t.award_id_piid = b.award_piid
+                    where t.pop_district is not null
+                    group by 1, 2, 3, 4
+                )
+                select d.pop_district, d.pe_bli, d.account,
+                       max(f.pe_fanout) as shared_award_count
+                from detail d
+                join award_fanout f on d.award_id_piid = f.award_piid
+                group by 1, 2, 3
+                """
+            ).fetchall()
+            if _fanout_ready
+            else []
         )
-        select d.pop_district, d.pe_bli, d.account,
-               max(f.pe_fanout) as shared_award_count
-        from detail d
-        join award_fanout f on d.award_id_piid = f.award_piid
-        group by 1, 2, 3
-        """,
-        """
-        with award_fanout as (
-            select award_piid, count(distinct pe_bli) as pe_fanout
-            from fct_budget_to_awards
-            where confidence = 'high'
-            group by 1
-        ),
-        detail as (
-            select t.pop_district, b.pe_bli, t.award_id_piid
-            from fct_award_transactions t
-            join (
-                select distinct award_piid, pe_bli
-                from fct_budget_to_awards
-                where confidence = 'high'
-            ) b on t.award_id_piid = b.award_piid
-            where t.pop_district is not null
-            group by 1, 2, 3
-        )
-        select d.pop_district, d.pe_bli, max(f.pe_fanout) as shared_award_count
-        from detail d
-        join award_fanout f on d.award_id_piid = f.award_piid
-        group by 1, 2
-        """,
-        2,
-    )
-    shared_count_by_key: dict[tuple, int] = {
-        (r[0], _member_split_key(ident, r[1], r[2])): int(r[3])
-        for r in fanout_rows
-    }
+    except Exception:
+        # fct_award_transactions (or fct_budget_to_awards) absent — every
+        # program then defaults to shared_award_count=1, as before.
+        fanout_rows = []
+    # MAX, not last-wins. Two fanout rows collapse onto one key whenever
+    # _member_split_key declines to name a member on both — an org-split code
+    # (one account for both members), or an account-split code carrying an
+    # account dim_programs has never published. A dict comprehension would
+    # then publish whichever row the query happened to return last, and the
+    # page renders this number in a sentence ("this award, matched to N
+    # programs"). max() is what the query's own max(f.pe_fanout) means.
+    # Unreachable on today's corpus: measured read-only 2026-09-19, no
+    # (district, pe_bli) pair carries more than one account row.
+    shared_count_by_key: dict[tuple, int] = {}
+    for r in fanout_rows:
+        _k = (r[0], _member_split_key(ident, r[1], r[2]))
+        shared_count_by_key[_k] = max(shared_count_by_key.get(_k, 0), int(r[3]))
 
     # ---- ROADMAP #6: district × fiscal_year rows ----------------------------
     # These marts are deliberately NOT in _MART_NAMES (they ship no parquet), so
@@ -13581,30 +13645,24 @@ def _emit_district_sidecars(
     # Task 27: `account` is read here only so the page cap below compares
     # SPLIT KEYS — a by-year row for the sibling member of a shared code must
     # not arrive through the year door on a page that publishes the other one.
+    # `account` is REQUIRED here too (see _require_account_column): the two
+    # district marts move in lockstep, so a by-year mart without it predates
+    # Task 27 exactly as its all-years sibling would.
     _dpy_sql = (
-        "select pop_district, pe_bli, {account}fiscal_year, transaction_count,"
+        "select pop_district, pe_bli, account, fiscal_year, transaction_count,"
         "       award_count, recipient_count, total_obligation,"
         "       positive_obligation"
         " from fct_district_programs_by_year"
         " order by pop_district, fiscal_year, total_obligation desc nulls last"
     )
-    try:
-        dpy_rows = con.execute(_dpy_sql.format(account="account, ")).fetchall()
-    except Exception:
-        # Pre-Task-27 fixture schema (no account column) — splice None in at
-        # the account's position, exactly as _query_with_account_fallback
-        # does elsewhere. The table being ABSENT is still reported loudly.
-        try:
-            dpy_rows = [
-                (r[0], r[1], None, *r[2:])
-                for r in con.execute(_dpy_sql.format(account="")).fetchall()
-            ]
-        except Exception as exc:  # noqa: BLE001 — reported, not swallowed
-            print(
-                f"districts: fct_district_programs_by_year unavailable ({exc}) —"
-                f" by_year_programs will be EMPTY on every district sidecar"
-            )
-            dpy_rows = []
+    if not _require_account_column(con, "fct_district_programs_by_year"):
+        print(
+            "districts: fct_district_programs_by_year unavailable —"
+            " by_year_programs will be EMPTY on every district sidecar"
+        )
+        dpy_rows = []
+    else:
+        dpy_rows = con.execute(_dpy_sql).fetchall()
 
     # ---- dim_geography grand total ----
     # Same SQL as _build_geography_citation_rows' grand-total row so the
@@ -13663,7 +13721,8 @@ def _emit_district_sidecars(
             title = prog_titles.get(pe_bli, _mart_title or "")
 
         # Compute the usaspending fact_id for this (district, program member)
-        key_str = _district_program_key(pop_state, pop_district, pe_bli, account)
+        key_str = _district_program_key(
+            ident, pop_state, pop_district, pe_bli, account)
         fid = fact_id_usaspending("district_program", key_str, "total_obligation")
         fact_id_for_program = fid if fid in cited_fact_ids else None
 
@@ -15219,18 +15278,23 @@ def _emit_breakdowns(
     # gives a district-program input chip its label, and it lives two thousand
     # lines from the three sites that mint the id.
     usas_meta: dict[str, tuple] = {}
-    dp_rows = _query_with_account_fallback(
-        con,
-        "select pop_state, pop_district, pe_bli, account, program_title"
-        " from fct_district_programs",
-        "select pop_state, pop_district, pe_bli, program_title"
-        " from fct_district_programs",
-        3,
+    # `account` is REQUIRED (see _require_account_column): a mart without it
+    # would mint pre-Task-27 keys here while the sidecars mint member keys,
+    # and every district-program input chip would lose its label.
+    _ident = _fetch_program_identity(con)
+    dp_rows = (
+        con.execute(
+            "select pop_state, pop_district, pe_bli, account, program_title"
+            " from fct_district_programs"
+        ).fetchall()
+        if _require_account_column(con, "fct_district_programs")
+        else []
     )
     for pop_state, pop_district, dp_pe, dp_account, dp_title in dp_rows:
         fid_us = fact_id_usaspending(
             "district_program",
-            _district_program_key(pop_state, pop_district, dp_pe, dp_account),
+            _district_program_key(
+                _ident, pop_state, pop_district, dp_pe, dp_account),
             "total_obligation",
         )
         usas_meta[fid_us] = (dp_pe, apply_title_override(dp_pe, dp_title, _title_overrides))

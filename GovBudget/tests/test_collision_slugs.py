@@ -105,6 +105,125 @@ def test_member_for_document_needs_exactly_one_hit():
 
 
 # ---------------------------------------------------------------------------
+# (0b) Task 27 fix round 1 (R-27-2', 2026-09-19) — a district row's ADDRESS
+#      and its FACT-ID KEY ask the same question
+# ---------------------------------------------------------------------------
+
+
+def _district_identity():
+    """A _ProgramIdentity over the four real shared codes that reach a
+    district today, plus an ordinary code and one organization-split code.
+
+    Accounts and titles are the live dim_programs values (read-only
+    2026-09-19): 0145 = 1506N 'Aircraft Procurement, Navy' / 1508N
+    'Procurement of Ammunition, Navy and Marine Corps'; 2292 = 1109N
+    'Procurement, Marine Corps' / 1507N 'Weapons Procurement, Navy';
+    3010 = 1611N / 1810N; 3215 = 1507N / 1810N; '20' is DCSA and DTRA under
+    the ONE account 0300D.
+    """
+    from govbudget.export_site import _ProgramIdentity
+
+    return _ProgramIdentity([
+        ("0601101E", "0400", "RDT&E, Defense-Wide", "DARPA", True),
+        ("0145", "1506N", "Aircraft Procurement, Navy", "N", True),
+        ("0145", "1508N",
+         "Procurement of Ammunition, Navy and Marine Corps", "N", True),
+        ("2292", "1109N", "Procurement, Marine Corps", "N", True),
+        ("2292", "1507N", "Weapons Procurement, Navy", "N", True),
+        ("3010", SCN, SCN_TITLE, "N", True),
+        ("3010", OPN, OPN_TITLE, "N", True),
+        ("3215", "1507N", "Weapons Procurement, Navy", "N", True),
+        ("3215", OPN, OPN_TITLE, "N", True),
+        ("20", "0300D", "Procurement, Defense-Wide", "DCSA", True),
+        ("20", "0300D", "Procurement, Defense-Wide", "DTRA", True),
+    ])
+
+
+def test_an_ordinary_code_carrying_an_account_keeps_its_pre_task_27_fact_id():
+    """R-27-2' — the permalink promise rests on the collision set, not on a
+    data property.
+
+    Task 27 round 0 keyed the fact id on `account is not None` while the
+    address (_member_split_key) asked `account is not None AND
+    ident.is_account_split(pe_bli)`. The two agreed only because no ordinary
+    code carries an account on today's corpus (measured read-only
+    2026-09-19: all 11 account-bearing district rows sit on account-split
+    codes). The day one did, the row would have kept its address and its
+    rendered code while its /fact/{id} permalink silently rotated — the
+    shape below, which now cannot happen because one predicate answers both.
+    """
+    from govbudget.export_site import _district_program_key, _member_split_key
+
+    ident = _district_identity()
+
+    # An ORDINARY code carrying a non-NULL account: no member to name, so
+    # the address is the bare key AND the id is the pre-Task-27 triple.
+    assert _member_split_key(ident, "0601101E", "0400") == "0601101E"
+    assert _district_program_key(
+        ident, "VA", "VA-08", "0601101E", "0400") == "VA|VA-08|0601101E"
+    assert _district_program_key(
+        ident, "VA", "VA-08", "0601101E", None) == "VA|VA-08|0601101E"
+
+    # An ORGANIZATION-split code: both members carry 0300D, which names
+    # neither, so it keeps the stub AND the bare triple.
+    assert _member_split_key(ident, "20", "0300D") == "20"
+    assert _district_program_key(
+        ident, "VA", "VA-08", "20", "0300D") == "VA|VA-08|20"
+
+    # An account-NULL row on an ACCOUNT-split code names BOTH members — the
+    # stub, and the bare triple.
+    assert _member_split_key(ident, "3010", None) == "3010"
+    assert _district_program_key(
+        ident, "VA", "VA-08", "3010", None) == "VA|VA-08|3010"
+
+    # And the one case that DOES name a member: address and id both move.
+    assert _member_split_key(ident, "3010", SCN) == "3010-SCN"
+    assert _district_program_key(
+        ident, "VA", "VA-08", "3010", SCN) == f"VA|VA-08|3010|{SCN}"
+
+
+# The 11 account-bearing rows of fct_district_programs at the member grain,
+# measured read-only against data/duckdb/govbudget.duckdb on 2026-09-19
+# (0145 x2, 2292, 3010, 3215 x7). These are the rows whose /fact/{id}
+# permalinks rotate once, and the only ones.
+_ROTATING_DISTRICT_ROWS = [
+    ("MA", "MA-06", "0145", "1506N"),
+    ("MO", "MO-01", "0145", "1506N"),
+    ("AZ", "AZ-07", "2292", "1507N"),
+    ("MS", "MS-04", "3010", "1611N"),
+    ("MA", "MA-08", "3215", "1507N"),
+    ("MD", "MD-03", "3215", "1507N"),
+    ("MO", "MO-01", "3215", "1507N"),
+    ("PA", "PA-14", "3215", "1507N"),
+    ("RI", "RI-01", "3215", "1507N"),
+    ("VA", "VA-10", "3215", "1507N"),
+    ("WA", "WA-06", "3215", "1507N"),
+]
+
+
+def test_the_eleven_shared_code_rows_still_rotate_under_the_shared_predicate():
+    """R-27-2' changes no id on this corpus — it changes what the promise
+    rests on. These 11 rows still gain their account, each id still distinct
+    from the pre-Task-27 triple it replaces, and the set is still 11 rows.
+    """
+    from govbudget.export_site import _district_program_key
+
+    ident = _district_identity()
+    assert len(_ROTATING_DISTRICT_ROWS) == 11
+
+    new_keys = []
+    for state, district, pe_bli, account in _ROTATING_DISTRICT_ROWS:
+        old = f"{state}|{district}|{pe_bli}"
+        new = _district_program_key(ident, state, district, pe_bli, account)
+        assert new == f"{old}|{account}", (state, district, pe_bli, account)
+        assert new != old
+        new_keys.append(new)
+    # MO-01 holds two of them (0145 and 3215) and MA two rows on different
+    # codes — 11 distinct keys, no collisions.
+    assert len(set(new_keys)) == 11
+
+
+# ---------------------------------------------------------------------------
 # (a) derive_ap_links emits distinct, account-keyed rows for 3010's members
 # ---------------------------------------------------------------------------
 
@@ -474,7 +593,6 @@ def _make_collision_duckdb(db_path: Path) -> None:
         f" ('3010','Shipboard Tactical Communications','N','procurement',0,"
         f"  5.0,true,'{OPN}','{OPN_TITLE}')"
     )
-    con.execute("alter table fct_budget_to_awards add column account varchar")
     con.execute(
         "insert into fct_budget_to_awards (pe_bli, exhibit, fiscal_year,"
         " organization, award_piid, recipient_name, recipient_uei, method,"
@@ -784,11 +902,12 @@ def test_the_two_members_fact_ids_key_on_the_account(collision_export):
     """
     from govbudget.export_site import _district_program_key, fact_id_usaspending
 
+    ident = _district_identity()
     for split_key, account in (("3010-SCN", SCN), ("3010-OPN", OPN)):
         row = _district_program(collision_export, "VA-08", split_key)
         assert row["fact_id"] == fact_id_usaspending(
             "district_program",
-            _district_program_key("VA", "VA-08", "3010", account),
+            _district_program_key(ident, "VA", "VA-08", "3010", account),
             "total_obligation",
         )
     # An ordinary row's key is the bare triple, byte for byte — the

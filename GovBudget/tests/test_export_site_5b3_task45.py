@@ -19,12 +19,21 @@ import pytest
 from govbudget.export_site import (
     _build_geography_citation_rows,
     _district_program_key,
+    _ProgramIdentity,
     _emit_feed_sidecar,
     _emit_district_sidecars,
     fact_id_derived,
     fact_id_usaspending,
     _write_json,
 )
+
+
+# Most fixtures in this module carry ORDINARY codes only (no dim_programs, no
+# shared budget-line code), so their district rows name no member and
+# _district_program_key returns the pre-Task-27 triple for all of them. The
+# empty identity is what the exporter itself builds from such a fixture.
+# (test_shared_award_count_folds_with_max below builds a real one.)
+_NO_SPLITS = _ProgramIdentity([])
 
 
 # ---------------------------------------------------------------------------
@@ -636,7 +645,7 @@ class TestEmitDistrictSidecars:
         # Pre-compute the fact_id for VA-08 / 0601101E
         fid = fact_id_usaspending(
             "district_program",
-            _district_program_key("VA", "VA-08", "0601101E", None),
+            _district_program_key(_NO_SPLITS, "VA", "VA-08", "0601101E", None),
             "total_obligation")
 
         con = duckdb.connect(str(db_path), read_only=True)
@@ -680,7 +689,7 @@ class TestEmitDistrictSidecars:
         # Wire one fact_id (DARPA in VA-08)
         fid = fact_id_usaspending(
             "district_program",
-            _district_program_key("VA", "VA-08", "0601101E", None),
+            _district_program_key(_NO_SPLITS, "VA", "VA-08", "0601101E", None),
             "total_obligation")
 
         con = duckdb.connect(str(db_path), read_only=True)
@@ -735,11 +744,11 @@ class TestEmitDistrictSidecars:
         dist_dir.mkdir()
         fid_a = fact_id_usaspending(
             "district_program",
-            _district_program_key("TX", "TX-09", "0601101E", None),
+            _district_program_key(_NO_SPLITS, "TX", "TX-09", "0601101E", None),
             "total_obligation")
         fid_b = fact_id_usaspending(
             "district_program",
-            _district_program_key("TX", "TX-09", "0602303E", None),
+            _district_program_key(_NO_SPLITS, "TX", "TX-09", "0602303E", None),
             "total_obligation")
 
         con = duckdb.connect(str(db_path), read_only=True)
@@ -796,19 +805,20 @@ class TestEmitDistrictSidecars:
         )
         # The SAME award (PIID SHARED-1) crosswalked to both TX-09 PEs;
         # a different, unshared award (SOLO-1) funds the CA-18 program.
-        # No `account` column: the fanout query must degrade to its pre-E1
-        # form (every key unsplit) rather than newly returning nothing and
-        # silently resetting every shared_award_count to 1.
+        # `account` is required on this table once there are district rows to
+        # attach counts to (Task 27 fix round 1) — NULL on every row here,
+        # which is what an ordinary code's links carry.
         con.execute(
             "CREATE TABLE fct_budget_to_awards ("
-            "  pe_bli varchar, award_piid varchar, confidence varchar"
+            "  pe_bli varchar, award_piid varchar, account varchar,"
+            "  confidence varchar"
             ")"
         )
         con.execute(
             "INSERT INTO fct_budget_to_awards VALUES "
-            "('0601101E', 'SHARED-1', 'high'),"
-            "('0602303E', 'SHARED-1', 'high'),"
-            "('0699999X', 'SOLO-1', 'high')"
+            "('0601101E', 'SHARED-1', NULL, 'high'),"
+            "('0602303E', 'SHARED-1', NULL, 'high'),"
+            "('0699999X', 'SOLO-1', NULL, 'high')"
         )
         con.execute(
             "CREATE TABLE fct_award_transactions ("
@@ -838,6 +848,98 @@ class TestEmitDistrictSidecars:
 
         ca = json.loads((dist_dir / "CA-18.json").read_text())
         assert ca["programs"][0]["shared_award_count"] == 1
+
+    def test_shared_award_count_folds_with_max(self, tmp_path):
+        """#51 / Task 27 fix round 1 (Minor 6): two fanout rows that collapse
+        onto ONE split key must publish the LARGEST fan-out, not whichever
+        row the query happened to return last.
+
+        The fanout query is grained on (district, pe_bli, account) since Task
+        27, while the key it is looked up by is the district row's SPLIT KEY.
+        Those are many-to-one wherever _member_split_key declines to name a
+        member: an ORGANIZATION-split code ('20', '30', '500'), whose two
+        members share the one account '0300D', is the case here — an
+        account-bearing row and an account-NULL row both address the bare
+        '20'. The page renders this number in a sentence ("this award,
+        matched to N programs"), so last-wins would publish a true number of
+        the wrong award. Unreachable on today's corpus (measured read-only
+        2026-09-19: no (district, pe_bli) pair carries two account rows).
+        """
+        db_path = tmp_path / "fold.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE dim_programs (pe_bli varchar, account varchar,"
+            "  account_title varchar, org varchar, exhibit_family varchar)"
+        )
+        con.execute(
+            "INSERT INTO dim_programs VALUES"
+            " ('20','0300D','Procurement, Defense-Wide','DCSA','procurement'),"
+            " ('20','0300D','Procurement, Defense-Wide','DTRA','procurement')"
+        )
+        con.execute(
+            "CREATE TABLE fct_district_programs ("
+            "  pop_state varchar, pop_district varchar, pe_bli varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
+            "  transaction_count bigint, award_count bigint, recipient_count bigint,"
+            "  total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES "
+            "('TX', 'TX-09', '20', '0300D', 'DCSA Program', 'DCSA', 4, 2, 1, 7000000.0)"
+        )
+        con.execute(
+            "CREATE TABLE fct_district_totals ("
+            "  pop_state varchar, pop_district varchar,"
+            "  award_count bigint, total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_totals VALUES ('TX', 'TX-09', 2, 7000000.0)"
+        )
+        # WIDE-1 is crosswalked to three program elements and carries the
+        # account; NARROW-1 is crosswalked to one and carries none. Both are
+        # '20' awards in TX-09, so both fanout rows address the bare '20'.
+        con.execute(
+            "CREATE TABLE fct_budget_to_awards ("
+            "  pe_bli varchar, award_piid varchar, account varchar,"
+            "  confidence varchar"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_budget_to_awards VALUES "
+            "('20', 'WIDE-1', '0300D', 'high'),"
+            "('0601101E', 'WIDE-1', NULL, 'high'),"
+            "('0602303E', 'WIDE-1', NULL, 'high'),"
+            "('20', 'NARROW-1', NULL, 'high')"
+        )
+        con.execute(
+            "CREATE TABLE fct_award_transactions ("
+            "  award_id_piid varchar, pop_district varchar, obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_award_transactions VALUES "
+            "('WIDE-1', 'TX-09', 5000000.0),"
+            "('NARROW-1', 'TX-09', 2000000.0)"
+        )
+        con.close()
+
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=set()
+            )
+        finally:
+            con.close()
+
+        tx = json.loads((dist_dir / "TX-09.json").read_text())
+        rows = [p for p in tx["programs"] if p["split_key"] == "20"]
+        assert len(rows) == 1, rows
+        # 3 (WIDE-1's fan-out), never 1 (NARROW-1's).
+        assert rows[0]["shared_award_count"] == 3, rows[0]
 
     def test_empty_table_produces_empty_index(self, tmp_path):
         db_path = tmp_path / "empty.duckdb"

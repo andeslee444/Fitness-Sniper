@@ -132,9 +132,12 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
     con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
 
-    # 2. fct_budget_to_awards  (live cols: pe_bli,exhibit,fiscal_year,organization,award_piid,recipient_name,recipient_uei,method,confidence,program_title)
-    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
-    con.execute("insert into fct_budget_to_awards values ('0601101E','R-1',2026,'DARPA','W911QX-24-C-0001','Lockheed Martin','UEI123','account+subagency','medium','Defense Research Sciences')")
+    # 2. fct_budget_to_awards  (live cols: pe_bli,exhibit,fiscal_year,organization,award_piid,recipient_name,recipient_uei,method,account,confidence,program_title)
+    #    `account` is the member appropriation a link resolved to — NULL for
+    #    an ordinary code like 0601101E, and required by the district sidecar
+    #    emitter since Task 27 (2026-09-19).
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, account varchar, confidence varchar, program_title varchar)")
+    con.execute("insert into fct_budget_to_awards values ('0601101E','R-1',2026,'DARPA','W911QX-24-C-0001','Lockheed Martin','UEI123','account+subagency',NULL,'medium','Defense Research Sciences')")
 
     # 3. fct_budget_trajectory  (live cols: pe_bli,organization,fy2024_actuals,fy2025_total,fy2026_total,fy2526_change,fy2526_pct_change)
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")

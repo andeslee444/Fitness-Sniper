@@ -975,6 +975,24 @@ def _make_usaspending_mart_duckdb(tmp_path: Path) -> Path:
         ],
     )
 
+    # dim_programs: '3010' is a real account-split code (two programs, one
+    # budget-line code, told apart by appropriation). The citation builder
+    # reads this to decide which rows name a member — see
+    # _district_row_names_a_member.
+    con.execute(
+        "CREATE TABLE dim_programs (pe_bli varchar, account varchar,"
+        " account_title varchar, org varchar, exhibit_family varchar)"
+    )
+    con.executemany(
+        "INSERT INTO dim_programs VALUES (?, ?, ?, ?, ?)",
+        [
+            ("0603760E", None, None, "DARPA", "rdte"),
+            ("3010", "1611N", "Shipbuilding and Conversion, Navy", "N",
+             "procurement"),
+            ("3010", "1810N", "Other Procurement, Navy", "N", "procurement"),
+        ],
+    )
+
     # fct_district_programs (Task 27: `account` after pe_bli)
     con.execute(
         "CREATE TABLE fct_district_programs (pop_state varchar, pop_district varchar,"
@@ -982,30 +1000,58 @@ def _make_usaspending_mart_duckdb(tmp_path: Path) -> Path:
         " transaction_count integer, award_count integer, recipient_count integer,"
         " total_obligation double)"
     )
-    con.execute(
-        "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', null, 'CC', 'DARPA', 3, 3, 3, 350000.0)"
+    con.executemany(
+        "INSERT INTO fct_district_programs VALUES (?, ?, ?, ?, ?, ?, 3, 3, 3, ?)",
+        [
+            # the ordinary code this module has always asserted on
+            ("CO", "CO-05", "0603760E", None, "CC", "DARPA", 350000.0),
+            # BOTH members of a shared code in ONE district — the case the
+            # account grain exists for, and the only shape in which the
+            # pre-Task-27 PIID filter could have listed a sibling's awards
+            # under this member's figure.
+            ("VA", "VA-08", "3010", "1611N", "LPD Flight II", "N", 900000.0),
+            ("VA", "VA-08", "3010", "1810N",
+             "Shipboard Tactical Communications", "N", 400000.0),
+            # an account-NULL row on the SAME shared code: it names both
+            # members, so its filter must list the account-NULL links only.
+            ("TX", "TX-01", "3010", None, "LPD Flight II", "N", 50000.0),
+        ],
     )
 
-    # fct_budget_to_awards (needed for district PIID lookup). No `account`
-    # column here on purpose: a pre-E1 fixture schema cannot carry one, and
-    # the PIID lookup must fall back to its unfiltered form rather than
-    # newly returning nothing.
+    # fct_budget_to_awards (needed for district PIID lookup). `account` is
+    # required here since Task 27 — the PIID filter narrows on it.
     con.execute(
         "CREATE TABLE fct_budget_to_awards (award_piid varchar, pe_bli varchar,"
-        " program_title varchar, organization varchar, confidence varchar)"
+        " program_title varchar, organization varchar, account varchar,"
+        " confidence varchar)"
     )
-    con.execute(
-        "INSERT INTO fct_budget_to_awards VALUES ('PIID-001', '0603760E', 'CC', 'DARPA', 'high')"
+    con.executemany(
+        "INSERT INTO fct_budget_to_awards VALUES (?, ?, ?, ?, ?, 'high')",
+        [
+            ("PIID-001", "0603760E", "CC", "DARPA", None),
+            ("PIID-SCN", "3010", "LPD Flight II", "N", "1611N"),
+            ("PIID-OPN", "3010", "Shipboard Tactical Communications", "N",
+             "1810N"),
+            ("PIID-BOTH", "3010", "LPD Flight II", "N", None),
+        ],
     )
 
-    # fct_award_transactions (needed for district PIID lookup)
+    # fct_award_transactions (needed for district PIID lookup). Both 3010
+    # members' awards land in VA-08 — the split the district-scoped join
+    # could not previously see past.
     con.execute(
         "CREATE TABLE fct_award_transactions (award_id_piid varchar, recipient_uei varchar,"
         " obligation double, pop_state varchar, pop_district varchar, fiscal_year integer,"
         " transaction_key varchar)"
     )
-    con.execute(
-        "INSERT INTO fct_award_transactions VALUES ('PIID-001', 'UEI-A1', 100000.0, 'CO', 'CO-05', 2025, 'TXN-1')"
+    con.executemany(
+        "INSERT INTO fct_award_transactions VALUES (?, 'UEI-A1', 100000.0, ?, ?, 2025, ?)",
+        [
+            ("PIID-001", "CO", "CO-05", "TXN-1"),
+            ("PIID-SCN", "VA", "VA-08", "TXN-2"),
+            ("PIID-OPN", "VA", "VA-08", "TXN-3"),
+            ("PIID-BOTH", "TX", "TX-01", "TXN-4"),
+        ],
     )
 
     con.close()
@@ -1037,6 +1083,68 @@ class TestBuildUsaspendingCitationRows:
         dp_fid = fact_id_usaspending("district_program", "CO|CO-05|0603760E", "total_obligation")
         fids = {r[0] for r in rows}
         assert dp_fid in fids, "district program row should be in rows"
+
+    def test_each_members_filter_lists_only_its_own_awards(self, tmp_path):
+        """Task 27 fix round 1: the award_ids a reader can paste into
+        USAspending belong to the member whose figure they sit under.
+
+        VA-08 holds BOTH members of '3010'. The pre-Task-27 filter joined on
+        pe_bli alone, so each member's citation body would have listed its
+        sibling's PIID beside its own (and the account-NULL link's too) — a
+        filter that returns a different number than the page shows. Narrowed
+        to `account is not distinct from ?`, each body lists one PIID.
+        """
+        from govbudget.export_site import _ProgramIdentity, _district_program_key
+
+        db_path = _make_usaspending_mart_duckdb(tmp_path)
+        rows = _build_usaspending_citation_rows(duckdb_path=db_path)
+        by_fid = {r[0]: r for r in rows}
+
+        ident = _ProgramIdentity([
+            ("3010", "1611N", "Shipbuilding and Conversion, Navy", "N", True),
+            ("3010", "1810N", "Other Procurement, Navy", "N", True),
+        ])
+
+        def award_ids(state, district, pe_bli, account):
+            fid = fact_id_usaspending(
+                "district_program",
+                _district_program_key(ident, state, district, pe_bli, account),
+                "total_obligation")
+            assert fid in by_fid, (state, district, pe_bli, account)
+            return json.loads(by_fid[fid][22])["filters"]["award_ids"]
+
+        assert award_ids("VA", "VA-08", "3010", "1611N") == ["PIID-SCN"]
+        assert award_ids("VA", "VA-08", "3010", "1810N") == ["PIID-OPN"]
+        # An account-NULL row on a shared code names BOTH members, so its
+        # body lists the account-NULL links and nothing else — never the two
+        # members' awards, which belong under their own figures.
+        assert award_ids("TX", "TX-01", "3010", None) == ["PIID-BOTH"]
+        # And the ordinary code is untouched: its links carry a NULL account
+        # too, so IS NOT DISTINCT FROM matches exactly what it always did.
+        assert award_ids("CO", "CO-05", "0603760E", None) == ["PIID-001"]
+
+    def test_a_mart_without_the_account_column_raises(self, tmp_path):
+        """A warehouse that predates Task 27 must stop the export, not
+        quietly republish the fused pre-Task-27 grain."""
+        db_path = tmp_path / "stale.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_district_programs (pop_state varchar,"
+            " pop_district varchar, pe_bli varchar, program_title varchar,"
+            " organization varchar, transaction_count integer,"
+            " award_count integer, recipient_count integer,"
+            " total_obligation double)"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES"
+            " ('CO', 'CO-05', '0603760E', 'CC', 'DARPA', 3, 3, 3, 350000.0)"
+        )
+        con.close()
+
+        with pytest.raises(RuntimeError) as exc:
+            _build_usaspending_citation_rows(duckdb_path=db_path)
+        assert "account" in str(exc.value)
+        assert "govbudget build" in str(exc.value)
 
     def test_query_body_is_valid_json(self, tmp_path):
         """All query_body fields parse as JSON dicts."""

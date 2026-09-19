@@ -28,6 +28,7 @@ from govbudget.export_site import (
     _build_budget_to_awards_citation_rows,
     _build_geography_citation_rows,
     _district_program_key,
+    _ProgramIdentity,
     _build_lobbyist_citation_rows,
     _emit_district_sidecars,
     _export_dim_lobbyists,
@@ -43,6 +44,12 @@ from govbudget.verify_phase5b1 import (
     _verify_lda,
     integrity_gate5b1,
 )
+
+# Every fixture in this module carries ORDINARY codes only (no dim_programs,
+# no shared budget-line code), so its district rows name no member and
+# _district_program_key returns the pre-Task-27 triple for all of them. The
+# empty identity is what the exporter itself builds from such a fixture.
+_NO_SPLITS = _ProgramIdentity([])
 
 # Citation row layout (27 columns) — mirrors export_site citations.parquet
 _CIT_IDX = {
@@ -247,14 +254,14 @@ class TestGeographyCitationRows:
         expected_inputs = [
             fact_id_usaspending(
                 "district_program",
-                _district_program_key("VA", "VA-08", "0601101E", None),
+                _district_program_key(_NO_SPLITS, "VA", "VA-08", "0601101E", None),
                 "total_obligation"),
             fact_id_usaspending(
                 "district_program",
-                _district_program_key("VA", "VA-08", "0602303E", None),
+                _district_program_key(_NO_SPLITS, "VA", "VA-08", "0602303E", None),
                 "total_obligation"),
         ]
-        assert _district_program_key("VA", "VA-08", "0601101E", None) == (
+        assert _district_program_key(_NO_SPLITS, "VA", "VA-08", "0601101E", None) == (
             "VA|VA-08|0601101E"
         )
         assert sorted(json.loads(by_fid[fid_link][_CIT_IDX["inputs"]])) == sorted(expected_inputs)
