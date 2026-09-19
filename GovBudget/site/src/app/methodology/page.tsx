@@ -1094,7 +1094,7 @@ export default function MethodologyPage() {
                         {" "}
                         The announcement tier&apos;s figure comes from the{" "}
                         {annDrawGap.drawnOn} draw, which predates{" "}
-                        {formatCount(annDrawGap.count)} of the links now
+                        {formatCount(annDrawGap.count)}{" "}of the links now
                         publishing under that tier: the LLM-alias pass&apos;s
                         most recent round added them, and the round&apos;s own
                         held-out sample above measures its links instead.
