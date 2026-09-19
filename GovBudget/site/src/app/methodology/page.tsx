@@ -266,6 +266,43 @@ export default function MethodologyPage() {
   // attribution", which the 2026-09-05 run would falsify.
   const linkPrecisionSubagencyAwaitsAttribution =
     linkPrecisionUnmeasuredList.includes("account+subagency");
+  // ROADMAP findings :118-119. The scope paragraph below used to carry four
+  // literals typed on 2026-09-02 (3,840 / "about 88%" / 12,811 / "~12%")
+  // describing a residue whose selection code was never committed. Every
+  // figure is derived now; gate 24 leg q recomputes them against the rendered
+  // text. Percentages, not dollars: the page's currency scan fails any uncited
+  // `$…` token — and every percentage clause says "by announced value",
+  // because these are shares of VALUE and the record shares are quite
+  // different numbers (10.6% of the residue's value is 44.9% of its records).
+  //
+  // The readiness test is per-FIELD rather than object-truthiness because the
+  // exporter returns all keys or {}; if a future export ever emitted a partial
+  // block the page would hide the paragraph and leg q would fail loudly, which
+  // is the direction we want. `precision` is exempt: null is a real state (no
+  // held-out sample of this pass's own links yet), and the paragraph says so.
+  const annScope = siteMeta.announcement_llm_scope;
+  const annScopeReady =
+    annScope?.records_total != null &&
+    annScope.records_deterministic != null &&
+    annScope.records_residue != null &&
+    annScope.records_attempted != null &&
+    annScope.records_remaining != null &&
+    annScope.pct_value_attempted != null &&
+    annScope.pct_value_remaining != null;
+  // The pass's OWN precision, never the tier's: link_precision above is
+  // pinned to the 2026-09-04 stratified draw over the whole announcement
+  // tier, which was sampled before this pass's newest links existed. A pair
+  // renders only when its own sample carries both halves and a judged date.
+  const annScopePrecision =
+    annScope?.precision?.sampled != null &&
+    annScope.precision.confirmed != null &&
+    annScope.precision.sampled_at
+      ? {
+          sampled: annScope.precision.sampled,
+          confirmed: annScope.precision.confirmed,
+          sampled_at: annScope.precision.sampled_at,
+        }
+      : null;
   // ROADMAP #109: per-award hand-adjudication COVERAGE, which the section's
   // opening sentence claimed rather than measured. It said "every published
   // link was individually hand-adjudicated … a link is published as high only
@@ -967,7 +1004,9 @@ export default function MethodologyPage() {
                   description of the work. Where the adjudication packet
                   recorded which of those applied, the link&apos;s citation card
                   states it; where it did not, the card says the basis was not
-                  recorded rather than asserting one. Announcement links additionally
+                  recorded rather than asserting one; an unrecorded basis is
+                  not evidence the announcement named the program outright.
+                  Announcement links additionally
                   require the award&apos;s funding accounts to match the
                   line&apos;s appropriation; awards funded only from operations
                   and maintenance money are not linked to research or procurement
@@ -975,15 +1014,25 @@ export default function MethodologyPage() {
                   the contract supports, generic services, or weak generic names are
                   rejected by design. Each link cites the announcement it came from.
                 </p>
-                <p className="mt-2">
-                  Scope of the announcement path: deterministic name
-                  matching covered every archived announcement; an additional LLM-assisted
-                  alias pass (decoding designators and aliases) covered the 3,840
-                  unmatched records that carry about 88% of the residue by announced
-                  value; the 12,811 smaller records carrying the remaining ~12% were
-                  not attempted. A card that records no basis is not evidence
-                  the announcement named the program outright.
-                </p>
+                {annScopeReady && (
+                  <p className="mt-2" data-announcement-scope="">
+                    Scope of the announcement path: deterministic name matching
+                    covered all {formatCount(annScope!.records_total!)} archived
+                    announcement records that join the award lake;{" "}
+                    {formatCount(annScope!.records_deterministic!)} named a
+                    program a J-book narrative owns. Of the{" "}
+                    {formatCount(annScope!.records_residue!)} that did not,{" "}
+                    {formatCount(annScope!.records_attempted!)} have been through
+                    an LLM-assisted alias pass — {annScope!.pct_value_attempted}%
+                    of the residue by announced value;{" "}
+                    {annScope!.records_remaining! > 0
+                      ? `the remaining ${formatCount(annScope!.records_remaining!)} records (${annScope!.pct_value_remaining}% of that value) were not attempted.`
+                      : "none is left unattempted."}{" "}
+                    {annScopePrecision
+                      ? `Its most recent round carries its own measurement: two independent reviewers judged a random draw of its links on ${annScopePrecision.sampled_at} and confirmed ${formatCount(annScopePrecision.confirmed)} of the ${formatCount(annScopePrecision.sampled)} that publish — those links only, not the path as a whole.`
+                      : "Its most recent round has not yet been measured on a held-out sample of its own."}
+                  </p>
+                )}
                 <p className="mt-2">
                   Where the only evidence is a subaward: FSRS subaward reports describe
                   the work a subcontractor performs under a prime contract, and when that

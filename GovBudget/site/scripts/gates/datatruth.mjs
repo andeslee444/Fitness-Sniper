@@ -162,6 +162,21 @@
  *      became 92 Navy / 59 Air Force / 22 Army against 14 DARPA. Vacuity
  *      fails four ways: no artifact, no built claim page, fewer sidecars
  *      than the dated floor, fewer swept claims than the dated floor.
+ *  (q) ANNOUNCEMENT LLM-PASS SCOPE (findings log :118-119, 2026-09-19).
+ *      /methodology/ disclosed the scope of the LLM-alias pass as four
+ *      literals typed 2026-09-02 ("3,840 … about 88% … 12,811 … ~12%"),
+ *      describing a residue whose selection code was never committed. This leg
+ *      recomputes every figure in that paragraph from
+ *      site_meta.announcement_llm_scope and requires the rendered
+ *      [data-announcement-scope] text to state it — and to render NOTHING
+ *      when no pass is recorded. It binds one more pair in the same slot
+ *      order: the pass's OWN held-out precision. Leg (n)'s tier figure is
+ *      pinned to the 2026-09-04 stratified draw over the whole announcement
+ *      tier, which was sampled before this pass's most recent round existed,
+ *      so the round is measured by its own sample and the leg fails either
+ *      direction of confusion — a rendered pair the block does not hold, or a
+ *      measured round the paragraph calls unmeasured. See leg q's own block
+ *      at the bottom.
  *  (r) DISTRICT BY-YEAR CELLS vs THE LAKE (ROADMAP #6). Gate 9 leg f proves
  *      the by-year rows are INTERNALLY consistent — they sum to the headline
  *      the page renders above them. An exporter that read the wrong mart, or a
@@ -692,6 +707,9 @@ export async function runDataTruthGate() {
 
   // ── leg p: crosswalk-count provenance (PM-S3 leftover) ────────────────────
   runCrosswalkCountLeg(errors, notes);
+
+  // ── leg q: announcement LLM-pass scope (findings log :118-119) ────────────
+  runAnnouncementScopeLeg(errors, notes);
 
   // ── leg r: district by-year cells vs the lake (ROADMAP #6) ────────────────
   runDistrictYearLeg(errors, notes);
@@ -4345,4 +4363,198 @@ function runDistrictYearLeg(errors, notes) {
         `rendering a gross "Before deobligations" cell, checked the same way) ✓`,
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg q — announcement LLM-alias pass scope (findings log :118-119)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** The figures leg q requires the paragraph to state, in RENDER order. The
+ *  page renders each one through formatCount (toLocaleString("en-US")), as a
+ *  bare number + '%', as an ISO date, or — for the pass's own precision — as
+ *  the composite "<confirmed> of the <sampled>" the sentence reads with, so
+ *  the formatting here has to match those exactly. A composite slot rather
+ *  than two loose integers: "48" and "55" are substrings of plenty of other
+ *  numbers, and the one thing this leg exists to catch is a PAIR from another
+ *  population. */
+function announcementScopeFigures(scope) {
+  const n = (v) => Number(v).toLocaleString("en-US");
+  const pct = (v) => `${Number(v)}%`;
+  const out = [
+    n(scope.records_total),
+    n(scope.records_deterministic),
+    n(scope.records_residue),
+    n(scope.records_attempted),
+    pct(scope.pct_value_attempted),
+  ];
+  if (scope.records_remaining > 0) {
+    out.push(n(scope.records_remaining), pct(scope.pct_value_remaining));
+  }
+  const p = scope.precision;
+  if (p) {
+    out.push(p.sampled_at, `${n(p.confirmed)} of the ${n(p.sampled)}`);
+  }
+  return out;
+}
+
+/** The shape the rendered precision sentence states a pair in. Used only to
+ *  prove a pair is ABSENT when the block carries none — a paragraph claiming
+ *  a measurement nothing measured. */
+const ANNOUNCEMENT_PAIR_RE = /\d[\d,]* of the [\d,]+/;
+
+/**
+ * leg q: /methodology/'s announcement-scope paragraph states only figures that
+ * site_meta.announcement_llm_scope carries, and states all of them.
+ *
+ * `records_total == null` is the "no pass recorded" test, the same predicate
+ * methodology/page.tsx guards the paragraph with — the exporter writes all the
+ * keys or none, so a partial block fails here loudly instead of silently
+ * hiding the disclosure.
+ *
+ * `precision` is the one nullable field, and it is the one this leg guards
+ * hardest in BOTH directions. The tier-wide study (leg n) sampled the
+ * announcement tier on 2026-09-04, before this pass's most recent round
+ * produced its links; the round's own sample is a different measurement of a
+ * different population. So: a block with a pair must render that pair and its
+ * judged date, a block without one must render the words that say so, and a
+ * paragraph must never state a pair the block does not hold.
+ *
+ * `injected = {siteMeta, paragraphText, methodologyBuilt}` is passed only by
+ * __tests__/announcement-scope.test.mjs — same contract as leg n. The gate
+ * itself always passes undefined and reads the shipped site_meta.json and the
+ * built /methodology/.
+ */
+export function runAnnouncementScopeLeg(errors, notes, injected) {
+  let siteMeta;
+  let paragraphText = null;
+  let paragraphExists = false;
+  let methodologyBuilt = true;
+
+  if (injected) {
+    siteMeta = injected.siteMeta ?? {};
+    paragraphText = injected.paragraphText ?? null;
+    paragraphExists = injected.paragraphText != null;
+    methodologyBuilt = injected.methodologyBuilt ?? true;
+  } else {
+    const siteMetaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(siteMetaPath)) {
+      errors.push(`leg q: ${siteMetaPath} missing — cannot recompute the announcement scope`);
+      return;
+    }
+    try {
+      siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
+    } catch (e) {
+      errors.push(`leg q: site_meta.json unparseable — ${e.message}`);
+      return;
+    }
+    const methodRoot = readHtml("/methodology/");
+    methodologyBuilt = methodRoot != null;
+    const el = methodRoot?.querySelector("[data-announcement-scope]");
+    paragraphExists = el != null;
+    paragraphText = el ? norm(el.text) : null;
+  }
+
+  const scope = siteMeta.announcement_llm_scope ?? {};
+  if (scope.records_total == null) {
+    if (paragraphExists) {
+      errors.push(
+        "leg q (/methodology/): [data-announcement-scope] renders while " +
+          "site_meta.announcement_llm_scope carries no pass — the paragraph " +
+          "must stay absent until one is recorded",
+      );
+    } else {
+      notes.push("leg q: no announcement LLM pass recorded; paragraph absent ✓");
+    }
+    return;
+  }
+  if (!methodologyBuilt) {
+    errors.push("leg q: /methodology/ not built — the scope leg would be vacuous");
+    return;
+  }
+  if (!paragraphExists) {
+    errors.push(
+      "leg q (/methodology/): site_meta.announcement_llm_scope is populated " +
+        "but [data-announcement-scope] is missing — the scope of the pass is a " +
+        "disclosure, not an optional flourish",
+    );
+    return;
+  }
+  // All three halves or none: a block that carries a count but not the pair it
+  // was counted from cannot be rendered honestly either way, so it fails here
+  // rather than quietly dropping the sentence.
+  const precision = scope.precision ?? null;
+  if (precision && (precision.confirmed == null || precision.sampled == null ||
+                    !precision.sampled_at)) {
+    errors.push(
+      `leg q: site_meta.announcement_llm_scope.precision is partial ` +
+        `(${JSON.stringify(precision)}) — the exporter writes confirmed, ` +
+        `sampled and sampled_at together or writes null; re-run export-site`,
+    );
+    return;
+  }
+  // Checked before the figure sweep so the diagnosis names the disagreement
+  // itself rather than the pair the paragraph is missing because of it.
+  if (precision && /not yet been measured|not yet measured/i.test(paragraphText)) {
+    errors.push(
+      `leg q (/methodology/): the pass's most recent round IS measured ` +
+        `(${precision.confirmed} of ${precision.sampled}, sample ` +
+        `${precision.sample_id}) and the paragraph says it is not yet measured`,
+    );
+    return;
+  }
+  const figures = announcementScopeFigures(scope);
+  const missing = figures.filter((f) => !paragraphText.includes(f));
+  if (missing.length) {
+    errors.push(
+      `leg q (/methodology/): [data-announcement-scope] does not state ` +
+        `${missing.join(", ")} — site_meta says ` +
+        `${figures.join(" / ")} (as_of ${scope.as_of})`,
+    );
+    return;
+  }
+  if (scope.records_remaining === 0 && /not attempted/i.test(paragraphText)) {
+    errors.push(
+      "leg q (/methodology/): the pass covers the whole residue but the " +
+        "paragraph still says records were not attempted",
+    );
+    return;
+  }
+  if (scope.records_remaining > 0 && !/not attempted/i.test(paragraphText)) {
+    errors.push(
+      `leg q (/methodology/): ${scope.records_remaining.toLocaleString("en-US")} ` +
+        `residue records are not attempted and the paragraph does not say so`,
+    );
+    return;
+  }
+  if (!precision) {
+    if (ANNOUNCEMENT_PAIR_RE.test(paragraphText)) {
+      errors.push(
+        "leg q (/methodology/): [data-announcement-scope] states a " +
+          "confirmed/sampled pair while site_meta records no held-out sample " +
+          "of this pass's own links — the tier-wide study measures a different " +
+          "population and is never this figure",
+      );
+      return;
+    }
+    if (!/not yet been measured|not yet measured/i.test(paragraphText)) {
+      errors.push(
+        "leg q (/methodology/): no held-out sample has measured the pass's " +
+          "most recent round and the paragraph does not say so — silence " +
+          "reads as measured",
+      );
+      return;
+    }
+    notes.push(
+      `leg q: [data-announcement-scope] states all ${figures.length} derived ` +
+        `figure(s) (as_of ${scope.as_of}); the newest round is not measured ` +
+        `and the paragraph says so ✓`,
+    );
+    return;
+  }
+  notes.push(
+    `leg q: [data-announcement-scope] states all ${figures.length} derived ` +
+      `figure(s) (as_of ${scope.as_of}), including this pass's own ` +
+      `${precision.confirmed}/${precision.sampled} from sample ` +
+      `${precision.sample_id} ✓`,
+  );
 }

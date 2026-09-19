@@ -244,13 +244,23 @@ not linked to research or procurement lines. Platform-support mentions,
 generic services, and weak generic names are rejected by design. Each link
 cites its announcement (article id, date, URL).
 
-Scope of the announcement path: deterministic name matching
-covered every archived announcement; an additional LLM-assisted alias pass
-(decoding designators and aliases such as PATRIOT backronyms → PAC-3 or
-Global Hawk → RQ-4B) covered the top 3,840 unmatched records by announced
-value ($1.96T of the $2.23T residue) — 12,811 smaller records ($278B) were
-not attempted. A card that records no basis is not evidence the
-announcement named the program outright.
+Scope of the announcement path, stated plainly: deterministic name matching
+covered every archived announcement record that joins the award lake; the rest
+— the residue — went to an LLM-assisted alias pass that decodes designators and
+aliases (PATRIOT backronyms → PAC-3, Global Hawk → RQ-4B). /methodology/ states
+the counts, the share of the residue by announced value the pass has covered,
+and the held-out precision of its most recent round; every one of those figures
+is derived from `site_meta.announcement_llm_scope` (written by
+`scripts/load_announcement_scope.py` from the wave manifests and the pass's own
+precision sample, recomputed against the rendered page by gate 24 leg q), never
+typed here or there. That round's precision is measured on ITS links alone: the
+tier-wide study further down sampled the announcement tier on 2026-09-04,
+before those links existed, and stays pinned to that draw. Correction,
+2026-09-19: until this date the page carried four literals from 2026-09-02
+instead — "3,840 … about 88% … 12,811 … ~12%" — describing a residue whose
+selection code was never committed and which no later reconstruction
+reproduces; they are why the figures are derived now. An unrecorded basis is
+not evidence the announcement named the program outright.
 
 Where the only evidence is a subaward: FSRS subaward reports describe the
 work a subcontractor performs under a prime contract, and when that

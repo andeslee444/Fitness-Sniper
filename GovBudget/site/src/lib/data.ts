@@ -331,6 +331,52 @@ export interface SiteMeta {
     >;
     unmeasured?: string[];
   };
+  /**
+   * ROADMAP findings log :118-119: how far the announcement LLM-alias pass got.
+   *
+   * /methodology/ used to state this as four literals typed 2026-09-02 — the
+   * 3,840 records attempted, "about 88%" of the residue by announced value, the
+   * 12,811 not attempted, "~12%". All four were true when written, all four
+   * described a residue definition that was never committed to the repo, and
+   * nothing in the build could see them rot. Every figure in that paragraph now
+   * comes from here; gate 24 leg q recomputes it against the rendered text.
+   *
+   * Dollars are deliberately absent: /methodology/'s currency scan fails any
+   * uncited `$…` token and an allowlist entry must be a literal, so the page
+   * publishes the share of residue VALUE as a percentage instead. The
+   * percentages are shares of VALUE, never of records — the page says so in
+   * every clause that carries one, because 10.6% of the residue's value is
+   * 44.9% of its records.
+   *
+   * All fields or none — the exporter returns {} until a pass is recorded, and
+   * the page then renders no paragraph at all. Optional (not merely
+   * possibly-empty) because pre-2026-09-19 exports lack the key.
+   */
+  announcement_llm_scope?: {
+    as_of?: string;
+    records_total?: number;
+    records_deterministic?: number;
+    records_residue?: number;
+    records_attempted?: number;
+    records_remaining?: number;
+    pct_value_attempted?: number;
+    pct_value_remaining?: number;
+    /**
+     * The held-out sample of the links this pass's newest wave produced —
+     * a DIFFERENT measurement from `link_precision` above, which sampled the
+     * whole announcement tier on 2026-09-04, before these links existed. It is
+     * null until such a sample is loaded, and the page then says the batch has
+     * not yet been measured rather than borrowing the tier's figure. `sampled`
+     * counts only judged links the corpus still publishes, the same population
+     * rule the tier-wide block uses.
+     */
+    precision?: {
+      sample_id?: string;
+      sampled_at?: string | null;
+      sampled?: number;
+      confirmed?: number;
+    } | null;
+  };
 }
 
 export interface SiteMetaProgramsCoverageExcluded {
