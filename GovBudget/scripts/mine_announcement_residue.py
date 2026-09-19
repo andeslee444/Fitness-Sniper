@@ -280,16 +280,21 @@ def collect_verdicts(queue, verdicts, indexes=None):
     refute_b.refuted is False. Anything else — 'weak', 'wrong', a refutation,
     a lens that never ran, a malformed verdict — does not survive, and the
     counts say which. Raises ValueError on a proposal the loader could not
-    publish honestly (no match_basis, basis outside the vocabulary, no
-    lexicon_doc, no program_name, or a pe_bli/piid the queue chunk does not
-    contain) and on a verdict file naming a chunk this queue does not hold (the
-    numbering is derived from the universe, so a re-queue renumbers everything;
-    silently ignoring such a file would drop real adjudications).
+    publish honestly (no lexicon_doc, no program_name, or a pe_bli/piid the
+    queue chunk does not contain) and on a verdict file naming a chunk this
+    queue does not hold (the numbering is derived from the universe, so a
+    re-queue renumbers everything; silently ignoring such a file would drop
+    real adjudications).
 
-    Two failures are COUNTED rather than raised, because they are content the
+    Three failures are COUNTED rather than raised, because they are content the
     refute lenses were meant to catch rather than a broken protocol, and a raise
-    would block a whole 150-chunk collection on one bad row: a
-    (program_name, pe_bli, lexicon_doc) triple that is not a row of that org's
+    would block a whole 150-chunk collection on one bad row: a `link` proposal
+    whose `match_basis` is missing or outside BASIS_VOCAB (`invalid_match_basis`
+    — the proposer only records a basis for `link` verdicts, so `weak`/`wrong`
+    proposals are never checked at all; each miss is recorded in
+    `invalid_match_basis_examples` alongside the count, because a basis a
+    citation card cannot word is the exact failure Task 25b's report discloses),
+    a (program_name, pe_bli, lexicon_doc) triple that is not a row of that org's
     index (`invalid_pe_bli` — an invented code, another org's code, an invented
     doc id or a name that PE does not own; load_announcement_links.py:289 drops
     them anyway, so the harm is to the 'surviving' count Task 25b publishes) and
@@ -308,8 +313,9 @@ def collect_verdicts(queue, verdicts, indexes=None):
             f"chunk numbering is derived from the universe")
     counts = {"link": 0, "weak": 0, "wrong": 0}
     refuted_a = refuted_b = missing_lens = malformed_lens = duplicate_pairs = 0
-    invalid_pe_bli = malformed_file = 0
+    invalid_pe_bli = malformed_file = invalid_match_basis = 0
     packets, surviving, attempted_files = [], [], []
+    invalid_match_basis_examples = []
     records_attempted = 0
     seen_pairs: set[tuple[str, str]] = set()
     for chunk in queue:
@@ -398,10 +404,15 @@ def collect_verdicts(queue, verdicts, indexes=None):
                     f"names no pe_bli; there is nothing to link the award to")
             basis = prop.get("match_basis")
             if basis not in BASIS_VOCAB:
-                raise ValueError(
-                    f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
-                    f"match_basis {basis!r}; an announcement citation card can "
-                    f"only word {sorted(BASIS_VOCAB)}")
+                # content the refute lenses were meant to catch, not a broken
+                # protocol — counted and skipped, never raised, so one bad
+                # basis cannot abort a 150-chunk collection (see docstring)
+                invalid_match_basis += 1
+                invalid_match_basis_examples.append({
+                    "chunk": chunk["file"], "piid": prop.get("piid"),
+                    "pe_bli": pe_bli, "basis": basis,
+                })
+                continue
             if reads_as_absent(prop.get("lexicon_doc")):
                 raise ValueError(
                     f"{chunk['file']}: {prop.get('piid')}/{prop.get('pe_bli')} has "
@@ -479,6 +490,8 @@ def collect_verdicts(queue, verdicts, indexes=None):
         "refuted_b": refuted_b,
         "missing_lens": missing_lens,
         "malformed_lens": malformed_lens,
+        "invalid_match_basis": invalid_match_basis,
+        "invalid_match_basis_examples": invalid_match_basis_examples,
         "invalid_pe_bli": invalid_pe_bli,
         "malformed_file": malformed_file,
         "duplicate_pairs": duplicate_pairs,
@@ -682,6 +695,7 @@ def cmd_collect() -> int:
           f"refuted A {result['refuted_a']:,} / B {result['refuted_b']:,}; "
           f"missing a lens {result['missing_lens']:,}; "
           f"malformed a lens {result['malformed_lens']:,}; "
+          f"invalid match_basis {result['invalid_match_basis']:,}; "
           f"not in the org index {result['invalid_pe_bli']:,}; "
           f"malformed verdict files {result['malformed_file']:,}; "
           f"duplicate pairs {result['duplicate_pairs']:,}; "

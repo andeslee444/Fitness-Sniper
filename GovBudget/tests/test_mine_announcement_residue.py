@@ -218,15 +218,29 @@ def test_collect_refuses_an_ambiguous_record_unless_the_index_says_which():
             queue, {"chunk_000_N.json": {"proposals": [{**prop, "record_index": 9}]}})
 
 
-def test_collect_refuses_a_packet_with_no_match_basis():
+def test_collect_counts_a_packet_with_no_match_basis_rather_than_raising():
+    """Task 25b prep: the real 150-chunk run aborted on the first `link`
+    proposal with no `match_basis` (chunk_049_N, M0026425D0003/0605873M — one
+    proposal in 1,086, refuted by both lenses anyway). A missing or
+    out-of-vocabulary basis is content the refute lenses were meant to catch,
+    not a broken protocol, so it is counted under `invalid_match_basis` and
+    the proposal is dropped — never raised. See
+    test_collect_counts_an_invalid_match_basis_and_never_raises for the
+    fuller scenario (a second, out-of-vocabulary basis, plus weak/wrong rows
+    that must never be checked)."""
     queue = [{"file": "chunk_000_N.json", "org": "N", "announced_value": 1,
               "records": [dict(_rec("1", "t", ["P1"], [1]), org="N", lake_piids=["P1"])]}]
     verdicts = {"chunk_000_N.json": {"proposals": [
         {"article_id": "1", "piid": "P1", "pe_bli": "0305220N", "verdict": "link",
          "program_name": "Triton", "lexicon_doc": "601", "rationale": "…",
          "refute_a": {"refuted": False}, "refute_b": {"refuted": False}}]}}
-    with pytest.raises(ValueError, match="match_basis"):
-        collect_verdicts(queue, verdicts)
+    packets, result = collect_verdicts(queue, verdicts)
+    assert packets == []
+    assert result["surviving"] == []
+    assert result["invalid_match_basis"] == 1
+    assert result["invalid_match_basis_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P1", "pe_bli": "0305220N",
+         "basis": None}]
     assert "llm-alias" in BASIS_VOCAB
     # subaward-description-exact makes the loader publish at subaward+lexicon /
     # medium and skip the money-colour guard (load_announcement_links.py:363-366),
@@ -655,3 +669,40 @@ def test_a_non_digit_string_record_index_is_counted_not_raised():
         indexes={"N": read_index_rows(INDEX_N)})
     assert packets == []
     assert result["malformed_lens"] == 1
+
+
+# --- Task 25b prep: `collect` aborted the real 150-chunk run on the FIRST
+# --- `link` proposal with an unknown match_basis (chunk_049_N,
+# --- M0026425D0003/0605873M, refuted by both lenses anyway). The proposer
+# --- only records a basis for `link` verdicts, so 2,062 real `weak`/`wrong`
+# --- proposals also carry `match_basis: None` — those must never be checked.
+
+def test_collect_counts_an_invalid_match_basis_and_never_raises():
+    """A `link` proposal whose basis is missing or outside BASIS_VOCAB cannot
+    word an announcement citation card, but it is content the refute lenses
+    were meant to catch, not a broken protocol — counted under
+    `invalid_match_basis`, dropped from `surviving` and the packets, and the
+    run continues. `weak`/`wrong` proposals are never checked for a basis at
+    all."""
+    queue = [_one_chunk(pairs=(("1", "P1"), ("2", "P2"), ("3", "P3")))]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        _link("1", "P1"),                                 # valid basis
+        _link("2", "P2", match_basis=None),               # missing
+        _link("3", "P3", match_basis="made-up"),          # outside BASIS_VOCAB
+        {"verdict": "weak", "match_basis": None},
+        {"verdict": "wrong", "match_basis": None},
+    ]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert [p["piid"] for p in packets] == ["P1"]
+    assert result["surviving"] == [
+        {"piid": "P1", "pe_bli": "0305220N", "reason": "holds"}]
+    assert result["invalid_match_basis"] == 2
+    assert result["invalid_match_basis_examples"] == [
+        {"chunk": "chunk_000_N.json", "piid": "P2", "pe_bli": "0305220N",
+         "basis": None},
+        {"chunk": "chunk_000_N.json", "piid": "P3", "pe_bli": "0305220N",
+         "basis": "made-up"},
+    ]
+    assert result["verdict_counts"] == {"link": 3, "weak": 1, "wrong": 1}
+    assert result["proposed"] == 3
