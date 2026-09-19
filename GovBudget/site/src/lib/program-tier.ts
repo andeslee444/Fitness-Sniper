@@ -160,6 +160,15 @@ export function setOrgAbsences(
     // names the payload itself.
     next.set(org, {
       rule,
+      // THE CAST IS A DEBT, AND ORG ABSENCE WORDING IS WHERE IT IS PAID.
+      // `OrgAbsence.fy` is declared `number` because every consumer wants a
+      // year; a payload written before the field carries none, so this entry
+      // can hold `undefined` behind a `number`. That is tolerable only while
+      // orgAbsenceWording is the ONLY reader of `.fy` (grep: it is — the
+      // throw at the top of it is the check), so a new reader either goes
+      // through the wording or repeats the Number.isInteger refusal. Widening
+      // the field instead would hand every call site an `| undefined` that
+      // `Number.isInteger` cannot narrow, which buys a cast at each of them.
       fy: raw.fy as number,
       checked_on: raw.checked_on ?? "",
       checked_url: raw.checked_url ?? "",
@@ -207,9 +216,9 @@ export function orgAbsenceWording(
   const service = serviceOrgName(orgCode) || "service";
   const checked = absence.checked_on;
   // The edition comes from the payload (export_site._org_absences, from
-  // config.JBOOK_FY). It was typed here as "FY2026" until ROADMAP #111: a
-  // literal that would have gone on naming 2026 the day the FY2027 books
-  // landed, with nothing to notice.
+  // config.JBOOK_FY). It was typed here as "FY2026" until the Group C polish
+  // added the field: a literal that would have gone on naming 2026 the day
+  // the FY2027 books landed, with nothing to notice.
   //
   // Without it, REFUSE. "No FY RDT&E or procurement justification book was
   // published for IG" is a claim about a budget year with the year missing,
@@ -220,7 +229,9 @@ export function orgAbsenceWording(
       `[govbudget/program-tier] the recorded absence for "${orgCode}" carries` +
         ` no integer fy (got ${JSON.stringify(absence.fy)}), and every` +
         ` sentence below names the edition. Re-run "uv run python -m govbudget` +
-        ` export-site": site_meta.org_absences predates ROADMAP #111.`,
+        ` export-site": site_meta.org_absences predates this field, which was` +
+        ` added after Task 17c (Group C polish, 2026-09-18) — a #111-era` +
+        ` export is exactly the one that does not write it.`,
     );
   }
   const fy = `FY${absence.fy}`;

@@ -106,10 +106,12 @@ export interface SiteMeta {
    * data/research/edition_manifest.json). program-tier.orgAbsenceWording
    * turns the rule into the sentence those pages render instead of the
    * generic "not yet ingested", and `fy` is the edition that sentence names —
-   * carried here so no fiscal year is typed into the site. Absent on pre-17c
-   * exports; {} when no absence is recorded. An entry with no `fy` (an export
-   * that predates the field) makes orgAbsenceWording THROW where the sentence
-   * is built, rather than render a yearless "FY".
+   * carried here so no fiscal year is typed into THOSE sentences. Not into
+   * the site: the ingested coverage note (service-books-note.tsx) and
+   * what-it-is.ts still type FY2026, and this payload does not reach them.
+   * Absent on pre-17c exports; {} when no absence is recorded. An entry with
+   * no `fy` (an export that predates the field) makes orgAbsenceWording THROW
+   * where the sentence is built, rather than render a yearless "FY".
    */
   org_absences?: Record<string, OrgAbsence>;
   /** Per-dataset row counts keyed by dataset name (e.g. "citations", "jbook_details"). */

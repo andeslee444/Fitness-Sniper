@@ -28,13 +28,21 @@
  * non-vacuity floor rather than dodging it. Run via `npm test` (vitest).
  */
 import { describe, it, expect } from "vitest";
-import { ABSENCE_MARKERS, runCoverageNoteLeg } from "../program-skeleton.mjs";
+import {
+  ABSENCE_MARKERS,
+  absenceFiscalYears,
+  runCoverageNoteLeg,
+} from "../program-skeleton.mjs";
 
 const INGESTED = ["A", "N", "F", "OSD"];
 
-/** The edition every fixture sentence below names. It is a field of the
- *  payload (export_site._org_absences, from config.JBOOK_FY), not a literal
- *  of the site — these cases hold it in one place for the same reason. */
+/** The edition the absence fixtures below name — the payload entries, the six
+ *  ABSENCE_TEXT sentences and the marker assertions all read it from here.
+ *  It is a field of the payload (export_site._org_absences, from
+ *  config.JBOOK_FY), not a literal of the site, and these cases hold it in
+ *  one place for the same reason. (The uningested note names no edition at
+ *  all, and the ingested one still types FY2026: that sentence's year is not
+ *  this payload's — see the note on INGESTED_NOTE.) */
 const FY = 2026;
 
 /** site_meta.org_absences, one entry per rule — the live FY2026 shape
@@ -63,25 +71,31 @@ const ABSENCES = {
 /** Verbatim ServiceBooksNote output (src/components/service-books-note.tsx). */
 const UNINGESTED_NOTE = (svc) =>
   `<p data-coverage="service-books" data-section-empty>Detailed justification for this program lives in the ${svc} J-book, which is not yet ingested — see <a href="/methodology/#coverage-service-books">roadmap</a>.</p>`;
+/** Verbatim ServiceBooksNote ingested branch — its FY2026 is a literal in the
+ *  component too (service-books-note.tsx:68), which the absence payload does
+ *  not reach; it is copied here as the component renders it today. */
 const INGESTED_NOTE = (svc) =>
   `<p data-coverage="service-books" data-section-empty>The ${svc} FY2026 J-books are ingested, but this program element carries no R-2/P-40 narrative in them — only its cited R-1/P-1 workbook figures are shown. See <a href="/methodology/#coverage-service-books">roadmap</a>.</p>`;
 
 /** Verbatim orgAbsenceWording output (src/lib/program-tier.ts), per rule.
  *  program-tier.test.ts pins that those sentences contain the markers this
  *  leg matches, so a reworded sentence is a red unit test as well as a red
- *  build. */
+ *  build. The edition is interpolated from FY, not typed six times: these
+ *  sentences read as the page renders them at FY = 2026, and moving the
+ *  constant moves the fixture corpus and the marker assertions together —
+ *  which is the point of the payload field they model. */
 const ABSENCE_TEXT = {
   "no-justification-book-published": (svc) => [
-    `No FY2026 RDT&E or procurement justification book was published for ${svc} (justification index checked 2026-09-12), so this corpus carries no detailed justification for this program.`,
-    `No FY2026 RDT&E or procurement justification book was published for ${svc}, so there are no accomplishments or planned-program narratives to show — see the description note above.`,
+    `No FY${FY} RDT&E or procurement justification book was published for ${svc} (justification index checked 2026-09-12), so this corpus carries no detailed justification for this program.`,
+    `No FY${FY} RDT&E or procurement justification book was published for ${svc}, so there are no accomplishments or planned-program narratives to show — see the description note above.`,
   ],
   "summary-line-only": (svc) => [
-    `No ${svc}-specific FY2026 justification book is published (justification index checked 2026-09-12) — its workbook rows are reconciliation, undistributed or roll-up summary lines — so this corpus carries no detailed justification for this program.`,
-    `No ${svc}-specific FY2026 justification book is published, so there are no accomplishments or planned-program narratives to show — see the description note above.`,
+    `No ${svc}-specific FY${FY} justification book is published (justification index checked 2026-09-12) — its workbook rows are reconciliation, undistributed or roll-up summary lines — so this corpus carries no detailed justification for this program.`,
+    `No ${svc}-specific FY${FY} justification book is published, so there are no accomplishments or planned-program narratives to show — see the description note above.`,
   ],
   "book-carries-no-embedded-xml": (svc) => [
-    `The ${svc} FY2026 justification book was downloaded, but its PDF carries no embedded data payload (checked 2026-09-12), so no R-2/P-40 detail could be extracted from it.`,
-    `The ${svc} FY2026 justification book was downloaded, but its PDF carries no embedded data payload, so no accomplishments or planned-program narratives could be extracted from it — see the description note above.`,
+    `The ${svc} FY${FY} justification book was downloaded, but its PDF carries no embedded data payload (checked 2026-09-12), so no R-2/P-40 detail could be extracted from it.`,
+    `The ${svc} FY${FY} justification book was downloaded, but its PDF carries no embedded data payload, so no accomplishments or planned-program narratives could be extracted from it — see the description note above.`,
   ],
 };
 const ABSENCE_NOTE = (rule, svc) =>
@@ -225,6 +239,39 @@ describe("the markers legs (c) and (o) share", () => {
     expect(Object.keys(ABSENCE_MARKERS).sort()).toEqual(
       Object.keys(ABSENCE_TEXT).sort(),
     );
+  });
+});
+
+describe("absenceFiscalYears — the year set leg (c) builds its markers from", () => {
+  // Leg (c) accepts a page whose coverage note carries any absence marker,
+  // and two of those markers name an edition. The years come from the
+  // payload (site_meta.org_absences[*].fy), so a rollover moves the gate with
+  // the pages; a year typed here would keep matching the edition that had
+  // moved on. Pinned because leg (c)'s acceptance silently depends on it: an
+  // empty set makes every DEFW page in its sample fail the "names the service
+  // book" check.
+  it("returns each edition the payload records, once and in order", () => {
+    expect(
+      absenceFiscalYears({
+        DHA: { rule: "book-carries-no-embedded-xml", fy: 2027 },
+        DEFW: { rule: "summary-line-only", fy: FY },
+        IG: { rule: "no-justification-book-published", fy: FY },
+      }),
+    ).toEqual([FY, 2027]);
+  });
+
+  it("drops an entry with no integer fy, and answers [] for no payload", () => {
+    // A pre-#111 export. The marker would otherwise be built from `undefined`
+    // and match nothing; leg (o) is the check that names the payload itself.
+    expect(
+      absenceFiscalYears({
+        DHA: { rule: "book-carries-no-embedded-xml", fy: FY },
+        IG: { rule: "no-justification-book-published" },
+        DEFW: { rule: "summary-line-only", fy: "2026" },
+      }),
+    ).toEqual([FY]);
+    expect(absenceFiscalYears({})).toEqual([]);
+    expect(absenceFiscalYears(null)).toEqual([]);
   });
 });
 
@@ -401,16 +448,22 @@ describe("leg o — proof it can fail", () => {
   });
 
   it("fails when an entry carries no fy — the sentences would name no year", () => {
-    // A pre-ROADMAP-#111 export. program-tier.setOrgAbsences throws before a
-    // page can render "FY", so this is the second door on the same defect:
-    // the payload itself is named, rather than 19 pages one at a time.
+    // An export made before the fy field. setOrgAbsences KEEPS such an entry
+    // (program-tier.ts:153-161) and program-tier.orgAbsenceWording throws
+    // when the sentence is built, so a build that produced these pages had an
+    // fy — but an org whose pages are never rendered reaches no sentence, and
+    // then this check is the only one that sees the record. It also names the
+    // payload once instead of 19 pages one at a time.
     const noFy = { ...ABSENCES.DEFW };
     delete noFy.fy;
     const { errors } = run(() => {}, INGESTED, { ...ABSENCES, DEFW: noFy });
     expect(errors.join("\n")).toMatch(
       /org_absences\["DEFW"\] carries fy undefined/,
     );
-    expect(errors.join("\n")).toMatch(/name the edition/);
+    // The message states the count the sentences actually have: all three
+    // name the edition, and two of the three MARKERS carry it.
+    expect(errors.join("\n")).toMatch(/Every absence sentence names the edition/);
+    expect(errors.join("\n")).toMatch(/two of the three MARKERS/);
   });
 
   it("fails when the detail-page population collapses — the leg would be vacuous", () => {

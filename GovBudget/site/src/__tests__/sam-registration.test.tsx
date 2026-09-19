@@ -10,6 +10,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
+import fs from "fs";
+import path from "path";
 
 import { SamRegistrationNote } from "@/components/sam-registration";
 import { CitationPanelContext } from "@/components/cite";
@@ -75,7 +77,15 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     renderNote(sam);
     const text = document.querySelector("[data-sam-registration]")!.textContent!;
     expect(text).toContain("largest member by obligations");
-    expect(text).toMatch(/where members tie, the one whose UEI sorts highest/);
+    // WHICH UEI breaks the tie is not a detail: the mart takes
+    // max(coalesce(parent_uei, recipient_uei)) over the tied set, so it is the
+    // REGISTRATION UEI, and the tied member whose own recipient_uei sorts
+    // highest can be a different row (the fixture that shows the two readings
+    // disagree is tests/test_sam_entities.py::
+    // test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does).
+    expect(text).toMatch(
+      /where members tie, the one whose registration UEI sorts highest/,
+    );
     expect(text).not.toMatch(/registered name is read from/);
   });
 
@@ -90,6 +100,25 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     const note = document.querySelector("[data-sam-registration]")!;
     expect(note.textContent).toContain("Registration Active");
     expect(note.textContent).not.toMatch(/CAGE|NAICS|Business types|expires/);
+  });
+
+  it("is the only surface that describes the pick — /methodology/ states the same rule", () => {
+    // The withdrawn identity had a THIRD home: /methodology/ §4 said the
+    // published families "carry the SAM.gov registration that name is read
+    // from", where "that name" is the family label (rn = 1). Both surfaces
+    // are gated on an extract that has not run, so nothing renders either
+    // sentence today and no build can catch a reprise — this reads the page
+    // source, the way methodology-doc-mirror.test.ts does, so the trio (this
+    // component, the citation formula in export_site.py, and the page) moves
+    // together or reds here.
+    const page = fs.readFileSync(
+      path.join(__dirname, "..", "app", "methodology", "page.tsx"),
+      "utf8",
+    );
+    expect(page).not.toMatch(/registration that name is read from/);
+    expect(page).not.toMatch(/registered name is read from/);
+    expect(page).toMatch(/largest member by obligations/);
+    expect(page).toMatch(/registration UEI sorts highest/);
   });
 
   it("cites the status through a prose cite, never a data-amount", () => {

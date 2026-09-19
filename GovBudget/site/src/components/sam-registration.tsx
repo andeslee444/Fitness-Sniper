@@ -27,7 +27,10 @@
  * broken arbitrarily), the registration from
  * `max(coalesce(parent_uei, recipient_uei)) filter (rk = 1)` — so on an exact
  * obligation tie they can be two different members, and the identity would be
- * a sentence the reader cannot check and the data does not support. 46
+ * a sentence the reader cannot check and the data does not support. And it is
+ * that REGISTRATION UEI the max() runs over, not the tied member's own
+ * recipient UEI: two tied members with different parents can order the two
+ * ways round, so the sentence names the UEI it actually sorts on. 46
  * families in the lake tie at the top, none in today's published 200; the
  * smaller true claim is the one that survives the day one does. The tie-break
  * itself is pinned by
@@ -65,8 +68,9 @@ export function SamRegistrationNote({ sam }: { sam?: EntitySamRegistration }) {
       {bits.length > 0 ? `, ${bits.join(", ")}` : ""}.
       {sam.business_types ? ` Business types: ${sam.business_types}.` : ""}{" "}
       This is the registration of the family&rsquo;s largest member by
-      obligations &mdash; where members tie, the one whose UEI sorts highest
-      &mdash; and it does not change how this family was resolved.
+      obligations &mdash; where members tie, the one whose registration UEI
+      sorts highest &mdash; and it does not change how this family was
+      resolved.
     </p>
   );
 }

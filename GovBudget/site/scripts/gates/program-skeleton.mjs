@@ -300,8 +300,8 @@ export async function runProgramSkeletonGate() {
   ];
 
   // ── (a)+(b)+(c)+(d) per sampled page ─────────────────────────────────────
-  // Leg (c) accepts a recorded-absence wording, and two of the three name the
-  // edition: read the years the payload records once, never type one.
+  // Leg (c) accepts a recorded-absence wording, and two of the three MARKERS
+  // name the edition: read the years the payload records once, never type one.
   const absenceFys = absenceFiscalYears();
   let pagesOk = 0;
   let mediumCaveatsChecked = 0;
@@ -3621,11 +3621,13 @@ const WITHDRAWN_FULL_TIER_SENTENCES = [
  * depending on the parser's entity handling. The sentences themselves keep
  * their full wording; only the marker is narrowed.
  *
- * `fy` is the second argument because two of the three sentences name the
- * edition and read the year from site_meta.org_absences[...].fy. A year typed
- * here would keep matching a page that had moved on (or stop matching the one
- * that had not), which is a gate agreeing with a literal instead of with the
- * payload the page renders from.
+ * `fy` is the second argument because two of the three MARKERS name the
+ * edition — every absence SENTENCE does, but "no-justification-book-published"
+ * is deliberately narrowed to the part that carries no year — and they read it
+ * from site_meta.org_absences[...].fy. A year typed here would keep matching a
+ * page that had moved on (or stop matching the one that had not), which is a
+ * gate agreeing with a literal instead of with the payload the page renders
+ * from.
  */
 export const ABSENCE_MARKERS = {
   "no-justification-book-published": (svc) =>
@@ -3641,19 +3643,27 @@ export const ABSENCE_MARKERS = {
  * one. Read from the payload rather than typed, for the reason the payload
  * exists. Empty when nothing is probed — which is also when no page can carry
  * an absence wording at all, because program-tier's map is then empty.
+ *
+ * `payload` is injected by __tests__/coverage-note.test.mjs and defaults to
+ * the shipped site_meta.json: leg (c)'s acceptance of an absence note depends
+ * on this set, so it is pinned the way leg (o)'s payload checks are rather
+ * than left to whatever the build happens to have on disk.
  */
-function absenceFiscalYears() {
-  const metaPath = path.join(jsonDir, "site_meta.json");
-  if (!fs.existsSync(metaPath)) return [];
-  const payload = readJson(metaPath).org_absences;
-  if (!payload || typeof payload !== "object") return [];
+export function absenceFiscalYears(payload) {
+  let entries = payload;
+  if (entries === undefined) {
+    const metaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(metaPath)) return [];
+    entries = readJson(metaPath).org_absences;
+  }
+  if (!entries || typeof entries !== "object") return [];
   return [
     ...new Set(
-      Object.values(payload)
+      Object.values(entries)
         .map((e) => e?.fy)
         .filter((fy) => Number.isInteger(fy)),
     ),
-  ];
+  ].sort((a, b) => a - b);
 }
 
 /** The wording no page with a recorded absence may carry, anywhere. */
@@ -3737,21 +3747,32 @@ export function runCoverageNoteLeg({
       );
     }
     // The edition the org's sentences name. Without it the page renders a
-    // yearless "FY" (program-tier.setOrgAbsences throws first, so a build
-    // that got this far has one) and this leg would match a marker built
-    // from `undefined` against every page it reads.
+    // yearless "FY" — program-tier.setOrgAbsences KEEPS such an entry on
+    // purpose (program-tier.ts:153-161); the refusal is at the sentence, in
+    // orgAbsenceWording, so an org whose pages are never rendered never
+    // reaches it and this check is the only door that sees the record. The
+    // leg would also match a marker built from `undefined` against every
+    // page it reads.
     if (!Number.isInteger(entry?.fy)) {
       errors.push(
         `program-skeleton(o): site_meta.org_absences["${org}"] carries fy ` +
-          `${JSON.stringify(entry?.fy)}. Two of the three absence sentences ` +
-          `name the edition and take the year from this field — re-run ` +
-          `export-site; an export older than ROADMAP #111 does not write it`,
+          `${JSON.stringify(entry?.fy)}. Every absence sentence names the ` +
+          `edition (two of the three MARKERS below carry it), and all of them ` +
+          `take the year from this field — re-run export-site; an export made ` +
+          `before the fiscal year joined the payload (Group C polish, ` +
+          `2026-09-18) does not write it`,
       );
     }
     if (ingested.has(org)) {
+      // The edition comes from the entry, like every other year in this leg:
+      // a literal here would name the wrong book at rollover, in the one
+      // message a reader opens when the two payloads disagree. When there is
+      // no year the check above has already said so, so this message drops
+      // the edition rather than printing "FYundefined".
+      const edition = Number.isInteger(entry?.fy) ? `FY${entry.fy} ` : "";
       errors.push(
         `program-skeleton(o): "${org}" is in BOTH ingested_service_orgs and ` +
-          `org_absences. One says its FY2026 book loaded detail, the other says ` +
+          `org_absences. One says its ${edition}book loaded detail, the other says ` +
           `it has no usable book — the page renders the absence, so a stale ` +
           `absence record would outlive the ingestion that ended it. Re-run the ` +
           `edition probe (jbooks) and export-site`,

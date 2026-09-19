@@ -134,6 +134,25 @@ export default function MethodologyPage() {
   // runs the bounded extract — which is why §4 states the status from this
   // number rather than describing an extract the build does not have.
   const samRegistrations = siteMeta.counts.companies_with_sam ?? 0;
+  // ROADMAP #111 / Group C polish fix round 1: the edition the residual
+  // clause in §5 names. The org pages it summarises stopped typing a year
+  // when the absence payload gained `fy` (program-tier.orgAbsenceWording);
+  // this sentence kept "FY2026" as a literal, which is the same rot one
+  // level up. All three recorded absences carry the same year today, so the
+  // clause reads exactly as it did — but a probe that recorded two editions
+  // renders both rather than silently naming one, and a payload with no year
+  // at all drops the edition instead of printing "FYundefined" (the page is
+  // still true without it: these orgs have no usable book in this corpus).
+  const absenceEditions = [
+    ...new Set(
+      Object.values(siteMeta.org_absences ?? {})
+        .map((a) => a?.fy)
+        .filter((fy): fy is number => Number.isInteger(fy)),
+    ),
+  ].sort((a, b) => a - b);
+  const noUsableBookClause = absenceEditions.length
+    ? `no usable ${absenceEditions.map((fy) => `FY${fy}`).join(" or ")} justification book`
+    : "no usable justification book";
   // ROADMAP #8: a cadence line describes the SOURCE's schedule, and every
   // one of these used to open with the word "Update" at the end of a paragraph
   // whose subject was "we". USAspending publishes monthly and this corpus was
@@ -767,9 +786,23 @@ export default function MethodologyPage() {
                       account holder can mint. The three preceding sentences
                       were trimmed to pay for this one (−98 raw / −24 gzip
                       measured on the built page; the 42,500 ceiling is never
-                      raised). */}
+                      raised). The measurement is of the branch this build
+                      renders — the zero one; the > 0 clause has never been
+                      weighed, and the day the extract runs is the day to
+                      re-measure this page.
+                      Group C polish fix round 1: that clause used to say the
+                      registration is "the one that name is read from", i.e.
+                      the label two sentences above. dim_entities takes the
+                      label from rn = 1 and this registration from
+                      max(coalesce(parent_uei, recipient_uei)) filter (rk = 1),
+                      so on an obligation tie they are two different members —
+                      and for the 15 seed-labelled families the label is not a
+                      registration at all. It now states the same rule as
+                      components/sam-registration.tsx and the citation formula
+                      in export_site.py; sam-registration.test.tsx reds if any
+                      of the three drifts. */}
                   {samRegistrations > 0
-                    ? ` ${formatCount(samRegistrations)} of the published families also carry the SAM.gov registration that name is read from, cited on the company page.`
+                    ? ` ${formatCount(samRegistrations)} of the published families also carry a cited SAM.gov registration on the company page \u2014 the registration of the family\u2019s largest member by obligations, where members tie the one whose registration UEI sorts highest, which need not be the member the label came from.`
                     : " No SAM.gov registration record ships yet; that extract needs an account holder\u2019s credential."}
                 </p>
               </div>
@@ -1357,8 +1390,8 @@ export default function MethodologyPage() {
                   remainders with no matching book entry.{" "}
                   {uningestedClause ? (
                     <>
-                      Some of it belongs to organizations with no usable FY2026
-                      justification book in this corpus —{" "}
+                      Some of it belongs to organizations with{" "}
+                      {noUsableBookClause} in this corpus —{" "}
                       {/* Chain-D fix round 1 (R-D-1): "rather than implying
                           a narrative exists" came off. The paragraph's own
                           closing sentence says it outright and unconditionally
