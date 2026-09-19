@@ -110,6 +110,11 @@ export type OrgAbsenceRule =
 
 export interface OrgAbsence {
   rule: OrgAbsenceRule;
+  /** The edition the absence was recorded for (export_site._org_absences,
+   *  from config.JBOOK_FY). Every sentence below names it — "No FY2026 …" —
+   *  and it comes from the payload precisely so that no year is typed into
+   *  this module, where nothing would re-derive it at rollover. */
+  fy: number;
   /** ISO date the probe read the source. Rendered: an absence is an
    *  observation, and an observation carries its date. */
   checked_on: string;
@@ -145,8 +150,17 @@ export function setOrgAbsences(
   for (const [org, raw] of Object.entries(payload ?? {})) {
     const rule = raw?.rule;
     if (!org || !rule || !ORG_ABSENCE_RULES.includes(rule)) continue;
+    // A missing `fy` is neither dropped nor thrown on HERE. Dropping would
+    // restore the generic "not yet ingested" on the org's pages — the defect
+    // this payload ended — and throwing would take down the whole build from
+    // one call data.ts makes once, including the ~2,500 pages that render no
+    // absence at all. The year is needed only where a sentence is built, so
+    // orgAbsenceWording refuses there: an export older than the field fails
+    // exactly the pages that would print a yearless "FY", and gate 21 leg (o)
+    // names the payload itself.
     next.set(org, {
       rule,
+      fy: raw.fy as number,
       checked_on: raw.checked_on ?? "",
       checked_url: raw.checked_url ?? "",
     });
@@ -192,65 +206,92 @@ export function orgAbsenceWording(
 ): OrgAbsenceWording {
   const service = serviceOrgName(orgCode) || "service";
   const checked = absence.checked_on;
+  // The edition comes from the payload (export_site._org_absences, from
+  // config.JBOOK_FY). It was typed here as "FY2026" until ROADMAP #111: a
+  // literal that would have gone on naming 2026 the day the FY2027 books
+  // landed, with nothing to notice.
+  //
+  // Without it, REFUSE. "No FY RDT&E or procurement justification book was
+  // published for IG" is a claim about a budget year with the year missing,
+  // and it would ship on four surfaces of every page the org owns. A build
+  // reading an export older than the field dies here, on those pages only.
+  if (!Number.isInteger(absence.fy)) {
+    throw new Error(
+      `[govbudget/program-tier] the recorded absence for "${orgCode}" carries` +
+        ` no integer fy (got ${JSON.stringify(absence.fy)}), and every` +
+        ` sentence below names the edition. Re-run "uv run python -m govbudget` +
+        ` export-site": site_meta.org_absences predates ROADMAP #111.`,
+    );
+  }
+  const fy = `FY${absence.fy}`;
   switch (absence.rule) {
     case "summary-line-only":
       return {
         description:
-          `No ${service}-specific FY2026 justification book is published` +
+          `No ${service}-specific ${fy} justification book is published` +
           (checked ? ` (justification index checked ${checked})` : "") +
-          ` — its workbook rows are reconciliation, undistributed and roll-up` +
+          ` — its workbook rows are reconciliation, undistributed or roll-up` +
           ` summary lines — so this corpus carries no detailed justification` +
           ` for this program.`,
         justification:
-          `No ${service}-specific FY2026 justification book is published, so` +
+          `No ${service}-specific ${fy} justification book is published, so` +
           ` there are no accomplishments or planned-program narratives to show` +
           ` — see the description note above.`,
         cardTail:
-          `Summary figures only: no ${service}-specific FY2026 justification` +
+          `Summary figures only: no ${service}-specific ${fy} justification` +
           ` book is published.`,
         metaTail:
-          `Workbook-tier line: no ${service}-specific FY2026 justification book` +
+          `Workbook-tier line: no ${service}-specific ${fy} justification book` +
           ` is published. `,
       };
     case "book-carries-no-embedded-xml":
       return {
         description:
-          `The ${service} FY2026 justification book was downloaded, but its PDF` +
+          `The ${service} ${fy} justification book was downloaded, but its PDF` +
           ` carries no embedded data payload` +
           (checked ? ` (checked ${checked})` : "") +
           `, so no R-2/P-40 detail could be extracted from it.`,
         justification:
-          `The ${service} FY2026 justification book was downloaded, but its PDF` +
+          `The ${service} ${fy} justification book was downloaded, but its PDF` +
           ` carries no embedded data payload, so no accomplishments or` +
           ` planned-program narratives could be extracted from it — see the` +
           ` description note above.`,
         cardTail:
-          `Summary figures only: the ${service} FY2026 justification book was` +
+          `Summary figures only: the ${service} ${fy} justification book was` +
           ` downloaded and carries no embedded data payload.`,
         metaTail:
-          `Workbook-tier line: the ${service} FY2026 justification book was` +
+          `Workbook-tier line: the ${service} ${fy} justification book was` +
           ` downloaded and carries no embedded data payload. `,
       };
     case "no-justification-book-published":
-    default:
       return {
         description:
-          `No FY2026 RDT&E or procurement justification book was published for` +
+          `No ${fy} RDT&E or procurement justification book was published for` +
           ` ${service}` +
           (checked ? ` (justification index checked ${checked})` : "") +
           `, so this corpus carries no detailed justification for this program.`,
         justification:
-          `No FY2026 RDT&E or procurement justification book was published for` +
+          `No ${fy} RDT&E or procurement justification book was published for` +
           ` ${service}, so there are no accomplishments or planned-program` +
           ` narratives to show — see the description note above.`,
         cardTail:
-          `Summary figures only: no FY2026 RDT&E or procurement justification` +
+          `Summary figures only: no ${fy} RDT&E or procurement justification` +
           ` book was published for ${service}.`,
         metaTail:
-          `Workbook-tier line: no FY2026 RDT&E or procurement justification book` +
+          `Workbook-tier line: no ${fy} RDT&E or procurement justification book` +
           ` was published for ${service}. `,
       };
   }
+  // A FOURTH rule is a COMPILE error here, not a silent fall-through onto the
+  // "no book published" sentences — which is what the old `default:` did, and
+  // it would have stated the wrong case about the new org with full
+  // confidence. The throw is unreachable from a validated payload
+  // (setOrgAbsences drops a rule this module has no sentence for).
+  const unwritten: never = absence.rule;
+  throw new Error(
+    `[govbudget/program-tier] orgAbsenceWording has no sentence for rule ` +
+      `${String(unwritten)}`,
+  );
 }
 
 /** True when the sidecar is a Batch-A rollup-tier export. */

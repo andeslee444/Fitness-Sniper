@@ -325,11 +325,18 @@ def test_config_lake_path_is_a_noop_without_a_symlink(tmp_path, parts):
 #
 # This parses the package's own source for SQL that writes `file_path` and
 # asserts the writer set is the four known ones — so the docs' claim is a
-# test, not a hope. Method and its limit, stated rather than assumed: every
-# statement in this codebase is ONE string literal (adjacent literals are
-# joined by the parser before the AST sees them), so the literal boundary is
-# the statement boundary; SQL assembled at runtime from fragments would
-# escape the census, and there is none today.
+# test, not a hope. Method and its limits, stated rather than assumed:
+#
+#   1. every statement in this codebase is ONE string literal (adjacent
+#      literals are joined by the parser before the AST sees them), so the
+#      literal boundary is the statement boundary; SQL assembled at runtime
+#      from fragments would escape the census, and there is none today;
+#   2. `writes_file_path` inspects only the FIRST `insert into … (cols)` and
+#      the first `update … set …` in a literal — both regexes `search` once.
+#      A literal holding two statements whose SECOND is the file_path writer
+#      is therefore invisible to it. That shape does not exist today (limit 1
+#      is why), and a multi-statement literal is the thing to look at by hand
+#      if this census ever disagrees with a grep.
 # ---------------------------------------------------------------------------
 
 #: (module path relative to the package, function) for every site that writes

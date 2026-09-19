@@ -311,6 +311,7 @@ describe("buildRollupCard — keeps the tier's honest tail", () => {
       serviceIngested: false,
       serviceAbsence: {
         rule: "no-justification-book-published",
+        fy: 2026,
         checked_on: "2026-09-12",
         checked_url: "https://comptroller.war.gov/Budget-Materials/",
       },
@@ -331,6 +332,7 @@ describe("buildRollupCard — keeps the tier's honest tail", () => {
       serviceIngested: true,
       serviceAbsence: {
         rule: "book-carries-no-embedded-xml",
+        fy: 2026,
         checked_on: "2026-09-12",
         checked_url: "https://comptroller.war.gov/x.pdf",
       },

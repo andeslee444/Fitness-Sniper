@@ -31,16 +31,19 @@ import {
 const ABSENCES: Record<string, OrgAbsence> = {
   DHA: {
     rule: "book-carries-no-embedded-xml",
+    fy: 2026,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/…/00-DHP_Vols_I_and_II_PB26.pdf",
   },
   DEFW: {
     rule: "summary-line-only",
+    fy: 2026,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/Budget-Materials/",
   },
   IG: {
     rule: "no-justification-book-published",
+    fy: 2026,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/Budget-Materials/",
   },
@@ -82,7 +85,9 @@ describe("ServiceBooksNote — the recorded-absence branch", () => {
     expect(text).toContain(
       "No DEFW-specific FY2026 justification book is published",
     );
-    expect(text).toContain("reconciliation, undistributed and roll-up summary lines");
+    // Disjunctive, because the rule is: DEFW's rows are all three today, a
+    // future org recorded under the same rule may have only one.
+    expect(text).toContain("reconciliation, undistributed or roll-up summary lines");
     expect(text).not.toContain("not yet ingested");
   });
 

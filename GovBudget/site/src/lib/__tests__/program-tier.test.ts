@@ -442,16 +442,19 @@ describe("isWorkbookOnlyDetails (ROADMAP #14 — the liar on the full tier)", ()
 const LIVE_ABSENCES: Record<string, OrgAbsence> = {
   DHA: {
     rule: "book-carries-no-embedded-xml",
+    fy: 2026,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/…/00-DHP_Vols_I_and_II_PB26.pdf",
   },
   DEFW: {
     rule: "summary-line-only",
+    fy: 2026,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/Budget-Materials/",
   },
   IG: {
     rule: "no-justification-book-published",
+    fy: 2026,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/Budget-Materials/",
   },
@@ -492,6 +495,28 @@ describe("setOrgAbsences / getOrgAbsence", () => {
     setOrgAbsences(undefined);
     expect(getOrgAbsence("DHA")).toBeNull();
   });
+
+  it("keeps an entry with no fy — the SENTENCE is what refuses to render", () => {
+    // An export that predates ROADMAP #111's fy field. Dropping the entry
+    // (what an unknown rule gets) would put the org back on "not yet
+    // ingested"; rendering it would print "No FY RDT&E or procurement
+    // justification book…". Both publish, so neither is the answer — but the
+    // refusal belongs at the sentence, not here: data.ts injects this payload
+    // once for the whole build, and a throw here would take down the ~2,500
+    // pages that render no absence at all (and every test that loads a
+    // shipped site_meta). The 19 pages that would print "FY" throw instead.
+    const noFy: Partial<OrgAbsence> = { ...LIVE_ABSENCES.IG };
+    delete noFy.fy;
+    setOrgAbsences({ ...LIVE_ABSENCES, IG: noFy });
+    expect(getOrgAbsence("IG")).not.toBeNull();
+    expect(() => orgAbsenceWording(getOrgAbsence("IG")!, "IG")).toThrow(
+      /carries no integer fy/,
+    );
+    // …and the orgs whose entries ARE complete still render.
+    expect(orgAbsenceWording(getOrgAbsence("DHA")!, "DHA").description).toContain(
+      "FY2026",
+    );
+  });
 });
 
 describe("orgAbsenceWording", () => {
@@ -502,26 +527,49 @@ describe("orgAbsenceWording", () => {
    *  share this opening, and it must stay free of "&" (the gate reads decoded
    *  text). Reword the sentences freely; break this pairing and the build's
    *  own gate reds with no unit test to explain why. */
-  const GATE_MARKERS: Record<OrgAbsenceRule, (svc: string) => string> = {
+  const GATE_MARKERS: Record<
+    OrgAbsenceRule,
+    (svc: string, fy: number) => string
+  > = {
     "no-justification-book-published": (svc) =>
       `justification book was published for ${svc}`,
-    "summary-line-only": (svc) =>
-      `No ${svc}-specific FY2026 justification book is published`,
-    "book-carries-no-embedded-xml": (svc) =>
-      `The ${svc} FY2026 justification book was downloaded`,
+    "summary-line-only": (svc, fy) =>
+      `No ${svc}-specific FY${fy} justification book is published`,
+    "book-carries-no-embedded-xml": (svc, fy) =>
+      `The ${svc} FY${fy} justification book was downloaded`,
   };
 
   it.each(Object.keys(GATE_MARKERS) as OrgAbsenceRule[])(
     "%s: the description and the justification share the gate's marker",
     (rule) => {
       const w = orgAbsenceWording(
-        { rule, checked_on: "2026-09-12", checked_url: "https://x" },
+        { rule, fy: 2026, checked_on: "2026-09-12", checked_url: "https://x" },
         "DHA",
       );
-      const marker = GATE_MARKERS[rule]("DHA");
+      const marker = GATE_MARKERS[rule]("DHA", 2026);
       expect(w.description).toContain(marker);
       expect(w.justification).toContain(marker);
       expect(marker).not.toContain("&");
+    },
+  );
+
+  it.each(Object.keys(GATE_MARKERS) as OrgAbsenceRule[])(
+    "%s: names the edition the PAYLOAD records, not a year typed in the module",
+    (rule) => {
+      // The rollover case, which no fixture of the live record can show: the
+      // FY2027 probe publishes fy: 2027 and every surface follows it. Typed
+      // as "FY2026" (as all four were until ROADMAP #111) each sentence would
+      // go on naming a book that is no longer the current one.
+      const w = orgAbsenceWording(
+        { rule, fy: 2027, checked_on: "2027-04-01", checked_url: "https://x" },
+        "DHA",
+      );
+      for (const surface of [w.description, w.justification, w.cardTail, w.metaTail]) {
+        expect(surface).not.toContain("FY2026");
+      }
+      expect(w.description).toContain(GATE_MARKERS[rule]("DHA", 2027));
+      // And never a yearless "FY", which is what a missing field would render.
+      expect(w.description).not.toMatch(/FY\D/);
     },
   );
 
@@ -552,7 +600,7 @@ describe("orgAbsenceWording", () => {
     expect(w.description).toBe(
       "No DEFW-specific FY2026 justification book is published (justification" +
         " index checked 2026-09-12) — its workbook rows are reconciliation," +
-        " undistributed and roll-up summary lines — so this corpus carries no" +
+        " undistributed or roll-up summary lines — so this corpus carries no" +
         " detailed justification for this program.",
     );
     expect(w.justification).toBe(
@@ -598,7 +646,12 @@ describe("orgAbsenceWording", () => {
 
   it("humanizes a service code and drops the stamp when the probe carries no date", () => {
     const w = orgAbsenceWording(
-      { rule: "no-justification-book-published", checked_on: "", checked_url: "" },
+      {
+        rule: "no-justification-book-published",
+        fy: 2026,
+        checked_on: "",
+        checked_url: "",
+      },
       "A",
     );
     expect(w.description).toContain("published for Army");

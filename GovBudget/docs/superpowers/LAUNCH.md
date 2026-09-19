@@ -51,7 +51,15 @@ the four writers that existed and were blind to a new one — which is how the a
 stayed missing until a human re-grepped.) A new `DATA_DIR / "…"` lake constant that skips
 `_lake_path` is caught by `tests/test_config.py::test_lake_dirs_are_symlink_resolved` (the five
 named constants) and by `::test_every_data_dir_path_constant_is_resolved`, which sweeps every
-`Path` constant in `config`, including ones added later.
+`Path` constant in `config`, including ones added later. **Both of those cases only bite when
+the suite runs INSIDE a worktree**, where `data/`'s entries are symlinks into the main lake: in
+the main checkout every lake entry is a real directory, so `p == p.resolve()` holds for an
+unrouted constant exactly as it does for a routed one and the sweep passes vacuously. Run them
+from the worktree (`uv run --no-sync python -m pytest tests/test_config.py` there) before
+trusting the claim after touching `config`. (`_lake_path` itself is proven anywhere, by
+`tests/jbooks/test_acquire.py::test_config_lake_path_collapses_a_symlinked_lake_dir`, which
+builds its own symlink under `tmp_path`; what needs the worktree is the claim about the
+CONSTANTS.)
 
 After ANY ingestion from a worktree, confirm nothing slipped through:
 

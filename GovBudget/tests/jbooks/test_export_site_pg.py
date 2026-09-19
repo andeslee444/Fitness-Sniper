@@ -1670,7 +1670,10 @@ def test_site_meta_json(pg_dsn, tmp_path):
     )
     assert isinstance(meta["org_absences"], dict)
     for org, entry in meta["org_absences"].items():
-        assert set(entry) == {"rule", "checked_on", "checked_url"}, org
+        assert set(entry) == {"rule", "fy", "checked_on", "checked_url"}, org
+        # The edition every one of those sentences names. program-tier
+        # throws on an entry without it rather than render a yearless "FY".
+        assert isinstance(entry["fy"], int), org
 
 
 def test_json_sort_keys(pg_dsn, tmp_path):

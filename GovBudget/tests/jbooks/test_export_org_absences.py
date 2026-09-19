@@ -11,7 +11,7 @@ DHP book WAS downloaded and carries no jb-2009 payload).
 `edition_probe.record_org_absences`. These cases pin the contract the site
 renders from:
 
-  * keyed by org, carrying ONLY {rule, checked_on, checked_url} — the
+  * keyed by org, carrying ONLY {rule, fy, checked_on, checked_url} — the
     operator's `reason` prose is never published;
   * scoped to ONE edition;
   * {} when nothing is recorded (the genuinely-unprobed state, which is what
@@ -53,6 +53,7 @@ def test_absences_are_keyed_by_org_and_publish_no_reason_prose(tmp_path):
     assert sorted(got) == ["DEFW", "DHA", "IG"]
     assert got["IG"] == {
         "rule": "no-justification-book-published",
+        "fy": 2026,
         "checked_on": "2026-09-12",
         "checked_url": "https://comptroller.war.gov/Budget-Materials/",
     }
@@ -61,7 +62,7 @@ def test_absences_are_keyed_by_org_and_publish_no_reason_prose(tmp_path):
     # backlog cross-references. Every word the site renders comes from the
     # rule and the org code, so none of that prose may reach the payload.
     for entry in got.values():
-        assert set(entry) == {"rule", "checked_on", "checked_url"}
+        assert set(entry) == {"rule", "fy", "checked_on", "checked_url"}
         assert "internal note" not in json.dumps(entry)
 
 
@@ -72,6 +73,11 @@ def test_absences_are_scoped_to_one_edition(tmp_path):
 
     assert sorted(_org_absences(manifest, 2026)) == ["IG"]
     assert sorted(_org_absences(manifest, 2025)) == ["SDA"]
+    # And each entry carries the edition it belongs to, because every sentence
+    # the site renders from it names that year ("No FY2025 …"). Typed on the
+    # TypeScript side instead, the year rots the day JBOOK_FY rolls over.
+    assert _org_absences(manifest, 2025)["SDA"]["fy"] == 2025
+    assert _org_absences(manifest, 2026)["IG"]["fy"] == 2026
 
 
 def test_absent_manifest_or_section_is_empty_not_an_error(tmp_path):

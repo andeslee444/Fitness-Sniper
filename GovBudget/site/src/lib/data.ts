@@ -101,12 +101,15 @@ export interface SiteMeta {
   ingested_service_orgs?: string[];
   /**
    * ROADMAP #14 / #111 — WHY each org outside ingested_service_orgs has no
-   * loaded book, keyed by org code: {rule, checked_on, checked_url} from the
-   * edition probe (export_site._org_absences over
+   * loaded book, keyed by org code: {rule, fy, checked_on, checked_url} from
+   * the edition probe (export_site._org_absences over
    * data/research/edition_manifest.json). program-tier.orgAbsenceWording
    * turns the rule into the sentence those pages render instead of the
-   * generic "not yet ingested". Absent on pre-17c exports; {} when no
-   * absence is recorded.
+   * generic "not yet ingested", and `fy` is the edition that sentence names —
+   * carried here so no fiscal year is typed into the site. Absent on pre-17c
+   * exports; {} when no absence is recorded. An entry with no `fy` (an export
+   * that predates the field) makes orgAbsenceWording THROW where the sentence
+   * is built, rather than render a yearless "FY".
    */
   org_absences?: Record<string, OrgAbsence>;
   /** Per-dataset row counts keyed by dataset name (e.g. "citations", "jbook_details"). */

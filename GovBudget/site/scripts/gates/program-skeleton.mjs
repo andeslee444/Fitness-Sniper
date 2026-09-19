@@ -300,6 +300,9 @@ export async function runProgramSkeletonGate() {
   ];
 
   // ── (a)+(b)+(c)+(d) per sampled page ─────────────────────────────────────
+  // Leg (c) accepts a recorded-absence wording, and two of the three name the
+  // edition: read the years the payload records once, never type one.
+  const absenceFys = absenceFiscalYears();
   let pagesOk = 0;
   let mediumCaveatsChecked = 0;
   for (const slug of sample) {
@@ -362,18 +365,23 @@ export async function runProgramSkeletonGate() {
         // THIS page's org and is never generic; leg (o) is the one that checks
         // it is the RIGHT one for the payload, and it reads every page rather
         // than this 8-page-per-tier sample. Without case 3 this leg fails on
-        // the DEFW pages, which sort into the sample's tail.
+        // the DEFW pages, which sort into the sample's tail. Two of those
+        // markers name the edition, so they are built for every year the
+        // payload records — which year belongs to which org is leg (o)'s
+        // question, not this one's.
         const namesUningested = text.includes(`lives in the ${svc} J-book`);
         const namesIngested =
           text.includes(`The ${svc} FY2026 J-book`) &&
           text.includes("no R-2/P-40 narrative");
-        const namesAbsence = Object.values(ABSENCE_MARKERS).some((marker) =>
-          text.includes(marker(svc)),
+        const namesAbsence = absenceFys.some((fy) =>
+          Object.values(ABSENCE_MARKERS).some((marker) =>
+            text.includes(marker(svc, fy)),
+          ),
         );
         if (!namesUningested && !namesIngested && !namesAbsence) {
           pageOk = false;
           errors.push(
-            `program-skeleton(c): /program/${slug}/ note does not name the ${svc} J-book (got: "${text.slice(0, 100)}")`
+            `program-skeleton(c): /program/${slug}/ note does not name the ${svc} justification book / J-book (got: "${text.slice(0, 100)}")`
           );
         }
         const roadmapLink = note
@@ -3612,15 +3620,41 @@ const WITHDRAWN_FULL_TIER_SENTENCES = [
  * DECODED element text, and "RDT&E" arrives as "RDT&E" or "RDT&amp;E"
  * depending on the parser's entity handling. The sentences themselves keep
  * their full wording; only the marker is narrowed.
+ *
+ * `fy` is the second argument because two of the three sentences name the
+ * edition and read the year from site_meta.org_absences[...].fy. A year typed
+ * here would keep matching a page that had moved on (or stop matching the one
+ * that had not), which is a gate agreeing with a literal instead of with the
+ * payload the page renders from.
  */
 export const ABSENCE_MARKERS = {
   "no-justification-book-published": (svc) =>
     `justification book was published for ${svc}`,
-  "summary-line-only": (svc) =>
-    `No ${svc}-specific FY2026 justification book is published`,
-  "book-carries-no-embedded-xml": (svc) =>
-    `The ${svc} FY2026 justification book was downloaded`,
+  "summary-line-only": (svc, fy) =>
+    `No ${svc}-specific FY${fy} justification book is published`,
+  "book-carries-no-embedded-xml": (svc, fy) =>
+    `The ${svc} FY${fy} justification book was downloaded`,
 };
+
+/**
+ * The edition years site_meta.org_absences records, for the markers that name
+ * one. Read from the payload rather than typed, for the reason the payload
+ * exists. Empty when nothing is probed — which is also when no page can carry
+ * an absence wording at all, because program-tier's map is then empty.
+ */
+function absenceFiscalYears() {
+  const metaPath = path.join(jsonDir, "site_meta.json");
+  if (!fs.existsSync(metaPath)) return [];
+  const payload = readJson(metaPath).org_absences;
+  if (!payload || typeof payload !== "object") return [];
+  return [
+    ...new Set(
+      Object.values(payload)
+        .map((e) => e?.fy)
+        .filter((fy) => Number.isInteger(fy)),
+    ),
+  ];
+}
 
 /** The wording no page with a recorded absence may carry, anywhere. */
 const NOT_YET_INGESTED = "not yet ingested";
@@ -3669,7 +3703,7 @@ export function runCoverageNoteLeg({
   }
   const ingested = new Set(orgList);
 
-  // site_meta.org_absences — {org: {rule, checked_on, checked_url}}. `{}` is
+  // site_meta.org_absences — {org: {rule, fy, checked_on, checked_url}}. `{}` is
   // legitimate (nothing probed yet); a MISSING key is not, for the same
   // reason as the check above: every org silently drops back to the generic
   // "not yet ingested", which is false for five of them.
@@ -3700,6 +3734,18 @@ export function runCoverageNoteLeg({
         `program-skeleton(o): site_meta.org_absences["${org}"] carries rule ` +
           `"${entry?.rule}", which this leg (and program-tier.orgAbsenceWording) ` +
           `has no sentence for. The org's pages fall back to "not yet ingested"`,
+      );
+    }
+    // The edition the org's sentences name. Without it the page renders a
+    // yearless "FY" (program-tier.setOrgAbsences throws first, so a build
+    // that got this far has one) and this leg would match a marker built
+    // from `undefined` against every page it reads.
+    if (!Number.isInteger(entry?.fy)) {
+      errors.push(
+        `program-skeleton(o): site_meta.org_absences["${org}"] carries fy ` +
+          `${JSON.stringify(entry?.fy)}. Two of the three absence sentences ` +
+          `name the edition and take the year from this field — re-run ` +
+          `export-site; an export older than ROADMAP #111 does not write it`,
       );
     }
     if (ingested.has(org)) {
@@ -3809,7 +3855,7 @@ export function runCoverageNoteLeg({
       branchCounts.absence++;
       const key = `${org} ${absence.rule}`;
       byRule.set(key, (byRule.get(key) ?? 0) + 1);
-      const marker = ABSENCE_MARKERS[absence.rule]?.(svc);
+      const marker = ABSENCE_MARKERS[absence.rule]?.(svc, absence.fy);
       if (!marker) continue; // already reported against the payload
       if (!text.includes(marker)) {
         badBranch++;

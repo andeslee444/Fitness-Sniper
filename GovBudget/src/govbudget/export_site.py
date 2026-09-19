@@ -2763,10 +2763,19 @@ def _org_absences(manifest_path: Path | None = None,
     So the site reads the probe instead of guessing: `jbooks` records each
     absence with a RULE, a URL and a date via
     edition_probe.record_org_absences, and this publishes
-    {org: {rule, checked_on, checked_url}} into site_meta.org_absences.
+    {org: {rule, fy, checked_on, checked_url}} into site_meta.org_absences.
     program-tier.orgAbsenceWording renders one sentence per rule; gate 21 leg
     (o) fails when a page whose org is in this payload renders anything else,
     or still says "not yet ingested".
+
+    `fy` rides on every entry — the same value for all of them, because the
+    payload is ONE edition's record — because every sentence built from a rule
+    names the edition ("No FY2026 RDT&E or procurement justification book…").
+    Typed on the TypeScript side instead, that year is a literal nothing
+    re-derives: it goes stale the day JBOOK_FY rolls over and no gate can tell
+    a stale year from a correct one. program-tier.orgAbsenceWording THROWS
+    rather than render a yearless "FY", so an export that predates this field
+    cannot publish those pages at all; gate 21 leg (o) fails on the payload.
 
     DERIVED, NEVER TYPED — the same discipline as ingested_service_orgs and
     for the same reason: a hand-kept list of what is missing rots exactly like
@@ -2783,6 +2792,16 @@ def _org_absences(manifest_path: Path | None = None,
     "not yet ingested" wording on that org's pages, which is the defect this
     payload exists to end. A new rule is a new sentence on the site, and the
     export must stop until someone writes it.
+
+    That raise checks the entry against the PYTHON vocabulary only, and
+    edition_probe.record_org_absences refuses the same rules on the way in, so
+    it is reachable only by hand-editing the manifest. The divergence that
+    realistically happens — a rule ADDED to ORG_ABSENCE_RULES with no matching
+    case in program-tier.orgAbsenceWording — is valid here and passes this
+    check; it is caught at BUILD time by gate 21 leg (o), which fails on a
+    payload rule it has no sentence for. Two doors, two guards: the export
+    stops for a rule nobody recorded, the gate for a rule nobody wrote a
+    sentence for.
     """
     from govbudget import config
     from govbudget.jbooks.edition_probe import ORG_ABSENCE_RULES
@@ -2807,6 +2826,7 @@ def _org_absences(manifest_path: Path | None = None,
             )
         out[entry["org"]] = {
             "rule": rule,
+            "fy": int(fy),
             "checked_on": entry["checked_on"],
             "checked_url": entry["checked_url"],
         }
@@ -11429,7 +11449,7 @@ def _write_all_sidecars(
         # program-tier.ts that lied for every defense-wide agency book).
         # Computed in export_site (Postgres scope) and threaded via manifest.
         "ingested_service_orgs": manifest.get("ingested_service_orgs", []),
-        # {org: {rule, checked_on, checked_url}} for every org the FY2026
+        # {org: {rule, fy, checked_on, checked_url}} for every org the FY2026
         # edition probe found NO usable justification book for — the payload
         # that decides which true sentence those pages render instead of the
         # generic "not yet ingested". Derived from

@@ -32,21 +32,29 @@ import { ABSENCE_MARKERS, runCoverageNoteLeg } from "../program-skeleton.mjs";
 
 const INGESTED = ["A", "N", "F", "OSD"];
 
+/** The edition every fixture sentence below names. It is a field of the
+ *  payload (export_site._org_absences, from config.JBOOK_FY), not a literal
+ *  of the site — these cases hold it in one place for the same reason. */
+const FY = 2026;
+
 /** site_meta.org_absences, one entry per rule — the live FY2026 shape
  *  (export_site._org_absences over data/research/edition_manifest.json). */
 const ABSENCES = {
   DHA: {
     rule: "book-carries-no-embedded-xml",
+    fy: FY,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/…/00-DHP_Vols_I_and_II_PB26.pdf",
   },
   DEFW: {
     rule: "summary-line-only",
+    fy: FY,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/Budget-Materials/",
   },
   IG: {
     rule: "no-justification-book-published",
+    fy: FY,
     checked_on: "2026-09-12",
     checked_url: "https://comptroller.war.gov/Budget-Materials/",
   },
@@ -68,7 +76,7 @@ const ABSENCE_TEXT = {
     `No FY2026 RDT&E or procurement justification book was published for ${svc}, so there are no accomplishments or planned-program narratives to show — see the description note above.`,
   ],
   "summary-line-only": (svc) => [
-    `No ${svc}-specific FY2026 justification book is published (justification index checked 2026-09-12) — its workbook rows are reconciliation, undistributed and roll-up summary lines — so this corpus carries no detailed justification for this program.`,
+    `No ${svc}-specific FY2026 justification book is published (justification index checked 2026-09-12) — its workbook rows are reconciliation, undistributed or roll-up summary lines — so this corpus carries no detailed justification for this program.`,
     `No ${svc}-specific FY2026 justification book is published, so there are no accomplishments or planned-program narratives to show — see the description note above.`,
   ],
   "book-carries-no-embedded-xml": (svc) => [
@@ -211,8 +219,8 @@ describe("the markers legs (c) and (o) share", () => {
     // decides WHICH one is right. One map, two legs: a rule dropped from it
     // breaks both, visibly, here.
     for (const [rule, marker] of Object.entries(ABSENCE_MARKERS)) {
-      expect(ABSENCE_TEXT[rule]("DEFW")[0]).toContain(marker("DEFW"));
-      expect(ABSENCE_TEXT[rule]("DEFW")[1]).toContain(marker("DEFW"));
+      expect(ABSENCE_TEXT[rule]("DEFW")[0]).toContain(marker("DEFW", FY));
+      expect(ABSENCE_TEXT[rule]("DEFW")[1]).toContain(marker("DEFW", FY));
     }
     expect(Object.keys(ABSENCE_MARKERS).sort()).toEqual(
       Object.keys(ABSENCE_TEXT).sort(),
@@ -390,6 +398,19 @@ describe("leg o — proof it can fail", () => {
       IG: { ...ABSENCES.IG, rule: "book-is-classified" },
     });
     expect(errors.join("\n")).toMatch(/carries rule "book-is-classified"/);
+  });
+
+  it("fails when an entry carries no fy — the sentences would name no year", () => {
+    // A pre-ROADMAP-#111 export. program-tier.setOrgAbsences throws before a
+    // page can render "FY", so this is the second door on the same defect:
+    // the payload itself is named, rather than 19 pages one at a time.
+    const noFy = { ...ABSENCES.DEFW };
+    delete noFy.fy;
+    const { errors } = run(() => {}, INGESTED, { ...ABSENCES, DEFW: noFy });
+    expect(errors.join("\n")).toMatch(
+      /org_absences\["DEFW"\] carries fy undefined/,
+    );
+    expect(errors.join("\n")).toMatch(/name the edition/);
   });
 
   it("fails when the detail-page population collapses — the leg would be vacuous", () => {

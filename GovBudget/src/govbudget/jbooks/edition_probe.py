@@ -284,11 +284,12 @@ def record_org_absences(manifest_path: Path, fiscal_year: int,
     said the same thing about all of them — "…J-book, which is not yet
     ingested", a sentence that presupposes a book exists — and this record
     lived nowhere a reader or a gate could check. It is now the site's source
-    for that sentence: `export_site._org_absences` publishes {org: {rule,
+    for that sentence: `export_site._org_absences` publishes {org: {rule, fy,
     checked_on, checked_url}} into `site_meta.org_absences`, and each RULE
-    selects its own true sentence on the org's program pages. The `reason`
-    text stays here, for the operator; only the rule and the probe stamp are
-    published.
+    selects its own true sentence on the org's program pages (`fy` is the
+    edition the reader is told about, so no year is typed into the site). The
+    `reason` text stays here, for the operator; only the rule and the probe
+    stamp are published.
 
     Each entry is {org, rule, reason, checked_url, checked_on}. Entries are
     sorted by org for deterministic diffs; the list replaces any prior
