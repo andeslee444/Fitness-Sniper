@@ -20,6 +20,20 @@
  *     >=130 districts and >=800 by-year rows must be present. "Every row adds
  *     up" is satisfied by a corpus with no rows at all, which is exactly what
  *     an export against a pre-#6 warehouse produces.
+ * (g) row shape (Task 27): every programs[] row in every district sidecar
+ *     carries a non-empty string split_key, its program_url is exactly
+ *     `/program/${split_key}/`, an account-null row's split_key is its own
+ *     pe_bli, a member row's split_key starts with `${pe_bli}-`, and no two
+ *     rows in one district share a split_key. Plus a floor, so an empty
+ *     districts/ directory cannot pass it vacuously.
+ *
+ *     EXPECTED RED until chain C run 2 re-exports (noted 2026-09-19): the
+ *     sidecars shipped under data/site/json/districts/ predate Task 27 and
+ *     carry no split_key at all. That is exactly the failure this leg exists
+ *     to make loud — the page uses split_key as its React key and renders it
+ *     as the mono code, so a build against those sidecars would ship blank
+ *     code cells and duplicate keys with every other gate green. Re-run
+ *     `export-site`; do not weaken the leg to fit the old payload.
  */
 
 import fs from "fs";
@@ -186,11 +200,11 @@ export async function runDistrictGate() {
   runDistrictTotalsFixLeg(districtDirs, districtOutDir, errors, notes);
 
   // ── (f) by-year truth (ROADMAP #6) ───────────────────────────────────────
-  runDistrictByYearLeg({
-    errors,
-    notes,
-    sidecars: readDistrictSidecars(),
-  });
+  const sidecars = readDistrictSidecars();
+  runDistrictByYearLeg({ errors, notes, sidecars });
+
+  // ── (g) program row shape (Task 27) ──────────────────────────────────────
+  runDistrictRowShapeLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -458,6 +472,142 @@ export function runDistrictByYearLeg({ errors, notes, sidecars }) {
     notes.push(
       `leg f: ${withTable} district(s), ${rows} by-year row(s), every district's ` +
         `years summing to its own headline within ${TOL_BY_YEAR} ✓`,
+    );
+  }
+}
+
+
+// ── leg g — every district program row is addressable (Task 27) ─────────────
+//
+// FLOORS MEASURED READ-ONLY 2026-09-19 against data/duckdb/govbudget.duckdb at
+// the member grain: 608 program rows across 189 districts (the same 608 rows
+// the pre-Task-27 grain held — only one district-and-code pair per member
+// exists today, so the account changed addressing, not row count). The floors
+// sit at ~80% so ordinary corpus movement passes and a silent collapse does
+// not. DO NOT LOWER THEM TO FIT A BUILD — if the corpus legitimately shrinks,
+// the re-measure is a reviewed edit that says so here, dated.
+const MIN_ROW_SHAPE_DISTRICTS = 150;
+const MIN_ROW_SHAPE_ROWS = 480;
+const ROW_SHAPE_DETAIL_CAP = 5;
+
+/**
+ * Leg (g): the district sidecar's programs[] rows must be individually
+ * addressable, because /district/{code}/ keys its table on split_key and
+ * prints it as the row's mono code.
+ *
+ * THE RULE, decided from each row's own fields — the sidecar carries pe_bli,
+ * account and split_key, so nothing here needs the warehouse:
+ *
+ *   1. `split_key` is a non-empty string. Before Task 27 the sidecar had no
+ *      such field; an export against that payload renders an empty code cell
+ *      and gives React a duplicate key, visible only as a dev-mode warning.
+ *   2. `program_url` is exactly `/program/${split_key}/`. That covers both
+ *      destinations without a second rule: a row that names a member
+ *      addresses the member page, and a row that names none keeps split_key
+ *      == pe_bli, so the same expression IS the `/program/${pe_bli}/`
+ *      disambiguation stub.
+ *   3. A row with a null `account` names no member, so its split_key must be
+ *      its own pe_bli. (The converse is NOT a rule: an organization-split
+ *      code — '20', '30', '500' — carries one account, '0300D', for BOTH of
+ *      its members, so it keeps the stub with an account set. `account` is
+ *      therefore not the discriminator; `split_key !== pe_bli` is.)
+ *   4. A row that DOES name a member has a split_key of the form
+ *      `${pe_bli}-${CODE}` — the composite slug _ProgramIdentity.slug mints.
+ *   5. No two rows in one district share a split_key. Two rows under one
+ *      address is the fusion this task removed, arriving by another door.
+ *
+ * Exported for site/scripts/gates/__tests__/district-row-shape.test.mjs,
+ * which injects synthetic sidecars — the leg must be provable without a build.
+ *
+ * @param {{errors: string[], notes: string[], sidecars: object[]}} args
+ */
+export function runDistrictRowShapeLeg({ errors, notes, sidecars }) {
+  let districts = 0;
+  let rows = 0;
+  let bad = 0;
+  const details = [];
+  const note = (msg) => {
+    bad += 1;
+    if (details.length < ROW_SHAPE_DETAIL_CAP) details.push(msg);
+  };
+
+  for (const s of sidecars) {
+    const programs = Array.isArray(s.programs) ? s.programs : [];
+    if (programs.length === 0) continue;
+    districts += 1;
+    const seen = new Map();
+    for (const p of programs) {
+      rows += 1;
+      const where = `${s.pop_district}/${p.pe_bli}`;
+      if (typeof p.split_key !== "string" || p.split_key === "") {
+        note(
+          `${where}: no split_key — this sidecar predates Task 27; re-run ` +
+            `export-site before building (the page renders split_key as the ` +
+            `row's code and keys the table on it)`,
+        );
+        continue;
+      }
+      const expected = `/program/${p.split_key}/`;
+      if (p.program_url !== expected) {
+        note(
+          `${where}: program_url ${JSON.stringify(p.program_url)} does not ` +
+            `address its own split_key (${expected})`,
+        );
+      }
+      if (p.account == null && p.split_key !== p.pe_bli) {
+        note(
+          `${where}: account is null — the row names no member — but its ` +
+            `split_key ${JSON.stringify(p.split_key)} is not the bare code`,
+        );
+      }
+      if (p.split_key !== p.pe_bli && !p.split_key.startsWith(`${p.pe_bli}-`)) {
+        note(
+          `${where}: split_key ${JSON.stringify(p.split_key)} is neither the ` +
+            `bare code nor a "${p.pe_bli}-CODE" member slug`,
+        );
+      }
+      const prior = seen.get(p.split_key);
+      if (prior !== undefined) {
+        note(
+          `${s.pop_district}: two program rows share split_key ` +
+            `${JSON.stringify(p.split_key)} (${prior} and ${p.pe_bli}) — one ` +
+            `address, two figures`,
+        );
+      } else {
+        seen.set(p.split_key, p.pe_bli);
+      }
+    }
+  }
+
+  if (bad > 0) {
+    errors.push(
+      `leg g: ${bad} district program row problem(s): ` +
+        details.join("; ") +
+        (bad > details.length ? ` (+${bad - details.length} more)` : ""),
+    );
+  }
+  if (districts < MIN_ROW_SHAPE_DISTRICTS) {
+    errors.push(
+      `leg g: only ${districts} district(s) carry a program row (floor ` +
+        `${MIN_ROW_SHAPE_DISTRICTS}, measured 2026-09-19 at 189) — every row ` +
+        `can be well formed and the corpus still have collapsed. Fix the ` +
+        `export; do not lower the floor.`,
+    );
+  }
+  if (rows < MIN_ROW_SHAPE_ROWS) {
+    errors.push(
+      `leg g: ${rows} district program row(s) (floor ${MIN_ROW_SHAPE_ROWS}, ` +
+        `measured 2026-09-19 at 608). Fix the export; do not lower the floor.`,
+    );
+  }
+  if (
+    bad === 0 &&
+    districts >= MIN_ROW_SHAPE_DISTRICTS &&
+    rows >= MIN_ROW_SHAPE_ROWS
+  ) {
+    notes.push(
+      `leg g: ${rows} program row(s) across ${districts} district(s), each ` +
+        `with its own split_key and a program_url that addresses it ✓`,
     );
   }
 }

@@ -2750,8 +2750,13 @@ export function getDistrictIndex(): DistrictIndex {
 export interface DistrictProgram {
   /** Task 27: the member appropriation account whose high-confidence links
    *  produced these dollars ('1506N'), for the pe_bli values two programs
-   *  share. null for every code that names one program — and for a row that
-   *  names no one member, which keeps the disambiguation stub. */
+   *  share. null for every code that names one program.
+   *
+   *  A non-null account does NOT imply a resolved member: an
+   *  organization-split code ('20', '30', '500') carries the SAME account
+   *  ('0300D') for both of its members, so it keeps the disambiguation stub
+   *  with an account set. Compare split_key to pe_bli to test whether this
+   *  row names a member — that is the one discriminator. */
   account: string | null;
   award_count: number;
   fact_id: string | null;

@@ -756,10 +756,12 @@ def test_a_district_card_names_the_member_whose_links_produced_the_dollars(
 def test_a_district_card_on_the_first_member_is_not_relabelled_as_its_sibling(
     collision_export,
 ):
-    """The reverse case — and the one last-wins got wrong. VA-08's dollars are
-    LPD Flight II's (1611N, the FIRST member by account order); labelling them
-    'Shipboard Tactical Communications' names a different program in a
-    different appropriation."""
+    """The reverse case — and the one last-wins got wrong. Since Task 27 the
+    VA-08 fixture holds BOTH members, so this is about ONE of its rows: the
+    1611N row's dollars are LPD Flight II's (the FIRST member by account
+    order), and labelling that row 'Shipboard Tactical Communications' — the
+    title of its sibling row on the same page — names a different program in
+    a different appropriation."""
     row = _district_program(collision_export, "VA-08", "3010-SCN")
     assert row["title"] == "LPD Flight II"
     assert row["account"] == SCN

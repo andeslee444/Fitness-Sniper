@@ -22,8 +22,19 @@ import { CoverageNote } from "@/components/coverage-note";
  *     flows sidecar, rendered WITHOUT a '$' sign (outside the currency-gate
  *     regex; see formatAmountNoCurrency).
  *   - The CITED figures are in the table below the SVG: per-district
- *     obligations from fct_district_programs via their (district, pe_bli)
- *     USAspending fact_ids. The note under the SVG says so.
+ *     obligations from fct_district_programs via their
+ *     (district, pe_bli, account) USAspending fact_ids — the mart's own
+ *     grain since Task 27. The note under the SVG says so.
+ *
+ * Addressing: a flows sidecar is one file per BARE pe_bli by design (gate 24
+ * leg p string-matches those filenames), and its district rows are keyed by
+ * DISTRICT within it. That stays consistent with the member grain because no
+ * member page ever reaches this component: the bare code of a shared
+ * budget-line code renders the disambiguation stub before getFlowData is
+ * called, and a member slug ('0145-APN') has no flows/{slug}.json. Every
+ * pe_bli that gets here therefore names one program, so its district rows
+ * carry a null account and matching on pe_bli finds exactly one row per
+ * district.
  *
  * Animation: compositor-only — dots translate along straight edges via CSS
  * transform keyframes (globals.css `flow-dot-travel`, per-edge --flow-dx/dy).
@@ -36,7 +47,9 @@ import { CoverageNote } from "@/components/coverage-note";
 export interface FlowDistrictRow {
   awardCount: number | null;
   district: string;
-  /** USAspending (district, pe_bli) fact_id — null only if the mart row is missing. */
+  /** USAspending (district, pe_bli, account) fact_id — null only if the mart
+   *  row is missing. Every program reaching here names one program, so its
+   *  account is null and the id is the bare (district, pe_bli) pair. */
   factId: string | null;
   familyNames: string[];
   totalObligation: number | null;

@@ -333,9 +333,9 @@ export function DistrictTable({ districts }: Props) {
                       // Derived 'district' aggregate citation — the
                       // award-DISTINCT total for this district, from
                       // fct_district_totals (#51 — fct_district_programs is
-                      // per (district, pe_bli) and NOT summable: an award
-                      // matched to N program elements appears N times with
-                      // the same dollars). State A opens the citation panel
+                      // per (district, pe_bli, account) and NOT summable: an
+                      // award matched to N program elements appears N times
+                      // with the same dollars). State A opens the citation panel
                       // (formula + input chips); honest state C when the
                       // fact_id is absent.
                       <Cite
