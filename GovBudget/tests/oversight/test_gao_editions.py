@@ -557,6 +557,48 @@ def test_exporter_inherits_older_editions_under_the_ratified_anchor(tmp_path):
     assert obj["service_families"]["DOD"] == obj["service_families"]["Joint"]
 
 
+def test_exporter_refuses_a_census_that_does_not_add_up(tmp_path):
+    """/methodology/ prints the split; the exporter is what makes it true.
+
+    The sentence is "N pages carry {rendered_items} GAO items — {accepted}
+    ratified attributions and {inherited_items} earlier editions inherited
+    from them", every number derived from this sidecar's stats. Its arithmetic
+    is an ASSUMPTION about the emit loop: one parquet row per ratified
+    (product, program) pair, and nothing else rendered. Here a verdict-"y"
+    pairing names a program the parquet has no row for, so it renders nothing
+    and 3 != 2 + 2 — the state in which that sentence would decompose 3 items
+    into 4. Stop the export rather than publish the subtraction.
+    """
+    from govbudget.export_site import _emit_gao_program_findings_sidecar
+
+    _write_parquet(
+        tmp_path / "parquet" / "oversight" / "gao_program_assessments.parquet",
+        G._COLUMNS,
+        [
+            _row("GAO-25-107569", 2025, "Air Force", "Sentinel", 79,
+                 "GAO-24-106831", 94),
+            _row("GAO-24-106831", 2024, "Air Force", "Sentinel", 84,
+                 "GAO-23-106059", 87),
+            _row("GAO-23-106059", 2023, "Air Force", "Sentinel", 77, "", 0),
+        ],
+    )
+    seed = tmp_path / "seed.csv"
+    seed.write_text(
+        "product_number,gao_program,slug,verdict,org,corpus_title,"
+        "matched_on,curator_notes\n"
+        "GAO-25-107569,Sentinel,0101125F,y,F,LGM-35A Sentinel,Sentinel,ok\n"
+        "GAO-25-107569,Ghost Program,0101125F,y,F,LGM-35A Sentinel,Ghost,"
+        "ratified against a row this edition does not carry\n"
+    )
+    json_dir = tmp_path / "json"
+    json_dir.mkdir()
+    with pytest.raises(RuntimeError, match="rendered_items"):
+        _emit_gao_program_findings_sidecar(
+            json_dir=json_dir, duckdb_path=tmp_path / "x.duckdb",
+            seed_path=seed,
+        )
+
+
 def test_exporter_refuses_a_parquet_without_the_edition_stamp(tmp_path):
     from govbudget.export_site import _emit_gao_program_findings_sidecar
 

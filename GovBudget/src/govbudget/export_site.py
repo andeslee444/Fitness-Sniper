@@ -13998,6 +13998,25 @@ def _emit_gao_program_findings_sidecar(
             rows, current_edition().product_number
         ),
     }
+    # /methodology/ decomposes rendered_items into "{accepted} ratified
+    # attributions and {inherited_items} earlier editions inherited from
+    # them". Nothing made that subtraction true: it holds only while every
+    # accepted (product, program, slug) matches EXACTLY ONE parquet row, and
+    # a seed ratified against a row this edition no longer carries (or a key
+    # that matches two) breaks it silently — the numbers stay individually
+    # true and the sentence around them stops adding up. Stop the export; the
+    # fix is in the seed or the parquet, not in the prose.
+    if n_items != accepted + inherited:
+        raise RuntimeError(
+            f"gao_program_findings: rendered_items={n_items} but accepted="
+            f"{accepted} + inherited_items={inherited} = {accepted + inherited}."
+            " /methodology/ states that split as a subtraction, so it must"
+            " hold. Every verdict-'y' row in the crosswalk seed must match"
+            " exactly one assessment/related row of an ingested edition:"
+            " re-run `python -m govbudget oversight gao-programs`, then check"
+            " data-seeds/gao_program_xwalk.csv for a ratified pairing this"
+            " corpus no longer carries"
+        )
     print(
         f"gao_program_findings: {len(by_slug)} program page(s) carry "
         f"{n_items} ratified GAO item(s), {inherited} inherited from an "
