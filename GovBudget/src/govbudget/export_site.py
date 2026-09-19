@@ -2496,13 +2496,21 @@ def export_site(
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
     with psycopg.connect(dsn) as pg_precision:
         link_precision = _link_precision_block(
-            pg_precision, published_methods=published_link_methods
+            pg_precision,
+            published_methods=published_link_methods,
+            pinned_samples=_PINNED_PRECISION_SAMPLES,
         )
         link_adjudication = _link_adjudication_block(
             pg_precision,
             high_links=published_high_links,
             measured_on=built_at[:10],
         )
+        # ROADMAP findings :118-119: how far the announcement LLM-alias pass
+        # got, and the held-out precision of the links its newest wave
+        # produced. Same threading reason as link_precision above — the
+        # sidecar writer holds only a duckdb connection, so a Postgres-scoped
+        # figure travels via manifest.
+        announcement_llm_scope = _announcement_llm_scope(pg_precision)
 
     manifest = {
         "built_at": built_at,
@@ -2512,6 +2520,7 @@ def export_site(
         "org_absences": org_absences,
         "link_adjudication": link_adjudication,
         "link_precision": link_precision,
+        "announcement_llm_scope": announcement_llm_scope,
         "pdf_count": n_pdfs,
         "workbook_count": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
@@ -2882,6 +2891,16 @@ def _precision_tally_sql(sample_id: str | None) -> str:
 #: leg n fails a site_meta block carrying any other.
 _PRECISION_RUBRICS = ("attribution", "rule-fired")
 
+#: Published tier -> the study run its /methodology/ figure must come from.
+#: `announcement+lexicon` is pinned to the 2026-09-04 stratified draw over the
+#: whole tier. The 2026-09-12 run is a draw over ONE wave's links only, made to
+#: measure that wave; under `_link_precision_block`'s "latest run" default it
+#: would have replaced the tier's figure with a narrower population's the
+#: moment it loaded. That wave's pair is published by `_announcement_llm_scope`
+#: instead, where the paragraph says whose links it measured. Unpin a tier only
+#: with a fresh draw over the tier itself.
+_PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
+
 
 def _published_link_methods(duckdb_path) -> set[str]:
     """Every fct_budget_to_awards `method` the site actually PUBLISHES — i.e.
@@ -2967,7 +2986,8 @@ def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
 
 def _link_precision_block(pg, published_methods: set[str] | None = None,
                           sample_id: str | None = None,
-                          rubric: str = "attribution") -> dict:
+                          rubric: str = "attribution",
+                          pinned_samples: dict[str, str] | None = None) -> dict:
     """The held-out link-precision study (ROADMAP #72, #79), tallied under the
     tier each sampled link publishes under TODAY, under ONE rubric.
 
@@ -3006,6 +3026,20 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     each figure carries the `sample_id` and `judged` date it came from so the
     page can say every date it draws on. Pass `sample_id` to read one run.
 
+    THE PIN (2026-09-19, wave 4). "Latest run" is the right default only while
+    every run is a draw over the tier it reports. The wave-4 sample
+    (`2026-09-12`) is not: it draws only from the links ONE wave of the
+    announcement pass produced, to measure that wave. Left to the default it
+    would have become the announcement tier's published precision the moment
+    it loaded — a narrower population under the tier's name, the same species
+    of defect as the withdrawn `fpds-ap+account` figure. `pinned_samples`
+    maps a method to the run its figure must come from; the tier is re-tallied
+    against that run alone and, if the run judged nothing the tier still
+    publishes, the tier is reported UNMEASURED rather than falling back to the
+    latest. The wave's own figure is published by `_announcement_llm_scope`,
+    which says whose links it measured. The export call site passes
+    `_PINNED_PRECISION_SAMPLES`.
+
     `sampled` counts only ADJUDICATED rows (verdict is not null).
 
     `published_methods` (from _published_link_methods) is the mart's own
@@ -3019,20 +3053,32 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     """
     if rubric not in _PRECISION_RUBRICS:
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
-    rows = pg.execute(
-        _precision_tally_sql(sample_id), {"rubric": rubric, "sample_id": sample_id}
-    ).fetchall()
+    def _tally(run: str | None) -> dict[str, dict]:
+        rows = pg.execute(
+            _precision_tally_sql(run), {"rubric": rubric, "sample_id": run}
+        ).fetchall()
+        out: dict[str, dict] = {}
+        for method, run_id, confirmed, sampled, judged_at in rows:
+            if published_methods is not None and method not in published_methods:
+                continue
+            out[method] = {
+                "confirmed": confirmed,
+                "sampled": sampled,
+                "sample_id": run_id,
+                "judged": judged_at.date().isoformat() if judged_at else None,
+            }
+        return out
 
-    tally: dict[str, dict] = {}
-    for method, run_id, confirmed, sampled, judged_at in rows:
-        if published_methods is not None and method not in published_methods:
-            continue
-        tally[method] = {
-            "confirmed": confirmed,
-            "sampled": sampled,
-            "sample_id": run_id,
-            "judged": judged_at.date().isoformat() if judged_at else None,
-        }
+    tally = _tally(sample_id)
+    # One method at a time, and never a fallback: a pinned method whose run
+    # judged nothing it still publishes leaves the figures entirely (and comes
+    # back in `unmeasured` below), because the alternative is publishing a
+    # different run's number under the pinned run's name.
+    for method, pinned_run in (pinned_samples or {}).items():
+        tally.pop(method, None)
+        pinned = _tally(pinned_run).get(method)
+        if pinned is not None:
+            tally[method] = pinned
     if not tally:
         return {}
 
@@ -3043,6 +3089,122 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
         "sampled_at": max(judged_dates) if judged_dates else None,
         "methods": dict(sorted(tally.items())),
         "unmeasured": sorted((published_methods or set()) - set(tally)),
+    }
+
+
+def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
+    """The held-out precision pair for the links ONE announcement pass
+    produced: ``{sample_id, sampled_at, sampled, confirmed}``, or None.
+
+    None when the scope row names no run, or when the run it names judged no
+    link the corpus still publishes under `announcement+lexicon` — the page
+    then says the pass's precision is not yet measured rather than reaching
+    for the tier-wide figure, which was sampled before these links existed.
+
+    Same population rule as `_link_precision_block`: a sampled link counts only
+    while the corpus publishes it at high or medium under that method, so a
+    link the loader's guards later drop leaves both numerator and denominator.
+    Only `attribution` verdicts count (migration 015) — a `rule-fired` verdict
+    answers whether the mechanical rule fired, which this route has none of.
+
+    scripts/load_announcement_scope.py is the write-time twin: it refuses to
+    record a run whose sampled pairs are not the pass's own survivors, so
+    "joined to the wave's links" is enforced where the row is written and this
+    query only has to name the run.
+    """
+    if not sample_id:
+        return None
+    confirmed, sampled, judged_at = pg.execute(
+        "select count(*) filter (where s.verdict = 'confirmed'), count(*),"
+        "       max(s.adjudicated_at)"
+        " from link_precision_samples s"
+        " join budget_line_awards b"
+        "   on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli"
+        " where s.sample_id = %s and s.rubric = 'attribution'"
+        "   and s.verdict is not null"
+        "   and b.method = 'announcement+lexicon'"
+        "   and b.confidence in ('high', 'medium')",
+        (sample_id,),
+    ).fetchone()
+    if not sampled:
+        return None
+    return {
+        "sample_id": sample_id,
+        "sampled_at": judged_at.date().isoformat() if judged_at else None,
+        "sampled": int(sampled),
+        "confirmed": int(confirmed),
+    }
+
+
+def _announcement_llm_scope(pg) -> dict:
+    """What the announcement LLM-alias pass has covered (ROADMAP findings :118-119).
+
+    Returns ``{}`` when no pass has been recorded, else::
+
+        {"as_of": "2026-09-19", "records_total": 32852,
+         "records_deterministic": 4508, "records_residue": 28344,
+         "records_attempted": 15615, "records_remaining": 12729,
+         "pct_value_attempted": 89.4, "pct_value_remaining": 10.6,
+         "precision": {"sample_id": "2026-09-12", "sampled_at": "2026-09-19",
+                       "sampled": 60, "confirmed": 51}}   # or None
+
+    ALL keys or none — /methodology/ and gate 24 leg q both key off
+    ``records_total`` being present, so a partial block would make the page
+    hide the paragraph while the gate demanded it, and fail loudly. (Only
+    ``precision`` is nullable: a pass whose links carry no held-out sample yet
+    is a state the page states in words.)
+
+    THE DEFECT THIS SHAPE FIXES. /methodology/ stated the scope of this pass as
+    four literals typed on 2026-09-02 — "the 3,840 unmatched records that carry
+    about 88% of the residue by announced value; the 12,811 smaller records
+    carrying the remaining ~12% were not attempted". Every one was true when
+    written. None was derived from anything, the residue definition behind them
+    was never committed to the repo, and no gate in the build could see the
+    sentence go stale. Same species as the withdrawn-tier precision figure leg
+    n was built for.
+
+    Percentages are derived here and rendered verbatim by the page, so gate 24
+    leg q can recompute them from this same block. Dollars are NOT exported for
+    rendering: the /methodology/ currency scan (gate 2 render-static leg b)
+    fails any uncited `$…` token, and an allowlist entry must be a literal — a
+    derived figure can never be one.
+
+    Twin of scripts/load_announcement_scope.py, which writes the row. The two
+    invariants below are ALSO table CHECK constraints (migration 016); they are
+    re-asserted here because a database restored from a pre-016 dump, or
+    migrated without them, would otherwise publish impossible arithmetic.
+    """
+    row = pg.execute(
+        "select as_of, records_total, records_deterministic, records_residue,"
+        " records_attempted, value_residue, value_attempted, precision_sample_id"
+        " from announcement_llm_scope order by as_of desc limit 1"
+    ).fetchone()
+    if row is None:
+        return {}
+    (as_of, total, deterministic, residue, attempted,
+     value_residue, value_attempted, precision_sample_id) = row
+    if attempted > residue:
+        raise ValueError(
+            f"announcement_llm_scope {as_of}: records_attempted {attempted} "
+            f"exceeds records_residue {residue} — a pass cannot cover more "
+            f"records than the residue holds")
+    if deterministic + residue != total:
+        raise ValueError(
+            f"announcement_llm_scope {as_of}: records_deterministic "
+            f"{deterministic} + records_residue {residue} != records_total "
+            f"{total}")
+    pct_attempted = (round(float(value_attempted) * 100.0 / float(value_residue), 1)
+                     if value_residue else 0.0)
+    return {
+        "as_of": as_of.isoformat(),
+        "records_total": int(total),
+        "records_deterministic": int(deterministic),
+        "records_residue": int(residue),
+        "records_attempted": int(attempted),
+        "records_remaining": int(residue - attempted),
+        "pct_value_attempted": pct_attempted,
+        "pct_value_remaining": round(100.0 - pct_attempted, 1),
+        "precision": _announcement_scope_precision(pg, precision_sample_id),
     }
 
 
@@ -11453,6 +11615,14 @@ def _write_all_sidecars(
         # leg o binds the rendered sentences to it.
         "link_adjudication": manifest.get("link_adjudication", {}),
         "link_precision": manifest.get("link_precision", {}),
+        # ROADMAP findings :118-119: the announcement LLM-alias pass's own
+        # coverage — {as_of, records_*, pct_value_*, precision} — so
+        # /methodology/ states it instead of four 2026-09-02 literals. `{}`
+        # until a pass is recorded (the page then renders no paragraph);
+        # `precision` is null until a held-out sample of that pass's links is
+        # loaded, which is a different fact from the tier-wide study in
+        # link_precision above and is never filled in from it.
+        "announcement_llm_scope": manifest.get("announcement_llm_scope", {}),
         # backlog #49: dollar-denominated /programs/ coverage — see
         # build_programs_coverage's doc-comment and the 2b block above.
         "programs_coverage": programs_coverage,
