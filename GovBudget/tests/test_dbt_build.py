@@ -969,6 +969,26 @@ def test_an_unresolvable_high_link_on_a_shared_code_is_caught_before_it_fuses():
         " ('3010','1810N','medium','N0003917D0006')"
     )
     assert con.execute(sql).fetchall() == []
+
+    # The ORGANIZATION-split exclusion the header calls NOT COVERED,
+    # DELIBERATELY, asserted rather than only announced (fix round 1, Minor
+    # 8/12). '20' has TWO dim_programs rows under the ONE account '0300D', so
+    # `count(distinct account) > 1` does not select it and the guard returns
+    # nothing no matter what its links look like. The configuration below is
+    # the MIXED shape on purpose — two high links under 0300D beside an
+    # account-NULL one — so the assertion is not vacuous: were `shared`
+    # widened to `count(*) > 1`, '20' would be selected and this exact shape
+    # would return a row. An account cannot name DCSA or DTRA apart, so the
+    # honest answer is the disambiguation stub the exporter already gives
+    # them (_ProgramIdentity.is_account_split), not a guard row.
+    con.execute("delete from links")
+    con.execute(
+        "insert into links values"
+        " ('20','0300D','high','X1'),"
+        " ('20','0300D','high','X2'),"
+        " ('20',null,'high','X3')"
+    )
+    assert con.execute(sql).fetchall() == []
     con.close()
 
 
