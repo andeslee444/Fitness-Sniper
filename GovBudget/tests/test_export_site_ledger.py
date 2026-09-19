@@ -27,6 +27,7 @@ import pytest
 from govbudget.export_site import (
     _build_budget_to_awards_citation_rows,
     _build_geography_citation_rows,
+    _district_program_key,
     _build_lobbyist_citation_rows,
     _emit_district_sidecars,
     _export_dim_lobbyists,
@@ -131,20 +132,23 @@ def _make_geo_duckdb(tmp_path: Path, *, with_geo=True, with_districts=True) -> P
             "('TX', 'TX-01', 3, NULL)"  # null obligation → no per-row citation
         )
     if with_districts:
+        # Task 27: `account` joined the mart's grain after pe_bli. Every row
+        # here is an ordinary code, so it is NULL and every fact_id below is
+        # the one this fixture minted before the column existed.
         con.execute(
             "CREATE TABLE fct_district_programs ("
             "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-            "  program_title varchar, organization varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
             "  transaction_count bigint, award_count bigint, recipient_count bigint,"
             "  total_obligation double"
             ")"
         )
         con.execute(
             "INSERT INTO fct_district_programs VALUES "
-            "('VA', 'VA-08', '0601101E', 'DARPA', 'DARPA', 15, 5, 3, 50000000.0),"
-            "('VA', 'VA-08', '0602303E', 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
-            "('VA', 'VA-08', '0603999X', 'Null Prog', 'Army', 1, 1, 1, NULL),"
-            "('CA', 'CA-18', '0601101E', 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
+            "('VA', 'VA-08', '0601101E', NULL, 'DARPA', 'DARPA', 15, 5, 3, 50000000.0),"
+            "('VA', 'VA-08', '0602303E', NULL, 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
+            "('VA', 'VA-08', '0603999X', NULL, 'Null Prog', 'Army', 1, 1, 1, NULL),"
+            "('CA', 'CA-18', '0601101E', NULL, 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
         )
         # #51: no duplication in this fixture (VA-08's two programs are
         # genuinely distinct awards), so the award-distinct total equals the
@@ -236,10 +240,23 @@ class TestGeographyCitationRows:
 
         # inputs chain to the USAspending district_program fact_ids
         # (only non-null obligation programs)
+        # Task 27: the key comes from _district_program_key, the ONE helper
+        # all four minting sites use — hand-writing the pipe string here is
+        # how a fifth shape would slip in unnoticed. An account-NULL row's key
+        # is the bare triple, byte for byte, so these two ids are unchanged.
         expected_inputs = [
-            fact_id_usaspending("district_program", "VA|VA-08|0601101E", "total_obligation"),
-            fact_id_usaspending("district_program", "VA|VA-08|0602303E", "total_obligation"),
+            fact_id_usaspending(
+                "district_program",
+                _district_program_key("VA", "VA-08", "0601101E", None),
+                "total_obligation"),
+            fact_id_usaspending(
+                "district_program",
+                _district_program_key("VA", "VA-08", "0602303E", None),
+                "total_obligation"),
         ]
+        assert _district_program_key("VA", "VA-08", "0601101E", None) == (
+            "VA|VA-08|0601101E"
+        )
         assert sorted(json.loads(by_fid[fid_link][_CIT_IDX["inputs"]])) == sorted(expected_inputs)
 
     def test_district_formula_no_longer_claims_a_program_sum(self, tmp_path):
@@ -272,15 +289,15 @@ class TestGeographyCitationRows:
         con.execute(
             "CREATE TABLE fct_district_programs ("
             "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-            "  program_title varchar, organization varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
             "  transaction_count bigint, award_count bigint, recipient_count bigint,"
             "  total_obligation double"
             ")"
         )
         con.execute(
             "INSERT INTO fct_district_programs VALUES "
-            "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
-            "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
+            "('TX', 'TX-09', '0601101E', NULL, 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
+            "('TX', 'TX-09', '0602303E', NULL, 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
         )
         con.execute(
             "CREATE TABLE fct_district_totals ("

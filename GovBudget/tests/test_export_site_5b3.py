@@ -776,15 +776,16 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
         ],
     )
 
-    # fct_district_programs
+    # fct_district_programs (Task 27: `account` after pe_bli, NULL for an
+    # ordinary code — flows sidecars stay keyed on the BARE pe_bli)
     con.execute(
         "CREATE TABLE fct_district_programs (pop_state varchar, pop_district varchar,"
-        " pe_bli varchar, program_title varchar, organization varchar,"
+        " pe_bli varchar, account varchar, program_title varchar, organization varchar,"
         " transaction_count integer, award_count integer, recipient_count integer,"
         " total_obligation double)"
     )
     con.execute(
-        "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', 'CC', 'DARPA', 3, 3, 3, 350000.0)"
+        "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', null, 'CC', 'DARPA', 3, 3, 3, 350000.0)"
     )
 
     con.close()
@@ -974,18 +975,21 @@ def _make_usaspending_mart_duckdb(tmp_path: Path) -> Path:
         ],
     )
 
-    # fct_district_programs
+    # fct_district_programs (Task 27: `account` after pe_bli)
     con.execute(
         "CREATE TABLE fct_district_programs (pop_state varchar, pop_district varchar,"
-        " pe_bli varchar, program_title varchar, organization varchar,"
+        " pe_bli varchar, account varchar, program_title varchar, organization varchar,"
         " transaction_count integer, award_count integer, recipient_count integer,"
         " total_obligation double)"
     )
     con.execute(
-        "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', 'CC', 'DARPA', 3, 3, 3, 350000.0)"
+        "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', null, 'CC', 'DARPA', 3, 3, 3, 350000.0)"
     )
 
-    # fct_budget_to_awards (needed for district PIID lookup)
+    # fct_budget_to_awards (needed for district PIID lookup). No `account`
+    # column here on purpose: a pre-E1 fixture schema cannot carry one, and
+    # the PIID lookup must fall back to its unfiltered form rather than
+    # newly returning nothing.
     con.execute(
         "CREATE TABLE fct_budget_to_awards (award_piid varchar, pe_bli varchar,"
         " program_title varchar, organization varchar, confidence varchar)"

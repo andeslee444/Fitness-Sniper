@@ -468,51 +468,57 @@ def shared_code_program_label(titles: list[str | None]) -> str | None:
     return " / ".join(seen)
 
 
-def member_slugs_by_title(
-    all_prog_rows: list[tuple],
-    shared_pe_blis: set[str] | frozenset[str],
-    ident,
-) -> dict[tuple[str, str], str]:
-    """(pe_bli, title) -> member slug, for the shared codes whose members a
-    TITLE can tell apart (ROADMAP #82).
+def _district_program_key(
+    pop_state: str, pop_district: str, pe_bli: str, account: str | None,
+) -> str:
+    """The fact-id key for ONE fct_district_programs row (Task 27).
 
-    fct_district_programs carries no account column, but its program_title
-    was resolved per (pe_bli, account) by fct_budget_to_awards, so on a
-    shared code the title IS the member: 'LPD Flight II' under '3010' is the
-    1611N member and nothing else. A district card can therefore link
-    /program/3010-SCN/ instead of the bare-key chooser.
+    Four sites mint or re-derive `fact_id_usaspending("district_program", …)`
+    — the geography citation builder, the USAspending citation builder, the
+    district sidecar emitter and the citation panel's reverse index, the last
+    of them two thousand lines from the first. They must agree on the key's
+    shape or an input chip loses its label, or worse, a figure resolves to
+    another member's citation. This is that shape, in one place.
 
-    Codes whose members publish the SAME title ('2101' Tomahawk, '2292'
-    Naval Strike Missile) get no entry — the title names nobody, and the
-    caller keeps the stub link, which lists both. Rows are all_prog_rows'
-    10-tuples (pe_bli at 0, org at 1, title at 3 — already override-corrected
-    — account at 7, account_title at 8); titles here are compared against
-    the mart title after the SAME apply_title_override, so the two agree.
-
-    ORGANIZATION-split codes ('20'/'30'/'500') are excluded even when their
-    member titles differ: their members share one account, so the mart's
-    per-(pe_bli, account) title resolution cannot have picked one of them,
-    and a title that merely looks distinct would name a member the figure is
-    not about. They carry no crosswalk links today (both loaders exclude
-    them, ROADMAP #70/#83) and so reach no district row at all — the guard
-    exists so that a future loader change cannot turn "no rows" into "the
-    wrong member" silently.
+    An account-NULL row (every code that names ONE program — 597 of the 608
+    rows measured read-only 2026-09-19) keeps the pre-Task-27 triple BYTE FOR
+    BYTE, so every /fact/{id} permalink minted before the account joined the
+    mart's grain still resolves. A row that names a member appends its
+    account, because the two members of a shared code are two facts.
     """
-    from collections import Counter, defaultdict  # module convention: per-function
+    base = f"{pop_state}|{pop_district}|{pe_bli}"
+    return base if account is None else f"{base}|{account}"
 
-    by_pe: dict[str, list] = defaultdict(list)
-    for r in all_prog_rows:
-        if r[0] in shared_pe_blis and ident.is_account_split(r[0]):
-            by_pe[r[0]].append(r)
-    out: dict[tuple[str, str], str] = {}
-    for pe_bli, members in by_pe.items():
-        title_counts = Counter(m[3] for m in members if m[3])
-        for m in members:
-            org, title, account, account_title = m[1], m[3], m[7], m[8]
-            if not title or title_counts[title] != 1:
-                continue
-            out[(pe_bli, title)] = ident.slug(pe_bli, account, account_title, org)
-    return out
+
+def _member_split_key(ident, pe_bli: str, account: str | None) -> str:
+    """The member's page slug for a district row, or the bare pe_bli.
+
+    Returns `ident.slug(pe_bli, account, account_title, organization)` — the
+    SAME call program pages resolve their own slug with — when this row names
+    one member of a shared code, and the bare pe_bli otherwise. "Otherwise"
+    is three cases, all of which must keep the disambiguation stub rather
+    than guess:
+
+      · an ordinary pe_bli (ident.slug returns the bare key there anyway);
+      · an ORGANIZATION-split code ('20', '30', '500'), whose members share
+        one account ('0300D') — an account cannot name one of them, which is
+        what ident.is_account_split is asked here;
+      · an account-NULL row on an account-split code, which names BOTH
+        members (the case the narrowed singular test guards in dbt).
+
+    The (pe_bli, account) -> account_title lookup runs over ident's own
+    dim_programs rows, and is consulted ONLY for account-split keys, where
+    the pair is unique by construction (dim_programs is not unique on
+    (pe_bli, account) globally: the three org-split keys publish 2-3 rows
+    under 0300D each).
+    """
+    if account is None or not ident.is_account_split(pe_bli):
+        return pe_bli
+    for acct, account_title, organization, _has_detail in ident.accounts(pe_bli):
+        if acct == account:
+            return ident.slug(pe_bli, acct, account_title, organization)
+    # An account the identity map has never seen cannot name a member of it.
+    return pe_bli
 
 
 def _query_with_account_fallback(
@@ -1291,9 +1297,10 @@ _DATASET_SCOPES: dict[str, str] = {
     "fct_district_totals": (
         "One row per (state × congressional district), with obligation"
         " dollars counted once per DISTINCT high-confidence-crosswalked"
-        " award — the district headline. Its per-(district, program element)"
-        " sibling, fct_district_programs, is not summable: an award matched"
-        " to N program elements appears N times with the same dollars there."
+        " award — the district headline. Its per-(district, program element,"
+        " appropriation account) sibling, fct_district_programs, is not"
+        " summable: an award matched to N program elements appears N times"
+        " with the same dollars there."
     ),
     # The floor clause states ALL THREE of the mart's clauses (#80 fix round
     # 2, 2026-09-11): a downloader applying the old two-clause sentence
@@ -7188,10 +7195,13 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
        — the per-district header/table sums over fct_district_programs.
        inputs = the district's per-program USAspending citation fact_ids
        (fact_id_usaspending district_program rows — emitted for every
-       fct_district_programs row with a non-null total_obligation), so the
-       derived row chains to the USAspending tier and integrity rule 4a can
-       resolve every input. Aggregation mirrors _emit_district_sidecars
-       exactly (same query ORDER BY, same float accumulation).
+       fct_district_programs row with a non-null total_obligation, one per
+       MEMBER since Task 27 gave that mart an account-qualified grain, so a
+       district holding both members of a shared code chains to two inputs
+       rather than one fused figure). Keys come from _district_program_key,
+       the one helper all four minting sites share. Aggregation mirrors
+       _emit_district_sidecars exactly (same query ORDER BY, same float
+       accumulation).
 
     4. surface='district_year', key='{pop_district}|{fiscal_year}',
        metrics 'total_obligation' + 'positive_obligation'
@@ -7279,14 +7289,20 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         # float accumulation, same fact-id attach rule (usaspending rows are
         # emitted for every non-null total_obligation — see
         # _build_usaspending_citation_rows).
-        try:
-            dp_rows = con.execute(
-                "select pop_state, pop_district, pe_bli, total_obligation"
-                " from fct_district_programs"
-                " order by pop_state, pop_district, total_obligation desc nulls last"
-            ).fetchall()
-        except Exception:
-            dp_rows = []
+        # `account` (Task 27) is read through the module's standard fallback:
+        # a fixture schema predating it carries no member information at all,
+        # so None there is exactly right and every key below stays the
+        # pre-Task-27 triple.
+        dp_rows = _query_with_account_fallback(
+            con,
+            "select pop_state, pop_district, pe_bli, account, total_obligation"
+            " from fct_district_programs"
+            " order by pop_state, pop_district, total_obligation desc nulls last",
+            "select pop_state, pop_district, pe_bli, total_obligation"
+            " from fct_district_programs"
+            " order by pop_state, pop_district, total_obligation desc nulls last",
+            3,
+        )
 
         # fct_district_totals (#51): the award-DISTINCT district headline.
         # fct_district_programs is per (district, pe_bli) — an award matched
@@ -7309,7 +7325,7 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         dist_cited_raw: dict[str, float] = {}
         dist_inputs: dict[str, list[str]] = {}
         dist_prog_count: dict[str, int] = {}
-        for pop_state, pop_district, pe_bli, total_obl in dp_rows:
+        for pop_state, pop_district, pe_bli, account, total_obl in dp_rows:
             if not pop_district:
                 continue
             dist_prog_count[pop_district] = dist_prog_count.get(pop_district, 0) + 1
@@ -7319,7 +7335,8 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
             if total_obl is not None:
                 usas_fid = fact_id_usaspending(
                     "district_program",
-                    f"{pop_state}|{pop_district}|{pe_bli}",
+                    _district_program_key(
+                        pop_state, pop_district, pe_bli, account),
                     "total_obligation",
                 )
                 dist_cited_raw[pop_district] = (
@@ -9701,10 +9718,11 @@ def _write_all_sidecars(
     # construction — the sibling case renders a different program's name over
     # this one's money. Each consumer keyed here links to /program/{pe_bli}/,
     # the disambiguation stub, so the label names every member (see
-    # shared_code_program_label). District cards do better than that: their
-    # mart rows carry the per-account title of the member whose links produced
-    # the dollars, and _emit_district_sidecars now prefers it — hence
-    # shared_pe_blis below, which tells it which codes to prefer it for.
+    # shared_code_program_label). District cards do better than that: since
+    # Task 27 their mart rows carry the member's own ACCOUNT, so
+    # _emit_district_sidecars resolves the member's slug and per-member title
+    # from it and falls back to this dict only for a row that names no member.
+    # shared_pe_blis below is now read by _emit_filing_sidecars alone.
     _titles_by_pe: dict[str, list[str | None]] = defaultdict(list)
     for r in all_prog_rows:
         _titles_by_pe[r[0]].append(r[3])
@@ -11819,8 +11837,10 @@ def _write_all_sidecars(
         con=con,
         prog_titles=prog_titles,
         cited_fact_ids=_cited_fact_ids,
-        shared_pe_blis=shared_pe_blis,
-        member_slug_by_title=member_slugs_by_title(all_prog_rows, shared_pe_blis, ident),
+        # Task 27: the export's one _ProgramIdentity, so a district row
+        # resolves its member's slug through exactly the call the member's
+        # own page used.
+        ident=ident,
     )
     n_files += n_dist
 
@@ -12263,34 +12283,58 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
                 official_url=f"{_USASPENDING_BASE}{_USASPENDING_FILTER_ENDPOINT}",
             ))
 
-        # ---- District programs: all 267 rows from fct_district_programs ----
-        try:
-            dp_rows = con.execute(
-                "select pop_state, pop_district, pe_bli, total_obligation"
-                " from fct_district_programs"
-            ).fetchall()
-        except Exception:
-            dp_rows = []
+        # ---- District programs: every fct_district_programs row ----
+        # One row per (state, district, pe_bli, account) since Task 27.
+        dp_rows = _query_with_account_fallback(
+            con,
+            "select pop_state, pop_district, pe_bli, account, total_obligation"
+            " from fct_district_programs",
+            "select pop_state, pop_district, pe_bli, total_obligation"
+            " from fct_district_programs",
+            3,
+        )
 
-        for pop_state, pop_district, pe_bli, total_obl in dp_rows:
+        for pop_state, pop_district, pe_bli, account, total_obl in dp_rows:
             if total_obl is None:
                 continue
 
-            # Get top award PIIDs for this (district, program) to anchor the filter
+            # Get top award PIIDs for this (district, program) to anchor the
+            # filter. Task 27: the link query narrows to THIS member's
+            # account. Before it did, a shared code's citation body listed
+            # BOTH members' PIIDs under one member's figure — a filter a
+            # reader could run and get a different number than the page
+            # shows. IS NOT DISTINCT FROM so an account-NULL row (every
+            # ordinary code) matches the account-NULL links it is built from,
+            # which is the pre-Task-27 result for all of them. The fallback
+            # covers a fixture schema with no account column at all.
             try:
                 piids = con.execute(
                     "select distinct t.award_id_piid"
                     " from fct_award_transactions t"
                     " join (select distinct award_piid from fct_budget_to_awards"
-                    "       where confidence='high' and pe_bli=?) b"
+                    "       where confidence='high' and pe_bli=?"
+                    "         and account is not distinct from ?) b"
                     "   on t.award_id_piid = b.award_piid"
                     " where t.pop_state=? and t.pop_district=?"
                     " limit 25",
-                    [pe_bli, pop_state, pop_district],
+                    [pe_bli, account, pop_state, pop_district],
                 ).fetchall()
                 piid_list = [r[0] for r in piids if r[0]]
             except Exception:
-                piid_list = []
+                try:
+                    piids = con.execute(
+                        "select distinct t.award_id_piid"
+                        " from fct_award_transactions t"
+                        " join (select distinct award_piid from fct_budget_to_awards"
+                        "       where confidence='high' and pe_bli=?) b"
+                        "   on t.award_id_piid = b.award_piid"
+                        " where t.pop_state=? and t.pop_district=?"
+                        " limit 25",
+                        [pe_bli, pop_state, pop_district],
+                    ).fetchall()
+                    piid_list = [r[0] for r in piids if r[0]]
+                except Exception:
+                    piid_list = []
 
             query_body = _json.dumps({
                 "filters": {
@@ -12303,7 +12347,8 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
                 "version": "2020-06-01",
             }, sort_keys=True)
 
-            key_str = f"{pop_state}|{pop_district}|{pe_bli}"
+            key_str = _district_program_key(
+                pop_state, pop_district, pe_bli, account)
             fid = fact_id_usaspending("district_program", key_str, "total_obligation")
             rows.append(_null_usaspending_row(
                 fid, query_body, f"{total_obl:.3f}", "USD",
@@ -13353,8 +13398,7 @@ def _emit_district_sidecars(
     con,
     prog_titles: dict,
     cited_fact_ids: set,
-    shared_pe_blis: frozenset[str] | set[str] = frozenset(),
-    member_slug_by_title: dict[tuple[str, str], str] | None = None,
+    ident=None,
 ) -> int:
     """Emit districts/index.json and districts/{pop_district}.json (Task 5).
 
@@ -13377,38 +13421,56 @@ def _emit_district_sidecars(
     underlying awards is ALSO matched to, so the page can say "this award,
     matched to N programs" rather than implying N distinct awards.
 
-    ROADMAP #70 fix round 1: `shared_pe_blis` is the set of pe_bli values
-    dim_programs publishes more than once. For those codes prog_titles holds a
+    ROADMAP #70 fix round 1 / #82, re-founded by Task 27 (2026-09-19). For the
+    codes dim_programs publishes more than once, prog_titles holds a
     both-members label (see shared_code_program_label) — right for a link to
     the disambiguation stub, wrong over a dollar figure that belongs to ONE
-    member. A district row's dollars come from fct_district_programs, whose
-    program_title fct_budget_to_awards already resolved per (pe_bli, account)
-    to the member whose high-confidence links produced them, so on a shared
-    code that mart title is preferred over the dict. Every other pe_bli is
-    unaffected: prog_titles remains the label, exactly as before.
+    member. Until Task 27 the mart carried no account, so which member a row
+    described had to be inferred from its title (member_slugs_by_title, now
+    deleted). The mart now carries the account itself, so each row is
+    addressed the way program pages address themselves: `ident` resolves
+    (pe_bli, account) to the member's `split_key` through
+    _ProgramIdentity.slug, program_url is /program/{split_key}/, and the label
+    is the mart's own per-member title.
 
-    ROADMAP #82: on a shared code, `member_slug_by_title` (see
-    member_slugs_by_title) turns that per-member mart title into the member's
-    own page, so program_url is /program/{slug}/ rather than the bare-key
-    chooser; a code whose members share a title keeps the stub link.
+    A row that names no member — an account-NULL row on a shared code (the
+    account names BOTH), or an organization-split code, whose members share
+    one account — keeps the bare key as its split_key, the disambiguation
+    stub as its link and prog_titles' both-members label. Never a guess.
+    Ordinary codes are unchanged in every field: their account is NULL, their
+    split_key is their pe_bli, and their fact_id is byte-identical (see
+    _district_program_key).
+
+    `ident` is the export's one _ProgramIdentity (built once per export). It
+    defaults to reading dim_programs off `con`, which degrades to the empty
+    identity — every row unsplit, i.e. pre-Task-27 behaviour — when the
+    fixture has no dim_programs.
 
     Returns number of files written.
     """
     import json as _json
 
     n_written = 0
+    if ident is None:
+        ident = _fetch_program_identity(con)
 
-    # ---- District program rows from fct_district_programs (UNCHANGED) ----
-    try:
-        dp_rows = con.execute(
-            "select pop_state, pop_district, pe_bli, program_title,"
-            "       organization, transaction_count, award_count,"
-            "       recipient_count, total_obligation"
-            " from fct_district_programs"
-            " order by pop_state, pop_district, total_obligation desc nulls last"
-        ).fetchall()
-    except Exception:
-        dp_rows = []
+    # ---- District program rows from fct_district_programs ----
+    # ORDER BY is a published contract (data-sort-order="total_obligation:desc",
+    # gate 24 leg f) and _build_geography_citation_rows' own read mirrors it.
+    dp_rows = _query_with_account_fallback(
+        con,
+        "select pop_state, pop_district, pe_bli, account, program_title,"
+        "       organization, transaction_count, award_count,"
+        "       recipient_count, total_obligation"
+        " from fct_district_programs"
+        " order by pop_state, pop_district, total_obligation desc nulls last",
+        "select pop_state, pop_district, pe_bli, program_title,"
+        "       organization, transaction_count, award_count,"
+        "       recipient_count, total_obligation"
+        " from fct_district_programs"
+        " order by pop_state, pop_district, total_obligation desc nulls last",
+        3,
+    )
 
     # ---- fct_district_totals (#51): the award-DISTINCT district headline ----
     try:
@@ -13423,44 +13485,74 @@ def _emit_district_sidecars(
     }
     award_count_by_district: dict[str, int] = {r[0]: int(r[1] or 0) for r in dt_rows}
 
-    # ---- shared_award_count per (district, pe_bli) ----
+    # ---- shared_award_count per (district, split_key) ----
     # The largest number of DISTINCT program elements any one award
-    # contributing to this (district, pe_bli) row is ALSO crosswalked to.
-    # Second query over the linked (high-confidence) subset only — not the
-    # 40M-row fct_award_transactions table — so this is cheap (~0.2s
-    # measured). Gracefully empty when the base tables are unavailable (test
-    # fixtures); every program then defaults to shared_award_count=1, the
-    # non-alarming "not shared" state.
-    try:
-        fanout_rows = con.execute(
-            """
-            with award_fanout as (
-                select award_piid, count(distinct pe_bli) as pe_fanout
+    # contributing to this district row is ALSO crosswalked to. Second query
+    # over the linked (high-confidence) subset only — not the 40M-row
+    # fct_award_transactions table — so this is cheap (~0.2s measured).
+    # Gracefully empty when the base tables are unavailable (test fixtures);
+    # every program then defaults to shared_award_count=1, the non-alarming
+    # "not shared" state.
+    #
+    # Task 27: the detail CTE carries the account, so the count attaches to
+    # the MEMBER row it describes rather than to both members of a shared
+    # code. The fan-out numerator stays on the bare pe_bli: "how many program
+    # elements is this award also matched to" is a question about elements,
+    # and two members of one code are one element to an award.
+    fanout_rows = _query_with_account_fallback(
+        con,
+        """
+        with award_fanout as (
+            select award_piid, count(distinct pe_bli) as pe_fanout
+            from fct_budget_to_awards
+            where confidence = 'high'
+            group by 1
+        ),
+        detail as (
+            select t.pop_district, b.pe_bli, b.account, t.award_id_piid
+            from fct_award_transactions t
+            join (
+                select distinct award_piid, pe_bli, account
                 from fct_budget_to_awards
                 where confidence = 'high'
-                group by 1
-            ),
-            detail as (
-                select t.pop_district, b.pe_bli, t.award_id_piid
-                from fct_award_transactions t
-                join (
-                    select distinct award_piid, pe_bli
-                    from fct_budget_to_awards
-                    where confidence = 'high'
-                ) b on t.award_id_piid = b.award_piid
-                where t.pop_district is not null
-                group by 1, 2, 3
-            )
-            select d.pop_district, d.pe_bli, max(f.pe_fanout) as shared_award_count
-            from detail d
-            join award_fanout f on d.award_id_piid = f.award_piid
-            group by 1, 2
-            """
-        ).fetchall()
-    except Exception:
-        fanout_rows = []
+            ) b on t.award_id_piid = b.award_piid
+            where t.pop_district is not null
+            group by 1, 2, 3, 4
+        )
+        select d.pop_district, d.pe_bli, d.account,
+               max(f.pe_fanout) as shared_award_count
+        from detail d
+        join award_fanout f on d.award_id_piid = f.award_piid
+        group by 1, 2, 3
+        """,
+        """
+        with award_fanout as (
+            select award_piid, count(distinct pe_bli) as pe_fanout
+            from fct_budget_to_awards
+            where confidence = 'high'
+            group by 1
+        ),
+        detail as (
+            select t.pop_district, b.pe_bli, t.award_id_piid
+            from fct_award_transactions t
+            join (
+                select distinct award_piid, pe_bli
+                from fct_budget_to_awards
+                where confidence = 'high'
+            ) b on t.award_id_piid = b.award_piid
+            where t.pop_district is not null
+            group by 1, 2, 3
+        )
+        select d.pop_district, d.pe_bli, max(f.pe_fanout) as shared_award_count
+        from detail d
+        join award_fanout f on d.award_id_piid = f.award_piid
+        group by 1, 2
+        """,
+        2,
+    )
     shared_count_by_key: dict[tuple, int] = {
-        (r[0], r[1]): int(r[2]) for r in fanout_rows
+        (r[0], _member_split_key(ident, r[1], r[2])): int(r[3])
+        for r in fanout_rows
     }
 
     # ---- ROADMAP #6: district × fiscal_year rows ----------------------------
@@ -13483,20 +13575,33 @@ def _emit_district_sidecars(
             f" will fail; run `uv run python -m govbudget build` first)"
         )
         dy_rows = []
+    # Task 27: `account` is read here only so the page cap below compares
+    # SPLIT KEYS — a by-year row for the sibling member of a shared code must
+    # not arrive through the year door on a page that publishes the other one.
+    _dpy_sql = (
+        "select pop_district, pe_bli, {account}fiscal_year, transaction_count,"
+        "       award_count, recipient_count, total_obligation,"
+        "       positive_obligation"
+        " from fct_district_programs_by_year"
+        " order by pop_district, fiscal_year, total_obligation desc nulls last"
+    )
     try:
-        dpy_rows = con.execute(
-            "select pop_district, pe_bli, fiscal_year, transaction_count,"
-            "       award_count, recipient_count, total_obligation,"
-            "       positive_obligation"
-            " from fct_district_programs_by_year"
-            " order by pop_district, fiscal_year, total_obligation desc nulls last"
-        ).fetchall()
-    except Exception as exc:  # noqa: BLE001 — reported, not swallowed
-        print(
-            f"districts: fct_district_programs_by_year unavailable ({exc}) —"
-            f" by_year_programs will be EMPTY on every district sidecar"
-        )
-        dpy_rows = []
+        dpy_rows = con.execute(_dpy_sql.format(account="account, ")).fetchall()
+    except Exception:
+        # Pre-Task-27 fixture schema (no account column) — splice None in at
+        # the account's position, exactly as _query_with_account_fallback
+        # does elsewhere. The table being ABSENT is still reported loudly.
+        try:
+            dpy_rows = [
+                (r[0], r[1], None, *r[2:])
+                for r in con.execute(_dpy_sql.format(account="")).fetchall()
+            ]
+        except Exception as exc:  # noqa: BLE001 — reported, not swallowed
+            print(
+                f"districts: fct_district_programs_by_year unavailable ({exc}) —"
+                f" by_year_programs will be EMPTY on every district sidecar"
+            )
+            dpy_rows = []
 
     # ---- dim_geography grand total ----
     # Same SQL as _build_geography_citation_rows' grand-total row so the
@@ -13530,30 +13635,32 @@ def _emit_district_sidecars(
     # correction.
     _title_overrides = load_title_overrides()
 
-    for (pop_state, pop_district, pe_bli, program_title, organization,
+    for (pop_state, pop_district, pe_bli, account, program_title, organization,
          transaction_count, award_count, recipient_count, total_obligation) in dp_rows:
         if not pop_district:
             continue
         key = pop_district
         _mart_title = apply_title_override(pe_bli, program_title, _title_overrides)
-        member_slug = None
-        if pe_bli in shared_pe_blis and _mart_title:
+        # Task 27: the member this row's dollars belong to, resolved from the
+        # mart's own account exactly as a program page resolves its own slug.
+        # Equal to pe_bli whenever no member is named — an ordinary code, an
+        # organization-split code, or an account-NULL row on a shared code.
+        split_key = _member_split_key(ident, pe_bli, account)
+        if split_key != pe_bli and _mart_title:
             # ROADMAP #70 fix round 1: one member of this code earned these
             # dollars and the mart names it. prog_titles names BOTH members
             # (it labels a link to the disambiguation stub), which over a
             # figure would read as one program's money under two programs'
             # names.
             title = _mart_title
-            # ROADMAP #82: and the link follows the label — that member's
-            # own page, not the chooser. None when the title cannot name one
-            # member (identical member titles), in which case the stub is
-            # the honest destination: it lists both.
-            member_slug = (member_slug_by_title or {}).get((pe_bli, _mart_title))
         else:
+            # No member named: the both-members label over the stub link, or
+            # — for the ~1,930 ordinary codes — the one title prog_titles has
+            # always given them.
             title = prog_titles.get(pe_bli, _mart_title or "")
 
-        # Compute the usaspending fact_id for this (district, program)
-        key_str = f"{pop_state}|{pop_district}|{pe_bli}"
+        # Compute the usaspending fact_id for this (district, program member)
+        key_str = _district_program_key(pop_state, pop_district, pe_bli, account)
         fid = fact_id_usaspending("district_program", key_str, "total_obligation")
         fact_id_for_program = fid if fid in cited_fact_ids else None
 
@@ -13578,22 +13685,32 @@ def _emit_district_sidecars(
         if key not in district_programs:
             district_programs[key] = []
         district_programs[key].append({
+            # Task 27: the member appropriation account these dollars belong
+            # to, NULL when the row names no one member.
+            "account": account,
             "award_count": award_count,
             "fact_id": fact_id_for_program,
             "organization": organization,
             "pe_bli": pe_bli,
-            "program_url": f"/program/{member_slug or pe_bli}/",
+            "program_url": f"/program/{split_key}/",
             "recipient_count": recipient_count,
             # #51: the number of program elements the SAME award is also
             # matched to — 1 means "not shared". >1 is the AK-00 tell: one
             # award attributed whole to each of N program elements.
-            "shared_award_count": shared_count_by_key.get((pop_district, pe_bli), 1),
+            "shared_award_count": shared_count_by_key.get(
+                (pop_district, split_key), 1),
+            # Task 27: the row's address — the member's page slug, equal to
+            # pe_bli for every code that names one program. The page keys its
+            # table rows on this, because a district can now hold one row per
+            # member of a shared code and pe_bli no longer identifies a row.
+            "split_key": split_key,
             "title": title,
             "total_obligation": float(total_obligation) if total_obligation is not None else None,
             "transaction_count": transaction_count,
         })
-        # The page's program list, as a set — by_year_programs is capped to it.
-        page_pe_by_district.setdefault(key, set()).add(pe_bli)
+        # The page's program list, as a set of SPLIT KEYS — by_year_programs
+        # is capped to it.
+        page_pe_by_district.setdefault(key, set()).add(split_key)
 
     # ---- #51: replace the per-program sum with the award-distinct total ----
     # total_linkable_dollars comes from fct_district_totals, never from
@@ -13652,10 +13769,11 @@ def _emit_district_sidecars(
     # program list so a pe_bli with no row, link or citation on the page cannot
     # arrive through the year door.
     by_year_programs: dict[str, list] = {}
-    for (dpy_district, dpy_pe, dpy_fy, dpy_txn, dpy_awards,
+    for (dpy_district, dpy_pe, dpy_account, dpy_fy, dpy_txn, dpy_awards,
          dpy_recipients, dpy_total, dpy_positive) in dpy_rows:
         page_pes = page_pe_by_district.get(dpy_district)
-        if not page_pes or dpy_pe not in page_pes:
+        if not page_pes or _member_split_key(
+                ident, dpy_pe, dpy_account) not in page_pes:
             continue
         by_year_programs.setdefault(dpy_district, []).append({
             "award_count": int(dpy_awards or 0),
@@ -15094,17 +15212,22 @@ def _emit_breakdowns(
             )
 
     # usaspending district-program reverse index: fid → (pe_bli, program_title)
+    # The key MUST mirror _district_program_key exactly — this index is what
+    # gives a district-program input chip its label, and it lives two thousand
+    # lines from the three sites that mint the id.
     usas_meta: dict[str, tuple] = {}
-    try:
-        dp_rows = con.execute(
-            "select pop_state, pop_district, pe_bli, program_title"
-            " from fct_district_programs"
-        ).fetchall()
-    except Exception:
-        dp_rows = []
-    for pop_state, pop_district, dp_pe, dp_title in dp_rows:
+    dp_rows = _query_with_account_fallback(
+        con,
+        "select pop_state, pop_district, pe_bli, account, program_title"
+        " from fct_district_programs",
+        "select pop_state, pop_district, pe_bli, program_title"
+        " from fct_district_programs",
+        3,
+    )
+    for pop_state, pop_district, dp_pe, dp_account, dp_title in dp_rows:
         fid_us = fact_id_usaspending(
-            "district_program", f"{pop_state}|{pop_district}|{dp_pe}",
+            "district_program",
+            _district_program_key(pop_state, pop_district, dp_pe, dp_account),
             "total_obligation",
         )
         usas_meta[fid_us] = (dp_pe, apply_title_override(dp_pe, dp_title, _title_overrides))

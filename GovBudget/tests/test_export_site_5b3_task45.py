@@ -18,6 +18,7 @@ import pytest
 
 from govbudget.export_site import (
     _build_geography_citation_rows,
+    _district_program_key,
     _emit_feed_sidecar,
     _emit_district_sidecars,
     fact_id_derived,
@@ -138,16 +139,16 @@ def _make_duckdb_with_districts(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE fct_district_programs ("
         "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-        "  program_title varchar, organization varchar,"
+        "  account varchar, program_title varchar, organization varchar,"
         "  transaction_count bigint, award_count bigint, recipient_count bigint,"
         "  total_obligation double"
         ")"
     )
     con.execute(
         "INSERT INTO fct_district_programs VALUES "
-        "('VA', 'VA-08', '0601101E', 'DARPA', 'DARPA', 15, 5, 3, 50000000.0),"
-        "('VA', 'VA-08', '0602303E', 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
-        "('CA', 'CA-18', '0601101E', 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
+        "('VA', 'VA-08', '0601101E', NULL, 'DARPA', 'DARPA', 15, 5, 3, 50000000.0),"
+        "('VA', 'VA-08', '0602303E', NULL, 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
+        "('CA', 'CA-18', '0601101E', NULL, 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
     )
 
     # #51: LIVE mart schema (dbt/models/marts/fct_district_totals.sql) — the
@@ -202,20 +203,21 @@ def _make_duckdb_with_districts(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE fct_district_programs_by_year ("
         "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-        "  fiscal_year integer, program_title varchar, organization varchar,"
+        "  account varchar, fiscal_year integer,"
+        "  program_title varchar, organization varchar,"
         "  transaction_count bigint, award_count bigint, recipient_count bigint,"
         "  total_obligation double, positive_obligation double"
         ")"
     )
     con.execute(
         "INSERT INTO fct_district_programs_by_year VALUES "
-        "('VA','VA-08','0601101E',2024,'DARPA','DARPA',15,5,3,50000000.0,52000000.0),"
-        "('VA','VA-08','0602303E',2025,'Army Research','Army',8,3,2,20000000.0,20000000.0),"
-        "('CA','CA-18','0601101E',2025,'DARPA','DARPA',7,2,1,15000000.0,15000000.0),"
+        "('VA','VA-08','0601101E',NULL,2024,'DARPA','DARPA',15,5,3,50000000.0,52000000.0),"
+        "('VA','VA-08','0602303E',NULL,2025,'Army Research','Army',8,3,2,20000000.0,20000000.0),"
+        "('CA','CA-18','0601101E',NULL,2025,'DARPA','DARPA',7,2,1,15000000.0,15000000.0),"
         # A pe_bli that is NOT on VA-08's page (no fct_district_programs row):
         # the cap must drop it, or a program with no row, link or citation
         # would arrive through the year door.
-        "('VA','VA-08','0699999Z',2025,'GHOST','DARPA',1,1,1,999.0,999.0)"
+        "('VA','VA-08','0699999Z',NULL,2025,'GHOST','DARPA',1,1,1,999.0,999.0)"
     )
 
     con.close()
@@ -632,7 +634,10 @@ class TestEmitDistrictSidecars:
         dist_dir.mkdir()
 
         # Pre-compute the fact_id for VA-08 / 0601101E
-        fid = fact_id_usaspending("district_program", "VA|VA-08|0601101E", "total_obligation")
+        fid = fact_id_usaspending(
+            "district_program",
+            _district_program_key("VA", "VA-08", "0601101E", None),
+            "total_obligation")
 
         con = duckdb.connect(str(db_path), read_only=True)
         try:
@@ -673,7 +678,10 @@ class TestEmitDistrictSidecars:
         dist_dir.mkdir()
 
         # Wire one fact_id (DARPA in VA-08)
-        fid = fact_id_usaspending("district_program", "VA|VA-08|0601101E", "total_obligation")
+        fid = fact_id_usaspending(
+            "district_program",
+            _district_program_key("VA", "VA-08", "0601101E", None),
+            "total_obligation")
 
         con = duckdb.connect(str(db_path), read_only=True)
         try:
@@ -702,15 +710,15 @@ class TestEmitDistrictSidecars:
         con.execute(
             "CREATE TABLE fct_district_programs ("
             "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-            "  program_title varchar, organization varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
             "  transaction_count bigint, award_count bigint, recipient_count bigint,"
             "  total_obligation double"
             ")"
         )
         con.execute(
             "INSERT INTO fct_district_programs VALUES "
-            "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
-            "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
+            "('TX', 'TX-09', '0601101E', NULL, 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
+            "('TX', 'TX-09', '0602303E', NULL, 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
         )
         con.execute(
             "CREATE TABLE fct_district_totals ("
@@ -725,8 +733,14 @@ class TestEmitDistrictSidecars:
 
         dist_dir = tmp_path / "districts"
         dist_dir.mkdir()
-        fid_a = fact_id_usaspending("district_program", "TX|TX-09|0601101E", "total_obligation")
-        fid_b = fact_id_usaspending("district_program", "TX|TX-09|0602303E", "total_obligation")
+        fid_a = fact_id_usaspending(
+            "district_program",
+            _district_program_key("TX", "TX-09", "0601101E", None),
+            "total_obligation")
+        fid_b = fact_id_usaspending(
+            "district_program",
+            _district_program_key("TX", "TX-09", "0602303E", None),
+            "total_obligation")
 
         con = duckdb.connect(str(db_path), read_only=True)
         try:
@@ -758,16 +772,16 @@ class TestEmitDistrictSidecars:
         con.execute(
             "CREATE TABLE fct_district_programs ("
             "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-            "  program_title varchar, organization varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
             "  transaction_count bigint, award_count bigint, recipient_count bigint,"
             "  total_obligation double"
             ")"
         )
         con.execute(
             "INSERT INTO fct_district_programs VALUES "
-            "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 10, 1, 1, 100000000.0),"
-            "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 10, 1, 1, 100000000.0),"
-            "('CA', 'CA-18', '0699999X', 'Solo Program', 'Army', 5, 1, 1, 15000000.0)"
+            "('TX', 'TX-09', '0601101E', NULL, 'DARPA A', 'DARPA', 10, 1, 1, 100000000.0),"
+            "('TX', 'TX-09', '0602303E', NULL, 'DARPA B', 'DARPA', 10, 1, 1, 100000000.0),"
+            "('CA', 'CA-18', '0699999X', NULL, 'Solo Program', 'Army', 5, 1, 1, 15000000.0)"
         )
         con.execute(
             "CREATE TABLE fct_district_totals ("
@@ -782,6 +796,9 @@ class TestEmitDistrictSidecars:
         )
         # The SAME award (PIID SHARED-1) crosswalked to both TX-09 PEs;
         # a different, unshared award (SOLO-1) funds the CA-18 program.
+        # No `account` column: the fanout query must degrade to its pre-E1
+        # form (every key unsplit) rather than newly returning nothing and
+        # silently resetting every shared_award_count to 1.
         con.execute(
             "CREATE TABLE fct_budget_to_awards ("
             "  pe_bli varchar, award_piid varchar, confidence varchar"
@@ -828,7 +845,7 @@ class TestEmitDistrictSidecars:
         con.execute(
             "CREATE TABLE fct_district_programs ("
             "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-            "  program_title varchar, organization varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
             "  transaction_count bigint, award_count bigint, recipient_count bigint,"
             "  total_obligation double"
             ")"
@@ -862,13 +879,13 @@ class TestEmitDistrictSidecars:
         con.execute(
             "CREATE TABLE fct_district_programs ("
             "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-            "  program_title varchar, organization varchar,"
+            "  account varchar, program_title varchar, organization varchar,"
             "  transaction_count bigint, award_count bigint, recipient_count bigint,"
             "  total_obligation double"
             ")"
         )
         con.execute(
-            "INSERT INTO fct_district_programs VALUES ('TX', 'TX-01', '0601101E', 'DARPA', 'DARPA', 3, 1, 1, 5000000.0)"
+            "INSERT INTO fct_district_programs VALUES ('TX', 'TX-01', '0601101E', NULL, 'DARPA', 'DARPA', 3, 1, 1, 5000000.0)"
         )
         con.close()
 

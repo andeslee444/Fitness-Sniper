@@ -200,18 +200,22 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("insert into dim_geography values ('VA','VA-08',150,5000000.0)")
 
     # fct_district_programs (optional mart; provides district search docs + district sidecars)
+    # Task 27 (2026-09-19): `account` is part of the mart's grain, immediately
+    # after pe_bli. NULL here, as it is for every code that names ONE program —
+    # which is what keeps these rows' district_program fact_ids byte-identical
+    # to the ids they had before the column existed.
     con.execute(
         "create table fct_district_programs ("
         "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-        "  program_title varchar, organization varchar,"
+        "  account varchar, program_title varchar, organization varchar,"
         "  transaction_count bigint, award_count bigint, recipient_count bigint,"
         "  total_obligation double"
         ")"
     )
     con.execute(
         "insert into fct_district_programs values"
-        " ('CO', 'CO-05', '0601101E', 'Defense Research Sciences', 'DARPA', 10, 4, 2, 1500000.0),"
-        " ('VA', 'VA-08', '0601101E', 'Defense Research Sciences', 'DARPA', 15, 5, 3, 5000000.0)"
+        " ('CO', 'CO-05', '0601101E', null, 'Defense Research Sciences', 'DARPA', 10, 4, 2, 1500000.0),"
+        " ('VA', 'VA-08', '0601101E', null, 'Defense Research Sciences', 'DARPA', 15, 5, 3, 5000000.0)"
     )
 
     # 11b. fct_district_totals (#51, required mart) — one pe_bli per district

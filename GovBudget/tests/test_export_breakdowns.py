@@ -148,15 +148,15 @@ def _make_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE fct_district_programs ("
         "  pop_state varchar, pop_district varchar, pe_bli varchar,"
-        "  program_title varchar, organization varchar,"
+        "  account varchar, program_title varchar, organization varchar,"
         "  transaction_count bigint, award_count bigint, recipient_count bigint,"
         "  total_obligation double"
         ")"
     )
     con.execute(
         "INSERT INTO fct_district_programs VALUES "
-        "('VA', 'VA-08', '0601101E', 'DARPA Research', 'DARPA', 15, 5, 3, 50000000.0),"
-        "('VA', 'VA-08', '0602025E', 'DARPA Manufacturing', 'DARPA', 8, 3, 2, 20000000.0)"
+        "('VA', 'VA-08', '0601101E', NULL, 'DARPA Research', 'DARPA', 15, 5, 3, 50000000.0),"
+        "('VA', 'VA-08', '0602025E', NULL, 'DARPA Manufacturing', 'DARPA', 8, 3, 2, 20000000.0)"
     )
     con.close()
     return db_path

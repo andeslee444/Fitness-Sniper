@@ -484,19 +484,29 @@ def _make_collision_duckdb(db_path: Path) -> None:
         f" ('3010','P-1',2026,'N','N0003917D0006','Serco','UEI2',"
         f"  'fpds-ap','medium','Shipboard Tactical Communications','{OPN}')"
     )
-    # Two district rows on the SAME shared code, one per member, in two
-    # different districts. fct_district_programs is pe-grained and carries the
-    # per-account program_title of the member whose high-confidence links
-    # produced the dollars (fct_budget_to_awards resolves it through
-    # (pe_bli, account)); the exporter must render THAT title rather than the
-    # bare-code label. VA-08 gets the FIRST member by account order (1611N),
-    # CO-05 the SECOND (1810N) — a last-wins prog_titles lookup renders the
-    # second member's title on both.
+    # District rows on the SAME shared code. Since Task 27 (2026-09-19)
+    # fct_district_programs is grained on (state, district, pe_bli, ACCOUNT)
+    # and carries both the account and the per-account program_title of the
+    # member whose high-confidence links produced the dollars, so the exporter
+    # addresses each row by that member's own split key rather than guessing
+    # one from the title.
+    #
+    #   VA-08 gets BOTH members — the two-members-one-district case the
+    #     account grain exists for, and the shape the pre-Task-27 model would
+    #     have fused into one card under min(program_title);
+    #   CO-05 gets the SECOND member alone (1810N), the one a last-wins
+    #     prog_titles lookup happens to land on;
+    #   TX-01 gets a NULL-account row on the same shared code — an account
+    #     that names BOTH members, so the honest destination is the
+    #     disambiguation stub and the honest label names both.
     con.execute(
         "insert into fct_district_programs values"
-        " ('VA','VA-08','3010','LPD Flight II','N',3,2,1,900000.0),"
-        " ('CO','CO-05','3010','Shipboard Tactical Communications','N',"
-        "  2,1,1,100000.0)"
+        f" ('VA','VA-08','3010','{SCN}','LPD Flight II','N',3,2,1,900000.0),"
+        f" ('VA','VA-08','3010','{OPN}','Shipboard Tactical Communications',"
+        f"  'N',1,1,1,400000.0),"
+        f" ('CO','CO-05','3010','{OPN}','Shipboard Tactical Communications',"
+        f"  'N',2,1,1,100000.0),"
+        f" ('TX','TX-01','3010',null,'LPD Flight II','N',1,1,1,50000.0)"
     )
     # ROADMAP #82: a mart figure for the shared code, so the exporter has
     # something to WITHHOLD (both members carry a link above) rather than a
@@ -600,9 +610,18 @@ def _district(site: Path, code: str) -> dict:
     return json.loads((site / "json" / "districts" / f"{code}.json").read_text())
 
 
-def _district_program(site: Path, code: str, pe_bli: str) -> dict:
-    rows = [p for p in _district(site, code)["programs"] if p["pe_bli"] == pe_bli]
-    assert len(rows) == 1, f"{code}: expected one {pe_bli} row, got {len(rows)}"
+def _district_program(site: Path, code: str, split_key: str) -> dict:
+    """The district row addressed by SPLIT KEY, not by bare pe_bli.
+
+    Task 27: a district can hold one row per member of a shared code, so the
+    bare pe_bli no longer identifies a row. split_key is the member slug
+    ('3010-SCN'), and equals the pe_bli for every code that names one program.
+    """
+    rows = [
+        p for p in _district(site, code)["programs"]
+        if p["split_key"] == split_key
+    ]
+    assert len(rows) == 1, f"{code}: expected one {split_key} row, got {len(rows)}"
     return rows[0]
 
 
@@ -611,8 +630,9 @@ def test_a_district_card_names_the_member_whose_links_produced_the_dollars(
 ):
     """The SECOND member by account order (1810N) — the one a last-wins
     prog_titles lookup happens to land on."""
-    row = _district_program(collision_export, "CO-05", "3010")
+    row = _district_program(collision_export, "CO-05", "3010-OPN")
     assert row["title"] == "Shipboard Tactical Communications"
+    assert row["account"] == OPN
 
 
 def test_a_district_card_on_the_first_member_is_not_relabelled_as_its_sibling(
@@ -622,8 +642,9 @@ def test_a_district_card_on_the_first_member_is_not_relabelled_as_its_sibling(
     LPD Flight II's (1611N, the FIRST member by account order); labelling them
     'Shipboard Tactical Communications' names a different program in a
     different appropriation."""
-    row = _district_program(collision_export, "VA-08", "3010")
+    row = _district_program(collision_export, "VA-08", "3010-SCN")
     assert row["title"] == "LPD Flight II"
+    assert row["account"] == SCN
 
 
 def test_an_ordinary_district_card_still_reads_its_program_title(collision_export):
@@ -631,6 +652,8 @@ def test_an_ordinary_district_card_still_reads_its_program_title(collision_expor
     dim_programs title prog_titles has always given it."""
     row = _district_program(collision_export, "CO-05", "0601101E")
     assert row["title"] == "Defense Research Sciences"
+    # An ordinary code's split key IS its pe_bli, and its account is NULL.
+    assert row["split_key"] == "0601101E" and row["account"] is None
 
 
 def test_link_citation_row_names_the_account_for_a_split_key(collision_export):
@@ -705,56 +728,89 @@ def test_every_sidecar_award_fact_id_resolves_or_is_null(collision_export):
 def test_a_district_card_on_a_shared_code_links_the_member_page(collision_export):
     """The mart title names the member whose high-confidence links produced
     the dollars; the card links THAT page, not the bare-key chooser."""
-    assert _district_program(collision_export, "VA-08", "3010")["program_url"] == "/program/3010-SCN/"
-    assert _district_program(collision_export, "CO-05", "3010")["program_url"] == "/program/3010-OPN/"
+    assert _district_program(collision_export, "VA-08", "3010-SCN")["program_url"] == "/program/3010-SCN/"
+    assert _district_program(collision_export, "CO-05", "3010-OPN")["program_url"] == "/program/3010-OPN/"
 
 
 def test_an_ordinary_district_card_still_links_its_bare_key(collision_export):
     assert _district_program(collision_export, "CO-05", "0601101E")["program_url"] == "/program/0601101E/"
 
 
-def test_member_slugs_by_title_refuses_identical_member_titles():
-    """'2101' publishes "Tomahawk" in two appropriations — a title names
-    nobody there, so no entry is minted and the district card keeps the stub."""
-    from govbudget.export_site import _ProgramIdentity, member_slugs_by_title
+def test_both_members_of_a_shared_code_in_one_district_keep_their_own_row(
+    collision_export,
+):
+    """Task 27, the case the whole grain change exists for.
 
+    VA-08's sidecar carries BOTH members of '3010'. Before the account joined
+    fct_district_programs' grain these were one row whose dollars were the sum
+    of two programs' money and whose label was min(program_title) — ROADMAP
+    #56's fusion shape, with every number<->citation gate still green because
+    each underlying link is individually true. Two rows, two titles, two member
+    pages, two distinct fact_ids, and the published
+    total_obligation:desc order.
+    """
     rows = [
-        ("2101", "N", "procurement", "Tomahawk", 0, 1.0, True, "1109N", "Procurement, Marine Corps", None),
-        ("2101", "N", "procurement", "Tomahawk", 0, 1.0, True, "1507N", "Weapons Procurement, Navy", None),
-        ("3010", "N", "procurement", "LPD Flight II", 0, 1.0, True, SCN, SCN_TITLE, None),
-        ("3010", "N", "procurement", "Shipboard Tactical Communications", 0, 1.0, True, OPN, OPN_TITLE, None),
-        ("0601101E", "DARPA", "rdte", "Defense Research Sciences", 1, 1.0, True, None, None, None),
+        p for p in _district(collision_export, "VA-08")["programs"]
+        if p["pe_bli"] == "3010"
     ]
-    # _ProgramIdentity rows are (pe_bli, account, account_title, organization, has_detail).
-    ident = _ProgramIdentity([(r[0], r[7], r[8], r[1], True) for r in rows])
-    out = member_slugs_by_title(rows, {"2101", "3010"}, ident)
-    assert out == {
-        ("3010", "LPD Flight II"): "3010-SCN",
-        ("3010", "Shipboard Tactical Communications"): "3010-OPN",
-    }
-
-
-def test_member_slugs_by_title_never_names_an_org_split_member():
-    """'20' DCSA/DTRA share one account, so fct_district_programs' title
-    (resolved per (pe_bli, account)) cannot have picked one of them — a
-    distinct-looking title there names nobody, and the stub is the honest
-    destination. Org-split codes carry no crosswalk links today, so this
-    guard is what keeps a future loader change from turning "no district
-    rows" into "the wrong member"."""
-    from govbudget.export_site import _ProgramIdentity, member_slugs_by_title
-
-    rows = [
-        ("20", "DTRA", "procurement", "Vehicles", 0, 1.0, True, "0300D", "Procurement, Defense-Wide", None),
-        ("20", "DCSA", "procurement", "Major Equipment", 0, 1.0, True, "0300D", "Procurement, Defense-Wide", None),
-        ("3010", "N", "procurement", "LPD Flight II", 0, 1.0, True, SCN, SCN_TITLE, None),
-        ("3010", "N", "procurement", "Shipboard Tactical Communications", 0, 1.0, True, OPN, OPN_TITLE, None),
+    assert [p["split_key"] for p in rows] == ["3010-SCN", "3010-OPN"]
+    assert [p["account"] for p in rows] == [SCN, OPN]
+    assert [p["title"] for p in rows] == [
+        "LPD Flight II", "Shipboard Tactical Communications",
     ]
-    ident = _ProgramIdentity([(r[0], r[7], r[8], r[1], True) for r in rows])
-    out = member_slugs_by_title(rows, {"20", "3010"}, ident)
-    assert set(out) == {
-        ("3010", "LPD Flight II"),
-        ("3010", "Shipboard Tactical Communications"),
-    }
+    assert [p["program_url"] for p in rows] == [
+        "/program/3010-SCN/", "/program/3010-OPN/",
+    ]
+    assert [p["total_obligation"] for p in rows] == [900000.0, 400000.0]
+    # Two members, two facts: one fact_id per member, both resolvable.
+    fids = [p["fact_id"] for p in rows]
+    assert len(set(fids)) == 2 and all(fids), fids
+    by_fid = json.loads(
+        (collision_export / "json" / "citations.json").read_text()
+    )
+    assert all(f in by_fid for f in fids)
+    # The whole page stays in its published order, which gate 24 leg f reads
+    # off the rendered table (data-sort-order="total_obligation:desc").
+    page = [p["total_obligation"] for p in _district(collision_export, "VA-08")["programs"]]
+    assert page == sorted(page, reverse=True), page
+
+
+def test_the_two_members_fact_ids_key_on_the_account(collision_export):
+    """The ids are the helper's, per member — not one id for the bare pair.
+
+    The four sites that mint a district_program fact_id all call
+    _district_program_key, so this pins the shape at the only place a reader
+    ever sees it: the sidecar.
+    """
+    from govbudget.export_site import _district_program_key, fact_id_usaspending
+
+    for split_key, account in (("3010-SCN", SCN), ("3010-OPN", OPN)):
+        row = _district_program(collision_export, "VA-08", split_key)
+        assert row["fact_id"] == fact_id_usaspending(
+            "district_program",
+            _district_program_key("VA", "VA-08", "3010", account),
+            "total_obligation",
+        )
+    # An ordinary row's key is the bare triple, byte for byte — the
+    # /fact/{id} permalinks minted before Task 27 still resolve.
+    ordinary = _district_program(collision_export, "VA-08", "0601101E")
+    assert ordinary["fact_id"] == fact_id_usaspending(
+        "district_program", "VA|VA-08|0601101E", "total_obligation")
+
+
+def test_a_null_account_row_on_a_shared_code_keeps_the_stub(collision_export):
+    """An account-NULL row names BOTH members, so it may not name one.
+
+    This is the case the narrowed
+    assert_district_programs_single_member_high_links still guards in dbt, and
+    the exporter's half of the same rule: no guessed member. The label is the
+    both-members one shared_code_program_label mints for a link to the
+    disambiguation stub, and the link is that stub.
+    """
+    row = _district_program(collision_export, "TX-01", "3010")
+    assert row["account"] is None
+    assert row["program_url"] == "/program/3010/"
+    assert row["title"] == "LPD Flight II / Shipboard Tactical Communications"
 
 
 def test_both_linked_members_carry_the_withheld_flag_and_no_hhi(collision_export):
