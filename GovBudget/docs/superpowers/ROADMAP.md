@@ -744,7 +744,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   selection code was never committed. Re-deriving the selection (Task 25a)
   does not reproduce it: the records that join the award lake are 32,852, the
   deterministic pass matched 4,508, and the residue is **28,344**, of which
-  3,840 had been attempted — so the unattempted tail was never 12,811 but
+  3,829 had been attempted — so the unattempted tail was never 12,811 but
   about 24,500, roughly **1.9×** the published figure. Wave 4 adjudicated 150
   of 306 queued chunks (11,775 records, four workflow runs), 453 distinct
   (PIID, PE) pairs survived two adversarial lenses, and the unchanged loader —
@@ -770,7 +770,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (`_PINNED_PRECISION_SAMPLES`), the wave's pair is published beside the scope
   counts where the sentence says whose links it measured, and a pinned tier
   whose run judged nothing it still publishes is reported UNMEASURED rather
-  than falling back. Third, an arithmetic trap the prose had to dodge: 10.6%
+  than falling back. Third, an arithmetic trap the prose had to dodge: 10.9%
   of the residue BY ANNOUNCED VALUE is 44.9% of it by RECORDS, so every
   percentage clause on the page names the measure it is a share of.
   Fourth, measured after the load and not predicted by anyone: the ANNOUNCEMENT
@@ -787,6 +787,22 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   ADD links, it re-attributes existing ones, so a wave's effect cannot be read
   off the announcement row count alone, and the precision table can move
   without any verdict changing.
+  FIX ROUND 1 (same day), and it is the fifth lesson: the numerator left the
+  denominator's population. `records_attempted` added the EARLIER pass's entry
+  count — 3,840 rows over 3,832 distinct keys, taken before the lexicon grew
+  — to wave 4's, and published the sum as a share OF today's 28,344-record
+  residue. 8 of those entries duplicate a key and 3 of the records now match
+  an owned name deterministically, so only **3,829** of them are still in the
+  residue: the page had published 15,615 records / 89.4% of the residue by
+  value where the true in-residue figures are **15,604 / 89.1%**, and an
+  unattempted tail of 12,729 / 10.6% that is really 12,740 / 10.9%. Coverage
+  overstated, the tail understated — the wrong direction under "publish the
+  smaller true number", and invisible to every gate because each figure came
+  from a block and the block came from a manifest. The manifest now publishes
+  `earlier_pass.records_in_residue` / `value_in_residue`, the intersection,
+  and the loader refuses a manifest without them. THE SPECIES: a derived
+  figure is only as honest as the population its inputs share; "derived" says
+  nothing about which set a number counts.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -1528,26 +1544,46 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   when the row can name its own member.
   **Status:** open (2026-09-18)
 
-- **#116 Announcement LLM-alias pass: the residue tail, and the 156 chunks
-  wave 4 did not reach.** Wave 4 adjudicated 150 of the 306 queued chunks —
-  11,775 of the 28,344 residue records — so with the earlier 2026-09-02 pass
-  the route has now been through 15,615 records, 89.4% of the residue by
-  announced value; 12,729 records (10.6% of that value) have not been
-  attempted. The remainder is queued in
-  `data/research/announcements/wave4_queue/` (gitignored; regenerate with
-  `uv run python scripts/mine_announcement_residue.py queue`, which re-derives
-  the residue and its 306 chunks from `records.jsonl` and rewrites
-  `residue_manifest.json`), and the published figure
-  on /methodology/ moves on its own when more chunks are collected and
+- **#116 Announcement LLM-alias pass: the residue tail, the 156 chunks wave 4
+  did not reach, and the 683 records no wave can reach.** Wave 4 adjudicated
+  150 of the 306 queued chunks — 11,775 of the 28,344 residue records — so
+  with the earlier 2026-09-02 pass (3,829 of whose 3,840 entries are still in
+  today's residue) the route has now been through 15,604 records, 89.1% of the
+  residue by announced value; 12,740 records (10.9% of that value) have not
+  been attempted. THAT REMAINDER IS NOT ONE PILE, and the difference decides
+  what "keep going" can buy:
+  - **12,049 records, about $133.8B** — queued, in the 156 chunks of
+    `data/research/announcements/wave4_queue/` no lens has read (gitignored;
+    regenerate with `uv run python scripts/mine_announcement_residue.py
+    queue`, which re-derives the residue and its 306 chunks from
+    `records.jsonl` and rewrites `residue_manifest.json`). More workflow runs
+    reach these.
+  - **683 records, about $281.3B — 7.3% of the residue by announced value,
+    two thirds of the unattempted VALUE** — never queued and not queueable:
+    `select_residue` rule 4 drops a record whose service maps to no
+    organization, or to one with no owned-name lexicon (283 U.S.
+    Transportation Command, 218 Defense Health Agency, 75 DFAS, 38 with no
+    service heading, …). Regenerating the queue drops them again. Reaching
+    them needs a lexicon for those services, not another wave.
+  So collecting every remaining chunk takes the published figure to about
+  **92.6%**, not 100%. (The last 8 of the 12,740 are duplicate paragraphs of
+  records the earlier pass did attempt: the published count counts that pass
+  by distinct record, which is the smaller coverage figure.) The published
+  figure on /methodology/ moves on its own when more chunks are collected and
   `scripts/load_announcement_scope.py` re-runs — the page states no literal to
   edit. This is the COUNT half of #100, which holds the stopping RULE: the
   owner decision there (keep going, or publish the stopping rule as
   deliberate) is unchanged by wave 4 and now has a derived number in front of
   it. Precision of what wave 4 added is measured, on its own held-out sample
-  and not on the tier's: 48 of the 55 sampled links that publish were
-  confirmed (sample `2026-09-12`, rubric `attribution`) — lower than the
-  announcement tier's own 2026-09-04 draw (56 of 60), which is the number to
-  weigh before queueing wave 5.
+  and not on the tier's: 60 of its links were drawn and judged, 55 of those
+  still publish, and 48 of THOSE were confirmed (sample `2026-09-12`, rubric
+  `attribution`; 4 of the 60 are pairs an earlier wave also produced). Lower
+  than the announcement tier's figure — 56 of the 60 sampled links now
+  publishing under the tier, from its 2026-09-04 draw (54 drawn as
+  announcement, six drawn under FPDS strata that this load re-attributed) —
+  and that tier figure covers less of the tier than it looks: its draw
+  predates 367 of the 1,075 links the tier now publishes. Both numbers go into
+  the weighing before wave 5.
   Effort: days (one workflow run per ~50 chunks). **Status:** open (2026-09-19).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
