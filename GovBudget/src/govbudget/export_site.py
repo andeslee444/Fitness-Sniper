@@ -1255,8 +1255,15 @@ _DATASET_SCOPES: dict[str, str] = {
         " the SAM.gov Entity Management record of the family's dominant"
         " registration (status, CAGE, legal business name, business types,"
         " primary NAICS, expiry) where the bounded extract has reached it —"
-        " enrichment, never an input to the confidence tier. They are NULL in"
-        " every row until that extract runs."
+        " enrichment, never an input to the confidence tier, and NULL wherever"
+        # It said "NULL in every row until that extract runs", which is a
+        # hand-typed claim about state: true before the first run, false for
+        # the ~20 days a 10-requests/day key spends working through the
+        # published 200, and nothing re-derives it. The card cannot carry the
+        # count (site_meta.counts.companies_with_sam is the number, on its own
+        # page), so it states the shape instead, which is true in all three
+        # states.
+        " it has not."
     ),
     "fct_influence": (
         "One row per (contractor family × filing year) of Senate LDA lobbying"
@@ -4457,6 +4464,14 @@ def _build_derived_citation_rows(
             ))
 
         # ---- SAM.gov registration facts (ROADMAP #10) ----
+        # The formula says "ties broken by the highest UEI" rather than "the
+        # one this family's registered name is read from", which is what it
+        # said until the Group C polish: dim_entities takes display_name from
+        # rn = 1 and this registration from max(uei) filter (rk = 1), so on an
+        # exact obligation tie they are two different members. Same correction
+        # as site/src/components/sam-registration.tsx's last sentence — the two
+        # are twins and move together.
+        #
         # kind='derived' with URL inputs, deliberately NOT a new citation kind:
         # _verify_derived rule 5 shape-checks URL-input rows and accepts a
         # non-numeric recorded_value, exactly as the crosswalk-confidence row
@@ -4494,8 +4509,8 @@ def _build_derived_citation_rows(
                 (
                     f"SAM.gov Entity Management registration for UEI {uei} — the"
                     f" registration of the member holding the most obligations in"
-                    f" family {fk}, i.e. the one this family's registered name is"
-                    f" read from. {legal}; CAGE {cage or 'not recorded'}; status"
+                    f" family {fk}, ties broken by the highest UEI as"
+                    f" dim_entities does. {legal}; CAGE {cage or 'not recorded'}; status"
                     f" {status}; expires {expires or 'not recorded'}; primary"
                     f" NAICS {naics or 'not recorded'}; business types"
                     f" {btypes or 'not recorded'}. Registry enrichment only: it"

@@ -1542,6 +1542,12 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
         "https://api.sam.gov/entity-information/v4/entities?ueiSAM=ZFN2JJXBLZT3",
     ]
     assert "does not regrade this family's resolution confidence" in row["formula"]
+    # The tie-break, not an identity the mart does not hold to: display_name
+    # comes from rn = 1 and this UEI from max(uei) filter (rk = 1), so on an
+    # exact obligation tie they name different members. Twin of the last
+    # sentence in site/src/components/sam-registration.tsx.
+    assert "ties broken by the highest UEI" in row["formula"]
+    assert "registered name is read from" not in row["formula"]
     assert "api_key" not in row["formula"] and "api_key" not in row["inputs"]
 
     meta = json.loads((site / "json" / "site_meta.json").read_text())

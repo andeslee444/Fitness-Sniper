@@ -24,6 +24,7 @@ import pytest
 
 from govbudget.manifest import ManifestRecord, append_record
 from govbudget.sam_entities import (
+    SAM_ENTITY_API_URL,
     SamAuthError,
     SamRateLimitError,
     SamShapeError,
@@ -284,6 +285,41 @@ def test_reparse_falls_back_to_the_raw_file_mtime_when_the_manifest_is_silent(
     assert got["ZFN2JJXBLZT3"] == "2026-03-04T05:06:07+00:00"
 
 
+def test_reparse_prints_how_many_rows_the_manifest_dated(tmp_path, capsys):
+    """The silent case made loud: a reparse pointed at the wrong out_dir.
+
+    `manifest.jsonl` lives under out_dir, so the wrong one finds no records
+    and dates every row by mtime — a stamp a copy or a restore can move —
+    while the run prints a path and looks like any other. The split is the
+    only thing that tells the two apart.
+    """
+    raw, out = tmp_path / "r", tmp_path / "p"
+    raw.mkdir()
+    out.mkdir()
+    for uei in ("ZFN2JJXBLZT3", "NU2UC8MX6NK1"):
+        (raw / f"{uei}.json").write_text(json.dumps(_body_for(uei)))
+    append_record(out / "manifest.jsonl", ManifestRecord(
+        dataset="sam_entities", fiscal_year=None, file_name="ZFN2JJXBLZT3.json",
+        source_url="https://api.sam.gov/entity-information/v4/entities?ueiSAM=ZFN2JJXBLZT3",
+        sha256="x", bytes=1, downloaded_at="2026-09-01T10:00:00+00:00",
+    ))
+
+    reparse(raw_dir=raw, out_dir=out)
+    assert (
+        "sam reparse: 1 row(s) dated from manifest.jsonl, 1 from file mtime"
+        in capsys.readouterr().out
+    )
+
+    # The wrong out_dir: nothing is dated by the record, and it says so.
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    reparse(raw_dir=raw, out_dir=elsewhere)
+    assert (
+        "sam reparse: 0 row(s) dated from manifest.jsonl, 2 from file mtime"
+        in capsys.readouterr().out
+    )
+
+
 def test_a_later_run_never_restamps_an_earlier_run_s_rows(tmp_path, monkeypatch):
     """The reviewer's exact scenario: a 20-day bounded extract must not date
     every registration to the last day it happened to run."""
@@ -325,6 +361,38 @@ def test_plan_extract_counts_stored_missing_and_this_run(tmp_path):
     assert plan["would_fetch"] == 1
     assert plan["runs_remaining"] == 2, "2 missing at 1/run is two more runs"
     assert plan["next_ueis"] == ["UEI0000000B"]
+
+
+def test_plan_extract_reports_the_endpoint_preflight_recorded_when_there_is_one(
+    tmp_path,
+):
+    """The dry run must not print a URL the real run would not request.
+
+    `sam extract` requests `require_preflight(...)["endpoint"]`, so naming the
+    v4 default "endpoint" made the plan the one document that disagrees with
+    the run it describes — on the machine that has no key, which is the only
+    machine that reads it. With a report it reports the recorded URL; with no
+    report the field is called `endpoint_default`, which is what it is.
+    """
+    raw = tmp_path / "r"
+    raw.mkdir()
+    fams = [("F1", "UEI0000000A")]
+
+    plan = plan_extract(fams, raw_dir=raw, max_requests=1)
+    assert "endpoint" not in plan
+    assert plan["endpoint_default"] == SAM_ENTITY_API_URL
+
+    v3 = "https://api.sam.gov/entity-information/v3/entities"
+    report = tmp_path / "preflight.json"
+    report.write_text(json.dumps({"endpoint": v3, "public_url_status": 200}))
+    plan = plan_extract(fams, raw_dir=raw, max_requests=1, report_path=report)
+    assert plan["endpoint"] == v3
+    assert "endpoint_default" not in plan
+
+    # A report that never found one is not a recorded endpoint either.
+    report.write_text(json.dumps({"endpoint": None, "public_url_status": 200}))
+    plan = plan_extract(fams, raw_dir=raw, max_requests=1, report_path=report)
+    assert plan["endpoint_default"] == SAM_ENTITY_API_URL
 
 
 def test_plan_extract_is_complete_when_every_uei_is_stored(tmp_path):
@@ -486,6 +554,35 @@ def test_an_unexpected_status_is_a_sam_shape_error_not_an_http_status_error(
                              client=client, max_requests=1)
     assert not isinstance(exc.value, httpx.HTTPStatusError)
     assert "SAM_ENTITY_API_URL" in str(exc.value)
+
+
+def test_a_5xx_is_diagnosed_as_sam_being_down_not_as_a_wrong_endpoint(
+    tmp_path, monkeypatch
+):
+    """A server-side failure must not send the operator after the version.
+
+    The one message for every non-200 said "re-run preflight; if it records a
+    different version, set SAM_ENTITY_API_URL". On a 503 that is a false
+    diagnosis of a working endpoint, and acting on it costs 2 of a 10/day
+    quota to learn nothing. The advice for a 5xx is to wait.
+    """
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="Service Unavailable")
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(SamShapeError) as exc:
+            extract_entities([("F1", "ZFN2JJXBLZT3")], api_key="k",
+                             out_dir=tmp_path / "p", raw_dir=tmp_path / "r",
+                             client=client, max_requests=1)
+    msg = str(exc.value)
+    assert "503" in msg
+    assert "SAM is down" in msg and "later" in msg
+    assert "SAM_ENTITY_API_URL" not in msg, (
+        "a 5xx says nothing about which endpoint version is right"
+    )
+    assert "kept" in msg, "stored bodies survive; the resume is the point"
 
 
 def test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does(

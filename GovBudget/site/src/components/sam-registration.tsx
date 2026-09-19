@@ -20,6 +20,18 @@
  * The status token is a <ProseCite>, not a <Cite>: <Cite> marks its text as
  * data-amount, and this is not a currency figure. render-static leg (a1)
  * checks every [data-prose-cite] fact_id resolves in citations.json.
+ *
+ * WHY THE LAST SENTENCE NAMES THE TIE-BREAK. It used to say this was the
+ * registration of "the one its registered name is read from". The mart takes
+ * the two from different rules — `display_name` from rn = 1 (row_number, ties
+ * broken arbitrarily), the registration from
+ * `max(coalesce(parent_uei, recipient_uei)) filter (rk = 1)` — so on an exact
+ * obligation tie they can be two different members, and the identity would be
+ * a sentence the reader cannot check and the data does not support. 46
+ * families in the lake tie at the top, none in today's published 200; the
+ * smaller true claim is the one that survives the day one does. The tie-break
+ * itself is pinned by
+ * tests/test_sam_entities.py::test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does.
  */
 
 import React from "react";
@@ -52,9 +64,9 @@ export function SamRegistrationNote({ sam }: { sam?: EntitySamRegistration }) {
       <ProseCite factId={sam.fact_id}>{sam.registration_status}</ProseCite>
       {bits.length > 0 ? `, ${bits.join(", ")}` : ""}.
       {sam.business_types ? ` Business types: ${sam.business_types}.` : ""}{" "}
-      This is the registration of the family&rsquo;s largest member — the one
-      its registered name is read from — and it does not change how this family
-      was resolved.
+      This is the registration of the family&rsquo;s largest member by
+      obligations &mdash; where members tie, the one whose UEI sorts highest
+      &mdash; and it does not change how this family was resolved.
     </p>
   );
 }

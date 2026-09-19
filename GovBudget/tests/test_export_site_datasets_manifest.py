@@ -72,6 +72,21 @@ class TestDatasetScopes:
         assert "edition" in scope
         assert "pb2017" in scope and "pb2026" in scope
 
+    def test_dim_entities_scope_states_the_sam_shape_not_a_state(self):
+        """ROADMAP #10: the sam_* columns fill over ~20 days of a 10/day key.
+
+        "NULL in every row until that extract runs" is a hand-typed claim
+        about WHEN, and it is false for every day of that partial run — the
+        one window in which a reader is most likely to meet a half-filled
+        column and check the card. The shape ("where it has reached … NULL
+        wherever it has not") is true before, during and after, and the count
+        itself lives in site_meta.counts.companies_with_sam.
+        """
+        scope = _DATASET_SCOPES["dim_entities"].lower()
+        assert "where the bounded extract has reached it" in scope
+        assert "null wherever it has not" in scope
+        assert "null in every row" not in scope
+
 
 class TestBuildDatasetManifest:
     def test_counts_and_sizes_come_from_the_build_not_a_literal(self, tmp_path):

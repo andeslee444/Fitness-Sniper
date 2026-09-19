@@ -9,10 +9,13 @@ display-name seed (spike Option A) corrected, not its cure — see
 docs/superpowers/reviews/10-entity-resolution-spike.md §4.
 
 WHAT THIS IS. A bounded enrichment: for each of the 200 published families,
-the SAM registration record of the family's DOMINANT member — the same
-registration `dim_entities.display_name` is built from — giving registration
-status, CAGE, UEI, legal business name, business types, primary NAICS and
-expiration.
+the SAM registration record of the family's DOMINANT member — the one
+`dim_entities.dominant_registration_uei` names, i.e. the largest by
+obligations with ties broken to the highest UEI — giving registration status,
+CAGE, UEI, legal business name, business types, primary NAICS and expiration.
+`display_name` is taken from rn = 1 and so can name a DIFFERENT tied member;
+nothing published may claim the two are the same row (see
+`dominant_parent_ueis` below and dbt/models/marts/dim_entities.sql's header).
 
 CREDENTIAL. The Entity Management API takes a SAM.gov *Personal API key*
 minted inside a SAM.gov (login.gov) account — NOT an api.data.gov key. Limits
@@ -270,9 +273,12 @@ def dominant_parent_ueis(duckdb_path, *, top_n: int = 200) -> list[tuple[str, st
     """[(family_key, uei)] for the published families, in published order.
 
     The UEI is the DOMINANT member's parent registration — the registration
-    dim_entities.dominant_registration_uei is taken from — so the SAM record
-    describes the one the page's own heading is built on. Measured 2026-09-10:
-    200 families, 200 distinct UEIs, 0 null parent_uei.
+    dim_entities.dominant_registration_uei is taken from. Measured 2026-09-10:
+    200 families, 200 distinct UEIs, 0 null parent_uei. It is NOT necessarily
+    the row the page's heading is built from: `display_name` keeps rn = 1, so
+    an exact tie can put the name on one member and the registration on
+    another, and the /company/ note states the tie-break rather than that
+    identity.
 
     TIES ARE BROKEN THE WAY THE MART BREAKS THEM, not by whichever row a plan
     happens to number 1: `rank()` keeps every tied top member and `max()` picks
@@ -378,7 +384,8 @@ def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
     return report
 
 
-def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS) -> dict:
+def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS,
+                 report_path=None) -> dict:
     """What the next `sam extract` WOULD do, from stored state alone.
 
     No key, no network, no write — this is the dry run, and it is the only
@@ -387,8 +394,22 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS) -> dic
     `would_fetch` is what ONE run at this cap covers; `runs_remaining` is how
     many runs are still needed INCLUDING this one (ceil(missing / cap)), i.e.
     the number of days a 10/day key has left to go.
+
+    THE ENDPOINT IS REPORTED ONLY WHEN IT IS KNOWN. A real run requests
+    `require_preflight(...)["endpoint"]`, never SAM_ENTITY_API_URL, so
+    printing the v4 default under the key `endpoint` described a request the
+    run would not make. With a stored preflight report (`report_path`, read
+    here and nowhere near the network) the plan carries that recorded URL as
+    `endpoint`; without one it carries `endpoint_default`, named for what it
+    is — a guess nobody has seen answer.
     """
     raw_dir = Path(raw_dir)
+    recorded = None
+    if report_path is not None and Path(report_path).is_file():
+        try:
+            recorded = json.loads(Path(report_path).read_text()).get("endpoint")
+        except (OSError, ValueError):
+            recorded = None
     missing = [(fk, uei) for fk, uei in families
                if not (raw_dir / f"{uei}.json").exists()]
     cap = max(int(max_requests), 0)
@@ -404,7 +425,8 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS) -> dic
         "next_families": [fk for fk, _ in missing[:would]],
         "complete": not missing,
         "raw_dir": str(raw_dir),
-        "endpoint": SAM_ENTITY_API_URL,
+        **({"endpoint": recorded} if recorded
+           else {"endpoint_default": SAM_ENTITY_API_URL}),
         "has_key": bool(os.environ.get("SAM_API_KEY")),
     }
 
@@ -417,9 +439,11 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
     `endpoint` is the URL `preflight` RECORDED as answering — cmd_sam passes
     `require_preflight(...)["endpoint"]`, so a probe that found v3 is not
     followed by 10 requests to the v4 guess. It defaults to
-    SAM_ENTITY_API_URL, and any non-200 raises SamShapeError naming that env
-    var rather than an httpx.HTTPStatusError traceback: cmd_sam converts the
-    three Sam* errors into a clean BLOCKED line and nothing else.
+    SAM_ENTITY_API_URL, and a non-200 raises SamShapeError rather than an
+    httpx.HTTPStatusError traceback: cmd_sam converts the three Sam* errors
+    into a clean BLOCKED line and nothing else. A 4xx names that env var (the
+    version may be wrong); a 5xx says SAM is down and to re-run later, because
+    a server-side failure is no evidence about the endpoint version.
 
     families: [(family_key, uei)]. Already-fetched UEIs (a file under
     raw_dir) are skipped unless refresh=True — that is the resume, and it is
@@ -477,6 +501,18 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
                     f"SAM rejected the key ({r.status_code}). A SAM.gov Personal "
                     "API key is not an api.data.gov key.\n" + _OWNER_ACTION
                 )
+            if r.status_code >= 500:
+                # A server-side failure says nothing about which endpoint
+                # version is right, and the advice below would send the
+                # operator to spend 2 of a 10/day quota on a preflight that
+                # confirms the URL it already had.
+                raise SamShapeError(
+                    f"SAM answered {r.status_code} for {uei} at {endpoint} "
+                    f"after {spent} request(s) this run: SAM is down, and this "
+                    "is not an endpoint-version problem. Re-run the same "
+                    "command later; bodies already stored are kept and never "
+                    "re-fetched."
+                )
             if r.status_code != 200:
                 raise SamShapeError(
                     f"SAM answered {r.status_code} for {uei} at {endpoint} "
@@ -489,6 +525,15 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
             # Defence in depth: an error body that echoed the key would raise
             # above, so this can only ever be a no-op — but the guarantee is
             # structural rather than circumstantial (assumption 2).
+            #
+            # If it ever DID fire it would also make `response_sha256`
+            # non-reproducible: that hash is taken over the payload as
+            # received (parse_entity, canonicalised), while the file on disk
+            # would hold the scrubbed text, so `sam reparse` would compute a
+            # different digest for the same fetch. Losing a key is the worse
+            # outcome, so the scrub stays first — but a sha that will not
+            # re-derive is the tell that it fired, and the stored body is then
+            # evidence of a leak, not of the response.
             raw_path.write_text(
                 json.dumps(payload, indent=2, sort_keys=True).replace(key, "…")
             )
@@ -526,6 +571,15 @@ def reparse(*, raw_dir, out_dir) -> Path:
     comment says exactly that). manifest.jsonl is the record; a body with no
     manifest line (hand-dropped, or a manifest lost) falls back to the file's
     own mtime, which is still its fetch and never now().
+
+    THE FALLBACK IS NOT ONLY THE HAND-DROPPED CASE, which is what this
+    docstring used to imply. `manifest.jsonl` is read from `out_dir`, so a
+    reparse pointed at the wrong output directory finds no records at all and
+    dates EVERY row by mtime — a copy or a restore can move those stamps, and
+    the run looks exactly like a successful one. So the counts are printed:
+    "N row(s) dated from manifest.jsonl, M from file mtime". M above zero on a
+    normal rebuild is the symptom, and `sam extract` prints the same line from
+    its finally block on every run.
     """
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
     fetched = {r.file_name: r for r in load_records(out_dir / "manifest.jsonl")}
@@ -540,4 +594,8 @@ def reparse(*, raw_dir, out_dir) -> Path:
             retrieved_at=(rec.downloaded_at if rec else _utc_iso(
                 datetime.fromtimestamp(p.stat().st_mtime, timezone.utc))),
         ))
+    from_mtime = sum(1 for p in sorted(raw_dir.glob("*.json"))
+                     if p.name not in fetched)
+    print(f"sam reparse: {len(records) - from_mtime} row(s) dated from "
+          f"manifest.jsonl, {from_mtime} from file mtime")
     return write_entities_parquet(records, out_dir)

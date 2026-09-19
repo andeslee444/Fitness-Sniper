@@ -1577,9 +1577,14 @@ def cmd_sam(args) -> None:
             return
         if getattr(args, "dry_run", False):
             # No key, no request, no write — what the next real run would do.
+            # The preflight report is READ (never probed) so the plan names
+            # the endpoint the real run would request, rather than the v4
+            # default it would ignore; with no report the field comes back as
+            # `endpoint_default`.
             plan = plan_extract(
                 dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
-                raw_dir=raw_dir, max_requests=args.max_requests)
+                raw_dir=raw_dir, max_requests=args.max_requests,
+                report_path=report_path)
             print(_json.dumps(plan, indent=2))
             print(
                 f"sam extract --dry-run: {plan['families']} published families,"

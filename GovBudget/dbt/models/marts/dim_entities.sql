@@ -1,12 +1,18 @@
 -- One row per company family.
 --
--- ROADMAP #10 adds the SAM.gov registration of the family's DOMINANT member —
--- the same rn=1 row `display_name` is taken from, so the sam_* columns describe
--- the registration the page's own heading is built on. LEFT JOINed, so a
--- partial extract publishes what it has and nulls the rest; the join is 1:1 by
--- construction (entities.parquet is written unique on sam_uei by
--- sam_entities.write_entities_parquet), and schema.yml's unique test on
--- family_key is the assertion that says so.
+-- ROADMAP #10 adds the SAM.gov registration of the family's DOMINANT member,
+-- joined on `dominant_registration_uei` below: `max(...) filter (rk = 1)`, the
+-- highest UEI among the TIED top members. That is NOT always the rn=1 row
+-- `display_name` is taken from. The two name the same member wherever the top
+-- member is unique — every published family today — but on an exact tie they
+-- can differ, so nothing rendered may say this registration is the one the
+-- page's heading was read from. sam-registration.tsx and the citation formula
+-- in export_site.py state the tie-break instead of that identity.
+--
+-- LEFT JOINed, so a partial extract publishes what it has and nulls the rest;
+-- the join is 1:1 by construction (entities.parquet is written unique on
+-- sam_uei by sam_entities.write_entities_parquet), and schema.yml's unique
+-- test on family_key is the assertion that says so.
 --
 -- ENRICHMENT, NEVER A TIER INPUT. `worst_confidence` is computed above the
 -- join and cannot see it: recipient_parent_name in USAspending IS the SAM

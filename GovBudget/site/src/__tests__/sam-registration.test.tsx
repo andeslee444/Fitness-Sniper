@@ -66,6 +66,19 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     expect(note.textContent).toMatch(/does not change how this family was resolved/i);
   });
 
+  it("claims the dominant member with the mart's own tie-break, not the heading", () => {
+    // dim_entities takes display_name from rn = 1 and the registration from
+    // max(uei) filter (rk = 1): on an exact obligation tie those are two
+    // different members, so the note may not say this registration is the one
+    // the family's displayed name was read from (46 families tie in the lake,
+    // 0 published today — the sentence has to be true before that changes).
+    renderNote(sam);
+    const text = document.querySelector("[data-sam-registration]")!.textContent!;
+    expect(text).toContain("largest member by obligations");
+    expect(text).toMatch(/where members tie, the one whose UEI sorts highest/);
+    expect(text).not.toMatch(/registered name is read from/);
+  });
+
   it("omits the fields SAM did not answer rather than inventing them", () => {
     renderNote({
       ...sam,
