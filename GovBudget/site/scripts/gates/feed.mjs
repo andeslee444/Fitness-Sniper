@@ -382,7 +382,9 @@ function parseXmlFile(absPath) {
 
 /** Rebuild the expected feed set from the sidecars — the same inputs the generator read. */
 function expectedTargets() {
-  const cards = readJson(path.join(jsonDir, "feed.json")).cards ?? [];
+  // Inventory is the shipped publication. The coverage gate independently
+  // checks its exact membership against source cards and rendered receipts.
+  const cards = readJson(path.join(outDir, "json", "feed.json")).cards ?? [];
   const meta = readJson(path.join(jsonDir, "site_meta.json"));
   const programPages = new Set(
     fs

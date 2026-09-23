@@ -947,7 +947,7 @@ def _verify_subaward(row: tuple, idx: dict) -> str | None:
     )
     if not link or link.group("piid") != match.group("piid"):
         return "subaward: formula must identify this prime award and a medium-confidence subaward link"
-    if any(field(key) is not None for key in ("recorded_value", "amount_text", "amount_thousands")):
+    if any(field(key) is not None for key in ("recorded_value", "amount_text", "amount_thousands", "units")):
         return "subaward: link evidence must not carry an attributed amount"
     return None
 

@@ -52,7 +52,7 @@ def test_requires_source_record_identifiers_and_matching_rule(key):
     assert validate(evidence(query_body=json.dumps(body)))
 
 
-@pytest.mark.parametrize("key,value", [("recorded_value", "100"), ("amount_text", "$100"), ("amount_thousands", 0)])
+@pytest.mark.parametrize("key,value", [("recorded_value", "100"), ("amount_text", "$100"), ("amount_thousands", 0), ("units", "USD")])
 def test_link_cannot_be_promoted_to_an_amount(key, value):
     assert validate(evidence(**{key: value}))
 

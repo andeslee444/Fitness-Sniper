@@ -50,3 +50,10 @@ series; 33 cards with ambiguous destinations are omitted consistently, leaving
 1,702 published feed cards (1,563 concentration cards). Values a few machine
 precision units above HHI 10,000 are preserved rather than rounded or rejected;
 materially out-of-range values remain rejected. No gate ceilings were changed.
+
+The feed and coverage gates now count the shipped feed rather than withheld
+source candidates. An independent check verifies exact card membership, order
+and content against canonical destination pages displaying both original
+concentration citations; six regression cases passed. The Python and reader
+subaward contracts also both reject monetary units on link evidence (16 focused
+validator tests and all 114 exported records passed).
