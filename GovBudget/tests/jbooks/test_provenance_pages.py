@@ -3,6 +3,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import psycopg
+import pytest
 
 import govbudget.jbooks.provenance_pages as _pp_mod
 from govbudget.jbooks.provenance_pages import (
@@ -69,6 +70,44 @@ def test_find_fact_page_nan_amount():
     hit = find_fact_page(FIXTURE, pe_bli="0601101E", amount=Decimal("NaN"))
     assert hit["resolution"] == "unresolved"
     assert hit["page_number"] is None
+
+
+@pytest.mark.parametrize("amount,lookalike", [("2.027", "2027"), ("0.002", "2")])
+def test_exact_amount_beats_earlier_year_or_activity(tmp_path, amount, lookalike):
+    pdf = tmp_path / "lookalike.pdf"
+    _make_pdf(pdf, [["COST ($ in Millions)", "PE 0601101E", lookalike, amount]])
+    hit = find_fact_page(pdf, pe_bli="0601101E", amount=Decimal(amount))
+    assert hit["amount_text"] == amount
+    assert hit["resolution"] == "unique"
+
+
+@pytest.mark.parametrize("header", ["COST ($ in Millions)", "Table of Contents"])
+def test_scaled_lookalike_without_thousands_declaration_is_unresolved(tmp_path, header):
+    pdf = tmp_path / "unsupported.pdf"
+    _make_pdf(pdf, [[header, "PE 0601101E", "FY 2027"]])
+    hit = find_fact_page(pdf, pe_bli="0601101E", amount=Decimal("2.027"))
+    assert hit["resolution"] == "unresolved"
+    assert hit["page_number"] is None
+
+
+def test_explicit_thousands_amount_is_supported(tmp_path):
+    pdf = tmp_path / "thousands.pdf"
+    _make_pdf(pdf, [["Dollars in Thousands", "PE 0207146F 78,345"]])
+    hit = find_fact_page(pdf, pe_bli="0207146F", amount=Decimal("78.345"))
+    assert hit["resolution"] == "unique"
+    assert hit["amount_text"] == "78,345"
+
+
+def test_exact_amount_on_later_page_beats_scaled_candidate(tmp_path):
+    pdf = tmp_path / "later.pdf"
+    _make_pdf(pdf, [
+        ["Dollars in Thousands", "PE 0601101E", "2,027"],
+        ["COST ($ in Millions)", "PE 0601101E", "2.027"],
+    ])
+    hit = find_fact_page(pdf, pe_bli="0601101E", amount=Decimal("2.027"))
+    assert hit["page_number"] == 2
+    assert hit["amount_text"] == "2.027"
+    assert hit["candidate_pages"] == 2
 
 
 # ---------------------------------------------------------------------------

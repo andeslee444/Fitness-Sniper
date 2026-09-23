@@ -59,6 +59,7 @@ import {
   isJbookNarrative,
   isAnnouncement,
   isSubaward,
+  pagedAmountCitation,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { SITE_URL } from "@/lib/site";
@@ -644,7 +645,14 @@ function CitationBody({
   figure: FootnoteFigure | null;
 }) {
   if (isJbookPdf(citation)) {
-    return <PdfView citation={citation} showOfficialLink={false} />;
+    const page = pagedAmountCitation(citation);
+    return page ? <PdfView citation={page} showOfficialLink={false} /> : (
+      <p role="status" data-degraded="pdf-location" className="text-sm">
+        The exact amount location in this PDF has not been verified. Open the
+        government document above; this receipt does not claim a page, highlight
+        or printed amount until its location is checked.
+      </p>
+    );
   }
   if (isWorkbook(citation)) {
     // factId keys the §P1-9 cell-preview sidecar (lib/workbook-cells.ts).

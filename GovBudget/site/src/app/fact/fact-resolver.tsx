@@ -367,8 +367,11 @@ function FactCard({
       </header>
 
       <div className={styles.receiptBody}>
+        {citation.kind === "jbook_pdf" && citation.resolution === "unresolved" && (
+          <p role="status">The exact amount location in the source PDF has not been verified. The document link remains available.</p>
+        )}
         <div className={styles.lead}>
-          <p className={`t-label ${styles.recordLabel}`}>{citation.kind === "subaward" ? "Inferred program link" : citation.kind === "derived" ? "Derived from source records" : "Recorded in the source"}</p>
+          <p className={`t-label ${styles.recordLabel}`}>{citation.kind === "subaward" ? "Inferred program link" : citation.kind === "derived" ? "Derived from source records" : citation.kind === "jbook_pdf" && citation.resolution === "unresolved" ? "Source document" : "Recorded in the source"}</p>
       {semantic && peBli && (
         <p
           data-testid="fact-semantic-header"
@@ -401,7 +404,7 @@ function FactCard({
           onClick={() => openPanel(factId)}
           className={styles.openSource}
         >
-          {citation.kind === "subaward" ? "View link evidence" : "View source excerpt"}
+          {citation.kind === "subaward" ? "View link evidence" : citation.kind === "jbook_pdf" && citation.resolution === "unresolved" ? "View source details" : "View source excerpt"}
         </button>
         <SourceDocumentLinks citation={citation} factId={factId} program={peBli ?? undefined} surface="fact-page" compact resolveInputs />
         {citation.hosted_pdf_url && (

@@ -147,6 +147,90 @@ def _make_site_with_jbook_pdf(
     return sha, page_n, hit
 
 
+def _synthetic_pdf_receipt(tmp_path, *, header="Dollars in Thousands", glyph="78,345", canonical=78.345):
+    import pdfplumber
+    from pdf_factory import make_pdf
+
+    pdf = tmp_path / "source.pdf"
+    make_pdf(pdf, [[header, f"PE 0207146F {glyph}", f"Other column {glyph}"]])
+    sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+    (tmp_path / "pdfs").mkdir()
+    shutil.copyfile(pdf, tmp_path / "pdfs" / f"{sha}.pdf")
+    with pdfplumber.open(pdf) as doc:
+        word = [word for word in doc.pages[0].extract_words() if word["text"] == glyph][-1]
+    fid = fact_id_jbook(sha, "0207146F", None, "BudgetYearOne", canonical)
+    _write_parquet(
+        tmp_path / "data" / "jbook_details.parquet",
+        "fact_id varchar, amount_millions double",
+        [(fid, canonical)],
+    )
+    record = {definition.strip().split()[0]: None for definition in _CIT_COL_DEFS.split(",")}
+    record.update(
+        fact_id=fid, kind="jbook_pdf", units="USD thousands", amount_text=glyph,
+        page_number=1, x0=word["x0"], x1=word["x1"], top_pt=word["top"],
+        bottom_pt=word["bottom"], page_width=612, page_height=792,
+        resolution="unique", sha256=sha,
+        hosted_pdf_url=f"/pdfs/{sha}.pdf#page=1",
+        official_url="https://example.mil/source.pdf#page=1",
+    )
+    return record
+
+
+def _verify_pdf_record(site, record):
+    from govbudget.verify_phase5b1 import _verify_jbook_pdf
+    return _verify_jbook_pdf(site, tuple(record.values()), {key: i for i, key in enumerate(record)})
+
+
+def test_pdf_thousands_units_and_repeated_amount_location(tmp_path):
+    record = _synthetic_pdf_receipt(tmp_path)
+    assert _verify_pdf_record(tmp_path, record) is None
+    record["units"] = "USD millions"
+    assert "units mismatch" in _verify_pdf_record(tmp_path, record)
+
+
+def test_pdf_year_lookalike_cannot_prove_amount(tmp_path):
+    record = _synthetic_pdf_receipt(tmp_path, header="COST ($ in Millions)", glyph="2027", canonical=2.027)
+    assert "units cannot be verified" in _verify_pdf_record(tmp_path, record)
+
+
+def test_pdf_canonical_amount_required(tmp_path):
+    record = _synthetic_pdf_receipt(tmp_path)
+    record["fact_id"] = "missing-fact"
+    assert "canonical detail amount" in _verify_pdf_record(tmp_path, record)
+
+
+def _unresolved_pdf_record(record):
+    record["resolution"] = "unresolved"
+    for key in ("amount_text", "units", "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height"):
+        record[key] = None
+    for key in ("hosted_pdf_url", "official_url"):
+        record[key] = record[key].split("#", 1)[0]
+    return record
+
+
+def test_unresolved_pdf_document_is_verified_and_reported_separately(tmp_path):
+    record = _unresolved_pdf_record(_synthetic_pdf_receipt(tmp_path))
+    _write_parquet(tmp_path / "citations" / "citations.parquet", _CIT_COL_DEFS, [tuple(record.values())])
+    result = citation_gate5b1(tmp_path)
+    assert result["ok"], result["failures"]
+    assert result["jbook_pdf_unresolved_total"] == 1
+    assert result["jbook_pdf_unresolved_sampled"] == 1
+    (tmp_path / "pdfs" / f"{record['sha256']}.pdf").write_bytes(b"tampered")
+    assert "sha256 mismatch" in _verify_pdf_record(tmp_path, record)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("amount_text", "78,345"), ("units", "USD millions"), ("page_number", 1),
+    ("x0", 72), ("page_width", 612),
+    ("official_url", "https://example.mil/source.pdf#page=1"),
+    ("hosted_pdf_url", "/pdfs/wrong.pdf"), ("official_url", None),
+])
+def test_unresolved_pdf_rejects_stale_locator_and_invalid_urls(tmp_path, field, value):
+    record = _unresolved_pdf_record(_synthetic_pdf_receipt(tmp_path))
+    record[field] = value
+    assert _verify_pdf_record(tmp_path, record) is not None
+
+
 def _make_site_with_workbook(site_dir: Path) -> tuple[str, str]:
     """Build site dir with a workbook citation.
 
@@ -494,6 +578,11 @@ class TestStratifiedSampling:
 
         all_rows = jbook_rows + wb_rows + lda_rows
 
+        _write_parquet(
+            site / "data" / "jbook_details.parquet",
+            "fact_id varchar, amount_millions double",
+            [(row[0], 280.494) for row in jbook_rows],
+        )
         _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, all_rows)
         _write_manifest(site)
 

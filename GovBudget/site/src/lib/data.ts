@@ -1697,18 +1697,18 @@ export interface JbookPdfCitation extends CitationBase {
   kind: "jbook_pdf";
   amount_text: string | null;
   amount_thousands: null;
-  bottom_pt: number;
+  bottom_pt: number | null;
   cells: null;
   hosted_pdf_url: string;
-  page_height: number;
-  page_number: number;
-  page_width: number;
-  resolution: "unique" | "ambiguous_first";
+  page_height: number | null;
+  page_number: number | null;
+  page_width: number | null;
+  resolution: "unique" | "ambiguous_first" | "unresolved";
   sha256: string;
   sheet: null;
-  top_pt: number;
-  x0: number;
-  x1: number;
+  top_pt: number | null;
+  x0: number | null;
+  x1: number | null;
   xml_path: null;
 }
 
@@ -2061,7 +2061,7 @@ export function getReceiptMomentFact(): ReceiptMomentFact | null {
     for (const row of getProgramDetails(p.pe_bli).details) {
       if (row.scenario !== RECEIPT_FY24_SCENARIO || !row.fact_id) continue;
       const citation = citations[row.fact_id];
-      if (!citation || citation.kind !== "jbook_pdf") continue;
+      if (!citation || citation.kind !== "jbook_pdf" || citation.resolution === "unresolved" || citation.page_number == null) continue;
       if (!best || row.amount_millions > best.row.amount_millions) {
         best = { row, page_number: citation.page_number };
       }

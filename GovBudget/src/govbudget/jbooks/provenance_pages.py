@@ -45,6 +45,7 @@ from pathlib import Path
 import psycopg
 
 from govbudget.jbooks.era_keys import era_key_anchor
+from govbudget.jbooks.citation_units import pdf_page_currency_units
 
 
 def fact_anchor(pe_bli: str | None) -> str | None:
@@ -189,25 +190,38 @@ def _resolve_fact(page_texts: list[str], plumber, *, pe_bli: str,
     # fallback exhaustive (a text-layer match can still fail word extraction).
     ordered = preferred + [i for i in candidates if i not in preferred]
     pdf = plumber()
-    for idx in ordered:
-        page = pdf.pages[idx]
-        word = next((w for w in page.extract_words() if w["text"] in targets), None)
-        if word is not None:
-            # 'unique' ONLY when the page is uniquely determined: a single raw
-            # candidate, or tie-breaking narrowed to exactly this one page AND
-            # the word match confirmed here (not on a fallback page).
-            uniquely = len(candidates) == 1 or (
-                len(preferred) == 1 and idx == preferred[0]
-            )
-            return {
-                "page_number": idx + 1,         # 1-based for #page=N anchors
-                "x0": float(word["x0"]), "x1": float(word["x1"]),
-                "top_pt": float(word["top"]), "bottom_pt": float(word["bottom"]),
-                "page_width": float(page.width), "page_height": float(page.height),
-                "resolution": "unique" if uniquely else "ambiguous_first",
-                "candidate_pages": len(candidates),
-                "amount_text": word["text"],
-            }
+    millions_targets = {f"{amount:,.3f}", f"{amount:.3f}"}
+    # Do not let an early year/activity numeral (2027 or 2) beat a later
+    # exact monetary glyph (2.027 or 0.002). Search canonical glyphs across
+    # candidate pages first; only proven thousand-unit pages permit fallback.
+    groups = ([target for target in targets if target in millions_targets],
+              [target for target in targets if target not in millions_targets])
+    for scaled, group in enumerate(groups):
+        for idx in ordered:
+            units = pdf_page_currency_units(page_texts[idx])
+            if scaled and units != "USD thousands":
+                continue
+            if not scaled and units == "USD thousands":
+                continue
+            page = pdf.pages[idx]
+            words = page.extract_words()
+            word = next((w for target in group for w in words if w["text"] == target), None)
+            if word is not None:
+                # 'unique' ONLY when the page is uniquely determined: a single raw
+                # candidate, or tie-breaking narrowed to exactly this one page AND
+                # the word match confirmed here (not on a fallback page).
+                uniquely = len(candidates) == 1 or (
+                    len(preferred) == 1 and idx == preferred[0]
+                )
+                return {
+                    "page_number": idx + 1,         # 1-based for #page=N anchors
+                    "x0": float(word["x0"]), "x1": float(word["x1"]),
+                    "top_pt": float(word["top"]), "bottom_pt": float(word["bottom"]),
+                    "page_width": float(page.width), "page_height": float(page.height),
+                    "resolution": "unique" if uniquely else "ambiguous_first",
+                    "candidate_pages": len(candidates),
+                    "amount_text": word["text"],
+                }
     return {**_UNRESOLVED, "resolution": "unresolved",
             "candidate_pages": len(candidates), "amount_text": targets[0]}
 

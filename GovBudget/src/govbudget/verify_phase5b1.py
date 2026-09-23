@@ -4,7 +4,10 @@ Gates (CLI: verify-phase5b1):
   1. citation_gate5b1   — stratified sample (≥5/kind or all), 100% mechanical
                           re-derivation per citation tier:
                           - jbook_pdf: PDF file exists + sha matches + pdfplumber
-                            word found at stored page with x0/top_pt within 2 pt
+                            word found at stored page with x0/top_pt within 2 pt;
+                            source scale agrees with the canonical detail amount.
+                            Explicit unresolved receipts verify only the document
+                            and must omit amounts/units/locators (counted separately).
                           - workbook: xlsx file exists + sha matches +
                             load_workbook(read_only=True, data_only=True) cell
                             values SUM == stored amount_thousands exactly
@@ -249,6 +252,13 @@ def citation_gate5b1(
         "failures": failures,
         "overlap_fids": bl_overlap_fids,
         "overlap_divergent": len(bl_overlap_divergences),
+        "jbook_pdf_unresolved_total": sum(
+            row[col_idx["resolution"]] == "unresolved" for row in by_kind.get("jbook_pdf", [])
+        ),
+        "jbook_pdf_unresolved_sampled": sum(
+            row[col_idx["kind"]] == "jbook_pdf" and row[col_idx["resolution"]] == "unresolved"
+            for row in sample
+        ),
     }
 
 
@@ -341,10 +351,6 @@ def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
 
     if not sha:
         return "sha256 is null"
-    if not amount_text:
-        return "amount_text is null"
-    if page_number is None:
-        return "page_number is null"
 
     pdf_path = site_dir / "pdfs" / f"{sha}.pdf"
     if not pdf_path.exists():
@@ -355,6 +361,37 @@ def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
     if actual_sha != sha:
         return f"sha256 mismatch: stored={sha} actual={actual_sha}"
 
+    if row[idx["resolution"]] == "unresolved":
+        # An unresolved receipt proves only which document was supplied. It
+        # must never retain a stale amount, monetary scale, or exact locator.
+        for field in ("amount_text", "units", "page_number", "x0", "x1", "top_pt",
+                      "bottom_pt", "page_width", "page_height"):
+            if row[idx[field]] is not None:
+                return f"unresolved PDF citation must have null {field}"
+        from urllib.parse import urlsplit
+        for field in ("hosted_pdf_url", "official_url"):
+            url = row[idx[field]]
+            try:
+                parsed = urlsplit(url) if isinstance(url, str) else None
+            except ValueError:
+                parsed = None
+            absolute_http = parsed is not None and parsed.scheme in ("http", "https") and bool(parsed.netloc)
+            relative_hosted = (field == "hosted_pdf_url" and parsed is not None
+                               and not parsed.scheme and not parsed.netloc
+                               and parsed.path.startswith("/"))
+            if not (absolute_http or relative_hosted):
+                return f"unresolved PDF citation requires a valid {field}"
+            if parsed.fragment:
+                return f"unresolved PDF citation must not have a fragment in {field}"
+            if field == "hosted_pdf_url" and not parsed.path.endswith(f"/{sha}.pdf"):
+                return "unresolved PDF hosted URL must identify the verified document SHA"
+        return None
+
+    if not amount_text:
+        return "amount_text is null"
+    if page_number is None:
+        return "page_number is null"
+
     # pdfplumber word search on the stored page (1-based → 0-based index)
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -363,13 +400,20 @@ def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
                 return f"page_number={page_number} out of range (doc has {len(pdf.pages)} pages)"
             page = pdf.pages[page_idx]
             words = page.extract_words()
+            page_text = page.extract_text() or ""
     except Exception as e:
         return f"pdfplumber error: {e}"
 
     # Find word matching amount_text
-    word = next((w for w in words if w["text"] == amount_text), None)
-    if word is None:
+    matches = [w for w in words if w["text"] == amount_text]
+    if not matches:
         return f"word '{amount_text}' not found on page {page_number}"
+    # Repeated amounts can occupy several fiscal-year columns or rows. Verify
+    # the stored location rather than assuming the first occurrence is right.
+    word = min(matches, key=lambda w: (
+        (abs(float(w["x0"]) - float(stored_x0)) if stored_x0 is not None else 0)
+        + (abs(float(w["top"]) - float(stored_top)) if stored_top is not None else 0)
+    ))
 
     # Bbox tolerance check
     if stored_x0 is not None and abs(float(word["x0"]) - float(stored_x0)) > _BBOX_TOL_PT:
@@ -378,6 +422,25 @@ def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
     if stored_top is not None and abs(float(word["top"]) - float(stored_top)) > _BBOX_TOL_PT:
         return (f"top_pt mismatch: stored={stored_top:.2f} actual={word['top']:.2f}"
                 f" (tolerance {_BBOX_TOL_PT} pt)")
+
+    # A matching numeral is not enough: years/activity codes can coincide
+    # with a scaled amount, and a literal thousand must not display as a million.
+    import duckdb
+    from govbudget.jbooks.citation_units import jbook_pdf_citation_units, pdf_page_currency_units
+
+    try:
+        with duckdb.connect() as con:
+            canonical = con.execute(
+                "select distinct amount_millions from read_parquet(?) where fact_id = ?",
+                [str(site_dir / "data" / "jbook_details.parquet"), row[idx["fact_id"]]],
+            ).fetchall()
+        if len(canonical) != 1:
+            return "PDF citation lacks one unambiguous canonical detail amount"
+        expected_units = jbook_pdf_citation_units(amount_text, canonical[0][0], source_units=pdf_page_currency_units(page_text))
+    except Exception as error:
+        return f"PDF citation units cannot be verified: {error}"
+    if row[idx["units"]] != expected_units:
+        return f"PDF citation units mismatch: stored={row[idx['units']]} expected={expected_units} from page and canonical amount"
 
     return None
 

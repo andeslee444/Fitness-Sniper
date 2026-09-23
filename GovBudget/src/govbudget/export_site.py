@@ -49,6 +49,7 @@ from govbudget.lineage.model import DISPLAY_NARRATIVE_FY
 # never turn one into a page — see decade_only_page_pes below).
 # (jbooks.era_keys imports nothing from this module — no cycle.)
 from govbudget.jbooks.era_keys import is_era_procurement_key
+from govbudget.jbooks.citation_units import jbook_pdf_citation_units, pdf_page_currency_units
 
 
 # ---------------------------------------------------------------------------
@@ -1987,6 +1988,7 @@ def export_site(
         # fact_id set makes citations ⊆ jbook_details BY CONSTRUCTION —
         # the invariant jbook_no_orphan_citations checks.
         detail_fids = {r[0] for r in detail_rows}
+        page_units: dict[tuple[str, int], str | None] = {}
         for (doc_sha, pe_bli, project_number, scenario, amount_millions,
              amount_text, page_number, x0, x1, top_pt, bottom_pt,
              page_width, page_height, resolution, candidate_pages,
@@ -1997,11 +1999,35 @@ def export_site(
             fid = fact_id_jbook(doc_sha, pe_bli, project_number, scenario, amount_millions)
             if fid not in detail_fids:
                 continue  # cross-edition or superseded provenance — fenced out
-            hosted = f"{pdf_base_url}/{doc_sha}.pdf#page={page_number}"
-            official = f"{source_url}#page={page_number}"
+            try:
+                citation_units = jbook_pdf_citation_units(amount_text, amount_millions)
+            except ValueError:
+                # The provenance matcher also searches thousand-scaled glyphs.
+                # Confirm the cited PAGE's declared units before labelling one.
+                import pdfplumber
+                page_key = (doc_sha, int(page_number)) if page_number is not None else None
+                if page_key is not None and page_key not in page_units:
+                    with pdfplumber.open(pdfs_dir / f"{doc_sha}.pdf") as source_pdf:
+                        page_idx = int(page_number) - 1
+                        page_units[page_key] = (
+                            pdf_page_currency_units(source_pdf.pages[page_idx].extract_text() or "")
+                            if 0 <= page_idx < len(source_pdf.pages) else None
+                        )
+                try:
+                    citation_units = jbook_pdf_citation_units(amount_text, amount_millions, source_units=page_units.get(page_key))
+                except ValueError:
+                    # Retain the document receipt without presenting an unproven
+                    # numeral (often a year/activity on a contents page) as money.
+                    # File/read errors above still fail the export loudly.
+                    resolution = "unresolved"
+                    citation_units = amount_text = page_number = None
+                    x0 = x1 = top_pt = bottom_pt = page_width = page_height = None
+            anchor = f"#page={page_number}" if resolution != "unresolved" else ""
+            hosted = f"{pdf_base_url}/{doc_sha}.pdf{anchor}"
+            official = f"{source_url.split('#', 1)[0]}{anchor}" if source_url else None
             ret_at = downloaded_at.isoformat() if downloaded_at else None
             citation_rows.append((
-                fid, "jbook_pdf", "USD millions",
+                fid, "jbook_pdf", citation_units,
                 amount_text,
                 int(page_number) if page_number is not None else None,
                 float(x0) if x0 is not None else None,

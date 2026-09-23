@@ -123,6 +123,16 @@ export interface PdfPageCitation {
   official_url: string | null;
 }
 
+/** Never turn an unverified amount location into a PDF highlight. */
+export function pagedAmountCitation(c: JbookPdfCitation): PdfPageCitation | null {
+  if (c.resolution === "unresolved" || c.page_number == null || c.x0 == null ||
+      c.x1 == null || c.top_pt == null || c.bottom_pt == null) return null;
+  return { hosted_pdf_url: c.hosted_pdf_url, page_number: c.page_number,
+    x0: c.x0, x1: c.x1, top_pt: c.top_pt, bottom_pt: c.bottom_pt,
+    resolution: c.resolution, amount_text: c.amount_text, units: c.units,
+    official_url: c.official_url };
+}
+
 /**
  * Narrow a narrative citation to its paged (PdfView-renderable) form.
  * The 8 unresolved narratives fail this and keep the non-paged card —

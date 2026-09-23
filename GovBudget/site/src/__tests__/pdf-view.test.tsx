@@ -19,6 +19,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import type { JbookPdfCitation } from "@/lib/data";
+import type { PdfPageCitation } from "@/lib/citations";
 
 const { getDocumentMock } = vi.hoisted(() => ({
   getDocumentMock: vi.fn(),
@@ -49,7 +50,7 @@ function makeFakePdf() {
 
 /** Unique-URL citation per test — the module-level doc cache in pdf-view
  *  persists across tests, so each test gets its own cache key. */
-function makeCitation(sha: string): JbookPdfCitation {
+function makeCitation(sha: string): JbookPdfCitation & PdfPageCitation {
   return {
     kind: "jbook_pdf",
     amount_text: "79.440",
