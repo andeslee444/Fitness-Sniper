@@ -9,6 +9,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { filterSupportedConcentrationCards } from "../src/lib/concentration-evidence.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteDir = path.resolve(__dirname, "..");
@@ -221,10 +222,11 @@ console.log("✓  programs_excluded.json → public/json/");
 // renders only the top FEED_SECTION_CAP per event type). The client expand
 // button (feed-section-expand.tsx) fetches this same-origin, same as
 // generate-feeds.mjs already reads it at build time for the RSS/Atom feeds.
-copyFile(
-  path.join(jsonDir, "feed.json"),
-  path.join(jsonDestDir, "feed.json")
-);
+// Match the server feed and RSS/Atom publisher: no concentration claim may
+// link to an ambiguous program code or a page without cited concentration.
+const readFeedInput = name => JSON.parse(fs.readFileSync(path.join(jsonDir, name), "utf8"));
+const publishedFeed = filterSupportedConcentrationCards(readFeedInput("feed.json"), readFeedInput("programs.json"), readFeedInput("citations.json"));
+fs.writeFileSync(path.join(jsonDestDir, "feed.json"), JSON.stringify(publishedFeed));
 console.log("✓  feed.json → public/json/");
 
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────

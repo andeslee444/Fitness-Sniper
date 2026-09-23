@@ -30,10 +30,7 @@ const BAND_COLOR: Record<string, string> = {
 };
 
 export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
-  // Data-shape guard (2026-09-12): today's programs.json rows carry the raw
-  // warehouse concentration columns (hhi_all/hhi_high/…) instead of the
-  // normalized ProgramHHI shape — an export-side regression, not a page bug.
-  // Render nothing rather than crash the 8,369-page static build on it.
+  // The loader selects and validates this program's own cited series.
   if (!hhi || typeof hhi.hhi !== "number") return null;
 
   const band = hhiBand(hhi.hhi);
@@ -48,6 +45,11 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
       >
         Contractor Concentration
       </h2>
+
+      {hhi.link_scope === "high-and-medium" && <p className="mb-3 text-sm text-muted-foreground">
+        High- and medium-confidence program–award links, pooled across ingested years.
+        HHI uses positive obligations; program obligations are net of deobligations.
+      </p>}
 
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

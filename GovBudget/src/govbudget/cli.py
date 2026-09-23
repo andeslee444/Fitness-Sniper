@@ -2013,6 +2013,7 @@ def cmd_export_site(args) -> None:
         pdf_base_url=config.PDF_BASE_URL,
         dossiers_raw_dir=config.RESEARCH_DIR / "dossiers-raw",
         snapshots_index_path=config.RESEARCH_DIR / "snapshots" / "index.json",
+        subaward_parquet_glob=str(config.PARQUET_DIR / "subawards" / "**" / "*.parquet"),
     )
     print(
         f"export-site: {out['datasets']} datasets, {out['citations']} citations,"

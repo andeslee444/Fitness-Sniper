@@ -47,6 +47,9 @@ export function citationSourceDocuments(citation: Citation, citations: Citations
   const documents = new Map<string, SourceDocument>();
   const visited = new Set<string>();
   function visit(row: Citation) {
+    // The subaward card labels its prime-award context link explicitly.
+    // It must not appear here as a direct source-document action.
+    if (row.kind === "subaward") return;
     if (row.kind === "derived") {
       for (const input of parseDerivedInputs(row.inputs)) {
         if (!input.isFactId || visited.has(input.value)) continue;

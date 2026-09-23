@@ -1,9 +1,19 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-09-22 · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-09-23 · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
+
+**Publication checkpoint (2026-09-23):** the user authorized commit, push and
+publication of this product slice. Source is pushed to the standalone Fiscal
+Receipts repository. Release checks reproduced and are repairing the GAO
+ratification, concentration-destination and flow-label defects recorded below.
+Subaward receipts now require an explicit medium-confidence link contract,
+without attributed dollars. Production deployment and final verification are
+tracked in the [publication record](plans/2026-09-23-publication.md); the earlier
+local-only checkpoints remain historical. The broad copy/voice-rule findings
+remain open and must not be described as a fully green release suite.
 
 The next product outcome is a reader reaching, checking and reusing a defensible
 conclusion about public spending. Keep source freshness and attribution repairs

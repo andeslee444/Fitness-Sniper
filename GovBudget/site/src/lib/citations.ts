@@ -43,6 +43,7 @@ export type {
   StateFileCitation,
   JbookNarrativeCitation,
   AnnouncementCitation,
+  SubawardCitation,
 } from "@/lib/data";
 
 // ── Type guards (defined here so client components can import them
@@ -59,6 +60,7 @@ import type {
   StateFileCitation,
   JbookNarrativeCitation,
   AnnouncementCitation,
+  SubawardCitation,
 } from "@/lib/data";
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {
@@ -95,6 +97,10 @@ export function isJbookNarrative(c: Citation): c is JbookNarrativeCitation {
 
 export function isAnnouncement(c: Citation): c is AnnouncementCitation {
   return c.kind === "announcement";
+}
+
+export function isSubaward(c: Citation): c is SubawardCitation {
+  return c.kind === "subaward";
 }
 
 // ── PDF-page renderable citations (Phase 5F §2b) ─────────────────────────────

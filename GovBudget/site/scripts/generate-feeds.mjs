@@ -31,6 +31,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { filterSupportedConcentrationCards } from "../src/lib/concentration-evidence.mjs";
 import { companyLabel } from "../src/lib/company-name.mjs";
 import {
   buildFeedTargets,
@@ -68,7 +69,7 @@ function fatal(msg) {
  * contract), `companySlugByFamilyKey` is the top-200 entity index.
  */
 export function collectFeedInputs() {
-  const feed = readJson("feed.json");
+  const feed = filterSupportedConcentrationCards(readJson("feed.json"), readJson("programs.json"), readJson("citations.json"));
   const meta = readJson("site_meta.json");
   const cards = feed.cards ?? [];
   if (cards.length === 0) fatal("feed.json carries no cards — run export-site");

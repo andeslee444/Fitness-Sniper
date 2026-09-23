@@ -8,10 +8,8 @@ the article URL, the Wayback snapshot of the archived copy, and that copy's
 sha256.
 
 Scope rulings pinned here:
-  - ONLY `announcement+lexicon` links flip. `subaward+lexicon` links are one
-    hop removed (an FSRS sub's description, not a defense.gov article), so
-    they keep the generic derived row — an announcement card claiming
-    "Official DoD contract announcement" would be false for them.
+  - `subaward+lexicon` links have their own subaward kind and source identity,
+    never an announcement card or a claimed dollar amount.
   - Fact-id minting is untouched: the announcement rows mint the same fact_ids
     the derived rows did, so every program-page `data-fact-id` resolves
     exactly as before.
@@ -160,6 +158,11 @@ def _make_b2a_duckdb(tmp_path: Path) -> Path:
 
 
 _LINK_SOURCES = {
+    ("N6833517C0392", "0605502N"): {
+        "source_kind": "subaward", "source_id": "000000821",
+        "source_url": "https://www.usaspending.gov/award/CONT_AWD_N6833517C0392_9700_-NONE-_-NONE-/",
+        "match_basis": "subaward-description-exact", "subawardee": "ICSI",
+    },
     ("HR001124C0001", "0601101E"): {
         "source_id": "1006508",
         "source_url": _ARTICLE_URL,
@@ -205,7 +208,7 @@ def test_announcement_row_carries_the_match_basis_and_the_link_formula(tmp_path)
 def test_announcement_row_records_no_basis_when_the_source_row_has_none(tmp_path):
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
-        link_sources={("HR001124C0001", "0601101E"): {
+        link_sources={**_LINK_SOURCES, ("HR001124C0001", "0601101E"): {
             "source_id": "1006508", "source_url": _ARTICLE_URL,
             "archive_url": None, "sha256": None, "match_basis": None,
         }},
@@ -214,17 +217,17 @@ def test_announcement_row_records_no_basis_when_the_source_row_has_none(tmp_path
     assert json.loads(ann[_CIT_IDX["query_body"]])["match_basis"] is None
 
 
-def test_subaward_and_mechanical_links_keep_the_derived_row(tmp_path):
-    """Ruling: only announcement+lexicon flips — the card says 'defense.gov'."""
+def test_subaward_link_has_distinct_evidence_and_mechanical_link_stays_derived(tmp_path):
+    """Subaward evidence never acquires an announcement's defense.gov label."""
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
         link_sources=_LINK_SOURCES,
     )
     by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
-    assert by_fid[_SUB_FID][_CIT_IDX["kind"]] == "derived"
+    assert by_fid[_SUB_FID][_CIT_IDX["kind"]] == "subaward"
     assert by_fid[_ACC_FID][_CIT_IDX["kind"]] == "derived"
-    # the derived rows are untouched: formula + recorded confidence intact
-    assert by_fid[_SUB_FID][_CIT_IDX["recorded_value"]] == "medium"
+    # link-only evidence retains the medium-confidence formula and no amount
+    assert by_fid[_SUB_FID][_CIT_IDX["recorded_value"]] is None
     assert "subaward+lexicon" in by_fid[_SUB_FID][_CIT_IDX["formula"]]
 
 

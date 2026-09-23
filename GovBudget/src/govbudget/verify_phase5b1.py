@@ -230,6 +230,8 @@ def citation_gate5b1(
             reason = _verify_jbook_narrative(row, col_idx)
         elif kind == "announcement":
             reason = _verify_announcement(row, col_idx)
+        elif kind == "subaward":
+            reason = _verify_subaward(row, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -902,6 +904,54 @@ _ANNOUNCEMENT_URL_PREFIX_RE = re.compile(
 _WAYBACK_URL_RE = re.compile(r"https://web\.archive\.org/web/\d{14}/")
 
 
+def _verify_subaward(row: tuple, idx: dict) -> str | None:
+    """Validate reported subaward link evidence, not a spending amount.
+
+    The USAspending URL supplies prime-award context; the recorded subaward
+    number and recipient identify the evidence behind a medium-confidence
+    description match. This checks the export contract, not the truth of the
+    match or an allocation of prime-award dollars to the program.
+    """
+    def field(name: str):
+        return row[idx[name]] if name in idx else None
+
+    url = field("official_url")
+    match = re.fullmatch(
+        r"https://(?:www\.)?usaspending\.gov/award/CONT_AWD_"
+        r"(?P<piid>[A-Za-z0-9-]+)_[A-Za-z0-9_.-]+/?", str(url or "")
+    )
+    if not match:
+        return "subaward: official_url must name a USAspending prime contract award"
+
+    try:
+        body = json.loads(field("query_body"))
+    except (TypeError, ValueError):
+        return "subaward: query_body must be a JSON object"
+    if not isinstance(body, dict):
+        return "subaward: query_body must be a JSON object"
+    for key in ("subaward_number", "subawardee"):
+        if not isinstance(body.get(key), str) or not body[key].strip():
+            return f"subaward: query_body requires a nonempty {key}"
+    if body.get("match_basis") != "subaward-description-exact":
+        return "subaward: unsupported or missing description match basis"
+
+    formula = field("formula") or ""
+    if not isinstance(formula, str):
+        return "subaward: formula must describe a medium-confidence subaward link"
+    link = re.fullmatch(
+        r"crosswalk link: pe_bli=(?P<program>[A-Za-z0-9|_.-]+)"
+        r"(?: \(account [A-Za-z0-9]+\))? matched to award "
+        r"PIID (?P<piid>[A-Za-z0-9-]+) via method='subaward\+lexicon', "
+        r"confidence='medium' \(dollars live at award grain in fct_award_transactions\)",
+        formula,
+    )
+    if not link or link.group("piid") != match.group("piid"):
+        return "subaward: formula must identify this prime award and a medium-confidence subaward link"
+    if any(field(key) is not None for key in ("recorded_value", "amount_text", "amount_thousands")):
+        return "subaward: link evidence must not carry an attributed amount"
+    return None
+
+
 def _verify_announcement(row: tuple, idx: dict) -> str | None:
     """Verify an announcement citation (shape-only, no network) — ROADMAP #71.
 
@@ -1394,7 +1444,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
     for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending",
-                 "state_soql", "state_file", "jbook_narrative", "announcement"):
+                 "state_soql", "state_file", "jbook_narrative", "announcement", "subaward"):
         con = duckdb.connect()
         try:
             row = con.execute(
@@ -1663,6 +1713,15 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["jbook_narrative_shape"] = len(narr_failures) == 0
     else:
         checks["jbook_narrative_shape"] = True
+
+    # Validate every subaward link, not only the stratified sample.
+    subaward_failures = [
+        f"subaward {row[cidx['fact_id']]}: {reason}"
+        for row in all_cit if row[cidx["kind"]] == "subaward"
+        if (reason := _verify_subaward(row, cidx))
+    ]
+    checks["subaward_link_shape"] = not subaward_failures
+    failures.extend(subaward_failures[:5])
 
     # ---- Manifest rowcount check ----
     if man_path.exists():

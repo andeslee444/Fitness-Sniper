@@ -236,6 +236,7 @@ const KIND_LABELS: Record<string, string> = {
   state_file: "State Source File",
   jbook_narrative: "J-book Narrative",
   announcement: "Official DoD contract announcement",
+  subaward: "Subaward link evidence",
 };
 
 /** Human labels for the core measure tokens in the semantic header. */
@@ -367,7 +368,7 @@ function FactCard({
 
       <div className={styles.receiptBody}>
         <div className={styles.lead}>
-          <p className={`t-label ${styles.recordLabel}`}>{citation.kind === "derived" ? "Derived from source records" : "Recorded in the source"}</p>
+          <p className={`t-label ${styles.recordLabel}`}>{citation.kind === "subaward" ? "Inferred program link" : citation.kind === "derived" ? "Derived from source records" : "Recorded in the source"}</p>
       {semantic && peBli && (
         <p
           data-testid="fact-semantic-header"
@@ -400,7 +401,7 @@ function FactCard({
           onClick={() => openPanel(factId)}
           className={styles.openSource}
         >
-          View source excerpt
+          {citation.kind === "subaward" ? "View link evidence" : "View source excerpt"}
         </button>
         <SourceDocumentLinks citation={citation} factId={factId} program={peBli ?? undefined} surface="fact-page" compact resolveInputs />
         {citation.hosted_pdf_url && (

@@ -58,6 +58,7 @@ import {
   isStateFile,
   isJbookNarrative,
   isAnnouncement,
+  isSubaward,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { SITE_URL } from "@/lib/site";
@@ -65,6 +66,7 @@ import { trackReaderEvent } from "@/lib/reader-events";
 import { FactAnchor } from "@/components/fact-anchor";
 import { CopyButton } from "@/components/copy-button";
 import { SourceDocumentLinks } from "@/components/source-document-links";
+import { SubawardCard } from "./subaward-card";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
 import {
   AssetConfigProvider,
@@ -361,6 +363,8 @@ function kindLabel(citation: Citation): string {
       return "J-book Narrative";
     case "announcement":
       return "DoD Contract Announcement";
+    case "subaward":
+      return "Subaward Link Evidence";
   }
 }
 
@@ -383,6 +387,8 @@ function kindBadgeClass(citation: Citation): string {
       return "bg-amber-100 text-amber-800";
     case "announcement":
       return "bg-rose-100 text-rose-800";
+    case "subaward":
+      return "bg-orange-100 text-orange-800";
   }
 }
 
@@ -679,6 +685,7 @@ function CitationBody({
       />
     );
   }
+  if (isSubaward(citation)) return <SubawardCard citation={citation} />;
   // Should never reach here — exhaustive guard
   return (
     <p className="text-sm text-muted-foreground">

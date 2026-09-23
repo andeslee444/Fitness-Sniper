@@ -22,6 +22,8 @@ import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
 import { isZeroContentDetails, setIngestedServiceOrgs } from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
+import { parseGaoRatifications, selectRatifiedGaoFindings } from "./program-evidence";
+import { normalizeProgramHHI, filterSupportedConcentrationCards } from "./concentration-evidence.mjs";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -423,6 +425,8 @@ export interface ProgramTrajectoryFactIds {
 }
 
 export interface ProgramHHI {
+  /** Explicit scope of the exported all-link series, separate from high-only HHI. */
+  link_scope?: "high-and-medium";
   family_count: number;
   hhi: number;
   /** Derived citation fact_id for the HHI value (nullable). */
@@ -515,7 +519,10 @@ export function getPrograms(): ProgramRow[] {
   if (_programs) return _programs;
   // Validate schema_version before loading any data
   getSiteMeta();
-  _programs = readJson<ProgramRow[]>("programs.json");
+  _programs = readJson<ProgramRow[]>("programs.json").map(program => ({
+    ...program,
+    hhi: normalizeProgramHHI(program.hhi, getCitations()),
+  }));
   return _programs;
 }
 
@@ -1655,7 +1662,8 @@ export type CitationKind =
   | "state_soql"
   | "state_file"
   | "jbook_narrative"
-  | "announcement";
+  | "announcement"
+  | "subaward";
 
 export interface CitationBase {
   kind: CitationKind;
@@ -1904,6 +1912,18 @@ export interface AnnouncementCitation
   sha256: string | null;
 }
 
+/** Subaward description supports a medium-confidence program link, not an amount.
+ * official_url is the prime award's context page, never a subaward permalink. */
+export interface SubawardCitation extends CitationBase, NonDocumentCitationFields {
+  kind: "subaward";
+  official_url: string;
+  formula: string;
+  query_body: string;
+  recorded_value: null;
+  inputs: null;
+  units: null;
+}
+
 export type Citation =
   | JbookPdfCitation
   | WorkbookCitation
@@ -1913,7 +1933,8 @@ export type Citation =
   | StateSoqlCitation
   | StateFileCitation
   | JbookNarrativeCitation
-  | AnnouncementCitation;
+  | AnnouncementCitation
+  | SubawardCitation;
 
 export type CitationsMap = Record<string, Citation>;
 
@@ -2183,7 +2204,7 @@ let _feed: FeedSidecar | null = null;
 export function getFeed(): FeedSidecar {
   if (_feed) return _feed;
   getSiteMeta();
-  _feed = readJson<FeedSidecar>("feed.json");
+  _feed = filterSupportedConcentrationCards(readJson<FeedSidecar>("feed.json"), getPrograms(), getCitations());
   return _feed;
 }
 
@@ -2484,6 +2505,23 @@ function gaoProgramFindingsFile(): GaoProgramFindingsFile | null {
       );
     } catch {
       _gaoProgramFindings = null;
+    }
+    if (_gaoProgramFindings) {
+      const decisions = parseGaoRatifications(readFileSync(join(process.cwd(), "..", "data-seeds", "gao_program_xwalk.csv"), "utf8"));
+      const by_slug = selectRatifiedGaoFindings(_gaoProgramFindings.by_slug, decisions);
+      const accepted = decisions.filter(row => row.verdict === "y").length;
+      const rejected = decisions.filter(row => row.verdict === "n").length;
+      _gaoProgramFindings = {
+        ..._gaoProgramFindings,
+        by_slug,
+        stats: _gaoProgramFindings.stats ? {
+          ..._gaoProgramFindings.stats,
+          accepted, rejected, adjudicated: accepted + rejected,
+          precision_pct: accepted + rejected ? Math.round(1000 * accepted / (accepted + rejected)) / 10 : 0,
+          pages_with_findings: Object.keys(by_slug).length,
+          rendered_items: Object.values(by_slug).reduce((sum, row) => sum + row.assessments.length + row.reports.length, 0),
+        } : null,
+      };
     }
   }
   return _gaoProgramFindings;

@@ -236,7 +236,7 @@ export function ProgramHeader({
       )}
       </div>
       {(illustration || category) && (
-        <div className={styles.headerPlate} data-aircraft={illustration ? "" : undefined} aria-hidden="true">
+        <div className={styles.headerPlate} data-aircraft={illustration ? "" : undefined} data-hero-category={illustration ? category ?? undefined : undefined} aria-hidden="true">
           {illustration ?? <CategoryHero category={category!} />}
         </div>
       )}

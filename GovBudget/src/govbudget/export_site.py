@@ -1559,6 +1559,7 @@ def export_site(
     pdf_base_url: str,
     dossiers_raw_dir=None,
     snapshots_index_path=None,
+    subaward_parquet_glob: str | None = None,
 ) -> dict:
     """Build the full site artifact bundle.
 
@@ -2213,7 +2214,10 @@ def export_site(
     # that copy's sha256 — instead of a derived row restating the method.
     b2a_rows = _build_budget_to_awards_citation_rows(
         duckdb_path=duckdb_path, bl_rows=bl_rows,
-        link_sources=_load_award_link_sources(dsn),
+        link_sources=_load_award_link_sources(
+            dsn,
+            subaward_parquet_glob=subaward_parquet_glob or str(duckdb_path.parent.parent / "parquet" / "subawards" / "**" / "*.parquet"),
+        ),
     )
     citation_rows.extend(b2a_rows)
 
@@ -6378,8 +6382,8 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
 # ---------------------------------------------------------------------------
 
 
-def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
-    """(award_piid, pe_bli) → announcement source row, from Postgres.
+def _load_award_link_sources(dsn: str, *, subaward_parquet_glob: str) -> dict[tuple[str, str], dict]:
+    """(award_piid, pe_bli) → recorded announcement or subaward link evidence.
 
     Read STRAIGHT from Postgres (migration 012), not through the
     export_facts → parquet → dbt lake path the adjudication overlay uses. The
@@ -6392,9 +6396,9 @@ def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
     rows with no error. export_site already reads Postgres directly for
     narrative/provenance-page facts, so this is the same door.
 
-    Only source_kind='announcement' is loaded: subaward links keep the generic
-    derived row (an "official DoD contract announcement" card would be false
-    for an FSRS sub's description), so their rows are provenance-only here.
+    Subaward source IDs are joined to the imported USAspending bulk records
+    by BOTH prime PIID and subaward number. Their URL is prime-award context,
+    never represented as a permalink to the subaward description.
 
     RAISES on failure, deliberately (fix round 1). This read used to swallow
     every exception and return {} — a dead DB, a pre-012 schema, a truncated
@@ -6408,21 +6412,61 @@ def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
 
     with psycopg.connect(dsn) as pg:
         rows = pg.execute(
-            "select award_piid, pe_bli, source_id, source_url,"
+            "select award_piid, pe_bli, source_kind, source_id, source_url,"
             " archive_url, sha256, match_basis from award_link_sources"
-            " where source_kind = 'announcement'"
+            " where source_kind in ('announcement', 'subaward')"
         ).fetchall()
-    return {
+    sources = {
         (piid, pe): {
+            "source_kind": source_kind,
             "source_id": source_id,
             "source_url": source_url,
             "archive_url": archive_url,
             "sha256": sha256,
             "match_basis": match_basis,
         }
-        for piid, pe, source_id, source_url, archive_url, sha256, match_basis
+        for piid, pe, source_kind, source_id, source_url, archive_url, sha256, match_basis
         in rows
     }
+    return _enrich_subaward_link_sources(sources, subaward_parquet_glob)
+
+
+def _enrich_subaward_link_sources(sources: dict, parquet_glob: str) -> dict:
+    """Resolve source identities from the raw lake, rejecting absent/ambiguous matches.
+
+    Staging intentionally omits description/number fields, so reading the raw
+    bulk files is necessary here. This reads identity fields only, never money.
+    """
+    import duckdb
+
+    wanted = {key: row for key, row in sources.items() if row.get("source_kind") == "subaward"}
+    if not wanted:
+        return sources
+    if any(not row.get("source_id") or row.get("match_basis") != "subaward-description-exact" for row in wanted.values()):
+        raise RuntimeError("Subaward link source lacks its recorded number or exact-description match basis")
+    with duckdb.connect() as con:
+        con.execute("create table wanted_subawards (piid varchar, number varchar)")
+        con.executemany("insert into wanted_subawards values (?, ?)", sorted({(piid, row["source_id"]) for (piid, _pe), row in wanted.items()}))
+        rows = con.execute(
+            "select distinct s.prime_award_piid, s.subaward_number, s.prime_award_unique_key, s.subawardee_name"
+            " from read_parquet(?, union_by_name=true) s join wanted_subawards w"
+            " on s.prime_award_piid=w.piid and s.subaward_number=w.number"
+            " where nullif(trim(s.subaward_description), '') is not null",
+            [parquet_glob],
+        ).fetchall()
+    identities: dict[tuple[str, str], set] = {}
+    for piid, number, prime_key, recipient in rows:
+        identities.setdefault((piid, number), set()).add((prime_key, recipient))
+    result = {key: dict(row) for key, row in sources.items()}
+    for (piid, pe), source in wanted.items():
+        matches = identities.get((piid, source["source_id"]), set())
+        if len(matches) != 1:
+            raise RuntimeError(f"Subaward evidence for {piid}/{source['source_id']} has {len(matches)} source identities; expected exactly one")
+        prime_key, recipient = next(iter(matches))
+        if not isinstance(prime_key, str) or not prime_key.startswith(f"CONT_AWD_{piid}_") or not isinstance(recipient, str) or not recipient.strip():
+            raise RuntimeError(f"Subaward evidence for {piid}/{source['source_id']} lacks a matching prime-award identity or recipient")
+        result[(piid, pe)].update(source_url=f"https://www.usaspending.gov/award/{prime_key}/", subawardee=recipient)
+    return result
 
 
 def _build_budget_to_awards_citation_rows(
@@ -6440,9 +6484,9 @@ def _build_budget_to_awards_citation_rows(
     IS the evidence, and a reader clicking that receipt should land on it, not
     on a formula restating the method name. It keeps the derived row's formula
     (so the card can still state the link's method and confidence tier) and
-    adds the source row's match_basis, which the card renders in words. Every
-    other method (including 'subaward+lexicon', whose evidence is an FSRS
-    sub's description rather than a DoD announcement) keeps the derived row.
+    adds the source row's match_basis, which the card renders in words.
+    subaward+lexicon links mint a distinct subaward tier from their recorded
+    source identity. Every other method keeps the derived row.
 
     RAISES when the mart holds an 'announcement+lexicon' link with no usable
     source row (fix round 1). Falling back to the derived row for those links
@@ -6612,6 +6656,16 @@ def _build_budget_to_awards_citation_rows(
                 match_basis=src.get("match_basis"),
                 formula=formula,
             ))
+            continue
+
+        if method == "subaward+lexicon":
+            src = sources.get((award_piid, pe_bli), {})
+            if (src.get("source_kind") != "subaward" or
+                    src.get("match_basis") != "subaward-description-exact" or
+                    not src.get("source_id") or not src.get("subawardee") or
+                    not src.get("source_url") or confidence != "medium"):
+                raise RuntimeError(f"Subaward link {pe_bli}/{award_piid} lacks verified medium-confidence source identity; reload award_link_sources and the raw subaward lake")
+            rows.append(_subaward_row(fid, number=src["source_id"], recipient=src["subawardee"], url=src["source_url"], formula=formula))
             continue
 
         translated_org = _workbook_org(organization) if organization else organization
@@ -10232,6 +10286,16 @@ def _null_usaspending_row(fid: str, query_body: str, recorded_value: str,
         None,   # scenario
         None,   # amount_type
     )
+
+
+def _subaward_row(fid: str, *, number: str, recipient: str, url: str, formula: str) -> tuple:
+    """Link evidence only; the URL names prime-award context, never a subaward page."""
+    row = list(_announcement_row(fid, article_id="", url=url, archive_url=None,
+                                 sha256=None, formula=formula))
+    row[1] = "subaward"
+    row[22] = json.dumps({"match_basis": "subaward-description-exact",
+                          "subaward_number": number, "subawardee": recipient}, sort_keys=True)
+    return tuple(row)
 
 
 def _announcement_row(fid: str, *, article_id: str, url: str,
