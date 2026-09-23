@@ -101,8 +101,8 @@ Stored provenance is not silently rewritten: a future export degrades stale
 contradictory locators to document-only receipts until provenance is refreshed
 or the reviewed artifact repair is reapplied.
 
-The corrected artifacts require a fresh production build and publication;
-the final result is recorded after that deployment completes.
+The corrected artifacts were built and published in the final deployment
+recorded below.
 
 Independent verification passed across every PDF receipt: all 9,879
 Parquet/JSON/shard records agree, all 135,494 shard keys match the main
@@ -123,3 +123,32 @@ summary page, even though the canonical fact originated as book detail.
 This final label correction passed 221 focused tests across seven files,
 including a regression for the actual F-15EX summary receipt. Explicit
 source-provided exhibit/row fixtures remain covered without alteration.
+
+## Final production result
+
+Deployed functional source: monorepo
+`e742f3e8` (standalone Fiscal Receipts `main` publication merge `e49b309b`).
+The production build completed after that source commit. The final affected
+build, static-render, accounting-basis and receipt-clickthrough gates all
+passed. The immediately preceding receipt build also passed light/dark
+accessibility, degraded-source handling and desktop/mobile receipt-moment
+gates. The broader copy/voice debt above remains open; this is not a claim
+that all 27 release gates are green.
+
+`scripts/launch/deploy.sh` completed successfully, including nondeleting R2
+asset upload and all eight live-asset assertions. Final production deployment:
+`https://govbudget-k5v5w9rum-andeslee444s-projects.vercel.app`, aliased to
+`https://fiscalreceipts.com`.
+
+At 17:34 UTC, independent production verification passed 15/15 default public
+responses, each HTTP 200 and byte-identical to the final local build or source
+artifact. This covers the twelve prior route/feed endpoints, the corrected
+F-15 and unresolved receipt shards, and public R2 citation Parquet. Its SHA-256
+is `48aa5ea243205e559271041c7d38b6de94bed76c13480abf0235f47fe833ca01`
+(3,334,956 bytes). The published feed remains 1,702 cards.
+
+Production browser inspection confirmed the real F-15 PDF loads with its
+highlight and **78,345 USD thousands (= $78.3M)**. The unresolved receipt
+shows its explicit notice and direct government document link, with no
+amount, page or PDF highlight. This publication record is a documentation-only
+follow-up; the functional build remains the source commit identified above.

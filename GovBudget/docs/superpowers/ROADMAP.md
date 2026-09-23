@@ -13,8 +13,11 @@ Subaward receipts now require an explicit medium-confidence link contract,
 without attributed dollars. The first production deployment and twelve exact
 endpoint comparisons passed. Live PDF review then found a thousands/millions
 receipt-label mismatch: canonical budget totals remain correct, while 1,421
-receipt labels, six reviewed locators and four document-only fallbacks are
-being corrected and republished. Deployment and final verification are
+receipt labels, six reviewed locators and four document-only fallbacks have
+been corrected and republished. The final deployment passed all eight live
+asset assertions and fifteen independent byte-for-byte production checks;
+the corrected F-15 PDF and document-only fallback were also checked visually.
+Deployment and final verification are
 tracked in the [publication record](plans/2026-09-23-publication.md); the earlier
 local-only checkpoints remain historical. The broad copy/voice-rule findings
 remain open and must not be described as a fully green release suite.
