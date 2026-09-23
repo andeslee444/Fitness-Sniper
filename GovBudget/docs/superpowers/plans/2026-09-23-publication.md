@@ -103,3 +103,23 @@ or the reviewed artifact repair is reapplied.
 
 The corrected artifacts require a fresh production build and publication;
 the final result is recorded after that deployment completes.
+
+Independent verification passed across every PDF receipt: all 9,879
+Parquet/JSON/shard records agree, all 135,494 shard keys match the main
+citations export, and 21,975 canonical detail identities rederive unchanged.
+The audit checked 58 PDF hashes and 2,266 located pages: 8,454 million-scale
+receipts, 1,421 thousands-scale receipts and four strict unresolved records.
+All six repaired locations matched their exact source coordinates and the
+FY2026 Base/Total columns. Full `verify-phase5b1` passed again: citations
+50/50, narrative locations 25/25, every integrity check, and 5,251 overlapping
+workbook facts with no divergence.
+
+The final browser pass also found pre-existing overly specific PDF metadata:
+every budget-book detail chip said P-40, and footnotes inferred an exhibit and
+row name from the document family. Book detail now uses a generic label;
+the PDF footnote retains its verified page without inventing an exhibit or
+row. This matters for F-15EX: its located amount is on the volume's R-1
+summary page, even though the canonical fact originated as book detail.
+This final label correction passed 221 focused tests across seven files,
+including a regression for the actual F-15EX summary receipt. Explicit
+source-provided exhibit/row fixtures remain covered without alteration.

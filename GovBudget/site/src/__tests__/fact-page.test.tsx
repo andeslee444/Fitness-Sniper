@@ -24,7 +24,7 @@
  *
  * Visual-judge fix round additions:
  *   - M2 semantic header: payload pe_bli + a sidecar figure matching the
- *     fid → `F-35 (ATA000) · FY2024 · Actuals · P-40 detail · PB2026` +
+ *     fid → `F-35 (ATA000) · FY2024 · Actuals · J-book detail · PB2026` +
  *     the drawer's compact-USD equivalence; NO sidecar match → payload-only
  *     render (no fabrication) — both paths tested.
  *   - M3 canonical permalink: the rendered permalink is ALWAYS
@@ -157,8 +157,8 @@ describe("FactResolver", () => {
     expect(text).toContain("$5,247.070 million");
     // document TITLE (not filename)
     expect(text).toContain("FY2026 Air Force Aircraft Procurement, Vol. I");
-    // locator: exhibit + page
-    expect(text).toContain("Exhibit P-40");
+    // The payload establishes the page, not an exhibit inferred from the book.
+    expect(text).not.toContain("Exhibit P-40");
     expect(text).toContain("p. 55");
     // FULL sha256 (not the 8-char prefix)
     expect(text).toContain(PDF_CITATION.sha256);
@@ -387,6 +387,33 @@ function mockFetchRouted(routes: {
 }
 
 describe("FactResolver — semantic header (M2)", () => {
+  it("F-15EX R-1 summary receipt keeps its page and scale without claiming a detail exhibit", async () => {
+    const fid = "f6d6db240d3be8ba";
+    const sha = "360a1a8121eb6af19dbb7761b1f99282ee658890a1498a174433f646a0460289";
+    const official = "https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Research%20and%20Development%20Test%20and%20Evaluation%20Vol%20I.pdf#page=20";
+    setUrl(`/fact/?id=${fid}`);
+    mockFetchRouted({
+      shard: { [fid]: {
+        ...PDF_CITATION, pe_bli: "0207146F", amount_text: "78,345", units: "USD thousands",
+        page_number: 20, sha256: sha, hosted_pdf_url: `/pdfs/${sha}.pdf#page=20`, official_url: official,
+      } },
+      sidecar: { summary: { edition: 2026, cards: [] }, details: [{
+        fact_id: fid, fy: 2026, measure: "request", basis: "jbook-detail", edition: 2026,
+        units: "USD millions", amount_millions: 78.345, scenario: "BudgetYearOne", resolution: "unique",
+      }] },
+      quick: { docs: [{ id: "p:0207146F", kind: "program", pe_bli: "0207146F", title: "F-15EX", url: "/program/0207146F/" }] },
+    });
+    render(<FactResolver />);
+    const header = await screen.findByTestId("fact-semantic-header");
+    expect(header.textContent).toBe("F-15EX (0207146F) · FY2026 · Request · J-book detail · PB2026");
+    const card = screen.getByTestId("fact-card");
+    expect(card.textContent).toContain("$78,345 thousand");
+    expect(card.textContent).not.toContain("$78,345 million");
+    expect(card.textContent).toContain("p. 20");
+    expect(card.textContent).not.toMatch(/P-40|Exhibit R-2|Total Program Element/);
+    expect(card.querySelector(`a[href="${official}"]`)).not.toBeNull();
+  });
+
   it("renders program/FY/measure/basis/edition + the equivalence when a sidecar figure matches", async () => {
     setUrl(`/fact/?id=${PDF_FID}`);
     mockFetchRouted({
@@ -399,7 +426,7 @@ describe("FactResolver — semantic header (M2)", () => {
       expect(screen.getByTestId("fact-semantic-header")).toBeInTheDocument(),
     );
     expect(screen.getByTestId("fact-semantic-header").textContent).toBe(
-      "F-35 (ATA000) · FY2024 · Actuals · P-40 detail · PB2026",
+      "F-35 (ATA000) · FY2024 · Actuals · J-book detail · PB2026",
     );
     // The drawer's compact-USD equivalence line next to the recorded value.
     expect(screen.getByTestId("fact-card").textContent).toContain(
@@ -452,7 +479,7 @@ describe("FactResolver — semantic header (M2)", () => {
     const fig = findSidecarFigure(ATA_SIDECAR, PDF_FID)!;
     expect(fig).not.toBeNull();
     expect(semanticHeaderText(fig, null, "ATA000")).toBe(
-      "ATA000 · FY2024 · Actuals · P-40 detail · PB2026",
+      "ATA000 · FY2024 · Actuals · J-book detail · PB2026",
     );
   });
 

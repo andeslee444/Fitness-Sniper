@@ -482,7 +482,7 @@ describe("Cite three-state contract", () => {
       expect(container.textContent).toContain("P-1/R-1 TOA · PB2026");
     });
 
-    it("labels jbook-detail basis as P-40 detail", () => {
+    it("labels jbook-detail basis as J-book detail", () => {
       const { container } = render(
         <Cite
           value={5247.07}
@@ -495,7 +495,7 @@ describe("Cite three-state contract", () => {
           edition={2026}
         />,
       );
-      expect(container.textContent).toContain("P-40 detail · PB2026");
+      expect(container.textContent).toContain("J-book detail · PB2026");
     });
 
     it("renders human labels for extended measure tokens", () => {

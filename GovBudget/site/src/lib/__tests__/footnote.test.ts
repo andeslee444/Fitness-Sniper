@@ -362,7 +362,7 @@ describe("footnote status follows the clicked figure in every export style", () 
 });
 
 describe("footnoteInputFromCitation — the panel path", () => {
-  it("pdf golden fact retains every source field and the declared actuals status", () => {
+  it("pdf citation keeps known source fields and status without inferring an exhibit or row", () => {
     const input = footnoteInputFromCitation(PDF_CITATION, "bb54b1658b2746cb", {
       origin: ORIGIN,
       program: F35,
@@ -377,7 +377,11 @@ describe("footnoteInputFromCitation — the panel path", () => {
       },
     });
     expect(input.measure).toBe("actuals");
-    expect(formatFootnote(input)).toBe(gateGolden("pdf").replace("FY2024 Net Procurement", "FY2024 actuals Net Procurement"));
+    expect(input.locator).toEqual({ page: 55 });
+    expect(input.rowName).toBeNull();
+    expect(formatFootnote(input)).toBe(formatFootnote({
+      ...gateFixture("pdf"), measure: "actuals", rowName: null, locator: { page: 55 },
+    }));
   });
 
   it("workbook golden fact retains every source field and the declared actuals status", () => {
@@ -443,7 +447,7 @@ describe("footnoteInputFromCitation — the panel path", () => {
     expect(s).not.toMatch(/null|undefined/);
   });
 
-  it("rdte jbook-detail figure derives the R-2 row name, not P-40", () => {
+  it("rdte document family does not establish the cited page's exhibit or row", () => {
     const input = footnoteInputFromCitation(
       {
         ...PDF_CITATION,
@@ -465,8 +469,9 @@ describe("footnoteInputFromCitation — the panel path", () => {
       },
     );
     const s = formatFootnote(input);
-    expect(s).toContain("Total Program Element");
-    expect(s).toContain("Exhibit R-2");
+    expect(input.locator).toEqual({ page: PDF_CITATION.page_number });
+    expect(s).not.toContain("Total Program Element");
+    expect(s).not.toContain("Exhibit R-2");
     expect(s).not.toContain("Net Procurement");
   });
 
