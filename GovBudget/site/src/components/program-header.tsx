@@ -1,8 +1,10 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { HeroCategory, ProgramRow } from "@/lib/data";
-import { CategoryHero } from "@/components/hero";
 import { serviceOrgName } from "@/lib/program-tier";
+import { CategoryHero } from "@/components/hero";
+import styles from "./program-wayfinding.module.css";
 
 /**
  * ProgramHeader — title, org link, exhibit_family badge, reconciliation badge, pe_bli mono.
@@ -19,14 +21,14 @@ import { serviceOrgName } from "@/lib/program-tier";
  * service_org falls back to. Those render the org as plain text, never a
  * dead link (G1 contract).
  *
- * Top-50 dossier pages (category present in categories.json) additionally get
- * a subtle CategoryHero background layer behind the header text (Task 8a);
- * all other program pages are unchanged (no hero markup at all).
+ * The title stays on a quiet reading surface. Category motifs occupy a separate
+ * desktop plate; the interactive visual exhibit follows the answers.
  */
 
 interface ProgramHeaderProps {
   program: ProgramRow;
-  /** Hero category for top-50 pages; null/undefined → no hero layer. */
+  illustration?: ReactNode;
+  /** Top-50 category motif, rendered in its own decorative desktop plate. */
   category?: HeroCategory | null;
   /**
    * Whether /agency/{org}/ exists as a built page. The program page computes
@@ -116,21 +118,19 @@ const NO_DETAIL_TITLE =
 export function ProgramHeader({
   program,
   category,
+  illustration,
   orgHasPage = true,
   tier = "full",
 }: ProgramHeaderProps) {
   const { title, org, exhibit_family, reconciled_in_scope, pe_bli } = program;
 
   return (
-    <div className={category ? "relative mb-6 -mx-3 px-3 py-3" : "mb-6"}>
-      {/* Background hero layer — rendered FIRST so the header text paints on
-          top in DOM order (no z-index juggling); aria-hidden + pointer-events
-          none keep it purely decorative. */}
-      {category && <CategoryHero category={category} />}
+    <div className={`${styles.header} ${category || illustration ? styles.headerWithPlate : ""}`}>
+      <div className={styles.headerIdentity}>
 
       {/* data-program-name: program titles are official names from J-books;
           some contain "$5M" thresholds that are part of the program identifier. */}
-      <h1 className="relative text-2xl md:text-3xl font-bold text-foreground leading-tight mb-2" data-program-name>
+      <h1 className={styles.title} data-program-name>
         {title}
       </h1>
 
@@ -227,10 +227,19 @@ export function ProgramHeader({
         >
           {exhibit_family === "procurement" ? "BLI" : "PE"}
         </Link>
-        <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+        <code className="t-id bg-muted px-1.5 py-0.5 rounded">
           {pe_bli}
         </code>
       </div>
+      {program.account_title && (
+        <p className={styles.account}>{program.account_title}{program.account ? <> · <code>{program.account}</code></> : null}</p>
+      )}
+      </div>
+      {(illustration || category) && (
+        <div className={styles.headerPlate} data-aircraft={illustration ? "" : undefined} aria-hidden="true">
+          {illustration ?? <CategoryHero category={category!} />}
+        </div>
+      )}
     </div>
   );
 }

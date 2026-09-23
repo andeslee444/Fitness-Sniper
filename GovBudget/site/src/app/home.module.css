@@ -1,0 +1,287 @@
+/* The homepage in the field-guide register: the same paper, ink, rule and
+   serif the F-15 family browser uses. .home re-points the semantic tokens
+   to the --stage-* set (lifted from f15-family-browser.module.css into
+   globals.css), exactly as .family re-points them on the F-15 page — so
+   every Tailwind utility below the hero resolves to the warm palette. */
+.home {
+  background: var(--stage-paper);
+  color: var(--stage-ink);
+  --background: var(--stage-paper);
+  --foreground: var(--stage-ink);
+  --card: var(--stage-sheet);
+  --border: var(--stage-rule);
+  --muted: var(--stage-muted);
+  --muted-foreground: var(--stage-muted-ink);
+  --primary: var(--stage-accent);
+  /* Rust is the one accent on this page (round-4 critique): the citation
+     decoration takes the stage accent, exactly as .family re-points it to
+     its own register green on the F-15 page. #8a3e24 on --stage-paper
+     measures ~6.6:1 — strictly higher than the :root blue it replaces, so
+     the WCAG 1.4.11 floor is raised, never lowered. Inside the hero plate
+     the dock re-points it again to --plate-ink (see .receiptDock). */
+  --cite-decoration: var(--stage-accent);
+  --cite-decoration-hover: var(--stage-accent);
+  /* The plate register, named once from the values this file already owned.
+     receipt-moment.module.css consumes the --rm-* aliases (it may not hold
+     raw hexes itself — the token allowlist is per-file). */
+  --plate-deep: #0a161f;
+  --plate-ink: #d6edf5;
+  --plate-mid: #a4c6d3;
+  --plate-soft: #b4cbd6;
+}
+
+/* ── Hero: ONE composition — the object and its receipt (round-5
+   consensus: one subject per screen). The vitrine is navy; the word is
+   the page's name; the receipt dock is the caption. Everything else that
+   competed for the fold (eyebrow, lede, search field, persona line,
+   scope small-print) is gone or below the fold. ── */
+.hero { padding: 0; }
+.stage { position: relative; background: var(--plate-deep); color: var(--plate-ink); }
+/* The plate arrives by external <use>; the container's color sets the
+   register. On the navy vitrine: --plate-ink strokes, hatch tones pulled
+   down to the values the plate reads on dark grounds. On paper (mobile)
+   the media query flips color to stage ink and the hatch defaults back. */
+.stageImageWrap {
+  position: absolute; inset: 0 0 0 40%;
+  color: var(--plate-ink);
+  --plate-hatch: .5;
+  --plate-hatch-light: .3;
+}
+.stageImageWrap svg { width: 100%; height: 100%; display: block; }
+/* The cropped render exists only for the phone (see page.tsx). */
+/* Specificity must match `.stageImageWrap svg` above, or both copies render
+   at every width and the second overflows the hero (all three iteration-5
+   critics saw the ghost). */
+.stageImageWrap .stagePlateCrop { display: none; }
+/* The plate's register mark — the same mono stamp the field-guide plates
+   carry (`02 / AIR`, `03 / CYBER`); numbering starts at 01. */
+.heroStamp {
+  position: absolute; top: 1rem; left: 1.25rem; z-index: 2;
+  color: var(--plate-mid);
+  pointer-events: none;
+}
+.stageInner {
+  position: relative; z-index: 2;
+  min-height: clamp(32rem, 76vh, 44rem);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 2.5rem;
+  padding: 2.75rem max(var(--spine-gutter), calc((100% - var(--spine-max)) / 2 + var(--spine-gutter))) 2.1rem;
+}
+.heroCopy { max-width: 30rem; }
+.hero h1 {
+  color: var(--plate-ink);
+}
+
+/* The receipt dock: the caption strip beneath the hull, held to the same
+   30rem measure as the type column. On the dark plate the dock re-points
+   --foreground to the plate's light ink — Cite's text-foreground utility
+   resolves var(--foreground) per-element (@theme inline), so the display
+   figure, the inline P-40 figure, and every piece of receipt text render
+   light (round-4 critique: the $10.7B computed to rgb(32,46,40) — dark ink
+   on navy — and only its dotted leader showed). --cite-decoration is
+   re-pointed here too: #d6edf5 on #0a161f is a strictly higher contrast
+   than the paper value, never a lowering. On mobile the dock sits on paper
+   and inherits the .home rust register untouched. */
+.receiptDock { max-width: 30rem; }
+@media (min-width: 768px) {
+  .receiptDock {
+    --rm-ink: var(--plate-ink);
+    --rm-muted: var(--plate-soft);
+    --rm-dim: var(--plate-mid);
+    --foreground: var(--plate-ink);
+    /* The footnote's Fact-ID chip reads --muted-foreground; the paper value
+       (#606960) measures 3.21:1 on the navy plate against the 4.5:1 floor
+       gate 6 leg (e) holds. --plate-soft clears it (~10.9:1) while staying
+       strictly quieter than the --plate-ink figure beside it (~15.1:1) —
+       subordinate AND legible, which --plate-ink itself could not be (equal
+       contrast is not "strictly quieter", and --plate-mid's chroma would
+       out-saturate the figure). */
+    --muted-foreground: var(--plate-soft);
+    --cite-decoration: var(--plate-ink);
+    --cite-decoration-hover: var(--stage-paper);
+  }
+}
+.scopeNote { margin: .6rem 0 0; font-size: var(--text-label); line-height: 1.65; color: var(--rm-dim, var(--stage-muted-ink)); }
+
+/* ── The field guide on PAPER (round-5: one navy→cream alternation per
+   page — the hero is the only dark band, no 2,200px dark slab). Each
+   plate is the SAME object the hero vitrine holds: external <use>, the
+   container's color sets ink on paper, a mono corner caption, numbered
+   callouts at the measured plate anchors, the label list beside the
+   plate, its caption bar beneath. ── */
+.fieldGuide { background: var(--stage-paper); color: var(--stage-ink); padding: 4.5rem 0 3.5rem; }
+.sectionTitle { margin-bottom: .6rem; }
+.guideIntro { color: var(--stage-muted-ink); margin: .4rem 0 2.5rem; max-width: 34rem; }
+.guideIntro a { color: var(--stage-accent); text-decoration: underline; text-underline-offset: .3em; white-space: nowrap; }
+.exhibits { display: grid; grid-template-columns: 1fr; gap: 4rem; }
+.exhibitCard { min-width: 0; display: block; text-decoration: none; color: inherit; }
+.plateGrid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(11rem, 1fr); gap: 2rem; align-items: start; }
+.plateFrame { position: relative; color: var(--stage-ink); }
+.plateFrame svg { width: 100%; height: auto; display: block; }
+/* The corner stamp: the plate's register mark — mono, an identifier, the
+   same treatment the F-15 plate wears. */
+.plateStamp {
+  position: absolute; top: 0; left: 0;
+  color: var(--stage-muted-ink);
+}
+/* Numbered callouts anchored to the measured plate points, each with a
+   hairline leader reaching toward the label list. */
+.callout {
+  position: absolute; transform: translate(-50%, -50%);
+  display: grid; place-items: center;
+  width: 1.375rem; height: 1.375rem;
+  border: 1px solid var(--stage-ink); border-radius: 50%;
+  background: var(--stage-paper);
+  color: var(--stage-ink);
+}
+.callout::after {
+  content: ""; position: absolute; left: 100%; top: 50%;
+  width: 1.75rem; height: 1px; background: var(--stage-rule);
+}
+.plateLabels { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--stage-rule); }
+.plateLabels li {
+  display: flex; align-items: baseline; gap: .75rem;
+  padding: .55rem 0; border-bottom: 1px solid var(--stage-rule);
+  font: var(--type-ui); line-height: 1.4;
+}
+.plateLabels li span { font: var(--type-id); color: var(--stage-muted-ink); }
+.exhibitCaption { margin-top: 1rem; }
+.exhibitCard:hover .exhibitCaption h3 { text-decoration: underline; text-underline-offset: .25em; }
+/* The caption bar beneath the plate: the conceptual-illustration
+   disclaimer, once per plate. */
+.plateCaption { color: var(--stage-muted-ink); font-size: var(--text-label); line-height: 1.6; margin-top: .35rem; max-width: 40rem; }
+
+/* ── Ledgers and indexes on paper: hairline rules, no boxes, no radius. ── */
+.ledger { border-top: 1px solid var(--stage-rule); }
+.ledgerRow { border-bottom: 1px solid var(--stage-rule); }
+.moverValue { display: flex; align-items: center; gap: .5rem; }
+/* Signed figures, not glyphs: increases carry the rust source register,
+   decreases stay ink. One meaning for rust site-wide: this traces to a
+   source. */
+.moverUp { color: var(--stage-accent); }
+.moverDown { color: var(--stage-ink); }
+/* The rate rides beside the delta — tabular, thousands-separated, in the
+   same ink as its figure. */
+.moverPct { white-space: nowrap; }
+.reconNote { color: var(--stage-muted-ink); font-size: var(--text-label); white-space: nowrap; }
+.viewLink { font-size: var(--text-label); color: var(--stage-accent); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: .3em; }
+.viewLink:hover { text-decoration-style: solid; }
+
+/* The agency register as ONE table: name | programs | FY24, rules in
+   perfect register because they are table borders, and "FY24" said once in
+   the column head instead of 24 times (round-4 critique). */
+.agencyTable { width: 100%; border-collapse: collapse; border-top: 1px solid var(--stage-rule); }
+.agencyTable th {
+  padding: .5rem 0; border-bottom: 1px solid var(--stage-rule);
+  text-align: left;
+}
+.agencyTable td { padding: .6rem 0; border-bottom: 1px solid var(--stage-rule); vertical-align: baseline; }
+.agencyNum { text-align: right; }
+.agencyTable .agencyNum {
+  text-align: right; padding-left: 1.5rem;
+  color: var(--stage-muted-ink);
+  white-space: nowrap;
+}
+.agencyTable td.agencyNum { color: var(--stage-ink); }
+.agencyName { color: var(--stage-ink); text-decoration: none; }
+.agencyName:hover { color: var(--stage-accent); text-decoration: underline; text-underline-offset: .3em; }
+.agencyCode { font: var(--type-id); color: var(--stage-muted-ink); margin-left: .5rem; }
+/* Eight rows and the way out at ≥768 (rows 9+ hide at every width);
+   phones keep the six largest — mobile's pattern was already right. */
+.agencyRowExtra { display: none; }
+.agencyMore {
+  display: block; margin-top: 1rem; font: var(--type-ui); color: var(--stage-accent);
+  text-decoration: underline; text-underline-offset: .3em;
+}
+
+.trust { border-top: 1px solid var(--stage-rule); padding: 2.5rem 0; }
+
+@media (max-width: 767px) {
+  /* Mobile leads with the WORD and the NUMBER (round-4 critique): headline
+     and the receipt on paper first; the object follows below as a plate.
+     On paper the plate's register flips: stage ink, default hatch tones. */
+  .stage { display: flex; flex-direction: column; }
+  .stageImageWrap {
+    order: 2; position: relative; inset: auto; aspect-ratio: 4 / 3;
+    border-top: 1px solid var(--stage-rule);
+    /* The ground must flip with the ink: .stage still paints navy at this
+       width, and stage-ink on navy rendered the plate invisible (a void
+       under the receipt on every phone — three critics, iteration 4). */
+    background: var(--stage-paper);
+    color: var(--stage-ink);
+    --plate-hatch: .72;
+    --plate-hatch-light: .42;
+  }
+  /* Cropped to the bow, not the whole yard scaled down (#12). */
+  .stageImageWrap .stagePlateFull { display: none; }
+  .stageImageWrap .stagePlateCrop { display: block; }
+  /* The stamp flips to the paper register with the plate. */
+  .heroStamp { color: var(--stage-muted-ink); top: .75rem; left: var(--spine-gutter); }
+  .stageInner {
+    order: 1;
+    position: static; min-height: 0; display: block;
+    padding: 1.4rem var(--spine-gutter) 1.75rem;
+    background: var(--stage-paper); color: var(--stage-ink);
+  }
+  .hero h1 { color: var(--stage-ink); }
+  .receiptDock { margin-top: 1.5rem; }
+  .fieldGuide { padding-block: 2.5rem; }
+
+  /* The ledger restacks DELTA-FIRST (round-6 mobile critique #1): the
+     change figure leads line one at the row's largest size — at one column
+     the number is the news. Name on line two, agency + the reconciliation
+     note on line three (the note may wrap here — white-space: nowrap is
+     what clipped "discretionary do" mid-word). The mono signal sentence
+     drops below 768: it restates its row. The data-mobile-pair label/value
+     contract holds — value and label stay stacked, never intersecting. */
+  .ledgerRow > div:first-child {
+    display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .75rem;
+  }
+  .ledgerRow [data-mobile-pair-value] {
+    order: 1; flex: 0 0 100%; margin: 0 0 .2rem;
+    font-size: var(--fig-4); line-height: 1.25;
+  }
+  .ledgerRow [data-mobile-pair-label] { order: 2; flex: 1 1 100%; row-gap: .15rem; }
+  /* Agency + italic note take their own line beneath the name. */
+  .ledgerRow [data-mobile-pair-label] > span:nth-child(3) { flex-basis: 100%; }
+  .ledgerRow .reconNote { white-space: normal; }
+}
+@media (max-width: 639px) {
+  .exhibits { gap: 3rem; }
+  .plateGrid { grid-template-columns: 1fr; gap: .75rem; }
+  .guideIntro { margin-bottom: 1.5rem; }
+  /* The callout key lives directly beneath its plate on a phone (#2) —
+     compact three-line key, tight to the drawing; the hairline leaders
+     pointed at a list that no longer sits beside the plate. */
+  .callout::after { display: none; }
+  .plateLabels { border-top: 0; }
+  .plateLabels li { padding: .35rem 0; }
+  /* The index on a phone: the six largest agencies, then a way out to the
+     full list — not a 24-row stack. */
+  .agencyRowMid { display: none; }
+}
+@media print { .stageImageWrap { display: none; } .stageInner { position: static; min-height: 0; color: black; background: white; } }
+
+/* The footer joins the paper register on the homepage (round-4 critique:
+   home's footer was the root cool grey while the F-15 page's was cream).
+   Same body:has() pattern the F-15 module already uses. */
+:global(body):has(.home) > :global(footer) {
+  margin-top: 0;
+  background: var(--stage-paper);
+  border-top-color: var(--stage-rule);
+  color: var(--stage-muted-ink);
+  /* The cream ground is forced in BOTH color schemes, so the inks must be
+     decided in the same place: the footer's children read the semantic
+     tokens (the corpus sentence's strongs read --foreground; the corpus
+     text, link columns and bottom line read --muted-foreground), and under
+     prefers-color-scheme: dark those flip to the near-white/near-grey dark
+     values — #fafafa on the forced cream measured 1.09:1, the grey 2.91:1
+     (gate 6, seven nodes). Pin both tokens to the paper register:
+     --stage-ink on --stage-paper is ~12.4:1, --stage-muted-ink ~5.0:1, in
+     either scheme. */
+  --foreground: var(--stage-ink);
+  --muted-foreground: var(--stage-muted-ink);
+}
+:global(body):has(.home) > :global(footer) :global(.site-footer-brand) { color: var(--stage-ink); }
+:global(body):has(.home) > :global(footer) :global(a) { color: var(--stage-muted-ink); }
+:global(body):has(.home) > :global(footer) :global(a):hover { color: var(--stage-accent); }
+:global(body):has(.home) > :global(footer) :global(.site-footer-bottom) { border-top-color: var(--stage-rule); }

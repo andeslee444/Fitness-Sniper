@@ -9,9 +9,11 @@
  */
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import type { JbookNarrativeCitation } from "@/lib/data";
+import { getCitation, getProgramDetails } from "@/lib/data";
+import { getF15FamilyData } from "@/lib/f15-family-data";
 
 const { getDocumentMock } = vi.hoisted(() => ({
   getDocumentMock: vi.fn(),
@@ -155,5 +157,56 @@ describe("JbookNarrativeCard — unpaged (8 unresolved narratives)", () => {
     expect(
       screen.getByTestId("jbook-narrative-source-link"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("JbookNarrativeCard — verbatim page-local source passages", () => {
+  it("shows the actual unpaged F-15EX retrofit passage with its XML anchor and original source", () => {
+    const factId = "cb4796e48126e4a7";
+    const family = getF15FamilyData();
+    const citation = family.citations[factId] as JbookNarrativeCitation;
+    const original = getProgramDetails("F015EX").narratives.find((item) => item.fact_id === factId)!;
+    expect(citation.page_number).toBeNull();
+    render(<JbookNarrativeCard citation={citation} />);
+    const passage = screen.getByRole("region", { name: "Source passage" });
+    expect(within(passage).getByRole("heading", { name: original.title })).toBeVisible();
+    expect(passage.querySelector("p")?.textContent).toBe(original.body);
+    expect(passage).toHaveAttribute("data-source-text", "narrative");
+    expect(passage).toHaveAttribute("data-xml-path", citation.xml_path);
+    expect(passage.querySelectorAll("[data-amount]")).toHaveLength(0);
+    expect(screen.getByTestId("jbook-narrative-source-link")).toHaveAttribute("href", citation.official_url);
+    expect(screen.queryByTestId("pdf-highlight")).toBeNull();
+    const xmlLabel = screen.getByText("XML location");
+    expect(passage.compareDocumentPosition(xmlLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("enriches every family narrative by exact identity without mutating shared citation objects", () => {
+    const family = getF15FamilyData();
+    for (const record of family.records) for (const narrative of record.narratives) {
+      const enriched = family.citations[narrative.factId] as JbookNarrativeCitation;
+      const original = getCitation(narrative.factId) as JbookNarrativeCitation;
+      expect(enriched.source_passage).toEqual({ title: narrative.title, body: narrative.body });
+      expect(enriched).not.toBe(original);
+      expect(original.source_passage).toBeUndefined();
+      const { source_passage, ...unchanged } = enriched;
+      expect(source_passage).toBeDefined();
+      expect(unchanged).toEqual(original);
+    }
+  });
+
+  it("keeps the paged PDF and highlight alongside a supplied source passage", async () => {
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(makeFakePdf()), destroy: () => Promise.resolve() });
+    render(<JbookNarrativeCard citation={makeNarrative("dd44".repeat(16), { source_passage: { title: "Source narrative", body: "First paragraph.\n\nSecond paragraph with $10 million in the quoted source." } })} />);
+    expect(screen.getByTestId("jbook-source-passage").querySelector("p")?.textContent).toBe("First paragraph.\n\nSecond paragraph with $10 million in the quoted source.");
+    await waitFor(() => expect(screen.getByTestId("pdf-highlight")).toBeInTheDocument());
+    expect(screen.getByText(/Open official source at p\.54/i)).toBeInTheDocument();
+  });
+
+  it("treats markup in source text as quoted text, not executable HTML", () => {
+    const body = "Text <script>window.untrusted = true</script> and <b>literal markup</b>.";
+    render(<JbookNarrativeCard citation={makeNarrative("ee55".repeat(16), { hosted_pdf_url: null, page_number: null, source_passage: { title: "Literal source", body } })} />);
+    const passage = screen.getByTestId("jbook-source-passage");
+    expect(passage.querySelector("p")?.textContent).toBe(body);
+    expect(passage.querySelector("script, b")).toBeNull();
   });
 });

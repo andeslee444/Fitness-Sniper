@@ -31,7 +31,7 @@ export function LdaCard({ citation, filingYear }: LdaCardProps) {
       {/* Filing year */}
       {filingYear && (
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="t-label">
             Filing year
           </span>
           <span className="text-sm font-medium">{filingYear}</span>
@@ -54,7 +54,7 @@ export function LdaCard({ citation, filingYear }: LdaCardProps) {
           <span className="sr-only">(opens in new tab)</span>
         </a>
       ) : (
-        <p className="text-sm text-muted-foreground italic">
+        <p className="text-sm text-muted-foreground">
           No human-readable URL available for this filing.
         </p>
       )}
@@ -62,10 +62,10 @@ export function LdaCard({ citation, filingYear }: LdaCardProps) {
       {/* UUID in mono */}
       {uuid && (
         <div className="space-y-0.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="t-label">
             Filing ID
           </span>
-          <p className="font-mono text-xs text-muted-foreground break-all">
+          <p className="t-id break-all">
             {uuid}
           </p>
         </div>
@@ -74,10 +74,10 @@ export function LdaCard({ citation, filingYear }: LdaCardProps) {
       {/* API URL co-cited in smaller text */}
       {citation.official_url && (
         <div className="space-y-0.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="t-label">
             API source
           </span>
-          <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
+          <p className="t-id break-all leading-relaxed">
             {citation.official_url}
           </p>
         </div>

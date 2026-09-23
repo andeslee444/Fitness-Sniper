@@ -43,6 +43,9 @@
 import React, { useContext, useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
+import { SourceDocumentLinks } from "@/components/source-document-links";
+import { PageIntro } from "@/components/page-intro";
+import styles from "./fact-resolver.module.css";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CitationPanelContext, basisChipText } from "@/components/cite";
 import { exhibitFamilyFromSheet, type ExhibitFamily } from "@/lib/basis";
@@ -113,11 +116,12 @@ export function FactResolver() {
   return (
     <CitationPanelProvider citations={citationsMap}>
       <div className="spine py-10">
-        <h1 className="text-3xl font-bold mb-2">Fact permalink</h1>
-        <p className="text-sm text-muted-foreground mb-8">
-          Every figure on {SITE_NAME} carries a permanent fact id linking it to
-          its source receipt.
-        </p>
+        <PageIntro
+          eyebrow="Evidence / Permanent record"
+          title="The receipt behind the number."
+          description={<p>Inspect the recorded figure, its source document, and the exact location of the evidence. Every figure on {SITE_NAME} carries a permanent fact id so someone else can check your work.</p>}
+          actions={<><a href="/programs/">Find a program</a><a href="/methodology/#verification">How verification works</a></>}
+        />
 
         {state.status === "loading" && (
           <div
@@ -144,8 +148,8 @@ export function FactResolver() {
               <span className="font-mono">#{state.id}</span>.
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Check your connection and reload — the underlying receipt has not
-              gone anywhere.
+              Check your connection and reload to try again. The source could
+              not be verified in this visit.
             </p>
           </div>
         )}
@@ -195,8 +199,8 @@ export function FactResolver() {
 
 function Explainer() {
   return (
-    <section data-testid="fact-explainer" className="mt-4 space-y-3">
-      <h2 className="text-lg font-semibold">How fact permalinks work</h2>
+    <section data-testid="fact-explainer" className={styles.explainer}>
+      <h2>How fact permalinks work</h2>
       <p className="text-sm text-muted-foreground leading-6">
         <span className="font-mono">/fact/{"{id}"}</span> resolves a fact id to
         the receipt behind it: the recorded value, the official source
@@ -350,21 +354,24 @@ function FactCard({
   return (
     <article
       data-testid="fact-card"
-      className="mb-6 rounded-lg border border-border p-5"
+      className={styles.receipt}
     >
-      <header className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="inline-block rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800">
+      <header className={styles.receiptHeader}>
+        <span className={styles.sourceKind}>
           {kindLabel}
         </span>
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="t-id">
           fact #{factId.slice(0, 8)}
         </span>
       </header>
 
+      <div className={styles.receiptBody}>
+        <div className={styles.lead}>
+          <p className={`t-label ${styles.recordLabel}`}>{citation.kind === "derived" ? "Derived from source records" : "Recorded in the source"}</p>
       {semantic && peBli && (
         <p
           data-testid="fact-semantic-header"
-          className="mb-1 text-sm font-medium text-foreground"
+          className={styles.semantic}
         >
           {semanticHeaderText(
             semantic.figure,
@@ -376,7 +383,7 @@ function FactCard({
       )}
 
       {input.valueText && (
-        <p className="mb-3 text-2xl font-semibold tracking-tight">
+        <p className={`t-figure t-figure--5 ${styles.value}`}>
           {input.valueText}
           {equivalence && (
             <span className="ml-1.5 text-base font-normal text-muted-foreground">
@@ -386,7 +393,32 @@ function FactCard({
         </p>
       )}
 
-      <dl className="space-y-1.5 text-sm">
+      <div className={styles.sourceActions}>
+        <button
+          type="button"
+          data-testid="fact-view-source"
+          onClick={() => openPanel(factId)}
+          className={styles.openSource}
+        >
+          View source excerpt
+        </button>
+        <SourceDocumentLinks citation={citation} factId={factId} program={peBli ?? undefined} surface="fact-page" compact resolveInputs />
+        {citation.hosted_pdf_url && (
+          <a
+            href={assetUrl(citation.hosted_pdf_url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.sourceLink}
+          >
+            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+            Saved PDF copy
+            {citation.page_number != null ? ` (page ${citation.page_number})` : ""}
+            <span className="sr-only">(opens in new tab)</span>
+          </a>
+        )}
+      </div>
+        </div>
+      <dl className={styles.metadata}>
         <Row label="Full fact id">
           <span className="font-mono">{factId}</span>{" "}
           <CopyButton text={factId} label="Copy full fact id" />
@@ -429,7 +461,7 @@ function FactCard({
                 <a
                   key={fid}
                   href={`/fact/${fid.slice(0, 8)}`}
-                  className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs underline underline-offset-2"
+                  className="t-id rounded bg-muted px-1.5 py-0.5 underline underline-offset-2"
                 >
                   #{fid.slice(0, 8)}
                 </a>
@@ -439,7 +471,7 @@ function FactCard({
         )}
         {citation.sha256 && (
           <Row label="SHA-256">
-            <span className="font-mono text-xs break-all">
+            <span className="t-id break-all">
               {citation.sha256}
             </span>{" "}
             <CopyButton text={citation.sha256} label="Copy SHA-256" />
@@ -447,51 +479,16 @@ function FactCard({
         )}
         {input.retrievedAt && <Row label="Retrieved">{input.retrievedAt}</Row>}
         {peBli && (
-          <Row label="Appears on">
+          <Row label={semantic ? "Appears on" : "Program references"}>
             <a
-              href={`/program/${peBli}/#fact-${factId}`}
+              href={semantic ? `/program/${peBli}/#fact-${factId}` : `/programs/?q=${encodeURIComponent(peBli)}`}
               className="underline underline-offset-2"
             >
-              /program/{peBli}/
+              {semantic ? `${semantic.title ?? peBli} — view this figure in context` : `Browse program references for ${peBli}`}
             </a>
           </Row>
         )}
       </dl>
-
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
-        <button
-          type="button"
-          data-testid="fact-view-source"
-          onClick={() => openPanel(factId)}
-          className="rounded-md border border-border px-2.5 py-1.5 font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          View source excerpt
-        </button>
-        {citation.official_url && (
-          <a
-            href={citation.official_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-            Official source
-            <span className="sr-only">(opens in new tab)</span>
-          </a>
-        )}
-        {citation.hosted_pdf_url && (
-          <a
-            href={assetUrl(citation.hosted_pdf_url)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-            Hosted PDF
-            {citation.page_number != null ? ` (page ${citation.page_number})` : ""}
-            <span className="sr-only">(opens in new tab)</span>
-          </a>
-        )}
       </div>
     </article>
   );
@@ -505,10 +502,9 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex gap-2">
-      <dt className="w-28 shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0">{children}</dd>
+    <div className={styles.metadataRow}>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
     </div>
   );
 }
-

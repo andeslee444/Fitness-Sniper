@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "public/pdf.worker.min.mjs",
     "public/json-lite/**",
     "public/assets/**",
+    // Vendored Three.js distribution; provenance and license ship alongside it.
+    "public/exhibits/vendor/**",
   ]),
 ]);
 

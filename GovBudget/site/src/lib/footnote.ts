@@ -57,6 +57,8 @@ export interface FootnoteInput {
   label?: string | null;
   /** Numeric fiscal year. Non-numeric tokens ('all-years') are not rendered. */
   fiscalYear?: number | string | null;
+  /** Declared figure measure/status, never inferred from the source document. */
+  measure?: string | null;
   /** Row/field name, e.g. "Net Procurement (P-1)". */
   rowName?: string | null;
   /** Value WITH unit, e.g. "$5,247.070 million". */
@@ -107,6 +109,17 @@ function inputFactLinks(input: FootnoteInput): string[] {
   return links.concat(input.inputUrls ?? []);
 }
 
+/** Keep the clicked figure's status with its year, outside the source title. */
+function fiscalRow(input: FootnoteInput): string {
+  const fy = isNumericYear(input.fiscalYear) ? `FY${input.fiscalYear}` : null;
+  const measure = input.measure?.trim().replace(/-/g, " ") || null;
+  const row = input.rowName ?? null;
+  // The derived builder already names its measure, e.g. "request (derived)".
+  // Keep that existing row intact without printing "request request".
+  const measureInRow = measure && row === `${measure} (derived)`;
+  return [fy, measureInRow ? null : measure, row].filter(Boolean).join(" ");
+}
+
 /**
  * The quoted head: `F-35 (ATA000), FY2024 Net Procurement (P-1): $5,247.070
  * million`. Every part optional — absent parts drop, never render "null".
@@ -115,8 +128,7 @@ function quoteHead(input: FootnoteInput): string {
   const programPart = input.program
     ? `${input.program.name} (${input.program.code})`
     : (input.label ?? null);
-  const fyPart = isNumericYear(input.fiscalYear) ? `FY${input.fiscalYear}` : null;
-  const fyRow = [fyPart, input.rowName ?? null].filter(Boolean).join(" ");
+  const fyRow = fiscalRow(input);
   const head = [programPart, fyRow || null].filter(Boolean).join(", ");
   if (input.valueText) return head ? `${head}: ${input.valueText}` : input.valueText;
   return head;
@@ -194,8 +206,7 @@ function formatAp(input: FootnoteInput): string {
   const programPart = input.program
     ? `${input.program.name} (${input.program.code})`
     : (input.label ?? SITE_NAME);
-  const fyPart = isNumericYear(input.fiscalYear) ? `FY${input.fiscalYear}` : null;
-  const fyRow = [fyPart, input.rowName ?? null].filter(Boolean).join(" ");
+  const fyRow = fiscalRow(input);
 
   let claim = programPart;
   if (fyRow) claim += `: ${fyRow}`;
@@ -284,6 +295,7 @@ function formatJson(input: FootnoteInput): string {
     obj.program = input.label;
   }
   if (isNumericYear(input.fiscalYear)) obj.fiscal_year = Number(input.fiscalYear);
+  if (input.measure?.trim()) obj.measure = input.measure;
   if (input.rowName) obj.row = input.rowName;
   if (input.valueText) obj.value = input.valueText;
   if (input.tier === "derived") {
@@ -613,6 +625,7 @@ export function footnoteInputFromCitation(
     program: opts.program ?? null,
     label: opts.program ? null : (opts.pageLabel ?? null),
     fiscalYear: figure?.fy ?? null,
+    measure: figure?.measure ?? null,
     rowName: rowNameFrom(citation, figure),
     valueText: valueTextFrom(citation, figure),
     sha256: citation.sha256 ?? null,

@@ -1,0 +1,14 @@
+{
+  "claims": 17,
+  "completed": 17,
+  "errors": 0,
+  "structural_citation_passes": 17,
+  "deterministic_flagged_claims": 3,
+  "model_flagged_claims": 9,
+  "model_supported_claims": 8,
+  "not_established_claims": 9,
+  "false_approvals": null,
+  "false_flags": null,
+  "net_human_reviewer_seconds": null,
+  "decision": "Keep offline; human labels and reviewer-time comparison required before expansion."
+}

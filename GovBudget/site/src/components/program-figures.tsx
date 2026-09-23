@@ -295,7 +295,7 @@ export function Fy2026AbsentNote({
             with a citation. The headline is now scoped to the workbook —
             the one record that IS blank — and each further claim renders
             only where it holds. */}
-        <strong className="text-foreground">
+        <strong className="text-foreground font-medium">
           No FY2026 R-1/P-1 request line for this program element.
         </strong>{" "}
         The FY2026 President&apos;s Budget request workbook carries no FY2026
@@ -400,7 +400,7 @@ export function DecadeOnlyNote({
         data-decade-only=""
         className="text-xs leading-relaxed text-muted-foreground"
       >
-        <strong className="text-foreground">
+        <strong className="text-foreground font-medium">
           No FY2026 R-1/P-1 workbook line for this program element.
         </strong>{" "}
         The FY2026 President&apos;s Budget request workbooks carry no row for
@@ -465,7 +465,7 @@ function SummaryCardCell({
       <div className="text-xs text-muted-foreground mb-1">
         <CardLabel card={card} />
       </div>
-      <div className="text-xl font-bold">
+      <div className="t-figure t-figure--4">
         {card.value !== null && card.units ? (
           <span
             className={
@@ -494,7 +494,8 @@ function SummaryCardCell({
             />
             {card.key === "change" && card.pct != null && (
               <span
-                className="ml-1 text-sm font-normal text-muted-foreground"
+                data-figure-suffix
+                className="ml-1"
                 aria-hidden="true"
               >
                 ({card.pct > 0 ? "+" : ""}
@@ -553,7 +554,7 @@ export function ProgramFigures({
     <div className="mb-8">
       <h2
         id="figures-heading"
-        className="text-lg font-semibold mb-4 text-foreground"
+        className="mb-4 text-foreground"
       >
         Budget Figures
       </h2>

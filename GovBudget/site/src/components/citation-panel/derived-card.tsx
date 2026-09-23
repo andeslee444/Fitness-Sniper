@@ -56,10 +56,10 @@ export function DerivedCard({ citation, factId }: DerivedCardProps) {
     <div className="space-y-3" data-testid="derived-card">
       {/* Recorded value — prominent */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-0.5">
+        <span className="t-label block mb-0.5">
           Recorded value
         </span>
-        <span className="text-xl font-semibold tabular-nums">
+        <span className="t-figure t-figure--4">
           {formatRecordedValue(citation.recorded_value)}
         </span>
         {citation.units && (
@@ -82,7 +82,7 @@ export function DerivedCard({ citation, factId }: DerivedCardProps) {
 
       {/* Formula */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+        <span className="t-label block mb-1">
           Formula
         </span>
         <p className="rounded bg-muted px-2.5 py-2 font-mono text-xs text-foreground break-words leading-relaxed">
@@ -97,7 +97,7 @@ export function DerivedCard({ citation, factId }: DerivedCardProps) {
       {/* Fact-id input chips — open their own citation in the panel */}
       {factInputs.length > 0 && (
         <div>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+          <span className="t-label block mb-1">
             Inputs ({factInputs.length})
           </span>
           <div className="flex flex-wrap gap-1">
@@ -119,7 +119,7 @@ export function DerivedCard({ citation, factId }: DerivedCardProps) {
                   key={inp.value}
                   data-testid="derived-input-chip-static"
                   title="Input citation not loaded on this page — open the source page to inspect it"
-                  className="inline-block rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground"
+                  className="t-id inline-block rounded bg-muted px-2 py-0.5"
                 >
                   #{inp.value.slice(-8)}
                 </span>
@@ -132,7 +132,7 @@ export function DerivedCard({ citation, factId }: DerivedCardProps) {
       {/* URL inputs — external links */}
       {urlInputs.length > 0 && (
         <div>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+          <span className="t-label block mb-1">
             Source inputs
           </span>
           <ul className="space-y-1">

@@ -97,7 +97,7 @@ export function FamilyFundingLine({
           the summed line is self-describing (not a bare-id cross-reference). */}
       {chain.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold uppercase tracking-wider">
+          <span className="t-label">
             Funding chain:
           </span>{" "}
           {chain.map((pe, i) => (
@@ -147,7 +147,7 @@ export function FamilyFundingLine({
                   <span key={p.pe} className="flex items-baseline gap-1">
                     <PeCode
                       pe={p.pe}
-                      className="font-mono text-xs text-muted-foreground"
+                      className="t-id"
                     />
                     <Cite
                       value={p.v}

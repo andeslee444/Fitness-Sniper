@@ -195,7 +195,7 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
       {/* (1) Amount — recorded value first, unit second, equivalence last. */}
       {amount != null && (
         <div>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-0.5">
+          <span className="t-label block mb-0.5">
             Amount
           </span>
           {/* One line, one reading: recorded numerals, the unit they are in,
@@ -204,7 +204,7 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
           <p data-testid="workbook-amount">
             <span
               data-testid="workbook-amount-value"
-              className="text-xl font-semibold tabular-nums"
+              className="t-figure t-figure--4"
             >
               {fmtCell(amount)}
             </span>
@@ -242,7 +242,7 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
       {/* (7) Document identity — which book, which edition. */}
       {docTitle && (
         <div data-testid="workbook-document" data-doc-title={docTitle}>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-0.5">
+          <span className="t-label block mb-0.5">
             Document
           </span>
           <span className="text-sm font-medium">{docTitle}</span>
@@ -251,7 +251,7 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
 
       {/* (4) Locator — sheet + unambiguous cell refs. */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+        <span className="t-label block mb-1">
           {cellChips.length === 1 ? "Sheet · cell" : "Sheet · cells"}
         </span>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
@@ -302,7 +302,7 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
           className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
           aria-hidden="true"
         />
-        <span>Download workbook (.xlsx)</span>
+        <span>Download workbook (.xlsx) · saved copy</span>
       </a>
     </div>
   );
@@ -341,7 +341,7 @@ function ArithmeticLine({ preview }: { preview: WorkbookPreview }) {
   const rows = citedRows(preview);
   return (
     <div>
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+      <span className="t-label block mb-1">
         How the cells combine
       </span>
       {/* Inline flow (not flex): the operators are real text nodes, so the
@@ -380,13 +380,13 @@ function ArithmeticLine({ preview }: { preview: WorkbookPreview }) {
               {op && <span className="text-muted-foreground">{op}</span>}
               <span className="whitespace-nowrap">
                 <CellRef cell={`${preview.col}${r.r}`} />{" "}
-                <span className="font-mono tabular-nums">{shown}</span>
+                <span className="t-figure t-figure--2">{shown}</span>
               </span>
             </React.Fragment>
           );
         })}
         <span className="text-muted-foreground">{" = "}</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="t-figure t-figure--2">
           {fmtCell(preview.total)}
         </span>
       </p>
@@ -434,7 +434,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
 
   return (
     <div>
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+      <span className="t-label block mb-1">
         In the workbook
       </span>
       {/* MOBILE LEGEND (fix round, judge 3 MAJOR).
@@ -533,7 +533,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                 </th>
                 <td role="cell" className="col-span-2 row-start-2 sm:table-cell px-0 sm:px-2 sm:py-1.5">
                   {r.code && (
-                    <span className="cell-ref mr-1.5 rounded bg-muted px-1 py-0.5 text-[11px]">
+                    <span className="cell-ref mr-1.5 rounded bg-muted px-1 py-0.5 text-xs">
                       {r.code}
                     </span>
                   )}
@@ -541,7 +541,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                     {rowLabel(r)}
                   </span>
                   {r.flag && r.flag.toLowerCase() !== "add" && (
-                    <span className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[11px]">
+                    <span className="ml-1.5 rounded bg-muted px-1 py-0.5 text-xs">
                       {r.flag}
                     </span>
                   )}
@@ -549,7 +549,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                 <td
                   role="cell"
                   data-cell-value={r.v == null ? "" : String(r.v)}
-                  className={`col-start-2 row-start-1 sm:table-cell px-0 sm:px-2 sm:py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
+                  className={`col-start-2 row-start-1 sm:table-cell px-0 sm:px-2 sm:py-1.5 text-right t-figure t-figure--2 whitespace-nowrap ${
                     r.cited ? "font-semibold text-foreground" : ""
                   }`}
                 >

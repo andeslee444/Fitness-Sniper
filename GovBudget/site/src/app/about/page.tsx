@@ -1,3 +1,4 @@
+import { PageIntro } from "@/components/page-intro";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -23,16 +24,16 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="spine py-10">
+    <div className="spine py-10 reference-page">
       {/* Round-3 judging: the other of the two pages that had no breadcrumb. */}
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
-      <h1 className="text-3xl font-bold mb-8">About {SITE_NAME}</h1>
+      <PageIntro eyebrow="A public-interest research project" title="About Fiscal Receipts" description="Understand defense spending. Verify the evidence. Reuse the data." actions={<><a href="mailto:andes.han.lee@gmail.com">Contact &amp; corrections ↗</a><a href="/methodology/">How sources are verified →</a></>}/>
 
       <div className="doc-layout">
         <div data-doc-prose>
           {/* Mission */}
           <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">Mission</h2>
+            <h2 className="mb-3">Mission</h2>
             <p className="text-muted-foreground leading-7">
               {SITE_NAME} makes federal defense spending legible: every budget
               figure, contract award, and lobbying filing is linked back to its
@@ -49,7 +50,7 @@ export default function AboutPage() {
               beyond what the owner supplied (no title, no organisation, no repo
               link — none was given) is added. */}
           <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">Publisher</h2>
+            <h2 className="mb-3">Publisher</h2>
             <p className="text-muted-foreground leading-7">
               {SITE_NAME} is written and maintained by Andes Lee. It is an
               independent, unfunded personal project — no institutional
@@ -86,7 +87,7 @@ export default function AboutPage() {
               limit of its own claims, which is the strongest thing on the page.
               It read as a warning box; it now reads as a scope statement. */}
           <ScopeNote className="mb-10" label={null}>
-            <h2 className="text-lg font-semibold mb-2 text-foreground">
+            <h2 className="mb-2 text-foreground">
               Correlation is not causation
             </h2>
             <p className="text-sm leading-7">
@@ -122,7 +123,7 @@ export default function AboutPage() {
 
           {/* Corrections policy */}
           <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">Corrections Policy</h2>
+            <h2 className="mb-3">Corrections Policy</h2>
             <p className="text-muted-foreground leading-7">
               We follow a <strong>supersede-not-delete</strong> policy. If a
               figure is found to be wrong:
@@ -156,7 +157,7 @@ export default function AboutPage() {
 
           {/* Data provenance */}
           <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">Data Provenance</h2>
+            <h2 className="mb-3">Data Provenance</h2>
             <p className="text-muted-foreground leading-7">
               All data originates from official government sources:
               comptroller.defense.gov, USAspending.gov, lda.senate.gov,
@@ -180,7 +181,7 @@ export default function AboutPage() {
 
           {/* Open data */}
           <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">Open Data</h2>
+            <h2 className="mb-3">Open Data</h2>
             <p className="text-muted-foreground leading-7">
               All underlying datasets are available as Parquet exports with full
               provenance metadata — see the{" "}

@@ -72,7 +72,7 @@ const POINT_R = 2.5;
 // its slot, so the step is walked back from it). Sizes are viewBox units: the
 // svg is 340 wide and renders up to 720px, so 9 units is ~9px at the narrowest
 // phone width and ~19px on a desktop card.
-const AXIS_FONT = 9;
+const AXIS_FONT = 10;
 /** Minimum x-distance between two "FYnn" labels, in viewBox units. */
 const AXIS_LABEL_PITCH = 34;
 
@@ -436,7 +436,7 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
         <table
           data-testid="decade-grid"
           data-chart-table=""
-          className="w-full border-collapse text-[11px]"
+          className="w-full border-collapse text-xs"
         >
           <caption className="sr-only">
             Decade series values by fiscal year and President&apos;s Budget
@@ -479,7 +479,7 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
                         <td
                           key={fy}
                           data-decade-cell={`${kind}-${fy}`}
-                          className="px-1.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+                          className="t-figure t-figure--2 px-1.5 py-1 text-right whitespace-nowrap"
                         >
                           <Cite
                             value={p.v}
@@ -513,7 +513,7 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
                         key={fy}
                         data-decade-cell={`${kind}-${fy}`}
                         title={`Not in the PB${EDITION_FOR_FY[kind](fy)} edition`}
-                        className="px-1.5 py-1 text-right font-mono tabular-nums text-muted-foreground"
+                        className="t-figure t-figure--2 px-1.5 py-1 text-right text-muted-foreground"
                       >
                         –
                       </td>
@@ -606,11 +606,11 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
               {" "}
               <span
                 data-derivation-exact=""
-                className="whitespace-nowrap font-mono tabular-nums"
+                className="t-figure t-figure--2 whitespace-nowrap"
               >
                 {exact.a} &minus; {exact.b} = {exact.delta}
               </span>{" "}
-              <span className="italic">{exact.unitLabel}</span> — the compact
+              <span className="text-muted-foreground">{exact.unitLabel}</span> — the compact
               figures above are rounded for reading.
             </>
           )}

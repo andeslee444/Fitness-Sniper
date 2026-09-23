@@ -1,0 +1,62 @@
+{
+  "model": "jev-1.13.0",
+  "completed": 71,
+  "errors": 0,
+  "groups": {
+    "lineage_missing_control": {
+      "completed": 6,
+      "correct": 6,
+      "high_confidence_count": 3,
+      "high_confidence_errors": 0,
+      "false_supports": 0,
+      "abstentions": 6
+    },
+    "lineage_reversed_control": {
+      "completed": 12,
+      "correct": 11,
+      "high_confidence_count": 8,
+      "high_confidence_errors": 0,
+      "false_supports": 1,
+      "abstentions": 0
+    },
+    "lineage_seed": {
+      "completed": 53,
+      "correct": 51,
+      "high_confidence_count": 37,
+      "high_confidence_errors": 0,
+      "false_supports": 1,
+      "abstentions": 0
+    }
+  },
+  "median_seconds": 0.42932966677471995,
+  "p95_seconds": 0.6103137917816639,
+  "input_tokens": 73416,
+  "estimated_inference_usd": 0.0030834720000000003,
+  "price_source": "https://docs.typesafe.ai/models",
+  "price_usd_per_million_input_tokens": 0.042,
+  "confidence_threshold_descriptive_only": 0.9,
+  "failures": [
+    {
+      "id": "lineage_6a416dc14d577677_40",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.4
+    },
+    {
+      "id": "lineage_4ea1446b5fdfe05b_52",
+      "group": "lineage_seed",
+      "expected": "not_supported",
+      "actual": "supported",
+      "confidence": 0.48
+    },
+    {
+      "id": "lineage_reversed_10",
+      "group": "lineage_reversed_control",
+      "expected": "not_supported",
+      "actual": "supported",
+      "confidence": 0.31
+    }
+  ],
+  "wall_seconds": 8.323681749869138
+}

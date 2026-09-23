@@ -1,0 +1,18 @@
+.receipt { margin-bottom:1.5rem;border:1px solid var(--border);border-top:3px solid var(--cite-decoration);background:var(--card); }
+.receiptHeader { display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.75rem;padding:1rem 1.5rem;border-bottom:1px solid var(--border); }
+.sourceKind { color:var(--foreground);font:var(--type-id);font-weight:600;line-height:1.5; }
+.receiptBody { display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); }
+.lead { padding:1.75rem 1.5rem;background:var(--muted); }
+.recordLabel { color:var(--muted-foreground);margin-bottom:1rem; }
+.semantic { font:var(--type-ui);line-height:1.6;color:var(--foreground);margin-bottom:1rem; }
+.value { overflow-wrap:anywhere; }
+.sourceActions { display:flex;flex-wrap:wrap;align-items:center;gap:1rem;margin-top:1.75rem;font:var(--type-ui); }
+.openSource { display:block;width:100%;padding:.85rem 1rem;border:1px solid var(--primary);border-radius:.25rem;background:var(--primary);color:var(--primary-foreground);font-weight:600;cursor:pointer; }
+.openSource:hover { opacity:.9; }.openSource:focus-visible,.sourceLink:focus-visible { outline:2px solid var(--cite-decoration);outline-offset:3px; }
+.sourceLink { display:flex;align-items:center;gap:.4rem;color:var(--foreground);text-decoration:underline;text-underline-offset:.25em;text-decoration-color:var(--cite-decoration); }
+.metadata { padding:1.25rem 1.5rem;font:var(--type-ui); }
+.metadataRow { display:grid;grid-template-columns:6.3rem minmax(0,1fr);gap:1rem;padding:.65rem 0;border-bottom:1px solid var(--border);line-height:1.55; }
+.metadataRow:last-child { border-bottom:0; }.metadataRow dt { color:var(--muted-foreground); }.metadataRow dd { min-width:0;overflow-wrap:anywhere; }
+.explainer { border-top:1px solid var(--border);padding-top:1.5rem;margin-top:2rem; }.explainer h2 { margin-bottom:.65rem; }.explainer p + p { margin-top:.75rem; }
+@media(max-width:767px) { .receiptBody { grid-template-columns:minmax(0,1fr); }.receiptHeader,.lead,.metadata { padding:1rem; }.sourceActions { margin-top:1.2rem; }.metadataRow { grid-template-columns:5.3rem minmax(0,1fr);gap:.75rem; } }
+@media print { .receiptBody { grid-template-columns:minmax(0,1fr); }.sourceActions { display:none; } }

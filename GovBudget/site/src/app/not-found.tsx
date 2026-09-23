@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageIntro } from "@/components/page-intro";
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/site";
 
@@ -9,14 +10,9 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <div className="spine py-20 text-center">
-      <h1 className="text-6xl font-bold text-muted-foreground/40 mb-4">404</h1>
-      <h2 className="text-2xl font-bold mb-3">Page not found</h2>
-      <p className="text-muted-foreground mb-8">
-        The page you were looking for could not be found. It may have been
-        moved or the URL may be incorrect.
-      </p>
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+    <div className="spine py-12">
+      <PageIntro eyebrow="404 / A break in the trail" title="Let’s find the right page." description="This address does not resolve to a page. Search by program name, PE/BLI, company, or agency to pick up the investigation."/>
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           data-search-trigger
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"

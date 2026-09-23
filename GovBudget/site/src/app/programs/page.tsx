@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import {
   getProgramDecadeCells,
   getPrograms,
@@ -7,7 +8,7 @@ import {
   getUnpagedOrgs,
 } from "@/lib/data";
 import { agencyDisplayName } from "@/lib/agency-names";
-import { formatAmount, formatCount } from "@/lib/format";
+import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
@@ -82,8 +83,17 @@ export default function ProgramsPage() {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Programs" }]}
       />
-      <div className="page-header mb-6">
-        <h1 className="text-3xl font-bold mb-2">Program Elements</h1>
+      <PageIntro eyebrow="The program index" title="Program Elements" description="Find the program. Understand its purpose. Inspect the budget behind it." actions={<><Link href="/explore/">Explore the visual field guide →</Link><Link href="/years/">Compare across fiscal years →</Link></>}>
+        <p className="text-sm text-muted-foreground">{formatCount(programs.length)} program elements in the FY2026 index. Search by title or PE/BLI; underlined figures open their exact source.</p>
+      </PageIntro>
+      <div className="mb-5 text-sm text-muted-foreground">
+        <p><strong className="text-foreground font-medium">This index covers {coverage.coverage_pct}% of the FY2026 procurement and RDT&amp;E request.</strong> Other appropriation titles are outside this corpus. <a className="underline underline-offset-4" href="#index-coverage">Coverage and exclusions ↓</a></p>
+      </div>
+      <section className="research-surface" aria-label="Search and compare program elements"><ProgramsTable programs={sorted} orgs={orgs} /></section>
+      <details id="index-coverage" className="research-notes scroll-mt-20">
+        <summary>Coverage, exclusions, and organization details</summary>
+      <div className="space-y-4">
+
         {/* §P1-5: the table's own scope, stated as a scope — the corpus
             statement below carries the canonical counts, so this sentence
             no longer opens with a bare number that reads as "all of them". */}
@@ -125,7 +135,7 @@ export default function ProgramsPage() {
             className="text-sm leading-6"
             data-programs-coverage-pct={coverage.coverage_pct}
           >
-            <strong className="text-foreground">
+            <strong className="text-foreground font-medium">
               <Cite
                 value={coverage.index_total_thousands}
                 units="USD thousands"
@@ -247,7 +257,7 @@ export default function ProgramsPage() {
                 not. Calling all seventeen absent lines would be a true list
                 under a false label, which is the defect this review is
                 about. */}
-            <h2 className="text-sm font-semibold text-foreground">
+            <h2 className="text-foreground">
               Program pages filed under an organization with no agency page
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -283,7 +293,7 @@ export default function ProgramsPage() {
           </div>
         )}
       </div>
-      <ProgramsTable programs={sorted} orgs={orgs} />
+      </details>
     </div>
     </CitationPanelProvider>
   );

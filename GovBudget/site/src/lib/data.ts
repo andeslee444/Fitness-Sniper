@@ -281,8 +281,38 @@ export function getSiteMeta(): SiteMeta {
   // reaches isIngestedServiceOrg first hits a data loader that calls
   // getSiteMeta, so this runs before any rollup-note wording is decided.
   setIngestedServiceOrgs(meta.ingested_service_orgs);
+  // The two build-check counts /methodology/ prints are properties of THIS
+  // checkout's artifacts — the gate registry in scripts/verify.mjs and the
+  // dbt manifest — not of whichever checkout last ran export-site. Gate 24
+  // (datatruth) recomputes both from those artifacts; with a shared data
+  // lake, another session's export can (and did, twice on 2026-09-12) write
+  // its own counts into site_meta.json. So the counts are re-derived here at
+  // build time by the exporter's own rule (export_site.py build_checks).
+  meta.build_checks = { ...(meta.build_checks ?? {}), ...buildCheckCounts(meta.build_checks) };
   _siteMeta = meta;
   return _siteMeta;
+}
+
+function buildCheckCounts(fallback: SiteMeta["build_checks"]): Partial<NonNullable<SiteMeta["build_checks"]>> {
+  const out: Partial<NonNullable<SiteMeta["build_checks"]>> = {};
+  try {
+    const verify = readFileSync(join(process.cwd(), "scripts", "verify.mjs"), "utf8");
+    const n = (verify.match(/gateResults\.push\(\{\s*n:\s*\d+/g) ?? []).length;
+    if (n) out.npm_gates = n;
+  } catch {
+    if (fallback?.npm_gates) out.npm_gates = fallback.npm_gates;
+  }
+  try {
+    const manifest = join(process.cwd(), "..", "dbt", "target", "manifest.json");
+    if (existsSync(manifest)) {
+      const nodes = JSON.parse(readFileSync(manifest, "utf8")).nodes ?? {};
+      const n = Object.values(nodes as Record<string, { resource_type?: string }>).filter((x) => x.resource_type === "test").length;
+      if (n) out.dbt_assertions = n;
+    }
+  } catch {
+    if (fallback?.dbt_assertions) out.dbt_assertions = fallback.dbt_assertions;
+  }
+  return out;
 }
 
 // ── datasets.json — Explorer dataset manifest (PM Sprint 2, §P1-5) ───────────
@@ -1812,6 +1842,12 @@ export interface JbookNarrativeCitation
       | "resolution"
     > {
   kind: "jbook_narrative";
+  /**
+   * Optional page-local display enrichment copied verbatim from the matching
+   * exported ProgramNarrative. Never an authored summary, and never added to
+   * the shared citation cache: the document identity below remains unchanged.
+   */
+  source_passage?: { title: string; body: string };
   // Unlike other non-document kinds, narratives DO carry the source
   // document's sha and their in-document XML locator.
   sha256: string;

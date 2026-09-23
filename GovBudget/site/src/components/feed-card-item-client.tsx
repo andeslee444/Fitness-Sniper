@@ -251,7 +251,7 @@ export function FeedCardItemClient({
         )}
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="t-id">
               {card.pe_bli}
             </span>
             {card.program_url && hasProgramPage && (
@@ -265,7 +265,7 @@ export function FeedCardItemClient({
           </div>
         )}
         {card.family_key && !card.pe_bli && (
-          <p className="mt-1 text-xs font-mono">
+          <p className="mt-1 t-id">
             {companySlug ? (
               <Link
                 href={`/company/${companySlug}/`}
@@ -286,7 +286,7 @@ export function FeedCardItemClient({
         {card.figure_value !== null && (
           <span
             data-primary-value="feed-figure"
-            className="text-sm font-mono font-semibold"
+            className="t-figure t-figure--3"
           >
             {isConcentration || card.figure_units === "hhi" ? (
               <Cite
@@ -336,7 +336,7 @@ export function FeedCardItemClient({
         <div className="sm:mt-1">
           <Link
             href={card.why_url}
-            className="text-[13px] text-foreground/70 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+            className="text-xs text-foreground/70 underline decoration-dotted hover:text-foreground hover:decoration-solid"
             title="Why am I seeing this?"
           >
             why flagged?

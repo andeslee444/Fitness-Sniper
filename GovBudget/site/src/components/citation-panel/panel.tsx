@@ -23,8 +23,8 @@
  *     (they have no data-fact-id — cite.tsx only wires clicks for state A)
  *
  * Panel layout:
- *   - Right-side sheet (full height, fixed right, max-w-md, scrollable)
- *   - Header: "Citation" title + kind badge + close button
+ *   - Wide desktop receipt reader; full-width mobile sheet, one scroll area
+ *   - Sticky header: "Receipt" title + kind badge + close button
  *   - Body: dispatches to PdfView / WorkbookCard / LdaCard
  *   - Footer: retrieved_at, sha256 8-char prefix (mono), official-source link
  *     (jbook: official_url already carries #page=N — render as-is), and the
@@ -37,7 +37,7 @@
  */
 
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { X, ExternalLink, Copy, Check, ArrowLeft, AlertCircle } from "lucide-react";
+import { X, Copy, Check, ArrowLeft, AlertCircle } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { Citation, CitationsMap } from "@/lib/data";
 import {
@@ -61,8 +61,10 @@ import {
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { SITE_URL } from "@/lib/site";
+import { trackReaderEvent } from "@/lib/reader-events";
 import { FactAnchor } from "@/components/fact-anchor";
 import { CopyButton } from "@/components/copy-button";
+import { SourceDocumentLinks } from "@/components/source-document-links";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
 import {
   AssetConfigProvider,
@@ -76,6 +78,7 @@ import { UsaspendingCard } from "./usaspending-card";
 import { StateCard } from "./state-card";
 import { JbookNarrativeCard } from "./jbook-narrative-card";
 import { AnnouncementCard, type AnnouncementBody } from "./announcement-card";
+import styles from "./receipt-reader.module.css";
 
 // ── CitationPanelProvider ─────────────────────────────────────────────────────
 
@@ -135,6 +138,9 @@ export function CitationPanelProvider({
   const dynamicRef = useRef<CitationsMap>({});
   // Monotonic token so a stale shard resolution can't clobber a newer open.
   const openEpochRef = useRef(0);
+  // This controlled Dialog has many outside openers and no Dialog.Trigger.
+  // Keep the original control through input drilldowns and Back navigation.
+  const openerRef = useRef<HTMLElement | null>(null);
 
   const lookup = useCallback(
     (factId: string): Citation | undefined =>
@@ -155,6 +161,16 @@ export function CitationPanelProvider({
 
   const openPanel = useCallback(
     (factId: string, figure?: FootnoteFigure) => {
+      trackReaderEvent("receipt_opened", { program: figure?.entity ?? program?.code ?? lookup(factId)?.pe_bli ?? undefined, factId, fiscalYear: typeof figure?.fy === "number" ? figure.fy : undefined, measure: figure?.measure ?? undefined, surface: "citation-panel" });
+      if (!open) {
+        const focused = document.activeElement;
+        openerRef.current =
+          focused instanceof HTMLElement &&
+          focused !== document.body &&
+          !focused.closest("[data-citation-panel]")
+            ? focused
+            : null;
+      }
       // Drill-down: opening a NEW fact while the panel is already showing one
       // pushes the current fact (with its figure context) onto the back stack.
       setBackStack((stack) => {
@@ -189,7 +205,7 @@ export function CitationPanelProvider({
         }
       });
     },
-    [open, activeFactId, activeFigure, lookup, showCitation],
+    [open, activeFactId, activeFigure, lookup, showCitation, program],
   );
 
   // Derived-card input chips ask this before rendering a clickable chip —
@@ -221,6 +237,14 @@ export function CitationPanelProvider({
     }
   }, []);
 
+  const restoreOpenerFocus = useCallback((event: Event) => {
+    // Radix otherwise tries its absent Trigger and leaves focus on BODY.
+    event.preventDefault();
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+  }, []);
+
   const contextValue = React.useMemo(
     () => ({ openPanel, hasCitation }),
     [openPanel, hasCitation],
@@ -243,6 +267,7 @@ export function CitationPanelProvider({
         <CitationPanelDialog
           open={open}
           onOpenChange={handleOpenChange}
+          onCloseAutoFocus={restoreOpenerFocus}
           citation={activeCitation}
           factId={activeFactId}
           figure={activeFigure}
@@ -250,6 +275,7 @@ export function CitationPanelProvider({
           bodyState={bodyState}
           canGoBack={backStack.length > 0}
           onBack={goBack}
+          lookupCitation={lookup}
         />
       </AssetConfigProvider>
     </CitationPanelContext.Provider>
@@ -304,6 +330,7 @@ function AssetPreconnect() {
 interface CitationPanelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus: (event: Event) => void;
   citation: Citation | null;
   factId: string | null;
   figure: FootnoteFigure | null;
@@ -311,6 +338,7 @@ interface CitationPanelDialogProps {
   bodyState: "ready" | "loading" | "error";
   canGoBack: boolean;
   onBack: () => void;
+  lookupCitation: (factId: string) => Citation | undefined;
 }
 
 function kindLabel(citation: Citation): string {
@@ -361,6 +389,7 @@ function kindBadgeClass(citation: Citation): string {
 function CitationPanelDialog({
   open,
   onOpenChange,
+  onCloseAutoFocus,
   citation,
   factId,
   figure,
@@ -368,6 +397,7 @@ function CitationPanelDialog({
   bodyState,
   canGoBack,
   onBack,
+  lookupCitation,
 }: CitationPanelDialogProps) {
   const shortId = factId ? factId.slice(0, 8) : null;
 
@@ -380,7 +410,7 @@ function CitationPanelDialog({
             Phase 5C Task 11 — replaced inert tw-animate classes). */}
         <DialogPrimitive.Overlay
           data-citation-panel
-          className="citation-panel-overlay fixed inset-0 z-50 bg-black/30"
+          className={`citation-panel-overlay fixed inset-0 z-50 ${styles.overlay}`}
         />
 
         {/* Panel — right-side sheet. citation-panel-sheet: slide-in/out
@@ -390,8 +420,9 @@ function CitationPanelDialog({
         <DialogPrimitive.Content
           data-testid="citation-panel"
           data-citation-panel
-          className="citation-panel-sheet fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-background shadow-xl outline-none"
+          className={`citation-panel-sheet ${styles.sheet}`}
           aria-label="Citation details"
+          onCloseAutoFocus={onCloseAutoFocus}
         >
           {/* Accessible title (visually hidden if we use our own heading) */}
           <DialogPrimitive.Title className="sr-only">
@@ -402,8 +433,10 @@ function CitationPanelDialog({
           </DialogPrimitive.Description>
 
           {/* ── Header ── */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className={styles.header}>
+            <div className={styles.headingGroup}>
+              <p className={`t-label ${styles.eyebrow}`}>Fiscal Receipts · Source record</p>
+              <div className={styles.headingRow}>
               {/* Back — drill-down navigation (derived-input chips /
                   breakdown-table row cites push onto the back stack). */}
               {canGoBack && (
@@ -412,13 +445,13 @@ function CitationPanelDialog({
                   data-testid="panel-back"
                   onClick={onBack}
                   aria-label="Back to previous citation"
-                  className="flex items-center gap-1 rounded-sm p-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className={styles.back}
                 >
                   <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   Back
                 </button>
               )}
-              <h2 className="text-sm font-semibold">Citation</h2>
+              <h2>Receipt</h2>
               {citation && (
                 <span
                   className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${kindBadgeClass(citation)}`}
@@ -426,9 +459,11 @@ function CitationPanelDialog({
                   {kindLabel(citation)}
                 </span>
               )}
+              </div>
+              {program && <p className={styles.context}>{program.name} <code>({program.code})</code></p>}
             </div>
             <DialogPrimitive.Close
-              className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className={styles.close}
               aria-label="Close citation panel"
             >
               <X className="h-4 w-4" />
@@ -436,13 +471,9 @@ function CitationPanelDialog({
           </div>
 
           {/* ── Body ── */}
-          {/* min-h-0 (not flex-1): the body only grows to its content, so the
-              footer metadata block sits directly below it instead of being
-              pinned to the bottom of the full-height sheet — at tall
-              viewports flex-1 marooned the footer below a large blank gap
-              (visual-judge nit, 2 judges). When content overflows, min-h-0
-              lets the body shrink and scroll exactly as before. */}
-          <div className="min-h-0 overflow-y-auto px-4 py-4">
+          {/* One scrolling sheet keeps the source and expandable footnote
+              reachable even when a phone's viewport is short. */}
+          <div className={styles.body}>
             {bodyState === "loading" ? (
               /* Shard fetch in flight — explicit loading body (skeleton +
                  label), mirroring the PDF loading pattern. */
@@ -474,13 +505,17 @@ function CitationPanelDialog({
                   {"couldn't load this citation — check your connection and try again"}
                 </p>
                 {factId && (
-                  <p className="max-w-full truncate font-mono text-xs text-muted-foreground">
+                  <p className="t-id max-w-full truncate">
                     fact #{factId.slice(0, 8)}
                   </p>
                 )}
               </div>
             ) : citation ? (
-              <CitationBody citation={citation} factId={factId} figure={figure} />
+              <>
+                <SourceDocumentLinks citation={citation} citations={lookupCitation} factId={factId ?? undefined} resolveInputs
+                  program={figure?.entity ?? program?.code ?? citation.pe_bli ?? undefined} surface="citation-panel" />
+                <CitationBody citation={citation} factId={factId} figure={figure} />
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 No citation loaded.
@@ -490,7 +525,7 @@ function CitationPanelDialog({
 
           {/* ── Footer ── */}
           {citation && (
-            <div className="shrink-0 border-t border-border px-4 py-3 space-y-1.5">
+            <div className={styles.footer}>
               {/* retrieved_at */}
               {citation.retrieved_at && (
                 <p className="text-xs text-muted-foreground">
@@ -512,7 +547,7 @@ function CitationPanelDialog({
                   SHA-256:{" "}
                   <span
                     data-testid="panel-sha-prefix"
-                    className="cell-ref font-mono"
+                    className="cell-ref"
                     title={citation.sha256}
                   >
                     {citation.sha256.slice(0, 8)}…
@@ -528,20 +563,7 @@ function CitationPanelDialog({
               {/* Official source link + copy-as-footnote (Phase 5C Task 9).
                   §P1-9.5: THE single official-source link in the drawer —
                   cards must not render a second copy of it. */}
-              <div className="flex items-center gap-4">
-                {citation.official_url && (
-                  <a
-                    href={citation.official_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="official-source"
-                    className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">Official source</span>
-                    <span className="sr-only">(opens in new tab)</span>
-                  </a>
-                )}
+              <div className={styles.actions}>
                 {factId && (
                   <CopyFootnoteButton
                     citation={citation}
@@ -557,7 +579,7 @@ function CitationPanelDialog({
                   (P0-4.3: the id must be addressable everywhere it shows). */}
               {/* Note: muted-foreground/60 fails WCAG AA contrast; use muted-foreground at full opacity */}
               {shortId && (
-                <p className="text-xs font-mono text-muted-foreground">
+                <p className="t-id">
                   <a
                     href={`/fact/${shortId}`}
                     data-testid="panel-fact-permalink"
@@ -616,7 +638,7 @@ function CitationBody({
   figure: FootnoteFigure | null;
 }) {
   if (isJbookPdf(citation)) {
-    return <PdfView citation={citation} />;
+    return <PdfView citation={citation} showOfficialLink={false} />;
   }
   if (isWorkbook(citation)) {
     // factId keys the §P1-9 cell-preview sidecar (lib/workbook-cells.ts).
@@ -636,7 +658,7 @@ function CitationBody({
     return <StateCard citation={citation} />;
   }
   if (isJbookNarrative(citation)) {
-    return <JbookNarrativeCard citation={citation} />;
+    return <JbookNarrativeCard citation={citation} showOfficialLink={false} />;
   }
   if (isAnnouncement(citation)) {
     const body = parseAnnouncementBody(citation.query_body);
@@ -730,6 +752,7 @@ function CopyFootnoteButton({
     if (timerRef.current) clearTimeout(timerRef.current);
     try {
       await navigator.clipboard.writeText(text);
+      trackReaderEvent("citation_copied", { program: figure?.entity ?? program?.code ?? citation.pe_bli ?? undefined, factId, fiscalYear: typeof figure?.fy === "number" ? figure.fy : undefined, measure: figure?.measure ?? undefined, surface: "citation-panel", format: style });
       setCopyState("copied");
       timerRef.current = setTimeout(() => setCopyState("idle"), 2000);
     } catch {
@@ -737,7 +760,7 @@ function CopyFootnoteButton({
       setCopyState("failed");
       timerRef.current = setTimeout(() => setCopyState("idle"), 2000);
     }
-  }, [footnoteText]);
+  }, [footnoteText, program, factId, figure, style, citation]);
 
   // Icon swaps outside the live region; label text swaps inside it.
   const icon =
@@ -757,12 +780,12 @@ function CopyFootnoteButton({
         : "Copy as footnote";
 
   return (
-    <span className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5">
+    <div className={styles.footnote}>
       <button
         type="button"
         data-testid="copy-footnote"
         onClick={handleCopy}
-        className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className={styles.copy}
         aria-label="Copy this citation as a formatted footnote"
       >
         {icon}
@@ -775,7 +798,7 @@ function CopyFootnoteButton({
         value={style}
         onChange={(e) => setStyle(e.target.value as FootnoteStyle)}
         aria-label="Footnote style"
-        className="h-5 shrink-0 cursor-pointer rounded border border-border bg-background px-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className={styles.select}
       >
         {FOOTNOTE_STYLES.map((s) => (
           <option key={s.value} value={s.value}>
@@ -793,7 +816,7 @@ function CopyFootnoteButton({
         onClick={() => setPreviewOpen((v) => !v)}
         aria-expanded={previewOpen}
         aria-controls="footnote-preview"
-        className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
+        className={styles.preview}
       >
         {previewOpen ? "Hide preview" : "Preview"}
       </button>
@@ -815,7 +838,7 @@ function CopyFootnoteButton({
           {footnoteText}
         </p>
       )}
-    </span>
+    </div>
   );
 }
 

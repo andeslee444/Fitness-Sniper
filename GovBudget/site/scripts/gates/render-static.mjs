@@ -96,6 +96,15 @@
  *          subtree is a CHART. It must carry a non-empty accessible name
  *          (aria-label / aria-labelledby) AND a non-empty <desc>, and it
  *          must live inside a [data-chart] figure;
+ *        - EXCEPT an svg[role="img"][data-illustration] — a drawn plate
+ *          (the field-guide exhibits, the F-15 planform; 2026-09-11). A
+ *          plate encodes no figures, so a [data-chart] table view for it
+ *          would be a fabrication. It keeps the accessibility half of the
+ *          contract — non-empty name AND non-empty <desc> — and the
+ *          svg-desc currency rule above still applies to that <desc>. It is
+ *          exempt only from the figure/table-view half. Marking a real chart
+ *          [data-illustration] to dodge the table view is the abuse this
+ *          comment exists to make visible in review.
  *        - every [data-chart] must carry a [data-chart-desc] of ≥ 60
  *          characters that is NOT a restatement of the accessible name or of
  *          the figure's own heading (normalised equality / containment), and
@@ -508,6 +517,7 @@ export async function runRenderStaticGate() {
   // ── (ch)/(nk) counters ───────────────────────────────────────────────────
   let chartCount = 0;
   let chartSvgCount = 0;
+  let illustrationSvgCount = 0;
   const chartFailures = [];
   let scopeNoteCount = 0;
   let cautionNoteCount = 0;
@@ -701,6 +711,13 @@ export async function runRenderStaticGate() {
           file: relPath,
           issue: `chart <svg role="img"> ("${norm(name).slice(0, 50)}") carries no non-empty <desc>`,
         });
+      }
+      // A drawn plate carries name + <desc> (checked above) but has no
+      // figures to tabulate — see the header. Only the table-view half is
+      // waived, and only for svgs that declare themselves illustrations.
+      if (svg.getAttribute("data-illustration") != null) {
+        illustrationSvgCount++;
+        continue;
       }
       const fig = ancestor(svg, (n) => n.getAttribute("data-chart") != null);
       if (!fig) {
@@ -1398,16 +1415,17 @@ export async function runRenderStaticGate() {
     if (chartFailures.length > 10) {
       errors.push(`  ... and ${chartFailures.length - 10} more`);
     }
-  } else if (chartSvgCount === 0 || chartCount === 0) {
+  } else if (chartSvgCount - illustrationSvgCount === 0 || chartCount === 0) {
     errors.push(
-      `chart contract leg is VACUOUS: ${chartSvgCount} non-decorative svg[role="img"] and ` +
+      `chart contract leg is VACUOUS: ${chartSvgCount - illustrationSvgCount} non-decorative chart svg[role="img"] and ` +
         `${chartCount} [data-chart] figure(s) site-wide — the program pages render two or ` +
         `three charts each, so zero means the charts (or their markers) stopped rendering.`
     );
   } else {
     notes.push(
-      `chart contract: ${chartCount} [data-chart] figure(s) over ${chartSvgCount} ` +
-        `non-decorative chart svg(s) — every one named, described, and readable as a cited table ✓`
+      `chart contract: ${chartCount} [data-chart] figure(s) over ${chartSvgCount - illustrationSvgCount} ` +
+        `non-decorative chart svg(s) — every one named, described, and readable as a cited table ✓` +
+        (illustrationSvgCount ? `; ${illustrationSvgCount} [data-illustration] plate(s) named + described, table view waived` : "")
     );
   }
 

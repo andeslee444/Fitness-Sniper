@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { ScopeNote } from "@/components/notes";
 import { LineageFlow } from "@/components/lineage/lineage-flow";
+import { PageIntro } from "@/components/page-intro";
 
 /**
  * /lineage/ — every stated identity link in the corpus, drawn (ROADMAP #29(c)).
@@ -76,36 +77,20 @@ export default function LineagePage() {
           items={[{ label: "Home", href: "/" }, { label: "Lineage" }]}
         />
 
-        <h1 className="mb-2 text-3xl font-bold">
-          One funded line, all the names it wore
-        </h1>
-
-        <p className="mb-3 text-base leading-7 text-foreground sm:text-lg">
-          A program element is an accounting identity, and identities get
-          renamed, realigned and folded into each other. When that happens the
-          work carries on and the label does not, so a year-over-year comparison
-          of &ldquo;the same program&rdquo; quietly compares two different
-          things. This page draws every such link the ingested justification
-          books actually <em>state</em> — {c.stated_edges} of them, each cited
-          to the sentence that says it — across the {c.families} families they
-          form and the {c.identities} identities those families contain.
-        </p>
+        <PageIntro eyebrow="Research tools / Trace" title="The names behind the numbers"
+          description={<p>Follow program elements through renames, transfers, and mergers before comparing their budgets. Every stated link opens the sentence that supports it.</p>}
+          actions={<><a href="#identity-map">Explore program families ↓</a><Link href="/years/">Compare funding over time →</Link><Link href="/programs/">Find a program →</Link></>}>
+          <p className="text-sm text-muted-foreground">{c.stated_edges} cited links across {c.families} families and {c.identities} program identities.</p>
 
         {/* The refusal, in the lede rather than in a footnote. */}
-        <ScopeNote className="mb-4" label="What the ribbons are not">
+        <ScopeNote className="mt-4 mb-4" label="Reading the map">
           <p className="text-sm leading-7">
-            In a Sankey, a ribbon&rsquo;s width is an amount. Here it is
-            not, and it must not be read as one:{" "}
             <strong className="font-semibold text-foreground">
-              every ribbon on this page is drawn at exactly the same width,
-              because not one of these {c.stated_edges} sentences states how
-              much money moved.
+              Every ribbon has the same width: the sources state an identity
+              relationship without stating how much money moved.
             </strong>{" "}
-            The books say a line was realigned from another line; they do not
-            say how many dollars went with it. Drawing a width would be
-            inventing the number. The identity boxes are uniform for the same
-            reason — a taller box in a Sankey means more money, and none of
-            these boxes means anything of the kind.
+            Columns are lineage steps, not calendar years. The year on a link
+            identifies the book edition that states it.
           </p>
           <p className="mt-2 text-sm leading-7">
             The one figure that <em>is</em> stated per identity — its FY
@@ -124,7 +109,9 @@ export default function LineagePage() {
           </p>
         </ScopeNote>
 
-        <ScopeNote className="mb-6" label="How to read the columns">
+        <details className="mt-3 border-t border-border pt-3 text-sm">
+          <summary className="cursor-pointer font-medium text-foreground">Overlapping identities, dates, and unresolved references</summary>
+        <ScopeNote className="mt-3" label={null}>
           <p className="text-sm leading-7">
             The columns are <strong>lineage steps</strong>, not calendar years.
             That is a deliberate choice against the obvious one: the identities
@@ -155,15 +142,17 @@ export default function LineagePage() {
             live.
           </p>
         </ScopeNote>
+        </details>
+        </PageIntro>
 
-        <LineageFlow payload={payload} linkablePes={linkablePes} />
+        <div id="identity-map" className="scroll-mt-24"><LineageFlow payload={payload} linkablePes={linkablePes} /></div>
 
         <section className="mt-10 max-w-4xl">
-          <h2 className="mb-2 text-xl font-semibold">
+          <h2 className="mb-2">
             Where these links come from
           </h2>
           <p className="mb-2 text-sm leading-7 text-muted-foreground">
-            Stated links are extracted by pattern from the R-2 and P-40
+            Stated links are read from the R-2 and P-40
             narrative paragraphs of the ingested justification books, across
             every edition the corpus holds, and each one keeps the fact id of
             the narrative it came from — click any ribbon, or the{" "}

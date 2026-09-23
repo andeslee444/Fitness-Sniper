@@ -40,7 +40,7 @@ export function ProgramBudgetLines({ budgetLines, reconKeys }: ProgramBudgetLine
     <section aria-labelledby="budget-lines-heading" className="mb-8">
       <h2
         id="budget-lines-heading"
-        className="text-lg font-semibold mb-4 text-foreground"
+        className="mb-4 text-foreground"
       >
         Budget Line Items
         <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -58,9 +58,9 @@ export function ProgramBudgetLines({ budgetLines, reconKeys }: ProgramBudgetLine
         const rows = budgetLines.filter((bl) => bl.exhibit === exhibit);
         return (
           <div key={exhibit} className="mb-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+            <p className="t-label mb-2">
               Exhibit {exhibit}
-            </h3>
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -88,7 +88,7 @@ export function ProgramBudgetLines({ budgetLines, reconKeys }: ProgramBudgetLine
                       <td className="py-2 pr-3 text-foreground">
                         {bl.account_title}
                       </td>
-                      <td className="py-2 pr-3 text-muted-foreground font-mono text-xs">
+                      <td className="t-id py-2 pr-3">
                         {bl.organization}
                       </td>
                       <td className="py-2 pr-3 text-muted-foreground">

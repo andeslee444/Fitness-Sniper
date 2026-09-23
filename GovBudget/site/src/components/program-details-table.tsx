@@ -116,7 +116,7 @@ export function ProgramDetailsTable({
     <section aria-labelledby="details-heading" className="mb-8">
       <h2
         id="details-heading"
-        className="text-lg font-semibold mb-4 text-foreground"
+        className="mb-4 text-foreground"
       >
         Budget Details
         <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -142,7 +142,7 @@ export function ProgramDetailsTable({
         fiscal-year columns.
       </p>
       <div className="relative">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Budget detail fiscal-year columns">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border">

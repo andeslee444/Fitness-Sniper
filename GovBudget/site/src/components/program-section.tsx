@@ -12,6 +12,7 @@
  */
 
 import type { ReactNode } from "react";
+import styles from "./program-wayfinding.module.css";
 
 export const PROGRAM_SECTIONS = [
   "answer-strip",
@@ -41,7 +42,7 @@ export function ProgramSection({
   className?: string;
 }) {
   return (
-    <section data-section={id} className={className}>
+    <section id={`program-${id}`} data-section={id} tabIndex={-1} className={`${styles.section} ${className ?? ""}`}>
       {children}
     </section>
   );
@@ -66,7 +67,7 @@ export function SectionEmpty({
 }) {
   return (
     <div className={`mb-8 ${className}`}>
-      <h2 className="text-lg font-semibold mb-2 text-foreground">{title}</h2>
+      <h2 className="mb-2 text-foreground">{title}</h2>
       <p data-section-empty className="text-xs text-muted-foreground">
         {children}
       </p>

@@ -112,19 +112,19 @@ export function FilingsTable({ filings }: Props) {
           >
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="t-label px-4 py-3 text-left">
                   Client
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">
+                <th className="t-label px-4 py-3 text-left hidden sm:table-cell">
                   Registrant
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="t-label px-4 py-3 text-left">
                   Year
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                <th className="t-label px-4 py-3 text-left hidden md:table-cell">
                   Type
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="t-label px-4 py-3 text-right">
                   Program mentions
                 </th>
               </tr>
@@ -150,7 +150,7 @@ export function FilingsTable({ filings }: Props) {
                   <td className="px-4 py-3 text-muted-foreground tabular-nums">
                     {f.filing_year ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs hidden md:table-cell">
+                  <td className="t-id px-4 py-3 hidden md:table-cell">
                     {f.filing_type ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">

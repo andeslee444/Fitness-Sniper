@@ -33,7 +33,7 @@ function SortHeader({
   return (
     <th
       className={[
-        "py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide whitespace-nowrap",
+        "t-label py-3 text-left whitespace-nowrap",
         "cursor-pointer select-none hover:text-foreground transition-colors",
         className,
       ]
@@ -64,11 +64,9 @@ interface Props {
 }
 
 export function DistrictTable({ districts }: Props) {
-  // #51: a ranking by "total linkable dollars" is a leaderboard claim, and
-  // this DARPA-only, place-of-performance slice cannot support "which
-  // districts get the most defense money" (it is ~0.15% of all obligations
-  // recorded with a district — see the reconciliation line above). Default
-  // to browsing by district code instead; the money column stays sortable.
+  // This high-confidence, program-linked place-of-performance subset cannot
+  // support a ranking of all defense money. Browse by district code by
+  // default; readers can explicitly sort the linked obligations column.
   const [sortKey, setSortKey] = useState<SortKey>("pop_district");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [stateFilter, setStateFilter] = useState<string>("");
@@ -182,7 +180,7 @@ export function DistrictTable({ districts }: Props) {
         {(
           [
             ["program_count", "Programs"],
-            ["total_linkable_dollars", "DARPA $"],
+            ["total_linkable_dollars", "Linked obligations"],
           ] as [SortKey, string][]
         ).map(([key, label]) => (
           <button
@@ -262,14 +260,13 @@ export function DistrictTable({ districts }: Props) {
                   onSort={handleSort}
                   className="px-3 sm:px-4 text-right hidden sm:table-cell"
                 />
-                {/* #51: was "Linkable dollars" / "Linkable $" — a name that
-                    implied "money linked to this district," full stop. It is
-                    a DARPA-only, place-of-performance slice (~0.15% of all
-                    obligations recorded with a district); the column name
-                    now says so. Attribution basis lives on the detail page. */}
+                {/* Cross-service high-confidence award links, attributed by
+                    place of performance. The old DARPA label no longer
+                    described this expanded subset; the period and coverage
+                    remain disclosed above the table and on district pages. */}
                 <SortHeader
-                  label="DARPA place-of-performance $"
-                  shortLabel="DARPA $"
+                  label="Linked award obligations"
+                  shortLabel="Linked obligations"
                   colKey="total_linkable_dollars"
                   sortKey={sortKey}
                   sortDir={sortDir}
@@ -288,7 +285,7 @@ export function DistrictTable({ districts }: Props) {
                   {/* No nowrap here: long special labels ("DC (undistricted)")
                       may wrap on narrow phones so the dollar column stays
                       fully on-screen; plain codes ("CO-05") never wrap. */}
-                  <td className="px-3 sm:px-4 py-3 font-mono">
+                  <td className="t-figure t-figure--2 px-3 sm:px-4 py-3">
                     <Link
                       href={`/district/${d.pop_district}/`}
                       className="text-primary hover:underline"
@@ -320,7 +317,7 @@ export function DistrictTable({ districts }: Props) {
                       what hiding the State column below `sm` is protecting. */}
                   <td
                     data-primary-value="linkable-dollars"
-                    className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap"
+                    className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 t-figure t-figure--2 text-right whitespace-nowrap"
                   >
                     {d.total_linkable_dollars > 0 ? (
                       // Derived 'district' aggregate citation — the

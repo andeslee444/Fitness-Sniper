@@ -4,6 +4,7 @@ import { getDistrictIndex, getDistrictDetail, collectCitations } from "@/lib/dat
 import { districtDisplayLabel, formatAmountNoCurrency } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
@@ -52,7 +53,7 @@ export default async function DistrictDetailPage({ params }: Props) {
   const { district } = await params;
   const detail = getDistrictDetail(district);
 
-  // #51: the attribution basis + the sitewide DARPA-only ratio, hoisted from
+  // #51: the attribution basis + the sitewide linkage ratio, hoisted from
   // the /district/ index onto the detail page — this is what search lands
   // on, so the context that makes "$209.3M" honest cannot live only one
   // click upstream. Sitewide, not per-district: the ratio describes how
@@ -123,15 +124,10 @@ export default async function DistrictDetailPage({ params }: Props) {
           ]}
         />
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-1">
-            {heading}
-            {isSpecialCode && (
-              <span className="ml-3 align-middle font-mono text-sm font-normal text-muted-foreground">
-                {district}
-              </span>
-            )}
-          </h1>
+        <PageIntro eyebrow="District dossier" title={heading}
+          description="The documented connections between this place, defense programs, and contract awards."
+          actions={<><a href="#linked-programs">Explore linked programs</a><Link href="/district/">Find another district</Link></>}>
+          {isSpecialCode && <p className="t-id mb-3">District code {district}</p>}
           <p className="text-muted-foreground text-sm">
             {detail.program_count} linked program
             {detail.program_count !== 1 ? "s" : ""} via high-confidence
@@ -140,26 +136,77 @@ export default async function DistrictDetailPage({ params }: Props) {
           {/* Scope note — same coverage contract as the district index */}
           <CoverageNote id="districts" className="mt-1" />
 
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="t-figure t-figure--5">
+                {detail.program_count}
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                linked programs
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="t-figure t-figure--5">
+                {/* Derived 'district' aggregate citation — the award-DISTINCT
+                    total for this district, from fct_district_totals (#51).
+                    fct_district_programs is per (district, pe_bli) and NOT
+                    summable: an award matched to N program elements appears N
+                    times with the same dollars there. State A when the
+                    citation resolves; honest state C otherwise. */}
+                <Cite
+                  value={detail.total_linkable_dollars}
+                  units="USD"
+                  dataset="fct_district_totals"
+                  factId={detail.total_linkable_fact_id}
+                />
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                linkable obligations <FyRange separator="· " /> ·{" "}
+                {detail.award_count} distinct award
+                {detail.award_count !== 1 ? "s" : ""}
+              </p>
+              {citedEqualsLinkable && (
+                <p className="text-muted-foreground text-xs mt-1">
+                  every linked dollar carries a USAspending citation
+                </p>
+              )}
+            </div>
+            {!citedEqualsLinkable && (
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="t-figure t-figure--5">
+                  {/* #51: capped at total_linkable_dollars by construction —
+                      see the matching clamp in export_site.py. */}
+                  <Cite
+                    value={detail.total_cited_dollars}
+                    units="USD"
+                    dataset="fct_district_totals"
+                    factId={detail.total_cited_fact_id}
+                  />
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  of which cited (USAspending) <FyRange separator="· " />
+                </p>
+              </div>
+            )}
+          </div>
           {/* §P2-6: this was an amber banner ABOVE the <h1> — the page opened
               with what read as a warning before the reader knew what page they
               were on. It is not a warning: it is an honest account of what
               district coverage means here, which is a credibility asset. Calm
               register, and after the heading. */}
-          <ScopeNote className="mt-3" label="Coverage note">
-            {/* The old wording ("only high-confidence award links from the
-                DARPA crosswalk") was circular: the reader is looking at a
-                page where every program is a DARPA line and is told the
-                reason is "the DARPA crosswalk" — a phrase that presupposes
-                the answer. It now says WHY the crosswalk only resolves for
-                DARPA, which is a methodology limit and not a preference. */}
+          <ScopeNote className="mt-4" label="Coverage note">
+            <p className="text-sm font-medium text-foreground">These are high-confidence program links, not a total of defense spending in this district.</p>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm font-medium underline decoration-dotted underline-offset-4">How this evidence is linked and how much it covers</summary>
+              <div className="mt-3 text-sm leading-6">
             <p>
-              {orgPhrase}, and that is a limit of the method rather than a
-              fact about this district. Linking a budget line to an award
-              needs the award&rsquo;s account code to identify one program;
-              DARPA&rsquo;s account structure does that, while the services
-              book many programs under one account, so their awards cannot be
-              attributed to a single line without guessing. We do not guess,
-              so those lines are absent here rather than approximate.
+              {orgPhrase}. Each published link has been hand-adjudicated;
+              high-confidence links also underwent adversarial review. An
+              appropriation account can fund many programs, so an account code
+              alone does not establish which program an award supports.
+              Service and agency links appear only where the evidence supports
+              the individual connection.
             </p>
             <p className="mt-2">
               Aggregate totals are derived from USAspending award transaction
@@ -187,72 +234,25 @@ export default async function DistrictDetailPage({ params }: Props) {
                   ? formatAmountNoCurrency(districtIndex.geo_grand_total, "USD")
                   : "—"}{" "}
                 in award obligations recorded across every U.S. district.
-                Ranking districts by this figure would rank them by a
-                DARPA-only slice, not by total defense spending — see{" "}
+                Ranking districts by this figure would rank them by the
+                program-linkable slice, not by total defense spending — see{" "}
                 <Link href="/district/" className="underline hover:text-foreground">
                   the district index
                 </Link>{" "}
                 for that comparison in full.
               </p>
             )}
+              </div>
+            </details>
           </ScopeNote>
 
-          {/* Summary stats */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
-                {detail.program_count}
-              </p>
-              <p className="text-muted-foreground text-xs mt-1">
-                linked programs
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
-                {/* Derived 'district' aggregate citation — the award-DISTINCT
-                    total for this district, from fct_district_totals (#51).
-                    fct_district_programs is per (district, pe_bli) and NOT
-                    summable: an award matched to N program elements appears N
-                    times with the same dollars there. State A when the
-                    citation resolves; honest state C otherwise. */}
-                <Cite
-                  value={detail.total_linkable_dollars}
-                  units="USD"
-                  dataset="fct_district_totals"
-                  factId={detail.total_linkable_fact_id}
-                />
-              </p>
-              <p className="text-muted-foreground text-xs mt-1">
-                linkable obligations <FyRange separator="· " /> ·{" "}
-                {detail.award_count} distinct award
-                {detail.award_count !== 1 ? "s" : ""}
-              </p>
-              {citedEqualsLinkable && (
-                <p className="text-muted-foreground text-xs mt-1">
-                  every linked dollar carries a USAspending citation
-                </p>
-              )}
-            </div>
-            {!citedEqualsLinkable && (
-              <div className="rounded-lg border border-border bg-card p-4">
-                <p className="text-2xl font-bold tabular-nums">
-                  {/* #51: capped at total_linkable_dollars by construction —
-                      see the matching clamp in export_site.py. */}
-                  <Cite
-                    value={detail.total_cited_dollars}
-                    units="USD"
-                    dataset="fct_district_totals"
-                    factId={detail.total_cited_fact_id}
-                  />
-                </p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  of which cited (USAspending) <FyRange separator="· " />
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        </PageIntro>
 
+        <div id="linked-programs" className="scroll-mt-24 mb-4">
+          <p className="t-label mb-2">Program connections</p>
+          <h2>Follow a program to its receipts.</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Amounts below are linked award obligations over <FyRange />. Shared awards may appear against more than one program; the district total counts each award once.</p>
+        </div>
         {/* Program table */}
         {/* §P1-7 sort contract (gate 24 leg f): exporter-declared order —
             fct_district_programs is queried `order by pop_state, pop_district,
@@ -265,19 +265,19 @@ export default async function DistrictDetailPage({ params }: Props) {
           >
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="px-4 py-3 text-left t-label">
                   Program
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">
+                <th className="px-4 py-3 text-left t-label hidden sm:table-cell">
                   Org
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="px-4 py-3 text-right t-label">
                   Obligations
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                <th className="px-4 py-3 text-right t-label hidden md:table-cell">
                   Recipients
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                <th className="px-4 py-3 text-right t-label hidden md:table-cell">
                   Transactions
                 </th>
               </tr>
@@ -296,7 +296,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                     >
                       {prog.title}
                     </Link>
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    <span className="t-id ml-2">
                       {prog.pe_bli}
                     </span>
                   </td>
@@ -304,7 +304,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                     {prog.organization}
                   </td>
                   <td
-                    className="px-4 py-3 text-right font-mono"
+                    className="t-figure t-figure--2 px-4 py-3 text-right"
                     // #51: when this row's award is ALSO matched to other
                     // program elements, the dollar figure is one award
                     // attributed whole to each of them, not N awards' worth

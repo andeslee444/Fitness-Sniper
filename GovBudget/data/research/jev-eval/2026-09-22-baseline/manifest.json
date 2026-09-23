@@ -1,0 +1,15 @@
+{
+  "created_at": "2026-09-22T05:57:31.685894+00:00",
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "model": "jev-1.13.0",
+  "case_count": 155,
+  "cases_sha256": "43ca79f58990259d502e7f5c5b726cf87d901d5c85d5a93d6109f9e645e13035",
+  "concurrency": 4,
+  "notes": [
+    "Labels frozen before requests; only state and questions sent.",
+    "Existing adjudications are regression fixtures, not independently blind holdout.",
+    "Constructed controls and claims are reported separately.",
+    "Seed verdict r means semantically true but refused for publication; this evaluation does not authorize publication.",
+    "No production data, publication rules, or website code changed."
+  ]
+}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getPrograms, TRAJECTORY_FY_LABEL } from "@/lib/data";
 import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -10,6 +11,7 @@ import { CoverageNote } from "@/components/coverage-note";
 import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
 import { ScopeNote } from "@/components/notes";
 import { YearsMatrix } from "@/components/years-matrix";
+import { PageIntro } from "@/components/page-intro";
 
 /**
  * /years/ — budget-over-time matrix (Phase 5D).
@@ -50,8 +52,8 @@ export default function YearsPage() {
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Years" }]}
         />
-        <div className="page-header mb-4">
-          <h1 className="mb-2 text-3xl font-bold">Budget over time</h1>
+        <PageIntro eyebrow="Research tools / Compare" title="Budget over time" className="!mb-4 !pb-3"
+          description={<p>{`${_programCount} program elements. Compare fiscal years, inspect project detail, and open the receipt behind any figure.`}</p>}>
           {/* Single template-literal child: an adjacent {expr} + text pair
               lost its joining space in the static export on this page (the
               same shape renders fine elsewhere) — one expression sidesteps
@@ -62,19 +64,10 @@ export default function YearsPage() {
               largest first — this sentence says so, because it used to
               promise the organization grouping the grid opened on. Grouping
               is still one control away ("Group by organization"). */}
-          <p className="mb-2 text-sm text-muted-foreground sm:text-base">
-            {`${_programCount} program elements as rows, fiscal-year amount types as columns — opening on the newest request, largest first.`}
-            {/* The controls half of the sentence is two more lines at 390px,
-                between the heading and the grid, describing affordances the
-                reader can see. Kept for desktop; deferred on a phone. */}
-            <span className="hidden sm:inline">
-              {` Rows expand to the J-book's own project grain. Sort any column, or group by organization. Click any figure to open its citation.`}
-            </span>
-          </p>
           {/* Unit statement — always visible (CapIQ convention: one stated
               unit for the whole grid). */}
           <p className="mb-2 text-sm font-medium text-foreground">
-            All figures in USD millions.
+            All figures in USD millions. <span className="font-normal text-muted-foreground">Newest request, largest first.</span>
           </p>
           {/* §P0-2: the grid OPENS on the FY2026 request column, and that
               column is discretionary + one-time reconciliation money with no
@@ -89,11 +82,9 @@ export default function YearsPage() {
             data-fy26-combined-note=""
             className="mb-2 text-xs leading-5 text-muted-foreground"
           >
-            FY2026 request figures are the combined total — the discretionary
-            request plus one-time reconciliation money, which no earlier year
-            carries. A FY2025→FY2026 comparison on the combined basis is
-            therefore not like-for-like; each program page states its own
-            split and its discretionary-only rate.
+            FY2026 combines the discretionary request and one-time reconciliation
+            money. Its combined change from FY2025 is not like-for-like;
+            open a program for its split and discretionary-only rate.
           </p>
           {/* §P2-6 + the 390px fold. These two blocks are SCOPE DISCLOSURE —
               which edition the grid is drawn from, and how big the corpus
@@ -108,8 +99,13 @@ export default function YearsPage() {
               <CorpusStatement />
             </CollapsibleBelowSm>
           </ScopeNote>
-        </div>
+        </PageIntro>
         <YearsMatrix />
+        <nav aria-label="Continue your budget research" className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-border pt-5 text-sm">
+          <Link href="/programs/" className="underline underline-offset-4">Browse program profiles →</Link>
+          <Link href="/lineage/" className="underline underline-offset-4">Trace a changing program identity →</Link>
+          <Link href="/data/" className="underline underline-offset-4">Compare with SQL →</Link>
+        </nav>
       </div>
     </CitationPanelProvider>
   );

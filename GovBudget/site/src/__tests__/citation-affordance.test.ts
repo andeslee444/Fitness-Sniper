@@ -110,8 +110,10 @@ describe("P1-1 §1 — citation underline decoration contrast ≥3:1 (measured)"
   it("old --border color would FAIL this check (regression tripwire)", () => {
     // The live-measured 1.26:1 underline was --border-colored. Assert our
     // formula reproduces that measurement so the ≥3:1 legs above have teeth.
-    const border = relativeLuminance(oklchToSrgb(...cssOklchVar(css, "--border")));
-    const bg = relativeLuminance(oklchToSrgb(...cssOklchVar(css, "--background")));
+    // Freeze the historical colors: this is a calibration fixture, not a
+    // requirement that today's redesigned borders stay imperceptible.
+    const border = relativeLuminance(oklchToSrgb(0.922, 0, 0));
+    const bg = relativeLuminance(oklchToSrgb(1, 0, 0));
     expect(contrastRatio(border, bg)).toBeLessThan(1.3);
   });
 });

@@ -131,9 +131,9 @@ export function ReconciliationStrip({
       data-testid="reconciliation-strip"
       className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5"
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="t-label">
         Two official figures, one label
-        <span className="ml-1 font-normal normal-case tracking-normal">
+        <span className="ml-1 font-normal normal-case">
           — reconciled below
         </span>
       </p>
@@ -244,7 +244,7 @@ export function ReconciliationStrip({
               J-book line{zeroDetail && " (a zero-dollar XML line)"} ={" "}
               <span
                 title="Difference between the two cited figures — arithmetic, not a parsed budget row"
-                className="font-mono tabular-nums"
+                className="t-figure t-figure--2"
               >
                 {formatAmountNoCurrency(e.delta_thousands, "USD thousands")}
               </span>
@@ -258,7 +258,7 @@ export function ReconciliationStrip({
                   {" "}
                   <span
                     data-derivation-exact=""
-                    className="whitespace-nowrap font-mono tabular-nums text-muted-foreground/80"
+                    className="whitespace-nowrap t-figure t-figure--2 text-muted-foreground/80"
                   >
                     ({exactFor(e)!.a} &minus; {exactFor(e)!.b} ={" "}
                     {exactFor(e)!.delta})
@@ -287,7 +287,7 @@ export function ReconciliationStrip({
                   {remainderK !== null && remainderK > REMAINDER_EPSILON_K ? (
                     <>
                       {" of it one-time FY2026 reconciliation money, the "}
-                      <span className="font-mono tabular-nums">
+                      <span className="t-figure t-figure--2">
                         {formatAmountNoCurrency(remainderK, "USD thousands")}
                       </span>
                       {" balance other TOA-only rows such as advance procurement"}

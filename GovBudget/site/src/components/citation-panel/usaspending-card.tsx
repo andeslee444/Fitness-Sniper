@@ -37,10 +37,10 @@ export function UsaspendingCard({ citation }: UsaspendingCardProps) {
     <div className="space-y-3" data-testid="usaspending-card">
       {/* Recorded value — prominent */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-0.5">
+        <span className="t-label block mb-0.5">
           Recorded value
         </span>
-        <span className="text-xl font-semibold tabular-nums">
+        <span className="t-figure t-figure--4">
           {citation.units === "USD" ? "$" : ""}
           {formatRecordedValue(citation.recorded_value)}
         </span>
@@ -101,10 +101,10 @@ export function UsaspendingCard({ citation }: UsaspendingCardProps) {
       {/* Endpoint (always co-cited; the durable artifact is endpoint + query) */}
       {urlKind === "endpoint" && (
         <div className="space-y-0.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="t-label">
             API endpoint
           </span>
-          <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
+          <p className="t-id break-all leading-relaxed">
             {citation.official_url}
           </p>
         </div>

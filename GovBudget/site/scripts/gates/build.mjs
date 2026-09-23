@@ -22,6 +22,14 @@
  * - fact-permalink route (PM Sprint 1 Task 5, §P0-4): out/vercel.json exists
  *   AND carries the `/fact/:id` → `/fact/` rewrite AND out/fact/index.html
  *   exists — the deploy can never ship footnote permalinks that 404
+ * - fonts leg (2026-09-12, the type system): every url(/fonts/…) in the built
+ *   CSS resolves to a file under out/fonts/ whose SHA-256 and byte count match
+ *   the PROVENANCE.md beside it; every .woff2 under out/fonts/ is referenced by
+ *   some @font-face (no dead assets — Barlow shipped unreferenced for days);
+ *   out/vercel.json carries the immutable Cache-Control header for /fonts/;
+ *   and both preload hrefs in out/index.html exist. The CDN-state half (a
+ *   re-vendor at the same path serving stale bytes for a year) is why the path
+ *   carries a version directory — this leg cannot see the CDN.
  * - (f1) fact-permalink trailing slash (ROADMAP #61, Sprint C Task C2):
  *   out/vercel.json ALSO carries the `/fact/:id/` → `/fact/` rewrite — the
  *   unslashed form alone left /fact/{id}/ 404ing, the one form external
@@ -36,6 +44,7 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -117,7 +126,9 @@ function dirExists(p) {
 // anyone chose. The next real change here needs a justified raise, not a
 // hunt for slack that is not there.
 export const PAGE_WEIGHT_BUDGET = [
-  // Singleton pages. `measured` is the Sprint 3 post-fix build.
+  // Singleton pages. Measurements below are refreshed as pages change.
+  // 2026-09-07 editorial redesign: refreshed companies, methodology, coverage
+  // and the heaviest company from built HTML; every ceiling remains unchanged.
   // Re-baselined 2026-08-21 (Sprint E). The key split gives each
   // (account, pe_bli) pair its own row: 10 legitimate new programs worth
   // $5.35B — LPD Flight II $2.60B, Medium Landing Ship $1.96B — plus
@@ -175,7 +186,24 @@ export const PAGE_WEIGHT_BUDGET = [
   // ~6% headroom against the new measurement: 1,475,000 is 6.16% over raw,
   // 95,000 is 7.88% over gzip.
   { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,228 / 88,022" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "684,005 / 67,188" },
+  // 2026-09-09: refreshed the recorded measurement after shared reader chunks
+  // changed. The existing raw/gzip ceilings are unchanged.
+  // RE-BASELINED 2026-09-12 — CEILINGS RAISED, SAME CHANGE: the type system.
+  // Every page now carries the two font preloads (once as markup, once in
+  // the RSC flight payload), the t-label / t-figure / t-id class names and
+  // data-prose / data-plate-mark attributes the specs need, and — where the
+  // vendored slices lack the glyph — an inline arrow icon. Measured on the
+  // 8a build as +265…+370 gzip per page, uniform across routes; the four
+  // pages that sat within that margin of their ceilings crossed. ~6%
+  // convention over the new measurement; nothing on these pages was added
+  // but type markup.
+  { label: "/companies/", file: "companies/index.html", maxRaw: 740_000, maxGzip: 73_500, measured: "697,837 / 69,370" },
+  // Six-record aircraft register with all 24 sourced inspection topics.
+  // The wider research desk and model engine load separately on demand.
+  // Re-measured 2026-09-11 after the drawn F-15 plate (external <use>,
+  // two crop copies, plate stamp/callouts) replaced the raster default view:
+  // 47,747 raw / 1,280 gzip bytes remain. Ceilings unchanged.
+  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "677,253 / 68,720" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -227,7 +255,8 @@ export const PAGE_WEIGHT_BUDGET = [
   // Re-baselined 2026-09-01: grew +2,319 raw since the ceiling was set via
   // ordinary curated-events/table growth (#10 relabel note, adjudication
   // tier changes), tipping a 159-byte breach. ~6% convention.
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "226,159 / 26,340" },
+  // Re-measured 2026-09-11 (shared footer/header chunks changed); ceilings unchanged.
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "227,031 / 26,796" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 93,911 / 13,340 -> 94,741 / 13,619, and the gate's own run on the
   // pre-fix build read 13,657 against a 13,500 ceiling — over by 157, with 259
@@ -240,7 +269,9 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // ~6% headroom against the new measurement: 101,000 is 6.34% over raw,
   // 14,450 is 6.02% over gzip.
-  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "94,830 / 13,678" },
+  // Re-measured 2026-09-11 (shared footer/header chunks changed); ceilings unchanged.
+  // Re-baselined 2026-09-12 with the type system (see /companies/ above); ~6% over the new measurement.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "99,143 / 14,715" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -282,7 +313,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // agents mis-measuring this table with the wrong tool; the numbers above
   // are the gate's, read by importing PAGE_WEIGHT_BUDGET and calling its
   // weigh().)
-  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "192,327 / 50,615" },
+  // 2026-09-07 editorial redesign: refreshed the built measurement after the
+  // shared navigation and agency page changes; ceilings remain unchanged.
+  // 2026-09-22: fresh release measurement; existing byte ceilings unchanged.
+  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "195,854 / 53,607" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -362,7 +396,9 @@ export const PAGE_WEIGHT_BUDGET = [
   // the page whose job is to disclose method; ~6% convention over the
   // expansion build's measure.
   // Re-measured 2026-09-03 (announcement + subaward evidence-path paragraphs).
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "150,339 / 41,862" },
+  // Re-measured 2026-09-11 (gate count 24 -> 25 on the page; shared chunks); ceilings unchanged.
+  // Re-baselined 2026-09-12 with the type system (see /companies/ above); ~6% over the new measurement.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "152,890 / 42,830" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -402,14 +438,16 @@ export const PAGE_WEIGHT_BUDGET = [
   // So the ceiling moves, on the breach this change caused, restored to ~6%
   // against the current measurement (101,500 is 5.99% over raw, 18,750 is
   // 5.97% over gzip) rather than to the 0.03% it had drifted to.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "96,898 / 18,105" },
+  // Re-baselined 2026-09-12 with the type system (see /companies/ above); ~6% over the new measurement.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_000, maxGzip: 20_200, measured: "97,410 / 19,034" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
   // overtook it on the index: 183 more programs.
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,697 / 120,681 (/agency/N/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,842 / 142,829 (/program/0601102A/)" },
-  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "378,129 / 22,330 (/company/boeing/)" },
+  // Re-measured 2026-09-12 (the type system; /company/boeing/ is the heaviest); ceilings unchanged.
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "381,619 / 24,598 (/company/boeing/)" },
   // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
   // needed it, per this file's own rule -- not pre-emptively. Two changes
   // landed together: Wave 5's Navy ingestion gave 183 more programs a
@@ -777,6 +815,8 @@ export async function runBuildGate() {
   const corePages = [
     { path: "index.html", label: "/" },
     { path: path.join("programs", "index.html"), label: "/programs/" },
+    { path: path.join("explore", "index.html"), label: "/explore/" },
+    { path: path.join("families", "f-15", "index.html"), label: "/families/f-15/" },
     { path: path.join("companies", "index.html"), label: "/companies/" },
     { path: path.join("data", "index.html"), label: "/data/" },
     { path: path.join("flow", "index.html"), label: "/flow/" },
@@ -851,8 +891,8 @@ export async function runBuildGate() {
     } catch {
       // sidecars not generated — no filing URLs expected
     }
-    // Expected: static(12) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(14) = /, /programs/, /companies/, /companies/families/, /data/,
+    // Expected: static(16) + feed(1) + district pages + filing pages + programs + companies + agencies
+    // static(16) = /, /programs/, /explore/, /families/f-15/, /companies/, /companies/families/, /data/,
     //              /years/, /flow/, /lineage/, /downloads/, /methodology/,
     //              /glossary/, /agency/, /coverage/, /about/
     // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
@@ -865,10 +905,11 @@ export async function runBuildGate() {
     //  stated links whose endpoints have no program page of their own;
     //  /years/ in the tri-persona review Wave 4 — the decade matrix was in
     //  no sitemap at all, on a site whose cross-program "asked vs got"
-    //  analysis happens there.)
+    //  analysis happens there; /explore/ is the visual-pilot gallery;
+    //  /families/f-15/ adds the curated aircraft family browser.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
-    const STATIC_SITEMAP_PAGES = 14;
+    const STATIC_SITEMAP_PAGES = 16;
     const expectedTotal =
       STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
@@ -1161,6 +1202,60 @@ export async function runBuildGate() {
     const w = checkPageWeight();
     errors.push(...w.errors);
     notes.push(...w.notes);
+  }
+
+  // ── Fonts leg (the type system) ───────────────────────────────────────────
+  {
+    const fontsDir = path.join(outDir, "fonts");
+    const chunksDir = path.join(outDir, "_next", "static", "chunks");
+    const referenced = new Set();
+    if (fs.existsSync(chunksDir)) {
+      for (const f of fs.readdirSync(chunksDir).filter((n) => n.endsWith(".css"))) {
+        const css = fs.readFileSync(path.join(chunksDir, f), "utf8");
+        for (const m of css.matchAll(/url\((["']?)(\/fonts\/[^"')]+)\1\)/g)) referenced.add(m[2]);
+      }
+    }
+    if (referenced.size === 0) {
+      errors.push("fonts: no url(/fonts/…) in the built CSS — the @font-face declaration site did not ship");
+    }
+    const provenance = new Map(); // "/fonts/<family>/<vN>/<file>" → { sha, bytes }
+    if (fs.existsSync(fontsDir)) {
+      for (const family of fs.readdirSync(fontsDir)) {
+        const prov = path.join(fontsDir, family, "PROVENANCE.md");
+        if (!fs.existsSync(prov)) { errors.push(`fonts: out/fonts/${family}/ has no PROVENANCE.md`); continue; }
+        const md = fs.readFileSync(prov, "utf8");
+        for (const m of md.matchAll(/\|\s*`([^`]+\.woff2)`\s*\|\s*https?:\/\/\S+\s*\|\s*([0-9a-f]{64})\s*\|\s*([\d,]+)\s*\|/g)) {
+          provenance.set(`/fonts/${family}/${m[1]}`, { sha: m[2], bytes: Number(m[3].replace(/,/g, "")) });
+        }
+      }
+    }
+    for (const ref of referenced) {
+      const file = path.join(outDir, ref);
+      if (!fs.existsSync(file)) { errors.push(`fonts: CSS references ${ref} but out${ref} does not exist`); continue; }
+      const buf = fs.readFileSync(file);
+      const sha = createHash("sha256").update(buf).digest("hex");
+      const p = provenance.get(ref);
+      if (!p) errors.push(`fonts: ${ref} has no Integrity row in its PROVENANCE.md (file · source URL · SHA-256 · bytes)`);
+      else if (p.sha !== sha || p.bytes !== buf.length) errors.push(`fonts: ${ref} is not the bytes PROVENANCE.md records (sha ${sha.slice(0, 12)}… / ${buf.length} B vs ${p.sha.slice(0, 12)}… / ${p.bytes} B) — re-vendor into a NEW version directory, never overwrite`);
+    }
+    const shipped = [];
+    const walk = (d) => { for (const n of fs.readdirSync(d)) { const q = path.join(d, n); if (fs.statSync(q).isDirectory()) walk(q); else if (n.endsWith(".woff2")) shipped.push("/" + path.relative(outDir, q).split(path.sep).join("/")); } };
+    if (fs.existsSync(fontsDir)) walk(fontsDir);
+    for (const f of shipped) if (!referenced.has(f)) errors.push(`fonts: out${f} ships but no @font-face references it — a dead asset (delete it and its provenance)`);
+    const vercel = path.join(outDir, "vercel.json");
+    if (fs.existsSync(vercel)) {
+      const v = JSON.parse(fs.readFileSync(vercel, "utf8"));
+      const hdr = (v.headers ?? []).find((h) => /fonts/.test(h.source ?? "") && (h.headers ?? []).some((x) => /cache-control/i.test(x.key) && /immutable/.test(x.value)));
+      if (!hdr) errors.push("fonts: out/vercel.json has no immutable Cache-Control header for /fonts/(.*) — the versioned paths are meant to be cached for a year");
+    }
+    const home = path.join(outDir, "index.html");
+    if (fs.existsSync(home)) {
+      const html = fs.readFileSync(home, "utf8");
+      const pre = [...html.matchAll(/<link[^>]+rel="preload"[^>]+href="(\/fonts\/[^"]+)"[^>]*>/g)].map((m) => m[1]);
+      if (pre.length < 2) errors.push(`fonts: out/index.html preloads ${pre.length} font(s); the serif and the sans must both be preloaded`);
+      for (const h of pre) if (!fs.existsSync(path.join(outDir, h))) errors.push(`fonts: preload ${h} does not resolve under out/`);
+    }
+    if (!errors.some((e) => e.startsWith("fonts:"))) notes.push(`fonts: ${referenced.size} referenced, ${shipped.length} shipped, all provenance hashes match, immutable header + 2 preloads ✓`);
   }
 
   return { pass: errors.length === 0, errors, notes };

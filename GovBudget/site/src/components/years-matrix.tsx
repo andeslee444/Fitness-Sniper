@@ -967,7 +967,7 @@ export function YearsMatrix() {
             the earlier muted labels blended into the chip stream (5E visual
             judge). */}
         {decadeKeys.length > 0 && (
-          <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-foreground/70">
+          <span data-plate-mark className="ml-1 text-foreground/70">
             Decade
           </span>
         )}
@@ -983,7 +983,7 @@ export function YearsMatrix() {
               aria-label={`${on ? "Hide" : "Show"} ${label} column`}
               title={decadeColumnTitle(col)}
               onClick={() => toggleColumn(key)}
-              className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+              className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
                 on
                   ? "border-primary bg-primary font-semibold text-primary-foreground"
                   : "border-border font-medium text-muted-foreground hover:text-foreground"
@@ -994,7 +994,7 @@ export function YearsMatrix() {
           );
         })}
         {decadeKeys.length > 0 && (
-          <span className="ml-2 border-l border-border pl-2.5 text-[10px] font-bold uppercase tracking-widest text-foreground/70">
+          <span data-plate-mark className="ml-2 border-l border-border pl-2.5 text-foreground/70">
             PB2026 detail
           </span>
         )}
@@ -1008,7 +1008,7 @@ export function YearsMatrix() {
                 aria-pressed={on}
                 aria-label={`${on ? "Hide" : "Show"} ${columnLabel(key)} column`}
                 onClick={() => toggleColumn(key)}
-                className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
+                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                   on
                     ? // Selected chips get a SOLID primary fill + weight bump —
                       // the earlier 10% tint read as barely-on (visual judge).
@@ -1260,7 +1260,7 @@ export function YearsMatrix() {
                           )}
                         </span>
                         {decade && (
-                          <span className="text-[9px] font-normal text-muted-foreground/80">
+                          <span className="text-xs font-normal text-muted-foreground/80">
                             PB{decade.edition}
                           </span>
                         )}
@@ -1269,7 +1269,7 @@ export function YearsMatrix() {
                           programs-table's SortIcon, fixed width (no shift). */}
                       <span
                         aria-hidden="true"
-                        className={`inline-block w-3 text-center text-[10px] ${
+                        className={`inline-block w-3 text-center text-xs ${
                           sort?.key === key ? "" : "text-muted-foreground/50"
                         }`}
                       >
@@ -1471,7 +1471,7 @@ function ProgramRows({
                   </Link>
                 )}
               </span>
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="t-id">
                 {showOrg ? `${org} · ` : ""}
                 {program.pe_bli}
               </span>
@@ -1503,7 +1503,7 @@ function ProgramRows({
                 >
                   {project.title}
                 </span>
-                <span className="font-mono text-[10px] text-muted-foreground">
+                <span className="t-id">
                   {project.project_number}
                 </span>
               </span>
@@ -1518,7 +1518,7 @@ function ProgramRows({
                   {...(cell ? { "data-v": cell.v } : {})}
                   data-cell-state={cell ? cellState(cell.v) : "absent"}
                   title={cell ? undefined : "No figure for this project in this column's source"}
-                  className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+                  className="border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 whitespace-nowrap"
                 >
                   {cell ? (
                     <Cite
@@ -1622,7 +1622,7 @@ function ProgramCellTd({
             ? `Not in the PB${decade.edition} edition`
             : "No figure for this program in this column's source"
         }
-        className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums text-muted-foreground"
+        className="border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 text-muted-foreground"
       >
         <span aria-hidden="true">—</span>
         <span className="sr-only">no figure</span>
@@ -1638,7 +1638,7 @@ function ProgramCellTd({
         data-col={colKey}
         data-v={cell.v}
         data-cell-state={cellState(cell.v / 1000)}
-        className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+        className="border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 whitespace-nowrap"
       >
         <Cite
           value={cell.v}
@@ -1667,7 +1667,7 @@ function ProgramCellTd({
         data-col={colKey}
         data-v={cell.v}
         data-cell-state={cellState(cell.v)}
-        className={`border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${deltaColorClass(cell.v)}`}
+        className={`border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 whitespace-nowrap ${deltaColorClass(cell.v)}`}
       >
         {fmtPct(cell.v)}
       </td>
@@ -1680,7 +1680,7 @@ function ProgramCellTd({
       data-col={colKey}
       data-v={cell.v}
       data-cell-state={cellState(cell.v / 1000)}
-      className={`border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${
+      className={`border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 whitespace-nowrap ${
         isDelta ? deltaColorClass(cell.v) : ""
       }`}
     >

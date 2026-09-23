@@ -9,6 +9,12 @@ module.exports = {
         "http://localhost/program/0601101E/",
         "http://localhost/company/lockheed-martin/",
         "http://localhost/data/",
+        // 2026-09-12, the type system: the two routes that carry the largest
+        // display type (the F-15 plate statement) and the densest tabular
+        // figures (1,700+ serif ledger cells) — the CLS ≤ 0.1 assertion on the
+        // LCP heading is what the metric-matched fallbacks are held to.
+        "http://localhost/families/f-15/",
+        "http://localhost/programs/",
       ],
       numberOfRuns: 1,
       settings: {

@@ -1,7 +1,58 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-08-07 · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-09-22 · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
+
+## Current priorities — trust and parallel product work (2026-09-22)
+
+The next product outcome is a reader reaching, checking and reusing a defensible
+conclusion about public spending. Keep source freshness and attribution repairs
+as the primary trust workstream. Advance the existing reader journey alongside
+it; Jev supports editorial review rather than becoming the next public feature.
+
+| Workstream | Roadmap items | Concrete next deliverable | Dependency and release boundary |
+|---|---|---|---|
+| Trust: current, dependable evidence | Existing #8 refresh; #78/#85 crosswalk execution; #79 rubric/export reconciliation; #80 concentration scope | Reconcile current source/code/export/live state, repair remaining attribution defects, and refresh available award releases through validation and publication | Check current evidence before repeating a study or declaring an old OPEN item fixed. Model confidence does not supply a missing budget-to-award link. |
+| Product: complete the investigation journey | #89 flagship briefings; #90 reader measurement | Finish and measure the existing F-15 answer → receipt → save/share journey, then reuse the pattern for Virginia and Cyber Security Research where their sources support it | Can design, implement and test on dated, cited records now. Any new recipient attribution or change explanation waits for its own evidence review; unaffected source-backed views need not wait for every trust ticket. |
+| Product: reasons to return | #91 reviewed changes and existing watch feeds | A small reviewed changes briefing plus a clear explanation of what following a program/company provides | Entry points and dated examples can be built now. Promising timely updates depends on #8 and a verified refresh-to-feed publication cycle. |
+| Supporting experiment: Jev | #92 internal claim-review pilot | Review flags alongside the exact source passages for one existing dossier/briefing batch, with measured reviewer benefit | Run offline against supplied public evidence. Preserve human publication decisions and validate on fresh cases before adopting any model-based gate. |
+
+**First parallel slice:** instrument the existing F-15 actions (#90) and complete
+one reusable answer brief (#89). Reuse its current research tray, citation copy
+and share-state behavior; do not rebuild those features. Prepare reader tasks
+and a baseline while the trust workstream repairs ingestion and attribution.
+These are planned work packages, not claims of implementation or deployment.
+
+**Implementation checkpoint (2026-09-22):** the local pass below implements #89–91
+and completes one bounded #92 batch. The production build and desktop/mobile
+answer journeys have been checked locally. The complete release suite is not
+green: GAO attribution ratification, feed concentration destinations, flow-label
+overlap and broad voice-rule failures remain. The F-15 lead now passes its source,
+first-screen, accessibility, typography and unchanged page-weight checks.
+No deployment has occurred; the reader study, production
+event baseline and human Jev evaluation remain unrun. See the
+[delivery and validation record](plans/2026-09-22-parallel-product-delivery.md).
+
+**F-15 visual/source checkpoint (2026-09-22):** extended the flagship journey
+with variant-aware one/two-seat drawings and tank configurations, one shared
+family navigation and visual system across the six workspaces and six budget
+pages, and prominent direct government PDF/workbook actions. Receipts preserve
+source locations and offer selectable PDF text and evidence focus when the
+record contains page/box metadata. Desktop/mobile review includes all family
+sections, linked records, comparison/research states and aircraft variants.
+Final local validation passed 1,385 tests, the production build, seven targeted
+gates and all 24 program accessibility checks across widths and color schemes.
+This remains local; government workbooks were reachable, while Air Force PDF
+hosts returned TLS/gateway errors during probes. See the
+[visual review and validation record](plans/2026-09-22-f15-visual-source-review.md).
+
+
+**Current-state reconciliation:** the September 22 review found award actions
+only through April 23 in the shipped coverage page/local export. It also found
+local precision metadata recording a later attribution-rubric review while
+exporter rules and the #79 status still describe the earlier state. Resolve the
+database → exporter → published page chain before rerunning the study. Existing
+dated findings and original backlog descriptions below remain historical records.
 
 ## Phase ledger
 
@@ -65,6 +116,148 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    *Used by: every phase's final review; 5B-4's NL eval (≥90% + REFUSE handling).*
 
 ## Findings log (what we learned; feeds future phases)
+
+- **2026-09-22: Jev tested; supporting editorial pilot prioritized behind core product work.**
+  Direct `jev-1.13.0` calls evaluated 155 distinct baseline cases, then repeated
+  71 lineage cases with revised questions; with the connectivity probe, 227 API
+  calls used 284,811 input tokens at an estimated $0.011962 inference cost.
+  Median observed end-to-end latency was 0.412 seconds. Baseline agreement was
+  63/63 for existing GAO identity links, 13/13 for constructed claims against
+  actual F-15EX sources, 26/26 for constructed wrong/missing-evidence controls,
+  and 42/53 for reviewed lineage cases. Revised questions improved lineage
+  agreement to 51/53 but introduced two false positives across lineage and
+  reversed-direction controls. These are regression results, not a blind
+  production accuracy estimate; some initial lineage disagreements were
+  rubric-sensitive, and the baseline included a wrong high-confidence answer.
+  Prioritize freshness/attribution, complete flagship journeys and reviewed
+  changes; scope Jev to internal review (#92). Public arbitrary-claim checking,
+  automatic lineage publication and a promise-tracking product need separate
+  evidence/retrieval validation before implementation is prioritized.
+  [Full experiment and caveats](../../data/research/jev-eval/2026-09-22-report.md).
+
+- **2026-09-09: F-15 funding and workspace UX refinement in progress.**
+  Ambiguous Develop/Buy/Upgrade controls and competing year selectors are
+  replaced by named funding records and a single annual chart. Aircraft,
+  funding, international research, history, comparison and saved receipts now
+  occupy focused workspaces with preserved URL state. Screenshot-only Astra
+  critique is guiding the visual pass. Final visual acceptance, fresh export,
+  acceptance gates and static preview review remain pending.
+  [UX refinement](plans/2026-09-09-f15-family-browser.md#ux-refinement-in-progress).
+
+- **2026-09-09: F-15 family research expanded beyond budget mappings.**
+  All 24 model topics now have sourced aircraft context. The added research desk
+  covers 8 country records, 16 procurement milestones and 14 supplier/system/
+  program cards, with dated government, manufacturer and reporting evidence.
+  Requests, signed orders, options, potential-sale approvals, obligations,
+  ceilings and deliveries stay distinct. Current reporting corrects Indonesia's
+  old proposed-buyer status; Korea's January 2026 award is separate from its
+  2024 sale approval. FY2027 context does not replace the FY2026 warehouse ledger.
+  Search, source and variant filters, evidence drawers and citation copying
+  work on desktop/mobile. The larger research module loads on approach;
+  inspection context is available initially. All **1,244 tests / 82 files** pass,
+  with clean targeted lint, TypeScript and browser accessibility checks.
+  The fresh production build and **24/24 acceptance gates pass**. Final static
+  preview checks confirm contract-ID search, updated country status and 390px
+  layout without overflow. The page is 665,992 raw / 67,152 gzip bytes, within
+  its unchanged size ceilings. Work remains local on `codex/f15-family-browser`,
+  with no commit, push or deployment.
+  [Implementation and research contract](plans/2026-09-09-f15-family-browser.md#public-research-expansion).
+
+- **2026-09-09: F-15 family browser implemented on a new branch.**
+  Branch `codex/f15-family-browser` adds `/families/f-15/` with A/B/C/D/E/EX
+  selection, an original interactive aircraft schematic, camera-preserving
+  variant changes, aligned comparisons, blueprint/CFT configuration controls,
+  optional sounds, linked funding topics, fiscal history, real receipts and a
+  persistent research tray. Explore, all six relevant dossiers, sitemap and
+  Pagefind expose the family. Shared C/D/E/EX software, C/D/E modifications,
+  E/EX EPAWSS development, E-only EPAWSS procurement and dedicated EX records
+  retain distinct scopes. Canonical fiscal selection uses the exporter's exact
+  preferred fact IDs; derived totals keep their source inputs. Unpaged narrative
+  receipts now show the exact source passage as well as the XML locator, through
+  optional page-local citation enrichment that leaves the shared cache intact.
+  Desktop/mobile inspection verified model rotation, keyboard controls, stable
+  camera, comparison, actual workbook drilldown, source passages and research
+  copy/restore. Validation: **1,215 tests across 80 files**, targeted ESLint,
+  TypeScript, a fresh production build (8,369 generated routes), and all **24
+  acceptance gates** verified. The full run passed gates 2–24; gate 1 passed
+  separately on the same output after refreshing the existing companies-page
+  weight measurement, with its size ceiling unchanged. The new family route
+  also has a page-weight budget. Final static-preview inspection verified 3D
+  activation, a model topic opening its exact source passage, and a clean console.
+  Work remains local and uncommitted; earlier checkout changes are preserved.
+  [Implementation and data contract](plans/2026-09-09-f15-family-browser.md).
+
+- **2026-09-08: twenty additional frontend concept variations generated.**
+  Ten fresh private 256-character alphanumeric inspiration seeds selected
+  palette, typography, layout and illustration details for ten distinct design
+  families. Built-in Codex imagegen rendered each as a homepage and Virginia
+  Class dossier: **20 unique 1536×1024 images**, all saved in the workspace.
+  A standalone local gallery groups the pairs and provides page-type filters,
+  full-size viewing and keyboard navigation. Financial/source rows are explicit
+  placeholders; image-generated promotional slogans are recorded for neutral
+  editorial replacement before any implementation. All 20 local image URLs
+  return HTTP 200; gallery filters, viewer navigation and focus return were
+  browser-checked. No application code or production deployment changed.
+  [Gallery, images and exact prompts](../../art/concepts/2026-09-08-twenty/README.md).
+
+- **2026-09-08: two additional frontend art directions explored.** A shell
+  script generated a private 256-character alphanumeric seed and mapped it to
+  palette, typography, layout and model-rendering choices. Codex built-in
+  imagegen produced four 1536×1024 concept studies: Industrial Almanac and Polar
+  Instrument, each as a homepage and Virginia Class dossier. Source-table labels
+  were refined to preserve BLI identity and make illustrative rows explicit;
+  amounts remain placeholders with fiscal-year, request and accounting context.
+  The seed was discarded and never placed in the prompts or artwork. Selected
+  images, exact prompts, derived choices and the shell script are saved in
+  [the concept comparison](../../art/concepts/2026-09-08-seeded/README.md).
+  This is an art-direction exploration; no website code or deployment changed.
+
+- **2026-09-07: editorial frontend redesign published.** All 24 page templates
+  share a paper/ink and blueprint visual direction, task-based navigation,
+  contextual page introductions, and a structured footer. Program dossiers
+  keep their three-answer strip and 13 original sections, with new chapter
+  navigation and source wayfinding. The larger receipt reader retains real
+  document previews, source locators and copy/share controls; preview scrolling
+  is keyboard-accessible. Program filters/sorting survive reload in the URL.
+  Company search precedes extended context; entity profiles and research tools
+  have task-specific routes into their evidence. Mobile reference navigation is
+  a native disclosure above the prose. Fact permalinks distinguish derived
+  figures and avoid promising an exact program location for ambiguous IDs.
+  District table copy now correctly describes award links across services.
+  Codex imagegen produced homepage, dossier and receipt-reader concept studies;
+  illustrative mockup data stays outside the published evidence assets.
+  Validation: **1,174 unit tests / 24 acceptance gates / 8 live asset checks /
+  27 production artifact comparisons pass**, plus desktop/mobile browser review
+  and a real Navy source PDF in production. Existing page-weight ceilings were
+  retained; several dense routes have little remaining headroom. Budget receipts
+  preserve provenance, while universal per-award payment tracing still needs
+  exporter enrichment; this release does not increase data coverage.
+  Deployment `dpl_AW7JRD39jVFpM72JTZYMzLUvQhDj` is Ready at
+  [fiscalreceipts.com](https://fiscalreceipts.com/), published through
+  `scripts/launch/deploy.sh --skip-r2`. No warehouse/R2 source assets changed;
+  the three prior 3D pilots remain. No git commit or push was made.
+  Details: [frontend work log](plans/2026-09-07-frontend-redesign.md).
+
+- **2026-09-07: three visual-exhibit pilots published.**
+  [Live gallery](https://fiscalreceipts.com/explore/) leads to Virginia (`2013`),
+  F-35 procurement (`ATA000`) and development (`0604840F`), and Cyber Security
+  Research (`0602668D8Z`). Original illustrative GLBs and reviewed Blender
+  renders accompany curated explanations, exact source IDs, fiscal-year/basis
+  labels, optional local Three.js rendering, blueprint mode, keyboard topics,
+  and shared views. Editable scenes and PNGs are in `art/exhibits/`.
+  All 20 pilot narrative/financial IDs resolve. No component costs are inferred.
+  Desktop, tablet, and mobile browser review caught and fixed overlapping cyber
+  hotspots; all three mobile targets now select the correct explanation, also
+  after rotation. Three collision regressions pass. Full release verification
+  passed 24/24 gates; the subsequent viewer-only correction passed its rebuild,
+  freshness check, targeted lint, and direct browser regression.
+  Production deployment `dpl_QJDYqoHyR6amh5sPB5su7E1icwYG` completed through
+  `scripts/launch/deploy.sh --skip-r2` (no warehouse/PDF changes). All eight live
+  asset assertions and 13 pilot production checks pass; shipped model/poster/JS
+  bytes match the release. The live gallery, 3D topic selection, blueprint view,
+  and rendered source PDF were verified in the browser. Source changes remain
+  in the workspace; no git commit or push was made.
+  Details: [pilot work log](plans/2026-09-07-visual-exhibits-pilots.md).
 
 - **2026-09-01: crosswalk hand-adjudication (correction) + FPDS-AP expansion
   (coverage), one deploy.** All 10,091 published (pe, award) pairs were
@@ -557,6 +750,141 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#88 /feed/ expand payload.** "Show all" downloads the whole 862 KB
   feed.json; a per-event-type sidecar would be a tenth of that.
   **Status:** open (2026-09-04).
+
+- **#89 Three complete flagship investigation journeys.** Start with the
+  existing F-15 family experience, then reuse the answer/receipt pattern for
+  Virginia Class Submarine and Cyber Security Research to cover physical and
+  nonphysical programs. Each brief answers what the program does, which record
+  and fiscal status the amount represents, what a comparable change establishes,
+  which recipients are actually supported (or what remains unknown), and how to
+  inspect and reuse the evidence. Use the current F-15 workspace, research tray,
+  source drawers and shareable selection; their implementation is already
+  recorded above. Verify current local/preview/live state before describing
+  anything as newly built or shipped.
+  **Parallel scope:** complete the current visual/task review and create the
+  concise answer brief from existing cited facts and formatters. Preserve
+  variant, record, year and receipt selection in share/restore paths. Additional
+  3D asset detail is not an acceptance requirement for this work package.
+  The first reusable output is **Copy answer** for F-15EX procurement: what this
+  record funds, amount/year/status/basis, the source citation and a link restoring
+  the selected view. Use a deterministic format and already-supported text;
+  the recipient should understand the answer outside the site and reopen its
+  evidence. This extends existing citation copying rather than replacing it.
+  **Acceptance:** a reader can identify the relevant program and fiscal status,
+  open the exact supporting page/cell/passage, and save or share a view that
+  restores the same context; desktop, mobile, keyboard and copy/restore paths
+  are checked on the release build. Copied findings retain source IDs, dates,
+  basis and scope. Relevant trust fixes gate dependent claims, not all UI work.
+  **Status:** OPEN — scoped 2026-09-22; builds on existing F-15 work, with final
+  acceptance/publication status to be checked rather than inferred from git.
+
+  **Implementation update (2026-09-22):** added deterministic **Copy answer** to
+  the F-15 funding view and Virginia/Cyber exhibits, with exact selected amount,
+  fiscal year/status/basis, shared footnotes, independent narrative receipt and
+  restoring URL. Existing tray, share and receipt controls are reused. Missing
+  anchored evidence disables the exhibit answer; blocked clipboard exposes a
+  selectable fallback. Desktop/mobile release-preview checks passed for native
+  copying, receipt opening and selection restore. The full release gate suite
+  still has the blockers recorded in the [delivery note](plans/2026-09-22-parallel-product-delivery.md).
+  The family page now includes the rule-selected F015EX request and a separate
+  ledger of the other five records before navigation, with the EPAWSS absence
+  explicit. Final site suite: 93 files / 1,366 tests; final F-15 size 67,875 gzip
+  bytes against the unchanged 70,000-byte ceiling. Source, fold, accessibility
+  and typography checks passed on the fresh production build.
+  **Status:** PARTIAL — implemented and locally exercised; publication and human
+  comprehension evidence remain outstanding.
+
+- **#90 Measure reader success on the existing journey.** Basic Vercel
+  Analytics is already installed; add a small action funnel for brief/funding
+  selection, receipt opened, official source opened, citation copied, view
+  shared, receipt saved/exported and watch-feed selected. Reuse existing action
+  handlers and record completed actions rather than failed clipboard attempts.
+  Event fields should describe the page/program/action, not free-text research
+  queries or saved notes.
+  **Parallel scope:** define events, instrument the existing F-15 journey and
+  prepare five target-reader sessions with one concrete investigation task.
+  This does not depend on expanding coverage or introducing an account system.
+  **Acceptance:** verify each event fires once on the intended action; establish
+  a baseline for answer → receipt → reuse completion and record observed
+  confusion/time-to-evidence. Pilot usability goal: at least four of five readers
+  complete the task without help and correctly distinguish the fiscal status.
+  A five-person pilot is usability evidence, not a population retention estimate.
+  **Status:** OPEN — scoped 2026-09-22; first parallel implementation slice.
+
+  **Implementation update (2026-09-22):** added the controlled reader-action
+  event helper and instrumented selection, central receipt opening, official
+  source links, successful copy/share/save/export and watch actions. Tests cover
+  one event per action, failed-copy suppression and analytics resilience. The
+  [five-reader session kit](plans/2026-09-22-reader-pilot.md) includes tasks,
+  recording sheet, success criteria and interpretation limits. Aggregate events
+  do not establish per-person funnel completion; no custom identifiers added.
+  **Status:** PARTIAL — instrumentation and study materials implemented; live
+  event arrival, human baseline and five reader sessions are not measured.
+
+- **#91 Reviewed changes briefing and discoverable watch feeds.** Assemble a
+  small set of source-backed change explanations around the flagship programs:
+  what changed, compared with which year/edition/status, why the available
+  documents explain it, what remains uncertain, and links to both receipts.
+  Improve answer-led entry points from home/search and explain the existing
+  program/company RSS/Atom links as following future changes. Feeds already
+  exist; do not count a new subscription backend or account system as necessary
+  for this first release.
+  **Parallel scope:** build the reusable briefing card, entry points and feed
+  affordances using reviewed, explicitly dated examples. Do not present a
+  missing edition as cancellation or a temporary transfer as permanent lineage.
+  **Acceptance:** each explanation is reviewed against its sources; links open
+  the correct before/after receipt; feed links resolve for eligible programs;
+  empty/unsupported coverage is explained; source date and publication date
+  remain distinct. Timely/recurring-update promises depend on #8's validated
+  refresh-to-publication cycle. Measure return/reuse using #90; decide cadence
+  from available meaningful changes rather than inventing weekly news.
+  **Status:** OPEN — scoped 2026-09-22; UI and dated examples can proceed in
+  parallel, freshness promises depend on #8.
+
+  **Implementation update (2026-09-22):** added three dated PB2026 comparison
+  cards on `/feed/#budget-briefings`, linked from home and indexed for search.
+  Both endpoints keep their own status and receipt. Explanations state when a
+  cause is unestablished; F-15 and Virginia disclose P-1/P-40 scope differences.
+  Source/value drift blocks the build pending review. Separate assistant review
+  checked all six endpoints and all three exact excerpts; human sign-off is not
+  implied. Program/company/feed controls explain RSS/Atom, copy feed addresses
+  with fallback, retain eligibility rules and avoid promising a cadence.
+  **Status:** PARTIAL — local cards and watch controls implemented; release
+  checks/publication and refresh-dependent timeliness remain separate.
+
+- **#92 Jev internal editorial-review pilot.** Use the tested adapter as the
+  starting point for a bounded offline review of one existing dossier/briefing
+  batch: supplied claim + exact source evidence → review flag. Target unsupported
+  outcomes, request-versus-spending wording, scope overstatements and incorrect
+  program identities. Keep arithmetic, fiscal fields and exact citation
+  resolution in deterministic checks. Preserve the static-site architecture;
+  no browser credential or public inference endpoint is needed for this pilot.
+  **Evaluation:** freeze the rubric and compare with existing validators/manual
+  review on a fresh human-reviewed set, separate from the 155 development cases.
+  Report false approvals, false flags, abstention/review volume, useful
+  corrections and net reviewer time. The earlier prompt-tuned result and a
+  confidence cutoff alone do not establish a publication threshold.
+  **Acceptance:** retain reproducible source/claim/model/question/decision
+  records, manually review the flags, and record a continue/stop decision based
+  on demonstrated editorial benefit. Keep scope to one batch until that decision;
+  flagging never automatically rewrites a claim, asserts a link or publishes.
+  **Deferred product bets:** public "check any claim," automatic change stories
+  and "follow the promise" require their own retrieval, source-coverage and
+  held-out evaluation plans. Document organization is not the product objective.
+  **Status:** OPEN — scoped 2026-09-22; API experiment complete, production
+  integration not implemented; supporting work alongside #89 rather than its
+  prerequisite. [Experiment](../../data/research/jev-eval/2026-09-22-report.md).
+
+  **Implementation update (2026-09-22):** implemented a bounded offline packet
+  builder and review queue, with immutable prepared evidence, source hashes,
+  exact cited rows/passages and recursive derivation inputs. Ran all 17 retained
+  claims in one existing dossier: 17 requests completed; nine model flags despite
+  17 resolvable citations. Separate assistant review upheld the flags and
+  questioned three supported decisions (two clear errors plus a scope concern).
+  No claims were rewritten/published. See the [pilot report](../../data/research/jev-editorial/2026-09-22/report.md).
+  **Status:** PARTIAL — engineering experiment and assistant review complete;
+  keep Jev internal. Human held-out labels, false-approval/false-flag rates and
+  net reviewer time remain unmeasured. No expansion or model publication gate.
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

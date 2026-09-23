@@ -4,6 +4,7 @@ import { getFilingsIndex } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { FilingsTable } from "@/components/filings-table";
 
 export const metadata: Metadata = {
@@ -31,8 +32,10 @@ export default function FilingsIndexPage() {
         items={[{ label: "Home", href: "/" }, { label: "Filings" }]}
       />
 
-      <div className="page-header mb-6">
-        <h1 className="text-3xl font-bold mb-2">Lobbying Filings</h1>
+      <PageIntro eyebrow="Public disclosure records" title="Read the lobbying record."
+        description="Find a client, registrant, or program mention, then inspect the filing and its official source."
+        actions={<><a href="#filing-directory">Search filings</a><Link href="/companies/">Explore contractor families</Link></>}>
+        <h2 className="sr-only">Lobbying Filings</h2>
         <p className="text-muted-foreground mb-2">
           {index.total.toLocaleString("en-US")} Senate LDA filings from
           registrants whose clients appear in the tracked-program corpus.{" "}
@@ -50,9 +53,11 @@ export default function FilingsIndexPage() {
           </Link>{" "}
           for how program mentions are matched.
         </p>
-      </div>
+      </PageIntro>
 
-      <FilingsTable filings={index.filings} />
+      <div id="filing-directory" className="scroll-mt-24">
+        <FilingsTable filings={index.filings} />
+      </div>
     </div>
   );
 }

@@ -14,10 +14,11 @@ import {
 import { getAwardFyRange } from "@/lib/fy-range";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CompaniesTable } from "@/components/companies-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { FyRange } from "@/components/fy-range";
-import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
+import styles from "./companies-directory.module.css";
 
 // §P1-6: the description used to say "FY2017 onward" while the body said
 // "FY2017–FY2025" and the data ran through FY2026. Derived, so it cannot rot.
@@ -82,8 +83,19 @@ export default function CompaniesPage() {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Companies" }]}
       />
-      <div className="page-header mb-6">
-        <h1 className="text-3xl font-bold mb-2">Top Defense Contractors</h1>
+      <PageIntro eyebrow="Contractor directory" title="Who receives defense contracts?"
+        className={styles.intro}
+        description={<>{rows.length} corporate families · USAspending award obligations · <FyRange />. Totals cover the whole period in USD; they are not annual spending or budget authority.</>}
+        actions={<><a href="#contractor-directory">Find a contractor</a><Link href="/companies/families/">Renames &amp; acquisitions</Link><Link href="/filings/">Browse lobbying records</Link></>}>
+        <h2 className="sr-only">Top Defense Contractors</h2>
+        <p className={styles.legend}>
+          <strong>Entity confidence:</strong> high = registered common parent;
+          medium = name inference. A merged family carries its weakest member’s confidence.
+        </p>
+        <details className={styles.notes}>
+          <summary data-testid="companies-preamble">How these families are merged and scored</summary>
+          <div className={styles.noteBody}>
+            <p className="text-sm text-muted-foreground">Search corporate families, inspect their recorded obligations, and follow the evidence to programs and filings.</p>
         {/* §P1-6: "FY2017–FY2025" was authored here and was a year short of
             the data. The range is now derived from fct_award_transactions and
             worded identically on every surface that states it. */}
@@ -93,20 +105,8 @@ export default function CompaniesPage() {
           federal obligations — <FyRange />. Figures are in raw USD and
           aggregate the whole period, not a single year.
         </p>
-        {/* MOBILE FOLD (round-3 judging, all three judges). Below `sm` the
-            merge note and the confidence-method note put ~24 lines of caveat
-            prose between the heading and the first company — the first row was
-            more than two screens down. The words are the page's credibility,
-            so they are collapsed, not cut: same <CollapsibleBelowSm> idiom
-            /years/ already uses, children always in the DOM so the gates that
-            read [data-merge-note] and [data-confidence-method] still see every
-            word, and always open at `sm` and above. */}
-        <CollapsibleBelowSm
-          summary="How these families are merged and scored"
-          testId="companies-preamble"
-          className="mb-2"
-          bodyClassName="space-y-2"
-        >
+        {/* Extended methodology stays in the DOM while the directory opens
+            on its task controls at every viewport width. */}
         {/* §P1-3: the merge, stated where it happens. */}
         {mergedCount > 0 && (
           <p className="text-sm text-muted-foreground mb-2" data-merge-note>
@@ -157,8 +157,10 @@ export default function CompaniesPage() {
           </Link>
           .
         </p>
-        </CollapsibleBelowSm>
-      </div>
+          </div>
+        </details>
+      </PageIntro>
+      <div id="contractor-directory" className="scroll-mt-24">
       {/* The money column's period + universe, restated in frame with the
           figures (fix round, judge 2). Same derived range token as the intro
           — <FyRange /> everywhere, never an authored year. */}
@@ -180,6 +182,7 @@ export default function CompaniesPage() {
           </>
         }
       />
+      </div>
     </div>
     </CitationPanelProvider>
   );

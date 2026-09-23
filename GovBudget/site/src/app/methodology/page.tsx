@@ -1,3 +1,4 @@
+import { PageIntro } from "@/components/page-intro";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -178,12 +179,12 @@ export default function MethodologyPage() {
         method parameters, a tolerance, an outside body's published figure and
         worked examples — enumerated one by one, with reasons, in
         scripts/gates/prose-allowlist.json. */}
-    <div className="spine py-10">
+    <div className="spine py-10 reference-page">
       {/* Round-3 judging: /methodology/ and /about/ were the only two pages
           on the site with no breadcrumb, so the one page every figure links
           out to had no way back that was not the browser's own. */}
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Methodology" }]} />
-      <h1 className="text-3xl font-bold mb-2">Methodology</h1>
+      <PageIntro eyebrow="How the evidence works" title="Methodology" description="From a published budget line to a source you can inspect: the definitions, methods, and limits behind every page." actions={<><a href="#verification">Verify a number ↓</a><a href="#coverage">Understand coverage ↓</a><a href="#company-families">Understand contractor families ↓</a></>}/>
       <div className="doc-layout">
         <div data-doc-prose>
           {/* Round-1 judging: this read "Last updated: 2026-06-12" — a hand-typed
@@ -193,7 +194,7 @@ export default function MethodologyPage() {
               them; same rule applies to a date nothing derives. What IS derivable
               is the corpus stamp, so that is what it states. */}
           <p className="text-sm text-muted-foreground mb-8">
-            Describes the corpus this build shipped — data as of{" "}
+            Describes the corpus in this site export — generated{" "}
             <time dateTime={siteMeta.built_at}>
               {new Date(siteMeta.built_at).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -206,7 +207,7 @@ export default function MethodologyPage() {
 
           {/* §1 ─────────────────────────────────────────────────────────── */}
           <section id="1" className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">1. What this is</h2>
+            <h2 className="mb-3">1. What this is</h2>
             <p className="text-muted-foreground leading-7">
               {SITE_NAME} connects four things that live in separate government
               silos: what agencies said money was for (budget documents), what was
@@ -221,7 +222,7 @@ export default function MethodologyPage() {
 
           {/* §2 ─────────────────────────────────────────────────────────── */}
           <section id="2" className="mb-10">
-            <h2 className="text-xl font-semibold mb-4">
+            <h2 className="mb-4">
               2. Where every number comes from
             </h2>
 
@@ -425,7 +426,7 @@ export default function MethodologyPage() {
           {/* §3 ─────────────────────────────────────────────────────────── */}
           <section id="3" className="mb-10">
             {/* #verification — anchor target for the home page's citations stat */}
-            <h2 id="verification" className="text-xl font-semibold mb-4 scroll-mt-16">
+            <h2 id="verification" className="mb-4 scroll-mt-16">
               3. How we verify
             </h2>
             <div className="space-y-4 text-muted-foreground leading-7">
@@ -519,7 +520,7 @@ export default function MethodologyPage() {
 
           {/* §4 ─────────────────────────────────────────────────────────── */}
           <section id="4" className="mb-10">
-            <h2 className="text-xl font-semibold mb-4">4. How confident to be</h2>
+            <h2 className="mb-4">4. How confident to be</h2>
             <div className="space-y-4 text-muted-foreground leading-7">
               <div>
                 <h3 className="font-semibold text-foreground mb-1">
@@ -751,7 +752,7 @@ export default function MethodologyPage() {
 
           {/* §5 ─────────────────────────────────────────────────────────── */}
           <section id="5" className="mb-10">
-            <h2 className="text-xl font-semibold mb-4">5. Known limitations</h2>
+            <h2 className="mb-4">5. Known limitations</h2>
             <ul className="list-disc list-outside space-y-2 text-muted-foreground leading-7 pl-5">
               <li>
                 <strong>FY attribution is approximate.</strong> Contracts execute
@@ -804,7 +805,7 @@ export default function MethodologyPage() {
               interpolated at build time; the G2 gate recomputes them from the
               data sidecars and fails the build if they drift. */}
           <section id="coverage" className="mb-10 scroll-mt-16">
-            <h2 className="text-xl font-semibold mb-4">Coverage &amp; limits</h2>
+            <h2 className="mb-4">Coverage &amp; limits</h2>
             <p className="text-muted-foreground leading-7 mb-5">
               Several surfaces on this site are deliberately partial: we show a
               link only when we can defend it, and we say so where the data
@@ -1120,7 +1121,7 @@ export default function MethodologyPage() {
 
           {/* §feed ───────────────────────────────────────────────────────── */}
           <section id="feed" className="mb-10">
-            <h2 className="text-xl font-semibold mb-4">Anomaly Feed — signal types and thresholds</h2>
+            <h2 className="mb-4">Anomaly Feed — signal types and thresholds</h2>
             <p className="text-muted-foreground leading-7 mb-4">
               The <a href="/feed/" className="underline hover:text-foreground">/feed</a>{" "}
               page surfaces automated signals computed from the defense budget and
@@ -1306,7 +1307,7 @@ export default function MethodologyPage() {
 
           {/* §6 ─────────────────────────────────────────────────────────── */}
           <section id="6" className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">6. Corrections</h2>
+            <h2 className="mb-3">6. Corrections</h2>
             <p className="text-muted-foreground leading-7">
               If you find a number that appears wrong, send us the citation that
               contradicts it and we will investigate. We follow a
@@ -1544,7 +1545,7 @@ export default function MethodologyPage() {
 
           {/* §7 ─────────────────────────────────────────────────────────── */}
           <section id="7" className="mb-10">
-            <h2 className="text-xl font-semibold mb-3">7. Cite us / bulk data</h2>
+            <h2 className="mb-3">7. Cite us / bulk data</h2>
             <p className="text-muted-foreground leading-7">
               When citing a specific figure, include the source citation displayed
               alongside it: document title, fiscal year, page or XML element path,

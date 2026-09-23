@@ -132,9 +132,9 @@ export function BreakdownSection({ factId }: { factId: string }) {
   if (breakdown.rows.length <= INLINE_ROW_LIMIT) {
     return (
       <div data-testid="breakdown-section">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+        <span className="t-label block mb-1">
           Line items ({breakdown.rows.length})
-          <span className="ml-1.5 normal-case tracking-normal">
+          <span className="ml-1.5 normal-case">
             · {breakdown.units}
           </span>
         </span>
@@ -220,7 +220,7 @@ function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
                     <span
                       data-testid="breakdown-overlay-total"
                       data-v={recorded}
-                      className="font-mono tabular-nums text-foreground"
+                      className="t-figure t-figure--2 text-foreground"
                     >
                       {fmtExact(recorded)}
                     </span>
@@ -415,7 +415,7 @@ export function BreakdownTable({
                 )}
               </td>
               <td
-                className={`px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
+                className={`px-2.5 py-1.5 text-right t-figure t-figure--2 whitespace-nowrap ${
                   stickySum
                     ? "sticky bottom-0 bg-muted [box-shadow:0_-1px_0_var(--color-border)]"
                     : ""
@@ -452,14 +452,14 @@ function BreakdownRowTr({
           // covers every distinct PE in budget_lines) — link it (§2a).
           <a
             href={`/program/${encodeURIComponent(row.pe_bli)}/`}
-            className="ml-1.5 rounded bg-muted px-1 py-0.5 font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
+            className="t-id ml-1.5 rounded bg-muted px-1 py-0.5 hover:text-foreground hover:underline"
             title={`Open program page for ${row.pe_bli}`}
           >
             {row.pe_bli}
           </a>
         )}
       </td>
-      <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+      <td className="px-2.5 py-1.5 text-right t-figure t-figure--2 whitespace-nowrap">
         {/* Uncited rows carry an EXPLICIT muted tag ahead of the amount (not
             just the trailing ⁂ glyph) — visual-judge M2 finding. It sits
             before the numerals so it cannot disturb decimal alignment. */}

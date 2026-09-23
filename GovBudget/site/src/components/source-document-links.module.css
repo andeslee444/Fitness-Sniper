@@ -1,0 +1,8 @@
+.documents{display:grid;gap:12px;min-width:0;margin-bottom:20px}
+.document{min-width:0}
+.action{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--foreground);background:var(--foreground);color:var(--background);font:var(--type-ui);font-weight:600;text-decoration:none}
+.action svg{flex-shrink:0}.action:hover{background:var(--muted);color:var(--foreground)}
+.action:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+.context,.locators{margin-top:6px;font:var(--type-ui);line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere}
+.locators{color:var(--foreground);user-select:text}
+.compact{margin-bottom:0;gap:8px}.compact .action{padding:6px 10px}

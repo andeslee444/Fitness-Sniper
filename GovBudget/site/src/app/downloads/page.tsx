@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getDatasetManifest, getSiteMeta } from "@/lib/data";
 import { getAssetBase } from "@/lib/asset-base";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -7,6 +8,7 @@ import { AssetConfigProvider } from "@/components/asset-config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { DownloadCards } from "@/components/download-cards";
 import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { PageIntro } from "@/components/page-intro";
 
 export const metadata: Metadata = {
   title: "Downloads",
@@ -90,12 +92,13 @@ export default function DownloadsPage() {
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Downloads" }]}
         />
-        <div className="page-header mb-6">
-          <h1 className="text-3xl font-bold mb-2">Data Downloads</h1>
-          <p className="text-muted-foreground">
-            All {meta.counts.citations.toLocaleString("en-US")} source
+        <PageIntro eyebrow="Research tools / Reproduce" title="Data downloads"
+          description={<p>Take the underlying files into your own research workflow. Each export includes its schema; the citation index connects recorded facts back to their sources.</p>}
+          actions={<><Link href="/data/">Explore with SQL →</Link><Link href="/data/#dataset-inventory">Read dataset scope →</Link><Link href="/methodology/">Review the methodology →</Link></>}>
+          <p className="text-sm text-muted-foreground">
+            The snapshot includes {meta.counts.citations.toLocaleString("en-US")} source
             citations and {meta.counts.programs.toLocaleString("en-US")}{" "}
-            program elements are available as Parquet exports. Datasets marked
+            programs in the FY2026 index. Datasets marked
             &ldquo;cited&rdquo; include row-level citation linkage; others
             are citation-tier pending (see{" "}
             <a href="/methodology/" className="underline hover:text-foreground">
@@ -103,16 +106,21 @@ export default function DownloadsPage() {
             </a>
             ).
           </p>
-          <p className="text-muted-foreground text-sm mt-2">
+          <details className="mt-3 border-t border-border pt-3 text-sm">
+            <summary className="cursor-pointer font-medium text-foreground">Schema &amp; data dictionary · source linkage</summary>
+          <p className="text-muted-foreground text-sm mt-3">
             Schemas &amp; data dictionary: every Parquet file embeds its
             column schema (readable via DuckDB <code>DESCRIBE</code>), and
             the{" "}
             <a href="/data/" className="underline hover:text-foreground">
               data explorer
             </a>{" "}
-            lists each dataset with row counts and column descriptions.
+            lists each dataset with row counts and a description of what one
+            row represents. Keep the citation index alongside your data export
+            so fact IDs remain traceable after a join or calculation.
           </p>
-        </div>
+          </details>
+        </PageIntro>
         {/* ssrBase (Wave 4 item 1): the static HTML carries absolute
             asset-host hrefs, so `curl`, `wget`, a copied link and any
             scripted fetch reach the parquet instead of a 404. Hydration

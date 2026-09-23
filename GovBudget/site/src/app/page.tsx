@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import styles from "./home.module.css";
+import { EXHIBIT_PILOTS, PLATE_DESCS, PROGRAM_EXHIBITS } from "@/lib/program-exhibits";
 import {
   getSiteMeta,
   getPrograms,
@@ -43,12 +45,14 @@ export default function HomePage() {
   const programs = getPrograms();
   const agencies = getAgencies();
 
-  // Feed teaser: the three most consequential signals, in the SAME reading
+  // Feed signals: the three most consequential signals, in the SAME reading
   // order /feed/ and the RSS/Atom feeds use — EVENT_ORDER from feed-model.mjs
   // (the single declaration, imported rather than re-typed), and within an
   // event type the exporter's dollar-magnitude ranking (tri-persona Wave 3,
   // Task 4). It used to be `cards.slice(0, 3)` off a payload the mart had
   // ordered `by event_type, pe_bli` — three alphabetically-first PE codes.
+  // Rendered as annotations on the one FY25→26 ledger below (round-3
+  // critique), never as a second list.
   let feedTeaser: ReturnType<typeof getFeed>["cards"] = [];
   try {
     const rank = (t: string) => {
@@ -72,6 +76,16 @@ export default function HomePage() {
         Math.abs(a.trajectory!.fy2526_change!),
     )
     .slice(0, 5);
+
+  // ONE ledger: signals whose programs are not top movers append as their
+  // own rows in the same ledger, keeping the data-source-text /
+  // data-xml-path anchors. A signal that names a mover no longer annotates
+  // the row — the annotation restated the row's own figure at every width
+  // (round-7: the ledger said everything twice).
+  const moverPes = new Set(topMovers.map((p) => p.pe_bli));
+  const extraSignals = feedTeaser
+    .map((card, i) => ({ card, i }))
+    .filter(({ card }) => !card.pe_bli || !moverPes.has(card.pe_bli));
 
   // Receipt moment: the largest FY2024-actuals figure with a jbook_pdf
   // citation — the panel renders the actual PDF page + highlight (Goal 1).
@@ -100,183 +114,145 @@ export default function HomePage() {
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
+  const sortedAgencies = [...agencies].sort(
+    (a, b) => b.program_count - a.program_count,
+  );
+
   return (
     <CitationPanelProvider citations={citationsSlice}>
-    <div>
+    <div className={styles.home}>
       {/* One-time dismissible receipts-mode coach mark (home only) */}
       <ReceiptsIntro />
 
-      {/* ── Hero (compact — keeps the receipt moment above the fold) ─────── */}
-      <section className="bg-background pt-10 pb-8 md:pt-14 md:pb-10">
-        <div className="spine text-center">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-balance text-foreground mb-4">
-            Federal defense spending,{" "}
-            <span className="text-primary">fully cited</span>
-          </h1>
-          {/* HERO SUBTITLE (tri-persona Wave 3, Task 2) — FIXED PROSE.
-              This slot used to render whatever the anomaly feed emitted first,
-              and the most jargon-dense item won it:
-
-                "⚡ Defense Research Sciences award concentration HHI=3820
-                 (2022) — Highly Concentrated in FY2022 — the program's
-                 pooled, all-years HHI can differ; see the program page."
-
-              That was the first sentence a newcomer read, and HHI is expanded
-              only in /glossary/. The lede is a real, cited, correctly-scoped
-              claim — it is simply not an introduction, and it now lives where
-              it belongs: the Anomaly Feed teaser further down this page, and
-              /feed/ itself.
-
-              No figure here on purpose. The one the reviewer proposed (a
-              classified-budget total) has no derived source in this corpus, so
-              it would be a hard-coded literal wearing a sentence — and gate 2
-              rejects a currency token outside [data-amount] for exactly that
-              reason. The site's cited superlative is fifty pixels below, in
-              the receipt moment, where it carries its receipt. */}
-          <p
-            data-testid="hero-subtitle"
-            className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto"
-          >
-            The Pentagon&rsquo;s budget request, line by line. Every number on
-            this site is linked to the page of the government document it was
-            printed on.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              data-search-trigger
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
-              aria-label="Open search"
+      <section className={styles.hero}>
+        <div className={styles.stage}>
+          {/* The vitrine's object: the hand-drawn Virginia-class plate,
+              pulled in by REFERENCE (external <use> — inlining the ~120 KB
+              source would break the homepage weight gate). The container's
+              color sets the register: --plate-ink on the navy vitrine, with
+              the hatch tones the plate reads on dark grounds. */}
+          <div className={styles.stageImageWrap}>
+            {/* The plate's register mark, the same mono stamp the field-
+                guide plates carry below (`02 / AIR`, `03 / CYBER`) —
+                numbering starts at 01 (six of six critics read the missing
+                stamp as a bug, because it was one). */}
+            <span className={styles.heroStamp} aria-hidden="true" data-plate-mark>
+              01 / Sea
+            </span>
+            {/* Two renders of the SAME plate, exactly one visible per width
+                (round-6 mobile critique #12): at ≥768 the whole yard at
+                `meet`; at 390 the plate is cropped with intent —
+                `xMin…slice` holds the bow and sail, not the whole yard
+                shrunk to a postage stamp. */}
+            <svg
+              className={styles.stagePlateFull}
+              viewBox="0 0 1800 960"
+              role="img"
+              aria-label="Conceptual submarine and shipyard illustration"
+              preserveAspectRatio="xMidYMid meet"
+              data-illustration=""
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-              Search programs, companies, agencies
-            </button>
-            <Link
-              href="/programs/"
-              className="inline-flex items-center justify-center rounded-lg border border-border bg-card text-foreground px-6 py-2.5 text-sm font-semibold hover:bg-muted transition-colors"
+              <desc>{PLATE_DESCS.virginia}</desc>
+              <use href="/exhibits/plates/virginia.svg#virginia-plate" />
+            </svg>
+            <svg
+              className={styles.stagePlateCrop}
+              viewBox="0 0 1800 960"
+              role="img"
+              aria-label="Conceptual submarine and shipyard illustration, bow section"
+              preserveAspectRatio="xMinYMid slice"
+              data-illustration=""
             >
-              Browse all programs
-            </Link>
+              <desc>
+                A cropped view of the same side elevation, holding the
+                submarine&apos;s bow and sail in the drydock.
+              </desc>
+              <use href="/exhibits/plates/virginia.svg#virginia-plate" />
+            </svg>
+          </div>
+          <div className={styles.stageInner}>
+            {/* One subject per screen (round-5 consensus): the object and
+                its receipt. The eyebrow, lede, search field and persona
+                line are gone — the word is the page's name, the number is
+                the receipt; search lives in the site header. */}
+            <div className={styles.heroCopy} data-display>
+              <h1>See what your<br />tax dollars<br />build.</h1>
+            </div>
+            {/* The receipt is the vitrine's caption: the figure and its
+                source sit beneath the hull, inside the composition. The
+                element IS data-testid="receipt-moment" (G4 fold gate) —
+                restyled, not moved out of the fold. */}
+            {receiptFact && (
+              <div className={styles.receiptDock}>
+                <ReceiptMoment
+                  peBli={receiptFact.pe_bli}
+                  title={receiptFact.title}
+                  org={receiptFact.org}
+                  amountMillions={receiptFact.amount_millions}
+                  factId={receiptFact.fact_id}
+                  hero={hero}
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* ── Receipt moment + persona row ─────────────────────────────────── */}
-      <section className="bg-background border-b border-border pb-10 md:pb-12">
+      {/* The field guide on PAPER (round-5: one navy→cream alternation per
+          page — the hero is the only dark band). Each plate is the same
+          object the hero uses: external <use>, container color = ink, mono
+          corner caption, numbered callouts anchored to the measured plate
+          points, the label list beside, its caption bar beneath. */}
+      <section className={styles.fieldGuide}>
         <div className="spine">
-          {receiptFact && (
-            <>
-              <ReceiptMoment
-                peBli={receiptFact.pe_bli}
-                title={receiptFact.title}
-                org={receiptFact.org}
-                amountMillions={receiptFact.amount_millions}
-                factId={receiptFact.fact_id}
-                hero={hero}
-              />
-              {/* §P0-5 scope qualifier — small print under the superlative
-                  (12px per P1-1; outside the card so the G4 fold assert on
-                  [data-testid="receipt-moment"] is unaffected). */}
-              {scopeQualifier && (
-                <p
-                  data-testid="hero-scope-qualifier"
-                  className="mt-1.5 px-1 text-xs leading-5 text-muted-foreground"
-                >
-                  {"Scope: "}
-                  {scopeQualifier}.
-                </p>
-              )}
-            </>
-          )}
-
-          {/* Persona row — route the three primary jobs, no insider nouns.
-              Staggered reveal on scroll (mobile: below the fold). */}
-          <div
-            data-testid="persona-row"
-            className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"
-          >
-            <Reveal index={0} className="h-full">
-              <PersonaCard
-                href="/programs/"
-                title="Verify a number"
-                description="Pick any program, click a figure, and see the exact source page it comes from."
-              />
-            </Reveal>
-            <Reveal index={1} className="h-full">
-              <PersonaCard
-                href="/district/"
-                title="See what a district builds"
-                description="Defense dollars mapped to the congressional districts where the work happens."
-              />
-            </Reveal>
-            <Reveal index={2} className="h-full">
-              <PersonaCard
-                href="/feed/"
-                title="Track who's winning"
-                description="New contractors, big budget swings, and concentration signals — every build."
-              />
-            </Reveal>
-          </div>
+          <h2 className={styles.sectionTitle}>A different way into the budget.</h2>
+          <p className={styles.guideIntro} data-prose>
+            Explore the systems, research, and support a program funds. Each
+            illustration opens into explanations with receipts.{" "}
+            <Link href="/explore/">Open the visual field guide</Link>{" · "}
+            <Link href="/feed/#budget-briefings">Budget comparisons</Link>
+          </p>
+          {/* The hero already owns the submarine — the gallery holds the
+              other two pilots (round-4 critique: the same object rendered
+              twice in 500px read as a stock asset, not a collection). */}
+          <div className={styles.exhibits}>{EXHIBIT_PILOTS.filter(slug => slug !== "2013").map(slug => { const exhibit = PROGRAM_EXHIBITS[slug]; return <Link key={slug} href={`/program/${slug}/#exhibit`} className={styles.exhibitCard}>
+            <div className={styles.plateGrid}>
+              <div className={styles.plateFrame}>
+                <span className={styles.plateStamp} data-plate-mark>{exhibit.eyebrow}</span>
+                <svg viewBox="0 0 1800 960" role="img" aria-label={exhibit.caption} data-illustration="">
+                  <desc>{PLATE_DESCS[exhibit.subject]}</desc>
+                  <use href={`/exhibits/plates/${exhibit.subject}.svg#${exhibit.subject}-plate`} />
+                </svg>
+                {exhibit.topics.map((t, i) => (
+                  <span
+                    key={t.id}
+                    aria-hidden="true"
+                    className={styles.callout}
+                    data-plate-mark
+                    style={{ left: `${t.position[0]}%`, top: `${t.position[1]}%` }}
+                  >0{i + 1}</span>
+                ))}
+              </div>
+              <ol className={styles.plateLabels}>
+                {exhibit.topics.map((t, i) => (
+                  <li key={t.id}><span>0{i + 1}</span>{t.label}</li>
+                ))}
+              </ol>
+            </div>
+            <div className={styles.exhibitCaption}><h3>{exhibit.name}</h3></div>
+            <p className={styles.plateCaption}>{exhibit.caption}</p>
+          </Link>; })}</div>
         </div>
       </section>
 
-      {/* ── Stats band (every stat links to its surface) ─────────────────── */}
-      <section className="border-b border-border bg-muted/40 py-10">
-        <Reveal className="spine">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <StatCard
-              value={meta.counts.programs.toLocaleString("en-US")}
-              label="program elements"
-              href="/programs/"
-              stat="programs"
-            />
-            <StatCard
-              value={meta.counts.citations.toLocaleString("en-US")}
-              label="source citations"
-              href="/methodology/#verification"
-              stat="citations"
-            />
-            <StatCard
-              value={meta.counts.companies.toLocaleString("en-US")}
-              label="contractor families"
-              href="/companies/"
-              stat="companies"
-            />
-            <StatCard
-              value={meta.counts.agencies.toLocaleString("en-US")}
-              label="defense agencies"
-              href="#agencies"
-              stat="agencies"
-            />
-          </div>
-          {/* Coverage qualifier — the four totals above span datasets with
-              different coverage (crosswalk, dossiers, districts, …). */}
-          <p className="mt-5 text-center text-xs text-muted-foreground">
-            Coverage varies by dataset —{" "}
-            <Link
-              href="/methodology/#coverage"
-              className="underline hover:text-foreground"
-            >
-              see methodology
-            </Link>
-            .
-          </p>
-        </Reveal>
-      </section>
+      {/* Corpus totals live in the site footer now — one sentence with the
+          four linked figures (the data-stat contract, linkgraph gate), not
+          a stats strip (round-5 consensus). */}
 
       {/* ── Top movers ───────────────────────────────────────────────────── */}
       <section className="py-12 border-b border-border">
         <Reveal className="spine">
-          <h2 className="text-2xl font-bold mb-2">Largest {TRAJECTORY_FY_LABEL} changes</h2>
+          <h2 className={styles.sectionTitle}>Largest {TRAJECTORY_FY_LABEL} changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 enacted and
             the FY2026 request, ranked by the size of the change in dollars with
@@ -284,21 +260,8 @@ export default function HomePage() {
             increases, that is the result, not a filter. Dollar deltas carry
             derived workbook citations — click a figure to inspect the formula
             and inputs.
-            {/* Backlog #49: this used to hand-type the scope tail, which had
-                drifted false ("appropriations not covered by the R-1/P-1
-                rollups" — COLUMBIA is a P-1 line and still absent). Reads
-                meta.corpus_scope now — the SAME string the hero qualifier
-                and the /programs/, /years/, /methodology/, /data/ corpus
-                statement carry, so this sentence cannot drift from them
-                again. */}
-            {scopeQualifier && meta.corpus_scope && (
-              <span className="block mt-1 text-xs">
-                Scope: ranked across the R&D and procurement program elements
-                in our corpus ({meta.corpus_scope}).
-              </span>
-            )}
           </p>
-          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
+          <div className={styles.ledger}>
             {topMovers.map((p) => {
               const change = p.trajectory!.fy2526_change!;
               const isPos = change >= 0;
@@ -339,14 +302,15 @@ export default function HomePage() {
                 <div
                   key={p.pe_bli}
                   data-mover-row=""
-                  className="flex flex-col items-start gap-1 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 hover:bg-muted/60 transition-colors group"
+                  className={`${styles.ledgerRow} px-1 py-4 group`}
                 >
+                  <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <Link
-                    href={`/program/${p.pe_bli}/`}
+                    href={`/program/${p.slug}/`}
                     data-mobile-pair-label=""
                     className="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 overflow-hidden"
                   >
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="t-id">
                       {p.pe_bli}
                     </span>
                     <span className="text-sm font-medium group-hover:underline">
@@ -361,7 +325,7 @@ export default function HomePage() {
                       <span
                         data-mover-recon={reconShare.toFixed(1)}
                         data-mover-disc-down={discDown ? "" : undefined}
-                        className="whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 text-[11px] leading-none text-muted-foreground"
+                        className={styles.reconNote}
                       >
                         {reconShare.toFixed(0)}% one-time reconciliation
                         {discDown && " · discretionary down"}
@@ -372,31 +336,94 @@ export default function HomePage() {
                     data-mobile-pair-value=""
                     data-primary-value="mover-change"
                     className={[
-                      "shrink-0 text-sm font-mono font-semibold sm:ml-4",
-                      isPos ? "text-emerald-700" : "text-red-600",
+                      styles.moverValue,
+                      "t-figure t-figure--3 shrink-0 sm:ml-4",
+                      isPos ? styles.moverUp : styles.moverDown,
                     ].join(" ")}
                   >
-                    {isPos ? "+" : ""}
-                    <Cite
-                      value={change}
-                      units="USD thousands"
-                      dataset="fct_budget_trajectory"
-                      factId={p.trajectory_fact_ids?.fy2526_change}
-                      basis="toa"
-                      fy={2026}
-                      measure="change"
-                      entity={p.pe_bli}
-                      edition={2026}
-                      chip={false}
-                    />
+                    <span>
+                      {isPos ? "+" : ""}
+                      <Cite
+                        value={change}
+                        units="USD thousands"
+                        dataset="fct_budget_trajectory"
+                        factId={p.trajectory_fact_ids?.fy2526_change}
+                        basis="toa"
+                        fy={2026}
+                        measure="change"
+                        entity={p.pe_bli}
+                        edition={2026}
+                        chip={false}
+                      />
+                    </span>
+                    {/* Delta and rate together on the right — the annotation
+                        sentence that restated them is gone at every width
+                        (round-7: the ledger said everything twice). */}
+                    {p.trajectory!.fy2526_pct_change !== null && (
+                      <span className={styles.moverPct}>
+                        {"· "}
+                        {isPos ? "+" : "−"}
+                        {Math.abs(p.trajectory!.fy2526_pct_change!).toLocaleString(
+                          "en-US",
+                          { maximumFractionDigits: 0 },
+                        )}
+                        %
+                      </span>
+                    )}
+                  </div>
                   </div>
                 </div>
               );
             })}
+            {/* Signals whose programs are not top movers append as their own
+                rows — the same ledger, the same hairlines. */}
+            {extraSignals.map(({ card, i }) => (
+              <div
+                key={`feed-${i}`}
+                className={`${styles.ledgerRow} flex flex-col gap-1 px-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-sm font-medium line-clamp-2 sm:truncate"
+                    data-source-text="headline"
+                    data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? i}`}
+                  >
+                    <FeedHeadline card={card} />
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {card.event_type.replace(/_/g, " ")}
+                  </p>
+                </div>
+                {card.program_url && (
+                  <Link
+                    href={card.program_url}
+                    className={`shrink-0 self-start sm:ml-4 sm:self-auto ${styles.viewLink}`}
+                  >
+                    view
+                  </Link>
+                )}
+              </div>
+            ))}
           </div>
+          {/* ONE methodology footnote for the whole ledger (round-4 critique:
+              two caveat paragraphs before the first figure and a third after
+              the list read as template disclaimer-stacking). Both sentences
+              moved here verbatim — scope text first.
+              Backlog #49: the scope tail reads meta.corpus_scope — the SAME
+              string the hero qualifier and the /programs/, /years/,
+              /methodology/, /data/ corpus statement carry, so it cannot
+              drift from them again. */}
           <p className="text-xs text-muted-foreground mt-2">
             Trajectory figures are derived from budget justification
-            workbooks — each delta cites its FY25/FY26 inputs. See{" "}
+            workbooks — each delta cites its FY25/FY26 inputs.
+            {scopeQualifier && meta.corpus_scope && (
+              <>
+                {" "}
+                Scope: ranked across the R&D and procurement program elements
+                in our corpus ({meta.corpus_scope}).
+              </>
+            )}{" "}
+            See{" "}
             <Link href="/methodology/" className="underline hover:text-foreground">
               methodology
             </Link>
@@ -405,71 +432,67 @@ export default function HomePage() {
         </Reveal>
       </section>
 
-      {/* ── Agency grid ──────────────────────────────────────────────────── */}
+      {/* ── Agency index ─────────────────────────────────────────────────── */}
       <section id="agencies" className="py-12 scroll-mt-16">
         <Reveal className="spine">
-          <h2 className="text-2xl font-bold mb-2">Browse by agency</h2>
+          <h2 className={styles.sectionTitle}>Browse by agency</h2>
           <p className="text-sm text-muted-foreground mb-6">
             {agencies.length} defense agencies — click to see all program
             elements.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {[...agencies]
-              .sort((a, b) => b.program_count - a.program_count)
-              .map((agency) => (
-                // Cite (role=button) must not nest inside the Link — the org
-                // name links; the FY24 sum is a sibling Cite (derived citation).
-                <div
+          {/* One register, three columns of DATA — name | programs | FY24 —
+              not a three-across card grid whose rules drift out of register
+              from row two down (round-4 critique). "FY24" is said once, in
+              the column head, not 24 times. Cite (role=button) must not nest
+              inside the Link — the org name links; the FY24 sum is a sibling
+              Cite in its own cell (derived citation). */}
+          <table className={styles.agencyTable}>
+            <thead>
+              <tr>
+                <th className="t-label">Agency</th>
+                <th className={`t-label ${styles.agencyNum}`}>Programs</th>
+                <th className={`t-label ${styles.agencyNum}`}>FY24</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedAgencies.map((agency, i) => (
+                /* Eight rows + the "all agencies" link at ≥768; the six
+                   largest + the same link on phones (round-7: desktop
+                   matches mobile's already-right pattern). */
+                <tr
                   key={agency.org}
-                  className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors interactive-raise"
+                  className={
+                    i >= 8
+                      ? styles.agencyRowExtra
+                      : i >= 6
+                        ? styles.agencyRowMid
+                        : ""
+                  }
                 >
-                  {/* §P1-E badge sweep: label humanized, href keeps the
-                      raw org code (the agency page's identity).
-                      Sprint C Task C7 (ROADMAP #66): this was the one Link
-                      on the site relying on color ALONE at rest
-                      (group-hover:underline gave it no non-color cue until
-                      the card was hovered) — harmless in light mode by
-                      accident of contrast, but axe's link-in-text-block
-                      rule (WCAG 1.4.1) failed it under the new dark
-                      palette, where --primary sits close in luminance to
-                      the surrounding text. Fixed to the SAME
-                      dotted-at-rest/solid-on-hover convention every other
-                      inline link on this page already uses, which is
-                      correct in both schemes rather than tuned to one. */}
-                  {/* Tri-persona Wave 3, Task 3: this rendered
-                      serviceOrgName(), which expands A/N/F and returns the
-                      raw code for the other 21 — so 21 of the 24 cards on
-                      the site's front page read "TJS", "DMACT", "DHRA". The
-                      full component name is the card's headline now and the
-                      workbook code sits under it, still visible because it
-                      is the page's identity and the workbook's key. Codes
-                      lib/agency-names.ts has not been taught fall back to
-                      the code, and then the second line is suppressed
-                      rather than printed twice. */}
-                  <Link
-                    href={`/agency/${agency.org}/`}
-                    className="font-bold text-sm text-primary underline decoration-dotted underline-offset-2 group-hover:decoration-solid"
-                    title={`Organization code ${agency.org}`}
-                  >
-                    {agencyDisplayName(agency.org)}
-                  </Link>
-                  <span className="text-xs text-muted-foreground mt-1">
+                  {/* Tri-persona Wave 3, Task 3: the full component name is
+                      the headline and the workbook code sits beside it,
+                      still visible because it is the page's identity and the
+                      workbook's key. */}
+                  <td>
+                    <Link
+                      href={`/agency/${agency.org}/`}
+                      className={styles.agencyName}
+                      title={`Organization code ${agency.org}`}
+                    >
+                      {agencyDisplayName(agency.org)}
+                    </Link>
                     {agencyFullName(agency.org) && (
-                      <>
-                        <span
-                          data-agency-code={agency.org}
-                          className="font-mono"
-                        >
-                          {agency.org}
-                        </span>
-                        {" · "}
-                      </>
+                      <span
+                        data-agency-code={agency.org}
+                        className={styles.agencyCode}
+                      >
+                        {agency.org}
+                      </span>
                     )}
-                    {agency.program_count} program
-                    {agency.program_count !== 1 ? "s" : ""}
-                  </span>
-                  {agency.fy2024_total_millions > 0 && (
-                    <span className="text-xs text-muted-foreground mt-0.5">
+                  </td>
+                  <td className={`t-figure t-figure--2 ${styles.agencyNum}`}>{agency.program_count}</td>
+                  <td className={`t-figure t-figure--2 ${styles.agencyNum}`}>
+                    {agency.fy2024_total_millions > 0 && (
                       <Cite
                         value={agency.fy2024_total_millions}
                         units="USD millions"
@@ -481,79 +504,23 @@ export default function HomePage() {
                         entity={agency.org}
                         edition={2026}
                         chip={false}
-                      />{" "}
-                      FY24
-                    </span>
-                  )}
-                </div>
+                      />
+                    )}
+                  </td>
+                </tr>
               ))}
-          </div>
+            </tbody>
+          </table>
+          {/* Phones see the six largest; the full index is one tap away. */}
+          <Link href="/agency/" className={styles.agencyMore}>
+            All {agencies.length} agencies →
+          </Link>
         </Reveal>
       </section>
 
-      {/* ── Feed teaser ──────────────────────────────────────────────────── */}
-      {feedTeaser.length > 0 && (
-        <section className="py-12 border-b border-border">
-          <Reveal className="spine">
-            <div className="flex items-baseline justify-between mb-2">
-              <h2 className="text-2xl font-bold">Anomaly Feed</h2>
-              <Link
-                href="/feed/"
-                className="text-sm text-primary underline decoration-dotted hover:decoration-solid"
-              >
-                View all &rarr;
-              </Link>
-            </div>
-            <p className="text-sm text-muted-foreground mb-6">
-              Automated signals: budget swings, cancelled programs, and new
-              contractors. Figures cite their source.
-            </p>
-            {/* Round-3 judging: `truncate` cut all three headlines at the SAME
-                point at 390, so the three cards read identically and the
-                differentiator — the value and the year — was exactly what was
-                lost. The headline wraps to two lines now (line-clamp keeps the
-                row height bounded), and "view →" drops below it on a phone
-                instead of stealing its width. */}
-            <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
-              {feedTeaser.map((card, i) => (
-                <div
-                  key={`feed-${i}`}
-                  className="flex flex-col gap-1 px-5 py-4 hover:bg-muted/60 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                >
-                  <div className="min-w-0 flex-1">
-                    {/* data-source-text="headline": pipeline-composed prose
-                        whose dollar tokens carry their own fact ids through
-                        <ProseCite> (backlog #44). data-xml-path is the
-                        block-level anchor (a0) requires. */}
-                    <p
-                      className="text-sm font-medium line-clamp-2 sm:truncate"
-                      data-source-text="headline"
-                      data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? i}`}
-                    >
-                      <FeedHeadline card={card} />
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {card.event_type.replace(/_/g, " ")}
-                    </p>
-                  </div>
-                  {card.program_url && (
-                    <Link
-                      href={card.program_url}
-                      className="shrink-0 self-start text-xs text-primary underline decoration-dotted hover:decoration-solid sm:ml-4 sm:self-auto"
-                    >
-                      view &rarr;
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </section>
-      )}
-
       {/* ── Trust anchor ─────────────────────────────────────────────────── */}
-      <section className="border-t border-border bg-muted/30 py-10">
-        <Reveal className="spine text-center">
+      <section className={styles.trust}>
+        <Reveal className="spine">
           <p className="text-muted-foreground text-sm">
             All figures are cited to their exact source document, page, API
             query, or derived formula — every published dataset carries a
@@ -563,66 +530,22 @@ export default function HomePage() {
             </Link>
             . Correlation is shown, not causation.
           </p>
+          {/* §P0-5 scope qualifier — below the fold, ONCE (round-5: the
+              fold's subject is the object and its receipt; the qualifier
+              qualifies the superlative, it does not compete with it).
+              Sentence moved verbatim. */}
+          {scopeQualifier && (
+            <p
+              data-testid="hero-scope-qualifier"
+              className={`${styles.scopeNote} mt-3`}
+            >
+              {"Scope: "}
+              {scopeQualifier}.
+            </p>
+          )}
         </Reveal>
       </section>
     </div>
     </CitationPanelProvider>
-  );
-}
-
-function StatCard({
-  value,
-  label,
-  href,
-  stat,
-}: {
-  value: string;
-  label: string;
-  href: string;
-  stat: string;
-}) {
-  return (
-    <Link
-      href={href}
-      data-stat={stat}
-      className="group flex flex-col items-center rounded-lg px-3 py-2 hover:bg-muted/60 transition-colors interactive-raise"
-    >
-      <span className="text-3xl md:text-4xl font-bold text-foreground tabular-nums group-hover:text-primary transition-colors">
-        {value}
-      </span>
-      <span className="text-sm text-muted-foreground mt-1">
-        {label}
-        <span
-          aria-hidden="true"
-          className="inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          &rarr;
-        </span>
-      </span>
-    </Link>
-  );
-}
-
-function PersonaCard({
-  href,
-  title,
-  description,
-}: {
-  href: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex h-full flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors interactive-raise"
-    >
-      <span className="text-sm font-semibold text-foreground group-hover:underline">
-        {title} <span aria-hidden="true">&rarr;</span>
-      </span>
-      <span className="mt-1 text-xs text-muted-foreground leading-5">
-        {description}
-      </span>
-    </Link>
   );
 }

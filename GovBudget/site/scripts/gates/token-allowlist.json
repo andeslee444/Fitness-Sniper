@@ -1,0 +1,1212 @@
+[
+  {
+    "file": "src/__tests__/cite.test.tsx",
+    "value": "#abc123de",
+    "reason": "NOT A COLOUR: an 8-hex fact-id fragment asserted on in a Cite truncation test (the live #8b2746cb-vs-#bb54b165 mismatch). It shares its shape with #rrggbbaa and nothing else."
+  },
+  {
+    "file": "src/__tests__/cite.test.tsx",
+    "value": "#b38a20e9",
+    "reason": "NOT A COLOUR: an 8-hex fact-id fragment asserted on in a Cite truncation test (the live #8b2746cb-vs-#bb54b165 mismatch). It shares its shape with #rrggbbaa and nothing else."
+  },
+  {
+    "file": "src/__tests__/cite.test.tsx",
+    "value": "#f456789f",
+    "reason": "NOT A COLOUR: an 8-hex fact-id fragment asserted on in a Cite truncation test (the live #8b2746cb-vs-#bb54b165 mismatch). It shares its shape with #rrggbbaa and nothing else."
+  },
+  {
+    "file": "src/app/editorial.css",
+    "value": "#92400e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the research-status amber, hand-paired light/dark in a two-line block that predates the token set."
+  },
+  {
+    "file": "src/app/editorial.css",
+    "value": "#fcd34d",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the research-status amber, hand-paired light/dark in a two-line block that predates the token set."
+  },
+  {
+    "file": "src/app/explore/page.tsx",
+    "value": "#0a161f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): Tailwind arbitrary value for the plate backdrop on /explore/ \u2014 the same ink the home hero and the program exhibit each re-declare separately."
+  },
+  {
+    "file": "src/app/home.module.css",
+    "value": "#0a161f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the home hero plate's own dark palette, authored as a self-contained scene before the token set reached it."
+  },
+  {
+    "file": "src/app/home.module.css",
+    "value": "#a4c6d3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the home hero plate's own dark palette, authored as a self-contained scene before the token set reached it."
+  },
+  {
+    "file": "src/app/home.module.css",
+    "value": "#b4cbd6",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the home hero plate's own dark palette, authored as a self-contained scene before the token set reached it."
+  },
+  {
+    "file": "src/app/home.module.css",
+    "value": "#d6edf5",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the home hero plate's own dark palette, authored as a self-contained scene before the token set reached it."
+  },
+  {
+    "file": "src/components/citation-panel/pdf-view.tsx",
+    "value": "rgb(217 119 6)",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): PDF.js highlight-overlay colours (amber-600 border, amber-400/30 fill) sitting over a canvas-rendered page rather than over themed DOM."
+  },
+  {
+    "file": "src/components/citation-panel/pdf-view.tsx",
+    "value": "rgba(251 191 36 / 0.3)",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): PDF.js highlight-overlay colours (amber-600 border, amber-400/30 fill) sitting over a canvas-rendered page rather than over themed DOM."
+  },
+  {
+    "file": "src/components/decade-trajectory.tsx",
+    "value": "#16a34a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral series plus axis and label greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/decade-trajectory.tsx",
+    "value": "#6b7280",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral series plus axis and label greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/decade-trajectory.tsx",
+    "value": "#d1d5db",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral series plus axis and label greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/decade-trajectory.tsx",
+    "value": "#dc2626",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral series plus axis and label greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/decade-trajectory.tsx",
+    "value": "#e5e7eb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral series plus axis and label greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#102c31",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#153b40",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#153b4040",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#173e42",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#17438d",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#183c32",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#18488f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#192e46",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#202e28",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#243c3a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#243c57",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#275cb7",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#28483f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#3d7775",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#3f6366",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#456c61",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#46605a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#466267",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#4f7269",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#52716f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#53657a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#606960",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#607d9f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#6b8578",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#6b8780",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#6f8b85",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#729088",
+    "reason": "KNOWN RISK. [data-workspace=funding] .cite-figure, measured 3.04:1 over --paper #f3f0e8 \u2014 clears the pinned >=3:1 by 0.04 with no margin. Any darkening of --paper breaks it."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#7c9392",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#829c91",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#849c91",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#8a3e24",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#90a59b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#94aaa0",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#95aaa0",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#9aadc1",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#9baca0",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#9cae9f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#a2b6ad",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#a7beb9",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#a7e0de",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#adb8ab",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#b3bfb3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#b5bdb3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#b8c7b8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#b9c5bb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#bac8b8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#bdcbbf",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#bddad3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#c0e4da",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#c4cec3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#c4ced8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#c6d4c1",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#c7cdc4",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#c9cec2",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#cbd3c6",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#cbd3ca",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#cbd4dc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#d0d7c9",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#d4dce3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#dbe7f8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#dfe8dc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#e0e7db",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#e4eae099",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#e6ede0",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#e6eee3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#e9e8df",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#e9ece2",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#eeefe4",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#f0f1e8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#f1f0e7",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#f2f5f7",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#f3f0e8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#f8f5eb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#faf8ef",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#faf8f1",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#fff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#ffffff30",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-family-browser.module.css",
+    "value": "#ffffff45",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 register's self-contained paper/ink palette, authored as its own design world alongside its own @font-face set."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#326c5a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#34554b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#365175",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#36574d",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#714020",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#785033",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#80958a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-knowledge-browser.module.css",
+    "value": "#883322",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 knowledge browser's self-contained palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#02111555",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#081b2277",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#09202cec",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#0a1d24",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#0b202adb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#0b2229",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#0c242de8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#0d252c",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#10252e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#10272e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#102c33",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#17333d",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#18333b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#213d45",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#23423f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#243b40",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#244c56",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#29434d",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#29474e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#31525b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#34514f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#52737b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#638c98",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#90c8cb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#91b3af",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#91c5c222",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#92b8bc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#9bb6bc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#9bd4c92a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#a6c4c3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#adcad0",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#b4e2dc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#b6d7d605",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#b6dcd5",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#bad5cb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#bed9ca",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#c2dcdb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#c3d9d9",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#c4d9cc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#d2e5d9",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#d4eeee",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#dbf2e6",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#dcebe9",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#e0eeea",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#e4b57b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#e5b77e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#e8b77e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#edb87a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/f15-model.module.css",
+    "value": "#eff2e6",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the F-15 model viewer's self-contained dark palette, sibling to the family browser's."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#071a21",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#071a2155",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#091c23a6",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#0d222b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#102d35",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#183c44",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#20434a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#315860",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#3d5962",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#436067",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#4e7e80",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#9ec3c508",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#a1bec4",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#a7c8cc",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#d3e9e8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#e5f3ee",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/family-entry.module.css",
+    "value": "#ffffff18",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the family-entry card's self-contained dark palette, part of the same F-15 register world."
+  },
+  {
+    "file": "src/components/flow-chart/flow-chart.tsx",
+    "value": "rgba(255,255,255,0.65)",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): white hairlines and dots painted into the flow diagram's SVG <defs> patterns."
+  },
+  {
+    "file": "src/components/flow-chart/flow-chart.tsx",
+    "value": "rgba(255,255,255,0.7)",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): white hairlines and dots painted into the flow diagram's SVG <defs> patterns."
+  },
+  {
+    "file": "src/components/flow-chart/flow-chart.tsx",
+    "value": "rgba(255,255,255,0.85)",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): white hairlines and dots painted into the flow diagram's SVG <defs> patterns."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#0008",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#091a27e6",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#0a161f",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#0a1d26",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#102431",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#102530",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#102633ee",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#14303e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#162f3e",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#172932",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#172f3a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#183748",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#1b5067",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#1e4a5c",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#204354",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#233c49",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#253c46",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#28404c",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#285367",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#39464b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#3a5260",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#47606b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#51616a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#527d91",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#54636a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#59676c",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#7899a9",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#81d1e7",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#81d1e722",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#82c9e0",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#8cddf3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#8da0a7",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#93bdce",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#98dff3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#9ce5fa",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#a0e8ff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#a3c4d2",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#a3e9fd",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#a5e7f8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#a7c7d3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#b4c3c5",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#b5c7cf",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#b5c8d1",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#b6c9d3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#b6ebff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#b9efff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#c4e5ed",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#d2d9d8",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#d7f3ff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#daebf3",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#dcf7ff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#e0a25b",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#e6faff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#e9f2f5",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#eef0eb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#effbff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#f5f3ed",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/program-exhibit.module.css",
+    "value": "#fff",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the program exhibit's self-contained dark palette, minified onto single lines."
+  },
+  {
+    "file": "src/components/trajectory-spark.tsx",
+    "value": "#16a34a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG sparkline colours \u2014 up/down/neutral plus axis greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/trajectory-spark.tsx",
+    "value": "#6b7280",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG sparkline colours \u2014 up/down/neutral plus axis greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/trajectory-spark.tsx",
+    "value": "#9ca3af",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG sparkline colours \u2014 up/down/neutral plus axis greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/trajectory-spark.tsx",
+    "value": "#dc2626",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG sparkline colours \u2014 up/down/neutral plus axis greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/trajectory-spark.tsx",
+    "value": "#e5e7eb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG sparkline colours \u2014 up/down/neutral plus axis greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/years-totals-chart.tsx",
+    "value": "#16a34a",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral plus axis and gridline greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/years-totals-chart.tsx",
+    "value": "#6b7280",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral plus axis and gridline greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/years-totals-chart.tsx",
+    "value": "#d1d5db",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral plus axis and gridline greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/years-totals-chart.tsx",
+    "value": "#dc2626",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral plus axis and gridline greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/years-totals-chart.tsx",
+    "value": "#e5e7eb",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): inline-SVG chart colours \u2014 up/down/neutral plus axis and gridline greys \u2014 written as raw Tailwind palette hexes."
+  },
+  {
+    "file": "src/components/site-header.module.css",
+    "value": "#06142620",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the desktop popover shadow, a one-off translucent ink with no semantic token."
+  },
+  {
+    "file": "src/components/site-header.module.css",
+    "value": "#06142660",
+    "reason": "Pre-existing, not yet tokenised (tracked debt): the mobile nav overlay scrim, a one-off translucent ink with no semantic token."
+  }
+]

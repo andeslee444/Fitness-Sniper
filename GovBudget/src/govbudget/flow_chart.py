@@ -82,13 +82,18 @@ NODE_PAD = 8.0
 #     bbox would intersect a higher-priority label.
 MIN_LABEL_H = 9.0       # node thickness below which mid-column labels hide
 # Label bbox height: the RENDERED em box, not the nominal font size. Chromium
-# getBBox()/getBoundingClientRect() for a 10px "Avenir Next" SVG <text> spans
-# ascent+descent ≈ 1.31em → 13.09 viewBox units (measured on the shipped
-# /flow/ page, 2026-07-03, while closing backlog #20 — the 10.0 the model
-# previously assumed let two labels 11 units apart pass the greedy filter yet
-# overlap by ~2.1 units at render time; G9 leg f now asserts render-space
-# non-overlap, so the model must dominate the render).
-LABEL_H = 13.2
+# getBBox()/getBoundingClientRect() for a 10px SVG <text> spans the face's
+# ascent+descent: "Avenir Next" ≈ 1.31em → 13.09 (measured 2026-07-03 while
+# closing backlog #20 — the 10.0 the model previously assumed let two labels
+# 11 units apart pass the greedy filter yet overlap by ~2.1 units at render
+# time); "Source Sans 3" (the site's --font-sans since 2026-09-12, hhea
+# 1024/−400 = 1.424em) measures 14.00 in an isolated Chromium page but
+# 14.73 IN SITU on the shipped /flow/ page (getBBox on every <text>, both
+# weights — the page's font stack and html-level font settings widen the
+# box). G9 leg f asserts render-space non-overlap on the shipped page, so
+# the model dominates the in-situ number: 15.0 sits above 14.73. Measure
+# on the built page, never in isolation.
+LABEL_H = 15.0
 LABEL_PAD_X = 5.0       # node face ↔ mid-column label gap
 GUTTER_GAP = 6.0        # last-column node face ↔ gutter label gap
 GUTTER_MAX = 270.0      # cap on the reserved right gutter (raised 250→270
@@ -130,37 +135,41 @@ def _est_text_w(s: str) -> float:
     Per-character buckets that DOMINATE the shipped font's measured
     advances — over-estimating is safe (it can only suppress/nudge more),
     under-estimating would let collisions through. Buckets re-derived
-    2026-07-03 from Chromium getComputedTextLength() of 10px "Avenir Next"
-    (the site's --font-sans; worst offenders were o=6.11/b,d=6.37 vs the
-    old 5.3 lowercase bucket and O=8.49/W=9.71 vs the old 6.8/8.8): every
-    bucket now sits above its measured worst case. NOT a font metric: the
-    invariant this feeds (zero overlapping label bboxes) is defined over
-    THIS estimator, exporter and tests alike — and G9 leg f independently
-    re-asserts it on the rendered page, so any future font drift that
-    breaks the domination fails loudly there.
+    2026-09-12 from Chromium getComputedTextLength() of 10px "Source Sans 3"
+    (the site's --font-sans since the type system landed; the vendored
+    woff2 loaded from its bytes, ten repeats per glyph, /10). Measured
+    worst case per bucket: narrow I=2.63, semi r=3.47, wide m=8.29, bowl
+    d=5.55, em dash 8.00, en dash 4.80, upper H=6.52, digit 0=4.97,
+    symbol @=8.47, other n=5.47 — every bucket sits ≥3% above it. (The
+    2026-07-03 "Avenir Next" buckets — o=6.11/b,d=6.37, O=8.49/W=9.71 —
+    still dominated but by ~15%, hiding labels that fit.) NOT a font
+    metric: the invariant this feeds (zero overlapping label bboxes) is
+    defined over THIS estimator, exporter and tests alike — and G9 leg f
+    independently re-asserts it on the rendered page, so any future font
+    drift that breaks the domination fails loudly there.
     """
     w = 0.0
     for ch in s:
         if ch in _CH_NARROW:
-            w += 2.8
+            w += 2.8      # I measured 2.63
         elif ch in _CH_SEMI:
-            w += 3.6
+            w += 3.6      # r measured 3.47
         elif ch in _CH_WIDE:
-            w += 9.9      # W measured 9.71
+            w += 8.6      # m measured 8.29
         elif ch in _CH_BOWL:
-            w += 6.5      # b/d measured 6.37
+            w += 5.8      # d measured 5.55
         elif ch == "—":
-            w += 10.0
+            w += 8.3      # measured 8.00
         elif ch == "–":
-            w += 6.0
+            w += 5.0      # measured 4.80
         elif ch.isupper():
-            w += 7.9      # G measured 7.78
+            w += 6.8      # H measured 6.52
         elif ch.isdigit():
-            w += 5.8
+            w += 5.2      # 0 measured 4.97 (tabular: every digit)
         elif ch in "&%@#":
-            w += 8.5      # % measured 8.32
+            w += 8.8      # @ measured 8.47
         else:
-            w += 5.9      # h/n/u measured 5.83
+            w += 5.7      # n measured 5.47
     return w
 
 

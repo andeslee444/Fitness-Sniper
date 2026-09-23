@@ -5,6 +5,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { exactTitle, formatAmountNoCurrency, formatCount } from "@/lib/format";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
@@ -21,12 +22,12 @@ const _unlinkedCount = formatCount(getProgramsCount() - getFlowsCount());
 
 export const metadata: Metadata = {
   title: "Congressional Districts",
-  description: `Defense spending by congressional district — programs, recipients, and awarded dollars linked via DARPA crosswalk (${_flowsCount} of ${_programsCount} programs currently linkable).`,
+  description: `Defense programs, recipients, and award obligations connected to congressional districts through documented high-confidence links (${_flowsCount} of ${_programsCount} programs currently linkable).`,
   alternates: { canonical: `${SITE_URL}/district/` },
   openGraph: {
     title: `Congressional Districts — ${SITE_NAME}`,
     description:
-      "Defense spending by congressional district — programs, recipients, and awarded dollars linked via DARPA crosswalk.",
+      "Defense programs, recipients, and award obligations connected to congressional districts through documented high-confidence links.",
     url: `${SITE_URL}/district/`,
     siteName: SITE_NAME,
     images: coreOgImages("district-index"),
@@ -62,19 +63,14 @@ export default function DistrictIndexPage() {
             { label: "Congressional Districts" },
           ]}
         />
-        <div className="page-header mb-6">
-          <h1 className="text-3xl font-bold mb-2">Congressional Districts</h1>
+        <PageIntro eyebrow="Local connections" title="Follow the evidence to your district."
+          description="Find the programs connected to a place through documented defense contract awards."
+          actions={<><a href="#district-directory">Find a district</a><Link href="/coverage/#crosswalk">How programs connect to awards</Link></>}>
+          <h2 className="sr-only">Congressional Districts</h2>
           <p className="text-muted-foreground mb-2">
             {index.total_districts} districts with linkable defense obligations
-            — {_flowsCount} of {_programsCount} programs currently crosswalkable
-            (DARPA budget-to-award crosswalk covers{" "}
-            <Link
-              href="/program/0601101E/"
-              className="underline decoration-dotted hover:decoration-solid"
-            >
-              DARPA
-            </Link>{" "}
-            and related programs).
+            — {_flowsCount} of {_programsCount} programs have documented
+            budget-to-award links.
           </p>
           {/* Scope note — G2 contract (data-coverage="districts") */}
           <CoverageNote id="districts" className="mb-3" />
@@ -84,8 +80,8 @@ export default function DistrictIndexPage() {
             <p>
               District data reflects only high-confidence award crosswalk
               links. {_unlinkedCount} of {_programsCount} programs have no
-              district-level linkage yet — crosswalk extension is on the
-              roadmap.
+              district-level linkage in this corpus. A missing link does not
+              establish that a program has no spending in a district.
             </p>
           </ScopeNote>
           {/* The stat row, reconciled.
@@ -97,7 +93,7 @@ export default function DistrictIndexPage() {
               line below states the relationship in one sentence. */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm mb-2">
             <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
+              <p className="t-figure t-figure--5">
                 {index.total_districts}
               </p>
               <p className="text-muted-foreground text-xs mt-1">
@@ -119,8 +115,8 @@ export default function DistrictIndexPage() {
                   the compact magnitude — and the only visible difference left
                   between them is the cited card's underline and its chip,
                   which is a real difference (see the reconciliation line). */}
-              <p className="text-2xl font-bold tabular-nums">
-                <span className="text-lg align-baseline">USD </span>
+              <p className="t-figure t-figure--5">
+                <span data-figure-suffix className="align-baseline">USD </span>
                 {formatAmountNoCurrency(totalLinkable, "USD")}
               </p>
               <p className="text-muted-foreground text-xs mt-1">
@@ -130,14 +126,14 @@ export default function DistrictIndexPage() {
             </div>
             {index.geo_grand_total !== null && (
               <div className="rounded-lg border border-border bg-card p-4">
-                <p className="text-2xl font-bold tabular-nums">
+                <p className="t-figure t-figure--5">
                   {/* Same notation as the middle card (see its note): "USD"
                       outside the [data-amount] span at the same size, the
                       magnitude inside it. `display` re-notates the SAME value
                       — never a different one — so `title` is passed
                       explicitly to keep the exact-dollars hover text that
                       formatAmount's default would have produced. */}
-                  <span className="text-lg align-baseline">USD </span>
+                  <span data-figure-suffix className="align-baseline">USD </span>
                   <Cite
                     value={index.geo_grand_total}
                     units="USD"
@@ -159,6 +155,8 @@ export default function DistrictIndexPage() {
             )}
           </div>
           {index.geo_grand_total !== null && (
+            <details className="mt-3 rounded-md border border-border bg-muted/30 px-4 py-3">
+              <summary className="cursor-pointer text-sm font-medium">How the program-linked subset relates to all district awards</summary>
             <p
               data-district-reconciliation
               className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
@@ -195,10 +193,13 @@ export default function DistrictIndexPage() {
               over the rows in the table below, each of which carries its own
               citation.
             </p>
+            </details>
           )}
-        </div>
+        </PageIntro>
 
-        <DistrictTable districts={index.districts} />
+        <div id="district-directory" className="scroll-mt-24">
+          <DistrictTable districts={index.districts} />
+        </div>
 
         <p className="mt-4 text-xs text-muted-foreground">
           Dollars are from high-confidence USAspending award links only.

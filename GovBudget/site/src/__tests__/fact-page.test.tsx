@@ -14,8 +14,9 @@
  *     note (the collision rule; today's corpus has 2 colliding fid8 pairs)
  *   - resolvable shard, no match → honest not-found state
  *   - shard fetch failure → degraded state (never fake success)
- *   - payload pe_bli present → "Appears on" /program/{pe}/#fact-{id} link;
- *     absent → no parent link (payloads gain pe_bli at the next export)
+ *   - payload pe_bli present without matching semantic context → program
+ *     references search; a resolved sidecar figure → exact program/fact link;
+ *     absent pe_bli → no parent link
  *   - derived payload → formula + input-fact permalinks
  *   - NO supersede display: citation payloads carry no superseded flag today
  *     (superseded rows are fenced out of the export entirely) — the page
@@ -32,7 +33,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 
 import { FactResolver, semanticHeaderText } from "@/app/fact/fact-resolver";
@@ -213,17 +214,17 @@ describe("FactResolver", () => {
     );
   });
 
-  it("renders the 'Appears on' parent link when the payload carries pe_bli", async () => {
+  it("links to program references when the PE is known but no sidecar figure confirms the exact parent", async () => {
     setUrl(`/fact/?id=${PDF_FID}`);
     mockFetchWithShard({ [PDF_FID]: { ...PDF_CITATION, pe_bli: "ATA000" } });
     render(<FactResolver />);
     await waitFor(() =>
       expect(screen.getByTestId("fact-card")).toBeInTheDocument(),
     );
-    const link = screen
-      .getByTestId("fact-card")
-      .querySelector(`a[href="/program/ATA000/#fact-${PDF_FID}"]`);
-    expect(link).not.toBeNull();
+    const card = screen.getByTestId("fact-card");
+    expect(within(card).getByText("Program references")).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "Browse program references for ATA000" })).toHaveAttribute("href", "/programs/?q=ATA000");
+    expect(card.querySelector(`a[href="/program/ATA000/#fact-${PDF_FID}"]`)).toBeNull();
   });
 
   it("omits the parent link when the payload has no pe_bli (today's shards)", async () => {
@@ -252,6 +253,18 @@ describe("FactResolver", () => {
     );
     expect(card.querySelector('a[href="/fact/dca4c4d9"]')).not.toBeNull();
     expect(card.querySelector('a[href="/fact/7373db25"]')).not.toBeNull();
+  });
+
+  it.each([
+    { fid: PDF_FID, citation: PDF_CITATION, label: "Recorded in the source", absentLabel: "Derived from source records" },
+    { fid: DERIVED_FID, citation: DERIVED_CITATION, label: "Derived from source records", absentLabel: "Recorded in the source" },
+  ])("describes the $citation.kind value as '$label'", async ({ fid, citation, label, absentLabel }) => {
+    setUrl(`/fact/?id=${fid}`);
+    mockFetchWithShard({ [fid]: citation });
+    render(<FactResolver />);
+    const card = await screen.findByTestId("fact-card");
+    expect(within(card).getByText(label)).toBeInTheDocument();
+    expect(within(card).queryByText(absentLabel)).not.toBeInTheDocument();
   });
 
   it("renders the CANONICAL permalink, never the runtime origin (M3)", async () => {
@@ -392,6 +405,7 @@ describe("FactResolver — semantic header (M2)", () => {
     expect(screen.getByTestId("fact-card").textContent).toContain(
       "(= $5.25B)",
     );
+    expect(within(screen.getByTestId("fact-card")).getByRole("link", { name: "F-35 — view this figure in context" })).toHaveAttribute("href", `/program/ATA000/#fact-${PDF_FID}`);
   });
 
   it("renders the payload alone when the sidecar carries NO matching figure (no fabrication)", async () => {
@@ -418,6 +432,20 @@ describe("FactResolver — semantic header (M2)", () => {
     expect(screen.getByTestId("fact-card").textContent).toContain(
       "$5,247.070 million",
     );
+  });
+
+  it("uses the known PE in the context link when a matching sidecar has no search title", async () => {
+    setUrl(`/fact/?id=${PDF_FID}`);
+    mockFetchRouted({
+      shard: { [PDF_FID]: { ...PDF_CITATION, pe_bli: "ATA000" } },
+      sidecar: ATA_SIDECAR,
+      quick: { docs: [] },
+    });
+    render(<FactResolver />);
+    await screen.findByTestId("fact-semantic-header");
+    const card = screen.getByTestId("fact-card");
+    expect(within(card).getByRole("link", { name: "ATA000 — view this figure in context" })).toHaveAttribute("href", `/program/ATA000/#fact-${PDF_FID}`);
+    expect(card.textContent).not.toContain("null — view");
   });
 
   it("falls back to the PE code when search-quick has no title (still no guess)", () => {

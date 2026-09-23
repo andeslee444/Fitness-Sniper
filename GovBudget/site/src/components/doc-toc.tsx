@@ -28,13 +28,13 @@
  * nothing (items starts empty), so the first client render matches the server
  * and there is no hydration mismatch.
  *
- * DESKTOP ONLY, on purpose.  The rail is hidden below 1024px in CSS — see
- * .doc-toc in globals.css.  It exists to spend horizontal space that only a
- * desktop viewport has; on a phone there is none to spend, and a 43-entry list
- * above the article would push the article itself under the fold.
+ * One list serves both layouts: an open desktop rail and a closed mobile
+ * disclosure above the prose. Native details keeps a long contents list from
+ * pushing the article below the mobile fold.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import styles from "./doc-toc-mobile.module.css";
 
 type TocItem = { id: string; text: string; level: 2 | 3 };
 
@@ -56,6 +56,18 @@ function slugify(text: string): string {
 export function DocToc() {
   const [items, setItems] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const disclosureRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const disclosure = disclosureRef.current;
+    if (!disclosure) return;
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    const syncLayout = () => { disclosure.open = desktop.matches; };
+    syncLayout();
+    desktop.addEventListener("change", syncLayout);
+    return () => desktop.removeEventListener("change", syncLayout);
+  }, [items.length]);
 
   useEffect(() => {
     let observer: IntersectionObserver | null = null;
@@ -141,8 +153,17 @@ export function DocToc() {
   if (items.length < MIN_ITEMS) return null;
 
   return (
-    <nav className="doc-toc" aria-label="On this page">
-      <p className="doc-toc-title">On this page</p>
+    <nav className={`doc-toc ${styles.toc}`} aria-label="On this page">
+      <p className={`t-label doc-toc-title ${styles.desktopTitle}`}>On this page</p>
+      <details ref={disclosureRef} className={styles.disclosure}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !disclosureRef.current?.open || window.matchMedia("(min-width: 64rem)").matches) return;
+          event.preventDefault();
+          event.stopPropagation();
+          disclosureRef.current.open = false;
+          summaryRef.current?.focus();
+        }}>
+      <summary ref={summaryRef} className={styles.summary}>On this page</summary>
       <ol className="doc-toc-list">
         {items.map((item) => (
           <li key={item.id} data-level={item.level}>
@@ -150,12 +171,24 @@ export function DocToc() {
               href={`#${item.id}`}
               className="doc-toc-link"
               aria-current={activeId === item.id ? "true" : undefined}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                if (disclosureRef.current && !window.matchMedia("(min-width: 64rem)").matches) {
+                  disclosureRef.current.open = false;
+                }
+                const heading = document.getElementById(item.id);
+                if (heading) {
+                  if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+                  heading.focus({ preventScroll: true });
+                }
+              }}
             >
               {item.text}
             </a>
           </li>
         ))}
       </ol>
+      </details>
     </nav>
   );
 }

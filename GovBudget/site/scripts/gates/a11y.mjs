@@ -146,6 +146,14 @@ export async function runA11yGate(baseUrl) {
       url: `${baseUrl}/`,
       setup: null,
     },
+    // 2026-09-12: the F-15 family page carries the lead-figure receipt (a
+    // role="button" figure, aria-labelledby, a ledger list) and the drawn
+    // plate; axe wcag2a/2aa must stay at zero critical+serious there too.
+    {
+      label: "family page (F-15)",
+      url: `${baseUrl}/families/f-15/`,
+      setup: null,
+    },
     {
       label: "program with panel open",
       url: `${baseUrl}/program/${samplePbl}/`,
@@ -245,6 +253,9 @@ export async function runA11yGate(baseUrl) {
             errors.push(
               `  [${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} node(s))`
             );
+            for (const node of v.nodes.slice(0, 3)) {
+              errors.push(`    ${node.target.join(" ")}: ${node.failureSummary ?? "See axe rule details"}`);
+            }
           }
           if (critical.length + serious.length > 5) {
             errors.push(

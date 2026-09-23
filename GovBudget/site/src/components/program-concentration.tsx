@@ -30,7 +30,11 @@ const BAND_COLOR: Record<string, string> = {
 };
 
 export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
-  if (!hhi) return null;
+  // Data-shape guard (2026-09-12): today's programs.json rows carry the raw
+  // warehouse concentration columns (hhi_all/hhi_high/…) instead of the
+  // normalized ProgramHHI shape — an export-side regression, not a page bug.
+  // Render nothing rather than crash the 8,369-page static build on it.
+  if (!hhi || typeof hhi.hhi !== "number") return null;
 
   const band = hhiBand(hhi.hhi);
   const { label } = band;
@@ -40,7 +44,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
     <section aria-labelledby="concentration-heading" className="mb-8">
       <h2
         id="concentration-heading"
-        className="text-lg font-semibold mb-4 text-foreground"
+        className="mb-4 text-foreground"
       >
         Contractor Concentration
       </h2>
@@ -72,7 +76,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 ⓘ
               </span>
             </div>
-            <div className={`text-xl font-bold ${color}`}>
+            <div className={`t-figure t-figure--4 ${color}`}>
               <Cite
                 value={hhi.hhi}
                 units="USD"
@@ -107,7 +111,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
             <div className="text-xs text-muted-foreground mb-1">
               Contractor Families
             </div>
-            <div className="text-xl font-bold text-foreground">
+            <div className="t-figure t-figure--4 text-foreground">
               {hhi.family_count}
             </div>
           </div>
@@ -123,7 +127,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 ⓘ
               </span>
             </div>
-            <div className="text-xl font-bold">
+            <div className="t-figure t-figure--4">
               <Cite
                 value={hhi.program_dollars}
                 units="USD"

@@ -58,14 +58,14 @@ export function TrajectorySpark({ cards, reconKeys, exhibitFamily }: TrajectoryS
 
   if (defined.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground italic">
+      <p className="text-xs text-muted-foreground">
         No trajectory data available.
       </p>
     );
   }
   if (defined.length < 2) {
     return (
-      <p className="text-xs text-muted-foreground italic">
+      <p className="text-xs text-muted-foreground">
         Insufficient trajectory data for sparkline (only FY
         {String(defined[0].fy).slice(-2)} available).
       </p>
@@ -217,7 +217,7 @@ export function TrajectorySpark({ cards, reconKeys, exhibitFamily }: TrajectoryS
               }
               y={SVG_HEIGHT - 2}
               textAnchor={isFirst ? "start" : isLast ? "end" : "middle"}
-              fontSize="8"
+              fontSize="10"
               fill="#9ca3af"
             >
               {p.label}

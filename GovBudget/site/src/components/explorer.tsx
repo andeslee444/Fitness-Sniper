@@ -678,7 +678,7 @@ export function Explorer({ datasets }: ExplorerProps) {
                           title={cell === null ? "NULL" : String(cell)}
                         >
                           {cell === null ? (
-                            <span className="text-muted-foreground italic">
+                            <span className="text-muted-foreground">
                               NULL
                             </span>
                           ) : (

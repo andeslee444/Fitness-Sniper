@@ -1,0 +1,81 @@
+/* The receipt as the vitrine's caption: no box, no sheet, no button — the
+   figure, then ONE caption line (the museum label), then the footnote
+   sentence. The fact-id and basis chips stay in the DOM (a11y/P1-1 counts
+   querySelector hits, visibility-independent) but are display:none — the
+   hash lives inside the citation panel, not on the page (round-7: five
+   type styles and a hash in the open read as debug output). Colors arrive
+   as --rm-* aliases from home.module.css (the token allowlist is per-file;
+   this module holds no raw values). On paper (mobile) the aliases are
+   unset and the stage tokens take over. */
+.receipt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  color: var(--rm-ink, var(--stage-ink));
+}
+.receiptKicker {
+  order: 1;
+  margin-bottom: .55rem;
+  color: var(--rm-dim, var(--stage-muted-ink));
+}
+.receiptMain { order: 2; }
+
+/* One caption line — the museum label: program · service · the P-40
+   receipt affordance. The program name is the link; the receipt is a quiet
+   mono identifier line that opens the citation panel. */
+.captionLine {
+  order: 3;
+  margin-top: .7rem;
+  max-width: 34rem;
+  font-size: var(--text-label);
+  line-height: 1.65;
+  color: var(--rm-muted, var(--stage-muted-ink));
+}
+.captionTitle {
+  font-weight: 500;
+  color: var(--rm-ink, var(--stage-ink));
+  text-decoration: none;
+}
+.captionTitle:hover { text-decoration: underline; text-underline-offset: .3em; }
+/* The receipt affordance: a mono identifier (year · exhibit · edition —
+   mono's job), wearing the citation's dotted underline so it reads as the
+   same affordance as every other receipt on the site. */
+.captionCite {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: var(--type-id);
+  color: var(--rm-ink, var(--stage-ink));
+  text-decoration: underline dotted;
+  text-decoration-color: var(--cite-decoration);
+  text-underline-offset: 3px;
+}
+.captionCite:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--cite-decoration-hover);
+}
+
+/* The receipt's footnote: the two-basis reconciliation sentence, one
+   typeface, small and quiet. The inline cite keeps the fact-id and basis
+   chips in the DOM (the a11y/P1-1 count is visibility-independent) but
+   they are visually hidden — the hash lives inside the citation panel,
+   not on the page (round-7). Two gate-held details: the font must not
+   drop below the 12px Fact-ID chip it carries (gate 6 leg (e-iv): the
+   chip may not be larger than its figure — 11.52px vs 12px failed), and
+   the measure is capped at --measure (54ch) because the sentence plus its
+   hidden chip text measured ~101 characters per line against the spine
+   gate's 80-char WCAG 1.4.8 ceiling. */
+.receiptNote {
+  order: 4;
+  margin-top: .45rem;
+  max-width: var(--measure);
+  font-size: var(--text-label);
+  line-height: 1.65;
+  color: var(--rm-dim, var(--stage-muted-ink));
+}
+.receiptNote :global(.cite-id-chip),
+.receiptNote :global(.cite-figure ~ span) {
+  display: none;
+}

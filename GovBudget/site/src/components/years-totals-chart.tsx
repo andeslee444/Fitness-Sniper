@@ -266,7 +266,7 @@ export function YearsTotalsChart({
                 }
                 y={SVG_HEIGHT - 2}
                 textAnchor={isFirst ? "start" : isLast ? "end" : "middle"}
-                fontSize={9}
+                fontSize={10}
                 fill="#6b7280"
               >
                 FY{String(fy).slice(-2)}
@@ -293,7 +293,7 @@ export function YearsTotalsChart({
     <div className="mt-2 overflow-x-auto">
       <table
         data-testid="years-totals-table"
-        className="w-full border-collapse text-[11px]"
+        className="w-full border-collapse text-xs"
       >
         <caption className="sr-only">
           Corpus budget total by fiscal year, balanced panel of{" "}
@@ -333,7 +333,7 @@ export function YearsTotalsChart({
               <td
                 key={p.key}
                 data-totals-cell={p.key}
-                className="px-1.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+                className="px-1.5 py-1 text-right t-figure t-figure--2 whitespace-nowrap"
               >
                 {fmtTotal(p.valueMillions)}
               </td>

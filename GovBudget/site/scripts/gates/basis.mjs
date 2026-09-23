@@ -280,6 +280,15 @@ const CROSS_PAGE_INDEXES = [
   // an index publishing a program's figure on a basis the program page did
   // not, with no single page holding both.
   { label: "/lineage/", file: "lineage/index.html" },
+  // 2026-09-12, the family lead figure (src/lib/family-lead.ts). A family
+  // page publishes one record's FY2026 request as its lead and up to five
+  // others in a ledger — the same (entity, fy, measure) labels the program
+  // pages publish, on a surface that ranks them side by side. Leg e1 demands
+  // the page declare its basis ([data-basis-declared] names P-1/R-1 TOA — the
+  // ledger caption supplies it); leg e2 joins every figure to its program
+  // page. Agreement is by construction (the fids ARE the program pages'
+  // cards); if e2 ever flags one, fix that figure — never drop /families/.
+  { label: "/families/*/", dir: "families" },
 ];
 
 /**

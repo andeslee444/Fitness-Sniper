@@ -39,10 +39,10 @@ export function StateCard({ citation }: StateCardProps) {
     <div className="space-y-3" data-testid="state-card">
       {/* Captured value — prominent */}
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-0.5">
+        <span className="t-label block mb-0.5">
           Captured value
         </span>
-        <span className="text-xl font-semibold tabular-nums">
+        <span className="t-figure t-figure--4">
           {citation.units === "USD" ? "$" : ""}
           {formatRecordedValue(citation.recorded_value)}
         </span>
@@ -86,10 +86,10 @@ export function StateCard({ citation }: StateCardProps) {
 
       {/* Raw URL co-cited */}
       <div className="space-y-0.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="t-label">
           {isSoql ? "SoQL query URL" : "Pointer page URL"}
         </span>
-        <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
+        <p className="t-id break-all leading-relaxed">
           {citation.official_url}
         </p>
       </div>
@@ -97,10 +97,10 @@ export function StateCard({ citation }: StateCardProps) {
       {/* Pointer / aggregation note (state_file carries it in formula) */}
       {citation.formula && (
         <div>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+          <span className="t-label block mb-1">
             {isSoql ? "Query note" : "Aggregation note"}
           </span>
-          <p className="rounded bg-muted px-2.5 py-2 font-mono text-xs text-foreground break-words leading-relaxed">
+          <p className="t-id rounded bg-muted px-2.5 py-2 break-words leading-relaxed">
             {citation.formula}
           </p>
         </div>

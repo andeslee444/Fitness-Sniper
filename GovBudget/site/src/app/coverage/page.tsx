@@ -1,3 +1,4 @@
+import { PageIntro } from "@/components/page-intro";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -66,11 +67,10 @@ export default function CoveragePage() {
   const dated = rows.filter((r) => r.targetKind === "dated").length;
 
   return (
-    <div className="spine py-8">
+    <div className="spine py-8 reference-page">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Coverage" }]} />
 
-      {/* <h1> FIRST — gate 2 (nk) pins that no scope block precedes it. */}
-      <h1 className="mb-3 text-3xl font-bold">Coverage</h1>
+      <PageIntro eyebrow="Know the boundaries" title="Coverage" description="What is present, what is missing, and how much of each dataset can be connected." actions={<><a href="#map-heading">Dataset coverage ↓</a><Link href="/methodology/">Read the methodology →</Link></>}/>
       <div className="doc-layout">
         <div data-doc-prose>
           <p className="leading-7 text-muted-foreground">
@@ -81,7 +81,7 @@ export default function CoveragePage() {
           </p>
 
           <ScopeNote className="mt-5" label={null}>
-            <h2 className="mb-2 text-lg font-semibold text-foreground">
+            <h2 className="mb-2 text-foreground">
               Every number on this page is recomputed at build time
             </h2>
             <p className="text-sm leading-7">
@@ -105,7 +105,7 @@ export default function CoveragePage() {
 
           {/* ── The map ─────────────────────────────────────────────────────── */}
           <section className="mt-10" aria-labelledby="map-heading">
-            <h2 id="map-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="map-heading" className="mb-3">
               Feature by feature
             </h2>
             <p className="mb-4 text-sm text-muted-foreground">
@@ -181,7 +181,7 @@ export default function CoveragePage() {
                         data-coverage-blocker
                         className="block px-4 pt-2 align-top text-muted-foreground sm:table-cell sm:py-3"
                       >
-                        <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-widest text-foreground/60 sm:hidden">
+                        <span className="t-label mb-0.5 block sm:hidden">
                           In the way
                         </span>
                         {r.blocker}
@@ -192,7 +192,7 @@ export default function CoveragePage() {
                         data-target-kind={r.targetKind}
                         className="block px-4 pt-2 align-top text-muted-foreground sm:table-cell sm:py-3"
                       >
-                        <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-widest text-foreground/60 sm:hidden">
+                        <span className="t-label mb-0.5 block sm:hidden">
                           Target
                         </span>
                         {r.target}
@@ -213,7 +213,7 @@ export default function CoveragePage() {
               corpus-shaped number on
               the singleton pages that is not one of them. */}
           <section className="mt-12" aria-labelledby="counts-heading" id="corpus-counts">
-            <h2 id="counts-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="counts-heading" className="mb-3">
               How the corpus is counted
             </h2>
             <p className="mb-4 text-sm leading-7 text-muted-foreground">
@@ -242,7 +242,7 @@ export default function CoveragePage() {
 
           {/* ── The crosswalk: a methodology limit, not a backlog item ───────── */}
           <section className="mt-12" aria-labelledby="crosswalk-heading" id="crosswalk">
-            <h2 id="crosswalk-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="crosswalk-heading" className="mb-3">
               The budget→award crosswalk is a methodology limit, not a backlog item
             </h2>
             <p className="leading-7 text-muted-foreground">
@@ -273,7 +273,7 @@ export default function CoveragePage() {
 
           {/* ── What this page is not ────────────────────────────────────────── */}
           <section className="mt-12" aria-labelledby="not-heading">
-            <h2 id="not-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="not-heading" className="mb-3">
               Where coverage is stated elsewhere
             </h2>
             <p className="leading-7 text-muted-foreground">

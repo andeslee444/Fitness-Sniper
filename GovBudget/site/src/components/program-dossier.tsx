@@ -88,7 +88,7 @@ export function ProgramDossier({
       id="dossier"
       data-dossier={dossier.pe_bli}
     >
-      <h2 className="text-xl font-semibold mb-1">Program dossier</h2>
+      <h2 className="mb-1">Program dossier</h2>
       <p className="text-sm text-muted-foreground mb-1">
         Every sentence below carries its citation — warehouse figures open the
         citation panel, news claims link the cached source.

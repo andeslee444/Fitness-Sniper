@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getDatasetManifest, getSiteMeta } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -7,6 +8,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 import { Explorer } from "@/components/explorer";
+import { PageIntro } from "@/components/page-intro";
 // Universal module (NOT lib/duckdb, which is "use client" — its runtime
 // exports become client references in a server component).
 import { DATASET_NAMES, type DatasetName } from "@/lib/dataset-names";
@@ -85,9 +87,10 @@ export default function DataPage() {
         items={[{ label: "Home", href: "/" }, { label: "Data Explorer" }]}
       />
 
-      <div className="page-header mb-8">
-        <h1 className="text-3xl font-bold mb-3">Data Explorer</h1>
-        <p className="text-muted-foreground">
+      <PageIntro eyebrow="Research tools / Analyze" title="Ask the data"
+        description={<p>Inspect a dataset, run a prepared query, or write your own SQL. Work from the same snapshot that powers the program pages.</p>}
+        actions={<><a href="#query-workspace">Open the SQL workspace ↓</a><a href="#dataset-inventory">Read the dataset inventory</a><Link href="/downloads/">Download the files →</Link></>}>
+        <p className="text-sm text-muted-foreground">
           Browse and query all {DATASET_INVENTORY.length} Fiscal Receipts datasets
           using SQL. Queries run entirely in your browser — no server receives
           your SQL or sees any intermediate results. Powered by{" "}
@@ -104,18 +107,39 @@ export default function DataPage() {
         {/* §P1-5: the canonical corpus statement, so a reader who compares
             dim_programs' row count against "our programs" sees what each
             number means without leaving the page. */}
-        <CorpusStatement className="mt-3 max-w-2xl" />
-      </div>
+        <details className="mt-3 border-t border-border pt-3 text-sm">
+          <summary className="cursor-pointer font-medium text-foreground">Which programs are included in this snapshot?</summary>
+          <CorpusStatement className="mt-3 max-w-2xl" />
+        </details>
+      </PageIntro>
+
+      <section id="query-workspace" aria-labelledby="query-workspace-title" className="mb-10 scroll-mt-24 border border-border bg-card p-4 sm:p-6">
+        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-4">
+          <h2 id="query-workspace-title">Interactive SQL explorer</h2>
+          <a href="#dataset-inventory" className="text-sm underline underline-offset-4">Check the grain and citation coverage ↓</a>
+        </div>
+        <AssetConfigProvider>
+          <Explorer
+            datasets={DATASET_INVENTORY.map((ds) => ({
+              name: ds.name as DatasetName,
+              rowCount: ds.row_count,
+              description: ds.scope,
+            }))}
+          />
+        </AssetConfigProvider>
+      </section>
 
       {/* Dataset inventory table */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Dataset inventory</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
+      <section id="dataset-inventory" className="mb-10 scroll-mt-24">
+        <h2 className="mb-4">Dataset inventory</h2>
+        <div data-prose>
+        <p className="mb-3 text-muted-foreground">
           Row counts and sizes are read from the parquet files this build
           shipped — never authored by hand. Each scope line says what{" "}
           <em>one row</em> of that dataset is, so a row count can be compared
           against the right denominator.
         </p>
+        </div>
         {/* MOBILE (fix round, BLOCKER): at 390px the Citation and "Scope —
             what one row is" columns sat entirely off-canvas, yet the
             off-screen scope prose still drove row height — 250–400px rows that
@@ -155,7 +179,7 @@ export default function DataPage() {
                     role="row"
                     className="block sm:table-row border-b border-border last:border-0 hover:bg-muted/30 transition-colors py-3 sm:py-0"
                   >
-                    <td role="cell" className="block sm:table-cell px-4 py-0 sm:py-2 font-mono text-xs text-foreground sm:whitespace-nowrap">
+                    <td role="cell" className="t-id block sm:table-cell px-4 py-0 sm:py-2 sm:whitespace-nowrap">
                       {ds.name}
                     </td>
                     {/* [data-dataset-rowcount] wraps the NUMERALS ONLY — gate
@@ -220,19 +244,6 @@ export default function DataPage() {
         <CoverageNote id="state-ca" className="mt-1" />
       </section>
 
-      {/* Interactive explorer — client-only, lazy-init */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Interactive SQL explorer</h2>
-        <AssetConfigProvider>
-          <Explorer
-            datasets={DATASET_INVENTORY.map((ds) => ({
-              name: ds.name as DatasetName,
-              rowCount: ds.row_count,
-              description: ds.scope,
-            }))}
-          />
-        </AssetConfigProvider>
-      </section>
     </div>
   );
 }

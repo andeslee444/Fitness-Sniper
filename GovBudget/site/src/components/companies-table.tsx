@@ -154,7 +154,7 @@ function MergedMembers({ row }: { row: CompanyRow }) {
               {m.arrival.evidence === "name-inferred" && (
                 <span
                   title="The source documents the corporate event but does not name this specific award recipient — the link is our inference from the name"
-                  className="ml-1 rounded bg-muted px-1 py-0.5 text-[10px]"
+                  className="ml-1 rounded bg-muted px-1 py-0.5 text-xs"
                 >
                   name-inferred
                 </span>
@@ -253,15 +253,15 @@ function CombinedArithmetic({ row }: { row: CompanyRow }) {
       {exact ? (
         <p
           data-derivation-exact=""
-          className="mt-1 font-mono text-[11px] leading-5 text-muted-foreground break-words"
+          className="mt-1 t-id leading-5 break-words"
         >
           {exact.parts.join(" + ")} = {exact.total}{" "}
-          <span className="font-sans italic">{exact.unitLabel}</span>
+          <span className="font-sans text-muted-foreground">{exact.unitLabel}</span>
         </p>
       ) : (
         <p
           data-derivation-rounding=""
-          className="mt-1 text-[11px] leading-5 text-muted-foreground"
+          className="mt-1 text-xs leading-5 text-muted-foreground"
         >
           The figures above are rounded for reading; the total is the cited
           derived fact, computed from the unrounded member values.

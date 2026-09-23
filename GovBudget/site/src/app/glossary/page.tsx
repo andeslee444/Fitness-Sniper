@@ -1,3 +1,4 @@
+import { PageIntro } from "@/components/page-intro";
 import type { Metadata } from "next";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { GLOSSARY } from "@/lib/glossary";
@@ -20,9 +21,9 @@ export const metadata: Metadata = {
 
 export default function GlossaryPage() {
   return (
-    <div className="spine py-10">
+    <div className="spine py-10 reference-page">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Glossary" }]} />
-      <h1 className="text-3xl font-bold mb-2">Glossary</h1>
+      <PageIntro eyebrow="The language of the budget" title="Glossary" description="Plain definitions for the identifiers, fiscal measures, and document types you encounter here." actions={<><a href="#pe">Program identity ↓</a><a href="#toa">Budget measures ↓</a><a href="#p-1">Source documents ↓</a></>}/>
       <div className="doc-layout">
         <div data-doc-prose>
           <p className="text-sm text-muted-foreground mb-8">
@@ -35,7 +36,7 @@ export default function GlossaryPage() {
             {GLOSSARY.map((entry) => (
               <div key={entry.id} id={entry.id} className="scroll-mt-20">
                 <dt>
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 className="text-foreground">
                     {entry.term}
                     <span className="ml-2 text-sm font-normal text-muted-foreground">
                       {entry.expansion}

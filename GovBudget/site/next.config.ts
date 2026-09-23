@@ -9,6 +9,7 @@ const siteRoot = path.resolve(process.cwd());
 
 const nextConfig: NextConfig = {
   output: "export",
+  devIndicators: false,
   trailingSlash: true,
   images: {
     unoptimized: true,
