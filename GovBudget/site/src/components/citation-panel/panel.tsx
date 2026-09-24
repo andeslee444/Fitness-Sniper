@@ -543,7 +543,7 @@ function CitationPanelDialog({
               {/* retrieved_at */}
               {citation.retrieved_at && (
                 <p className="text-xs text-muted-foreground">
-                  Retrieved{" "}
+                  {isWorkbook(citation) ? "Spreadsheet retrieved" : "Retrieved"}{" "}
                   <time dateTime={citation.retrieved_at}>
                     {formatRetrievedAt(citation.retrieved_at)}
                   </time>
@@ -558,7 +558,7 @@ function CitationPanelDialog({
                   so its zeros are slashed wherever the font can do it. */}
               {citation.sha256 && (
                 <p className="text-xs text-muted-foreground">
-                  SHA-256:{" "}
+                  {isWorkbook(citation) ? "Spreadsheet SHA-256:" : "SHA-256:"}{" "}
                   <span
                     data-testid="panel-sha-prefix"
                     className="cell-ref"

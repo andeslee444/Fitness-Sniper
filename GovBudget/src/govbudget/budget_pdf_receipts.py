@@ -13,11 +13,13 @@ import json
 import re
 import shutil
 from collections import Counter, defaultdict
+from ctypes import c_double
 from statistics import median
 from pathlib import Path
 
 import openpyxl
 import pdfplumber
+import pypdfium2 as pdfium
 
 NUMBER = re.compile(r"^\(?-?\d[\d,]*(?:\.\d+)?\)?$")
 
@@ -26,6 +28,91 @@ def amount(text: str) -> float | None:
     if not NUMBER.fullmatch(text):
         return None
     return float(text.replace(",", "").replace("(", "").replace(")", ""))
+
+
+def viewport_geometry(page: dict, word: dict) -> dict:
+    """Translate pdfplumber's absolute box into PDF.js's visible crop frame.
+
+    Some Comptroller PDFs place their entire MediaBox/CropBox at a negative
+    origin. Width alone is not enough: raw extracted x/top values otherwise
+    draw the overlay above and left of the printed amount. Keep matching in
+    the source coordinate frame and normalize exactly once, at export.
+    """
+    if page["rotation"] != 0:
+        raise ValueError("Rotated PDF pages require a reviewed coordinate transform")
+    left, top, right, bottom = page["cropbox"]
+    width, height = right - left, bottom - top
+    geometry = {
+        "page_width": width,
+        "page_height": height,
+        "x0": word["x0"] - left,
+        "x1": word["x1"] - left,
+        "top_pt": word["top"] - top,
+        "bottom_pt": word["bottom"] - top,
+    }
+    if not (0 <= geometry["x0"] < geometry["x1"] <= width and 0 <= geometry["top_pt"] < geometry["bottom_pt"] <= height):
+        raise ValueError("Amount highlight is outside the PDF crop frame")
+    return geometry
+
+
+def select_glyph_geometry(page: dict, word: dict, native_cropbox: tuple, candidates: list[dict]) -> dict:
+    """Bind tight glyph outlines to the already verified word's text origin.
+
+    pdfminer's em box depends on the font's descent and can miss the tops of
+    digits. PDFium exposes actual glyph bounds. First-character origins bind
+    the two extractors to the same exact row/column, even when an adjacent
+    advance-procurement allocation repeats the same amount.
+    """
+    em = viewport_geometry(page, word)
+    chars = word.get("chars") or []
+    if not chars or "".join(c["text"] for c in chars) != word["text"]:
+        raise ValueError("Exact source characters are required for glyph verification")
+    media_left, _, _, media_bottom = page["mediabox"]
+    crop_left, crop_top, _, _ = page["cropbox"]
+    source_x = chars[0]["matrix"][4] + media_left - crop_left
+    source_y = media_bottom - chars[0]["matrix"][5] - crop_top
+    left, bottom, right, top = native_cropbox
+    if abs(right - left - em["page_width"]) > .05 or abs(top - bottom - em["page_height"]) > .05:
+        raise ValueError("PDF extractors disagree about the visible page extent")
+    matches = [candidate for candidate in candidates if candidate["text"] == word["text"]
+               and abs(candidate["origin"][0] - left - source_x) < .05
+               and abs(top - candidate["origin"][1] - source_y) < .05]
+    if len(matches) != 1:
+        raise ValueError(f"Expected one exact glyph origin for {word['text']}; got {len(matches)}")
+    x0, y0, x1, y1 = matches[0]["box"]
+    geometry = {"page_width": em["page_width"], "page_height": em["page_height"],
+                "x0": x0 - left, "x1": x1 - left, "top_pt": top - y1, "bottom_pt": top - y0}
+    if not (0 <= geometry["x0"] < geometry["x1"] <= geometry["page_width"] and
+            0 <= geometry["top_pt"] < geometry["bottom_pt"] <= geometry["page_height"]):
+        raise ValueError("Tight amount glyphs are outside the PDF crop frame")
+    return geometry
+
+
+def tight_glyph_geometry(pdf_path: Path, page: dict, word: dict) -> dict:
+    """Read source font glyph outlines without changing or rasterizing the PDF."""
+    candidates = []
+    with pdfium.PdfDocument(pdf_path) as document:
+        rendered_page = document[page["page_number"] - 1]
+        try:
+            textpage = rendered_page.get_textpage()
+            try:
+                search = textpage.search(word["text"], match_case=True)
+                try:
+                    while found := search.get_next():
+                        index, count = found
+                        x, y = c_double(), c_double()
+                        if not pdfium.raw.FPDFText_GetCharOrigin(textpage, index, x, y):
+                            raise ValueError("Could not read the source glyph baseline")
+                        boxes = [textpage.get_charbox(i, loose=False) for i in range(index, index + count)]
+                        candidates.append({"text": textpage.get_text_range(index, count), "origin": (x.value, y.value),
+                                           "box": (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))})
+                finally:
+                    search.close()
+                return select_glyph_geometry(page, word, rendered_page.get_bbox(), candidates)
+            finally:
+                textpage.close()
+        finally:
+            rendered_page.close()
 
 
 def normalize_header(text: str) -> tuple[str, ...]:
@@ -205,10 +292,12 @@ def load_sources(manifest: Path, cache_dir: Path, site_dir: Path) -> dict:
         with pdfplumber.open(pdf) as document:
             for number in record["pages"]:
                 page = document.pages[number - 1]
+                if page.rotation != 0:
+                    raise ValueError(f"Rotated PDF source needs review: {pdf} page {number}")
                 text = page.extract_text() or ""
                 if f"FY {record['edition']} President's Budget" not in text or f"Exhibit {record['exhibit']}" not in text or "(Dollars in Thousands)" not in text:
                     raise ValueError(f"PDF identity mismatch: {pdf} page {number}")
-                pages.append({"page_number": number, "width": page.width, "height": page.height, "text": text, "words": page.extract_words()})
+                pages.append({"page_number": number, "width": page.width, "height": page.height, "mediabox": list(page.mediabox), "cropbox": list(page.cropbox), "rotation": page.rotation, "text": text, "words": page.extract_words(return_chars=True)})
         sources[(record["edition"], record["exhibit"])] = {**record, "pages": pages}
     return sources
 
@@ -265,7 +354,8 @@ def export_budget_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Pat
                     blanks += 1
                     continue
                 word, page = match["word"], match["page"]
-                parts.append({"amount_thousands": value, "program": metadata["title"], "line": metadata["line"], "workbook_cell": cell, "column_label": " ".join(header.split()), "pdf_column_label": match["pdf_column_label"], "edition": point["edition"], "exhibit": component["exhibit"], "sha256": source["sha256"], "hosted_pdf_url": f"/pdfs/{source['sha256']}.pdf", "page_width": page["width"], "page_height": page["height"], "page_number": page["page_number"], "x0": word["x0"], "x1": word["x1"], "top_pt": word["top"], "bottom_pt": word["bottom"], "resolution": "unique", "amount_text": word["text"], "units": "USD thousands", "official_url": source["url"]})
+                glyph_geometry = tight_glyph_geometry(site_dir / "pdfs" / f"{source['sha256']}.pdf", page, word)
+                parts.append({"amount_thousands": value, "program": metadata["title"], "line": metadata["line"], "workbook_cell": cell, "column_label": " ".join(header.split()), "pdf_column_label": match["pdf_column_label"], "edition": point["edition"], "exhibit": component["exhibit"], "sha256": source["sha256"], "hosted_pdf_url": f"/pdfs/{source['sha256']}.pdf", "page_number": page["page_number"], **glyph_geometry, "resolution": "unique", "amount_text": word["text"], "units": "USD thousands", "official_url": source["url"]})
                 if component["exhibit"] == "P-1":
                     parts[-1]["row_label"] = str(sheet[f"L{row}"].value)
             expected = component["amount_thousands"]
@@ -290,6 +380,13 @@ def export_budget_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Pat
     for i in range(256):
         (out / f"{i:02x}.json").write_text(json.dumps(shards[f"{i:02x}"], separators=(",", ":"), sort_keys=True) + "\n")
     default_cells = [cell for p in history["points"] if p["id"] in history["default_point_ids"] for cell in p["program_cells"]]
-    report = {"source_count": len(sources), "leaf_count": leaf_count, "receipt_count": len(receipts), "default_cells": len(default_cells), "default_complete": sum(receipts[c["fact_id"]]["complete"] for c in default_cells), "complete_receipts": sum(r["complete"] for r in receipts.values()), "unmatched_cells": unmatched}
+    report = {"source_count": len(sources), "leaf_count": leaf_count, "receipt_count": len(receipts), "default_cells": len(default_cells), "default_complete": sum(receipts[c["fact_id"]]["complete"] for c in default_cells), "complete_receipts": sum(r["complete"] for r in receipts.values()), "unmatched_cells": unmatched, "highlight_geometry": "tight PDFium glyph bounds verified by exact text and first-character origin"}
+    report["coordinate_frames"] = [
+        {"edition": source["edition"], "exhibit": source["exhibit"], "sha256": source["sha256"], "pages": [
+            {"page_number": page["page_number"], "cropbox": page["cropbox"], "rotation": page["rotation"]}
+            for page in source["pages"]
+        ]}
+        for source in sources.values()
+    ]
     (site_dir / "json/budget_pdf_receipts_audit.json").write_text(json.dumps(report, indent=2) + "\n")
     return report

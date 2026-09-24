@@ -6,6 +6,8 @@ Matching requires the same budget edition, service/account, line/PE, fiscal-year
 
 PDF source bytes are saved by SHA-256 with direct government page links. Verified geometry and arithmetic live in on-demand receipt shards, keeping the full matrix's initial payload bounded. The PDF viewer uses the source page's dimensions, supports selectable text, and provides an enlarged view.
 
+Highlight geometry uses the visible PDF crop frame, including nonzero page origins. After the budget row and column are verified, exact source text and its first-character origin identify the same printed token in PDFium. Tight glyph outlines set the displayed rectangle; font-em boxes do not reliably enclose digits in every edition. Ambiguous identities and unsupported page geometry fail export. Closing the enlarged view returns keyboard focus to the opening button.
+
 Spreadsheet actions fetch the saved government bytes, verify SHA-256, then initiate a real browser download. Filenames describe the full document and publication edition, for example `PB2026_DoD_P-1_Procurement.xlsx`. Downloads do not imply that the complete workbook covers only F-15 or only the clicked historical year. The government original remains linked.
 
 Validation includes matching/mismatch and contribution tests; PDF highlights and downloads in the browser; existing provenance and matrix checks; release gates; and production verification after asset-first deployment.

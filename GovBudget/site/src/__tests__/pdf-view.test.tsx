@@ -211,11 +211,14 @@ describe("PdfView — zoom overlay", () => {
   it("focuses the recorded evidence at 200% while retaining the source text layer", async () => {
     const { PdfView } = await import("@/components/citation-panel/pdf-view");
     render(<PdfView citation={makeCitation("sha-focus")} />);
-    fireEvent.click(await screen.findByTestId("pdf-focus-evidence"));
+    const trigger = await screen.findByTestId("pdf-focus-evidence");
+    fireEvent.click(trigger);
     const overlay = await screen.findByTestId("pdf-zoom-overlay");
     expect(overlay).toHaveTextContent("200%");
     await waitFor(() => expect(overlay.querySelector('[data-testid="pdf-text-layer"]')).toHaveAttribute("data-text-ready", "true"));
     expect(overlay.querySelector('[data-testid="pdf-zoom-highlight"]')).not.toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
   it("Enlarge opens an aria-modal dialog with zoom controls; Esc closes it", async () => {
     const { PdfView } = await import("@/components/citation-panel/pdf-view");
@@ -239,6 +242,7 @@ describe("PdfView — zoom overlay", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("pdf-zoom-overlay")).toBeNull();
     });
+    await waitFor(() => expect(screen.getByTestId("pdf-enlarge")).toHaveFocus());
   });
 
   it("zoom-in re-renders the page at a larger scale (not CSS scaling)", async () => {

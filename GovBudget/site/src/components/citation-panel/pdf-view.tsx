@@ -271,6 +271,7 @@ export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }
   // and render state without effect-driven resets.
   const [overlayEpoch, setOverlayEpoch] = useState(0);
   const [initialZoom, setInitialZoom] = useState(1);
+  const overlayTrigger = useRef<HTMLButtonElement | null>(null);
 
   const pdfUrl = assetUrl(stripFragment(citation.hosted_pdf_url));
   const officialUrl = officialDocumentUrl(citation);
@@ -414,7 +415,8 @@ export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }
 
       <div className={styles.toolbar}>
         <p className={styles.caption}>Saved source copy · PDF page {citation.page_number}. {citation.amount_text ? "The cited amount is highlighted." : "The recorded passage start is highlighted."}</p>
-        {viewState === "ready" && <button type="button" className={styles.focus} data-testid="pdf-focus-evidence" onClick={() => {
+        {viewState === "ready" && <button type="button" className={styles.focus} data-testid="pdf-focus-evidence" onClick={(event) => {
+          overlayTrigger.current = event.currentTarget;
           setInitialZoom(2); setOverlayEpoch(e => e + 1); setOverlayOpen(true);
         }}>Focus cited evidence</button>}
       </div>
@@ -530,7 +532,8 @@ export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }
           <button
             type="button"
             data-testid="pdf-enlarge"
-            onClick={() => {
+            onClick={(event) => {
+              overlayTrigger.current = event.currentTarget;
               setInitialZoom(1);
               setOverlayEpoch((e) => e + 1);
               setOverlayOpen(true);
@@ -554,6 +557,7 @@ export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }
         open={overlayOpen}
         onOpenChange={setOverlayOpen}
         initialZoom={initialZoom}
+        onReturnFocus={() => overlayTrigger.current?.focus()}
       />
 
       {/* Official source link (always visible) */}
@@ -591,6 +595,7 @@ interface PdfZoomOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialZoom: number;
+  onReturnFocus: () => void;
 }
 
 function PdfZoomOverlay({
@@ -599,6 +604,7 @@ function PdfZoomOverlay({
   open,
   onOpenChange,
   initialZoom,
+  onReturnFocus,
 }: PdfZoomOverlayProps) {
   // Callback refs (state-backed): the dialog content mounts inside a Radix
   // portal/presence, so plain refs are not reliably populated when an
@@ -699,6 +705,10 @@ function PdfZoomOverlay({
           /* Radix conveys modality via aria-hidden on outside content;
              set aria-modal explicitly for AT that keys off the attribute. */
           aria-modal="true"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            onReturnFocus();
+          }}
         >
           <DialogPrimitive.Title className="sr-only">
             Enlarged PDF page {citation.page_number}

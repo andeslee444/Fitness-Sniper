@@ -11,6 +11,8 @@ from govbudget.budget_pdf_receipts import (
     normalize_header,
     page_columns,
     pdf_header_key,
+    viewport_geometry,
+    select_glyph_geometry,
 )
 
 
@@ -113,6 +115,59 @@ def test_total_requires_all_inputs_even_when_unmatched_values_cancel():
     assert not combine_receipts([good], 120)["complete"]
 
 
+def test_negative_source_origin_is_removed_from_both_highlight_axes():
+    page = dict(cropbox=(-14.4, -14.1732, 777.6, 597.8266), rotation=0)
+    box = dict(x0=700, x1=740, top=300, bottom=309)
+    actual = viewport_geometry(page, box)
+    assert actual == pytest.approx(dict(page_width=792, page_height=611.9998, x0=714.4, x1=754.4, top_pt=314.1732, bottom_pt=323.1732))
+    assert box == dict(x0=700, x1=740, top=300, bottom=309)
+
+
+def test_positive_crop_origin_uses_crop_extent_not_full_media_dimensions():
+    page = dict(cropbox=(20, 30, 620, 430), rotation=0, width=792, height=612)
+    assert viewport_geometry(page, dict(x0=40, x1=60, top=80, bottom=90)) == dict(page_width=600, page_height=400, x0=20, x1=40, top_pt=50, bottom_pt=60)
+
+
+def test_zero_origin_keeps_original_highlight_and_unsupported_geometry_fails():
+    page = dict(cropbox=(0, 0, 792, 612), rotation=0)
+    box = dict(x0=700, x1=730, top=300, bottom=310)
+    assert viewport_geometry(page, box) == dict(page_width=792, page_height=612, x0=700, x1=730, top_pt=300, bottom_pt=310)
+    with pytest.raises(ValueError, match="Rotated"):
+        viewport_geometry(dict(page, rotation=90), box)
+    with pytest.raises(ValueError, match="outside"):
+        viewport_geometry(page, dict(box, x1=800))
+
+
+def test_tight_glyph_bounds_resolve_source_baseline_after_negative_origin_translation():
+    page = dict(cropbox=(-14.4, -14.1732, 777.6, 597.8266), mediabox=(-14.4, -14.1732, 777.6, 597.8266), rotation=0)
+    source = dict(text="151,300", x0=721.2, x1=754.82328, top=486.667, bottom=494.707,
+                  chars=[dict(text="151,300", matrix=(8.04, 0, 0, 8.04, 735.6, 108.5868))])
+    candidate = dict(text="151,300", origin=(721.2, 122.76), box=(722.09247, 121.5942, 753.92279, 127.80109))
+    actual = select_glyph_geometry(page, source, (-14.4, 14.1732, 777.6, 626.173), [candidate])
+    assert actual["x0"] == pytest.approx(736.49247)
+    assert actual["top_pt"] == pytest.approx(498.37191)
+    assert actual["bottom_pt"] == pytest.approx(504.5788)
+    assert actual["top_pt"] < viewport_geometry(page, source)["top_pt"]
+
+
+def test_adjacent_duplicate_amount_requires_exact_origin_and_fails_closed_on_ambiguity():
+    page = dict(cropbox=(0, 0, 792, 612), mediabox=(0, 0, 792, 612), rotation=0)
+    source = dict(text="133,500", x0=400, x1=434, top=466, bottom=474,
+                  chars=[dict(text="133,500", matrix=(8, 0, 0, 8, 400, 140))])
+    selected = dict(text="133,500", origin=(400, 140), box=(401, 139, 433, 145))
+    adjacent_nonadd = dict(text="133,500", origin=(400, 131), box=(401, 130, 433, 136))
+    actual = select_glyph_geometry(page, source, (0, 0, 792, 612), [adjacent_nonadd, selected])
+    assert actual["top_pt"] == 467
+    with pytest.raises(ValueError, match="got 0"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [adjacent_nonadd])
+    with pytest.raises(ValueError, match="got 2"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [selected, selected])
+    with pytest.raises(ValueError, match="got 0"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [dict(selected, text="133,5000")])
+    with pytest.raises(ValueError, match="outside"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [dict(selected, box=(401, 139, 800, 145))])
+
+
 def test_shipped_f15_evidence_preserves_all_default_and_historical_cells():
     root = Path(__file__).resolve().parents[1] / "data/site/json"
     if not (root / "budget_pdf_receipts_audit.json").exists():
@@ -122,6 +177,7 @@ def test_shipped_f15_evidence_preserves_all_default_and_historical_cells():
     assert audit["leaf_count"] == 207
     assert audit["default_complete"] == audit["default_cells"] == 67
     assert audit["unmatched_cells"] == []
+    assert audit["highlight_geometry"] == "tight PDFium glyph bounds verified by exact text and first-character origin"
     receipts = {}
     shards = list((root / "budget-pdf-receipts").glob("*.json"))
     assert len(shards) == 256

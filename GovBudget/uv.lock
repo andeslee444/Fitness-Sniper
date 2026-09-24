@@ -527,6 +527,7 @@ dependencies = [
     { name = "pdfplumber" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pypdf" },
+    { name = "pypdfium2" },
     { name = "selectolax" },
 ]
 
@@ -546,6 +547,7 @@ requires-dist = [
     { name = "pdfplumber", specifier = ">=0.11" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pypdf", specifier = ">=5.0" },
+    { name = "pypdfium2", specifier = ">=4.18" },
     { name = "selectolax", specifier = ">=0.3" },
 ]
 
