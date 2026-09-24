@@ -108,5 +108,9 @@ automated clicks or aggregate analytics.
   Flow-only compact serialization reduces it to 553,197 bytes with exact parsed
   equality; no members, values, citations or thresholds changed. Seventeen
   focused flow tests passed.
-- Publication remains pending the citation gate, fresh production build,
-  affected static gates, browser review, correct-remote push and live checks.
+- Citation gate passed: 50/50 sampled receipts, zero divergent workbook
+  overlaps, every integrity leg, and 25/25 sampled narrative locations.
+  Independent district audit: 611 rows across 189 sidecars and all 11
+  account-resolved destinations agree with warehouse amounts and receipt IDs.
+- Publication remains pending the fresh production build, affected static
+  gates, browser review, correct-remote push and live checks.
