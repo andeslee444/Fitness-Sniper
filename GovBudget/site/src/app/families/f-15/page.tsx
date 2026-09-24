@@ -3,8 +3,8 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { F15FamilyBrowser } from "@/components/f15-family-browser";
 import { getF15FamilyData } from "@/lib/f15-family-data";
 import { SITE_URL } from "@/lib/site";
-import { FamilyFundingLead, loadFamilyLead } from "@/components/family-funding-lead";
-import { F15_RECORD_SLUGS } from "@/lib/f15-family";
+import { FamilyFundingHistory } from "@/components/family-funding-history";
+import { getF15FundingHistory } from "@/lib/family-funding-history-data";
 
 export const metadata: Metadata = {
   title: "F-15 family — aircraft, funding & receipts",
@@ -15,10 +15,10 @@ export const metadata: Metadata = {
 
 export default function F15FamilyPage() {
   const family = getF15FamilyData();
-  const lead = loadFamilyLead(F15_RECORD_SLUGS, "F-15");
+  const funding = getF15FundingHistory();
   return (
-    <CitationPanelProvider citations={family.citations}>
-      <F15FamilyBrowser family={family} fundingLead={<FamilyFundingLead lead={lead} shortName="F-15" recordSlugs={F15_RECORD_SLUGS} />} />
+    <CitationPanelProvider citations={{ ...family.citations, ...funding.citations }}>
+      <F15FamilyBrowser family={family} fundingLead={<FamilyFundingHistory history={funding.history} shortName="F-15" />} />
     </CitationPanelProvider>
   );
 }

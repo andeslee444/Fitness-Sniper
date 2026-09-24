@@ -51,6 +51,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
+import { checkFamilyHistory } from "./family-history.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -2538,162 +2539,20 @@ function runDecadeOnlyLeg({ errors, notes, sidecars }) {
 }
 
 
-// ── leg (o) — the family lead figure (2026-09-12, src/lib/family-lead.ts) ──
-//
-// A family page (/families/<id>/) leads with ONE record's own exporter card,
-// chosen by a deterministic rule: edition E = max(summary.edition); a member
-// is eligible iff full tier, not zero-content, and its fy{E} card is a state-A
-// TOA request in USD thousands at edition E; the largest value leads (ties:
-// the un-reconciled member, then code-point slug order); no candidates → the
-// absence sentence. This leg recomputes that answer from the sidecars ALONE
-// and holds the built page to it — data-lead-record, data-lead-fact-id and
-// data-lead-excluded must match; the receipt's one [data-amount] must carry
-// the card's fid/fy/measure/basis/entity; the same fid must be the FY{E}
-// request tile on out/program/<lead>/; the kicker's counts must equal the
-// records and the absence rows; every fid must resolve in the page's
-// citation slice; no currency text may appear outside [data-amount].
-function familyLeadRecompute(slugs, rows) {
-  const detailsDir = path.join(jsonDir, "program_details");
-  const members = slugs.map((slug) => {
-    const d = readJson(path.join(detailsDir, `${slug}.json`));
-    const row = rows.get(slug);
-    return { slug, d, row, tier: d.tier ?? "full", zero: isZeroContent(d) };
-  });
-  const E = Math.max(...members.map((m) => m.d.summary?.edition ?? 0));
-  const eligible = [];
-  const excluded = [];
-  for (const m of members) {
-    const c = (m.d.summary?.cards ?? []).find((x) => x.key === `fy${E}`);
-    const ok = m.tier === "full" && !m.zero && c && c.fy === E && c.edition === E && c.measure === "request" && c.basis === "toa" && c.units === "USD thousands" && c.fid != null && c.value != null;
-    if (ok) eligible.push({ ...m, card: c, reconciled: (m.d.summary.reconciliation ?? []).some((r) => r.fy === E && r.measure === "request") });
-    else excluded.push(m.slug);
-  }
-  eligible.sort((a, b) => (b.card.value - a.card.value) || ((a.reconciled ? 1 : 0) - (b.reconciled ? 1 : 0)) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
-  return { E, lead: eligible[0] ?? null, ledger: eligible.slice(1), excluded, members };
-}
-
+// ── leg (o) — family funding history (owner correction, 2026-09-24) ──
+// Audit family sums independently, preserving accounting and receipt coverage.
 function runFamilyLeadLeg({ errors, notes }) {
-  const detailsDir = path.join(jsonDir, "program_details");
-  const familiesDir = path.join(outDir, "families");
-  if (!fs.existsSync(familiesDir)) return;
-  const programsPath = path.join(jsonDir, "programs.json");
-  const rows = new Map(readJson(programsPath).map((p) => [p.slug ?? p.pe_bli, p]));
-  const fams = fs.readdirSync(familiesDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-  let checked = 0;
-  for (const fam of fams) {
-    const file = path.join(familiesDir, fam, "index.html");
-    if (!fs.existsSync(file)) continue;
-    const html = fs.readFileSync(file, "utf8");
-    const root = parse(html);
-    const where = `/families/${fam}/`;
-    const receipt = root.querySelector('[data-testid="family-receipt"]');
-    if (!receipt) {
-      errors.push(`leg o: ${where} has no [data-testid="family-receipt"] — the family page must render the rule's lead figure (src/lib/family-lead.ts)`);
-      continue;
-    }
-    checked += 1;
-    const slugs = (receipt.getAttribute("data-family-records") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    if (!slugs.length) { errors.push(`leg o: ${where} family-receipt carries no data-family-records`); continue; }
-    const missing = slugs.filter((s) => !fs.existsSync(path.join(detailsDir, `${s}.json`)) || !rows.has(s));
-    if (missing.length) { errors.push(`leg o: ${where} records without a sidecar/row: ${missing.join(", ")}`); continue; }
-    const rc = familyLeadRecompute(slugs, rows);
-    const pageE = Number(receipt.getAttribute("data-family-edition"));
-    if (pageE !== rc.E) errors.push(`leg o: ${where} data-family-edition ${pageE} ≠ recomputed ${rc.E}`);
-    const absent = receipt.getAttribute("data-lead-absent") != null;
-    if (!rc.lead) {
-      if (!absent) errors.push(`leg o: ${where} recompute finds NO eligible member but the page shows a lead`);
-      else {
-        const abs = receipt.querySelector("[data-absence]");
-        if (!abs || !/Missing coverage is not zero spending\./.test(abs.text)) errors.push(`leg o: ${where} absent lead lacks the doctrine sentence`);
-        if (receipt.querySelectorAll("[data-amount]").length) errors.push(`leg o: ${where} absent lead renders a [data-amount]`);
-      }
-      continue;
-    }
-    if (absent) { errors.push(`leg o: ${where} page says absent; recompute leads with ${rc.lead.slug}`); continue; }
-    const pageLead = receipt.getAttribute("data-lead-record");
-    const pageFid = receipt.getAttribute("data-lead-fact-id");
-    const pageExcluded = (receipt.getAttribute("data-lead-excluded") ?? "").split(",").map((s) => s.trim()).filter(Boolean).sort();
-    if (pageLead !== rc.lead.slug) errors.push(`leg o: ${where} data-lead-record ${pageLead} ≠ recomputed ${rc.lead.slug}`);
-    if (pageFid !== rc.lead.card.fid) errors.push(`leg o: ${where} data-lead-fact-id ${pageFid} ≠ recomputed ${rc.lead.card.fid}`);
-    if (pageExcluded.join(",") !== [...rc.excluded].sort().join(",")) errors.push(`leg o: ${where} data-lead-excluded [${pageExcluded}] ≠ recomputed [${[...rc.excluded].sort()}]`);
-    // the receipt's one figure
-    const amounts = receipt.querySelectorAll('[data-testid="family-receipt-figure"] [data-amount]');
-    if (amounts.length !== 1) errors.push(`leg o: ${where} family-receipt-figure holds ${amounts.length} [data-amount] (exactly one)`);
-    else {
-      const a = amounts[0]; const c = rc.lead.card;
-      const want = { "data-fact-id": c.fid, "data-fy": String(rc.E), "data-measure": "request", "data-basis": "toa", "data-entity": rc.lead.slug, "data-dataset": c.dataset ?? "fct_decade_series" };
-      for (const [k, v] of Object.entries(want)) if (a.getAttribute(k) !== v) errors.push(`leg o: ${where} receipt figure ${k}="${a.getAttribute(k)}" ≠ "${v}"`);
-      if ((a.getAttribute("data-reconciliation") != null) !== rc.lead.reconciled) errors.push(`leg o: ${where} receipt figure data-reconciliation presence ≠ summary.reconciliation at (${rc.E}, request)`);
-      const split = rc.lead.d.fy26_split;
-      const chip = receipt.querySelector("[data-fy26-recon-chip]");
-      if (!!split?.has_reconciliation !== !!chip) errors.push(`leg o: ${where} [data-fy26-recon-chip] presence ≠ fy26_split.has_reconciliation`);
-      else if (chip && !chip.text.trim().startsWith((split.recon_share * 100).toFixed(1))) errors.push(`leg o: ${where} recon chip "${chip.text.trim()}" does not start with ${(split.recon_share * 100).toFixed(1)}`);
-      // cross-page identity with the program page's own tile
-      const progFile = pageHtmlPath(rc.lead.slug);
-      if (fs.existsSync(progFile)) {
-        const prog = parse(fs.readFileSync(progFile, "utf8"));
-        const tile = prog.querySelector(`[data-section="figures"] [data-amount][data-fy="${rc.E}"][data-measure="request"][data-basis="toa"]`);
-        if (!tile) errors.push(`leg o: ${where} out/program/${rc.lead.slug}/ has no FY${rc.E} request tile to match`);
-        else {
-          if (tile.getAttribute("data-fact-id") !== c.fid) errors.push(`leg o: ${where} lead fid ${c.fid} ≠ program tile fid ${tile.getAttribute("data-fact-id")}`);
-          if (tile.text.trim() !== a.text.trim()) errors.push(`leg o: ${where} lead text "${a.text.trim()}" ≠ program tile text "${tile.text.trim()}"`);
-        }
-      }
-    }
-    // kicker
-    const kicker = receipt.querySelector('[data-testid="family-receipt-kicker"]')?.text.replace(/\s+/g, " ").trim() ?? "";
-    const km = kicker.match(/^Largest cited (FY\d{2} Request) of (\d+) (.+?) records(?: · (\d+) without a cited \1)?$/);
-    const ledger = root.querySelector('[data-testid="family-ledger"]');
-    const absRows = ledger ? ledger.querySelectorAll("[data-ledger-row][data-absence]") : [];
-    if (!km) errors.push(`leg o: ${where} kicker "${kicker}" is not "Largest cited FY26 Request of N <family> records[ · K without a cited FY26 Request]"`);
-    else {
-      if (Number(km[2]) !== slugs.length) errors.push(`leg o: ${where} kicker counts ${km[2]} records; the family declares ${slugs.length}`);
-      const k = Number(km[4] ?? 0);
-      if (k !== rc.excluded.length) errors.push(`leg o: ${where} kicker says ${k} without a cited figure; recompute excludes ${rc.excluded.length}`);
-      if (k !== absRows.length) errors.push(`leg o: ${where} kicker says ${k} without a cited figure; the ledger renders ${absRows.length} absence rows`);
-    }
-    // ledger
-    if (!ledger) errors.push(`leg o: ${where} has no [data-testid="family-ledger"]`);
-    else {
-      const rowsEl = ledger.querySelectorAll("[data-ledger-row]");
-      const cited = rowsEl.filter((r) => r.getAttribute("data-absence") == null);
-      const expectCited = Math.min(rc.ledger.length, 5);
-      if (cited.length !== expectCited) errors.push(`leg o: ${where} ledger renders ${cited.length} cited rows; the rule gives ${expectCited}`);
-      const tail = ledger.querySelector("[data-ledger-tail]");
-      if ((rc.ledger.length > 5) !== !!tail) errors.push(`leg o: ${where} ledger tail presence ≠ overflow (${rc.ledger.length - 5})`);
-      cited.forEach((r, i) => {
-        const exp = rc.ledger[i];
-        const ent = r.getAttribute("data-entity");
-        if (exp && ent !== exp.slug) errors.push(`leg o: ${where} ledger row ${i + 1} is ${ent}; value-desc order puts ${exp.slug} there`);
-        const amt = r.querySelector("[data-amount]");
-        if (!amt) errors.push(`leg o: ${where} ledger row ${ent} has no [data-amount]`);
-        else if (exp && (amt.getAttribute("data-fact-id") !== exp.card.fid || amt.getAttribute("data-entity") !== exp.slug)) errors.push(`leg o: ${where} ledger row ${ent} figure fid/entity ≠ its own fy${rc.E} card`);
-        if (exp && !r.text.includes(`#${exp.card.fid.slice(0, 8)}`)) errors.push(`leg o: ${where} ledger row ${ent} shows no receipts chip #${exp.card.fid.slice(0, 8)}`);
-      });
-      for (const r of absRows) {
-        if (r.querySelector("[data-amount]")) errors.push(`leg o: ${where} absence row ${r.getAttribute("data-entity")} carries a [data-amount]`);
-        if (/\$/.test(r.text)) errors.push(`leg o: ${where} absence row ${r.getAttribute("data-entity")} contains a "$"`);
-        if (!slugs.includes(r.getAttribute("data-entity") ?? "")) errors.push(`leg o: ${where} absence row entity ${r.getAttribute("data-entity")} is not a declared record`);
-      }
-      const cap = ledger.querySelector("[data-basis-declared]")?.text ?? "";
-      if (!/P-1\/R-1 TOA/.test(cap) || !new RegExp(`PB${rc.E}`).test(cap) || !/not added/.test(cap)) errors.push(`leg o: ${where} ledger caption "${cap.trim()}" must name P-1/R-1 TOA, PB${rc.E} and "not added"`);
-    }
-    // every fid resolves in the page's citation slice; no currency text outside [data-amount]
-    const slice = pageCitationFactIds(html);
-    const fids = [rc.lead.card.fid, ...rc.ledger.slice(0, 5).map((r) => r.card.fid)];
-    for (const f of fids) if (!slice.has(f)) errors.push(`leg o: ${where} fid ${f} is not in the page's citation slice — a chip with no openable receipt`);
-    for (const scope of [receipt, ledger].filter(Boolean)) {
-      const clone = parse(scope.outerHTML);
-      for (const a of clone.querySelectorAll("[data-amount]")) a.remove();
-      if (/\$[\d,]+(\.\d+)?\s*[TBMK]?\b/.test(clone.text)) errors.push(`leg o: ${where} currency text outside [data-amount] in ${scope.getAttribute("data-testid")}`);
-    }
-    // the funding sheet's SSR default statement is the lead — one fact, two places
-    const stmt = root.querySelector("#funding .statementAmount [data-amount], [data-workspace-funding] [data-amount][data-entity]");
-    if (stmt && stmt.getAttribute("data-fact-id") !== rc.lead.card.fid) errors.push(`leg o: ${where} funding sheet's default statement (${stmt.getAttribute("data-fact-id")}) ≠ the lead (${rc.lead.card.fid}) — fix the default view constant, never the rule`);
-  }
-  if (checked) notes.push(`leg o: ${checked} family page(s) — lead recomputed from sidecars and matched ✓`);
+  const file = path.join(outDir, "families/f-15/index.html");
+  if (!fs.existsSync(file)) { errors.push("leg o: F-15 family page missing"); return; }
+  const source = path.join(jsonDir, "f15_funding_history.json");
+  if (!fs.existsSync(source)) { errors.push("leg o: F-15 family history export missing"); return; }
+  const html = fs.readFileSync(file, "utf8");
+  const history = readJson(source);
+  const citations = readJson(path.join(jsonDir, "citations.json"));
+  const findings = checkFamilyHistory(parse(html), history, citations, pageCitationFactIds(html));
+  errors.push(...findings.map(message => `leg o: /families/f-15/ ${message}`));
+  if (!findings.length) notes.push(`leg o: family history sums, ${history.default_point_ids.length} annual snapshots, receipts and historical coverage checked ✓`);
 }
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // leg coverage — the coverage note tells the truth about ingestion (ROADMAP #14)

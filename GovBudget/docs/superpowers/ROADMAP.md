@@ -5,6 +5,24 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 
 ## Current priorities — trust and parallel product work (2026-09-22)
 
+**F-15 family funding correction (2026-09-24):** replace the largest single
+program's request with a cited history of the identified F-15 development and
+procurement lines. The available span is FY2015–2026; the headline combines
+FY2015–2024 actuals only. Enacted/current-year figures and requests remain
+separate, with direct government workbook links for each input. Historical
+procurement identities are matched within their budget editions. This
+supersedes the earlier single-largest-record family lead rule. Implementation,
+coverage limits and release checks are recorded in the
+[family history record](plans/2026-09-24-f15-funding-history.md).
+
+**Open historical coverage work:** backfill pre-FY2015 official P-1/R-1 books
+and the older F-15A–D PE 0207130F; review program membership by edition and
+account before adding amounts. Keep lifetime acquisition estimates separate
+from annual funding, and shared operating/support budgets unallocated without
+an F-15-specific source. Do not label the current covered-record total as
+all-time or lifetime funding. Acceptance requires cited annual actuals without
+overlapping editions, requests, totals/components or prior-years rollups.
+
 **Publication checkpoint (2026-09-23):** the user authorized commit, push and
 publication of this product slice. Source is pushed to the standalone Fiscal
 Receipts repository. Release checks repaired the GAO

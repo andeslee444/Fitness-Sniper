@@ -1,0 +1,52 @@
+# F-15 family funding history
+
+The owner corrected the family header: showing the largest single F-15EX
+record under the F-15 family heading misrepresents its scope. The replacement
+shows funding across the identified F-15 development and procurement lines
+over the full locally verified history, with explicit limits on that history.
+
+## Delivered data and behavior
+
+- FY2015–2024 recorded actuals: **17,043,321 USD thousands**, derived receipt
+  `70e8427bdef8c6d1`. Enacted/current-year figures and requests are excluded.
+- Annual history extends through FY2026. FY2026 request: **3,705,620 USD
+  thousands**, derived receipt `d9aedd1cd8025592`; PE 0207171F is missing from
+  the workbook subtotal and remains disclosed.
+- Each chart year selects its own total, source rows and government spreadsheet
+  links. The family total remains independent of aircraft and program selectors.
+- Twelve preferred annual snapshots are displayed; the data export retains
+  thirty scenario snapshots, 207 workbook inputs and 31 derived receipts.
+- PB2017–2023 procurement rows use reviewed edition/account/organization/activity
+  identities. Reused line numbers are never treated as permanent program IDs.
+- Annual sums use canonical scenario columns, including each activity once.
+  Base/OCO/total alternatives and request/reconciliation components are not
+  added twice. Every input matches a workbook cell preview.
+- A bounded export command patches the completed artifacts and preserves
+  existing canonical citations. The full exporter invokes the same projection
+  so a later refresh retains the feature.
+
+## Coverage still to acquire
+
+The available annual series begins with FY2015 actuals in PB2017. It is not
+an all-time total. Earlier funding, early F-15A–D development, PE 0207130F,
+personnel, operating costs and unallocated shared support are not represented.
+The page states the start year beside the headline and expands its scope notes
+with the receipts. Missing figures never become zeroes or substituted J-book
+amounts. All figures use nominal total obligational authority, not outlays.
+
+Earlier-source backfill is tracked in the roadmap. Official DoD budget archives
+and older Air Force P-1/R-1 books are the next source acquisition work; acquisition
+cost estimates and overlapping prior-years totals cannot fill annual gaps.
+
+## Verification
+
+- 33 Python tests cover membership, scenario selection, duplicate identities,
+  missing members, cumulative-year gaps and existing citation/breakdown behavior.
+- Independent exact-title SQL reproduced all 30 annual totals; all 31 derived
+  sums passed the existing verifier. All 207 workbook inputs matched their cell
+  previews; 5,251 overlapping existing workbook facts retained identical values.
+- Repeat generation added zero citations. Thirteen artifact integrity checks
+  passed across global registries, shards, previews, breakdowns and metadata.
+- Frontend tests cover annual selection, direct government links, receipt
+  opening, family independence and rejection of request-contaminated totals.
+- Release and visual verification are recorded after the production build.

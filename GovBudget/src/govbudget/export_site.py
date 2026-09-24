@@ -2793,14 +2793,22 @@ def export_site(
         json.dumps(manifest, indent=2, sort_keys=True)
     )
 
+    # Family history is a bounded additive projection over the completed
+    # artifacts. It preserves canonical program facts and rechecks every new
+    # historical workbook input before adding annual/cumulative receipts.
+    from govbudget.f15_funding_history import export_f15_funding_history
+    family_history = export_f15_funding_history(
+        duckdb_path=duckdb_path, out_dir=out_dir,
+    )
+
     return {
         "datasets": len(final_counts),
-        "citations": len(citation_rows),
+        "citations": family_history["citations"] if family_history else len(citation_rows),
         "pdfs": n_pdfs,
         "workbooks": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
         "skipped_zero_amount": skipped_zero_amount,
-        "json_files": n_json,
+        "json_files": family_history["json_files"] if family_history else n_json,
         # None when dossiers_raw_dir was not passed (existing callers/tests);
         # {written, total_dropped, dropped_by_pe, skipped} otherwise.
         "dossiers": dossier_summary,

@@ -16,13 +16,13 @@
  *    page, at both viewports — [data-testid="family-receipt"] is fully inside
  *    the first screen AND above the family's tab bar ([data-testid="family-nav"]);
  *    the ledger starts inside the first screen; the receipt carries exactly
- *    one [data-amount] whose data-fact-id equals its own data-lead-fact-id
+ *    one [data-amount] whose data-fact-id equals its own data-family-cumulative
  *    (or, in the absent case, none and a [data-absence] with the doctrine
  *    sentence); and the lead is VIEW-INDEPENDENT — after switching the funding
- *    workspace to another record, data-lead-fact-id is unchanged while the
+ *    workspace to another record, data-family-cumulative is unchanged while the
  *    funding sheet's own statement follows the selection. Nine critics: "the
  *    program page buries the money"; the rule that surfaces it is
- *    src/lib/family-lead.ts, and this leg is where it is held on the fold.
+ *    src/lib/family-funding-history.ts, and this leg is where it is held on the fold.
  *
  * Export: runAnswerfoldGate({ baseUrl }) → { pass, errors, notes }
  */
@@ -156,7 +156,7 @@ export async function runAnswerfoldGate({ baseUrl }) {
           await page.goto(`${baseUrl}/families/${fam}/`, { waitUntil: "load", timeout: 30000 });
           const receipt = page.locator('[data-testid="family-receipt"]').first();
           if ((await receipt.count()) === 0) {
-            errors.push(`${where}: [data-testid="family-receipt"] missing — the family page has no lead figure (src/lib/family-lead.ts decides it; the page must render it)`);
+            errors.push(`${where}: [data-testid="family-receipt"] missing — the family page has no lead figure (src/lib/family-funding-history.ts decides it; the page must render it)`);
             continue;
           }
           const box = await receipt.boundingBox();
@@ -175,15 +175,15 @@ export async function runAnswerfoldGate({ baseUrl }) {
               const lb = await ledger.boundingBox();
               if (lb && lb.y >= vp.height) errors.push(`${where}: family-ledger starts below the first screen (top=${lb.y.toFixed(0)})`);
             }
-            const leadFid = await receipt.getAttribute("data-lead-fact-id");
+            const leadFid = await receipt.getAttribute("data-family-cumulative");
             const amounts = receipt.locator('[data-testid="family-receipt-figure"] [data-amount]');
             const n = await amounts.count();
             if (n !== 1) errors.push(`${where}: family-receipt-figure holds ${n} [data-amount] (exactly one)`);
             else {
               const fid = await amounts.first().getAttribute("data-fact-id");
               const uncited = await amounts.first().getAttribute("data-uncited");
-              if (fid !== leadFid) errors.push(`${where}: receipt figure fact-id ${fid} ≠ data-lead-fact-id ${leadFid}`);
-              if (uncited != null) errors.push(`${where}: the lead figure is data-uncited — a family lead must be a state-A card`);
+              if (fid !== leadFid) errors.push(`${where}: receipt figure fact-id ${fid} ≠ data-family-cumulative ${leadFid}`);
+              if (uncited != null) errors.push(`${where}: the lead figure is data-uncited — a family total must have a derived receipt`);
             }
             // view-independence: switch the funding record; the lead must not move
             const fundingTab = page.locator('[data-testid="family-nav"] a[href="#funding"]').first();
@@ -195,8 +195,8 @@ export async function runAnswerfoldGate({ baseUrl }) {
               if (options > 1) {
                 await select.selectOption({ index: 1 });
                 await page.waitForTimeout(300);
-                const after = await receipt.getAttribute("data-lead-fact-id");
-                if (after !== leadFid) errors.push(`${where}: data-lead-fact-id changed from ${leadFid} to ${after} after selecting another record — the lead follows the rule, never the view`);
+                const after = await receipt.getAttribute("data-family-cumulative");
+                if (after !== leadFid) errors.push(`${where}: data-family-cumulative changed from ${leadFid} to ${after} after selecting another record — the family total is independent of the selected record`);
               }
             }
           } else {

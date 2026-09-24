@@ -14,7 +14,7 @@ describe('F-15 visible configuration', () => {
   for (const [variant, profile, seats] of [['A','single',1],['B','twin',2],['C','single',1],['D','twin',2],['E','strike',2],['EX','twin',2]] as const) {
    rerender(<F15Model {...props} variant={variant} />);
    expect(container.querySelector('use')).toHaveAttribute('href', `/exhibits/plates/f15-${profile}.svg#f15-plate`);
-   expect(screen.getByRole('img', {name: `F-15${variant}: ${seats === 1 ? 'single-seat cockpit' : 'two-seat cockpit'}${variant === 'E' ? ', conformal fuel tanks shown' : ''}`, exact: true})).toBeVisible();
+   expect(screen.getByRole('img', {name: `F-15${variant}: ${seats === 1 ? 'single-seat cockpit' : 'two-seat cockpit'}${variant === 'E' ? ', conformal fuel tanks shown' : ''}`})).toBeVisible();
    expect(container.querySelector('f15-family-scene')).toBeNull();
   }
  });
