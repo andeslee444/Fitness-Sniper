@@ -629,8 +629,8 @@ export default function MethodologyPage() {
                   Reconciliation
                 </h3>
                 <p>
-                  Every figure extracted from a J-book clears two arithmetic
-                  checks. Check A: project-level amounts within an exhibit must sum
+                  We apply two arithmetic checks to J-book figures.
+                  Check A: project-level amounts within an exhibit must sum
                   to the program-element total in that same exhibit (tolerance:
                   ±$0.001M). Check B: that program-element total must match the
                   corresponding row in the official R-1 or P-1 Excel rollup. A
@@ -695,8 +695,8 @@ export default function MethodologyPage() {
                   Per-build automated checks
                 </h3>
                 <p data-build-checks>
-                  A Python test suite and a browser test suite both run green
-                  before any build ships, alongside{" "}
+                  The automated check inventory includes Python and browser
+                  tests, alongside{" "}
                   <strong>{buildChecks.npm_gates ?? "—"} site verification gates</strong>{" "}
                   and{" "}
                   <strong>
@@ -706,7 +706,8 @@ export default function MethodologyPage() {
                   <strong>{buildChecks.eval_questions ?? "—"} question-answer pairs</strong>
                   ) requires at least{" "}
                   <strong>{buildChecks.eval_threshold ?? "—"} correct answers</strong>{" "}
-                  and 100% citation resolution before shipping.
+                  and 100% citation resolution. Release results and unresolved
+                  findings are recorded in the project roadmap.
                 </p>
               </div>
             </div>
