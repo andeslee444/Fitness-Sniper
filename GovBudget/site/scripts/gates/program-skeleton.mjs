@@ -2551,7 +2551,7 @@ function runFamilyLeadLeg({ errors, notes }) {
   const citations = readJson(path.join(jsonDir, "citations.json"));
   const findings = checkFamilyHistory(parse(html), history, citations, pageCitationFactIds(html));
   const shippedHistory = path.join(outDir, "json/f15_funding_history.json");
-  const prefixes = new Set([history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id)])].map(id => id.slice(0, 2)));
+  const prefixes = new Set([history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id), ...point.program_cells.map(cell => cell.fact_id)])].map(id => id.slice(0, 2)));
   const shippedShards = {};
   for (const prefix of prefixes) {
     const shard = path.join(outDir, "json/cite-shards", `${prefix}.json`);

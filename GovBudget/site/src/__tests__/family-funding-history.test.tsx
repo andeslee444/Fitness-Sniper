@@ -1,18 +1,22 @@
 import React from "react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { FamilyFundingHistory } from "@/components/family-funding-history";
+import { CitationPanelProvider } from "@/components/citation-panel/panel";
 import { CitationPanelContext } from "@/components/cite";
 import { getF15FundingHistory, getF15FundingHistorySource } from "@/lib/family-funding-history-data";
-import { FAMILY_HISTORY_URL, familyHistoryInputRows, familyHistorySeries } from "@/lib/family-funding-history";
+import { FAMILY_HISTORY_URL, familyHistoryInputRows, familyHistorySeries, validateFamilyHistoryMatrix } from "@/lib/family-funding-history";
 import { getCitations } from "@/lib/data";
 import F15FamilyPage from "@/app/families/f-15/page";
 
 vi.mock("@/components/f15-model", () => ({ F15Model: () => <div /> }));
 const source = getF15FundingHistorySource();
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal("fetch", vi.fn(async (url: RequestInfo | URL) => {
-    if (url === FAMILY_HISTORY_URL) return { ok: true, json: async () => source };
+    if (String(url).startsWith("/json/")) return { ok: true, json: async () => JSON.parse(readFileSync(join(process.cwd(), "../data/site", String(url)), "utf8")) };
     if (url === "/config.json") return { ok: true, json: async () => ({ assetBaseUrl: "/assets" }) };
     throw new Error(`Unexpected fetch in history test: ${String(url)}`);
   }));
@@ -44,106 +48,103 @@ describe("F-15 family funding history", () => {
     expect(series[0].components.some(row => row.pe_bli.startsWith("3010F-"))).toBe(true);
   });
 
-  it("renders every annual total immediately and automatically loads all source rows", async () => {
-    const { history, citations } = getF15FundingHistory();
-    expect(history.points).toHaveLength(12);
-    expect(Object.keys(citations)).toHaveLength(21);
+  it("renders the complete matrix immediately with chronological year columns and stable program rows", () => {
+    const { history } = getF15FundingHistory();
     render(<FamilyFundingHistory history={history} shortName="F-15" />);
-    const table = screen.getByRole("table", { name: "Funding & sources by year" });
+    const table = screen.getByRole("table", { name: "Programs across the years" });
     expect(table.closest("details")).toBeNull();
-    expect(table.querySelectorAll("[data-history-annual]")).toHaveLength(12);
-    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(8);
-    await waitFor(() => expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83));
-    expect(fetch).toHaveBeenCalledExactlyOnceWith(FAMILY_HISTORY_URL, expect.objectContaining({ signal: expect.any(AbortSignal) }));
-  });
-
-  it("leads with cited family actuals and explicitly bounded historical coverage", async () => {
-    const { history } = getF15FundingHistory();
-    const openPanel = vi.fn();
-    render(<CitationPanelContext.Provider value={{ openPanel }}><FamilyFundingHistory history={history} shortName="F-15" /></CitationPanelContext.Provider>);
-    const receipt = screen.getByTestId("family-receipt");
-    expect(receipt).toHaveTextContent("Recorded actuals · FY2015–2024");
-    expect(receipt).toHaveTextContent("earlier funding is not included");
-    expect(receipt).not.toHaveTextContent("Largest cited");
-    const amount = receipt.querySelector('[data-testid="family-receipt-figure"] [data-amount]')!;
-    expect(amount).toHaveAttribute("data-fact-id", history.cumulative.fact_id);
-    fireEvent.click(amount);
-    expect(openPanel).toHaveBeenCalledWith(history.cumulative.fact_id, expect.objectContaining({ measure: "actuals" }));
-    await waitFor(() => expect(screen.getByTestId("family-ledger").querySelectorAll("[data-history-input]")).toHaveLength(83));
-  });
-
-  it("shows every program/activity receipt and locator without filtering other years", async () => {
-    const { history } = getF15FundingHistory();
-    const openPanel = vi.fn();
-    render(<CitationPanelContext.Provider value={{ openPanel }}><FamilyFundingHistory history={history} shortName="F-15" /></CitationPanelContext.Provider>);
-    const table = screen.getByRole("table", { name: "Funding & sources by year" });
-    await waitFor(() => expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83));
-    for (const point of familyHistorySeries(source)) {
-      const group = table.querySelector(`[data-history-point="${point.id}"]`)!;
-      expect([...group.querySelectorAll("[data-history-input]")].map(row => row.getAttribute("data-history-input"))).toEqual(point.components.map(row => row.fact_id));
-      expect(group.querySelector("[data-history-annual] [data-amount]")).toHaveAttribute("data-fact-id", point.fact_id);
-      for (const row of point.components) {
-        const el = group.querySelector(`[data-history-input="${row.fact_id}"]`)!;
-        const amount = el.querySelector(`[data-amount][data-fact-id="${row.fact_id}"]`)!;
-        expect(amount).toHaveAttribute("data-fy", String(point.fy));
-        expect(amount).toHaveAttribute("data-measure", row.measure);
-        expect(el.querySelector("a[target='_blank']")).toHaveAttribute("href", row.official_url);
-        for (const value of [row.sheet, row.cells, row.pe_bli]) expect(el).toHaveTextContent(value);
-        fireEvent.click(amount);
-        expect(openPanel).toHaveBeenLastCalledWith(row.fact_id, expect.objectContaining({ fy: point.fy, value: row.amount_thousands }));
-      }
-      for (const name of point.missing_programs) expect(group.querySelector("[data-history-missing]")).toHaveTextContent(name);
-    }
-    expect(table.querySelectorAll("[data-history-missing]")).toHaveLength(2);
-    const chart = screen.getByRole("group", { name: "Funding by fiscal year" });
-    fireEvent.click(within(chart).getByRole("button", { name: /^FY2015 / }));
-    expect(table.querySelector('[data-history-point="fy2015a"]')).toHaveAttribute("data-selected", "true");
-    fireEvent.click(within(chart).getByRole("button", { name: /^FY2026 / }));
-    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83);
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("retains annual totals on fetch failure and retries all historical sources", async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error("offline"));
-    const { history } = getF15FundingHistory();
-    render(<FamilyFundingHistory history={history} shortName="F-15" />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Historical program rows could not be loaded");
-    const table = screen.getByRole("table", { name: "Funding & sources by year" });
+    expect([...table.querySelectorAll("[data-history-column]")].map(el => el.textContent?.match(/FY(\d+)/)?.[1])).toEqual(Array.from({ length: 12 }, (_, i) => String(2015 + i)));
+    expect(table.querySelectorAll("[data-history-program]")).toHaveLength(8);
+    expect(table.querySelectorAll("[data-history-cell] [data-amount]")).toHaveLength(67);
     expect(table.querySelectorAll("[data-history-annual] [data-amount]")).toHaveLength(12);
-    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(8);
-    expect(table.querySelector('[data-history-point="fy2015a"]')).toHaveTextContent("$771.1M");
-    expect(table.querySelector('[data-history-point="fy2015a"]')).toHaveTextContent("Source rows unavailable");
-    fireEvent.click(screen.getByRole("button", { name: "Retry loading source rows" }));
-    await waitFor(() => expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83));
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    for (const row of table.querySelectorAll("[data-history-program]")) expect(row.querySelectorAll("td")).toHaveLength(12);
   });
 
-  it("keeps chart selection when the complete source table finishes loading", async () => {
-    let finish!: (value: Response) => void;
-    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve; }));
+  it("opens each exact program/year receipt and partitions all 83 workbook inputs once", () => {
+    const { history } = getF15FundingHistory();
+    const openPanel = vi.fn();
+    render(<CitationPanelContext.Provider value={{ openPanel }}><FamilyFundingHistory history={history} shortName="F-15" /></CitationPanelContext.Provider>);
+    const table = screen.getByRole("table");
+    for (const point of familyHistorySeries(source)) {
+      const shownInputs: string[] = [];
+      for (const cell of point.program_cells) {
+        const el = table.querySelector(`[data-history-program="${cell.program_id}"] [data-history-cell="${point.id}"]`)!;
+        shownInputs.push(...el.getAttribute("data-history-inputs")!.split(","));
+        const amount = el.querySelector("[data-amount]")!;
+        expect(amount).toHaveAttribute("data-fact-id", cell.fact_id);
+        expect(amount).toHaveAttribute("data-measure", cell.measure);
+        expect(amount).toHaveAttribute("data-fy", String(point.fy));
+        fireEvent.click(amount);
+        expect(openPanel).toHaveBeenLastCalledWith(cell.fact_id, expect.objectContaining({ fy: point.fy, value: cell.amount_thousands, entity: cell.program_id }));
+      }
+      expect(shownInputs.sort()).toEqual(point.components.map(row => row.fact_id).sort());
+    }
+    fireEvent.click(within(screen.getByRole("group", { name: "Funding by fiscal year" })).getByRole("button", { name: /^FY2015 / }));
+    expect(table.querySelector('[data-history-column="fy2015a"]')).toHaveAttribute("data-selected", "true");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(table.querySelectorAll("[data-history-cell] [data-amount]")).toHaveLength(67);
+  });
+
+  it("keeps legacy codes separate, real zeros clickable, and missing funding explicit", () => {
     const { history } = getF15FundingHistory();
     render(<FamilyFundingHistory history={history} shortName="F-15" />);
-    fireEvent.click(screen.getByRole("button", { name: /^FY2015 / }));
-    fireEvent.click(screen.getByRole("button", { name: /^FY2016 / }));
-    expect(fetch).toHaveBeenCalledTimes(1);
-    await act(async () => { finish({ ok: true, json: async () => source } as Response); });
-    const table = screen.getByRole("table", { name: "Funding & sources by year" });
-    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83);
-    expect(table.querySelector('[data-history-point="fy2016a"]')).toHaveAttribute("data-selected", "true");
+    const table = screen.getByRole("table");
+    const legacy = table.querySelector('[data-history-program="P-1:3010F:AF:F015E0"] [data-history-cell="fy2020a"] [data-amount]')!;
+    expect(legacy).toHaveTextContent("$621.1M");
+    expect(table.querySelectorAll("[data-history-missing]")).toHaveLength(2);
+    for (const point of familyHistorySeries(source)) for (const cell of point.program_cells.filter(cell => cell.amount_thousands === 0)) {
+      const amount = table.querySelector(`[data-history-program="${cell.program_id}"] [data-history-cell="${point.id}"] [data-amount]`)!;
+      expect(amount).toHaveTextContent("$0");
+      expect(amount).toHaveAttribute("role", "button");
+    }
+    expect(table.querySelector('[data-history-program="R-1:3600F:AF:0207171F"] [data-history-cell="fy2026r"]')).toHaveTextContent("Missing");
   });
 
-  it("rejects a stale or altered source sidecar instead of changing published totals", () => {
+  it("opens historical source documents on demand, drills into each input, and restores keyboard focus", async () => {
+    const { history, citations } = getF15FundingHistory();
+    const point = familyHistorySeries(source).find(point => point.program_cells.some(cell => cell.input_fact_ids.length > 1 && !citations[cell.fact_id]))!;
+    const cell = point.program_cells.find(cell => cell.input_fact_ids.length > 1 && !citations[cell.fact_id])!;
+    const program = source.programs.find(program => program.id === cell.program_id)!;
+    render(<CitationPanelProvider citations={citations} figurePrograms={{ [program.id]: { name: program.title, code: program.code } }}><FamilyFundingHistory history={history} shortName="F-15" /></CitationPanelProvider>);
+    const opener = screen.getByRole("table").querySelector(`[data-history-program="${program.id}"] [data-history-cell="${point.id}"] [data-amount]`) as HTMLElement;
+    opener.focus();
+    fireEvent.keyDown(opener, { key: "Enter" });
+    const dialog = await screen.findByRole("dialog", { name: "Citation details" });
+    expect(await within(dialog).findByTestId("derived-card")).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(program.code);
+    expect(within(dialog).getByTestId("receipt-figure-context")).toHaveTextContent(`FY${point.fy}`);
+    const docs = await within(dialog).findByTestId("source-documents");
+    const inputs = point.components.filter(input => cell.input_fact_ids.includes(input.fact_id));
+    await waitFor(() => { for (const input of inputs) {
+      expect(docs.querySelector(`a[href="${input.official_url}"]`)).not.toBeNull();
+      for (const locator of input.cells.split(",")) expect(docs).toHaveTextContent(locator);
+    } });
+    const breakdown = await within(dialog).findByTestId("breakdown-table");
+    for (const input of inputs) expect(breakdown.querySelector(`[data-fact-id="${input.fact_id}"]`)).not.toBeNull();
+    fireEvent.click(breakdown.querySelector(`[data-fact-id="${inputs[0].fact_id}"]`)!);
+    await waitFor(() => expect(within(dialog).getByTestId("source-documents")).toHaveTextContent(inputs[0].cells));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Back to previous citation" }));
+    await waitFor(() => expect(within(dialog).getByTestId("receipt-figure-context")).toHaveTextContent(`FY${point.fy}`));
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(opener).toHaveFocus());
+    expect(fetch).not.toHaveBeenCalledWith(FAMILY_HISTORY_URL, expect.anything());
+  });
+
+  it("rejects regrouped, duplicated, or stale source cells", () => {
     const { history } = getF15FundingHistory();
     expect(Object.keys(familyHistoryInputRows(source, history))).toHaveLength(12);
+    const altered = structuredClone(source);
+    altered.points[0].program_cells[0].program_id = "P-1:3010F:AF:F015EX";
+    expect(() => validateFamilyHistoryMatrix(altered)).toThrow();
+    const duplicated = structuredClone(source);
+    duplicated.points[0].program_cells.push(duplicated.points[0].program_cells[0]);
+    expect(() => validateFamilyHistoryMatrix(duplicated)).toThrow();
     const stale = structuredClone(source);
-    stale.points.find(p => p.id === "fy2015a")!.fact_id = "a".repeat(16);
-    expect(() => familyHistoryInputRows(stale, history)).toThrow("does not match");
-    const changed = structuredClone(source);
-    changed.points.find(p => p.id === "fy2015a")!.components[0].amount_thousands += 1;
-    expect(() => familyHistoryInputRows(changed, history)).toThrow("disagree with total");
-    const substituted = structuredClone(source);
-    substituted.points.find(p => p.id === "fy2015a")!.components[0].fact_id = "a".repeat(16);
-    expect(() => familyHistoryInputRows(substituted, history)).toThrow("does not match");
+    stale.points.find(point => point.id === "fy2015a")!.program_cells[0].fact_id = "a".repeat(16);
+    expect(() => familyHistoryInputRows(stale, history)).toThrow("cells do not match");
   });
 
   it("keeps family history independent of the selected aircraft and funding record", async () => {

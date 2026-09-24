@@ -20,7 +20,8 @@ export default function F15FamilyPage() {
   const funding = getF15FundingHistory();
   const relatedPrograms = getF15RelatedPrograms();
   return (
-    <CitationPanelProvider citations={{ ...family.citations, ...funding.citations }}>
+    <CitationPanelProvider citations={{ ...family.citations, ...funding.citations }}
+      figurePrograms={Object.fromEntries(funding.history.programs.map(program => [program.id, { name: program.title, code: program.code }]))}>
       <F15FamilyBrowser family={family} fundingLead={<><FamilyFundingHistory key="family-funding-history" history={funding.history} shortName="F-15" /><F15RelatedPrograms publishedCount={relatedPrograms.filter(program => program.factId).length} historicalCount={relatedPrograms.filter(program => !program.factId).length} /></>} />
     </CitationPanelProvider>
   );

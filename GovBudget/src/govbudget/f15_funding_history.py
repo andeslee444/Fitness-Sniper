@@ -9,7 +9,8 @@ alternatives. Every annual fact sums the selected workbook leaf facts once.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from decimal import Decimal
+from copy import deepcopy
+from decimal import Decimal, InvalidOperation
 import json
 import os
 from pathlib import Path
@@ -35,6 +36,33 @@ ERA_MEMBERS = {
     2022: [(4, "01", "F-15e"), (5, "01", "F-15EX"), (6, "01", "F-15EX"), (30, "05", "F-15"), (34, "05", "F-15 EPAW"), (78, "07", "F-15")],
     2023: [(5, "01", "F-15EX"), (6, "01", "F-15EX"), (28, "05", "F-15"), (32, "05", "F-15 EPAW"), (74, "07", "F-15")],
 }
+# The permanent code is read from the actual XLSX code column. These reviewed
+# expectations prevent a changed or reused edition-local line from silently
+# moving money into another matrix row. F0150P and F015E0 remain separate lines.
+ERA_PROGRAM_CODES = {
+    2017: {21: "F01500", 69: "F0150P"},
+    2018: {23: "F01500", 79: "F01500", 80: "F0150P"},
+    2019: {25: "F01500", 30: "F15EWS", 79: "F01500", 80: "F0150P"},
+    2020: {3: "F015E0", 25: "F01500", 31: "F15EWS", 79: "F01500", 80: "F0150P"},
+    2021: {3: "F015E0", 4: "F015EX", 5: "F015EX", 29: "F01500", 34: "F15EWS", 80: "F01500"},
+    2022: {4: "F015E0", 5: "F015EX", 6: "F015EX", 30: "F01500", 34: "F15EWS", 78: "F01500"},
+    2023: {5: "F015EX", 6: "F015EX", 28: "F01500", 32: "F15EWS", 74: "F01500"},
+}
+PROGRAMS = [
+    dict(id=f"{exhibit}:{account}:AF:{code}", code=code, title=title,
+         program_slug=code if code in MODERN_MEMBERS else None,
+         exhibit=exhibit, account=account, organization="AF")
+    for code, exhibit, account, title in [
+        ("0207134F", "R-1", "3600F", "F-15E Squadrons"),
+        ("0207146F", "R-1", "3600F", "F-15EX"),
+        ("0207171F", "R-1", "3600F", "F-15 EPAWSS"),
+        ("F01500", "P-1", "3010F", "F-15"),
+        ("F015EX", "P-1", "3010F", "F-15EX"),
+        ("F15EWS", "P-1", "3010F", "F-15 EPAW"),
+        ("F0150P", "P-1", "3010F", "F-15 (legacy support line)"),
+        ("F015E0", "P-1", "3010F", "F-15e (legacy line)"),
+    ]
+]
 SCOPE_NOTE = (
     "Recorded F-15-named research, development and procurement budget lines in "
     "the imported P-1/R-1 workbooks. This is a covered-record total, not the "
@@ -171,6 +199,109 @@ def build_history(source_rows: list[dict], series: list[dict], *, retrieved_at: 
     return payload, citations, workbook_rows, breakdowns
 
 
+def build_program_matrix(payload, previews, *, existing_citations, retrieved_at):
+    """Group exact workbook inputs by verified code, without changing totals.
+
+    Existing line numbers and source identities stay on the components. Every
+    populated cell has an exact receipt; absent program/year combinations are
+    omitted, never supplied with a manufactured zero. A reusable receipt must
+    sum precisely the same distinct workbook facts under the same scenario.
+    """
+    from govbudget.export_site import fact_id_derived
+
+    payload = deepcopy(payload)
+    payload["programs"] = deepcopy(PROGRAMS)
+    programs = {p["code"]: p for p in PROGRAMS}
+    by_inputs = defaultdict(list)
+    for fid, citation in existing_citations.items():
+        if citation.get("kind") != "derived" or citation.get("units") != "USD thousands":
+            continue
+        try:
+            ids = json.loads(citation["inputs"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not isinstance(ids, list) or not all(isinstance(item, str) for item in ids):
+            continue
+        if len(ids) > 1 and len(ids) == len(set(ids)):
+            by_inputs[tuple(sorted(ids))].append((fid, citation))
+    additions, breakdowns = {}, {}
+    for point in payload["points"]:
+        groups = defaultdict(list)
+        seen = set()
+        for row in point["components"]:
+            fid = row["fact_id"]
+            if fid in seen:
+                raise ValueError(f"Duplicate F-15 matrix input: {fid}")
+            seen.add(fid)
+            if not member_row({**row, "edition": point["edition"]}):
+                raise ValueError(f"Unreviewed F-15 matrix input: {fid}")
+            expected = row["pe_bli"] if row["pe_bli"] in MODERN_MEMBERS else ERA_PROGRAM_CODES[point["edition"]].get(int(row["pe_bli"].rsplit("L", 1)[1]))
+            preview = previews.get(fid, {})
+            cited = [r for r in preview.get("rows", []) if r.get("cited")]
+            codes = {r.get("code") for r in cited}
+            cells = {f"{preview.get('col')}{r.get('r')}" for r in cited}
+            if codes != {expected} or expected not in programs:
+                raise ValueError(f"F-15 workbook program code mismatch: {fid}: {codes} != {expected}")
+            if (preview.get("sheet") != row["sheet"] or preview.get("units") != "USD thousands"
+                    or cells != {cell.strip() for cell in row["cells"].split(",")}
+                    or preview.get("total") is None
+                    or Decimal(str(preview["total"])) != Decimal(str(row["amount_thousands"]))):
+                raise ValueError(f"F-15 matrix workbook preview mismatch: {fid}")
+            program = programs[expected]
+            if (row["exhibit"], row["account"], row["organization"] in {"F", "AF"}) != (program["exhibit"], program["account"], True):
+                raise ValueError(f"F-15 matrix program account mismatch: {fid}")
+            row["program_id"] = program["id"]
+            groups[program["id"]].append(row)
+        cells = []
+        for program in PROGRAMS:
+            rows = groups.get(program["id"])
+            if not rows:
+                continue
+            ids = sorted(row["fact_id"] for row in rows)
+            amount = sum((Decimal(str(row["amount_thousands"])) for row in rows), Decimal(0))
+            measures = {row["measure"] for row in rows}
+            measure = next(iter(measures)) if len(measures) == 1 else _point_measure(point["kind"], measures)[0]
+            if len(rows) == 1:
+                fid, dataset = rows[0]["fact_id"], rows[0]["dataset"]
+            else:
+                dataset = "f15_funding_history"
+                edition, fy, kind = point["edition"], point["fy"], point["kind"]
+                fid = fact_id_derived("family_program_history", f"{program['id']}|{edition}|{fy}", kind)
+                formula = f"sum(budget_lines.amount_thousands) for workbook program {program['id']}, PB{edition}, FY{fy} {kind}; each selected workbook input once"
+                allowed = [formula]
+                amount_types = {row["amount_type"] for row in rows}
+                if len(amount_types) == 1:
+                    amount_type = next(iter(amount_types))
+                    allowed.extend([
+                        f"sum(budget_lines.amount_thousands where amount_type={amount_type} and edition={edition})",
+                        f"sum(budget_lines.amount_thousands where amount_type={amount_type})",
+                    ])
+                candidates = []
+                for existing_fid, citation in by_inputs.get(tuple(ids), []):
+                    if citation.get("formula") not in allowed:
+                        continue
+                    try:
+                        matches = Decimal(str(citation.get("recorded_value"))) == amount
+                    except (InvalidOperation, ValueError):
+                        matches = False
+                    if matches:
+                        # Prefer the canonical edition-qualified receipt over a
+                        # current-page duplicate; retain our own ID on reruns.
+                        candidates.append((allowed.index(citation["formula"]), existing_fid, citation))
+                if candidates:
+                    _, fid, citation = min(candidates)
+                    additions[fid] = deepcopy(citation)
+                    formula = citation["formula"]
+                else:
+                    additions[fid] = dict(kind="derived", units="USD thousands", recorded_value=f"{amount:.3f}", formula=formula, inputs=json.dumps(ids), retrieved_at=retrieved_at)
+                breakdowns[fid] = dict(fact_id=fid, op="sum", units="USD thousands", formula=formula, recorded_value=f"{amount:.3f}", rows=[dict(label=f"{r['title']} · {r['pe_bli']} · BA {r['budget_activity']}", pe_bli=program["program_slug"], v=r["amount_thousands"], fid=r["fact_id"]) for r in rows])
+            cells.append(dict(program_id=program["id"], amount_thousands=float(amount), fact_id=fid, measure=measure, input_fact_ids=ids, dataset=dataset))
+        if sum((Decimal(str(cell["amount_thousands"])) for cell in cells), Decimal(0)) != Decimal(str(point["amount_thousands"])):
+            raise ValueError(f"F-15 matrix/annual total mismatch: {point['id']}")
+        point["program_cells"] = cells
+    return payload, additions, breakdowns
+
+
 def export_f15_funding_history(*, duckdb_path, out_dir):
     """Append verified family artifacts to a completed export, idempotently.
 
@@ -219,6 +350,14 @@ def export_f15_funding_history(*, duckdb_path, out_dir):
             return None
         registry_path = json_dir / "citations.json"
         registry = json.loads(registry_path.read_text())
+        wb_citations = {fid: additions[fid] for fid in workbook_rows}
+        previews = build_workbook_previews(workbook_dir=out_dir / "workbooks", citations=wb_citations)
+        if len(previews) != len(workbook_rows):
+            raise ValueError("Not every F-15 workbook input has a verified preview")
+        payload, matrix_citations, matrix_breakdowns = build_program_matrix(payload, previews, existing_citations=registry, retrieved_at=manifest["built_at"])
+        additions.update(matrix_citations)
+        # Preserve published canonical breakdowns, generating only absent ones.
+        breakdowns.update({fid: obj for fid, obj in matrix_breakdowns.items() if not (json_dir / "breakdowns" / f"{fid}.json").exists()})
         cit_path = out_dir / "citations" / "citations.parquet"
         cit_schema = con.execute("describe select * from read_parquet(?)", [str(cit_path)]).fetchall()
         cit_columns = [r[0] for r in cit_schema]
@@ -233,10 +372,6 @@ def export_f15_funding_history(*, duckdb_path, out_dir):
             full = {key: source.get(key) for key in cit_columns if key != "fact_id"}
             new_rows.append([fid if key == "fact_id" else full[key] for key in cit_columns])
             registry[fid] = {key: value for key, value in full.items() if key not in {"scenario", "amount_type"}}
-        wb_citations = {fid: registry[fid] for fid in workbook_rows}
-        previews = build_workbook_previews(workbook_dir=out_dir / "workbooks", citations=wb_citations)
-        if len(previews) != len(workbook_rows):
-            raise ValueError("Not every F-15 workbook input has a verified preview")
         decade_path = out_dir / "data" / "budget_lines_decade.parquet"
         existing_wb = set(row[0] for row in con.execute("select fact_id from read_parquet(?)", [str(decade_path)]).fetchall())
         decade_new = []
@@ -250,6 +385,13 @@ def export_f15_funding_history(*, duckdb_path, out_dir):
             values[fid] = sum((values[item] for item in json.loads(additions[fid]["inputs"])), Decimal(0))
             if values[fid] != Decimal(additions[fid]["recorded_value"]):
                 raise ValueError(f"F-15 derived receipt recomputation failed: {fid}")
+        for point in payload["points"]:
+            for cell in point["program_cells"]:
+                amount = sum((values[fid] for fid in cell["input_fact_ids"]), Decimal(0))
+                citation = additions[cell["fact_id"]]
+                recorded = citation["recorded_value"] if citation["kind"] == "derived" else citation["amount_thousands"]
+                if amount != Decimal(str(cell["amount_thousands"])) or amount != Decimal(str(recorded)):
+                    raise ValueError(f"F-15 program cell recomputation failed: {cell['fact_id']}")
         with tempfile.TemporaryDirectory(prefix=".f15-history-", dir=out_dir) as staging:
             stage = Path(staging)
             staged = {}

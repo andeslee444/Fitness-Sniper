@@ -12,19 +12,25 @@ over the full locally verified history, with explicit limits on that history.
 - Annual history extends through FY2026. FY2026 request: **3,705,620 USD
   thousands**, derived receipt `d9aedd1cd8025592`; PE 0207171F is missing from
   the workbook subtotal and remains disclosed.
-- Every year appears in a funding table with its program/activity rows, cited
-  amounts, government spreadsheet links and exact worksheet/cell locators.
-  Chart selection highlights a year without filtering any sources. The family
-  total remains independent of aircraft and program selectors.
-- Twelve preferred annual snapshots are displayed; the data export retains
-  thirty scenario snapshots, 207 workbook inputs and 31 derived receipts.
-- Annual totals and current-year receipt rows render immediately. Older source
-  rows load automatically from a same-origin sidecar, with cached results and
-  a retry state. The page keeps its existing size limits; release checks compare
-  the shipped sidecar and every receipt shard with the audited source data.
-- The default table contains 83 source rows across FY2015–2026, preserving
-  14 genuine zero records and all 93 source cells. Missing workbook figures
-  remain explicit in FY2025 and FY2026.
+- Years are chronological columns and eight government PE/BLI identities are
+  stable rows. Row labels and year headers remain visible while scrolling.
+  Chart selection highlights and scrolls to its year without filtering sources.
+- All 67 program/year amounts and 12 annual totals render immediately. Clicking
+  an amount opens the existing accessible receipt sidebar, with program/year
+  context, direct government spreadsheet links, exact source locators and
+  input breakdowns. Older receipts load from the existing citation shards.
+- Default cells partition all 83 source inputs, preserving all 93 source cells
+  and 14 recorded zero inputs. Missing figures are distinct from zero; FY2025
+  and FY2026 still disclose the missing EPAWSS development amounts.
+- All 30 scenario snapshots carry 168 program cells from 207 workbook inputs.
+  Multi-input cells reuse a canonical additive receipt only when its exact input
+  set and value agree. Otherwise the bounded exporter publishes a derived
+  receipt and breakdown. Homogeneous cells retain their exact source measure.
+- Historical government codes F0150P and F015E0 remain separate rows. Workbook
+  cell previews verify every code, scoped by exhibit, account and Air Force;
+  changing legacy line numbers cannot establish continuity by themselves.
+- Page-size limits remain unchanged; release checks audit every matrix cell,
+  its annual partition, and the shipped sidecar/citation shards.
 - Shared-program evidence is listed separately: 30 PB2026 programs with
   published receipts and six historical records with direct official PDFs.
   Source editions date the evidence, not yearly allocations. Shared-program
@@ -75,3 +81,14 @@ cost estimates and overlapping prior-years totals cannot fill annual gaps.
 - All 20 official workbook URLs returned valid XLSX bytes from the official
   government host in bounded live HTTP probes.
 - Release and visual verification are recorded after the production build.
+
+## Program-by-year matrix verification
+
+- 50 Python tests pass for source-code grouping, receipt reuse, exact scenario
+  measures, historical separation and existing breakdown contracts.
+- All 168 cells partition source inputs and reproduce unchanged annual totals;
+  all 69 derived receipts pass independent recomputation. Existing citations
+  and 5,251 overlapping workbook facts retain their published values.
+- Frontend coverage verifies immediate rendering of all 67 cells, every click's
+  program/year context, historical source documents, input drilldown, keyboard
+  opening and focus restoration, explicit missing figures and legacy separation.

@@ -94,6 +94,8 @@ interface CitationPanelProviderProps {
    * footnote falls back to the trimmed page title as its head.
    */
   program?: FootnoteProgram | null;
+  /** Optional entity-scoped labels for tables containing several programs. */
+  figurePrograms?: Record<string, FootnoteProgram>;
   children: React.ReactNode;
 }
 
@@ -122,6 +124,7 @@ interface StackEntry {
 export function CitationPanelProvider({
   citations,
   program = null,
+  figurePrograms,
   children,
 }: CitationPanelProviderProps) {
   const [open, setOpen] = useState(false);
@@ -274,7 +277,7 @@ export function CitationPanelProvider({
           citation={activeCitation}
           factId={activeFactId}
           figure={activeFigure}
-          program={program}
+          program={(activeFigure?.entity && figurePrograms?.[activeFigure.entity]) || program}
           bodyState={bodyState}
           canGoBack={backStack.length > 0}
           onBack={goBack}
@@ -407,6 +410,8 @@ function CitationPanelDialog({
   lookupCitation,
 }: CitationPanelDialogProps) {
   const shortId = factId ? factId.slice(0, 8) : null;
+  const fiscalContext = figure?.fy == null ? null : figure.fy === "all-years" ? "All years"
+    : /^\d{4}(?:-\d{4})?$/.test(String(figure.fy)) ? `FY${figure.fy}` : String(figure.fy);
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -468,6 +473,7 @@ function CitationPanelDialog({
               )}
               </div>
               {program && <p className={styles.context}>{program.name} <code>({program.code})</code></p>}
+              {fiscalContext && <p className={styles.context} data-testid="receipt-figure-context">{fiscalContext}{figure?.measure ? ` · ${figure.measure.replaceAll("-", " ")}` : ""}{figure?.edition ? ` · PB${figure.edition}` : ""}</p>}
             </div>
             <DialogPrimitive.Close
               className={styles.close}

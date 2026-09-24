@@ -4,7 +4,13 @@ from decimal import Decimal
 
 import pytest
 
-from govbudget.f15_funding_history import build_history, member_row, ERA_MEMBERS
+from govbudget.f15_funding_history import (
+    ERA_MEMBERS,
+    ERA_PROGRAM_CODES,
+    build_history,
+    build_program_matrix,
+    member_row,
+)
 
 
 def source(pe="0207134F", edition=2026, amount_type="fy_2024_actuals", value=10, **kwargs):
@@ -118,3 +124,158 @@ def test_missing_workbook_locator_fails_before_emission():
     row = source(cells=None)
     with pytest.raises(ValueError, match="provenance missing"):
         build([row], [point(row)])
+
+
+def matrix(payload, leaves, existing_citations=None, change_previews=None):
+    previews = {}
+    for fid, row in leaves.items():
+        code = row["pe_bli"]
+        if code.startswith("3010F-AF-L"):
+            code = ERA_PROGRAM_CODES[row["edition"]][int(code.rsplit("L", 1)[1])]
+        refs = row["cells"].split(",")
+        col = refs[0].rstrip("0123456789")
+        previews[fid] = dict(sheet=row["sheet"], col=col, units="USD thousands", total=row["amount_thousands"], rows=[dict(r=int(ref[len(col):]), code=code, cited=True) for ref in refs])
+    if change_previews:
+        change_previews(previews)
+    return build_program_matrix(payload, previews, existing_citations=existing_citations or {}, retrieved_at="2026-09-24")
+
+
+def test_matrix_groups_verified_legacy_codes_without_merging_different_lines():
+    rows = [
+        source("3010F-AF-L25", 2020, amount_type="fy_2018_actuals", value=430273, exhibit="P-1", account="3010F", organization="AF", budget_activity="05", title="F-15", cells="J10"),
+        source("3010F-AF-L79", 2020, amount_type="fy_2018_actuals", value=20000, exhibit="P-1", account="3010F", organization="AF", budget_activity="07", title="F-15", cells="J20"),
+        source("3010F-AF-L80", 2020, amount_type="fy_2018_actuals", value=2524, exhibit="P-1", account="3010F", organization="AF", budget_activity="07", title="F-15", cells="J30"),
+    ]
+    payload, _, leaves, _ = build(rows, [point(row, fy=2018) for row in rows])
+    enriched, citations, breakdowns = matrix(payload, leaves)
+    annual = enriched["points"][0]
+    cells = {cell["program_id"].rsplit(":", 1)[1]: cell for cell in annual["program_cells"]}
+    assert cells.keys() == {"F01500", "F0150P"}
+    assert cells["F01500"]["amount_thousands"] == 450273
+    assert cells["F0150P"]["amount_thousands"] == 2524
+    assert cells["F01500"]["dataset"] == "f15_funding_history"
+    assert cells["F0150P"]["dataset"] == "budget_lines_decade"
+    assert len(citations) == len(breakdowns) == 1
+    assert sorted(fid for cell in cells.values() for fid in cell["input_fact_ids"]) == sorted(leaves)
+    assert annual["fact_id"] == payload["points"][0]["fact_id"]
+    assert enriched["cumulative"] == payload["cumulative"]
+    assert "program_id" not in payload["points"][0]["components"][0]
+
+
+def test_matrix_keeps_legacy_f15e_separate_from_ex_and_retains_real_zero():
+    rows = [
+        source("3010F-AF-L4", 2022, amount_type="fy_2020_actuals", value=621100, exhibit="P-1", account="3010F", organization="AF", budget_activity="01", title="F-15e", cells="J10"),
+        source("3010F-AF-L5", 2022, amount_type="fy_2020_actuals", value=0, exhibit="P-1", account="3010F", organization="AF", budget_activity="01", title="F-15EX", cells="J20"),
+        source("3010F-AF-L6", 2022, amount_type="fy_2020_actuals", value=0, exhibit="P-1", account="3010F", organization="AF", budget_activity="01", title="F-15EX", cells="J30"),
+    ]
+    payload, _, leaves, _ = build(rows, [point(row, fy=2020) for row in rows])
+    enriched, citations, _ = matrix(payload, leaves)
+    cells = {cell["program_id"].rsplit(":", 1)[1]: cell for cell in enriched["points"][0]["program_cells"]}
+    assert cells.keys() == {"F015E0", "F015EX"}
+    assert cells["F015E0"]["amount_thousands"] == 621100
+    assert cells["F015EX"]["amount_thousands"] == 0
+    assert len(json.loads(citations[cells["F015EX"]["fact_id"]]["inputs"])) == 2
+    assert next(p for p in enriched["programs"] if p["code"] == "F015E0")["program_slug"] is None
+    assert not any(cell["program_id"].endswith(":0207171F") for cell in cells.values())
+
+
+def test_matrix_preserves_two_development_activities_and_multicell_leaf():
+    first = source("0207171F", title="F-15 EPAWSS", budget_activity="05", value=0)
+    second = source("0207171F", title="F-15 EPAWSS", budget_activity="07", value=20, cells="J30,J31")
+    payload, _, leaves, _ = build([first, second], [point(first, n=2, amount=20)])
+    enriched, citations, _ = matrix(payload, leaves)
+    cell = enriched["points"][0]["program_cells"][0]
+    assert cell["amount_thousands"] == 20
+    assert len(cell["input_fact_ids"]) == 2
+    assert set(json.loads(citations[cell["fact_id"]]["inputs"])) == set(leaves)
+
+
+@pytest.mark.parametrize("defect", ["code", "missing_code", "mixed_codes", "missing_preview", "cells", "total", "sheet"])
+def test_matrix_rejects_unverified_or_drifted_workbook_codes_and_locators(defect):
+    row = source(cells="J20,J21")
+    payload, _, leaves, _ = build([row], [point(row)])
+    def corrupt(previews):
+        fid = next(iter(previews))
+        preview = previews[fid]
+        if defect == "code":
+            for item in preview["rows"]:
+                item["code"] = "0207146F"
+        elif defect == "missing_code":
+            for item in preview["rows"]:
+                item.pop("code")
+        elif defect == "mixed_codes":
+            preview["rows"][0]["code"] = "0207146F"
+        elif defect == "missing_preview":
+            previews.clear()
+        elif defect == "cells":
+            preview["rows"][0]["r"] = 22
+        elif defect == "total":
+            preview["total"] += 1
+        else:
+            preview["sheet"] = "Other sheet"
+    with pytest.raises(ValueError, match="mismatch"):
+        matrix(payload, leaves, change_previews=corrupt)
+
+
+def test_matrix_reuses_only_exact_additive_receipts_and_prefers_edition_context():
+    first = source("F015EX", exhibit="P-1", account="3010F", title="F-15EX", budget_activity="01", value=100, cells="J10")
+    second = {**first, "budget_activity": "05", "amount_thousands": 20, "cells": "J20"}
+    payload, _, leaves, _ = build([first, second], [point(first, n=2, amount=120)])
+    exact = dict(kind="derived", units="USD thousands", recorded_value="120.000", formula="sum(budget_lines.amount_thousands where amount_type=fy_2024_actuals and edition=2026)", inputs=json.dumps(sorted(leaves)))
+    existing = {
+        "canonical": exact,
+        "current-page": {**exact, "formula": "sum(budget_lines.amount_thousands where amount_type=fy_2024_actuals)"},
+        "wrong-year": {**exact, "formula": "sum(budget_lines.amount_thousands where amount_type=fy_2025_enacted and edition=2026)"},
+        "wrong-value": {**exact, "recorded_value": "121.000"},
+        "wrong-operation": {**exact, "formula": "max(budget_lines.amount_thousands)"},
+        "duplicate-input": {**exact, "inputs": json.dumps([*leaves, next(iter(leaves))])},
+        "different-input": {**exact, "inputs": json.dumps([next(iter(leaves)), "other"])},
+    }
+    enriched, citations, _ = matrix(payload, leaves, existing)
+    cell = enriched["points"][0]["program_cells"][0]
+    assert cell["fact_id"] == "canonical"
+    assert citations == {"canonical": exact}
+    for key in ("canonical", "current-page"):
+        existing.pop(key)
+    generated, fresh, _ = matrix(payload, leaves, existing)
+    fresh_id = generated["points"][0]["program_cells"][0]["fact_id"]
+    assert fresh_id not in existing
+    repeated, reused, _ = matrix(payload, leaves, fresh)
+    assert repeated == generated
+    assert reused == fresh
+
+
+def test_matrix_rejects_duplicate_inputs_and_changed_annual_total():
+    row = source()
+    payload, _, leaves, _ = build([row], [point(row)])
+    changed = copy.deepcopy(payload)
+    changed["points"][0]["components"].append(changed["points"][0]["components"][0])
+    with pytest.raises(ValueError, match="Duplicate F-15 matrix input"):
+        matrix(changed, leaves)
+    changed = copy.deepcopy(payload)
+    changed["points"][0]["amount_thousands"] += 1
+    with pytest.raises(ValueError, match="matrix/annual total mismatch"):
+        matrix(changed, leaves)
+
+
+@pytest.mark.parametrize("amount_type,kind,fy,expected", [
+    ("fy_2015_base_oco", "actuals", 2015, "actuals-base-oco"),
+    ("fy_2017_base_oco", "request", 2017, "request-base-oco"),
+    ("fy_2016_pb_request_with_cr_adjustments", "enacted", 2016, "enacted-request"),
+])
+@pytest.mark.parametrize("activity_count", [1, 2])
+def test_matrix_preserves_exact_scenario_measure_for_homogeneous_inputs(amount_type, kind, fy, expected, activity_count):
+    first = source("0207171F", edition=2017, title="F-15 EPAWSS", amount_type=amount_type, budget_activity="05")
+    rows = [first]
+    if activity_count == 2:
+        rows.append({**first, "budget_activity": "07", "cells": "J30"})
+    points = [point(first, fy=fy, kind=kind, n=activity_count, amount=10 * activity_count)]
+    if kind != "actuals":
+        actual = source(edition=2017, amount_type="fy_2015_base_oco", cells="J40")
+        rows.append(actual)
+        points.append(point(actual, fy=2015))
+    payload, _, leaves, _ = build(rows, points)
+    enriched, _, _ = matrix(payload, leaves)
+    selected = next(p for p in enriched["points"] if p["kind"] == kind)
+    assert selected["program_cells"][0]["measure"] == expected
+    assert {row["measure"] for row in selected["components"]} == {expected}

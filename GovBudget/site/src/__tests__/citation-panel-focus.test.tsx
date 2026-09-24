@@ -170,6 +170,13 @@ describe("citation panel returns focus to its outside opener", () => {
     expect(second).toHaveFocus();
   });
 
+  it("labels nonannual figures without an invented fiscal year", async () => {
+    render(<CitationPanelProvider citations={CITATIONS}><Cite value={3014394} units="USD thousands" dataset="budget_lines" factId={TOTAL_ID} chip={false} fy="all-years" /></CitationPanelProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "$3.01B — click to view citation" }));
+    expect(await screen.findByTestId("receipt-figure-context")).toHaveTextContent("All years");
+    expect(screen.getByTestId("receipt-figure-context")).not.toHaveTextContent("FYall-years");
+  });
+
   it("restores focus when closed during loading and ignores the late result", async () => {
     let resolve!: (citation: Citation | null) => void;
     vi.mocked(resolveCitationFromShards).mockReturnValue(new Promise((done) => { resolve = done; }));

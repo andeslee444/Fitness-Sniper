@@ -52,4 +52,31 @@
 .association{width:40%;line-height:1.5}.association p{margin:0}.association blockquote{margin:8px 0 0;padding-left:10px;border-left:2px solid var(--rule);color:var(--muted-ink)}
 .receiptLink{display:block;margin-top:8px;padding:5px 0;background:none;border:0;color:var(--ink);text-decoration:underline;text-underline-offset:3px;font:var(--type-ui);cursor:pointer}
 .receiptLink:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.matrixScroll{max-height:720px;scroll-padding-left:232px;scroll-padding-top:96px}
+.matrix{width:max-content;min-width:100%;font-variant-numeric:tabular-nums}
+.matrix th,.matrix td{vertical-align:middle}
+.matrix thead th{min-width:102px;text-align:right;padding:12px 10px;font-weight:400}
+.matrix thead .matrixCorner,.matrix tbody th{position:sticky;left:0;width:230px;min-width:230px;max-width:230px;text-align:left;background:var(--paper);border-right:1px solid var(--rule);z-index:2;white-space:normal}
+.matrix thead .matrixCorner{z-index:4}
+.matrix thead th{z-index:3}
+.matrix .fiscalYear{font:var(--type-h3)}
+.columnStatus,.columnEdition{display:block;font:var(--type-ui);line-height:1.5;white-space:nowrap}
+.columnEdition{color:var(--muted-ink)}
+.matrix [data-selected="true"]{background:var(--sheet)}
+.matrix thead [data-selected="true"]{box-shadow:inset 0 3px var(--accent)}
+.matrix thead [data-kind="request"]{border-top:2px dashed var(--muted-ink)}
+.matrix thead [data-kind="enacted"]{border-top:2px solid var(--muted-ink)}
+.matrix .matrixCell{padding:0;text-align:right}
+.matrix .cellAmount{display:flex;align-items:center;justify-content:flex-end;min-height:82px;width:100%;padding:16px 10px;font:var(--type-ui);font-variant-numeric:tabular-nums;white-space:nowrap;box-sizing:border-box}
+.matrix .cellAmount:hover,.matrix .cellAmount:focus-visible{background:var(--sheet);outline:2px solid var(--ink);outline-offset:-2px;transform:none}
+.matrix .matrixProgram{font-weight:400;line-height:1.5;padding:12px 14px}
+.matrixProgram a{display:block;text-underline-offset:3px;text-decoration-color:var(--rule)}
+.programCode{display:block;font:var(--type-label);color:var(--ink);margin-bottom:3px}
+.matrixTotal th,.matrixTotal td{background:var(--sheet)!important;font:var(--type-ui);font-weight:600;text-align:right;white-space:nowrap;border-bottom:2px solid var(--rule)}
+.matrixTotal td{padding:16px 10px}
+.partial{display:block;font:var(--type-ui);color:var(--muted-ink);margin-top:4px}
+.emptyCell{display:block;padding:16px 10px;color:var(--muted-ink);font:var(--type-ui)}
+.matrixKey{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;margin-top:10px;font:var(--type-ui);color:var(--muted-ink)}
+.matrixNote{font:var(--type-ui);line-height:1.5;color:var(--muted-ink);margin-top:10px;max-width:110ch}
+@media(max-width:767px){.matrixScroll{scroll-padding-left:166px}.matrix thead .matrixCorner,.matrix tbody th{width:164px;min-width:164px;max-width:164px}.matrix .matrixProgram{padding:10px}.matrix .cellAmount{min-height:100px}.matrixTotal th{white-space:normal}.matrixKey{line-height:1.5}}
 @media(max-width:767px){.summary{grid-template-columns:1fr;gap:18px}.overview{padding-block:14px}.track{height:56px}.bars{gap:2px}.chartHint{display:none}.selected{gap:4px 8px}.tableScroll{max-height:560px}.table th,.table td{padding:10px 12px}}
