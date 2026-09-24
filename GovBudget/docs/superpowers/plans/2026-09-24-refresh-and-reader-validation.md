@@ -146,3 +146,17 @@ automated clicks or aggregate analytics.
   pins, four inactive aliases archived in the byte-identical original seed.
   Evidence and membership changes are recorded in
   [the company-label review](../reviews/2026-09-24-entity-label-refresh.md).
+- The completed member audit passes: 27 pages, 134 detail rows, 53 narratives
+  and 19 headline citations agree with exact source identities. Canonical source
+  facts remain intact; 164 sibling-account details and 65 sibling narratives
+  are excluded from member pages. The 226 relevant Python tests pass.
+- Final refreshed-data frontend run passes 105 files / 1,567 tests. It caught
+  and repaired a lost concentration-scope disclosure in normalized exports;
+  independent raw/normalized fixtures preserve malformed-evidence rejection.
+  Registration labels and methodology explicitly distinguish reported parent
+  identifiers from verified corporate ownership. Flow-empty copy no longer
+  implies the absence of linked awards.
+- Final citation verification passes all 13 integrity checks, 50/50 sampled
+  receipts, 5,251 workbook overlaps with zero divergences, and 25/25 sampled
+  narrative locations. The earlier in-progress export check was transient;
+  all 20,298 lobbying receipts resolve in the completed output.

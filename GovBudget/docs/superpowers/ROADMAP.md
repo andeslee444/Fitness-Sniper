@@ -35,18 +35,19 @@ actions reach September 4 and assistance August 30; production waits on rebuild
 and release verification. See the [execution plan](plans/2026-09-24-refresh-and-reader-validation.md)
 and [coverage review](plans/2026-09-24-award-coverage-review.md).
 
-Final review found six newly ambiguous company labels, four inactive published
-aliases and a stale methodology census; publication waits for evidence-backed
-label reconciliation and a passing data-truth gate. The 15% review threshold
-and award groupings remain unchanged. The methodology census is now derived
-from current data. Program pages also distinguish linked award records from an
-unavailable recipient total, fixing Hornet's contradictory absence statement.
-The existing 22 copy/voice findings remain explicit release debt.
+Final review reconciled six company labels against registration evidence,
+archived four inactive aliases, and derived the current 14/200 methodology
+census. The independent data-truth gate passes; the 15% threshold and award
+groupings remain unchanged. Program pages distinguish linked award records
+from an unavailable recipient total, fixing Hornet's contradictory absence
+statement. The existing 22 copy/voice findings remain explicit release debt.
 Browser review also exposed shared-code contamination in supporting PDF details
-and narratives: all 27 account/organization-split program pages need the same
-identity discipline as district navigation. The independent audit found 229
-wrong-scope detail/narrative inclusions. This is a release blocker; unassignable
-lobbying mentions must not be duplicated across sibling programs.
+and narratives. Exact account/organization identity now excludes 164 sibling
+detail rows and 65 sibling narratives from the 27 split program pages, while
+retaining canonical source facts. The independent final audit checks 134 detail
+rows, 53 narratives and 19 headline citations with zero errors. Unassignable
+lobbying, prime and lineage claims are withheld with an explicit scope notice.
+Final build and production verification remain pending.
 
 Production page views are confirmed in the account. Two real reader actions
 reached the analytics endpoint with HTTP 200, but the active Hobby plan does not
