@@ -80,7 +80,6 @@ export interface FamilyFundingHistoryData {
 /** The complete matrix renders immediately; receipts resolve on demand. */
 export type FamilyFundingPointSummary = Omit<FamilyFundingPoint, "components"> & {
   component_count: number;
-  input_fact_ids: string[];
   components?: FamilyFundingInput[];
 };
 
@@ -113,7 +112,8 @@ export function familyHistoryInputRows(value: unknown, history: FamilyFundingHis
     const matches = full.points.filter(point => point.id === summary.id);
     const point = matches[0];
     if (JSON.stringify(point?.program_cells) !== JSON.stringify(summary.program_cells)) throw new Error("Family history cells do not match this page");
-    if (matches.length !== 1 || point.fact_id !== summary.fact_id || point.fy !== summary.fy || point.edition !== summary.edition || point.kind !== summary.kind || point.measure !== summary.measure || point.amount_thousands !== summary.amount_thousands || !Array.isArray(point.components) || point.components.length !== summary.component_count || point.components.map(row => row.fact_id).join(",") !== summary.input_fact_ids.join(",")) {
+    const expectedInputs = summary.program_cells.flatMap(cell => cell.input_fact_ids).sort().join(",");
+    if (matches.length !== 1 || point.fact_id !== summary.fact_id || point.fy !== summary.fy || point.edition !== summary.edition || point.kind !== summary.kind || point.measure !== summary.measure || point.amount_thousands !== summary.amount_thousands || !Array.isArray(point.components) || point.components.length !== summary.component_count || point.components.map(row => row.fact_id).sort().join(",") !== expectedInputs) {
       throw new Error("Family history response does not match this page");
     }
     const ids = new Set<string>();
