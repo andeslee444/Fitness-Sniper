@@ -28,7 +28,7 @@ export function getF15FundingHistory() {
   const history: FamilyFundingHistoryView = {
     ...source,
     points: series.map(({ components, ...point }) => ({
-      ...point, component_count: components.length,
+      ...point, component_count: components.length, input_fact_ids: components.map(row => row.fact_id),
       ...(point.id === latest.id ? { components } : {}),
     })),
   };

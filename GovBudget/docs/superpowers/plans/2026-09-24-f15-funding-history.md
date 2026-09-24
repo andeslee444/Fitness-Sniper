@@ -12,14 +12,24 @@ over the full locally verified history, with explicit limits on that history.
 - Annual history extends through FY2026. FY2026 request: **3,705,620 USD
   thousands**, derived receipt `d9aedd1cd8025592`; PE 0207171F is missing from
   the workbook subtotal and remains disclosed.
-- Each chart year selects its own total, source rows and government spreadsheet
-  links. The family total remains independent of aircraft and program selectors.
+- Every year appears in a funding table with its program/activity rows, cited
+  amounts, government spreadsheet links and exact worksheet/cell locators.
+  Chart selection highlights a year without filtering any sources. The family
+  total remains independent of aircraft and program selectors.
 - Twelve preferred annual snapshots are displayed; the data export retains
   thirty scenario snapshots, 207 workbook inputs and 31 derived receipts.
 - Annual totals and current-year receipt rows render immediately. Older source
-  rows load on selection from a same-origin sidecar, with cached results and
+  rows load automatically from a same-origin sidecar, with cached results and
   a retry state. The page keeps its existing size limits; release checks compare
   the shipped sidecar and every receipt shard with the audited source data.
+- The default table contains 83 source rows across FY2015–2026, preserving
+  14 genuine zero records and all 93 source cells. Missing workbook figures
+  remain explicit in FY2025 and FY2026.
+- Shared-program evidence is listed separately: 30 PB2026 programs with
+  published receipts and six historical records with direct official PDFs.
+  Source editions date the evidence, not yearly allocations. Shared-program
+  budgets are excluded from all family totals. Historical receipt gaps and
+  unresolved PDF pages remain visible; no receipt or page is invented.
 - PB2017–2023 procurement rows use reviewed edition/account/organization/activity
   identities. Reused line numbers are never treated as permanent program IDs.
 - Annual sums use canonical scenario columns, including each activity once.

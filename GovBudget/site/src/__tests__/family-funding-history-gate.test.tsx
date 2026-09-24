@@ -18,6 +18,15 @@ describe("family funding release gate", () => {
     expect(check()).toEqual([]);
   });
 
+  it("audits all years after automatic loading and rejects a missing historical input", () => {
+    const complete = { ...view.history, points: view.history.points.map(point => ({ ...point, components: history.points.find(source => source.id === point.id)!.components })) };
+    const doc = parse(renderToStaticMarkup(<FamilyFundingHistory history={complete} shortName="F-15" />));
+    const audit = () => checkFamilyHistory(doc, history, citations, new Set(Object.keys(view.citations)), { requireAllRows: true });
+    expect(audit()).toEqual([]);
+    doc.querySelector('[data-history-point="fy2015a"] [data-history-input]')!.remove();
+    expect(audit()).toContain("fy2015a source table omits or duplicates inputs");
+  });
+
   it("requires matching historical data and on-demand receipt shards", () => {
     const shards: Record<string, typeof citations> = {};
     for (const id of [history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id)])]) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, FileSpreadsheet } from "lucide-react";
 import { Cite } from "@/components/cite";
@@ -23,37 +23,30 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
   const total = history.cumulative;
   const [sourceRows, setSourceRows] = useState<Record<string, FamilyFundingInput[]>>({});
   const [sourceStatus, setSourceStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const pending = useRef<Promise<void> | null>(null);
-  const mounted = useRef(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const needsSources = series.some(point => !point.components);
   useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
-
-  function loadSources() {
-    if (pending.current) return;
-    setSourceStatus("loading");
-    pending.current = fetch(FAMILY_HISTORY_URL)
+    if (!needsSources) return;
+    const controller = new AbortController();
+    fetch(FAMILY_HISTORY_URL, { signal: controller.signal })
       .then(response => {
         if (!response.ok) throw new Error("Family source file unavailable");
         return response.json() as Promise<unknown>;
       })
       .then(value => familyHistoryInputRows(value, history))
       .then(rows => {
-        if (!mounted.current) return;
+        if (controller.signal.aborted) return;
         setSourceRows(rows);
         setSourceStatus("ready");
       })
-      .catch(() => { if (mounted.current) setSourceStatus("error"); })
-      .finally(() => { pending.current = null; });
-  }
+      .catch(() => { if (!controller.signal.aborted) setSourceStatus("error"); });
+    return () => controller.abort();
+  }, [history, loadAttempt, needsSources]);
 
-  function selectYear(point: FamilyFundingPointSummary) {
-    setSelectedId(point.id);
-    if (!point.components && !sourceRows[point.id]) loadSources();
+  function retrySources() {
+    setSourceStatus("loading");
+    setLoadAttempt(attempt => attempt + 1);
   }
-
-  const selectedRows = selected.components ?? sourceRows[selected.id];
 
   return <section className={styles.overview} aria-label={`${shortName} family funding history`} data-family-history={history.family_id}>
     <div className={styles.summary} data-testid="family-receipt" data-family-cumulative={total.fact_id}>
@@ -78,41 +71,61 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
             aria-label={`FY${point.fy} ${point.measure_label}, ${formatAmount(point.amount_thousands, "USD thousands")}${point.coverage === "partial" ? ", partial coverage" : ""}`}
             aria-pressed={selected.id === point.id} aria-controls="family-history-receipts"
             data-history-year={point.fy} data-history-fact={point.fact_id} data-kind={point.kind}
-            onClick={() => selectYear(point)}>
+            onClick={() => setSelectedId(point.id)}>
             <span className={styles.track} aria-hidden="true"><span className={styles.bar} style={{ height: `${Math.max(1, point.amount_thousands / max * 100)}%` }} /></span>
             <span className={styles.yearLabel}>{String(point.fy).slice(-2)}</span>
           </button>)}
         </div>
         <div className={styles.legend} aria-label="Chart legend">
           <span data-kind="actuals">Actuals</span><span data-kind="enacted">Enacted</span><span data-kind="request">Request</span>
-          <span className={styles.chartHint}>Select a year for receipts</span>
+          <span className={styles.chartHint}>All years and sources below</span>
         </div>
       </div>
     </div>
-    <details className={styles.ledger} data-testid="family-ledger" id="family-history-receipts">
-      <summary>FY{selected.fy} · {selected.component_count} source rows · View funding & receipts</summary>
-      <p className={styles.caption} data-basis-declared="">P-1/R-1 TOA · PB{selected.edition} · {selected.measure_label} · Nominal dollars, without inflation adjustment.</p>
-      <p className={styles.scope}>{history.scope_note}</p>
-      {selected.missing_programs.length > 0 && <p className={styles.coverage} data-history-missing="">Missing from this year’s total: {selected.missing_programs.join(", ")}. Missing coverage is not zero funding.</p>}
-      {!selectedRows && sourceStatus !== "error" && <p className={styles.coverage} role="status">Loading FY{selected.fy} source rows… The cited total remains available.</p>}
-      {!selectedRows && sourceStatus === "error" && <div className={styles.coverage} role="alert">
-        <p>FY{selected.fy} source rows could not be loaded. The cited total remains available.</p>
-        <button type="button" onClick={loadSources}>Retry loading source rows</button>
+    <section className={styles.ledger} data-testid="family-ledger" aria-labelledby="family-history-table-heading">
+      <div className={styles.tableHeading}>
+        <h3 id="family-history-table-heading">Funding & sources by year</h3>
+        <p>{series.length} years · {series.reduce((count, point) => count + point.component_count, 0)} source rows · Newest first</p>
+      </div>
+      <p className={styles.caption} id="family-history-table-description" data-basis-declared="">All identified F-15 program and activity rows in the covered workbooks. P-1/R-1 TOA · Nominal dollars, without inflation adjustment. Click an amount for its receipt.</p>
+      {needsSources && sourceStatus !== "ready" && sourceStatus !== "error" && <p className={styles.coverage} role="status">Loading historical program rows… All annual totals remain available below.</p>}
+      {sourceStatus === "error" && <div className={styles.coverage} role="alert">
+        <p>Historical program rows could not be loaded. Annual totals and current-year sources remain available.</p>
+        <button type="button" className={styles.retry} onClick={retrySources}>Retry loading source rows</button>
       </div>}
-      {selectedRows && <dl className={styles.rows}>
-        {selectedRows.map(row => <div className={styles.row} key={row.fact_id} data-history-input={row.fact_id}>
-          <dt>{row.program_slug ? <Link href={`/program/${row.program_slug}/`}>{row.title}</Link> : row.title}
-            <span className={styles.rowMeta}>{row.pe_bli} · {row.exhibit} · Activity {row.budget_activity}</span>
-          </dt>
-          <dd className="t-figure t-figure--1"><Cite value={row.amount_thousands} units="USD thousands" factId={row.fact_id}
-            dataset={row.dataset} basis="toa" fy={selected.fy} measure={row.measure} edition={selected.edition}
-            entity={`family-input:${row.fact_id}`} exhibitFamily={row.exhibit.toLowerCase().startsWith("p") ? "procurement" : "rdte"} chip={false} /></dd>
-          <dd className={styles.source}><a href={row.official_url} target="_blank" rel="noopener noreferrer" aria-label={`Open government spreadsheet for ${row.title}, FY${selected.fy}, activity ${row.budget_activity}`}>
-            <FileSpreadsheet size={15} aria-hidden="true" /> Government spreadsheet <ArrowUpRight size={13} aria-hidden="true" />
-          </a><span>{row.sheet} · {row.cells}</span></dd>
-        </div>)}
-      </dl>}
-      <div className={styles.notes}><p>{total.scope_note}</p>{history.coverage_notes.map(note => <p key={note}>{note}</p>)}</div>
-    </details>
+      <div className={styles.tableScroll} role="region" aria-label="Funding and source table, scroll for all years" tabIndex={0}>
+        <table className={styles.table} id="family-history-receipts" aria-labelledby="family-history-table-heading" aria-describedby="family-history-table-description">
+          <thead><tr><th scope="col">Fiscal year & family total</th><th scope="col">Program / budget line</th><th scope="col">Amount</th><th scope="col">Government source</th></tr></thead>
+          {[...series].reverse().map(point => {
+            const rows = point.components ?? sourceRows[point.id];
+            const yearHeading = <th scope="rowgroup" className={styles.yearHeading} rowSpan={(rows?.length || 1) + point.missing_programs.length}>
+              <span className={styles.fiscalYear}>FY{point.fy}</span>
+              <span className={styles.rowMeta}>{point.measure_label}<br />PB{point.edition}</span>
+              <div className={`t-figure t-figure--1 ${styles.annualTotal}`} data-history-annual={point.id}><AnnualFigure point={point} familyId={history.family_id} /></div>
+              <span className={styles.rowMeta}>{point.component_count} source rows{point.coverage === "partial" ? " · Partial coverage" : ""}</span>
+            </th>;
+            return <tbody key={point.id} data-history-point={point.id} data-selected={selected.id === point.id}>
+              {rows ? rows.map((row, index) => <tr key={row.fact_id} data-history-input={row.fact_id}>
+                {index === 0 && yearHeading}
+                <th scope="row" className={styles.program}>{row.program_slug ? <Link href={`/program/${row.program_slug}/`}>{row.title}</Link> : row.title}
+                  <span className={styles.rowMeta}>{row.pe_bli} · {row.exhibit} · Activity {row.budget_activity}</span>
+                </th>
+                <td className={`t-figure t-figure--1 ${styles.amount}`}><Cite value={row.amount_thousands} units="USD thousands" factId={row.fact_id}
+                  dataset={row.dataset} basis="toa" fy={point.fy} measure={row.measure} edition={point.edition}
+                  entity={`family-input:${row.fact_id}`} exhibitFamily={row.exhibit.toLowerCase().startsWith("p") ? "procurement" : "rdte"} chip={false} /></td>
+                <td className={styles.source}><a href={row.official_url} target="_blank" rel="noopener noreferrer" aria-label={`Open government spreadsheet for ${row.title}, FY${point.fy}, activity ${row.budget_activity}`}>
+                  <FileSpreadsheet size={15} aria-hidden="true" /> Government spreadsheet <ArrowUpRight size={13} aria-hidden="true" />
+                </a><span className={styles.rowMeta}>{row.sheet} · {row.cells}</span></td>
+              </tr>) : <tr>{yearHeading}<td colSpan={3} className={styles.pending} data-history-pending="">{sourceStatus === "error" ? "Source rows unavailable — retry above." : `Loading ${point.component_count} source rows…`}</td></tr>}
+              {point.missing_programs.map(name => <tr key={name} data-history-missing=""><td colSpan={3} className={styles.missing}>Missing workbook figure: {name}. Not included in this year’s total; missing coverage is not zero funding.</td></tr>)}
+            </tbody>;
+          })}
+        </table>
+      </div>
+      <details className={styles.notes}>
+        <summary>Coverage and accounting notes</summary>
+        <p>{history.scope_note}</p><p>{total.scope_note}</p>{history.coverage_notes.map(note => <p key={note}>{note}</p>)}
+      </details>
+    </section>
   </section>;
 }

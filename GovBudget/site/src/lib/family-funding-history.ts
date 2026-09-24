@@ -54,9 +54,10 @@ export interface FamilyFundingHistoryData {
   };
 }
 
-/** Initial page keeps annual totals; older source rows load on selection. */
+/** Annual totals render immediately; historical rows load automatically. */
 export type FamilyFundingPointSummary = Omit<FamilyFundingPoint, "components"> & {
   component_count: number;
+  input_fact_ids: string[];
   components?: FamilyFundingInput[];
 };
 
@@ -86,13 +87,13 @@ export function familyHistoryInputRows(value: unknown, history: FamilyFundingHis
   for (const summary of history.points) {
     const matches = full.points.filter(point => point.id === summary.id);
     const point = matches[0];
-    if (matches.length !== 1 || point.fact_id !== summary.fact_id || point.fy !== summary.fy || point.edition !== summary.edition || point.kind !== summary.kind || point.measure !== summary.measure || point.amount_thousands !== summary.amount_thousands || !Array.isArray(point.components) || point.components.length !== summary.component_count) {
+    if (matches.length !== 1 || point.fact_id !== summary.fact_id || point.fy !== summary.fy || point.edition !== summary.edition || point.kind !== summary.kind || point.measure !== summary.measure || point.amount_thousands !== summary.amount_thousands || !Array.isArray(point.components) || point.components.length !== summary.component_count || point.components.map(row => row.fact_id).join(",") !== summary.input_fact_ids.join(",")) {
       throw new Error("Family history response does not match this page");
     }
     const ids = new Set<string>();
     let amount = 0;
     for (const row of point.components) {
-      if (!/^[0-9a-f]{16}$/.test(row.fact_id) || ids.has(row.fact_id) || !Number.isFinite(row.amount_thousands) || typeof row.title !== "string" || typeof row.sheet !== "string" || typeof row.cells !== "string" || typeof row.exhibit !== "string" || typeof row.measure !== "string" || !["budget_lines", "budget_lines_decade"].includes(row.dataset) || !/^https:\/\/[^/]+\.(?:mil|gov)\//.test(row.official_url)) {
+      if (!/^[0-9a-f]{16}$/.test(row.fact_id) || ids.has(row.fact_id) || !Number.isFinite(row.amount_thousands) || typeof row.title !== "string" || typeof row.sheet !== "string" || typeof row.cells !== "string" || typeof row.exhibit !== "string" || typeof row.measure !== "string" || !row.amount_type?.startsWith(`fy_${summary.fy}_`) || !["budget_lines", "budget_lines_decade"].includes(row.dataset) || !/^https:\/\/[^/]+\.(?:mil|gov)\//.test(row.official_url)) {
         throw new Error("Invalid family history source row");
       }
       ids.add(row.fact_id);

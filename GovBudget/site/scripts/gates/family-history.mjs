@@ -13,7 +13,7 @@ export function checkFamilyHistoryAssets(history, citations, shippedHistory, shi
 }
 
 /** Independent release audit: a family headline is an actuals sum, never one PE. */
-export function checkFamilyHistory(root, history, citations, slice) {
+export function checkFamilyHistory(root, history, citations, slice, { requireAllRows = false } = {}) {
   const errors = [];
   const check = (ok, message) => { if (!ok) errors.push(message); };
   const sameIds = (a, b) => [...a].sort().join(",") === [...b].sort().join(",");
@@ -77,16 +77,29 @@ export function checkFamilyHistory(root, history, citations, slice) {
   const annual = root.querySelector(`[data-history-selected="${selected.id}"] [data-amount]`);
   check(annual?.getAttribute("data-fact-id") === selected.fact_id && valuesAgree(normalizeAmount(annual?.text), selected.amount_thousands * 1000), "initial annual selection disagrees with family total");
   const ledger = root.querySelector('[data-testid="family-ledger"]');
-  const rows = ledger?.querySelectorAll("[data-history-input]") ?? [];
-  check(sameIds(rows.map(r => r.getAttribute("data-history-input")), selected.components.map(c => c.fact_id)), "source ledger omits or duplicates selected-year inputs");
-  for (const row of selected.components) {
-    const el = rows.find(el => el.getAttribute("data-history-input") === row.fact_id);
-    const amount = el?.querySelector("[data-amount]");
-    check(amount?.getAttribute("data-fact-id") === row.fact_id, `ledger row ${row.fact_id} has no clickable amount`);
-    check(valuesAgree(normalizeAmount(amount?.text), row.amount_thousands * 1000), `ledger row ${row.fact_id} rendered amount differs from its source value`);
-    check(el?.querySelectorAll("a").some(a => a.getAttribute("href") === row.official_url), `ledger row ${row.fact_id} has no direct government spreadsheet link`);
+  check(Boolean(ledger?.querySelector("table")), "family sources must be an accessible table, not a selected-year disclosure");
+  const groups = ledger?.querySelectorAll("tbody[data-history-point]") ?? [];
+  check(sameIds(groups.map(group => group.getAttribute("data-history-point")), defaults.map(point => point.id)), "source table omits or repeats a fiscal year");
+  for (const point of defaults) {
+    const group = groups.find(group => group.getAttribute("data-history-point") === point.id);
+    const yearTotal = group?.querySelector(`[data-history-annual="${point.id}"] [data-amount]`);
+    check(yearTotal?.getAttribute("data-fact-id") === point.fact_id && yearTotal?.getAttribute("data-fy") === String(point.fy) && yearTotal?.getAttribute("data-measure") === point.measure && valuesAgree(normalizeAmount(yearTotal?.text), point.amount_thousands * 1000), `${point.id} table annual total disagrees with its receipt`);
+    const rows = group?.querySelectorAll("[data-history-input]") ?? [];
+    if (rows.length || point.id === selected.id || requireAllRows) {
+      check(sameIds(rows.map(row => row.getAttribute("data-history-input")), point.components.map(row => row.fact_id)), `${point.id} source table omits or duplicates inputs`);
+      for (const row of point.components) {
+        const el = rows.find(el => el.getAttribute("data-history-input") === row.fact_id);
+        const amount = el?.querySelector(`[data-amount][data-fact-id="${row.fact_id}"]`);
+        check(amount?.getAttribute("data-fact-id") === row.fact_id && amount?.getAttribute("data-fy") === String(point.fy), `ledger row ${row.fact_id} has no clickable amount for its fiscal year`);
+        check(valuesAgree(normalizeAmount(amount?.text), row.amount_thousands * 1000), `ledger row ${row.fact_id} rendered amount differs from its source value`);
+        check(el?.querySelectorAll("a").some(a => a.getAttribute("href") === row.official_url), `ledger row ${row.fact_id} has no direct government spreadsheet link`);
+        check(el?.text.includes(row.cells) && el?.text.includes(row.sheet) && el?.text.includes(row.pe_bli), `ledger row ${row.fact_id} hides its program or exact source locator`);
+      }
+    } else {
+      check(Boolean(group?.querySelector("[data-history-pending]")), `${point.id} unloaded source rows lack a visible loading state`);
+    }
+    for (const name of point.missing_programs) check(group?.querySelectorAll("[data-history-missing]").some(row => row.text.includes(name)), `${point.id} ledger hides missing record ${name}`);
   }
-  for (const name of selected.missing_programs) check(ledger?.querySelector("[data-history-missing]")?.text.includes(name), `ledger hides missing record ${name}`);
   const clone = root.querySelector("[data-family-history]")?.clone();
   if (clone) {
     for (const a of clone.querySelectorAll("[data-amount]")) a.remove();

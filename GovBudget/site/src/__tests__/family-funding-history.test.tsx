@@ -44,89 +44,92 @@ describe("F-15 family funding history", () => {
     expect(series[0].components.some(row => row.pe_bli.startsWith("3010F-"))).toBe(true);
   });
 
-  it("embeds annual receipts and only the latest source rows without fetching on mount", () => {
+  it("renders every annual total immediately and automatically loads all source rows", async () => {
     const { history, citations } = getF15FundingHistory();
     expect(history.points).toHaveLength(12);
-    expect(history.points.slice(0, -1).every(point => point.components === undefined && point.component_count > 0)).toBe(true);
-    expect(history.points.at(-1)?.components).toHaveLength(8);
     expect(Object.keys(citations)).toHaveLength(21);
     render(<FamilyFundingHistory history={history} shortName="F-15" />);
-    expect(screen.getByTestId("family-ledger").querySelectorAll("[data-history-input]")).toHaveLength(8);
-    expect(fetch).not.toHaveBeenCalled();
+    const table = screen.getByRole("table", { name: "Funding & sources by year" });
+    expect(table.closest("details")).toBeNull();
+    expect(table.querySelectorAll("[data-history-annual]")).toHaveLength(12);
+    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(8);
+    await waitFor(() => expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83));
+    expect(fetch).toHaveBeenCalledExactlyOnceWith(FAMILY_HISTORY_URL, expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 
-  it("leads with cited family actuals and explicitly bounded historical coverage", () => {
+  it("leads with cited family actuals and explicitly bounded historical coverage", async () => {
     const { history } = getF15FundingHistory();
     const openPanel = vi.fn();
     render(<CitationPanelContext.Provider value={{ openPanel }}><FamilyFundingHistory history={history} shortName="F-15" /></CitationPanelContext.Provider>);
     const receipt = screen.getByTestId("family-receipt");
-    expect(receipt).toHaveTextContent("F-15 family funding");
     expect(receipt).toHaveTextContent("Recorded actuals · FY2015–2024");
     expect(receipt).toHaveTextContent("earlier funding is not included");
     expect(receipt).not.toHaveTextContent("Largest cited");
     const amount = receipt.querySelector('[data-testid="family-receipt-figure"] [data-amount]')!;
     expect(amount).toHaveAttribute("data-fact-id", history.cumulative.fact_id);
-    expect(amount).toHaveAttribute("data-entity", "family:f-15");
     fireEvent.click(amount);
     expect(openPanel).toHaveBeenCalledWith(history.cumulative.fact_id, expect.objectContaining({ measure: "actuals" }));
+    await waitFor(() => expect(screen.getByTestId("family-ledger").querySelectorAll("[data-history-input]")).toHaveLength(83));
   });
 
-  it("loads older rows on selection while retaining cited totals and caches later year switches", async () => {
+  it("shows every program/activity receipt and locator without filtering other years", async () => {
     const { history } = getF15FundingHistory();
-    render(<FamilyFundingHistory history={history} shortName="F-15" />);
-    const chart = screen.getByRole("group", { name: "Funding by fiscal year" });
-    expect(within(chart).getAllByRole("button")).toHaveLength(12);
-    const oldYear = source.points.find(p => p.fy === 2015 && p.kind === "actuals")!;
-    fireEvent.click(within(chart).getByRole("button", { name: /^FY2015 / }));
-    expect(within(chart).getByRole("button", { name: /^FY2015 / })).toHaveAttribute("aria-pressed", "true");
-    const ledger = screen.getByTestId("family-ledger");
-    expect(ledger).toHaveTextContent("FY2015");
-    expect(ledger).toHaveTextContent("Loading FY2015 source rows");
-    expect(ledger.querySelectorAll("[data-history-input]")).toHaveLength(0);
-    expect(screen.getByTestId("family-receipt").querySelector('[data-history-selected="fy2015a"] [data-amount]')).toHaveAttribute("data-fact-id", oldYear.fact_id);
-    await waitFor(() => expect(ledger.querySelectorAll("[data-history-input]")).toHaveLength(oldYear.components.length));
-    expect(fetch).toHaveBeenCalledExactlyOnceWith(FAMILY_HISTORY_URL);
-    expect(ledger.querySelectorAll("[data-history-input]")).toHaveLength(oldYear.components.length);
-    for (const row of oldYear.components) {
-      const el = ledger.querySelector(`[data-history-input="${row.fact_id}"]`)!;
-      expect(el.querySelector("[data-amount]")).toHaveAttribute("data-fact-id", row.fact_id);
-      expect(el.querySelector("a[target='_blank']")).toHaveAttribute("href", row.official_url);
+    const openPanel = vi.fn();
+    render(<CitationPanelContext.Provider value={{ openPanel }}><FamilyFundingHistory history={history} shortName="F-15" /></CitationPanelContext.Provider>);
+    const table = screen.getByRole("table", { name: "Funding & sources by year" });
+    await waitFor(() => expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83));
+    for (const point of familyHistorySeries(source)) {
+      const group = table.querySelector(`[data-history-point="${point.id}"]`)!;
+      expect([...group.querySelectorAll("[data-history-input]")].map(row => row.getAttribute("data-history-input"))).toEqual(point.components.map(row => row.fact_id));
+      expect(group.querySelector("[data-history-annual] [data-amount]")).toHaveAttribute("data-fact-id", point.fact_id);
+      for (const row of point.components) {
+        const el = group.querySelector(`[data-history-input="${row.fact_id}"]`)!;
+        const amount = el.querySelector(`[data-amount][data-fact-id="${row.fact_id}"]`)!;
+        expect(amount).toHaveAttribute("data-fy", String(point.fy));
+        expect(amount).toHaveAttribute("data-measure", row.measure);
+        expect(el.querySelector("a[target='_blank']")).toHaveAttribute("href", row.official_url);
+        for (const value of [row.sheet, row.cells, row.pe_bli]) expect(el).toHaveTextContent(value);
+        fireEvent.click(amount);
+        expect(openPanel).toHaveBeenLastCalledWith(row.fact_id, expect.objectContaining({ fy: point.fy, value: row.amount_thousands }));
+      }
+      for (const name of point.missing_programs) expect(group.querySelector("[data-history-missing]")).toHaveTextContent(name);
     }
+    expect(table.querySelectorAll("[data-history-missing]")).toHaveLength(2);
+    const chart = screen.getByRole("group", { name: "Funding by fiscal year" });
+    fireEvent.click(within(chart).getByRole("button", { name: /^FY2015 / }));
+    expect(table.querySelector('[data-history-point="fy2015a"]')).toHaveAttribute("data-selected", "true");
     fireEvent.click(within(chart).getByRole("button", { name: /^FY2026 / }));
-    expect(ledger.querySelector("[data-history-missing]")).toHaveTextContent("0207171F");
-    expect(ledger.querySelector("[data-history-missing]")).toHaveTextContent("Missing coverage is not zero funding");
-    fireEvent.click(within(chart).getByRole("button", { name: /^FY2016 / }));
+    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83);
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(ledger.querySelectorAll("[data-history-input]")).toHaveLength(source.points.find(p => p.id === "fy2016a")!.components.length);
   });
 
-  it("shows retry on failure without a false zero and loads the selected year after retry", async () => {
+  it("retains annual totals on fetch failure and retries all historical sources", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error("offline"));
     const { history } = getF15FundingHistory();
     render(<FamilyFundingHistory history={history} shortName="F-15" />);
-    fireEvent.click(screen.getByRole("button", { name: /^FY2015 / }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("FY2015 source rows could not be loaded");
-    const total = screen.getByTestId("family-receipt").querySelector('[data-history-selected="fy2015a"] [data-amount]')!;
-    expect(total).toHaveTextContent("$771.1M");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Historical program rows could not be loaded");
+    const table = screen.getByRole("table", { name: "Funding & sources by year" });
+    expect(table.querySelectorAll("[data-history-annual] [data-amount]")).toHaveLength(12);
+    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(8);
+    expect(table.querySelector('[data-history-point="fy2015a"]')).toHaveTextContent("$771.1M");
+    expect(table.querySelector('[data-history-point="fy2015a"]')).toHaveTextContent("Source rows unavailable");
     fireEvent.click(screen.getByRole("button", { name: "Retry loading source rows" }));
-    await waitFor(() => expect(screen.getByTestId("family-ledger").querySelectorAll("[data-history-input]")).toHaveLength(5));
+    await waitFor(() => expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("does not replace a newer selection when an earlier request finishes", async () => {
+  it("keeps chart selection when the complete source table finishes loading", async () => {
     let finish!: (value: Response) => void;
     vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve; }));
     const { history } = getF15FundingHistory();
     render(<FamilyFundingHistory history={history} shortName="F-15" />);
     fireEvent.click(screen.getByRole("button", { name: /^FY2015 / }));
     fireEvent.click(screen.getByRole("button", { name: /^FY2016 / }));
-    const ledger = screen.getByTestId("family-ledger");
-    expect(ledger).toHaveTextContent("Loading FY2016 source rows");
     expect(fetch).toHaveBeenCalledTimes(1);
     await act(async () => { finish({ ok: true, json: async () => source } as Response); });
-    expect(ledger.querySelector("summary")).toHaveTextContent("FY2016");
-    expect([...ledger.querySelectorAll("[data-history-input]")].map(row => row.getAttribute("data-history-input"))).toEqual(source.points.find(p => p.id === "fy2016a")!.components.map(row => row.fact_id));
+    const table = screen.getByRole("table", { name: "Funding & sources by year" });
+    expect(table.querySelectorAll("[data-history-input]")).toHaveLength(83);
+    expect(table.querySelector('[data-history-point="fy2016a"]')).toHaveAttribute("data-selected", "true");
   });
 
   it("rejects a stale or altered source sidecar instead of changing published totals", () => {
@@ -138,6 +141,9 @@ describe("F-15 family funding history", () => {
     const changed = structuredClone(source);
     changed.points.find(p => p.id === "fy2015a")!.components[0].amount_thousands += 1;
     expect(() => familyHistoryInputRows(changed, history)).toThrow("disagree with total");
+    const substituted = structuredClone(source);
+    substituted.points.find(p => p.id === "fy2015a")!.components[0].fact_id = "a".repeat(16);
+    expect(() => familyHistoryInputRows(substituted, history)).toThrow("does not match");
   });
 
   it("keeps family history independent of the selected aircraft and funding record", async () => {

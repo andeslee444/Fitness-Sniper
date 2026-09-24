@@ -192,8 +192,8 @@ copyFile(
 );
 console.log("✓  years_matrix.json → public/json/");
 
-// Family annual totals are server-rendered; older workbook rows load only
-// when selected. Keep this small sidecar same-origin beside receipt shards.
+// Family annual totals are server-rendered; older workbook rows load
+// automatically into the all-years table from this same-origin sidecar.
 const familyHistorySrc = path.join(jsonDir, "f15_funding_history.json");
 if (fs.existsSync(familyHistorySrc)) {
   copyFile(familyHistorySrc, path.join(jsonDestDir, "f15_funding_history.json"));
