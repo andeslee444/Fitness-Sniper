@@ -429,6 +429,7 @@ export default async function ProgramPage({
     ),
   };
   const peIndex = getPeLinkIndex();
+  const sharesBudgetCode = getSplitProgramKeys().includes(program.pe_bli);
 
   // Build set of linkable family_keys (entities_top).
   // Passed to ProgramMentions (client component) as a plain string[] — Sets are
@@ -802,10 +803,15 @@ export default async function ProgramPage({
           </div>
         ) : (
           <SectionEmpty title="Program Lineage">
-            No predecessor/successor lineage was recorded for this program
-            element — no FY-to-FY transfer into or out of this line was stated
-            in the ingested J-books, and none was inferred from the program
-            structure.
+            {sharesBudgetCode ? (
+              <>This code is shared by more than one budget line. No predecessor
+                or successor is assigned to this specific account or organization.</>
+            ) : (
+              <>No predecessor/successor lineage was recorded for this program
+                element — no FY-to-FY transfer into or out of this line was stated
+                in the ingested J-books, and none was inferred from the program
+                structure.</>
+            )}
           </SectionEmpty>
         )}
       </ProgramSection>
@@ -971,8 +977,13 @@ export default async function ProgramPage({
           />
         ) : (
           <SectionEmpty title="Lobbying Mentions">
-            No Senate LDA lobbying filing in the tracked data mentions this
-            program element by code or alias.
+            {sharesBudgetCode ? (
+              <>This code is shared by more than one budget line. No lobbying
+                matches are assigned to this specific account or organization.</>
+            ) : (
+              <>No Senate LDA lobbying filing in the tracked data mentions this
+                program element by code or alias.</>
+            )}
           </SectionEmpty>
         )}
       </ProgramSection>
