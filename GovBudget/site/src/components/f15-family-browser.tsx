@@ -205,35 +205,6 @@ const RECEIPT_INPUT_LABELS: Record<
   },
 };
 
-function FundingAircraftSelect({
-  variant,
-  variants,
-  onChange,
-  compact = false,
-}: {
-  variant: F15VariantId;
-  variants: F15Variant[];
-  onChange: (variant: F15VariantId) => void;
-  compact?: boolean;
-}) {
-  return (
-    <label className={styles.fundingVariant}>
-      <span>Aircraft</span>
-      <select
-        aria-label="Selected aircraft"
-        value={variant}
-        onChange={(event) => onChange(event.target.value as F15VariantId)}
-      >
-        {variants.map((item) => (
-          <option value={item.id} key={item.id}>
-            {item.name}{compact ? "" : ` · ${item.nickname}`}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function BudgetTimeline({
   record,
   year,
@@ -814,7 +785,6 @@ export function F15FamilyBrowser({ family, fundingLead }: { family: F15FamilyPay
     >
       <div className={`spine ${styles.shell}`}>
         <F15FamilyHeader>
-          <FundingAircraftSelect variant={view.variant} variants={family.variants} onChange={selectVariant} />
           <button className={styles.navShare} onClick={share}><Share2 size={14} /> Share view</button>
         </F15FamilyHeader>
         {fundingLead}

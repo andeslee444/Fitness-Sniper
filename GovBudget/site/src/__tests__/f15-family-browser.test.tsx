@@ -53,13 +53,12 @@ async function mount(search = "", payload: F15FamilyPayload = family) {
 
 function variants() { return within(screen.getByRole("group", { name: "Aircraft variant" })); }
 function chooseVariant(id: VariantId) {
-  const selector = screen.queryByRole("combobox", { name: "Selected aircraft" });
-  if (selector) {
-    fireEvent.change(selector, { target: { value: id } });
-    return;
-  }
+  const previousSection = within(screen.getByRole("navigation", { name: "F-15 family sections" })).getByRole("link", { current: "page" }).textContent!;
+  if (previousSection !== "Aircraft") navigate("Aircraft");
   const variant = family.variants.find((item) => item.id === id)!;
   fireEvent.click(variants().getByRole("button", { name: `${variant.name} ${variant.nickname}` }));
+  expect(variants().getByRole("button", { name: `${variant.name} ${variant.nickname}` })).toHaveAttribute("aria-pressed", "true");
+  if (previousSection !== "Aircraft") navigate(previousSection);
 }
 function funding() { return within(screen.getByRole("region", { name: "Budget & receipts." })); }
 function recordSelector() { return screen.getByRole("combobox", { name: "Funding record" }); }
@@ -101,7 +100,7 @@ describe("F-15 browser uses actual family data", () => {
   });
   it("starts on EX procurement with a cited multi-activity total and passes full receipt context", async () => {
     await mount("#funding");
-    expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue("EX");
+    expect(screen.getByTestId("family-model")).toHaveAttribute("data-variant", "EX");
     const article = selectedRecord();
     const headline = article.querySelector('[data-amount][data-fact-id="4a9ae7cc78dcf0ba"]');
     expect(headline).toHaveTextContent("$3.01B");
@@ -358,7 +357,7 @@ describe("F-15 browser uses actual family data", () => {
     }
     for (const variant of ["A", "B"] as const) {
       chooseVariant(variant);
-      expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue(variant);
+      expect(screen.getByTestId("family-model")).toHaveAttribute("data-variant", variant);
       expect(screen.queryByRole("article", { name: "Selected funding record" })).toBeNull();
       expect(funding().queryByRole("region", { name: "Budget source trail" })).toBeNull();
       expect(funding().queryByText(/^(Total requested|Total enacted|Reported total)$/)).toBeNull();
@@ -479,7 +478,7 @@ describe("F-15 browser uses actual family data", () => {
   it("switches to historical A without carrying over EX figures or a zero budget", async () => {
     await mount("#funding");
     chooseVariant("A");
-    expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue("A");
+    expect(screen.getByTestId("family-model")).toHaveAttribute("data-variant", "A");
     expect(funding().getByText(/F-15A: an earlier chapter of the Eagle/)).toBeVisible();
     expect(funding().getByText(/No separately identified F-15A budget record/)).toBeVisible();
     expect(screen.queryByRole("button", { name: "Open budget receipt" })).toBeNull();
@@ -493,12 +492,12 @@ describe("F-15 browser uses actual family data", () => {
     expect(document.querySelector('[data-family-topic="airframe"] p')?.textContent?.length).toBeGreaterThan(100);
   });
 
-  it.each(["A", "B"] as const)("can share an unmapped F-15%s view and switch directly back to EX funding", async (id) => {
+  it.each(["A", "B"] as const)("can share an unmapped F-15%s view and return to EX funding from the aircraft buttons", async (id) => {
     await mount("#funding");
     chooseVariant(id);
-    const selector = screen.getByRole("combobox", { name: "Selected aircraft" });
-    expect(selector).toBeVisible();
-    expect(selector).toHaveValue(id);
+    expect(screen.getByTestId("family-model")).toHaveAttribute("data-variant", id);
+    expect(screen.getByRole("button", { name: "Share view" })).toBeVisible();
+    expect(screen.queryByRole("combobox", { name: "Selected aircraft" })).toBeNull();
     expect(funding().queryAllByRole("combobox")).toEqual([]);
     expect(funding().queryByRole("combobox", { name: "Funding record" })).toBeNull();
     expect(funding().queryByRole("button", { name: "Open budget receipt" })).toBeNull();
@@ -510,10 +509,12 @@ describe("F-15 browser uses actual family data", () => {
     expect(shared.searchParams.get("variant")).toBe(id);
     expect(shared.searchParams.get("record")).toBe("");
 
-    fireEvent.change(selector, { target: { value: "EX" } });
+    chooseVariant("EX");
     expect(window.location.hash).toBe("#funding");
-    expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue("EX");
-    expect(within(screen.getByRole("combobox", { name: "Selected aircraft" })).getAllByRole("option").map((option) => option.textContent)).toEqual(family.variants.map((variant) => `${variant.name} · ${variant.nickname}`));
+    expect(screen.getByTestId("family-model")).toHaveAttribute("data-variant", "EX");
+    navigate("Aircraft");
+    expect(variants().getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(family.variants.map((variant) => `${variant.name} ${variant.nickname}`));
+    navigate("Budget & receipts");
     expect(recordSelector()).toHaveValue("F015EX");
     expect(query().get("variant")).toBe("EX");
     expect(query().get("record")).toBe("F015EX");
@@ -577,7 +578,7 @@ describe("F-15 browser uses actual family data", () => {
     expect(development.getAllByRole("option").map((option) => option.textContent)).toEqual(["F-15EX development", "Fleet software", "Electronic protection"]);
     expect(budgetRecords().queryByRole("group", { name: "Modification procurement" })).toBeNull();
     expect(funding().getAllByRole("combobox")).toEqual([recordSelector()]);
-    expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue("EX");
+    expect(screen.getByTestId("family-model")).toHaveAttribute("data-variant", "EX");
     expect(funding().queryByRole("combobox", { name: "Fiscal year" })).toBeNull();
     expect(funding().queryByRole("button", { name: /^(Develop|Buy|Upgrade)$/ })).toBeNull();
     expect(funding().getAllByRole("group", { name: "Fiscal year" })).toHaveLength(1);
@@ -967,11 +968,11 @@ describe("F-15 focused workspace navigation", () => {
     expect(screen.queryByRole("article", { name: "Selected funding record" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Copy all citations" })).toBeNull();
     expect(screen.getByRole("group", { name: "Aircraft variant" })).toBeVisible();
-    expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue("EX");
+    expect(variants().getByRole("button", { name: "F-15EX Eagle II" })).toHaveAttribute("aria-pressed", "true");
     navigate("Budget & receipts");
     expect(window.location.hash).toBe("#funding");
     expect(navigation.getByRole("link", { name: "Budget & receipts" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("combobox", { name: "Selected aircraft" })).toHaveValue("EX");
+    expect(screen.queryByRole("combobox", { name: "Selected aircraft" })).toBeNull();
     expect(screen.queryByRole("group", { name: "Aircraft variant" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Aircraft inspection" })).toBeNull();
     chooseRecord("0207146F");

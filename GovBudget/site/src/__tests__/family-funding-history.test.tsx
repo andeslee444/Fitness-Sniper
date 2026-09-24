@@ -148,7 +148,9 @@ describe("F-15 family funding history", () => {
     const total = screen.getByTestId("family-receipt").getAttribute("data-family-cumulative");
     fireEvent.click(within(screen.getByTestId("family-nav")).getByRole("link", { name: "Budget & receipts" }));
     fireEvent.change(screen.getByRole("combobox", { name: "Funding record" }), { target: { value: "0207146F" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Selected aircraft" }), { target: { value: "E" } });
+    fireEvent.click(within(screen.getByTestId("family-nav")).getByRole("link", { name: "Aircraft" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Aircraft variant" })).getByRole("button", { name: "F-15E Strike Eagle" }));
+    fireEvent.click(within(screen.getByTestId("family-nav")).getByRole("link", { name: "Budget & receipts" }));
     expect(screen.getByTestId("family-receipt")).toHaveAttribute("data-family-cumulative", total);
     expect(screen.getByRole("group", { name: "Funding by fiscal year" }).querySelectorAll("[data-history-year]")).toHaveLength(12);
   });
