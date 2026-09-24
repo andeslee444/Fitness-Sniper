@@ -1,7 +1,7 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { F15Model } from '@/components/f15-model';
 import { f15Illustration } from '@/lib/f15-illustration';
 import { F15ProgramNavigation } from '@/components/family-entry';
@@ -14,14 +14,9 @@ describe('F-15 visible configuration', () => {
   for (const [variant, profile, seats] of [['A','single',1],['B','twin',2],['C','single',1],['D','twin',2],['E','strike',2],['EX','twin',2]] as const) {
    rerender(<F15Model {...props} variant={variant} />);
    expect(container.querySelector('use')).toHaveAttribute('href', `/exhibits/plates/f15-${profile}.svg#f15-plate`);
-   expect(screen.getByText(`F-15${variant} · ${seats === 1 ? 'One seat' : 'Two seats'}`)).toBeVisible();
+   expect(screen.getByRole('img', {name: `F-15${variant}: ${seats === 1 ? 'single-seat cockpit' : 'two-seat cockpit'}${variant === 'E' ? ', conformal fuel tanks shown' : ''}`, exact: true})).toBeVisible();
    expect(container.querySelector('f15-family-scene')).toBeNull();
   }
-  fireEvent.click(screen.getByRole('button', {name:'Conformal tanks off'}));
-  expect(container.querySelector('use')).toHaveAttribute('href','/exhibits/plates/f15-strike.svg#f15-plate');
-  expect(screen.getByText('Conformal fuel tanks shown.')).toBeVisible();
-  fireEvent.click(screen.getByRole('button', {name:'Conformal tanks on'}));
-  expect(container.querySelector('use')).toHaveAttribute('href','/exhibits/plates/f15-twin.svg#f15-plate');
  });
  it('ships separate cockpit geometry and conformal tanks only in the strike schematic', () => {
   for (const variant of ['A','B','E'] as const) {

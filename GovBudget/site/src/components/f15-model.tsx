@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import styles from "./f15-model.module.css";
 import { f15Illustration } from "@/lib/f15-illustration";
-import { F15Schematic } from "./f15-schematic";
 
 export type F15ModelVariant = "A" | "B" | "C" | "D" | "E" | "EX";
 export type F15ModelTopic = "airframe" | "cockpit" | "sensors" | "support";
@@ -61,7 +60,6 @@ export function F15Model({
     "poster" | "loading" | "ready" | "error"
   >("poster");
   const [blueprint, setBlueprint] = useState(true);
-  const [conformal, setConformal] = useState(false);
   const scene = useRef<F15SceneElement | null>(null);
   const callbacks = useRef({ onTopicChange, onInteract });
   useEffect(() => {
@@ -114,7 +112,7 @@ export function F15Model({
   }
   const compare =
     compareVariant && compareVariant !== variant ? compareVariant : null;
-  const drawing = f15Illustration(variant, conformal);
+  const drawing = f15Illustration(variant);
   const nickname =
     variant === "EX"
       ? "EAGLE II"
@@ -210,7 +208,6 @@ export function F15Model({
             compare={compare ?? ""}
             selected={topic ?? ""}
             blueprint={String(blueprint)}
-            conformal={String(conformal)}
             className={styles.scene}
           />
         ) : (
@@ -247,15 +244,6 @@ export function F15Model({
             ? "Drag to rotate · arrows & +/− on keyboard"
             : `F-15${variant} · ${nickname}${yearLabel ? ` · ${yearLabel}` : ""}`}
         </span>
-      </div>
-      <div className={styles.configuration} aria-live="polite">
-        <F15Schematic variant={variant} conformal={conformal} cockpit />
-        <p><strong>F-15{variant} · {drawing.seats === 1 ? "One seat" : "Two seats"}</strong>
-          <span>{drawing.tanks ? "Conformal fuel tanks shown." : variant === "EX" ? "Two-seat airframe; operable by one pilot." : "Cockpit detail of the selected aircraft."}</span>
-        </p>
-        {variant === "EX" && <button type="button" aria-pressed={conformal} onClick={() => {
-          setConformal(value => !value); onInteract?.("configuration");
-        }}>Conformal tanks {conformal ? "on" : "off"}</button>}
       </div>
       {status === "ready" && (
         <div className={styles.toolbar}>
@@ -363,11 +351,7 @@ export function F15Model({
       <p className={styles.caption}>
         Simplified illustration. A/C and B/D share schematics; exact equipment
         varies.{" "}
-        {variant === "E"
-          ? "E shown with conformal tanks. "
-          : variant === "EX" && conformal
-            ? "EX shown in a CFT-equipped configuration. "
-            : ""}
+        {variant === "E" ? "E shown with conformal tanks. " : ""}
         Support is a conceptual link; the model does not assign costs to parts.
       </p>
       {status === "error" && (

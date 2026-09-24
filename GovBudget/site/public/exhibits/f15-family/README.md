@@ -10,8 +10,8 @@ Three.js is fetched only after the user activates inspection.
 - A/C: shared single-seat schematic.
 - B/D: shared two-seat schematic.
 - E: two-seat schematic with conformal fuel tanks.
-- EX: two-seat schematic, with an optional CFT-equipped configuration. Neither the
-  default nor the toggle implies the configuration of every operational aircraft.
+- EX: two-seat schematic, shown without the optional conformal fuel tanks.
+  This depiction does not imply the configuration of every operational aircraft.
 - Fuselage, intakes, wings, twin engines and tails are schematic. Generic aerials
   and part hotspots are navigation, not claims about exact sensor installation.
 - Tooling/support has a conceptual anchor, not a physical part or allocated price.
