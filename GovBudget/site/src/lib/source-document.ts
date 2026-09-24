@@ -11,6 +11,41 @@ export interface SourceDocument {
   locators: string[];
 }
 
+/** Enough for multi-year receipts while bounding standalone graph downloads. */
+export const SOURCE_INPUT_LIMIT = 256;
+
+/** Resolve input facts once, including nested totals; loaded facts never fetch. */
+export async function resolveSourceCitationInputs(
+  citation: Citation,
+  lookup: (id: string) => Citation | undefined,
+  fetchCitation: (id: string) => Promise<Citation | null>,
+  cancelled: () => boolean = () => false,
+): Promise<{ values: CitationsMap; incomplete: boolean }> {
+  const values: CitationsMap = {};
+  const visited = new Set<string>();
+  const pending: Citation[] = [citation];
+  let incomplete = false;
+  while (pending.length && !cancelled()) {
+    const row = pending.pop()!;
+    if (row.kind !== "derived") continue;
+    for (const input of parseDerivedInputs(row.inputs)) {
+      if (!input.isFactId || visited.has(input.value)) continue;
+      if (visited.size >= SOURCE_INPUT_LIMIT) { incomplete = true; continue; }
+      visited.add(input.value);
+      let source = lookup(input.value);
+      if (!source) {
+        try { source = await fetchCitation(input.value) ?? undefined; }
+        catch { incomplete = true; }
+      }
+      if (cancelled()) return { values, incomplete };
+      if (!source) { incomplete = true; continue; }
+      values[input.value] = source;
+      if (source.kind === "derived") pending.push(source);
+    }
+  }
+  return { values, incomplete };
+}
+
 /** Small serializable source closure for a single selected receipt. */
 export function citationSourceSlice(factId: string, citations: CitationsMap): CitationsMap {
   const slice: CitationsMap = {};

@@ -1,13 +1,14 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { citationSourceDocuments, citationSourceSlice, officialDocumentUrl } from "@/lib/source-document";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { citationSourceDocuments, citationSourceSlice, officialDocumentUrl, resolveSourceCitationInputs, SOURCE_INPUT_LIMIT } from "@/lib/source-document";
 import { F15ProgramSources } from "@/components/family-entry";
 import { SourceDocumentLinks } from "@/components/source-document-links";
 import { getF15FamilyData } from "@/lib/f15-family-data";
 import { getRecordFact } from "@/lib/f15-family";
 import { trackReaderEvent } from "@/lib/reader-events";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
+import { getF15FundingHistory } from "@/lib/family-funding-history-data";
 
 vi.mock("@/lib/reader-events", () => ({ trackReaderEvent: vi.fn() }));
 vi.mock("@/lib/cite-shards", () => ({ resolveCitationFromShards: vi.fn() }));
@@ -71,5 +72,55 @@ describe("exact source document actions", () => {
     expect(screen.getByRole("button", { name: "Copy sheet and cell locations" })).toBeVisible();
     fireEvent.click(link);
     expect(trackReaderEvent).toHaveBeenCalledWith("official_source_opened", { program: "F015EX", factId: "4a9ae7cc78dcf0ba", surface: "citation-panel" });
+  });
+
+  it("resolves the complete multi-year receipt without a false missing-source warning", async () => {
+    const { history, citations } = getF15FundingHistory();
+    const total = citations[history.cumulative.fact_id];
+    const fetchCitation = vi.fn().mockResolvedValue(null);
+    const closure = await resolveSourceCitationInputs(total, id => citations[id], fetchCitation);
+    expect(Object.keys(closure.values).length).toBeGreaterThan(32);
+    expect(closure.incomplete).toBe(false);
+    expect(fetchCitation).not.toHaveBeenCalled();
+    vi.mocked(resolveCitationFromShards).mockClear();
+    let view!: ReturnType<typeof render>;
+    await act(async () => { view = render(<SourceDocumentLinks citation={total} citations={citations} resolveInputs />); });
+    const summary = screen.getByText("View 20 government spreadsheets");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    for (const link of screen.getAllByRole("link", { name: /Open government spreadsheet/ })) expect(link).not.toBeVisible();
+    fireEvent.click(summary);
+    await waitFor(() => expect(summary.closest("details")).toHaveAttribute("open"));
+    expect(screen.getAllByRole("link", { name: /Open government spreadsheet/ })).toHaveLength(20);
+    expect(view.container.querySelectorAll('[data-testid="official-source"]')).toHaveLength(20);
+    expect(screen.queryByText(/Some source locations could not be loaded/)).toBeNull();
+    expect(resolveCitationFromShards).not.toHaveBeenCalled();
+  });
+
+  it("loads the same cumulative chain from standalone shards without truncating at 32", async () => {
+    const { history, citations } = getF15FundingHistory();
+    const fetchCitation = vi.fn(async (id: string) => citations[id] ?? null);
+    const closure = await resolveSourceCitationInputs(citations[history.cumulative.fact_id], () => undefined, fetchCitation);
+    expect(closure.incomplete).toBe(false);
+    expect(fetchCitation.mock.calls.length).toBeGreaterThan(32);
+    expect(new Set(fetchCitation.mock.calls.map(([id]) => id)).size).toBe(fetchCitation.mock.calls.length);
+    expect(citationSourceDocuments(citations[history.cumulative.fact_id], closure.values)).toHaveLength(20);
+  });
+
+  it("still bounds oversized graphs and reports genuine missing sources", async () => {
+    const root = family.citations["4a9ae7cc78dcf0ba"];
+    if (root.kind !== "derived") throw new Error("Expected derived fixture");
+    const ids = Array.from({ length: SOURCE_INPUT_LIMIT + 1 }, (_, n) => n.toString(16).padStart(16, "0"));
+    const fetchCitation = vi.fn(async () => family.citations["44f9ccc1f1518032"]);
+    const limited = await resolveSourceCitationInputs({ ...root, inputs: JSON.stringify(ids) }, () => undefined, fetchCitation);
+    expect(limited.incomplete).toBe(true);
+    expect(Object.keys(limited.values)).toHaveLength(SOURCE_INPUT_LIMIT);
+    expect(fetchCitation).toHaveBeenCalledTimes(SOURCE_INPUT_LIMIT);
+    const missing = await resolveSourceCitationInputs(root, () => undefined, async () => null);
+    expect(missing.incomplete).toBe(true);
+    expect(missing.values).toEqual({});
+    const cycle = { ...root, inputs: '["4a9ae7cc78dcf0ba"]' };
+    const cyclic = await resolveSourceCitationInputs(cycle, () => cycle, fetchCitation);
+    expect(cyclic.incomplete).toBe(false);
+    expect(Object.keys(cyclic.values)).toEqual(["4a9ae7cc78dcf0ba"]);
   });
 });

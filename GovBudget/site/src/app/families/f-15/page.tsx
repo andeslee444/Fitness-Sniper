@@ -18,7 +18,7 @@ export default function F15FamilyPage() {
   const funding = getF15FundingHistory();
   return (
     <CitationPanelProvider citations={{ ...family.citations, ...funding.citations }}>
-      <F15FamilyBrowser family={family} fundingLead={<FamilyFundingHistory history={funding.history} shortName="F-15" />} />
+      <F15FamilyBrowser family={family} fundingLead={<FamilyFundingHistory key="family-funding-history" history={funding.history} shortName="F-15" />} />
     </CitationPanelProvider>
   );
 }

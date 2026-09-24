@@ -47,6 +47,17 @@ cost estimates and overlapping prior-years totals cannot fill annual gaps.
   previews; 5,251 overlapping existing workbook facts retained identical values.
 - Repeat generation added zero citations. Thirteen artifact integrity checks
   passed across global registries, shards, previews, breakdowns and metadata.
-- Frontend tests cover annual selection, direct government links, receipt
-  opening, family independence and rejection of request-contaminated totals.
+- 80 focused frontend tests and TypeScript checks pass, covering annual
+  selection, direct government links, receipt opening, family independence,
+  and rejection of duplicate inputs, shifted years and request-contaminated totals.
+- Desktop and 390px mobile review confirmed the full family history remains
+  visible and independent of aircraft selection. A FY2015 procurement receipt
+  opened its exact highlighted workbook cell. The cumulative receipt exposes
+  all ten actuals years and their source chain.
+- Visual review found a 32-input traversal cap falsely reporting missing sources
+  on the cumulative receipt. A bounded 256-input traversal and a counted
+  disclosure for lists over three documents fix the warning and keep the
+  calculation visible. All 58 focused source/citation tests pass.
+- All 20 official workbook URLs returned valid XLSX bytes from the official
+  government host in bounded live HTTP probes.
 - Release and visual verification are recorded after the production build.
