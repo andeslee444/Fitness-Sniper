@@ -41,7 +41,6 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Download } from "lucide-react";
 import type { WorkbookCitation } from "@/lib/data";
 import { usdEquivalence } from "@/lib/format";
 import {
@@ -51,7 +50,8 @@ import {
   type ExhibitFamily,
 } from "@/lib/basis";
 import { documentTitleFromUrl, type FootnoteFigure } from "@/lib/footnote";
-import { useAssetUrl } from "@/components/asset-config";
+import { WorkbookDownload } from "@/components/workbook-download";
+import { workbookDownloadName } from "@/lib/source-document";
 import {
   citedRows,
   fetchWorkbookPreview,
@@ -173,7 +173,6 @@ export function CellRef({ cell }: { cell: string }) {
 // ── WorkbookCard ─────────────────────────────────────────────────────────────
 
 export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
-  const assetUrl = useAssetUrl();
   const preview = useWorkbookPreview(factId);
   // §48: derived from THIS citation's own sheet locator, not a program
   // lookup — see amountBasisLine's doc comment.
@@ -183,7 +182,6 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
     ? citation.cells.split(",").map((c) => c.trim()).filter(Boolean)
     : [];
 
-  const downloadPath = `/workbooks/${citation.sha256}.xlsx`;
   const docTitle = documentTitleFromUrl(citation.official_url, "workbook");
 
   const amount = citation.amount_thousands;
@@ -292,18 +290,13 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
         </p>
       ) : null}
 
-      {/* Download — unchanged; the whole file, for anyone who wants it. */}
-      <a
-        href={assetUrl(downloadPath)}
-        download
+      {/* The saved file is byte-verified and named for its budget edition. */}
+      <WorkbookDownload
+        sha256={citation.sha256}
+        filename={workbookDownloadName(citation.official_url, citation.sha256)}
+        label="Download workbook (.xlsx) · saved copy"
         className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors group"
-      >
-        <Download
-          className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
-          aria-hidden="true"
-        />
-        <span>Download workbook (.xlsx) · saved copy</span>
-      </a>
+      />
     </div>
   );
 }

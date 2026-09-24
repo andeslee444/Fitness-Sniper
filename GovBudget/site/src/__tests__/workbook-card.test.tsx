@@ -484,11 +484,9 @@ describe("workbook drawer — panel chrome (§P1-9.5, §P1-9.6)", () => {
     const { container } = render(
       <WorkbookCard citation={F35_CITATION} factId={FID} />,
     );
-    const link = [...container.querySelectorAll("a")].find((a) =>
-      /Download workbook/i.test(a.textContent ?? ""),
-    );
-    expect(link).toBeTruthy();
-    expect(link?.getAttribute("href")).toContain(`${F35_CITATION.sha256}.xlsx`);
+    const button = container.querySelector("[data-testid=workbook-download]");
+    expect(button).toHaveTextContent("Download workbook");
+    expect(button).toHaveAttribute("data-filename", "PB2026_DoD_P-1_Procurement.xlsx");
   });
 
   it("the card itself carries no second Official-source link", () => {

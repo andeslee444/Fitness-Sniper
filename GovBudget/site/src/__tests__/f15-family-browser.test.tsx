@@ -460,7 +460,8 @@ describe("F-15 browser uses actual family data", () => {
     expect(within(dialog).getByTestId("workbook-amount-basis")).toHaveTextContent(`FY${fy} · ${measure} · P-1 TOA · PB2026`);
     expect(within(dialog).getAllByTestId("cell-ref").map((cell) => cell.getAttribute("data-cell"))).toEqual(cells);
     expect(within(dialog).getByText("Exhibit P-1")).toBeVisible();
-    expect(within(dialog).getByRole("link", { name: /^Open government spreadsheet\s*\(opens in new tab\)$/ })).toHaveAttribute("href", citation.official_url);
+    expect(within(dialog).getByRole("link", { name: /^Government original\s*\(opens in new tab\)$/ })).toHaveAttribute("href", citation.official_url);
+    expect(within(dialog).getByRole("button", { name: "Download government spreadsheet" })).toHaveAttribute("data-filename", "PB2026_DoD_P-1_Procurement.xlsx");
     expect(within(dialog).getByTestId("panel-fact-permalink")).toHaveAttribute("href", `/fact/${factId.slice(0, 8)}`);
     fireEvent.click(within(dialog).getByRole("button", { name: "Copy this citation as a formatted footnote" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));

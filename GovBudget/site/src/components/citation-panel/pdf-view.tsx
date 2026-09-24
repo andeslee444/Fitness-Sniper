@@ -151,8 +151,6 @@ function getCachedDocument(
 
 // ── Render helpers ────────────────────────────────────────────────────────────
 
-/** J-book pages are 792pt wide (landscape letter) — highlight-math contract. */
-const PAGE_WIDTH_PT = 792;
 /**
  * Highlight band style — shared by the panel view and the zoom overlay.
  * amber-400/30 fill + amber-600 border: strong enough to spot on dense
@@ -177,7 +175,7 @@ function deviceDpr(): number {
 
 /**
  * Kick off a PDF.js render of `page` into `canvas`.
- * The backing store is sized at (cssWidth / 792) × oversample, capped at
+ * The backing store uses the source page width × oversample, capped at
  * MAX_CANVAS_PIXELS; CSS sizing is left to the caller (the canvas keeps its
  * intrinsic aspect ratio when styled with a width).
  */
@@ -187,7 +185,7 @@ function startPageRender(
   cssWidth: number,
   oversample: number,
 ): RenderTask {
-  let scale = (cssWidth / PAGE_WIDTH_PT) * oversample;
+  let scale = (cssWidth / page.getViewport({ scale: 1 }).width) * oversample;
   const probe = page.getViewport({ scale });
   const pixels = probe.width * probe.height;
   if (pixels > MAX_CANVAS_PIXELS) {
@@ -386,7 +384,7 @@ export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }
           )}
           {(() => {
             const eq = usdEquivalence(
-              Number(citation.amount_text.replace(/,/g, "")),
+              Number(citation.amount_text.replace(/[(),]/g, "")),
               citation.units,
             );
             return eq ? (
@@ -838,7 +836,7 @@ function PdfSelectableText({ url, pageNumber, cssWidth }: { url: string; pageNum
         const page = await pdf.getPage(pageNumber);
         const content = await page.getTextContent();
         if (cancelled) return;
-        const viewport = page.getViewport({ scale: cssWidth / PAGE_WIDTH_PT });
+        const viewport = page.getViewport({ scale: cssWidth / page.getViewport({ scale: 1 }).width });
         container.style.setProperty("--total-scale-factor", String(viewport.scale));
         layer = new pdfjs.TextLayer({ textContentSource: content, container, viewport });
         await layer.render();

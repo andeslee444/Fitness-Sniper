@@ -74,6 +74,7 @@ import {
   AssetConfigContext,
 } from "@/components/asset-config";
 import { PdfView } from "./pdf-view";
+import { BudgetPdfReceipt } from "./budget-pdf-receipt";
 import { WorkbookCard } from "./workbook-card";
 import { LdaCard } from "./lda-card";
 import { DerivedCard } from "./derived-card";
@@ -524,11 +525,11 @@ function CitationPanelDialog({
                 )}
               </div>
             ) : citation ? (
-              <>
+              <ReceiptEvidence citation={citation} factId={factId}>
                 <SourceDocumentLinks citation={citation} citations={lookupCitation} factId={factId ?? undefined} resolveInputs
                   program={figure?.entity ?? program?.code ?? citation.pe_bli ?? undefined} surface="citation-panel" />
                 <CitationBody citation={citation} factId={factId} figure={figure} />
-              </>
+              </ReceiptEvidence>
             ) : (
               <p className="text-sm text-muted-foreground">
                 No citation loaded.
@@ -638,6 +639,12 @@ export function parseAnnouncementBody(raw: string | null): AnnouncementBody | nu
 }
 
 // ── CitationBody — dispatches to the right card ────────────────────────────
+
+function ReceiptEvidence({ citation, factId, children }: { citation: Citation; factId: string | null; children: React.ReactNode }) {
+  return factId && (isWorkbook(citation) || isDerived(citation))
+    ? <BudgetPdfReceipt factId={factId}>{children}</BudgetPdfReceipt>
+    : <>{children}</>;
+}
 
 function CitationBody({
   citation,

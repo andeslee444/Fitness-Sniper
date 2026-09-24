@@ -203,6 +203,13 @@ if (fs.existsSync(familyHistorySrc)) {
 }
 
 // ── 5e. Copy the flowdown payload (Phase 5H — /flow/ two-river sankey) ───────
+const budgetPdfSrc = path.join(jsonDir, "budget-pdf-receipts");
+if (fs.existsSync(budgetPdfSrc)) {
+  copyDir(budgetPdfSrc, path.join(jsonDestDir, "budget-pdf-receipts"));
+} else {
+  fs.rmSync(path.join(jsonDestDir, "budget-pdf-receipts"), { recursive: true, force: true });
+}
+
 copyFile(
   path.join(jsonDir, "flow_chart.json"),
   path.join(jsonDestDir, "flow_chart.json")

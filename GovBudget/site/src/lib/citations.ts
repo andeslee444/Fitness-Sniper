@@ -112,6 +112,8 @@ export function isSubaward(c: Citation): c is SubawardCitation {
  */
 export interface PdfPageCitation {
   hosted_pdf_url: string;
+  page_width?: number;
+  page_height?: number;
   page_number: number;
   x0: number;
   x1: number;
@@ -128,6 +130,7 @@ export function pagedAmountCitation(c: JbookPdfCitation): PdfPageCitation | null
   if (c.resolution === "unresolved" || c.page_number == null || c.x0 == null ||
       c.x1 == null || c.top_pt == null || c.bottom_pt == null) return null;
   return { hosted_pdf_url: c.hosted_pdf_url, page_number: c.page_number,
+    page_width: c.page_width ?? undefined, page_height: c.page_height ?? undefined,
     x0: c.x0, x1: c.x1, top_pt: c.top_pt, bottom_pt: c.bottom_pt,
     resolution: c.resolution, amount_text: c.amount_text, units: c.units,
     official_url: c.official_url };
@@ -153,6 +156,8 @@ export function pagedNarrativeCitation(
   }
   return {
     hosted_pdf_url: c.hosted_pdf_url,
+    page_width: c.page_width ?? undefined,
+    page_height: c.page_height ?? undefined,
     page_number: c.page_number,
     x0: c.x0,
     x1: c.x1,
@@ -274,16 +279,16 @@ export function extractLdaUuid(officialUrl: string | null | undefined): string |
 
 /**
  * Compute the CSS highlight rect for a jbook_pdf citation, given container width.
- * Page is 792pt wide (landscape), scale = containerWidth / 792.
+ * Uses the recorded source width (legacy citations default to 792pt).
  * Adds 2px padding on each side.
  *
  * Returns { left, top, width, height } in pixels (strings with "px" suffix for CSS).
  */
 export function pdfHighlightRect(
-  citation: { x0: number; x1: number; top_pt: number; bottom_pt: number },
+  citation: { x0: number; x1: number; top_pt: number; bottom_pt: number; page_width?: number },
   containerWidth: number,
 ): { left: string; top: string; width: string; height: string } {
-  const PAGE_WIDTH_PT = 792;
+  const PAGE_WIDTH_PT = citation.page_width ?? 792;
   const PAD = 2;
   const scale = containerWidth / PAGE_WIDTH_PT;
 

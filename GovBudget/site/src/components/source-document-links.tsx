@@ -7,6 +7,7 @@ import { citationSourceDocuments, resolveSourceCitationInputs } from "@/lib/sour
 import { trackReaderEvent } from "@/lib/reader-events";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
 import { CopyButton } from "./copy-button";
+import { WorkbookDownload } from "./workbook-download";
 import styles from "./source-document-links.module.css";
 
 const EMPTY_CITATIONS: CitationsMap = {};
@@ -35,17 +36,19 @@ export function SourceDocumentLinks({ citation, citations = EMPTY_CITATIONS, cla
   const documents = citationSourceDocuments(citation, id => (typeof citations === "function" ? citations(id) : citations[id]) ?? current?.values[id]);
   if (!documents.length && !current?.incomplete) return null;
   const documentRows = documents.map(document => <div key={document.url} className={styles.document}>
-      <a href={document.url} target="_blank" rel="noopener noreferrer" data-testid="official-source" className={styles.action}
+      {document.workbook && <WorkbookDownload {...document.workbook} label={document.label} className={styles.action}
+        onDownload={() => trackReaderEvent("official_source_opened", { program, factId, surface, format: "xlsx" })} />}
+      <a href={document.url} target="_blank" rel="noopener noreferrer" data-testid="official-source" className={document.workbook ? styles.original : styles.action}
         onClick={() => trackReaderEvent("official_source_opened", { program, factId, surface })}>
         <ExternalLink size={16} aria-hidden="true" />
-        <span>{document.label}</span><span className="sr-only"> (opens in new tab)</span>
+        <span>{document.workbook ? /\.(gov|mil)$/i.test(document.host) ? "Government original" : "Source original" : document.label}</span><span className="sr-only"> (opens in new tab)</span>
       </a>
       {!compact && <p className={styles.context}>{document.title} · {document.host}</p>}
       {document.locators.length > 0 && <p className={styles.locators}>
         {document.locators.join("; ")}
         {document.kind === "workbook" && <> <CopyButton text={document.locators.join("; ")} label="Copy sheet and cell locations" /></>}
       </p>}
-      {document.kind === "workbook" && !compact && <p className={styles.context}>Open the file, then use the sheet and cell locations above. The link opens the whole spreadsheet.</p>}
+      {document.workbook && !compact && <p className={styles.context}>Complete workbook · unchanged saved copy. Saves as <span>{document.workbook.filename}</span>.</p>}
     </div>);
   const allWorkbooks = documents.every(document => document.kind === "workbook");
   const allGovernment = documents.every(document => /\.(gov|mil)$/i.test(document.host));

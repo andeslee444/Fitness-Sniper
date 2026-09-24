@@ -9,6 +9,28 @@ export interface SourceDocument {
   label: string;
   kind: "pdf" | "workbook" | "document";
   locators: string[];
+  workbook?: { sha256: string; filename: string };
+}
+
+/** Names describe the whole original workbook, not the clicked program/year. */
+export function workbookDownloadName(officialUrl: string | null, sha256: string): string {
+  let parsed: URL | undefined;
+  try { if (officialUrl) parsed = new URL(officialUrl); } catch { /* use the saved-file identity below */ }
+  const basename = parsed?.pathname.split("/").pop() ?? "";
+  const edition = parsed?.pathname.match(/\/fy(\d{4})\//i)?.[1];
+  const comptroller = parsed && /^comptroller\.(?:war|defense)\.gov$/i.test(parsed.hostname);
+  const exhibits: Record<string, string> = {
+    "p1_display.xlsx": "P-1_Procurement",
+    "p1r_display.xlsx": "P-1R_Procurement",
+    "r1_display.xlsx": "R-1_Research-Development-Test-Evaluation",
+  };
+  if (comptroller && edition && exhibits[basename.toLowerCase()]) {
+    return `PB${edition}_DoD_${exhibits[basename.toLowerCase()]}.xlsx`;
+  }
+  // Unknown publishers never acquire a guessed DoD, service or budget edition.
+  const sourceName = basename.replace(/\.xlsx$/i, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90) || "Budget-spreadsheet";
+  const identity = /^[a-f0-9]{64}$/i.test(sha256) ? sha256.slice(0, 8) : "saved-copy";
+  return `${sourceName}_${identity}.xlsx`;
 }
 
 /** Enough for multi-year receipts while bounding standalone graph downloads. */
@@ -110,8 +132,9 @@ export function citationSourceDocuments(citation: Citation, citations: Citations
     documents.set(url, {
       url, host: parsed.hostname,
       title: documentTitleFromUrl(row.official_url, row.kind) ?? "Source document",
-      kind, label: `Open ${government ? "government" : "source"} ${format}${kind === "pdf" && row.page_number ? ` · page ${row.page_number}` : ""}`,
+      kind, label: `${kind === "workbook" ? "Download" : "Open"} ${government ? "government" : "source"} ${format}${kind === "pdf" && row.page_number ? ` · page ${row.page_number}` : ""}`,
       locators: locator ? [locator] : [],
+      ...(row.kind === "workbook" ? { workbook: { sha256: row.sha256, filename: workbookDownloadName(row.official_url, row.sha256) } } : {}),
     });
   }
   visit(citation);

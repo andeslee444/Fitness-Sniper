@@ -12,6 +12,7 @@ import { getCitations } from "@/lib/data";
 import F15FamilyPage from "@/app/families/f-15/page";
 
 vi.mock("@/components/f15-model", () => ({ F15Model: () => <div /> }));
+vi.mock("@/components/citation-panel/pdf-view", () => ({ PdfView: () => <div data-testid="pdf-preview" /> }));
 const source = getF15FundingHistorySource();
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -112,6 +113,8 @@ describe("F-15 family funding history", () => {
     opener.focus();
     fireEvent.keyDown(opener, { key: "Enter" });
     const dialog = await screen.findByRole("dialog", { name: "Citation details" });
+    await within(dialog).findByTestId("budget-pdf-receipt");
+    fireEvent.click(within(dialog).getByText("Spreadsheet downloads & calculation details"));
     expect(await within(dialog).findByTestId("derived-card")).toBeInTheDocument();
     expect(dialog).toHaveTextContent(program.code);
     expect(within(dialog).getByTestId("receipt-figure-context")).toHaveTextContent(`FY${point.fy}`);

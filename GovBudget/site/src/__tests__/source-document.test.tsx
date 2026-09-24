@@ -1,7 +1,7 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { citationSourceDocuments, citationSourceSlice, officialDocumentUrl, resolveSourceCitationInputs, SOURCE_INPUT_LIMIT } from "@/lib/source-document";
+import { citationSourceDocuments, citationSourceSlice, officialDocumentUrl, resolveSourceCitationInputs, SOURCE_INPUT_LIMIT, workbookDownloadName } from "@/lib/source-document";
 import { F15ProgramSources } from "@/components/family-entry";
 import { SourceDocumentLinks } from "@/components/source-document-links";
 import { getF15FamilyData } from "@/lib/f15-family-data";
@@ -13,10 +13,22 @@ import { getCitations } from "@/lib/data";
 
 vi.mock("@/lib/reader-events", () => ({ trackReaderEvent: vi.fn() }));
 vi.mock("@/lib/cite-shards", () => ({ resolveCitationFromShards: vi.fn() }));
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const family = getF15FamilyData();
 
 describe("exact source document actions", () => {
+  it("names complete workbooks by their own budget edition and exhibit", () => {
+    const sha = "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0";
+    expect(workbookDownloadName("https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2017/p1_display.xlsx", sha)).toBe("PB2017_DoD_P-1_Procurement.xlsx");
+    expect(workbookDownloadName("https://comptroller.defense.gov/Portals/45/Documents/defbudget/FY2026/r1_display.xlsx", sha)).toBe("PB2026_DoD_R-1_Research-Development-Test-Evaluation.xlsx");
+    expect(workbookDownloadName("https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1r_display.xlsx", sha)).toBe("PB2026_DoD_P-1R_Procurement.xlsx");
+    expect(workbookDownloadName("https://example.com/fy2026/p1_display.xlsx", sha)).toBe("p1_display_4d965906.xlsx");
+    expect(workbookDownloadName(null, sha)).toBe("Budget-spreadsheet_4d965906.xlsx");
+    const history = getF15FundingHistorySource();
+    const citations = getCitations();
+    const docs = citationSourceDocuments(citations[history.cumulative.fact_id], citations);
+    expect(new Set(docs.map(doc => doc.workbook?.filename)).size).toBe(20);
+  });
   it("slices only the selected total and its inputs and labels the missing-TOA narrative fallback", () => {
     const slice = citationSourceSlice("4a9ae7cc78dcf0ba", family.citations);
     expect(Object.keys(slice)).toEqual(["4a9ae7cc78dcf0ba", "03407158217dec76", "5768200ce4fbc494", "819f32a0ad3fb66e"]);
@@ -31,7 +43,7 @@ describe("exact source document actions", () => {
       expect(documents).toHaveLength(1);
       expect(documents[0].url).toMatch(/^https:\/\/comptroller\.war\.gov\/.+\.xlsx$/);
       expect(documents[0].locators.length).toBeGreaterThan(0);
-      expect(documents[0].label).toBe("Open government spreadsheet");
+      expect(documents[0].label).toBe("Download government spreadsheet");
     }
     const total = family.citations["4a9ae7cc78dcf0ba"];
     expect(total.official_url).toBeNull();
@@ -47,7 +59,7 @@ describe("exact source document actions", () => {
 
   it("does not mislabel a mirror as a government host or loop through derived inputs", () => {
     const source = { ...family.citations["44f9ccc1f1518032"], official_url: "https://gov.example.com/saved.xlsx" };
-    expect(citationSourceDocuments(source)[0].label).toBe("Open source spreadsheet");
+    expect(citationSourceDocuments(source)[0].label).toBe("Download source spreadsheet");
     const root = family.citations["4a9ae7cc78dcf0ba"];
     if (root.kind !== "derived") throw new Error("Expected derived F-15EX total");
     const cycle = { ...root, inputs: '["4a9ae7cc78dcf0ba"]' };
@@ -57,7 +69,7 @@ describe("exact source document actions", () => {
   it("resolves missing inputs for a standalone total and retains honest failure state", async () => {
     vi.mocked(resolveCitationFromShards).mockImplementation(async id => family.citations[id] ?? null);
     const view = render(<SourceDocumentLinks citation={family.citations["4a9ae7cc78dcf0ba"]} resolveInputs />);
-    expect(await screen.findByRole("link", { name: /Open government spreadsheet/ })).toHaveAttribute("href", "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx");
+    expect(await screen.findByRole("button", { name: /Download government spreadsheet/ })).toHaveAttribute("data-filename", "PB2026_DoD_P-1_Procurement.xlsx");
     view.unmount();
     vi.mocked(resolveCitationFromShards).mockResolvedValue(null);
     render(<SourceDocumentLinks citation={family.citations["4a9ae7cc78dcf0ba"]} resolveInputs />);
@@ -67,9 +79,10 @@ describe("exact source document actions", () => {
 
   it("makes derived input documents prominent and measures the official action once", () => {
     render(<SourceDocumentLinks citation={family.citations["4a9ae7cc78dcf0ba"]} citations={family.citations} factId="4a9ae7cc78dcf0ba" program="F015EX" surface="citation-panel" />);
-    const link = screen.getByRole("link", { name: /Open government spreadsheet/ });
+    const link = screen.getByRole("link", { name: /Government original/ });
     expect(link).toHaveAttribute("href", "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx");
-    expect(screen.getByText(/The link opens the whole spreadsheet/)).toBeVisible();
+    expect(screen.getByText(/Complete workbook · unchanged saved copy/)).toBeVisible();
+    expect(screen.getByRole("button", { name: /Download government spreadsheet/ })).toHaveAttribute("data-filename", "PB2026_DoD_P-1_Procurement.xlsx");
     expect(screen.getByRole("button", { name: "Copy sheet and cell locations" })).toBeVisible();
     fireEvent.click(link);
     expect(trackReaderEvent).toHaveBeenCalledWith("official_source_opened", { program: "F015EX", factId: "4a9ae7cc78dcf0ba", surface: "citation-panel" });
@@ -89,10 +102,10 @@ describe("exact source document actions", () => {
     await act(async () => { view = render(<SourceDocumentLinks citation={total} citations={citations} resolveInputs />); });
     const summary = screen.getByText("View 20 government spreadsheets");
     expect(summary.closest("details")).not.toHaveAttribute("open");
-    for (const link of screen.getAllByRole("link", { name: /Open government spreadsheet/ })) expect(link).not.toBeVisible();
+    for (const link of screen.getAllByRole("button", { name: /Download government spreadsheet/ })) expect(link).not.toBeVisible();
     fireEvent.click(summary);
     await waitFor(() => expect(summary.closest("details")).toHaveAttribute("open"));
-    expect(screen.getAllByRole("link", { name: /Open government spreadsheet/ })).toHaveLength(20);
+    expect(screen.getAllByRole("button", { name: /Download government spreadsheet/ })).toHaveLength(20);
     expect(view.container.querySelectorAll('[data-testid="official-source"]')).toHaveLength(20);
     expect(screen.queryByText(/Some source locations could not be loaded/)).toBeNull();
     expect(resolveCitationFromShards).not.toHaveBeenCalled();
