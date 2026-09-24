@@ -114,3 +114,35 @@ automated clicks or aggregate analytics.
   account-resolved destinations agree with warehouse amounts and receipt IDs.
 - Publication remains pending the fresh production build, affected static
   gates, browser review, correct-remote push and live checks.
+- The first built-site checks passed 13 of 15 browser-free gates. Data-truth
+  stopped publication on six newly ambiguous company labels, four aliases no
+  longer in the top-200 published population, and a stale methodology count.
+  Labels are being reconciled against current and rollback registration/member
+  evidence without changing grouping, amounts, the 15% threshold, or claiming
+  new human review. Methodology now derives the 14/200 census from the warehouse;
+  the independent gate continues to recompute it from the raw award lake.
+- Browser review confirmed F-15 workbook receipts and account-qualified
+  district navigation to Hornet. It also exposed a contradictory empty-state:
+  Hornet said no company was linked despite listing five award records. The
+  recipient summary now links to those records and explicitly states that no
+  program-wide recipient total is available. Two focused tests passed and a
+  built-page regression check covers the contradiction across program pages.
+- The broad copy/voice gate still reports 22 existing findings. This is tracked
+  release debt, not a fully green verification suite; no rule was weakened.
+- Continued browser review found a separate shared-code defect: Hornet's
+  account-qualified page still included General Purpose Bombs PDF details,
+  narratives and lobbying matches. An independent source-identity audit across
+  all 27 split program pages found 164 detail rows and 65 narrative rows from
+  a sibling account or organization. Publication remains blocked while those
+  enrichments are bound to exact account/organization identity; ambiguous
+  lobbying matches must be omitted rather than assigned to both pages.
+- Implemented exact member keys for detail deduplication, FY2024 source IDs,
+  narrative counts, prose amount links and years-matrix projects. Narratives
+  receive an account only from a unique exact document/program/organization
+  match; shared-code lobbying, prime and lineage claims are omitted from member
+  pages when no member identity is supplied. The new regressions and relevant
+  existing suites passed 226 tests; regenerated-artifact audit remains pending.
+- Company aliases are now reconciled: six measured rows, no new human-review
+  pins, four inactive aliases archived in the byte-identical original seed.
+  Evidence and membership changes are recorded in
+  [the company-label review](../reviews/2026-09-24-entity-label-refresh.md).

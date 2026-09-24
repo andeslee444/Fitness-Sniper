@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { RecipientSummaryGap } from "@/components/recipient-summary-gap";
 import {
   getProgramMap,
   getProgramDetails,
@@ -1434,10 +1435,12 @@ function WhoGetsItBody({
   hhi,
   primes,
   lobbiedBy,
+  awardCount,
 }: {
   hhi: ProgramRow["hhi"];
   primes: NamedPrime[];
   lobbiedBy: LobbiedBy | null;
+  awardCount: number;
 }) {
   if (hhi && hhi.program_dollars_fact_id) {
     return (
@@ -1552,19 +1555,7 @@ function WhoGetsItBody({
     );
   }
 
-  return (
-    <span data-who-tier="none" className="text-muted-foreground">
-      No company is linked to this line. Award records do not carry the
-      program element, so the crosswalk is silent here —{" "}
-      <Link
-        href="/coverage/#crosswalk"
-        className="underline decoration-dotted hover:text-foreground"
-      >
-        why
-      </Link>
-      .
-    </span>
-  );
+  return <RecipientSummaryGap awardCount={awardCount} />;
 }
 
 function AnswerStrip({
@@ -1667,7 +1658,7 @@ function AnswerStrip({
           so gate 21 leg (g) can hold each one to its own contract. See
           WhoGetsItBody. */}
       <AnswerItem label="Who gets it" testId="answer-who">
-        <WhoGetsItBody hhi={hhi} primes={primes} lobbiedBy={lobbiedBy} />
+        <WhoGetsItBody hhi={hhi} primes={primes} lobbiedBy={lobbiedBy} awardCount={program.award_count} />
       </AnswerItem>
     </div>
   );

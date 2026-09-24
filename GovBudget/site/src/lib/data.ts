@@ -79,6 +79,8 @@ export interface SiteMetaAwardFyRange {
 }
 
 export interface SiteMeta {
+  /** Current parent-registration near ties, independently checked against the lake. */
+  entity_label_review?: { near_ties: number; families: number; threshold_pct: number };
   org_absences?: Record<string, OrgAbsence>;
   award_fy_range?: SiteMetaAwardFyRange | null;
   built_at: string;

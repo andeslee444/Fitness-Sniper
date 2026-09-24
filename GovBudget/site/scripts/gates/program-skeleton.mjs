@@ -1975,6 +1975,16 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
     }
     census[tier] += 1;
 
+    if (tier === "none" && (d?.awards?.length ?? 0) > 0) {
+      const text = (tierEls[0].text || "").replace(/\s+/g, " ");
+      if (/No company is linked|No contract award is linked/i.test(text)) {
+        fail(`program-skeleton(j): /program/${slug}/ denies award links despite ${d.awards.length} linked records`);
+      }
+      if (!root.querySelector('a[href="#program-awards"]')) {
+        fail(`program-skeleton(j): /program/${slug}/ missing recipient total must link to its award records`);
+      }
+    }
+
     // (2) money only where awards are
     const amounts = root.querySelectorAll("[data-amount]");
     if (tier === "award") {

@@ -432,6 +432,37 @@ class _ProgramIdentity:
         return False
 
 
+def _narrative_document_accounts(detail_rows: list) -> dict[tuple, set[str]]:
+    """Accounts actually extracted for this document, program and organization.
+
+    Narrative rows lack an account column. A unique exact-document detail match
+    can assign one; a filename or program-name similarity cannot.
+    """
+    out: dict[tuple, set[str]] = {}
+    for row in detail_rows:
+        if row[13]:
+            out.setdefault((row[11], row[1], row[8]), set()).add(row[13])
+    return out
+
+
+def _narrative_member_key(ident, pe_bli, org, sha, document_accounts):
+    """Return a proved member identity, or None for unresolved shared text."""
+    if ident.is_account_split(pe_bli):
+        accounts = document_accounts.get((sha, pe_bli, org), set())
+        if len(accounts) != 1:
+            return None
+        account = next(iter(accounts))
+        if not any(a == account and o == org
+                   for a, _title, o, _detail in ident.accounts(pe_bli)):
+            return None
+        return ident.split_key(pe_bli, account, org)
+    if ident.is_org_split(pe_bli) and not any(
+        o == org for _a, _title, o, _detail in ident.accounts(pe_bli)
+    ):
+        return None
+    return ident.split_key(pe_bli, None, org)
+
+
 def shared_code_program_label(titles: list[str | None]) -> str | None:
     """The label for a consumer keyed on the BARE pe_bli (ROADMAP #70 fix
     round 1).
@@ -8239,7 +8270,8 @@ def _write_all_sidecars(
             row[1], row[2], row[4], row[5]
         )
         resolution = row[12]
-        dkey = (pe_bli, project_number, scenario, amount_millions)
+        dkey = (ident.split_key(pe_bli, row[13], row[8]),
+                project_number, scenario, amount_millions)
         rank = _RES_RANK.get(resolution, 9)
         cur = _detail_best.get(dkey)
         if cur is None or rank < cur[0]:
@@ -8255,16 +8287,17 @@ def _write_all_sidecars(
     for i in _detail_keep:
         row = detail_rows[i]
         if row[2] is None:  # project_number
-            _root_counts[(row[1], row[4])] += 1  # (pe_bli, scenario)
+            _root_counts[(ident.split_key(row[1], row[13], row[8]), row[4])] += 1
     _root_ordinal: Counter = Counter()
 
-    details_by_pe: dict[str, list] = defaultdict(list)
+    details_by_pe: dict[tuple, list] = defaultdict(list)
     for i, row in enumerate(detail_rows):
         if i not in _detail_keep:
             continue
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, units, xml_path, org, exhibit_family,
          fiscal_year, document_sha256, resolution, _d_account) = row
+        detail_key = ident.split_key(pe_bli, _d_account, org)
         # Basis threading (PM Sprint 1): every detail figure is a J-book
         # R-2/P-40 row → basis 'jbook-detail'; (fy, measure) from the
         # edition-relative scenario map. `entity` scopes gate-23 grouping:
@@ -8275,12 +8308,12 @@ def _write_all_sidecars(
         d_fy, d_measure = _scenario_meta(scenario, 2026)
         if project_number is not None:
             entity = f"{pe_bli}/{project_number}"
-        elif _root_counts[(pe_bli, scenario)] == 1:
+        elif _root_counts[(detail_key, scenario)] == 1:
             entity = pe_bli
         else:
-            _root_ordinal[(pe_bli, scenario)] += 1
-            entity = f"{pe_bli}/line{_root_ordinal[(pe_bli, scenario)]}"
-        details_by_pe[pe_bli].append({
+            _root_ordinal[(detail_key, scenario)] += 1
+            entity = f"{pe_bli}/line{_root_ordinal[(detail_key, scenario)]}"
+        details_by_pe[detail_key].append({
             "fact_id": fid,
             "project_number": project_number,
             "project_title": project_title,
@@ -8388,14 +8421,15 @@ def _write_all_sidecars(
     # even though detail_rows is already fenced at the export query
     # (a first-PriorYear-in-sha-order pick across editions would be an
     # arbitrary edition's figure under an FY2024 label).
-    fy2024_fact_id: dict[str, str] = {}
+    fy2024_fact_id: dict[tuple, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario, *rest) = row
         if row[10] != 2026:
             continue
         if project_number is None and scenario == "PriorYear":
-            if pe_bli not in fy2024_fact_id and fid in _cited_fact_ids:
-                fy2024_fact_id[pe_bli] = fid
+            key = ident.split_key(pe_bli, row[13], row[8])
+            if key not in fy2024_fact_id and fid in _cited_fact_ids:
+                fy2024_fact_id[key] = fid
 
     # fy2024_xml_path index: pe_bli → xml_path for PriorYear root rows that
     # have NO citation row (zero_amount facts).  Lets the program headline
@@ -8403,16 +8437,17 @@ def _write_all_sidecars(
     # state C — required by the dataset-ledger render gate, since
     # jbook_details is a cited dataset and may no longer render ⁂.
     # Same PB2026 fence as fy2024_fact_id above.
-    fy2024_xml_path: dict[str, str] = {}
+    fy2024_xml_path: dict[tuple, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario,
          _amount_millions, _units, xml_path, *rest) = row
         if row[10] != 2026:
             continue
         if project_number is None and scenario == "PriorYear":
-            if (pe_bli not in fy2024_xml_path and fid not in _cited_fact_ids
+            key = ident.split_key(pe_bli, row[13], row[8])
+            if (key not in fy2024_xml_path and fid not in _cited_fact_ids
                     and xml_path):
-                fy2024_xml_path[pe_bli] = xml_path
+                fy2024_xml_path[key] = xml_path
 
     # budget_lines index: pe_bli → list of bl dicts
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
@@ -8453,6 +8488,7 @@ def _write_all_sidecars(
             "amount_type": amount_type,
             "amount_thousands": amount_thousands,
             "units": units,
+            "account": account,
             "account_title": account_title,
             # #56: the workbook row's own title. Usually redundant with the
             # page's program.title (both describe the same line) — but for
@@ -8829,22 +8865,29 @@ def _write_all_sidecars(
     # silently join a PB2026 list and read as current. Those rows are reachable
     # exactly where they are labelled: the citation panel, which names the
     # document and its edition.
-    narr_by_pe: dict[str, list] = defaultdict(list)
+    narr_by_pe: dict[tuple, list] = defaultdict(list)
+    narrative_accounts = _narrative_document_accounts(detail_rows)
     narr_pq = out_dir / "data" / "jbook_narratives.parquet"
     if narr_pq.exists():
         import duckdb as _duckdb2
         narr_rows = _duckdb2.sql(
-            "select fact_id, pe_bli, kind, title, body, xml_path from"
+            "select fact_id, pe_bli, kind, title, body, xml_path, org,"
+            " document_sha256 from"
             f" read_parquet('{narr_pq}') where fiscal_year = {DISPLAY_NARRATIVE_FY}"
         ).fetchall()
-        for narr_fid, pe_bli, kind, title, body, xml_path in narr_rows:
+        for narr_fid, pe_bli, kind, title, body, xml_path, org, sha in narr_rows:
+            key = _narrative_member_key(
+                ident, pe_bli, org, sha, narrative_accounts,
+            )
+            if key is None:
+                continue  # No evidence assigns this text to a split member.
             entry: dict = {"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""}
             # Only attach fact_id when the citation row was emitted (xml_path non-null,
             # sha256 matched a document row). The _cited_fact_ids set is the authoritative
             # membership check — if fact_id resolves there, the model can cite it.
             if narr_fid and narr_fid in _cited_fact_ids:
                 entry["fact_id"] = narr_fid
-            narr_by_pe[pe_bli].append(entry)
+            narr_by_pe[key].append(entry)
 
     # Curated published labels (ROADMAP #10 option A). Loaded ONCE, here, and
     # threaded into every payload that NAMES a family to a reader. It never
@@ -9110,17 +9153,13 @@ def _write_all_sidecars(
             "award_count": len(_awards_for(pe_bli, account, org)),
             "exhibit_family": exhibit_family,
             "fy2024_actual_millions": fy2024_actual_millions,
-            # Task E3: gated on owns_detail — fy2024_fact_id/xml_path come
-            # from jbook_details, which for a split key belongs entirely to
-            # the matched account (see details_by_pe's owns_detail gate in
-            # the sidecar loop above). Without this gate the SYNTHETIC
-            # side's entry would carry the sibling's fact_id pointing at a
-            # value (fy2024_actual_millions) this row does not have — a
-            # dangling citation, not a wrong number, but still a defect.
-            "fy2024_fact_id": fy2024_fact_id.get(pe_bli) if owns_detail else None,
+            # The amount and its source must belong to this exact member.
+            # Both accounts may have real detail after the Wave 5 ingestion.
+            "fy2024_fact_id": fy2024_fact_id.get(
+                ident.split_key(pe_bli, account, org)) if owns_detail else None,
             "fy2024_xml_path": (
-                fy2024_xml_path.get(pe_bli)
-                if owns_detail and pe_bli not in fy2024_fact_id
+                fy2024_xml_path.get(ident.split_key(pe_bli, account, org))
+                if owns_detail and ident.split_key(pe_bli, account, org) not in fy2024_fact_id
                 else None
             ),
             "fully_reconciled": fully_reconciled,
@@ -9129,11 +9168,9 @@ def _write_all_sidecars(
             # details CTE for why the two differ on 1,310 programs.
             "reconciled_in_scope": reconciled_in_scope,
             "hhi": _concentration_for(pe_bli, account, org),
-            # Task E3: gated on owns_detail for the same reason as
-            # fy2024_fact_id — narr_by_pe is bare pe_bli and (per
-            # dim_programs.sql's own account_match) belongs entirely to the
-            # matched account; the synthetic side's own narrative_count is 0.
-            "narrative_count": len(narr_by_pe.get(pe_bli, [])) if owns_detail else 0,
+            # Count only paragraphs attributed to this member's documents.
+            "narrative_count": len(narr_by_pe.get(
+                ident.split_key(pe_bli, account, org), [])) if owns_detail else 0,
             "org": org,
             "pe_bli": pe_bli,
             "project_count": project_count,
@@ -9449,7 +9486,14 @@ def _write_all_sidecars(
         t_pe, t_org = key
         traj_by_pe[t_pe].append((t_org, t_metrics))
 
-    def _scoped_amounts(pe_bli: str, account: str | None = None) -> dict:
+    def _own_budget_lines(pe_bli, account=None, organization=None):
+        key = ident.split_key(pe_bli, account, organization)
+        return [b for b in bl_by_pe.get(pe_bli, [])
+                if ident.split_key(pe_bli, b.get("account"), b.get("organization")) == key]
+
+    def _scoped_amounts(
+        pe_bli: str, account: str | None = None, organization: str | None = None,
+    ) -> dict:
         """Canonical Decimal dollars → fact_ids for every fact of this PE
         (details, budget_lines, trajectory — cited or not; §2c ambiguity is
         counted over the full scope).
@@ -9463,16 +9507,20 @@ def _write_all_sidecars(
         def _add(value, fid):
             idx.setdefault(value, set()).add(fid)
 
-        for d in details_by_pe.get(pe_bli, []):
+        for d in details_by_pe.get(ident.split_key(pe_bli, account, organization), []):
             if d["amount_millions"] is not None:
                 _add(Decimal(str(d["amount_millions"])) * 1_000_000, d["fact_id"])
-        for b in bl_by_pe.get(pe_bli, []):
+        for b in _own_budget_lines(pe_bli, account, organization):
             if b["amount_thousands"] is not None:
                 _add(Decimal(str(b["amount_thousands"])) * 1_000, b["fact_id"])
 
         if pe_bli in ident.split_pe_blis:
-            for t_org in traj_orgs_by_pe.get(pe_bli, []):
-                t_metrics = traj_index.get((pe_bli, t_org, account))
+            own_orgs = ([organization] if ident.is_org_split(pe_bli)
+                        else traj_orgs_by_pe.get(pe_bli, []))
+            for t_org in own_orgs:
+                t_key = ((pe_bli, t_org, account) if ident.is_account_split(pe_bli)
+                         else (pe_bli, t_org))
+                t_metrics = traj_index.get(t_key)
                 if not t_metrics:
                     continue
                 for metric in ("fy2024_actuals", "fy2025_total",
@@ -9482,7 +9530,10 @@ def _write_all_sidecars(
                         _add(
                             Decimal(str(v)) * 1_000,
                             fact_id_derived(
-                                "trajectory", f"{pe_bli}|{t_org}|{account}", metric,
+                                "trajectory", _trajectory_citation_key(
+                                    pe_bli, [t_org],
+                                    account if ident.is_account_split(pe_bli) else None,
+                                ), metric,
                             ),
                         )
             return idx
@@ -9508,14 +9559,16 @@ def _write_all_sidecars(
                          fact_id_derived("trajectory", pe_bli, metric))
         return idx
 
-    def _narratives_with_links(pe_bli: str, account: str | None = None) -> list[dict]:
+    def _narratives_with_links(
+        pe_bli: str, account: str | None = None, organization: str | None = None,
+    ) -> list[dict]:
         """Narrative entries, each gaining 'amount_links' ONLY when at least
         one prose dollar token deterministically matched (§2c) — entries
         without matches keep their exact prior shape (byte-stability)."""
-        entries = narr_by_pe.get(pe_bli, [])
+        entries = narr_by_pe.get(ident.split_key(pe_bli, account, organization), [])
         if not entries:
             return entries
-        scoped = _scoped_amounts(pe_bli, account)
+        scoped = _scoped_amounts(pe_bli, account, organization)
         out: list[dict] = []
         for e in entries:
             links = _narrative_amount_links(
@@ -9559,20 +9612,18 @@ def _write_all_sidecars(
         a list — honest empty when no dossier names a known family) +
         lobbied_by (null unless the lobbying tier applies).
 
-        Task E3: summary_by_pe is keyed by SLUG (identity for every
-        non-split pe_bli); named_primes_by_pe stays bare pe_bli — dossier
-        named-primes claims have no account concept, so both accounts of a
-        split key legitimately share the same list (the same "no account
-        data available" bucket as mentions). lobbied_by_pe is keyed the
-        same way and for the same reason: a filing names a PROGRAM, not one
-        of a split key's two accounts.
-
-        ROADMAP #70 moved AWARDS out of that bucket — a crosswalk link now
-        carries the account its own evidence identified, so `awards` is per
-        member (see _awards_for) while these two remain per bare code."""
+        Summary budget cards are keyed by the canonical slug. Dossier prime
+        claims and lobbying matches still carry only a bare code: they cannot
+        prove which member they describe and are omitted on split pages. The
+        original evidence remains available on its filing/dossier surfaces.
+        """
         block = dict(summary_by_pe.get(slug) or _summary_absence_block())
-        block["named_primes"] = named_primes_by_pe.get(pe_bli, [])
-        block["lobbied_by"] = lobbied_by_pe.get(pe_bli)
+        block["named_primes"] = (
+            [] if ident.is_split(pe_bli) else named_primes_by_pe.get(pe_bli, [])
+        )
+        block["lobbied_by"] = (
+            None if ident.is_split(pe_bli) else lobbied_by_pe.get(pe_bli)
+        )
         return block
 
     all_pe_blis = {r[0] for r in all_prog_rows}
@@ -9780,40 +9831,25 @@ def _write_all_sidecars(
         pe_bli, org, account, account_title = r[0], r[1], r[7], r[8]
         is_split = pe_bli in ident.split_pe_blis
         slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
-        # has_own_detail: for a split key, R-2/P-40 project detail
-        # (details_by_pe / narratives) belongs ENTIRELY to at most one
-        # account (dim_programs.sql's account_match — verified 2026-08-21,
-        # zero exceptions in the shipped warehouse); the other account's
-        # page must never inherit it via the shared bare-pe_bli lookup.
+        # Both members may own details. Select each source row by its own
+        # account/organization; a boolean existence flag is not attribution.
         owns_detail = ident.has_own_detail(pe_bli, account, org)
-        # ROADMAP #45: an ORG-split key's siblings all share one
-        # account_title (the account itself never varies for '20'/'30'/
-        # '500' — that is the whole premise of the split), so filtering by
-        # account_title here would let BOTH organizations' budget_lines rows
-        # through onto EVERY sidecar — reintroducing the #56 fusion shape
-        # gate 23 leg (h) exists to catch, just relocated into the sidecar
-        # this task's own leg (h) org extension reads. Filter by
-        # organization instead for these 3 keys.
-        own_bl = bl_by_pe.get(pe_bli, [])
-        if is_split:
-            if ident.is_org_split(pe_bli):
-                own_bl = [bl for bl in own_bl if bl.get("organization") == org]
-            else:
-                own_bl = [bl for bl in own_bl if bl.get("account_title") == account_title]
+        own_key = ident.split_key(pe_bli, account, org)
+        own_bl = _own_budget_lines(pe_bli, account, org)
         obj = {
             # ROADMAP #70: this member's own links. For a shared BLI code the
             # sibling's awards belong on the sibling's page, and the bare key
             # is a disambiguation stub that owns no sidecar at all.
             "awards": _awards_for(pe_bli, account, org),
             "budget_lines": own_bl,
-            "details": details_by_pe.get(pe_bli, []) if owns_detail else [],
+            "details": details_by_pe.get(own_key, []) if owns_detail else [],
             "mentions": _build_mentions(
-                mentions_by_pe.get(pe_bli, []),
+                [] if is_split else mentions_by_pe.get(pe_bli, []),
                 top200_family_keys,
             ),
             "narratives": (
                 _narratives_with_links(
-                    pe_bli, account if ident.is_account_split(pe_bli) else None,
+                    pe_bli, account, org,
                 )
                 if owns_detail else []
             ),
@@ -9823,13 +9859,9 @@ def _write_all_sidecars(
             obj["decade_series"] = decade_series_by_pe[slug]
             if slug in rva_by_pe:
                 obj["book_diff"] = rva_by_pe[slug]
-        # lineage stays bare pe_bli (Task E3 disclosed limitation): rail
-        # edges are extracted from cross-edition narrative text with no
-        # account concept, so both of a split key's pages honestly share
-        # whatever lineage was found for the bare key — same bucket as
-        # awards/mentions, never a wrong number (every rail figure still
-        # carries its own fact_id).
-        if pe_bli in lineage_by_pe:
+        # Lineage has no member discriminator. Keep it at its bare-code
+        # evidence surface rather than claim it describes both programs.
+        if not is_split and pe_bli in lineage_by_pe:
             obj["lineage"] = lineage_by_pe[pe_bli]
         if slug in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[slug]
@@ -9901,7 +9933,7 @@ def _write_all_sidecars(
         obj = {
             "awards": _awards_for(pe_bli),   # rollup pe's are never split
             "budget_lines": bl_by_pe.get(pe_bli, []),
-            "details": details_by_pe.get(pe_bli, []),
+            "details": details_by_pe.get(ident.split_key(pe_bli, None), []),
             "mentions": _build_mentions(
                 mentions_by_pe.get(pe_bli, []),
                 top200_family_keys,
@@ -10824,6 +10856,11 @@ def _write_all_sidecars(
         "uncited_datasets": manifest.get("uncited_datasets", []),
     }
 
+    from govbudget.entity_label_review import build_entity_label_review
+
+    label_review = build_entity_label_review(con)
+    if label_review is not None:
+        site_meta["entity_label_review"] = label_review
     _write_json(json_dir / "site_meta.json", site_meta)
     n_files += 1
 
@@ -13346,14 +13383,14 @@ def _emit_years_matrix(
     # ---- project sub-rows: pe_bli → project_number → row -------------------
     # detail_rows order is (sha256, pe_bli, scenario); last-wins per
     # (project, scenario) mirrors the program-page scenarioMap behavior.
-    projects_by_pe: dict[str, dict] = defaultdict(dict)
+    projects_by_pe: dict[tuple, dict] = defaultdict(dict)
     for r in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, _units, xml_path, _org, _fam,
          _fy, _sha, _resolution, _acct) = r
         if project_number is None:
             continue
-        proj = projects_by_pe[pe_bli].setdefault(
+        proj = projects_by_pe[ident.split_key(pe_bli, _acct, _org)].setdefault(
             project_number, {"title": None, "scenarios": {}}
         )
         if project_title:
@@ -13456,17 +13493,17 @@ def _emit_years_matrix(
         cells.update(decade_cells_by_pe.get((pe_bli, key_account, key_org), {}))
         return cells
 
-    def _project_rows(pe_bli: str, owns_detail: bool = True) -> list[dict]:
-        # Task E3: a split key's project rows (from detail_rows, which
-        # carries no account column) belong entirely to the one account
-        # dim_programs' account_match resolved — owns_detail=False renders
-        # the honest empty list for the other account instead of both
-        # program rows showing the same project detail.
+    def _project_rows(
+        pe_bli: str, owns_detail: bool = True, account=None, organization=None,
+    ) -> list[dict]:
+        # Project numbers are local to a program member; shared codes may
+        # repeat the same project number in different source documents.
         if not owns_detail:
             return []
         out = []
-        for pn in sorted(projects_by_pe.get(pe_bli, {})):
-            proj = projects_by_pe[pe_bli][pn]
+        key = ident.split_key(pe_bli, account, organization)
+        for pn in sorted(projects_by_pe.get(key, {})):
+            proj = projects_by_pe[key][pn]
             cells: dict[str, dict] = {}
             for ykey, scenario in _YEARS_PROJECT_SCENARIOS.items():
                 row = proj["scenarios"].get(scenario)
@@ -13532,7 +13569,7 @@ def _emit_years_matrix(
                 "pe_bli": pe_bli,
                 "title": display_title,
                 "cells": _program_cells(pe_bli, translated, account),
-                "projects": _project_rows(pe_bli, owns_detail),
+                "projects": _project_rows(pe_bli, owns_detail, account, org),
             }
             if is_split:
                 prog["slug"] = slug

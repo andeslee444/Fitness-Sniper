@@ -760,9 +760,10 @@ export default function MethodologyPage() {
                 <p className="mt-2">
                   <strong>The tier grades the grouping, never the name.</strong> A
                   family&rsquo;s label is the registered parent name of its largest
-                  member, chosen by an argmax over obligations: 15 of the 200
+                  member, chosen by an argmax over obligations.
+                  {siteMeta.entity_label_review && <> {siteMeta.entity_label_review.near_ties} of the {siteMeta.entity_label_review.families}{" "}
                   families we publish carry a label that beat its runner-up by
-                  under 15%. Those carry a reviewed label from a curated seed
+                  under {siteMeta.entity_label_review.threshold_pct}%.</>} Those carry a reviewed label from a curated seed
                   instead, each company page still showing its registered name, and
                   a new one fails the build.
                 </p>
