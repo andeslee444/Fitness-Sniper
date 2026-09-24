@@ -64,7 +64,7 @@ export function checkFamilyHistory(root, history, citations, slice) {
       else checkReceipt(cell.fact_id, cell.amount_thousands, cell.input_fact_ids);
     }
   }
-  const shown = [total.fact_id, ...defaults.map(p => p.fact_id), ...defaults.at(-1).components.map(r => r.fact_id), ...defaults.at(-1).program_cells.map(cell => cell.fact_id)];
+  const shown = [total.fact_id, defaults.at(-1).fact_id, ...defaults.at(-1).components.map(r => r.fact_id), ...defaults.at(-1).program_cells.map(cell => cell.fact_id)];
   for (const id of shown) check(slice.has(id), `receipt ${id} is absent from the page citation slice`);
 
   const receipt = root.querySelector('[data-testid="family-receipt"]');

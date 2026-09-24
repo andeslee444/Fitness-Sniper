@@ -21,9 +21,9 @@ export function getF15FundingHistory() {
   const source = getF15FundingHistorySource();
   const series = familyHistorySeries(source);
   const latest = series.at(-1)!;
-  // Annual receipts remain immediate; old workbook leaves resolve from the
-  // existing same-origin citation shards only when their receipts are opened.
-  const factIds = [...new Set([source.cumulative.fact_id, ...series.map(point => point.fact_id), ...latest.components.map(row => row.fact_id), ...latest.program_cells.map(cell => cell.fact_id)])];
+  // All amounts render immediately. Older annual and program receipts resolve
+  // from existing citation shards on demand, keeping the full matrix compact.
+  const factIds = [...new Set([source.cumulative.fact_id, latest.fact_id, ...latest.components.map(row => row.fact_id), ...latest.program_cells.map(cell => cell.fact_id)])];
   const citations = collectCitations(factIds);
   for (const factId of factIds) if (!citations[factId]) throw new Error(`Missing family history receipt ${factId}`);
   const history: FamilyFundingHistoryView = {
