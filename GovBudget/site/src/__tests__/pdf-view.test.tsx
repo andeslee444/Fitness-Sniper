@@ -208,6 +208,21 @@ describe("PdfView — loading and ready states", () => {
 });
 
 describe("PdfView — zoom overlay", () => {
+  it("makes the cited number readable when focusing evidence on a phone", async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    try {
+      const { PdfView } = await import("@/components/citation-panel/pdf-view");
+      render(<PdfView citation={makeCitation("sha-focus-mobile")} />);
+      fireEvent.click(await screen.findByTestId("pdf-focus-evidence"));
+      const overlay = await screen.findByTestId("pdf-zoom-overlay");
+      expect(overlay).toHaveTextContent("400%");
+      await waitFor(() => expect(overlay.querySelector('[data-testid="pdf-zoom-highlight"]')).not.toBeNull());
+      expect(screen.getByTestId("pdf-zoom-in")).toBeDisabled();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: previousWidth });
+    }
+  });
   it("focuses the recorded evidence at 200% while retaining the source text layer", async () => {
     const { PdfView } = await import("@/components/citation-panel/pdf-view");
     render(<PdfView citation={makeCitation("sha-focus")} />);

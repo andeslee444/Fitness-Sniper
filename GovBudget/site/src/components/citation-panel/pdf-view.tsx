@@ -417,7 +417,8 @@ export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }
         <p className={styles.caption}>Saved source copy · PDF page {citation.page_number}. {citation.amount_text ? "The cited amount is highlighted." : "The recorded passage start is highlighted."}</p>
         {viewState === "ready" && <button type="button" className={styles.focus} data-testid="pdf-focus-evidence" onClick={(event) => {
           overlayTrigger.current = event.currentTarget;
-          setInitialZoom(2); setOverlayEpoch(e => e + 1); setOverlayOpen(true);
+          setInitialZoom(window.innerWidth < 640 ? ZOOM_MAX : 2);
+          setOverlayEpoch(e => e + 1); setOverlayOpen(true);
         }}>Focus cited evidence</button>}
       </div>
 

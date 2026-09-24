@@ -203,7 +203,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // Re-measured 2026-09-11 after the drawn F-15 plate (external <use>,
   // two crop copies, plate stamp/callouts) replaced the raster default view:
   // 47,747 raw / 1,280 gzip bytes remain. Ceilings unchanged.
-  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "713,183 / 69,893" },
+  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "713,183 / 69,954" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -316,7 +316,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-07 editorial redesign: refreshed the built measurement after the
   // shared navigation and agency page changes; ceilings remain unchanged.
   // 2026-09-22: fresh release measurement; existing byte ceilings unchanged.
-  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "195,854 / 53,607" },
+  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "196,187 / 53,657" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
