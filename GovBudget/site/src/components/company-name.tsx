@@ -103,6 +103,8 @@ export function RegisteredNameNote({
           </a>
           : this family&rsquo;s registered parent name was chosen by a near-tie
           over obligations, and we publish the reviewed name instead.
+          {" "}The label describes award registrations; it does not verify current
+          corporate ownership.
         </>
       ) : (
         <>

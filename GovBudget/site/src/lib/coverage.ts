@@ -77,7 +77,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: getFlowsCount(),
         denominator: getProgramsCount(),
         note: `Follow-the-dollar covers ${num} of ${den} programs — only high-confidence budget→award links are shown.`,
-        emptyNote: `No follow-the-dollar view — this program's awards haven't been crosswalked at high confidence (flows cover ${num} of ${den} programs).`,
+        emptyNote: `No follow-the-dollar view is available for this program (flows cover ${num} of ${den} programs).`,
         anchor: "/methodology/#coverage-follow-the-dollar",
         linkText: "why coverage is partial? →",
       };
