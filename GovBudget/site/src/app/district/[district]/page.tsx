@@ -285,8 +285,10 @@ export default async function DistrictDetailPage({ params }: Props) {
             <tbody className="divide-y divide-border">
               {detail.programs.map((prog) => (
                 <tr
-                  key={prog.pe_bli}
+                  key={prog.split_key ?? prog.program_url}
                   className="hover:bg-muted/40 transition-colors"
+                  data-program-key={prog.split_key ?? prog.pe_bli}
+                  data-program-account={prog.account ?? undefined}
                   data-sort-value={String(prog.total_obligation ?? -Infinity)}
                 >
                   <td className="px-4 py-3">

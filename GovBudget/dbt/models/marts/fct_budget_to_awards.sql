@@ -15,10 +15,10 @@
 -- can never fan a row out; a link with account NULL — every ordinary key, and
 -- every organization-split key, which stays unlinked — matches nothing there
 -- (SQL null equality) and falls back to `programs` exactly as before.
--- Hand-adjudication overlay (2026-09-01): every published (pe, award) pair was
--- hand-adjudicated (award-level evidence investigation + two adversarial
--- refuter lenses; see docs/superpowers/reviews/ and migration 010). The
--- published confidence is the adjudicated one when present; the mechanical
+-- Hand-adjudication overlay: reviewed pairs carry an explicit adjudicated
+-- confidence (see migration 010). Review coverage varies by method and is
+-- measured separately; not every published pair has an individual review.
+-- The published confidence is the adjudicated one when present; the mechanical
 -- crosswalk tag is retained as crosswalk_confidence, never rewritten.
 -- Pairs adjudicated low/reject drop out of the mart (and the site) here.
 with programs as (

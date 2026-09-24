@@ -468,6 +468,172 @@ def shared_code_program_label(titles: list[str | None]) -> str | None:
     return " / ".join(seen)
 
 
+def _district_row_member_slug(ident, pe_bli: str, account: str | None) -> str | None:
+    """The member page slug THIS fct_district_programs row names, or None.
+
+    The single ANSWER both halves of a district row's identity dispatch on
+    — its ADDRESS (_member_split_key) and its FACT-ID KEY
+    (_district_program_key). Fix round 1, 2026-09-19 (R-27-2'): the two were
+    written apart and agreed only because of a data property — measured
+    read-only against the shipped warehouse 2026-09-19, all 11 account-bearing
+    district rows sit on account-split codes and no ordinary code carries an
+    account — so an ordinary code that ever acquired one would have kept its
+    address while silently rotating its /fact/{id} permalink. Fix round 2
+    (R-27-8, item 2) closes the other half of that hole: the shared PREDICATE
+    was not the last word, because the account lookup below can still come up
+    empty, and round 1 left the address falling back to the bare pe_bli there
+    while the key went on appending the account. Resolving the member in ONE
+    place makes the two fall back together.
+
+    None — the bare key, the disambiguation stub, the pre-Task-27 fact id —
+    in four cases:
+
+      · an ordinary pe_bli — there is no member to name;
+      · an ORGANIZATION-split code ('20', '30', '500'), whose members share
+        one account ('0300D'), so an account cannot name one of them;
+      · an account-NULL row on an account-split code, which names BOTH
+        members (the case the narrowed singular test guards in dbt);
+      · an account-split code carrying an account dim_programs has never
+        published — an account the identity map has never seen cannot name a
+        member of it. 0 rows today: measured read-only 2026-09-19, each of
+        the 11 account-bearing district rows finds its (pe_bli, account) pair
+        in dim_programs, exactly one row per pair.
+
+    The (pe_bli, account) -> account_title lookup runs over ident's own
+    dim_programs rows, and is consulted ONLY for account-split keys, where
+    the pair is unique by construction (dim_programs is not unique on
+    (pe_bli, account) globally: the three org-split keys publish 2-3 rows
+    under 0300D each).
+    """
+    if account is None or not ident.is_account_split(pe_bli):
+        return None
+    for acct, account_title, organization, _has_detail in ident.accounts(pe_bli):
+        if acct == account:
+            return ident.slug(pe_bli, acct, account_title, organization)
+    return None
+
+def _district_row_names_a_member(ident, pe_bli: str, account: str | None) -> bool:
+    """Does THIS fct_district_programs row name ONE member of a shared code?
+
+    The predicate form of _district_row_member_slug, for the caller that
+    needs the question rather than the answer (_district_program_key, which
+    appends the row's own account rather than its slug). It asks that one
+    function and nothing else, so the four "no" cases listed there are the
+    four cases that keep the bare key.
+    """
+    return _district_row_member_slug(ident, pe_bli, account) is not None
+
+def _district_program_key(
+    ident, pop_state: str, pop_district: str, pe_bli: str, account: str | None,
+) -> str:
+    """The fact-id key for ONE fct_district_programs row (Task 27).
+
+    Four sites mint or re-derive `fact_id_usaspending("district_program", …)`
+    — the geography citation builder, the USAspending citation builder, the
+    district sidecar emitter and the citation panel's reverse index, the last
+    of them two thousand lines from the first. They must agree on the key's
+    shape or an input chip loses its label, or worse, a figure resolves to
+    another member's citation. This is that shape, in one place.
+
+    A row that names no member — every ordinary code, plus the two cases
+    _district_row_names_a_member lists beside it — keeps the pre-Task-27
+    triple BYTE FOR BYTE, so ITS /fact/{id} permalink still resolves. 597 of
+    the 608 rows measured read-only 2026-09-19 are in that class.
+
+    The other 11 ROTATE, once, on 2026-09-19, and their pre-Task-27 ids stop
+    resolving: naming the member is worth one broken permalink per row, and
+    the old ids are listed in the task report. They are 0145 in MA-06 and
+    MO-01, 2292 in AZ-07, 3010 in MS-04, and 3215 in MA-08, MD-03, MO-01,
+    PA-14, RI-01, VA-10 and WA-06 (measured read-only 2026-09-19).
+
+    Belt and braces (fix round 2, R-27-8): an EMPTY identity map answers "no
+    member" for every row, which is the honest answer only while no row has
+    a member to name. A row that carries an account against an empty map
+    would publish under the bare key — Task 27's fused shape, restored
+    silently — so this raises instead, naming the row. dim_programs being
+    absent is what empties the map, and _fetch_program_identity says why
+    that is allowed to happen at all.
+    """
+    base = f"{pop_state}|{pop_district}|{pe_bli}"
+    if account is not None and not ident._by_pe:
+        raise RuntimeError(
+            f"district row {base}|{account} carries an appropriation account"
+            " but dim_programs published no program identity at all, so this"
+            " row would publish under the bare pe_bli — the pre-Task-27"
+            " fused key. Run `govbudget build` before export-site."
+        )
+    if not _district_row_names_a_member(ident, pe_bli, account):
+        return base
+    return f"{base}|{account}"
+
+def _member_split_key(ident, pe_bli: str, account: str | None) -> str:
+    """The member's page slug for a district row, or the bare pe_bli.
+
+    Returns `ident.slug(pe_bli, account, account_title, organization)` — the
+    SAME call program pages resolve their own slug with — when this row names
+    one member of a shared code, and the bare pe_bli otherwise. WHICH member,
+    if any, is _district_row_member_slug's answer, taken here and (as a
+    predicate) by _district_program_key, so an address and a fact id can
+    never disagree about whether a row names a member. Since fix round 2
+    (R-27-8) that holds for all four "otherwise" cases, including the one
+    round 1 left diverging: a (pe_bli, account) pair absent from the identity
+    map now drops BOTH halves back to the bare key, not just this one.
+    """
+    return _district_row_member_slug(ident, pe_bli, account) or pe_bli
+
+def _require_account_column(
+    con, table: str, *, columns: tuple[str, ...] = ("account",),
+) -> bool:
+    """True when `table` exists and carries every one of `columns` — the
+    account identity Task 27's district surfaces read. False when the TABLE
+    ITSELF is absent.
+
+    Fix round 1, 2026-09-19: the district reads below used to fall back to an
+    account-less query and splice None into every row. For a mart that never
+    had the column that is exactly right, and for THESE marts it is exactly
+    wrong: `account` has been part of fct_district_programs' declared grain
+    since Task 27, so a warehouse without it predates the grain change, and
+    reading it that way republishes the fused shape this task removed — both
+    members of a shared budget-line code summed under one member's title,
+    every district_program fact id back on the pre-Task-27 triple, no print,
+    no error and no gate able to see it. So it raises.
+
+    The table being ABSENT is a different thing and keeps its old behaviour:
+    a fixture lake that never built the mart publishes nothing from it, and
+    every caller here already degrades to an empty list.
+
+    Fix round 2, 2026-09-19 (R-27-8): `columns` generalizes the same probe to
+    dim_programs, whose `account` AND `account_title` are what resolve a
+    district row's member at all — see _fetch_program_identity. The two
+    tables fail for one reason and the message says it once.
+    """
+    try:
+        cols = {
+            d[0] for d in con.execute(f"select * from {table} limit 0").description
+        }
+    except Exception:
+        return False
+    missing = [c for c in columns if c not in cols]
+    if missing:
+        raise RuntimeError(
+            f"{table} carries no `{missing[0]}` column: this warehouse"
+            " predates Task 27 (2026-09-19), so every shared budget-line"
+            " code's two members would publish fused under one title. Run"
+            " `govbudget build` before export-site."
+        )
+    return True
+
+def _district_program_identity(con) -> _ProgramIdentity:
+    """District member identity must never fall back to a stale schema."""
+    if not _require_account_column(con, "fct_district_programs"):
+        return _ProgramIdentity([])
+    _require_account_column(
+        con, "dim_programs",
+        columns=("pe_bli", "account", "account_title", "org", "exhibit_family"),
+    )
+    return _fetch_program_identity(con)
+
+
 def _query_with_account_fallback(
     con, sql_with_account: str, sql_without_account: str, account_index: int,
 ) -> list[tuple]:
@@ -2411,16 +2577,28 @@ def export_site(
     # with no number read as one that passed.
     published_link_methods = _published_link_methods(duckdb_path)
     with psycopg.connect(dsn) as pg_precision:
-        link_precision = _link_precision_block(
-            pg_precision, published_methods=published_link_methods
+        link_precision = _link_precision_for_export(
+            pg_precision, published_methods=published_link_methods,
+            published_links=_published_link_rows(duckdb_path),
         )
+        announcement_llm_scope = _announcement_llm_scope(pg_precision, published_links=_published_link_rows(duckdb_path))
 
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+    with psycopg.connect(dsn) as pg_adjudication:
+        link_adjudication = _link_adjudication_block(
+            pg_adjudication, high_links=_published_high_links(duckdb_path),
+            measured_on=built_at[:10],
+        )
+    org_absences = _org_absences()
     manifest = {
-        "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
+        "built_at": built_at,
         "datasets": final_counts,
         "citations": cit_by_kind,
         "ingested_service_orgs": ingested_service_orgs,
+        "link_adjudication": link_adjudication,
+        "org_absences": org_absences,
         "link_precision": link_precision,
+        "announcement_llm_scope": announcement_llm_scope,
         "pdf_count": n_pdfs,
         "workbook_count": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
@@ -2606,45 +2784,93 @@ from govbudget.jbooks.orgs import workbook_org as _workbook_org
 
 
 def _ingested_service_orgs(pg) -> list[str]:
-    """Sorted service_org codes whose FY2026 J-book IS loaded.
+    """Sorted service_org codes whose FY2026 J-book detail IS LOADED.
 
-    Single source of truth for the site's rollup-note wording: a rollup page
-    whose service_org is in this set is NOT "awaiting ingestion" — its book is
-    loaded, the PE simply carries no matching R-2/P-40 narrative. Emitted into
-    site_meta.json; program-tier.ts reads it (replacing a hardcoded A/N/F set
-    that lied for the ~24 defense-wide agency books — OSD, DCSA, MDA, …).
+    Single source of truth for the site's coverage-note wording: a page whose
+    coverage org is in this set is NOT "awaiting ingestion" — its book is
+    loaded, the PE simply carries no matching R-2/P-40 narrative. Emitted
+    into site_meta.json; program-tier.ts reads it (replacing a hardcoded
+    A/N/F set that lied for the ~24 defense-wide agency books — OSD, DCSA,
+    MDA, …).
 
-    CRITICAL — code-space match: the site keys the note off
-    details.service_org, which is a budget_lines.organization code (the WORKBOOK
-    org). jbook_documents.org is the DOCUMENT org, so each is translated through
-    workbook_org() (CYBERCOM→CYBER, CHIPS/DPAP→OSD) before entering the set —
-    otherwise CYBERCOM's page never matches. Orgs with no loaded book (DHA,
-    DEFW, IG) are absent by construction and keep the honest "not yet ingested"
-    wording.
+    CRITICAL — code-space match: the site keys the note off the page's
+    coverage org, which is a budget_lines.organization code (the WORKBOOK
+    org). jbook_documents.org is the DOCUMENT org, so each is translated
+    through workbook_org() (CYBERCOM→CYBER, CHIPS/DPAP→OSD) before entering
+    the set — otherwise CYBERCOM's page never matches.
+
+    CRITICAL — "ingested" means LOADED, not DOWNLOADED (ROADMAP #14,
+    2026-09-10). The predicate used to be `status='downloaded'` alone, so a
+    registered file on disk was enough. That is the wrong test for the
+    sentence it decides: the page says a NARRATIVE exists, and a PDF whose
+    embedded XML never parsed has none. Two consequences, one live and one
+    latent:
+      · live — `DoD` (the three R-1/P-1 display workbooks) sat in the
+        shipped set with ZERO budget_line_details rows behind it (25 codes
+        -> 24 after this change; no rendered sentence moves, because no
+        page's coverage org is DoD);
+      · latent — registering the Defense Health Program volume would have
+        flipped all 14 DHA pages to "the DHA FY2026 J-books are ingested,
+        but this element carries no R-2/P-40 narrative" the moment
+        `acquire` finished, whether or not anything extracted. That is the
+        2026-07-05 "ingested-orgs liar" species with a new cause, and it is
+        exactly what this join prevents.
+    Orgs with no loaded book (DHA until its book extracts, DEFW, IG) are
+    absent by construction. What their pages SAY is decided one step further
+    on: an org recorded in data/research/edition_manifest.json -> org_absences
+    renders that absence rule's own sentence (_org_absences below publishes
+    the rules), and only an org that is in NEITHER set — a downloaded-but-
+    unloaded book nobody has probed — gets the generic "not yet ingested".
     """
     rows = pg.execute(
-        "select distinct org from jbook_documents"
-        " where fiscal_year = 2026 and status = 'downloaded'"
+        """
+        select distinct j.org
+        from jbook_documents j
+        join budget_line_details d
+          on d.document_id = j.id and not d.superseded
+        where j.fiscal_year = 2026 and j.status = 'downloaded'
+        """
     ).fetchall()
     return sorted({_workbook_org(r[0]) for r in rows})
 
 
-#: Strata whose adjudication answered a DIFFERENT question from the others,
-#: so their verdicts must never be published beside them as one comparable
-#: "precision" figure (controller ruling, 2026-09-04, ROADMAP #72 final wave).
-#:
-#: `account+subagency`: all 60 verdict reasons for the 2026-09-04 study
-#: restate that the MECHANICAL rule fired — federal account 097-0400,
-#: sub-agency DARPA, PIID prefix HR0011 — and none judges whether the award
-#: paid for THIS program, which is the question every other stratum was
-#: judged on. 60/60 against a tautological question is not a measurement of
-#: program attribution, and publishing it as one for the site's largest tier
-#: (~9,100 mart rows) would read as certainty the study never established.
-#: The verdict rows stay in link_precision_samples for audit; the tier is
-#: named UNMEASURED on /methodology/ instead. Removing a name from this set
-#: requires a re-adjudication under the attribution rubric, not a re-count.
-_UNRUBRICKED_PRECISION_STRATA = frozenset({"account+subagency"})
 
+_PRECISION_RUBRICS = ("attribution", "rule-fired")
+# The newer wave-only study must never replace the tier-wide sampling frame.
+_PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
+
+
+from govbudget.link_precision import (
+    precision_tally_sql as _precision_tally_sql,
+    published_link_rows as _published_link_rows,
+    published_relation as _precision_published_relation,
+    tally_params as _precision_tally_params,
+)
+
+
+def _link_precision_for_export(pg, published_methods: set[str] | None, *, published_links=None) -> dict:
+    """`_link_precision_block` AS THE EXPORT CALLS IT — with the pin.
+
+    The pin is policy, not a default: `_link_precision_block` takes each
+    method's latest run unless told otherwise, and the wave-4 sample
+    (`2026-09-12`) is a draw over ONE wave's links. Left unpinned it becomes
+    the announcement tier's published precision the moment it loads — a
+    narrower population under the tier's name.
+
+    This exists as a named function so the kwarg can be TESTED. Asserting
+    `_PINNED_PRECISION_SAMPLES["announcement+lexicon"] == "2026-09-04"` does
+    not protect anything: deleting `pinned_samples=…` from the call site
+    leaves the constant intact and every test green
+    (tests/test_export_site_announcement_scope.py exercises this function and
+    watches which run it asks Postgres for; gate 24 leg n binds the sample_id
+    the shipped site_meta reports for the pinned tier).
+    """
+    return _link_precision_block(
+        pg,
+        published_methods=published_methods,
+        pinned_samples=_PINNED_PRECISION_SAMPLES,
+        published_links=published_links,
+    )
 
 def _published_link_methods(duckdb_path) -> set[str]:
     """Every fct_budget_to_awards `method` the site actually PUBLISHES — i.e.
@@ -2678,111 +2904,621 @@ def _published_link_methods(duckdb_path) -> set[str]:
         con.close()
     return {m for (m,) in rows}
 
-
 def _link_precision_block(pg, published_methods: set[str] | None = None,
-                          sample_id: str | None = None) -> dict:
-    """The held-out link-precision study (ROADMAP #72), tallied under the tier
-    each sampled link publishes under TODAY.
+                          sample_id: str | None = None,
+                          rubric: str = "attribution",
+                          pinned_samples: dict[str, str] | None = None,
+                          published_links: list[dict] | None = None) -> dict:
+    """The held-out link-precision study (ROADMAP #72, #79), tallied under the
+    tier each sampled link publishes under TODAY, under ONE rubric.
 
-    Returns ``{}`` while no study has adjudicated verdicts loaded, else::
+    Returns ``{}`` while no study has adjudicated verdicts under `rubric`, else::
 
-        {"sample_id": "2026-09-04", "sampled_at": "2026-09-04",
-         "methods": {method: {"confirmed": int, "sampled": int}},
+        {"rubric": "attribution",
+         "sample_id": "2026-09-05",            # latest run any figure comes from
+         "sampled_at": "2026-09-05",           # latest judged date
+         "methods": {method: {"confirmed": int, "sampled": int,
+                              "sample_id": str, "judged": "YYYY-MM-DD"}},
          "unmeasured": [method, ...]}
 
-    THE DEFECT THIS SHAPE FIXES (2026-09-04, final review C1). The old query
-    grouped link_precision_samples by its OWN `method` column — the method
-    each link carried when the sample was DRAWN — and published the result as
-    "measured precision of the published tiers". Two ways that lies:
+    THE RUBRIC (2026-09-11, #79). A verdict is comparable only to a verdict
+    that answered the same question. The 2026-09-04 run judged four strata on
+    program ATTRIBUTION — did this award pay for this program — and one,
+    `account+subagency`, on whether the MECHANICAL rule had fired; 60/60
+    against the second question was printed beside the first until f96344e5.
+    Migration 015 stamps every verdict row with its rubric and this block
+    reads exactly one rubric — the hand-named stratum set that stood in for
+    the column is gone. A published tier whose only verdicts answer another
+    question comes back in `unmeasured`, and /methodology/ names it; the page
+    also names the rubric next to the figures (gate 24 leg n checks both).
 
-      * a tier can be withdrawn between draw and export. `fpds-ap+account`
-        measured 34/60, was withdrawn the same day (zero rows in
-        budget_line_awards), and its 60 links now publish under the single
-        `fpds-ap` medium tier — so the page printed a figure for a tier no
-        reader can meet AND a flattering 60/60 for `fpds-ap`, when the honest
-        number for the tier a reader actually sees is 94/120;
-      * a sampled link can stop being published at all. Six announcement
-        links were removed by the O&M funding-account filter after the draw;
-        counting them would state a denominator the corpus does not publish.
+    THE POPULATION (2026-09-04, final review C1). Join every sampled row to
+    `budget_line_awards` on (award_piid, pe_bli), keep only rows the corpus
+    still publishes (confidence high or medium), and tally by the CURRENT
+    method: `fpds-ap+account` was withdrawn hours after its draw and its links
+    publish under `fpds-ap`; six announcement links stopped publishing. Rows
+    that no longer publish drop out of both numerator and denominator.
 
-    So: join every sampled row to `budget_line_awards` on (award_piid,
-    pe_bli), keep only rows the corpus still publishes (confidence high or
-    medium), and tally by the CURRENT method. Rows that no longer publish
-    drop out of both numerator and denominator — the figure describes the
-    tier as it stands, and `sampled_at` dates it so a reader can see how far
-    the corpus may have moved since.
+    THE RUN (final review I1, refined for #79). A study run may re-judge one
+    stratum only, so each method's figure comes from the LATEST sample_id
+    that judged THAT method under the rubric (lexicographic max — runs are
+    named by ISO date). A re-measurement replaces the number it corrects and
+    never pools with it; the other methods keep their own latest run, and
+    each figure carries the `sample_id` and `judged` date it came from so the
+    page can say every date it draws on. Pass `sample_id` to read one run.
 
-    `sampled` counts only ADJUDICATED rows (verdict is not null) — a row drawn
-    into the sample but not yet judged counts toward neither number, so a
-    study can be loaded incrementally without understating what was judged.
+    THE PIN (2026-09-19, wave 4). "Latest run" is the right default only while
+    every run is a draw over the tier it reports. The wave-4 sample
+    (`2026-09-12`) is not: it draws only from the links ONE wave of the
+    announcement pass produced, to measure that wave. Left to the default it
+    would have become the announcement tier's published precision the moment
+    it loaded — a narrower population under the tier's name, the same species
+    of defect as the withdrawn `fpds-ap+account` figure. `pinned_samples`
+    maps a method to the run its figure must come from; the tier is re-tallied
+    against that run alone and, if the run judged nothing the tier still
+    publishes, the tier is reported UNMEASURED rather than falling back to the
+    latest. The wave's own figure is published by `_announcement_llm_scope`,
+    which says whose links it measured. The export call site passes
+    `_PINNED_PRECISION_SAMPLES`.
 
-    Only the LATEST sample_id is read (final review I1): pooling every study
-    run would silently average a re-measurement into the number it corrects.
-    `sample_id` may be passed explicitly; otherwise the lexicographic max is
-    taken, which is the latest run because precision_study.py names runs by
-    ISO date.
+    `sampled` counts only ADJUDICATED rows (verdict is not null).
 
     `published_methods` (from _published_link_methods) is the mart's own
     published-tier universe. Methods it does not contain are dropped from the
-    figures; methods with no figure of their own — because the study drew no
-    sample from them, or because their stratum is in
-    _UNRUBRICKED_PRECISION_STRATA — come back in `unmeasured`, which
-    /methodology/ names in prose so no published tier passes silently as
-    measured. Pass None (tests, fixture warehouses) to skip both.
+    figures; methods with no figure of their own come back in `unmeasured`.
+    Pass None (tests, fixture warehouses) to skip both.
 
-    scripts/precision_study.py's precision_by_method is the twin of this
-    query; export_site never imports from scripts/, so the two are kept in
-    step by hand and by tests/test_export_site_link_precision.py.
+    The shared govbudget.link_precision query is used by the operator report
+    and exporter. Export passes distinct mart identities after adjudication
+    overlays; repeated fiscal editions cannot multiply a sampled pair.
     """
-    if sample_id is None:
-        row = pg.execute(
-            "select max(sample_id) from link_precision_samples"
-            " where verdict is not null"
-        ).fetchone()
-        sample_id = row[0] if row else None
-    if not sample_id:
-        return {}
+    if rubric not in _PRECISION_RUBRICS:
+        raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
+    def _tally(run: str | None) -> dict[str, dict]:
+        rows = pg.execute(
+            _precision_tally_sql(run, from_mart=published_links is not None),
+            _precision_tally_params(rubric, run, published_links)
+        ).fetchall()
+        out: dict[str, dict] = {}
+        for method, run_id, confirmed, sampled, judged_at in rows:
+            if published_methods is not None and method not in published_methods:
+                continue
+            out[method] = {
+                "confirmed": confirmed,
+                "sampled": sampled,
+                "sample_id": run_id,
+                "judged": judged_at.date().isoformat() if judged_at else None,
+            }
+        return out
 
-    # This tally's universe is Postgres budget_line_awards (confidence
-    # high/medium below), NOT the dbt mart _published_link_methods reads —
-    # identical for every published figure today; if they ever drift, the
-    # mart is the reader's universe.
-    rows = pg.execute(
-        "select b.method, s.verdict"
-        " from link_precision_samples s"
-        " join budget_line_awards b"
-        "   on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli"
-        " where s.sample_id = %s and s.verdict is not null"
-        "   and b.confidence in ('high', 'medium')",
-        (sample_id,),
-    ).fetchall()
-
-    tally: dict[str, dict[str, int]] = {}
-    for method, verdict in rows:
-        if method in _UNRUBRICKED_PRECISION_STRATA:
-            continue
-        if published_methods is not None and method not in published_methods:
-            continue
-        slot = tally.setdefault(method, {"confirmed": 0, "sampled": 0})
-        slot["sampled"] += 1
-        if verdict == "confirmed":
-            slot["confirmed"] += 1
+    tally = _tally(sample_id)
+    # One method at a time, and never a fallback: a pinned method whose run
+    # judged nothing it still publishes leaves the figures entirely (and comes
+    # back in `unmeasured` below), because the alternative is publishing a
+    # different run's number under the pinned run's name.
+    for method, pinned_run in (pinned_samples or {}).items():
+        tally.pop(method, None)
+        pinned = _tally(pinned_run).get(method)
+        if pinned is not None:
+            tally[method] = pinned
     if not tally:
         return {}
 
-    sampled_at = pg.execute(
-        "select max(adjudicated_at) from link_precision_samples"
-        " where sample_id = %s and verdict is not null",
-        (sample_id,),
-    ).fetchone()[0]
-
+    judged_dates = [v["judged"] for v in tally.values() if v["judged"]]
     return {
-        "sample_id": sample_id,
-        "sampled_at": sampled_at.date().isoformat() if sampled_at else None,
+        "rubric": rubric,
+        "sample_id": max(v["sample_id"] for v in tally.values()),
+        "sampled_at": max(judged_dates) if judged_dates else None,
         "methods": dict(sorted(tally.items())),
         "unmeasured": sorted((published_methods or set()) - set(tally)),
     }
 
+def _announcement_scope_precision(pg, sample_id: str | None, *, published_links=None) -> dict | None:
+    """The held-out precision pair for the links ONE announcement pass
+    produced: ``{sample_id, sampled_at, drawn, sampled, confirmed}``, or None.
+
+    None when the scope row names no run, or when the run it names judged no
+    link the corpus still publishes under `announcement+lexicon` — the page
+    then says the pass's precision is not yet measured rather than reaching
+    for the tier-wide figure, which was sampled before these links existed.
+
+    Same population rule as `_link_precision_block`: a sampled link counts only
+    while the corpus publishes it at high or medium under that method, so a
+    link the loader's guards later drop leaves both numerator and denominator.
+    Only `attribution` verdicts count (migration 015) — a `rule-fired` verdict
+    answers whether the mechanical rule fired, which this route has none of.
+
+    `drawn` is that rule made visible: the run's judged attribution verdicts
+    BEFORE the published-links join. The wave-4 run drew 60 and 55 of them
+    publish today, so the pair is 48 of 55 (87.3%) where the raw verdicts read
+    51 of 60 (85.0%). A reader who is shown only the smaller denominator
+    cannot see that five links left it, so the page states the draw too.
+
+    `sampled_at` is `max(adjudicated_at)`, and that column is set to `now()`
+    when the verdicts are LOADED (scripts/precision_study.py, on insert and on
+    conflict) — it is the date the verdicts were recorded, not a date the
+    reviewers stamped. The page says "recorded", which is what the column
+    means; re-loading the same file would move it.
+
+    scripts/load_announcement_scope.py is the write-time twin: it refuses to
+    record a run whose sampled pairs are not the pass's own survivors, so
+    "joined to the wave's links" is enforced where the row is written and this
+    query only has to name the run.
+    """
+    if not sample_id:
+        return None
+    drawn_row = pg.execute(
+        "select count(*) from link_precision_samples"
+        " where sample_id = %s and rubric = 'attribution'"
+        "   and verdict is not null",
+        (sample_id,),
+    ).fetchone()
+    rows = pg.execute(
+        _precision_tally_sql(sample_id, from_mart=published_links is not None),
+        _precision_tally_params("attribution", sample_id, published_links),
+    ).fetchall()
+    row = next((r for r in rows if r[0] == "announcement+lexicon"), None)
+    confirmed, sampled, judged_at = (row[2], row[3], row[4]) if row else (0, 0, None)
+    if not sampled:
+        return None
+    return {
+        "sample_id": sample_id,
+        "sampled_at": judged_at.date().isoformat() if judged_at else None,
+        "drawn": int(drawn_row[0]),
+        "sampled": int(sampled),
+        "confirmed": int(confirmed),
+    }
+
+def _announcement_llm_scope(pg, *, published_links=None) -> dict:
+    """What the announcement LLM-alias pass has covered (ROADMAP findings :118-119).
+
+    Returns ``{}`` when no pass has been recorded, else::
+
+        {"as_of": "2026-09-19", "records_total": 32852,
+         "records_deterministic": 4508, "records_residue": 28344,
+         "records_attempted": 15604, "records_remaining": 12740,
+         "pct_value_attempted": 89.1, "pct_value_remaining": 10.9,
+         "links_new_this_pass": 367,                      # or None
+         "precision": {"sample_id": "2026-09-12", "sampled_at": "2026-09-19",
+                       "drawn": 60, "sampled": 55, "confirmed": 48}}  # or None
+
+    The precision pair is 48/55, not the 51/60 the verdict rows hold: only
+    judged links the corpus STILL publishes count (see
+    `_announcement_scope_precision`), and five of the 60 no longer do. `drawn`
+    carries the 60 so the page can show the reader both.
+
+    `links_new_this_pass` is how many of the links the corpus publishes under
+    `announcement+lexicon` only this pass produced — the part of the tier that
+    post-dates the pinned 2026-09-04 tier-wide draw, and which that draw
+    therefore could not have sampled. NULL on a row written before migration
+    017.
+
+    ALL keys or none — /methodology/ and gate 24 leg q both key off
+    ``records_total`` being present, so a partial block would make the page
+    hide the paragraph while the gate demanded it, and fail loudly. (Only
+    ``precision`` is nullable: a pass whose links carry no held-out sample yet
+    is a state the page states in words.)
+
+    THE DEFECT THIS SHAPE FIXES. /methodology/ stated the scope of this pass as
+    four literals typed on 2026-09-02 — "the 3,840 unmatched records that carry
+    about 88% of the residue by announced value; the 12,811 smaller records
+    carrying the remaining ~12% were not attempted". Every one was true when
+    written. None was derived from anything, the residue definition behind them
+    was never committed to the repo, and no gate in the build could see the
+    sentence go stale. Same species as the withdrawn-tier precision figure leg
+    n was built for.
+
+    Percentages are derived here and rendered verbatim by the page, so gate 24
+    leg q can recompute them from this same block. Dollars are NOT exported for
+    rendering: the /methodology/ currency scan (gate 2 render-static leg b)
+    fails any uncited `$…` token, and an allowlist entry must be a literal — a
+    derived figure can never be one.
+
+    Twin of scripts/load_announcement_scope.py, which writes the row. The two
+    invariants below are ALSO table CHECK constraints (migration 016); they are
+    re-asserted here because a database restored from a pre-016 dump, or
+    migrated without them, would otherwise publish impossible arithmetic.
+    """
+    row = pg.execute(
+        "select as_of, records_total, records_deterministic, records_residue,"
+        " records_attempted, value_residue, value_attempted,"
+        " precision_sample_id, links_new_this_pass"
+        " from announcement_llm_scope order by as_of desc limit 1"
+    ).fetchone()
+    if row is None:
+        return {}
+    (as_of, total, deterministic, residue, attempted,
+     value_residue, value_attempted, precision_sample_id, links_new) = row
+    if attempted > residue:
+        raise ValueError(
+            f"announcement_llm_scope {as_of}: records_attempted {attempted} "
+            f"exceeds records_residue {residue} — a pass cannot cover more "
+            f"records than the residue holds")
+    if deterministic + residue != total:
+        raise ValueError(
+            f"announcement_llm_scope {as_of}: records_deterministic "
+            f"{deterministic} + records_residue {residue} != records_total "
+            f"{total}")
+    pct_attempted = (round(float(value_attempted) * 100.0 / float(value_residue), 1)
+                     if value_residue else 0.0)
+    return {
+        "as_of": as_of.isoformat(),
+        "records_total": int(total),
+        "records_deterministic": int(deterministic),
+        "records_residue": int(residue),
+        "records_attempted": int(attempted),
+        "records_remaining": int(residue - attempted),
+        "pct_value_attempted": pct_attempted,
+        "pct_value_remaining": round(100.0 - pct_attempted, 1),
+        "links_new_this_pass": int(links_new) if links_new is not None else None,
+        "precision": _announcement_scope_precision(pg, precision_sample_id, published_links=published_links),
+    }
+
+def _org_absences(manifest_path: Path | None = None,
+                  fiscal_year: int | None = None) -> dict[str, dict]:
+    """The edition's recorded org absences, keyed by org, for the site.
+
+    The other half of the coverage-note decision (_ingested_service_orgs is
+    the first). An org OUTSIDE the ingested set has no loaded J-book detail,
+    and until Task 17c every one of its pages said the same thing about that:
+    "…J-book, which is not yet ingested". That sentence presupposes a book
+    exists and is merely awaiting work. For FY2026 it was false on five pages
+    — the DoD IG published no RDT&E or procurement justification book at all
+    (1 page), and DEFW publishes none for its reconciliation / undistributed /
+    roll-up workbook rows (4 pages) — and imprecise on fourteen more, where
+    the Defense Health Program book WAS downloaded and simply carries no
+    jb-2009 payload to extract.
+
+    So the site reads the probe instead of guessing: `jbooks` records each
+    absence with a RULE, a URL and a date via
+    edition_probe.record_org_absences, and this publishes
+    {org: {rule, fy, checked_on, checked_url}} into site_meta.org_absences.
+    program-tier.orgAbsenceWording renders one sentence per rule; gate 21 leg
+    (o) fails when a page whose org is in this payload renders anything else,
+    or still says "not yet ingested".
+
+    `fy` rides on every entry — the same value for all of them, because the
+    payload is ONE edition's record — because every sentence built from a rule
+    names the edition ("No FY2026 RDT&E or procurement justification book…").
+    Typed on the TypeScript side instead, that year is a literal nothing
+    re-derives: it goes stale the day JBOOK_FY rolls over and no gate can tell
+    a stale year from a correct one. program-tier.orgAbsenceWording THROWS
+    rather than render a yearless "FY", so an export that predates this field
+    cannot publish those pages at all; gate 21 leg (o) fails on the payload.
+
+    DERIVED, NEVER TYPED — the same discipline as ingested_service_orgs and
+    for the same reason: a hand-kept list of what is missing rots exactly like
+    a hand-kept list of what is present (2026-07-05).
+
+    `reason` is deliberately NOT published. It is the operator's audit trail
+    (HTTP probes, byte counts, backlog cross-references, one entry's own
+    correction history) and reads as internal prose; every word the site
+    renders comes from `rule` plus the org code, so the page cannot inherit a
+    sentence nobody wrote for a reader.
+
+    Raises ValueError on a rule outside ORG_ABSENCE_RULES rather than
+    dropping the entry: a dropped absence silently restores the false
+    "not yet ingested" wording on that org's pages, which is the defect this
+    payload exists to end. A new rule is a new sentence on the site, and the
+    export must stop until someone writes it.
+
+    That raise checks the entry against the PYTHON vocabulary only, and
+    edition_probe.record_org_absences refuses the same rules on the way in, so
+    it is reachable only by hand-editing the manifest. The divergence that
+    realistically happens — a rule ADDED to ORG_ABSENCE_RULES with no matching
+    case in program-tier.orgAbsenceWording — is valid here and passes this
+    check; it is caught at BUILD time by gate 21 leg (o), which fails on a
+    payload rule it has no sentence for. Two doors, two guards: the export
+    stops for a rule nobody recorded, the gate for a rule nobody wrote a
+    sentence for.
+    """
+    from govbudget import config
+    from govbudget.jbooks.edition_probe import ORG_ABSENCE_RULES
+
+    path = Path(manifest_path) if manifest_path is not None else (
+        config.RESEARCH_DIR / "edition_manifest.json"
+    )
+    fy = config.JBOOK_FY if fiscal_year is None else fiscal_year
+    if not path.exists():
+        return {}
+    manifest = json.loads(path.read_text())
+    entries = (manifest.get("org_absences") or {}).get(str(fy)) or []
+    out: dict[str, dict] = {}
+    for entry in entries:
+        rule = entry.get("rule")
+        if rule not in ORG_ABSENCE_RULES:
+            raise ValueError(
+                f"org_absences[{fy}] entry for {entry.get('org')!r} carries rule "
+                f"{rule!r}, which the site has no sentence for. Add it to "
+                "ORG_ABSENCE_RULES and to program-tier.orgAbsenceWording, or the "
+                "org's pages fall back to 'not yet ingested'"
+            )
+        out[entry["org"]] = {
+            "rule": rule,
+            "fy": int(fy),
+            "checked_on": entry["checked_on"],
+            "checked_url": entry["checked_url"],
+        }
+    return dict(sorted(out.items()))
+
+def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
+    """`(award_piid, pe_bli, method)` for every link the MART publishes at
+    HIGH — the universe /methodology/'s High-tier sentence is about.
+
+    THE REASON THIS READS THE MART AND NOT POSTGRES (measured 2026-09-11).
+    `budget_line_awards` does not know what publishes at high. dbt's
+    fct_budget_to_awards applies TWO rules on the way through, and the
+    second has no Postgres column: an adjudication's `adjudicated_confidence`
+    overrides the mechanical grade, AND an `account+tokens` row the crosswalk
+    graded high with no adjudication at all is DEMOTED to medium (#75
+    addendum, 2026-09-04 — the token-overlap tier alone is not
+    evidence-graded). Re-deriving the tier as
+    `coalesce(adjudicated_confidence, confidence)` therefore overstates the
+    high tier by the 113 unadjudicated `account+tokens` rows the mart
+    demoted: 881 instead of the 768 a reader meets. Only the mart knows.
+
+    ``None`` on a warehouse with no mart (older fixtures) — the caller then
+    omits the `high` sub-block and the page renders no High-tier census
+    rather than one measured against the wrong universe.
+
+    ONLY THE MISSING RELATION IS CAUGHT (fix round 2, R-6c-7). This used to
+    swallow every exception into the same ``None``, so a renamed column, a
+    type change or a transient read failure would have deleted the whole
+    High-tier census from a published /methodology/ with every gate green —
+    the vacuity shape M4 closed for `by_method`. A CatalogException means
+    "this warehouse has no mart", which is a real and expected state; every
+    other DuckDB error means the mart is there and the query is wrong, and
+    that must raise the export rather than quietly shrink the page. Gate 24
+    leg o carries the dated companion for what this cannot see from here: a
+    block that grades links and carries no `high` fails the leg.
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        rows = con.execute(
+            "select distinct award_piid, pe_bli, method"
+            " from fct_budget_to_awards"
+            " where confidence = 'high'"
+            "   and award_piid is not null and pe_bli is not null"
+            "   and method is not null"
+        ).fetchall()
+    except _duckdb.CatalogException:  # a warehouse without the mart
+        return None
+    finally:
+        con.close()
+    return [(str(p), str(b), str(m)) for p, b, m in rows]
+
+def _link_adjudication_block(
+    pg,
+    high_links: list[tuple[str, str, str]] | None = None,
+    measured_on: str | None = None,
+) -> dict:
+    """Per-award hand-adjudication COVERAGE of the budget→award crosswalk
+    (ROADMAP #109) — the numbers /methodology/ opens the "Budget-to-contract
+    links" section with, plus the High tier's own census.
+
+    Returns ``{}`` when no adjudication touches a published link (fixture
+    warehouses, a corpus adjudicated later) — the page then renders NOTHING
+    for that sentence rather than a claim with no measurement behind it.
+    Otherwise::
+
+        {"measured_on": "2026-09-11",    # the EXPORT RUN's date (see below)
+         "as_of": "2026-09-01",          # latest adjudication the block COUNTS
+         "published": 12595,             # confidence in ('high','medium')
+         "adjudicated": 9587,            # of those, links with an adjudication
+         "unpinned": 8474,               # of those, award_verdict darpa_unpinned
+         "unpinned_tier": "medium",      # the ONE grade every unpinned link
+                                         #   publishes at, or None if they differ
+         "by_method": {method: {"published": int, "adjudicated": int}},
+         "unadjudicated_methods": [...], # by_method entries with adjudicated == 0
+         "high": {                       # omitted when `high_links` is None
+             "published_high": 768,
+             "adjudicated_high": 60,
+             "two_lens_high": 60,        # refuter_lenses_passed = 2
+             "by_path": {method: {"high": int, "adjudicated": int,
+                                  "two_lens": int,
+                                  "with_match_basis": int}}}}  # last key only
+                                         #   where the path records sources
+
+    TWO DATES, BECAUSE THEY ARE TWO FACTS (fix round 1, C1). `as_of` is
+    ``max(adjudicated_at)`` — it dates the last ADJUDICATION, 2026-09-01.
+    The counts are taken at EXPORT time, and the corpus moved in between:
+    9,864 of the 12,595 links were created 2026-06-10 and 2,731 (every
+    `announcement+lexicon`, `fpds-ap` and `subaward+lexicon` row) on
+    2026-09-04, after the last adjudication ran — which is precisely WHY
+    those three paths carry none. Dating the census "as of 2026-09-01" made
+    the sentence false under its own date: on that day the ratio was 9,587 of
+    9,864, not of 12,595. `measured_on` therefore carries the export run's
+    date (the exporter passes ``built_at``'s day, so the two cannot disagree)
+    and `as_of` is stated for what it is. Gate 24 leg o binds each to its own
+    clause.
+
+    THE DEFECT (measured 2026-09-11, Task 6b). The section opened "As of
+    September 2026, every published link was individually hand-adjudicated:
+    … every proposed program-level link was then challenged by two independent
+    adversarial reviewers — a link is published as high only if neither could
+    refute it." Three of the five published methods carry ZERO adjudication
+    rows (their precision is measured by the sampled study instead — see
+    _link_precision_block), 8,474 of the adjudications that do exist say the
+    work could not be pinned to any one program element, and 60 rows in the
+    whole table carry refuter_lenses_passed = 2 — 57 of them on a link the
+    crosswalk grades high or medium. Owner rule 2026-08-07:
+    publish the smaller true number. Every figure in the replacement sentence
+    is read from this block and bound to it by gate 24 leg o.
+
+    THE HIGH SUB-BLOCK (fix round 1, R-6c-4) answers the same question for
+    the tier four surfaces called "verified adversarially". `high_links` is
+    the MART's high tier (_published_high_links) — never re-derived from
+    `budget_line_awards`, which does not know about dbt's demotion rule and
+    would report 881 links where the site publishes 768. Measured
+    2026-09-11: 768 published at high, 60 with an adjudication (all 60 at
+    ``refuter_lenses_passed = 2``), 708 `announcement+lexicon` with none, a
+    match basis recorded on 384 of those 708.
+
+    THE UNIVERSE is `budget_line_awards` at high/medium — the crosswalk's own
+    grade, which is what the adjudication overlay is applied TO. It is NOT
+    identical to the mart a reader meets: dbt takes
+    coalesce(adjudicated_confidence, confidence), so an adjudication can lift
+    a `low` link into the mart (442 `account` rows on 2026-09-11) or drop a
+    high/medium one out of it (262 contradicted/not_darpa rows). Measured the
+    same day, the mart held 12,280 published rows / 9,272 adjudicated — the
+    SAME 3,008 unadjudicated links, since every row the two universes disagree
+    about is one an adjudication moved. The rendered sentence therefore says
+    "the links the crosswalk grades high or medium", not "published links".
+
+    `unpinned_tier` is the adjudicated_confidence every unpinned published
+    link carries (`medium` on 2026-09-11, all 8,474 of them) — the tier they
+    publish at, because the mart takes adjudicated_confidence for an
+    adjudicated row. None when they do not agree, and the page then states
+    the count without a tier rather than the majority's.
+    """
+    rows = pg.execute(
+        """
+        select b.method,
+               count(*) as published,
+               count(a.id) as adjudicated,
+               count(*) filter (where a.award_verdict = 'darpa_unpinned') as unpinned,
+               max(a.adjudicated_at) as judged_at
+        from budget_line_awards b
+        left join award_pe_adjudications a
+          on a.award_piid = b.award_piid and a.pe_bli = b.pe_bli
+        where b.confidence in ('high', 'medium')
+        group by b.method
+        order by b.method
+        """
+    ).fetchall()
+
+    by_method: dict[str, dict] = {}
+    published = adjudicated = unpinned = 0
+    judged_dates = []
+    for method, n_pub, n_adj, n_unpinned, judged_at in rows:
+        by_method[method] = {"published": n_pub, "adjudicated": n_adj}
+        published += n_pub
+        adjudicated += n_adj
+        unpinned += n_unpinned
+        if judged_at is not None:
+            judged_dates.append(judged_at)
+    if adjudicated == 0:
+        return {}
+
+    tiers = [
+        tier
+        for (tier,) in pg.execute(
+            """
+            select distinct a.adjudicated_confidence
+            from budget_line_awards b
+            join award_pe_adjudications a
+              on a.award_piid = b.award_piid and a.pe_bli = b.pe_bli
+            where b.confidence in ('high', 'medium')
+              and a.award_verdict = 'darpa_unpinned'
+            """
+        ).fetchall()
+    ]
+
+    block = {
+        "measured_on": (
+            measured_on
+            or datetime.datetime.now(datetime.UTC).date().isoformat()
+        ),
+        "as_of": max(judged_dates).date().isoformat(),
+        "published": published,
+        "adjudicated": adjudicated,
+        "unpinned": unpinned,
+        "unpinned_tier": tiers[0] if len(tiers) == 1 else None,
+        "by_method": by_method,
+        "unadjudicated_methods": sorted(
+            m for m, v in by_method.items() if v["adjudicated"] == 0
+        ),
+    }
+    high = _high_tier_census(pg, high_links)
+    if high:
+        block["high"] = high
+    return block
+
+def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict:
+    """The `high` sub-block of `_link_adjudication_block` — see its docstring.
+
+    `high_links` comes from the MART (_published_high_links); this function
+    only asks Postgres what evidence each of those pairs carries. It never
+    decides which links publish at high, because Postgres cannot: dbt demotes
+    unadjudicated `account+tokens` high rows on the way through and there is
+    no column recording that.
+    """
+    if not high_links:
+        return {}
+
+    piids = [p for p, _, _ in high_links]
+    pes = [b for _, b, _ in high_links]
+
+    lenses: dict[tuple[str, str], int | None] = {
+        (p, b): n
+        for p, b, n in pg.execute(
+            """
+            select t.piid, t.pe, a.refuter_lenses_passed
+            from unnest(%(piids)s::text[], %(pes)s::text[]) as t(piid, pe)
+            join award_pe_adjudications a
+              on a.award_piid = t.piid and a.pe_bli = t.pe
+            """,
+            {"piids": piids, "pes": pes},
+        ).fetchall()
+    }
+    # A pair counts as carrying a recorded match basis when ANY of its
+    # award_link_sources rows records one. `sources` is counted too so a path
+    # that records sources but no bases publishes 0 rather than omitting the
+    # key — "not recorded" and "no such evidence" are different facts.
+    sources: dict[tuple[str, str], tuple[int, int]] = {
+        (p, b): (n_src, n_basis)
+        for p, b, n_src, n_basis in pg.execute(
+            """
+            select t.piid, t.pe, count(*) as sources,
+                   count(*) filter (
+                     where s.match_basis is not null and s.match_basis <> ''
+                   ) as with_basis
+            from unnest(%(piids)s::text[], %(pes)s::text[]) as t(piid, pe)
+            join award_link_sources s
+              on s.award_piid = t.piid and s.pe_bli = t.pe
+            group by t.piid, t.pe
+            """,
+            {"piids": piids, "pes": pes},
+        ).fetchall()
+    }
+
+    by_path: dict[str, dict] = {}
+    for piid, pe_bli, method in high_links:
+        path = by_path.setdefault(
+            method,
+            {"high": 0, "adjudicated": 0, "two_lens": 0,
+             "_sources": 0, "_basis": 0},
+        )
+        path["high"] += 1
+        key = (piid, pe_bli)
+        if key in lenses:
+            path["adjudicated"] += 1
+            if lenses[key] == 2:
+                path["two_lens"] += 1
+        n_src, n_basis = sources.get(key, (0, 0))
+        path["_sources"] += n_src
+        path["_basis"] += 1 if n_basis > 0 else 0
+
+    out_paths: dict[str, dict] = {}
+    for method in sorted(by_path):
+        path = by_path[method]
+        entry = {
+            "high": path["high"],
+            "adjudicated": path["adjudicated"],
+            "two_lens": path["two_lens"],
+        }
+        if path["_sources"] > 0:
+            entry["with_match_basis"] = path["_basis"]
+        out_paths[method] = entry
+
+    return {
+        "published_high": sum(v["high"] for v in out_paths.values()),
+        "adjudicated_high": sum(v["adjudicated"] for v in out_paths.values()),
+        "two_lens_high": sum(v["two_lens"] for v in out_paths.values()),
+        "by_path": out_paths,
+    }
 
 # ---------------------------------------------------------------------------
 # Curated corporate families (PM Sprint 2, §P1-3)
@@ -6302,20 +7038,29 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         # float accumulation, same fact-id attach rule (usaspending rows are
         # emitted for every non-null total_obligation — see
         # _build_usaspending_citation_rows).
-        try:
-            dp_rows = con.execute(
-                "select pop_state, pop_district, pe_bli, total_obligation"
-                " from fct_district_programs"
-                " order by pop_state, pop_district, total_obligation desc nulls last"
+        # `account` (Task 27) is REQUIRED here — see _require_account_column.
+        # A mart that predates it raises rather than silently re-fusing a
+        # shared code's members under one key.
+        # `ident` answers _district_program_key's one question — does this row
+        # name a member — the same way the sidecar emitter asks it.
+        ident = _district_program_identity(con)
+        dp_rows = (
+            con.execute(
+                "select pop_state, pop_district, pe_bli, account,"
+                " total_obligation from fct_district_programs"
+                " order by pop_state, pop_district,"
+                " total_obligation desc nulls last"
             ).fetchall()
-        except Exception:
-            dp_rows = []
+            if _require_account_column(con, "fct_district_programs")
+            else []
+        )
 
         # fct_district_totals (#51): the award-DISTINCT district headline.
-        # fct_district_programs is per (district, pe_bli) — an award matched
-        # to N program elements appears N times with the same dollars, so the
-        # raw per-program sum below (dist_raw_sum) double-counts (AK-00 read
-        # $1.05B off one $209.3M award attributed to five program elements).
+        # fct_district_programs is per (district, pe_bli, account) — an
+        # award matched to N program elements appears N times with the same
+        # dollars there, so the raw per-program sum below (dist_raw_sum)
+        # double-counts (AK-00 read $1.05B off one $209.3M award attributed
+        # to five program elements).
         # total_linkable_dollars is read from fct_district_totals instead of
         # that sum, by construction agreeing with _emit_district_sidecars.
         try:
@@ -6332,7 +7077,7 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         dist_cited_raw: dict[str, float] = {}
         dist_inputs: dict[str, list[str]] = {}
         dist_prog_count: dict[str, int] = {}
-        for pop_state, pop_district, pe_bli, total_obl in dp_rows:
+        for pop_state, pop_district, pe_bli, account, total_obl in dp_rows:
             if not pop_district:
                 continue
             dist_prog_count[pop_district] = dist_prog_count.get(pop_district, 0) + 1
@@ -6342,7 +7087,8 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
             if total_obl is not None:
                 usas_fid = fact_id_usaspending(
                     "district_program",
-                    f"{pop_state}|{pop_district}|{pe_bli}",
+                    _district_program_key(
+                        ident, pop_state, pop_district, pe_bli, account),
                     "total_obligation",
                 )
                 dist_cited_raw[pop_district] = (
@@ -6374,7 +7120,8 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                     true_linkable,
                     f"fct_district_totals.total_obligation for"
                     f" pop_district={pop_district!r} — the award-distinct"
-                    f" total across {n_progs} crosswalked program elements;"
+                    f" total across {n_progs} crosswalked program rows"
+                    f" (a shared code's members count once each);"
                     f" supersedes summing fct_district_programs.total_obligation,"
                     f" which counts an award once per matched program element (#51)",
                 ),
@@ -6396,6 +7143,89 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                     inputs_json,
                     f"{value:.3f}",
                     built_at,
+                ))
+
+        # ---- 4. District BY-YEAR aggregates (ROADMAP #6) ----
+        # NOT kind='usaspending': that tier's filter body caps award_ids at 25
+        # (see _build_usaspending_citation_rows), and a 25-PIID cap over a year
+        # slice returns a number that does not match the published one.
+        try:
+            dy_rows = con.execute(
+                "select pop_state, pop_district, fiscal_year, award_count,"
+                "       total_obligation, positive_obligation"
+                " from fct_district_totals_by_year"
+                " order by pop_state, pop_district, fiscal_year"
+            ).fetchall()
+        except Exception:
+            dy_rows = []
+
+        for (dy_state, dy_district, dy_fy, dy_awards, dy_total,
+             dy_positive) in dy_rows:
+            if not dy_district or dy_total is None:
+                continue
+            base_where = (
+                f"where pop_state = '{dy_state}' and pop_district ="
+                f" '{dy_district}' and fiscal_year = {int(dy_fy)}"
+            )
+            # The SUMMABILITY sentence is METRIC-CONDITIONAL (fix round 1,
+            # Critical 1). One template for both metrics shipped the net row's
+            # identity on the gross card, and it is false there: gross sums a
+            # district's years to MORE than its fct_district_totals headline
+            # wherever any of those years holds a deobligating transaction
+            # (measured read-only 2026-09-11: 90 of 153 districts, e.g. VA-11
+            # $2,101,123,465.21 gross against a $2,062,015,946.58 headline).
+            # The two sentences below are the ONLY per-metric difference after
+            # the opening clause — pinned by
+            # test_district_year_formula_is_metric_conditional.
+            for metric, value, wording, summability in (
+                (
+                    "total_obligation",
+                    float(dy_total),
+                    "net obligations (deobligations subtracted)",
+                    "Dollars are counted once per award per year, so this"
+                    " district's years sum to its fct_district_totals"
+                    " headline.",
+                ),
+                (
+                    "positive_obligation",
+                    float(dy_positive if dy_positive is not None else dy_total),
+                    "gross obligations (positive transactions only, before"
+                    " deobligations are subtracted)",
+                    "Gross is the transaction-level"
+                    " sum(greatest(obligation, 0)), counted once per award per"
+                    " year, so this district's years do NOT sum to its"
+                    " fct_district_totals headline wherever one of those years"
+                    " holds a deobligating transaction.",
+                ),
+            ):
+                fid = fact_id_derived(
+                    "district_year", f"{dy_district}|{int(dy_fy)}", metric
+                )
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD",
+                    f"fct_district_totals_by_year.{metric} for"
+                    f" pop_district={dy_district!r}, fiscal_year={int(dy_fy)} —"
+                    f" {wording} across the {int(dy_awards or 0)} distinct"
+                    f" high-confidence-crosswalked award(s) with a transaction"
+                    f" in that fiscal year."
+                    # Minor 7: name the year's provenance. fiscal_year is
+                    # fct_award_transactions.fiscal_year, which equals the
+                    # federal FY of action_date on all 39,982,196 rows in the
+                    # lake (checked read-only 2026-09-11) — never a J-book
+                    # edition year, which is the confusion 18a ruling 1 exists
+                    # to stop.
+                    f" The fiscal year is the federal fiscal year of the award"
+                    f" transaction's action date, never a J-book edition year."
+                    f" {summability}"
+                    f" The award counts do NOT sum (an award active in two"
+                    f" years is counted in both).",
+                    "[]",
+                    f"{value:.3f}",
+                    built_at,
+                    query_body=(
+                        f"select {metric} from fct_district_totals_by_year"
+                        f" {base_where}"
+                    ),
                 ))
     finally:
         con.close()
@@ -9874,6 +10704,13 @@ def _write_all_sidecars(
         # mistake of that shape available now, because _written_det_names is
         # the set every loop adds to as it writes.
         "program_pages": len(_written_det_names),
+        # Count registrations actually emitted with a resolving citation; an
+        # un-run SAM extract must remain an explicit zero, never implied data.
+        "companies_with_sam": sum(
+            1 for slug in written_entity_slugs
+            if json.loads((ent_dir / f"{slug}.json").read_text()).get("sam", {}).get("fact_id")
+            in _cited_fact_ids
+        ),
     }
 
     # ---- Canonical-TOA hero (PM Sprint 1, §P0-5) -------------------------
@@ -9953,7 +10790,10 @@ def _write_all_sidecars(
         # export_site (Postgres scope) and threaded via manifest, same
         # reason as ingested_service_orgs just above — this function only
         # holds a duckdb connection, no Postgres dsn.
+        "link_adjudication": manifest.get("link_adjudication", {}),
+        "org_absences": manifest.get("org_absences", {}),
         "link_precision": manifest.get("link_precision", {}),
+        "announcement_llm_scope": manifest.get("announcement_llm_scope", {}),
         # backlog #49: dollar-denominated /programs/ coverage — see
         # build_programs_coverage's doc-comment and the 2b block above.
         "programs_coverage": programs_coverage,
@@ -10150,10 +10990,10 @@ def _write_all_sidecars(
     # 19. flow_chart.json (Phase 5H — /flow/ flowdown, precomputed layout) #
     # ------------------------------------------------------------------ #
     if flow_payload is not None:
-        from govbudget.flow_chart import PAYLOAD_BUDGET_BYTES
+        from govbudget.flow_chart import PAYLOAD_BUDGET_BYTES, serialize_flow_chart
 
         flow_path = json_dir / "flow_chart.json"
-        _write_json(flow_path, flow_payload)
+        flow_path.write_text(serialize_flow_chart(flow_payload), encoding="utf-8")
         flow_size = flow_path.stat().st_size
         if flow_size > PAYLOAD_BUDGET_BYTES:
             print(
@@ -10468,33 +11308,58 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
                 official_url=f"{_USASPENDING_BASE}{_USASPENDING_FILTER_ENDPOINT}",
             ))
 
-        # ---- District programs: all 267 rows from fct_district_programs ----
-        try:
-            dp_rows = con.execute(
-                "select pop_state, pop_district, pe_bli, total_obligation"
-                " from fct_district_programs"
+        # ---- District programs: every fct_district_programs row ----
+        # One row per (state, district, pe_bli, account) since Task 27.
+        # `account` is required, not optional — see _require_account_column.
+        ident = _district_program_identity(con)
+        dp_rows = (
+            con.execute(
+                "select pop_state, pop_district, pe_bli, account,"
+                " total_obligation from fct_district_programs"
             ).fetchall()
-        except Exception:
-            dp_rows = []
+            if _require_account_column(con, "fct_district_programs")
+            else []
+        )
+        # The PIID filter below narrows on fct_budget_to_awards.account, which
+        # a post-Task-27 warehouse always carries (it is the column the mart
+        # above grains on). Asked once, loudly, rather than per row.
+        _links_have_account = bool(dp_rows) and _require_account_column(
+            con, "fct_budget_to_awards")
 
-        for pop_state, pop_district, pe_bli, total_obl in dp_rows:
+        for pop_state, pop_district, pe_bli, account, total_obl in dp_rows:
             if total_obl is None:
                 continue
 
-            # Get top award PIIDs for this (district, program) to anchor the filter
+            # Get top award PIIDs for this (district, program) to anchor the
+            # filter. Task 27: the link query narrows to THIS member's
+            # account. The pre-Task-27 query filtered on pe_bli alone, so the
+            # day both members' awards reach one district it would list the
+            # sibling's PIIDs under this member's figure — a filter a reader
+            # could run and get a different number than the page shows. It
+            # had not happened yet: all 11 shared-code bodies are byte-
+            # identical before and after (measured read-only 2026-09-19; no
+            # district holds two members of one code, so the district-scoped
+            # join could not reach the sibling). IS NOT DISTINCT FROM so an
+            # account-NULL row (every ordinary code) matches the account-NULL
+            # links it is built from, which is the pre-Task-27 result for all
+            # of them.
             try:
                 piids = con.execute(
                     "select distinct t.award_id_piid"
                     " from fct_award_transactions t"
                     " join (select distinct award_piid from fct_budget_to_awards"
-                    "       where confidence='high' and pe_bli=?) b"
+                    "       where confidence='high' and pe_bli=?"
+                    "         and account is not distinct from ?) b"
                     "   on t.award_id_piid = b.award_piid"
                     " where t.pop_state=? and t.pop_district=?"
                     " limit 25",
-                    [pe_bli, pop_state, pop_district],
-                ).fetchall()
+                    [pe_bli, account, pop_state, pop_district],
+                ).fetchall() if _links_have_account else []
                 piid_list = [r[0] for r in piids if r[0]]
             except Exception:
+                # fct_award_transactions or fct_budget_to_awards absent — the
+                # citation ships with no award_ids, as it always has. A
+                # PRESENT table with no `account` raised above instead.
                 piid_list = []
 
             query_body = _json.dumps({
@@ -10508,7 +11373,8 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
                 "version": "2020-06-01",
             }, sort_keys=True)
 
-            key_str = f"{pop_state}|{pop_district}|{pe_bli}"
+            key_str = _district_program_key(
+                ident, pop_state, pop_district, pe_bli, account)
             fid = fact_id_usaspending("district_program", key_str, "total_obligation")
             rows.append(_null_usaspending_row(
                 fid, query_body, f"{total_obl:.3f}", "USD",
@@ -11451,40 +12317,39 @@ def _emit_district_sidecars(
 
     #51: total_linkable_dollars is read from fct_district_totals (one row per
     district, dollars counted once per award) rather than summed from
-    fct_district_programs (per (district, pe_bli) — an award matched to N
+    fct_district_programs (per (district, pe_bli, account) — an award matched to N
     program elements appears N times with the same dollars). Each per-program
     row keeps its own total_obligation exactly as before, plus a new
     shared_award_count: the largest number of program elements any one of its
     underlying awards is ALSO matched to, so the page can say "this award,
     matched to N programs" rather than implying N distinct awards.
 
-    ROADMAP #70 fix round 1: `shared_pe_blis` is the set of pe_bli values
-    dim_programs publishes more than once. For those codes prog_titles holds a
-    both-members label (see shared_code_program_label) — right for a link to
-    the disambiguation stub, wrong over a dollar figure that belongs to ONE
-    member. A district row's dollars come from fct_district_programs, whose
-    program_title fct_budget_to_awards already resolved per (pe_bli, account)
-    to the member whose high-confidence links produced them, so on a shared
-    code that mart title is preferred over the dict. Every other pe_bli is
-    unaffected: prog_titles remains the label, exactly as before.
+    Each row keeps its account, member page slug and member-specific citation.
+    Unresolved shared-code rows keep the disambiguation link and combined label.
 
     Returns number of files written.
     """
     import json as _json
 
     n_written = 0
+    ident = _district_program_identity(con)
 
-    # ---- District program rows from fct_district_programs (UNCHANGED) ----
-    try:
-        dp_rows = con.execute(
-            "select pop_state, pop_district, pe_bli, program_title,"
+    # ---- District program rows from fct_district_programs ----
+    # ORDER BY is a published contract (data-sort-order="total_obligation:desc",
+    # gate 24 leg f) and _build_geography_citation_rows' own read mirrors it.
+    # `account` is REQUIRED (see _require_account_column): a mart without it
+    # predates Task 27 and would re-fuse a shared code's members here.
+    dp_rows = (
+        con.execute(
+            "select pop_state, pop_district, pe_bli, account, program_title,"
             "       organization, transaction_count, award_count,"
             "       recipient_count, total_obligation"
             " from fct_district_programs"
             " order by pop_state, pop_district, total_obligation desc nulls last"
         ).fetchall()
-    except Exception:
-        dp_rows = []
+        if _require_account_column(con, "fct_district_programs")
+        else []
+    )
 
     # ---- fct_district_totals (#51): the award-DISTINCT district headline ----
     try:
@@ -11499,45 +12364,77 @@ def _emit_district_sidecars(
     }
     award_count_by_district: dict[str, int] = {r[0]: int(r[1] or 0) for r in dt_rows}
 
-    # ---- shared_award_count per (district, pe_bli) ----
+    # ---- shared_award_count per (district, split_key) ----
     # The largest number of DISTINCT program elements any one award
-    # contributing to this (district, pe_bli) row is ALSO crosswalked to.
-    # Second query over the linked (high-confidence) subset only — not the
-    # 40M-row fct_award_transactions table — so this is cheap (~0.2s
-    # measured). Gracefully empty when the base tables are unavailable (test
-    # fixtures); every program then defaults to shared_award_count=1, the
-    # non-alarming "not shared" state.
+    # contributing to this district row is ALSO crosswalked to. Second query
+    # over the linked (high-confidence) subset only — not the 40M-row
+    # fct_award_transactions table — so this is cheap (~0.2s measured).
+    # Gracefully empty when the base tables are unavailable (test fixtures);
+    # every program then defaults to shared_award_count=1, the non-alarming
+    # "not shared" state.
+    #
+    # Task 27: the detail CTE carries the account, so the count attaches to
+    # the MEMBER row it describes rather than to both members of a shared
+    # code. The fan-out numerator stays on the bare pe_bli: "how many program
+    # elements is this award also matched to" is a question about elements,
+    # and two members of one code are one element to an award.
+    #
+    # `account` on fct_budget_to_awards is REQUIRED once there are district
+    # rows to attach counts to — the mart above already proved this warehouse
+    # is post-Task-27. With no district rows there is nothing to count, so the
+    # query is skipped rather than run for its side effects.
+    _fanout_ready = bool(dp_rows) and _require_account_column(
+        con, "fct_budget_to_awards")
     try:
-        fanout_rows = con.execute(
-            """
-            with award_fanout as (
-                select award_piid, count(distinct pe_bli) as pe_fanout
-                from fct_budget_to_awards
-                where confidence = 'high'
-                group by 1
-            ),
-            detail as (
-                select t.pop_district, b.pe_bli, t.award_id_piid
-                from fct_award_transactions t
-                join (
-                    select distinct award_piid, pe_bli
+        fanout_rows = (
+            con.execute(
+                """
+                with award_fanout as (
+                    select award_piid, count(distinct pe_bli) as pe_fanout
                     from fct_budget_to_awards
                     where confidence = 'high'
-                ) b on t.award_id_piid = b.award_piid
-                where t.pop_district is not null
+                    group by 1
+                ),
+                detail as (
+                    select t.pop_district, b.pe_bli, b.account, t.award_id_piid
+                    from fct_award_transactions t
+                    join (
+                        select distinct award_piid, pe_bli, account
+                        from fct_budget_to_awards
+                        where confidence = 'high'
+                    ) b on t.award_id_piid = b.award_piid
+                    where t.pop_district is not null
+                    group by 1, 2, 3, 4
+                )
+                select d.pop_district, d.pe_bli, d.account,
+                       max(f.pe_fanout) as shared_award_count
+                from detail d
+                join award_fanout f on d.award_id_piid = f.award_piid
                 group by 1, 2, 3
-            )
-            select d.pop_district, d.pe_bli, max(f.pe_fanout) as shared_award_count
-            from detail d
-            join award_fanout f on d.award_id_piid = f.award_piid
-            group by 1, 2
-            """
-        ).fetchall()
+                """
+            ).fetchall()
+            if _fanout_ready
+            else []
+        )
     except Exception:
+        # fct_award_transactions (or fct_budget_to_awards) absent — every
+        # program then defaults to shared_award_count=1, as before.
         fanout_rows = []
-    shared_count_by_key: dict[tuple, int] = {
-        (r[0], r[1]): int(r[2]) for r in fanout_rows
-    }
+    # MAX, not last-wins. Two fanout rows collapse onto one key whenever
+    # _district_row_member_slug returns None for both — an org-split code
+    # (one account for both members), or an account-split code carrying an
+    # account dim_programs has never published (the tail fix round 2 pulled
+    # into that one function, so the fact id falls back with the address).
+    # A dict comprehension would then publish whichever row the query
+    # happened to return last, and the page renders this number in a
+    # sentence ("this award, matched to N programs"). max() is what the
+    # query's own max(f.pe_fanout) means. Unreachable on today's corpus:
+    # measured read-only 2026-09-19, no (district, pe_bli) pair carries more
+    # than one account row (608 member rows over 608 distinct triples).
+    shared_count_by_key: dict[tuple, int] = {}
+    for r in fanout_rows:
+        _k = (r[0], _member_split_key(ident, r[1], r[2]))
+        shared_count_by_key[_k] = max(shared_count_by_key.get(_k, 0), int(r[3]))
 
     # ---- dim_geography grand total ----
     # Same SQL as _build_geography_citation_rows' grand-total row so the
@@ -11567,13 +12464,18 @@ def _emit_district_sidecars(
     # correction.
     _title_overrides = load_title_overrides()
 
-    for (pop_state, pop_district, pe_bli, program_title, organization,
+    for (pop_state, pop_district, pe_bli, account, program_title, organization,
          transaction_count, award_count, recipient_count, total_obligation) in dp_rows:
         if not pop_district:
             continue
         key = pop_district
         _mart_title = apply_title_override(pe_bli, program_title, _title_overrides)
-        if pe_bli in shared_pe_blis and _mart_title:
+        # Task 27: the member this row's dollars belong to, resolved from the
+        # mart's own account exactly as a program page resolves its own slug.
+        # Equal to pe_bli whenever no member is named — an ordinary code, an
+        # organization-split code, or an account-NULL row on a shared code.
+        split_key = _member_split_key(ident, pe_bli, account)
+        if split_key != pe_bli and _mart_title:
             # ROADMAP #70 fix round 1: one member of this code earned these
             # dollars and the mart names it. prog_titles names BOTH members
             # (it labels a link to the disambiguation stub), which over a
@@ -11581,10 +12483,14 @@ def _emit_district_sidecars(
             # names.
             title = _mart_title
         else:
+            # No member named: the both-members label over the stub link,
+            # or — for every code that names ONE program — the one title
+            # prog_titles has always given it.
             title = prog_titles.get(pe_bli, _mart_title or "")
 
-        # Compute the usaspending fact_id for this (district, program)
-        key_str = f"{pop_state}|{pop_district}|{pe_bli}"
+        # Compute the usaspending fact_id for this (district, program member)
+        key_str = _district_program_key(
+            ident, pop_state, pop_district, pe_bli, account)
         fid = fact_id_usaspending("district_program", key_str, "total_obligation")
         fact_id_for_program = fid if fid in cited_fact_ids else None
 
@@ -11609,16 +12515,18 @@ def _emit_district_sidecars(
         if key not in district_programs:
             district_programs[key] = []
         district_programs[key].append({
+            "account": account,
             "award_count": award_count,
             "fact_id": fact_id_for_program,
             "organization": organization,
             "pe_bli": pe_bli,
-            "program_url": f"/program/{pe_bli}/",
+            "program_url": f"/program/{split_key}/",
             "recipient_count": recipient_count,
             # #51: the number of program elements the SAME award is also
             # matched to — 1 means "not shared". >1 is the AK-00 tell: one
             # award attributed whole to each of N program elements.
-            "shared_award_count": shared_count_by_key.get((pop_district, pe_bli), 1),
+            "shared_award_count": shared_count_by_key.get((pop_district, split_key), 1),
+            "split_key": split_key,
             "title": title,
             "total_obligation": float(total_obligation) if total_obligation is not None else None,
             "transaction_count": transaction_count,
@@ -12922,17 +13830,27 @@ def _emit_breakdowns(
             )
 
     # usaspending district-program reverse index: fid → (pe_bli, program_title)
+    # The key MUST mirror _district_program_key exactly — this index is what
+    # gives a district-program input chip its label, and it lives two thousand
+    # lines from the three sites that mint the id.
     usas_meta: dict[str, tuple] = {}
-    try:
-        dp_rows = con.execute(
-            "select pop_state, pop_district, pe_bli, program_title"
+    # `account` is REQUIRED (see _require_account_column): a mart without it
+    # would mint pre-Task-27 keys here while the sidecars mint member keys,
+    # and every district-program input chip would lose its label.
+    _ident = _district_program_identity(con)
+    dp_rows = (
+        con.execute(
+            "select pop_state, pop_district, pe_bli, account, program_title"
             " from fct_district_programs"
         ).fetchall()
-    except Exception:
-        dp_rows = []
-    for pop_state, pop_district, dp_pe, dp_title in dp_rows:
+        if _require_account_column(con, "fct_district_programs")
+        else []
+    )
+    for pop_state, pop_district, dp_pe, dp_account, dp_title in dp_rows:
         fid_us = fact_id_usaspending(
-            "district_program", f"{pop_state}|{pop_district}|{dp_pe}",
+            "district_program",
+            _district_program_key(
+                _ident, pop_state, pop_district, dp_pe, dp_account),
             "total_obligation",
         )
         usas_meta[fid_us] = (dp_pe, apply_title_override(dp_pe, dp_title, _title_overrides))

@@ -438,6 +438,11 @@ def _other_payload(members: list[str], values: dict[str, Decimal],
 # ---------------------------------------------------------------------------
 
 
+def serialize_flow_chart(payload: dict) -> str:
+    """Compact the transport without dropping drill-down members or receipts."""
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
 def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
                      default_fy: int = 2025) -> tuple[dict | None, list[tuple]]:
     """Build (payload, citation_rows) for flow_chart.json.

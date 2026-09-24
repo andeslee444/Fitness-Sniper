@@ -6,7 +6,9 @@ import psycopg
 import pytest
 
 from govbudget.jbooks import crosswalk as crosswalk_module
-from govbudget.jbooks.crosswalk import crosswalk_org
+from govbudget.jbooks.crosswalk import (
+    CrosswalkPlan, apply_crosswalk_plans, crosswalk_org, plan_crosswalk_org,
+)
 
 AWARD_COLS = (
     "contract_transaction_unique_key, award_id_piid, federal_action_obligation,"
@@ -24,12 +26,12 @@ def make_award_parquet(tmp_path: Path) -> Path:
         copy (select * from (values
           ('K1','HR001124C0001','5000000','097-0400','DEFENSE RESEARCH SCIENCES MATHEMATICS PROGRAM',
            'BASIC MATHEMATICS SCIENCES INITIATIVE','ACME RESEARCH LLC','UEIDARPA1',
-           'Defense Advanced Research Projects Agency','2024-03-01'),
+           'Defense Advanced Research Projects Agency','2026-03-01'),
           ('K2','HR001124C0002','100','021-2040','UNRELATED ARMY THING',
-           'TANK PARTS','TANKCO','UEITANK','Dept of the Army','2024-04-01'),
+           'TANK PARTS','TANKCO','UEITANK','Dept of the Army','2026-04-01'),
           ('K3','HR001124C0003','750000','021-1319;097-0400','RESEARCH SUPPORT SERVICES',
            'SOMETHING ELSE ENTIRELY','BETA LABS','UEIBETA',
-           'Defense Advanced Research Projects Agency','2024-05-01')
+           'Defense Advanced Research Projects Agency','2026-05-01')
         ) t({AWARD_COLS})) to '{out}/part.parquet' (format parquet)
         """
     )
@@ -45,7 +47,7 @@ def make_award_parquet_with_dates(tmp_path: Path, rows: list[tuple]) -> str:
     out = tmp_path / "contracts" / "fy=2024"
     out.mkdir(parents=True, exist_ok=True)
     values_sql = ", ".join(
-        "(" + ", ".join("'" + str(v).replace("'", "''") + "'" for v in row) + ")"
+        "(" + ", ".join("NULL" if v is None else "'" + str(v).replace("'", "''") + "'" for v in row) + ")"
         for row in rows
     )
     duckdb.sql(
@@ -66,10 +68,10 @@ def make_navy_award_parquet(tmp_path: Path) -> Path:
         copy (select * from (values
           ('N1','N0001824C0001','2000000','017-1319','NAVAL RESEARCH SCIENCES PROGRAM',
            'OCEAN RESEARCH INITIATIVE','NAVY LABS LLC','UEINAV1',
-           'Department of the Navy','2024-06-01'),
+           'Department of the Navy','2026-06-01'),
           ('N2','N0001824C0002','500000','097-1319','DEFENSE WIDE SCIENCES THING',
            'SOME DEFENSE PROGRAM','DEFENSE CO','UEIDEF1',
-           'Under Secretary of Defense','2024-07-01')
+           'Under Secretary of Defense','2026-07-01')
         ) t({AWARD_COLS})) to '{out}/part.parquet' (format parquet)
         """
     )
@@ -243,7 +245,7 @@ def test_crosswalk_small_token_not_high_confidence(pg_dsn, tmp_path):
           ('SB1','FA860124C0099','999999','097-0400',
            'SMALL DIAMETER BOMB INCREMENT II',
            'SMALL DIAMETER BOMB INCREMENT II','BOMB CO','UEIBOMB',
-           'Defense Advanced Research Projects Agency','2024-08-01')
+           'Defense Advanced Research Projects Agency','2026-08-01')
         ) t({AWARD_COLS})) to '{out}/part.parquet' (format parquet)
         """
     )
@@ -255,7 +257,7 @@ def test_crosswalk_small_token_not_high_confidence(pg_dsn, tmp_path):
         rows = con.execute(
             "select award_piid, confidence from budget_line_awards where pe_bli='0601SBIR'"
         ).fetchall()
-    # The award may or may not match (sub-agency gives medium) but must not be high
+    assert rows, "The stopword regression must exercise a real candidate"
     for piid, conf in rows:
         assert conf != "high", f"Expected not-high for stopword-only match, got {conf} for {piid}"
 
@@ -360,7 +362,7 @@ def test_subagency_aliases_come_from_seed(pg_dsn, tmp_path):
           ('M1','MDA0024C0001','2000000','097-0603870',
            'UNRELATED DESCRIPTION ONE','UNRELATED DESCRIPTION TWO',
            'INTERCEPT SYSTEMS LLC','UEIMDA1',
-           'Missile Defense Agency','2024-02-01')
+           'Missile Defense Agency','2026-02-01')
         ) t({AWARD_COLS})) to '{out}/part.parquet' (format parquet)
         """
     )
@@ -430,3 +432,246 @@ def test_subagency_seed_rejects_empty_organization(tmp_path, monkeypatch):
     monkeypatch.setattr(crosswalk_module, "_ALIASES_CSV", bad_csv)
     with pytest.raises(ValueError, match="empty organization"):
         crosswalk_module._load_subagency_aliases()
+
+
+ASSIGNMENT_COLUMNS = (
+    "pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,"
+    " recipient_uei, matched_obligation, method, confidence, score, rationale"
+)
+
+
+def _assignments(pg_dsn):
+    with psycopg.connect(pg_dsn) as pg:
+        return pg.execute(
+            f"select {ASSIGNMENT_COLUMNS} from budget_line_awards order by 1,2,3,4,5"
+        ).fetchall()
+
+
+def _award(key, piid, date, *, description="X", account="097-0400", amount="1", name="Recipient", uei="U"):
+    return (key, piid, amount, account, description, "Y", name, uei,
+            "Defense Advanced Research Projects Agency", date)
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"fy_start": 2026}, {"fy_end": 2026},
+    {"fy_start": 2026, "fy_end": 2025},
+    {"fy_start": 0, "fy_end": 2026}, {"fiscal_year": 2201},
+    {"max_rows": 0}, {"max_rows": -1}, {"min_overlap": 0},
+])
+def test_invalid_scope_fails_before_accessing_any_database(kwargs, monkeypatch):
+    def forbidden(*args, **kw):
+        pytest.fail("invalid scope accessed the database")
+    monkeypatch.setattr(crosswalk_module.psycopg, "connect", forbidden)
+    with pytest.raises(ValueError):
+        crosswalk_org("unused", organization="DARPA", treasury_agency="097",
+                      award_glob="unused", **kwargs)
+
+
+def test_default_matches_each_edition_fy_and_excludes_invalid_dates(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("""insert into budget_lines
+            (exhibit,fiscal_year,account,organization,pe_bli,title,amount_type,source_document_id)
+            select exhibit,2025,account,organization,pe_bli,title,amount_type,source_document_id
+            from budget_lines""")
+    glob = make_award_parquet_with_dates(tmp_path, [
+        _award("K1", "FY25", "2025-09-30"),
+        _award("K2", "FY26", "2025-10-01"),
+        _award("K3", "NULL", None),
+        _award("K4", "INVALID", "2025-99-99"),
+        _award("K5", "FY27", "2026-10-01"),
+    ])
+    assert crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob) == 2
+    assert [(r[2], r[4]) for r in _assignments(pg_dsn)] == [(2025, "FY25"), (2026, "FY26")]
+    assert all(f"award action FY{r[2]}" in r[-1] for r in _assignments(pg_dsn))
+    plan = plan_crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                             award_glob=glob, fiscal_year=2026)
+    assert [(r[2], r[4]) for r in plan.rows] == [(2026, "FY26")]
+
+
+def test_dry_run_and_cap_leave_every_assignment_untouched(pg_dsn, tmp_path):
+    seed_budget_with_detail(pg_dsn)
+    lake = make_award_parquet(tmp_path)
+    kwargs = dict(organization="DARPA", treasury_agency="097",
+                  award_glob=str(lake / "contracts" / "*" / "*.parquet"))
+    assert crosswalk_org(pg_dsn, **kwargs, dry_run=True) == 2
+    assert _assignments(pg_dsn) == []
+    with pytest.raises(ValueError, match="Projected.*exceed"):
+        crosswalk_org(pg_dsn, **kwargs, max_rows=1)
+    assert _assignments(pg_dsn) == []
+    crosswalk_org(pg_dsn, **kwargs)
+    before = _assignments(pg_dsn)
+    with pytest.raises(ValueError, match="Projected.*exceed"):
+        crosswalk_org(pg_dsn, **kwargs, dry_run=True, max_rows=1)
+    assert _assignments(pg_dsn) == before
+
+
+@pytest.mark.parametrize("method", ["announcement+lexicon", "subaward+lexicon", "fpds-ap", "human-adjudicated"])
+def test_preserves_entire_evidence_row_and_counts_only_real_writes(pg_dsn, tmp_path, method):
+    seed_budget_with_detail(pg_dsn)
+    lake = make_award_parquet(tmp_path)
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("""insert into budget_line_awards
+          (pe_bli,exhibit,fiscal_year,organization,award_piid,recipient_name,recipient_uei,
+           matched_obligation,method,confidence,score,rationale)
+          values ('0601101E','R-1',2026,'DARPA','HR001124C0001','Reviewed name','Reviewed UEI',
+                  7,%s,'low',12,'Human reviewed evidence')""", (method,))
+    before = _assignments(pg_dsn)[0]
+    assert crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                         award_glob=str(lake / "contracts" / "*" / "*.parquet")) == 1
+    assert _assignments(pg_dsn)[0] == before
+
+
+def test_shuffled_titles_and_transactions_produce_identical_full_assignments(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    titles = ["QUANTUM PHOTONICS", "UNRELATED TITLE", "QUANTUM PHOTONICS"]
+    rows = [
+        _award("K1", "P", "2026-01-01", description="UNRELATED", name="Old", uei="OldU", amount="0.1"),
+        _award("K2", "P", "2026-06-01", description="PHOTONICS", name="New", uei="NewU", amount="0.2"),
+        _award("K3", "P", "2026-06-01", description="QUANTUM", name="New", uei="NewU", amount="0.3"),
+    ]
+    kwargs = dict(organization="DARPA", treasury_agency="097")
+    plans = []
+    for ordering in (titles, list(reversed(titles)), [titles[1], titles[0], titles[2]]):
+        with psycopg.connect(pg_dsn) as pg:
+            pg.execute("delete from budget_lines")
+            doc = pg.execute("select id from jbook_documents limit 1").fetchone()[0]
+            for i, title in enumerate(ordering):
+                pg.execute("""insert into budget_lines
+                  (pe_bli,exhibit,fiscal_year,organization,account,title,amount_type,source_document_id)
+                  values ('0601101E','R-1',2026,'DARPA','0400',%s,%s,%s)""", (title, str(i), doc))
+        rows.reverse()
+        glob = make_award_parquet_with_dates(tmp_path, rows)
+        plans.append(plan_crosswalk_org(pg_dsn, **kwargs, award_glob=glob))
+        assert crosswalk_org(pg_dsn, **kwargs, award_glob=glob) == 1
+        if len(plans) == 1:
+            first = _assignments(pg_dsn)
+        assert _assignments(pg_dsn) == first
+    assert plans[0] == plans[1] == plans[2]
+    assert first[0][5:11] == ("New", "NewU", Decimal("0.6"), "account+tokens", "high", Decimal("2"))
+
+
+def test_account_membership_is_exact_and_multi_account_transactions_null_amount(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    glob = make_award_parquet_with_dates(tmp_path, [
+        _award("K1", "FALSE_PREFIX", "2026-01-01", account="097-04000"),
+        _award("K2", "P", "2026-01-01", account="097-0400", amount="5"),
+        _award("K3", "P", "2026-01-02", account="021-1319; 097-0400", amount="7"),
+    ])
+    assert crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob) == 1
+    assert _assignments(pg_dsn)[0][4] == "P"
+    assert _assignments(pg_dsn)[0][7] is None
+
+
+def test_ambiguous_accounts_abort_without_writing(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("""insert into budget_lines
+            (exhibit,fiscal_year,account,organization,pe_bli,title,amount_type,source_document_id)
+            select exhibit,fiscal_year,'0500',organization,pe_bli,title,amount_type,source_document_id
+            from budget_lines""")
+    with pytest.raises(ValueError, match="Ambiguous accounts"):
+        crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob="unused")
+    assert _assignments(pg_dsn) == []
+
+
+def test_application_is_atomic_and_total_cap_spans_plans(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    lake = make_award_parquet(tmp_path)
+    plan = plan_crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                             award_glob=str(lake / "contracts" / "*" / "*.parquet"))
+    parts = [CrosswalkPlan("DARPA", (row,)) for row in plan.rows]
+    with pytest.raises(ValueError, match="Projected.*exceed"):
+        apply_crosswalk_plans(pg_dsn, parts, max_rows=1)
+    assert _assignments(pg_dsn) == []
+    invalid = list(parts[1].rows[0])
+    invalid[9] = "invalid-confidence"
+    with pytest.raises(psycopg.errors.CheckViolation):
+        apply_crosswalk_plans(pg_dsn, [parts[0], CrosswalkPlan("DARPA", (tuple(invalid),))])
+    assert _assignments(pg_dsn) == []
+
+
+def test_cli_dry_run_never_migrates_and_passes_edition_scope(pg_dsn, tmp_path, monkeypatch, capsys):
+    from govbudget import cli, config
+    from govbudget.jbooks import db
+    seed_budget(pg_dsn)
+    make_award_parquet(tmp_path)
+    monkeypatch.setattr(config, "PG_DSN", pg_dsn)
+    monkeypatch.setattr(config, "PARQUET_DIR", tmp_path)
+    monkeypatch.setattr(db, "migrate", lambda: pytest.fail("dry-run migrated schema"))
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--dry-run", "--fiscal-year", "2026", "--max-rows", "2"])
+    assert "2 projected candidates; no links written" in capsys.readouterr().out
+    assert _assignments(pg_dsn) == []
+    with pytest.raises(ValueError, match="supplied together"):
+        cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--fy-start", "2026"])
+
+
+def test_cli_preflights_every_organization_before_any_write(pg_dsn, tmp_path, monkeypatch):
+    from govbudget import cli, config
+    seed_budget(pg_dsn)
+    seed_navy_budget(pg_dsn)
+    make_award_parquet_with_dates(tmp_path, [
+        _award("K1", "DARPA", "2026-01-01"),
+        _award("K2", "NAVY", "2026-01-01", account="017-1319"),
+    ])
+    monkeypatch.setattr(config, "PG_DSN", pg_dsn)
+    monkeypatch.setattr(config, "PARQUET_DIR", tmp_path)
+    with pytest.raises(ValueError, match="Projected.*exceed"):
+        cli.main(["jbooks", "crosswalk", "--max-rows", "1"])
+    assert _assignments(pg_dsn) == []
+
+
+
+def test_latest_document_title_wins_without_broadening_to_obsolete_title(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("update budget_lines set title='QUANTUM PHOTONICS'")
+        doc = pg.execute("""insert into jbook_documents
+          (org,exhibit_family,fiscal_year,title,source_url)
+          values ('DARPA','rdte',2026,'new.pdf','https://example.test/new.pdf') returning id""").fetchone()[0]
+        pg.execute("""insert into budget_lines
+          (pe_bli,exhibit,fiscal_year,organization,account,title,amount_type,source_document_id)
+          values ('0601101E','R-1',2026,'DARPA','0400','UPDATED TITLE','latest',%s)""", (doc,))
+    glob = make_award_parquet_with_dates(tmp_path, [
+        _award("K", "P", "2026-01-01", description="QUANTUM PHOTONICS"),
+    ])
+    plan = plan_crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob)
+    assert plan.projected_rows == 1
+    assert plan.rows[0][8:11] == ("account+subagency", "medium", 0)
+
+
+def test_other_organization_and_edition_details_do_not_promote_matching_line(pg_dsn, tmp_path):
+    seed_budget_with_detail(pg_dsn)
+    with psycopg.connect(pg_dsn) as pg:
+        # Existing detail originally adds MATHEMATICS/COMPUTER/SCIENCES tokens.
+        # Moving its source to another edition must remove that evidence.
+        pg.execute("update jbook_documents set fiscal_year=2025")
+    glob = make_award_parquet_with_dates(tmp_path, [
+        _award("K", "P", "2026-01-01", description="MATHEMATICS COMPUTER"),
+    ])
+    kwargs = dict(organization="DARPA", treasury_agency="097", award_glob=glob)
+    assert plan_crosswalk_org(pg_dsn, **kwargs).rows[0][8:11] == ("account+subagency", "medium", 0)
+    with psycopg.connect(pg_dsn) as pg:
+        pg.execute("update jbook_documents set fiscal_year=2026, org='OTHER'")
+    assert plan_crosswalk_org(pg_dsn, **kwargs).rows[0][8:11] == ("account+subagency", "medium", 0)
+
+
+def test_recipient_is_one_latest_transaction_and_updates_on_rerun(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    rows = [_award("K1", "P", "2026-01-01", name="Old", uei="OldU")]
+    glob = make_award_parquet_with_dates(tmp_path, rows)
+    kwargs = dict(organization="DARPA", treasury_agency="097", award_glob=glob)
+    crosswalk_org(pg_dsn, **kwargs)
+    rows += [
+        _award("K2", "P", "2026-01-01", name="Earlier key", uei="OtherU"),
+        _award("K3", "P", "2026-01-01", name="Latest key", uei=None),
+    ]
+    make_award_parquet_with_dates(tmp_path, list(reversed(rows)))
+    crosswalk_org(pg_dsn, **kwargs)
+    assert _assignments(pg_dsn)[0][5:7] == ("Latest key", None)
+
+
+def test_empty_edition_scope_needs_no_lake(pg_dsn):
+    seed_budget(pg_dsn)
+    assert crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                         award_glob="not-a-path", fiscal_year=2025, dry_run=True) == 0

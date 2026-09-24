@@ -57,32 +57,47 @@ const LIVE_CITATIONS = citationsFor([
   ["account", "low"], // low tiers are not published — must not enter the set
 ]);
 
-/** The live site_meta.link_precision this branch exports. */
+/** The live site_meta.link_precision this branch exports: four measured
+ *  tiers, each stamped with the run its figure came from, under one rubric.
+ *  account+subagency's 2026-09-05 draw was judged on program attribution and
+ *  confirmed 0 of 60 (loaded 2026-09-11 — `judged` is the adjudication date,
+ *  `sample_id` the draw), so the tier left `unmeasured` carrying the figure
+ *  it measured. Read off the live block, not typed by hand. */
 const LIVE_META = {
   link_precision: {
-    sample_id: "2026-09-04",
-    sampled_at: "2026-09-04",
+    rubric: "attribution",
+    sample_id: "2026-09-05",
+    sampled_at: "2026-09-11",
     methods: {
-      "announcement+lexicon": { confirmed: 51, sampled: 54 },
-      "fpds-ap": { confirmed: 94, sampled: 120 },
-      "subaward+lexicon": { confirmed: 53, sampled: 60 },
+      "account+subagency": { confirmed: 0, sampled: 60, sample_id: "2026-09-05", judged: "2026-09-11" },
+      "announcement+lexicon": { confirmed: 51, sampled: 54, sample_id: "2026-09-04", judged: "2026-09-04" },
+      "fpds-ap": { confirmed: 94, sampled: 120, sample_id: "2026-09-04", judged: "2026-09-04" },
+      "subaward+lexicon": { confirmed: 53, sampled: 60, sample_id: "2026-09-04", judged: "2026-09-04" },
     },
-    unmeasured: ["account", "account+subagency", "account+tokens"],
+    unmeasured: ["account", "account+tokens"],
   },
 };
 
-/** The paragraph the fixed /methodology/ renders for LIVE_META. */
+/** The sentence /methodology/ renders to name the rubric — the leg requires
+ *  it as a phrase match, not this exact string. */
+const RUBRIC_SENTENCE =
+  "Every figure answers one question — program attribution: does this award " +
+  "execute this program element? — not whether the linking rule fired. ";
+
+/** The paragraph /methodology/ renders for LIVE_META. */
 const LIVE_PARAGRAPH =
   "Measured precision of the published tiers, from a held-out " +
-  "hand-adjudicated sample re-run through the same two-reviewer process and " +
-  "judged 2026-09-04. Each sampled link is counted under the tier it " +
-  "publishes under today, not the tier it carried when it was drawn; a " +
-  "sampled link the corpus no longer publishes is counted in neither " +
-  "direction: announcement+lexicon 51/54; fpds-ap 94/120; " +
-  "subaward+lexicon 53/60. Published whatever the numbers turn out to be; a " +
-  "tier that misses is renamed or narrowed, never widened to fit. No " +
+  "hand-adjudicated sample re-run through a two-reviewer process and " +
+  "judged 2026-09-04 and 2026-09-11. " +
+  RUBRIC_SENTENCE +
+  "Each sampled link is counted under the tier it " +
+  "publishes under today, not the tier it carried when it was drawn; one " +
+  "the corpus no longer publishes is counted in neither " +
+  "direction: account+subagency 0/60; announcement+lexicon 51/54; " +
+  "fpds-ap 94/120; " +
+  "subaward+lexicon 53/60. No " +
   "precision figure is published for the remaining tiers a reader can meet " +
-  "— account, account+subagency, account+tokens.";
+  "— account, account+tokens.";
 
 function run({ siteMeta, citations, paragraphText, methodologyBuilt }) {
   const errors = [];
@@ -122,8 +137,8 @@ describe("gate 24 leg n — the live shape", () => {
       paragraphText: LIVE_PARAGRAPH,
     });
     expect(errors).toEqual([]);
-    expect(notes.join(" ")).toMatch(/3 measured method\(s\)/);
-    expect(notes.join(" ")).toMatch(/3 unmeasured published tier\(s\)/);
+    expect(notes.join(" ")).toMatch(/4 measured method\(s\)/);
+    expect(notes.join(" ")).toMatch(/2 unmeasured published tier\(s\)/);
   });
 });
 
@@ -131,6 +146,7 @@ describe("gate 24 leg n — C1: a figure for a tier the corpus does not publish"
   it("FAILS on the shape that shipped (fpds-ap+account 34/60)", () => {
     const shipped = {
       link_precision: {
+        rubric: "attribution",
         sample_id: "2026-09-04",
         sampled_at: "2026-09-04",
         methods: {
@@ -144,6 +160,7 @@ describe("gate 24 leg n — C1: a figure for a tier the corpus does not publish"
       },
     };
     const paragraph =
+      RUBRIC_SENTENCE +
       "Measured precision of the published tiers: account+subagency 60/60; " +
       "announcement+lexicon 54/60; fpds-ap 60/60; fpds-ap+account 34/60; " +
       "subaward+lexicon 53/60.";
@@ -163,7 +180,7 @@ describe("gate 24 leg n — C2: an unmeasured published tier must be named", () 
     const meta = {
       link_precision: {
         ...LIVE_META.link_precision,
-        unmeasured: ["account", "account+tokens"], // account+subagency dropped
+        unmeasured: ["account"], // account+tokens dropped
       },
     };
     const { errors } = run({
@@ -172,14 +189,14 @@ describe("gate 24 leg n — C2: an unmeasured published tier must be named", () 
       paragraphText: LIVE_PARAGRAPH,
     });
     expect(errors.join("\n")).toMatch(
-      /method='account\+subagency'.*neither measures it nor lists it/s,
+      /method='account\+tokens'.*neither measures it nor lists it/s,
     );
   });
 
   it("FAILS when site_meta lists a tier unmeasured but the paragraph never names it", () => {
     const paragraph = LIVE_PARAGRAPH.replace(
-      "— account, account+subagency, account+tokens.",
       "— account, account+tokens.",
+      "— account.",
     );
     const { errors } = run({
       siteMeta: LIVE_META,
@@ -187,14 +204,14 @@ describe("gate 24 leg n — C2: an unmeasured published tier must be named", () 
       paragraphText: paragraph,
     });
     expect(errors.join("\n")).toMatch(
-      /"account\+subagency" is listed unmeasured in site_meta but \[data-link-precision\] never names it/,
+      /"account\+tokens" is listed unmeasured in site_meta but \[data-link-precision\] never names it/,
     );
   });
 
-  it("does not accept 'account' inside 'account+subagency' as naming the account tier", () => {
+  it("does not accept 'account' inside 'account+tokens' as naming the account tier", () => {
     const paragraph = LIVE_PARAGRAPH.replace(
-      "— account, account+subagency, account+tokens.",
-      "— account+subagency, account+tokens.",
+      "— account, account+tokens.",
+      "— account+tokens.",
     );
     const { errors } = run({
       siteMeta: LIVE_META,
@@ -246,7 +263,7 @@ describe("gate 24 leg n — non-vacuity floor on the published universe", () => 
     const metaFour = {
       link_precision: {
         ...LIVE_META.link_precision,
-        unmeasured: ["account+subagency"],
+        unmeasured: [],
       },
     };
     expect(
@@ -256,6 +273,42 @@ describe("gate 24 leg n — non-vacuity floor on the published universe", () => 
         paragraphText: LIVE_PARAGRAPH,
       }).errors,
     ).toEqual([]);
+  });
+});
+
+describe("gate 24 leg n — #79: every figure names the question it answered", () => {
+  it("FAILS when the paragraph prints attribution figures without naming the rubric", () => {
+    const paragraph = LIVE_PARAGRAPH.replace(RUBRIC_SENTENCE, "");
+    expect(paragraph).not.toMatch(/program attribution/);
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      citations: LIVE_CITATIONS,
+      paragraphText: paragraph,
+    });
+    expect(errors.join("\n")).toMatch(/never names the rubric/);
+  });
+
+  it("FAILS when site_meta.link_precision carries no rubric (a pre-015 export)", () => {
+    const noRubric = { ...LIVE_META.link_precision };
+    delete noRubric.rubric;   // a pre-015 export knows no rubric at all
+    const { errors } = run({
+      siteMeta: { link_precision: noRubric },
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH,
+    });
+    expect(errors.join("\n")).toMatch(/link_precision\.rubric is null/);
+  });
+
+  it("FAILS when the block was tallied under any rubric but attribution", () => {
+    const meta = { link_precision: { ...LIVE_META.link_precision, rubric: "rule-fired" } };
+    const { errors } = run({
+      siteMeta: meta,
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH,
+    });
+    expect(errors.join("\n")).toMatch(/link_precision\.rubric is "rule-fired"/);
+    // A rule-fired tally must not be reachable through this leg at all.
+    expect(errors.join("\n")).not.toMatch(/values match/);
   });
 });
 
@@ -299,5 +352,44 @@ describe("gate 24 leg n — the pre-existing directions still hold", () => {
       paragraphText: LIVE_PARAGRAPH,
     });
     expect(errors.join("\n")).toMatch(/pre-2026-09-04 flat shape/);
+  });
+});
+
+describe("gate 24 leg n — the announcement tier stays pinned to its own draw", () => {
+  // FIX ROUND 1, ITEM 3. The pin lives at the export call site
+  // (`_link_precision_for_export` passes `_PINNED_PRECISION_SAMPLES`).
+  // Deleting that kwarg leaves the constant — and, before this check, every
+  // gate — untouched, and the tier republishes the wave-4 sample's 48/55: a
+  // draw over ONE wave's links under the whole tier's name. This binds the
+  // SHIPPED artifact, so the edit cannot reach production green.
+  it("passes when the tier's figure comes from the 2026-09-04 draw", () => {
+    const { errors } = run({
+      siteMeta: LIVE_META,
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH,
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it("FAILS when the tier's figure comes from the wave sample instead", () => {
+    const unpinned = {
+      link_precision: {
+        ...LIVE_META.link_precision,
+        methods: {
+          ...LIVE_META.link_precision.methods,
+          "announcement+lexicon": {
+            confirmed: 48, sampled: 55, sample_id: "2026-09-12",
+            judged: "2026-09-19",
+          },
+        },
+      },
+    };
+    const { errors } = run({
+      siteMeta: unpinned,
+      citations: LIVE_CITATIONS,
+      paragraphText: LIVE_PARAGRAPH.replace(
+        "announcement+lexicon 51/54", "announcement+lexicon 48/55"),
+    });
+    expect(errors.join(" ")).toMatch(/pinned to the 2026-09-04 draw/);
   });
 });

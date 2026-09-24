@@ -19,7 +19,7 @@ import {
 } from "./dossier";
 import type { FamilyEventsPayload } from "./entity-families";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
-import { isZeroContentDetails, setIngestedServiceOrgs } from "./program-tier";
+import { isZeroContentDetails, setIngestedServiceOrgs, setOrgAbsences, type OrgAbsence } from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
 import { parseGaoRatifications, selectRatifiedGaoFindings } from "./program-evidence";
@@ -49,6 +49,8 @@ export interface SiteMetaCounts {
   agencies: number;
   citations: number;
   companies: number;
+  /** Company profiles carrying a resolving SAM registration citation. */
+  companies_with_sam?: number;
   /** Detail-grade tier — programs.json length (R-2/P-40 J-book data). */
   programs: number;
   /**
@@ -77,6 +79,7 @@ export interface SiteMetaAwardFyRange {
 }
 
 export interface SiteMeta {
+  org_absences?: Record<string, OrgAbsence>;
   award_fy_range?: SiteMetaAwardFyRange | null;
   built_at: string;
   counts: SiteMetaCounts;
@@ -183,23 +186,168 @@ export interface SiteMeta {
    * links had moved into (the honest pooled figure is 94/120). Sampled links
    * the corpus no longer publishes count toward neither number.
    *
-   * `unmeasured` is every published tier with NO figure — because the study
-   * drew no sample from it, or because its verdicts answered a different
-   * question (`account+subagency`: the adjudication confirmed the mechanical
-   * rule had fired, not that the award paid for the program). /methodology/
-   * names them in prose so a tier with no number never reads as one that
-   * passed; gate 24 leg n enforces that.
+   * `unmeasured` is every published tier with NO figure under the published
+   * rubric — because the study drew no sample from it, or because its only
+   * verdicts answered a different question (the 2026-09-04 `account+subagency`
+   * sample was judged on whether the mechanical rule had fired; migration 015
+   * stores those rows under rubric `rule-fired` and they are never published).
+   * /methodology/ names them in prose so a tier with no number never reads as
+   * one that passed; gate 24 leg n enforces that.
    *
    * `sampled_at` dates the study so a reader can see how far the corpus may
    * have moved since. {} until a study's verdicts are loaded — /methodology/
    * renders the paragraph only when `methods` is non-empty. Optional (not
    * just possibly-empty) because it is absent on pre-#72 exports.
    */
+  link_adjudication?: {
+    /** The EXPORT RUN's date — when the counts below were taken. A different
+     *  fact from `as_of`, and the one the census clause carries: the corpus
+     *  grew after the last adjudication (2,731 of the 12,595 links were
+     *  created 2026-09-04, which is why they carry none), so dating today's
+     *  counts by `as_of` states a ratio that never held. */
+    measured_on?: string;
+    /** Latest adjudication the block counts (max adjudicated_at). */
+    as_of?: string;
+    published?: number;
+    adjudicated?: number;
+    unpinned?: number;
+    /** The one tier every unpinned link publishes at, or null when they
+     *  differ — the page states the count without a tier rather than the
+     *  majority's. */
+    unpinned_tier?: string | null;
+    by_method?: Record<string, { published: number; adjudicated: number }>;
+    /** Published methods with no adjudication row at all. /methodology/
+     *  names them so a path with no per-link review never reads as one that
+     *  passed. */
+    unadjudicated_methods?: string[];
+    /**
+     * The HIGH tier's own census (fix round 1, R-6c-4). Four surfaces graded
+     * the tier "verified adversarially"; measured 2026-09-11 over the MART,
+     * 768 links publish at high, 60 carry a per-award hand adjudication (all
+     * 60 at `refuter_lenses_passed = 2`) and 708 `announcement+lexicon` links
+     * carry none. The grading now renders that split.
+     *
+     * The universe here is the MART's high tier, NOT
+     * `coalesce(adjudicated_confidence, confidence)` over
+     * `budget_line_awards`: dbt demotes an unadjudicated `account+tokens`
+     * high row to medium and Postgres has no column for it, so re-deriving
+     * the tier there counts 881 links where the site publishes 768. Absent
+     * on a warehouse with no mart, and the page then states no census rather
+     * than one measured against the wrong universe.
+     */
+    high?: {
+      published_high?: number;
+      adjudicated_high?: number;
+      /** Of the adjudicated, those at `refuter_lenses_passed = 2` — the only
+       *  population "two independent adversarial reviewers" is true of. */
+      two_lens_high?: number;
+      by_path?: Record<
+        string,
+        {
+          high: number;
+          adjudicated: number;
+          two_lens: number;
+          /** Links whose `award_link_sources` row records HOW the program
+           *  name matched. Absent where the path records no source rows at
+           *  all — "not recorded" and "no such evidence" are different. */
+          with_match_basis?: number;
+        }
+      >;
+    };
+  };
   link_precision?: {
+    /** The ONE question every figure in `methods` answered (ROADMAP #79):
+     *  always "attribution" on a current export — the exporter reads
+     *  link_precision_samples by rubric (migration 015) and publishes no
+     *  other; gate 24 leg n fails any other value and requires /methodology/
+     *  to name it next to the figures. */
+    rubric?: string;
     sample_id?: string;
     sampled_at?: string | null;
-    methods?: Record<string, { confirmed: number; sampled: number }>;
+    methods?: Record<
+      string,
+      {
+        confirmed: number;
+        sampled: number;
+        /** The study run this tier's figure comes from — the LATEST run that
+         *  judged the tier under the rubric, except announcement+lexicon, whose
+         *  tier-wide figure stays pinned to its 2026-09-04 draw. A run may re-judge one stratum
+         *  only, so figures can come from different dates; the page states
+         *  every date it draws on. */
+        sample_id?: string;
+        judged?: string | null;
+      }
+    >;
     unmeasured?: string[];
+  };
+  /**
+   * ROADMAP findings log :118-119: how far the announcement LLM-alias pass got.
+   *
+   * /methodology/ used to state this as four literals typed 2026-09-02 — the
+   * 3,840 records attempted, "about 88%" of the residue by announced value, the
+   * 12,811 not attempted, "~12%". All four were true when written, all four
+   * described a residue definition that was never committed to the repo, and
+   * nothing in the build could see them rot. Every figure in that paragraph now
+   * comes from here; gate 24 leg q recomputes it against the rendered text.
+   *
+   * Dollars are deliberately absent: /methodology/'s currency scan fails any
+   * uncited `$…` token and an allowlist entry must be a literal, so the page
+   * publishes the share of residue VALUE as a percentage instead. The
+   * percentages are shares of VALUE, never of records — the page says so in
+   * every clause that carries one, because 10.6% of the residue's value is
+   * 44.9% of its records.
+   *
+   * All fields or none — the exporter returns {} until a pass is recorded, and
+   * the page then renders no paragraph at all. Optional (not merely
+   * possibly-empty) because pre-2026-09-19 exports lack the key.
+   */
+  announcement_llm_scope?: {
+    as_of?: string;
+    records_total?: number;
+    records_deterministic?: number;
+    records_residue?: number;
+    records_attempted?: number;
+    records_remaining?: number;
+    pct_value_attempted?: number;
+    pct_value_remaining?: number;
+    /**
+     * Links the corpus publishes under `announcement+lexicon` that only THIS
+     * pass produced. `link_precision` above publishes the announcement tier's
+     * precision from the 2026-09-04 stratified draw, pinned to it; that draw
+     * was made over the tier as it then stood, and this many of the tier's
+     * links post-date it. The page states the count beside the tier figure so
+     * the sampling frame is visible — the figures were never wrong, the frame
+     * was undisclosed. Null on a row written before migration 017.
+     */
+    links_new_this_pass?: number | null;
+    /**
+     * The held-out sample of the links this pass's newest wave produced —
+     * a DIFFERENT measurement from `link_precision` above, which sampled the
+     * whole announcement tier on 2026-09-04, before these links existed. It is
+     * null until such a sample is loaded, and the page then says the batch has
+     * not yet been measured rather than borrowing the tier's figure. `sampled`
+     * counts only judged links the corpus still publishes, the same population
+     * rule the tier-wide block uses.
+     */
+    precision?: {
+      sample_id?: string;
+      /**
+       * `max(adjudicated_at)`, which scripts/precision_study.py sets to
+       * `now()` when the verdicts are LOADED — the date they were recorded,
+       * not a date the reviewers stamped. The page says "recorded", which is
+       * what the column means.
+       */
+      sampled_at?: string | null;
+      /**
+       * The size of the DRAW — judged attribution verdicts in the run, before
+       * the published-links join. `sampled` is smaller whenever the corpus has
+       * stopped publishing a judged link (60 drawn, 55 publishing, 2026-09-19),
+       * and a reader shown only `sampled` cannot see that those links left.
+       */
+      drawn?: number;
+      sampled?: number;
+      confirmed?: number;
+    } | null;
   };
 }
 
@@ -283,6 +431,7 @@ export function getSiteMeta(): SiteMeta {
   // reaches isIngestedServiceOrg first hits a data loader that calls
   // getSiteMeta, so this runs before any rollup-note wording is decided.
   setIngestedServiceOrgs(meta.ingested_service_orgs);
+  setOrgAbsences(meta.org_absences);
   // The two build-check counts /methodology/ prints are properties of THIS
   // checkout's artifacts — the gate registry in scripts/verify.mjs and the
   // dbt manifest — not of whichever checkout last ran export-site. Gate 24
@@ -2305,6 +2454,8 @@ export function getDistrictIndex(): DistrictIndex {
 // ── districts/{pop_district}.json ─────────────────────────────────────────────
 
 export interface DistrictProgram {
+  account: string | null;
+  split_key: string;
   award_count: number;
   fact_id: string | null;
   organization: string;

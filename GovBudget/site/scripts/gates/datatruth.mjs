@@ -625,12 +625,16 @@ export async function runDataTruthGate() {
 
   // ── leg n: held-out link-precision study (ROADMAP #72) ────────────────────
   runLinkPrecisionLeg(errors, notes);
+  runLinkAdjudicationLeg(errors, notes);
 
   // ── leg l: family labels that won a coin flip (ROADMAP #10 A) ─────────────
   runFamilyLabelLeg(errors, notes);
 
   // ── leg m: declared cadence vs. measured ingest age (ROADMAP #8) ──────────
   runSourceCadenceLeg(errors, notes);
+
+  // ── leg q: announcement pass scope and separate sampling frame ──────────
+  runAnnouncementScopeLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -2165,8 +2169,8 @@ function runCorpusCountLeg(errors, notes) {
 // leg n — held-out link-precision study (ROADMAP #72)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// site_meta.link_precision ({sample_id, sampled_at, methods, unmeasured}, or
-// {} while no study has verdicts yet) is the recomputed source of truth here
+// site_meta.link_precision ({rubric, sample_id, sampled_at, methods, unmeasured},
+// or {} while no study has verdicts yet) is the recomputed source of truth here
 // — this leg reads data/site/json/site_meta.json directly (unlike leg e,
 // which never trusts site_meta for the artifact it is derived from; here
 // site_meta IS the artifact under test, produced by an inlined Postgres query
@@ -2174,7 +2178,7 @@ function runCorpusCountLeg(errors, notes) {
 // precision_study.py's own job, exercised by tests/test_precision_study.py
 // and tests/test_export_site_link_precision.py).
 //
-// FOUR directions, all failures:
+// FIVE directions, all failures:
 //   - link_precision names a method the /methodology/ paragraph omits or
 //     states wrong numbers for (a stale/partial paragraph reads as more
 //     confidence than was measured);
@@ -2193,6 +2197,14 @@ function runCorpusCountLeg(errors, notes) {
 //     carry no measured number, and silence reads as "nothing to report".
 //     Every published tier must be either measured or named unmeasured in the
 //     rendered paragraph.
+//   - (2026-09-11, ROADMAP #79) every figure must answer ONE question and the
+//     paragraph must name it. `account+subagency 60/60` was judged on whether
+//     the linking RULE had fired, the other strata on program ATTRIBUTION,
+//     and the two were printed as one "precision". The exporter now reads the
+//     study table by rubric (migration 015) and publishes only 'attribution';
+//     this leg fails a site_meta block carrying any other rubric — or none —
+//     and a paragraph that prints figures without saying which question
+//     they answer.
 //
 // The published-tier universe is read from citations.json's crosswalk
 // formulas ("… via method='X', confidence='Y'"), which is the same artifact
@@ -2230,6 +2242,29 @@ function namesMethodToken(text, method) {
  *  on an empty set — which is exactly how the `fpds-ap+account` figure
  *  survived. RE-MEASURE if the corpus changes; do not lower it to fit. */
 const MIN_PUBLISHED_LINK_METHODS = 4;
+
+/** The only rubric the exporter publishes (scripts/precision_study.py
+ *  RUBRICS; export_site._link_precision_block's default). */
+const PUBLISHED_RUBRIC = "attribution";
+
+/** Published tier -> the study run its /methodology/ figure MUST come from:
+ *  the gate-side twin of export_site._PINNED_PRECISION_SAMPLES, bound against
+ *  the shipped artifact.
+ *
+ *  WHY (fix round 1, item 3). The pin is passed by the export call site, and
+ *  the test that claimed to protect it only asserted the constant's value —
+ *  deleting the kwarg left every test green and would have republished the
+ *  announcement tier's precision from the wave-4 sample, a draw over ONE
+ *  wave's links, under the tier's name. The unpinned block measures 48/55
+ *  against the pinned 56/60. This check reads what actually shipped, so the
+ *  edit fails a gate as well as a unit test. Change it only with a fresh draw
+ *  over the tier itself, and change both sides together. */
+const PINNED_PRECISION_SAMPLES = { "announcement+lexicon": "2026-09-04" };
+
+/** The paragraph must name the question in the words the packets ask the
+ *  adjudicator: "program attribution" and "execute this program element",
+ *  in that order, within one sentence. */
+const RUBRIC_PHRASE = /program attribution[^.]*execute this program element/i;
 
 /** `injected` is passed only by the leg's unit test
  *  (__tests__/link-precision.test.mjs), which has to hand the leg corpora the
@@ -2302,6 +2337,26 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
   const methods = Object.keys(figures).sort();
   const unmeasured = [...(linkPrecision.unmeasured ?? [])].sort();
 
+  // A pinned tier publishes its OWN draw's figure or none at all. (A tier the
+  // pin left unmeasured is not an error here — `_link_precision_block` reports
+  // it in `unmeasured`, and the sweep below makes the page name it.)
+  for (const [method, run] of Object.entries(PINNED_PRECISION_SAMPLES)) {
+    const got = figures[method];
+    if (!got) continue;
+    if (got.sample_id !== run) {
+      errors.push(
+        `leg n: site_meta.link_precision publishes "${method}" ` +
+          `${got.confirmed}/${got.sampled} from sample ` +
+          `${JSON.stringify(got.sample_id)}, and that tier is pinned to the ` +
+          `${run} draw over the tier itself. A later run is a narrower ` +
+          `population under the tier's name — the species leg n exists for. ` +
+          `Re-run export-site (the call site passes ` +
+          `export_site._PINNED_PRECISION_SAMPLES), or, if the tier was ` +
+          `genuinely re-drawn, move the pin on both sides`,
+      );
+    }
+  }
+
   if (methods.length === 0) {
     if (paragraphExists) {
       errors.push(
@@ -2328,6 +2383,26 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
         `method(s) but no [data-link-precision] paragraph renders`,
     );
     return;
+  }
+
+  // ── the rubric (ROADMAP #79) ─────────────────────────────────────────────
+  const rubric = linkPrecision.rubric ?? null;
+  if (rubric !== PUBLISHED_RUBRIC) {
+    errors.push(
+      `leg n: site_meta.link_precision.rubric is ${JSON.stringify(rubric)} — the ` +
+        `exporter publishes only strata judged on '${PUBLISHED_RUBRIC}' ` +
+        `(migration 015, ROADMAP #79); a block with another rubric, or none, is a ` +
+        `stale or mis-filtered export — re-run export-site`,
+    );
+    return;
+  }
+  if (!RUBRIC_PHRASE.test(paragraphText ?? "")) {
+    errors.push(
+      `leg n (/methodology/): [data-link-precision] never names the rubric — the ` +
+        `paragraph must say the figures measure program attribution ("does this ` +
+        `award execute this program element?"), or a reader takes "the rule fired" ` +
+        `and "the award paid for this program" for the same measurement`,
+    );
   }
 
   const text = paragraphText ?? "";
@@ -2413,9 +2488,9 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
   if (errors.every((e) => !e.startsWith("leg n"))) {
     notes.push(
       `leg n: [data-link-precision] states all ${checked} measured method(s) ` +
-        `from site_meta.link_precision (values match) and names all ` +
-        `${unmeasured.length} unmeasured published tier(s); ${published.size} ` +
-        `published method(s) in citations.json, all accounted for ✓`,
+        `from site_meta.link_precision (values match, rubric '${rubric}' named) ` +
+        `and names all ${unmeasured.length} unmeasured published tier(s); ` +
+        `${published.size} published method(s) in citations.json, all accounted for ✓`,
     );
   }
 }
@@ -3010,4 +3085,884 @@ function runSourceCadenceLeg(errors, notes) {
         ? ` — ${uncovered.length} manifest dataset(s) publish no cadence: ${uncovered.join(", ")}`
         : ""),
   );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg q — announcement LLM-alias pass scope (findings log :118-119)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** The date the announcement LLM-pass scope block first shipped. From here an
+ *  EMPTY `site_meta.announcement_llm_scope` is not "no pass yet" — a pass is
+ *  recorded — it is a stale export or a database restored without the table,
+ *  and the page has silently dropped a disclosure. Same dated-floor idiom as
+ *  leg p2's MIN_CROSSWALK_CLAIMS and leg p3's MIN_FLOW_SIDECARS: the shape
+ *  that once passed vacuously fails after the date it stopped being possible. */
+const ANNOUNCEMENT_SCOPE_FIRST_SHIPPED = "2026-09-19";
+
+/** The SLOTS leg q requires the paragraph to state, in RENDER order — each
+ *  figure anchored to the words around it, never a bare number.
+ *
+ *  WHY ANCHORED (fix round 1, item 4). The leg used to test
+ *  `paragraphText.includes(figure)` for each figure: presence, anywhere, in
+ *  any order. Swap the two percentage interpolations in the JSX and the page
+ *  reads "15,604 have been through an LLM-assisted alias pass — 10.9% of the
+ *  residue by announced value; the remaining 12,740 records (89.1% of that
+ *  value) were not attempted" — both strings still present, leg green, claim
+ *  false. Each slot below pins its figure to its own clause, and the leg
+ *  additionally requires the slots to appear in this order, so a figure
+ *  rendered in another figure's place fails twice over. Leg n's idiom, which
+ *  anchors each pair to its method name.
+ *
+ *  The page renders every number through formatCount (toLocaleString("en-US"))
+ *  and every share as a bare number + '%', so the formatting here has to match
+ *  exactly. The precision pair stays a composite — "48" and "55" are
+ *  substrings of plenty of other numbers, and a PAIR from another population
+ *  is the one thing this half of the leg exists to catch. */
+function announcementScopeSlots(scope) {
+  const n = (v) => Number(v).toLocaleString("en-US");
+  const pct = (v) => `${Number(v)}%`;
+  const slots = [
+    ["records_total", `covered all ${n(scope.records_total)} archived`],
+    ["records_deterministic", `${n(scope.records_deterministic)} named a program`],
+    ["records_residue", `Of the ${n(scope.records_residue)} that did not`],
+    ["records_attempted", `${n(scope.records_attempted)} have been through`],
+    ["pct_value_attempted",
+     `${pct(scope.pct_value_attempted)} of the residue by announced value`],
+  ];
+  if (scope.records_remaining > 0) {
+    slots.push(["records_remaining",
+                `the remaining ${n(scope.records_remaining)} records`]);
+    slots.push(["pct_value_remaining",
+                `(${pct(scope.pct_value_remaining)} of that value)`]);
+  }
+  const p = scope.precision;
+  if (p) {
+    slots.push(["precision.drawn", `a random draw of ${n(p.drawn)} of its links`]);
+    slots.push(["precision.sampled_at", `recorded ${p.sampled_at}`]);
+    slots.push(["precision.pair", `${n(p.confirmed)} of the ${n(p.sampled)}`]);
+  }
+  return slots.map(([label, text]) => ({ label, text }));
+}
+
+/** Every NUMBER token the block licenses the paragraph to render, as the page
+ *  formats it. The reverse direction of the slot sweep (leg n's idiom): a
+ *  figure in the paragraph that the block does not carry is a literal someone
+ *  typed, which is the species this leg was built for. */
+function announcementScopeTokens(scope) {
+  const n = (v) => Number(v).toLocaleString("en-US");
+  const pct = (v) => `${Number(v)}%`;
+  const out = [
+    n(scope.records_total), n(scope.records_deterministic),
+    n(scope.records_residue), n(scope.records_attempted),
+    pct(scope.pct_value_attempted),
+  ];
+  if (scope.records_remaining > 0) {
+    out.push(n(scope.records_remaining), pct(scope.pct_value_remaining));
+  }
+  const p = scope.precision;
+  if (p) out.push(n(p.drawn), n(p.sampled), n(p.confirmed));
+  return new Set(out);
+}
+
+/** Number-shaped tokens in `text`, with `dates` (ISO, which tokenize into
+ *  three integers) removed first. */
+function numericTokens(text, dates) {
+  let scan = text;
+  for (const d of dates) if (d) scan = scan.split(d).join(" ");
+  return [...new Set(
+    [...scan.matchAll(/\d[\d,]*(?:\.\d+)?%?/g)].map((m) => m[0]),
+  )];
+}
+
+/** The shape the rendered precision sentence states a pair in. Used only to
+ *  prove a pair is ABSENT when the block carries none — a paragraph claiming
+ *  a measurement nothing measured. */
+const ANNOUNCEMENT_PAIR_RE = /\d[\d,]* of the [\d,]+/;
+
+/**
+ * leg q: /methodology/'s announcement-scope paragraph states only figures that
+ * site_meta.announcement_llm_scope carries, and states all of them.
+ *
+ * `records_total == null` is the "no pass recorded" test, the same predicate
+ * methodology/page.tsx guards the paragraph with — the exporter writes all the
+ * keys or none, so a partial block fails here loudly instead of silently
+ * hiding the disclosure.
+ *
+ * `precision` is the one nullable field, and it is the one this leg guards
+ * hardest in BOTH directions. The tier-wide study (leg n) sampled the
+ * announcement tier on 2026-09-04, before this pass's most recent round
+ * produced its links; the round's own sample is a different measurement of a
+ * different population. So: a block with a pair must render that pair and its
+ * judged date, a block without one must render the words that say so, and a
+ * paragraph must never state a pair the block does not hold.
+ *
+ * `injected = {siteMeta, paragraphText, methodologyBuilt}` is passed only by
+ * __tests__/announcement-scope.test.mjs — same contract as leg n. The gate
+ * itself always passes undefined and reads the shipped site_meta.json and the
+ * built /methodology/.
+ */
+export function runAnnouncementScopeLeg(errors, notes, injected) {
+  let siteMeta;
+  let paragraphText = null;
+  let paragraphExists = false;
+  let drawGapText = null;
+  let methodologyBuilt = true;
+
+  if (injected) {
+    siteMeta = injected.siteMeta ?? {};
+    paragraphText = injected.paragraphText ?? null;
+    paragraphExists = injected.paragraphText != null;
+    drawGapText = injected.drawGapText ?? null;
+    methodologyBuilt = injected.methodologyBuilt ?? true;
+  } else {
+    const siteMetaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(siteMetaPath)) {
+      errors.push(`leg q: ${siteMetaPath} missing — cannot recompute the announcement scope`);
+      return;
+    }
+    try {
+      siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
+    } catch (e) {
+      errors.push(`leg q: site_meta.json unparseable — ${e.message}`);
+      return;
+    }
+    const methodRoot = readHtml("/methodology/");
+    methodologyBuilt = methodRoot != null;
+    const el = methodRoot?.querySelector("[data-announcement-scope]");
+    paragraphExists = el != null;
+    paragraphText = el ? norm(el.text) : null;
+    const gap = methodRoot?.querySelector("[data-announcement-draw-gap]");
+    drawGapText = gap ? norm(gap.text) : null;
+  }
+
+  const scope = siteMeta.announcement_llm_scope ?? {};
+  if (scope.records_total == null) {
+    // NOT a note. A pass has been recorded since the date below, so an empty
+    // block is a stale export or a database restored without
+    // announcement_llm_scope — and the page then drops the disclosure with
+    // every gate green, which is the vacuity this leg exists to refuse.
+    errors.push(
+      "leg q (/methodology/): site_meta.announcement_llm_scope carries no " +
+        `pass. One has been recorded since ${ANNOUNCEMENT_SCOPE_FIRST_SHIPPED}, ` +
+        "so an empty block is a stale export or a database restored without " +
+        "the table — re-run export-site against a warehouse whose Postgres " +
+        "holds the scope row" +
+        (paragraphExists
+          ? ". [data-announcement-scope] renders anyway, from nothing"
+          : ", and [data-announcement-scope] has silently disappeared"),
+    );
+    return;
+  }
+  if (!methodologyBuilt) {
+    errors.push("leg q: /methodology/ not built — the scope leg would be vacuous");
+    return;
+  }
+  if (!paragraphExists) {
+    errors.push(
+      "leg q (/methodology/): site_meta.announcement_llm_scope is populated " +
+        "but [data-announcement-scope] is missing — the scope of the pass is a " +
+        "disclosure, not an optional flourish",
+    );
+    return;
+  }
+  // All three halves or none: a block that carries a count but not the pair it
+  // was counted from cannot be rendered honestly either way, so it fails here
+  // rather than quietly dropping the sentence.
+  const precision = scope.precision ?? null;
+  if (precision && (precision.confirmed == null || precision.sampled == null ||
+                    precision.drawn == null || !precision.sampled_at)) {
+    errors.push(
+      `leg q: site_meta.announcement_llm_scope.precision is partial ` +
+        `(${JSON.stringify(precision)}) — the exporter writes confirmed, ` +
+        `sampled, drawn and sampled_at together or writes null; re-run ` +
+        `export-site`,
+    );
+    return;
+  }
+  // Checked before the figure sweep so the diagnosis names the disagreement
+  // itself rather than the pair the paragraph is missing because of it.
+  if (precision && /not yet been measured|not yet measured/i.test(paragraphText)) {
+    errors.push(
+      `leg q (/methodology/): the pass's most recent round IS measured ` +
+        `(${precision.confirmed} of ${precision.sampled}, sample ` +
+        `${precision.sample_id}) and the paragraph says it is not yet measured`,
+    );
+    return;
+  }
+  // ── every figure in its OWN clause, in render order ────────────────────
+  const slots = announcementScopeSlots(scope);
+  const missing = slots.filter((s) => !paragraphText.includes(s.text));
+  if (missing.length) {
+    errors.push(
+      `leg q (/methodology/): [data-announcement-scope] does not state ` +
+        `${missing.map((s) => `${s.label} ("${s.text}")`).join(", ")} — ` +
+        `site_meta says ${slots.map((s) => s.text).join(" / ")} ` +
+        `(as_of ${scope.as_of})`,
+    );
+    return;
+  }
+  let at = -1;
+  for (const slot of slots) {
+    const where = paragraphText.indexOf(slot.text);
+    if (where <= at) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-scope] states ` +
+          `${slot.label} ("${slot.text}") out of render order — the figures ` +
+          `must appear in the order the block lists them, or two of them have ` +
+          `been swapped between clauses and each still "appears" in the ` +
+          `paragraph`,
+      );
+      return;
+    }
+    at = where;
+  }
+  // Diagnosed BEFORE the stray sweep: when the block holds no pair, a pair in
+  // the paragraph is not just an unbacked number, it is another population's
+  // precision — the one way this page could hand a reader the tier's figure
+  // for the round's links, and the diagnosis worth printing.
+  if (!precision && ANNOUNCEMENT_PAIR_RE.test(paragraphText)) {
+    errors.push(
+      "leg q (/methodology/): [data-announcement-scope] states a " +
+        "confirmed/sampled pair while site_meta records no held-out sample " +
+        "of this pass's own links — the tier-wide study measures a different " +
+        "population and is never this figure",
+    );
+    return;
+  }
+  // …and NO figure the block does not carry (leg n's reverse direction).
+  const stray = numericTokens(
+    paragraphText, [precision?.sampled_at],
+  ).filter((t) => !announcementScopeTokens(scope).has(t));
+  if (stray.length) {
+    errors.push(
+      `leg q (/methodology/): [data-announcement-scope] states ` +
+        `${stray.join(", ")}, which site_meta.announcement_llm_scope does not ` +
+        `carry — every number in this paragraph is derived, so an extra one ` +
+        `is a literal someone typed`,
+    );
+    return;
+  }
+  if (scope.records_remaining === 0 && /not attempted/i.test(paragraphText)) {
+    errors.push(
+      "leg q (/methodology/): the pass covers the whole residue but the " +
+        "paragraph still says records were not attempted",
+    );
+    return;
+  }
+  if (scope.records_remaining > 0 && !/not attempted/i.test(paragraphText)) {
+    errors.push(
+      `leg q (/methodology/): ${scope.records_remaining.toLocaleString("en-US")} ` +
+        `residue records are not attempted and the paragraph does not say so`,
+    );
+    return;
+  }
+  if (!precision) {
+    // (the "states a pair anyway" direction is checked above, before the
+    // stray sweep, so the pair gets its own diagnosis)
+    if (!/not yet been measured|not yet measured/i.test(paragraphText)) {
+      errors.push(
+        "leg q (/methodology/): no held-out sample has measured the pass's " +
+          "most recent round and the paragraph does not say so — silence " +
+          "reads as measured",
+      );
+      return;
+    }
+    notes.push(
+      `leg q: [data-announcement-scope] states all ${slots.length} derived ` +
+        `figure(s), each in its own clause and in render order (as_of ` +
+        `${scope.as_of}); the newest round is not measured and the paragraph ` +
+        `says so ✓`,
+    );
+    return;
+  }
+  // ── the sampling FRAME of the tier-wide figure (fix round 1, item 2) ────
+  //
+  // /methodology/ publishes the announcement tier's precision from the
+  // 2026-09-04 draw, pinned. That draw was made over the tier as it then
+  // stood; every link this pass added to the tier afterwards is inside the
+  // population the figure names and outside the one it measured. The count is
+  // derived (announcement_llm_scope.links_new_this_pass), and the tier
+  // paragraph has to carry it — the disclosure existed only in
+  // docs/methodology.md, which a reader of the page never sees.
+  const tierDraw =
+    siteMeta.link_precision?.methods?.["announcement+lexicon"]?.sample_id ?? null;
+  const newLinks =
+    scope.links_new_this_pass != null && scope.links_new_this_pass > 0
+      ? scope.links_new_this_pass
+      : null;
+  const gapRequired = newLinks != null && tierDraw != null;
+  if (gapRequired && drawGapText == null) {
+    errors.push(
+      `leg q (/methodology/): the announcement tier's figure comes from the ` +
+        `${tierDraw} draw and ${newLinks.toLocaleString("en-US")} of the ` +
+        `tier's links post-date it (announcement_llm_scope.` +
+        `links_new_this_pass), but no [data-announcement-draw-gap] clause ` +
+        `renders — the reader is handed a precision figure for a population ` +
+        `a third of which the draw could not reach`,
+    );
+    return;
+  }
+  if (!gapRequired && drawGapText != null) {
+    errors.push(
+      `leg q (/methodology/): [data-announcement-draw-gap] claims the tier's ` +
+        `draw predates links this pass added, and site_meta carries no such ` +
+        `count (links_new_this_pass ${JSON.stringify(scope.links_new_this_pass)}` +
+        `, tier draw ${JSON.stringify(tierDraw)})`,
+    );
+    return;
+  }
+  if (gapRequired) {
+    const want = `predates ${newLinks.toLocaleString("en-US")} of the links`;
+    if (!drawGapText.includes(want)) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-draw-gap] does not state ` +
+          `"${want}" — site_meta.announcement_llm_scope.links_new_this_pass ` +
+          `is ${newLinks}`,
+      );
+      return;
+    }
+    if (!drawGapText.includes(`${tierDraw} draw`)) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-draw-gap] does not name ` +
+          `the ${tierDraw} draw the announcement tier's figure is pinned to`,
+      );
+      return;
+    }
+    const gapStray = numericTokens(drawGapText, [tierDraw]).filter(
+      (t) => t !== newLinks.toLocaleString("en-US"),
+    );
+    if (gapStray.length) {
+      errors.push(
+        `leg q (/methodology/): [data-announcement-draw-gap] states ` +
+          `${gapStray.join(", ")}, which nothing in site_meta backs`,
+      );
+      return;
+    }
+  }
+  notes.push(
+    `leg q: [data-announcement-scope] states all ${slots.length} derived ` +
+      `figure(s), each in its own clause and in render order (as_of ` +
+      `${scope.as_of}), including this pass's own ` +
+      `${precision.confirmed}/${precision.sampled} of ${precision.drawn} drawn ` +
+      `from sample ${precision.sample_id}` +
+      (gapRequired
+        ? `; [data-announcement-draw-gap] states the ${newLinks} tier link(s) ` +
+          `the ${tierDraw} draw predates`
+        : "") +
+      ` ✓`,
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg o — per-award hand-adjudication coverage (ROADMAP #109, 2026-09-11)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT. /methodology/ §Budget-to-contract links opened: "As of September
+// 2026, every published link was individually hand-adjudicated: each award's
+// contract descriptions were investigated against the program's J-book
+// narratives and project titles, and every proposed program-level link was
+// then challenged by two independent adversarial reviewers — a link is
+// published as high only if neither could refute it." Measured 2026-09-11
+// against Postgres: of 12,595 links the crosswalk grades high or medium,
+// 9,587 carry an `award_pe_adjudications` row AT ALL — three of the five
+// published methods (announcement+lexicon, fpds-ap, subaward+lexicon) carry
+// ZERO; 8,474 of the adjudications that exist say the work could not be
+// pinned to any one program element; and 60 rows in the whole table record
+// `refuter_lenses_passed = 2` — 57 of them on a link the crosswalk grades
+// high or medium. Every other number on the page was derived and gated. This
+// sentence was authored, universal, and false — and no leg could see it,
+// because there was nothing for a number to disagree with.
+//
+// THE RULE. The sentence is now rendered from site_meta.link_adjudication
+// (export_site._link_adjudication_block), and this leg binds it:
+//   - each of `published`, `adjudicated`, `unpinned` appears in the passage
+//     formatted the way lib/format formatCount formats a count;
+//   - BOTH dates appear, each on its own clause: `measured_on` (when the
+//     census was taken) before `as_of` (when the last adjudication was made).
+//     Fix round 1, C1 — the passage used to open "As of {as_of}" over counts
+//     taken 10 days later, and this leg REQUIRED that. On 2026-09-01 the
+//     corpus held 9,864 published links, not 12,595: the other 2,731 were
+//     created 2026-09-04, which is exactly why they carry no adjudication.
+//     A leg that binds a date to the wrong clause cements the wrong date;
+//   - the passage carries NO number the block does not hold — a figure typed
+//     back into the prose (the species this whole leg exists for) fails here
+//     even when it is plausible;
+//   - the passage is present iff the block is non-empty — a corpus with no
+//     adjudication renders nothing rather than the old claim;
+//   - every method the block says carries NO adjudication is NAMED — silence
+//     about an unadjudicated path reads as a path that passed (the same
+//     direction leg n enforces for unmeasured precision tiers);
+//   - the block agrees with itself (per-method sums, adjudicated ≤ published,
+//     unpinned ≤ adjudicated), so a mis-shaped export cannot supply numbers
+//     the prose then faithfully renders;
+//   - it is non-vacuous: `by_method` names at least MIN_ADJUDICATION_METHODS
+//     paths. With `by_method = {}` and self-consistent headline counts the
+//     sum check, the unadjudicated-path naming and the completeness check all
+//     silently skip — leg n carries MIN_PUBLISHED_LINK_METHODS for the same
+//     failure mode;
+//   - the HIGH sub-block (fix round 1, R-6c-4) is bound the same way, in its
+//     own [data-link-adjudication-high] passage. Four surfaces graded the
+//     High tier "verified adversarially"; measured over the mart, 60 of the
+//     768 links published at high carry a per-award adjudication and 708
+//     `announcement+lexicon` links carry none;
+//   - each figure is bound to its SLOT, not to the passage (fix round 2,
+//     R-6c-6). Presence plus a stray-number check still passes a sentence
+//     assembled out of the block's own figures in the wrong order — "12,595
+//     of the 9,587 links … carry a per-award hand adjudication", or the
+//     High passage's "768 of the 768 … all 768 of them challenged by two
+//     independent adversarial reviewers". Both scored zero errors. The
+//     numbers are now read in document order and the sequence must be the
+//     derived one;
+//   - the `high` sub-block must EXIST whenever the block grades links (fix
+//     round 2, R-6c-7, dated). A block with no `high` and a page with no
+//     High passage used to be a clean pass, so any export-time failure
+//     reading the mart deleted the entire High-tier census with every leg
+//     green.
+/** The three counts the opening passage must state, in the order the page
+ *  states them. Keyed by the block field so an error names the field to
+ *  re-derive. */
+const ADJUDICATION_COUNTS = ["adjudicated", "published", "unpinned"];
+
+/** The three counts the High-tier passage must state. */
+const HIGH_COUNTS = ["adjudicated_high", "published_high", "two_lens_high"];
+
+/** Non-vacuity floor on `by_method` (fix round 1, M4). MEASURED 2026-09-11
+ *  at FIVE: account+subagency, account+tokens, announcement+lexicon, fpds-ap
+ *  and subaward+lexicon all carry rows the crosswalk grades high or medium.
+ *  The floor sits below that with headroom for ordinary corpus movement.
+ *  Below it the export has stopped reporting per-path coverage and three of
+ *  this leg's directions pass on an empty set — which is how a sentence that
+ *  names no unadjudicated path would read as a corpus with none. RE-MEASURE
+ *  if the corpus changes; never lower it to fit a red run. */
+const MIN_ADJUDICATION_METHODS = 4;
+
+export function runLinkAdjudicationLeg(errors, notes, injected) {
+  let siteMeta;
+  let passageText = null;
+  let passageExists = false;
+  let highText = null;
+  let highExists = false;
+  let methodologyBuilt = true;
+
+  if (injected) {
+    siteMeta = injected.siteMeta ?? {};
+    passageExists = injected.passageText != null;
+    passageText = injected.passageText ?? null;
+    highExists = injected.highText != null;
+    highText = injected.highText ?? null;
+    methodologyBuilt = injected.methodologyBuilt ?? true;
+  } else {
+    const siteMetaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(siteMetaPath)) {
+      errors.push(`leg o: ${siteMetaPath} missing — cannot check link_adjudication`);
+      return;
+    }
+    try {
+      siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
+    } catch (e) {
+      errors.push(`leg o: site_meta.json unparseable — ${e.message}`);
+      return;
+    }
+    const methodRoot = readHtml("/methodology/");
+    methodologyBuilt = methodRoot != null;
+    const el = methodRoot?.querySelector("[data-link-adjudication]");
+    passageExists = el != null;
+    passageText = el ? norm(el.text) : null;
+    const highEl = methodRoot?.querySelector("[data-link-adjudication-high]");
+    highExists = highEl != null;
+    highText = highEl ? norm(highEl.text) : null;
+  }
+
+  const block = siteMeta.link_adjudication ?? {};
+  if (Object.keys(block).length === 0) {
+    if (passageExists || highExists) {
+      errors.push(
+        "leg o (/methodology/): [data-link-adjudication] renders while " +
+          "site_meta.link_adjudication is empty — the hand-adjudication " +
+          "sentence must stay absent until an adjudication touches a " +
+          "published link, never fall back to a claim about one",
+      );
+    } else {
+      notes.push(
+        "leg o: link_adjudication is empty and /methodology/ renders no " +
+          "hand-adjudication sentence (nothing adjudicated yet) ✓",
+      );
+    }
+    return;
+  }
+
+  if (!methodologyBuilt) {
+    errors.push("leg o: built /methodology/ missing");
+    return;
+  }
+  // A block exported before `measured_on` existed cannot date its own census,
+  // so the page renders no passage at all — which would otherwise surface
+  // below as the much less useful "the block has coverage and nothing renders".
+  if (typeof block.measured_on !== "string") {
+    errors.push(
+      "leg o: site_meta.link_adjudication carries coverage but no " +
+        "`measured_on` — the artifact predates the field that dates the " +
+        "census (fix round 1, C1), so /methodology/ renders nothing for it. " +
+        "Re-run export-site; do not re-date the counts by `as_of`",
+    );
+    return;
+  }
+  if (!passageExists) {
+    errors.push(
+      "leg o (/methodology/): site_meta.link_adjudication carries coverage " +
+        `(${block.adjudicated} of ${block.published} links adjudicated) but no ` +
+        "[data-link-adjudication] passage renders — the section would open " +
+        "with the inference and never say how much of it was reviewed",
+    );
+    return;
+  }
+
+  const text = passageText ?? "";
+  const allowed = new Set();
+  for (const field of ADJUDICATION_COUNTS) {
+    const value = block[field];
+    if (typeof value !== "number") {
+      errors.push(
+        `leg o: site_meta.link_adjudication.${field} is ` +
+          `${JSON.stringify(value)}, not a count — re-run export-site`,
+      );
+      continue;
+    }
+    const rendered = value.toLocaleString("en-US");
+    allowed.add(rendered);
+    if (!text.includes(rendered)) {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] never states ` +
+          `${field} = ${rendered} — the sentence must render every figure it ` +
+          `claims from site_meta.link_adjudication, not around it`,
+      );
+    }
+  }
+  // Both dates, each on its own clause (fix round 1, C1). `measured_on` is
+  // when the census was taken and `as_of` when the last adjudication was
+  // made; they are ten days apart on the live corpus and the counts belong to
+  // the first. Requiring `measured_on` to come FIRST is what stops the
+  // passage sliding back to "As of {as_of}, {today's counts}".
+  for (const field of ["measured_on", "as_of"]) {
+    if (typeof block[field] !== "string" || !text.includes(block[field])) {
+      errors.push(
+        `leg o (/methodology/): the passage does not carry ${field} ` +
+          `${JSON.stringify(block[field] ?? null)} — an undated coverage ` +
+          `claim reads as a standing one, and a claim dated by the wrong ` +
+          `event reads as one measured then`,
+      );
+    }
+  }
+  if (
+    typeof block.measured_on === "string" &&
+    typeof block.as_of === "string" &&
+    block.measured_on !== block.as_of &&
+    text.includes(block.measured_on) &&
+    text.includes(block.as_of) &&
+    text.indexOf(block.as_of) < text.indexOf(block.measured_on)
+  ) {
+    errors.push(
+      `leg o (/methodology/): the passage dates itself ${block.as_of} (the ` +
+        `last adjudication) before ${block.measured_on} (when the counts ` +
+        `were taken) — the census clause must carry measured_on. On ` +
+        `${block.as_of} the corpus was smaller than the one these counts ` +
+        `describe, so that ordering states a ratio that never held`,
+    );
+  }
+
+  // No number the block does not hold. ISO dates go first (both dates are
+  // checked above and their 2026 / 09 / 11 must not read as stray figures).
+  const undated = (s) => s.replace(/\d{4}-\d{2}-\d{2}/g, " ");
+  const reportStrays = (label, body, allowedSet) => {
+    for (const m of undated(body).matchAll(/\d[\d,]*/g)) {
+      if (!allowedSet.has(m[0])) {
+        errors.push(
+          `leg o (/methodology/): [${label}] states "${m[0]}", ` +
+            `which is not a figure in site_meta.link_adjudication ` +
+            `(${[...allowedSet].join(", ")}) — every number in this sentence ` +
+            `is derived; a typed one is the defect it was rewritten for`,
+        );
+      }
+    }
+  };
+  reportStrays("data-link-adjudication", text, allowed);
+
+  // ── the slot binding (fix round 2, R-6c-6) ───────────────────────────────
+  //
+  // The `includes` check above asks only whether a figure appears SOMEWHERE
+  // in the passage, and `reportStrays` only whether a number is allowed. Both
+  // pass on a passage that PERMUTES the block's own figures: "12,595 of the
+  // 9,587 links … carry a per-award hand adjudication" is built entirely out
+  // of allowed numbers and states a ratio that never held, and on the High
+  // passage "768 of the 768 links published at high … all 768 of them
+  // challenged by two independent adversarial reviewers" is exactly the claim
+  // R-6c-4 exists to bound — it passed this leg with zero errors.
+  //
+  // So the numbers are read IN DOCUMENT ORDER and the whole sequence must be
+  // the one the block derives, slot for slot. That is wording-independent: a
+  // rewrite may say anything it likes between the figures, but it may not
+  // move one into another's place, drop one, or add one.
+  const reportSlots = (label, body, slots) => {
+    const got = [...undated(body).matchAll(/\d[\d,]*/g)].map((m) => m[0]);
+    const want = slots.map(([, v]) => v.toLocaleString("en-US"));
+    if (got.length === want.length && want.every((v, i) => v === got[i])) return;
+    errors.push(
+      `leg o (/methodology/): [${label}] states its figures in the order ` +
+        `${got.join(", ") || "(none)"} but the block derives ` +
+        `${want.join(", ")} — ${slots.map(([f]) => f).join(", ")}, in that ` +
+        `order. Every figure must sit in the slot it was derived for; a ` +
+        `passage that permutes its own numbers states a ratio that never ` +
+        `held while passing both the presence check and the stray-number ` +
+        `check above`,
+    );
+  };
+  if (ADJUDICATION_COUNTS.every((f) => typeof block[f] === "number")) {
+    reportSlots(
+      "data-link-adjudication",
+      text,
+      ADJUDICATION_COUNTS.map((f) => [f, block[f]]),
+    );
+  }
+
+  const unadjudicated = block.unadjudicated_methods ?? [];
+  for (const method of unadjudicated) {
+    if (!namesMethodToken(text, method)) {
+      errors.push(
+        `leg o (/methodology/): "${method}" publishes links and carries NO ` +
+          `adjudication row, but the passage never names it — an unreviewed ` +
+          `evidence path that says nothing reads as one that was reviewed`,
+      );
+    }
+  }
+
+  // The block against itself: prose rendered faithfully from a mis-shaped
+  // export is still a false sentence.
+  const byMethod = block.by_method ?? {};
+  const sum = (field) =>
+    Object.values(byMethod).reduce((t, v) => t + (v?.[field] ?? 0), 0);
+  if (Object.keys(byMethod).length < MIN_ADJUDICATION_METHODS) {
+    errors.push(
+      `leg o: site_meta.link_adjudication.by_method names ` +
+        `${Object.keys(byMethod).length} path(s) — below the do-not-lower ` +
+        `floor of ${MIN_ADJUDICATION_METHODS} measured 2026-09-11 at 5. The ` +
+        `per-method sum check, the unadjudicated-path naming and the ` +
+        `completeness check all pass on an empty by_method, so this is the ` +
+        `leg losing its teeth, not a clean run. Re-derive the export; do not ` +
+        `lower the floor`,
+    );
+  }
+  if (Object.keys(byMethod).length > 0) {
+    for (const field of ["published", "adjudicated"]) {
+      if (sum(field) !== block[field]) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.${field} is ${block[field]} but ` +
+            `by_method sums to ${sum(field)} — re-run export-site`,
+        );
+      }
+    }
+    const silent = Object.entries(byMethod)
+      .filter(([m, v]) => (v?.adjudicated ?? 0) === 0 && !unadjudicated.includes(m))
+      .map(([m]) => m);
+    if (silent.length > 0) {
+      errors.push(
+        `leg o: ${silent.join(", ")} carr${silent.length === 1 ? "ies" : "y"} ` +
+          `no adjudication but ${silent.length === 1 ? "is" : "are"} missing ` +
+          `from unadjudicated_methods — the page names that list, so a path ` +
+          `left off it goes unnamed`,
+      );
+    }
+  }
+  if (block.adjudicated > block.published || block.unpinned > block.adjudicated) {
+    errors.push(
+      `leg o: site_meta.link_adjudication is inverted (${block.adjudicated} ` +
+        `adjudicated of ${block.published} published, ${block.unpinned} ` +
+        `unpinned) — a coverage claim cannot exceed its own universe`,
+    );
+  }
+
+  // ── the High tier's own census (fix round 1, R-6c-4) ─────────────────────
+  // `high` is absent on a warehouse with no mart, and the High-tier sentence
+  // then states no census at all — never one counted against
+  // budget_line_awards, which does not know which links dbt demoted.
+  const high = block.high ?? null;
+  if (!high) {
+    if (highExists) {
+      errors.push(
+        "leg o (/methodology/): [data-link-adjudication-high] renders while " +
+          "site_meta.link_adjudication carries no `high` census — the " +
+          "High-tier grading may state the evidence it has, never a count " +
+          "nothing measured",
+      );
+    } else {
+      // The dated non-vacuity companion (fix round 2, R-6c-7). A block with
+      // NO high census and a page with no High passage used to be a clean
+      // pass, which made the whole High-tier grading disappear-able: any
+      // mart-side failure at export time returned null from
+      // _published_high_links, the block omitted `high`, the page rendered
+      // no census and every leg stayed green. That is the vacuity shape M4
+      // closed for `by_method`, one sub-block over. The exporter now raises
+      // on anything but a missing mart; this is the half of the direction a
+      // gate can see: if the crosswalk grades links at all, the tier they
+      // are graded INTO publishes, and its census is owed.
+      //
+      // DATED 2026-09-11: 768 links publish at high (measured over
+      // fct_budget_to_awards), and the tier has published continuously since
+      // 2026-09-01. Never remove or weaken this to make a red run go green —
+      // the run is red because the page lost a measurement.
+      errors.push(
+        "leg o (/methodology/): site_meta.link_adjudication grades links " +
+          `(${block.adjudicated} of ${block.published}) but carries no ` +
+          "`high` sub-block — the High tier publishes and no census was " +
+          "exported. `_published_high_links` returns null only for a " +
+          "warehouse with no mart; every other failure now raises. " +
+          "Re-run export-site against a built warehouse (768 links published " +
+          "at high, measured 2026-09-11; the tier has published since " +
+          "2026-09-01). Do not drop this check to clear the run",
+      );
+    }
+  } else if (!highExists) {
+    errors.push(
+      `leg o (/methodology/): site_meta.link_adjudication.high carries a ` +
+        `census (${high.adjudicated_high} of ${high.published_high} links ` +
+        `published at high hand-adjudicated) but no ` +
+        `[data-link-adjudication-high] passage renders — the tier would be ` +
+        `graded without saying how much of it was reviewed`,
+    );
+  } else {
+    const highAllowed = new Set();
+    for (const field of HIGH_COUNTS) {
+      const value = high[field];
+      if (typeof value !== "number") {
+        errors.push(
+          `leg o: site_meta.link_adjudication.high.${field} is ` +
+            `${JSON.stringify(value)}, not a count — re-run export-site`,
+        );
+        continue;
+      }
+      const rendered = value.toLocaleString("en-US");
+      highAllowed.add(rendered);
+      if (!highText.includes(rendered)) {
+        errors.push(
+          `leg o (/methodology/): [data-link-adjudication-high] never states ` +
+            `${field} = ${rendered} — the High tier's grading must render ` +
+            `every figure it claims from site_meta.link_adjudication.high`,
+        );
+      }
+    }
+    // Every per-path figure is derived too, plus the remainder the sentence
+    // names ("the other N"), so stating either is not a typed number.
+    const byPath = high.by_path ?? {};
+    for (const entry of Object.values(byPath)) {
+      for (const v of Object.values(entry ?? {})) {
+        if (typeof v === "number") highAllowed.add(v.toLocaleString("en-US"));
+      }
+    }
+    if (
+      typeof high.published_high === "number" &&
+      typeof high.adjudicated_high === "number"
+    ) {
+      highAllowed.add(
+        (high.published_high - high.adjudicated_high).toLocaleString("en-US"),
+      );
+    }
+    reportStrays("data-link-adjudication-high", highText, highAllowed);
+
+    // The paths whose high links are not all adjudicated — the remainder the
+    // sentence must name (below), and the reason its "the other N" clause
+    // renders at all. page.tsx derives both from this same set.
+    const unreviewedPaths = Object.entries(byPath)
+      .filter(([, v]) => (v?.high ?? 0) > (v?.adjudicated ?? 0))
+      .map(([m]) => m);
+    // The High passage's slots, in the order page.tsx renders them
+    // (fix round 2, R-6c-6). Two are conditional, and the condition is the
+    // page's own:
+    //   * the adversarial clause ("all N of them challenged by two
+    //     independent adversarial reviewers") renders only while something
+    //     at high IS adjudicated — asserting a review over an empty set
+    //     would be a false sentence the moment a corpus published a high
+    //     tier with no adjudication (rider ii);
+    //   * the remainder clause ("the other N rest on …") renders only while
+    //     some path publishes at high unadjudicated.
+    // Their ABSENCE is accepted; their presence in the wrong case is not,
+    // because the sequence would then be one figure too long.
+    if (HIGH_COUNTS.every((f) => typeof high[f] === "number")) {
+      const slots = [
+        ["adjudicated_high", high.adjudicated_high],
+        ["published_high", high.published_high],
+      ];
+      if (high.adjudicated_high > 0) {
+        slots.push(["two_lens_high", high.two_lens_high]);
+      }
+      if (unreviewedPaths.length > 0) {
+        slots.push([
+          "published_high − adjudicated_high",
+          high.published_high - high.adjudicated_high,
+        ]);
+      }
+      reportSlots("data-link-adjudication-high", highText, slots);
+    }
+
+    const pathSum = (field) =>
+      Object.values(byPath).reduce((t, v) => t + (v?.[field] ?? 0), 0);
+    for (const [field, path_field] of [
+      ["published_high", "high"],
+      ["adjudicated_high", "adjudicated"],
+      ["two_lens_high", "two_lens"],
+    ]) {
+      if (
+        Object.keys(byPath).length > 0 &&
+        pathSum(path_field) !== high[field]
+      ) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.high.${field} is ` +
+            `${high[field]} but by_path sums to ${pathSum(path_field)} — ` +
+            `re-run export-site`,
+        );
+      }
+    }
+    if (
+      high.adjudicated_high > high.published_high ||
+      high.two_lens_high > high.adjudicated_high
+    ) {
+      errors.push(
+        `leg o: site_meta.link_adjudication.high is inverted ` +
+          `(${high.adjudicated_high} adjudicated and ${high.two_lens_high} ` +
+          `two-lens of ${high.published_high} published at high) — the ` +
+          `adversarially reviewed set cannot exceed the adjudicated one`,
+      );
+    }
+    // The claim the four surfaces used to make of the WHOLE tier. It may be
+    // made of the two-lens population and no larger one, so the passage must
+    // name the evidence paths the remainder rests on instead.
+    for (const method of unreviewedPaths) {
+      if (!namesMethodToken(highText, method)) {
+        errors.push(
+          `leg o (/methodology/): "${method}" publishes ` +
+            `${byPath[method].high - byPath[method].adjudicated} link(s) at ` +
+            `HIGH with no per-award adjudication, but the tier's grading ` +
+            `never names it — "verified adversarially" over an unnamed ` +
+            `remainder is the claim this leg exists to bound`,
+        );
+      }
+    }
+  }
+
+  if (errors.every((e) => !e.startsWith("leg o"))) {
+    notes.push(
+      `leg o: [data-link-adjudication] states ${block.adjudicated.toLocaleString("en-US")} ` +
+        `of ${block.published.toLocaleString("en-US")} links adjudicated ` +
+        `(${block.unpinned.toLocaleString("en-US")} unpinned; measured ` +
+        `${block.measured_on}, latest adjudication ${block.as_of}) ` +
+        `from site_meta.link_adjudication, carries no undeclared figure, and names ` +
+        `all ${unadjudicated.length} unadjudicated path(s)` +
+        (high
+          ? `; [data-link-adjudication-high] states ${high.adjudicated_high.toLocaleString("en-US")} ` +
+            `of ${high.published_high.toLocaleString("en-US")} published at high ` +
+            `hand-adjudicated (${high.two_lens_high.toLocaleString("en-US")} two-lens)`
+          : "") +
+        ` ✓`,
+    );
+  }
 }

@@ -228,6 +228,10 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.execute("insert into fct_state_per_capita values ('CA','Education','2025',5000000000.0,39500000,126.58,2020,'https://example.com/spend','https://example.com/pop','full state')")
 
+    con.execute("alter table fct_district_programs add column account varchar")
+    con.execute("alter table dim_programs add column account varchar")
+    con.execute("alter table dim_programs add column account_title varchar")
+    con.execute("alter table fct_budget_to_awards add column account varchar")
     con.close()
 
 

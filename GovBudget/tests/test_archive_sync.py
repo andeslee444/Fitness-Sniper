@@ -88,8 +88,8 @@ def test_cmd_sync_archive_continues_past_failures(tmp_path, monkeypatch, capsys)
     monkeypatch.setattr(config, "PARQUET_DIR", tmp_path / "parquet")
     calls = []
 
-    def fake_sync(client, type_, fy):
-        calls.append((type_, fy))
+    def fake_sync(client, type_, fy, allow_shrink=False):
+        calls.append((type_, fy, allow_shrink))
         if fy == 2018:
             raise RuntimeError("boom")
         return "loaded"
@@ -101,7 +101,13 @@ def test_cmd_sync_archive_continues_past_failures(tmp_path, monkeypatch, capsys)
     with pytest.raises(SystemExit) as exc:
         cli.cmd_sync_archive(args)
     assert exc.value.code == 1
-    assert calls == [("contracts", 2017), ("contracts", 2018), ("contracts", 2019)]
+    # An args namespace with no allow_corpus_shrink attribute (the pre-ROADMAP-#8
+    # shape) still dispatches, and defaults to the SAFE side of the guard.
+    assert calls == [
+        ("contracts", 2017, False),
+        ("contracts", 2018, False),
+        ("contracts", 2019, False),
+    ]
     out = capsys.readouterr().out
     assert "contracts fy2018: FAILED" in out
     assert "1 failure(s)" in out

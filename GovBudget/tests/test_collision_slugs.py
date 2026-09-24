@@ -394,8 +394,6 @@ def _make_collision_duckdb(db_path: Path) -> None:
 
     _make_test_duckdb(db_path)
     con = duckdb.connect(str(db_path))
-    con.execute("alter table dim_programs add column account varchar")
-    con.execute("alter table dim_programs add column account_title varchar")
     con.execute(
         "insert into dim_programs (pe_bli, title, org, exhibit_family,"
         " project_count, fy2024_actual_millions, fully_reconciled, account,"
@@ -404,7 +402,6 @@ def _make_collision_duckdb(db_path: Path) -> None:
         f" ('3010','Shipboard Tactical Communications','N','procurement',0,"
         f"  5.0,true,'{OPN}','{OPN_TITLE}')"
     )
-    con.execute("alter table fct_budget_to_awards add column account varchar")
     con.execute(
         "insert into fct_budget_to_awards (pe_bli, exhibit, fiscal_year,"
         " organization, award_piid, recipient_name, recipient_uei, method,"
@@ -424,9 +421,9 @@ def _make_collision_duckdb(db_path: Path) -> None:
     # second member's title on both.
     con.execute(
         "insert into fct_district_programs values"
-        " ('VA','VA-08','3010','LPD Flight II','N',3,2,1,900000.0),"
+        " ('VA','VA-08','3010','LPD Flight II','N',3,2,1,900000.0,'1611N'),"
         " ('CO','CO-05','3010','Shipboard Tactical Communications','N',"
-        "  2,1,1,100000.0)"
+        "  2,1,1,100000.0,'1810N')"
     )
     con.close()
 

@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-09-23 · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-09-24 · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -21,6 +21,27 @@ Deployment and final verification are
 tracked in the [publication record](plans/2026-09-23-publication.md); the earlier
 local-only checkpoints remain historical. The broad copy/voice-rule findings
 remain open and must not be described as a fully green release suite.
+
+**Refresh checkpoint (2026-09-24, publication pending):** bounded crosswalk
+execution and stable assignments are implemented; the live FY2026 DARPA dry-run
+projected 39,192 candidates and wrote none. Restored migrations 015–017 reconcile
+source with the already-migrated curated store. Attribution reporting now uses
+one shared tally over distinct published mart pairs, with the tier-wide
+announcement draw pinned separately from the later wave study. Six reviewed PDF
+locations were rechecked against source bytes and persisted before regeneration.
+September 6 FY2026 contract/assistance archives passed staged key/date/amount and
+retention checks and were promoted locally with rollback snapshots. Contract
+actions reach September 4 and assistance August 30; production waits on rebuild
+and release verification. See the [execution plan](plans/2026-09-24-refresh-and-reader-validation.md)
+and [coverage review](plans/2026-09-24-award-coverage-review.md).
+
+Production page views are confirmed in the account. Two real reader actions
+reached the analytics endpoint with HTTP 200, but the active Hobby plan does not
+support custom-event reporting. The [measurement record](plans/2026-09-24-reader-measurement.md)
+separates transport, reporting and human results. All five reader sessions remain
+unrun; use the prepared observer sheet without making a paid plan a prerequisite.
+The archive differences support a coverage update, not a program spending-change
+briefing, because later reporting backfills earlier action dates.
 
 The next product outcome is a reader reaching, checking and reusing a defensible
 conclusion about public spending. Keep source freshness and attribution repairs
@@ -727,11 +748,11 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   fiscal years, an unbounded `--org` run cross-joins every line-edition against
   every award of the org's account (177 × 13,216 for DARPA). Add a default
   window (the line's own edition FY) or a per-edition line filter, and a
-  projected-row dry-run abort. **Status:** open (2026-09-04).
+  projected-row dry-run abort. **Status:** CLOSED 2026-09-24 — per-edition federal-FY defaults, paired bounds, edition selector, dry-run, aggregate 100,000-row default cap and atomic writes; live FY2026 DARPA preview 39,192 candidates, zero writes.
 - **#79 Precision study rubric.** `link_precision_samples` needs a `rubric`
   column; strata judged on different questions must not publish side by side.
   Re-adjudicate `account+subagency` against program attribution (its first
-  study confirmed only that the rule fired). **Status:** open (2026-09-04).
+  study confirmed only that the rule fired). **Status:** CLOSED 2026-09-24 — restored the existing explicit-rubric migration, loader and reviews; shared pair-grain tally reads actual published mart membership and pins tier versus wave sampling frames. No new verdicts invented; methodology review coverage and exclusions are derived.
 - **#80 Owner call: should `fct_program_concentration` (program-page HHI +
   program_dollars) be high-only?** It is high+medium by construction; 158 of
   438 programs' blocks rest entirely on medium links, and medium is now
@@ -756,10 +777,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **#85 Mechanical crosswalk nondeterminism.** `crosswalk_org` selects several
   title variants per (pe_bli, exhibit, FY, account) key and the last iteration's
   token overlap wins the tag (±346 medium / +119 high on an identical re-run).
-  **Status:** open (2026-09-04).
+  **Status:** CLOSED 2026-09-24 — canonical title/recipient choice and all-transaction classification are deterministic; shuffled assignments, protected evidence and exact account identity tested.
 - **#86 Task-5 deferred minors:** `_ALIASES_CSV` via `config.ROOT`; upsert count
   overstates guarded skips; NULL `action_date` untested under an FY window;
-  f-string SQL for `fed_account`. **Status:** open (2026-09-04).
+  f-string SQL for `fed_account`. **Status:** CLOSED 2026-09-24 — configured aliases path, protected-row actual-write counts, null/invalid-date exclusions and parameterized account predicates covered in the crosswalk safeguards.
 - **#87 Task-4 deferred minors:** gate docstring rule 5 vs code; gate accepts
   `archive_url` with null sha256; source map keyed (award_piid, pe_bli) collapses
   a second announcement row per pair; loader delete is effectively a truncate.

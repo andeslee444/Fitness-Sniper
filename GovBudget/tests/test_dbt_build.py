@@ -470,8 +470,8 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     # uniqueness on (pop_district, pe_bli) — no duplicates allowed
     assert con.sql(
         "select count(*) from ("
-        "  select pop_district, pe_bli from fct_district_programs"
-        "  group by 1,2 having count(*) > 1"
+        "  select pop_state, pop_district, pe_bli, account from fct_district_programs"
+        "  group by 1,2,3,4 having count(*) > 1"
         ")"
     ).fetchone()[0] == 0
     # fct_family_obligations_by_year: UEI1 → ACME PARENT family; 3 transactions across fiscal years
@@ -637,20 +637,25 @@ def _singular_test_sql(name: str, **refs: str) -> str:
     return sql
 
 
-def test_high_links_under_two_accounts_are_caught_before_they_fuse():
-    """ROADMAP #70 fix round 1, finding 4.
+def test_an_unresolvable_high_link_on_a_shared_code_is_caught_before_it_fuses():
+    """ROADMAP #70 fix round 1, finding 4; narrowed by Task 27 (2026-09-19).
 
-    fct_district_programs groups on (state, district, pe_bli) and takes
-    min() of program_title/organization. That is deliberate — grouping BY the
-    title would break the model's declared grain — but it means a shared BLI
-    code carrying HIGH-confidence links on BOTH members would sum two
-    programs' money into one district card under whichever title sorts first.
-    Latent today (one member of '0145' and one of '3050' carry high links);
-    assert_district_programs_single_member_high_links is what makes the day it
-    stops being latent loud instead of silent.
+    Until Task 27 fct_district_programs grouped on (state, district, pe_bli)
+    and took min() of the label columns, so a shared BLI code carrying HIGH
+    links on BOTH members summed two programs' money into one district card
+    under whichever title sorts first. The guard therefore fired on any shared
+    code with two account keys — and on 2026-09-19 it did, for '0145'
+    (1506N x5, 1508N x3).
+
+    The model now carries the account, so two ACCOUNT-RESOLVED members no
+    longer fuse: they are two rows. What an account grain still cannot
+    separate is an account-NULL high link sitting beside an account-resolved
+    one on the same shared code — the NULL names BOTH members, so its dollars
+    belong to an unknown member while its sibling's are filed under a named
+    one. That is the shape this assertion now returns.
 
     Like test_entity_xwalk_duplicate_uei_would_double_count, this does not run
-    dbt: it runs the committed assertion against both configurations.
+    dbt: it runs the committed assertion against each configuration.
     """
     import duckdb
 
@@ -659,27 +664,43 @@ def test_high_links_under_two_accounts_are_caught_before_they_fuse():
         "create table links (pe_bli varchar, account varchar,"
         " confidence varchar, award_piid varchar)"
     )
+    con.execute(
+        "create table programs (pe_bli varchar, account varchar,"
+        " account_title varchar, org varchar)"
+    )
+    # dim_programs' own shape for the two shared codes used below: '3010' is
+    # split by ACCOUNT (1611N/1810N), '20' by ORGANIZATION (one account).
+    con.execute(
+        "insert into programs values"
+        " ('3010','1611N','Shipbuilding and Conversion, Navy','N'),"
+        " ('3010','1810N','Other Procurement, Navy','N'),"
+        " ('20','0300D','Procurement, Defense-Wide','DCSA'),"
+        " ('20','0300D','Procurement, Defense-Wide','DTRA'),"
+        " ('0601101E',null,null,'DARPA')"
+    )
     sql = _singular_test_sql(
         "assert_district_programs_single_member_high_links",
         fct_budget_to_awards="links",
+        dim_programs="programs",
     )
 
-    # The shape the model can fuse: '3010' high on BOTH members.
+    # The shape the OLD model fused and the new grain separates: '3010' high
+    # on both members, each account-resolved. Two mart rows, two titles, two
+    # fact_ids — nothing to announce.
     con.execute(
         "insert into links values"
         " ('3010','1611N','high','N0002420C0001'),"
         " ('3010','1810N','high','N0003917D0006')"
     )
-    fused = con.execute(sql).fetchall()
-    assert fused == [("3010", 2, "1611N", "1810N", 2)], fused
+    assert con.execute(sql).fetchall() == []
 
-    # The MIXED shape (2026-09-04 final review, finding I7). An account-NULL
-    # high link names BOTH members of a shared code — an overlay-raised
-    # `account+subagency` high row is exactly that, and 23 of them exist — so
-    # one beside an account-resolved high link on the same pe_bli is the same
-    # fusion. The earlier assertion filtered `account is not null` and could
-    # not see it: it dropped the NULL row before counting, leaving one account
-    # and no complaint.
+    # The MIXED shape (2026-09-04 final review, finding I7), which the account
+    # grain does NOT resolve. An account-NULL high link names BOTH members of
+    # a shared code — an overlay-raised `account+subagency` high row is
+    # exactly that — so one beside an account-resolved high link on the same
+    # pe_bli puts an unknown member's money on the page beside a named
+    # member's. Returns (pe_bli, n_accounts, n_unresolved_links,
+    # n_resolved_links, n_high_links).
     con.execute("delete from links")
     con.execute(
         "insert into links values"
@@ -687,22 +708,38 @@ def test_high_links_under_two_accounts_are_caught_before_they_fuse():
         " ('3010',null,'high','N0003917D0006')"
     )
     mixed = con.execute(sql).fetchall()
-    assert mixed == [("3010", 2, "(unresolved)", "1611N", 2)], mixed
+    assert mixed == [("3010", 2, 1, 1, 2)], mixed
 
-    # The live shape (verified 2026-09-04 against budget_line_awards): high
-    # links on ONE member of a shared code, the sibling's links medium or
-    # absent, and ordinary account-NULL keys everywhere else. min() has one
-    # value to choose from, so nothing fuses and the assertion is silent.
+    # An ORDINARY code's account-NULL high links are not a shared code at all
+    # — '0601101E' has one dim_programs row, so its NULL account names the one
+    # program it always named and nothing is unresolved.
     con.execute("delete from links")
     con.execute(
         "insert into links values"
-        " ('0145','1508N','high','SPE30124D0001'),"
-        " ('3050','1810N','high','N0002419C0003'),"
-        " ('3050','1810N','high','N0002419C0004'),"
-        " ('3010','1611N','medium','N0002420C0001'),"
-        " ('3010','1810N','medium','N0003917D0006'),"
         " ('0601101E',null,'high','HR001124C0001'),"
-        " ('0601101E',null,'high','HR001124C0002')"
+        " ('0601101E',null,'high','HR001124C0002'),"
+        " ('3010','1611N','high','N0002420C0001'),"
+        " ('3010','1810N','medium','N0003917D0006')"
+    )
+    assert con.execute(sql).fetchall() == []
+
+    # The ORGANIZATION-split exclusion the header calls NOT COVERED,
+    # DELIBERATELY, asserted rather than only announced (fix round 1, Minor
+    # 8/12). '20' has TWO dim_programs rows under the ONE account '0300D', so
+    # `count(distinct account) > 1` does not select it and the guard returns
+    # nothing no matter what its links look like. The configuration below is
+    # the MIXED shape on purpose — two high links under 0300D beside an
+    # account-NULL one — so the assertion is not vacuous: were `shared`
+    # widened to `count(*) > 1`, '20' would be selected and this exact shape
+    # would return a row. An account cannot name DCSA or DTRA apart, so the
+    # honest answer is the disambiguation stub the exporter already gives
+    # them (_ProgramIdentity.is_account_split), not a guard row.
+    con.execute("delete from links")
+    con.execute(
+        "insert into links values"
+        " ('20','0300D','high','X1'),"
+        " ('20','0300D','high','X2'),"
+        " ('20',null,'high','X3')"
     )
     assert con.execute(sql).fetchall() == []
     con.close()

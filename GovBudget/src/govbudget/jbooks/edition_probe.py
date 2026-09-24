@@ -311,3 +311,73 @@ def edition_counts(dsn: str, fy: int) -> dict:
         "detail_facts": detail_facts,
         "recon_checks": recon_checks,
     }
+
+
+# Accepted public absence explanations; the exporter and reader share this vocabulary.
+ORG_ABSENCE_RULES = (
+    "no-justification-book-published",
+    "summary-line-only",
+    "book-carries-no-embedded-xml",
+)
+
+
+def record_org_absences(manifest_path: Path, fiscal_year: int,
+                        absences: list[dict]) -> dict:
+    """Record the budget ORGS an edition publishes no usable J-book for.
+
+    Spec honesty rule 3, applied one level up from files: record_exclusions
+    says which FILES were deliberately not registered; this says which ORGS
+    have no file to register at all. Until Task 17c the site's coverage note
+    said the same thing about all of them — "…J-book, which is not yet
+    ingested", a sentence that presupposes a book exists — and this record
+    lived nowhere a reader or a gate could check. It is now the site's source
+    for that sentence: `export_site._org_absences` publishes {org: {rule, fy,
+    checked_on, checked_url}} into `site_meta.org_absences`, and each RULE
+    selects its own true sentence on the org's program pages (`fy` is the
+    edition the reader is told about, so no year is typed into THOSE
+    sentences — other rendered sentences still carry FY2026 literals this
+    payload does not reach). The
+    `reason` text stays here, for the operator; only the rule and the probe
+    stamp are published.
+
+    Each entry is {org, rule, reason, checked_url, checked_on}. Entries are
+    sorted by org for deterministic diffs; the list replaces any prior
+    absences for the edition (regeneration is idempotent, same contract as
+    record_exclusions). RETURNS THE WHOLE MANIFEST, not the entry —
+    record_service_exclusions returns its single entry because it writes one
+    keyed slot; this writes a whole-edition list, so there is no one entry to
+    hand back.
+
+    Rule vocabulary (ORG_ABSENCE_RULES above — the site renders one sentence
+    per rule, so the vocabulary is a shared contract, not a local label):
+      no-justification-book-published — the edition's justification index
+        publishes no R&D or procurement justification book for this org
+        (O&M / MilCon / personnel exhibits only).
+      summary-line-only — the org's workbook rows are reconciliation,
+        undistributed or roll-up summary lines, which no justification book
+        narrates by construction.
+      book-carries-no-embedded-xml — a book exists and downloads, but
+        carries no jb-2009 .zzz payload, so no detail can be extracted
+        deterministically. (LLM-over-PDF is not a substitute: cited-or-absent.)
+
+    Lives in a TOP-LEVEL `org_absences` section rather than editions[fy] for
+    the same reason record_service_exclusions has its own `services`
+    section: editions[fy] is edition_coverage_gate5e's load-status ledger
+    (status+reason there EXCUSES an unloaded edition), and FY2026 has no
+    editions entry at all because it IS loaded. An org-level absence is not
+    an edition status and must not be written where a gate reads one.
+    """
+    required = {"org", "rule", "reason", "checked_url", "checked_on"}
+    for e in absences:
+        if set(e) != required or e["rule"] not in ORG_ABSENCE_RULES:
+            raise ValueError(f"malformed org-absence entry: {e!r}")
+    ordered = sorted(absences, key=lambda e: e["org"])
+    manifest_path = Path(manifest_path)
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+    else:
+        manifest = {"editions": {}}
+    manifest.setdefault("org_absences", {})[str(fiscal_year)] = ordered
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    return manifest

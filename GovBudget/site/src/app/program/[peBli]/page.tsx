@@ -36,6 +36,9 @@ import {
   decadeProgramRow,
   isDecadeDetails,
   isIngestedServiceOrg,
+  getOrgAbsence,
+  orgAbsenceWording,
+  isWorkbookOnlyDetails,
   isRollupDetails,
   isZeroContentDetails,
   rollupProgramRow,
@@ -350,9 +353,13 @@ export async function generateMetadata({
     figureClauses.length > 0
       ? `${figureClauses.join(", ")} (P-1/R-1 workbook total obligation authority). `
       : "";
+  const metadataOrg = details.service_org ?? program.org;
+  const metadataAbsence = getOrgAbsence(metadataOrg);
   const tierTail =
-    tier === "rollup"
-      ? isIngestedServiceOrg(details.service_org ?? "")
+    isWorkbookOnlyDetails(details)
+      ? metadataAbsence
+        ? orgAbsenceWording(metadataAbsence, metadataOrg).metaTail
+        : isIngestedServiceOrg(metadataOrg)
         ? "Workbook-tier line: no R-2/P-40 J-book narrative for it. "
         : "Workbook-tier line: the detailed service J-book is not yet ingested. "
       : "";
@@ -588,12 +595,16 @@ export default async function ProgramPage({
   // Narrative groups for the two prose sections (§2d).
   const descriptionNarratives = narrativesInGroup(details.narratives, "description");
   const justificationNarratives = narrativesInGroup(details.narratives, "justification");
-  const serviceName = serviceOrgName(details.service_org ?? "") || "service";
+  const coverageOrg = details.service_org ?? program.org;
+  const workbookOnly = isWorkbookOnlyDetails(details);
+  const serviceAbsence = getOrgAbsence(coverageOrg);
+  const absenceWording = serviceAbsence ? orgAbsenceWording(serviceAbsence, coverageOrg) : null;
+  const serviceName = serviceOrgName(coverageOrg) || "service";
   // Ingested services (Navy, Army, Air Force / Space Force) have their FY2026
   // books in the pipeline — a rollup line for one of them has no matching
   // R-2/P-40 narrative, it is NOT "awaiting ingestion". Drives the honest
   // empty-state wording in the justification section (5G archive round).
-  const serviceIngested = isIngestedServiceOrg(details.service_org ?? "");
+  const serviceIngested = isIngestedServiceOrg(coverageOrg);
 
   // ── WHAT IT IS card (§P1-2) ───────────────────────────────────────────────
   // projectCount is the page's OWN project grain (the R-2/P-40 rows the
@@ -618,8 +629,9 @@ export default async function ProgramPage({
     budgetLines: details.budget_lines,
     projectCount,
     dossier,
-    serviceOrg: details.service_org ?? "",
+    serviceOrg: coverageOrg,
     serviceIngested,
+    serviceAbsence,
     // ROADMAP #28: the decade card names the edition the page's own decade
     // table stops at. Absent on every other tier, where the branch is dead.
     lastEdition: details.decade_absent?.last_edition ?? null,
@@ -807,12 +819,12 @@ export default async function ProgramPage({
             peIndex={peIndex}
             selfPe={peBli}
           />
-        ) : tier === "rollup" ? (
+        ) : workbookOnly ? (
           <div className="mb-8">
             <h2 className="mb-2 text-foreground">
               Description
             </h2>
-            <ServiceBooksNote serviceOrg={details.service_org ?? ""} />
+            <ServiceBooksNote serviceOrg={coverageOrg} />
           </div>
         ) : tier === "decade" ? (
           /* ROADMAP #28. The full-tier sentence below ("The J-book detail
@@ -848,9 +860,9 @@ export default async function ProgramPage({
             peIndex={peIndex}
             selfPe={peBli}
           />
-        ) : tier === "rollup" ? (
+        ) : workbookOnly ? (
           <SectionEmpty title="Justification">
-            {serviceIngested ? (
+            {absenceWording ? absenceWording.justification : serviceIngested ? (
               <>
                 The {serviceName} FY2026 J-book is ingested, but this program
                 element carries no matching R-2/P-40 accomplishments or

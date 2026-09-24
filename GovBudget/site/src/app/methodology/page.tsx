@@ -50,7 +50,7 @@ const FAQ_ITEMS = [
   {
     question: "How do you verify the data?",
     answer:
-      "Every J-book figure clears two arithmetic checks: project-level amounts must sum to the program-element total, and that total must match the R-1 or P-1 Excel rollup. Failures go to a human review queue, not the site. Each build also runs a Python test suite, a browser test suite, dbt data-model assertions, and the site verification gates — all required green before shipping.",
+      "We compare project amounts with program totals and J-book totals with the R-1 or P-1 workbook, preserving differences in fiscal year and accounting basis. Receipts show the supporting source and unresolved limitations. Release checks cover data consistency, receipt accuracy and browser behavior; remaining findings are recorded in the project roadmap.",
   },
   {
     question: "How confident should I be in the figures?",
@@ -146,15 +146,209 @@ export default function MethodologyPage() {
   // no gate able to catch it — the property lives in this derived boolean,
   // not a literal. `account`/`account+subagency`/`account+tokens` measured
   // 2026-09-04 against site_meta.link_precision.unmeasured.
-  const ACCOUNT_FAMILY_TIERS = new Set([
-    "account",
-    "account+subagency",
-    "account+tokens",
-  ]);
+  const ACCOUNT_FAMILY_NARROWING: Record<string, string> = {
+    account: "by a hand adjudication of the award",
+    "account+subagency": "by sub-agency",
+    "account+tokens": "by keyword overlap",
+  };
   const linkPrecisionUnmeasuredAllAccountFamily = linkPrecisionUnmeasuredList.every(
-    (t) => ACCOUNT_FAMILY_TIERS.has(t),
+    (t) => t in ACCOUNT_FAMILY_NARROWING,
   );
+  const linkPrecisionNarrowings = linkPrecisionUnmeasuredList
+    .map((t) => ACCOUNT_FAMILY_NARROWING[t])
+    .filter((n): n is string => Boolean(n));
+  const linkPrecisionNarrowingText =
+    linkPrecisionNarrowings.length > 2
+      ? `${linkPrecisionNarrowings.slice(0, -1).join(", ")}, or ${
+          linkPrecisionNarrowings[linkPrecisionNarrowings.length - 1]
+        }`
+      : linkPrecisionNarrowings.join(" or ");
   const linkPrecisionSampledAt = linkPrecision?.sampled_at ?? null;
+  // ROADMAP #79: every published figure answers ONE question — the rubric —
+  // and the paragraph names it in the words the packets ask the adjudicator.
+  // The exporter publishes only rubric='attribution', so the sentence renders
+  // from this value rather than a literal: a block under any other rubric
+  // prints figures with no question named, and gate 24 leg n fails the build
+  // (it fails the block itself too).
+  const linkPrecisionRubric = linkPrecision?.rubric ?? null;
+  // A stratum re-judged in a LATER run replaces only its own figure, so the
+  // figures can come from more than one study date — state all of them.
+  const linkPrecisionJudged = [
+    ...new Set(
+      Object.values(linkPrecision?.methods ?? {})
+        .map((v) => v.judged)
+        .filter((d): d is string => typeof d === "string" && d.length > 0),
+    ),
+  ].sort();
+  const linkPrecisionJudgedText =
+    linkPrecisionJudged.length > 0
+      ? linkPrecisionJudged.join(" and ")
+      : linkPrecisionSampledAt;
+  // True only while account+subagency's sole verdicts are the 2026-09-04
+  // rule-fired ones (migration 015 stamps them 'rule-fired', so the exporter
+  // lists the tier unmeasured). The history sentence below renders from this
+  // boolean and disappears the moment an attribution study for the tier
+  // lands — no prose edit, no gate blind spot.
+  const linkPrecisionSubagencyAwaitsAttribution =
+    linkPrecisionUnmeasuredList.includes("account+subagency");
+  // ROADMAP findings :118-119. The scope paragraph below used to carry four
+  // literals typed on 2026-09-02 (3,840 / "about 88%" / 12,811 / "~12%")
+  // describing a residue whose selection code was never committed. Every
+  // figure is derived now; gate 24 leg q recomputes them against the rendered
+  // text. Percentages, not dollars: the page's currency scan fails any uncited
+  // `$…` token — and every percentage clause says "by announced value",
+  // because these are shares of VALUE and the record shares are quite
+  // different numbers (10.6% of the residue's value is 44.9% of its records).
+  //
+  // The readiness test is per-FIELD rather than object-truthiness because the
+  // exporter returns all keys or {}; if a future export ever emitted a partial
+  // block the page would hide the paragraph and leg q would fail loudly, which
+  // is the direction we want. `precision` is exempt: null is a real state (no
+  // held-out sample of this pass's own links yet), and the paragraph says so.
+  const annScope = siteMeta.announcement_llm_scope;
+  const annScopeReady =
+    annScope?.records_total != null &&
+    annScope.records_deterministic != null &&
+    annScope.records_residue != null &&
+    annScope.records_attempted != null &&
+    annScope.records_remaining != null &&
+    annScope.pct_value_attempted != null &&
+    annScope.pct_value_remaining != null;
+  // The pass's OWN precision, never the tier's: link_precision above is
+  // pinned to the 2026-09-04 stratified draw over the whole announcement
+  // tier, which was sampled before this pass's newest links existed. A pair
+  // renders only when its own sample carries both halves and a judged date.
+  // `drawn` is the size of the DRAW and `sampled` what still publishes: five
+  // of the 60 judged links left the corpus, which moves the pair from 51/60
+  // to 48/55. The sentence states both, so the exclusion is visible rather
+  // than hidden inside a smaller denominator. `sampled_at` is the date the
+  // verdicts were RECORDED (adjudicated_at is set at load time), and the
+  // sentence says "recorded" for that reason.
+  const annScopePrecision =
+    annScope?.precision?.sampled != null &&
+    annScope.precision.confirmed != null &&
+    annScope.precision.drawn != null &&
+    annScope.precision.sampled_at
+      ? {
+          drawn: annScope.precision.drawn,
+          sampled: annScope.precision.sampled,
+          confirmed: annScope.precision.confirmed,
+          sampled_at: annScope.precision.sampled_at,
+        }
+      : null;
+  // THE SAMPLING FRAME of the tier-wide figure (fix round 1, item 2). The
+  // announcement tier's precision above is pinned to the 2026-09-04 draw,
+  // which was made over the tier as it then stood. This pass added links to
+  // that tier afterwards: `links_new_this_pass` is how many, derived, and the
+  // tier paragraph says so. Every number in the tier sentence was true; what
+  // was missing — and lived only in docs/methodology.md — is that a third of
+  // the tier was never eligible for the draw. Renders only when the tier
+  // actually publishes a pinned figure and the pass added links to it.
+  const annTierDrawDate =
+    linkPrecision?.methods?.["announcement+lexicon"]?.sample_id ?? null;
+  const annNewLinks =
+    annScope?.links_new_this_pass != null && annScope.links_new_this_pass > 0
+      ? annScope.links_new_this_pass
+      : null;
+  const annDrawGap = annNewLinks != null && annTierDrawDate ? {
+    count: annNewLinks,
+    drawnOn: annTierDrawDate,
+  } : null;
+  // ROADMAP #109: per-award hand-adjudication COVERAGE, which the section's
+  // opening sentence claimed rather than measured. It said "every published
+  // link was individually hand-adjudicated … a link is published as high only
+  // if neither [adversarial reviewer] could refute it"; measured 2026-09-11,
+  // 9,587 of the 12,595 links the crosswalk grades high or medium carry an
+  // adjudication row at all, three published paths carry none, and 60 rows in
+  // the whole table record both lenses — 57 of them on a link the crosswalk
+  // grades high or medium. The sentence now renders from
+  // site_meta.link_adjudication — every figure interpolated, none typed — and
+  // disappears entirely on a corpus with no adjudication (gate 24 leg o fails
+  // a passage that renders without the block, and a number the block does not
+  // hold).
+  // TWO DATES (fix round 1, C1). `measured_on` is when the census was taken —
+  // the export run — and `as_of` when the last adjudication was made. They
+  // were 10 days apart on 2026-09-11, and the corpus grew in between: 2,731
+  // of the 12,595 links were created after `as_of`, which is why they carry
+  // no adjudication. Dating the counts "as of {as_of}" stated a ratio that
+  // never held (on that day it was 9,587 of 9,864). Never re-fuse them.
+  const linkAdjudicationBlock = siteMeta.link_adjudication;
+  const linkAdjudication =
+    linkAdjudicationBlock?.as_of &&
+    linkAdjudicationBlock.measured_on &&
+    typeof linkAdjudicationBlock.published === "number" &&
+    typeof linkAdjudicationBlock.adjudicated === "number" &&
+    typeof linkAdjudicationBlock.unpinned === "number"
+      ? {
+          ...linkAdjudicationBlock,
+          as_of: linkAdjudicationBlock.as_of,
+          measured_on: linkAdjudicationBlock.measured_on,
+          published: linkAdjudicationBlock.published,
+          adjudicated: linkAdjudicationBlock.adjudicated,
+          unpinned: linkAdjudicationBlock.unpinned,
+        }
+      : null;
+  const linkAdjudicationPaths = linkAdjudication?.unadjudicated_methods ?? [];
+  const linkAdjudicationPathText =
+    linkAdjudicationPaths.length > 1
+      ? `${linkAdjudicationPaths.slice(0, -1).join(", ")} and ${
+          linkAdjudicationPaths[linkAdjudicationPaths.length - 1]
+        }`
+      : linkAdjudicationPaths.join("");
+  // "their precision is sampled instead" is a claim about the OTHER block, so
+  // it renders only while every path with no adjudication actually carries a
+  // sampled figure. A path that loses its figure loses the clause with it,
+  // rather than pointing a reader at a measurement that is not there.
+  const linkAdjudicationPathsAllSampled =
+    linkAdjudicationPaths.length > 0 &&
+    linkAdjudicationPaths.every((m) => Boolean(linkPrecision?.methods?.[m]));
+  // ROADMAP #109 fix round 1 (R-6c-4): the High tier graded itself "verified
+  // adversarially" in four places. Measured 2026-09-11 over the MART (the
+  // tier a reader meets, not budget_line_awards — dbt demotes unadjudicated
+  // account+tokens high rows and Postgres has no column for it): 768 links
+  // publish at high, 60 carry a per-award hand adjudication (all 60 at
+  // refuter_lenses_passed = 2) and 708 announcement+lexicon links carry
+  // none. The grading now renders that split from
+  // site_meta.link_adjudication.high, and gate 24 leg o binds it — including
+  // the rule that every path publishing at high with no adjudication is
+  // NAMED, so the remainder can never go unmentioned.
+  const highBlock = linkAdjudication?.high;
+  const highCensus =
+    typeof highBlock?.published_high === "number" &&
+    typeof highBlock.adjudicated_high === "number" &&
+    typeof highBlock.two_lens_high === "number" &&
+    highBlock.published_high > 0
+      ? {
+          published: highBlock.published_high,
+          adjudicated: highBlock.adjudicated_high,
+          twoLens: highBlock.two_lens_high,
+          byPath: highBlock.by_path ?? {},
+        }
+      : null;
+  // The paths the unadjudicated remainder rests on, and the remainder itself.
+  const highRemainderPaths = Object.entries(highCensus?.byPath ?? {})
+    .filter(([, v]) => (v?.high ?? 0) > (v?.adjudicated ?? 0))
+    .map(([m]) => m)
+    .sort();
+  const highRemainderPathText =
+    highRemainderPaths.length > 1
+      ? `${highRemainderPaths.slice(0, -1).join(", ")} and ${
+          highRemainderPaths[highRemainderPaths.length - 1]
+        }`
+      : highRemainderPaths.join("");
+  const highRemainder = highCensus
+    ? highCensus.published - highCensus.adjudicated
+    : 0;
+  // Fix round 2, rider (ii): the adversarial clause below renders only while
+  // something at high IS adjudicated. On a corpus that published a high tier
+  // with nothing adjudicated it would otherwise read "all 0 of them
+  // challenged by two independent adversarial reviewers" — a review asserted
+  // over an empty set, the same species of false universal this entry exists
+  // to retire, waiting for a future export to write it. Gate 24 leg o's slot
+  // binding accepts the clause's absence in exactly that case and rejects its
+  // presence. (It stays INLINE in the JSX, as a ternary of literals, because
+  // gate 2 leg (sp) can only see that a lifted-out string starts on a comma
+  // when the ternary is where the join is.)
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -604,15 +798,64 @@ export default function MethodologyPage() {
                 </h3>
                 <p>
                   Connecting a budget program element to the contracts that funded
-                  it is an inference. As of September 2026, every published link
-                  was individually hand-adjudicated: each award&apos;s contract
-                  descriptions were investigated against the program&apos;s J-book
-                  narratives and project titles, and every proposed program-level
-                  link was then challenged by two independent adversarial reviewers
-                  — a link is published as high only if neither could refute it.{" "}
+                  it is an inference.
+                  {linkAdjudication ? (
+                    <>
+                      {" "}
+                      <span data-link-adjudication="">
+                        As of {linkAdjudication.measured_on},{" "}
+                        {formatCount(linkAdjudication.adjudicated)} of the{" "}
+                        {formatCount(linkAdjudication.published)}{" "}
+                        links the crosswalk grades high or medium carry a
+                        per-award hand adjudication — the most recent made on{" "}
+                        {linkAdjudication.as_of}{" "}— recording which
+                        program elements, if any, the award&apos;s own contract
+                        record supports.{" "}
+                        {formatCount(linkAdjudication.unpinned)}{" "}
+                        of those found work that could not be pinned to any one
+                        program element
+                        {linkAdjudication.unpinned_tier
+                          ? `; those links publish at ${linkAdjudication.unpinned_tier}`
+                          : ""}
+                        .{" "}
+                        {linkAdjudicationPathText ? (
+                          <>
+                            The {linkAdjudicationPathText} paths carry no
+                            per-link adjudication
+                            {linkAdjudicationPathsAllSampled
+                              ? " — their precision is sampled instead (below)"
+                              : ""}
+                            .
+                          </>
+                        ) : null}
+                      </span>
+                    </>
+                  ) : null}{" "}
                   <em>High</em>: affirmative program-level evidence — the contract
-                  names a program that the budget line&apos;s own J-book pages also
-                  name, verified adversarially.{" "}
+                  names a program the budget line&apos;s own J-book pages also
+                  name.{" "}
+                  {highCensus ? (
+                    <>
+                      <span data-link-adjudication-high="">
+                        {formatCount(highCensus.adjudicated)} of the{" "}
+                        {formatCount(highCensus.published)} links published at
+                        high carry a per-award hand adjudication
+                        {highCensus.adjudicated > 0
+                          ? `, ${
+                              highCensus.twoLens === highCensus.adjudicated
+                                ? `all ${formatCount(highCensus.twoLens)}`
+                                : formatCount(highCensus.twoLens)
+                            } challenged by two independent adversarial reviewers`
+                          : ""}
+                        {highRemainderPathText
+                          ? `; the other ${formatCount(highRemainder)} rest on the ${highRemainderPathText} path${
+                              highRemainderPaths.length > 1 ? "s" : ""
+                            }`
+                          : ""}
+                        .
+                      </span>{" "}
+                    </>
+                  ) : null}
                   <em>Medium</em>: most such links are account-based — the
                   award drew from the same appropriation account as the
                   program, usually under the same sub-agency — which is an
@@ -665,7 +908,9 @@ export default function MethodologyPage() {
                   description of the work. Where the adjudication packet
                   recorded which of those applied, the link&apos;s citation card
                   states it; where it did not, the card says the basis was not
-                  recorded rather than asserting one. Announcement links additionally
+                  recorded rather than asserting one; an unrecorded basis is
+                  not evidence the announcement named the program outright.
+                  Announcement links additionally
                   require the award&apos;s funding accounts to match the
                   line&apos;s appropriation; awards funded only from operations
                   and maintenance money are not linked to research or procurement
@@ -673,18 +918,25 @@ export default function MethodologyPage() {
                   the contract supports, generic services, or weak generic names are
                   rejected by design. Each such link cites the announcement it came from.
                 </p>
-                <p className="mt-2">
-                  Scope of the announcement path, stated plainly: deterministic name
-                  matching covered every archived announcement; an additional LLM-assisted
-                  alias pass (decoding designators and aliases) covered the 3,840
-                  unmatched records that carry about 88% of the residue by announced
-                  value; the 12,811 smaller records carrying the remaining ~12% were
-                  not attempted. Where the adjudication packet recorded a
-                  basis, the published link carries it and its card names it;
-                  for the rest the card says the basis was not recorded, which
-                  is not the same as the announcement having named the program
-                  outright.
-                </p>
+                {annScopeReady && (
+                  <p className="mt-2" data-announcement-scope="">
+                    Scope of the announcement path: deterministic name matching
+                    covered all {formatCount(annScope!.records_total!)} archived
+                    announcement records that join the award lake;{" "}
+                    {formatCount(annScope!.records_deterministic!)} named a
+                    program a J-book narrative owns. Of the{" "}
+                    {formatCount(annScope!.records_residue!)} that did not,{" "}
+                    {formatCount(annScope!.records_attempted!)} have been through
+                    an LLM-assisted alias pass — {annScope!.pct_value_attempted}%
+                    of the residue by announced value;{" "}
+                    {annScope!.records_remaining! > 0
+                      ? `the remaining ${formatCount(annScope!.records_remaining!)} records (${annScope!.pct_value_remaining}% of that value) were not attempted.`
+                      : "none is left unattempted."}{" "}
+                    {annScopePrecision
+                      ? `Its most recent round carries its own measurement: two independent reviewers judged a random draw of ${formatCount(annScopePrecision.drawn)} of its links, recorded ${annScopePrecision.sampled_at}, and confirmed ${formatCount(annScopePrecision.confirmed)} of the ${formatCount(annScopePrecision.sampled)} that publish${annScopePrecision.drawn > annScopePrecision.sampled ? " — the others no longer publish and count in neither direction" : ""}; those links only, not the path as a whole.`
+                      : "Its most recent round has not yet been measured on a held-out sample of its own."}
+                  </p>
+                )}
                 <p className="mt-2">
                   Where the only evidence is a subaward: FSRS subaward reports describe
                   the work a subcontractor performs under a prime contract, and when that
@@ -698,16 +950,35 @@ export default function MethodologyPage() {
                     Measured precision of the published tiers, from a held-out
                     hand-adjudicated sample re-run through the same two-reviewer
                     process
-                    {linkPrecisionSampledAt
-                      ? ` and judged ${linkPrecisionSampledAt}`
+                    {linkPrecisionJudgedText
+                      ? ` and recorded ${linkPrecisionJudgedText}`
                       : ""}
-                    . Each sampled link is counted under the tier it publishes
+                    .{" "}
+                    {linkPrecisionRubric === "attribution" ? (
+                      <>
+                        Every figure answers one question — program attribution:
+                        does this award execute this program element? — judged
+                        from the award&apos;s own description against the
+                        program&apos;s J-book narrative and project titles, not
+                        from whether the linking rule fired.{" "}
+                      </>
+                    ) : null}
+                    Each sampled link is counted under the tier it publishes
                     under today, not the tier it carried when it was drawn; a
                     sampled link the corpus no longer publishes is counted in
                     neither direction:{" "}
-                    {linkPrecisionText}. Published whatever the numbers turn out
-                    to be; a tier that misses is renamed or narrowed, never
-                    widened to fit.
+                    {linkPrecisionText}.
+                    {annDrawGap && (
+                      <span data-announcement-draw-gap="">
+                        {" "}
+                        The announcement tier&apos;s figure comes from the{" "}
+                        {annDrawGap.drawnOn} draw, which predates{" "}
+                        {formatCount(annDrawGap.count)}{" "}of the links now
+                        publishing under that tier: the LLM-alias pass&apos;s
+                        most recent round added them, and the round&apos;s own
+                        held-out sample above measures its links instead.
+                      </span>
+                    )}
                     {linkPrecisionUnmeasured && (
                       <>
                         {" "}
@@ -715,19 +986,22 @@ export default function MethodologyPage() {
                         tiers a reader can meet — {linkPrecisionUnmeasured}.{" "}
                         {linkPrecisionUnmeasuredAllAccountFamily ? (
                           <>
-                            Those rest on an appropriation-account match, narrowed
-                            by sub-agency, by keyword overlap, or by a hand
-                            adjudication that pinned the pair; an account match is
-                            an association by construction rather than proof this
-                            program paid, and how often it names the right program
-                            has not been independently measured. The account /
-                            sub-agency tier was sampled, but its adjudication asked
-                            only whether the mechanical rule had fired — the
-                            appropriation account, the sub-agency, the
-                            contract-number prefix — and not whether the award paid
-                            for this program, so those verdicts do not measure
-                            program attribution and are not published as if they
-                            did.
+                            Those rest on an appropriation-account match,
+                            narrowed {linkPrecisionNarrowingText}; how often
+                            that association names the right program has not
+                            been independently measured for these tiers.
+                            {linkPrecisionSubagencyAwaitsAttribution ? (
+                              <>
+                                {" "}
+                                The account / sub-agency tier’s first sample
+                                asked only whether the mechanical rule
+                                had fired — the appropriation account, the
+                                sub-agency, the contract-number prefix — and not
+                                whether the award paid for this program; those
+                                verdicts are kept for audit under their own rubric
+                                and are not published as program attribution.
+                              </>
+                            ) : null}
                           </>
                         ) : (
                           "Their evidence paths are described above."

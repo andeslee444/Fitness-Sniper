@@ -148,6 +148,7 @@ def _make_duckdb_with_districts(tmp_path: Path) -> Path:
         "('VA', 'VA-08', '0602303E', 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
         "('CA', 'CA-18', '0601101E', 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
     )
+    con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
 
     # #51: LIVE mart schema (dbt/models/marts/fct_district_totals.sql) — the
     # award-distinct district headline. No duplication in THIS fixture, so
@@ -675,6 +676,7 @@ class TestEmitDistrictSidecars:
             "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
             "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
         )
+        con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
         con.execute(
             "CREATE TABLE fct_district_totals ("
             "  pop_state varchar, pop_district varchar,"
@@ -732,6 +734,7 @@ class TestEmitDistrictSidecars:
             "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 10, 1, 1, 100000000.0),"
             "('CA', 'CA-18', '0699999X', 'Solo Program', 'Army', 5, 1, 1, 15000000.0)"
         )
+        con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
         con.execute(
             "CREATE TABLE fct_district_totals ("
             "  pop_state varchar, pop_district varchar,"
@@ -756,6 +759,7 @@ class TestEmitDistrictSidecars:
             "('0602303E', 'SHARED-1', 'high'),"
             "('0699999X', 'SOLO-1', 'high')"
         )
+        con.execute("ALTER TABLE fct_budget_to_awards ADD COLUMN account varchar")
         con.execute(
             "CREATE TABLE fct_award_transactions ("
             "  award_id_piid varchar, pop_district varchar, obligation double"
@@ -796,6 +800,7 @@ class TestEmitDistrictSidecars:
             "  total_obligation double"
             ")"
         )
+        con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
         con.execute(
             "CREATE TABLE dim_geography ("
             "  pop_state varchar, pop_district varchar,"
@@ -833,6 +838,7 @@ class TestEmitDistrictSidecars:
         con.execute(
             "INSERT INTO fct_district_programs VALUES ('TX', 'TX-01', '0601101E', 'DARPA', 'DARPA', 3, 1, 1, 5000000.0)"
         )
+        con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
         con.close()
 
         dist_dir = tmp_path / "districts"

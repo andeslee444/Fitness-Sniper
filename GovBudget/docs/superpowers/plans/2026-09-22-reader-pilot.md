@@ -1,6 +1,6 @@
 # Reader journey pilot
 
-Roadmap: #89–90. Prepared 2026-09-22. Status: implementation and session kit; no human sessions or production baseline yet.
+Roadmap: #89–90. Prepared 2026-09-22. Status: session kit ready; no human sessions. Production page-view reporting and two controlled event deliveries verified September 24; custom-event reporting is unavailable on the current Hobby plan. See [measurement record](2026-09-24-reader-measurement.md).
 
 ## Decision and scope
 
