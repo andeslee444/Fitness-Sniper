@@ -1,4 +1,16 @@
 import { normalizeAmount, valuesAgree } from "./basis.mjs";
+import { isDeepStrictEqual } from "node:util";
+
+/** Older rows and receipts must remain available outside the initial page. */
+export function checkFamilyHistoryAssets(history, citations, shippedHistory, shippedCitations) {
+  const errors = [];
+  if (!isDeepStrictEqual(history, shippedHistory)) errors.push("shipped family history differs from the audited export");
+  const ids = new Set([history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id)])]);
+  for (const id of ids) {
+    if (!citations[id] || !isDeepStrictEqual(citations[id], shippedCitations[id])) errors.push(`receipt ${id} is missing or changed in built citation shards`);
+  }
+  return errors;
+}
 
 /** Independent release audit: a family headline is an actuals sum, never one PE. */
 export function checkFamilyHistory(root, history, citations, slice) {
@@ -38,7 +50,7 @@ export function checkFamilyHistory(root, history, citations, slice) {
       check(/^https:\/\/[^/]+\.(?:mil|gov)\//.test(row.official_url), `${point.id} input ${row.fact_id} does not link to an official workbook`);
     }
   }
-  const shown = [total.fact_id, ...defaults.flatMap(p => [p.fact_id, ...p.components.map(r => r.fact_id)])];
+  const shown = [total.fact_id, ...defaults.map(p => p.fact_id), ...defaults.at(-1).components.map(r => r.fact_id)];
   for (const id of shown) check(slice.has(id), `receipt ${id} is absent from the page citation slice`);
 
   const receipt = root.querySelector('[data-testid="family-receipt"]');

@@ -8,7 +8,8 @@ import { getF15FamilyData } from "@/lib/f15-family-data";
 import { getRecordFact } from "@/lib/f15-family";
 import { trackReaderEvent } from "@/lib/reader-events";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
-import { getF15FundingHistory } from "@/lib/family-funding-history-data";
+import { getF15FundingHistorySource } from "@/lib/family-funding-history-data";
+import { getCitations } from "@/lib/data";
 
 vi.mock("@/lib/reader-events", () => ({ trackReaderEvent: vi.fn() }));
 vi.mock("@/lib/cite-shards", () => ({ resolveCitationFromShards: vi.fn() }));
@@ -75,7 +76,8 @@ describe("exact source document actions", () => {
   });
 
   it("resolves the complete multi-year receipt without a false missing-source warning", async () => {
-    const { history, citations } = getF15FundingHistory();
+    const history = getF15FundingHistorySource();
+    const citations = getCitations();
     const total = citations[history.cumulative.fact_id];
     const fetchCitation = vi.fn().mockResolvedValue(null);
     const closure = await resolveSourceCitationInputs(total, id => citations[id], fetchCitation);
@@ -97,7 +99,8 @@ describe("exact source document actions", () => {
   });
 
   it("loads the same cumulative chain from standalone shards without truncating at 32", async () => {
-    const { history, citations } = getF15FundingHistory();
+    const history = getF15FundingHistorySource();
+    const citations = getCitations();
     const fetchCitation = vi.fn(async (id: string) => citations[id] ?? null);
     const closure = await resolveSourceCitationInputs(citations[history.cumulative.fact_id], () => undefined, fetchCitation);
     expect(closure.incomplete).toBe(false);

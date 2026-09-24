@@ -16,6 +16,10 @@ over the full locally verified history, with explicit limits on that history.
   links. The family total remains independent of aircraft and program selectors.
 - Twelve preferred annual snapshots are displayed; the data export retains
   thirty scenario snapshots, 207 workbook inputs and 31 derived receipts.
+- Annual totals and current-year receipt rows render immediately. Older source
+  rows load on selection from a same-origin sidecar, with cached results and
+  a retry state. The page keeps its existing size limits; release checks compare
+  the shipped sidecar and every receipt shard with the audited source data.
 - PB2017–2023 procurement rows use reviewed edition/account/organization/activity
   identities. Reused line numbers are never treated as permanent program IDs.
 - Annual sums use canonical scenario columns, including each activity once.

@@ -54,11 +54,52 @@ export interface FamilyFundingHistoryData {
   };
 }
 
+/** Initial page keeps annual totals; older source rows load on selection. */
+export type FamilyFundingPointSummary = Omit<FamilyFundingPoint, "components"> & {
+  component_count: number;
+  components?: FamilyFundingInput[];
+};
+
+export type FamilyFundingHistoryView = Omit<FamilyFundingHistoryData, "points"> & {
+  points: FamilyFundingPointSummary[];
+};
+
+export const FAMILY_HISTORY_URL = "/json/f15_funding_history.json";
+
 /** One published snapshot per year. Requests never fill a gap in actuals. */
-export function familyHistorySeries(history: FamilyFundingHistoryData): FamilyFundingPoint[] {
+export function familyHistorySeries<T extends { id: string; fy: number }>(history: { default_point_ids: string[]; points: T[] }): T[] {
   return history.default_point_ids.map(id => {
     const point = history.points.find(point => point.id === id);
     if (!point) throw new Error(`Family history has no point ${id}`);
     return point;
   }).sort((a, b) => a.fy - b.fy);
+}
+
+/** A late fetch must describe the same published figures as the loaded page. */
+export function familyHistoryInputRows(value: unknown, history: FamilyFundingHistoryView): Record<string, FamilyFundingInput[]> {
+  if (!value || typeof value !== "object") throw new Error("Invalid family history response");
+  const full = value as FamilyFundingHistoryData;
+  if (full.schema_version !== history.schema_version || full.family_id !== history.family_id || full.basis !== history.basis || full.units !== history.units || !Array.isArray(full.points)) {
+    throw new Error("Unsupported family history response");
+  }
+  const rows: Record<string, FamilyFundingInput[]> = {};
+  for (const summary of history.points) {
+    const matches = full.points.filter(point => point.id === summary.id);
+    const point = matches[0];
+    if (matches.length !== 1 || point.fact_id !== summary.fact_id || point.fy !== summary.fy || point.edition !== summary.edition || point.kind !== summary.kind || point.measure !== summary.measure || point.amount_thousands !== summary.amount_thousands || !Array.isArray(point.components) || point.components.length !== summary.component_count) {
+      throw new Error("Family history response does not match this page");
+    }
+    const ids = new Set<string>();
+    let amount = 0;
+    for (const row of point.components) {
+      if (!/^[0-9a-f]{16}$/.test(row.fact_id) || ids.has(row.fact_id) || !Number.isFinite(row.amount_thousands) || typeof row.title !== "string" || typeof row.sheet !== "string" || typeof row.cells !== "string" || typeof row.exhibit !== "string" || typeof row.measure !== "string" || !["budget_lines", "budget_lines_decade"].includes(row.dataset) || !/^https:\/\/[^/]+\.(?:mil|gov)\//.test(row.official_url)) {
+        throw new Error("Invalid family history source row");
+      }
+      ids.add(row.fact_id);
+      amount += row.amount_thousands;
+    }
+    if (Math.abs(amount - point.amount_thousands) > 0.000001) throw new Error("Family history source rows disagree with total");
+    rows[summary.id] = point.components;
+  }
+  return rows;
 }

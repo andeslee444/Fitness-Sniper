@@ -3,16 +3,28 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parse } from "node-html-parser";
 import { FamilyFundingHistory } from "@/components/family-funding-history";
-import { getF15FundingHistory } from "@/lib/family-funding-history-data";
-import { checkFamilyHistory } from "../../scripts/gates/family-history.mjs";
+import { getF15FundingHistory, getF15FundingHistorySource } from "@/lib/family-funding-history-data";
+import { getCitations } from "@/lib/data";
+import { checkFamilyHistory, checkFamilyHistoryAssets } from "../../scripts/gates/family-history.mjs";
 
 describe("family funding release gate", () => {
-  const { history, citations } = getF15FundingHistory();
-  const html = renderToStaticMarkup(<FamilyFundingHistory history={history} shortName="F-15" />);
-  const check = (h = history, markup = html) => checkFamilyHistory(parse(markup), h, citations, new Set(Object.keys(citations)));
+  const view = getF15FundingHistory();
+  const history = getF15FundingHistorySource();
+  const citations = getCitations();
+  const html = renderToStaticMarkup(<FamilyFundingHistory history={view.history} shortName="F-15" />);
+  const check = (h = history, markup = html) => checkFamilyHistory(parse(markup), h, citations, new Set(Object.keys(view.citations)));
 
   it("accepts the published actuals chain and direct source links", () => {
     expect(check()).toEqual([]);
+  });
+
+  it("requires matching historical data and on-demand receipt shards", () => {
+    expect(checkFamilyHistoryAssets(history, citations, history, citations)).toEqual([]);
+    expect(checkFamilyHistoryAssets(history, citations, null, citations)).toContain("shipped family history differs from the audited export");
+    const id = history.points[0].components[0].fact_id;
+    const incomplete = { ...citations };
+    delete incomplete[id];
+    expect(checkFamilyHistoryAssets(history, citations, history, incomplete)).toContain(`receipt ${id} is missing or changed in built citation shards`);
   });
 
   it("rejects adding a request to cumulative actuals or duplicating a source row", () => {

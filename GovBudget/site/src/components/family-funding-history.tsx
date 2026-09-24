@@ -1,26 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, FileSpreadsheet } from "lucide-react";
 import { Cite } from "@/components/cite";
 import { formatAmount } from "@/lib/format";
-import { familyHistorySeries, type FamilyFundingHistoryData, type FamilyFundingPoint } from "@/lib/family-funding-history";
+import { FAMILY_HISTORY_URL, familyHistoryInputRows, familyHistorySeries, type FamilyFundingHistoryView, type FamilyFundingPointSummary, type FamilyFundingInput } from "@/lib/family-funding-history";
 import styles from "./family-funding-history.module.css";
 
-function AnnualFigure({ point, familyId }: { point: FamilyFundingPoint; familyId: string }) {
+function AnnualFigure({ point, familyId }: { point: FamilyFundingPointSummary; familyId: string }) {
   return <Cite value={point.amount_thousands} units="USD thousands" factId={point.fact_id}
     dataset="f15_funding_history" basis="toa" fy={point.fy} measure={point.measure}
     edition={point.edition} entity={`family:${familyId}`} exhibitFamily="mixed" chip={false} />;
 }
 
 /** Family scope is independent of the aircraft variant or individual record below. */
-export function FamilyFundingHistory({ history, shortName }: { history: FamilyFundingHistoryData; shortName: string }) {
+export function FamilyFundingHistory({ history, shortName }: { history: FamilyFundingHistoryView; shortName: string }) {
   const series = familyHistorySeries(history);
   const [selectedId, setSelectedId] = useState(series.at(-1)!.id);
   const selected = series.find(point => point.id === selectedId)!;
   const max = Math.max(1, ...series.map(point => point.amount_thousands));
   const total = history.cumulative;
+  const [sourceRows, setSourceRows] = useState<Record<string, FamilyFundingInput[]>>({});
+  const [sourceStatus, setSourceStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const pending = useRef<Promise<void> | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  function loadSources() {
+    if (pending.current) return;
+    setSourceStatus("loading");
+    pending.current = fetch(FAMILY_HISTORY_URL)
+      .then(response => {
+        if (!response.ok) throw new Error("Family source file unavailable");
+        return response.json() as Promise<unknown>;
+      })
+      .then(value => familyHistoryInputRows(value, history))
+      .then(rows => {
+        if (!mounted.current) return;
+        setSourceRows(rows);
+        setSourceStatus("ready");
+      })
+      .catch(() => { if (mounted.current) setSourceStatus("error"); })
+      .finally(() => { pending.current = null; });
+  }
+
+  function selectYear(point: FamilyFundingPointSummary) {
+    setSelectedId(point.id);
+    if (!point.components && !sourceRows[point.id]) loadSources();
+  }
+
+  const selectedRows = selected.components ?? sourceRows[selected.id];
 
   return <section className={styles.overview} aria-label={`${shortName} family funding history`} data-family-history={history.family_id}>
     <div className={styles.summary} data-testid="family-receipt" data-family-cumulative={total.fact_id}>
@@ -45,7 +78,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
             aria-label={`FY${point.fy} ${point.measure_label}, ${formatAmount(point.amount_thousands, "USD thousands")}${point.coverage === "partial" ? ", partial coverage" : ""}`}
             aria-pressed={selected.id === point.id} aria-controls="family-history-receipts"
             data-history-year={point.fy} data-history-fact={point.fact_id} data-kind={point.kind}
-            onClick={() => setSelectedId(point.id)}>
+            onClick={() => selectYear(point)}>
             <span className={styles.track} aria-hidden="true"><span className={styles.bar} style={{ height: `${Math.max(1, point.amount_thousands / max * 100)}%` }} /></span>
             <span className={styles.yearLabel}>{String(point.fy).slice(-2)}</span>
           </button>)}
@@ -57,12 +90,17 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
       </div>
     </div>
     <details className={styles.ledger} data-testid="family-ledger" id="family-history-receipts">
-      <summary>FY{selected.fy} · {selected.components.length} source rows · View funding & receipts</summary>
+      <summary>FY{selected.fy} · {selected.component_count} source rows · View funding & receipts</summary>
       <p className={styles.caption} data-basis-declared="">P-1/R-1 TOA · PB{selected.edition} · {selected.measure_label} · Nominal dollars, without inflation adjustment.</p>
       <p className={styles.scope}>{history.scope_note}</p>
       {selected.missing_programs.length > 0 && <p className={styles.coverage} data-history-missing="">Missing from this year’s total: {selected.missing_programs.join(", ")}. Missing coverage is not zero funding.</p>}
-      <dl className={styles.rows}>
-        {selected.components.map(row => <div className={styles.row} key={row.fact_id} data-history-input={row.fact_id}>
+      {!selectedRows && sourceStatus !== "error" && <p className={styles.coverage} role="status">Loading FY{selected.fy} source rows… The cited total remains available.</p>}
+      {!selectedRows && sourceStatus === "error" && <div className={styles.coverage} role="alert">
+        <p>FY{selected.fy} source rows could not be loaded. The cited total remains available.</p>
+        <button type="button" onClick={loadSources}>Retry loading source rows</button>
+      </div>}
+      {selectedRows && <dl className={styles.rows}>
+        {selectedRows.map(row => <div className={styles.row} key={row.fact_id} data-history-input={row.fact_id}>
           <dt>{row.program_slug ? <Link href={`/program/${row.program_slug}/`}>{row.title}</Link> : row.title}
             <span className={styles.rowMeta}>{row.pe_bli} · {row.exhibit} · Activity {row.budget_activity}</span>
           </dt>
@@ -73,7 +111,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
             <FileSpreadsheet size={15} aria-hidden="true" /> Government spreadsheet <ArrowUpRight size={13} aria-hidden="true" />
           </a><span>{row.sheet} · {row.cells}</span></dd>
         </div>)}
-      </dl>
+      </dl>}
       <div className={styles.notes}><p>{total.scope_note}</p>{history.coverage_notes.map(note => <p key={note}>{note}</p>)}</div>
     </details>
   </section>;

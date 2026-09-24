@@ -192,6 +192,16 @@ copyFile(
 );
 console.log("✓  years_matrix.json → public/json/");
 
+// Family annual totals are server-rendered; older workbook rows load only
+// when selected. Keep this small sidecar same-origin beside receipt shards.
+const familyHistorySrc = path.join(jsonDir, "f15_funding_history.json");
+if (fs.existsSync(familyHistorySrc)) {
+  copyFile(familyHistorySrc, path.join(jsonDestDir, "f15_funding_history.json"));
+  console.log("✓  f15_funding_history.json → public/json/");
+} else {
+  fs.rmSync(path.join(jsonDestDir, "f15_funding_history.json"), { force: true });
+}
+
 // ── 5e. Copy the flowdown payload (Phase 5H — /flow/ two-river sankey) ───────
 copyFile(
   path.join(jsonDir, "flow_chart.json"),
