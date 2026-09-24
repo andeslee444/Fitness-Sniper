@@ -22,7 +22,7 @@ tracked in the [publication record](plans/2026-09-23-publication.md); the earlie
 local-only checkpoints remain historical. The broad copy/voice-rule findings
 remain open and must not be described as a fully green release suite.
 
-**Refresh checkpoint (2026-09-24, publication pending):** bounded crosswalk
+**Refresh checkpoint (2026-09-24, published and live-verified):** bounded crosswalk
 execution and stable assignments are implemented; the live FY2026 DARPA dry-run
 projected 39,192 candidates and wrote none. Restored migrations 015–017 reconcile
 source with the already-migrated curated store. Attribution reporting now uses
@@ -31,8 +31,9 @@ announcement draw pinned separately from the later wave study. Six reviewed PDF
 locations were rechecked against source bytes and persisted before regeneration.
 September 6 FY2026 contract/assistance archives passed staged key/date/amount and
 retention checks and were promoted locally with rollback snapshots. Contract
-actions reach September 4 and assistance August 30; production waits on rebuild
-and release verification. See the [execution plan](plans/2026-09-24-refresh-and-reader-validation.md)
+actions reach September 4 and assistance August 30. The final production build,
+eight live-asset checks and 19 exact public artifact comparisons passed. See
+the [publication record](plans/2026-09-24-publication.md), [execution plan](plans/2026-09-24-refresh-and-reader-validation.md)
 and [coverage review](plans/2026-09-24-award-coverage-review.md).
 
 Final review reconciled six company labels against registration evidence,
@@ -47,7 +48,11 @@ detail rows and 65 sibling narratives from the 27 split program pages, while
 retaining canonical source facts. The independent final audit checks 134 detail
 rows, 53 narratives and 19 headline citations with zero errors. Unassignable
 lobbying, prime and lineage claims are withheld with an explicit scope notice.
-Final build and production verification remain pending.
+Functional source `ebbdf0d6` is deployed; standalone `main` merge `8cfb5720`
+is pushed. The final frontend suite passes 1,572 tests, and 14/15 browser-free
+gates pass with only the existing copy debt. Live receipt and program reviews
+confirm the corrections. Normalized concentration exports retain their verified
+confidence scope; feed attribution checks retain exact curated source labels.
 
 Production page views are confirmed in the account. Two real reader actions
 reached the analytics endpoint with HTTP 200, but the active Hobby plan does not
@@ -843,8 +848,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   explicit. Final site suite: 93 files / 1,366 tests; final F-15 size 67,875 gzip
   bytes against the unchanged 70,000-byte ceiling. Source, fold, accessibility
   and typography checks passed on the fresh production build.
-  **Status:** PARTIAL — implemented and locally exercised; publication and human
-  comprehension evidence remain outstanding.
+  **Status (2026-09-24):** PUBLISHED — the answer/receipt journey is live and
+  the refreshed release is verified. Human comprehension remains unmeasured;
+  the five-reader pilot is the next product acceptance step.
 
 - **#90 Measure reader success on the existing journey.** Basic Vercel
   Analytics is already installed; add a small action funnel for brief/funding
@@ -870,8 +876,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   [five-reader session kit](plans/2026-09-22-reader-pilot.md) includes tasks,
   recording sheet, success criteria and interpretation limits. Aggregate events
   do not establish per-person funnel completion; no custom identifiers added.
-  **Status:** PARTIAL — instrumentation and study materials implemented; live
-  event arrival, human baseline and five reader sessions are not measured.
+  **Status (2026-09-24):** PARTIAL — instrumentation and study kit are live.
+  Production page-view reporting and two HTTP-200 custom-event sends are
+  verified; Hobby does not provide custom-event reporting. Human baseline and
+  all five reader sessions remain unmeasured. The pilot needs no paid plan.
 
 - **#91 Reviewed changes briefing and discoverable watch feeds.** Assemble a
   small set of source-backed change explanations around the flagship programs:
@@ -901,8 +909,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   checked all six endpoints and all three exact excerpts; human sign-off is not
   implied. Program/company/feed controls explain RSS/Atom, copy feed addresses
   with fallback, retain eligibility rules and avoid promising a cadence.
-  **Status:** PARTIAL — local cards and watch controls implemented; release
-  checks/publication and refresh-dependent timeliness remain separate.
+  **Status (2026-09-24):** PUBLISHED — reviewed cards and watch controls are
+  live; the refresh-to-feed publication cycle passed. No extra spending-change
+  briefing was added from archive backfills or revisions. Recurring cadence
+  and reader return/reuse evidence remain open.
 
 - **#92 Jev internal editorial-review pilot.** Use the tested adapter as the
   starting point for a bounded offline review of one existing dossier/briefing

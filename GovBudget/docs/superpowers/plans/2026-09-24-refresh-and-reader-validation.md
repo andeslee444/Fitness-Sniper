@@ -160,3 +160,18 @@ automated clicks or aggregate analytics.
   receipts, 5,251 workbook overlaps with zero divergences, and 25/25 sampled
   narrative locations. The earlier in-progress export check was transient;
   all 20,298 lobbying receipts resolve in the completed output.
+
+- Final release: functional source `ebbdf0d6` built successfully; full frontend
+  106 files / 1,572 tests; final browser-free gates 14/15 pass, with only the
+  22 existing copy findings. Focused desktop/mobile review passed. Methodology
+  now states the oldest dataset refresh and distinguishes flow availability
+  from linked-award evidence; visible interpolation spacing was corrected.
+- Published standalone `main` merge `8cfb5720` through the normal deployment
+  script. The first upload failed on a connection error; retry succeeded.
+  All eight live-asset checks and 19 HTTP-200 byte-for-byte public artifact
+  comparisons pass. Live PDF highlights, document-only fallback, Hornet account
+  disclosure and partial-year award coverage were checked in the browser.
+  See [the final publication record](2026-09-24-publication.md).
+- The authorized implementation/publication work is complete. Five-reader
+  sessions and human Jev evaluation remain unrun; the study kit is ready.
+  Hobby custom-event reporting and existing copy-rule debt remain explicit.

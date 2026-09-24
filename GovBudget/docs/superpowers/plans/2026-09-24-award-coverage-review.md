@@ -1,6 +1,6 @@
 # Reviewed award coverage update — 2026-09-24
 
-Status: source review and local warehouse/export rebuild complete; production verification pending.
+Status: published and production-verified. See the [publication record](2026-09-24-publication.md) for the exact source, deployment and live checks.
 
 ## What the source update establishes
 
