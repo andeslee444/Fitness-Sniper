@@ -743,9 +743,10 @@ export default function MethodologyPage() {
                   Company families — registry fact vs. name inference
                 </h3>
                 <p>
-                  <em>High confidence</em> (registry fact): the subsidiaries share
-                  one registered parent UEI in SAM.gov, so the GROUPING is a
-                  registry fact rather than a guess.{" "}
+                  <em>High confidence</em> (registered parent identifier): the
+                  recipients share a reported parent UEI in the award data.
+                  This identifies the grouping rule; it does not independently
+                  verify current ownership or the reported parent relationship.{" "}
                   <em>Medium confidence</em> (name inference): slightly different
                   legal-name variants normalize to the same string. Both tiers
                   appear on screen; the method is always disclosed. Where the
@@ -758,7 +759,7 @@ export default function MethodologyPage() {
                   because a badge that never varies tells the reader nothing.
                 </p>
                 <p className="mt-2">
-                  <strong>The tier grades the grouping, never the name.</strong> A
+                  <strong>The tier grades the grouping, never the name.</strong>{" "}A
                   family&rsquo;s label is the registered parent name of its largest
                   member, chosen by an argmax over obligations.
                   {siteMeta.entity_label_review && <> {siteMeta.entity_label_review.near_ties} of the {siteMeta.entity_label_review.families}{" "}
