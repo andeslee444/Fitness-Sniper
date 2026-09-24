@@ -2,12 +2,12 @@ import { normalizeAmount, valuesAgree } from "./basis.mjs";
 import { isDeepStrictEqual } from "node:util";
 
 /** Older rows and receipts must remain available outside the initial page. */
-export function checkFamilyHistoryAssets(history, citations, shippedHistory, shippedCitations) {
+export function checkFamilyHistoryAssets(history, citations, shippedHistory, shippedShards) {
   const errors = [];
   if (!isDeepStrictEqual(history, shippedHistory)) errors.push("shipped family history differs from the audited export");
   const ids = new Set([history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id)])]);
   for (const id of ids) {
-    if (!citations[id] || !isDeepStrictEqual(citations[id], shippedCitations[id])) errors.push(`receipt ${id} is missing or changed in built citation shards`);
+    if (!citations[id] || !isDeepStrictEqual(citations[id], shippedShards[id.slice(0, 2)]?.[id])) errors.push(`receipt ${id} is missing or changed in built citation shards`);
   }
   return errors;
 }

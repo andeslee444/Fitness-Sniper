@@ -55,6 +55,10 @@ describe("F-15 curated family and source coverage", () => {
       expect(source).toHaveProperty("officialUrl");
       expect(source).toHaveProperty("locator");
     }
+    for (const narrative of family.records.flatMap(item => item.narratives)) {
+      const citation = family.citations[narrative.factId];
+      if (citation.kind === "jbook_narrative") expect(citation.source_passage).toBe(narrative);
+    }
   });
 
   it("maps shared C/D/E/EX software while keeping F-15E installation separate from EX", () => {

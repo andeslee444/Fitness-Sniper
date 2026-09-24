@@ -19,12 +19,19 @@ describe("family funding release gate", () => {
   });
 
   it("requires matching historical data and on-demand receipt shards", () => {
-    expect(checkFamilyHistoryAssets(history, citations, history, citations)).toEqual([]);
-    expect(checkFamilyHistoryAssets(history, citations, null, citations)).toContain("shipped family history differs from the audited export");
+    const shards: Record<string, typeof citations> = {};
+    for (const id of [history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id)])]) {
+      (shards[id.slice(0, 2)] ??= {})[id] = citations[id];
+    }
+    expect(checkFamilyHistoryAssets(history, citations, history, shards)).toEqual([]);
+    expect(checkFamilyHistoryAssets(history, citations, null, shards)).toContain("shipped family history differs from the audited export");
     const id = history.points[0].components[0].fact_id;
-    const incomplete = { ...citations };
-    delete incomplete[id];
-    expect(checkFamilyHistoryAssets(history, citations, history, incomplete)).toContain(`receipt ${id} is missing or changed in built citation shards`);
+    delete shards[id.slice(0, 2)][id];
+    expect(checkFamilyHistoryAssets(history, citations, history, shards)).toContain(`receipt ${id} is missing or changed in built citation shards`);
+    // A merged map would wrongly accept a receipt in the wrong URL prefix.
+    const wrongPrefix = id.startsWith("00") ? "01" : "00";
+    (shards[wrongPrefix] ??= {})[id] = citations[id];
+    expect(checkFamilyHistoryAssets(history, citations, history, shards)).toContain(`receipt ${id} is missing or changed in built citation shards`);
   });
 
   it("rejects adding a request to cumulative actuals or duplicating a source row", () => {

@@ -168,7 +168,10 @@ export function getF15FamilyData(): F15FamilyPayload {
   for (const narrative of records.flatMap((record) => record.narratives)) {
     const citation = citations[narrative.factId];
     if (citation?.kind === "jbook_narrative") {
-      citations[narrative.factId] = { ...citation, source_passage: { title: narrative.title, body: narrative.body } };
+      // Reuse the narrative object so Flight sends the long passage once and
+      // references it from both the record and its receipt. A separate
+      // {title, body} copy repeats large strings beyond gzip's shared window.
+      citations[narrative.factId] = { ...citation, source_passage: narrative };
     }
   }
   const sources = [...EDITORIAL_SOURCES, ...Object.keys(citations).map(sourceForFact)];

@@ -2552,12 +2552,12 @@ function runFamilyLeadLeg({ errors, notes }) {
   const findings = checkFamilyHistory(parse(html), history, citations, pageCitationFactIds(html));
   const shippedHistory = path.join(outDir, "json/f15_funding_history.json");
   const prefixes = new Set([history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id)])].map(id => id.slice(0, 2)));
-  const shippedCitations = {};
+  const shippedShards = {};
   for (const prefix of prefixes) {
     const shard = path.join(outDir, "json/cite-shards", `${prefix}.json`);
-    if (fs.existsSync(shard)) Object.assign(shippedCitations, readJson(shard));
+    if (fs.existsSync(shard)) shippedShards[prefix] = readJson(shard);
   }
-  findings.push(...checkFamilyHistoryAssets(history, citations, fs.existsSync(shippedHistory) ? readJson(shippedHistory) : null, shippedCitations));
+  findings.push(...checkFamilyHistoryAssets(history, citations, fs.existsSync(shippedHistory) ? readJson(shippedHistory) : null, shippedShards));
   errors.push(...findings.map(message => `leg o: /families/f-15/ ${message}`));
   if (!findings.length) notes.push(`leg o: family history sums, ${history.default_point_ids.length} annual snapshots, receipts and historical coverage checked ✓`);
 }
