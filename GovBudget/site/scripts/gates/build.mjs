@@ -203,7 +203,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // Re-measured 2026-09-11 after the drawn F-15 plate (external <use>,
   // two crop copies, plate stamp/callouts) replaced the raster default view:
   // 47,747 raw / 1,280 gzip bytes remain. Ceilings unchanged.
-  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "677,253 / 68,720" },
+  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "712,585 / 69,847" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
