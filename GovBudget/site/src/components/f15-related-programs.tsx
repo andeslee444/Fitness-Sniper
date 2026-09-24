@@ -8,21 +8,34 @@ import type { F15RelatedProgram } from "@/lib/f15-related-programs";
 import styles from "./family-funding-history.module.css";
 
 /** Shared-program evidence is contextual; it never contributes to annual sums. */
-export function F15RelatedPrograms({ programs }: { programs: F15RelatedProgram[] }) {
+export function F15RelatedPrograms({ publishedCount, historicalCount }: { publishedCount: number; historicalCount: number }) {
   const [expanded, setExpanded] = useState(false);
+  const [programs, setPrograms] = useState<F15RelatedProgram[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const { openPanel } = useContext(CitationPanelContext);
-  const publishedCount = programs.filter(program => program.factId).length;
+  async function toggleSources() {
+    setExpanded(value => !value);
+    if (programs.length || expanded) return;
+    setLoadError(false);
+    try {
+      // This content-hashed chunk is validated by the server loader at build
+      // time. Keep optional relationship excerpts out of the initial page.
+      const { default: source } = await import("@/lib/f15-related-programs.seed.json");
+      setPrograms([...source].sort((a, b) => b.sourceEdition - a.sourceEdition || a.title.localeCompare(b.title)));
+    } catch { setLoadError(true); }
+  }
   return <section className={styles.related} aria-labelledby="f15-shared-heading" data-family-shared-programs="">
     <div className={styles.tableHeading}>
       <h3 id="f15-shared-heading">Shared programs with F-15 work</h3>
-      <p>{publishedCount} cited programs · {programs.length - publishedCount} historical records</p>
+      <p>{publishedCount} cited programs · {historicalCount} historical records</p>
     </div>
     <p className={styles.caption} id="f15-shared-description">These programs also support other aircraft. Their budgets are excluded from the family totals because no F-15 share is established. Source editions date the evidence; they do not establish funding in every year.</p>
-    <button type="button" className={styles.retry} aria-expanded={expanded} aria-controls="f15-shared-sources" onClick={() => setExpanded(value => !value)}>
+    <button type="button" className={styles.retry} aria-expanded={expanded} aria-controls="f15-shared-sources" onClick={toggleSources}>
       {expanded ? "Hide shared-program sources" : "View all shared-program sources"}
     </button>
     <div id="f15-shared-sources">
-      {expanded && <div className={styles.tableScroll} role="region" aria-label="Shared program evidence table" tabIndex={0}>
+      {expanded && !programs.length && <p className={styles.coverage} role={loadError ? "alert" : "status"}>{loadError ? "Shared-program sources could not load. Close and reopen this list to retry." : "Loading shared-program sources…"}</p>}
+      {expanded && programs.length > 0 && <div className={styles.tableScroll} role="region" aria-label="Shared program evidence table" tabIndex={0}>
         <table className={`${styles.table} ${styles.sharedTable}`} aria-labelledby="f15-shared-heading" aria-describedby="f15-shared-description">
           <thead><tr><th scope="col">Source edition</th><th scope="col">Program / budget line</th><th scope="col">Documented F-15 work</th><th scope="col">Government source</th></tr></thead>
           <tbody>{programs.map(program => <tr key={`${program.sourceEdition}-${program.identifier}`} data-shared-program={program.identifier} data-source-edition={program.sourceEdition}>

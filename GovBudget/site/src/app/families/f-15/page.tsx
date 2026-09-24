@@ -21,7 +21,7 @@ export default function F15FamilyPage() {
   const relatedPrograms = getF15RelatedPrograms();
   return (
     <CitationPanelProvider citations={{ ...family.citations, ...funding.citations }}>
-      <F15FamilyBrowser family={family} fundingLead={<><FamilyFundingHistory key="family-funding-history" history={funding.history} shortName="F-15" /><F15RelatedPrograms programs={relatedPrograms} /></>} />
+      <F15FamilyBrowser family={family} fundingLead={<><FamilyFundingHistory key="family-funding-history" history={funding.history} shortName="F-15" /><F15RelatedPrograms publishedCount={relatedPrograms.filter(program => program.factId).length} historicalCount={relatedPrograms.filter(program => !program.factId).length} /></>} />
     </CitationPanelProvider>
   );
 }

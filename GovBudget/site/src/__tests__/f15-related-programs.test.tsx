@@ -8,14 +8,14 @@ import { getF15RelatedPrograms } from "@/lib/f15-related-programs-data";
 afterEach(cleanup);
 
 describe("shared F-15 program evidence", () => {
-  it("retains every source edition and direct PDF without claiming F-15 allocations", () => {
+  it("retains every source edition and direct PDF without claiming F-15 allocations", async () => {
     const programs = getF15RelatedPrograms();
     const openPanel = vi.fn();
-    const { container } = render(<CitationPanelContext.Provider value={{ openPanel }}><F15RelatedPrograms programs={programs} /></CitationPanelContext.Provider>);
+    const { container } = render(<CitationPanelContext.Provider value={{ openPanel }}><F15RelatedPrograms publishedCount={30} historicalCount={6} /></CitationPanelContext.Provider>);
     expect(screen.getByText(/Their budgets are excluded from the family totals/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "View all shared-program sources" }));
-    const table = screen.getByRole("table", { name: "Shared programs with F-15 work" });
+    const table = await screen.findByRole("table", { name: "Shared programs with F-15 work" });
     expect(table.querySelectorAll("[data-shared-program]")).toHaveLength(36);
     expect(container.querySelector("[data-amount]")).toBeNull();
     for (const program of programs) {
