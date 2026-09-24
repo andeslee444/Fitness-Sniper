@@ -440,7 +440,9 @@ export default function MethodologyPage() {
                   name, URL, and SHA-256 hash of every file. Current scope:
                   Department of Defense agencies, FY2017 onward. Source cadence:{" "}
                   {usaspending?.declared_cadence ?? "monthly"}
-                  {usaspending ? ` — this corpus was fetched ${usaspending.as_of}.` : "."}
+                  {usaspending ? ` — the oldest dataset refresh in this collection is ${usaspending.as_of}.` : "."}{" "}
+                  Individual datasets have different refresh and action-coverage dates;
+                  see <Link href="/coverage/" className="underline underline-offset-2">Coverage</Link> for the current scope.
                 </p>
               </div>
 
@@ -1117,15 +1119,13 @@ export default function MethodologyPage() {
                 <p>
                   The follow-the-dollar view draws a budget line&apos;s path to
                   specific awards, recipient families, and districts. That link is
-                  an inference (§4): we render the flow only for the
-                  high-confidence crosswalk tier — hand-adjudicated links where the
-                  contract and the budget line&apos;s own J-book pages name the
-                  same program, verified adversarially. Today that covers{" "}
-                  {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs, concentrated in
-                  DARPA lines whose account structure makes matching reliable.
-                  Program pages outside the crosswalk say so in place of the flow
-                  — absence of a diagram means we could not defend the link, not
-                  that no money moved.
+                  an inference (§4): the view uses eligible high-confidence
+                  award links, with the evidence methods and review coverage
+                  described above. Today the view covers{" "}
+                  {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs.{" "}
+                  A program can have linked award records without a flow diagram.
+                  Its award section states the available evidence; diagram
+                  availability does not establish whether spending occurred.
                 </p>
               </section>
 
@@ -1310,10 +1310,10 @@ export default function MethodologyPage() {
                       instead, which is what a reader of this section needs. */}
                   {formatCount(serviceBooks.denominator ?? 0)} program pages in
                   total: the elements the FY2026 workbooks name, plus{" "}
-                  {formatCount(decadeOnlyPages)} whose cited record stops in an
+                  {formatCount(decadeOnlyPages)}{" "}whose cited record stops in an
                   earlier President&apos;s Budget edition. Full J-book detail
                   (mission prose, project tables, accomplishments) is ingested
-                  for {formatCount(serviceBooks.numerator ?? 0)} of them, whose justification books
+                  for {formatCount(serviceBooks.numerator ?? 0)}{" "}of them, whose justification books
                   come from the sources already in the pipeline. As of Phase 5G
                   the FY2026 justification books for all three military
                   departments are ingested: the Navy&apos;s RDT&amp;E and
@@ -1371,7 +1371,7 @@ export default function MethodologyPage() {
                   (§4) links a program element to contractor families:{" "}
                   {formatCount(flowBridge.numerator ?? 0)} of {formatCount(flowBridge.denominator ?? 0)} crosswalked
                   PEs carry FY{flowMeta.budgetFy} request dollars (
-                  {flowMeta.bridge.highConfidencePeCount} at high confidence).
+                  {flowMeta.bridge.highConfidencePeCount}{" "}at high confidence).
                   Everything else terminates in an explicit &ldquo;not yet
                   crosswalked&rdquo; band — {flowMeta.bridge.pctNotCrosswalked}%
                   of the request. That band is an honest statement about our
