@@ -23,15 +23,12 @@ import {
 } from "@/lib/data";
 import { GaoProgramFindingsBlock } from "@/components/gao-program-findings";
 import type {
-  CitationsMap,
-  JbookPdfCitation,
   LobbiedBy,
   NamedPrime,
   ProgramBudgetLine,
   ProgramDetails,
   ProgramRow,
   ProgramSummary,
-  WorkbookCitation,
 } from "@/lib/data";
 import {
   decadeProgramRow,
@@ -94,6 +91,8 @@ import { ProgramFamilyEntry, F15ProgramNavigation, F15ProgramIllustration, F15Pr
 import { PROGRAM_EXHIBITS, validateExhibitNarratives } from "@/lib/program-exhibits";
 import { ProgramEvidencePath, ProgramWayfinding } from "@/components/program-wayfinding";
 import programStyles from "@/components/program-wayfinding.module.css";
+import { ProgramSources } from "@/components/program-sources";
+import { programSourceEntries } from "@/lib/source-document";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
 
@@ -1087,10 +1086,9 @@ export default async function ProgramPage({
         )}
       </ProgramSection>
 
-      {/* 12 · Primary sources — J-book PDF pages when cited on this page;
-          otherwise the workbook source documents (rollup tier). */}
+      {/* 12 · Primary sources — verified budget PDF receipts and original workbook downloads. */}
       <ProgramSection id="sources">
-        <PrimarySources citationsSlice={citationsSlice} />
+        <ProgramSources entries={programSourceEntries(citationsSlice)} program={program.slug} />
       </ProgramSection>
     </div>
     </CitationPanelProvider>
@@ -1200,103 +1198,6 @@ function SharedKeyDisclosure({
         account.
       </p>
     </div>
-  );
-}
-
-// ── Primary sources (§2d section 12) ─────────────────────────────────────────
-
-function PrimarySources({ citationsSlice }: { citationsSlice: CitationsMap }) {
-  // DEDUPE BY DESTINATION (tri-persona review Wave 4, item 5). Every figure
-  // on a program page carries its own fact_id, and dozens of them cite the
-  // same PDF page — so this list rendered "Budget Justification PDF (page
-  // 12)" four identical times on /program/0604015F/ and five on B02100. Five
-  // links, one destination: a reader counting sources over-counts, and a
-  // reader clicking twice thinks the second link is broken.
-  //
-  // Keyed on the resolved URL (document + page), which is what the link
-  // actually promises — the workbook branch below has always deduped by
-  // sha256:sheet for exactly this reason; the PDF branch simply never did.
-  const seenPdf = new Set<string>();
-  const pdfLinks: [string, JbookPdfCitation][] = [];
-  for (const [factId, cit] of Object.entries(citationsSlice)) {
-    if (cit.kind !== "jbook_pdf") continue;
-    const url = cit.official_url;
-    if (!url?.includes("#page=")) continue;
-    if (seenPdf.has(url)) continue;
-    seenPdf.add(url);
-    pdfLinks.push([factId, cit as JbookPdfCitation]);
-    if (pdfLinks.length >= 5) break;
-  }
-
-  if (pdfLinks.length > 0) {
-    return (
-      <div className="mt-8 pt-6 border-t border-border mb-8">
-        <h2 className="mb-3 text-foreground">
-          Primary Sources
-        </h2>
-        <ul className="space-y-1.5">
-          {pdfLinks.map(([factId, cit]) => (
-            <li key={factId}>
-              <a
-                href={cit.official_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Budget Justification PDF (page {cit.page_number})
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  // Rollup tier: no J-book PDF pages are cited — list the workbook source
-  // documents instead (deduped by sheet), so every page still ends at its
-  // primary sources.
-  const seen = new Set<string>();
-  const workbookLinks: [string, WorkbookCitation][] = [];
-  for (const [factId, cit] of Object.entries(citationsSlice)) {
-    if (cit.kind !== "workbook") continue;
-    const wb: WorkbookCitation = cit;
-    if (!wb.official_url) continue;
-    const key = `${wb.sha256}:${wb.sheet}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    workbookLinks.push([factId, wb]);
-    if (workbookLinks.length >= 3) break;
-  }
-
-  if (workbookLinks.length > 0) {
-    return (
-      <div className="mt-8 pt-6 border-t border-border mb-8">
-        <h2 className="mb-3 text-foreground">
-          Primary Sources
-        </h2>
-        <ul className="space-y-1.5">
-          {workbookLinks.map(([factId, wb]) => (
-            <li key={factId}>
-              <a
-                href={wb.official_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Budget workbook — sheet {wb.sheet}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  return (
-    <SectionEmpty title="Primary Sources" className="mt-8 pt-6 border-t border-border">
-      No document-tier citations resolve on this page — its figures are
-      derived-tier only; open any cited number for its derivation chain.
-    </SectionEmpty>
   );
 }
 

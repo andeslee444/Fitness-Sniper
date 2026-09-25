@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAgencies, getUnpagedOrgs, collectCitations } from "@/lib/data";
+import { getAgencies, getUnpagedOrgs } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { agencyDisplayName } from "@/lib/agency-names";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -55,13 +55,6 @@ export default function AgencyIndexPage() {
     return b.fy2026_total_thousands - a.fy2026_total_thousands;
   });
 
-  // Citation slice: every agency's FY24 + FY26 derived sum (skipping the
-  // nulls — DCAA has no FY26 fact) so both columns' figures open the panel.
-  const pageFactIds: string[] = [];
-  for (const a of sorted) {
-    if (a.fy2024_fact_id_derived) pageFactIds.push(a.fy2024_fact_id_derived);
-    if (a.fy2026_fact_id_derived) pageFactIds.push(a.fy2026_fact_id_derived);
-  }
   // Wave 4 item 5: the workbook organizations this index does not collect.
   //
   // NO FIGURES IN THIS BLOCK, AND THE REASON IS PAGE WEIGHT, MEASURED. A
@@ -74,10 +67,11 @@ export default function AgencyIndexPage() {
   // states its figure with the citation attached. The list is ordered by
   // FY2026 request so the material lines lead.
   const unpaged = getUnpagedOrgs();
-  const citationsSlice = collectCitations(pageFactIds);
 
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    // Agency sums can contain thousands of input IDs. The panel resolves
+    // their complete receipts from citation shards when a total is clicked.
+    <CitationPanelProvider citations={{}}>
       <div className="spine py-8">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Agencies" }]} />
 

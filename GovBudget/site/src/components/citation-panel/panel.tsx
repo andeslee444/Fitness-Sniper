@@ -527,7 +527,7 @@ function CitationPanelDialog({
             ) : citation ? (
               <ReceiptEvidence citation={citation} factId={factId}>
                 <SourceDocumentLinks citation={citation} citations={lookupCitation} factId={factId ?? undefined} resolveInputs
-                  program={figure?.entity ?? program?.code ?? citation.pe_bli ?? undefined} surface="citation-panel" />
+                  program={figure?.entity ?? program?.code ?? citation.pe_bli ?? undefined} surface="citation-panel" showBudgetPdf={false} />
                 <CitationBody citation={citation} factId={factId} figure={figure} />
               </ReceiptEvidence>
             ) : (

@@ -44,6 +44,8 @@ import React, { useContext, useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
 import { SourceDocumentLinks } from "@/components/source-document-links";
+import { useBudgetPdfReceipt } from "@/components/use-budget-pdf-receipt";
+import { pagedAmountCitation } from "@/lib/citations";
 import { PageIntro } from "@/components/page-intro";
 import styles from "./fact-resolver.module.css";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -304,6 +306,8 @@ function FactCard({
 }) {
   const { openPanel } = useContext(CitationPanelContext);
   const assetUrl = useAssetUrl();
+  const pdfReceipt = useBudgetPdfReceipt(citation.kind === "workbook" || citation.kind === "derived" ? factId : null);
+  const hasHighlightedSource = Boolean(pdfReceipt?.parts.length) || (citation.kind === "jbook_pdf" && Boolean(pagedAmountCitation(citation)));
 
   // One derivation for value/title/locator/permalink — the SAME builder the
   // copy-as-footnote path uses (lib/footnote.ts), so this page can never
@@ -398,14 +402,14 @@ function FactCard({
       )}
 
       <div className={styles.sourceActions}>
-        <button
+        {!hasHighlightedSource && <button
           type="button"
           data-testid="fact-view-source"
           onClick={() => openPanel(factId)}
           className={styles.openSource}
         >
           {citation.kind === "subaward" ? "View link evidence" : citation.kind === "jbook_pdf" && citation.resolution === "unresolved" ? "View source details" : "View source excerpt"}
-        </button>
+        </button>}
         <SourceDocumentLinks citation={citation} factId={factId} program={peBli ?? undefined} surface="fact-page" compact resolveInputs />
         {citation.hosted_pdf_url && (
           <a

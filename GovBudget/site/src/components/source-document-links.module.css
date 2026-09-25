@@ -3,7 +3,8 @@
 .action{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--foreground);background:var(--foreground);color:var(--background);font:var(--type-ui);font-weight:600;text-decoration:none}
 .action svg{flex-shrink:0}.action:hover{background:var(--muted);color:var(--foreground)}
 .action:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
-.action{cursor:pointer;text-align:left}.action:disabled{cursor:wait;opacity:.65}
+.action{cursor:pointer;text-align:left;justify-self:start}.action:disabled{cursor:wait;opacity:.65}
+.secondaryAction{composes:action;background:var(--background);color:var(--foreground);border-color:var(--border)}
 .original{display:flex;align-items:center;gap:6px;width:fit-content;min-height:36px;margin-top:4px;font:var(--type-ui);color:var(--muted-foreground);text-underline-offset:3px}.original:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
 .context,.locators{margin-top:6px;font:var(--type-ui);line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere}
 .locators{color:var(--foreground);user-select:text}

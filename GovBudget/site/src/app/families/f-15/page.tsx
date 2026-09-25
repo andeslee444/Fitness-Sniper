@@ -19,10 +19,13 @@ export default function F15FamilyPage() {
   const family = getF15FamilyData();
   const funding = getF15FundingHistory();
   const relatedPrograms = getF15RelatedPrograms();
+  // Share one map across client boundaries so Flight sends citation keys once.
+  // Family entries retain their enriched narrative passages.
+  const citations = { ...funding.citations, ...family.citations };
   return (
-    <CitationPanelProvider citations={{ ...family.citations, ...funding.citations }}
+    <CitationPanelProvider citations={citations}
       figurePrograms={Object.fromEntries(funding.history.programs.map(program => [program.id, { name: program.title, code: program.code }]))}>
-      <F15FamilyBrowser family={family} fundingLead={<><FamilyFundingHistory key="family-funding-history" history={funding.history} shortName="F-15" /><F15RelatedPrograms publishedCount={relatedPrograms.filter(program => program.factId).length} historicalCount={relatedPrograms.filter(program => !program.factId).length} /></>} />
+      <F15FamilyBrowser family={{ ...family, citations }} fundingLead={<><FamilyFundingHistory key="family-funding-history" history={funding.history} shortName="F-15" /><F15RelatedPrograms publishedCount={relatedPrograms.filter(program => program.factId).length} historicalCount={relatedPrograms.filter(program => !program.factId).length} /></>} />
     </CitationPanelProvider>
   );
 }

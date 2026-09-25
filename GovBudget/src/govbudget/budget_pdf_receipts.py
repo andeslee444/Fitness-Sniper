@@ -128,6 +128,11 @@ def close_line(words: list[dict], y: float) -> list[dict]:
 
 
 def pdf_header_key(header: str, *, edition: int | None, exhibit: str) -> tuple[str, ...]:
+    if edition == 2026 and exhibit == "P-1R":
+        if normalize_header(header) == normalize_header("FY 2026 Request Amount"):
+            return normalize_header("FY 2026 Disc Request")
+        if normalize_header(header) == normalize_header("FY 2026 Reconciliation Amount"):
+            return normalize_header("FY 2026 Reconcil Request")
     # Reviewed PB2025 R-1 wording difference only. Both originals carry the
     # same annualized-CR footnote (Public Law 118-35); FY2024 has no full-year
     # appropriation in this edition. Do not alias these words in other books.
@@ -138,8 +143,12 @@ def pdf_header_key(header: str, *, edition: int | None, exhibit: str) -> tuple[s
 
 def page_columns(page: dict, exhibit: str) -> list[dict]:
     """Find labeled money columns from their headers and repeated right edges."""
+    if exhibit in page.get("_columns", {}):
+        return page["_columns"][exhibit]
     words = page["words"]
     no = next((w for w in words if w["text"] == "No" and w["x0"] < 100), None)
+    if no is None and exhibit == "P-1R":
+        no = next((w for w in words if w["text"] == "Line" and w["x0"] < 100), None)
     dollars = next((w for w in words if w["text"] == "(Dollars"), None)
     if no is None or dollars is None:
         return []
@@ -157,7 +166,7 @@ def page_columns(page: dict, exhibit: str) -> list[dict]:
     first_y = min(w["top"] for w, _ in pairs)
     header = [w for w in header if w["top"] >= first_y - 1]
     centers = [(w["x0"] + y["x1"]) / 2 for w, y in pairs]
-    if exhibit == "P-1":
+    if exhibit in {"P-1", "P-1R"}:
         costs = sorted((w for w in header if w["text"].rstrip("*") == "Cost"), key=lambda w: w["x0"])
         if len(costs) != len(pairs):
             return []
@@ -184,22 +193,70 @@ def page_columns(page: dict, exhibit: str) -> list[dict]:
         label_words = [w for w in header if left <= (w["x0"] + w["x1"]) / 2 < edge + 6 and w["text"] not in {"Qty", "Cost", "Cost*", "Quantity", "S", "e", "c", "Sec", "Se", "Act"}]
         label = " ".join(w["text"] for w in sorted(label_words, key=lambda w: (round(w["top"]), w["x0"])))
         result.append({"header": label, "normalized": normalize_header(label), "edge": edge, "body_top": no["bottom"]})
+    page.setdefault("_columns", {})[exhibit] = result
     return result
 
 
 def program_lines(page: dict) -> list[dict]:
+    if "_lines" in page:
+        return page["_lines"]
     words = page["words"]
     no = next((w for w in words if w["text"] == "No" and w["x0"] < 100), None)
     if no is None:
         return []
-    return [w for w in words if w["text"].isdigit() and abs(w["x1"] - no["x1"]) < 15 and w["top"] > no["bottom"] and w["top"] < page["height"] - 35]
+    page["_lines"] = [w for w in words if w["text"].isdigit() and abs(w["x1"] - no["x1"]) < 15 and w["top"] > no["bottom"] and w["top"] < page["height"] - 35]
+    return page["_lines"]
+
+
+def title_identity(text: str) -> str:
+    """Ignore typography, while requiring the entire program title."""
+    return re.sub(r"[\W_]+", "", text.casefold())
+
+
+def inherited_activity(page: dict, y: float) -> str | None:
+    """Read a printed activity, crossing only verified account continuations."""
+    while page is not None:
+        headings = [w for w in page["words"] if w["text"] == "Budget" and 150 < w["top"] < y]
+        if headings:
+            text = " ".join(w["text"] for w in close_line(page["words"], max(headings, key=lambda w: w["top"])["top"]))
+            match = re.match(r"Budget Activity (\d+):", text)
+            return match[1] if match else None
+        page = page.get("_previous")
+        y = float("inf")
+    return None
+
+
+def wrapped_title(words: list[dict], y: float, left: float, right: float, next_y: float, previous_y: float = 0, *, before: bool = True) -> str:
+    """Read only contiguous title lines, stopping before the next budget row."""
+    candidates = sorted((w for w in words if left < w["x0"] and w["x1"] < right and max(previous_y + 2, y - (40 if before else 2)) <= w["top"] < min(next_y - 2, y + 40)), key=lambda w: (round(w["top"]), w["x0"]))
+    groups = []
+    for word in candidates:
+        if not groups or abs(word["top"] - groups[-1][0]["top"]) > 1.5:
+            groups.append([])
+        groups[-1].append(word)
+    anchor = next((i for i, group in enumerate(groups) if abs(group[0]["top"] - y) < 2), None)
+    if anchor is None:
+        return ""
+    column_left = min(w["x0"] for w in groups[anchor])
+    start = end = anchor
+    def continuation(index, previous):
+        group = groups[index]
+        full_line = close_line(words, group[0]["top"])
+        return (abs(group[0]["top"] - groups[previous][0]["top"]) <= max(11.3, (group[0]["bottom"] - group[0]["top"]) * 1.4)
+                and not any(w["x0"] < column_left - 1 for w in full_line)
+                and group[0]["text"] not in {"Less:", "Advance", "Subsequent", "Completion"})
+    while start > 0 and continuation(start - 1, start):
+        start -= 1
+    while end + 1 < len(groups) and continuation(end + 1, end):
+        end += 1
+    return " ".join(w["text"] for group in groups[start:end + 1] for w in sorted(group, key=lambda w: w["x0"]))
 
 
 def match_cell(page: dict, row: dict, header: str, value: float, exhibit: str, edition: int | None = None) -> dict | None:
     """Return one exact printed amount, or an independently located blank zero."""
     text = page["text"]
     account = row["account"]
-    if "Department of the Air Force" not in text or not re.search(rf"\b{re.escape(account)}\b", text):
+    if not re.search(rf"\b{re.escape(account)}\b", text):
         return None
     columns = [col for col in page_columns(page, exhibit) if col["normalized"] == pdf_header_key(header, edition=edition, exhibit=exhibit)]
     if len(columns) != 1:
@@ -213,21 +270,44 @@ def match_cell(page: dict, row: dict, header: str, value: float, exhibit: str, e
     words = page["words"]
     same = close_line(words, line["top"])
     line_text = " ".join(w["text"] for w in same)
+    next_y = min((w["top"] for w in lines if w["top"] > line["top"] + 2), default=page["height"] - 35)
+    previous_y = max((w["top"] for w in lines if w["top"] < line["top"] - 2), default=0)
     # P-1 omits the BLI code in the PDF; the exact title and account+line
     # identify it. R-1 prints the PE and activity, which must also agree.
     if exhibit == "R-1":
-        if row["code"] not in [w["text"] for w in same] or row["title"].lower() not in line_text.lower() or row["activity"] not in [w["text"] for w in same]:
+        codes = {row["code"]}
+        # Public classified-program aggregate uses a nine-digit sentinel in
+        # the PDF and ten digits in the workbook; never truncate real PEs.
+        if row["code"] == "9999999999" and row["line"] == "999" and row["title"] == "Classified Programs":
+            codes.add("999999999")
+        code = next((w for w in same if w["text"] in codes), None)
+        act = next((w for w in words if w["text"] == "Act"), None)
+        if code is None or act is None:
+            return None
+        # PB2024 prints the two digits slightly left of the Act heading.
+        # Keep the check inside that column, never anywhere in the row title.
+        activities = [w["text"] for w in same if re.fullmatch(r"\d{2}", w["text"])
+                      and act["x0"] - 12 <= w["x0"] and w["x1"] <= act["x1"] + 4]
+        if activities != [row["activity"]]:
+            return None
+        # Editions differ: the code is printed beside either the first or
+        # final title line. The exact PE/line/activity pins both layouts.
+        titles = [wrapped_title(words, line["top"], code["x1"], act["x0"], next_y, previous_y, before=before)
+                  for before in (False, True)]
+        if not any(title_identity(title) == title_identity(row["title"]) for title in titles):
             return None
     else:
         ident = next((w for w in words if w["text"] == "Ident"), None)
         if ident is None:
             return None
-        title = " ".join(w["text"] for w in same if line["x1"] < w["x0"] and w["x1"] < ident["x0"])
-        if title.lower() != row["title"].lower():
+        title = wrapped_title(words, line["top"], line["x1"], ident["x0"], next_y, previous_y)
+        if row["line"] == "999" and row["title"] == "Classified Programs":
+            if inherited_activity(page, line["top"]) != row["activity"]:
+                return None
+            title = " ".join(w["text"] for w in same if line["x1"] < w["x0"] and w["x1"] < ident["x0"])
+        if title_identity(title) != title_identity(row["title"]):
             return None
         ident_tokens = [w["text"] for w in same if abs(w["x0"] - ident["x0"]) < 16]
-        if row["cost_type"] in {"A", "B"} and "A" not in ident_tokens:
-            return None
         if row["cost_type"] == "C" and "A" in ident_tokens:
             return None
     y = line["top"]
@@ -260,7 +340,7 @@ def match_cell(page: dict, row: dict, header: str, value: float, exhibit: str, e
         return None
     amounts = [w for w in close_line(words, y) if abs(w["x1"] - col["edge"]) <= 6 and amount(w["text"]) is not None]
     if not amounts and value == 0:
-        return {"blank_zero": True, "pdf_column_label": col["header"]}
+        return {"blank_zero": True, "pdf_column_label": col["header"], "page": page}
     if len(amounts) != 1 or amount(amounts[0]["text"]) != value:
         return None
     return {"word": amounts[0], "page": page, "pdf_column_label": col["header"]}

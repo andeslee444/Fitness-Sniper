@@ -5,6 +5,11 @@
 .context { color: var(--muted-foreground); font-size: var(--text-label); line-height: 1.6; }
 .source { display: flex; align-items: center; gap: .5rem; width: fit-content; border: 1px solid var(--border); border-radius: .375rem; padding: .7rem .85rem; font-size: var(--text-sm); font-weight: 600; background: var(--muted); }
 .source:hover { border-color: var(--foreground); }
+.source { cursor: pointer; text-align: left; }
+.source:disabled { cursor: wait; opacity: .65; }
+.download { display: grid; gap: .35rem; }
+.headingLink { color: var(--foreground); text-decoration: underline; text-underline-offset: .2em; }
+.headingLink:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
 .parts { display: flex; flex-wrap: wrap; gap: .5rem; max-height: 15rem; overflow: auto; }
 .part { display: grid; gap: .3rem; flex: 1 1 12rem; border: 1px solid var(--border); padding: .6rem .75rem; border-radius: .375rem; text-align: left; font-size: var(--text-label); cursor: pointer; }
 .part strong { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }

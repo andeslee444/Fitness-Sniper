@@ -49,3 +49,30 @@ it("keeps zero receipts on the spreadsheet without inventing a printed PDF zero"
   expect(screen.queryByTestId("rendered-pdf")).not.toBeInTheDocument();
   expect(screen.getByText("Zero spreadsheet receipt")).toBeVisible();
 });
+it("keeps the corresponding named workbook download visible beside the PDF", async () => {
+  vi.mocked(fetchBudgetPdfReceipt).mockResolvedValue({ ...receipt, parts: [{ ...part, workbook_sha256: "b".repeat(64), workbook_url: "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx" }] });
+  render(<BudgetPdfReceipt factId="1234567890abcdef">Calculation details</BudgetPdfReceipt>);
+  const download = await screen.findByRole("button", { name: "Download government spreadsheet" });
+  expect(download).toBeVisible();
+  expect(download.closest("details")).toBeNull();
+  expect(download).toHaveAttribute("data-filename", "PB2026_DoD_P-1_Procurement.xlsx");
+});
+it("links the matching budget book even when no exact printed amount was verified", async () => {
+  vi.mocked(fetchBudgetPdfReceipt).mockResolvedValue({ ...receipt, complete: false, unmatched_count: 1, parts: [], source_documents: [{ official_url: part.official_url!, sha256: part.sha256, edition: 2026, exhibit: "P-1" }] });
+  render(<BudgetPdfReceipt factId="1234567890abcdef">Spreadsheet receipt</BudgetPdfReceipt>);
+  expect(await screen.findByRole("link", { name: /Open government PDF/ })).toHaveAttribute("href", part.official_url);
+  expect(screen.getByRole("status")).toHaveTextContent("exact printed amount has not been verified");
+  expect(screen.queryByTestId("rendered-pdf")).not.toBeInTheDocument();
+});
+it("links a continued row to its source heading and labels reserve components without an invented line number", async () => {
+  const reserve = { ...part, program: "Reserve Aircraft", exhibit: "P-1R", line: "", row_label: "Reserve", identity_page_number: 123 };
+  vi.mocked(fetchBudgetPdfReceipt).mockResolvedValue({ ...receipt, parts: [reserve, { ...reserve, row_label: "National Guard", workbook_cell: "W125", identity_page_number: 124 }] });
+  render(<BudgetPdfReceipt factId="1234567890abcdef">Spreadsheet evidence</BudgetPdfReceipt>);
+  const heading = await screen.findByRole("link", { name: /Program heading · government PDF page 123/ });
+  expect(heading).toHaveAttribute("href", `${part.official_url}#page=123`);
+  expect(screen.getByRole("link", { name: /Open government PDF · page 124/ })).toHaveAttribute("href", `${part.official_url}#page=124`);
+  const choices = screen.getByRole("group", { name: "Contributing PDF amounts" });
+  expect(choices).not.toHaveTextContent("Line");
+  fireEvent.click(screen.getByRole("button", { name: /National Guard/ }));
+  expect(screen.queryByRole("link", { name: /Program heading/ })).not.toBeInTheDocument();
+});

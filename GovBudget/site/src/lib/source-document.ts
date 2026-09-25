@@ -1,6 +1,7 @@
 import type { Citation, CitationsMap } from "./data";
 import { parseDerivedInputs } from "./citations";
 import { documentTitleFromUrl } from "./footnote";
+import type { BudgetPdfReceipt } from "./budget-pdf-receipts";
 
 export interface SourceDocument {
   url: string;
@@ -10,6 +11,66 @@ export interface SourceDocument {
   kind: "pdf" | "workbook" | "document";
   locators: string[];
   workbook?: { sha256: string; filename: string };
+}
+
+/** One opening receipt per original budget document; all figure receipts remain addressable. */
+export function programSourceEntries(citations: CitationsMap): { factId: string; citation: Citation }[] {
+  const documents = new Map<string, { factId: string; citation: Citation }>();
+  for (const [factId, citation] of Object.entries(citations)) {
+    if (citation.kind !== "workbook" && citation.kind !== "jbook_pdf" && citation.kind !== "jbook_narrative") continue;
+    const url = officialDocumentUrl(citation);
+    if (!url) continue;
+    const key = `${citation.kind === "workbook" ? "workbook" : "pdf"}:${url.split("#")[0]}`;
+    const existing = documents.get(key);
+    // Prefer a verified numeric receipt over a narrative/document-only locator.
+    const verified = citation.kind === "jbook_pdf" && citation.resolution !== "unresolved";
+    const existingVerified = existing?.citation.kind === "jbook_pdf" && existing.citation.resolution !== "unresolved";
+    if (!existing || (verified && !existingVerified)) documents.set(key, { factId, citation });
+  }
+  return [...documents.values()];
+}
+
+/** Verified pages lead; a matching book alone does not establish a highlight. */
+export function budgetPdfSourceDocuments(receipt: BudgetPdfReceipt): SourceDocument[] {
+  const documents = new Map<string, SourceDocument>();
+  const representedBooks = new Set<string>();
+  for (const part of receipt.parts) {
+    const url = officialDocumentUrl(part);
+    if (!url) continue;
+    const base = url.split("#")[0];
+    representedBooks.add(base);
+    const locator = `PDF page ${part.page_number}${part.line ? ` · Line ${part.line}` : ""}${part.row_label ? ` · ${part.row_label}` : ""} · ${part.pdf_column_label ?? part.column_label}`;
+    const existing = documents.get(url);
+    if (existing) { if (!existing.locators.includes(locator)) existing.locators.push(locator); continue; }
+    documents.set(url, {
+      url, host: new URL(url).hostname, kind: "pdf",
+      title: `PB${part.edition} DoD ${part.exhibit}`,
+      label: `Open government PDF · page ${part.page_number}`,
+      locators: [locator],
+    });
+  }
+  for (const book of receipt.source_documents ?? []) {
+    const url = officialDocumentUrl({ official_url: book.official_url, page_number: null });
+    if (!url || representedBooks.has(url.split("#")[0]) || documents.has(url)) continue;
+    documents.set(url, {
+      url, host: new URL(url).hostname, kind: "pdf", title: `PB${book.edition} DoD ${book.exhibit}`,
+      label: "Open government PDF", locators: [],
+    });
+  }
+  return [...documents.values()];
+}
+
+/** The download retains the original workbook identity, not a program alias. */
+export function budgetPdfWorkbookDownloads(receipt: BudgetPdfReceipt): { sha256: string; filename: string }[] {
+  const downloads = new Map<string, { sha256: string; filename: string }>();
+  for (const part of receipt.parts) {
+    if (!part.workbook_sha256 || !/^[a-f0-9]{64}$/i.test(part.workbook_sha256)) continue;
+    downloads.set(part.workbook_sha256, {
+      sha256: part.workbook_sha256,
+      filename: workbookDownloadName(part.workbook_url ?? null, part.workbook_sha256),
+    });
+  }
+  return [...downloads.values()];
 }
 
 /** Names describe the whole original workbook, not the clicked program/year. */

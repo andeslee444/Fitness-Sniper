@@ -2043,6 +2043,14 @@ def cmd_export_site(args) -> None:
         snapshots_index_path=config.RESEARCH_DIR / "snapshots" / "index.json",
         subaward_parquet_glob=str(config.PARQUET_DIR / "subawards" / "**" / "*.parquet"),
     )
+    # Run after the completed citation bundle and family-history additions.
+    # The low-level export_site API remains offline for small fixture exports;
+    # this production CLI always refreshes the default PDF-first evidence.
+    _export_budget_pdf_evidence(
+        site_dir=config.SITE_DIR,
+        manifest=config.ROOT / "data-seeds" / "budget_pdf_sources.json",
+        cache_dir=config.ROOT / "tmp" / "pdfs",
+    )
     print(
         f"export-site: {out['datasets']} datasets, {out['citations']} citations,"
         f" {out['pdfs']} pdfs, {out['workbooks']} workbooks,"
@@ -2056,6 +2064,23 @@ def cmd_export_site(args) -> None:
             f" {dsum['total_dropped']} claim(s) dropped across"
             f" {len(dsum['dropped_by_pe'])} dossier(s)"
         )
+
+
+def _export_budget_pdf_evidence(*, site_dir: Path, manifest: Path, cache_dir: Path) -> dict:
+    from govbudget.program_pdf_receipts import export_program_pdf_receipts
+
+    report = export_program_pdf_receipts(site_dir=site_dir, manifest=manifest, cache_dir=cache_dir)
+    print(
+        f"budget PDF receipts: {report['complete_receipts']}/{report['receipt_count']} complete,"
+        f" {report['source_count']} government documents;"
+        f" audit -> {site_dir / 'json' / 'budget_pdf_receipts_audit.json'}"
+    )
+    return report
+
+
+def cmd_export_budget_pdf_receipts(args) -> None:
+    """Refresh PDF-first evidence for an already completed site artifact bundle."""
+    _export_budget_pdf_evidence(site_dir=args.site_dir, manifest=args.manifest, cache_dir=args.cache_dir)
 
 
 def cmd_verify_phase5b2(args) -> None:
@@ -2614,6 +2639,13 @@ def main(argv=None) -> None:
              "default: offline-safe, cache-only)",
     )
     es.set_defaults(func=cmd_export_site)
+
+    ep = sub.add_parser("export-budget-pdf-receipts", help="refresh sitewide government PDF highlights from exported workbook citations")
+    ep.add_argument("--site-dir", type=Path, default=config.SITE_DIR)
+    ep.add_argument("--manifest", type=Path, default=config.ROOT / "data-seeds" / "budget_pdf_sources.json",
+                    help="reviewed government PDF source registry with pinned SHA-256 values")
+    ep.add_argument("--cache-dir", type=Path, default=config.ROOT / "tmp" / "pdfs")
+    ep.set_defaults(func=cmd_export_budget_pdf_receipts)
 
     v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
     v5b1.set_defaults(func=cmd_verify_phase5b1)

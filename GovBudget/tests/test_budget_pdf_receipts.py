@@ -170,24 +170,32 @@ def test_adjacent_duplicate_amount_requires_exact_origin_and_fails_closed_on_amb
 
 def test_shipped_f15_evidence_preserves_all_default_and_historical_cells():
     root = Path(__file__).resolve().parents[1] / "data/site/json"
-    if not (root / "budget_pdf_receipts_audit.json").exists():
+    if not (root / "budget_pdf_receipts_audit.json").exists() or not (root / "budget-pdf-receipts/v2").exists():
         pytest.skip("Run export_budget_pdf_receipts.py against the local site export")
     audit = json.loads((root / "budget_pdf_receipts_audit.json").read_text())
-    assert audit["source_count"] == 20
-    assert audit["leaf_count"] == 207
     assert audit["default_complete"] == audit["default_cells"] == 67
-    assert audit["unmatched_cells"] == []
+    assert audit["shard_prefix_length"] == 3
     assert audit["highlight_geometry"] == "tight PDFium glyph bounds verified by exact text and first-character origin"
-    receipts = {}
-    shards = list((root / "budget-pdf-receipts").glob("*.json"))
-    assert len(shards) == 256
-    for shard in shards:
-        receipts.update(json.loads(shard.read_text()))
     history = json.loads((root / "f15_funding_history.json").read_text())
+    # Scope this regression to the original F-15 facts, not the site's larger
+    # and legitimately partially matched corpus. Include all input, annual,
+    # program and cumulative facts, including non-default historical measures.
+    expected = {history["cumulative"]["fact_id"]: history["cumulative"]["amount_thousands"]}
     for point in history["points"]:
-        for cell in point["program_cells"]:
-            receipt = receipts[cell["fact_id"]]
-            assert receipt["complete"]
-            assert sum(p["amount_thousands"] for p in receipt["parts"]) == cell["amount_thousands"]
-            assert receipt["unmatched_count"] == 0
-    assert receipts[history["cumulative"]["fact_id"]]["amount_thousands"] == history["cumulative"]["amount_thousands"]
+        expected[point["fact_id"]] = point["amount_thousands"]
+        for key in ("components", "program_cells"):
+            expected.update({cell["fact_id"]: cell["amount_thousands"] for cell in point[key]})
+    assert len(expected) == 276
+    default_cells = [cell for point in history["points"] if point["id"] in history["default_point_ids"] for cell in point["program_cells"]]
+    assert len(default_cells) == 67
+    shard_dir = root / "budget-pdf-receipts/v2"
+    assert len(list(shard_dir.glob("*.json"))) == 4096
+    receipts = {}
+    for prefix in {fact[:3] for fact in expected}:
+        receipts.update(json.loads((shard_dir / f"{prefix}.json").read_text()))
+    for fact, value in expected.items():
+        receipt = receipts[fact]
+        assert receipt["complete"], fact
+        assert receipt["amount_thousands"] == value, fact
+        assert sum(part["amount_thousands"] for part in receipt["parts"]) == value, fact
+        assert receipt["unmatched_count"] == 0, fact

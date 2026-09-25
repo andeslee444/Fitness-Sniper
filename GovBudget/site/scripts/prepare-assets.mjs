@@ -7,6 +7,7 @@
  */
 
 import fs from "fs";
+import { createHash } from "node:crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { filterSupportedConcentrationCards } from "../src/lib/concentration-evidence.mjs";
@@ -204,6 +205,15 @@ if (fs.existsSync(familyHistorySrc)) {
 
 // ── 5e. Copy the flowdown payload (Phase 5H — /flow/ two-river sankey) ───────
 const budgetPdfSrc = path.join(jsonDir, "budget-pdf-receipts");
+const budgetPdfAuditPath = path.join(jsonDir, "budget_pdf_receipts_audit.json");
+const budgetPdfAudit = fs.existsSync(budgetPdfAuditPath) ? JSON.parse(fs.readFileSync(budgetPdfAuditPath, "utf8")) : null;
+const citationHash = createHash("sha256").update(fs.readFileSync(path.join(jsonDir, "citations.json"))).digest("hex");
+const pdfV2 = path.join(budgetPdfSrc, "v2");
+if (budgetPdfAudit?.schema_version !== 2 || !budgetPdfAudit.full_corpus || budgetPdfAudit.citation_sha256 !== citationHash
+  || !fs.existsSync(pdfV2) || fs.readdirSync(pdfV2).filter(name => /^[a-f0-9]{3}\.json$/.test(name)).length !== 4096) {
+  console.error("❌ PDF source receipts are missing, partial, or stale. Run `govbudget export-budget-pdf-receipts` before building.");
+  process.exit(1);
+}
 if (fs.existsSync(budgetPdfSrc)) {
   copyDir(budgetPdfSrc, path.join(jsonDestDir, "budget-pdf-receipts"));
 } else {
