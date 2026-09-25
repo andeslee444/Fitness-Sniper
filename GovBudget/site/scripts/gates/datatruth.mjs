@@ -83,8 +83,9 @@
  *  (l) FAMILY LABELS THAT WON A COIN FLIP (ROADMAP #10, option A). A family's
  *      published name is `dim_entities.display_name` — an argmax over its
  *      dominant member's registered parent names. `ROCKWELL COLLINS AUSTRALIA
- *      PTY LIMITED` titled a family that is 97.3% RAYTHEON COMPANY because
- *      that registration beat `RAYTHEON COMPANY` by 3.1%, and RTX had already
+ *      PTY LIMITED` titled a family that was 97.3% RAYTHEON COMPANY (measured
+ *      2026-09-01) because that registration beat `RAYTHEON COMPANY` by
+ *      3.1%, and RTX had already
  *      reverted it in FY2026 — so the site published a label the registrant
  *      had corrected. Nothing in the pipeline knew, because `confidence`
  *      grades MERGE risk and no gate graded LABEL risk. This leg recomputes
@@ -111,7 +112,11 @@
  *      one: partitions against the cadence the site publishes. The leg reads
  *      data/manifest.jsonl and the BUILT pages, never site_meta, and it
  *      requires the rendered date to EQUAL the manifest's, so a literal
- *      cannot satisfy it. See leg m's own block at the bottom.
+ *      cannot satisfy it — and, when the named datasets' newest downloads
+ *      fall on different days, that the line names the one the date belongs
+ *      to (Task 29 fix round 1: "this corpus was fetched 2026-06-11" gave the
+ *      subawards' date to archives fetched 2026-09-24). See leg m's own block
+ *      at the bottom.
  *  (n) HELD-OUT LINK-PRECISION STUDY (ROADMAP #72). The new link tiers
  *      (FPDS acquisition-program mapping, defense.gov announcement matching,
  *      FSRS subaward matching) rely on an adversarial refute pass at
@@ -224,6 +229,7 @@ import {
   labelCensusFindings,
   labelMarginCensus,
 } from "../../src/lib/entity-label-margins.mjs";
+import { STALEST_ATTR } from "../../src/lib/source-freshness.mjs";
 import { normalizeAmount, valuesAgree } from "./basis.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -3550,9 +3556,10 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
 // THE DEFECT. `/companies/families/` and `/company/{slug}/` publish
 // `dim_entities.display_name`, which is the registered `recipient_parent_name`
 // of the family member holding the most money — chosen by an argmax that has
-// no notion of "close" and no notion of "current". `ROCKWELL COLLINS AUSTRALIA
-// PTY LIMITED` was the <h1> of a family that is 97.3% RAYTHEON COMPANY
-// ($18.93B of $19.47B, all 15 members sharing parent UEI EGAVSJTA2D81); it won
+// no notion of "close" and no notion of "current". When this leg was written
+// (2026-09-01), `ROCKWELL COLLINS AUSTRALIA PTY LIMITED` was the <h1> of a
+// family that was 97.3% RAYTHEON COMPANY ($18.93B of $19.47B, all 15 members
+// sharing parent UEI EGAVSJTA2D81); it won
 // by 3.1% over `RAYTHEON COMPANY`, and RTX reverted that registration in
 // FY2026. The site was publishing a label the registrant had already
 // corrected. Every existing gate passed: the grouping was right, the dollars
@@ -3603,6 +3610,70 @@ const DISPLAY_ALIAS_SEED = path.resolve(
 // NEAR_TIE_MARGIN (15%) is imported from src/lib/entity-label-margins.mjs —
 // the one copy, shared with the page that states it (Task 29S). Lowering it
 // to make a family pass is the one edit it must never see.
+
+/**
+ * Leg l's census is a census of the PUBLISHED set only if the recompute
+ * measured every published family (Task 29 fix round 1). The recompute skips
+ * a family whose dominant member has no parent registration or a zero top
+ * registration but still reports `published`; counting only the measured
+ * ones turned a true "Among the 200 families we publish…" into a "…199…"
+ * mismatch and let the skipped family escape the 15% rule. Returns findings.
+ *
+ * @param {{ families?: object[], published?: number,
+ *           unmeasured?: { family_key: string, reason: string }[] }} truth
+ */
+export function familyCoverageFindings(truth) {
+  const measured = (truth?.families ?? []).length;
+  const published = truth?.published;
+  if (!Number.isInteger(published)) {
+    return [
+      `leg l: the margin recompute reported no published-family count — the ` +
+        `census cannot be shown to cover the families the site publishes`,
+    ];
+  }
+  if (measured === published) return [];
+  const named = (truth.unmeasured ?? [])
+    .map((u) => `${u.family_key} (${u.reason})`)
+    .join(", ");
+  return [
+    `leg l: the margin recompute measured ${measured} of ${published} published ` +
+      `families — unmeasured: ${named || "not named by the recompute"}. An ` +
+      `unmeasured family never meets the ${(NEAR_TIE_MARGIN * 100).toFixed(0)}% ` +
+      `rule, and the census would count ${measured}, not ${published}`,
+  ];
+}
+
+/**
+ * No two published families may render one name (Task 29 fix round 1). The
+ * Brown & Root holding family publishes as "KBR Wyle Services, LLC", its
+ * recipients' own registered name, and a separate registry family (KBR WYLE
+ * SERVICES, rank 488 on 2026-09-25) carries that string. Unpublished, it has
+ * no page or /companies/ row; published, two rows would read the same. The
+ * rendered name is the seed label where there is one, else the casing rule's
+ * rendering of the registry string; compared case- and space-insensitively.
+ *
+ * @param {{ family_key: string, display_name: string }[]} families
+ * @param {Map<string, { label: string }>} aliases
+ * @returns {string[]}
+ */
+export function publishedNameCollisions(families, aliases) {
+  const byName = new Map();
+  for (const f of families) {
+    const shown =
+      aliases.get(f.family_key)?.label ?? displayCompanyName(f.display_name).display;
+    const k = String(shown).replace(/\s+/g, " ").trim().toUpperCase();
+    if (!byName.has(k)) byName.set(k, []);
+    byName.get(k).push({ key: f.family_key, shown });
+  }
+  return [...byName.values()]
+    .filter((v) => v.length > 1)
+    .map(
+      (v) =>
+        `leg l: ${v.map((x) => x.key).join(" and ")} both publish as ` +
+        `${JSON.stringify(v[0].shown)} — two families the reader cannot tell ` +
+        `apart; qualify one label in data-seeds/entity_display_aliases.csv`,
+    );
+}
 
 /** Slug for a warehouse family_key — export_site.py's own derivation. */
 function familySlug(familyKey) {
@@ -3682,6 +3753,8 @@ function runFamilyLabelLeg(errors, notes) {
     );
     return;
   }
+  const coverage = familyCoverageFindings(truth);
+  errors.push(...coverage);
 
   // ── THE RULE ────────────────────────────────────────────────────────────
   const nearTies = families.filter(isNearTie);
@@ -3715,15 +3788,20 @@ function runFamilyLabelLeg(errors, notes) {
     );
   }
 
+  // ── one name, one published family ──────────────────────────────────────
+  errors.push(...publishedNameCollisions(families, aliases));
+
   // ── the seed points at real published families ──────────────────────────
   const byKey = new Map(families.map((f) => [f.family_key, f]));
   for (const [key, a] of aliases) {
     const f = byKey.get(key);
     if (!f) {
       errors.push(
-        `leg l: the seed aliases ${key} to "${a.label}", but no published ` +
-          `family has that key — the row relabels nothing and ships looking ` +
-          `like it had`,
+        `leg l: the seed aliases ${key} to "${a.label}", but none of the ` +
+          `${families.length} published families this leg measures has that ` +
+          `key — its margin cannot be checked here, so the row would ship ` +
+          `unreviewed by this leg (a curated family's member row on ` +
+          `/companies/families/ can still render it)`,
       );
       continue;
     }
@@ -3844,7 +3922,9 @@ function runFamilyLabelLeg(errors, notes) {
   const method = readHtml("/methodology/");
   if (!method) {
     errors.push("leg l: built /methodology/ missing");
-  } else {
+  } else if (coverage.length === 0) {
+    // (A census over part of the published set is already an error above;
+    // comparing its sentence too would only add a misleading second one.)
     for (const finding of labelCensusFindings(method.text, census)) {
       errors.push(`leg l (/methodology/): ${finding}`);
     }
@@ -3908,9 +3988,14 @@ function manifestFreshness() {
   if (!fs.existsSync(p)) {
     return { err: `leg m: data/manifest.jsonl missing at ${p} — the ingest ages are unknowable`, byDataset: {}, records: 0 };
   }
+  return parseManifestFreshness(fs.readFileSync(p, "utf8"));
+}
+
+/** manifestFreshness() over manifest TEXT — the unit test's entry point. */
+function parseManifestFreshness(text) {
   const byDataset = {};
   let records = 0;
-  for (const line of fs.readFileSync(p, "utf8").split("\n")) {
+  for (const line of String(text).split("\n")) {
     if (!line.trim()) continue;
     let rec;
     try {
@@ -3939,8 +4024,16 @@ function isoDay(iso) {
   return String(iso).slice(0, 10);
 }
 
-function runSourceCadenceLeg(errors, notes) {
-  const { err, byDataset, records } = manifestFreshness();
+/** `injected` is passed only by the leg's unit test
+ *  (__tests__/source-cadence.test.mjs): `{ manifestText, pages: [[rel, html]],
+ *  now }`, so the leg can be shown a manifest and a page the build does not
+ *  contain. The gate itself always passes undefined and reads
+ *  data/manifest.jsonl and site/out. */
+export function runSourceCadenceLeg(errors, notes, injected) {
+  const { err, byDataset, records } = injected
+    ? parseManifestFreshness(injected.manifestText ?? "")
+    : manifestFreshness();
+  const now = injected?.now ?? Date.now();
   if (err) {
     errors.push(err);
     return;
@@ -3958,10 +4051,13 @@ function runSourceCadenceLeg(errors, notes) {
   // written somewhere else. Cheap: a substring test on the raw file, and
   // only files that hit get parsed.
   const hits = [];
-  for (const file of walkHtml(outDir)) {
-    const raw = fs.readFileSync(file, "utf8");
+  const pages = injected
+    ? injected.pages ?? []
+    : [...walkHtml(outDir)].map((file) => [path.relative(outDir, file), file]);
+  for (const [rel, source] of pages) {
+    const raw = injected ? source : fs.readFileSync(source, "utf8");
     if (raw.includes("cadence:") || raw.includes("cadence: ")) {
-      hits.push([path.relative(outDir, file), raw]);
+      hits.push([rel, raw]);
     }
   }
   if (hits.length === 0) {
@@ -3974,6 +4070,7 @@ function runSourceCadenceLeg(errors, notes) {
   }
 
   let markers = 0;
+  let metered = 0; // markers naming manifest datasets (not UNMETERED)
   let measured = 0;
   const covered = new Set();
 
@@ -4040,6 +4137,7 @@ function runSourceCadenceLeg(errors, notes) {
         continue;
       }
 
+      metered += 1;
       const names = attr.split(",").map((s) => s.trim()).filter(Boolean);
       if (names.length === 0) {
         errors.push(
@@ -4066,9 +4164,49 @@ function runSourceCadenceLeg(errors, notes) {
         const d = byDataset[n];
         if (!oldest || d.t < oldest.t) oldest = { ...d, name: n };
       }
-      const ageDays = (Date.now() - oldest.t) / 86400000;
+      const ageDays = (now - oldest.t) / 86400000;
       const windowDays = CADENCE_DAYS[word] * CADENCE_SLACK;
       const asOf = isoDay(oldest.iso);
+
+      // THIRD TEETH (Task 29 fix round 1): a date is not enough when it is
+      // ONE part's date. Once the 2026-09-06 FY2026 contract and assistance
+      // archives (fetched 2026-09-24) were adopted, the stalest of the three
+      // newest downloads was the subawards' 2026-06-11, and the page rendered
+      // "this corpus was fetched 2026-06-11" — the right date, given to the
+      // whole corpus, and green here. Whenever the named datasets' newest
+      // downloads fall on different days, the clause must say whose date it
+      // is: an element carrying STALEST_ATTR, whose value and visible text
+      // both name a dataset no other member was fetched less recently than.
+      const days = new Set(names.map((n) => isoDay(byDataset[n].iso)));
+      if (isoDates.length > 0 && days.size > 1) {
+        const part = el.querySelector(`[${STALEST_ATTR}]`);
+        const said = part ? norm(part.getAttribute(STALEST_ATTR)) : null;
+        const saidIsStalest =
+          said != null && said in byDataset && names.includes(said) &&
+          byDataset[said].t === oldest.t;
+        const fetched = names.map((n) => `${n} ${isoDay(byDataset[n].iso)}`).join(", ");
+        if (!part) {
+          errors.push(
+            `leg m (/${rel.replace(/index\.html$/, "")}): renders one as-of date ` +
+              `(${isoDates.join(", ")}) over ${names.join("+")}, whose newest ` +
+              `downloads fall on different days (${fetched}), without naming the ` +
+              `part it belongs to ([${STALEST_ATTR}]) — "this corpus was fetched ` +
+              `<date>" gives one part's date to all of them. The stalest is ` +
+              `${oldest.name} (${oldest.file}).`,
+          );
+          continue;
+        }
+        if (!saidIsStalest || !norm(part.text).includes(said)) {
+          errors.push(
+            `leg m (/${rel.replace(/index\.html$/, "")}): the as-of clause names ` +
+              `${JSON.stringify(said)} ([${STALEST_ATTR}]) and reads ` +
+              `${JSON.stringify(norm(part.text))}, but of ${names.join("+")} ` +
+              `(${fetched}) the stalest is ${oldest.name} (${oldest.file}) — the ` +
+              `attribute and the visible name must both be the part the date is for.`,
+          );
+          continue;
+        }
+      }
 
       if (ageDays <= windowDays) {
         measured += 1;
@@ -4110,7 +4248,7 @@ function runSourceCadenceLeg(errors, notes) {
     );
     return;
   }
-  if (measured === 0) {
+  if (metered === 0) {
     errors.push(
       `leg m: all ${markers} cadence marker(s) are "${UNMETERED}" — no cadence ` +
         `claim on this site is checked against data/manifest.jsonl, which makes ` +
@@ -4118,6 +4256,9 @@ function runSourceCadenceLeg(errors, notes) {
     );
     return;
   }
+  // Every metered claim failed above, each with its own error — the leg is
+  // red, and "all markers are unmetered" would misname why.
+  if (measured === 0) return;
 
   const uncovered = Object.keys(byDataset).filter((d) => !covered.has(d)).sort();
   notes.push(

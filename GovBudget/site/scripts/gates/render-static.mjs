@@ -1640,14 +1640,14 @@ export async function runRenderStaticGate() {
       for (const h of hits.slice(0, 10)) {
         errors.push(
           h.why === "entity-trim"
-            ? `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — Turbopack trims the leading space of a multi-line text run that carries an HTML entity: write {" "} after the expression and start the text on that line (#106)`
+            ? `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — Turbopack trims the leading space of a multi-line text run that carries an HTML entity: write {" "} after the expression or inline element and start the text on that line (#106)`
             : `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — put the two on one line or add {" "}`
         );
       }
       if (hits.length > 10) errors.push(`  ... and ${hits.length - 10} more`);
     } else {
       notes.push(
-        `jsx glue: ${filesScanned} .tsx file(s) scanned, 0 space-eaten expression/text joins ✓`
+        `jsx glue: ${filesScanned} .tsx file(s) scanned, 0 space-eaten expression/text or inline-element/text joins ✓`
       );
     }
   }

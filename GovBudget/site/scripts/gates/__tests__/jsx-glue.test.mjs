@@ -213,6 +213,33 @@ describe("findGlueSitesInSource — the entity trim after an inline element", ()
     );
     expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
   });
+
+  // The glyph fixture above is silent for TWO reasons — the run after </span>
+  // starts on a new line, and "cited" carries no entity — so it would stay
+  // green with either condition deleted from the rule. Each case below keeps
+  // exactly one reason, so each condition is pinned on its own.
+  it("the LINE BREAK alone keeps it silent: an entity-bearing run that starts on a new line", () => {
+    const src = wrapEl(
+      '      <span aria-hidden="true">\n        &#8220;\n      </span>\n      cited&rsquo;s source',
+    );
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+  });
+
+  it("…and with a same-line space instead, that very run is reported", () => {
+    const src = wrapEl(
+      '      <span aria-hidden="true">\n        &#8220;\n      </span> cited&rsquo;s\n      source',
+    );
+    const hits = findGlueSitesInSource("fixture.tsx", src, ".");
+    expect(hits).toHaveLength(1);
+    expect(hits[0].why).toBe("entity-trim");
+  });
+
+  it("the missing ENTITY alone keeps it silent: a space-led multi-line run with none", () => {
+    const src = wrapEl(
+      '      <span aria-hidden="true">\n        &#8220;\n      </span> cited\n      source',
+    );
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+  });
 });
 
 describe("site/src", () => {

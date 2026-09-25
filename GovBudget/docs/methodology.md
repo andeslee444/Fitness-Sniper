@@ -1,6 +1,6 @@
 # Methodology
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-25
 
 ---
 
@@ -20,11 +20,12 @@ from. If we cannot cite it, we do not publish it.
 
 **Federal awards — USAspending.gov.** The official federal award database
 (contracts, grants, loans, and subawards), mandated by the DATA Act. We
-download bulk archive ZIP files from `files.usaspending.gov/award_data_archive/`,
-convert them to compressed Parquet, and record the exact file name, URL, and
-SHA-256 hash of every file. Current scope: Department of Defense agencies,
-FY2017 onward. Update cadence: monthly (USAspending publishes new full-archive
-files on a monthly cycle).
+download bulk ZIP files from `files.usaspending.gov`, convert them to
+compressed Parquet, and record the exact file name, URL, and SHA-256 hash of
+every file. Current scope: Department of Defense agencies, FY2017 onward.
+Source cadence: monthly (USAspending publishes new full-archive files on a
+monthly cycle); the live methodology page states when this corpus's stalest
+part was last fetched, derived from our download manifest.
 
 **DoD budget justification books ("J-books").** The detailed budget submissions
 the Pentagon sends to Congress each spring, published at
@@ -140,18 +141,19 @@ normalize to the same string (e.g., "THE BOEING COMPANY" and "BOEING COMPANY,
 THE (INC)"). Both tiers appear on screen; the method is always disclosed.
 
 **The tier grades the grouping, never the name.** A family's label is the
-registered parent name of whichever member holds the most money — an argmax
-that knows nothing about how close the runner-up was, or about which
-registration the registrant still uses. 15 of the 200 families we publish carry
-a label that beat its runner-up by under 15%. The largest is a family that is
-97% Raytheon Company obligations and was titled "ROCKWELL COLLINS AUSTRALIA PTY
-LIMITED": a common registered parent name, recorded in SAM.gov, at high
-confidence, and wrong — RTX had already reverted that registration. Every
-family inside that margin now carries a reviewed label from a hand-curated seed
-(`data-seeds/entity_display_aliases.csv`), each row recording whether it
-corrects the name or merely pins the argmax winner, and the build fails if a
-new one appears unreviewed. The registered name stays visible on every company
-page beneath the heading, because that is the string USAspending answers to.
+registered parent name of its largest member, chosen by an argmax over
+obligations. Among the 200 families we publish, a label that won its argmax
+by under 15% fails the build without a reviewed one from a curated seed
+(`data-seeds/entity_display_aliases.csv`, each row recording whether it
+corrects the name or merely pins the argmax winner); the live methodology page
+counts how many carry one at every build. Measured 2026-09-25 on the lake of
+the 2026-09-06 FY2026 refresh, 14 of the 200 labels won by under 15%, and 17 of
+the 200 families carry a reviewed label. The rule was prompted by a family
+that was 97% Raytheon Company obligations and was titled "ROCKWELL COLLINS
+AUSTRALIA PTY LIMITED" (measured 2026-09-01): a common registered parent name,
+recorded in SAM.gov, at high confidence, and wrong — RTX had already reverted
+that registration. The registered name stays visible on every company page
+beneath the heading, because that is the string USAspending answers to.
 
 **What a SAM.gov extract can and cannot do.** The registered parent name a
 confidence tier reads is *itself* the SAM.gov registration, so fetching it back

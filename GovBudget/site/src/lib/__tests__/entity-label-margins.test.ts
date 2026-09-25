@@ -121,16 +121,28 @@ describe("labelCensusSentence", () => {
     expect(
       labelCensusSentence({ published: 200, closeMargin: 14, curated: 17, thresholdPct: 15 }),
     ).toBe(
-      "A label that beat its runner-up by under 15% fails the build without a " +
-        "reviewed one from a curated seed; 17 of the 200 families we publish " +
-        "carry one, each company page still showing its registered name.",
+      "Among the 200 families we publish, a label that won its argmax by " +
+        "under 15% fails the build without a reviewed one from a curated seed; " +
+        "17 carry one, each company page still showing its registered name.",
     );
+  });
+
+  it("scopes the rule to the families it counts — leg l recomputes only the published set", () => {
+    // Task 29 fix round 1: the sentence opened "A label that beat its
+    // runner-up by under 15% fails the build…" with no scope, while leg l
+    // measures only the top 200 and /companies/families/ renders member
+    // labels below that cut (L3 TECHNOLOGIES, rank 201, a 3.1% near-tie with
+    // no seed row). The rule clause must name the set it is enforced on.
+    const s = labelCensusSentence({ published: 200, closeMargin: 14, curated: 17, thresholdPct: 15 });
+    const rule = s.slice(0, s.indexOf(";"));
+    expect(rule.startsWith("Among the 200 families we publish, a label that won")).toBe(true);
+    expect(rule).toContain("under 15% fails the build");
   });
 
   it("groups thousands the way the site prints counts", () => {
     expect(
       labelCensusSentence({ published: 1200, closeMargin: null, curated: 1050, thresholdPct: 15 }),
-    ).toContain("1,050 of the 1,200 families");
+    ).toMatch(/^Among the 1,200 families we publish, .*; 1,050 carry one,/);
   });
 });
 
@@ -159,8 +171,9 @@ describe("labelCensusFindings — leg l's binding of the rendered sentence", () 
     const stale = labelCensusSentence({ ...census, curated: 11 });
     const findings = labelCensusFindings(page(stale), census);
     expect(findings).toHaveLength(1);
-    expect(findings[0]).toContain("11 of the 5 families");
-    expect(findings[0]).toContain("3 of the 5 families");
+    expect(findings[0]).toContain('states "Among the 5 families we publish,');
+    expect(findings[0]).toContain("; 11 carry one,");
+    expect(findings[0]).toContain("; 3 carry one,");
   });
 
   it("FAILS when the page states another threshold than the gate enforces", () => {
@@ -188,6 +201,7 @@ describe("one helper, two importers", () => {
     expect(src).toMatch(/from "@\/lib\/entity-label-margins\.mjs"/);
     expect(src).toContain("labelCensusSentence(");
     expect(src).not.toMatch(/\d+ of the \d+\s+families we publish/);
+    expect(src).not.toMatch(/Among the \d+\s+families we publish/);
   });
 
   it("gate 24 leg l takes its threshold, census and sentence check from the helper", () => {

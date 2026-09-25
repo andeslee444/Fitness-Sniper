@@ -93,3 +93,79 @@ describe("methodology §4 ↔ docs/methodology.md §4", () => {
     expect(text).toMatch(/states the absence rather than substituting/);
   });
 });
+
+/**
+ * Task 29 fix round 1: the company-families passage. The page's census
+ * sentence is DERIVED at build (entity-label-margins.mjs), so no markdown can
+ * mirror it literally — and the doc kept typing "15 of the 200 families we
+ * publish carry…" and a present-tense "The largest is a family that is 97%
+ * Raytheon…" after the FY2026 refresh made both false. What CAN be bound is
+ * bound: the page's typed lead, the rule clause the helper renders (scoped,
+ * at the helper's threshold, over the recompute's published limit), and that
+ * any count the doc types is dated.
+ */
+import {
+  NEAR_TIE_MARGIN,
+  labelCensusSentence,
+} from "@/lib/entity-label-margins.mjs";
+
+describe("methodology §4 company families ↔ docs/methodology.md §4", () => {
+  const LEAD = "The tier grades the grouping, never the name.";
+  const quotes = (s: string) => s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+
+  function pageTypedLead(): string {
+    const src = fs.readFileSync(PAGE, "utf8");
+    const m = src.match(
+      /<strong>The tier grades the grouping, never the name\.<\/strong>\{" "\}([\s\S]*?)\{\/\*/,
+    );
+    expect(m, "the company-families lead is no longer where this test reads it").toBeTruthy();
+    return quotes(norm(m![1].replace(/\{" "\}/g, " ")));
+  }
+
+  function docParagraph(): string {
+    const section = between(fs.readFileSync(DOC, "utf8"), "\n## 4.", "\n## 5.");
+    const para = section
+      .split(/\n[ \t]*\n/)
+      .find((p) => p.trimStart().startsWith(`**${LEAD}**`));
+    expect(para, `docs §4 no longer opens a paragraph with **${LEAD}**`).toBeDefined();
+    return quotes(norm(para!.replace(/\*\*/g, "")));
+  }
+
+  /** The published set leg l measures — familylabel-recompute.py's limit. */
+  function publishedLimit(): number {
+    const py = fs.readFileSync(
+      path.join(SITE, "scripts", "gates", "familylabel-recompute.py"),
+      "utf8",
+    );
+    const m = py.match(/^PUBLISHED_LIMIT = (\d+)$/m);
+    expect(m, "PUBLISHED_LIMIT not found in familylabel-recompute.py").toBeTruthy();
+    return Number(m![1]);
+  }
+
+  it("opens with the page's typed sentences", () => {
+    expect(docParagraph().startsWith(`${LEAD} ${pageTypedLead()}`)).toBe(true);
+  });
+
+  it("states the rule clause the page renders — scoped to the published set, at the helper's threshold", () => {
+    const sentence = labelCensusSentence({
+      published: publishedLimit(),
+      closeMargin: null,
+      curated: 0,
+      thresholdPct: Math.round(NEAR_TIE_MARGIN * 100),
+    });
+    const rule = quotes(sentence.slice(0, sentence.indexOf(";")));
+    expect(rule.startsWith(`Among the ${publishedLimit()} families we publish,`)).toBe(true);
+    expect(docParagraph()).toContain(rule);
+  });
+
+  it("types no undated census, and dates the example that prompted the rule", () => {
+    const text = docParagraph();
+    expect(text).not.toMatch(/\b\d+ of the \d+ families we publish carry\b/);
+    for (const m of text.matchAll(/\b\d+ of the \d+\b/g)) {
+      const sentence = text.slice(text.lastIndexOf(". ", m.index) + 1, m.index);
+      expect(sentence, `undated count "${m[0]}"`).toMatch(/Measured \d{4}-\d{2}-\d{2}/);
+    }
+    expect(text).toContain('"ROCKWELL COLLINS AUSTRALIA PTY LIMITED" (measured 2026-09-01)');
+    expect(text).not.toMatch(/The largest is a family that is/);
+  });
+});

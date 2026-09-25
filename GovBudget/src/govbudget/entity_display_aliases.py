@@ -4,18 +4,33 @@ THE DEFECT. A family's on-screen name is `dim_entities.display_name`, which is
 `max(coalesce(parent_name, recipient_name)) filter (rn = 1)` — the registered
 `recipient_parent_name` of the member holding the most money. That string is
 chosen by an argmax over obligations, and the argmax has no notion of "current"
-and no notion of "close". Measured over the 200 published families, **15 of
-them ($255.2B, 9.7% of published family dollars) carry a label whose winning
-registration beat its runner-up by less than 15%**.
+and no notion of "close". Measured over the 200 published families when this
+layer was written (2026-09-01), **15 of them ($255.2B, 9.7% of published
+family dollars) carried a label whose winning registration beat its runner-up
+by less than 15%**; the live count is gate 24 leg l's note.
 
-The flagship: `ROCKWELL COLLINS AUSTRALIA` holds 15 members and is 97.3%
-`RAYTHEON COMPANY` ($18.93B of $19.47B), all sharing parent UEI
+The flagship, as measured then: `ROCKWELL COLLINS AUSTRALIA` held 15 members
+and was 97.3% `RAYTHEON COMPANY` ($18.93B of $19.47B), all sharing parent UEI
 `EGAVSJTA2D81`. It won its name by 3.1% — and RTX reverted that registration
 in FY2026, so the site published a label the registrant had already corrected.
+(The 2026-09-06 FY2026 refresh rebuilt the crosswalk: that Raytheon UEI now
+sits in the RTX family, the key left the published 200, and its row was
+retired — see the RTX event note in data-seeds/entity_family_events.csv.)
 
-WHAT THIS IS NOT. It is not entity resolution. The GROUPING is correct: those
-15 members really are one family, keyed on one parent UEI. Only the displayed
-string is wrong. Nor is it a SAM.gov ingestion problem — `recipient_parent_name`
+RETIRED ROWS. The seed has no retirement column, and gate 24 leg (l) fails a
+row whose key no published family has, so a row whose family leaves the
+published 200 is removed and its text kept in git. The commit "fix(data):
+adopt the 2026-09-06 FY2026 archives' provenance; …" (b5691ca5 in the
+monorepo) removed four, verbatim in the seed as it stood before that commit:
+ROCKWELL COLLINS AUSTRALIA, L3 TECHNOLOGIES, SERCO GROUP and APM TERMINALS
+PACIFIC. Watch L3 TECHNOLOGIES: measured 2026-09-25 it ranks 201st, $6.9M
+under the 200th family, and its label still wins by 3.1% — a refresh that
+lifts it back into the published set brings back an unreviewed near-tie, and
+its old pin can be restored only after re-measuring.
+
+WHAT THIS IS NOT. It is not entity resolution. The GROUPING was correct: those
+15 members were one family, keyed on one parent UEI. Only the displayed
+string was wrong. Nor is it a SAM.gov ingestion problem — `recipient_parent_name`
 IS the SAM registration name, so fetching it from SAM returns the same string.
 See docs/superpowers/reviews/10-entity-resolution-spike.md for the sizing, the
 four rejected alternatives, and why "name a family by its dominant member" is a

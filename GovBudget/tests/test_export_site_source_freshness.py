@@ -83,8 +83,81 @@ class TestSourceFreshnessBlock:
         grp = block["groups"]["usaspending"]
         assert grp["as_of"] == "2026-06-11", "as_of took the newest, not the stalest"
         assert grp["newest_file_name"] == "c.zip"
+        assert grp["stalest_dataset"] == "contracts"
         assert grp["declared_cadence"] == "monthly"
         assert grp["datasets"] == ["assistance", "contracts", "subawards"]
+
+    # Task 29 fix round 1 (CRITICAL). /methodology/ rendered "this corpus was
+    # fetched 2026-06-11" once the 2026-09-06 FY2026 contract and assistance
+    # archives (fetched 2026-09-24) were adopted: the group date is the
+    # SUBAWARDS' newest download, and the sentence gave it to the whole corpus.
+    # The page now names the part the date belongs to, so the name must be the
+    # member whose newest download IS that date — for every ordering of the
+    # three members' fetch dates, not just today's.
+    @pytest.mark.parametrize(
+        "order",
+        [
+            ("assistance", "contracts", "subawards"),
+            ("assistance", "subawards", "contracts"),
+            ("contracts", "assistance", "subawards"),
+            ("contracts", "subawards", "assistance"),
+            ("subawards", "assistance", "contracts"),
+            ("subawards", "contracts", "assistance"),
+        ],
+    )
+    def test_stalest_dataset_names_the_member_the_date_belongs_to(
+        self, manifest_at, order
+    ):
+        """`order[0]` is fetched first, `order[2]` last; each member also has
+        an OLDER file (a fiscal year fetched earlier), so the rule under test
+        is the stalest of the per-dataset NEWEST downloads, not the oldest
+        file."""
+        newest = ["2026-06-11T12:06:10+00:00", "2026-08-01T00:00:00+00:00",
+                  "2026-09-24T04:34:55+00:00"]
+        records = []
+        for ds, at in zip(order, newest):
+            records.append({"dataset": ds, "file_name": f"{ds}-old.zip",
+                            "downloaded_at": "2026-06-10T15:58:52+00:00"})
+            records.append({"dataset": ds, "file_name": f"{ds}-new.zip",
+                            "downloaded_at": at})
+        manifest_at(records)
+        grp = _source_freshness_block()["groups"]["usaspending"]
+        stalest = order[0]
+        assert grp["stalest_dataset"] == stalest
+        assert grp["as_of"] == "2026-06-11"
+        assert grp["newest_downloaded_at"] == newest[0]
+        assert grp["newest_file_name"] == f"{stalest}-new.zip"
+        # The claim the page makes: no other member's newest download is older.
+        datasets = _source_freshness_block()["datasets"]
+        for ds in grp["datasets"]:
+            assert (
+                datasets[ds]["newest_downloaded_at"]
+                >= datasets[grp["stalest_dataset"]]["newest_downloaded_at"]
+            )
+
+    def test_stalest_dataset_on_an_exact_tie_is_deterministic(self, manifest_at):
+        """Two members fetched at the same instant are equally stale; either
+        name is true, and the block must not flip between builds. Ties break
+        by dataset name."""
+        at = "2026-06-11T12:06:10+00:00"
+        manifest_at([
+            {"dataset": "subawards", "file_name": "s.zip", "downloaded_at": at},
+            {"dataset": "contracts", "file_name": "c.zip", "downloaded_at": at},
+            {"dataset": "assistance", "file_name": "a.zip",
+             "downloaded_at": "2026-09-24T04:29:08+00:00"},
+        ])
+        grp = _source_freshness_block()["groups"]["usaspending"]
+        assert grp["stalest_dataset"] == "contracts"
+        assert grp["as_of"] == "2026-06-11"
+
+    def test_a_single_member_group_names_that_member(self, manifest_at):
+        manifest_at([
+            {"dataset": "subawards", "file_name": "s.zip",
+             "downloaded_at": "2026-06-11T12:06:10+00:00"},
+        ])
+        grp = _source_freshness_block()["groups"]["usaspending"]
+        assert grp["datasets"] == ["subawards"]
+        assert grp["stalest_dataset"] == "subawards"
 
     def test_undeclared_dataset_raises_rather_than_defaulting(self, manifest_at):
         """A new source is a decision; defaulting makes it silently."""

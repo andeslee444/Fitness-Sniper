@@ -22,12 +22,15 @@ import { companyLabel, displayCompanyName } from "@/lib/company-name.mjs";
  * their SUBJECT (the `/company/` detail page) show the registry string
  * visibly instead — a tooltip is not provenance on a page about one company.
  *
- * ROADMAP #10 (option A) added the third case. For 15 of the 200 published
- * families the registry string is not merely SHOUTED, it is WRONG: it is the
- * winner of a parent-registration argmax that beat its runner-up by under 15%,
- * and the flagship (`ROCKWELL COLLINS AUSTRALIA PTY LIMITED`, on a family that
- * is 97.3% RAYTHEON COMPANY) won by 3.1% with a registration RTX reverted in
- * FY2026. Those families carry a curated `label`, which is:
+ * ROADMAP #10 (option A) added the third case. When this layer was written
+ * (2026-09-01), 15 of the 200 published families carried a registry string
+ * that won its parent-registration argmax by under 15% — the live count is
+ * gate 24 leg l's note — and for some of them the string was not merely
+ * SHOUTED but WRONG: the flagship (`ROCKWELL COLLINS AUSTRALIA PTY LIMITED`,
+ * on a family then 97.3% RAYTHEON COMPANY) won by 3.1% with a registration
+ * RTX reverted in FY2026. A family whose label was reviewed carries a curated
+ * `label` in the seed; a RELABEL (a label the casing rule would not produce)
+ * is:
  *   - rendered verbatim as the element's text;
  *   - declared in `data-company-label`, so gate 2 leg (tc) knows the text is
  *     authored rather than derived and gate 24 leg (l) can check it against
@@ -101,8 +104,8 @@ export function RegisteredNameNote({
           >
             curated label
           </a>
-          : this family&rsquo;s registered parent name was chosen by a near-tie
-          over obligations, and we publish the reviewed name instead.
+          : this family&rsquo;s registered parent name was reviewed by hand,
+          and we publish the reviewed name instead.
         </>
       ) : (
         <>

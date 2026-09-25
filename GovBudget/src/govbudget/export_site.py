@@ -1235,13 +1235,25 @@ def _source_freshness_block() -> dict:
         present = [m for m in members if m in datasets]
         if not present:
             continue
-        stalest = min(present, key=lambda m: datasets[m]["newest_downloaded_at"])
+        # An exact tie breaks by name so the block cannot flip between builds;
+        # tied members are equally stale, so either name is true.
+        stalest = min(
+            present, key=lambda m: (datasets[m]["newest_downloaded_at"], m)
+        )
         cadences = {datasets[m]["declared_cadence"] for m in present}
         groups[name] = {
             "datasets": present,
             "as_of": datasets[stalest]["newest_downloaded_at"][:10],
             "newest_downloaded_at": datasets[stalest]["newest_downloaded_at"],
             "newest_file_name": datasets[stalest]["newest_file_name"],
+            # WHICH member the as-of belongs to (Task 29 fix round 1). Adopting
+            # the 2026-09-06 FY2026 contract and assistance archives (fetched
+            # 2026-09-24) left the group date on the unrefreshed subawards, and
+            # /methodology/ said "this corpus was fetched 2026-06-11" of all
+            # three. One date over parts fetched on different days is only true
+            # when the page says whose date it is; gate 24 leg m checks the
+            # rendered name against data/manifest.jsonl itself.
+            "stalest_dataset": stalest,
             # One sentence may not span two cadences; if it ever does, the
             # page must be split rather than the difference averaged away.
             "declared_cadence": cadences.pop() if len(cadences) == 1 else None,
@@ -3957,11 +3969,12 @@ _REAL_WAREHOUSE_FAMILIES = 1000
 def _entity_display_labels(con) -> dict[str, str]:
     """``{family_key: published label}`` from the curated alias seed (#10 A).
 
-    `dim_entities.display_name` is an argmax over registered parent names, and
-    15 of the 200 published families carry a label that beat its runner-up by
-    under 15% — including `ROCKWELL COLLINS AUSTRALIA`, which is 97.3% RAYTHEON
-    COMPANY and won by 3.1% with a registration RTX reverted in FY2026. This is
-    the ONE place the correction enters the build.
+    `dim_entities.display_name` is an argmax over registered parent names.
+    When this layer was written (2026-09-01), 15 of the 200 published families
+    carried a label that beat its runner-up by under 15% — among them
+    `ROCKWELL COLLINS AUSTRALIA`, then 97.3% RAYTHEON COMPANY, which won by
+    3.1% with a registration RTX reverted in FY2026; the live count is gate 24
+    leg l's note. This is the ONE place the correction enters the build.
 
     Loud on every defect the SEED can have — a malformed row, an unknown
     evidence kind, a source on a row that claims none, a duplicate key — and,
@@ -3970,7 +3983,7 @@ def _entity_display_labels(con) -> dict[str, str]:
     indistinguishable from a fix that shipped.
 
     FIXTURE TOLERANCE. A warehouse of three hand-written rows cannot be
-    expected to carry the fifteen keys the real one does, so below
+    expected to carry every key the real seed names, so below
     _REAL_WAREHOUSE_FAMILIES the unknown-key check is skipped and unresolved
     keys are filtered instead. That is not a hole: gate 24 leg (l) re-checks
     every seeded key against the BUILT site, which is where a typo would
@@ -11361,8 +11374,9 @@ def _write_all_sidecars(
             "uei_count": uei_count,
             "worst_confidence": worst_confidence,
         }
-        # Emitted only when curated — 15 of 200 families today, and an absent
-        # key reads the same as a null to the site while costing no bytes.
+        # Emitted only when curated (the seed carries the key; the count is
+        # /methodology/'s census, derived at build) — an absent key reads the
+        # same as a null to the site while costing no bytes.
         if family_key in entity_labels:
             entity["label"] = entity_labels[family_key]
         entities_list.append(entity)

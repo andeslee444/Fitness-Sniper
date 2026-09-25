@@ -100,12 +100,21 @@ const count = (n) => Number(n).toLocaleString("en-US");
  * The one sentence. Built from slots so the matcher below is derived from
  * the same words and cannot drift from them.
  *
+ * SCOPED (Task 29 fix round 1): the rule clause names the set leg l enforces
+ * it on. It read "A label that beat its runner-up by under 15% fails the
+ * build…" with no scope, while leg l recomputes only the published families
+ * (familylabel-recompute.py, the top 200) and /companies/families/ renders
+ * member labels below that cut — L3 TECHNOLOGIES at rank 201, a 3.1% near-tie
+ * with no seed row, fails nothing. ("won its argmax" rather than "beat its
+ * runner-up" pays for the scope: /methodology/ may not grow this round.)
+ *
  * @param {string} pct @param {string} curated @param {string} published
  */
 const template = (pct, curated, published) =>
-  `A label that beat its runner-up by under ${pct}% fails the build without a ` +
-  `reviewed one from a curated seed; ${curated} of the ${published} families ` +
-  `we publish carry one, each company page still showing its registered name.`;
+  `Among the ${published} families we publish, a label that won its argmax ` +
+  `by under ${pct}% fails the build without a reviewed one from a curated ` +
+  `seed; ${curated} carry one, each company page still showing its ` +
+  `registered name.`;
 
 /**
  * The /methodology/ sentence for a census — rendered verbatim by the page,

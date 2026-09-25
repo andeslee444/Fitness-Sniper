@@ -89,7 +89,8 @@ export interface FlowBridgeProgramFamily {
 
 export interface FlowBridgeProgram {
   pe_bli: string;
-  title?: string;
+  // No `title`: the exporter stopped emitting it in Task 29 (nothing drew it;
+  // the row links to /program/{pe}/, which publishes the title).
   value: number;
   confidence: string;
   families: FlowBridgeProgramFamily[];

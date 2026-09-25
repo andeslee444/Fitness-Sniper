@@ -9,10 +9,11 @@ filter (rn = 1)` — the registered parent name of the family member holding the
 most money. That member picked its own `(parent_uei, parent_name)` pair by an
 argmax over obligations (`entity_graph._PICK_SQL parent_pick`), and the argmax
 has no notion of "close" and no notion of "current". Measured at the time this
-leg was written: 15 of the 200 published families ($255.2B, 9.7% of published
-family dollars) carry a label that beat its runner-up by under 15%, and
-`ROCKWELL COLLINS AUSTRALIA` — a family that is 97.3% RAYTHEON COMPANY — won by
-3.1% with a registration RTX reverted in FY2026.
+leg was written (2026-09-01): 15 of the 200 published families ($255.2B, 9.7%
+of published family dollars) carried a label that beat its runner-up by under
+15%, and `ROCKWELL COLLINS AUSTRALIA` — then a family 97.3% RAYTHEON COMPANY —
+won by 3.1% with a registration RTX reverted in FY2026. The live count is
+gate 24 leg l's note.
 
 MARGIN = (d1 - d2) / d1 over the DOMINANT MEMBER's distinct
 `(recipient_parent_uei, recipient_parent_name)` pairs in the award lake, ranked
@@ -35,8 +36,13 @@ Output:
     ...
   ],
   "published": 200,
-  "published_dollars": 2.63e12
+  "published_dollars": 2.63e12,
+  "unmeasured": [{"family_key": "...", "reason": "no parent registration"}]
 }
+
+`unmeasured` names every published family the loop below skipped (Task 29
+fix round 1): leg l fails unless `families` covers all `published`, and the
+names make that failure say which family and why.
 """
 
 import json
@@ -102,9 +108,11 @@ def main() -> int:
     }
 
     out = []
+    unmeasured = []
     for family_key, display_name, total in published:
         uei, dom_name = dominant.get(family_key, (None, None))
         if uei is None:
+            unmeasured.append({"family_key": family_key, "reason": "no dominant member"})
             continue
         regs = con.execute(
             """
@@ -119,10 +127,16 @@ def main() -> int:
             [uei],
         ).fetchall()
         if not regs:
+            unmeasured.append(
+                {"family_key": family_key, "reason": "no parent registration"}
+            )
             continue
         d1 = regs[0][1]
         d2 = regs[1][1] if len(regs) > 1 else 0.0
         if not d1:
+            unmeasured.append(
+                {"family_key": family_key, "reason": "top registration sums to zero"}
+            )
             continue
         out.append(
             {
@@ -145,6 +159,7 @@ def main() -> int:
                 "families": out,
                 "published": len(published),
                 "published_dollars": float(sum(r[2] or 0.0 for r in published)),
+                "unmeasured": unmeasured,
             },
             sort_keys=True,
         )

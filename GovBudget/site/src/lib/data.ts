@@ -177,6 +177,13 @@ export interface SiteMeta {
         as_of: string;
         newest_downloaded_at: string;
         newest_file_name: string;
+        /**
+         * The member `as_of` belongs to: the dataset whose newest download
+         * is oldest (ties break by name). Task 29 fix round 1 — once members
+         * are fetched on different days, a group date is one part's date and
+         * the page must say which. Absent on exports before that round.
+         */
+        stalest_dataset?: string;
         declared_cadence: string | null;
       }
     >;

@@ -1,10 +1,12 @@
 """Curated published labels for company families (ROADMAP #10, option A).
 
 The defect: `/companies/families/` and `/company/{slug}/` published
-`dim_entities.display_name`, an argmax over registered parent names. 15 of the
-200 published families ($255.2B) carry a label that beat its runner-up by under
-15%, and the flagship — `ROCKWELL COLLINS AUSTRALIA`, 97.3% RAYTHEON COMPANY —
-won by 3.1% with a registration RTX had already reverted.
+`dim_entities.display_name`, an argmax over registered parent names. Measured
+2026-09-01, when the layer was written: 15 of the 200 published families
+($255.2B) carried a label that beat its runner-up by under 15%, and the
+flagship — `ROCKWELL COLLINS AUSTRALIA`, then 97.3% RAYTHEON COMPANY — won by
+3.1% with a registration RTX had already reverted. The live count is gate 24
+leg l's note.
 
 These tests pin the alias layer that corrects it: its validation, its refusal
 to accept a source on a row that claims none, and the shipped seed itself.
@@ -81,11 +83,13 @@ def test_shipped_seed_covers_the_flagship():
     ROCKWELL COLLINS AUSTRALIA PTY LIMITED. After the 2026-09-06 FY2026
     refresh that key left the published 200 (the rebuilt xwalk files its old
     dominant member, XSV6AZJ6SDJ7, under RTX), and gate 24 leg (l) refuses a
-    row that relabels no published family, so its row was retired. Raytheon
-    Company's registrations now publish as RAYTHEON, whose dominant member
-    still carries the Rockwell string as its third-placed parent registration:
-    that family must be curated under the recipients' own name, and no label
-    may carry the Rockwell string.
+    row that relabels no published family, so its row was retired. The
+    RAYTHEON family — 49 of its 66 members Raytheon Company registrations,
+    holding $30.9B of its $32.3B (measured 2026-09-25; 25 more Raytheon Company
+    registrations sit in RTX) — now publishes as "Raytheon Company", and its
+    dominant member still carries the Rockwell string as its third-placed
+    parent registration: that family must be curated under the recipients' own
+    name, and no label may carry the Rockwell string.
     """
     labels = alias_map(load_display_aliases(SEED))
     assert labels.get("RAYTHEON") == "Raytheon Company"

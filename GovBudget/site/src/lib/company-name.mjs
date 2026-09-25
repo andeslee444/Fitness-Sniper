@@ -368,13 +368,14 @@ export function companyDisplay(raw) {
 /**
  * The name the site PUBLISHES for a company family (ROADMAP #10, option A).
  *
- * `display_name` is the registry string, and for 15 of the 200 published
- * families it is the winner of a near-tie the pipeline never told anyone it
- * held: `ROCKWELL COLLINS AUSTRALIA PTY LIMITED` labelled $18.93B of Raytheon
- * obligations because that registration beat `RAYTHEON COMPANY` by 3.1%, and
- * RTX had already reverted it. Those families carry a CURATED label from
- * data-seeds/entity_display_aliases.csv, which the exporter puts on the
- * payload as `label`.
+ * `display_name` is the registry string, and for some published families it
+ * is the winner of a near-tie the pipeline never told anyone it held — 15 of
+ * the 200 when this was written (2026-09-01; the live count is gate 24 leg
+ * l's note). Then, `ROCKWELL COLLINS AUSTRALIA PTY LIMITED` labelled $18.93B
+ * of Raytheon obligations because that registration beat `RAYTHEON COMPANY`
+ * by 3.1%, and RTX had already reverted it. Reviewed families carry a CURATED
+ * label from data-seeds/entity_display_aliases.csv, which the exporter puts
+ * on the payload as `label`.
  *
  * The label is rendered VERBATIM: it is authored, not derived, so the casing
  * rule above has no business touching it. Everything else falls through to

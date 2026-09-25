@@ -158,8 +158,9 @@ def test_a_missing_member_fact_fails_rule_4a():
 # The other half of the naming problem the curated seed cannot reach. The merge
 # above fixes which families are ONE family; this fixes what a family is
 # CALLED. `dim_entities.display_name` is an argmax over registered parent names,
-# and `ROCKWELL COLLINS AUSTRALIA PTY LIMITED` titled a family that is 97.3%
-# RAYTHEON COMPANY because that registration beat `RAYTHEON COMPANY` by 3.1%.
+# and `ROCKWELL COLLINS AUSTRALIA PTY LIMITED` titled a family that was 97.3%
+# RAYTHEON COMPANY (measured 2026-09-01) because that registration beat
+# `RAYTHEON COMPANY` by 3.1%.
 
 
 SEED_HEADER = (

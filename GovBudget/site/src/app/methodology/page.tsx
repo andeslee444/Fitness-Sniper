@@ -23,6 +23,7 @@ import {
   labelCensusSentence,
   labelMarginCensus,
 } from "@/lib/entity-label-margins.mjs";
+import { stalestPartClause } from "@/lib/source-freshness.mjs";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
@@ -527,15 +528,29 @@ export default function MethodologyPage() {
                 >
                   The official federal award database (contracts, grants, loans,
                   and subawards), mandated by the DATA Act. We download bulk
-                  archive ZIP files from{" "}
+                  ZIP files from{" "}
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    files.usaspending.gov/award_data_archive/
+                    files.usaspending.gov
                   </code>
                   , convert them to compressed Parquet, and record the exact file
                   name, URL, and SHA-256 hash of every file. Current scope:
                   Department of Defense agencies, FY2017 onward. Source cadence:{" "}
                   {usaspending?.declared_cadence ?? "monthly"}
-                  {usaspending ? ` — this corpus was fetched ${usaspending.as_of}.` : "."}
+                  {/* Task 29 fix round 1: the clause used to give the
+                      subawards' date to the whole corpus, archives fetched
+                      2026-09-24 included. It names the part the date is for,
+                      and gate 24 leg m checks that name against
+                      data/manifest.jsonl. */}
+                  {usaspending?.stalest_dataset ? (
+                    <span data-source-stalest={usaspending.stalest_dataset}>
+                      {stalestPartClause({
+                        stalest_dataset: usaspending.stalest_dataset,
+                        as_of: usaspending.as_of,
+                      })}
+                    </span>
+                  ) : (
+                    "."
+                  )}
                 </p>
               </div>
 
