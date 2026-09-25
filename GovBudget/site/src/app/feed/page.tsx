@@ -14,7 +14,11 @@ import { Reveal } from "@/components/reveal";
 import { FeedCardItem } from "@/components/feed-card-item";
 import { FeedSectionExpand } from "@/components/feed-section-expand";
 import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
-import { WHOLE_FEED_RSS, WHOLE_FEED_ATOM } from "@/lib/feed-model.mjs";
+import {
+  WHOLE_FEED_RSS,
+  WHOLE_FEED_ATOM,
+  feedProgramKey,
+} from "@/lib/feed-model.mjs";
 import type { FeedCard, FeedSidecar } from "@/lib/data";
 import { formatCount } from "@/lib/format";
 
@@ -204,6 +208,9 @@ export default function FeedPage() {
   // the same set generateStaticParams enumerates. Feed events may reference
   // pe_blis outside even that (trajectory-mart extras, dead decade-diff PEs);
   // linking those would 404 in the static export (G1 dead-link contract).
+  // A card is looked up by the page it ADDRESSES (feedProgramKey) — its
+  // pe_bli, except a concentration_shift card on one member of a shared code,
+  // whose program_url names the member's page (Task 28a).
   const programPeBlis = new Set(getProgramPeBlis());
 
   return (
@@ -308,9 +315,9 @@ export default function FeedPage() {
                               null)
                             : null
                         }
-                        hasProgramPage={
-                          card.pe_bli != null && programPeBlis.has(card.pe_bli)
-                        }
+                        hasProgramPage={programPeBlis.has(
+                          feedProgramKey(card) ?? "",
+                        )}
                       />
                     </Reveal>
                   ))}

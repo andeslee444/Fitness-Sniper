@@ -44,6 +44,10 @@ SCN, OPN = "1611N", "1810N"
 SCN_TITLE = "Shipbuilding and Conversion, Navy"
 OPN_TITLE = "Other Procurement, Navy"
 SCN_FED, OPN_FED = "017-1611", "017-1810"
+# Task 28a's second shared code ('2292'), whose links sit on ONE member.
+PMC, WPN = "1109N", "1507N"
+PMC_TITLE = "Procurement, Marine Corps"
+WPN_TITLE = "Weapons Procurement, Navy"
 
 
 # ---------------------------------------------------------------------------
@@ -699,6 +703,50 @@ def _make_collision_duckdb(db_path: Path) -> None:
             "  ?, 'ACME LOBBYING', 'acme', '2025', ?)",
             (_uuid, _term, f"https://lda.senate.gov/filings/{_uuid}/", _kind),
         )
+    # Task 28a: a second shared code on which ONE member carries the links —
+    # the live '2292' shape (2026-09-24: its one link sits on 1507N). Its
+    # members get distinct titles here (the live pair share one) so a test
+    # can tell the member's own title from the both-members label. A mart
+    # figure on the bare code, so the program page and the feed can be seen
+    # to hand it to the same member.
+    con.execute(
+        "insert into dim_programs (pe_bli, title, org, exhibit_family,"
+        " project_count, fy2024_actual_millions, fully_reconciled, account,"
+        " account_title) values"
+        f" ('2292','Naval Strike Missile (Marine Corps)','N','procurement',0,"
+        f"  1.0,true,'{PMC}','{PMC_TITLE}'),"
+        f" ('2292','Naval Strike Missile (NSM)','N','procurement',0,2.0,true,"
+        f"  '{WPN}','{WPN_TITLE}')"
+    )
+    con.execute(
+        "insert into fct_budget_to_awards (pe_bli, exhibit, fiscal_year,"
+        " organization, award_piid, recipient_name, recipient_uei, method,"
+        " confidence, program_title, account) values"
+        f" ('2292','P-1',2026,'N','N0002419C5603','Raytheon','UEI3',"
+        f"  'fpds-ap','high','Naval Strike Missile (NSM)','{WPN}')"
+    )
+    con.execute(
+        "insert into fct_program_concentration values"
+        " ('2292', 10000.0, 'RTX', 1, 1, 232767060.34,"
+        "  NULL, NULL, 1, 1, 232767060.34)"
+    )
+    # Task 28a: concentration_shift events, keyed on the BARE code as the
+    # mart keys them — one on each shared code and one on the ordinary PE.
+    con.execute(
+        "create table fct_feed_events (event_type varchar, pe_bli varchar,"
+        " organization varchar, family_key varchar, headline_value double,"
+        " comparison_value double, pct_change double, fiscal_year integer,"
+        " units varchar, detail_json varchar)"
+    )
+    con.execute(
+        "insert into fct_feed_events values"
+        " ('concentration_shift','3010',NULL,NULL,10000.0,1297963915.0,NULL,"
+        "  2023,'hhi_dollars',NULL),"
+        " ('concentration_shift','2292',NULL,NULL,10000.0,232767060.34,NULL,"
+        "  2023,'hhi_dollars',NULL),"
+        " ('concentration_shift','0601101E',NULL,NULL,3200.0,41000000.0,NULL,"
+        "  2024,'hhi_dollars',NULL)"
+    )
     con.close()
 
 
@@ -984,6 +1032,94 @@ def test_both_linked_members_carry_the_withheld_flag_and_no_hhi(collision_export
     assert by_slug["3010-OPN"]["hhi"] is None
     assert by_slug["0601101E"]["hhi"] is not None
     assert _sidecar(collision_export, "0601101E")["summary"]["concentration_withheld"] is False
+
+
+# ---------------------------------------------------------------------------
+# (c′) Task 28a — the feed follows the same rule the program pages do
+# ---------------------------------------------------------------------------
+
+
+def _feed_cards(site: Path) -> list[dict]:
+    return json.loads((site / "json" / "feed.json").read_text())["cards"]
+
+
+def _conc_fid(pe: str, fy: int, metric: str) -> str:
+    from govbudget.export_site import fact_id_derived
+
+    return fact_id_derived("feed", f"concentration_shift|{pe}|{fy}", metric)
+
+
+def test_the_feed_publishes_no_card_on_a_code_whose_members_both_carry_links(
+    collision_export,
+):
+    """3010's two members each carry a link, so the per-year HHI the mart
+    keys on the bare code describes both programs' contractors at once — the
+    figure both member pages already withhold (the test above). The feed
+    withholds it too, rather than headlining it under the both-members label
+    and linking the disambiguation stub."""
+    assert [c for c in _feed_cards(collision_export) if c["pe_bli"] == "3010"] == []
+
+
+def test_the_feed_names_the_one_member_that_carries_the_links(collision_export):
+    """2292's only link sits on its WPN member, so the bare figure IS that
+    member's: the program pages hand the pooled block to 2292-WPN alone, and
+    the feed card goes to the same page under the same program's title."""
+    (card,) = [c for c in _feed_cards(collision_export) if c["pe_bli"] == "2292"]
+    assert card["program_url"] == "/program/2292-WPN/"
+    assert card["title"] == "Naval Strike Missile (NSM)"
+    assert (collision_export / "json" / "program_details" / "2292-WPN.json").exists()
+    programs = json.loads((collision_export / "json" / "programs.json").read_text())
+    by_slug = {p["slug"]: p for p in programs}
+    assert by_slug["2292-WPN"]["hhi"] is not None
+    assert by_slug["2292-PMC"]["hhi"] is None
+
+
+def test_an_ordinary_feed_card_keeps_its_bare_address(collision_export):
+    (card,) = [c for c in _feed_cards(collision_export) if c["pe_bli"] == "0601101E"]
+    assert card["program_url"] == "/program/0601101E/"
+    assert card["title"] == "Defense Research Sciences"
+
+
+def test_a_withheld_feed_card_leaves_no_citation_behind(collision_export):
+    """The derived receipts move with the card: none for 3010's withheld
+    card, and the published cards' receipts resolve."""
+    by_fid = json.loads(
+        (collision_export / "json" / "citations.json").read_text()
+    )
+    for metric in ("hhi", "matched_dollars"):
+        assert _conc_fid("3010", 2023, metric) not in by_fid, metric
+        assert _conc_fid("2292", 2023, metric) in by_fid, metric
+        assert _conc_fid("0601101E", 2024, metric) in by_fid, metric
+    for card in _feed_cards(collision_export):
+        if card["event_type"] == "concentration_shift":
+            assert card["figure_fact_id"] in by_fid, card["pe_bli"]
+
+
+def test_the_feed_census_line_names_the_withheld_and_the_member_cards(
+    collision_export, collision_pg_dsn, tmp_path, capsys
+):
+    """The census print is the only place a withheld card is counted — no
+    page renders it. Re-exports for the same reason the mention census test
+    does: capsys cannot see a module-scoped fixture's output."""
+    from govbudget.export_site import export_site
+
+    db = tmp_path / "feed-census.duckdb"
+    _make_collision_duckdb(db)
+    capsys.readouterr()
+    export_site(
+        collision_pg_dsn, db, out_dir=tmp_path / "feed-census-site",
+        pdf_base_url="https://cdn.example/pdfs",
+    )
+    lines = [
+        ln for ln in capsys.readouterr().out.splitlines()
+        if ln.startswith("feed: ") and "concentration_shift" in ln
+    ]
+    assert len(lines) == 1, lines
+    assert lines[0].startswith(
+        "feed: 1 concentration_shift card(s) withheld on 1 shared code(s)"
+        " whose members both carry links (#70/#82 rule)"
+    ), lines[0]
+    assert "3010" in lines[0] and "2292-WPN" in lines[0], lines[0]
 
 
 # ---------------------------------------------------------------------------

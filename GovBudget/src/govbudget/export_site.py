@@ -716,6 +716,151 @@ def _fetch_program_identity(con) -> _ProgramIdentity:
 
 
 # ---------------------------------------------------------------------------
+# Whose program is a concentration figure keyed on the BARE pe_bli?
+# (ROADMAP #70/#82; module level since Task 28a, 2026-09-24, so the program
+# pages and the feed ask the one question with the one function.)
+# ---------------------------------------------------------------------------
+
+# Every published crosswalk link — fct_budget_to_awards holds high- and
+# medium-confidence rows only — high before medium, then by recipient: the
+# order a program_details sidecar's `awards` list carries them in.
+# `{account}` is ", account" or "" (see _query_with_account_fallback).
+_AWARD_LINKS_SQL = (
+    "select pe_bli, award_piid, recipient_name, confidence, organization{account}"
+    " from fct_budget_to_awards"
+    " order by case confidence when 'high' then 0 when 'medium' then 1"
+    "               when 'low' then 2 else 3 end,"
+    "          recipient_name, pe_bli, award_piid"
+)
+
+
+def _fetch_award_link_rows(con) -> list[tuple]:
+    """Every published crosswalk link as (pe_bli, award_piid, recipient_name,
+    confidence, organization, account); account is None on a warehouse whose
+    fct_budget_to_awards predates the column.
+
+    The one read behind both awards_by_pe (_write_all_sidecars — the member
+    pages' Related Awards tables and the concentration test) and the feed's
+    derived citations (_build_derived_citation_rows), so the two cannot
+    disagree about which members of a shared code carry links.
+    """
+    return _query_with_account_fallback(
+        con,
+        _AWARD_LINKS_SQL.format(account=", account"),
+        _AWARD_LINKS_SQL.format(account=""),
+        5,
+    )
+
+
+def _link_keys(ident, link_rows) -> dict[tuple, list[str]]:
+    """split key → the award PIIDs linked under it: awards_by_pe's keys
+    without its per-row payload, for a caller that needs only to ask which
+    members carry links. Keyed by the same
+    `ident.split_key(pe_bli, account, organization)` call awards_by_pe is."""
+    out: dict[tuple, list[str]] = {}
+    for pe_bli, award_piid, _name, _confidence, organization, account in link_rows:
+        out.setdefault(
+            ident.split_key(pe_bli, account, organization), []
+        ).append(award_piid)
+    return out
+
+
+def _linked_member_keys(awards_by_pe, pe_bli: str) -> set:
+    """The split keys under this bare code that carry at least one published
+    link. `awards_by_pe` maps a split key to that key's links (awards_by_pe
+    itself, or _link_keys' lighter index of the same rows)."""
+    return {
+        key for key, links in awards_by_pe.items()
+        if key[0] == pe_bli and links
+    }
+
+
+def _concentration_owner(ident, awards_by_pe, pe_bli: str):
+    """The split key of the ONE program a concentration figure keyed on the
+    BARE pe_bli describes, or None when it describes no single program
+    (ROADMAP #70/#82). The one rule behind the program pages
+    (_write_all_sidecars' _concentration_for) and the feed's
+    concentration_shift cards (_emit_feed_sidecar, and the derived citations
+    _build_derived_citation_rows mints for them).
+
+    fct_program_concentration (pooled over every year) and fct_feed_events'
+    concentration_shift events (one fiscal year each) both aggregate award
+    dollars by pe_bli alone. On a code two programs share, a figure over both
+    members' links is the union of two programs' contractors — the #56
+    fusion, in the figure a reader is most likely to quote — so it is neither
+    program's.
+
+      · an ordinary pe_bli → (pe_bli, None, None): the code names one program
+        and the figure is that program's, exactly as before #70;
+      · a shared code on which exactly ONE split key carries links, that key
+        being one of the code's own dim_programs members → that member's
+        key: every link under the code is its, so the figure is its;
+      · otherwise → None: two or more members carry links (0145, 3010 and
+        3215, measured 2026-09-24), none does, or the one key that does
+        names no member page (an account NULL, or one no member carries —
+        the links _write_all_sidecars counts as "filed under a key no member
+        page reads"; none on 2026-09-24).
+
+    "Carries links" counts every published link, high and medium confidence
+    alike — awards_by_pe's rows. fct_feed_events computes its per-year index
+    over high-confidence links only, and on 3010 and 3215 only one member
+    carries a high-confidence link (2026-09-24), so the feed cards this
+    withholds there were that member's on the feed's own basis. They are
+    withheld anyway: the program pages withhold those codes' whole pooled
+    block, its high-confidence basis included, by this same test, and a feed
+    card may not publish what the page it would link to declines to.
+    """
+    if not ident.is_split(pe_bli):
+        return ident.split_key(pe_bli, None, None)
+    linked = _linked_member_keys(awards_by_pe, pe_bli)
+    if len(linked) != 1:
+        return None
+    (key,) = linked
+    members = {
+        ident.split_key(pe_bli, account, organization)
+        for account, _title, organization, _has_detail in ident.accounts(pe_bli)
+    }
+    return key if key in members else None
+
+
+def _member_pages(ident, rows) -> dict[tuple, tuple[str, str | None]]:
+    """split key → (page slug, page title) for every member of a shared code.
+
+    `rows` are (pe_bli, account, account_title, organization, title). The
+    live caller passes all_prog_rows after the #39 title correction — the
+    rows programs.json and every member's program_details sidecar are written
+    from — so the slug is the member page's own address and the title is the
+    heading that page renders. Ordinary pe_blis are left out: their page is
+    addressed by the bare code.
+    """
+    out: dict[tuple, tuple[str, str | None]] = {}
+    for pe_bli, account, account_title, organization, title in rows:
+        if ident.is_split(pe_bli):
+            out[ident.split_key(pe_bli, account, organization)] = (
+                ident.slug(pe_bli, account, account_title, organization),
+                title,
+            )
+    return out
+
+
+def _feed_program_key(card: dict) -> str | None:
+    """The /program/{key}/ page a feed card addresses: the key in its
+    program_url, else its pe_bli (None for a company card).
+
+    MIRROR of feedProgramKey in site/src/lib/feed-model.mjs, which the /feed/
+    page, the RSS/Atom items and the program watch feeds resolve a card's
+    page with — this one pre-resolves `has_program_page` for the cards past
+    the digest cap (_emit_feed_section_sidecars). For every card before Task
+    28a the answer is its pe_bli: program_url is `/program/{pe_bli}/` or
+    null. A card on ONE member of a shared code carries
+    `/program/{member slug}/` while its pe_bli stays the bare code — the
+    event's, its guid's and every company watchlist's key.
+    """
+    m = re.fullmatch(r"/program/([^/]+)/", card.get("program_url") or "")
+    return m.group(1) if m else card.get("pe_bli")
+
+
+# ---------------------------------------------------------------------------
 # Human-readable fiscal-year pair label for the active trajectory columns
 # (fy2526_* in fct_budget_trajectory). Single source for feed headline text —
 # mirrors TRAJECTORY_FY_LABEL in site/src/lib/site.ts. Always the U+2192
@@ -5012,8 +5157,18 @@ def _build_derived_citation_rows(
             "where share = family_obligation / sum(family_obligation) "
             "and obligation > 0 (feed HHI; positive-only shares)"
         )
+        # Task 28a (ROADMAP #70/#82): _emit_feed_sidecar withholds a
+        # concentration_shift card on a shared code whose figure is no single
+        # member's (_concentration_owner is None — both members carry links),
+        # and a receipt for a card that is never published is an orphan. So
+        # none is minted for it: same link read, same split keys, same
+        # function the card is decided by. A card published under its one
+        # linked member keeps its bare-code fact ids.
+        _feed_link_keys = _link_keys(ident, _fetch_award_link_rows(con))
         for fe_pe_bli, fe_fy, fe_hhi, fe_dollars in feed_conc_rows:
             if fe_hhi is None or fe_pe_bli is None or fe_fy is None:
+                continue
+            if _concentration_owner(ident, _feed_link_keys, fe_pe_bli) is None:
                 continue
             fid = fact_id_derived("feed", f"concentration_shift|{fe_pe_bli}|{fe_fy}", "hhi")
             rows.append(_null_derived_row(
@@ -9414,19 +9569,9 @@ def _write_all_sidecars(
     # ~1,930 of them; the organization-split keys publish no links at all
     # (account evidence cannot tell their members apart), so their key is
     # (pe_bli, None, org) on both sides and simply finds nothing.
-    _AWARDS_SQL = (
-        "select pe_bli, award_piid, recipient_name, confidence, organization{account}"
-        " from fct_budget_to_awards"
-        " order by case confidence when 'high' then 0 when 'medium' then 1"
-        "               when 'low' then 2 else 3 end,"
-        "          recipient_name, pe_bli, award_piid"
-    )
-    awards_rows = _query_with_account_fallback(
-        con,
-        _AWARDS_SQL.format(account=", account"),
-        _AWARDS_SQL.format(account=""),
-        5,
-    )
+    # Task 28a: the read is module-level (_fetch_award_link_rows), shared with
+    # the feed's derived citations, so both see the same links.
+    awards_rows = _fetch_award_link_rows(con)
     def _link_fid(pe_bli: str, award_piid: str) -> str | None:
         """The crosswalk link's own citation fact_id, or None when no citation
         row was minted for this pair (chain-B fix 3).
@@ -9552,15 +9697,6 @@ def _write_all_sidecars(
             "award_count_high": awards_high,
         }
 
-    def _linked_member_keys(pe_bli: str) -> set:
-        """The split keys under this shared code that carry at least one
-        published link — the members whose money the bare-pe_bli figure in
-        fct_program_concentration actually mixes."""
-        return {
-            key for key in awards_by_pe
-            if key[0] == pe_bli and awards_by_pe[key]
-        }
-
     def _concentration_for(pe_bli: str, account=None, organization=None):
         """This program's vendor-concentration block, or None when the mart's
         figure is not this program's to claim (ROADMAP #70).
@@ -9576,15 +9712,19 @@ def _write_all_sidecars(
         links, it is neither member's and the block is withheld from both
         rather than published under a name it does not describe. Non-split
         pe_blis take the pre-#70 path unchanged.
+
+        Which program the figure is — or that it is none — is
+        _concentration_owner's answer (Task 28a: module level, so the feed's
+        concentration_shift cards ask the same function with the same
+        awards_by_pe and ident).
         """
         block = hhi_by_pe.get(pe_bli)
-        if block is None or not ident.is_split(pe_bli):
-            return block
-        linked_keys = _linked_member_keys(pe_bli)
-        if len(linked_keys) != 1:
+        if block is None:
             return None
-        return block if ident.split_key(
-            pe_bli, account, organization) in linked_keys else None
+        owner = _concentration_owner(ident, awards_by_pe, pe_bli)
+        if owner is None or owner != ident.split_key(pe_bli, account, organization):
+            return None
+        return block
 
     def _concentration_withheld(pe_bli: str, account=None, organization=None) -> bool:
         """ROADMAP #82: True exactly when a mart figure EXISTS for this shared
@@ -9599,10 +9739,11 @@ def _write_all_sidecars(
         absence is genuine and the ordinary sentence is true of it). This is
         the SAME withholding _concentration_for performs — same hhi_by_pe,
         same awards_by_pe, same ident — reported as a reason, not a second
-        mechanism. True on exactly two pages today: 3010-SCN and 3010-OPN."""
+        mechanism. True on six pages, measured 2026-09-24: 0145-APN,
+        0145-PANMC, 3010-SCN, 3010-OPN, 3215-WPN and 3215-OPN."""
         if hhi_by_pe.get(pe_bli) is None or not ident.is_split(pe_bli):
             return False
-        linked_keys = _linked_member_keys(pe_bli)
+        linked_keys = _linked_member_keys(awards_by_pe, pe_bli)
         return (
             len(linked_keys) > 1
             and ident.split_key(pe_bli, account, organization) in linked_keys
@@ -11960,6 +12101,15 @@ def _write_all_sidecars(
         fy26_split_by_pe=fy26_split_by_pe,
         program_page_keys=_feed_program_page_keys,
         company_slug_by_family_key=_feed_company_slug_by_family_key,
+        # Task 28a: the inputs _concentration_for decides with, so a
+        # concentration_shift card on a shared code is published, addressed
+        # to its one linked member, or withheld exactly as that member's page
+        # publishes or withholds the pooled figure.
+        ident=ident,
+        awards_by_pe=awards_by_pe,
+        member_pages=_member_pages(ident, (
+            (r[0], r[7], r[8], r[1], r[3]) for r in all_prog_rows
+        )),
     )
     n_files += 1 + n_feed_sections
 
@@ -12898,6 +13048,9 @@ def _emit_feed_sidecar(
     section_cap: int = _FEED_SECTION_CAP,
     program_page_keys=None,
     company_slug_by_family_key: dict | None = None,
+    ident=None,
+    awards_by_pe: dict | None = None,
+    member_pages: dict | None = None,
 ) -> int:
     """Emit json/feed.json from fct_feed_events (Task 4).
 
@@ -12941,10 +13094,31 @@ def _emit_feed_sidecar(
     site's getProgramPeBlis() reads); when None (the six pre-#88 tests) it
     falls back to `page_pe_blis`. feed.json publishes `section_cap`.
     Returns the number of section files written.
+
+    Task 28a (ROADMAP #70/#82): `ident`, `awards_by_pe` and `member_pages`
+    are the inputs the program pages' _concentration_for decides with, and a
+    concentration_shift card on a shared code asks the same
+    _concentration_owner. When two or more members carry links the per-year
+    HHI fuses two programs' contractors and the card is WITHHELD — not
+    emitted — and counted in one printed census line. When exactly one
+    member does, the card is that member's: program_url is
+    /program/{member slug}/ and title/headline carry the member's own title
+    (member_pages). `pe_bli` stays the bare code the event is keyed on — it
+    is the guid's entity, the fact id's key and every company watchlist's.
+    Ordinary pe_blis are untouched. Without `ident` (the pre-28a unit tests)
+    no code is treated as shared.
     """
     import json as _json
 
     fy26_split_by_pe = fy26_split_by_pe or {}
+    ident = ident if ident is not None else _ProgramIdentity([])
+    awards_by_pe = awards_by_pe or {}
+    member_pages = member_pages or {}
+    # Task 28a census: shared code → cards withheld because ≥2 members carry
+    # links / withheld for any other reason / published under the member.
+    _conc_fused: dict[str, int] = {}
+    _conc_unowned: dict[str, int] = {}
+    _conc_member: dict[str, int] = {}
 
     try:
         feed_rows = con.execute(
@@ -13015,11 +13189,14 @@ def _emit_feed_sidecar(
         # ROADMAP #70 fix round 1: a feed event is keyed on the BARE pe_bli
         # and its figures come from marts grouped the same way, so on one of
         # the 13 shared codes the event genuinely unions both members' money.
-        # prog_titles now labels those with both members' titles rather than
-        # whichever one dim_programs' sort ended on (no feed event lands on a
-        # shared code in today's corpus — this is the shape, not a fix to a
-        # visible headline).
+        # prog_titles labels those with both members' titles rather than
+        # whichever one dim_programs' sort ended on. Task 28a: on 2026-09-24
+        # the only fct_feed_events rows on a shared code are 34
+        # concentration_shift events (0145, 2292, 3010, 3215), and those no
+        # longer take that label — their branch below withholds the card or
+        # hands it to its one linked member.
         program_title = ""
+        card_program_url = f"/program/{pe_bli}/" if pe_bli else None
         if pe_bli:
             program_title = prog_titles.get(pe_bli) or bl_titles.get(pe_bli, "")
         # magnitude (§P1-8): the DOLLARS the event is about. A percentage
@@ -13150,6 +13327,22 @@ def _emit_feed_sidecar(
             }
 
         elif event_type == "concentration_shift":
+            # Task 28a (ROADMAP #70/#82): the per-year HHI is keyed on the
+            # BARE code. On a shared code it is one program's only when one
+            # member carries every link — the test the member pages apply to
+            # the pooled figure, asked here of the same function.
+            if pe_bli and ident.is_split(pe_bli):
+                owner = _concentration_owner(ident, awards_by_pe, pe_bli)
+                member = member_pages.get(owner) if owner is not None else None
+                if member is None:
+                    fused = len(_linked_member_keys(awards_by_pe, pe_bli)) > 1
+                    tally = _conc_fused if fused else _conc_unowned
+                    tally[pe_bli] = tally.get(pe_bli, 0) + 1
+                    continue
+                member_slug, member_title = member
+                _conc_member[member_slug] = _conc_member.get(member_slug, 0) + 1
+                program_title = member_title or program_title
+                card_program_url = f"/program/{member_slug}/"
             # No dollar token: an HHI is an index, not money.
             headline_text, headline_segments = _compose_headline(
                 f"{program_title or pe_bli} award concentration"
@@ -13264,7 +13457,9 @@ def _emit_feed_sidecar(
             "headline_segments": headline_segments,
             "organization": organization,
             "pe_bli": pe_bli,
-            "program_url": f"/program/{pe_bli}/" if pe_bli else None,
+            # /program/{pe_bli}/, except a concentration_shift card on ONE
+            # member of a shared code, which addresses that member (28a).
+            "program_url": card_program_url,
             **figure_basis,
             # §P1-8 dollar magnitude — see the `magnitude` comment above.
             "magnitude": magnitude,
@@ -13281,6 +13476,28 @@ def _emit_feed_sidecar(
             "why_url": f"{_WHY_BASE}-{event_type}",
         }
         cards.append(card)
+
+    # Task 28a census — the only place a withheld card is counted, since no
+    # page renders it. Printed whenever the export has shared codes at all,
+    # so a zero is stated rather than implied.
+    if ident.split_pe_blis:
+        def _named(tally: dict) -> str:
+            return ", ".join(sorted(tally)) or "none"
+
+        _census = (
+            f"feed: {sum(_conc_fused.values())} concentration_shift card(s)"
+            f" withheld on {len(_conc_fused)} shared code(s) whose members"
+            f" both carry links (#70/#82 rule): {_named(_conc_fused)};"
+            f" {sum(_conc_member.values())} published under the one member"
+            f" that carries links: {_named(_conc_member)}"
+        )
+        if _conc_unowned:
+            _census += (
+                f"; {sum(_conc_unowned.values())} withheld on"
+                f" {len(_conc_unowned)} shared code(s) on which no single"
+                f" member page carries the links: {_named(_conc_unowned)}"
+            )
+        print(_census)
 
     # ---- request_vs_actuals_gap events (Phase 5E Task 7) -------------------
     # Appended AFTER the mart-driven cards, in |delta| rank order (the site
@@ -13434,12 +13651,17 @@ def _emit_feed_section_sidecars(
       company_slug     — /company/{slug}/ for the card's family_key, from the
                          top-200 entities_top list (getEntityTopByFamilyKey);
                          null outside the top 200 (no company page).
-      has_program_page — pe_bli names a program_details/ sidecar, i.e. a
-                         /program/{pe_bli}/ page exists (getProgramPeBlis()
-                         reads that same directory listing). Deliberately
-                         NOT derived from program_url: the mart loop sets
-                         that whenever pe_bli is non-null, without consulting
-                         the page universe (G1 dead-link contract).
+      has_program_page — the page the card addresses names a
+                         program_details/ sidecar, i.e. that /program/{key}/
+                         page exists (getProgramPeBlis() reads that same
+                         directory listing). The key is _feed_program_key's:
+                         the one in program_url, else pe_bli — the pe_bli for
+                         every card except a concentration_shift card on one
+                         member of a shared code (Task 28a), whose
+                         program_url addresses the member. Existence is still
+                         checked, never inferred from program_url: the mart
+                         loop sets that whenever pe_bli is non-null, without
+                         consulting the page universe (G1 dead-link contract).
 
     Keyed directory: prune-before-emit (same species as districts/, flows/,
     breakdowns/), and prepare-assets.mjs copyDir MIRRORS it — a retired
@@ -13481,13 +13703,15 @@ def _emit_feed_section_sidecars(
         hidden = []
         for c in section_cards[section_cap:]:
             family_key = c.get("family_key")
-            pe_bli = c.get("pe_bli")
+            # The page the card's link addresses — feed/page.tsx asks the same
+            # question of the same program_details listing (feedProgramKey).
+            page_key = _feed_program_key(c)
             hidden.append({
                 **c,
                 "company_slug": (
                     company_slug_by_family_key.get(family_key) if family_key else None
                 ),
-                "has_program_page": bool(pe_bli) and pe_bli in program_page_keys,
+                "has_program_page": bool(page_key) and page_key in program_page_keys,
             })
         _write_json(sections_dir / f"{event_type}.json", {
             "cards": hidden,

@@ -241,17 +241,43 @@ export function companyFeedPaths(slug) {
 // feed the build did not write, and a written feed is never unreachable.
 
 /**
- * A program element gets a watch feed iff it has at least one event AND a
- * built /program/{pe}/ page (the G1 dead-link contract: a feed whose items
- * point at a 404 is worse than no feed).
+ * The /program/{key}/ page a card addresses: the key in its `program_url`,
+ * else its `pe_bli` (null for a company card).
  *
- * @param {string|null|undefined} peBli
- * @param {Array<{pe_bli?: string|null}>} cards
+ * For every card before Task 28a (2026-09-24) the two agree — the exporter
+ * writes program_url as `/program/{pe_bli}/` or null. They part on ONE
+ * shape: a concentration_shift card on a budget-line code two programs
+ * share, published because only one member carries crosswalk links. Its
+ * program_url addresses that member (`/program/2292-WPN/`) while its pe_bli
+ * stays the bare code the event is keyed on — the guid's entity (feedGuid)
+ * and every company watchlist's key (companyWatchPeBlis reads bare codes).
+ * A bare shared code has no program_details sidecar, so keying the page by
+ * pe_bli would leave that card with no link and no watch feed.
+ *
+ * The /feed/ page, every feed item's link and the program watch feeds resolve
+ * a card's page through this; export_site.py's _feed_program_key is its
+ * mirror for the section sidecars' pre-resolved has_program_page.
+ *
+ * @param {{pe_bli?: string|null, program_url?: string|null}} card
+ * @returns {string|null}
+ */
+export function feedProgramKey(card) {
+  const m = /^\/program\/([^/]+)\/$/.exec(card?.program_url ?? "");
+  return m ? m[1] : (card?.pe_bli ?? null);
+}
+
+/**
+ * A program page gets a watch feed iff at least one card addresses it
+ * (feedProgramKey) AND the /program/{key}/ page was built (the G1 dead-link
+ * contract: a feed whose items point at a 404 is worse than no feed).
+ *
+ * @param {string|null|undefined} peBli the page's key — its route segment
+ * @param {Array<{pe_bli?: string|null, program_url?: string|null}>} cards
  * @param {Set<string>} programPages
  */
 export function hasProgramFeed(peBli, cards, programPages) {
   if (!peBli || !programPages.has(peBli)) return false;
-  return cards.some((c) => c.pe_bli === peBli);
+  return cards.some((c) => feedProgramKey(c) === peBli);
 }
 
 /**
@@ -373,8 +399,9 @@ export function companyWatchPeBlis(details) {
  */
 function itemLink(card, siteUrl, { programPages, companySlugByFamilyKey }) {
   const base = trimSlash(siteUrl);
-  if (card.pe_bli && programPages.has(card.pe_bli)) {
-    return `${base}/program/${card.pe_bli}/`;
+  const page = feedProgramKey(card);
+  if (page && programPages.has(page)) {
+    return `${base}/program/${page}/`;
   }
   if (card.family_key) {
     const slug = companySlugByFamilyKey.get(card.family_key);
@@ -722,7 +749,7 @@ export function buildFeedTargets(input) {
   // page can never link to a feed the build did not write.
   const byProgram = new Map();
   for (const it of items) {
-    const pe = it.card.pe_bli;
+    const pe = feedProgramKey(it.card);
     if (!hasProgramFeed(pe, [it.card], programPages)) continue;
     if (!byProgram.has(pe)) byProgram.set(pe, []);
     byProgram.get(pe).push(it);

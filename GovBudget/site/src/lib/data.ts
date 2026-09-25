@@ -2540,6 +2540,14 @@ export interface FeedCard {
   headline_segments?: FeedHeadlineSegment[];
   organization: string | null;
   pe_bli: string | null;
+  /**
+   * `/program/{pe_bli}/`, or null — except a concentration_shift card on a
+   * budget-line code two programs share, published because only one member
+   * carries crosswalk links: it addresses that member's page
+   * (`/program/2292-WPN/`) while pe_bli stays the bare code (Task 28a). Read
+   * the page a card belongs to through feedProgramKey (lib/feed-model.mjs),
+   * never by re-deriving it from pe_bli.
+   */
   program_url: string | null;
   /**
    * Program title resolved by the export pipeline (dim_programs first,
@@ -2628,7 +2636,8 @@ export interface FeedSidecar {
 export interface FeedSectionCard extends FeedCard {
   /** /company/{slug}/ for family_key when it is in the top-200 index, else null. */
   company_slug: string | null;
-  /** pe_bli has a /program/{pe_bli}/ page (a program_details/ sidecar exists). */
+  /** The page the card addresses (feedProgramKey — its pe_bli, or the member
+   *  its program_url names) has a program_details/ sidecar, i.e. was built. */
   has_program_page: boolean;
 }
 

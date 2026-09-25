@@ -27,6 +27,8 @@ import {
   eventTypeFeedPaths,
   programFeedPaths,
   companyFeedPaths,
+  feedProgramKey,
+  hasProgramFeed,
   WHOLE_FEED_RSS,
   WHOLE_FEED_RSS_ALIAS,
   WHOLE_FEED_ATOM,
@@ -517,5 +519,127 @@ describe("renderAtom", () => {
       )!;
       expect(related.getAttribute("href")).toMatch(/\/fact\/[0-9a-f]{8}$/);
     }
+  });
+});
+
+// ── Task 28a: a card on ONE member of a shared budget-line code ─────────────
+//
+// fct_feed_events keys a concentration_shift event on the BARE code. Where two
+// programs share that code and only one carries crosswalk links (2292 on
+// 2026-09-24: its one link sits on the WPN member), the exporter publishes the
+// card as that member's — `program_url` addresses /program/2292-WPN/ — while
+// `pe_bli` stays the bare code the event, its guid and every company watchlist
+// are keyed on. The page a card belongs to is therefore the one its
+// program_url addresses (feedProgramKey), not a /program/{pe_bli}/ page, which
+// for a shared code does not exist as a program_details sidecar at all.
+
+const memberCard = {
+  event_type: "concentration_shift",
+  family_key: null,
+  figure_fact_id: "b0e65124933041b2",
+  figure_units: "hhi",
+  figure_value: 10000,
+  fiscal_year: 2023,
+  headline: "Naval Strike Missile (NSM) award concentration HHI=10000 (2023)",
+  organization: null,
+  pe_bli: "2292",
+  program_url: "/program/2292-WPN/",
+  title: "Naval Strike Missile (NSM)",
+  why_url: "/methodology/#feed-concentration_shift",
+  basis: null,
+  fy: null,
+  measure: null,
+  edition: null,
+  magnitude: {
+    kind: "single",
+    units: "dollars",
+    from: null,
+    to: {
+      label: "FY2023 matched obligations",
+      fy: 2023,
+      value: 232767060.34,
+      fact_id: "317606e47e5c6dab",
+    },
+    delta: null,
+    pct_change: null,
+  },
+};
+
+const memberPages = new Set(["2292-PMC", "2292-WPN", "0101213F"]);
+
+describe("feedProgramKey — the page a card addresses", () => {
+  it("is the member page for a card on one member of a shared code", () => {
+    expect(feedProgramKey(memberCard)).toBe("2292-WPN");
+  });
+
+  it("is the pe_bli for an ordinary card, exactly as before", () => {
+    expect(feedProgramKey(swingCard)).toBe("0101213F");
+  });
+
+  it("falls back to pe_bli when a card carries no program_url", () => {
+    expect(feedProgramKey({ ...swingCard, program_url: null })).toBe("0101213F");
+  });
+
+  it("is null for a company card", () => {
+    expect(feedProgramKey(entrantCard)).toBeNull();
+  });
+});
+
+describe("a member card in the feeds", () => {
+  const memberTargets = () =>
+    buildFeedTargets({
+      cards: [swingCard, memberCard],
+      siteUrl: SITE,
+      pubDate: PUB,
+      programPages: memberPages,
+      programTitles: new Map([["0101213F", "Minuteman Squadrons"]]),
+      companySlugByFamilyKey: new Map(),
+      companyWatch: [
+        {
+          slug: "raytheon",
+          displayName: "Raytheon",
+          // company pages list the BARE code an award was crosswalked to
+          peBlis: new Set(["2292"]),
+          awardPeBlis: new Set(["2292"]),
+          mentionPeBlis: new Set<string>(),
+          awardLinked: 1,
+          mentionLinked: 0,
+          familyKey: "RAYTHEON",
+        },
+      ],
+    });
+
+  it("links the item to the member's page", () => {
+    expect(buildItem(memberCard, { ...ctx(), programPages: memberPages }).link).toBe(
+      "https://fiscalreceipts.com/program/2292-WPN/",
+    );
+  });
+
+  it("files the item under the member's watch feed, not a bare-code one", () => {
+    const progs = memberTargets().filter((t) => t.kind === "program");
+    expect(progs.map((t) => t.key)).toEqual(["0101213F", "2292-WPN"]);
+    const member = progs.find((t) => t.key === "2292-WPN")!;
+    expect(member.rssPath).toBe(programFeedPaths("2292-WPN").rss);
+    expect(member.htmlUrl).toBe("https://fiscalreceipts.com/program/2292-WPN/");
+    expect(member.title).toContain("Naval Strike Missile (NSM)");
+    expect(member.items).toHaveLength(1);
+  });
+
+  it("is advertised by the member page and by no other", () => {
+    const cards = [swingCard, memberCard];
+    expect(hasProgramFeed("2292-WPN", cards, memberPages)).toBe(true);
+    expect(hasProgramFeed("2292-PMC", cards, memberPages)).toBe(false);
+    expect(hasProgramFeed("2292", cards, memberPages)).toBe(false);
+    expect(hasProgramFeed("0101213F", cards, memberPages)).toBe(true);
+  });
+
+  it("keeps its guid and its company watchlist on the bare code", () => {
+    expect(feedGuid(memberCard)).toBe(
+      "urn:fiscalreceipts:feed:concentration_shift:2292:2023:na",
+    );
+    const co = memberTargets().find((t) => t.kind === "company")!;
+    expect(co.items.map((i: { card: { pe_bli: string } }) => i.card.pe_bli)).toEqual([
+      "2292",
+    ]);
   });
 });
