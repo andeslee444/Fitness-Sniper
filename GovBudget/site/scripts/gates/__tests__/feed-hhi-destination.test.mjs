@@ -147,8 +147,8 @@ describe("hhiDestinationCensusVerdict", () => {
     expect(Number.isInteger(MIN_RECONCILABLE_HHI_DESTINATIONS)).toBe(true);
     expect(MIN_RECONCILABLE_HHI_DESTINATIONS).toBeGreaterThan(0);
     // MEASURED 2026-09-11: 21 of the top-75 concentration_shift CARDS reach a
-    // pe_bli that clears the high-only floor. Raise this when a build measures
-    // more; never lower it.
+    // pe_bli that clears the high-only floor (chain C run 4, 2026-09-25: 45).
+    // Never lower it; raising it is the dated decision backlog #144 owns.
     expect(MIN_RECONCILABLE_HHI_DESTINATIONS).toBeGreaterThanOrEqual(21);
 
     // The "never lower" rule lives in feed.mjs's doc comment, so read the

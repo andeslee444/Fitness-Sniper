@@ -16,7 +16,9 @@ import {
   validateGoldenFootnote,
   chipExhibitClaim,
   isBasisChipClassName,
+  feedSectionIsTruncated,
 } from "../basis.mjs";
+import { parse } from "node-html-parser";
 
 const goldensDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -227,5 +229,27 @@ describe("isBasisChipClassName", () => {
     expect(isBasisChipClassName(null)).toBe(false);
     expect(isBasisChipClassName(undefined)).toBe(false);
     expect(isBasisChipClassName("")).toBe(false);
+  });
+});
+
+// ── leg g4's truncation excuse (Task 26) ─────────────────────────────────────
+
+describe("feedSectionIsTruncated — leg g4 excuses a missing card only by its OWN section's note", () => {
+  const note = (type) =>
+    `<p data-feed-truncation-note="" data-feed-event-type="${type}" data-feed-shown="75" data-feed-total="99">Showing the 75 largest…</p>`;
+
+  it("reads the yoy_swing note chain C run 4's /feed/ renders", () => {
+    const root = parse(`<main>${note("yoy_swing")}${note("concentration_shift")}</main>`);
+    expect(feedSectionIsTruncated(root, "yoy_swing")).toBe(true);
+  });
+
+  it("a truncated concentration_shift section excuses nothing on yoy_swing — proof it can fail", () => {
+    const root = parse(`<main>${note("concentration_shift")}</main>`);
+    expect(feedSectionIsTruncated(root, "yoy_swing")).toBe(false);
+    expect(feedSectionIsTruncated(root, "concentration_shift")).toBe(true);
+  });
+
+  it("no note at all excuses nothing", () => {
+    expect(feedSectionIsTruncated(parse("<main><p>cards</p></main>"), "yoy_swing")).toBe(false);
   });
 });

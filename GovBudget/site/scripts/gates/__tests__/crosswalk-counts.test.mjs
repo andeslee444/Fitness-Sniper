@@ -1,7 +1,10 @@
 /**
  * Proof-it-can-fail for gate 24 leg (p).
  *
- * The claim fixtures are the strings this branch ships; the org mix is the
+ * The claim fixtures are the strings this branch shipped on 2026-09-18 (chain C
+ * run 4, 2026-09-25, rendered the counts 536 / 461 / 353 / 314 where these
+ * say 444 / 384 / 240 / 200 — the fixtures only exercise the logic); the org
+ * mix is the
  * shipped flow sidecars' own header.org tally, recomputed from
  * data/site/json/flows on 2026-09-18 (92 N, 59 F, 22 A, 14 DARPA, 6 MDA,
  * 4 OSD, 2 SOCOM, 1 DISA — 200 in total, unchanged from the brief's
@@ -184,7 +187,7 @@ describe("orgAttributionFindings", () => {
     ).toEqual([]);
   });
 
-  it("passes the replacement sentences this branch ships", () => {
+  it("passes the replacement sentences this branch shipped on 2026-09-18", () => {
     expect(
       orgAttributionFindings(
         [

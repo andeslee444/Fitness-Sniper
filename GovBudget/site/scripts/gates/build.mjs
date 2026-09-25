@@ -242,6 +242,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // overstated headroom) stayed quiet and the entry went on claiming a
   // weight the page has not carried since Group C/D. All 153 district rows
   // and 612 cells are still rendered — the shrink is payload, not content.
+  // RE-MEASURED 2026-09-25 (chain C run 4, stamped below): 359,669 / 36,072
+  // -> 279,612 / 30,367 (run 3 first read 279,590 / 30,342). Smaller again
+  // although the index went from 153 district rows to 189: Task 28b stopped
+  // embedding a citation slice in the page (the built index carries
+  // citations={}, per run 4's static check), which outweighs the 36 added
+  // rows. The ceiling now sits ~95% raw / ~68% gzip over the measure; it is
+  // left there because this wave rewrites the index's link-mechanism
+  // sentence — re-base it once a build has weighed that (backlog #145).
   { label: "/district/", file: "district/index.html", maxRaw: 546_000, maxGzip: 51_000, measured: "279,612 / 30,367" },
   // Re-baselined 2026-09-01: grew +2,319 raw since the ceiling was set via
   // ordinary curated-events/table growth (#10 relabel note, adjudication
@@ -620,7 +628,15 @@ export const PAGE_WEIGHT_BUDGET = [
   // rather than a round-number guess. The gzip headroom is deliberately the
   // tighter of the two: this page grows a paragraph at a time and the next
   // sentence on it should have to argue for itself.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_500, maxGzip: 20_750, measured: "99,824 / 20,445" },
+  //
+  // maxRaw REVERTED 2026-09-25 (Task 26 fix wave, R-D-2 as amended
+  // 2026-09-18): 103,500 -> 101,500, the pre-raise value. The dedupe above
+  // brought raw back under 101,500 on fix-round build 1 (99,736), so the raw
+  // half of the raise was never needed; only the gzip half was. Chain C run
+  // 4's final build (git_head 71d3e053) weighed this page at 99,824 raw —
+  // 1,676 bytes under the restored ceiling. A lowered ceiling, not a raise;
+  // maxGzip 20,750 stands.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 20_750, measured: "99,824 / 20,445" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it

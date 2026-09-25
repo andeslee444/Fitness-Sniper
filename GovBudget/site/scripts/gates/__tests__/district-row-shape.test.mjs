@@ -42,10 +42,12 @@ function member(pe_bli, code, account) {
 }
 
 /**
- * The corpus this branch publishes, transposed onto synthetic district codes:
- * 189 districts, 608 program rows (measured read-only 2026-09-19 against
- * data/duckdb/govbudget.duckdb at the member grain). Rows are spread as
- * evenly as the counts allow so every district carries at least one.
+ * The corpus shape measured read-only 2026-09-19 against
+ * data/duckdb/govbudget.duckdb at the member grain, transposed onto
+ * synthetic district codes: 189 districts, 608 program rows. (Chain C run 4,
+ * 2026-09-25, published 611 rows across the same 189; the counts only
+ * exercise the logic.) Rows are spread as evenly as the counts allow so
+ * every district carries at least one.
  */
 function corpus({ districts = 189, rows = 608, mutate = null } = {}) {
   const base = Math.floor(rows / districts);
@@ -70,7 +72,7 @@ function run(sidecars) {
 }
 
 describe("gate 9 leg g — district program rows are addressable", () => {
-  it("passes on the corpus this branch publishes and says what it saw", () => {
+  it("passes on the 2026-09-19 corpus shape and says what it saw", () => {
     const { errors, notes } = run(corpus());
     expect(errors).toEqual([]);
     expect(notes[0]).toContain("608 program row(s)");

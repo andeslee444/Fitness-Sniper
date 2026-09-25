@@ -1899,8 +1899,12 @@ export const FY2026_NARRATIVE_POINTER =
  *  export (23 pointers: 14 PE-shaped, 9 line-item/WSC-shaped; slugs in the
  *  block comment above). A DROP is either the scan breaking or backlog #105
  *  keying some of these as edges, which moves them OUT of the no-rail set —
- *  the fix landing, not the bar moving. RE-MEASURE and lower with a dated
- *  note in that case; never lower it to fit a build. */
+ *  the fix landing, not the bar moving. The floor sits AT its measurement,
+ *  so either one reds this leg. Only the second is a reason to re-derive it:
+ *  that is an owner-ruled change recorded in the ledger with #105's commit
+ *  and the new measurement (Task 26, 2026-09-25, replaced this comment's
+ *  standing leave to "lower with a dated note"). Never lower it to fit a
+ *  build. */
 export const MIN_NARRATIVE_FORWARD_POINTER_PAGES = 19;
 
 const NARR_CODE_PREFIX =

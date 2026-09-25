@@ -1,7 +1,12 @@
 /**
  * gate — filing_gate
  *
- * (a) Filing pages built: count >= filings_index.json total (expect ~5,393)
+ * (a) Filing pages built: count >= MIN_FILING_COUNT (4,000), a non-vacuity
+ *     floor — NOT the filings_index.json total, which the message only
+ *     prints beside it (5,393 pages against an index total of 5,393 on chain
+ *     C run 4, 2026-09-25). Failing below the index total instead is a floor
+ *     raise, a separate dated decision (task-21c fix round 1, item 5);
+ *     backlog #144 carries it.
  * (b) Zero-mention filings have robots noindex meta
  * (c) All sampled pages have a canonical link
  * (d) Income/expense figures carry [data-amount] (state A via lda_filing citations)
@@ -128,7 +133,10 @@ export async function runFilingGate() {
   const filingDirs = fs
     .readdirSync(filingOutDir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
-    .map((e) => e.name);
+    .map((e) => e.name)
+    // Sorted, so the (b)-(e) sample below is the same pages on every
+    // filesystem: readdir order is APFS's or ext4's, not ours (Task 26).
+    .sort();
 
   const expectedCount = indexedFilings.length || MIN_FILING_COUNT;
 
@@ -283,7 +291,10 @@ export async function runFilingGate() {
   // lowercase letter. A 50-page sample that hits NONE of the 431 is not a
   // sample, it is a broken leg — this floor is dated and is never lowered to
   // make a run go green.
-  errors.push(...nameErrors);
+  // Capped like the other legs' findings (Task 26): a systematic break would
+  // otherwise print one line per sampled page.
+  errors.push(...nameErrors.slice(0, 10));
+  if (nameErrors.length > 10) errors.push(`  ... and ${nameErrors.length - 10} more leg e finding(s)`);
   if (nameChecked === 0) {
     errors.push("leg e: no sampled filing page had an index row — the name check is vacuous");
   } else if (casedSeen === 0) {
@@ -294,7 +305,7 @@ export async function runFilingGate() {
   } else if (nameErrors.length > 0) {
     notes.push(
       `leg e: ${nameChecked} filing pages checked, ${casedSeen} with a cased name, ` +
-        `${nameErrors.length} finding(s) above`,
+        `${nameErrors.length} finding(s) (the first ${Math.min(10, nameErrors.length)} above)`,
     );
   } else {
     notes.push(`leg e: ${nameChecked} filing pages checked, ${casedSeen} with a cased name, all carrying their LDA string ✓`);

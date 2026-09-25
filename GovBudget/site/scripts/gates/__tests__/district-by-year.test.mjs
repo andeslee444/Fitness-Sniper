@@ -17,9 +17,10 @@
 import { describe, it, expect } from "vitest";
 import { runDistrictByYearLeg } from "../district.mjs";
 
-/** The shape of the corpus this branch publishes, transposed onto synthetic
- *  district codes: 153 districts, 924 by-year rows (measured 2026-09-10
- *  against data/duckdb/govbudget.duckdb). Rows are spread as evenly as the
+/** The corpus shape measured 2026-09-10 against data/duckdb/govbudget.duckdb,
+ *  transposed onto synthetic district codes: 153 districts, 924 by-year rows.
+ *  (Chain C run 4, 2026-09-25, published 189 districts and 1,266 rows; the
+ *  counts only exercise the logic.) Rows are spread as evenly as the
  *  counts allow — base years each, remainder one extra — so that `districts`
  *  districts carry exactly `rows` rows between them and EVERY district carries
  *  at least one whenever rows >= districts. (A generator that truncates
@@ -62,7 +63,7 @@ function run(sidecars) {
 }
 
 describe("gate 9 leg f — by-year sum vs the page headline", () => {
-  it("passes on the corpus this branch publishes and says what it saw", () => {
+  it("passes on the 2026-09-10 corpus shape and says what it saw", () => {
     const { errors, notes } = run(corpus());
     expect(errors).toEqual([]);
     expect(notes[0]).toContain("153 district(s)");

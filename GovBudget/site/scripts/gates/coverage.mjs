@@ -559,10 +559,18 @@ export function checkProgramPagesSplit(text) {
  *     that carry a per-award adjudication) and fails the universal form.
  *     A wording check is not a floor; changing what it mandates is how it
  *     stops mandating something false.
+ *   - Task 26 (2026-09-25): the bounded-wording error typed "60 of the
+ *     768" — the 2026-09-11 census — and went stale when Task 25b's wave-4
+ *     announcement load grew the tier (chain C run 2's export, 2026-09-19,
+ *     and run 4's, 2026-09-25: 60 of 1,133). It now prints the build's own
+ *     census, `high` below (site_meta.link_adjudication.high, read by
+ *     bridgeHighCensus), and names no count when the build carries none.
  *
+ * `high` is { published, adjudicated, measuredOn } (measuredOn may be null)
+ * or null.
  * Returns a list of error strings (empty when the blocker reads true).
  */
-export function checkCrosswalkBlockerWording(blocker) {
+export function checkCrosswalkBlockerWording(blocker, high = null) {
   const text = String(blocker ?? "").replace(/\s+/g, " ");
   const errors = [];
   if (!/account code/i.test(text) || !/coarse/i.test(text)) {
@@ -580,11 +588,49 @@ export function checkCrosswalkBlockerWording(blocker) {
       "leg cm[bridge]: the blocker must name the adversarial review step — it is what the hand-adjudicated links rest on",
     );
   } else if (!/per-award adjudication[^.]*adversarial/i.test(text)) {
+    const census = high
+      ? `${fmtCount(high.adjudicated)} of the ${fmtCount(high.published)} links ` +
+        `published at high carry one (site_meta.link_adjudication.high` +
+        `${high.measuredOn ? `, measured ${high.measuredOn}` : ", undated"}), ` +
+        `so an unbounded "high means … verified by two ` +
+        `independent adversarial reviewers" grades ` +
+        `${fmtCount(high.published - high.adjudicated)} links by a review they never had`
+      : `only the links that carry one had that review (this build's site_meta ` +
+        `carries no link_adjudication.high census, so no count is printed), so an ` +
+        `unbounded "high means … verified by two independent adversarial ` +
+        `reviewers" grades every other high link by a review it never had`;
     errors.push(
-      "leg cm[bridge]: the adversarial step must be BOUND to the links that carry a per-award adjudication (\"where a per-award adjudication exists it was challenged by …\") — 60 of the 768 links published at high carry one, so an unbounded \"high means … verified by two independent adversarial reviewers\" grades 708 links by a review they never had",
+      `leg cm[bridge]: the adversarial step must be BOUND to the links that carry a per-award adjudication ("where a per-award adjudication exists it was challenged by …") — ${census}`,
     );
   }
   return errors;
+}
+
+/**
+ * The high-tier adjudication census leg cm[bridge]'s error message prints,
+ * read from site_meta.link_adjudication.high (the block /methodology/'s High
+ * census renders from and gate 24 leg o checks). Null unless the block carries two integer
+ * counts with adjudicated ≤ published — a malformed block prints no figure
+ * rather than a wrong one. Pure; exported for the unit tests.
+ */
+export function bridgeHighCensus(meta) {
+  const la = meta?.link_adjudication;
+  const h = la?.high;
+  const published = h?.published_high;
+  const adjudicated = h?.adjudicated_high;
+  if (
+    !Number.isInteger(published) ||
+    !Number.isInteger(adjudicated) ||
+    adjudicated < 0 ||
+    adjudicated > published
+  ) {
+    return null;
+  }
+  return {
+    published,
+    adjudicated,
+    measuredOn: typeof la.measured_on === "string" ? la.measured_on : null,
+  };
 }
 
 /**
@@ -940,7 +986,12 @@ function runCoverageMapLeg(errors, notes) {
   } else {
     const blocker = (xw.querySelector("[data-coverage-blocker]")?.text ?? "").replace(/\s+/g, " ");
     const target = (xw.querySelector("[data-coverage-target]")?.text ?? "").replace(/\s+/g, " ");
-    errors.push(...checkCrosswalkBlockerWording(blocker));
+    errors.push(
+      ...checkCrosswalkBlockerWording(
+        blocker,
+        bridgeHighCensus(readJson(path.join(jsonDir, "site_meta.json"))),
+      ),
+    );
     if (xw.querySelector("[data-coverage-target]")?.getAttribute("data-target-kind") !== "none") {
       errors.push("leg cm[bridge]: the crosswalk gap must not carry a dated target — it is not a backlog item");
     }

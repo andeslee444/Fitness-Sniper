@@ -492,7 +492,9 @@ export function redPixelsInBox(png, box, minChroma = RED_MIN_CHROMA) {
  *  30" until 2026-09-18. No run produces that: the tail test only ever removes
  *  lit samples, so nothing looser explains a minimum of 6 where the shipped
  *  rule reports 11, and 6-30 is exactly twice the exploratory N=24 run's
- *  3-15.) */
+ *  3-15.) RE-MEASURED 2026-09-25 (chain C run 4's gate notes): the river now
+ *  draws 19 hairlines, each lit between 9 and 26 of the 48 samples, none
+ *  blind. */
 export const HAIRLINE_SAMPLES = 48;
 
 /** How far a de-obligation pixel's green and blue may diverge, as a fraction of
@@ -613,10 +615,14 @@ export function hairlineProbeFindings(
  * cover exactly what survives. Guillotine split: each hole cuts every current
  * fragment into at most four.
  *
- * MIRROR: flow-chart.tsx's `subtractRects` is the same function — the client
- * uses it to cut the label plate around other nodes' bars, this gate uses it
- * to ask what of a label box neither its plate nor a bar covers. Change one,
- * change the other.
+ * MIRROR: flow-chart.tsx's `subtractRects` is the same algorithm — the
+ * client uses it to cut the label plate around other nodes' bars, this gate
+ * uses it to ask what of a label box neither its plate nor a bar covers.
+ * Nothing compares the two sources (the client copy is not exported), and
+ * they need not stay byte-identical: the enforcer is leg h1
+ * (platedLabelFindings above), which checks the RENDERED plates and bars —
+ * every label covered, no bar notched — so a client-side divergence that
+ * leaves a gap or a notch fails there. Change one, and re-read the other.
  */
 export function subtractRects(rect, holes) {
   let frags = [rect];

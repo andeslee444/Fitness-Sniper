@@ -74,6 +74,26 @@
  *     purpose, the glyph set flush against the word.
  * The fix is the #106 idiom: `</strong>{" "}A family&rsquo;s…`.
  *
+ * A JSX COMMENT BETWEEN TWO TEXT RUNS (Task 26, 2026-09-25). Chain D's fix
+ * round 1 put `{/* … *\/}` between "above the floor" and "section 4 states"
+ * on /methodology/, and the built page read "above the floorsection 4
+ * states" — fixed by hand in d810f938 with no rule behind it. The comment
+ * splits ONE prose run into TWO, and each half is cleaned alone: the first
+ * loses the whitespace before its trailing line break, the second the
+ * whitespace after its leading one, so the words meet with nothing between
+ * them. Measured 2026-09-25 by compiling the shapes with next 16.2.9's own
+ * SWC transform (next/dist/build/swc): `floor⏎{comment}⏎section` compiles to the children
+ * ["…floor", "section 4 states."]; a same-line space after the comment
+ * survives (" section") unless the run carries an HTML entity, where the #106
+ * trim eats it too ("section&apos;s…" → "section's…"). So a text, comment(s),
+ * text sequence is reported — why "comment" — when the join the author broke
+ * across lines renders no whitespace, unless the right side opens on closing
+ * punctuation, a slash or a dash, or the left ends on an opening bracket,
+ * quote, slash or dash (a comment parked before a comma is not glue). A
+ * comment on its own line between two elements joins nothing, and beside an
+ * expression container it is invisible: the expression and element rules
+ * above look straight through it, exactly as they did before this rule.
+ *
  * Export: findGlueSites(rootDir) → { hits: [{ file, line, why, left, right }], filesScanned }
  *         findGlueSitesInSource(file, src, rootDir) → the hits for one source
  *         turbopackTrimsLeadingSpace(rawJsxText) → boolean
@@ -125,6 +145,41 @@ export function cleanJsxText(raw) {
 }
 
 const WORD = /[0-9A-Za-z]/;
+
+/**
+ * The deliberate joins across a comment (Task 26): a run that ENDS on an
+ * opening bracket, quote, slash or dash, or a run that STARTS on closing
+ * punctuation, a slash or a dash, touches its neighbour on purpose. Anything
+ * else — a word, a digit, a sentence's full stop before the next sentence —
+ * is glue ("floor.Section" as surely as "floorsection").
+ */
+const COMMENT_JOIN_LEFT_OK = /[([{“‘"'/\-–—$\u00a0]/;
+const COMMENT_JOIN_RIGHT_OK = /[.,;:!?)\]}”’"'%…/\-–—\u00a0]/;
+
+/**
+ * JsxText keeps character references undecoded, and the site writes its
+ * quotes and dashes as &ldquo; &rsquo; &mdash; … — so the join's edge
+ * character is the reference's character, not its closing ";". A
+ * non-breaking space (&nbsp;) is a space: both OK sets carry it.
+ */
+const NAMED_REFS = {
+  ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’", apos: "'", quot: '"',
+  mdash: "—", ndash: "–", hellip: "…", amp: "&", nbsp: "\u00a0", lt: "<", gt: ">",
+};
+const decodeRef = (body) => {
+  if (/^#x/i.test(body)) return String.fromCodePoint(parseInt(body.slice(2), 16));
+  if (body[0] === "#") return String.fromCodePoint(parseInt(body.slice(1), 10));
+  return NAMED_REFS[body] ?? ";";
+};
+const REF = "&(#\\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);";
+const lastRenderedChar = (s) => {
+  const m = s.match(new RegExp(`${REF}$`));
+  return m ? decodeRef(m[1]) : s.slice(-1);
+};
+const firstRenderedChar = (s) => {
+  const m = s.match(new RegExp(`^${REF}`));
+  return m ? decodeRef(m[1]) : s.slice(0, 1);
+};
 
 /**
  * Intrinsic phrasing elements that sit INSIDE a sentence, so a space trimmed
@@ -249,8 +304,11 @@ export function findGlueSitesInSource(file, src, rootDir = path.dirname(file)) {
               : { kind: "text", cleaned, raw: k.text, node: k },
           );
         } else if (ts.isJsxExpression(k)) {
-          if (!k.expression) continue; // {/* comment */}
-          if (isWhitespaceExpr(k)) seq.push({ kind: "space" });
+          // {/* comment */}: renders nothing, but it SPLITS the text run it
+          // sits in — kept in seq so the text+comment+text rule sees it;
+          // every other pair looks straight through it, as before.
+          if (!k.expression) seq.push({ kind: "comment", node: k });
+          else if (isWhitespaceExpr(k)) seq.push({ kind: "space" });
           else if (rendersJsx(k.expression)) seq.push({ kind: "el" });
           else seq.push({ kind: "expr", node: k, vals: branchValues(k.expression) });
         } else if (ts.isJsxElement(k) || ts.isJsxSelfClosingElement(k)) {
@@ -263,20 +321,58 @@ export function findGlueSitesInSource(file, src, rootDir = path.dirname(file)) {
 
       for (let i = 0; i < seq.length - 1; i += 1) {
         const a = seq[i];
-        if (a.kind === "gap" || a.kind === "space") continue;
+        if (a.kind === "gap" || a.kind === "space" || a.kind === "comment") {
+          continue;
+        }
         let j = i + 1;
         let gapRaw = "";
-        while (j < seq.length && seq[j].kind === "gap") {
-          gapRaw += seq[j].raw;
+        let comments = 0;
+        while (
+          j < seq.length &&
+          (seq[j].kind === "gap" || seq[j].kind === "comment")
+        ) {
+          if (seq[j].kind === "gap") gapRaw += seq[j].raw;
+          else comments += 1;
           j += 1;
         }
         if (j >= seq.length) break;
         const b = seq[j];
         if (b.kind === "space") continue;
 
-        // Task 29S: the #106 trim after an inline text element. Adjacent
-        // JsxText children do not exist, so an element's text neighbour is
-        // always seq[i + 1] with no gap between them.
+        // Task 26: a comment splitting one prose run into two. Adjacent
+        // JsxText children do not exist in the AST, so text+text in seq
+        // always has at least one comment between the two runs.
+        if (a.kind === "text" && b.kind === "text" && comments > 0) {
+          const typedBreak =
+            /[\r\n][ \t]*$/.test(a.raw) ||
+            /[\r\n]/.test(gapRaw) ||
+            /^[ \t]*[\r\n]/.test(b.raw);
+          const leftKeeps = /\s$/.test(a.cleaned);
+          const rightKeeps =
+            /^\s/.test(b.cleaned) && !turbopackTrimsLeadingSpace(b.raw);
+          const bText = b.cleaned.replace(/^\s+/, "");
+          if (
+            typedBreak &&
+            !leftKeeps &&
+            !rightKeeps &&
+            !COMMENT_JOIN_LEFT_OK.test(lastRenderedChar(a.cleaned)) &&
+            !COMMENT_JOIN_RIGHT_OK.test(firstRenderedChar(bText))
+          ) {
+            const pos = sf.getLineAndCharacterOfPosition(b.node.getStart(sf));
+            hits.push({
+              file: path.relative(rootDir, file),
+              line: pos.line + 1,
+              why: "comment",
+              left: a.cleaned.replace(/\s+/g, " ").slice(-60),
+              right: bText.replace(/\s+/g, " ").slice(0, 60),
+            });
+          }
+          continue;
+        }
+
+        // Task 29S: the #106 trim after an inline text element. The text
+        // neighbour is the first seq entry past any gaps and comments, and
+        // only that run's own raw text decides it.
         if (
           a.kind === "el" &&
           b.kind === "text" &&

@@ -92,6 +92,15 @@ describe the post-wave-4 corpus, a NEW sample must be drawn
 (`uv run python scripts/precision_study.py draw …`) and adjudicated under its own rubric —
 that is separate work, separately recorded.
 
+*Addendum 2026-09-25 (Task 26 fix wave; the pre-registered text above is left as written):*
+the second half of the bolded sentence did not hold on this corpus. No verdict changed, but
+loading the wave moved the pinned tier figures anyway: `scripts/load_announcement_links.py`
+rebuilds its partition with an upsert that re-attributes a key another route already owns,
+and 60 rebuilt rows did so — six of them keys in the 2026-09-04 sample — taking announcement from
+51/54 to 56/60 and `fpds-ap` from 94/120 to 89/114 (Task 25b, 2026-09-19; still what
+`site_meta.link_precision` publishes on chain C run 4). The owner call on that upsert is
+ROADMAP #140.
+
 ## 5. Output location
 
 One file per chunk at `data/research/announcements/wave4_verdicts/<chunk file name>`:

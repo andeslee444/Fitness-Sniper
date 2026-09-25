@@ -146,15 +146,16 @@ copyFile(searchSrc, searchDest);
 console.log("✓  search_quick.json → public/json-lite/");
 
 // ── 5. Copy program_details/ ──────────────────────────────────────────────────
+// A missing source directory is FATAL (copyDir exits 1), as in 5b and 5h: the
+// program pages' award and mention panels fetch /json-lite/program_details/
+// at runtime, and gate 13 treats that directory as load-bearing. This step
+// used to WARN and skip, which built a site whose panels 404 (Task 26).
 const detailsSrc = path.join(jsonDir, "program_details");
 const detailsDest = path.join(jsonLiteDestDir, "program_details");
-if (fs.existsSync(detailsSrc)) {
-  copyDir(detailsSrc, detailsDest);
-  const count = fs.readdirSync(detailsSrc).length;
-  console.log(`✓  program_details/ (${count} files) → public/json-lite/`);
-} else {
-  console.warn("⚠   program_details/ not found — skipping");
-}
+copyDir(detailsSrc, detailsDest);
+console.log(
+  `✓  program_details/ (${fs.readdirSync(detailsSrc).length} files) → public/json-lite/`
+);
 
 // ── 5b. Copy citation shards (Phase 5D — lazy panel resolution) ───────────────
 // cite-shards/{fact_id[:2]}.json — 256 shards covering EVERY citations.json

@@ -1014,8 +1014,9 @@ export function runJsonXmlHrefLeg(
   if (fetchTargets.size < MIN_STATIC_FETCH_TARGETS) {
     errors.push(
       `leg i: only ${fetchTargets.size} statically named fetch target(s) found ` +
-        `under site/src (floor ${MIN_STATIC_FETCH_TARGETS}, measured ` +
-        `2026-09-04). The scanner has stopped matching, so the check that ` +
+        `under site/src (floor ${MIN_STATIC_FETCH_TARGETS}: measured 2026-09-04 ` +
+        `at 5, re-measured 2026-09-05 at 4, ROADMAP #88). The scanner has ` +
+        `stopped matching, so the check that ` +
         `would have caught /json/feed.json 404ing in production is running ` +
         `against nothing. Re-derive the scan; do not lower the floor`,
     );

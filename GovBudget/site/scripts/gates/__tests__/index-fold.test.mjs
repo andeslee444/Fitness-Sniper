@@ -79,14 +79,18 @@ describe("indexFoldFindings", () => {
     expect(indexFoldFindings(POST_FIX)).toEqual([]);
   });
 
-  it("holds /lineage/ at 390 to the caption move that bought it — 781 of 844", () => {
+  // Task 26: this test used to open with `expect(lineage390.top).toBe(781)` —
+  // its own fixture constant, which no product change can turn red. What it
+  // checks is the helper's boundary at /lineage/'s 390 viewport; the pin on
+  // the caption move itself is src/__tests__/chart-figure-placement.test.tsx.
+  it("draws the fold at 844 for /lineage/ at 390: 843 passes, 844 fails, and the caption back above the diagram (+260px on the 2026-09-18 measure) fails", () => {
     const lineage390 = POST_FIX.find(
       (r) => r.url === "/lineage/" && r.width === 390,
     );
-    expect(lineage390.top).toBe(781);
-    // 63px of headroom. The chart caption above the diagram was 260px of it
-    // and the legend a further 108px; only the caption moved, and putting it
-    // back is a 1,041px top — a finding, not a near miss.
+    // 781 was measured 2026-09-18 (63px of headroom). The chart caption above
+    // the diagram was 260px of it and the legend a further 108px; only the
+    // caption moved, and putting it back is a 1,041px top — a finding, not a
+    // near miss.
     expect(indexFoldFindings([{ ...lineage390, top: 781 + 260 }])).toHaveLength(1);
     expect(indexFoldFindings([{ ...lineage390, top: 843 }])).toEqual([]);
     expect(indexFoldFindings([{ ...lineage390, top: 844 }])).toHaveLength(1);

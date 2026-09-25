@@ -105,7 +105,7 @@ function run({ siteMeta, passageText, highText, methodologyBuilt }) {
 }
 
 describe("gate 24 leg o — the live shape", () => {
-  it("passes on the corpus this branch ships", () => {
+  it("passes on the corpus shape of 2026-09-11 (LIVE_META's measured_on)", () => {
     const { errors, notes } = run({
       siteMeta: LIVE_META,
       passageText: LIVE_PASSAGE,
@@ -529,8 +529,9 @@ describe("gate 24 leg o — each figure is bound to its SLOT (fix round 2, R-6c-
 });
 
 describe("gate 24 leg o — a review asserted over an empty set (fix round 2, rider ii)", () => {
-  /** A corpus that publishes a High tier nothing has adjudicated. Today's is
-   *  60 of 768; this is the shape that makes "all N of them challenged by two
+  /** A corpus that publishes a High tier nothing has adjudicated. On
+   *  2026-09-11 the tier was 60 of 768 (chain C run 4, 2026-09-25: 60 of
+   *  1,133); this is the shape that makes "all N of them challenged by two
    *  independent adversarial reviewers" a claim over an empty set. */
   const NONE_ADJUDICATED = {
     link_adjudication: {

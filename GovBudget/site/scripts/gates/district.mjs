@@ -27,13 +27,15 @@
  *     rows in one district share a split_key. Plus a floor, so an empty
  *     districts/ directory cannot pass it vacuously.
  *
- *     EXPECTED RED until chain C run 2 re-exports (noted 2026-09-19): the
- *     sidecars shipped under data/site/json/districts/ predate Task 27 and
- *     carry no split_key at all. That is exactly the failure this leg exists
- *     to make loud — the page uses split_key as its React key and renders it
- *     as the mono code, so a build against those sidecars would ship blank
- *     code cells and duplicate keys with every other gate green. Re-run
- *     `export-site`; do not weaken the leg to fit the old payload.
+ *     Noted 2026-09-19: the sidecars then under data/site/json/districts/
+ *     predated Task 27 and carried no split_key at all, so this leg was
+ *     expected red until a re-export. Green since chain C run 2's re-export
+ *     (gate 9 PASS at e510d19d); chain C run 4 (2026-09-25) passed it on 611
+ *     rows across 189 districts. Red now means the sidecars predate Task 27
+ *     again — the page uses split_key as its React key and renders it as the
+ *     mono code, so a build against them would ship blank code cells and
+ *     duplicate keys with every other gate green. Re-run `export-site`; do
+ *     not weaken the leg to fit an old payload.
  */
 
 import fs from "fs";
@@ -513,8 +515,12 @@ const ROW_SHAPE_DETAIL_CAP = 5;
  *      therefore not the discriminator; `split_key !== pe_bli` is.)
  *   4. A row that DOES name a member has a split_key of the form
  *      `${pe_bli}-${CODE}` — the composite slug _ProgramIdentity.slug mints.
- *   5. No two rows in one district share a split_key. Two rows under one
- *      address is the fusion this task removed, arriving by another door.
+ *   5. No two rows in one district share a split_key: one page address
+ *      would carry two figures, and a reader could not tell which is that
+ *      page's. (The fusion Task 27 closed is the converse — ONE bare-code
+ *      row summing two members' money, latent when it landed — and dbt's
+ *      assert_district_programs_single_member_high_links guards it at the
+ *      mart; this leg checks addressing, not that sum.)
  *
  * Exported for site/scripts/gates/__tests__/district-row-shape.test.mjs,
  * which injects synthetic sidecars — the leg must be provable without a build.

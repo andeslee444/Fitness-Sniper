@@ -389,9 +389,17 @@ export function destinationHhiBadge(destRoot) {
  * stays at 21 because the measurement did; it is not raised past what a build
  * actually showed.
  *
- * NEVER LOWER THIS. Raise it when a build measures more, the same rule
- * _MIN_HIGH_ONLY_ROWS carries in src/govbudget/verify_phase3.py. A number
- * that moves down to fit a run is not a floor.
+ * MEASURED 2026-09-25 (chain C run 4, the final corpus): 75 cards, 45
+ * reaching a destination that publishes a band, 30 reaching one that
+ * withholds it and says so. The floor was NOT raised to 45: the chain C
+ * runbook kept every floor where it stood through the verify chain ("a first
+ * higher measurement is fine"), as it kept _MIN_HIGH_ONLY_ROWS in
+ * src/govbudget/verify_phase3.py at 37 against run 4's 63.
+ *
+ * NEVER LOWER THIS. Raising it to what a build measured is a dated decision
+ * of its own — backlog #144 re-bases the branch's floors on the final
+ * corpus — never a side effect of a run. A number that moves down to fit a
+ * run is not a floor.
  */
 export const MIN_RECONCILABLE_HHI_DESTINATIONS = 21;
 

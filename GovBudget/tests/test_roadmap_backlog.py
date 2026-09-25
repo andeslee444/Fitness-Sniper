@@ -148,9 +148,15 @@ def test_new_entries_carry_an_effort_word_and_a_source_pointer():
     for num, body in cohort:
         assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
         assert POINTER_RE.search(body), f"#{num} names no source path"
+        # A dated addendum goes ABOVE the Status line, never below it: the
+        # entry's last line is its state. Task 1 (a774c2c5) appended four
+        # R-22a-3 addenda below; Task 26 moved them up, text unchanged.
         assert body.rstrip().endswith(
             "**Status:** open (2026-09-10)."
-        ), f"#{num} does not end with the open-status line"
+        ), (
+            f"#{num} does not end with the open-status line — put a dated"
+            " addendum above the Status line, not after it"
+        )
 
 
 @pytest.mark.parametrize("rel", SCOPING_NOTES)

@@ -2276,7 +2276,8 @@ const CROSSWALK_CLAIM_PAGES = ["/flow/", "/district/", "/coverage/", "/methodolo
  * site's TypeScript, so this list is typed out rather than imported — but it is
  * not unenforced. Leg (p1) below reads the `data-crosswalk-count` ids off the
  * built /coverage/ page, which emits one `<li data-crosswalk-count={c.id}>` per
- * getCrosswalkCounts() row (coverage/page.tsx:71, :354), and compares them to
+ * getCrosswalkCounts() row (the `[data-crosswalk-counts]` list under
+ * #crosswalk in site/src/app/coverage/page.tsx), and compares them to
  * this array BY LENGTH and ELEMENT-WISE, erroring by name on any divergence.
  * Add, remove or reorder an id in lib/corpus without editing this list and
  * (p1) fails on the next build.
@@ -2340,7 +2341,8 @@ const CROSSWALK_CUE_WINDOW = 80;
 const MIN_CROSSWALK_CLAIMS = 6;
 
 /** Non-vacuity floor for the sidecar census (measured 2026-09-18 at 200
- *  files in data/site/json/flows). (p1)'s district-linkable row and (p3)'s
+ *  files in data/site/json/flows; 314 on chain C run 4, 2026-09-25 — not
+ *  raised, see backlog #144). (p1)'s district-linkable row and (p3)'s
  *  whole org mix are counted off that directory; a pruned-but-not-re-emitted
  *  export would otherwise make both pass on almost nothing. Do not lower. */
 const MIN_FLOW_SIDECARS = 120;
@@ -4275,7 +4277,8 @@ export function runSourceCadenceLeg(errors, notes, injected) {
 // leg r — district by-year cells recomputed from the lake (ROADMAP #6)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Sample size and floor. 12 cells over the 924 published is a ~1.3% sample;
+/** Sample size and floor. 12 cells over the 924 published on 2026-09-10 was
+ *  a ~1.3% sample (over run 4's 1,266 on 2026-09-25, ~0.9%);
  *  the point is a tripwire on the derivation, not coverage (gate 9 leg f checks
  *  every row for internal consistency, and assert_district_by_year_reconciles
  *  checks every row against the all-years mart in dbt). DETERMINISTIC stride,
@@ -4284,7 +4287,8 @@ const DISTRICT_YEAR_SAMPLE = 12;
 const TOL_DISTRICT_YEAR = 0.01;
 
 /** formatAmount renders a negative as "-$4.2M", and normalizeAmount's regex
- *  only accepts a leading '$'. 53 of the 924 published cells are net-negative,
+ *  only accepts a leading '$'. 53 of the 924 published cells were net-negative
+ *  on 2026-09-10 (73 of 1,266 on chain C run 4's export, 2026-09-25),
  *  so without stripping and reapplying the sign the leg would report every one
  *  of them as unparseable. */
 function parseSignedAmount(text) {
@@ -4395,8 +4399,9 @@ export function checkDistrictYearSample({ sample, truth, readRendered }) {
     checked += 1;
 
     // ── the gross cell, whenever it is rendered (fix round 1, Important 4) ──
-    // It is a second PUBLISHED figure per row — rendered on the 90 of 153
-    // districts that have a deobligation — and nothing bound it to the lake or
+    // It is a second PUBLISHED figure per row — rendered on the districts that
+    // have a deobligation (90 of 153 on 2026-09-10; 124 of 189 on chain C run
+    // 4's export, 2026-09-25) — and nothing bound it to the lake or
     // to the built page. When the column is absent there is nothing to check,
     // which is not the same as nothing to say: gate 9 leg f still requires the
     // citation id for it on every row.
@@ -4852,13 +4857,24 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
       : null;
   const gapRequired = newLinks != null && tierDraw != null;
   if (gapRequired && drawGapText == null) {
+    // The share is derived (Task 26): "a third" was typed, true of chain C
+    // run 4's 367 of 1,075 and of nothing else.
+    const tierPublished =
+      siteMeta.link_adjudication?.by_method?.["announcement+lexicon"]?.published;
+    const reach =
+      Number.isInteger(tierPublished) && tierPublished >= newLinks
+        ? `${Math.round((100 * newLinks) / tierPublished)}% of which ` +
+          `(${newLinks.toLocaleString("en-US")} of the tier's ` +
+          `${tierPublished.toLocaleString("en-US")} published links, ` +
+          `link_adjudication.by_method) the draw could not reach`
+        : `part of which the draw could not reach`;
     errors.push(
       `leg q (/methodology/): the announcement tier's figure comes from the ` +
         `${tierDraw} draw and ${newLinks.toLocaleString("en-US")} of the ` +
         `tier's links post-date it (announcement_llm_scope.` +
         `links_new_this_pass), but no [data-announcement-draw-gap] clause ` +
         `renders — the reader is handed a precision figure for a population ` +
-        `a third of which the draw could not reach`,
+        reach,
     );
     return;
   }

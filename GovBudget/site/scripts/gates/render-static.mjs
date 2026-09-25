@@ -163,7 +163,10 @@
  *      with the TypeScript compiler, applies React's own JSXText cleaner, and
  *      reports every expression/text pair the renderer glues where the author
  *      wrote a line break. Affixes ({n !== 1 ? "s" : ""}), explicit {" "},
- *      punctuation edges and FY-style prefixes are not glue.
+ *      punctuation edges and FY-style prefixes are not glue. It also reports
+ *      the #106 Turbopack trim after an expression or inline element, and
+ *      (Task 26) a JSX comment splitting one sentence into two text runs —
+ *      "above the floorsection 4 states" on chain D's /methodology/.
  *      Non-vacuity: zero .tsx files scanned FAILS.
  *
  * (t) REQUEST/ENACTED VOCABULARY (backlog #47). FY2026 is a REQUEST in every
@@ -1641,13 +1644,15 @@ export async function runRenderStaticGate() {
         errors.push(
           h.why === "entity-trim"
             ? `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — Turbopack trims the leading space of a multi-line text run that carries an HTML entity: write {" "} after the expression or inline element and start the text on that line (#106)`
-            : `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — put the two on one line or add {" "}`
+            : h.why === "comment"
+              ? `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — a JSX comment splits the sentence into two text runs and each loses its line-break whitespace: move the comment outside the sentence (above the enclosing element) or add {" "}`
+              : `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — put the two on one line or add {" "}`
         );
       }
       if (hits.length > 10) errors.push(`  ... and ${hits.length - 10} more`);
     } else {
       notes.push(
-        `jsx glue: ${filesScanned} .tsx file(s) scanned, 0 space-eaten expression/text or inline-element/text joins ✓`
+        `jsx glue: ${filesScanned} .tsx file(s) scanned, 0 space-eaten expression/text, inline-element/text or comment-split text joins ✓`
       );
     }
   }

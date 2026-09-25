@@ -310,6 +310,26 @@ describe("gate 24 leg q — announcement LLM-pass scope", () => {
       siteMeta: meta(FULL), drawGapText: null, paragraphText: fullText,
     });
     expect(errors.join(" ")).toMatch(/data-announcement-draw-gap/);
+    // No link_adjudication block to size the tier: no share is printed.
+    expect(errors.join(" ")).toMatch(/part of which the draw could not reach/);
+  });
+
+  it("…and prints the unreached share from site_meta, never a typed one", () => {
+    const errors = [];
+    runAnnouncementScopeLeg(errors, [], {
+      siteMeta: meta(FULL, {
+        link_adjudication: {
+          by_method: { "announcement+lexicon": { published: 1075, adjudicated: 2 } },
+        },
+      }),
+      drawGapText: null,
+      paragraphText: fullText,
+    });
+    // chain C run 4 (2026-09-25): 367 of 1,075 → 34%.
+    expect(errors.join(" ")).toMatch(
+      /34% of which \(367 of the tier's 1,075 published links, link_adjudication\.by_method\) the draw could not reach/,
+    );
+    expect(errors.join(" ")).not.toMatch(/a third/);
   });
 
   it("FAILS when the frame clause states a count site_meta does not carry", () => {

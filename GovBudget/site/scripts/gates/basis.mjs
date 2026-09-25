@@ -1922,6 +1922,18 @@ function runFy26SplitLeg(pages, errors, notes) {
 //       < 20 fails honestly rather than vacuously passing.
 const FEED_FY26_SPLIT_MIN_RESOLVED = 20;
 
+/**
+ * Does /feed/ say that `eventType`'s section is cut at the cap? Reads the
+ * note FeedSectionExpand stamps per section ([data-feed-truncation-note]
+ * with data-feed-event-type, #88) — a note for a DIFFERENT section says
+ * nothing about this one. Pure; exported for __tests__/basis.test.mjs.
+ */
+export function feedSectionIsTruncated(root, eventType) {
+  return root
+    .querySelectorAll("[data-feed-truncation-note]")
+    .some((el) => el.getAttribute("data-feed-event-type") === eventType);
+}
+
 function runFeedFy26SplitLeg(errors, notes) {
   const feedJsonPath = path.join(repoRoot, "data", "site", "json", "feed.json");
   const feedHtmlPath = path.join(outDir, "feed", "index.html");
@@ -1968,12 +1980,15 @@ function runFeedFy26SplitLeg(errors, notes) {
   // not ON the page, so it cannot mislead there — the disclosure obligation
   // attaches to rendered cards only. Without the note present, absence is
   // still a defect (a template regression that dropped the card).
-  const pageIsTruncated = root.querySelector("[data-feed-truncation-note]") != null;
+  // Task 26: the excuse needs the yoy_swing SECTION's note. Any section's
+  // note used to do, so a dropped yoy_swing card went uncounted whenever
+  // concentration_shift (1,606 cards on chain C run 4) was truncated.
+  const yoyIsTruncated = feedSectionIsTruncated(root, "yoy_swing");
 
   for (const card of qualifying) {
     const headlineSel = `[data-xml-path="site:feed/yoy_swing/${card.pe_bli}"]`;
     const cardEl = cardEls.find((el) => el.querySelector(headlineSel));
-    if (!cardEl && pageIsTruncated) {
+    if (!cardEl && yoyIsTruncated) {
       belowCap++;
       continue;
     }

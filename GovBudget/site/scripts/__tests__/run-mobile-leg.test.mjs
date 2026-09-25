@@ -16,6 +16,7 @@
  *
  * Run via `npm test` (vitest).
  */
+import net from "net";
 import { describe, it, expect, vi } from "vitest";
 import { runStandaloneMobileLeg, DEFAULT_PORT, parsePort } from "../run-mobile-leg.mjs";
 
@@ -31,11 +32,35 @@ function fakeServer() {
 }
 
 describe("runStandaloneMobileLeg", () => {
-  it("importing the module starts no server (it used to run at import time)", () => {
-    // Reaching this line at all is the assertion: a top-level `await
-    // startServer(4182)` would have bound a port during the import above.
-    expect(typeof runStandaloneMobileLeg).toBe("function");
-    expect(DEFAULT_PORT).toBe(4182);
+  it("importing the module starts no server (it used to run at import time)", async () => {
+    // A fresh import with every listen() watched: http.Server extends
+    // net.Server, so a top-level `await startServer(4182)` would call this
+    // spy. (Task 26: the test used to assert only that the import returned,
+    // which a top-level server on a free port also does.)
+    const listen = vi.spyOn(net.Server.prototype, "listen");
+    try {
+      vi.resetModules();
+      const mod = await import("../run-mobile-leg.mjs");
+      expect(typeof mod.runStandaloneMobileLeg).toBe("function");
+      expect(mod.DEFAULT_PORT).toBe(4182);
+      expect(listen).not.toHaveBeenCalled();
+    } finally {
+      listen.mockRestore();
+    }
+  });
+
+  it("…and the spy would see one: starting a server calls listen()", async () => {
+    // Proof the watch above can fail — the same spy on a real (ephemeral)
+    // server does record the call.
+    const listen = vi.spyOn(net.Server.prototype, "listen");
+    const server = net.createServer();
+    try {
+      await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+      expect(listen).toHaveBeenCalled();
+    } finally {
+      listen.mockRestore();
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 
   it("passes the served baseUrl to the leg and returns 0 when it passes", async () => {

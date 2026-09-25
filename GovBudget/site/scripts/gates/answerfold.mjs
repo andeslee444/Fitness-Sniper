@@ -12,7 +12,8 @@
  *    answer-who) must be present, visible, and fully inside the initial
  *    viewport: boundingBox().y + height < viewport.height (no scrolling).
  *
- * 3. INDEX-FOLD LEG (ROADMAP.md:1606-1610, round-3 judging: "the explanatory
+ * 3. INDEX-FOLD LEG (ROADMAP.md "## PM-review Sprint 3 — round-3 visual
+ *    judging", the third panel's "what stays open": "the explanatory
  *    prose demoted below the data it qualifies on five index pages"). At the
  *    same two viewports, on each of INDEX_FOLD_PAGES, the first data ROW
  *    inside that page's [data-first-data] block must start inside the initial
@@ -111,7 +112,8 @@ const FIRST_DATA_WAIT = FIRST_DATA_ROW_SELECTORS.map(
 ).join(", ");
 
 /**
- * Round-3 judging leftover (ROADMAP.md:1606-1610): "the explanatory prose
+ * Round-3 judging leftover (ROADMAP.md "## PM-review Sprint 3 — round-3
+ * visual judging"): "the explanatory prose
  * demoted below the data it qualifies on five index pages". The durable
  * assertion is not a prose budget — it is that the page's first data ROW is
  * inside the initial viewport at both widths, the same measurement this gate
