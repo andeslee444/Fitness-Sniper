@@ -52,8 +52,9 @@ describe("/methodology/ — sentences the final corpus or the calendar falsified
     expect(src).toContain("Pages outside it say why in place of the flow");
   });
   it("the district lens claims neither a positive obligation nor a view count (round 2, B1)", () => {
-    // GA-02 has a page on the strength of 356010's eight transactions, all
-    // deobligations (−$2,328,281.28): no link places obligated dollars there,
+    // GA-02 has a page on the strength of 356010's eight transactions, none
+    // positive (3 deobligations, 5 at $0; net −$2,328,281.28): no link
+    // places obligated dollars there,
     // and the district set spans 317 programs, not the 314 with a view.
     expect(src).not.toMatch(/places obligated dollars there/);
     expect(src).not.toMatch(/-program scope/);

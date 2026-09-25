@@ -353,6 +353,13 @@ figures, and only over at least three such awards across two or more contractor
 families holding positive obligations with positive net linked dollars; below
 that floor it states the absence rather than substituting the wider figure.
 
+*What the downloadable warehouse carries of each basis (measured 2026-09-25,
+on that day's export):* the every-link index (`hhi_all` with
+`top_family_all`) is filled on all 536 rows of `fct_program_concentration`,
+while the high-confidence-only index (`hhi_high` with `top_family_high`) is
+filled only on the 63 rows that clear the floor above and is empty on the
+other 473 — the warehouse table applies the same floor a program page does.
+
 ---
 
 ## 5. Known limitations

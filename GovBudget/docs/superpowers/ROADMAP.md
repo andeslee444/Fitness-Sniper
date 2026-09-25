@@ -928,6 +928,66 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   names), #133 (the R-C-6 reconcile dependency, before merge), #10 (the
   SAM.gov Personal API key), #8 (loading the scheduler and the first real
   refresh), and #139 — the Anthropic API credit top-up the deploy waits on.
+  TASK 26 CLOSE, 2026-09-25 — the final review, its one fix wave, chain E.
+  **The final whole-branch review** (workflow `wf_4c337097-fc1`, 78 agents
+  over 205 commits / 460 files, `5dd7fb04..a774c2c5`) confirmed 15 findings
+  that come to 11 distinct defects, rejected 8 (each then treated as a minor
+  candidate) and listed 67 minors. The CRITICAL: five shared-code member
+  pages rendered "this program's awards haven't been crosswalked at high
+  confidence" while listing high-confidence awards
+  (`site/src/lib/coverage.ts`). The others were Important — sentences on
+  /companies/, /methodology/, /district/ and /coverage/ that were false,
+  stale, unscoped or undated (the district partial-year note would have turned
+  false on 2026-10-01), a docs mirror left behind, the
+  jsx-glue sweep blind to a JSX comment that eats a space,
+  `tests/test_roadmap_backlog.py` red at the tip, a gate message still
+  typing "60 of the 768", and the precision CLI without the exporter's
+  announcement pin. **ONE fix wave**, three implementers on disjoint files
+  in parallel — A (Python, dbt, scripts, seeds, tests), B (`site/src` and
+  `docs/methodology.md`), C (`site/scripts`, `docs/superpowers`, the backlog
+  test) — landed `2fbb0fca`, `f7f66f90`, `db7ea6b8`, `2631383e` and
+  `2ef7471e`. B cleared the CRITICAL by giving the four shared-code members
+  that hold their code's district rows (0145-APN, 2292-WPN, 3010-SCN,
+  3215-WPN) the bare code's flow view, so 314 pages draw a view against 314
+  flow files; a page without a view now states its own reason, and the site
+  build fails if a shared-code flow file's district rows name two members
+  or none. The wave filed its deferrals as
+  #143–#164. Its scoped re-review (`wf_3f0d75e6-955`, 21 agents, over
+  `a774c2c5..2ef7471e`) confirmed five more — the /district/
+  reconciliation's "314 of 1,938 programs" (#163) and its /methodology/
+  twin; the follow-the-dollar chart labelling every account node "RDT&E
+  appropriation", procurement views included; a sitewide partial-year note
+  bound to the calendar (~2,587 pages); /downloads/ counting 204 PDFs where
+  225 ship (#164); and #159 filed open though already fixed — and round 2
+  fixed them in `35bff576`, `8ebdfbd3` and `594d1f0c`. The round-2 scoped
+  check (one read-only agent) found every item addressed and nothing new at
+  Critical or Important. **Chain E is GREEN at `cf37866d`**, its restamp of
+  `site/scripts/gates/build.mjs` (no ceiling or floor changed): 24/24 site
+  gates at `git_head cf37866d`; verify-phase3, verify-phase5b1 and `evals
+  check` (43 ok / 0 stale / 5 skipped) PASS; verify-phase5 freshness and
+  assembly (all 8 legs, 5b3 included) PASS and its eval leg 0/48 at $0.00,
+  blocked by API credit (#139). Its export reproduced run 4's figures
+  (citations 135,586; `feed.json` 1,745 cards; `pdf_count` 204;
+  `flow_chart.json` 582,482 bytes). Its first `export-site` attempt failed
+  on exhausted TCP ports and the Unix-socket retry passed; LAUNCH.md Step 1
+  now carries the workaround. Final page weights (gate 1): `/methodology/`
+  153,570 / 42,934 against 155,000 / 43,000 — 65 gzip bytes under the
+  ceiling at the stamped 42,935 and 66 on the final build; its gzip rose 22
+  bytes on 400 fewer raw bytes where the wave had predicted −111, and R-C-1
+  is spent, so the next /methodology/ sentence needs a same-section trim.
+  `/companies/` 700,393 / 68,854 against 710,000 / 69,000 — 145 stamped and
+  146 final (it was 1); `/data/` 171 left; `/coverage/` 99,824 / 20,449
+  against 101,500 / 20,750 — 301 gzip and 1,676 raw left;
+  `/district/VA-11/` 122,646 / 17,410 under the never-raised 154,000 /
+  20,000. The closing docs commit closes #163, adds a dated addendum to
+  #164, files #165 (chain E's nondeterministic `top_family` print), and
+  puts a dated note of which basis the warehouse fills (all 536 rows vs 63)
+  beside the concentration paragraph in `docs/methodology.md`; the
+  paragraph itself is bound verbatim to /methodology/ and was not changed.
+  Deploy, merge to main, push and the subtree split wait on the owner's
+  Anthropic API credit top-up (#139). The verified build is chain E's;
+  because the docs-only closing commit moves HEAD past `cf37866d`, the
+  deploy rebuilds and re-verifies at the pushed HEAD first.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -2460,7 +2520,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   sidecars). The fix wave's scope-note rewrite left this sentence as it was.
   Fix: state 317 through a declared count gate 24 leg (p2) admits, or align
   the exporter's two criteria. Source: implementer B (Task 26), deferred.
-  Effort: hours. **Status:** open (2026-09-25).
+  Effort: hours.
+  *Superseded marker, as filed in `2ef7471e`: open (2026-09-25).*
+  **Status:** CLOSED 2026-09-25 — `594d1f0c` (the reconciliation sentence
+  prints no program count, and its /methodology/ twin, the district lens,
+  says a district gets a page when a high-confidence link "records an
+  obligation there — a consequence of the crosswalk's current scope", where
+  it said the link "places obligated dollars there" within a "current
+  314-program scope": GA-02's only link, 356010's, has no positive
+  transaction); the true count is 317 program elements (3 with only zero or
+  negative obligations) — printing it would need gate 24 to accept it.
 
 - **#164 /downloads/ counts 204 J-book PDFs while 225 ship.**
   `site/src/components/download-cards.tsx:256` renders
@@ -2469,7 +2538,32 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   ones, and the R2 sync ships the directory (counted 2026-09-25). Fix: prune
   at export, or count the directory. Same species as #150 (OG images).
   Source: implementer B (Task 26, polish 18 follow-up), deferred. Effort:
-  hours. **Status:** open (2026-09-25).
+  hours.
+  *Addendum 2026-09-25 (Task 26 closing):* since `594d1f0c` /downloads/
+  renders no PDF count — its line reads "`pdfs/` — SHA-named J-book PDFs",
+  and `download-cards.tsx` accepts `pdfCount` without rendering it — so the
+  page no longer prints the wrong figure. The exporter half stays open:
+  `site_meta.pdf_count` is 204, the documents chain E's export copied, while
+  `data/site/pdfs/` holds 225 files because nothing prunes it (both
+  re-counted after chain E's export, 2026-09-25). A page may print the
+  count again once the exporter prunes or counts the directory.
+  **Status:** open (2026-09-25).
+
+- **#165 verify-phase3's trace leg prints a different `top_family` from run
+  to run.** `trace_gate3` (`src/govbudget/verify_phase3.py:233-236`) samples
+  `select pe_bli, top_family_all from fct_program_concentration where
+  top_family_all is not null limit 1` with no ORDER BY, and
+  `fct_program_concentration` is a view in the lake, so the family the CLI
+  prints (`top_family=…`, `src/govbudget/cli.py:1228`) is whichever row
+  DuckDB returns first. Chain E ran that query 20 times read-only and got 9
+  different families; its verify-phase3 printed `top_family=RTX` where run
+  4's printed GENERAL ATOMICS with every mart count unchanged, and a second
+  20-run re-measure the same day (2026-09-25) again returned 9. The leg
+  still PASSes — it needs only some family to exist — so the harm is a
+  nondeterministic gate print that reads as a data move when nothing moved.
+  Fix: order the sample (e.g. `order by pe_bli`). Source: chain E's report
+  (`chain-E-report.md` §7, the branch ledger). Effort: hours.
+  **Status:** open (2026-09-25).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

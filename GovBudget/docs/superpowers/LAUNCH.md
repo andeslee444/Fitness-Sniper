@@ -200,6 +200,23 @@ govbudget export-site
 
 Verify: `data/site/manifest.json` `built_at` timestamp is fresh.
 
+**Troubleshooting — a long-uptime host can run out of TCP ports
+(2026-09-25).** `export-site` (like any command that opens Postgres over
+TCP) can fail within seconds with psycopg reporting `Can't assign requested
+address` (EADDRNOTAVAIL) on 127.0.0.1 and `Resource temporarily
+unavailable` on ::1, while Postgres itself is up: the machine's ephemeral
+ports are used up. Seen on 2026-09-25 in chain E, on a host 59 days up with
+32,203 sockets in TIME_WAIT (count them with `netstat -an | grep -c
+TIME_WAIT`). The Unix socket needs no port, and the retry over it finished
+cleanly that day:
+
+```bash
+GOVBUDGET_PG_DSN='postgresql:///govbudget?host=/tmp' uv run python -m govbudget export-site
+```
+
+A reboot also clears it (19 sockets in TIME_WAIT after that day's reboot,
+and TCP connects worked again).
+
 ---
 
 ## Step 2 — Build with NEXT_PUBLIC_SITE_URL
