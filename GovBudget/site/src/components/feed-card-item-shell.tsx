@@ -4,6 +4,7 @@ import { Cite } from "@/components/cite";
 import { FeedMagnitudeLine } from "@/components/feed-magnitude";
 import { Fy26SplitNote } from "@/components/fy26-split-note";
 import { hhiScopeNote } from "@/lib/hhi-scope-note";
+import { feedProgramKey } from "@/lib/feed-model.mjs";
 import type { FeedCard } from "@/lib/data";
 
 /**
@@ -31,7 +32,8 @@ import type { FeedCard } from "@/lib/data";
  * module, so nothing it imports may reach a `import "server-only"` module.
  * Its imports are <Cite> ("use client"), <FeedMagnitudeLine> (type-only
  * import of lib/data), <Fy26SplitNote> (Cite + ScopeNote + a type),
- * hhiScopeNote (lib/hhi-scope-note.ts — hhi-band.mjs + a type) and
+ * hhiScopeNote (lib/hhi-scope-note.ts — hhi-band.mjs + a type),
+ * feedProgramKey (lib/feed-model.mjs — pure, imports nothing) and
  * next/link. vitest.client-graph.config.ts runs the client twin against the
  * REAL server-only package and fails on the first leak.
  *
@@ -48,11 +50,15 @@ export interface FeedCardItemShellProps {
    */
   companySlug: string | null;
   /**
-   * Whether /program/{pe_bli}/ exists in the static export (pe_bli present
-   * in programs.json, the generateStaticParams source). Feed events come
-   * from the trajectory mart, which covers more pe_blis than the programs
-   * index — cards for those extra pe_blis keep the code text but get no
-   * "view program" link (G1 dead-link contract).
+   * Whether the page the card addresses was built: its feedProgramKey (the
+   * key in program_url, else pe_bli — lib/feed-model.mjs) names a
+   * program_details sidecar, the listing generateStaticParams builds
+   * /program/{key}/ from. The server tree's /feed/ page tests that listing
+   * (getProgramPeBlis); the client tree reads the section sidecar's
+   * has_program_page, which the exporter resolves the same way
+   * (_feed_program_key) and gate 8 leg (p) holds to this answer. Cards on
+   * codes no program page covers keep the code text but get no "view
+   * program" link (G1 dead-link contract).
    */
   hasProgramPage: boolean;
   /** Rendered inside the [data-source-text="headline"] <p>. See doc above. */
@@ -145,8 +151,14 @@ export function FeedCardItemShell({
         )}
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
+            {/* The page the card addresses (feedProgramKey): its pe_bli,
+                except on a card addressed to ONE member of a shared code
+                (Task 28a), which prints that member's key (2292-WPN) — both
+                2292 members carry one title, so the bare code named neither.
+                The event's identities (data-xml-path above, the guid, the
+                basis entity) stay on the bare pe_bli. */}
             <span className="font-mono text-xs text-muted-foreground">
-              {card.pe_bli}
+              {feedProgramKey(card)}
             </span>
             {card.program_url && hasProgramPage && (
               <Link

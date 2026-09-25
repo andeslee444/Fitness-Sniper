@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import React, { useContext } from "react";
 
 import {
@@ -303,5 +303,57 @@ describe("CitationPanelProvider — fetch-on-miss", () => {
         document.querySelector('[data-degraded="citation"]'),
       ).toBeInTheDocument();
     });
+  });
+
+  // Task 28 fix round 1 (B1): an open that returns at once (the embedded fast
+  // path) supersedes an open still resolving, exactly as a newer fetch does —
+  // otherwise the late shard lands on the card the reader opened after it,
+  // pairing its body with the newer fact id.
+  it("a fast-path open supersedes a fetch still pending: the late shard does not replace it", async () => {
+    let release!: () => void;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url).includes("cite-shards")) {
+        return held.then(() =>
+          shardResponse({
+            [FID_OTHER]: { ...WORKBOOK_CITATION, sheet: "Exhibit P-1 (late)" },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`unexpected fetch ${url}`));
+    });
+    const slice = { [FID_B]: WORKBOOK_CITATION } as unknown as CitationsMap;
+    render(
+      <CitationPanelProvider citations={slice}>
+        <OpenCitation factId={FID_OTHER} />
+        <OpenCitation factId={FID_B} />
+      </CitationPanelProvider>,
+    );
+
+    screen.getByText(`open ${FID_OTHER}`).click(); // miss → loading, shard held
+    await waitFor(() => {
+      expect(screen.getByTestId("citation-loading")).toBeInTheDocument();
+    });
+    screen.getByText(`open ${FID_B}`).click(); // embedded → shown at once
+    await waitFor(() => {
+      expect(screen.getByTestId("citation-panel").textContent).toContain(
+        "Exhibit R-2A",
+      );
+    });
+
+    await act(async () => {
+      release();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    const panel = screen.getByTestId("citation-panel").textContent ?? "";
+    expect(panel).toContain("Exhibit R-2A");
+    expect(panel).not.toContain("Exhibit P-1 (late)");
+    expect(panel).toContain(`fact #${FID_B.slice(0, 8)}`);
   });
 });

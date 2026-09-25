@@ -39,7 +39,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/react";
+import { render, fireEvent, waitFor, act } from "@testing-library/react";
 import React from "react";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -486,6 +486,8 @@ describe("/district/{code}/ keeps its derived cards' inputs clickable (R-28b-4)"
     const container = await renderDetail();
     const expected = [FID.progA, FID.progB, FID.fy25Net, FID.fy26Net, FID.linkable].sort();
     expect(renderedIds(container)).toEqual(expected);
+    // Non-vacuity: a recording seam that stopped firing would pass the loop.
+    expect(seen.providerResolvable.length).toBeGreaterThan(0);
     for (const listed of seen.providerResolvable) {
       expect([...(listed as string[])].sort()).toEqual(expected);
     }
@@ -513,6 +515,63 @@ describe("/district/{code}/ keeps its derived cards' inputs clickable (R-28b-4)"
       expect(shardCalls()).toEqual([shardOf(id), shardOf(FID.progA)]);
     },
   );
+});
+
+// ── Task 28 fix round 1 (B1): Back supersedes a chip's pending fetch ──────────
+//
+// Since R-28b-4 every input chip on a district derived card is a fetch-on-miss
+// (the page embeds no bodies), so the panel sits in its loading state while the
+// chip's shard arrives — and the Back button stays live through it. Back
+// restored the derived card but left the chip's fetch current, so the late
+// shard then overwrote the restored card: the chip's usaspending body under the
+// derived total's fact id and permalink (review wf_755b674a-c0e, panel.tsx:227).
+
+describe("/district/{code}/ Back during a chip's shard fetch keeps the restored card", () => {
+  it("open the total → click a chip → Back while its shard is pending → the shard lands → still the total", async () => {
+    // Hold the chip's shard (a1) until the test releases it; every other shard
+    // resolves at once, as in the default mock.
+    let release!: () => void;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const serve = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string) =>
+      url === shardOf(FID.progA)
+        ? held.then(() => serve(url))
+        : serve(url),
+    );
+
+    const container = await renderDetail();
+    const { clickable } = await openDerived(container, FID.linkable);
+    fireEvent.click(clickable[0]); // #…a1a1a1a1 → progA, shard a1 (held)
+    await waitFor(() => {
+      expect(panelQueryAll("citation-loading")).toHaveLength(1);
+    });
+
+    fireEvent.click(panelQueryAll("panel-back")[0]);
+    await waitFor(() => {
+      expect(panelQueryAll("derived-card")).toHaveLength(1);
+    });
+
+    // The chip's shard arrives after Back.
+    await act(async () => {
+      release();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(shardCalls()).toContain(shardOf(FID.progA)); // the fetch did land
+    expect(panelQueryAll("usaspending-card")).toHaveLength(0);
+    expect(panelQueryAll("derived-card")).toHaveLength(1);
+    expect(panelQueryAll("citation-loading")).toHaveLength(0);
+    const permalink = panelQueryAll("panel-fact-permalink")[0];
+    expect(permalink.getAttribute("href")).toBe(`/fact/${FID.linkable.slice(0, 8)}`);
+    expect(permalink.textContent).toBe(`fact #${FID.linkable.slice(0, 8)}`);
+    // the restored card is the one the reader went Back to — its chips again
+    expect(panelQueryAll("derived-input-chip")).toHaveLength(2);
+  });
 });
 
 // ── the list is opt-in ───────────────────────────────────────────────────────
@@ -578,18 +637,40 @@ describe("shardResolvableIds is opt-in — a provider without it is unchanged", 
   });
 
   it("only /district/{code}/ passes the list; every other provider mount passes the props it did", () => {
+    // Fix round 1 (B5): the scan matched only the literal JSX attribute
+    // `shardResolvableIds=` in .tsx files, so a props object spread into the
+    // provider (`{...props}` built as { shardResolvableIds: ids }) or a mount
+    // from a .ts/.mjs module evaded it. It now reads every non-test source
+    // module and matches the IDENTIFIER anywhere in code — attribute, object
+    // key, destructure — once comments are stripped (district/page.tsx names
+    // the prop in a comment explaining why it passes none). The one file
+    // allowed besides the page that passes it is the provider that declares
+    // it. What no static scan can see — a key assembled at runtime — is what
+    // the runtime tests above cover: without the prop, hasCitation() is the
+    // pre-28b expression, and /district/ keeps its chips plain.
     const SRC = resolve(__dirname, "..");
-    const tsx = (dir: string): string[] =>
+    const sources = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
         if (e.name === "__tests__" || e.name === "node_modules") return [];
         const full = join(dir, e.name);
-        if (e.isDirectory()) return tsx(full);
-        return e.name.endsWith(".tsx") && !e.name.endsWith(".test.tsx") ? [full] : [];
+        if (e.isDirectory()) return sources(full);
+        return /\.(tsx?|jsx?|mjs|cjs)$/.test(e.name) && !/\.test\.[^.]+$/.test(e.name)
+          ? [full]
+          : [];
       });
-    const owners = tsx(SRC)
-      .filter((f) => readFileSync(f, "utf8").includes("shardResolvableIds="))
+    const code = (f: string) =>
+      readFileSync(f, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "") // block and JSX comments
+        .replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1"); // line comments, not "https://"
+    const scanned = sources(SRC);
+    expect(scanned.length).toBeGreaterThan(100); // non-vacuity: the walk found the tree
+    const owners = scanned
+      .filter((f) => /\bshardResolvableIds\b/.test(code(f)))
       .map((f) => relative(SRC, f))
       .sort();
-    expect(owners).toEqual(["app/district/[district]/page.tsx"]);
+    expect(owners).toEqual([
+      "app/district/[district]/page.tsx",
+      "components/citation-panel/panel.tsx",
+    ]);
   });
 });

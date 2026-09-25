@@ -1,0 +1,109 @@
+{
+  "_about": [
+    "ONE table for the Python/JS mirror of a feed card's page key (Task 28 fix round 1, B2).",
+    "feedProgramKey (site/src/lib/feed-model.mjs) and _feed_program_key (src/govbudget/export_site.py) must give `key` for every `card`;",
+    "feedCardHasProgramPage (JS) and the section sidecar emitter _emit_feed_section_sidecars (Python) must give `has_program_page` over `program_pages`.",
+    "Read by site/scripts/gates/__tests__/feed-program-key.test.mjs AND tests/test_feed_program_key_mirror.py. Change a case here and both suites re-check it.",
+    "program_pages stands in for the program_details/ listing: bare shared codes (2292, 3010) have no sidecar; their members do."
+  ],
+  "program_pages": [
+    "0601102A",
+    "0603000N",
+    "2292-PMC",
+    "2292-WPN",
+    "3010-OPN",
+    "3010-SCN"
+  ],
+  "cases": [
+    {
+      "name": "ordinary code with a page",
+      "card": { "pe_bli": "0601102A", "program_url": "/program/0601102A/" },
+      "key": "0601102A",
+      "has_program_page": true
+    },
+    {
+      "name": "ordinary code with no page (an event on a code no program page covers)",
+      "card": { "pe_bli": "0605999X", "program_url": "/program/0605999X/" },
+      "key": "0605999X",
+      "has_program_page": false
+    },
+    {
+      "name": "member card: one member of a shared code carries every link (Task 28a)",
+      "card": { "pe_bli": "2292", "program_url": "/program/2292-WPN/" },
+      "key": "2292-WPN",
+      "has_program_page": true
+    },
+    {
+      "name": "bare stub: a card addressed to a shared code's bare page, which is not built",
+      "card": { "pe_bli": "3010", "program_url": "/program/3010/" },
+      "key": "3010",
+      "has_program_page": false
+    },
+    {
+      "name": "no program_url: the key falls back to pe_bli",
+      "card": { "pe_bli": "0603000N", "program_url": null },
+      "key": "0603000N",
+      "has_program_page": true
+    },
+    {
+      "name": "company card: no pe_bli, no page",
+      "card": { "pe_bli": null, "program_url": null, "family_key": "LOCKHEED MARTIN" },
+      "key": null,
+      "has_program_page": false
+    },
+    {
+      "name": "card with no pe_bli field at all",
+      "card": { "program_url": null },
+      "key": null,
+      "has_program_page": false
+    },
+    {
+      "name": "empty pe_bli is a key that names no page",
+      "card": { "pe_bli": "", "program_url": null },
+      "key": "",
+      "has_program_page": false
+    },
+    {
+      "name": "empty program_url falls back to pe_bli",
+      "card": { "pe_bli": "0601102A", "program_url": "" },
+      "key": "0601102A",
+      "has_program_page": true
+    },
+    {
+      "name": "malformed url: no trailing slash",
+      "card": { "pe_bli": "2292", "program_url": "/program/2292-WPN" },
+      "key": "2292",
+      "has_program_page": false
+    },
+    {
+      "name": "malformed url: the /programs/ index, not a program page",
+      "card": { "pe_bli": "2292", "program_url": "/programs/2292-WPN/" },
+      "key": "2292",
+      "has_program_page": false
+    },
+    {
+      "name": "malformed url: a nested path",
+      "card": { "pe_bli": "2292", "program_url": "/program/2292-WPN/extra/" },
+      "key": "2292",
+      "has_program_page": false
+    },
+    {
+      "name": "malformed url: absolute, not site-relative",
+      "card": { "pe_bli": "2292", "program_url": "https://fiscalreceipts.com/program/2292-WPN/" },
+      "key": "2292",
+      "has_program_page": false
+    },
+    {
+      "name": "malformed url: an empty key segment",
+      "card": { "pe_bli": "0601102A", "program_url": "/program//" },
+      "key": "0601102A",
+      "has_program_page": true
+    },
+    {
+      "name": "malformed url: a trailing newline (neither side anchors before it)",
+      "card": { "pe_bli": "2292", "program_url": "/program/2292-WPN/\n" },
+      "key": "2292",
+      "has_program_page": false
+    }
+  ]
+}

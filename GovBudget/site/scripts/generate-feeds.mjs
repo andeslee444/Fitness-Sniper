@@ -14,7 +14,10 @@
  *   /feed.xml    alias of /rss.xml      — both were reported 404 in §P1-8
  *   /atom.xml    whole feed (Atom 1.0)
  *   /feeds/{event_type}.xml       + .atom.xml
- *   /feeds/program/{pe_bli}.xml   + .atom.xml   (programs that have a page)
+ *   /feeds/program/{key}.xml      + .atom.xml   (programs that have a page;
+ *                                              key = feedProgramKey: the
+ *                                              pe_bli, or a shared code's
+ *                                              member slug, e.g. 2292-WPN)
  *   /feeds/company/{slug}.xml     + .atom.xml   (top-200 companies)
  *
  * Every item carries the dollars the event is about, a /fact/{id} receipt
@@ -35,6 +38,7 @@ import { companyLabel } from "../src/lib/company-name.mjs";
 import {
   buildFeedTargets,
   companyWatchPeBlis,
+  programTitleMap,
   renderRss,
   renderAtom,
 } from "../src/lib/feed-model.mjs";
@@ -91,9 +95,8 @@ export function collectFeedInputs() {
       .map((f) => f.slice(0, -".json".length)),
   );
 
-  const programTitles = new Map(
-    readJson("programs.json").map((p) => [p.pe_bli, p.title]),
-  );
+  // Keyed by PAGE (slug), as the watch feeds are — see programTitleMap.
+  const programTitles = programTitleMap(readJson("programs.json"));
 
   const entitiesTop = readJson("entities_top.json");
   const companySlugByFamilyKey = new Map(

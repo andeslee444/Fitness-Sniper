@@ -242,6 +242,20 @@ describe("shared-code withholding (ROADMAP #82)", () => {
     expect(s).not.toMatch(/\$[\d]/);
   });
 
+  // Task 28 fix round 1 (B4). "so the figure would mix their money" read as
+  // true of every basis, but a page publishes only the high-confidence one,
+  // and on 3010 and 3215 every high-confidence link is one member's: that
+  // figure would be the member's own. The rule withholds it anyway — it
+  // counts every published link, high and medium (owner decision recorded
+  // 2026-09-24). What mixes the two programs' money, on every page this
+  // renders, is a figure over ALL the line's links: two members carrying at
+  // least one link each is the condition the sentence renders under.
+  it("says whose money a figure over all the line's links would mix — not that every figure would", () => {
+    const s = sharedCodeWithheldReason("3010");
+    expect(s).toMatch(/a figure over all the line's links would mix their money\.$/);
+    expect(s).not.toMatch(/so the figure would mix/);
+  });
+
   it("does not deny that any company is linked — award records are", () => {
     // The pre-#82 sentence on these pages was "No company is linked to this
     // line. Award records do not carry the program element, so the crosswalk

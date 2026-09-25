@@ -29,6 +29,7 @@ import {
   companyFeedPaths,
   feedProgramKey,
   hasProgramFeed,
+  programTitleMap,
   WHOLE_FEED_RSS,
   WHOLE_FEED_RSS_ALIAS,
   WHOLE_FEED_ATOM,
@@ -641,5 +642,64 @@ describe("a member card in the feeds", () => {
     expect(co.items.map((i: { card: { pe_bli: string } }) => i.card.pe_bli)).toEqual([
       "2292",
     ]);
+  });
+});
+
+// ── Task 28 fix round 1 (B4): the member watch feed names its page, not a PE ──
+
+describe("programTitleMap — watch-feed titles keyed by page, as the feeds are", () => {
+  // programs.json rows as the exporter writes them: a shared code's members
+  // carry their own slug; every other row's slug is its pe_bli.
+  const rows = [
+    { pe_bli: "0101213F", slug: "0101213F", title: "Minuteman Squadrons" },
+    { pe_bli: "2292", slug: "2292-PMC", title: "NSM (Marine Corps)" },
+    { pe_bli: "2292", slug: "2292-WPN", title: "NSM (Navy)" },
+  ];
+
+  it("keys every row by its page slug: one entry per member, none for the bare code", () => {
+    const m = programTitleMap(rows);
+    expect(m.get("2292-WPN")).toBe("NSM (Navy)");
+    expect(m.get("2292-PMC")).toBe("NSM (Marine Corps)");
+    expect(m.has("2292")).toBe(false);
+    expect(m.get("0101213F")).toBe("Minuteman Squadrons");
+  });
+
+  it("falls back to pe_bli on an export that predates slug", () => {
+    expect(programTitleMap([{ pe_bli: "0101213F", title: "Minuteman Squadrons" }]).get("0101213F")).toBe(
+      "Minuteman Squadrons",
+    );
+  });
+
+  const targets = () =>
+    buildFeedTargets({
+      cards: [swingCard, { ...memberCard, title: "the card's own title" }],
+      siteUrl: SITE,
+      pubDate: PUB,
+      programPages: memberPages,
+      programTitles: programTitleMap(rows),
+      companySlugByFamilyKey: new Map(),
+      companyWatch: [],
+    }).filter((t) => t.kind === "program");
+
+  it("the member feed takes its member's programs.json title, not the card's fallback", () => {
+    const member = targets().find((t) => t.key === "2292-WPN")!;
+    expect(member.title).toBe("Fiscal Receipts — NSM (Navy) (2292-WPN)");
+  });
+
+  it("the member feed's description calls 2292-WPN a page on budget line 2292, not a program element", () => {
+    const member = targets().find((t) => t.key === "2292-WPN")!;
+    expect(member.description).toBe(
+      "Budget and award signals for NSM (Navy) (2292-WPN), one of the programs on " +
+        "budget line 2292, each with its dollar magnitude and a link to the receipt.",
+    );
+    expect(member.description).not.toMatch(/program element 2292-WPN/);
+  });
+
+  it("an ordinary program feed's description is unchanged", () => {
+    const ordinary = targets().find((t) => t.key === "0101213F")!;
+    expect(ordinary.description).toBe(
+      "Budget and award signals for program element 0101213F (Minuteman Squadrons), " +
+        "each with its dollar magnitude and a link to the receipt.",
+    );
   });
 });

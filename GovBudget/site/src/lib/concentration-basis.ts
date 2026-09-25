@@ -74,8 +74,10 @@ export interface ConcentrationPublished {
  *                    is the only producer.
  *   "shared-code"  — the mart row exists for a budget line MORE THAN ONE
  *                    program uses, and more than one of them carries linked
- *                    awards, so the figure is neither member's and the
- *                    exporter withholds the whole block from both (#70/#82).
+ *                    awards (any confidence), so the exporter withholds the
+ *                    whole block from every member (#70/#82) — even where
+ *                    the high-only figure would be one member's (3010, 3215;
+ *                    see sharedCodeWithheldReason).
  *                    sharedCodeWithheldReason() states it; the block never
  *                    reaches the page, so the answer strip's "none" tier is
  *                    the only surface that can say it, from the sidecar's
@@ -183,21 +185,41 @@ export const WHO_GETS_IT_WITHHELD_LEAD =
  *   - fct_program_concentration has a row for this bare pe_bli;
  *   - dim_programs publishes more than one program under it (ident.is_split);
  *   - more than one of those members carries at least one published
- *     crosswalk link, which is why the mart's figure — computed on the bare
- *     line — is neither member's to claim and is withheld from both;
+ *     crosswalk link, of either confidence (high or medium — every link a
+ *     Related Awards table shows). That is the whole test: it withholds the
+ *     block, both bases, from every member, and since Task 28a the feed's
+ *     concentration_shift cards on the line go through the same predicate
+ *     (_concentration_owner);
  *   - THIS member is one of the linked ones, so this page renders its own
  *     Related Awards table below.
  * Nothing here counts this line's links or names a number: no dollars, no
  * award count, no leader — gate 21 leg (j) allows a non-award tier none of
  * those, and #80 fix round 2 showed that a count is exactly what goes false.
  * "More than one", never "two": '30' is shared by THREE programs.
+ *
+ * WHICH FIGURE MIXES WHOSE MONEY (Task 28 fix round 1). The test is on links,
+ * not on the figure a page would publish. A figure over ALL the line's links
+ * pools more than one program's contractors on every page this renders — the
+ * condition above guarantees it — and that is all the sentence's last clause
+ * claims. A page publishes only the HIGH-confidence basis, and that figure
+ * pools more than one program only where more than one member carries high
+ * links: 0145 in chain C run 2's export (built 2026-09-19; 0145-APN 5 high,
+ * 0145-PANMC 3 high). On
+ * 3010 and 3215 every high link is one member's (3010-SCN's, 3215-WPN's; the
+ * other member carries medium links only), so the high-only figure would be
+ * that member's own — withheld anyway, because the rule counts every
+ * published link. Adopting a basis-aware test instead would move the program
+ * pages and the feed together; it is an owner decision, recorded 2026-09-24.
+ * Until then the sentence claims the mixing of the all-links figure only.
+ * (Its earlier "so the figure would mix their money" read as true of the
+ * high-only figure too, which on 3010 and 3215 it is not.)
  */
 export function sharedCodeWithheldReason(peBli: string): string {
   return (
     `Award records are linked to this program — see Related Awards below — ` +
     `but no concentration index is published for it: the crosswalk computes ` +
     `concentration on budget line ${peBli}, which more than one program ` +
-    `uses, and more than one of them carries linked awards, so the figure ` +
-    `would mix their money.`
+    `uses, and more than one of them carries linked awards, so a figure over ` +
+    `all the line's links would mix their money.`
   );
 }

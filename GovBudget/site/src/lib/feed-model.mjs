@@ -217,7 +217,10 @@ export function eventTypeFeedPaths(eventType) {
   };
 }
 
-/** @param {string} peBli */
+/**
+ * @param {string} peBli the page key (feedProgramKey): the pe_bli, or a
+ *   shared code's member slug such as 2292-WPN
+ */
 export function programFeedPaths(peBli) {
   return {
     rss: `/feeds/program/${peBli}.xml`,
@@ -264,6 +267,43 @@ export function companyFeedPaths(slug) {
 export function feedProgramKey(card) {
   const m = /^\/program\/([^/]+)\/$/.exec(card?.program_url ?? "");
   return m ? m[1] : (card?.pe_bli ?? null);
+}
+
+/**
+ * Whether the page a card addresses (feedProgramKey) was built: its key names
+ * a program_details sidecar, one per /program/{key}/ page. An item links its
+ * program page only then (itemLink), and gate 8 leg (p) holds every section
+ * sidecar's pre-resolved `has_program_page` — written by export_site.py's
+ * _emit_feed_section_sidecars from _feed_program_key — to this answer. The
+ * two languages are pinned to one table of cases:
+ * scripts/gates/__tests__/fixtures/feed-program-key.json, read by
+ * scripts/gates/__tests__/feed-program-key.test.mjs and
+ * tests/test_feed_program_key_mirror.py.
+ *
+ * @param {{pe_bli?: string|null, program_url?: string|null}} card
+ * @param {Set<string>} programPages the program_details listing
+ * @returns {boolean}
+ */
+export function feedCardHasProgramPage(card, programPages) {
+  const key = feedProgramKey(card);
+  return Boolean(key) && programPages.has(key);
+}
+
+/**
+ * Program title by PAGE key, for the program watch feeds' channel title.
+ * Watch feeds are keyed by the page a card addresses (feedProgramKey), so the
+ * title map is keyed the same way: a programs.json row's `slug` — the page's
+ * own address, which equals `pe_bli` on every row but a member of a shared
+ * code (2292-PMC, 2292-WPN, …) — falling back to `pe_bli` on an export that
+ * predates `slug`. Keyed by the bare code, the map had one entry per shared
+ * code, whichever member came last, and no entry a member page's feed could
+ * find. scripts/generate-feeds.mjs and gate 8 both build it here.
+ *
+ * @param {Array<{pe_bli: string, slug?: string|null, title: string}>} programs
+ * @returns {Map<string, string>} buildFeedTargets' `programTitles`
+ */
+export function programTitleMap(programs) {
+  return new Map(programs.map((p) => [p.slug ?? p.pe_bli, p.title]));
 }
 
 /**
@@ -399,9 +439,8 @@ export function companyWatchPeBlis(details) {
  */
 function itemLink(card, siteUrl, { programPages, companySlugByFamilyKey }) {
   const base = trimSlash(siteUrl);
-  const page = feedProgramKey(card);
-  if (page && programPages.has(page)) {
-    return `${base}/program/${page}/`;
+  if (feedCardHasProgramPage(card, programPages)) {
+    return `${base}/program/${feedProgramKey(card)}/`;
   }
   if (card.family_key) {
     const slug = companySlugByFamilyKey.get(card.family_key);
@@ -757,13 +796,22 @@ export function buildFeedTargets(input) {
   for (const [pe, peItems] of [...byProgram.entries()].sort()) {
     const paths = programFeedPaths(pe);
     const title = programTitles.get(pe) || peItems[0].card.title || pe;
+    // `pe` is a page key. On every feed but a shared code's member page it is
+    // the program element itself; a member page's key is its slug (2292-WPN),
+    // so the description names the budget line its cards are keyed on instead
+    // of calling the slug a program element.
+    const code = peItems[0].card.pe_bli;
+    const subject =
+      code && code !== pe
+        ? `${title} (${pe}), one of the programs on budget line ${code}`
+        : `program element ${pe} (${title})`;
     targets.push({
       id: `program:${pe}`,
       kind: "program",
       key: pe,
       title: `${siteName} — ${title} (${pe})`,
       description:
-        `Budget and award signals for program element ${pe} (${title}), ` +
+        `Budget and award signals for ${subject}, ` +
         `each with its dollar magnitude and a link to the receipt.`,
       htmlUrl: `${base}/program/${pe}/`,
       rssPath: paths.rss,

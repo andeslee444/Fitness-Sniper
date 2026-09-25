@@ -1674,9 +1674,11 @@ export default function MethodologyPage() {
                   Programs whose Herfindahl-Hirschman Index (HHI), computed from
                   high-confidence award transactions grouped by fiscal year, is
                   non-trivial. The HHI floor is $5M in matched obligations.
+                  On a budget line more than one program uses, only a program
+                  carrying every crosswalk link (high or medium) gets a card,
+                  linked to its page.
                   HHI = sum(share² × 10,000) where share = family_obligation /
-                  total_obligation; only positive obligations are included
-                  (negative/recoupment flows are excluded).{" "}
+                  total_obligation; only positive obligations are included.{" "}
                   {
                     // Plain JS string, not JSX text, so the DOJ/FTC threshold
                     // numbers can never drift from hhi-band.mjs AND so this
@@ -1706,14 +1708,12 @@ export default function MethodologyPage() {
                     This figure is a single fiscal year&rsquo;s HHI, not a
                     program&rsquo;s overall concentration.
                   </strong>{" "}
-                  A program&rsquo;s own page (its &ldquo;Contractor
-                  Concentration&rdquo; card) renders a pooled HHI computed
+                  A program&rsquo;s own page renders a pooled HHI computed
                   across every award year, on the basis and above the floor
                   section 4 states. The two are legitimately different
                   measures: a concentrated year can sit next to a competitive
-                  pooled figure, or the reverse, with no error on either page.
-                  Every concentration_shift card states which fiscal year its
-                  HHI covers and that the pooled figure can differ.
+                  pooled figure. Every card states which fiscal year its HHI
+                  covers and that the pooled figure can differ.
                 </p>
               </div>
               <div id="feed-request_vs_actuals_gap">

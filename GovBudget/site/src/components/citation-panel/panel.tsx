@@ -12,8 +12,7 @@
  *     single-flight per shard — lib/cite-shards.ts). While resolving, the
  *     panel shows a loading body; on failure it shows the degraded state
  *     ([data-degraded="citation"]) — never a silent no-op or fake success.
- *     The embedded fast path is untouched (no fetch, zero behavior change on
- *     existing pages).
+ *     The embedded fast path never fetches.
  *   - Opt-in shardResolvableIds (Task 28b): ids a page lists as served by
  *     the shards count as available to hasCitation() before they are
  *     fetched; opening one is the fetch-on-miss above, nothing else.
@@ -21,7 +20,10 @@
  *   - Drill-down history (Phase 5D Task 3b): opening another citation while
  *     the panel is already open (derived-input chips, breakdown-table row
  *     cites) pushes the current fact onto a back stack; a Back button in the
- *     header returns to it. The stack resets when the panel closes.
+ *     header returns to it. The stack resets when the panel closes. Back, a
+ *     newer open and closing each supersede a fetch still pending: its shard
+ *     still arrives (and stays cached) but never replaces the card on screen
+ *     (Task 28 fix round 1).
  *   - State B (xml-path) and state C (uncited) spans NEVER call openPanel
  *     (they have no data-fact-id — cite.tsx only wires clicks for state A)
  *
@@ -149,7 +151,8 @@ export function CitationPanelProvider({
   // A ref (not state): resolved rows are only read inside handlers, and the
   // panel re-renders via setActiveCitation when one becomes active.
   const dynamicRef = useRef<CitationsMap>({});
-  // Monotonic token so a stale shard resolution can't clobber a newer open.
+  // Monotonic token so a stale shard resolution can't clobber what replaced
+  // it: every open, Back and close increments it.
   const openEpochRef = useRef(0);
 
   const lookup = useCallback(
@@ -178,6 +181,11 @@ export function CitationPanelProvider({
         return [...stack, { factId: activeFactId, figure: activeFigure }];
       });
 
+      // Every open supersedes one still resolving — the fast path below too
+      // (Task 28 fix round 1): a shard arriving after a newer open must not
+      // land on the newer card, pairing its body with the newer fact id.
+      const epoch = ++openEpochRef.current;
+
       const embedded = lookup(factId);
       if (embedded) {
         // Fast path — embedded slice (or an already-fetched shard row).
@@ -188,14 +196,13 @@ export function CitationPanelProvider({
 
       // Fetch-on-miss: open immediately in the loading state, resolve the
       // fact's shard, then either show the card or the degraded state.
-      const epoch = ++openEpochRef.current;
       setActiveCitation(null);
       setActiveFactId(factId);
       setActiveFigure(figure ?? null);
       setBodyState("loading");
       setOpen(true);
       resolveCitationFromShards(factId).then((citation) => {
-        if (openEpochRef.current !== epoch) return; // superseded by a newer open
+        if (openEpochRef.current !== epoch) return; // superseded: open, Back or close
         if (citation) {
           dynamicRef.current[factId] = citation;
           setActiveCitation(citation);
@@ -225,6 +232,10 @@ export function CitationPanelProvider({
   );
 
   const goBack = useCallback(() => {
+    // Back supersedes an open still resolving, as a newer open does (Task 28
+    // fix round 1): a chip clicked, then Back before its shard arrived, must
+    // not have that late shard replace the card Back restored.
+    openEpochRef.current++;
     setBackStack((stack) => {
       if (stack.length === 0) return stack;
       const prev = stack[stack.length - 1];

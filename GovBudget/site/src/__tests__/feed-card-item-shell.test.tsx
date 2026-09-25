@@ -206,6 +206,48 @@ describe("<FeedCardItemShell> is what both /feed/ card trees render", () => {
       expect(el.querySelector("[data-fy26-disc-pct-change]")).toBeNull();
     }
   });
+
+  // Task 28 fix round 1 (B4): a card on ONE member of a shared code printed
+  // the bare code ("2292") beside a link to /program/2292-WPN/, and both 2292
+  // members carry one title — so nothing visible said which member it was.
+  // The code chip now prints the page the card addresses (feedProgramKey);
+  // the event's identities (data-xml-path, guid, basis entity) keep the bare
+  // code, and an ordinary card prints its pe_bli exactly as before.
+  const codeChips = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll("span.font-mono.text-xs")).map((s) => s.textContent);
+
+  it("a member card prints its member's page key beside its member link, from both trees", () => {
+    const MEMBER: FeedCard = {
+      ...PLAIN,
+      pe_bli: "2292",
+      program_url: "/program/2292-WPN/",
+      title: "Naval Strike Missile (NSM)",
+      headline: "Naval Strike Missile (NSM) award concentration HHI=10000 (2023)",
+      headline_segments: [
+        { text: "Naval Strike Missile (NSM) award concentration HHI=10000 (2023)" },
+      ],
+    };
+    const { serverEl, clientEl } = renderBoth(MEMBER);
+    for (const el of [serverEl, clientEl]) {
+      expect(codeChips(el)).toEqual(["2292-WPN"]);
+      // next/link drops the trailing slash outside a Next build
+      const hrefs = Array.from(el.querySelectorAll('a[href^="/program/"]')).map((a) =>
+        a.getAttribute("href"),
+      );
+      expect(hrefs).toHaveLength(1);
+      expect(hrefs[0]).toMatch(/^\/program\/2292-WPN\/?$/);
+      expect(
+        el.querySelector('[data-source-text="headline"]')!.getAttribute("data-xml-path"),
+      ).toBe("site:feed/concentration_shift/2292");
+    }
+  });
+
+  it("an ordinary card prints its pe_bli, as before", () => {
+    const { serverEl, clientEl } = renderBoth(PLAIN);
+    for (const el of [serverEl, clientEl]) {
+      expect(codeChips(el)).toEqual(["0601101E"]);
+    }
+  });
 });
 
 // ── 2. source: the markup exists once ───────────────────────────────────────

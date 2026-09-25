@@ -91,6 +91,19 @@
  *     a complete section the file carries no hidden cards. Reads the SHIPPED
  *     copy under out/ (what the reader fetches), like gate 1's feed.json
  *     leg. Exported for __tests__/feed-sections.test.mjs.
+ *
+ * (p) EVERY CARD ADDRESSES ONE PAGE KEY ON BOTH SIDES (Task 28 fix round 1).
+ *     A card's page is feedProgramKey(card) — the key in its program_url,
+ *     else its pe_bli — in JS, and export_site.py's _feed_program_key in
+ *     Python, which pre-resolves the sidecars' has_program_page. Over the
+ *     shipped feed.json (every card, not just the 75 per section /feed/
+ *     renders), every section sidecar and every rendered card: a program_url
+ *     is null or `/program/${key}/`; a card whose page is listed carries it
+ *     and the page was built; each sidecar has_program_page equals the JS
+ *     answer over the shipped program_details listing; each rendered card
+ *     links exactly that page, or none. One finding per disagreement.
+ *     Exported for __tests__/feed-program-key.test.mjs, which also holds
+ *     both languages to one table (__tests__/fixtures/feed-program-key.json).
  */
 
 import fs from "fs";
@@ -105,7 +118,10 @@ import {
   feedGuid,
   buildFeedTargets,
   companyWatchPeBlis,
+  feedCardHasProgramPage,
+  feedProgramKey,
   linkageBases,
+  programTitleMap,
 } from "../../src/lib/feed-model.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -227,6 +243,9 @@ export async function runFeedGate() {
 
   // ── (o) shipped section sidecars match the rendered sections (#88) ───────
   runSectionSidecarLeg(errors, notes, root);
+
+  // ── (p) every card addresses ONE page key on both sides (Task 28 FR1) ────
+  runProgramKeyLeg(errors, notes, root);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -625,9 +644,8 @@ function expectedTargets() {
       siteUrl: "https://example.invalid", // paths only; the gate never compares hosts here
       pubDate: meta.built_at,
       programPages,
-      programTitles: new Map(
-        readJson(path.join(jsonDir, "programs.json")).map((p) => [p.pe_bli, p.title]),
-      ),
+      // Keyed by page, as the generator keys it (programTitleMap).
+      programTitles: programTitleMap(readJson(path.join(jsonDir, "programs.json"))),
       companySlugByFamilyKey: new Map(entitiesTop.map((e) => [e.family_key, e.slug])),
       companyWatch,
     }),
@@ -1435,6 +1453,246 @@ export function runSectionSidecarLeg(
     notes.push(
       `leg o: ${checked} section sidecar(s) match their /feed/ sections ` +
         `(${truncated} truncated) ✓`,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg (p) — every card addresses ONE page key on both sides (Task 28 FR1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * The page a feed card addresses is decided twice, in two languages:
+ * `feedProgramKey` (src/lib/feed-model.mjs) for /feed/'s rendered cards, the
+ * RSS/Atom item links and the program watch feeds, and export_site.py's
+ * `_feed_program_key` for the section sidecars' pre-resolved
+ * `has_program_page`, which "Show all" renders a card's "view program" link
+ * from. Leg (o) checked only that the field is a boolean, and leg (l) reads
+ * only the rendered concentration cards — the first 75 per section — so a
+ * drift on either side left a card past the cap with a dead or missing link
+ * and no gate red. Task 28a's member cards (2292 → /program/2292-WPN/) are
+ * exactly that shape: all six sat past the cap in chain C run 2's feed.json.
+ *
+ * Over the SHIPPED files (out/json/feed.json, out/json/feed-sections/*.json,
+ * the out/json-lite/program_details listing and the built pages), one finding
+ * per disagreement:
+ *   · every feed.json card and every section-sidecar card: a program_url is
+ *     null or exactly `/program/${feedProgramKey(card)}/`; a card whose page
+ *     is listed (feedCardHasProgramPage) carries that program_url, and that
+ *     page was built (out/program/{key}/index.html);
+ *   · every section-sidecar card: `has_program_page` equals
+ *     feedCardHasProgramPage over the listing — the Python mirror held to the
+ *     JS answer, card by card;
+ *   · every rendered /feed/ card: it is feed.json's card at that position of
+ *     its section (its headline's data-xml-path), and its /program/ links are
+ *     exactly `/program/${key}/` where the page is listed, none where it is
+ *     not — the answer feed/page.tsx renders from.
+ * The unit table both languages are pinned to is
+ * __tests__/fixtures/feed-program-key.json; the proof-it-can-fail cases are
+ * __tests__/feed-program-key.test.mjs. What this does NOT check is that the
+ * linked page states the card's figure — leg (l) does that for the rendered
+ * concentration cards only.
+ *
+ * @param {string[]} errors
+ * @param {string[]} notes
+ * @param root node-html-parser root of out/feed/index.html
+ * @param {{feedJsonPath?: string, sectionsDir?: string,
+ *          programDetailsDir?: string, pagesDir?: string}} [paths]
+ *   the shipped files (defaults under out/; temp dirs in the unit tests)
+ */
+export function runProgramKeyLeg(
+  errors,
+  notes,
+  root,
+  {
+    feedJsonPath = path.join(outDir, "json", "feed.json"),
+    sectionsDir = path.join(outDir, "json", "feed-sections"),
+    programDetailsDir = path.join(outDir, "json-lite", "program_details"),
+    pagesDir = outDir,
+  } = {},
+) {
+  const before = errors.length;
+  const fail = (msg) => errors.push(`feed leg p: ${msg}`);
+
+  let programPages;
+  try {
+    programPages = new Set(
+      fs
+        .readdirSync(programDetailsDir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => f.slice(0, -".json".length)),
+    );
+  } catch (e) {
+    fail(`cannot list the shipped program_details (${programDetailsDir}): ${e.message}`);
+    return;
+  }
+  if (programPages.size === 0) {
+    fail(`the shipped program_details listing (${programDetailsDir}) is empty — the leg is vacuous`);
+    return;
+  }
+
+  let cards;
+  try {
+    cards = JSON.parse(fs.readFileSync(feedJsonPath, "utf8")).cards;
+  } catch (e) {
+    fail(`cannot read the shipped feed.json (${feedJsonPath}): ${e.message}`);
+    return;
+  }
+  if (!Array.isArray(cards) || cards.length === 0) {
+    fail(`the shipped feed.json carries no cards — the leg is vacuous`);
+    return;
+  }
+
+  const built = new Map();
+  const pageBuilt = (key) => {
+    if (!built.has(key)) {
+      built.set(key, fs.existsSync(path.join(pagesDir, "program", key, "index.html")));
+    }
+    return built.get(key);
+  };
+  const label = (c) =>
+    `${c.event_type ?? "?"} ${c.pe_bli ?? c.family_key ?? "?"}` +
+    (c.fiscal_year != null ? ` FY${c.fiscal_year}` : "");
+
+  let linked = 0;
+  let memberLinked = 0;
+  /** The checks feed.json and the sidecars share. */
+  const checkCard = (c, where, count) => {
+    const key = feedProgramKey(c);
+    if (c.program_url != null && c.program_url !== `/program/${key}/`) {
+      fail(
+        `${where}: ${label(c)} carries program_url ${JSON.stringify(c.program_url)}, ` +
+          `which is not /program/{key}/ — its page key falls back to ` +
+          `${JSON.stringify(key)}, so its link and its has_program_page answer about ` +
+          `different pages`,
+      );
+      return;
+    }
+    if (!feedCardHasProgramPage(c, programPages)) return;
+    if (c.program_url == null) {
+      fail(
+        `${where}: ${label(c)} addresses /program/${key}/, which has a program_details ` +
+          `sidecar, but carries no program_url — /feed/ renders it no link while its ` +
+          `feed item links the page`,
+      );
+      return;
+    }
+    if (!pageBuilt(key)) {
+      fail(
+        `${where}: ${label(c)} links /program/${key}/, listed in program_details but ` +
+          `not built (no out/program/${key}/index.html) — a dead "view program" link`,
+      );
+      return;
+    }
+    if (count) {
+      linked += 1;
+      if (key !== c.pe_bli) memberLinked += 1;
+    }
+  };
+
+  // ── feed.json — every card, past the /feed/ cap as much as inside it ─────
+  for (const c of cards) checkCard(c, "feed.json", true);
+
+  // ── section sidecars — the Python mirror against the JS answer ───────────
+  let sidecarCards = 0;
+  let sidecarFiles;
+  try {
+    sidecarFiles = fs.readdirSync(sectionsDir).filter((f) => f.endsWith(".json")).sort();
+  } catch (e) {
+    fail(`cannot list the shipped feed-sections (${sectionsDir}): ${e.message}`);
+    sidecarFiles = [];
+  }
+  for (const f of sidecarFiles) {
+    const rel = `json/feed-sections/${f}`;
+    let sc;
+    try {
+      sc = JSON.parse(fs.readFileSync(path.join(sectionsDir, f), "utf8"));
+    } catch (e) {
+      fail(`${rel} is not parseable JSON: ${e.message}`);
+      continue;
+    }
+    for (const c of Array.isArray(sc.cards) ? sc.cards : []) {
+      sidecarCards += 1;
+      checkCard(c, rel, false);
+      const want = feedCardHasProgramPage(c, programPages);
+      if (c.has_program_page !== want) {
+        fail(
+          `${rel}: ${label(c)} has_program_page=${JSON.stringify(c.has_program_page)} ` +
+            `but its page key ${JSON.stringify(feedProgramKey(c))} names ` +
+            `${want ? "a" : "no"} program_details sidecar — the exporter's ` +
+            `_feed_program_key and feedProgramKey disagree (or the listing moved ` +
+            `after the export); "Show all" would render ` +
+            `${c.has_program_page ? "a dead" : "no"} "view program" link`,
+        );
+      }
+    }
+  }
+
+  // ── rendered /feed/ cards — the link feed/page.tsx decided to render ─────
+  const byType = new Map();
+  for (const c of cards) {
+    if (!byType.has(c.event_type)) byType.set(c.event_type, []);
+    byType.get(c.event_type).push(c);
+  }
+  let rendered = 0;
+  const sections = root
+    .querySelectorAll("section[id]")
+    .filter((el) => (el.getAttribute("id") ?? "").startsWith("feed-"));
+  for (const section of sections) {
+    const etype = (section.getAttribute("id") ?? "").slice("feed-".length);
+    const typeCards = byType.get(etype) ?? [];
+    const els = section.querySelectorAll("[data-feed-card]");
+    if (els.length > typeCards.length) {
+      fail(
+        `/feed/ renders ${els.length} ${etype} card(s) but the shipped feed.json holds ` +
+          `${typeCards.length} — the page and the file were exported apart`,
+      );
+    }
+    els.forEach((el, i) => {
+      const c = typeCards[i];
+      if (!c) return;
+      const at = el
+        .querySelector('[data-source-text="headline"]')
+        ?.getAttribute("data-xml-path");
+      const want = `site:feed/${c.event_type}/${c.pe_bli ?? c.family_key ?? "unknown"}`;
+      if (at !== want) {
+        fail(
+          `/feed/ ${etype} card ${i + 1} renders ${at ?? "no headline anchor"} where ` +
+            `feed.json's card ${i + 1} is ${want} — the page and the shipped feed.json ` +
+            `disagree on order, so this card's link cannot be checked`,
+        );
+        return;
+      }
+      rendered += 1;
+      const hrefs = el
+        .querySelectorAll("a[href]")
+        .map((a) => a.getAttribute("href") ?? "")
+        .filter((h) => h.startsWith("/program/"));
+      const expected =
+        c.program_url && feedCardHasProgramPage(c, programPages)
+          ? [`/program/${feedProgramKey(c)}/`]
+          : [];
+      if (hrefs.join(" ") !== expected.join(" ")) {
+        fail(
+          `/feed/ ${etype} card ${i + 1} (${label(c)}) links ` +
+            `${hrefs.length ? hrefs.join(", ") : "no program page"}; expected ` +
+            `${expected.length ? expected[0] : "none"} — feedProgramKey over the ` +
+            `shipped program_details listing`,
+        );
+      }
+    });
+  }
+  if (rendered === 0) {
+    fail("no rendered /feed/ card was checked — the leg is vacuous");
+  }
+
+  if (errors.length === before) {
+    notes.push(
+      `leg p: ${cards.length} feed.json card(s), ${sidecarCards} section-sidecar card(s) ` +
+        `and ${rendered} rendered card(s) each address one page key on both sides — ` +
+        `${linked} feed.json card(s) link a built /program/{key}/ page, ${memberLinked} ` +
+        `of them a shared code's member page; every has_program_page matches ` +
+        `feedProgramKey over the ${programPages.size}-file program_details listing ✓`,
     );
   }
 }
