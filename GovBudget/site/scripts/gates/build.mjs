@@ -146,7 +146,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // rule the Sprint E entry above established (re-baselining to the CURRENT
   // proportional headroom hands the next change the same cliff): 3,150,000
   // is 6.32% over the raw measurement, 330,000 is 7.05% over the gzip one.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,962,779 / 308,313" },
+  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,962,743 / 308,292" },
   { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "33,170 / 6,685" },
   // Re-baselined 2026-09-01 (FPDS-AP expansion): the crosswalked-PE universe
   // grew 24 → ~186 and the feed derives from it — cards 160 → ~720. Corpus
@@ -160,7 +160,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // feed.json + RSS/Atom) and the ceiling comes DOWN. Provisional
   // ceilings from the expected ≤300-card page; `measured` is updated from
   // the first capped build.
-  { label: "/feed/", file: "feed/index.html", maxRaw: 3_200_000, maxGzip: 150_000, measured: "1,283,071 / 68,686" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 3_200_000, maxGzip: 150_000, measured: "1,283,116 / 68,688" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 1,260,784 / 80,771 -> 1,389,568 / 89,557, breaching both.
   //
@@ -175,7 +175,7 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // ~6% headroom against the new measurement: 1,475,000 is 6.16% over raw,
   // 95,000 is 7.88% over gzip.
-  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,234 / 88,051" },
+  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,234 / 88,003" },
   // RE-MEASURED 2026-09-18 (chain D): 684,005 / 67,188 -> 692,931 / 68,099.
   // The drift leg caught this one: the stale entry claimed 1,812 gzip bytes
   // of headroom where 901 were left. CEILINGS UNCHANGED; nothing trimmed.
@@ -189,7 +189,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // over. The next sentence, label or row added here needs a trim of its own
   // or an owner-ruled raise argued in the same breath — a chain may not
   // raise it.
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "700,649 / 68,999" },
+  // RE-MEASURED 2026-09-25 (chain E, build of 594d1f0c): 700,649 / 68,999 ->
+  // 700,393 / 68,855, the Task 26 fix wave's shorter /companies/ prose. 145
+  // gzip left; the drift leg now fires at about 68,928. CEILINGS UNCHANGED.
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "700,393 / 68,855" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -230,7 +233,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // DISTINCT content: 98 evidence sentences, 154 identity labels, 101 edge
   // descriptions, none of which repeat. No amount of markup tidying reaches
   // 36,000, and removing a citation to fit a ceiling is not on the table.
-  { label: "/lineage/", file: "lineage/index.html", maxRaw: 585_000, maxGzip: 54_500, measured: "540,425 / 50,616" },
+  { label: "/lineage/", file: "lineage/index.html", maxRaw: 585_000, maxGzip: 54_500, measured: "540,425 / 50,611" },
   // Re-baselined 2026-09-01 (FPDS-AP expansion): district universe 41 → 181
   // pages and the index states them all. Same corpus-growth rationale as
   // /feed/ above; ~6% convention over the expansion build's measure.
@@ -250,11 +253,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // rows. The ceiling now sits ~95% raw / ~68% gzip over the measure; it is
   // left there because this wave rewrites the index's link-mechanism
   // sentence — re-base it once a build has weighed that (backlog #145).
-  { label: "/district/", file: "district/index.html", maxRaw: 546_000, maxGzip: 51_000, measured: "279,612 / 30,367" },
+  { label: "/district/", file: "district/index.html", maxRaw: 546_000, maxGzip: 51_000, measured: "279,413 / 30,232" },
   // Re-baselined 2026-09-01: grew +2,319 raw since the ceiling was set via
   // ordinary curated-events/table growth (#10 relabel note, adjudication
   // tier changes), tipping a 159-byte breach. ~6% convention.
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "227,904 / 27,073" },
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "227,973 / 27,082" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 93,911 / 13,340 -> 94,741 / 13,619, and the gate's own run on the
   // pre-fix build read 13,657 against a 13,500 ceiling — over by 157, with 259
@@ -313,7 +316,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // agents mis-measuring this table with the wrong tool; the numbers above
   // are the gate's, read by importing PAGE_WEIGHT_BUDGET and calling its
   // weigh().)
-  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "192,370 / 50,646" },
+  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "192,370 / 50,631" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -519,7 +522,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // New headroom is 87 gzip, and the drift leg below fires about half-way
   // there: at roughly 42,957, only +44 over this stamp. The next sentence
   // needs a same-section trim. No further raise is permitted under R-C-1.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 43_000, measured: "153,970 / 42,913" },
+  // RE-MEASURED 2026-09-25 (chain E, build of 594d1f0c): 153,970 / 42,913 ->
+  // 153,570 / 42,935. The Task 26 fix wave cut 400 raw bytes, yet gzip GREW
+  // by 22 (the wave's simulation predicted -111). 65 gzip left; the drift leg
+  // now fires at about 42,968. CEILING UNCHANGED — R-C-1 is spent.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 43_000, measured: "153,570 / 42,935" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -636,14 +643,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // 4's final build (git_head 71d3e053) weighed this page at 99,824 raw —
   // 1,676 bytes under the restored ceiling. A lowered ceiling, not a raise;
   // maxGzip 20,750 stands.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 20_750, measured: "99,824 / 20,445" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 20_750, measured: "99,824 / 20,450" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
   // overtook it on the index: 183 more programs.
-  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,744 / 120,660 (/agency/N/)" },
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,111,568 / 142,884 (/program/0601102A/)" },
-  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "378,481 / 23,441 (/company/boeing/)" },
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,734 / 120,673 (/agency/N/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,111,532 / 142,888 (/program/0601102A/)" },
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "378,429 / 23,417 (/company/boeing/)" },
   // NEW ENTRY 2026-09-10 (ROADMAP #6 — the by-year table). The district DETAIL
   // class has never been weighed: this file's templated-class list covered
   // /agency/*/, /program/*/, /company/*/ and /filing/*/, and /district/ only
@@ -696,13 +703,16 @@ export const PAGE_WEIGHT_BUDGET = [
     dir: "district",
     maxRaw: 154_000,
     maxGzip: 20_000,
-    measured: "122,480 / 17,377 (/district/VA-11/)",
+    measured: "122,646 / 17,411 (/district/VA-11/)",
     // RE-MEASURED 2026-09-18 (chain D): was 145,449 / 18,356. Same page,
     // same ceilings (154,000 / 20,000); ordinary by-year table growth.
     // RE-MEASURED 2026-09-25 (chain C run 4): 145,568 / 18,413 -> 122,480 /
     // 17,377. Still VA-11. The page got SMALLER: Task 28b stopped embedding
     // each district's citation map in the page. CEILINGS UNCHANGED (the
     // 154,000 / 20,000 INITIAL pair was never raised).
+    // RE-MEASURED 2026-09-25 (chain E, build of 594d1f0c): 122,480 / 17,377
+    // -> 122,646 / 17,411. Still VA-11; the Task 26 fix wave rewrote its
+    // coverage and partial-year notes. CEILINGS UNCHANGED.
   },
   // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
   // needed it, per this file's own rule -- not pre-emptively. Two changes
