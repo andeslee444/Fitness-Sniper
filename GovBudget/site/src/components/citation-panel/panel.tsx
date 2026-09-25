@@ -79,7 +79,7 @@ import {
 } from "@/components/asset-config";
 import { PdfView } from "./pdf-view";
 import { BudgetPdfReceipt } from "./budget-pdf-receipt";
-import { WorkbookCard } from "./workbook-card";
+import { WorkbookCard, WorkbookCellPreview } from "./workbook-card";
 import { LdaCard } from "./lda-card";
 import { DerivedCard } from "./derived-card";
 import { UsaspendingCard } from "./usaspending-card";
@@ -711,10 +711,28 @@ export function parseSubawardBody(raw: string | null): SubawardBody | null {
 
 // ── CitationBody — dispatches to the right card ────────────────────────────
 
+/**
+ * A workbook or derived fact with a verified PDF receipt opens on the PDF
+ * page (the live branch's sitewide source standard); the original evidence
+ * folds into the receipt's collapsed details.
+ *
+ * Integration 2026-09-25 (gate 4): a WORKBOOK fact's cell preview (§P1-9)
+ * does not fold with it. It goes to the receipt as `beside`, rendered in the
+ * open under the PDF page, and the WorkbookCard inside the details skips its
+ * own copy (BesideEvidenceContext). Without a PDF page to lead, the card
+ * shows the preview itself, as it always did. Derived facts have no cell
+ * preview (the sidecar keys workbook citations only), so pass none.
+ */
 function ReceiptEvidence({ citation, factId, children }: { citation: Citation; factId: string | null; children: React.ReactNode }) {
-  return factId && (isWorkbook(citation) || isDerived(citation))
-    ? <BudgetPdfReceipt factId={factId}>{children}</BudgetPdfReceipt>
-    : <>{children}</>;
+  if (!factId || !(isWorkbook(citation) || isDerived(citation))) return <>{children}</>;
+  return (
+    <BudgetPdfReceipt
+      factId={factId}
+      beside={isWorkbook(citation) ? <WorkbookCellPreview factId={factId} /> : undefined}
+    >
+      {children}
+    </BudgetPdfReceipt>
+  );
 }
 
 function CitationBody({

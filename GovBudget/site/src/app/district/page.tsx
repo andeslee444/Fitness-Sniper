@@ -13,6 +13,7 @@ import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
 import { DistrictTable } from "@/components/district-table";
 import { FyRange } from "@/components/fy-range";
+import styles from "./district-directory.module.css";
 
 // Grouped through the shared count formatter — "17 of 1,741", never
 // "17 of 1741" (fix round: the page mixed both notations against the
@@ -86,7 +87,12 @@ export default function DistrictIndexPage() {
             the redesign's "have documented budget-to-award links" named the
             wrong set (~100 more elements carry high-confidence links whose
             awards record no place of performance). */}
+        {/* Below `sm` the masthead is tightened and the stat tiles become one
+            ledger (district-directory.module.css), so the first district row
+            is inside the 390x844 fold (gate 16, index-fold leg). Every
+            sentence and figure stays where it was. */}
         <PageIntro eyebrow="Local connections" title="Follow the evidence to your district."
+          className={styles.intro}
           description="Find the programs connected to a place through documented defense contract awards."
           actions={<><a href="#district-directory">Find a district</a><Link href="/coverage/#crosswalk">How programs connect to awards</Link></>}>
           <h2 className="sr-only">Congressional Districts</h2>
@@ -118,16 +124,16 @@ export default function DistrictIndexPage() {
               formatter. Each card now states its universe; the
               reconciliation paragraph under the table states the relationship
               in one sentence. */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm mb-2">
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="t-figure t-figure--5">
+          <div className={`grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm mb-2 ${styles.stats}`}>
+            <div className={`rounded-lg border border-border bg-card p-4 ${styles.tile}`}>
+              <p className={`t-figure t-figure--5 ${styles.tileFigure}`}>
                 {index.total_districts}
               </p>
-              <p className="text-muted-foreground text-xs mt-1">
+              <p className={`text-muted-foreground text-xs mt-1 ${styles.tileLabel}`}>
                 districts with at least one crosswalked program
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className={`rounded-lg border border-border bg-card p-4 ${styles.tile}`}>
               {/* §P1-6: was a hand-rolled `(total / 1e9).toFixed(1)}B` that
                   bypassed the shared ladder entirely. The no-currency
                   formatter is still the right one — a bare '$…' outside a
@@ -142,18 +148,18 @@ export default function DistrictIndexPage() {
                   the compact magnitude — and the only visible difference left
                   between them is the cited card's underline and its chip,
                   which is a real difference (see the reconciliation line). */}
-              <p className="t-figure t-figure--5">
+              <p className={`t-figure t-figure--5 ${styles.tileFigure}`}>
                 <span data-figure-suffix className="align-baseline">USD </span>
                 {formatAmountNoCurrency(totalLinkable, "USD")}
               </p>
-              <p className="text-muted-foreground text-xs mt-1">
+              <p className={`text-muted-foreground text-xs mt-1 ${styles.tileLabel}`}>
                 linkable to a budget program, in these{" "}
                 {index.total_districts} districts <FyRange separator="· " />
               </p>
             </div>
             {index.geo_grand_total !== null && (
-              <div className="rounded-lg border border-border bg-card p-4">
-                <p className="t-figure t-figure--5">
+              <div className={`rounded-lg border border-border bg-card p-4 ${styles.tile}`}>
+                <p className={`t-figure t-figure--5 ${styles.tileFigure}`}>
                   {/* Same notation as the middle card (see its note): "USD"
                       outside the [data-amount] span at the same size, the
                       magnitude inside it. `display` re-notates the SAME value
@@ -174,7 +180,7 @@ export default function DistrictIndexPage() {
                     rendered "$3657.4B" with no period beside an "8.0B" card,
                     which reads as one year's spending. Both now carry the
                     derived range. */}
-                <p className="text-muted-foreground text-xs mt-1">
+                <p className={`text-muted-foreground text-xs mt-1 ${styles.tileLabel}`}>
                   awarded across <strong>every</strong> U.S. district, linked
                   to a program or not <FyRange separator="· " />
                 </p>
@@ -221,7 +227,11 @@ export default function DistrictIndexPage() {
               845550 and 9140MA7804 have district rows but no positive linked
               obligation at any of them, so they appear on district pages yet
               draw no view (the exporter writes a sidecar only for a positive
-              one). */}
+              one).
+              Integration 2026-09-25 (R-INT-7): the reason sat between two
+              em dashes (gate 27 leg 13, VOICE.md rule 14). It is now its own
+              sentence after the claim it supports, 4 characters shorter, so
+              the 390px fold (gate 16) cannot lose a line to it. */}
           <p>
             District data reflects only high-confidence award crosswalk
             links. A budget line earns one only where more than an account
@@ -234,8 +244,8 @@ export default function DistrictIndexPage() {
             </Link>{" "}
             says what does. {_unlinkedCount} of {_programsCount} program
             elements have no follow-the-dollar view. That is a limit of what
-            the award records contain — one appropriation account funds dozens
-            to hundreds of program elements — and not a queue position.
+            the award records contain, not a queue position. One appropriation
+            account funds dozens to hundreds of program elements.
           </p>
         </ScopeNote>
         {index.geo_grand_total !== null && (

@@ -347,7 +347,7 @@ rates or published subtotals — rather than directly reported in a source
 document — is labeled as derived wherever it appears.
 
 **Contractor concentration is computed on two bases and published on one.**
-Both bases — high-confidence links alone, and every published link — share one
+Both bases (high-confidence links alone, and every published link) share one
 crosswalk and ship in the downloadable warehouse with derived citations; a
 program page shows only the high-confidence figures, which it and the warehouse
 carry only over at least three such awards across two or more contractor

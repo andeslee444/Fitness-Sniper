@@ -19,6 +19,8 @@ import { CompanyName } from "@/components/company-name";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 
+import styles from "./families.module.css";
+
 /**
  * /companies/families/ — the curated rename & acquisition table (§P1-3).
  *
@@ -107,11 +109,9 @@ export function secAccession(url: string): string | null {
  * the real header row is doing the job.
  */
 function MobileFieldLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="t-label sm:hidden mr-1.5">
-      {children}
-    </span>
-  );
+  // Its `sm:hidden mr-1.5` live in families.module.css (it is each cell's
+  // first child): five labels a row, shipped twice (HTML and RSC payload).
+  return <span className="t-label">{children}</span>;
 }
 
 const EVENT_LABEL: Record<string, string> = {
@@ -233,7 +233,10 @@ export default function CompanyFamiliesPage() {
             data-external-source and data-source-form all stay on their own
             nodes. */}
         <div className="mb-2 overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm" data-family-events-table>
+          <table
+            className={`w-full text-sm ${styles.events}`}
+            data-family-events-table
+          >
             <caption className="sr-only">
               Curated corporate renames, acquisitions and mergers, newest first.
               Each row links its official source and states which contractor
@@ -267,16 +270,13 @@ export default function CompanyFamiliesPage() {
                   id={event.anchor}
                   data-family-event={family.slug}
                   data-changed-families={event.changed_family_keys.join("|")}
-                  className="block sm:table-row align-top border-b border-border last:border-0 sm:border-0 py-2 sm:py-0 hover:bg-muted/40 transition-colors target:bg-primary/10 scroll-mt-24"
                 >
-                  <td
-                    role="cell"
-                    className="block sm:table-cell px-4 pt-3 pb-1 sm:py-3 whitespace-nowrap tabular-nums text-muted-foreground"
-                  >
+                  {/* Row and cell classes: families.module.css (`.events`). */}
+                  <td role="cell">
                     <MobileFieldLabel>Effective</MobileFieldLabel>
                     {event.effective_date}
                   </td>
-                  <td role="cell" className="block sm:table-cell px-4 py-1 sm:py-3">
+                  <td role="cell">
                     <MobileFieldLabel>From</MobileFieldLabel>
                     <span className="font-medium text-foreground">
                       {event.from_name}
@@ -287,7 +287,7 @@ export default function CompanyFamiliesPage() {
                       </span>
                     )}
                   </td>
-                  <td role="cell" className="block sm:table-cell px-4 py-1 sm:py-3">
+                  <td role="cell">
                     <MobileFieldLabel>To</MobileFieldLabel>
                     <span className="font-medium text-foreground">
                       {event.to_name}
@@ -325,10 +325,7 @@ export default function CompanyFamiliesPage() {
                       )}
                     </span>
                   </td>
-                  <td
-                    role="cell"
-                    className="block sm:table-cell px-4 py-1 sm:py-3 text-muted-foreground"
-                  >
+                  <td role="cell">
                     <MobileFieldLabel>Event</MobileFieldLabel>
                     <span className="whitespace-nowrap">
                       {EVENT_LABEL[event.event] ?? event.event}
@@ -343,7 +340,7 @@ export default function CompanyFamiliesPage() {
                       </span>
                     )}
                   </td>
-                  <td role="cell" className="block sm:table-cell px-4 pt-1 pb-3 sm:py-3">
+                  <td role="cell">
                     <MobileFieldLabel>Source</MobileFieldLabel>
                     {/* EXTERNAL reference — deliberately not a Cite chip. It
                         now names the FORM and its date, because "SEC filing"

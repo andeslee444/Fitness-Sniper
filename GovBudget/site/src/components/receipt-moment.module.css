@@ -64,13 +64,21 @@
    not on the page (round-7). Two gate-held details: the font must not
    drop below the 12px Fact-ID chip it carries (gate 6 leg (e-iv): the
    chip may not be larger than its figure — 11.52px vs 12px failed), and
-   the measure is capped at --measure (54ch) because the sentence plus its
-   hidden chip text measured ~101 characters per line against the spine
-   gate's 80-char WCAG 1.4.8 ceiling. */
+   the measure is capped because the sentence plus its hidden chip text
+   measured ~101 characters per line against the spine gate's 80-char
+   WCAG 1.4.8 ceiling.
+
+   The cap is 54ch here, not var(--measure). --measure was 54ch when that
+   was written; the type system has since set it to 60ch, which is 358px at
+   this 12px size. The spine leg counts the hidden chip's 30 characters, so
+   on the chain-F build (2026-09-25) this block measured 81 cpl at 1440 and
+   1920. At 54ch (308px) it measures 70 cpl at 390, 1024, 1440 and 1920,
+   still on two lines, and the receipt's height does not change. min() keeps
+   the note from ever running wider than the site measure. */
 .receiptNote {
   order: 4;
   margin-top: .45rem;
-  max-width: var(--measure);
+  max-width: min(var(--measure), 54ch);
   font-size: var(--text-label);
   line-height: 1.65;
   color: var(--rm-dim, var(--stage-muted-ink));

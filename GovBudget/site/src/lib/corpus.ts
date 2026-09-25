@@ -347,8 +347,13 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
       // now states the exporter's condition ("obligated", i.e. money put on
       // the award there), 9 characters longer — paid for elsewhere on
       // /coverage/ in the same wave.
+      //
+      // Integration 2026-09-25 (R-INT-7): "a place" is gate 27 leg 11's
+      // marketing-deck "one place / a place" pattern. "recorded" names the
+      // exporter's other condition (pop_district is not null), so the
+      // definition got more exact, not vaguer.
       counts:
-        "Elements with a high-confidence award obligated at a place of performance.",
+        "Elements with a high-confidence award obligated at a recorded place of performance.",
     },
     {
       id: "district-linkable-unbridged",

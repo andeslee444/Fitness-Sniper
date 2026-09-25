@@ -34,13 +34,21 @@
  *      site figures. The cited value's Cite is the figure the reader clicked
  *      to get here. (Gate 2's currency scan reads static HTML only; the
  *      drawer is client-rendered, and these numerals carry no '$'.)
+ *      PLACEMENT (integration 2026-09-25, gate 4): when the fact has a
+ *      verified PDF receipt, the panel opens on the PDF page and this card
+ *      folds into the receipt's collapsed "Spreadsheet downloads &
+ *      calculation details" — which hid the preview. The panel now hands
+ *      <WorkbookCellPreview> to the receipt as `beside`, rendered in the open
+ *      under the PDF page, and this card skips its own copy whenever
+ *      BesideEvidenceContext says it is shown there (or still being placed).
+ *      One preview on screen, visible, whichever evidence leads.
  *  (5) The card no longer renders its own "Official source" link — the panel
  *      footer owns the single copy.
  *  (6) The full SHA-256 gains a copy control — in the footer, beside the
  *      truncated hash it fixes (panel.tsx).
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import type { WorkbookCitation } from "@/lib/data";
 import { usdEquivalence } from "@/lib/format";
 import {
@@ -59,6 +67,7 @@ import {
   type WorkbookPreview,
   type WorkbookPreviewRow,
 } from "@/lib/workbook-cells";
+import { BesideEvidenceContext } from "./budget-pdf-receipt";
 
 interface WorkbookCardProps {
   citation: WorkbookCitation;
@@ -174,6 +183,9 @@ export function CellRef({ cell }: { cell: string }) {
 
 export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
   const preview = useWorkbookPreview(factId);
+  // "inline" everywhere except inside a PDF receipt that shows the preview
+  // beside its PDF page ("beside") or is still resolving ("pending").
+  const previewPlacement = useContext(BesideEvidenceContext);
   // §48: derived from THIS citation's own sheet locator, not a program
   // lookup — see amountBasisLine's doc comment.
   const basisLine = amountBasisLine(figure, exhibitFamilyFromSheet(citation.sheet));
@@ -278,17 +290,12 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
         <ArithmeticLine preview={preview} />
       )}
 
-      {/* (2) The cited cells, in their neighbourhood. */}
-      {preview ? (
-        <PreviewTable preview={preview} />
-      ) : preview === null && factId ? (
-        <p
-          data-testid="workbook-preview-unavailable"
-          className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
-        >
-          {"couldn't load the cell preview — download the workbook to see the cells in place"}
-        </p>
-      ) : null}
+      {/* (2) The cited cells, in their neighbourhood — here, unless a PDF
+          receipt shows them in the open under its page (BesideEvidenceContext;
+          the panel's `beside` renders <WorkbookCellPreview> there). */}
+      {previewPlacement === "inline" && (
+        <PreviewBlock preview={preview} factId={factId} />
+      )}
 
       {/* The saved file is byte-verified and named for its budget edition. */}
       <WorkbookDownload
@@ -299,6 +306,44 @@ export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
       />
     </div>
   );
+}
+
+/**
+ * The cell preview, or the honest fallback: the table once the sidecar row
+ * resolves, the explicit "preview unavailable" note when it resolves to
+ * nothing, and nothing at all while it is still loading.
+ */
+function PreviewBlock({
+  preview,
+  factId,
+}: {
+  preview: WorkbookPreview | null | undefined;
+  factId: string | null | undefined;
+}) {
+  if (preview) return <PreviewTable preview={preview} />;
+  if (preview === null && factId) {
+    return (
+      <p
+        data-testid="workbook-preview-unavailable"
+        className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
+      >
+        {"couldn't load the cell preview — download the workbook to see the cells in place"}
+      </p>
+    );
+  }
+  return null;
+}
+
+/**
+ * A workbook fact's cell preview on its own — what the panel hands a PDF
+ * receipt as `beside`, so the cited cells stay in the open under the PDF
+ * page while the rest of the WorkbookCard folds into the receipt's details.
+ * Same sidecar, same table, same fallback as the card's own copy; the shard
+ * fetch is shared through lib/workbook-cells' cache (one request per shard).
+ */
+export function WorkbookCellPreview({ factId }: { factId: string }) {
+  const preview = useWorkbookPreview(factId);
+  return <PreviewBlock preview={preview} factId={factId} />;
 }
 
 /**

@@ -1,0 +1,52 @@
+/* /district/ below `sm` (40rem): the index-fold leg of gate 16 requires the
+   first district ROW to start inside the initial 390x844 viewport.
+
+   The 2026-09-25 integration put the editorial masthead (eyebrow, title,
+   description, actions) above this page's lede and three stat tiles. At
+   390px the tiles stacked two-then-one, 150px and 166px tall, because each
+   universe label wrapped to four lines in a 171px card. The first row landed
+   at 938px, 94px below the fold (chain F).
+
+   Nothing moves and nothing is cut. Below `sm` the three tiles become three
+   rows of one bordered ledger: the figure on the left and its universe label
+   on the right. The figure uses --fig-4, the ladder's summary-tile step. The
+   masthead's bottom spacing is tightened the way /companies/ tightens it.
+   The figure column is 7.25rem. The widest figure, "USD 503.5B", is 105px at
+   22px, and 7.25rem is 116px. A tile's fact-id chip wraps under its figure.
+
+   Measured 2026-09-25 on a dev render of this page: at 390x844 the first
+   row starts at 776px (938px on the chain-F build). At 1440x900 it stays at
+   744px, because none of these rules apply at `sm` and up. */
+@media (width < 40rem) {
+  .intro[data-page-intro] {
+    padding-bottom: .75rem;
+    margin-bottom: 1rem;
+  }
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin-bottom: 0;
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+    background: var(--card);
+  }
+  .tile {
+    display: grid;
+    grid-template-columns: 7.25rem minmax(0, 1fr);
+    column-gap: .75rem;
+    align-items: baseline;
+    padding: .5rem .75rem;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .tile + .tile {
+    border-top: 1px solid var(--border);
+  }
+  .tileFigure {
+    font-size: var(--fig-4);
+  }
+  .tileLabel {
+    margin-top: 0;
+  }
+}

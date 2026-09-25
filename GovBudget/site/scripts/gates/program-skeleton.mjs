@@ -39,7 +39,10 @@
  *     states dollars ONLY on the award tier, and — where it names companies
  *     from lobbying filings — reads as a fixed sentence that puts the absence
  *     of a contract before the names, on evidence tiers strong enough to name
- *     anyone (tri-persona Wave 3) — see leg j's own block at the bottom.
+ *     anyone (tri-persona Wave 3). An honest absence on a page with award
+ *     records links them (#program-awards, with the sidecar's own count),
+ *     and a below-floor absence states the SQL's floor word for word
+ *     (integration 2026-09-25) — see leg j's own block at the bottom.
  * (k) A decade-only page (ROADMAP #28: cited pre-PB2026 history, no FY2026
  *     workbook line at all) states its absence, states it about the record
  *     that is actually blank, and states nothing the page itself contradicts
@@ -77,6 +80,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { checkFamilyHistory, checkFamilyHistoryAssets } from "./family-history.mjs";
+import { readConcentrationFloor, withheldFloorClause } from "./concentration-floor.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -2951,6 +2955,62 @@ const WHO_NAME_EVIDENCE = new Set(["pe_literal", "alias"]);
 const WHO_LOBBY_TEMPLATE =
   /^No contract award is linked to this line\.\s+Lobbying — not a contract\s+(.+?) named this program in Senate lobbying filings\.\s+See the filings/;
 
+/**
+ * A "none"-tier answer on a page whose sidecar lists award records
+ * (codex/f15-family-browser's contract, kept by the integration of
+ * 2026-09-25): it may not deny the links, and — stating no recipient total —
+ * it must link to the page's own award records. The integration tightened
+ * the link half: the link's target (#program-awards) must exist on the page,
+ * and the count it states must be the sidecar's own number of award records
+ * (LinkedAwardRecordsLink, src/components/recipient-summary-gap.tsx, is its
+ * only producer). Exported for __tests__/answer-who-records.test.mjs.
+ *
+ * @returns {string[]} problems, each a message suffix after "/program/{slug}/ "
+ */
+export function checkNoneTierAwardRecords({ tierEl, card, pageHtml, awardCount }) {
+  const problems = [];
+  const text = (tierEl.text || "").replace(/\s+/g, " ");
+  if (/No company is linked|No contract award is linked/i.test(text)) {
+    problems.push(`denies award links despite ${awardCount} linked records`);
+  }
+  const links = card.querySelectorAll('a[href="#program-awards"]');
+  if (links.length === 0) {
+    problems.push("missing recipient total must link to its award records");
+    return problems;
+  }
+  if (!/\bid="program-awards"/.test(pageHtml)) {
+    problems.push("links #program-awards, but the page renders no element with that id");
+  }
+  const stated = links
+    .map((a) => (a.text || "").replace(/\s+/g, " ").trim())
+    .map((t) => t.match(/^(\d[\d,]*) linked award records? (?:is|are) listed below$/))
+    .filter(Boolean)
+    .map((m) => Number(m[1].replace(/,/g, "")));
+  if (!stated.includes(awardCount)) {
+    problems.push(
+      `award-records link states ${stated.length ? stated.join("/") : "no count"} — the ` +
+        `sidecar lists ${awardCount} award record(s), so the sentence is false`,
+    );
+  }
+  return problems;
+}
+
+/**
+ * A below-floor answer (#80) states the mart's floor, word for word. The
+ * SWC-minifier fold that printed "at least 32 contractor families" on every
+ * such page of build 42eed1e4 passed every source-level test; this reads the
+ * built text against the SQL (concentration-floor.mjs). Returns a problem
+ * suffix or null. Exported for __tests__/answer-who-records.test.mjs.
+ */
+export function checkWithheldFloorSentence(text, floor) {
+  const flat = (text || "").replace(/\s+/g, " ");
+  if (!/do not clear the floor/.test(flat)) return null;
+  const clause = withheldFloorClause(floor);
+  return flat.includes(clause)
+    ? null
+    : `states the concentration floor wrongly — expected "${clause}" (fct_program_concentration.sql)`;
+}
+
 /** Parse a bounded fragment, then return only the recipient card element. */
 export function answerWhoCard(html) {
   const at = html.indexOf('data-testid="answer-who"');
@@ -2973,11 +3033,21 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
     if (problems.n <= 8) errors.push(msg);
   };
 
+  let floor = null;
+  try {
+    floor = readConcentrationFloor();
+  } catch (e) {
+    errors.push(`program-skeleton(j): cannot read the concentration floor — ${e.message}`);
+  }
+  let recordLinks = 0;
+  let floorSentences = 0;
+
   for (const [slug, d] of sidecars) {
     if (d?.summary?.lobbied_by) payloadLobbying.add(slug);
     const p = pageHtmlPath(slug);
     if (!fs.existsSync(p)) continue;
-    const root = answerWhoCard(fs.readFileSync(p, "utf8"));
+    const pageHtml = fs.readFileSync(p, "utf8");
+    const root = answerWhoCard(pageHtml);
     if (root === null) {
       // A split-key stub renders no answer strip; a real program page must.
       if (d) fail(`program-skeleton(j): /program/${slug}/ has no [data-testid="answer-who"]`);
@@ -3000,13 +3070,19 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
     census[tier] += 1;
 
     if (tier === "none" && (d?.awards?.length ?? 0) > 0) {
-      const text = (tierEls[0].text || "").replace(/\s+/g, " ");
-      if (/No company is linked|No contract award is linked/i.test(text)) {
-        fail(`program-skeleton(j): /program/${slug}/ denies award links despite ${d.awards.length} linked records`);
-      }
-      if (!root.querySelector('a[href="#program-awards"]')) {
-        fail(`program-skeleton(j): /program/${slug}/ missing recipient total must link to its award records`);
-      }
+      const problems = checkNoneTierAwardRecords({
+        tierEl: tierEls[0],
+        card: root,
+        pageHtml,
+        awardCount: d.awards.length,
+      });
+      for (const problem of problems) fail(`program-skeleton(j): /program/${slug}/ ${problem}`);
+      if (problems.length === 0) recordLinks += 1;
+    }
+    if (tier === "none" && floor) {
+      const problem = checkWithheldFloorSentence(tierEls[0].text, floor);
+      if (problem) fail(`program-skeleton(j): /program/${slug}/ ${problem}`);
+      else if (/do not clear the floor/.test(tierEls[0].text || "")) floorSentences += 1;
     }
 
     // (2) money only where awards are
@@ -3105,7 +3181,9 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
     `leg j: ${checked} WHO GETS IT card(s) checked — award ${census.award}, ` +
       `J-book ${census.jbook}, lobbying ${census.lobbying}, honest absence ` +
       `${census.none}; every non-award tier states no dollars and every named ` +
-      `company is ${[...WHO_NAME_EVIDENCE].join("/")}-tier`,
+      `company is ${[...WHO_NAME_EVIDENCE].join("/")}-tier; ${recordLinks} honest-absence ` +
+      `answer(s) on pages with award records link #program-awards with the sidecar's own ` +
+      `count; ${floorSentences} below-floor answer(s) state the SQL floor word for word`,
   );
 }
 

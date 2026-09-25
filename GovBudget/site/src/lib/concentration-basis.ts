@@ -148,12 +148,20 @@ export function concentrationHeadline(h: ProgramHHI): ConcentrationHeadline {
  * across 17 high links). The rule below is true on every withheld page by
  * construction, because it is the mart's floor
  * (dbt/models/marts/fct_program_concentration.sql) and nothing else.
+ *
+ * ONE TEMPLATE LITERAL, ON PURPOSE (integration 2026-09-25). It used to be
+ * four templates joined by `+`, and the SWC minifier Next 16.2.9 ships folds
+ * `…at least ${3} awards across ` + `${2} contractor…` into "…at least 32
+ * contractor…" — it drops the tail after the first template's last constant
+ * expression when the next template also carries one. The source (and every
+ * unit test, which imports the source) read correctly while all 472 withheld
+ * pages of build 42eed1e4 printed "at least 32 contractor families". Do not
+ * split this string back into `+`-joined templates; gate 14's
+ * feed-publication leg and gate 21 leg (j) read the BUILT sentence against
+ * the SQL floor (scripts/gates/concentration-floor.mjs), and
+ * concentration-basis-minified.test.ts runs the minifier over this file.
  */
-export const CONCENTRATION_WITHHELD_REASON =
-  `This line's high-confidence links do not clear the floor for a published ` +
-  `concentration index — at least ${HIGH_ONLY_MIN_AWARDS} awards across ` +
-  `${HIGH_ONLY_MIN_FAMILIES} contractor families holding positive ` +
-  `obligations, with positive net linked dollars.`;
+export const CONCENTRATION_WITHHELD_REASON = `This line's high-confidence links do not clear the floor for a published concentration index — at least ${HIGH_ONLY_MIN_AWARDS} awards across ${HIGH_ONLY_MIN_FAMILIES} contractor families holding positive obligations, with positive net linked dollars.`;
 
 /**
  * What the "Who gets it" answer strip leads with when the index is withheld
@@ -200,8 +208,11 @@ export const WHO_GETS_IT_WITHHELD_LEAD =
  *   - THIS member is one of the linked ones, so this page renders its own
  *     Related Awards table below.
  * Nothing here counts this line's links or names a number: no dollars, no
- * award count, no leader — gate 21 leg (j) allows a non-award tier none of
- * those, and #80 fix round 2 showed that a count is exactly what goes false.
+ * link count, no leader — #80 fix round 2 showed that a count of the line's
+ * links is exactly what goes false. (Integration ruling R-INT-8, 2026-09-25:
+ * the page separately states how many award records its own Related Awards
+ * table lists, via LinkedAwardRecordsLink; that count is of this page's rows,
+ * and gate 21 leg (j) checks it against the page's sidecar.)
  * "More than one", never "two": '30' is shared by THREE programs.
  *
  * A RULE ON LINKS, NOT A FINDING ABOUT MONEY (Task 28 fix round 2). The test

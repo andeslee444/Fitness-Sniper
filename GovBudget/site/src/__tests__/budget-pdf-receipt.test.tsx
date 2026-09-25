@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { BudgetPdfReceipt } from "@/components/citation-panel/budget-pdf-receipt";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { BudgetPdfReceipt, BesideEvidenceContext } from "@/components/citation-panel/budget-pdf-receipt";
 import { fetchBudgetPdfReceipt, type BudgetPdfPart, type BudgetPdfReceipt as Receipt } from "@/lib/budget-pdf-receipts";
 vi.mock("@/lib/budget-pdf-receipts", () => ({ fetchBudgetPdfReceipt: vi.fn() }));
 vi.mock("@/components/citation-panel/pdf-view", () => ({ PdfView: ({citation}: {citation: BudgetPdfPart}) => <div data-testid="rendered-pdf">{citation.workbook_cell}:{citation.amount_text}</div> }));
@@ -75,4 +75,53 @@ it("links a continued row to its source heading and labels reserve components wi
   expect(choices).not.toHaveTextContent("Line");
   fireEvent.click(screen.getByRole("button", { name: /National Guard/ }));
   expect(screen.queryByRole("link", { name: /Program heading/ })).not.toBeInTheDocument();
+});
+
+// Integration 2026-09-25 (gate 4): `beside` evidence — the panel hands a
+// workbook fact's §P1-9 cell preview here so it stays on screen under the PDF
+// page while the rest of the spreadsheet evidence folds into the details.
+function Placement() { return <span data-testid="placement">{React.useContext(BesideEvidenceContext)}</span>; }
+it("keeps `beside` evidence in the open under the PDF page while the children fold into the details", async () => {
+  vi.mocked(fetchBudgetPdfReceipt).mockResolvedValue(receipt);
+  render(<BudgetPdfReceipt factId="1234567890abcdef" beside={<p>Cell preview</p>}><p>Original spreadsheet evidence</p><Placement /></BudgetPdfReceipt>);
+  await screen.findByTestId("budget-pdf-receipt");
+  const beside = screen.getByText("Cell preview");
+  expect(beside).toBeVisible();
+  expect(beside.closest("details")).toBeNull();
+  expect(screen.getByTestId("rendered-pdf").compareDocumentPosition(beside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByText("Original spreadsheet evidence").closest("details")).not.toHaveAttribute("open");
+  expect(screen.getByTestId("placement")).toHaveTextContent("beside");
+});
+it("places nothing beside while the receipt resolves, and leaves the children their own copy when none exists", async () => {
+  let settle: (r: Receipt | null) => void = () => {};
+  vi.mocked(fetchBudgetPdfReceipt).mockReturnValue(new Promise(done => { settle = done; }));
+  render(<BudgetPdfReceipt factId="1234567890abcdef" beside={<p>Cell preview</p>}><p>Spreadsheet evidence</p><Placement /></BudgetPdfReceipt>);
+  expect(screen.getByTestId("placement")).toHaveTextContent("pending");
+  expect(screen.getByText("Spreadsheet evidence")).toBeVisible();
+  expect(screen.queryByText("Cell preview")).not.toBeInTheDocument();
+  await act(async () => settle(null));
+  expect(screen.getByTestId("placement")).toHaveTextContent("inline");
+  expect(screen.queryByText("Cell preview")).not.toBeInTheDocument();
+});
+it("leaves the children their own copy when no exact printed amount was verified", async () => {
+  vi.mocked(fetchBudgetPdfReceipt).mockResolvedValue({ ...receipt, complete: false, unmatched_count: 1, parts: [] });
+  render(<BudgetPdfReceipt factId="1234567890abcdef" beside={<p>Cell preview</p>}><Placement /></BudgetPdfReceipt>);
+  expect(await screen.findByRole("status")).toHaveTextContent("exact printed amount has not been verified");
+  expect(screen.getByTestId("placement")).toHaveTextContent("inline");
+  expect(screen.queryByTestId("receipt-beside")).not.toBeInTheDocument();
+});
+it("settles a failed lookup as no receipt instead of waiting forever", async () => {
+  // ...Once: this file's beforeEach returns the mock, which vitest also calls as an afterEach teardown.
+  vi.mocked(fetchBudgetPdfReceipt).mockRejectedValueOnce(new Error("offline"));
+  render(<BudgetPdfReceipt factId="1234567890abcdef" beside={<p>Cell preview</p>}><p>Spreadsheet evidence</p><Placement /></BudgetPdfReceipt>);
+  await waitFor(() => expect(screen.getByTestId("placement")).toHaveTextContent("inline"));
+  expect(screen.getByText("Spreadsheet evidence")).toBeVisible();
+});
+it("without `beside`, the children keep their own copy in every state", async () => {
+  vi.mocked(fetchBudgetPdfReceipt).mockResolvedValue(receipt);
+  render(<BudgetPdfReceipt factId="1234567890abcdef"><Placement /></BudgetPdfReceipt>);
+  expect(screen.getByTestId("placement")).toHaveTextContent("inline");
+  await screen.findByTestId("budget-pdf-receipt");
+  expect(screen.getByTestId("placement")).toHaveTextContent("inline");
+  expect(screen.queryByTestId("receipt-beside")).not.toBeInTheDocument();
 });

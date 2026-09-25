@@ -234,9 +234,23 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   exactly that member's appropriation; a refused narrative publishes on
   neither member and is counted in the #82 census print. Measured
   2026-09-25, it refuses none of the 40 PB2026 narratives on the 10
-  account-split codes. The merged crosswalk is
-  `roadmap-completion-2026-09-05`'s (#78, #85 and #86 carry dated integration
-  lines; the live branch's ambiguous-account abort was not carried, #170, and
+  account-split codes. A seventh, **R-INT-7** (#175), holds gate 27 (copy),
+  the live branch's voice lint, to no regression against production.
+  Production's own build fails it (1,049 hits on 81929a6b's build, measured
+  2026-09-25). Every integration hit that production's build also carries
+  (same page, leg and text) is exempted through the gate's
+  `copy-allowlist.json` (584 entries, 1,025 hits); of the 9 hits
+  production's build does not carry, 7 were reworded at their source and 2
+  were marked as what they are rather than reworded (a registrant's legal
+  name as data on its filing page, snake_case column names as code on
+  /downloads/), so the gate's existing skip rules apply. An eighth,
+  **R-INT-8** (#80/#82), lets a program's WHO answer that withholds a leader
+  state how many award records the same page's Related Awards table lists
+  ("N linked award records are listed below.", the live branch's link) — a
+  count of this page's rows, bound by gate 21 leg (j) to the page's sidecar,
+  not the count of the line's links that #80 fix round 2 found goes false.
+  The merged crosswalk is `roadmap-completion-2026-09-05`'s (#78, #85 and #86 carry
+  dated integration lines; the live branch's ambiguous-account abort was not carried, #170, and
   neither was its detail-token scoping, #171). The live branch's backlog
   #89–#92 are renumbered #166–#169 (the note above #166). The other session
   is not running; its work is committed (81929a6b, the tip of
@@ -3268,6 +3282,47 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   (the controller's recommendation under the owner's delegation, 2026-09-25:
   "Built <date>"), which the decisions wave implements after the integration
   deploy. Source: `docs/methodology.md`. Effort: hours.
+  **Status:** open (2026-09-25).
+
+- **#175 Gate 27 (copy) ships red in production; the integration exempts
+  only production's pre-existing hits (R-INT-7).** Gate 27
+  (`site/scripts/gates/copy.mjs`, the live branch's VOICE.md lint from
+  93bda149) was run unchanged against production's build (the main
+  checkout's `site/out`, `git_head` 81929a6b) on 2026-09-25. It fails with
+  1,049 hits on 146 sampled pages (897 distinct page, leg and text
+  triples). Hits per leg: 1 (invitation verb) 333; 2 (dive / glance / one
+  place) 23; 3 (tricolon) 22; 5 (fragment stack) 9; 7 ("follow the money")
+  1; 8 ("a different way into") 1; 9 (marketing adjective) 5; 11
+  (marketing-deck arc) 2; 13 (em-dash pile-up) 31; 14 (question heading) 1;
+  15 (arrows) 3; 16 (second person) 6; 18 (pointer verb) 171; 21 (bare
+  "family") 2; 23 (serial comma) 87; 29 (Title Case h2/h3) 169; 31 (exposed
+  enum) 8; 36 (second spelling of a fixed action) 150; 38 (program meta
+  title shape) 25. The integration build (2026-09-25) carried 1,038 hits
+  before its copy fix. Nine were not in production's build, on /coverage/,
+  /district/, /methodology/, /downloads/, one filing page and three program
+  pages: seven were reworded at their source, and two were marked as what
+  they are, words unchanged — the registrant's legal name on the filing page
+  carries `data-copy-slot="data"`, and the /downloads/ column names render as
+  `<code>`, which also cleared four of production's leg-31 hits on that
+  page. The 1,025 hits left are all in production's build under the
+  same page, leg and text. `site/scripts/gates/copy-allowlist.json` exempts
+  them in 584 entries: 582 name one page, and 2 use `"*"` for the header and
+  footer strings "Explore" (leg 1, 292 hits) and "Visual field guide"
+  (leg 36, 147 hits). Two hazards in the allowlist's matching: an entry
+  matches any hit on its page and leg whose text CONTAINS the entry's text, so
+  the `"*"` "Explore" entry lets every leg-1 text containing "Explore"
+  through on every page until it goes; and the per-page entries on templated
+  pages follow the gate's sample (the first 25 pages per template, in sorted
+  directory order), so a data change that shifts the sample fails the gate on
+  stale entries and new hits. Re-run the production comparison when that
+  happens; never widen an entry to `"*"`. VOICE.md already names the fix for
+  both sitewide strings ("Conflicts resolved" 1 and 2: "Explore" becomes
+  "Budget" or "Field guide", and "Visual field guide" becomes "Field
+  guide"). Burn-down: fix each string per VOICE.md in `site/src/lib/copy.ts`
+  or its component, and delete its allowlist entry in the same commit. The
+  gate fails on any entry that matches nothing, so no entry can outlive its
+  string. Do the two `"*"` entries first. Source: the integration's
+  copy-gate report (`gatefix-copy.md`, the branch ledger). Effort: days.
   **Status:** open (2026-09-25).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now

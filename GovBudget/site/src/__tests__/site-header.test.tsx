@@ -1,4 +1,5 @@
 import React from "react";
+import { renderToString } from "react-dom/server";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SiteHeader } from "@/components/site-header";
@@ -24,6 +25,23 @@ describe("site navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close all sections" }));
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Show fact IDs" })).toHaveLength(1));
     expect(screen.getByRole("button", { name: "Browse all sections" })).toHaveFocus();
+  });
+  // Gate 13 leg (j) reads /glossary/ out of the FIRST <nav data-site-nav> in
+  // the built HTML of /. Both menus are portalled and absent from that HTML,
+  // so the link has to be one of the bar's own server-rendered links. This
+  // is the same read, run on the server render.
+  it("server-renders /glossary/ inside the header bar's own <nav data-site-nav>, with both menus closed", () => {
+    usePathname.mockReturnValue("/");
+    const html = renderToString(<SiteHeader />);
+    const bar = html.match(/<nav[^>]*data-site-nav[^>]*>([\s\S]*?)<\/nav>/);
+    expect(bar).not.toBeNull();
+    // Outside `next build` the Link drops the trailing slash (the existing
+    // tests below normalize it the same way); the built HTML keeps it.
+    const hrefs = [...bar![1].matchAll(/href="([^"]+)"/g)].map((m) => m[1].replace(/\/$/, ""));
+    expect(hrefs).toContain("/glossary");
+    // The bar keeps the live branch's five sections, in order, ahead of it.
+    expect(hrefs).toEqual(["/explore", "/programs", "/companies", "/district", "/feed", "/glossary"]);
+    expect(html).not.toContain('id="mobile-nav-panel"');
   });
   it("identifies the parent section on a detail page and exposes source tools in the full menu", async () => {
     render(<SiteHeader />);

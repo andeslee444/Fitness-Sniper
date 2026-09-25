@@ -27,12 +27,27 @@ export const SITE_NAVIGATION = [
   ] },
 ] as const;
 
+/**
+ * The links painted in the header bar at lg and up. They are server-rendered
+ * into `<nav data-site-nav>`; the "More" menu beside them is a client popover
+ * and is absent from the static HTML.
+ *
+ * Glossary is here, not only under "More" (2026-09-25 integration). The
+ * glossary was linked only from the footer, below the jargon it defines, and
+ * tri-persona Wave 3 filed that. Gate 13 leg (j) requires /glossary/ inside
+ * `<nav data-site-nav>` on /. Under "More" alone it would sit behind a
+ * client-rendered disclosure again. Measured 2026-09-25 with the link in
+ * place, the bar still has 205px spare at 1024, its narrowest desktop width.
+ * SITE_NAVIGATION above keeps Glossary under "Data & methods", so the mobile
+ * panel and the "More" menu still carry it.
+ */
 export const PRIMARY_NAVIGATION = [
   { href: "/explore/", label: "Explore" },
   { href: "/programs/", label: "Programs" },
   { href: "/companies/", label: "Companies" },
   { href: "/district/", label: "Districts" },
   { href: "/feed/", label: "Signals" },
+  { href: "/glossary/", label: "Glossary" },
 ] as const;
 
 export function isNavigationCurrent(pathname: string, href: string): boolean {

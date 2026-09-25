@@ -8,6 +8,10 @@
 .source { cursor: pointer; text-align: left; }
 .source:disabled { cursor: wait; opacity: .65; }
 .download { display: grid; gap: .35rem; }
+/* The workbook cell preview kept in the open under the PDF page (panel `beside`).
+   min-width: 0 lets this grid item shrink to the sheet so a wide preview
+   scrolls inside its own overflow-x wrapper instead of widening the receipt. */
+.beside { min-width: 0; }
 .headingLink { color: var(--foreground); text-decoration: underline; text-underline-offset: .2em; }
 .headingLink:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
 .parts { display: flex; flex-wrap: wrap; gap: .5rem; max-height: 15rem; overflow: auto; }

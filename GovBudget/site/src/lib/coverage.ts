@@ -97,9 +97,12 @@ export function getCoverage(
       // positive obligation at a place of performance has been crosswalked
       // at high confidence — 102 such pages on the run-4 export said it had
       // not. Each page now gets the reason that is true of it.
+      // Integration 2026-09-25 (R-INT-7): "at a place" tripped gate 27 leg
+      // 11 (the "one place / a place" pattern); "at any place" is the same
+      // negated claim.
       const why =
         absence === "no-place-of-performance"
-          ? "none of this program's high-confidence awards records a positive obligation at a place of performance"
+          ? "none of this program's high-confidence awards records a positive obligation at any place of performance"
           : "this program's awards haven't been crosswalked at high confidence";
       return {
         id,

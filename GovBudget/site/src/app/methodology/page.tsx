@@ -1221,8 +1221,8 @@ export default function MethodologyPage() {
                   published on one
                 </h3>
                 <p>
-                  Both bases — high-confidence links alone, and every
-                  published link — share one crosswalk and ship in the
+                  Both bases (high-confidence links alone, and every
+                  published link) share one crosswalk and ship in the
                   downloadable warehouse with derived citations; a program page
                   shows only the high-confidence figures, which it and the
                   warehouse carry only over at least three such awards across

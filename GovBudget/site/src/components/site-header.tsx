@@ -126,11 +126,16 @@ export function SiteHeader() {
               setDesktopOpen(next);
             }}
           >
+            {/* No {" "} after "More". The trigger is inline-flex with a
+                0.25rem gap, so that space never painted. It cost a
+                `<!-- --> ` text node in the HTML of every page. Measured on
+                the chain-F build: the trigger's width and the chevron's x are
+                the same with the space and without it. */}
             <Popover.Trigger
               className={styles.more}
               aria-label="Browse all sections"
             >
-              More{" "}
+              More
               <ChevronDown size={13} aria-hidden="true" />
             </Popover.Trigger>
             <Popover.Portal>

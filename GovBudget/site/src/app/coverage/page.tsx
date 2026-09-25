@@ -15,6 +15,8 @@ import { getCorpusCounts, getCrosswalkCounts } from "@/lib/corpus";
 import { coreOgImages } from "@/lib/og";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
+import styles from "./coverage.module.css";
+
 /**
  * /coverage/ — what this site covers, what it does not, and when that changes
  * (PM-review Sprint 3 Task 6, §Coverage).
@@ -133,11 +135,15 @@ export default function CoveragePage() {
                 so the Blocker and Target columns — the whole point of the page —
                 stay on screen at 390px instead of scrolling off behind the
                 container. Same <table>, restyled; roles are declared where the
-                display override would otherwise drop them. */}
+                display override would otherwise drop them.
+                The row and cell classes live in coverage.module.css (`.map`),
+                selected by the gate hooks already on each cell: the rows used
+                to carry them inline, twice per row once the RSC payload is
+                counted — ~900 gzip bytes of a page at its ceiling (gate 1). */}
             <div className="overflow-x-auto rounded-lg border border-border">
               <table
                 data-coverage-map
-                className="min-w-full text-sm"
+                className={`min-w-full text-sm ${styles.map}`}
               >
                 <caption className="sr-only">
                   Coverage, blocker and target for each dataset and feature on{" "}
@@ -167,45 +173,31 @@ export default function CoveragePage() {
                       data-covered-n={r.numerator ?? undefined}
                       data-covered-d={r.denominator ?? undefined}
                       role="row"
-                      className="block border-b border-border py-4 last:border-0 sm:table-row sm:py-0"
                     >
-                      <th
-                        scope="row"
-                        className="block px-4 py-0 text-left align-top text-base font-semibold text-foreground sm:table-cell sm:py-3 sm:text-sm sm:whitespace-nowrap"
-                      >
+                      <th scope="row">
+                        {/* The link keeps its utilities: see the print note
+                            in coverage.module.css. */}
                         <Link href={r.href} className="underline decoration-dotted hover:text-primary">
                           {r.label}
                         </Link>
                       </th>
-                      <td
-                        role="cell"
-                        data-primary-value="covered"
-                        className="block px-4 pt-1 align-top sm:table-cell sm:py-3"
-                      >
-                        <span className="text-foreground">{r.covered}</span>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          Derived from {r.derivation}
-                        </span>
+                      <td role="cell" data-primary-value="covered">
+                        <span>{r.covered}</span>
+                        {/* One text node, not two: React separates adjacent
+                            text children with <!-- --> and the RSC payload
+                            carries them as a two-item array. */}
+                        <span>{`Derived from ${r.derivation}`}</span>
                       </td>
-                      <td
-                        role="cell"
-                        data-coverage-blocker
-                        className="block px-4 pt-2 align-top text-muted-foreground sm:table-cell sm:py-3"
-                      >
-                        <span className="t-label mb-0.5 block sm:hidden">
-                          In the way
-                        </span>
+                      <td role="cell" data-coverage-blocker>
+                        <span className="t-label">In the way</span>
                         {r.blocker}
                       </td>
                       <td
                         role="cell"
                         data-coverage-target
                         data-target-kind={r.targetKind}
-                        className="block px-4 pt-2 align-top text-muted-foreground sm:table-cell sm:py-3"
                       >
-                        <span className="t-label mb-0.5 block sm:hidden">
-                          Target
-                        </span>
+                        <span className="t-label">Target</span>
                         {r.target}
                       </td>
                     </tr>
@@ -249,11 +241,15 @@ export default function CoveragePage() {
                 ("themselves" went; 39 rendered characters, +88 raw and 14-20
                 gzip, measured). The warrant is coverage-map.ts's
                 own header: every `covered` string is assembled from the
-                data.ts / feeds.ts loaders the pages themselves render from. */}
+                data.ts / feeds.ts loaders the pages themselves render from.
+                Integration 2026-09-25 (R-INT-7): the paired dashes were an
+                em-dash pile-up (gate 27 leg 13, VOICE.md rule 14) that
+                production's wording never carried in this form. The same
+                clause now closes its own sentence (rule 2); nothing went. */}
             <p className="text-sm leading-7">
               Each coverage figure is read from the data files this build
-              shipped — the same files the pages render from — and a
-              build-time gate recomputes all{" "}
+              shipped, the same files the pages render from. A build-time
+              gate recomputes all{" "}
               {rows.length} rows independently and fails the build if any rendered
               figure disagrees with its source. A coverage page carrying a
               stale literal would refute its own argument, so this one is not

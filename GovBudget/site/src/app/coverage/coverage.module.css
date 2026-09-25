@@ -1,0 +1,107 @@
+/* ── The coverage map's row and cell styling, hoisted (gate 1, page weight) ──
+   Every row of [data-coverage-map] used to carry the same utility strings —
+   on the <tr>, the row <th>, the three <td>s, the covered cell's two spans
+   and the two mobile labels. The page ships each row TWICE: once in the HTML
+   and again in the RSC payload, and the two copies sit ~50 KB apart, beyond
+   gzip's 32 KB window, so neither copy compresses against the other.
+   Measured on a scratch copy of the integration build (42eed1e4): −14,066 raw
+   / −904 gzip for this file plus the page.tsx change that uses it, with no
+   rendered character changed (gatefix-weight.md). The same move as
+   `.pgm-row` in globals.css, as plain CSS like this site's other modules.
+
+   Each rule states, in its comment, the utility list it replaces, and
+   declares exactly what that list compiles to (Tailwind 4.3), so every
+   computed style is unchanged — checked element by element at 390 and 1440,
+   light and dark, and in print: the mobile card below `sm` (gate 3's mobile
+   leg measures the covered cell at 390px), the table above it, and the gate
+   hooks, which are data attributes and stay on their own nodes.
+
+   Selected by those same hooks rather than by new classes: a class per cell
+   would put a string back on every row, which is the cost this file removes.
+   The row link keeps its own utilities on purpose — globals.css's print
+   one-pager flattens links from an UNLAYERED `a` rule, which beats a utility
+   but would lose to an unlayered rule here. Nothing else outside this file
+   styles these rows' cells, so these unlayered rules win exactly where the
+   utilities did. */
+
+/* <tr>: block border-b border-border py-4 last:border-0 sm:table-row sm:py-0 */
+.map > tbody > tr {
+  display: block;
+  border-bottom: 1px solid var(--border);
+  padding-block: calc(var(--spacing) * 4);
+}
+.map > tbody > tr:last-child {
+  border-width: 0;
+}
+
+/* row <th>: block px-4 py-0 text-left align-top text-base font-semibold
+   text-foreground sm:table-cell sm:py-3 sm:text-sm sm:whitespace-nowrap */
+.map > tbody > tr > th {
+  display: block;
+  padding: 0 calc(var(--spacing) * 4);
+  text-align: left;
+  vertical-align: top;
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  font-weight: var(--font-weight-semibold);
+  color: var(--foreground);
+}
+
+/* covered <td>: block px-4 pt-1 align-top sm:table-cell sm:py-3 */
+.map [data-primary-value="covered"] {
+  display: block;
+  padding-inline: calc(var(--spacing) * 4);
+  padding-top: calc(var(--spacing) * 1);
+  vertical-align: top;
+}
+/* its coverage sentence: text-foreground */
+.map [data-primary-value="covered"] > span:first-child {
+  color: var(--foreground);
+}
+/* its "Derived from …" line: mt-1 block text-xs text-muted-foreground */
+.map [data-primary-value="covered"] > span + span {
+  display: block;
+  margin-top: calc(var(--spacing) * 1);
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  color: var(--muted-foreground);
+}
+
+/* blocker and target <td>s: block px-4 pt-2 align-top text-muted-foreground
+   sm:table-cell sm:py-3 */
+.map :is([data-coverage-blocker], [data-coverage-target]) {
+  display: block;
+  padding-inline: calc(var(--spacing) * 4);
+  padding-top: calc(var(--spacing) * 2);
+  vertical-align: top;
+  color: var(--muted-foreground);
+}
+/* their mobile field label ("In the way", "Target"), the cell's one span:
+   mb-0.5 block sm:hidden. It keeps `t-label` on the node for the type spec. */
+.map :is([data-coverage-blocker], [data-coverage-target]) > span {
+  display: block;
+  margin-bottom: calc(var(--spacing) * 0.5);
+}
+
+/* The `sm:` halves, on the same selectors as the rules they override. */
+@media (width >= 40rem) {
+  .map > tbody > tr {
+    display: table-row;
+    padding-block: 0;
+  }
+  .map > tbody > tr > th {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 3);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    white-space: nowrap;
+  }
+  .map [data-primary-value="covered"],
+  .map :is([data-coverage-blocker], [data-coverage-target]) {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 3);
+  }
+  .map :is([data-coverage-blocker], [data-coverage-target]) > span {
+    display: none;
+  }
+}

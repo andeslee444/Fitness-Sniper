@@ -57,11 +57,19 @@
  *     linked twice per page, both times in the footer, while TOA is stamped
  *     on ~80,000 figures above it. Leg (a) reads the whole home page and is
  *     satisfied by a footer link, so it could never have caught this. Leg
- *     (j) scopes to `nav[data-site-nav]` on / and to NAV_LINKS in
- *     components/mobile-nav.tsx (that panel is client-rendered, so it is
- *     not in static HTML; gate 3's m4 leg proves the panel renders its
- *     links, this proves which destinations are in it). Gate 19 persona 5
- *     covers the third half of the same finding — the in-page term links.
+ *     (j) scopes to `nav[data-site-nav]` on / and to the source of the
+ *     mobile panel (that panel is client-rendered, so it is not in static
+ *     HTML; gate 3's m4 leg proves the panel renders its links, this proves
+ *     which destinations are in it). Gate 19 persona 5 covers the third half
+ *     of the same finding — the in-page term links.
+ *
+ *     MOBILE HALF RETARGETED 2026-09-25 (integration). It read NAV_LINKS in
+ *     components/mobile-nav.tsx. The live branch's SiteHeader replaced
+ *     MobileNav, and nothing imports mobile-nav.tsx any more, so that half
+ *     passed against a file no reader is served. It now reads the list the
+ *     mounted header builds its mobile panel from, and first proves that the
+ *     header is mounted and that the panel is built from that list. See
+ *     mobileNavGlossaryFindings.
  */
 import fs from "fs";
 import path from "path";
@@ -125,15 +133,15 @@ function linksIn(html) {
 }
 
 /**
- * The header nav's OWN hrefs — `<nav data-site-nav>` in layout.tsx. Returns
- * null when the element is absent (the contract itself is gone). Matches
- * the attribute with or without a value.
+ * The header nav's OWN hrefs — `<nav data-site-nav>` in
+ * components/site-header.tsx. Returns null when the element is absent (the
+ * contract itself is gone). Matches the attribute with or without a value.
  *
  * Scoped on purpose. Leg (a) reads the whole page and is satisfied by a
  * footer link — which is exactly the state tri-persona Wave 3 filed.
- * MobileNav renders its own `<nav data-site-nav>` only when the panel is
- * open, so it is absent from static HTML; the header nav is also first in
- * document order.
+ * The header's menus render their own `<nav data-site-nav>` only when they
+ * are open (both are portalled), so they are absent from static HTML; the
+ * header bar's nav is also first in document order.
  */
 export function headerNavHrefs(html) {
   const root = parse(html, { comment: false });
@@ -142,6 +150,103 @@ export function headerNavHrefs(html) {
   return nav
     .querySelectorAll("a[href]")
     .map((a) => a.getAttribute("href") ?? "");
+}
+
+/**
+ * Leg (j), mobile half. Below lg the hamburger panel IS the navigation, and
+ * it is client-rendered, so no read of static HTML can see it. This reads
+ * the sources instead. It is pure (sources in, errors out), so the
+ * proof-can-fail tests drive it without a build.
+ *
+ * RETARGETED 2026-09-25 (integration). This half read NAV_LINKS in
+ * components/mobile-nav.tsx. After the merge, nothing imports that file: the
+ * live branch's SiteHeader builds the mobile panel from SITE_NAVIGATION. So
+ * the old read passed against a file no reader is served, which is weaker
+ * than the leg it was written as. It now proves each step of the path a
+ * phone reader actually gets, and every step fails on its own:
+ *   1. app/layout.tsx imports SiteHeader from components/site-header and
+ *      renders it;
+ *   2. site-header.tsx renders #mobile-nav-panel (the element gate 3's m4 leg
+ *      opens), and that panel renders links built from SITE_NAVIGATION,
+ *      either directly or through a `const` it interpolates;
+ *   3. SITE_NAVIGATION's own entries carry /glossary/. PRIMARY_NAVIGATION
+ *      does not count, because the bar it fills is display:none below lg.
+ * A refactor that moves any step fails here with the step named. It does
+ * not pass against whatever file is left behind.
+ *
+ * @param {{ layoutSrc: string, headerSrc: string, navSrc: string }} sources
+ * @returns {string[]} errors (empty when the mobile panel carries /glossary/)
+ */
+export function mobileNavGlossaryFindings({ layoutSrc, headerSrc, navSrc }) {
+  const errors = [];
+
+  const mounted =
+    /import\s*\{[^}]*\bSiteHeader\b[^}]*\}\s*from\s*["']@\/components\/site-header["']/.test(layoutSrc) &&
+    /<SiteHeader\b/.test(layoutSrc);
+  if (!mounted) {
+    errors.push(
+      "(j) mobile nav: app/layout.tsx does not import and render SiteHeader from components/site-header. This half reads that header's mobile panel, so it has to be the header that ships. Retarget the leg to the mounted header; do not let it read a file nobody is served."
+    );
+  }
+
+  const importsList =
+    /import\s*\{[^}]*\bSITE_NAVIGATION\b[^}]*\}\s*from\s*["']@\/lib\/site-navigation["']/.test(headerSrc);
+  const panelAt = headerSrc.indexOf('id="mobile-nav-panel"');
+  const panelEnd = panelAt < 0 ? -1 : headerSrc.indexOf("</Dialog.Content>", panelAt);
+  if (panelAt < 0 || panelEnd < 0) {
+    errors.push(
+      "(j) mobile nav: components/site-header.tsx renders no #mobile-nav-panel (the element gate 3's m4 leg opens), so this leg cannot find the list the hamburger shows"
+    );
+  } else {
+    const panel = headerSrc.slice(panelAt, panelEnd);
+    const builtFromList = (src) => /\bSITE_NAVIGATION\.map\s*\(/.test(src);
+    let fromList = builtFromList(panel);
+    if (!fromList) {
+      // The panel may interpolate a const that holds the rendered groups
+      // (`{menuGroups}`). Resolve each bare `{identifier}` in the panel to
+      // its `const identifier = ( … )` body, with its parentheses balanced,
+      // and look for the map there. Scanning the rest of the file does not
+      // count.
+      for (const [, id] of panel.matchAll(/\{\s*([A-Za-z_$][\w$]*)\s*\}/g)) {
+        const decl = new RegExp(`const\\s+${id}\\s*=\\s*\\(`).exec(headerSrc);
+        if (!decl) continue;
+        let depth = 0;
+        let end = -1;
+        for (let i = decl.index + decl[0].length - 1; i < headerSrc.length; i += 1) {
+          if (headerSrc[i] === "(") depth += 1;
+          else if (headerSrc[i] === ")") {
+            depth -= 1;
+            if (depth === 0) {
+              end = i;
+              break;
+            }
+          }
+        }
+        if (end > 0 && builtFromList(headerSrc.slice(decl.index, end))) {
+          fromList = true;
+          break;
+        }
+      }
+    }
+    if (!importsList || !fromList) {
+      errors.push(
+        "(j) mobile nav: #mobile-nav-panel in components/site-header.tsx is not built from SITE_NAVIGATION (lib/site-navigation), so this leg cannot tell which destinations the hamburger shows. Point the leg at the list the panel renders."
+      );
+    }
+  }
+
+  const list = navSrc.match(/export\s+const\s+SITE_NAVIGATION\s*=\s*\[([\s\S]*?)\]\s*as\s+const\s*;/);
+  if (!list) {
+    errors.push(
+      "(j) mobile nav: lib/site-navigation.ts declares no SITE_NAVIGATION list, so there is nothing to read the hamburger's destinations from"
+    );
+  } else if (!/href:\s*"\/glossary\/"/.test(list[1])) {
+    errors.push(
+      "(j) mobile nav: SITE_NAVIGATION in lib/site-navigation.ts has no /glossary/ entry. Below lg the hamburger IS the navigation, and PRIMARY_NAVIGATION is hidden there."
+    );
+  }
+
+  return errors;
 }
 
 export async function runLinkgraphGate() {
@@ -383,16 +488,24 @@ export async function runLinkgraphGate() {
       );
     }
 
-    const mobileNavSrc = fs.readFileSync(
-      path.join(srcDir, "components", "mobile-nav.tsx"),
-      "utf8"
-    );
-    if (!/href:\s*"\/glossary\/"/.test(mobileNavSrc)) {
-      errors.push(
-        "(j) mobile nav: NAV_LINKS in components/mobile-nav.tsx has no /glossary/ entry — below lg the hamburger IS the navigation"
-      );
+    // Mobile half — retargeted 2026-09-25 from the unmounted
+    // components/mobile-nav.tsx; see mobileNavGlossaryFindings. A missing
+    // source file is an error, not a crash and not a skip.
+    const readSrc = (...segs) => {
+      const p = path.join(srcDir, ...segs);
+      return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
+    };
+    const mobileErrors = mobileNavGlossaryFindings({
+      layoutSrc: readSrc("app", "layout.tsx"),
+      headerSrc: readSrc("components", "site-header.tsx"),
+      navSrc: readSrc("lib", "site-navigation.ts"),
+    });
+    if (mobileErrors.length > 0) {
+      errors.push(...mobileErrors);
     } else {
-      notes.push("(j) mobile nav: NAV_LINKS includes /glossary/ ✓");
+      notes.push(
+        "(j) mobile nav: the mounted SiteHeader builds #mobile-nav-panel from SITE_NAVIGATION, which includes /glossary/ ✓"
+      );
     }
   }
 

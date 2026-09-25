@@ -175,7 +175,16 @@ export default async function FilingPage({ params }: Props) {
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
             <span>
               Registrant:{" "}
-              <span className="text-foreground font-medium">
+              {/* The registrant's name is the filing's own data, not authored
+                  copy: gate 27 (copy.mjs) reads [data-copy-slot="data"] as
+                  read-only, like the filing's activity text. Its leg 9 read
+                  "Innovative" in "Innovative Federal Strategies, LLC" as a
+                  marketing adjective (integration 2026-09-25, R-INT-7). The
+                  authored fallback "not reported" stays in the scan. */}
+              <span
+                className="text-foreground font-medium"
+                data-copy-slot={f.registrant_name ? "data" : undefined}
+              >
                 {f.registrant_name ? (
                   <CompanyName raw={f.registrant_name} />
                 ) : (

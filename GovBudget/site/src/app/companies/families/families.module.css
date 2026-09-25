@@ -1,0 +1,104 @@
+/* ── The events table's row and cell styling, hoisted (gate 1, page weight) ──
+   Every event row used to carry the same utility strings — a 160-character
+   one on the <tr>, one per <td>, and two utilities beside `t-label` on each
+   of the five mobile field labels — and the page ships every row twice: once
+   in the HTML and again in the RSC payload, more than gzip's 32 KB window
+   apart, so neither copy compresses against the other. Measured on a scratch
+   copy of the integration build (42eed1e4): −20,302 raw / −671 gzip for this
+   file plus the page.tsx change that uses it, with no rendered character
+   changed (gatefix-weight.md). The same move as `.pgm-row` in globals.css,
+   as plain CSS like this site's other modules.
+
+   Each rule states, in its comment, the utility list it replaces, and
+   declares exactly what that list compiles to (Tailwind 4.3), so every
+   computed style is unchanged — checked element by element at 390 and 1440,
+   light and dark, and in print, plus the :target highlight the /companies/
+   event links land on and the row hover: the stacked card below `sm`
+   (gate 3's mobile leg measures the Source link at 390px) and the table
+   above it.
+
+   The five columns are fixed (Effective, From, To, Event, Source), so the
+   cells are selected by position, and the mobile label by being each cell's
+   first child — a class per cell would put a string back on every row,
+   which is the cost this file removes. The rows' links and inner spans keep
+   their own utilities: globals.css's print one-pager flattens links from an
+   UNLAYERED `a` rule, which beats a utility but would lose to an unlayered
+   rule here. Nothing else outside this file styles these rows or cells, so
+   these unlayered rules win exactly where the utilities did. */
+
+/* <tr>: block sm:table-row align-top border-b border-border last:border-0
+   sm:border-0 py-2 sm:py-0 hover:bg-muted/40 transition-colors
+   target:bg-primary/10 scroll-mt-24 */
+.events > tbody > tr {
+  display: block;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+  padding-block: calc(var(--spacing) * 2);
+  scroll-margin-top: calc(var(--spacing) * 24);
+  /* transition-colors, verbatim */
+  transition-property: color, background-color, border-color, outline-color,
+    text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via,
+    --tw-gradient-to;
+  transition-timing-function: var(--ease-standard);
+  transition-duration: var(--motion-fast);
+}
+.events > tbody > tr:last-child {
+  border-width: 0;
+}
+/* target: before hover, as in the utilities, so a hovered target shows the
+   hover. */
+.events > tbody > tr:target {
+  background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+@media (hover: hover) {
+  .events > tbody > tr:hover {
+    background-color: color-mix(in oklab, var(--muted) 40%, transparent);
+  }
+}
+
+/* Every cell: block px-4 py-1 (and sm:table-cell sm:py-3, below). */
+.events > tbody > tr > td {
+  display: block;
+  padding: calc(var(--spacing) * 1) calc(var(--spacing) * 4);
+}
+/* Effective: pt-3 pb-1 whitespace-nowrap tabular-nums text-muted-foreground */
+.events > tbody > tr > td:first-child {
+  padding-top: calc(var(--spacing) * 3);
+  padding-bottom: calc(var(--spacing) * 1);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+/* Event: text-muted-foreground */
+.events > tbody > tr > td:nth-child(4) {
+  color: var(--muted-foreground);
+}
+/* Source: pt-1 pb-3 */
+.events > tbody > tr > td:last-child {
+  padding-top: calc(var(--spacing) * 1);
+  padding-bottom: calc(var(--spacing) * 3);
+}
+
+/* MobileFieldLabel, each cell's first child: mr-1.5 sm:hidden. It keeps
+   `t-label` on the node for the type spec. */
+.events > tbody > tr > td > span:first-child {
+  margin-right: calc(var(--spacing) * 1.5);
+}
+
+/* The `sm:` halves. `:nth-child(n)` matches every cell at the specificity of
+   the per-column rules above, so sm:py-3 overrides their padding as it did
+   when it sat in each cell's class list. */
+@media (width >= 40rem) {
+  .events > tbody > tr {
+    display: table-row;
+    border-width: 0;
+    padding-block: 0;
+  }
+  .events > tbody > tr > td:nth-child(n) {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 3);
+  }
+  .events > tbody > tr > td > span:first-child {
+    display: none;
+  }
+}

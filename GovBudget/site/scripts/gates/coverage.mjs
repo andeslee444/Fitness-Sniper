@@ -71,6 +71,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
+import { hhiBand } from "../../src/lib/hhi-band.mjs";
+import { readConcentrationFloor, withheldFloorClause } from "./concentration-floor.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -118,47 +120,288 @@ function htmlFor(url) {
   return path.join(outDir, ...url.split("/").filter(Boolean), "index.html");
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// leg — feed publication: every concentration card reaches a canonical
+// destination (codex/f15-family-browser, b803e860; retargeted to integration
+// ruling R-INT-2, 2026-09-25)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// WHAT THE LIVE BRANCH'S LEG HELD. Every shipped concentration_shift card
+// links to /program/{slug}/, a programs.json row, whose Contractor
+// Concentration section renders a [data-hhi-band] and the row's ALL-LINK
+// receipts (hhi_all_fact_id and program_dollars_all_fact_id, or the legacy
+// hhi_fact_id / program_dollars_fact_id); the shipped feed is the source feed
+// minus unsupported concentration cards, content and order preserved, with a
+// true total.
+//
+// WHY IT WAS RETARGETED. R-INT-2 keeps ROADMAP #80 on the merged site: a
+// program page publishes the HIGH-CONFIDENCE-only pooled figure (hhi_high,
+// program_dollars_high) or withholds it below the mart's floor and says so;
+// the all-link figure is never printed (/methodology/ §4). On build 42eed1e4
+// the live leg therefore failed all 1,606 shipped cards (1,607 errors with
+// the content-equality line), in two classes: 432 cards on the 61 pages that
+// publish the high figure — band present, but the ids it looked for are the
+// all-link ones the page deliberately does not render — and 1,174 cards on
+// the 244 pages that withhold below the floor — no band at all, by design.
+// No card reached a shared-code page: the exporter's _concentration_owner
+// already withholds those cards with the block (28 on that export).
+//
+// WHAT IT HOLDS NOW, from the payload (programs.json) and the built page —
+// never through the publisher's helper (concentration-evidence.mjs), so a
+// regression there still fails here:
+//   · the card's URL is /program/{slug}/ and slug is a programs.json row
+//     whose concentration block ships. A null block — withheld from every
+//     member of a shared code (#70/#82) or no mart row — renders no
+//     Contractor Concentration card, and a page that withholds its block may
+//     carry NO feed card;
+//   · the page renders exactly one concentration section, in the state the
+//     payload dictates:
+//       PUBLISHED (hhi_high, program_dollars_high, top_family_high non-null):
+//         exactly one [data-hhi-band], stamped data-hhi-basis="high", naming
+//         hhiBand(hhi_high); the hhi_high_fact_id figure (measure hhi-high,
+//         dataset fct_program_concentration, the index to 0 dp) and the
+//         program_dollars_high_fact_id figure (measure obligations-high);
+//         both receipts resolve — in the shipped cite shards a reader's
+//         drawer fetches — to derived citations whose units and recorded
+//         values are the payload's and whose formula is scoped "high-
+//         confidence links only"; no withheld marker;
+//       WITHHELD (hhi_high null): [data-concentration-withheld="below-floor"]
+//         stating the SQL floor word for word (concentration-floor.mjs), and
+//         no band, no [data-fact-id], no [data-amount];
+//     and, in either state, no all-link receipt id and no data-hhi-basis
+//     other than "high" anywhere in the section;
+//   · the card's OWN figure and receipts: figure_fact_id and
+//     magnitude.to.fact_id resolve to derived citations whose recorded
+//     values are the card's HHI and matched dollars (the dollars scoped to
+//     high-confidence awards). No page on either branch renders a card's
+//     single-year figure — it is fct_feed_events', the page's is pooled —
+//     so the card's receipts are held where a reader resolves them;
+//   · unchanged from the live leg: shipped == source minus unsupported
+//     concentration cards (content and order), and total == cards.length;
+//   · new: at least MIN_PUBLISHED_CONCENTRATION_DESTINATIONS distinct
+//     destinations publish the figure — a corpus where every destination
+//     withholds would otherwise pass while checking no figure at all.
+//
+// THE ONE THING IT ACCEPTS THAT THE LIVE LEG REJECTED: a card whose
+// destination withholds below the floor. That is this branch's reviewed #80
+// behaviour, not a loosening of what the ruled page publishes — the card's
+// scope note says the pooled figure "can differ, or not be published"
+// (src/lib/hhi-scope-note.ts, #80 fix round 2 finding 8), feed leg (l)
+// counts such a destination as a legitimate state, and R-INT-2 recorded the
+// validator as dropping 0 feed cards. The page it lands on must still say,
+// correctly, that it publishes nothing — which the live leg never checked.
+
+/**
+ * Floor on destinations publishing the high-confidence figure. MEASURED
+ * 2026-09-25 on build 42eed1e4 (static run against site/out, the export
+ * chain F wrote): 61 distinct destinations / 432 cards publish; 244 / 1,174
+ * withhold below the floor. Floor = 80% of 61, the convention feed leg (l)
+ * and the #57 census use so the leg keeps teeth without failing on data
+ * drift. NEVER LOWER THIS; raising it to a later measurement is a dated
+ * decision of its own.
+ */
+export const MIN_PUBLISHED_CONCENTRATION_DESTINATIONS = 48;
+
+const HEX16 = /^[a-f0-9]{16}$/;
+const HIGH_SCOPE = "high-confidence links only";
+const RECORDED_TOLERANCE = 0.0005001;
+
+function recordedMatches(cite, units, value) {
+  if (cite?.kind !== "derived" || cite.units !== units) return false;
+  const recorded = Number(cite.recorded_value);
+  return typeof value === "number" && Number.isFinite(recorded) && Math.abs(recorded - value) <= RECORDED_TOLERANCE;
+}
+
+/**
+ * What one destination renders for contractor concentration, held against
+ * its payload. Pure; exported for __tests__/published-feed.test.mjs.
+ *
+ * @returns {{ state: "published" | "below-floor" | null, problems: string[] }}
+ */
+export function inspectConcentrationDestination({ program, html, loadCitation, floor }) {
+  if (!program) return { state: null, problems: ["is not a programs.json row (an ambiguous or retired code)"] };
+  const hhi = program.hhi;
+  if (!hhi) {
+    return {
+      state: null,
+      problems: [
+        "withholds its concentration block (a shared code under #70/#82, or no mart row) — " +
+          "a page that withholds has no feed card",
+      ],
+    };
+  }
+  if (!html) return { state: null, problems: ["did not build"] };
+  const sections = parse(html).querySelectorAll('section[aria-labelledby="concentration-heading"]');
+  if (sections.length !== 1) {
+    return { state: null, problems: [`renders ${sections.length} Contractor Concentration sections (expected exactly 1)`] };
+  }
+  const section = sections[0];
+  const problems = [];
+  const allLinkIds = [hhi.hhi_all_fact_id, hhi.program_dollars_all_fact_id, hhi.hhi_fact_id, hhi.program_dollars_fact_id]
+    .filter((id) => typeof id === "string" && id);
+  for (const id of allLinkIds) {
+    if (section.querySelector(`[data-fact-id="${id}"]`)) {
+      problems.push(`renders the all-link receipt ${id} — R-INT-2 (#80) publishes the high-confidence figure or none`);
+    }
+  }
+  for (const el of section.querySelectorAll("[data-hhi-basis]")) {
+    if (el.getAttribute("data-hhi-basis") !== "high") {
+      problems.push(`stamps data-hhi-basis=${JSON.stringify(el.getAttribute("data-hhi-basis"))} — only "high" publishes`);
+    }
+  }
+  const bands = section.querySelectorAll("[data-hhi-band]");
+  const withheld = section.querySelector("[data-concentration-withheld]");
+  const published = hhi.hhi_high != null && hhi.program_dollars_high != null && hhi.top_family_high != null;
+
+  if (!published) {
+    if (withheld?.getAttribute("data-concentration-withheld") !== "below-floor") {
+      problems.push('payload is below the floor, but the section renders no [data-concentration-withheld="below-floor"]');
+    } else if (floor) {
+      const clause = withheldFloorClause(floor);
+      if (!(withheld.text || "").replace(/\s+/g, " ").includes(clause)) {
+        problems.push(`withheld statement misstates the floor — expected "${clause}" (fct_program_concentration.sql)`);
+      }
+    }
+    const figures = section.querySelectorAll("[data-fact-id], [data-amount]").length;
+    if (bands.length || figures) {
+      problems.push(`withholds, yet renders ${bands.length} band(s) and ${figures} figure(s) — an absence must not read as a number`);
+    }
+    return { state: problems.length ? null : "below-floor", problems };
+  }
+
+  const hhiId = hhi.hhi_high_fact_id;
+  const dollarsId = hhi.program_dollars_high_fact_id;
+  if (!HEX16.test(hhiId ?? "") || !HEX16.test(dollarsId ?? "")) {
+    problems.push("payload publishes the high figure without two 16-hex receipt ids");
+    return { state: null, problems };
+  }
+  if (withheld) problems.push("payload publishes the high figure, but the section renders the withheld marker");
+  if (bands.length !== 1) {
+    problems.push(`renders ${bands.length} [data-hhi-band] (expected exactly 1)`);
+  } else {
+    const expectedBand = hhiBand(hhi.hhi_high).label;
+    if (bands[0].getAttribute("data-hhi-basis") !== "high") problems.push("band is not stamped data-hhi-basis=\"high\"");
+    if (bands[0].getAttribute("data-hhi-band") !== expectedBand) {
+      problems.push(`band says ${JSON.stringify(bands[0].getAttribute("data-hhi-band"))}; hhi_high ${hhi.hhi_high} is ${JSON.stringify(expectedBand)}`);
+    }
+  }
+  const figure = (id, measure) => {
+    const el = section.querySelector(`[data-fact-id="${id}"]`);
+    if (!el) {
+      problems.push(`does not display its receipt ${id} (${measure})`);
+      return null;
+    }
+    if (el.getAttribute("data-measure") !== measure || el.getAttribute("data-dataset") !== "fct_program_concentration") {
+      problems.push(`receipt ${id} is stamped ${el.getAttribute("data-measure")}/${el.getAttribute("data-dataset")}, not ${measure}/fct_program_concentration`);
+    }
+    return el;
+  };
+  const hhiEl = figure(hhiId, "hhi-high");
+  if (hhiEl && (hhiEl.text || "").trim() !== hhi.hhi_high.toFixed(0)) {
+    problems.push(`displays HHI ${JSON.stringify((hhiEl.text || "").trim())}; hhi_high is ${hhi.hhi_high.toFixed(0)}`);
+  }
+  figure(dollarsId, "obligations-high");
+  for (const [id, units, value] of [
+    [hhiId, "Herfindahl-Hirschman Index", hhi.hhi_high],
+    [dollarsId, "USD", hhi.program_dollars_high],
+  ]) {
+    const cite = loadCitation(id);
+    if (!recordedMatches(cite, units, value)) {
+      problems.push(`receipt ${id} does not resolve to a derived ${units} citation recording ${value}`);
+    } else if (!String(cite.formula ?? "").includes(HIGH_SCOPE)) {
+      problems.push(`receipt ${id}'s formula is not scoped "${HIGH_SCOPE}"`);
+    }
+  }
+  return { state: problems.length ? null : "published", problems };
+}
+
+/** The card's own figure and matched dollars resolve to its receipts. */
+function cardReceiptProblems(card, loadCitation) {
+  const to = card.magnitude?.to;
+  if (!HEX16.test(card.figure_fact_id ?? "") || !HEX16.test(to?.fact_id ?? "")) {
+    return ["carries no 16-hex figure/dollars receipt ids"];
+  }
+  const problems = [];
+  if (!recordedMatches(loadCitation(card.figure_fact_id), "Herfindahl-Hirschman Index", card.figure_value)) {
+    problems.push(`its HHI ${card.figure_value} does not match its receipt ${card.figure_fact_id}`);
+  }
+  const dollars = loadCitation(to.fact_id);
+  if (!recordedMatches(dollars, "USD", to.value)) {
+    problems.push(`its matched dollars ${to.value} do not match their receipt ${to.fact_id}`);
+  } else if (!/high-confidence/.test(dollars.formula ?? "") || /medium/.test(dollars.formula ?? "")) {
+    problems.push(`its matched-dollars receipt ${to.fact_id} is not scoped to high-confidence awards`);
+  }
+  return problems;
+}
+
 /** Independently bind the shipped feed to actual canonical destination evidence.
  * No import of the publisher's filtering/normalization helper: a regression in
  * that helper must fail here. Exact card content and order must be preserved.
+ * See the leg's block above for what a canonical destination is (R-INT-2).
  */
-export function inspectPublishedFeed({ sourceFeed, publishedFeed, programs, loadProgramHtml }) {
+export function inspectPublishedFeed({
+  sourceFeed, publishedFeed, programs, loadProgramHtml, loadCitation, floor,
+  minPublishedDestinations = MIN_PUBLISHED_CONCENTRATION_DESTINATIONS,
+}) {
   const errors = [];
   if (!Array.isArray(sourceFeed?.cards) || !Array.isArray(publishedFeed?.cards)) {
-    return { count: 0, errors: ["feed publication: source and shipped feeds must carry cards arrays"] };
+    return { count: 0, errors: ["feed publication: source and shipped feeds must carry cards arrays"], census: null };
   }
-  const bySlug = new Map(programs.map(row => [row.slug, row]));
-  const supported = new Map();
-  function hasDestination(card) {
+  const bySlug = new Map(programs.map((row) => [row.slug, row]));
+  const destinations = new Map();
+  function problemsFor(card) {
     const slug = card.program_url?.match(/^\/program\/([^/]+)\/$/)?.[1];
-    if (!slug || !bySlug.has(slug)) return false;
-    if (supported.has(slug)) return supported.get(slug);
-    const hhi = bySlug.get(slug).hhi;
-    const hhiId = hhi?.hhi_all_fact_id ?? hhi?.hhi_fact_id;
-    const dollarsId = hhi?.program_dollars_all_fact_id ?? hhi?.program_dollars_fact_id;
-    if (!/^[a-f0-9]{16}$/.test(hhiId ?? "") || !/^[a-f0-9]{16}$/.test(dollarsId ?? "")) {
-      supported.set(slug, false);
-      return false;
+    if (!slug) return { slug: null, state: null, problems: ["carries no /program/{slug}/ URL"] };
+    if (!destinations.has(slug)) {
+      destinations.set(slug, inspectConcentrationDestination({
+        program: bySlug.get(slug), html: loadProgramHtml(slug), loadCitation, floor,
+      }));
     }
-    const html = loadProgramHtml(slug);
-    const section = html ? parse(html).querySelector('section[aria-labelledby="concentration-heading"]') : null;
-    const result = !!(section?.querySelector("[data-hhi-band]") &&
-      section.querySelector(`[data-fact-id="${hhiId}"]`) &&
-      section.querySelector(`[data-fact-id="${dollarsId}"]`));
-    supported.set(slug, result);
-    return result;
+    const dest = destinations.get(slug);
+    return { slug, state: dest.state, problems: [...dest.problems, ...cardReceiptProblems(card, loadCitation)] };
   }
-  const expected = sourceFeed.cards.filter(card => card.event_type !== "concentration_shift" || hasDestination(card));
+  const expected = sourceFeed.cards.filter((card) => card.event_type !== "concentration_shift" || problemsFor(card).problems.length === 0);
+  const census = { published: { cards: 0, pages: new Set() }, belowFloor: { cards: 0, pages: new Set() } };
   for (const card of publishedFeed.cards) {
-    if (card.event_type === "concentration_shift" && !hasDestination(card)) {
-      errors.push(`feed publication: ${card.program_url ?? "missing URL"} has no canonical destination displaying its own concentration receipts`);
+    if (card.event_type !== "concentration_shift") continue;
+    const { slug, state, problems } = problemsFor(card);
+    if (problems.length) {
+      errors.push(
+        `feed publication: ${card.program_url ?? "missing URL"} has no canonical destination for its ` +
+          `concentration claim — ${problems.join("; ")}`,
+      );
+      continue;
     }
+    const bucket = state === "published" ? census.published : census.belowFloor;
+    bucket.cards += 1;
+    bucket.pages.add(slug);
   }
   if (JSON.stringify(expected) !== JSON.stringify(publishedFeed.cards)) {
     errors.push(`feed publication: shipped cards differ from the ${expected.length} source cards with supported destinations (content and order must be preserved)`);
   }
   if (publishedFeed.total !== publishedFeed.cards.length) errors.push("feed publication: total does not match shipped cards");
-  return { count: publishedFeed.cards.length, errors };
+  if (census.published.pages.size < minPublishedDestinations) {
+    errors.push(
+      `feed publication: only ${census.published.pages.size} destination(s) publish the high-confidence ` +
+        `concentration figure (floor ${minPublishedDestinations}, measured 2026-09-25) — ` +
+        `the leg would be checking no figure at all`,
+    );
+  }
+  return { count: publishedFeed.cards.length, errors, census };
+}
+
+/** A shipped cite-shard reader: the file a reader's drawer fetches. */
+function shardCitationLoader(dir) {
+  const shards = new Map();
+  return (factId) => {
+    if (!HEX16.test(factId ?? "")) return null;
+    const key = factId.slice(0, 2);
+    if (!shards.has(key)) {
+      const file = path.join(dir, `${key}.json`);
+      shards.set(key, fs.existsSync(file) ? readJson(file) : {});
+    }
+    return shards.get(key)[factId] ?? null;
+  };
 }
 
 function runPublishedFeedLeg(errors, notes) {
@@ -167,13 +410,22 @@ function runPublishedFeedLeg(errors, notes) {
       sourceFeed: readJson(path.join(jsonDir, "feed.json")),
       publishedFeed: readJson(path.join(outDir, "json", "feed.json")),
       programs: readJson(path.join(jsonDir, "programs.json")),
-      loadProgramHtml: slug => {
+      loadProgramHtml: (slug) => {
         const file = htmlFor(`/program/${slug}/`);
         return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null;
       },
+      loadCitation: shardCitationLoader(path.join(outDir, "json", "cite-shards")),
+      floor: readConcentrationFloor(),
     });
     errors.push(...result.errors);
-    notes.push(`feed publication: ${result.count} shipped cards checked against canonical destination receipts`);
+    const c = result.census;
+    notes.push(
+      `feed publication: ${result.count} shipped cards checked; concentration cards — ` +
+        `${c.published.cards} reach ${c.published.pages.size} destination(s) displaying the ` +
+        `high-confidence figure with its receipts (floor ${MIN_PUBLISHED_CONCENTRATION_DESTINATIONS}), ` +
+        `${c.belowFloor.cards} reach ${c.belowFloor.pages.size} that withhold it below the floor and ` +
+        `say so (#80, R-INT-2); each card's own figure resolves to its receipts`,
+    );
   } catch (error) {
     errors.push(`feed publication: could not inspect shipped feed — ${error.message}`);
   }

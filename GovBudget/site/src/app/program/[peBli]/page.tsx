@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { RecipientSummaryGap } from "@/components/recipient-summary-gap";
+import { LinkedAwardRecordsLink, RecipientSummaryGap } from "@/components/recipient-summary-gap";
 import {
   getProgramMap,
   getProgramDetails,
@@ -1588,10 +1588,23 @@ function WhoGetsItBody({
   // lib/concentration-basis.ts and state the rule — what is withheld (a
   // published leader, a published index) and the floor that withholds it —
   // never a count of this line's links or a denial that anyone is named.
+  // (R-INT-8: the count of award records THIS page lists below is a
+  // different number — gate 21 leg (j) binds it to the page's sidecar.)
+  //
+  // Integration 2026-09-25: an answer that states no recipient total links to
+  // the page's own award records (the redesign's program-skeleton leg (j)).
+  // LinkedAwardRecordsLink is RecipientSummaryGap's own link, and its count
+  // is program.award_count — the same records the Related Awards table
+  // below lists (leg (j) holds the count to the sidecar's awards).
   if (hhi) {
     return (
       <span data-who-tier="none" className="text-muted-foreground">
         {WHO_GETS_IT_WITHHELD_LEAD}{" "}
+        {awardCount > 0 && (
+          <>
+            <LinkedAwardRecordsLink awardCount={awardCount} />.{" "}
+          </>
+        )}
         {CONCENTRATION_WITHHELD_REASON}{" "}
         <Link
           href="/coverage/#crosswalk"
@@ -1620,7 +1633,10 @@ function WhoGetsItBody({
   // data", "No contract award is linked to this line") are false above this
   // page's Related Awards table. gate 21 leg n check 7 holds that: a
   // withheld payload must render THIS branch, and nothing else may stamp
-  // data-who-withheld. Same "none" tier for leg (j) — no dollars, no names.
+  // data-who-withheld. Same "none" tier for leg (j) — no dollars, no names —
+  // and, like the below-floor answer above, a link to the award records
+  // this member carries (after the reason, whose own "see Related Awards
+  // below" it gives a count and a target).
   if (withheld) {
     return (
       <span
@@ -1629,6 +1645,11 @@ function WhoGetsItBody({
         className="text-muted-foreground"
       >
         {WHO_GETS_IT_WITHHELD_LEAD} {sharedCodeWithheldReason(peBli)}{" "}
+        {awardCount > 0 && (
+          <>
+            <LinkedAwardRecordsLink awardCount={awardCount} />.{" "}
+          </>
+        )}
         <Link
           href="/coverage/#crosswalk"
           className="underline decoration-dotted hover:text-foreground"

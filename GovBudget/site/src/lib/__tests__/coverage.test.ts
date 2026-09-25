@@ -128,7 +128,7 @@ describe("coverage manifest", () => {
     const noPlace = getCoverage("follow-the-dollar", "no-place-of-performance").emptyNote!;
     expect(noPlace).not.toMatch(/haven't been crosswalked|not crosswalked/);
     expect(noPlace).toContain(
-      "none of this program's high-confidence awards records a positive obligation at a place of performance",
+      "none of this program's high-confidence awards records a positive obligation at any place of performance",
     );
     // Both carry the G2 count.
     expect(noPlace).toContain("17 of 420");

@@ -52,6 +52,29 @@ interface DatasetCard {
   isCited: boolean;
 }
 
+/**
+ * Column and dataset names inside a card's description (`hhi_high`, the
+ * `*_all` / `*_high` column suffixes, `fact_id`) are the parquet schema's own
+ * identifiers, the strings a downloader types into DuckDB. They render as
+ * <code>, the way this file already sets `pdfs/` and `workbooks/`, so the
+ * text around them reads as prose and the names read as names.
+ *
+ * Integration 2026-09-25 (R-INT-7): gate 27 leg 31 ("exposed enum") fired on
+ * the #80 fct_program_concentration scope, whose floor clause must name
+ * `program_dollars_high` (tests/test_export_site_datasets_manifest.py). The
+ * words are unchanged. Only lower-case snake_case and `*_suffix` runs are
+ * wrapped; anything else stays in the copy gate's scan.
+ */
+const IDENTIFIER_RUN = /(\*_[a-z0-9]+|\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b)/;
+
+export function withIdentifierCode(text: string): React.ReactNode[] {
+  // split() with one capture group puts every identifier at an odd index.
+  return text
+    .split(IDENTIFIER_RUN)
+    .map((part, i) => (i % 2 === 1 ? <code key={i}>{part}</code> : part))
+    .filter((part) => part !== "");
+}
+
 function buildDatasets(
   inventory: DownloadDataset[],
   uncited: Set<string>,
@@ -202,7 +225,7 @@ export function DownloadCards({
               )}
             </div>
             <p className="text-xs text-muted-foreground leading-5">
-              {ds.description}
+              {withIdentifierCode(ds.description)}
             </p>
             {ds.caveat && (
               <p

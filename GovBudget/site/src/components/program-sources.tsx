@@ -4,7 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { Citation } from "@/lib/data";
 import { SourceDocumentLinks } from "./source-document-links";
 
-/** Source metadata loads as this section approaches the viewport, not with the program header. */
+/**
+ * Source metadata loads as this section approaches the viewport, not with the program header.
+ *
+ * The two sub-headings are h3s on the type ladder (integration 2026-09-25):
+ * no size or weight utility, so the base `h3 { font: var(--type-h3) }` rule
+ * in globals.css sets them — Source Serif 4, 22px, 500 — which is what gate
+ * 26 (type) leg (g) requires of every h1/h2/h3. `text-sm font-semibold` set
+ * them at 14px / 600, off the ladder, on /program/0606301D8Z/.
+ */
 export function ProgramSources({ entries, program }: { entries: { factId: string; citation: Citation }[]; program?: string }) {
   const root = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -27,11 +35,11 @@ export function ProgramSources({ entries, program }: { entries: { factId: string
     {entries.length === 0 ? <p className="text-sm text-muted-foreground">No document-tier citations resolve on this page. Open a cited number for its calculation and input sources.</p> : <>
       <p className="mb-4 text-sm text-muted-foreground">Open any budget figure for its exact receipt. Verified line items lead with the highlighted government PDF; original spreadsheets download with their budget edition and exhibit in the filename.</p>
       {workbooks.length > 0 && <div data-testid="program-budget-sources">
-        <h3 className="mb-3 text-sm font-semibold">Budget totals · TOA sources</h3>
+        <h3 className="mb-3 text-foreground">Budget totals · TOA sources</h3>
         {workbooks.map(({ factId, citation }) => <SourceDocumentLinks key={factId} citation={citation} factId={factId} program={program} surface="program-sources" showBudgetPdf={visible} />)}
       </div>}
       {details.length > 0 && <div data-testid="program-detail-sources">
-        <h3 className="mb-3 text-sm font-semibold">Detailed budget justification</h3>
+        <h3 className="mb-3 text-foreground">Detailed budget justification</h3>
         {workbooks.length > 0 && <p className="mb-4 text-sm text-muted-foreground">The related TOA spreadsheets above use a different accounting basis from R-2/P-40 detail. Their amounts are not assumed to match these detailed sources.</p>}
         {details.map(({ factId, citation }) => <SourceDocumentLinks key={factId} citation={citation} factId={factId} program={program} surface="program-sources" showBudgetPdf={visible} />)}
       </div>}
