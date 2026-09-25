@@ -1,0 +1,142 @@
+{
+  "model": "jev-1.13.0",
+  "completed": 155,
+  "errors": 0,
+  "groups": {
+    "claim_constructed": {
+      "completed": 13,
+      "correct": 13,
+      "high_confidence_count": 7,
+      "high_confidence_errors": 0,
+      "false_supports": 0,
+      "abstentions": 0
+    },
+    "gao_constructed_control": {
+      "completed": 8,
+      "correct": 8,
+      "high_confidence_count": 8,
+      "high_confidence_errors": 0,
+      "false_supports": 0,
+      "abstentions": 0
+    },
+    "gao_match": {
+      "completed": 63,
+      "correct": 63,
+      "high_confidence_count": 42,
+      "high_confidence_errors": 0,
+      "false_supports": 0,
+      "abstentions": 0
+    },
+    "lineage_missing_control": {
+      "completed": 6,
+      "correct": 6,
+      "high_confidence_count": 6,
+      "high_confidence_errors": 0,
+      "false_supports": 0,
+      "abstentions": 6
+    },
+    "lineage_reversed_control": {
+      "completed": 12,
+      "correct": 12,
+      "high_confidence_count": 6,
+      "high_confidence_errors": 0,
+      "false_supports": 0,
+      "abstentions": 0
+    },
+    "lineage_seed": {
+      "completed": 53,
+      "correct": 42,
+      "high_confidence_count": 16,
+      "high_confidence_errors": 1,
+      "false_supports": 0,
+      "abstentions": 0
+    }
+  },
+  "median_seconds": 0.40678566694259644,
+  "p95_seconds": 0.5071617090143263,
+  "input_tokens": 210989,
+  "estimated_inference_usd": 0.008861538,
+  "price_source": "https://docs.typesafe.ai/models",
+  "price_usd_per_million_input_tokens": 0.042,
+  "confidence_threshold_descriptive_only": 0.9,
+  "failures": [
+    {
+      "id": "lineage_8964388ad52bbbd9_2",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.34
+    },
+    {
+      "id": "lineage_f8774c188e0242b7_3",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.94
+    },
+    {
+      "id": "lineage_9fb59fbc6b9ef9bf_4",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.29
+    },
+    {
+      "id": "lineage_5f9b8739fffc3798_7",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.44
+    },
+    {
+      "id": "lineage_e5502592d13371c6_10",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.14
+    },
+    {
+      "id": "lineage_91ee1edf613577ae_19",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.68
+    },
+    {
+      "id": "lineage_157c7b5c19b116da_20",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.87
+    },
+    {
+      "id": "lineage_bb41f8135c18034f_32",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.48
+    },
+    {
+      "id": "lineage_6390d0b76a2f4541_39",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.21
+    },
+    {
+      "id": "lineage_6a416dc14d577677_40",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.55
+    },
+    {
+      "id": "lineage_62e2058d190e0968_49",
+      "group": "lineage_seed",
+      "expected": "supported",
+      "actual": "not_supported",
+      "confidence": 0.36
+    }
+  ],
+  "wall_seconds": 16.098831166978925
+}

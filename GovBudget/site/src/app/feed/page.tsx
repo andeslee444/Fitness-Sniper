@@ -1,3 +1,5 @@
+import { ReviewedBriefings } from "@/components/reviewed-briefings";
+import { WatchFeed } from "@/components/watch-feed";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -17,10 +19,12 @@ import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
 import {
   WHOLE_FEED_RSS,
   WHOLE_FEED_ATOM,
+  feedGuid,
   feedProgramKey,
 } from "@/lib/feed-model.mjs";
 import type { FeedCard, FeedSidecar } from "@/lib/data";
 import { formatCount } from "@/lib/format";
+import { PageIntro } from "@/components/page-intro";
 
 // Event type metadata: display name, description, methodology anchor.
 const EVENT_META: Record<
@@ -134,30 +138,7 @@ function SubscribeLinks({
   label: string;
   className?: string;
 }) {
-  const urls = feedLinks(paths);
-  return (
-    <span
-      data-feed-subscribe=""
-      className={["text-xs text-muted-foreground", className].filter(Boolean).join(" ")}
-    >
-      Subscribe:{" "}
-      <a
-        href={urls.rss}
-        className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
-        title={`${label} — RSS`}
-      >
-        RSS
-      </a>
-      {" · "}
-      <a
-        href={urls.atom}
-        className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
-        title={`${label} — Atom`}
-      >
-        Atom
-      </a>
-    </span>
-  );
+  return <div className={className}><WatchFeed urls={feedLinks(paths)} label={label} compact /></div>;
 }
 
 function groupByEventType(cards: FeedCard[]): Map<string, FeedCard[]> {
@@ -236,9 +217,10 @@ export default function FeedPage() {
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Anomaly Feed" }]}
         />
-        <div className="page-header mb-6">
-          <h1 className="text-3xl font-bold mb-2">Anomaly Feed</h1>
-          <p className="text-muted-foreground">
+        <PageIntro eyebrow="Research tools / Discover" title="Changes & signals"
+          description={<p>Find budget shifts and contracting patterns worth investigating. Start with a signal, inspect the program, and follow its figures to the source.</p>}
+          actions={<><Link href="/years/">Compare the budget years →</Link><Link href="/methodology/#feed">How signals are selected →</Link></>}>
+          <p className="text-sm text-muted-foreground">
             {formatCount(total)}{" "}automated signals across{" "}
             {formatCount(grouped.size)}{" "}event types.
             Every item states the dollars it is about, not just a percentage.
@@ -246,7 +228,7 @@ export default function FeedPage() {
             source. &ldquo;Why flagged?&rdquo; links explain each signal type and its
             threshold.
           </p>
-          <p className="mt-2">
+          <div className="mt-2">
             <SubscribeLinks
               paths={{ rss: WHOLE_FEED_RSS, atom: WHOLE_FEED_ATOM }}
               label="Whole anomaly feed"
@@ -255,8 +237,19 @@ export default function FeedPage() {
               Items are dated to the corpus build — the budget books carry no
               per-event timestamp.
             </span>
-          </p>
-        </div>
+          </div>
+        </PageIntro>
+
+        <ReviewedBriefings />
+
+        <nav aria-label="Signal types" className="mb-8 flex flex-wrap gap-2">
+          {EVENT_ORDER.filter((etype) => (grouped.get(etype)?.length ?? 0) > 0).map((etype) => (
+            <a key={etype} href={`#${EVENT_META[etype].anchorId}`} className="inline-flex min-h-11 items-center gap-2 border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2">
+              {EVENT_META[etype].label}
+              <span className="t-id">{formatCount(grouped.get(etype)!.length)}</span>
+            </a>
+          ))}
+        </nav>
 
         <div className="space-y-10">
           {EVENT_ORDER.map((etype) => {
@@ -277,7 +270,7 @@ export default function FeedPage() {
               // pattern — methodology/home sections use the same value).
               <section key={etype} id={meta.anchorId} className="scroll-mt-16">
                 <div className="mb-3">
-                  <h2 className="text-xl font-semibold">
+                  <h2>
                     {meta.label}{" "}
                     <span className="ml-1 text-sm text-muted-foreground font-normal">
                       ({truncated > 0 ? `${formatCount(section_cards.length)} of ${formatCount(all_section_cards.length)}` : formatCount(section_cards.length)})
@@ -299,19 +292,19 @@ export default function FeedPage() {
                       elements in our corpus ({corpusScope}).
                     </p>
                   )}
-                  <p className="mt-1">
+                  <div className="mt-1">
                     <SubscribeLinks
                       paths={eventTypeFeedPaths(etype)}
                       label={meta.label}
                     />
-                  </p>
+                  </div>
                 </div>
                 {/* Card list — staggered once-reveal on scroll (Task 11);
                     the Reveal wrapper divs are the divide-y children. */}
                 <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
                   {section_cards.map((card, i) => (
                     <Reveal
-                      key={`${card.event_type}-${card.pe_bli ?? card.family_key ?? i}`}
+                      key={feedGuid(card)}
                       index={i}
                     >
                       <FeedCardItem

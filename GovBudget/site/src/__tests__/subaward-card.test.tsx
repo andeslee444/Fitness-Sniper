@@ -6,16 +6,46 @@
  * USAspending page (USAspending has no subaward-level page), the subaward
  * number, the subawardee, and the basis in words — plus the caveat that the
  * evidence is one hop removed from the award.
+ *
+ * Integration 2026-09-25: the codex/f15-family-browser branch built the same
+ * kind independently ("subaward link evidence"). Its cases are kept below,
+ * adapted to this card's props and wording: the fail-closed
+ * parseSubawardEvidence guard in front of the card, the panel's degraded
+ * state for malformed rows, the panel dispatch with no second official-source
+ * link, and the copied footnote's inference / prime-award-context tail.
  */
 
-import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
-import React from "react";
+import React, { useContext } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-import { SubawardCard } from "@/components/citation-panel/subaward-card";
-import { parseSubawardBody } from "@/components/citation-panel/panel";
+import {
+  SubawardCard,
+  parseSubawardEvidence,
+} from "@/components/citation-panel/subaward-card";
+import {
+  CitationPanelProvider,
+  parseSubawardBody,
+} from "@/components/citation-panel/panel";
+import { CitationPanelContext } from "@/components/cite";
 import { isSubaward, isAnnouncement } from "@/lib/citations";
-import type { SubawardCitation, Citation } from "@/lib/data";
+import { getCitations, type SubawardCitation, type Citation } from "@/lib/data";
+import { citationSourceDocuments } from "@/lib/source-document";
+import { footnoteInputFromCitation } from "@/lib/footnote";
+
+vi.mock("@/components/asset-config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/asset-config")>()),
+  AssetConfigProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAssetUrl: () => (path: string) => path,
+  useAssetConfig: () => ({ assetsBaseUrl: "/assets", loaded: true, error: null }),
+}));
+
+afterEach(cleanup);
+
+/** The copied-footnote label for this kind (lib/footnote.ts genericSourceLabel). */
+const SUBAWARD_SOURCE_LABEL =
+  "FSRS subaward record via USAspending; medium-confidence program-link " +
+  "inference (URL is prime-award context)";
 
 const KEY = "CONT_AWD_N6833517C0392_9700_-NONE-_-NONE-";
 const PRIME_URL = `https://www.usaspending.gov/award/${KEY}/`;
@@ -221,14 +251,13 @@ describe("subaward citation kind", () => {
     expect(isSubaward(derived)).toBe(false);
   });
 
-  it("carries a footnote source label (no fall-through to an unlabelled tier)", async () => {
-    const { footnoteInputFromCitation } = await import("@/lib/footnote");
+  it("carries a footnote source label (no fall-through to an unlabelled tier)", () => {
     const input = footnoteInputFromCitation(
       SUBAWARD_CITATION,
       "abcd1234abcd1234",
       {},
     );
-    expect(input.sourceLabel).toBe("FSRS subaward record via USAspending");
+    expect(input.sourceLabel).toBe(SUBAWARD_SOURCE_LABEL);
     expect(input.officialUrl).toBe(PRIME_URL);
     expect(input.sha256).toBeNull();
   });
@@ -256,5 +285,108 @@ describe("parseSubawardBody — the unusable-body path", () => {
       match_basis: null,
     });
     expect(parseSubawardBody(JSON.stringify(BODY))).toEqual(BODY);
+  });
+});
+
+// ── From codex/f15-family-browser (b803e860), adapted to the merged card ────
+//
+// A live published row: the fixture is read from the shipped citations, so a
+// regenerated export that stops satisfying the guard fails here, not in the
+// browser.
+const LIVE_FID = "4fe505d824c9f9aa";
+const LIVE = getCitations()[LIVE_FID] as SubawardCitation;
+
+function liveCard(citation: SubawardCitation = LIVE) {
+  const body = parseSubawardEvidence(citation);
+  expect(body).not.toBeNull();
+  return render(
+    <SubawardCard url={citation.official_url} body={body!} formula={citation.formula} />,
+  );
+}
+
+function openInPanel(fid: string, citation: SubawardCitation) {
+  function Trigger() {
+    const { openPanel } = useContext(CitationPanelContext);
+    return <button onClick={() => openPanel(fid)}>Inspect link</button>;
+  }
+  render(
+    <CitationPanelProvider citations={{ [fid]: citation }}>
+      <Trigger />
+    </CitationPanelProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Inspect link" }));
+}
+
+describe("subaward link evidence (live rows)", () => {
+  it("identifies the source and confidence without treating prime-award context as the subaward receipt", () => {
+    liveCard();
+    expect(screen.getByText("10977 REL 1")).toBeVisible();
+    expect(screen.getByText("VT MILCOM INC.")).toBeVisible();
+    const caveat = screen.getByTestId("subaward-caveat").textContent!;
+    expect(caveat).toMatch(/publish at\s+medium, never high/);
+    expect(caveat).toContain("Contract dollars come from award data, not from this record");
+    expect(caveat).toContain("description itself is not reproduced in this receipt");
+    expect(caveat).toContain("no page for an individual subaward");
+    const link = screen.getByRole("link", { name: /Open the prime award on USAspending/ });
+    expect(link).toHaveAttribute("href", LIVE.official_url);
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(citationSourceDocuments(LIVE)).toEqual([]);
+  });
+
+  it("supports every currently published subaward identity", () => {
+    const rows = Object.values(getCitations()).filter(
+      (row): row is SubawardCitation => row.kind === "subaward",
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(parseSubawardEvidence(row), row.official_url).not.toBeNull();
+      expect(parseSubawardBody(row.query_body), row.official_url).not.toBeNull();
+    }
+  });
+
+  it.each([
+    { query_body: "{" },
+    { query_body: "null" },
+    { query_body: JSON.stringify({ subaward_number: "", subawardee: "ACME", match_basis: "subaward-description-exact" }) },
+    { query_body: JSON.stringify({ subaward_number: "1", subawardee: "ACME", match_basis: "llm-alias" }) },
+    { query_body: JSON.stringify({ subaward_number: "1", subawardee: " ", match_basis: "subaward-description-exact" }) },
+    { official_url: "https://www.usaspending.gov.evil.example/award/CONT_AWD_N0017818F3011_9700_/" },
+    { official_url: "https://www.usaspending.gov/award/CONT_AWD_OTHER_9700_/" },
+    { official_url: "https://www.usaspending.gov/award/CONT_AWD_N0017818F3011_9700_/?x=1" },
+    { official_url: "https://username@www.usaspending.gov/award/CONT_AWD_N0017818F3011_9700_/" },
+    { recorded_value: "100" },
+    { amount_text: "$100" },
+    { amount_thousands: 1 },
+    { units: "USD" },
+    { formula: null },
+    { formula: LIVE.formula!.replace("confidence='medium'", "confidence='high'") },
+  ])("fails visibly for malformed evidence %j", (changes) => {
+    const malformed = { ...LIVE, ...changes } as unknown as SubawardCitation;
+    expect(parseSubawardEvidence(malformed)).toBeNull();
+    openInPanel(LIVE_FID, malformed);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "This subaward citation could not be read.",
+    );
+    expect(screen.queryByTestId("subaward-card")).toBeNull();
+    expect(screen.queryByRole("link", { name: /prime award/i })).toBeNull();
+  });
+
+  it("opens the typed evidence reader through the ordinary receipt panel", () => {
+    openInPanel(LIVE_FID, LIVE);
+    expect(screen.getByText("FSRS Subaward Record")).toBeVisible();
+    expect(screen.getByText("10977 REL 1")).toBeVisible();
+    expect(screen.queryByText("Unknown citation kind.")).toBeNull();
+    // One official-source action: the card's prime-award link, never a
+    // second footer link (the receipt reader dropped the footer link).
+    expect(screen.queryByTestId("official-source")).toBeNull();
+    expect(screen.getAllByRole("link", { name: /prime award/i })).toHaveLength(1);
+  });
+
+  it("keeps the inference and prime-award distinction in copied footnotes", () => {
+    const input = footnoteInputFromCitation(LIVE, LIVE_FID, {});
+    expect(input.sourceLabel).toBe(SUBAWARD_SOURCE_LABEL);
+    expect(input.sourceLabel).toContain("medium-confidence program-link inference");
+    expect(input.sourceLabel).toContain("prime-award context");
+    expect(input.valueText).toBeFalsy();
   });
 });

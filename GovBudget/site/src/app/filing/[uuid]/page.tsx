@@ -10,6 +10,7 @@ import { humanLdaUrl } from "@/lib/citations";
 import { filingDisplayTitle, isSelfFiled } from "@/lib/filing-title";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CompanyName } from "@/components/company-name";
 import { displayCompanyName } from "@/lib/company-name.mjs";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -155,25 +156,19 @@ export default async function FilingPage({ params }: Props) {
         />
 
         {/* Header */}
-        <div className="mb-6">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
-            Senate LDA lobbying filing
-          </p>
+        {/* The <h1> is PageIntro's title: the client through CompanyName (the
+            §P2-4 casing rule, with its [data-company-name] attribute for gate
+            2 leg (tc)), exactly as the old hand-rolled <h1> rendered it. */}
+        <PageIntro
+          eyebrow="Senate LDA lobbying filing"
+          title={f.client_name ? <CompanyName raw={f.client_name} /> : "Unknown client"}
+          titleProps={{ "data-pagefind-meta": "title[data-filing-title]", "data-filing-title": filingDisplayTitle(f) }}
+          description="A public disclosure record: who filed, what they reported, and the program connections found in the text."
+          actions={<><a href="#filing-amounts">Reported amounts</a><a href="#mentions">Program mentions</a><a href="#activities">Activity text</a><a href="#lobbyists">Lobbyists</a></>}>
           {/* data-pagefind-meta title[attr] overrides Pagefind's default
               h1-derived page title so deep-search results read
               "Client — Registrant, YYYY QN" (§P1-4) — same string as the
               page <title> via filingDisplayTitle. */}
-          <h1
-            className="text-3xl font-bold mb-2"
-            data-pagefind-meta="title[data-filing-title]"
-            data-filing-title={filingDisplayTitle(f)}
-          >
-            {f.client_name ? (
-              <CompanyName raw={f.client_name} />
-            ) : (
-              "Unknown client"
-            )}
-          </h1>
           {/* Explicit {" "} separators between the meta spans: without them
               the rendered text nodes abut ("…LLCYear: 2025") and Pagefind
               excerpts concatenate the fragments (§P1-4 snippet bug). */}
@@ -259,16 +254,16 @@ export default async function FilingPage({ params }: Props) {
               </span>
             )}
           </p>
-        </div>
+        </PageIntro>
 
         {/* Income / expenses — state A via filing-level lda citations,
             "not reported" plain text when the filing omits the amount. */}
-        <div className="grid grid-cols-2 gap-4 max-w-md mb-8">
+        <div id="filing-amounts" className="scroll-mt-24 grid grid-cols-2 gap-4 max-w-2xl mb-8">
           <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
+            <p className="t-label mb-1">
               Reported income
             </p>
-            <p className="text-xl font-bold tabular-nums">
+            <p className="t-figure t-figure--4">
               {f.income_usd !== null && f.income_fact_id ? (
                 <Cite
                   value={f.income_usd}
@@ -284,10 +279,10 @@ export default async function FilingPage({ params }: Props) {
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
+            <p className="t-label mb-1">
               Reported expenses
             </p>
-            <p className="text-xl font-bold tabular-nums">
+            <p className="t-figure t-figure--4">
               {f.expenses_usd !== null && f.expenses_fact_id ? (
                 <Cite
                   value={f.expenses_usd}
@@ -305,8 +300,9 @@ export default async function FilingPage({ params }: Props) {
         </div>
 
         {/* Tracked program mentions */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-3">
+        <section id="mentions" className="mb-10 scroll-mt-24">
+          <p className="t-label mb-2">Connections in the record</p>
+          <h2 className="mb-3">
             Tracked program mentions
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               {detail.mentions.length}
@@ -347,7 +343,7 @@ export default async function FilingPage({ params }: Props) {
                         {m.program_title ?? m.pe_bli}
                       </span>
                     )}
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="t-id">
                       {m.pe_bli}
                     </span>
                     {/* ROADMAP #82: a filing names a budget line, not an
@@ -400,8 +396,8 @@ export default async function FilingPage({ params }: Props) {
         </section>
 
         {/* Lobbying activities */}
-        <section className="mb-8" id="activities">
-          <h2 className="text-xl font-semibold mb-3">
+        <section className="mb-10 scroll-mt-24" id="activities">
+          <h2 className="mb-3">
             Lobbying activities
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               {detail.activities.length}
@@ -417,7 +413,7 @@ export default async function FilingPage({ params }: Props) {
                   <p className="text-sm font-medium mb-1">
                     {a.issue_display ?? a.issue_code ?? "General issue"}
                     {a.issue_code && (
-                      <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      <span className="t-id ml-2">
                         {a.issue_code}
                       </span>
                     )}
@@ -445,8 +441,8 @@ export default async function FilingPage({ params }: Props) {
         </section>
 
         {/* Lobbyists — covered_position non-empty ⇒ revolving-door badge */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-3">
+        <section id="lobbyists" className="mb-10 scroll-mt-24">
+          <h2 className="mb-3">
             Lobbyists
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               {detail.lobbyists.length}
@@ -468,7 +464,7 @@ export default async function FilingPage({ params }: Props) {
                       <span className="font-medium text-sm">{l.name}</span>
                       {covered && (
                         <span
-                          className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                          className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700"
                           title="Previously held a covered government position (LDA §1602 disclosure)"
                         >
                           revolving door

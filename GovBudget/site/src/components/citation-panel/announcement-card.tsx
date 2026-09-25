@@ -80,7 +80,7 @@ export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) 
       data-testid="announcement-card"
     >
       <div>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-0.5">
+        <span className="t-label block mb-0.5">
           Source
         </span>
         <p className="text-sm font-medium">Official DoD contract announcement</p>
@@ -104,10 +104,10 @@ export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) 
 
       {/* Raw URL co-cited */}
       <div className="space-y-0.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="t-label">
           Announcement URL
         </span>
-        <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
+        <p className="t-id break-all leading-relaxed">
           {url}
         </p>
       </div>
@@ -115,7 +115,7 @@ export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) 
       {/* Archived copy — the bytes that were actually read */}
       {body.archive_url ? (
         <div className="space-y-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block">
+          <span className="t-label block">
             Archived copy
           </span>
           <a
@@ -131,7 +131,7 @@ export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) 
           </a>
           {sha && (
             <p
-              className="font-mono text-xs text-muted-foreground break-all"
+              className="t-id break-all"
               data-testid="announcement-sha256"
             >
               sha256 {sha}
@@ -149,7 +149,7 @@ export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) 
           supports, which is weaker than "the announcement names it" for every
           basis except the exact one. */}
       <div className="space-y-0.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block">
+        <span className="t-label block">
           Match basis
         </span>
         <p className="text-sm" data-testid="announcement-match-basis">
@@ -160,11 +160,11 @@ export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) 
       {/* Method + confidence tier, as the derived row this replaced stated */}
       {formula && (
         <div>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+          <span className="t-label block mb-1">
             Link
           </span>
           <p
-            className="rounded bg-muted px-2.5 py-2 font-mono text-xs text-foreground break-words leading-relaxed"
+            className="t-id rounded bg-muted px-2.5 py-2 break-words leading-relaxed"
             data-testid="announcement-formula"
           >
             {formula}

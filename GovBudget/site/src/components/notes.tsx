@@ -54,7 +54,7 @@ export function ScopeNote({
       className={`rounded-md border border-(--scope-border) bg-(--scope-bg) px-3 py-2 sm:px-4 sm:py-3 ${className}`}
     >
       {label && (
-        <p className="mb-1 text-[11px] font-semibold tracking-widest text-foreground/60 uppercase">
+        <p className="t-label mb-1">
           {label}
         </p>
       )}

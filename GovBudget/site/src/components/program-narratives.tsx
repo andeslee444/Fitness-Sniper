@@ -96,7 +96,7 @@ export function ProgramNarratives({
 
   return (
     <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4 text-foreground">
+      <h2 className="mb-4 text-foreground">
         {group === "description" ? "Description" : "Justification"}
       </h2>
 
@@ -121,7 +121,7 @@ export function ProgramNarratives({
                 excerpts, copy/paste, screen readers) concatenates adjacent
                 text without them — "Mission— Long Range Kill Chainssource"
                 was the shipped join (Fix H2, 2026-07-28). */}
-            <h3 className="text-sm font-semibold text-foreground mb-2">
+            <h3 className="text-foreground mb-2">
               {humanizeKind(n.kind)}
               {n.title && n.title !== n.kind && (
                 <>
@@ -150,7 +150,7 @@ export function ProgramNarratives({
         {/* Accomplishments — collapsible via native details/summary (no JS) */}
         {accomplishments.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">
+            <h3 className="text-foreground mb-3">
               {humanizeKind("accomplishment_planned_program")}{" "}
               <span className="font-normal text-muted-foreground">
                 ({accomplishments.length})
@@ -163,17 +163,7 @@ export function ProgramNarratives({
                   className="rounded-lg border border-border bg-muted/30 group"
                 >
                   <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors rounded-lg list-none flex items-center justify-between">
-                    <span>
-                      {n.title}
-                      {/* space text-node: keeps the accomplishment title and
-                          the "source" chip separate words in text extraction */}
-                      {n.fact_id && (
-                        <>
-                          {" "}
-                          <NarrativeSourceChip factId={n.fact_id} />
-                        </>
-                      )}
-                    </span>
+                    <span>{n.title}</span>
                     <span
                       className="text-muted-foreground text-xs group-open:rotate-180 transition-transform"
                       aria-hidden="true"
@@ -182,6 +172,11 @@ export function ProgramNarratives({
                     </span>
                   </summary>
                   <div className="px-4 pb-4 pt-2">
+                    {n.fact_id && (
+                      <div className="mb-2">
+                        <NarrativeSourceChip factId={n.fact_id} />
+                      </div>
+                    )}
                     <NarrativeBody
                       body={n.body}
                       amountLinks={n.amount_links}

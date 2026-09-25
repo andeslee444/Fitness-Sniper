@@ -1,3 +1,4 @@
+import { PageIntro } from "@/components/page-intro";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -72,26 +73,40 @@ export default function CoveragePage() {
   const dated = rows.filter((r) => r.targetKind === "dated").length;
 
   return (
-    <div className="spine py-8">
+    <div className="spine py-8 reference-page">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Coverage" }]} />
 
-      {/* <h1> FIRST — gate 2 (nk) pins that no scope block precedes it. */}
-      <h1 className="mb-3 text-3xl font-bold">Coverage</h1>
+      {/* <h1> FIRST — gate 2 (nk) pins that no scope block precedes it;
+          PageIntro renders only its eyebrow label ahead of the <h1>. */}
+      {/* The lede is the masthead's description (2026-09-25 integration of
+          the editorial redesign). The redesign's own one-line description
+          ("What is present, what is missing, and how much of each dataset
+          can be connected.") paraphrased this lede, so it was not kept
+          beside it; and the lede's first sentence lost ", and what would
+          have to change for that to move" — its second sentence says the
+          same thing ("the specific thing standing in the way") — to pay
+          for the eyebrow and the two action links on a page with ~300 gzip
+          of headroom.
+          Trimmed 2026-09-18 to pay for the File C sentences below. What
+          went: "— including, in plain words, why no row here carries a
+          date", a promise the paragraph under the table keeps in the same
+          breath as it explains the policy. 21d's move is untouched; this
+          is the lede's own redundancy, and shortening it can only help
+          the index-fold leg. */}
+      <PageIntro
+        eyebrow="Know the boundaries"
+        title="Coverage"
+        description={
+          <p className="leading-7 text-muted-foreground">
+            What this site covers and what it does not. Each row gives the
+            coverage this build actually shipped, the specific thing standing
+            in the way, and where the work stands.
+          </p>
+        }
+        actions={<><a href="#map-heading">Dataset coverage ↓</a><Link href="/methodology/">Read the methodology →</Link></>}
+      />
       <div className="doc-layout">
         <div data-doc-prose>
-          {/* Trimmed 2026-09-18 to pay for the File C sentences below. What
-              went: "— including, in plain words, why no row here carries a
-              date", a promise the paragraph under the table keeps in the same
-              breath as it explains the policy. 21d's move is untouched; this
-              is the lede's own redundancy, and shortening it can only help
-              the index-fold leg. */}
-          <p className="leading-7 text-muted-foreground">
-            What this site covers, what it does not, and what would have to change
-            for that to move. Each row gives the coverage this build actually
-            shipped, the specific thing standing in the way, and where the work
-            stands.
-          </p>
-
           {/* The "recomputed at build time" panel used to sit here, and the
               dated-target paragraph sat under the "Feature by feature"
               heading. Both qualify the map table, so 21d moved both directly
@@ -111,7 +126,7 @@ export default function CoveragePage() {
             className="mt-10"
             aria-labelledby="map-heading"
           >
-            <h2 id="map-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="map-heading" className="mb-3">
               Feature by feature
             </h2>
             {/* MOBILE: below `sm` each row becomes a card (the /data/ treatment),
@@ -177,7 +192,7 @@ export default function CoveragePage() {
                         data-coverage-blocker
                         className="block px-4 pt-2 align-top text-muted-foreground sm:table-cell sm:py-3"
                       >
-                        <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-widest text-foreground/60 sm:hidden">
+                        <span className="t-label mb-0.5 block sm:hidden">
                           In the way
                         </span>
                         {r.blocker}
@@ -188,7 +203,7 @@ export default function CoveragePage() {
                         data-target-kind={r.targetKind}
                         className="block px-4 pt-2 align-top text-muted-foreground sm:table-cell sm:py-3"
                       >
-                        <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-widest text-foreground/60 sm:hidden">
+                        <span className="t-label mb-0.5 block sm:hidden">
                           Target
                         </span>
                         {r.target}
@@ -215,7 +230,7 @@ export default function CoveragePage() {
                 note below renders a dated one-off spike sample (44 links,
                 81%) that nothing recomputes. Scoped to what the gate does
                 recompute — 4 characters shorter. */}
-            <h2 className="mb-2 text-lg font-semibold text-foreground">
+            <h2 className="mb-2 text-foreground">
               Every coverage figure is recomputed at build time
             </h2>
             {/* Trimmed 2026-09-18 to pay for the File C sentences below. What
@@ -265,7 +280,7 @@ export default function CoveragePage() {
               corpus-shaped number on
               the singleton pages that is not one of them. */}
           <section className="mt-12" aria-labelledby="counts-heading" id="corpus-counts">
-            <h2 id="counts-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="counts-heading" className="mb-3">
               How the corpus is counted
             </h2>
             <p className="mb-4 text-sm leading-7 text-muted-foreground">
@@ -299,7 +314,7 @@ export default function CoveragePage() {
 
           {/* ── The crosswalk: a methodology limit, not a backlog item ───────── */}
           <section className="mt-12" aria-labelledby="crosswalk-heading" id="crosswalk">
-            <h2 id="crosswalk-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="crosswalk-heading" className="mb-3">
               The budget→award crosswalk is a methodology limit, not a backlog item
             </h2>
             {/* Trimmed 2026-09-18 to pay for the File C note below. What went:
@@ -398,7 +413,7 @@ export default function CoveragePage() {
 
           {/* ── What this page is not ────────────────────────────────────────── */}
           <section className="mt-12" aria-labelledby="not-heading">
-            <h2 id="not-heading" className="mb-3 text-xl font-semibold">
+            <h2 id="not-heading" className="mb-3">
               Where coverage is stated elsewhere
             </h2>
             <p className="leading-7 text-muted-foreground">

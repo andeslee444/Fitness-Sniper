@@ -15,7 +15,7 @@ export const BASIS_LABEL: Record<string, string> = {
   // a single exhibit it cannot prove. See basisChipForExhibit below for the
   // exhibit-qualified label a call site CAN prove.
   toa: "P-1/R-1 TOA",
-  "jbook-detail": "P-40 detail",
+  "jbook-detail": "J-book detail",
 };
 
 /**
@@ -33,9 +33,9 @@ const TOA_LABEL_BY_EXHIBIT: Record<string, string> = {
 
 /**
  * The TOA chip's label, qualified by the figure's own exhibit when known.
- * Non-TOA bases are unaffected — they still resolve through BASIS_LABEL,
- * which has never had an exhibit ambiguity (P-40 detail is a single exhibit
- * regardless of the row's TOA exhibit).
+ * J-book detail describes the canonical data basis. A book can contain both
+ * summary and detail exhibits, so that basis cannot identify the PDF page's
+ * exhibit and keeps the generic book label.
  */
 export function basisChipForExhibit(
   basis: string,

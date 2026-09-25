@@ -724,7 +724,10 @@ def _jbooks_ingest_local(args) -> None:
 def cmd_jbooks(args) -> None:
     from govbudget.jbooks.db import migrate
 
-    migrate()
+    # Crosswalk preflight/dry-run must perform no schema or data writes.
+    # Run the explicit migrate command first when provisioning a new warehouse.
+    if args.action != "crosswalk":
+        migrate()
     if args.action == "backfill" and getattr(args, "service", None):
         if getattr(args, "source", None) == "archive":
             _jbooks_backfill_service_archive(args)
@@ -828,13 +831,24 @@ def cmd_jbooks(args) -> None:
         all_years = bool(getattr(args, "all_years", False))
         dry_run = bool(getattr(args, "dry_run", False))
         yes = bool(getattr(args, "yes", False))
-        # The same two shapes crosswalk_org refuses, caught here so a typo
-        # exits before any Postgres connection is opened (#78).
+        # The shared jbooks --fiscal-year is crosswalk's EDITION selector: only
+        # that PB edition's budget lines are planned and written (it never
+        # widens a line's award window). None: every edition.
+        fiscal_year = getattr(args, "fiscal_year", None)
+        # The same shapes crosswalk_org refuses, caught here so a typo exits
+        # before any Postgres connection is opened (#78). The two named
+        # messages first; _validate_window then refuses the rest (a reversed
+        # window, a year outside 1900-2200) with its own.
         if (fy_start is None) != (fy_end is None):
             print("crosswalk: --fy-start and --fy-end must be given together")
             sys.exit(2)
         if all_years and fy_start is not None:
             print("crosswalk: --all-years cannot be combined with --fy-start/--fy-end")
+            sys.exit(2)
+        try:
+            xw._validate_window(fy_start, fy_end, all_years, fiscal_year)
+        except ValueError as exc:
+            print(f"crosswalk: {exc}")
             sys.exit(2)
 
         if args.org:
@@ -845,13 +859,18 @@ def cmd_jbooks(args) -> None:
                     r[0] for r in con.execute(
                         "select distinct organization from budget_lines"
                         " where organization is not null and organization <> ''"
+                        " and (%s::int is null or fiscal_year=%s)",
+                        (fiscal_year, fiscal_year),
                     )
                 })
         window = xw.run_window_label(fy_start, fy_end, all_years)
+        if fiscal_year is not None:
+            window += f"; edition FY{fiscal_year} only"
         common = dict(
             treasury_agency="097",
             award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
             fy_start=fy_start, fy_end=fy_end, all_years=all_years,
+            fiscal_year=fiscal_year,
         )
 
         # #78, with the controller's 2026-09-11 ruling: EVERY run is planned
@@ -1857,6 +1876,7 @@ def cmd_verify_phase5b1(args) -> None:
                 f" unreadable={rl.get('unreadable', 0)}"
                 f" skipped_no_detail={rl.get('skipped_no_detail', 0)}"
                 f" skipped_null_bbox={rl.get('skipped_null_bbox', 0)}"
+                f" unresolved_receipts={cg.get('jbook_pdf_unresolved_sampled', 0)}"
                 f" toa_basis_checked={rl.get('basis_checked', 0)}"
                 f" toa_basis_compared={rl.get('basis_compared', 0)}"
                 f" toa_not_found={rl.get('toa_not_found', 0)}"
@@ -2241,6 +2261,14 @@ def cmd_export_site(args) -> None:
         dossiers_raw_dir=config.RESEARCH_DIR / "dossiers-raw",
         snapshots_index_path=config.RESEARCH_DIR / "snapshots" / "index.json",
     )
+    # Run after the completed citation bundle and family-history additions.
+    # The low-level export_site API remains offline for small fixture exports;
+    # this production CLI always refreshes the default PDF-first evidence.
+    _export_budget_pdf_evidence(
+        site_dir=config.SITE_DIR,
+        manifest=config.ROOT / "data-seeds" / "budget_pdf_sources.json",
+        cache_dir=config.ROOT / "tmp" / "pdfs",
+    )
     print(
         f"export-site: {out['datasets']} datasets, {out['citations']} citations,"
         f" {out['pdfs']} pdfs, {out['workbooks']} workbooks,"
@@ -2254,6 +2282,23 @@ def cmd_export_site(args) -> None:
             f" {dsum['total_dropped']} claim(s) dropped across"
             f" {len(dsum['dropped_by_pe'])} dossier(s)"
         )
+
+
+def _export_budget_pdf_evidence(*, site_dir: Path, manifest: Path, cache_dir: Path) -> dict:
+    from govbudget.program_pdf_receipts import export_program_pdf_receipts
+
+    report = export_program_pdf_receipts(site_dir=site_dir, manifest=manifest, cache_dir=cache_dir)
+    print(
+        f"budget PDF receipts: {report['complete_receipts']}/{report['receipt_count']} complete,"
+        f" {report['source_count']} government documents;"
+        f" audit -> {site_dir / 'json' / 'budget_pdf_receipts_audit.json'}"
+    )
+    return report
+
+
+def cmd_export_budget_pdf_receipts(args) -> None:
+    """Refresh PDF-first evidence for an already completed site artifact bundle."""
+    _export_budget_pdf_evidence(site_dir=args.site_dir, manifest=args.manifest, cache_dir=args.cache_dir)
 
 
 def cmd_verify_phase5b2(args) -> None:
@@ -2756,8 +2801,8 @@ def main(argv=None) -> None:
     j.add_argument("--fiscal-year", type=int, default=None, dest="fiscal_year",
                    help="PB edition year. scrape/backfill default to"
                         f" {config.JBOOK_FY}; provenance-pages and"
-                        " narrative-provenance default to all editions"
-                        " (unfiltered)")
+                        " narrative-provenance default to all editions (unfiltered);"
+                        " crosswalk uses this to restrict budget editions")
     j.add_argument("--lineage-evidence", action="store_true",
                    dest="lineage_evidence",
                    help="narrative-provenance: resolve ONLY the narratives a"
@@ -2844,6 +2889,13 @@ def main(argv=None) -> None:
              "default: offline-safe, cache-only)",
     )
     es.set_defaults(func=cmd_export_site)
+
+    ep = sub.add_parser("export-budget-pdf-receipts", help="refresh sitewide government PDF highlights from exported workbook citations")
+    ep.add_argument("--site-dir", type=Path, default=config.SITE_DIR)
+    ep.add_argument("--manifest", type=Path, default=config.ROOT / "data-seeds" / "budget_pdf_sources.json",
+                    help="reviewed government PDF source registry with pinned SHA-256 values")
+    ep.add_argument("--cache-dir", type=Path, default=config.ROOT / "tmp" / "pdfs")
+    ep.set_defaults(func=cmd_export_budget_pdf_receipts)
 
     v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
     v5b1.set_defaults(func=cmd_verify_phase5b1)

@@ -75,7 +75,7 @@ function ConcentrationSection({ children }: { children: React.ReactNode }) {
     <section aria-labelledby="concentration-heading" className="mb-8">
       <h2
         id="concentration-heading"
-        className="text-lg font-semibold mb-4 text-foreground"
+        className="mb-4 text-foreground"
       >
         Contractor Concentration
       </h2>
@@ -161,7 +161,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 ⓘ
               </span>
             </div>
-            <div className={`text-xl font-bold ${color}`}>
+            <div className={`t-figure t-figure--4 ${color}`}>
               <Cite
                 value={head.hhi}
                 units="USD"
@@ -201,7 +201,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
             <div className="text-xs text-muted-foreground mb-1">
               Contractor Families
             </div>
-            <div className="text-xl font-bold text-foreground">
+            <div className="t-figure t-figure--4 text-foreground">
               {head.family_count}
             </div>
           </div>
@@ -217,7 +217,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 ⓘ
               </span>
             </div>
-            <div className="text-xl font-bold">
+            <div className="t-figure t-figure--4">
               <Cite
                 value={head.program_dollars}
                 units="USD"
@@ -231,8 +231,15 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
           </div>
         </div>
 
+        {/* The positive/net sentence is the f15-family-browser card's
+            disclosure, carried onto the high basis (integration 2026-09-25):
+            both halves are what the two cited formulas say —
+            hhi_high "obligation > 0 (positive-only shares …)",
+            program_dollars_high "(net of deobligations)". */}
         <p className="mt-3 text-xs text-muted-foreground">
-          High-confidence award links only. The figures over every published
+          High-confidence award links only, pooled across ingested years. The
+          index uses positive obligations; program obligations are net of
+          deobligations. The figures over every published
           link, including medium-confidence ones, are in the{" "}
           <Link
             href="/downloads/"

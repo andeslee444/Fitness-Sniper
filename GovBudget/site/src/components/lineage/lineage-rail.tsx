@@ -83,8 +83,8 @@ function EdgePe({
   if (!entry.resolved || !linkablePes.has(entry.pe)) {
     return (
       <span className="text-muted-foreground">
-        <code className="font-mono text-xs">{entry.pe}</code>{" "}
-        <span className="text-xs italic">(unresolved)</span>
+        <code className="t-id">{entry.pe}</code>{" "}
+        <span className="text-xs">(unresolved)</span>
       </span>
     );
   }
@@ -114,7 +114,7 @@ function StatedCiteMarker({ factId }: { factId: string }) {
       type="button"
       data-lineage-cite=""
       data-fact-id={factId}
-      className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-card px-1 py-0.5 font-mono text-xs text-muted-foreground align-middle whitespace-nowrap cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 transition-colors hover:decoration-solid hover:decoration-(--cite-decoration-hover) hover:border-primary/50 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-card px-1 py-0.5 t-id align-middle whitespace-nowrap cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 transition-colors hover:decoration-solid hover:decoration-(--cite-decoration-hover) hover:border-primary/50 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       title="View the source sentence stating this transfer (official J-book page)"
       aria-label="View source citation for this lineage link"
       onClick={(e) => {
@@ -160,7 +160,7 @@ function StatedEdge({
       data-lineage-stated=""
       className="rounded-md border border-border bg-card px-3 py-2 text-sm"
     >
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+      <span className="t-label">
         {relationLabel(entry.relation, direction)} · per FY{entry.fy} J-book
         {entry.ba ? ` · BA${entry.ba}` : ""}
       </span>
@@ -185,7 +185,7 @@ function StatedEdge({
           <blockquote
             data-source-text="lineage-evidence"
             data-cite-fact-id={entry.evidence.fact_id}
-            className="mt-1 border-l-2 border-border pl-2 text-xs italic text-muted-foreground"
+            className="mt-1 border-l-2 border-border pl-2 text-xs text-muted-foreground"
           >
             {/* The quoted J-book sentence names the other end of the edge by
                 its PE code, and that code has a page. Linking it is the same
@@ -231,7 +231,7 @@ function InferredEdge({
       data-inferred="true"
       className="rounded-md border border-dashed border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
     >
-      <span className="text-xs uppercase tracking-wide">
+      <span className="t-label">
         {relationLabel(entry.relation, direction)} · FY{entry.fy}
         {entry.ba ? ` · BA${entry.ba}` : ""}
         <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-amber-500/20 px-1 py-0.5 text-xs font-semibold not-italic">
@@ -294,9 +294,9 @@ export function LineageRail({
         <div className="space-y-3">
           {statedPred.length > 0 && (
             <div>
-              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="t-label mb-1.5">
                 Predecessors (funding flowed in)
-              </h3>
+              </p>
               <ul className="space-y-1.5">
                 {statedPred.map((e, i) => (
                   <StatedEdge
@@ -313,20 +313,20 @@ export function LineageRail({
 
           {/* THIS program — the pivot of the rail. */}
           <div className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="t-label">
               This program
             </span>
             <div className="mt-0.5 font-semibold text-foreground">
-              <code className="font-mono text-xs">{selfPe}</code>
+              <code className="t-id">{selfPe}</code>
               {selfTitle ? ` — ${selfTitle}` : ""}
             </div>
           </div>
 
           {statedSucc.length > 0 && (
             <div>
-              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="t-label mb-1.5">
                 Successors (funding flowed out)
-              </h3>
+              </p>
               <ul className="space-y-1.5">
                 {statedSucc.map((e, i) => (
                   <StatedEdge

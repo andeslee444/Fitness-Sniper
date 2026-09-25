@@ -197,7 +197,7 @@ describe("chipExhibitClaim", () => {
   });
 
   it("returns null for a non-TOA chip (no opinion)", () => {
-    expect(chipExhibitClaim("P-40 detail · PB2026")).toBeNull();
+    expect(chipExhibitClaim("J-book detail · PB2026")).toBeNull();
   });
 
   it("returns null for empty/absent text", () => {

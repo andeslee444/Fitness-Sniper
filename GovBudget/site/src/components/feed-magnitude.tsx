@@ -78,7 +78,7 @@ function Point({
   return (
     <span className="inline-flex items-baseline gap-1" data-mag-role={role}>
       <span className="text-muted-foreground">{point.label}</span>
-      <span className="font-mono">
+      <span>
         <Cite
           value={point.value}
           units={units}

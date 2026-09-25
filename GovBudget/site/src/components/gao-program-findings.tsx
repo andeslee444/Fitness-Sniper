@@ -128,7 +128,7 @@ export function GaoProgramFindingsBlock({
       data-gao-item-count={total}
       className="mb-4 rounded-lg border border-border bg-card px-4 py-3.5"
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+      <p className="t-label">
         GAO oversight of this program
       </p>
 

@@ -1,0 +1,10 @@
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.caption{font:var(--type-ui);line-height:1.5;color:var(--muted-foreground);flex:1;min-width:180px}
+.focus{min-height:44px;padding:8px 12px;border:1px solid var(--border);background:var(--background);font:var(--type-ui);color:var(--foreground)}
+.focus:hover{background:var(--muted)}.focus:focus-visible{outline:2px solid var(--foreground);outline-offset:3px}
+/* PDF.js v6 text geometry. These transparent glyphs follow the source page, not the site type scale. */
+.textLayer{position:absolute;inset:0;overflow:clip;text-align:initial;line-height:1;letter-spacing:normal;word-spacing:normal;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0}
+.textLayer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0;user-select:text}
+.textLayer > :not(:global(.markedContent)),.textLayer :global(.markedContent) span:not(:global(.markedContent)){z-index:1}
+.textLayer :global(.markedContent){display:contents}
+.textLayer ::selection{background:color-mix(in srgb,var(--primary) 30%,transparent);color:transparent}

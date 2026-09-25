@@ -1,0 +1,149 @@
+[
+  {
+    "edition": 2017,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2017/fy2017_p1.pdf",
+    "sha256": "47e7755a839514904b953e296e665d20730d9122c0138c1dfbf4a73d6714c851",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2017/"
+  },
+  {
+    "edition": 2017,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2017/fy2017_r1.pdf",
+    "sha256": "be2bc6e7b3b239c84551c8fef324b6934162af47e6ba55bdc40eae1fbf70aced",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2017/"
+  },
+  {
+    "edition": 2018,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2018/fy2018_p1.pdf",
+    "sha256": "10e20b44d99c44f74cb8d2d927cc891de4a8c73c83e74d543294bf194464bece",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2018/"
+  },
+  {
+    "edition": 2018,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2018/fy2018_r1.pdf",
+    "sha256": "4f815691383c969c37c264984ad59a38b2db30e78e5880e63c18c15816efbdb8",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2018/"
+  },
+  {
+    "edition": 2019,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2019/fy2019_p1.pdf",
+    "sha256": "717d7ac466e288389729b211d5006cf74f0fb6eb8b684d50c782485c9f58f3b2",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2019/"
+  },
+  {
+    "edition": 2019,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2019/fy2019_r1.pdf",
+    "sha256": "dc99e368b768fc9bf590355e659a2f0065093ff0aeddf06fcc2f781cfec84794",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2019/"
+  },
+  {
+    "edition": 2020,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2020/fy2020_p1.pdf",
+    "sha256": "86428fc521d9f973ae34ec67a25c29eed02b70b18fad11262a6e89c8530ddead",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2020/"
+  },
+  {
+    "edition": 2020,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2020/fy2020_r1.pdf",
+    "sha256": "5f7431b76b87bbfb293793a2155f6c6c6b0639cd509e345fd2f20b6da39c4e56",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2020/"
+  },
+  {
+    "edition": 2021,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2021/fy2021_p1.pdf",
+    "sha256": "755d058594f1215fe0fb4ae575bfd770ac1c48089959dd5258669dd8745df9b4",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2021/"
+  },
+  {
+    "edition": 2021,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/fy2021/fy2021_r1.pdf",
+    "sha256": "47495552b2026f637ebb6c07b6c36f62c71ae40c390e0e664d9d847aeee9ffaf",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2021/"
+  },
+  {
+    "edition": 2022,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2022/FY2022_p1.pdf",
+    "sha256": "98cd78fafdfc3216c874cde27d70cdb320e014966afd470b9bdb544a959017ce",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2022/"
+  },
+  {
+    "edition": 2022,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2022/FY2022_r1.pdf",
+    "sha256": "6bbbcdab330b095c1cf3f98dc8ae46a9eed51638f414c60d03e91bd6065608ef",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2022/"
+  },
+  {
+    "edition": 2023,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2023/FY2023_p1.pdf",
+    "sha256": "a1d3245f3deef916e5d5e77aaeaff25ea83a320ad7e8988cfe04a80fa87ba6d8",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2023/"
+  },
+  {
+    "edition": 2023,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2023/FY2023_r1.pdf",
+    "sha256": "a9931db17f99e69a20da1b6b152b520b9ce99b6465a19fabf4e5f290b871c306",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2023/"
+  },
+  {
+    "edition": 2024,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2024/FY2024_p1.pdf",
+    "sha256": "3f59198633850a4cad9d57a16e8290f5ef62e3d04b3b0bcb60434c91d13440c6",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2024/"
+  },
+  {
+    "edition": 2024,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2024/FY2024_r1.pdf",
+    "sha256": "ed9f94b6068c8f1ce40483adfe69d644cc3f033bbcc8271537db39ca91101425",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2024/"
+  },
+  {
+    "edition": 2025,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2025/FY2025_p1.pdf",
+    "sha256": "6474f49bd7d77d1b230df07b7440b89950c2dea9a9bc7767e37d53b7a40fb475",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2025/"
+  },
+  {
+    "edition": 2025,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2025/FY2025_r1.pdf",
+    "sha256": "e0d29c11d39d8c015f3530a38e0663a8087e347351f06618702b36b34d057c2b",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2025/"
+  },
+  {
+    "edition": 2026,
+    "exhibit": "P-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/FY2026_p1.pdf",
+    "sha256": "fce4c9296280bdb355d05199b49a1d009afc6b615409ba4dba19f358a0da835f",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2026/"
+  },
+  {
+    "edition": 2026,
+    "exhibit": "R-1",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/FY2026_r1.pdf",
+    "sha256": "502b6bf66bd9ff08e2a01686e913d92636e79a45bf6afdb66561073bd4ce51f9",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2026/"
+  },
+  {
+    "edition": 2026,
+    "exhibit": "P-1R",
+    "url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/FY2026_p1r.pdf",
+    "sha256": "5af2db120a6b8e7206298214aca24f5deb5e14c1424f671dce6377062f39ec88",
+    "registered_on": "https://comptroller.war.gov/Budget-Materials/Budget2026/"
+  }
+]

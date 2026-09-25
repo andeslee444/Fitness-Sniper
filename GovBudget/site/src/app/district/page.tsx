@@ -6,6 +6,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { exactTitle, formatAmountNoCurrency, formatCount } from "@/lib/format";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
@@ -78,8 +79,17 @@ export default function DistrictIndexPage() {
             { label: "Congressional Districts" },
           ]}
         />
-        <div className="page-header mb-6">
-          <h1 className="text-3xl font-bold mb-2">Congressional Districts</h1>
+        {/* 2026-09-25 integration: the editorial redesign's masthead
+            (eyebrow, title, description, actions, the #district-directory
+            anchor) over this branch's lede and stat cards. The lede keeps
+            its reviewed count ("have a follow-the-dollar view", Task 26) —
+            the redesign's "have documented budget-to-award links" named the
+            wrong set (~100 more elements carry high-confidence links whose
+            awards record no place of performance). */}
+        <PageIntro eyebrow="Local connections" title="Follow the evidence to your district."
+          description="Find the programs connected to a place through documented defense contract awards."
+          actions={<><a href="#district-directory">Find a district</a><Link href="/coverage/#crosswalk">How programs connect to awards</Link></>}>
+          <h2 className="sr-only">Congressional Districts</h2>
           <p className="text-muted-foreground mb-2">
             {index.total_districts} districts with linkable defense obligations
             — {_flowsCount} of {_programsCount} program elements have a
@@ -110,7 +120,7 @@ export default function DistrictIndexPage() {
               in one sentence. */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm mb-2">
             <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
+              <p className="t-figure t-figure--5">
                 {index.total_districts}
               </p>
               <p className="text-muted-foreground text-xs mt-1">
@@ -132,8 +142,8 @@ export default function DistrictIndexPage() {
                   the compact magnitude — and the only visible difference left
                   between them is the cited card's underline and its chip,
                   which is a real difference (see the reconciliation line). */}
-              <p className="text-2xl font-bold tabular-nums">
-                <span className="text-lg align-baseline">USD </span>
+              <p className="t-figure t-figure--5">
+                <span data-figure-suffix className="align-baseline">USD </span>
                 {formatAmountNoCurrency(totalLinkable, "USD")}
               </p>
               <p className="text-muted-foreground text-xs mt-1">
@@ -143,14 +153,14 @@ export default function DistrictIndexPage() {
             </div>
             {index.geo_grand_total !== null && (
               <div className="rounded-lg border border-border bg-card p-4">
-                <p className="text-2xl font-bold tabular-nums">
+                <p className="t-figure t-figure--5">
                   {/* Same notation as the middle card (see its note): "USD"
                       outside the [data-amount] span at the same size, the
                       magnitude inside it. `display` re-notates the SAME value
                       — never a different one — so `title` is passed
                       explicitly to keep the exact-dollars hover text that
                       formatAmount's default would have produced. */}
-                  <span className="text-lg align-baseline">USD </span>
+                  <span data-figure-suffix className="align-baseline">USD </span>
                   <Cite
                     value={index.geo_grand_total}
                     units="USD"
@@ -171,13 +181,14 @@ export default function DistrictIndexPage() {
               </div>
             )}
           </div>
-        </div>
+        </PageIntro>
 
         {/* [data-first-data] marks the block gate 16's index-fold leg measures.
             It measures the first ROW inside it, not the block's own top: a
             table's top is its header, and a reader who can see only a header
-            has not seen data. */}
-        <div data-first-data>
+            has not seen data. #district-directory is the masthead's jump
+            target. */}
+        <div id="district-directory" data-first-data className="scroll-mt-24">
           <DistrictTable districts={index.districts} />
         </div>
 

@@ -28,6 +28,8 @@ import {
 } from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
+import { parseGaoRatifications, selectRatifiedGaoFindings } from "./program-evidence";
+import { normalizeProgramHHI, filterSupportedConcentrationCards } from "./concentration-evidence.mjs";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -90,6 +92,8 @@ export interface SiteMetaAwardFyRange {
 }
 
 export interface SiteMeta {
+  /** Current parent-registration near ties, independently checked against the lake. */
+  entity_label_review?: { near_ties: number; families: number; threshold_pct: number };
   award_fy_range?: SiteMetaAwardFyRange | null;
   built_at: string;
   counts: SiteMetaCounts;
@@ -331,8 +335,10 @@ export interface SiteMeta {
         confirmed: number;
         sampled: number;
         /** The study run this tier's figure comes from — the LATEST run that
-         *  judged the tier under the rubric. A run may re-judge one stratum
-         *  only, so figures can come from different dates; the page states
+         *  judged the tier under the rubric, except announcement+lexicon,
+         *  whose tier-wide figure stays pinned to its 2026-09-04 draw
+         *  (export_site._PINNED_PRECISION_SAMPLES). A run may re-judge one
+         *  stratum only, so figures can come from different dates; the page states
          *  every date it draws on. */
         sample_id?: string;
         judged?: string | null;
@@ -496,8 +502,38 @@ export function getSiteMeta(): SiteMeta {
   // and the coverage note needs BOTH halves — whether a book is loaded, and,
   // when it is not, what the probe found instead.
   setOrgAbsences(meta.org_absences);
+  // The two build-check counts /methodology/ prints are properties of THIS
+  // checkout's artifacts — the gate registry in scripts/verify.mjs and the
+  // dbt manifest — not of whichever checkout last ran export-site. Gate 24
+  // (datatruth) recomputes both from those artifacts; with a shared data
+  // lake, another session's export can (and did, twice on 2026-09-12) write
+  // its own counts into site_meta.json. So the counts are re-derived here at
+  // build time by the exporter's own rule (export_site.py build_checks).
+  meta.build_checks = { ...(meta.build_checks ?? {}), ...buildCheckCounts(meta.build_checks) };
   _siteMeta = meta;
   return _siteMeta;
+}
+
+function buildCheckCounts(fallback: SiteMeta["build_checks"]): Partial<NonNullable<SiteMeta["build_checks"]>> {
+  const out: Partial<NonNullable<SiteMeta["build_checks"]>> = {};
+  try {
+    const verify = readFileSync(join(process.cwd(), "scripts", "verify.mjs"), "utf8");
+    const n = (verify.match(/gateResults\.push\(\{\s*n:\s*\d+/g) ?? []).length;
+    if (n) out.npm_gates = n;
+  } catch {
+    if (fallback?.npm_gates) out.npm_gates = fallback.npm_gates;
+  }
+  try {
+    const manifest = join(process.cwd(), "..", "dbt", "target", "manifest.json");
+    if (existsSync(manifest)) {
+      const nodes = JSON.parse(readFileSync(manifest, "utf8")).nodes ?? {};
+      const n = Object.values(nodes as Record<string, { resource_type?: string }>).filter((x) => x.resource_type === "test").length;
+      if (n) out.dbt_assertions = n;
+    }
+  } catch {
+    if (fallback?.dbt_assertions) out.dbt_assertions = fallback.dbt_assertions;
+  }
+  return out;
 }
 
 // ── datasets.json — Explorer dataset manifest (PM Sprint 2, §P1-5) ───────────
@@ -651,6 +687,25 @@ export interface ProgramHHI {
   award_count_high: number;
 }
 
+/**
+ * The ONE-series shape lib/concentration-evidence.mjs `normalizeProgramHHI`
+ * returns (the f15-family-browser branch's all-link validator, 2026-09-23).
+ * Integration 2026-09-25: getPrograms uses that function only as a
+ * fail-closed guard — a non-null result keeps the exporter's ProgramHHI
+ * block unchanged — so this shape is never stored on a ProgramRow. It is
+ * declared here so concentration-evidence.d.mts can name what the function
+ * really returns (it still says ProgramHHI).
+ */
+export interface NormalizedProgramHHI {
+  link_scope: "high-and-medium";
+  family_count: number;
+  hhi: number;
+  hhi_fact_id: string;
+  program_dollars: number;
+  program_dollars_fact_id: string;
+  top_family: string;
+}
+
 export interface ProgramRow {
   award_count: number;
   /**
@@ -733,7 +788,24 @@ export function getPrograms(): ProgramRow[] {
   if (_programs) return _programs;
   // Validate schema_version before loading any data
   getSiteMeta();
-  _programs = readJson<ProgramRow[]>("programs.json");
+  // Integration 2026-09-25: the f15-family-browser branch's concentration
+  // validator is kept as a fail-closed GUARD on the #80 dual-series block,
+  // not as a reshaper. The block survives only when its all-link series
+  // resolves to derived citations whose recorded values and scope-naming
+  // formulas match (normalizeProgramHHI non-null); otherwise it is withheld
+  // whole, and getFeed's filterSupportedConcentrationCards drops that
+  // program's concentration cards by the same predicate. What survives is
+  // the exporter's block UNCHANGED — the card and lib/concentration-basis.ts
+  // read hhi_high/…_all, which the validator's one-series return drops.
+  // All 533 blocks pass on the 2026-09-25 run-4 export.
+  const citations = getCitations();
+  _programs = readJson<ProgramRow[]>("programs.json").map((program) => ({
+    ...program,
+    hhi:
+      program.hhi && normalizeProgramHHI(program.hhi, citations)
+        ? program.hhi
+        : null,
+  }));
   return _programs;
 }
 
@@ -2100,18 +2172,18 @@ export interface JbookPdfCitation extends CitationBase {
   kind: "jbook_pdf";
   amount_text: string | null;
   amount_thousands: null;
-  bottom_pt: number;
+  bottom_pt: number | null;
   cells: null;
   hosted_pdf_url: string;
-  page_height: number;
-  page_number: number;
-  page_width: number;
-  resolution: "unique" | "ambiguous_first";
+  page_height: number | null;
+  page_number: number | null;
+  page_width: number | null;
+  resolution: "unique" | "ambiguous_first" | "unresolved";
   sha256: string;
   sheet: null;
-  top_pt: number;
-  x0: number;
-  x1: number;
+  top_pt: number | null;
+  x0: number | null;
+  x1: number | null;
   xml_path: null;
 }
 
@@ -2253,6 +2325,12 @@ export interface JbookNarrativeCitation
       | "resolution"
     > {
   kind: "jbook_narrative";
+  /**
+   * Optional page-local display enrichment copied verbatim from the matching
+   * exported ProgramNarrative. Never an authored summary, and never added to
+   * the shared citation cache: the document identity below remains unchanged.
+   */
+  source_passage?: { title: string; body: string };
   // Unlike other non-document kinds, narratives DO carry the source
   // document's sha and their in-document XML locator.
   sha256: string;
@@ -2330,6 +2408,11 @@ export interface AnnouncementCitation
  *
  * recorded_value is null: the cited fact is the LINK itself, not a figure.
  * Nothing was archived, so sha256 is null too (NonDocumentCitationFields).
+ * units is null for the same reason: the description supports a
+ * medium-confidence program link, never an amount, and official_url is the
+ * prime award's context page, never a subaward permalink —
+ * parseSubawardEvidence (citation-panel/subaward-card.tsx) fails any row
+ * that carries an amount or units.
  */
 export interface SubawardCitation
   extends CitationBase,
@@ -2342,6 +2425,7 @@ export interface SubawardCitation
    *  formula was carried across. */
   formula: string | null;
   inputs: null;
+  units: null;
 }
 
 export type Citation =
@@ -2481,7 +2565,7 @@ export function getReceiptMomentFact(): ReceiptMomentFact | null {
     for (const row of getProgramDetails(p.pe_bli).details) {
       if (row.scenario !== RECEIPT_FY24_SCENARIO || !row.fact_id) continue;
       const citation = citations[row.fact_id];
-      if (!citation || citation.kind !== "jbook_pdf") continue;
+      if (!citation || citation.kind !== "jbook_pdf" || citation.resolution === "unresolved" || citation.page_number == null) continue;
       if (!best || row.amount_millions > best.row.amount_millions) {
         best = { row, page_number: citation.page_number };
       }
@@ -2669,7 +2753,7 @@ let _feed: FeedSidecar | null = null;
 export function getFeed(): FeedSidecar {
   if (_feed) return _feed;
   getSiteMeta();
-  _feed = readJson<FeedSidecar>("feed.json");
+  _feed = filterSupportedConcentrationCards(readJson<FeedSidecar>("feed.json"), getPrograms(), getCitations());
   return _feed;
 }
 
@@ -3109,6 +3193,52 @@ function gaoProgramFindingsFile(): GaoProgramFindingsFile | null {
       );
     } catch {
       _gaoProgramFindings = null;
+    }
+    if (_gaoProgramFindings) {
+      // Integration 2026-09-25. The f15-family-browser branch's guard: a
+      // ratified anchor or related report renders only when
+      // data-seeds/gao_program_xwalk.csv holds a 'y' verdict for its exact
+      // (product, GAO program, slug) — selectRatifiedGaoFindings, unchanged.
+      // ROADMAP #30 (gate 21 leg h8): an older WSAA edition carries no verdict
+      // of its own; it renders behind the ratified anchor it is chained to
+      // (inherited_from + program_key), so it survives exactly when THAT
+      // anchor survives the guard on the same page. The guard alone dropped
+      // all 70 inherited editions on the 2026-09-25 run-4 export while
+      // /methodology/ still printed "70 earlier editions inherited".
+      const decisions = parseGaoRatifications(readFileSync(join(process.cwd(), "..", "data-seeds", "gao_program_xwalk.csv"), "utf8"));
+      const ratified = selectRatifiedGaoFindings(_gaoProgramFindings.by_slug, decisions);
+      const by_slug: Record<string, GaoProgramFindings> = {};
+      for (const [slug, findings] of Object.entries(_gaoProgramFindings.by_slug)) {
+        const anchors = ratified[slug]?.assessments ?? [];
+        const assessments = findings.assessments.filter((row) =>
+          row.inherited_from === null
+            ? anchors.includes(row)
+            : anchors.some(
+                (anchor) =>
+                  anchor.product_number === row.inherited_from &&
+                  anchor.program_key === row.program_key,
+              ),
+        );
+        const reports = ratified[slug]?.reports ?? [];
+        if (assessments.length || reports.length) by_slug[slug] = { assessments, reports };
+      }
+      const accepted = decisions.filter(row => row.verdict === "y").length;
+      const rejected = decisions.filter(row => row.verdict === "n").length;
+      _gaoProgramFindings = {
+        ..._gaoProgramFindings,
+        by_slug,
+        stats: _gaoProgramFindings.stats ? {
+          ..._gaoProgramFindings.stats,
+          accepted, rejected, adjudicated: accepted + rejected,
+          precision_pct: accepted + rejected ? Math.round(1000 * accepted / (accepted + rejected)) / 10 : 0,
+          pages_with_findings: Object.keys(by_slug).length,
+          rendered_items: Object.values(by_slug).reduce((sum, row) => sum + row.assessments.length + row.reports.length, 0),
+          inherited_items: Object.values(by_slug).reduce(
+            (sum, row) => sum + row.assessments.filter((a) => a.inherited_from !== null).length,
+            0,
+          ),
+        } : null,
+      };
     }
   }
   return _gaoProgramFindings;

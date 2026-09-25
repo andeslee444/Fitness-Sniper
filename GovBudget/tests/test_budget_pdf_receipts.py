@@ -1,0 +1,201 @@
+"""Evidence tests: figures must match the same line and fiscal column, not just a numeral."""
+import json
+from pathlib import Path
+
+import pytest
+
+from govbudget.budget_pdf_receipts import (
+    amount,
+    combine_receipts,
+    match_cell,
+    normalize_header,
+    page_columns,
+    pdf_header_key,
+    viewport_geometry,
+    select_glyph_geometry,
+)
+
+
+def word(text, x0, top, x1=None):
+    return dict(text=text, x0=x0, x1=x1 if x1 is not None else x0 + 4 * len(text), top=top, bottom=top + 8)
+
+
+def procurement_page(title="F-15", amount_text="100"):
+    words = [word("(Dollars", 330, 70), word("FY", 300, 100), word("2024", 312, 100), word("Actuals", 300, 110), word("FY", 400, 100), word("2025", 412, 100), word("Enacted", 400, 110), word("No", 10, 120), word("Ident", 250, 110), word("Code", 250, 120), word("Cost", 334, 120, 350), word("Cost", 434, 120, 450), word("1", 10, 150), word(title, 40, 150), word("A", 250, 150), word(amount_text, 320, 150, 350), word("100", 430, 150, 450), word("2", 10, 200), word("F-16", 40, 200), word("A", 250, 200), word("900", 330, 200, 350), word("900", 430, 200, 450)]
+    return dict(page_number=1, width=792, height=612, text="Department of the Air Force\nAppropriation: 3010F\n(Dollars in Thousands)", words=words)
+
+
+def row(**changes):
+    return dict(account="3010F", activity="05", line="1", code="F01500", title="F-15", cost_type="A") | changes
+
+
+def test_column_identity_disambiguates_repeated_amounts():
+    page = procurement_page()
+    result = match_cell(page, row(), "FY 2024 Actuals Amount", 100, "P-1", 2026)
+    assert result["word"]["x1"] == 350
+    other = match_cell(page, row(), "FY 2025 Enacted Amount", 100, "P-1", 2026)
+    assert other["word"]["x1"] == 450
+    assert match_cell(page, row(), "FY 2025 Request Amount", 100, "P-1", 2026) is None
+    assert match_cell(page, row(), "FY 2024 Actuals Amount", 101, "P-1", 2026) is None
+
+
+def test_identical_amount_on_another_aircraft_line_or_account_is_not_evidence():
+    page = procurement_page(title="F-15EX")
+    assert match_cell(page, row(), "FY 2024 Actuals Amount", 100, "P-1") is None
+    assert match_cell(page, row(title="F-15EX", code="F015EX"), "FY 2024 Actuals Amount", 100, "P-1")
+    assert match_cell(page, row(account="3020F", title="F-15EX"), "FY 2024 Actuals Amount", 100, "P-1") is None
+    assert match_cell(page, row(line="2"), "FY 2024 Actuals Amount", 900, "P-1") is None
+
+
+def test_multiword_title_is_exact_not_a_prefix():
+    page = procurement_page(title="F-15 EPAW")
+    page["words"] = [w for w in page["words"] if w["text"] != "F-15 EPAW"] + [word("F-15", 40, 150), word("EPAW", 64, 150)]
+    assert match_cell(page, row(title="F-15 EPAW", code="F15EWS"), "FY 2024 Actuals Amount", 100, "P-1")
+    assert match_cell(page, row(), "FY 2024 Actuals Amount", 100, "P-1") is None
+
+
+def test_parenthesized_gross_amount_is_positive_and_explicit_minus_is_preserved():
+    assert amount("(2,619,687)") == 2619687
+    assert amount("(-147,919)") == -147919
+    assert amount("—") is None
+    page = procurement_page(amount_text="(100)")
+    assert match_cell(page, row(), "FY 2024 Actuals Amount", 100, "P-1")["word"]["text"] == "(100)"
+    page["words"] += [word("Less:", 40, 162), word("Advance", 68, 162), word("Procurement", 104, 162), word("(PY)", 155, 162), word("(-20)", 330, 162, 350)]
+    matched = match_cell(page, row(cost_type="B"), "FY 2024 Actuals Amount", -20, "P-1")
+    assert matched["word"]["text"] == "(-20)"
+    assert match_cell(page, row(cost_type="B"), "FY 2024 Actuals Amount", 20, "P-1") is None
+
+
+def test_blank_zero_has_no_invented_highlight_and_missing_positive_is_not_a_zero():
+    page = procurement_page()
+    page["words"] = [w for w in page["words"] if not (w["top"] == 150 and w["x1"] == 350)]
+    match = match_cell(page, row(), "FY 2024 Actuals Amount", 0, "P-1")
+    assert match["blank_zero"] is True
+    assert "word" not in match
+    assert match_cell(page, row(), "FY 2024 Actuals Amount", 100, "P-1") is None
+
+
+def test_printed_zero_can_be_highlighted():
+    result = match_cell(procurement_page(amount_text="0"), row(), "FY 2024 Actuals Amount", 0, "P-1")
+    assert result["word"]["text"] == "0"
+    assert "blank_zero" not in result
+
+
+def test_advance_procurement_before_its_line_requires_the_same_prior_aircraft():
+    page = procurement_page()
+    page["words"] = [w for w in page["words"] if not (w["top"] == 200 and w["text"] in {"F-16", "A", "900"})]
+    page["words"] += [word("F-15", 40, 200), word("Advance", 40, 185), word("Procurement", 76, 185), word("(CY)", 127, 185), word("80", 340, 185, 350)]
+    assert match_cell(page, row(line="2", cost_type="C"), "FY 2024 Actuals Amount", 80, "P-1")["word"]["text"] == "80"
+    page["words"] = [dict(w, text="F-15EX") if w["top"] == 150 and w["text"] == "F-15" else w for w in page["words"]]
+    assert match_cell(page, row(line="2", cost_type="C"), "FY 2024 Actuals Amount", 80, "P-1") is None
+
+
+def test_fiscal_year_and_scenario_terms_remain_distinct():
+    assert normalize_header("FY 2024 Actuals Amount") == normalize_header("FY 2024 Actual*")
+    assert normalize_header("FY 2026 Disc Request") != normalize_header("FY 2026 Total")
+    assert normalize_header("FY 2023 Total Enacted") != normalize_header("FY 2023 Less Supplementals Enacted")
+    assert normalize_header("FY 2023 Supplementals Enacted") != normalize_header("FY 2023 Total Enacted")
+
+
+def test_known_pb2025_cr_label_alias_never_spills_into_other_books():
+    workbook = "FY 2024 PB Request with CR Amounts*"
+    printed = "FY 2024 PB Request with CR Adjustments*"
+    assert pdf_header_key(workbook, edition=2025, exhibit="R-1") == normalize_header(printed)
+    assert pdf_header_key(workbook, edition=2024, exhibit="R-1") != normalize_header(printed)
+    assert pdf_header_key(workbook, edition=2025, exhibit="P-1") != normalize_header(printed)
+    assert pdf_header_key(workbook.replace("2024", "2023"), edition=2025, exhibit="R-1") != normalize_header(printed.replace("2024", "2023"))
+
+
+def test_total_requires_all_inputs_even_when_unmatched_values_cancel():
+    good = dict(complete=True, unmatched_count=0, blank_zero_count=1, parts=[dict(amount_thousands=120), dict(amount_thousands=-20)])
+    total = combine_receipts([good], 100)
+    assert total["complete"] and total["matched_amount_thousands"] == 100 and total["blank_zero_count"] == 1
+    missing = dict(complete=False, unmatched_count=2, blank_zero_count=0, parts=[])
+    assert not combine_receipts([good, missing], 100)["complete"]
+    assert not combine_receipts([good], 120)["complete"]
+
+
+def test_negative_source_origin_is_removed_from_both_highlight_axes():
+    page = dict(cropbox=(-14.4, -14.1732, 777.6, 597.8266), rotation=0)
+    box = dict(x0=700, x1=740, top=300, bottom=309)
+    actual = viewport_geometry(page, box)
+    assert actual == pytest.approx(dict(page_width=792, page_height=611.9998, x0=714.4, x1=754.4, top_pt=314.1732, bottom_pt=323.1732))
+    assert box == dict(x0=700, x1=740, top=300, bottom=309)
+
+
+def test_positive_crop_origin_uses_crop_extent_not_full_media_dimensions():
+    page = dict(cropbox=(20, 30, 620, 430), rotation=0, width=792, height=612)
+    assert viewport_geometry(page, dict(x0=40, x1=60, top=80, bottom=90)) == dict(page_width=600, page_height=400, x0=20, x1=40, top_pt=50, bottom_pt=60)
+
+
+def test_zero_origin_keeps_original_highlight_and_unsupported_geometry_fails():
+    page = dict(cropbox=(0, 0, 792, 612), rotation=0)
+    box = dict(x0=700, x1=730, top=300, bottom=310)
+    assert viewport_geometry(page, box) == dict(page_width=792, page_height=612, x0=700, x1=730, top_pt=300, bottom_pt=310)
+    with pytest.raises(ValueError, match="Rotated"):
+        viewport_geometry(dict(page, rotation=90), box)
+    with pytest.raises(ValueError, match="outside"):
+        viewport_geometry(page, dict(box, x1=800))
+
+
+def test_tight_glyph_bounds_resolve_source_baseline_after_negative_origin_translation():
+    page = dict(cropbox=(-14.4, -14.1732, 777.6, 597.8266), mediabox=(-14.4, -14.1732, 777.6, 597.8266), rotation=0)
+    source = dict(text="151,300", x0=721.2, x1=754.82328, top=486.667, bottom=494.707,
+                  chars=[dict(text="151,300", matrix=(8.04, 0, 0, 8.04, 735.6, 108.5868))])
+    candidate = dict(text="151,300", origin=(721.2, 122.76), box=(722.09247, 121.5942, 753.92279, 127.80109))
+    actual = select_glyph_geometry(page, source, (-14.4, 14.1732, 777.6, 626.173), [candidate])
+    assert actual["x0"] == pytest.approx(736.49247)
+    assert actual["top_pt"] == pytest.approx(498.37191)
+    assert actual["bottom_pt"] == pytest.approx(504.5788)
+    assert actual["top_pt"] < viewport_geometry(page, source)["top_pt"]
+
+
+def test_adjacent_duplicate_amount_requires_exact_origin_and_fails_closed_on_ambiguity():
+    page = dict(cropbox=(0, 0, 792, 612), mediabox=(0, 0, 792, 612), rotation=0)
+    source = dict(text="133,500", x0=400, x1=434, top=466, bottom=474,
+                  chars=[dict(text="133,500", matrix=(8, 0, 0, 8, 400, 140))])
+    selected = dict(text="133,500", origin=(400, 140), box=(401, 139, 433, 145))
+    adjacent_nonadd = dict(text="133,500", origin=(400, 131), box=(401, 130, 433, 136))
+    actual = select_glyph_geometry(page, source, (0, 0, 792, 612), [adjacent_nonadd, selected])
+    assert actual["top_pt"] == 467
+    with pytest.raises(ValueError, match="got 0"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [adjacent_nonadd])
+    with pytest.raises(ValueError, match="got 2"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [selected, selected])
+    with pytest.raises(ValueError, match="got 0"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [dict(selected, text="133,5000")])
+    with pytest.raises(ValueError, match="outside"):
+        select_glyph_geometry(page, source, (0, 0, 792, 612), [dict(selected, box=(401, 139, 800, 145))])
+
+
+def test_shipped_f15_evidence_preserves_all_default_and_historical_cells():
+    root = Path(__file__).resolve().parents[1] / "data/site/json"
+    if not (root / "budget_pdf_receipts_audit.json").exists() or not (root / "budget-pdf-receipts/v2").exists():
+        pytest.skip("Run export_budget_pdf_receipts.py against the local site export")
+    audit = json.loads((root / "budget_pdf_receipts_audit.json").read_text())
+    assert audit["default_complete"] == audit["default_cells"] == 67
+    assert audit["shard_prefix_length"] == 3
+    assert audit["highlight_geometry"] == "tight PDFium glyph bounds verified by exact text and first-character origin"
+    history = json.loads((root / "f15_funding_history.json").read_text())
+    # Scope this regression to the original F-15 facts, not the site's larger
+    # and legitimately partially matched corpus. Include all input, annual,
+    # program and cumulative facts, including non-default historical measures.
+    expected = {history["cumulative"]["fact_id"]: history["cumulative"]["amount_thousands"]}
+    for point in history["points"]:
+        expected[point["fact_id"]] = point["amount_thousands"]
+        for key in ("components", "program_cells"):
+            expected.update({cell["fact_id"]: cell["amount_thousands"] for cell in point[key]})
+    assert len(expected) == 276
+    default_cells = [cell for point in history["points"] if point["id"] in history["default_point_ids"] for cell in point["program_cells"]]
+    assert len(default_cells) == 67
+    shard_dir = root / "budget-pdf-receipts/v2"
+    assert len(list(shard_dir.glob("*.json"))) == 4096
+    receipts = {}
+    for prefix in {fact[:3] for fact in expected}:
+        receipts.update(json.loads((shard_dir / f"{prefix}.json").read_text()))
+    for fact, value in expected.items():
+        receipt = receipts[fact]
+        assert receipt["complete"], fact
+        assert receipt["amount_thousands"] == value, fact
+        assert sum(part["amount_thousands"] for part in receipt["parts"]) == value, fact
+        assert receipt["unmatched_count"] == 0, fact

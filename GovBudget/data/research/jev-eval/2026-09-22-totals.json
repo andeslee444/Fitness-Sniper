@@ -1,0 +1,9 @@
+{
+  "distinct_baseline_cases": 155,
+  "api_calls": 227,
+  "input_tokens": 284811,
+  "estimated_usd": 0.011962062,
+  "median_seconds": 0.4115306669846177,
+  "p95_seconds": 0.5320162088610232,
+  "api_errors": 0
+}

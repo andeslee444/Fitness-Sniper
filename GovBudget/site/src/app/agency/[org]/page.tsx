@@ -12,6 +12,7 @@ import {
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { agencyOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { Cite } from "@/components/cite";
 import { basisChipText } from "@/lib/basis";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -148,29 +149,29 @@ export default async function AgencyPage({
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },
-            { label: "Agencies", href: "/#agencies" },
+            { label: "Agencies", href: "/agency/" },
             { label: org },
           ]}
         />
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-1" title={`Organization code ${org}`}>
-            {agencyDisplayName(org)}
-          </h1>
+        <PageIntro eyebrow="Agency portfolio" title={agencyDisplayName(org)}
+          titleProps={{ title: `Organization code ${org}` }}
+          description="Inspect the programs in this portfolio, the figures behind them, and the available oversight record."
+          actions={<><a href="#agency-programs">Browse programs</a>{gao && <a href="#oversight">Oversight context</a>}<Link href="/agency/">Compare agencies</Link></>}>
           {/* The workbook code stays on the page under the name: it is this
               page's identity, the workbook's key, and what a reader will see
               stamped on every figure below. Suppressed where the name IS the
               code (an org agency-names.ts has not been taught) rather than
               printed twice. */}
           {agencyFullName(org) && (
-            <p className="mb-3 font-mono text-sm text-muted-foreground">
+            <p className="t-id mb-3">
               Organization code <span data-agency-code={org}>{org}</span>
             </p>
           )}
           {/* Explicit {" "} separators between the meta spans keep Pagefind
               excerpts from concatenating fragments (§P1-4 snippet bug). */}
-          <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground sm:grid-cols-3 [&>span]:rounded-lg [&>span]:border [&>span]:border-border [&>span]:bg-card [&>span]:p-4">
             <span>
               <strong className="text-foreground">
                 {agency.program_count}
@@ -229,9 +230,9 @@ export default async function AgencyPage({
                 data-agency-org={org}
                 data-not-reconciled-count={agency.fy2024_not_reconciled_count}
               >
-                <p className="text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                <p className="t-label">
                   Two official figures, one label
-                  <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground">
+                  <span className="ml-1 font-normal normal-case text-muted-foreground">
                     — reconciled on each program page
                   </span>
                 </p>
@@ -296,7 +297,7 @@ export default async function AgencyPage({
                       {" = "}
                       <span
                         title="Difference between the two cited agency totals — arithmetic, not a parsed budget row"
-                        className="font-mono tabular-nums"
+                        className="t-figure t-figure--2"
                       >
                         {reconciliationDelta.delta}
                       </span>{" "}
@@ -307,84 +308,12 @@ export default async function AgencyPage({
               </div>
             </ScopeNote>
           )}
-        </div>
-
-        {/* GAO oversight overlay (Task 6b) */}
-        {gao && (
-          <section id="oversight" className="mb-8">
-            <h2 className="text-xl font-semibold mb-1">Oversight</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              GAO oversight context for the parent department (
-              {gao.agencyCode}) — {org} is a {gao.agencyCode} component.
-            </p>
-
-            {gao.overlay.high_risk_areas.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold mb-2">
-                  GAO high-risk areas ({gao.agencyCode})
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {gao.overlay.high_risk_areas.map((area) => (
-                    <a
-                      key={area.area_title}
-                      href={area.area_url ?? area.source_url ?? "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={area.notes ?? undefined}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
-                    >
-                      <span aria-hidden="true">⚠</span>
-                      {area.area_title}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* fact_id guard: the figure renders ONLY when its derived
-                citation resolves — fct_improper_exposure is off the uncited
-                ledger, so a state-C span here would fail the render gate. */}
-            {gao.overlay.improper && gao.overlay.improper.fact_id && (
-              <div className="rounded-lg border border-border bg-card p-4 max-w-xl">
-                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
-                  Estimated improper-payment exposure ({gao.agencyCode}
-                  {gao.overlay.improper.latest_fiscal_year
-                    ? `, FY${gao.overlay.improper.latest_fiscal_year}`
-                    : ""}
-                  )
-                </p>
-                <p className="text-2xl font-bold tabular-nums">
-                  <Cite
-                    value={gao.overlay.improper.derived_improper_amount_usd}
-                    units="USD"
-                    dataset="fct_improper_exposure"
-                    factId={gao.overlay.improper.fact_id}
-                  />
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {gao.overlay.improper.weighted_rate_pct != null && (
-                    <>
-                      Weighted improper-payment rate{" "}
-                      {gao.overlay.improper.weighted_rate_pct.toFixed(2)}%
-                    </>
-                  )}
-                  {gao.overlay.improper.program_count != null && (
-                    <>
-                      {" "}
-                      across {gao.overlay.improper.program_count} reported
-                      programs (paymentaccuracy.gov). Click the figure for the
-                      derivation and source.
-                    </>
-                  )}
-                </p>
-              </div>
-            )}
-          </section>
-        )}
+        </PageIntro>
 
         {/* Programs list */}
-        <section>
-          <h2 className="text-xl font-semibold mb-1">Program Elements</h2>
+        <section id="agency-programs" className="scroll-mt-24">
+          <p className="t-label mb-2">The portfolio</p>
+          <h2 className="mb-2">Program Elements</h2>
           {/* The list's basis, declared once (gate 23 leg e): a figure whose
               basis is stated nowhere is how the same label came to carry two
               values on two pages. */}
@@ -410,7 +339,7 @@ export default async function AgencyPage({
                 className="flex items-start justify-between px-5 py-4 hover:bg-muted/40 transition-colors gap-4"
               >
                 <div className="min-w-0 flex-1">
-                  <span className="font-mono text-xs text-muted-foreground mr-2">
+                  <span className="t-id mr-2">
                     {p.pe_bli}
                   </span>
                   <Link
@@ -453,6 +382,81 @@ export default async function AgencyPage({
             ))}
           </div>
         </section>
+
+        {/* GAO oversight overlay (Task 6b) */}
+        {gao && (
+          <section id="oversight" className="mt-12 mb-8 scroll-mt-24 border-t border-border pt-8">
+            <p className="t-label mb-2">Accountability record</p>
+            <h2 className="mb-2">Oversight</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              GAO oversight context for the parent department (
+              {gao.agencyCode}) — {org} is a {gao.agencyCode} component.
+            </p>
+
+            {gao.overlay.high_risk_areas.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-2">
+                  GAO high-risk areas ({gao.agencyCode})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {gao.overlay.high_risk_areas.map((area) => (
+                    <a
+                      key={area.area_title}
+                      href={area.area_url ?? area.source_url ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={area.notes ?? undefined}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
+                    >
+                      <span aria-hidden="true">⚠</span>
+                      {area.area_title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* fact_id guard: the figure renders ONLY when its derived
+                citation resolves — fct_improper_exposure is off the uncited
+                ledger, so a state-C span here would fail the render gate. */}
+            {gao.overlay.improper && gao.overlay.improper.fact_id && (
+              <div className="rounded-lg border border-border bg-card p-4 max-w-xl">
+                <p className="t-label mb-1">
+                  Estimated improper-payment exposure ({gao.agencyCode}
+                  {gao.overlay.improper.latest_fiscal_year
+                    ? `, FY${gao.overlay.improper.latest_fiscal_year}`
+                    : ""}
+                  )
+                </p>
+                <p className="t-figure t-figure--5">
+                  <Cite
+                    value={gao.overlay.improper.derived_improper_amount_usd}
+                    units="USD"
+                    dataset="fct_improper_exposure"
+                    factId={gao.overlay.improper.fact_id}
+                  />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {gao.overlay.improper.weighted_rate_pct != null && (
+                    <>
+                      Weighted improper-payment rate{" "}
+                      {gao.overlay.improper.weighted_rate_pct.toFixed(2)}%
+                    </>
+                  )}
+                  {gao.overlay.improper.program_count != null && (
+                    <>
+                      {" "}
+                      across {gao.overlay.improper.program_count} reported
+                      programs (paymentaccuracy.gov). Click the figure for the
+                      derivation and source.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
       </div>
     </CitationPanelProvider>
   );

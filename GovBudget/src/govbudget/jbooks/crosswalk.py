@@ -55,6 +55,15 @@ being counted as a link the run wrote. fed_account and the FY bounds are
 DuckDB `?` parameters, and an award whose action_date is NULL or not a date is
 excluded from an FY window explicitly (see FED_FY_EXPR) instead of by NULL
 arithmetic. The upsert guard itself is byte-identical.
+
+Edition selector and window validation (2026-09-24, merged 2026-09-25 from
+the award-refresh branch). `fiscal_year` restricts a run to ONE PB edition's
+budget lines (the CLI's shared jbooks `--fiscal-year`), so a refresh can plan
+and write a single edition instead of every edition the org has loaded. It
+narrows WHICH lines run and never widens a line's award window. Every year
+argument must be an integer in 1900-2200 and fy_start may not follow fy_end:
+a reversed window used to match nothing and write nothing, silently, instead
+of stopping.
 """
 import csv
 import re
@@ -172,14 +181,33 @@ FED_FY_EXPR = (
 
 def _validate_window(
     fy_start: int | None, fy_end: int | None, all_years: bool,
+    fiscal_year: int | None = None,
 ) -> None:
-    """Loud failure for the two window shapes that used to be silently
+    """Loud failure for the window shapes that used to be silently
     reinterpreted: one bound alone (pre-#78 it was dropped, i.e. the run went
-    unbounded) and all_years stacked on an explicit window (contradictory)."""
+    unbounded), all_years stacked on an explicit window (contradictory), a
+    reversed window (it matched nothing and wrote nothing, silently), and a
+    year that is not an integer in 1900-2200 (`fiscal_year` — the edition
+    selector — included). Runs before any database is opened."""
+    for name, year in (("fy_start", fy_start), ("fy_end", fy_end),
+                       ("fiscal_year", fiscal_year)):
+        if year is not None and (
+            isinstance(year, bool) or not isinstance(year, int)
+            or not 1900 <= year <= 2200
+        ):
+            raise ValueError(
+                f"{name} must be an integer fiscal year between 1900 and 2200"
+                f" (got {year!r})"
+            )
     if (fy_start is None) != (fy_end is None):
         raise ValueError(
             "fy_start and fy_end must be given together"
             f" (got fy_start={fy_start!r}, fy_end={fy_end!r})"
+        )
+    if fy_start is not None and fy_start > fy_end:
+        raise ValueError(
+            f"fy_start {fy_start} is after fy_end {fy_end}; the window would"
+            " match no award"
         )
     if all_years and fy_start is not None:
         raise ValueError(
@@ -286,28 +314,37 @@ def _candidate_where(
 # NOT NULL (migration 005), so the join drops nothing. When two rows tie on
 # every leg they are identical in all five selected columns, so which one
 # DISTINCT ON keeps cannot change the result.
+#
+# The second and third parameters are the optional edition selector
+# (`fiscal_year`): both NULL keeps every edition.
 CANONICAL_LINE_SQL = """
 select distinct on (b.pe_bli, b.exhibit, b.fiscal_year, b.account)
        b.pe_bli, b.exhibit, b.fiscal_year, b.account, b.title
 from budget_lines b
 join jbook_documents d on d.id = b.source_document_id
 where b.organization = %s
+  and (%s::int is null or b.fiscal_year = %s)
 order by b.pe_bli, b.exhibit, b.fiscal_year, b.account,
          d.fiscal_year desc, d.downloaded_at desc nulls last, d.id desc,
          b.budget_activity asc nulls last, b.title asc nulls last
 """
 
 
-def _load_lines(dsn: str, organization: str) -> list[tuple]:
+def _load_lines(
+    dsn: str, organization: str, fiscal_year: int | None = None,
+) -> list[tuple]:
     """Exactly one (pe_bli, exhibit, fiscal_year, account, title) row per key
     for the org -- the canonical title (CANONICAL_LINE_SQL) -- sorted in Python
     by (account, fiscal_year, pe_bli, exhibit) so lines sharing a
     (fed_account, window) sit together for the single-entry memo and the
     iteration order is fixed. plan_crosswalk_org iterates the same list, so a
     multi-title key is planned once, not once per variant. Live counts
-    2026-09-10: DARPA 177 -> 177 (no variants), org F 1,739 -> 1,736."""
+    2026-09-10: DARPA 177 -> 177 (no variants), org F 1,739 -> 1,736.
+    `fiscal_year` keeps only that PB edition's lines (None: every edition)."""
     with psycopg.connect(dsn) as pg:
-        rows = pg.execute(CANONICAL_LINE_SQL, (organization,)).fetchall()
+        rows = pg.execute(
+            CANONICAL_LINE_SQL, (organization, fiscal_year, fiscal_year),
+        ).fetchall()
     return sorted(rows, key=lambda r: (r[3] or "", r[2], r[0] or "", r[1] or ""))
 
 
@@ -332,6 +369,7 @@ def plan_crosswalk_org(
     fy_start: int | None = None,
     fy_end: int | None = None,
     all_years: bool = False,
+    fiscal_year: int | None = None,
 ) -> list[LinePlan]:
     """Count the (line, award) pairs crosswalk_org WOULD upsert -- one
     LinePlan per budget line -- without writing anything (#78: --dry-run, and
@@ -342,9 +380,10 @@ def plan_crosswalk_org(
     _line_window / _candidate_where, and the write path's `group by
     award_id_piid` returns exactly one row per distinct PIID, so
     `count(distinct award_id_piid)` here cannot drift from it.
+    `fiscal_year` plans only that PB edition's lines, as crosswalk_org writes.
     """
-    _validate_window(fy_start, fy_end, all_years)
-    lines = _load_lines(dsn, organization)
+    _validate_window(fy_start, fy_end, all_years, fiscal_year)
+    lines = _load_lines(dsn, organization, fiscal_year)
     con = duckdb.connect()
     out: list[LinePlan] = []
     # Same single-entry memo as crosswalk_org, for the same reason.
@@ -483,12 +522,15 @@ def crosswalk_org(
     fy_start: int | None = None,
     fy_end: int | None = None,
     all_years: bool = False,
+    fiscal_year: int | None = None,
 ) -> CrosswalkResult:
     """Crosswalk all of one organization's budget lines against the award lake.
 
     Window: fy_start/fy_end (both) pin an explicit federal-FY window on
     action_date; all_years=True matches every loaded award year; otherwise
     each line matches only awards in its own edition fiscal_year (#78).
+    `fiscal_year` (the edition selector) runs only that PB edition's lines;
+    it never widens a line's award window.
 
     Deterministic (#85): one canonical title per key (_load_lines) and every
     award graded from all of its transactions in the window
@@ -502,8 +544,8 @@ def crosswalk_org(
     together are the number of upsert statements issued, i.e. what
     plan_crosswalk_org projects.
     """
-    _validate_window(fy_start, fy_end, all_years)
-    lines = _load_lines(dsn, organization)
+    _validate_window(fy_start, fy_end, all_years, fiscal_year)
+    lines = _load_lines(dsn, organization, fiscal_year)
     with psycopg.connect(dsn) as pg:
         detail_rows = pg.execute(
             "select pe_bli, project_title from budget_line_details"

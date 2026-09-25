@@ -248,7 +248,7 @@ export function ProgramMentions({
     <section aria-labelledby="mentions-heading" className="mb-8">
       <h2
         id="mentions-heading"
-        className="text-lg font-semibold mb-1 text-foreground"
+        className="mb-1 text-foreground"
       >
         Lobbying Mentions
       </h2>

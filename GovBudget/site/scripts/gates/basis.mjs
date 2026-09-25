@@ -280,6 +280,10 @@ const CROSS_PAGE_INDEXES = [
   // an index publishing a program's figure on a basis the program page did
   // not, with no single page holding both.
   { label: "/lineage/", file: "lineage/index.html" },
+  // Family pages show derived family totals and exact workbook inputs.
+  // The family-history gate checks those sums; program-scoped figures in the
+  // funding sheet below still join to their own program pages here.
+  { label: "/families/*/", dir: "families" },
 ];
 
 /**
@@ -297,7 +301,7 @@ const CROSS_PAGE_INDEXES = [
  */
 const BASIS_LABEL = {
   toa: "P-1/R-1 TOA",
-  "jbook-detail": "P-40 detail",
+  "jbook-detail": "J-book detail",
 };
 
 // ── Value normalization ──────────────────────────────────────────────────────
@@ -382,7 +386,7 @@ export function isBasisChipClassName(className) {
  * both): 'rdte' for "R-1 …", 'procurement' for "P-1 …" (the space matters —
  * "P-1/R-1 …" is the combined form, checked FIRST so it is never
  * misread as a procurement claim), 'mixed' for "P-1/R-1 …". Returns null for
- * chip text this leg has no opinion about (non-TOA chips like "P-40 detail",
+ * chip text this leg has no opinion about (non-TOA chips like "J-book detail",
  * or plain prose that happens to match the class signature but not the
  * vocabulary — defensive, should not occur).
  */
@@ -1536,7 +1540,7 @@ function runExhibitAgreementLeg(pages, errors, notes) {
       if (!isBasisChipClassName(el.getAttribute("class"))) continue;
       const chipText = (el.text || "").trim();
       const claim = chipExhibitClaim(chipText);
-      if (claim == null) continue; // not a TOA chip (e.g. "P-40 detail")
+      if (claim == null) continue; // not a TOA chip (e.g. "J-book detail")
       resolved++;
 
       if (claim === "mixed") {

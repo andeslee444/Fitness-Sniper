@@ -1,7 +1,24 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/fact/:id", "destination": "/fact/" },
-    { "source": "/fact/:id/", "destination": "/fact/" }
+    {
+      "source": "/fact/:id",
+      "destination": "/fact/"
+    },
+    {
+      "source": "/fact/:id/",
+      "destination": "/fact/"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/fonts/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 }

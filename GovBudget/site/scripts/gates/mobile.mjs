@@ -758,10 +758,18 @@ async function runNavLeg({ baseUrl, browser, errors, notes }) {
     await page.goto(`${baseUrl}/`, { waitUntil: "networkidle", timeout: 60000 });
     await page.waitForTimeout(300);
 
-    const trigger = await page.$('button[aria-controls="mobile-nav-panel"]');
+    // The trigger is found by its accessible name, not by aria-controls: the
+    // header's panel is a portalled dialog that is not in the DOM while closed,
+    // so the trigger carries aria-controls only while open (a closed trigger
+    // pointing at an id that does not exist is the ARIA defect, and
+    // site-header.test.tsx pins the attribute absent at rest). The old
+    // `button[aria-controls="mobile-nav-panel"]` finder returned before this
+    // leg measured anything — a vacuous FAIL. The attribute is asserted below,
+    // once the panel exists.
+    const trigger = await page.$('button[aria-label="Open navigation menu"]');
     if (!trigger) {
       errors.push(
-        'mobile nav: no button[aria-controls="mobile-nav-panel"] at 390 — the site has no mobile navigation to check',
+        'mobile nav: no button[aria-label="Open navigation menu"] at 390 — the site has no mobile navigation to check',
       );
       return;
     }
@@ -769,6 +777,12 @@ async function runNavLeg({ baseUrl, browser, errors, notes }) {
     await trigger.click();
     // Settled, not mid-animation: two judges checked at 2.5s, so does this.
     await page.waitForTimeout(600);
+    const controls = await trigger.getAttribute("aria-controls");
+    if (controls !== "mobile-nav-panel") {
+      errors.push(
+        `mobile nav: the open trigger's aria-controls is ${JSON.stringify(controls)}, not "mobile-nav-panel" — the button and the panel it opens are not bound`,
+      );
+    }
 
     const m = await page.evaluate(() => {
       const panel = document.getElementById("mobile-nav-panel");

@@ -185,13 +185,16 @@ describe("templatedFetchDirs — directory-templated targets (ROADMAP #88)", () 
 });
 
 describe("scanTemplatedFetchDirs — against the real site/src", () => {
-  it("finds the two directory-templated targets the client depends on", () => {
+  it("finds the three directory-templated targets the client depends on", () => {
     const found = scanTemplatedFetchDirs(srcDir);
     // Measured 2026-09-05: program_details/ (program-awards.tsx:105,
     // program-mentions.tsx:235) and feed-sections/ (feed-section-expand.tsx).
+    // Integration merge 2026-09-25: budget-pdf-receipts/v2/
+    // (lib/budget-pdf-receipts.ts), from the live PDF-receipt branch.
     // This is the population MIN_TEMPLATED_FETCH_DIRS floors.
     expect([...found.keys()].sort()).toEqual([
       "/json-lite/program_details/",
+      "/json/budget-pdf-receipts/v2/",
       "/json/feed-sections/",
     ]);
     expect(found.get("/json/feed-sections/")).toEqual([

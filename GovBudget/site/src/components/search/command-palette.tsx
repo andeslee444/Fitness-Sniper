@@ -44,6 +44,8 @@ import {
 } from "@/lib/search";
 import type { GroupedResults, RecentItem, SearchResult } from "@/lib/search";
 import { aliasChipText, aliasChipParts } from "@/lib/aliases";
+import { Dialog } from "radix-ui";
+import { X } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -92,8 +94,10 @@ function loadPagefind(): Promise<PagefindMod | null> {
     // In dev (next dev) this 404s — the catch resolves null.
     // Fallback if magic comment regresses:
     //   const mod = await new Function('s', 'return import(s)')('/pagefind/pagefind.js');
+    const pagefindUrl = "/pagefind/pagefind.js";
     pagefindPromise = import(
-      /* turbopackIgnore: true */ "/pagefind/pagefind.js" as string
+      /* @vite-ignore */
+      /* turbopackIgnore: true */ pagefindUrl
     )
       .then((mod) => mod as PagefindMod)
       .catch(() => {
@@ -278,6 +282,7 @@ export function CommandPalette() {
   const [activeIdx, setActiveIdx] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const uid = useId();
 
@@ -296,7 +301,9 @@ export function CommandPalette() {
     unavailable: deepUnavailable,
   } = useTier2(query);
 
-  const openPalette = useCallback(() => {
+  const openPalette = useCallback((trigger?: HTMLElement) => {
+    openerRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    document.dispatchEvent(new Event("fiscal-search-open"));
     setOpen(true);
     setQuery("");
     setActiveIdx(0);
@@ -362,7 +369,8 @@ export function CommandPalette() {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const isInput =
-        tag === "input" || tag === "textarea" || tag === "select";
+        tag === "input" || tag === "textarea" || tag === "select" ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable);
 
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -388,23 +396,89 @@ export function CommandPalette() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest("[data-search-trigger]")) {
+      const trigger = target.closest<HTMLElement>("[data-search-trigger]");
+      if (trigger) {
         e.preventDefault();
-        openPalette();
+        openPalette(trigger);
       }
     };
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [openPalette]);
 
-  // All displayed items (for keyboard nav) — memoized so handleKeyDown dep is stable
+  const { t1BestMatches, t1Programs, t1Companies, t1Agencies, t1Pages } = useMemo(() => {
+    // Best matches: agencies and companies whose title exactly or near-exactly
+    // matches the query. Also district docs when query matches a district code
+    // (e.g. "CO-05"). Rendered first in the DOM (before Programs) so they
+    // appear in the gate's top-3/top-5 result selectors and are visually prominent.
+    const queryNormPalette = query.trim().toLowerCase();
+    // District code pattern: two letters + hyphen + digits (e.g. "CO-05", "VA-08")
+    const districtCodePatternPalette = /^[a-z]{2}-\d{2}$/i;
+    const isBestMatch = (item: FlatItem): boolean => {
+      // District exact-code match: e.g. query="CO-05" and item.kind="district"
+      // Check via URL: /district/CO-05/ matches query "co-05"
+      if (item.kind === "district" && districtCodePatternPalette.test(queryNormPalette)) {
+        const expectedUrl = `/district/${queryNormPalette.toUpperCase()}/`;
+        if (item.url === expectedUrl) return true;
+      }
+      // District index page: surface /district/ when query contains "district"
+      // so "congressional districts defense" navigates to the index immediately.
+      if (item.url === "/district/" && queryNormPalette.includes("district")) {
+        return true;
+      }
+      if (item.kind !== "agency" && item.kind !== "company") return false;
+      const titleLow = item.label.toLowerCase();
+      if (titleLow === queryNormPalette) return true;
+      // Near-exact: within 2 chars AND a *strong* head overlap — the shorter of
+      // {query, title} minus up to 2 fuzzy chars must prefix the longer. Kept in
+      // sync with the quickSearch near-exact boost (5G archive fix): the old
+      // 3-char-stub rule promoted "GENERAL ATOMICS" to Best match for the query
+      // "general dynamics". Typo cases ("darppa" → DARPA, "boeng" → BOEING)
+      // still qualify.
+      if (
+        Math.abs(titleLow.length - queryNormPalette.length) <= 2 &&
+        titleLow.length >= 3 &&
+        queryNormPalette.length >= 3
+      ) {
+        const shorter =
+          queryNormPalette.length <= titleLow.length ? queryNormPalette : titleLow;
+        const longer =
+          queryNormPalette.length <= titleLow.length ? titleLow : queryNormPalette;
+        const headLen = Math.max(3, shorter.length - 2);
+        if (longer.startsWith(shorter.slice(0, headLen))) return true;
+      }
+      return false;
+    };
+
+    const t1BestMatches = tier1Items.filter(isBestMatch);
+    const bestMatchIds = new Set(t1BestMatches.map((i) => i.id));
+
+    const t1Programs = tier1Items.filter((i) => i.kind === "program");
+    const t1Companies = tier1Items.filter((i) => i.kind === "company" && !bestMatchIds.has(i.id));
+    const t1Agencies = tier1Items.filter((i) => i.kind === "agency" && !bestMatchIds.has(i.id));
+    // Everything that isn't a program/company/agency renders under "Pages" —
+    // covers kinds "page", "static", "feed", "district" and "alias" emitted by
+    // export_site's search_quick.json (an exact-kind check here would silently
+    // drop those docs).
+    const t1Pages = tier1Items.filter(
+      (i) => i.kind !== "program" && i.kind !== "company" && i.kind !== "agency" && !bestMatchIds.has(i.id),
+    );
+
+    return { t1BestMatches, t1Programs, t1Companies, t1Agencies, t1Pages };
+  }, [query, tier1Items]);
+
+  // Keyboard order is the visible grouped order, including the best-match group.
   const displayItems = useMemo<FlatItem[]>(
-    () =>
-      query.trim()
-        ? [...tier1Items, ...tier2Items]
-        : recentsToFlat(recents),
-    [query, tier1Items, tier2Items, recents],
+    () => query.trim()
+      ? [...t1BestMatches, ...t1Programs, ...t1Companies, ...t1Agencies, ...t1Pages, ...tier2Items]
+      : recentsToFlat(recents),
+    [query, t1BestMatches, t1Programs, t1Companies, t1Agencies, t1Pages, tier2Items, recents],
   );
+
+  useEffect(() => {
+    const active = listRef.current?.querySelector('[aria-selected="true"]');
+    if (active instanceof HTMLElement) active.scrollIntoView?.({ block: "nearest" });
+  }, [activeIdx, displayItems]);
 
   // Keyboard navigation inside the listbox
   const handleKeyDown = useCallback(
@@ -426,88 +500,29 @@ export function CommandPalette() {
     [displayItems, activeIdx, navigate],
   );
 
-  if (!open) return null;
-
   const listboxId = `${uid}-listbox`;
   const optionId = (i: number) => `${uid}-opt-${i}`;
-
-  // Best matches: agencies and companies whose title exactly or near-exactly
-  // matches the query. Also district docs when query matches a district code
-  // (e.g. "CO-05"). Rendered first in the DOM (before Programs) so they
-  // appear in the gate's top-3/top-5 result selectors and are visually prominent.
-  const queryNormPalette = query.trim().toLowerCase();
-  // District code pattern: two letters + hyphen + digits (e.g. "CO-05", "VA-08")
-  const districtCodePatternPalette = /^[a-z]{2}-\d{2}$/i;
-  const isBestMatch = (item: FlatItem): boolean => {
-    // District exact-code match: e.g. query="CO-05" and item.kind="district"
-    // Check via URL: /district/CO-05/ matches query "co-05"
-    if (item.kind === "district" && districtCodePatternPalette.test(queryNormPalette)) {
-      const expectedUrl = `/district/${queryNormPalette.toUpperCase()}/`;
-      if (item.url === expectedUrl) return true;
-    }
-    // District index page: surface /district/ when query contains "district"
-    // so "congressional districts defense" navigates to the index immediately.
-    if (item.url === "/district/" && queryNormPalette.includes("district")) {
-      return true;
-    }
-    if (item.kind !== "agency" && item.kind !== "company") return false;
-    const titleLow = item.label.toLowerCase();
-    if (titleLow === queryNormPalette) return true;
-    // Near-exact: within 2 chars AND a *strong* head overlap — the shorter of
-    // {query, title} minus up to 2 fuzzy chars must prefix the longer. Kept in
-    // sync with the quickSearch near-exact boost (5G archive fix): the old
-    // 3-char-stub rule promoted "GENERAL ATOMICS" to Best match for the query
-    // "general dynamics". Typo cases ("darppa" → DARPA, "boeng" → BOEING)
-    // still qualify.
-    if (
-      Math.abs(titleLow.length - queryNormPalette.length) <= 2 &&
-      titleLow.length >= 3 &&
-      queryNormPalette.length >= 3
-    ) {
-      const shorter =
-        queryNormPalette.length <= titleLow.length ? queryNormPalette : titleLow;
-      const longer =
-        queryNormPalette.length <= titleLow.length ? titleLow : queryNormPalette;
-      const headLen = Math.max(3, shorter.length - 2);
-      if (longer.startsWith(shorter.slice(0, headLen))) return true;
-    }
-    return false;
-  };
-
-  const t1BestMatches = tier1Items.filter(isBestMatch);
-  const bestMatchIds = new Set(t1BestMatches.map((i) => i.id));
-
-  const t1Programs = tier1Items.filter((i) => i.kind === "program");
-  const t1Companies = tier1Items.filter((i) => i.kind === "company" && !bestMatchIds.has(i.id));
-  const t1Agencies = tier1Items.filter((i) => i.kind === "agency" && !bestMatchIds.has(i.id));
-  // Everything that isn't a program/company/agency renders under "Pages" —
-  // covers kinds "page", "static", "feed", "district" and "alias" emitted by
-  // export_site's search_quick.json (an exact-kind check here would silently
-  // drop those docs).
-  const t1Pages = tier1Items.filter(
-    (i) => i.kind !== "program" && i.kind !== "company" && i.kind !== "agency",
-  );
 
   const activeItemId = displayItems[activeIdx]
     ? optionId(activeIdx)
     : undefined;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-        aria-hidden="true"
-        onClick={closePalette}
-      />
-
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
+    <Dialog.Root open={open} onOpenChange={(next) => { if (!next) closePalette(); }}>
+      <Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+      <Dialog.Content
         aria-label="Search"
-        className="fixed left-1/2 top-[10vh] z-50 w-full max-w-xl -translate-x-1/2 rounded-xl border border-border bg-background shadow-2xl overflow-hidden"
+        onOpenAutoFocus={(event) => { event.preventDefault(); inputRef.current?.focus(); }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const opener = openerRef.current?.isConnected ? openerRef.current : document.querySelector<HTMLElement>('[data-testid="search-trigger"]');
+          opener?.focus();
+        }}
+        className="fixed left-1/2 top-[8vh] z-50 w-[calc(100%_-_2rem)] max-w-2xl -translate-x-1/2 rounded-lg border border-border bg-background shadow-2xl overflow-hidden outline-none"
       >
+        <Dialog.Title className="sr-only">Search Fiscal Receipts</Dialog.Title>
+        <Dialog.Description className="sr-only">Find programs, companies, agencies, districts, and source documents. Use the arrow keys to choose a result and Enter to open it.</Dialog.Description>
         {/* Search input */}
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <svg
@@ -544,19 +559,14 @@ export function CommandPalette() {
               setActiveIdx(0);
             }}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           {loading2 && (
             <span className="text-xs text-muted-foreground animate-pulse">
               searching…
             </span>
           )}
-          <kbd
-            className="hidden sm:inline-block rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground font-mono"
-            aria-label="Press Escape to close"
-          >
-            esc
-          </kbd>
+          <Dialog.Close aria-label="Close search" className="inline-flex size-8 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"><X size={18} aria-hidden="true" /></Dialog.Close>
         </div>
 
         {/* Results */}
@@ -566,11 +576,11 @@ export function CommandPalette() {
           ref={listRef}
           role="listbox"
           aria-label="Search results"
-          className="max-h-96 overflow-y-auto py-2"
+          className="max-h-[min(60dvh,28rem)] overflow-y-auto py-2"
         >
           {displayItems.length === 0 && !query.trim() && (
             <li role="option" aria-selected="false" aria-disabled="true" className="px-4 py-3 text-sm text-muted-foreground">
-              Start typing to search…
+              Search by program name, PE/BLI, contractor, or district.
             </li>
           )}
           {displayItems.length === 0 && query.trim() && (
@@ -752,22 +762,22 @@ export function CommandPalette() {
             <kbd className="font-mono">⌘K</kbd> toggle
           </span>
         </div>
-      </div>
-    </>
+      </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function GroupHeader({ label }: { label: string }) {
-  // role="group" is the correct child of a listbox (per ARIA 1.2 spec).
-  // role="presentation" would remove list semantics; role="group" with aria-label
-  // provides proper grouping that assistive technologies can announce.
+  // Group labels are visual separators; each option carries its type in its
+  // accessible name. A role=group with no option children is misleading.
   return (
     <li
-      role="group"
-      aria-label={label}
-      className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+      role="presentation"
+      aria-hidden="true"
+      className="t-label px-4 pb-1 pt-3"
     >
       {label}
     </li>
@@ -796,23 +806,22 @@ function ResultRow({
       id={optionId}
       role="option"
       aria-selected={active}
+      aria-label={`${item.label}${isDeep ? ", in documents" : item.sub ? `, ${item.sub}` : ""}`}
       data-testid="search-result"
       className={[
         "mx-2 flex cursor-pointer flex-col rounded-md text-sm transition-colors",
         active ? "bg-primary/10 text-foreground" : "hover:bg-muted/60",
       ].join(" ")}
       onMouseMove={onHover}
-      onClick={onSelect}
     >
-      {/* Use a real <a> for navigation — required for gate selector [role=option] a
-          and for keyboard/AT accessibility. The <li onClick> handles the recents
-          side-effect; the <a> handles the actual navigation. */}
+      {/* Keep the actual destination available to browser link actions.
+          The combobox option has an explicit accessible name. */}
       <a
         href={item.url}
         tabIndex={-1}
         aria-hidden="true"
         onClick={(e) => {
-          // Let the li onClick handle navigation (with recents tracking)
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
           e.preventDefault();
           onSelect();
         }}
@@ -915,7 +924,7 @@ export function SearchTriggerButton() {
         <path d="m21 21-4.35-4.35" />
       </svg>
       <span className="hidden sm:inline">Search</span>
-      <kbd className="hidden md:inline-block rounded border border-border px-1 py-0.5 text-[10px] font-mono">
+      <kbd className="t-id hidden md:inline-block rounded border border-border px-1 py-0.5">
         ⌘K
       </kbd>
     </button>

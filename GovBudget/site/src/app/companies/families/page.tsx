@@ -14,6 +14,7 @@ import {
 } from "@/lib/entity-families";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CompanyName } from "@/components/company-name";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
@@ -107,7 +108,7 @@ export function secAccession(url: string): string | null {
  */
 function MobileFieldLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="sm:hidden mr-1.5 text-xs uppercase tracking-wide text-muted-foreground/70">
+    <span className="t-label sm:hidden mr-1.5">
       {children}
     </span>
   );
@@ -143,7 +144,9 @@ export default function CompanyFamiliesPage() {
           ]}
         />
 
-        <h1 className="mb-2 text-3xl font-bold">{TITLE}</h1>
+        <PageIntro eyebrow="Corporate identity" title={TITLE}
+          description="One company can appear under several names. These sourced events explain which contractor records are combined."
+          actions={<><a href="#family-events">Inspect the events</a><a href="#merged-families">See the merged families</a><Link href="/companies/">Return to contractors</Link></>} />
 
         {/* ── Method, stated plainly and first ── */}
         <div
@@ -171,12 +174,15 @@ export default function CompanyFamiliesPage() {
             go to the filing itself; they carry no fact ID and no page
             highlight, because we did not extract them — we read them.
           </p>
+          <details className="mt-3">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Matching rules, inference, and limits</summary>
+            <div className="mt-3">
           <p className="mb-2">
             <strong className="text-foreground">Where a name does not resolve</strong>,
             we say so rather than guessing. Names are matched to award-data
             recipient families by exact normalized equality — never fuzzily. An
             event side marked{" "}
-            <span className="italic">no separate registry family</span> means
+            <span className="text-muted-foreground">no separate registry family</span> means
             the award data has no separate family under that name, usually
             because it was already resolved under its parent. Because both
             sides of an event can be unresolved, each row also states{" "}
@@ -207,10 +213,12 @@ export default function CompanyFamiliesPage() {
             combined; it does not change how the underlying families were
             inferred.
           </p>
+            </div>
+          </details>
         </div>
 
         {/* ── The events ── */}
-        <h2 className="mb-3 text-xl font-semibold">
+        <h2 id="family-events" className="scroll-mt-24 mb-3">
           {events.length} curated {events.length === 1 ? "event" : "events"}
         </h2>
         {/* MOBILE (fix round, judge 2 — the missing 390px verification).
@@ -274,7 +282,7 @@ export default function CompanyFamiliesPage() {
                       {event.from_name}
                     </span>
                     {!event.from_family_key && (
-                      <span className="mt-0.5 block text-xs italic text-muted-foreground">
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
                         no separate registry family
                       </span>
                     )}
@@ -285,7 +293,7 @@ export default function CompanyFamiliesPage() {
                       {event.to_name}
                     </span>
                     {!event.to_family_key && (
-                      <span className="mt-0.5 block text-xs italic text-muted-foreground">
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
                         no separate registry family
                       </span>
                     )}
@@ -305,12 +313,12 @@ export default function CompanyFamiliesPage() {
                           into the {family.label} line.
                         </span>
                       ) : event.from_family_key || event.to_family_key ? (
-                        <span className="italic text-muted-foreground">
+                        <span className="text-muted-foreground">
                           Names the {family.label} line itself — it folds in no
                           additional contractor row.
                         </span>
                       ) : (
-                        <span className="italic text-muted-foreground">
+                        <span className="text-muted-foreground">
                           Neither name has its own row in the award data, so
                           this event merges nothing.
                         </span>
@@ -329,7 +337,7 @@ export default function CompanyFamiliesPage() {
                       <span
                         data-evidence="name-inferred"
                         title="The source documents the corporate event but does not name this specific award recipient — the link from the recipient name to the filing party is our inference"
-                        className="mt-1 block w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                        className="mt-1 block w-fit rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
                       >
                         name-inferred
                       </span>
@@ -363,7 +371,7 @@ export default function CompanyFamiliesPage() {
                       <span
                         data-sec-accession={secAccession(event.source_url)!}
                         title="SEC accession number — this filing's durable identifier"
-                        className="mt-0.5 block font-mono text-[11px] text-muted-foreground"
+                        className="t-id mt-0.5 block"
                       >
                         {secAccession(event.source_url)}
                       </span>
@@ -385,7 +393,7 @@ export default function CompanyFamiliesPage() {
         </p>
 
         {/* ── What the merge did to /companies/ ── */}
-        <h2 className="mb-3 text-xl font-semibold">
+        <h2 id="merged-families" className="scroll-mt-24 mb-3">
           What this changes on the contractor list
         </h2>
         <p className="mb-3 text-sm text-muted-foreground">
@@ -458,7 +466,7 @@ export default function CompanyFamiliesPage() {
 
         <p className="text-sm text-muted-foreground">
           The seed for this table lives in the repository at{" "}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+          <code className="t-id rounded bg-muted px-1 py-0.5">
             {payload?.seed ?? "data-seeds/entity_family_events.csv"}
           </code>
           . It is deliberately small and deliberately conservative: only

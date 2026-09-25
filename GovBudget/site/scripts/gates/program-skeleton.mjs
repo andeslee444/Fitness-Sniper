@@ -65,12 +65,18 @@
  *     AND the synthesized full-tier pages the 2026-07-05 fix never covered),
  *     it names the page's own org, and the branch it picks agrees with
  *     site_meta.ingested_service_orgs. ROADMAP #14 — see leg o's own block.
+ * (p) /families/f-15/ states the family funding history its export carries:
+ *     the headline is the sum of the default actuals years, every annual
+ *     total and matrix cell sums exactly its own workbook receipts, and the
+ *     shipped history sidecar and cite shards equal the audited export
+ *     (codex/f15-family-browser, merged 2026-09-25) — see leg p's own block.
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
+import { checkFamilyHistory, checkFamilyHistoryAssets } from "./family-history.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -519,6 +525,11 @@ export async function runProgramSkeletonGate() {
 
   // ── (o) the coverage note agrees with the loaded-book set (ROADMAP #14) ──
   runCoverageNoteLeg({ errors, notes, sidecars });
+
+  // ── (p) the F-15 family funding history, audited from its export ─────
+  //        (codex/f15-family-browser; that branch lettered it (o), which
+  //        this gate already gives the coverage note — merged 2026-09-25)
+  runFamilyLeadLeg({ errors, notes });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -2926,8 +2937,9 @@ function runOrgCodeLeg({ errors, notes, sidecars }) {
 //
 // It reads a bounded SLICE of each page rather than parsing 2,005 documents
 // whose heaviest is 1.1 MB: from the answer-who testid to the figures
-// section that follows it. The slice is the card and nothing else, which is
-// also what makes (2) meaningful — an [data-amount] found in it is IN it.
+// section that follows it. That slice may include intervening siblings (for
+// example a visual exhibit), so checks select the card element within it.
+// An [data-amount] must be inside that element to count as recipient money.
 
 const WHO_TIERS = new Set(["award", "jbook", "lobbying", "none"]);
 const WHO_NAME_EVIDENCE = new Set(["pe_literal", "alias"]);
@@ -2939,13 +2951,14 @@ const WHO_NAME_EVIDENCE = new Set(["pe_literal", "alias"]);
 const WHO_LOBBY_TEMPLATE =
   /^No contract award is linked to this line\.\s+Lobbying — not a contract\s+(.+?) named this program in Senate lobbying filings\.\s+See the filings/;
 
-/** The card's own HTML: [data-testid="answer-who"] up to the figures section. */
-function answerWhoSlice(html) {
+/** Parse a bounded fragment, then return only the recipient card element. */
+export function answerWhoCard(html) {
   const at = html.indexOf('data-testid="answer-who"');
   if (at === -1) return null;
   const open = html.lastIndexOf("<", at);
   const stop = html.indexOf('data-section="figures"', at);
-  return html.slice(open === -1 ? at : open, stop === -1 ? at + 12000 : stop);
+  const fragment = parse(html.slice(open === -1 ? at : open, stop === -1 ? at + 12000 : stop), { comment: false });
+  return fragment.querySelector('[data-testid="answer-who"]');
 }
 
 function runWhoGetsItLeg({ errors, notes, sidecars }) {
@@ -2964,14 +2977,13 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
     if (d?.summary?.lobbied_by) payloadLobbying.add(slug);
     const p = pageHtmlPath(slug);
     if (!fs.existsSync(p)) continue;
-    const slice = answerWhoSlice(fs.readFileSync(p, "utf8"));
-    if (slice === null) {
+    const root = answerWhoCard(fs.readFileSync(p, "utf8"));
+    if (root === null) {
       // A split-key stub renders no answer strip; a real program page must.
       if (d) fail(`program-skeleton(j): /program/${slug}/ has no [data-testid="answer-who"]`);
       continue;
     }
     checked += 1;
-    const root = parse(slice, { comment: false });
     const tierEls = root.querySelectorAll("[data-who-tier]");
     if (tierEls.length !== 1) {
       fail(
@@ -2986,6 +2998,16 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
       continue;
     }
     census[tier] += 1;
+
+    if (tier === "none" && (d?.awards?.length ?? 0) > 0) {
+      const text = (tierEls[0].text || "").replace(/\s+/g, " ");
+      if (/No company is linked|No contract award is linked/i.test(text)) {
+        fail(`program-skeleton(j): /program/${slug}/ denies award links despite ${d.awards.length} linked records`);
+      }
+      if (!root.querySelector('a[href="#program-awards"]')) {
+        fail(`program-skeleton(j): /program/${slug}/ missing recipient total must link to its award records`);
+      }
+    }
 
     // (2) money only where awards are
     const amounts = root.querySelectorAll("[data-amount]");
@@ -3020,9 +3042,10 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
         );
       }
       // order: disclaimer and badge both precede the first named company
-      const iDisc = slice.indexOf("data-who-disclaimer");
-      const iBadge = slice.indexOf("data-who-lobby-badge");
-      const iName = slice.indexOf("data-who-name");
+      const cardHtml = root.outerHTML;
+      const iDisc = cardHtml.indexOf("data-who-disclaimer");
+      const iBadge = cardHtml.indexOf("data-who-lobby-badge");
+      const iName = cardHtml.indexOf("data-who-name");
       if (iDisc === -1 || iBadge === -1) {
         fail(
           `program-skeleton(j): /program/${slug}/ lobbying tier is missing its ` +
@@ -3990,4 +4013,37 @@ export function runCoverageNoteLeg({
         ? ` | ${branchCounts.uningested - [...unprobed.values()].reduce((a, b) => a + b, 0)} with no org code`
         : ""),
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg p — family funding history (owner correction, 2026-09-24)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// From codex/f15-family-browser (87d50151 → b59dc842), where it was lettered
+// (o); renamed (p) in the 2026-09-25 merge because leg (o) is the coverage
+// note above. Audit family sums independently, preserving accounting and
+// receipt coverage: the page against f15_funding_history.json and
+// citations.json (family-history.mjs checkFamilyHistory), and the SHIPPED
+// copies — out/json/f15_funding_history.json and every cite shard the
+// history's receipts land in — against the audited export
+// (checkFamilyHistoryAssets).
+function runFamilyLeadLeg({ errors, notes }) {
+  const file = path.join(outDir, "families/f-15/index.html");
+  if (!fs.existsSync(file)) { errors.push("program-skeleton(p): F-15 family page missing"); return; }
+  const source = path.join(jsonDir, "f15_funding_history.json");
+  if (!fs.existsSync(source)) { errors.push("program-skeleton(p): F-15 family history export missing"); return; }
+  const html = fs.readFileSync(file, "utf8");
+  const history = readJson(source);
+  const citations = readJson(path.join(jsonDir, "citations.json"));
+  const findings = checkFamilyHistory(parse(html), history, citations, pageCitationFactIds(html));
+  const shippedHistory = path.join(outDir, "json/f15_funding_history.json");
+  const prefixes = new Set([history.cumulative.fact_id, ...history.points.flatMap(point => [point.fact_id, ...point.components.map(row => row.fact_id), ...point.program_cells.map(cell => cell.fact_id)])].map(id => id.slice(0, 2)));
+  const shippedShards = {};
+  for (const prefix of prefixes) {
+    const shard = path.join(outDir, "json/cite-shards", `${prefix}.json`);
+    if (fs.existsSync(shard)) shippedShards[prefix] = readJson(shard);
+  }
+  findings.push(...checkFamilyHistoryAssets(history, citations, fs.existsSync(shippedHistory) ? readJson(shippedHistory) : null, shippedShards));
+  errors.push(...findings.map(message => `program-skeleton(p): /families/f-15/ ${message}`));
+  if (!findings.length) notes.push(`leg p: family history sums, ${history.default_point_ids.length} annual snapshots, receipts and historical coverage checked ✓`);
 }

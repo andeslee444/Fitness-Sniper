@@ -5,6 +5,12 @@ Gates (CLI: verify-phase5b1):
                           re-derivation per citation tier:
                           - jbook_pdf: PDF file exists + sha matches + pdfplumber
                             word found at stored page with x0/top_pt within 2 pt
+                            (the occurrence nearest the stored bbox when the
+                            numeral repeats on the page); source scale agrees
+                            with the canonical detail amount. Explicit
+                            unresolved receipts verify only the document and
+                            must omit amounts/units/locators (counted
+                            separately)
                             + the HIGHLIGHTED ROW's printed label names the fact
                               (project, program element, or — only when the
                               page prints the fact's own pe_bli — one of the
@@ -18,8 +24,11 @@ Gates (CLI: verify-phase5b1):
                                 · unreadable label (every token left of the
                                   amount was itself a value column)
                                 · no jbook_details row for the fact
-                                  (skipped_no_detail) or a null stored bbox
-                                  (skipped_null_bbox)
+                                  (skipped_no_detail — unreachable for a
+                                  resolved receipt since the units leg,
+                                  which fails a fact with no canonical
+                                  detail amount first) or a null stored
+                                  bbox (skipped_null_bbox)
                                 · procurement with no Total Obligation Authority
                                   cell in the highlight's column on that page
                                   (toa_not_found) — the basis is then unchecked
@@ -493,7 +502,13 @@ def citation_gate5b1(
     # Every path through the leg increments exactly one of these, so a leg
     # that is doing nothing is visible on the CLI line instead of looking
     # like a clean run: sampled == checked + skipped_no_detail +
-    # skipped_null_bbox + (jbook_pdf citations that failed an earlier leg).
+    # skipped_null_bbox + unresolved receipts (reported beside this block as
+    # jbook_pdf_unresolved_sampled — they verify the document only) +
+    # (jbook_pdf citations that failed an earlier leg). Since the units leg
+    # (2026-09-23) a resolved receipt with no jbook_details row fails there —
+    # it has no canonical amount to check the page's scale against — so
+    # skipped_no_detail stays 0 on any export whose citations are a subset of
+    # jbook_details, which is what the integrity gate's orphan check requires.
     row_label_stats: dict[str, int] = {
         "sampled": 0,
         "checked": 0,
@@ -570,6 +585,13 @@ def citation_gate5b1(
         "overlap_fids": bl_overlap_fids,
         "overlap_divergent": len(bl_overlap_divergences),
         "row_label": row_label_stats,
+        "jbook_pdf_unresolved_total": sum(
+            row[col_idx["resolution"]] == "unresolved" for row in by_kind.get("jbook_pdf", [])
+        ),
+        "jbook_pdf_unresolved_sampled": sum(
+            row[col_idx["kind"]] == "jbook_pdf" and row[col_idx["resolution"]] == "unresolved"
+            for row in sample
+        ),
     }
 
 
@@ -668,10 +690,6 @@ def _verify_jbook_pdf(
 
     if not sha:
         return "sha256 is null"
-    if not amount_text:
-        return "amount_text is null"
-    if page_number is None:
-        return "page_number is null"
 
     pdf_path = site_dir / "pdfs" / f"{sha}.pdf"
     if not pdf_path.exists():
@@ -682,6 +700,37 @@ def _verify_jbook_pdf(
     if actual_sha != sha:
         return f"sha256 mismatch: stored={sha} actual={actual_sha}"
 
+    if row[idx["resolution"]] == "unresolved":
+        # An unresolved receipt proves only which document was supplied. It
+        # must never retain a stale amount, monetary scale, or exact locator.
+        for field in ("amount_text", "units", "page_number", "x0", "x1", "top_pt",
+                      "bottom_pt", "page_width", "page_height"):
+            if row[idx[field]] is not None:
+                return f"unresolved PDF citation must have null {field}"
+        from urllib.parse import urlsplit
+        for field in ("hosted_pdf_url", "official_url"):
+            url = row[idx[field]]
+            try:
+                parsed = urlsplit(url) if isinstance(url, str) else None
+            except ValueError:
+                parsed = None
+            absolute_http = parsed is not None and parsed.scheme in ("http", "https") and bool(parsed.netloc)
+            relative_hosted = (field == "hosted_pdf_url" and parsed is not None
+                               and not parsed.scheme and not parsed.netloc
+                               and parsed.path.startswith("/"))
+            if not (absolute_http or relative_hosted):
+                return f"unresolved PDF citation requires a valid {field}"
+            if parsed.fragment:
+                return f"unresolved PDF citation must not have a fragment in {field}"
+            if field == "hosted_pdf_url" and not parsed.path.endswith(f"/{sha}.pdf"):
+                return "unresolved PDF hosted URL must identify the verified document SHA"
+        return None
+
+    if not amount_text:
+        return "amount_text is null"
+    if page_number is None:
+        return "page_number is null"
+
     # pdfplumber word search on the stored page (1-based → 0-based index)
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -690,13 +739,20 @@ def _verify_jbook_pdf(
                 return f"page_number={page_number} out of range (doc has {len(pdf.pages)} pages)"
             page = pdf.pages[page_idx]
             words = page.extract_words()
+            page_text = page.extract_text() or ""
     except Exception as e:
         return f"pdfplumber error: {e}"
 
     # Find word matching amount_text
-    word = next((w for w in words if w["text"] == amount_text), None)
-    if word is None:
+    matches = [w for w in words if w["text"] == amount_text]
+    if not matches:
         return f"word '{amount_text}' not found on page {page_number}"
+    # Repeated amounts can occupy several fiscal-year columns or rows. Verify
+    # the stored location rather than assuming the first occurrence is right.
+    word = min(matches, key=lambda w: (
+        (abs(float(w["x0"]) - float(stored_x0)) if stored_x0 is not None else 0)
+        + (abs(float(w["top"]) - float(stored_top)) if stored_top is not None else 0)
+    ))
 
     # Bbox tolerance check
     if stored_x0 is not None and abs(float(word["x0"]) - float(stored_x0)) > _BBOX_TOL_PT:
@@ -705,6 +761,25 @@ def _verify_jbook_pdf(
     if stored_top is not None and abs(float(word["top"]) - float(stored_top)) > _BBOX_TOL_PT:
         return (f"top_pt mismatch: stored={stored_top:.2f} actual={word['top']:.2f}"
                 f" (tolerance {_BBOX_TOL_PT} pt)")
+
+    # A matching numeral is not enough: years/activity codes can coincide
+    # with a scaled amount, and a literal thousand must not display as a million.
+    import duckdb
+    from govbudget.jbooks.citation_units import jbook_pdf_citation_units, pdf_page_currency_units
+
+    try:
+        with duckdb.connect() as con:
+            canonical = con.execute(
+                "select distinct amount_millions from read_parquet(?) where fact_id = ?",
+                [str(site_dir / "data" / "jbook_details.parquet"), row[idx["fact_id"]]],
+            ).fetchall()
+        if len(canonical) != 1:
+            return "PDF citation lacks one unambiguous canonical detail amount"
+        expected_units = jbook_pdf_citation_units(amount_text, canonical[0][0], source_units=pdf_page_currency_units(page_text))
+    except Exception as error:
+        return f"PDF citation units cannot be verified: {error}"
+    if row[idx["units"]] != expected_units:
+        return f"PDF citation units mismatch: stored={row[idx['units']]} expected={expected_units} from page and canonical amount"
 
     # ── Row-label leg (PM review 2026-07-30 §Systemic fix, addendum) ────────
     # The checks above prove the stored region is where THAT AMOUNT is printed.
@@ -1433,6 +1508,15 @@ _SUBAWARD_MATCH_BASES = frozenset({"subaward-description-exact"})
 # 'subaward+lexicon' out of the published universe and fail leg n on the
 # /methodology/ subaward figure.
 _SUBAWARD_FORMULA_TOKEN = "method='subaward+lexicon'"
+# The derived link sentence export_site mints for every crosswalk link
+# (_build_budget_to_awards_citation_rows), optionally naming the member's
+# account on a shared code. Read here for the PIID and the tier it states.
+_SUBAWARD_FORMULA_RE = re.compile(
+    r"crosswalk link: pe_bli=(?P<program>[A-Za-z0-9|_.-]+)"
+    r"(?: \(account [A-Za-z0-9]+\))? matched to award "
+    r"PIID (?P<piid>[A-Za-z0-9-]+) via method='subaward\+lexicon', "
+    r"confidence='medium' \(dollars live at award grain in fct_award_transactions\)"
+)
 
 
 def _verify_subaward(row: tuple, idx: dict) -> str | None:
@@ -1449,8 +1533,14 @@ def _verify_subaward(row: tuple, idx: dict) -> str | None:
        subawardee is a non-empty string or null (absence is honest, a blank
        is not).
     3. match_basis is one of _SUBAWARD_MATCH_BASES.
-    4. formula is non-empty and contains method='subaward+lexicon'.
-    5. recorded_value, sha256, amount_text, amount_thousands are all null.
+    4. formula is non-empty and contains method='subaward+lexicon'; it is
+       the full link sentence (_SUBAWARD_FORMULA_RE) at confidence='medium',
+       and the award page in rule 1 is THIS link's prime award — its key
+       starts CONT_AWD_{piid}_ or CONT_IDV_{piid}_ for the formula's PIID
+       (2026-09-23: a URL naming another award, or a tier upgraded past
+       medium, is refused).
+    5. recorded_value, sha256, amount_text, amount_thousands and units are
+       all null — link evidence never carries an attributed amount.
     """
     official_url = row[idx["official_url"]] if "official_url" in idx else None
     query_body = row[idx["query_body"]] if "query_body" in idx else None
@@ -1488,8 +1578,19 @@ def _verify_subaward(row: tuple, idx: dict) -> str | None:
         return (f"subaward: formula does not state {_SUBAWARD_FORMULA_TOKEN}"
                 f" (site gate leg n reads the published method set from it):"
                 f" {formula!r}")
+    link = _SUBAWARD_FORMULA_RE.fullmatch(str(formula))
+    if not link:
+        return ("subaward: formula must identify this prime award and a"
+                f" medium-confidence subaward link: {formula!r}")
+    key = _SUBAWARD_URL_RE.fullmatch(str(official_url)).group("key")
+    piid = link.group("piid")
+    if not (key.startswith(f"CONT_AWD_{piid}_")
+            or key.startswith(f"CONT_IDV_{piid}_")):
+        return (f"subaward: official_url names award {key!r}, not the prime"
+                f" award {piid!r} the link formula states")
 
-    for col in ("recorded_value", "sha256", "amount_text", "amount_thousands"):
+    for col in ("recorded_value", "sha256", "amount_text", "amount_thousands",
+                "units"):
         if col in idx and row[idx[col]] is not None:
             return (f"subaward: {col} must be null (the cited fact is the"
                     f" link, not a figure): {row[idx[col]]!r}")
@@ -2166,6 +2267,15 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["jbook_narrative_shape"] = len(narr_failures) == 0
     else:
         checks["jbook_narrative_shape"] = True
+
+    # Validate every subaward link, not only the stratified sample.
+    subaward_failures = [
+        f"subaward {row[cidx['fact_id']]}: {reason}"
+        for row in all_cit if row[cidx["kind"]] == "subaward"
+        if (reason := _verify_subaward(row, cidx))
+    ]
+    checks["subaward_link_shape"] = not subaward_failures
+    failures.extend(subaward_failures[:5])
 
     # ---- Manifest rowcount check ----
     if man_path.exists():

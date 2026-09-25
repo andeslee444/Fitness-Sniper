@@ -1,0 +1,11 @@
+{
+  "prepared_at": "2026-09-22T06:33:18.710151+00:00",
+  "model": "jev-1.13.0",
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "rubric_version": "editorial-2026-09-22-v1",
+  "cases_sha256": "c3b7b9b755362a0a5a70e21a32daaf679845dfb557d1d19af519ef2c2a53df38",
+  "case_count": 17,
+  "label_status": "Unlabeled real-content review; not a human holdout.",
+  "publication_authority": false,
+  "human_review_seconds": null
+}

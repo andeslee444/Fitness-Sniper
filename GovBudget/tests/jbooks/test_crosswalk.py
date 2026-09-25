@@ -811,6 +811,86 @@ def test_cli_lone_fy_bound_exits_2(monkeypatch, pg_dsn, tmp_path, capsys):
 
 
 # --------------------------------------------------------------------------
+# Edition selector and window validation (merged 2026-09-25 from the
+# award-refresh branch's bounded crosswalk, adapted to this implementation).
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"fy_start": 2026}, {"fy_end": 2026},
+    {"fy_start": 2026, "fy_end": 2025},          # reversed: matched nothing, silently
+    {"fy_start": 0, "fy_end": 2026}, {"fiscal_year": 2201},
+    {"fy_start": True, "fy_end": 2026}, {"fiscal_year": "2026"},
+])
+def test_invalid_window_fails_before_any_database_is_opened(kwargs, monkeypatch):
+    def forbidden(*args, **kw):
+        pytest.fail("an invalid window reached the database")
+    monkeypatch.setattr(crosswalk_module.psycopg, "connect", forbidden)
+    with pytest.raises(ValueError):
+        crosswalk_org("unused", organization="DARPA", treasury_agency="097",
+                      award_glob="unused", **kwargs)
+    with pytest.raises(ValueError):
+        plan_crosswalk_org("unused", organization="DARPA", treasury_agency="097",
+                           award_glob="unused", **kwargs)
+
+
+def test_edition_selector_plans_and_writes_only_that_edition(pg_dsn, tmp_path):
+    """fiscal_year narrows WHICH lines run — the PB2024 line is not touched —
+    and never widens a line's award window: the PB2026 line still sees only
+    its own FY2026 award."""
+    seed_budget_editions(pg_dsn, [2024, 2026])
+    glob = make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
+    kw = dict(organization="DARPA", treasury_agency="097", award_glob=glob)
+    plan = plan_crosswalk_org(pg_dsn, **kw, fiscal_year=2024)
+    assert [(p.fiscal_year, p.candidates) for p in plan] == [(2024, 1)]
+    assert _links(pg_dsn) == []
+    n = crosswalk_org(pg_dsn, **kw, fiscal_year=2026)
+    assert n == CrosswalkResult(written=1, skipped=0)
+    assert [(fy, piid) for fy, piid, _r in _links(pg_dsn)] == [
+        (2026, "HR001126C0001"),
+    ]
+    # An edition with no lines plans nothing and never reads the lake.
+    assert plan_crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097",
+        award_glob="not-a-path", fiscal_year=2025,
+    ) == []
+
+
+def test_cli_edition_selector_dry_run_never_migrates(
+    monkeypatch, pg_dsn, tmp_path, capsys,
+):
+    """--fiscal-year is the shared jbooks flag; for crosswalk it selects the
+    PB edition. A crosswalk run performs no schema writes of its own (migrate
+    is the explicit `govbudget migrate` step), so a dry run touches nothing."""
+    import govbudget.jbooks.db
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    monkeypatch.setattr(govbudget.jbooks.db, "migrate",
+                        lambda *a, **kw: pytest.fail("crosswalk migrated the schema"))
+    seed_budget_editions(pg_dsn, [2024, 2026])
+    make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
+    cli.main(["jbooks", "crosswalk", "--dry-run", "--fiscal-year", "2026"])
+    out = capsys.readouterr().out
+    assert ("crosswalk DARPA: 1 line(s), projected 1 (line, award) pair(s);"
+            " window=each line's own edition FY; edition FY2026 only") in out
+    assert "edition FY2024" not in out
+    assert "crosswalk dry-run: nothing written" in out
+    assert _link_count(pg_dsn) == 0
+
+
+def test_cli_reversed_window_exits_2(monkeypatch, pg_dsn, tmp_path, capsys):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["jbooks", "crosswalk", "--org", "DARPA",
+                  "--fy-start", "2026", "--fy-end", "2025"])
+    assert e.value.code == 2
+    assert "is after fy_end" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------------------
 # #85: determinism — one canonical title per (pe_bli, exhibit, fiscal_year,
 # account) key; an award is graded from ALL of its transactions in the
 # window, never from whichever one any_value() happened to scan first.

@@ -57,6 +57,8 @@ export interface FootnoteInput {
   label?: string | null;
   /** Numeric fiscal year. Non-numeric tokens ('all-years') are not rendered. */
   fiscalYear?: number | string | null;
+  /** Declared figure measure/status, never inferred from the source document. */
+  measure?: string | null;
   /** Row/field name, e.g. "Net Procurement (P-1)". */
   rowName?: string | null;
   /** Value WITH unit, e.g. "$5,247.070 million". */
@@ -107,6 +109,17 @@ function inputFactLinks(input: FootnoteInput): string[] {
   return links.concat(input.inputUrls ?? []);
 }
 
+/** Keep the clicked figure's status with its year, outside the source title. */
+function fiscalRow(input: FootnoteInput): string {
+  const fy = isNumericYear(input.fiscalYear) ? `FY${input.fiscalYear}` : null;
+  const measure = input.measure?.trim().replace(/-/g, " ") || null;
+  const row = input.rowName ?? null;
+  // The derived builder already names its measure, e.g. "request (derived)".
+  // Keep that existing row intact without printing "request request".
+  const measureInRow = measure && row === `${measure} (derived)`;
+  return [fy, measureInRow ? null : measure, row].filter(Boolean).join(" ");
+}
+
 /**
  * The quoted head: `F-35 (ATA000), FY2024 Net Procurement (P-1): $5,247.070
  * million`. Every part optional — absent parts drop, never render "null".
@@ -115,8 +128,7 @@ function quoteHead(input: FootnoteInput): string {
   const programPart = input.program
     ? `${input.program.name} (${input.program.code})`
     : (input.label ?? null);
-  const fyPart = isNumericYear(input.fiscalYear) ? `FY${input.fiscalYear}` : null;
-  const fyRow = [fyPart, input.rowName ?? null].filter(Boolean).join(" ");
+  const fyRow = fiscalRow(input);
   const head = [programPart, fyRow || null].filter(Boolean).join(", ");
   if (input.valueText) return head ? `${head}: ${input.valueText}` : input.valueText;
   return head;
@@ -194,8 +206,7 @@ function formatAp(input: FootnoteInput): string {
   const programPart = input.program
     ? `${input.program.name} (${input.program.code})`
     : (input.label ?? SITE_NAME);
-  const fyPart = isNumericYear(input.fiscalYear) ? `FY${input.fiscalYear}` : null;
-  const fyRow = [fyPart, input.rowName ?? null].filter(Boolean).join(" ");
+  const fyRow = fiscalRow(input);
 
   let claim = programPart;
   if (fyRow) claim += `: ${fyRow}`;
@@ -284,6 +295,7 @@ function formatJson(input: FootnoteInput): string {
     obj.program = input.label;
   }
   if (isNumericYear(input.fiscalYear)) obj.fiscal_year = Number(input.fiscalYear);
+  if (input.measure?.trim()) obj.measure = input.measure;
   if (input.rowName) obj.row = input.rowName;
   if (input.valueText) obj.value = input.valueText;
   if (input.tier === "derived") {
@@ -452,15 +464,6 @@ export function documentTitleFromUrl(
   return title.replace(/\s+/g, " ").trim();
 }
 
-/** rdte vs procurement family, from the cited document's filename. */
-function docFamily(url: string | null | undefined): "rdte" | "procurement" | null {
-  const file = fileNameFromUrl(url);
-  if (!file) return null;
-  if (/rdte|research and development/i.test(file)) return "rdte";
-  if (/proc|apn|wpn|ammunition|weapons/i.test(file)) return "procurement";
-  return null;
-}
-
 /** Unit word for valueText ("USD millions" → "million"). */
 function unitWord(units: string | null | undefined): string | null {
   if (!units) return null;
@@ -518,9 +521,8 @@ function valueTextFrom(
 /**
  * Defensible row/field name — derived ONLY where the mapping is certain:
  *   workbook: the P-1/R-1 display rows are Total Obligation Authority.
- *   jbook_pdf at PROGRAM level (entity carries no "/"): the cited Resource
- *     Summary total row — "Net Procurement (P-1)" (P-40) / "Total Program
- *     Element" (R-2).
+ *   jbook_pdf: omitted; a book family or program identity does not prove the
+ *     row label on the cited page.
  *   derived: the threaded measure token, marked "(derived)".
  * Project-scoped rows and missing context return null (field omitted).
  */
@@ -531,14 +533,6 @@ function rowNameFrom(
   if (citation.kind === "workbook" && citation.sheet) {
     const exhibit = citation.sheet.replace(/^Exhibit\s+/i, "");
     return `Total Obligation Authority (${exhibit})`;
-  }
-  if (citation.kind === "jbook_pdf" && figure?.basis === "jbook-detail") {
-    const programLevel = !figure.entity || !figure.entity.includes("/");
-    if (!programLevel) return null;
-    const family = docFamily(citation.official_url ?? citation.hosted_pdf_url);
-    if (family === "procurement") return "Net Procurement (P-1)";
-    if (family === "rdte") return "Total Program Element";
-    return null;
   }
   if (citation.kind === "derived" && figure?.measure) {
     return `${figure.measure.replace(/-/g, " ")} (derived)`;
@@ -554,7 +548,13 @@ function genericSourceLabel(kind: string): string | null {
   if (kind === "state_file") return "State source file";
   if (kind === "jbook_narrative") return "J-book narrative";
   if (kind === "announcement") return "Official DoD contract announcement";
-  if (kind === "subaward") return "FSRS subaward record via USAspending";
+  // The record names the source; the tail travels with the copied footnote
+  // (the card's caveats do not): every published subaward link is a
+  // medium-confidence inference, and its URL is the prime award's page —
+  // USAspending publishes none for an individual subaward.
+  if (kind === "subaward") {
+    return "FSRS subaward record via USAspending; medium-confidence program-link inference (URL is prime-award context)";
+  }
   return null;
 }
 
@@ -614,6 +614,7 @@ export function footnoteInputFromCitation(
     program: opts.program ?? null,
     label: opts.program ? null : (opts.pageLabel ?? null),
     fiscalYear: figure?.fy ?? null,
+    measure: figure?.measure ?? null,
     rowName: rowNameFrom(citation, figure),
     valueText: valueTextFrom(citation, figure),
     sha256: citation.sha256 ?? null,
@@ -622,16 +623,11 @@ export function footnoteInputFromCitation(
   };
 
   if (tier === "pdf") {
-    const family = docFamily(docUrl);
     input.publisher = PUBLISHER_DOD_COMPTROLLER;
     input.docTitle = documentTitleFromUrl(docUrl, citation.kind);
     input.locator = {
-      exhibit:
-        family === "procurement"
-          ? "Exhibit P-40"
-          : family === "rdte"
-            ? "Exhibit R-2"
-            : null,
+      // A detail book can contain summary exhibits. This payload verifies
+      // the page location, but does not identify that page's exhibit.
       page: citation.page_number ?? null,
     };
   } else if (tier === "workbook") {

@@ -1,0 +1,40 @@
+/* Shared reading and research surfaces. Heavy visual stages keep their own styles. */
+.site-footer { margin-top: 4rem; padding: 3rem 0 1.5rem; border-top: 1px solid var(--border); background: var(--muted); }
+.site-footer-top { display: grid; grid-template-columns: 1fr 1.3fr; gap: 3rem; }
+.site-footer-brand { font-size: var(--text-prose); font-weight: 600; }
+/* The corpus sentence: prose measure, quiet links, figures in ink. */
+.site-footer-corpus { max-width: 30rem; line-height: 1.7; }
+.site-footer-corpus a { color: inherit; text-decoration: none; }
+.site-footer-corpus a strong { color: var(--foreground); }
+.site-footer-corpus a:hover strong { color: var(--cite-decoration); }
+.site-footer-links { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1.5rem; font: var(--type-ui); }
+.site-footer-links div { display: flex; flex-direction: column; gap: .65rem; }
+.site-footer-links strong { margin-bottom: .3rem; }
+.site-footer a:hover { text-decoration: underline; text-underline-offset: .25em; }
+.site-footer-links a { color: var(--muted-foreground); }
+.site-footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--border); padding-top: 1.25rem; margin-top: 2.5rem; font-size: var(--text-label); color: var(--muted-foreground); }
+.site-footer-bottom div { display: flex; gap: 1.5rem; }
+.research-notes { margin-block: 1rem 1.5rem; border-block: 1px solid var(--border); padding: .85rem 0; }
+.research-notes > summary { cursor: pointer; font: var(--type-ui); font-weight: 500; }
+.research-notes[open] > summary { margin-bottom: 1rem; }
+.reference-paths { display: flex; flex-wrap: wrap; gap: .5rem .75rem; margin-block: 1rem 2rem; }
+.reference-paths a { border: 1px solid var(--border); padding: .6rem .9rem; font: var(--type-ui); background: var(--card); border-radius: 3px; }
+.reference-paths a:hover { border-color: var(--cite-decoration); color: var(--primary); }
+.reference-page [data-doc-prose] > :is(section,div)[id] { scroll-margin-top: 5rem; }
+.reference-page .doc-toc { border-top: 2px solid var(--cite-decoration); padding-top: .9rem; }
+.reference-page .doc-toc-link { padding-block: .4rem; }
+.research-surface { border-top: 2px solid var(--foreground); padding-top: 1.3rem; }
+@media (max-width: 639px) {
+  .site-footer { padding-top: 2rem; }
+  .site-footer-top { grid-template-columns: 1fr; gap: 2rem; }
+  /* Two columns, not three forced into ~110px each (round-6 mobile
+     critique #3). */
+  .site-footer-links { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1.25rem 1rem; }
+  /* The corpus sentence wraps as whole clauses — each linked figure phrase
+     breaks as a unit, never orphaning the "24" (#4). */
+  .site-footer-corpus a { display: inline-block; }
+}
+@media print { .site-footer { display: none; } .research-notes { border: 0; } }
+
+.research-status { color: #92400e; }
+@media (prefers-color-scheme: dark) { .research-status { color: #fcd34d; } }

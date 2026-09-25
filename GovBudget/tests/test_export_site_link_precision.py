@@ -225,9 +225,10 @@ def test_no_study_yields_an_empty_block(pg_dsn):
 
 
 def test_precision_study_twin_agrees_with_the_exporter(seeded):
-    """scripts/precision_study.py owns the CLI; export_site inlines the same
-    query. They are kept in step by hand — this is the check that they are,
-    under both rubrics and both run selections.
+    """scripts/precision_study.py owns the CLI; export_site runs the same
+    query — both import govbudget.link_precision since 2026-09-25, so they
+    agree by construction. This stays the check that they do, under both
+    rubrics and both run selections.
 
     Lookups, not dict equality: the session DB also holds the rows
     tests/test_precision_study.py seeds under its own method names, and the

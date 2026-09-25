@@ -65,7 +65,7 @@ function AwardRow({ award }: { award: ProgramAward }) {
       )}
     >
       <td className="py-2 pr-3 text-foreground">{award.recipient_name}</td>
-      <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">
+      <td className="t-id py-2 pr-3">
         {award.award_piid}
       </td>
       <td className="py-2">
@@ -118,7 +118,7 @@ export function ProgramAwards({
     <section aria-labelledby="awards-heading" className="mb-8">
       <h2
         id="awards-heading"
-        className="text-lg font-semibold mb-1 text-foreground"
+        className="mb-1 text-foreground"
       >
         Related Awards
       </h2>

@@ -118,6 +118,67 @@ function htmlFor(url) {
   return path.join(outDir, ...url.split("/").filter(Boolean), "index.html");
 }
 
+/** Independently bind the shipped feed to actual canonical destination evidence.
+ * No import of the publisher's filtering/normalization helper: a regression in
+ * that helper must fail here. Exact card content and order must be preserved.
+ */
+export function inspectPublishedFeed({ sourceFeed, publishedFeed, programs, loadProgramHtml }) {
+  const errors = [];
+  if (!Array.isArray(sourceFeed?.cards) || !Array.isArray(publishedFeed?.cards)) {
+    return { count: 0, errors: ["feed publication: source and shipped feeds must carry cards arrays"] };
+  }
+  const bySlug = new Map(programs.map(row => [row.slug, row]));
+  const supported = new Map();
+  function hasDestination(card) {
+    const slug = card.program_url?.match(/^\/program\/([^/]+)\/$/)?.[1];
+    if (!slug || !bySlug.has(slug)) return false;
+    if (supported.has(slug)) return supported.get(slug);
+    const hhi = bySlug.get(slug).hhi;
+    const hhiId = hhi?.hhi_all_fact_id ?? hhi?.hhi_fact_id;
+    const dollarsId = hhi?.program_dollars_all_fact_id ?? hhi?.program_dollars_fact_id;
+    if (!/^[a-f0-9]{16}$/.test(hhiId ?? "") || !/^[a-f0-9]{16}$/.test(dollarsId ?? "")) {
+      supported.set(slug, false);
+      return false;
+    }
+    const html = loadProgramHtml(slug);
+    const section = html ? parse(html).querySelector('section[aria-labelledby="concentration-heading"]') : null;
+    const result = !!(section?.querySelector("[data-hhi-band]") &&
+      section.querySelector(`[data-fact-id="${hhiId}"]`) &&
+      section.querySelector(`[data-fact-id="${dollarsId}"]`));
+    supported.set(slug, result);
+    return result;
+  }
+  const expected = sourceFeed.cards.filter(card => card.event_type !== "concentration_shift" || hasDestination(card));
+  for (const card of publishedFeed.cards) {
+    if (card.event_type === "concentration_shift" && !hasDestination(card)) {
+      errors.push(`feed publication: ${card.program_url ?? "missing URL"} has no canonical destination displaying its own concentration receipts`);
+    }
+  }
+  if (JSON.stringify(expected) !== JSON.stringify(publishedFeed.cards)) {
+    errors.push(`feed publication: shipped cards differ from the ${expected.length} source cards with supported destinations (content and order must be preserved)`);
+  }
+  if (publishedFeed.total !== publishedFeed.cards.length) errors.push("feed publication: total does not match shipped cards");
+  return { count: publishedFeed.cards.length, errors };
+}
+
+function runPublishedFeedLeg(errors, notes) {
+  try {
+    const result = inspectPublishedFeed({
+      sourceFeed: readJson(path.join(jsonDir, "feed.json")),
+      publishedFeed: readJson(path.join(outDir, "json", "feed.json")),
+      programs: readJson(path.join(jsonDir, "programs.json")),
+      loadProgramHtml: slug => {
+        const file = htmlFor(`/program/${slug}/`);
+        return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null;
+      },
+    });
+    errors.push(...result.errors);
+    notes.push(`feed publication: ${result.count} shipped cards checked against canonical destination receipts`);
+  } catch (error) {
+    errors.push(`feed publication: could not inspect shipped feed — ${error.message}`);
+  }
+}
+
 /** Recompute counts from data sidecars, independently of coverage.ts */
 function recomputeCounts() {
   const flowsDir = path.join(jsonDir, "flows");
@@ -418,6 +479,7 @@ export async function runCoverageGate() {
   }
 
   // ── leg cm: the coverage map (Sprint 3 Task 6) ───────────────────────────
+  runPublishedFeedLeg(errors, notes);
   runCoverageMapLeg(errors, notes);
 
   // ── leg cv: the unparsed-volume claim direction ──────────────────────────
@@ -749,7 +811,7 @@ function recomputeCoverageMap() {
   const meta = readJson(path.join(jsonDir, "site_meta.json"));
   const win = meta.award_fy_range ?? {};
 
-  const feedCards = (readJson(path.join(jsonDir, "feed.json")).cards ?? []).length;
+  const feedCards = (readJson(path.join(outDir, "json", "feed.json")).cards ?? []).length;
   const feedsDir = path.join(outDir, "feeds");
   const eventTypeFeeds = countRssFeeds(feedsDir);
   const programFeeds = countRssFeeds(path.join(feedsDir, "program"));

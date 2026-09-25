@@ -8,6 +8,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
 import { FlowChart } from "@/components/flow-chart";
+import { PageIntro } from "@/components/page-intro";
 
 /**
  * /flow/ — the two-river budget flowdown (Phase 5H; reframed PM Sprint 3
@@ -69,25 +70,22 @@ export default function FlowPage() {
           every other page; the chart was already sized for it. */}
       <div className="spine py-8">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Flow" }]} />
-        <div className="mb-5">
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className="text-3xl font-bold">Follow the money</h1>
+        <PageIntro eyebrow="Research tools / Map" title="Follow the money"
+          description={<p>Explore what the Pentagon requested and what it committed on contracts. Each view has its own years, units, and source receipts.</p>}
+          actions={<><a href="#money-map">Explore the map ↓</a><a href="#bridge">Inspect the contractor bridge</a><Link href="/years/">Compare budget years →</Link></>}>
             <span
               data-testid="flow-experimental"
               data-flow-experimental=""
-              className="rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+              className="research-status rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold"
             >
               Experimental
             </span>
-          </div>
 
           {/* THE LEDE IS THE FINDING, not a caveat about the chart. */}
-          <p className="mb-3 text-base leading-7 text-foreground sm:text-lg">
-            Two rivers, deliberately kept apart. What the Pentagon{" "}
-            <em>asked for</em> and what it actually <em>put on contract</em> are
-            recorded by two different measurement systems — and the useful
-            finding is that they cannot be added together, divided into each
-            other, or reconciled into a single number.
+          <p className="my-3 text-sm leading-6 text-foreground">
+            The two rivers use different measurement systems. Their totals
+            cannot be added together, divided into each other, or reconciled
+            into a single number. Click a block to inspect its source.
           </p>
 
           {/* The two systems, side by side. Per-river unit statements are
@@ -95,7 +93,7 @@ export default function FlowPage() {
               the evidence for the claim in the lede, not fine print. */}
           <div className="mb-3 grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-foreground/60">
+              <p className="t-label mb-1">
                 Budget river — intent
               </p>
               {/* One template literal, not JSX text chunks: Turbopack drops
@@ -111,7 +109,7 @@ export default function FlowPage() {
               </p>
             </div>
             <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-foreground/60">
+              <p className="t-label mb-1">
                 Spend river — obligations
               </p>
               <p className="text-sm font-medium text-foreground">
@@ -126,8 +124,11 @@ export default function FlowPage() {
             </div>
           </div>
 
-          <ScopeNote className="mb-3" label="Why this matters">
-            <p className="text-sm leading-7">
+          <details className="mt-3 border-t border-border pt-3 text-sm">
+            <summary className="cursor-pointer font-medium text-foreground">How budget years and contract years differ</summary>
+          <ScopeNote className="mt-3" label={null}>
+          <div data-prose>
+            <p>
               A request dollar is not an obligation dollar, and a budget year is
               not an obligation year: multi-year appropriations, continuing
               resolutions and contract timing all put the two on different
@@ -137,7 +138,7 @@ export default function FlowPage() {
               of these systems without saying which — the choice is the whole
               answer, and it is rarely stated.
             </p>
-            <p className="mt-2 text-sm leading-7">
+            <p className="mt-2">
               Where the two <em>can</em> be connected, they are — and how far
               that gets is measured, not assumed. See{" "}
               <a href="#bridge" className="underline hover:text-foreground">
@@ -145,33 +146,35 @@ export default function FlowPage() {
               </a>{" "}
               below the chart. Click any block for its citation.
             </p>
+          </div>
           </ScopeNote>
-        </div>
+          </details>
+        </PageIntro>
 
-        <FlowChart />
+        <div id="money-map" className="scroll-mt-24"><FlowChart /></div>
 
         {/* ── The bridge: reachable, labelled, and its number unchanged ───── */}
         <section id="bridge" className="mt-10 max-w-4xl scroll-mt-20">
-          <h2 className="mb-2 text-xl font-semibold">
+          <h2 className="mb-2">
             The bridge between them
           </h2>
           <p className="mb-2 text-sm leading-7 text-muted-foreground">
-            Budget lines and award records are linked only where the crosswalk
-            can defend the link. That is a small share of the request, and the
-            size of the share is itself the result — so it is published as a
-            number rather than left to be guessed at from a sparse chart.
+            The bridge records associations between budget lines and award
+            records. Its coverage is measured in budget request dollars;
+            it does not allocate a contract&apos;s obligations to a particular
+            program line.
           </p>
           {/* Bridge honesty — G2 + G9 contract (data-coverage="flow-bridge"). */}
           <CoverageNote id="flow-bridge" className="mb-2" />
           <p className="text-sm leading-7 text-muted-foreground">
-            The reason is a property of the source records, not a gap in the
-            work: award records carry an appropriation account, and one account
-            funds dozens to hundreds of program elements.{" "}
+            An appropriation account can fund many program elements, so an
+            account match alone cannot identify which line paid for a contract.
+            Stronger links need evidence about the program itself.{" "}
             <Link
               href="/coverage/#crosswalk"
               className="underline hover:text-foreground"
             >
-              Why this is a methodology limit rather than a backlog item →
+              See the evidence and coverage limits →
             </Link>
           </p>
         </section>
@@ -183,15 +186,14 @@ export default function FlowPage() {
             been told "these two systems cannot be added" is exactly the reader
             who needs to know the labels move too. */}
         <section className="mt-8 max-w-4xl">
-          <h2 className="mb-2 text-xl font-semibold">
+          <h2 className="mb-2">
             And the lines themselves move
           </h2>
           <p className="text-sm leading-7 text-muted-foreground">
-            Both rivers key on program elements, and program elements get
-            renamed, realigned and merged — so &ldquo;the same program&rdquo;
-            across two years is often two different identities. Those links are
-            drawn separately, with no ribbon widths at all, because the books
-            state that a line moved and never state how much moved with it.{" "}
+            Program elements can be renamed, realigned, and merged. Before
+            comparing one across two years, check its identity history.
+            The separate lineage map uses equal-width links: a cited
+            relationship carries no claim about the amount transferred.{" "}
             <Link href="/lineage/" className="underline hover:text-foreground">
               One funded line, all the names it wore →
             </Link>

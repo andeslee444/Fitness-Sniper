@@ -21,7 +21,7 @@
  * (it is the join key downstream consumers need) alongside the display name.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import type { ProgramsTableRow } from "@/lib/programs-row";
@@ -33,6 +33,43 @@ import { formatCount } from "@/lib/format";
 import { SITE_URL } from "@/lib/site";
 
 type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
+
+interface ProgramsView {
+  orgFilter: string;
+  query: string;
+  sortKey: SortKey;
+  sortAsc: boolean;
+}
+const DEFAULT_VIEW: ProgramsView = { orgFilter: "all", query: "", sortKey: "fy2026_total", sortAsc: false };
+const SORT_KEYS: readonly SortKey[] = ["fy2026_total", "fy2024_actual", "title", "org"];
+
+function readProgramsView(search: string, orgs: readonly string[]): ProgramsView {
+  const params = new URLSearchParams(search);
+  const org = params.get("org");
+  const sort = params.get("sort");
+  return {
+    query: params.get("q") ?? "",
+    orgFilter: org && orgs.includes(org) ? org : "all",
+    sortKey: SORT_KEYS.includes(sort as SortKey) ? sort as SortKey : DEFAULT_VIEW.sortKey,
+    sortAsc: params.get("dir") === "asc",
+  };
+}
+
+function replaceProgramsView(view: ProgramsView) {
+  const url = new URL(window.location.href);
+  for (const [key, value] of [
+    ["q", view.query],
+    ["org", view.orgFilter === "all" ? "" : view.orgFilter],
+    ["sort", view.sortKey === DEFAULT_VIEW.sortKey ? "" : view.sortKey],
+    ["dir", view.sortAsc ? "asc" : ""],
+  ]) {
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+  }
+  // Preserve Next's history state, unrelated query parameters, and fact anchors.
+  // Replacing avoids adding one browser-history entry for every keystroke.
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 /**
  * §P2-1 page weight: this table receives ProgramsTableRow — the eight fields
@@ -243,10 +280,22 @@ function SortIcon({
 }
 
 export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
-  const [orgFilter, setOrgFilter] = useState<string>("all");
-  const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("fy2026_total");
-  const [sortAsc, setSortAsc] = useState(false);
+  // SSR stays the complete default table. Shared links restore after hydration,
+  // so the static export needs no server request state or Suspense boundary.
+  const [view, setView] = useState<ProgramsView>(DEFAULT_VIEW);
+  const { orgFilter, query, sortKey, sortAsc } = view;
+  useEffect(() => {
+    let cancelled = false;
+    const restore = () => setView(readProgramsView(window.location.search, orgs));
+    queueMicrotask(() => { if (!cancelled) restore(); });
+    window.addEventListener("popstate", restore);
+    return () => { cancelled = true; window.removeEventListener("popstate", restore); };
+  }, [orgs]);
+
+  function updateView(next: ProgramsView) {
+    setView(next);
+    replaceProgramsView(next);
+  }
 
   // Precomputed haystacks — 1,741 rows re-filtered on every keystroke.
   const haystacks = useMemo(
@@ -302,13 +351,8 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
   }
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortAsc((v) => !v);
-    } else {
-      setSortKey(key);
-      // Text columns read best A→Z; money columns read best largest-first.
-      setSortAsc(key === "title" || key === "org");
-    }
+    // Text columns read best A→Z; money columns read best largest-first.
+    updateView({ ...view, sortKey: key, sortAsc: sortKey === key ? !sortAsc : key === "title" || key === "org" });
   }
 
   function exportCsv() {
@@ -329,7 +373,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           type="search"
           data-testid="programs-filter"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => updateView({ ...view, query: e.target.value })}
           placeholder="Filter by program, PE/BLI, or organization…"
           aria-label="Filter programs by name, PE/BLI, or organization"
           className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -338,7 +382,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           <span className="text-muted-foreground">Agency:</span>
           <select
             value={orgFilter}
-            onChange={(e) => setOrgFilter(e.target.value)}
+            onChange={(e) => updateView({ ...view, orgFilter: e.target.value })}
             className="rounded border border-border bg-background text-foreground px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="all">All agencies</option>

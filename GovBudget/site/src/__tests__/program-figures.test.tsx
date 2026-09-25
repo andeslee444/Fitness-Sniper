@@ -607,6 +607,6 @@ describe("ProgramTrajectoryCard — spark provenance caption", () => {
       container.querySelector('[data-testid="spark-provenance"]'),
     ).toBeNull();
     expect(container.textContent).toContain("P-1 TOA · PB2026");
-    expect(container.textContent).toContain("P-40 detail · PB2026");
+    expect(container.textContent).toContain("J-book detail · PB2026");
   });
 });

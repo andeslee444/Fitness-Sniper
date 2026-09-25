@@ -15,9 +15,11 @@ import {
 import { getAwardFyRange } from "@/lib/fy-range";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CompaniesTable } from "@/components/companies-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { FyRange } from "@/components/fy-range";
+import styles from "./companies-directory.module.css";
 
 // §P1-6: the description used to say "FY2017 onward" while the body said
 // "FY2017–FY2025" and the data ran through FY2026. Derived, so it cannot rot.
@@ -90,20 +92,36 @@ export default function CompaniesPage() {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Companies" }]}
       />
-      <div className="page-header mb-6">
-        <h1 className="text-3xl font-bold mb-2">Top Defense Contractors</h1>
-        {/* §P1-6: "FY2017–FY2025" was authored here and was a year short of
-            the data. The range is now derived from fct_award_transactions and
-            worded identically on every surface that states it. */}
-        <p className="text-muted-foreground mb-2">
-          The top {companies.length} contractor families in the USAspending
-          award data, shown as {rows.length} corporate families by total
-          federal obligations — <FyRange />. Figures are in raw USD and
-          aggregate the whole period, not a single year.
-        </p>
-        {/* The merge note and the confidence method used to sit here; 21d
-            moved both below the table they qualify (see under <CompaniesTable>). */}
-      </div>
+      {/* 2026-09-25 integration of the editorial redesign: its masthead
+          (eyebrow, title, action links, the #contractor-directory anchor and
+          the directory CSS module) over this branch's 21d order — table
+          first, caveats under it, open at every width. The redesign's own
+          description, its confidence legend and its collapsed "How these
+          families are merged and scored" notes restated sentences this page
+          already renders (the intro below; [data-confidence-method] under
+          the table), so on a page with ~145 gzip of headroom they were not
+          carried twice. The intro's second sentence ("Figures are in raw USD
+          and aggregate the whole period, not a single year.") came off for
+          the eyebrow and the action links: the column-scope line directly
+          above the table ([data-column-scope]) states the same facts — raw
+          USD, the whole period, not a single year — and adds "not budget
+          authority". */}
+      <PageIntro
+        eyebrow="Contractor directory"
+        title="Who receives defense contracts?"
+        className={styles.intro}
+        description={
+          // §P1-6: "FY2017–FY2025" was authored here and was a year short of
+          // the data. The range is now derived from fct_award_transactions
+          // and worded identically on every surface that states it.
+          <p className="text-muted-foreground">
+            The top {companies.length} contractor families in the USAspending
+            award data, shown as {rows.length} corporate families by total
+            federal obligations — <FyRange />.
+          </p>
+        }
+        actions={<><a href="#contractor-directory">Find a contractor</a><Link href="/companies/families/">Renames &amp; acquisitions</Link><Link href="/filings/">Browse lobbying records</Link></>}
+      />
       {/* The money column's period + universe, restated in frame with the
           figures (fix round, judge 2). Same derived range token as the intro
           — <FyRange /> everywhere, never an authored year.
@@ -112,7 +130,7 @@ export default function CompaniesPage() {
           It measures the first ROW inside it, not the block's own top: a
           table's top is its header, and a reader who can see only a header
           has not seen data. */}
-      <div data-first-data>
+      <div id="contractor-directory" data-first-data className="scroll-mt-24">
         <CompaniesTable
           rows={rows}
           showConfidence={showConfidence}
@@ -143,7 +161,7 @@ export default function CompaniesPage() {
           companies-preamble hook all survive on the wrapper. */}
       <div
         data-testid="companies-preamble"
-        className="mt-6 space-y-2"
+        className={`mt-6 ${styles.noteBody}`}
       >
         {/* §P1-3: the merge, stated where it happens. */}
         {mergedCount > 0 && (

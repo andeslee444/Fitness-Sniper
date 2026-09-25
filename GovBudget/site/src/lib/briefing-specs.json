@@ -1,0 +1,269 @@
+[
+  {
+    "slug": "F015EX",
+    "name": "F-15EX procurement",
+    "title": "A larger request",
+    "edition": 2026,
+    "reviewedAt": "2026-09-22",
+    "reviewMethod": "Assistant source review; not human sign-off",
+    "change": "PB2026 shows a larger FY2026 request than the FY2025 enacted figure. The comparison covers this procurement line, including multiple P-1 rows.",
+    "context": "The P-40 narrative describes planned procurement and supporting requirements. It does not explain the full P-1 change.",
+    "uncertain": "The P-40 passage covers a narrower amount than the P-1 total. Neither figure establishes deliveries or contractor revenue.",
+    "narrativeFactId": "da8fcf0561c0e6e8",
+    "evidenceExcerpt": "The mandatory funds aircraft advanced procurement, 21 F-15EX Lot 7 aircraft with conformal fuel tanks, initial spares, and other supporting requirements.",
+    "figures": [
+      {
+        "fid": "92835a9645aa3793",
+        "fy": 2025,
+        "measure": "enacted",
+        "basis": "toa",
+        "edition": 2026,
+        "value": 1808472.0,
+        "units": "USD thousands",
+        "dataset": "fct_decade_series"
+      },
+      {
+        "fid": "4a9ae7cc78dcf0ba",
+        "fy": 2026,
+        "measure": "request",
+        "basis": "toa",
+        "edition": 2026,
+        "value": 3014394.0,
+        "units": "USD thousands",
+        "dataset": "fct_decade_series"
+      }
+    ],
+    "sourceChecks": {
+      "da8fcf0561c0e6e8": {
+        "kind": "jbook_narrative",
+        "official_url": "https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Aircraft%20Procurement%20Vol%20I.pdf#page=72",
+        "sha256": "528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e",
+        "page_number": 72,
+        "sheet": null,
+        "cells": null,
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": null,
+        "units": null
+      },
+      "92835a9645aa3793": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx",
+        "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+        "page_number": null,
+        "sheet": "Exhibit P-1",
+        "cells": "Q847,Q848",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 1808472.0,
+        "units": "USD thousands"
+      },
+      "4a9ae7cc78dcf0ba": {
+        "kind": "derived",
+        "official_url": null,
+        "sha256": null,
+        "page_number": null,
+        "sheet": null,
+        "cells": null,
+        "formula": "sum(budget_lines.amount_thousands where amount_type=fy_2026_total and edition=2026)",
+        "inputs": "[\"03407158217dec76\", \"5768200ce4fbc494\", \"819f32a0ad3fb66e\"]",
+        "recorded_value": "3014394.000",
+        "amount_thousands": null,
+        "units": "USD thousands"
+      },
+      "03407158217dec76": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx",
+        "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+        "page_number": null,
+        "sheet": "Exhibit P-1",
+        "cells": "W847",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 2480818.0,
+        "units": "USD thousands"
+      },
+      "5768200ce4fbc494": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx",
+        "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+        "page_number": null,
+        "sheet": "Exhibit P-1",
+        "cells": "W875",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 286700.0,
+        "units": "USD thousands"
+      },
+      "819f32a0ad3fb66e": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx",
+        "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+        "page_number": null,
+        "sheet": "Exhibit P-1",
+        "cells": "W923,W932",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 246876.0,
+        "units": "USD thousands"
+      }
+    }
+  },
+  {
+    "slug": "2013",
+    "name": "Virginia class submarine",
+    "title": "A smaller request",
+    "edition": 2026,
+    "reviewedAt": "2026-09-22",
+    "reviewMethod": "Assistant source review; not human sign-off",
+    "change": "PB2026 shows a smaller FY2026 request than the FY2025 enacted figure. These figures describe different fiscal statuses.",
+    "context": "The P-40 passage includes shipbuilder productivity funding in the FY2026 request. It does not attribute the full year-to-year difference.",
+    "uncertain": "The P-1 total and P-40 detail differ in scope. A smaller request does not establish fewer delivered submarines.",
+    "narrativeFactId": "ab7edeece9637c51",
+    "evidenceExcerpt": "The mandatory funds one FY 2026 VCS as well as continued investments in nuclear shipbuilder productivity wage enhancements.",
+    "figures": [
+      {
+        "fid": "f8c1af9fefe2b7fa",
+        "fy": 2025,
+        "measure": "enacted",
+        "basis": "toa",
+        "edition": 2026,
+        "value": 13320211.0,
+        "units": "USD thousands",
+        "dataset": "fct_decade_series"
+      },
+      {
+        "fid": "a46814a7c44e6bdc",
+        "fy": 2026,
+        "measure": "request",
+        "basis": "toa",
+        "edition": 2026,
+        "value": 11078029.0,
+        "units": "USD thousands",
+        "dataset": "fct_decade_series"
+      }
+    ],
+    "sourceChecks": {
+      "ab7edeece9637c51": {
+        "kind": "jbook_narrative",
+        "official_url": "https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/SCN_Book.pdf#page=157",
+        "sha256": "9a61b0a5733e09c79a900587120e48411fd920295c8e6d2f326c28ac300fa209",
+        "page_number": 157,
+        "sheet": null,
+        "cells": null,
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": null,
+        "units": null
+      },
+      "f8c1af9fefe2b7fa": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx",
+        "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+        "page_number": null,
+        "sheet": "Exhibit P-1",
+        "cells": "Q504,Q505,Q506,Q509,Q510,Q511",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 13320211.0,
+        "units": "USD thousands"
+      },
+      "a46814a7c44e6bdc": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/p1_display.xlsx",
+        "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+        "page_number": null,
+        "sheet": "Exhibit P-1",
+        "cells": "W504,W505,W511",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 11078029.0,
+        "units": "USD thousands"
+      }
+    }
+  },
+  {
+    "slug": "0602668D8Z",
+    "name": "Cyber Security Research",
+    "title": "A smaller research request",
+    "edition": 2026,
+    "reviewedAt": "2026-09-22",
+    "reviewMethod": "Assistant source review; not human sign-off",
+    "change": "PB2026 shows a smaller FY2026 request than the FY2025 total. The FY2025 total is not labeled enacted in this view.",
+    "context": "The R-2 narrative describes planned non-kinetic research. It does not establish the cause of the funding change.",
+    "uncertain": "A planned research payoff is not an achieved outcome. These figures do not establish program cancellation.",
+    "narrativeFactId": "921a73d419dc85b3",
+    "evidenceExcerpt": "The Non-Kinetic Advantage (NKA) project is a collaborative effort aimed at revolutionizing how the Joint Force employs non-kinetic capabilities.",
+    "figures": [
+      {
+        "fid": "b65b927edd249e47",
+        "fy": 2025,
+        "measure": "total",
+        "basis": "toa",
+        "edition": 2026,
+        "value": 31652.0,
+        "units": "USD thousands",
+        "dataset": "fct_decade_series"
+      },
+      {
+        "fid": "f371727c075ecac9",
+        "fy": 2026,
+        "measure": "request",
+        "basis": "toa",
+        "edition": 2026,
+        "value": 17988.0,
+        "units": "USD thousands",
+        "dataset": "fct_decade_series"
+      }
+    ],
+    "sourceChecks": {
+      "921a73d419dc85b3": {
+        "kind": "jbook_narrative",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/budget_justification/pdfs/03_RDT_and_E/RDTE_OSD_PB_2026.pdf#page=121",
+        "sha256": "546a420feb8c273b650dd0c23d6ea503ef935123d6da3da31760ded40ae154ac",
+        "page_number": 121,
+        "sheet": null,
+        "cells": null,
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": null,
+        "units": null
+      },
+      "b65b927edd249e47": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/r1_display.xlsx",
+        "sha256": "671c8e816b9abc666754982b25a15bc6a89e22926e21dd322b6be106dc83cc2e",
+        "page_number": null,
+        "sheet": "Exhibit R-1",
+        "cells": "M872",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 31652.0,
+        "units": "USD thousands"
+      },
+      "f371727c075ecac9": {
+        "kind": "workbook",
+        "official_url": "https://comptroller.war.gov/Portals/45/Documents/defbudget/FY2026/r1_display.xlsx",
+        "sha256": "671c8e816b9abc666754982b25a15bc6a89e22926e21dd322b6be106dc83cc2e",
+        "page_number": null,
+        "sheet": "Exhibit R-1",
+        "cells": "P872",
+        "formula": null,
+        "inputs": null,
+        "recorded_value": null,
+        "amount_thousands": 17988.0,
+        "units": "USD thousands"
+      }
+    }
+  }
+]

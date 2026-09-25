@@ -157,6 +157,7 @@ def _make_geo_duckdb(tmp_path: Path, *, with_geo=True, with_districts=True) -> P
             "('VA', 'VA-08', '0603999X', NULL, 'Null Prog', 'Army', 1, 1, 1, NULL),"
             "('CA', 'CA-18', '0601101E', NULL, 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
         )
+        con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
         # #51: no duplication in this fixture (VA-08's two programs are
         # genuinely distinct awards), so the award-distinct total equals the
         # naive sum exactly (50M + 20M = 70M; null contributes 0).
@@ -306,6 +307,7 @@ class TestGeographyCitationRows:
             "('TX', 'TX-09', '0601101E', NULL, 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
             "('TX', 'TX-09', '0602303E', NULL, 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
         )
+        con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
         con.execute(
             "CREATE TABLE fct_district_totals ("
             "  pop_state varchar, pop_district varchar,"
@@ -523,6 +525,7 @@ def _make_b2a_duckdb(tmp_path: Path) -> Path:
         "('0602303E', 'R-2', 2024, 'Army', 'W911NF24C0002', 'BETA LLC',"
         " 'UEI2', 'account+subagency', 'medium', 'Army Research')"
     )
+    con.execute("ALTER TABLE fct_budget_to_awards ADD COLUMN account varchar")
     con.close()
     return db_path
 

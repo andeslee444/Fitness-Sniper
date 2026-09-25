@@ -7,12 +7,12 @@
  *   - 'default' (FlowHero) is the STATIC motif — zero animation classes.
  *   - CategoryHero wrapper is decorative (aria-hidden, pointer-events off)
  *     and tags its category for the Task 9 animation gate.
- *   - ProgramHeader renders the hero ONLY when a category is passed
- *     (non-top-50 pages stay byte-identical in structure).
+ *   - ProgramHeader keeps its accounting identity on an editorial surface
+ *     and renders real category artwork in a separate decorative plate.
  */
 
 import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
+import { render, within } from "@testing-library/react";
 import React from "react";
 import { CategoryHero } from "@/components/hero";
 import { FlowHero } from "@/components/hero/flow";
@@ -102,17 +102,23 @@ const PROGRAM: ProgramRow = {
   account_title: null,
 };
 
-describe("ProgramHeader hero wiring", () => {
-  it("renders the hero layer when a category is passed (top-50)", () => {
+describe("ProgramHeader editorial identity", () => {
+  it("keeps official identity accessible beside a real, separately contained category motif", () => {
     const { container } = render(
       <ProgramHeader program={PROGRAM} category="hypersonics" />,
     );
-    const hero = container.querySelector(".hero-anim");
-    expect(hero).not.toBeNull();
+    expect(within(container).getByRole("heading", { level: 1, name: PROGRAM.title })).toBeVisible();
+    expect(within(container).getByText(PROGRAM.pe_bli)).toBeVisible();
+    expect(within(container).getByRole("link", { name: "DARPA" })).toHaveAttribute("href", "/agency/DARPA");
+    const hero = container.querySelector(".hero-anim")!;
     expect(hero).toHaveAttribute("data-hero-category", "hypersonics");
+    expect(hero).toHaveAttribute("aria-hidden", "true");
+    expect(hero.querySelector("svg .hero-streak")).not.toBeNull();
+    expect(hero.querySelector("svg desc")).not.toBeNull();
+    expect(hero.parentElement?.contains(within(container).getByRole("heading", { level: 1 }))).toBe(false);
   });
 
-  it("renders NO hero markup without a category (non-top-50 unchanged)", () => {
+  it("keeps the same quiet header without a category", () => {
     const { container } = render(<ProgramHeader program={PROGRAM} />);
     expect(container.querySelector(".hero-anim")).toBeNull();
     expect(container.querySelector("svg")).toBeNull();

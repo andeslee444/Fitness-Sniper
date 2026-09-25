@@ -726,6 +726,8 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
         "INSERT INTO dim_programs VALUES ('0603760E', 'Command Control',"
         " 'DARPA', 'rdte', 5, 100.0, true, NULL, NULL)"
     )
+    con.execute("ALTER TABLE dim_programs ADD COLUMN account varchar")
+    con.execute("ALTER TABLE dim_programs ADD COLUMN account_title varchar")
 
     # fct_budget_trajectory
     con.execute(
@@ -746,6 +748,7 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
         "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high')",
         [("PIID-001",), ("PIID-002",), ("PIID-003",)],
     )
+    con.execute("ALTER TABLE fct_budget_to_awards ADD COLUMN account varchar")
 
     # fct_award_transactions
     con.execute(
@@ -788,6 +791,7 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', null, 'CC', 'DARPA', 3, 3, 3, 350000.0)"
     )
+    con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
 
     con.close()
     return db_path
@@ -884,7 +888,7 @@ class TestFlowsSidecar:
             piid = f"PIID-EX{i:03d}"
             uei = f"UEI-EX{i:03d}"
             con.execute(
-                "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high')",
+                "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high', NULL)",
                 [piid],
             )
             con.execute(
@@ -1261,6 +1265,151 @@ class TestBuildUsaspendingCitationRows:
             if official_url:
                 assert "usaspending.gov" in official_url or "api.usaspending.gov" in official_url, \
                     f"official_url should reference usaspending.gov: {official_url}"
+
+    def test_each_members_filter_lists_only_its_own_awards(self, tmp_path):
+        """Task 27 fix round 1: the award_ids a reader can paste into
+        USAspending belong to the member whose figure they sit under.
+
+        VA-08 holds BOTH members of '3010'. The pre-Task-27 filter joined on
+        pe_bli alone, so each member's citation body would have listed its
+        sibling's PIID beside its own (and the account-NULL link's too) — a
+        filter that returns a different number than the page shows. Narrowed
+        to `account is not distinct from ?`, each body lists one PIID.
+        """
+        from govbudget.export_site import _ProgramIdentity, _district_program_key
+
+        db_path = _make_usaspending_mart_duckdb(tmp_path)
+        rows = _build_usaspending_citation_rows(duckdb_path=db_path)
+        by_fid = {r[0]: r for r in rows}
+
+        ident = _ProgramIdentity([
+            ("3010", "1611N", "Shipbuilding and Conversion, Navy", "N", True),
+            ("3010", "1810N", "Other Procurement, Navy", "N", True),
+        ])
+
+        def award_ids(state, district, pe_bli, account):
+            fid = fact_id_usaspending(
+                "district_program",
+                _district_program_key(ident, state, district, pe_bli, account),
+                "total_obligation")
+            assert fid in by_fid, (state, district, pe_bli, account)
+            return json.loads(by_fid[fid][22])["filters"]["award_ids"]
+
+        assert award_ids("VA", "VA-08", "3010", "1611N") == ["PIID-SCN"]
+        assert award_ids("VA", "VA-08", "3010", "1810N") == ["PIID-OPN"]
+        # An account-NULL row on a shared code names BOTH members, so its
+        # body lists the account-NULL links and nothing else — never the two
+        # members' awards, which belong under their own figures.
+        assert award_ids("TX", "TX-01", "3010", None) == ["PIID-BOTH"]
+        # And the ordinary code is untouched: its links carry a NULL account
+        # too, so IS NOT DISTINCT FROM matches exactly what it always did.
+        assert award_ids("CO", "CO-05", "0603760E", None) == ["PIID-001"]
+
+    def test_a_mart_without_the_account_column_raises(self, tmp_path):
+        """A warehouse that predates Task 27 must stop the export, not
+        quietly republish the fused pre-Task-27 grain."""
+        db_path = tmp_path / "stale.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_district_programs (pop_state varchar,"
+            " pop_district varchar, pe_bli varchar, program_title varchar,"
+            " organization varchar, transaction_count integer,"
+            " award_count integer, recipient_count integer,"
+            " total_obligation double)"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES"
+            " ('CO', 'CO-05', '0603760E', 'CC', 'DARPA', 3, 3, 3, 350000.0)"
+        )
+        con.close()
+
+        with pytest.raises(RuntimeError) as exc:
+            _build_usaspending_citation_rows(duckdb_path=db_path)
+        assert "account" in str(exc.value)
+        assert "govbudget build" in str(exc.value)
+
+    def _district_only_duckdb(self, tmp_path, name, *, account, dim_programs=None):
+        """A lake with ONE post-Task-27 fct_district_programs row, and
+        dim_programs exactly as the caller asks for it (absent when None).
+        """
+        db_path = tmp_path / name
+        con = duckdb.connect(str(db_path))
+        if dim_programs is not None:
+            con.execute(f"CREATE TABLE dim_programs ({dim_programs})")
+        con.execute(
+            "CREATE TABLE fct_district_programs (pop_state varchar,"
+            " pop_district varchar, pe_bli varchar, account varchar,"
+            " program_title varchar, organization varchar,"
+            " transaction_count integer, award_count integer,"
+            " recipient_count integer, total_obligation double)"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES"
+            " ('VA', 'VA-08', '3010', ?, 'LPD Flight II', 'N',"
+            " 3, 3, 3, 900000.0)",
+            [account],
+        )
+        con.close()
+        return db_path
+
+    def test_a_dim_programs_without_the_identity_columns_raises(self, tmp_path):
+        """Task 27 fix round 2 (R-27-8): a dim_programs that is PRESENT but
+        predates the account identity must stop the export.
+
+        Before this, _fetch_program_identity caught ANY exception from its
+        read and returned the EMPTY identity — so a partially rebuilt mart
+        (`dbt run --select fct_district_programs`, or any pre-E3 warehouse)
+        silently reverted every district row to the pre-Task-27 address and
+        the pre-Task-27 fact id, with no print and no gate able to see it
+        for the 11 real rows.
+        """
+        for cols, missing in (
+            ("pe_bli varchar, title varchar, org varchar", "account"),
+            ("pe_bli varchar, account varchar, org varchar", "account_title"),
+        ):
+            db_path = self._district_only_duckdb(
+                tmp_path, f"no-{missing}.duckdb", account=None,
+                dim_programs=cols,
+            )
+            with pytest.raises(RuntimeError) as exc:
+                _build_usaspending_citation_rows(duckdb_path=db_path)
+            assert missing in str(exc.value), missing
+            assert "dim_programs" in str(exc.value)
+            assert "govbudget build" in str(exc.value)
+
+    def test_an_absent_dim_programs_still_exports_null_account_rows(self, tmp_path):
+        """R-27-8 is narrow: an ABSENT dim_programs keeps the empty identity.
+
+        Six district-mart fixtures build no dim_programs at all and carry
+        NULL-account rows only; with no member to name, the empty identity
+        is the right answer and the row keeps its pre-Task-27 fact id. (A
+        real export never reaches here with dim_programs missing — it is a
+        required mart and export_site raises on it first.)
+        """
+        db_path = self._district_only_duckdb(
+            tmp_path, "no-dim.duckdb", account=None)
+        rows = _build_usaspending_citation_rows(duckdb_path=db_path)
+        fids = {r[0] for r in rows}
+        assert fact_id_usaspending(
+            "district_program", "VA|VA-08|3010", "total_obligation") in fids
+
+    def test_an_absent_dim_programs_with_an_account_bearing_row_raises(
+        self, tmp_path,
+    ):
+        """R-27-8, belt and braces: the empty identity is only honest while
+        no district row names a member.
+
+        A row carrying an account with nothing to resolve it against would
+        publish under the bare key — the fused shape Task 27 removed — so
+        the minting site raises instead, naming the row.
+        """
+        db_path = self._district_only_duckdb(
+            tmp_path, "no-dim-account.duckdb", account="1611N")
+        with pytest.raises(RuntimeError) as exc:
+            _build_usaspending_citation_rows(duckdb_path=db_path)
+        msg = str(exc.value)
+        for token in ("VA", "VA-08", "3010", "1611N", "govbudget build"):
+            assert token in msg, token
 
 
 class TestRequireAccountColumn:

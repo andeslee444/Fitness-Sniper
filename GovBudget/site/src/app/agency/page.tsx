@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAgencies, getUnpagedOrgs, collectCitations } from "@/lib/data";
+import { getAgencies, getUnpagedOrgs } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { agencyDisplayName } from "@/lib/agency-names";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { formatCount } from "@/lib/format";
@@ -54,13 +55,6 @@ export default function AgencyIndexPage() {
     return b.fy2026_total_thousands - a.fy2026_total_thousands;
   });
 
-  // Citation slice: every agency's FY24 + FY26 derived sum (skipping the
-  // nulls — DCAA has no FY26 fact) so both columns' figures open the panel.
-  const pageFactIds: string[] = [];
-  for (const a of sorted) {
-    if (a.fy2024_fact_id_derived) pageFactIds.push(a.fy2024_fact_id_derived);
-    if (a.fy2026_fact_id_derived) pageFactIds.push(a.fy2026_fact_id_derived);
-  }
   // Wave 4 item 5: the workbook organizations this index does not collect.
   //
   // NO FIGURES IN THIS BLOCK, AND THE REASON IS PAGE WEIGHT, MEASURED. A
@@ -73,15 +67,18 @@ export default function AgencyIndexPage() {
   // states its figure with the citation attached. The list is ordered by
   // FY2026 request so the material lines lead.
   const unpaged = getUnpagedOrgs();
-  const citationsSlice = collectCitations(pageFactIds);
 
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    // Agency sums can contain thousands of input IDs. The panel resolves
+    // their complete receipts from citation shards when a total is clicked.
+    <CitationPanelProvider citations={{}}>
       <div className="spine py-8">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Agencies" }]} />
 
-        <div className="page-header mb-6">
-          <h1 className="text-3xl font-bold mb-2">Agencies</h1>
+        <PageIntro eyebrow="Agency portfolios" title="The organizations behind the budget."
+          description="Explore a defense agency, follow its programs, and inspect the sources behind its totals."
+          actions={<><a href="#agency-directory">Browse agencies</a><Link href="/coverage/">Understand coverage</Link></>}>
+          <h2 className="sr-only">Agencies</h2>
           <p className="text-muted-foreground">
             {formatCount(sorted.length)} defense agencies with program-level
             budget data, sorted by the FY2026 total{" "}
@@ -115,7 +112,11 @@ export default function AgencyIndexPage() {
               <strong className="text-foreground">
                 These are totals this site has loaded, not what each agency
                 requested.
-              </strong>{" "}
+              </strong>
+            </p>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm font-medium underline decoration-dotted underline-offset-4">How these agency totals compare with the source workbooks</summary>
+              <p className="mt-2 text-sm leading-6">
               Every FY2026 justification volume held here is parsed. The
               three services&rsquo; totals are each within a few percent of
               their workbook figures — the Navy&rsquo;s is the furthest short
@@ -125,14 +126,15 @@ export default function AgencyIndexPage() {
                 what is and is not loaded
               </Link>
               .
-            </p>
+              </p>
+            </details>
           </ScopeNote>
-        </div>
+        </PageIntro>
 
-        <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
+        <div id="agency-directory" className="scroll-mt-24 divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
           {/* Column header — hidden on narrow screens, where each row stacks
               its own labels (mirrors the /programs/ table's mobile pattern). */}
-          <div className="hidden sm:flex items-center gap-4 px-5 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="t-label hidden sm:flex items-center gap-4 px-5 py-2">
             <span className="flex-1">Agency</span>
             <span className="w-24 text-right">Programs</span>
             <span className="w-32 text-right">FY24 total</span>

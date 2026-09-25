@@ -19,6 +19,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import type { JbookPdfCitation } from "@/lib/data";
+import type { PdfPageCitation } from "@/lib/citations";
 
 const { getDocumentMock } = vi.hoisted(() => ({
   getDocumentMock: vi.fn(),
@@ -27,6 +28,11 @@ const { getDocumentMock } = vi.hoisted(() => ({
 vi.mock("pdfjs-dist", () => ({
   GlobalWorkerOptions: { workerSrc: "" },
   getDocument: getDocumentMock,
+  TextLayer: class {
+    constructor(private options: { container: HTMLElement }) {}
+    async render() { const span = document.createElement("span"); span.textContent = "Exact source text"; this.options.container.append(span); }
+    cancel() {}
+  },
 }));
 
 function makeFakePdf() {
@@ -34,7 +40,9 @@ function makeFakePdf() {
     getViewport: ({ scale }: { scale: number }) => ({
       width: 792 * scale,
       height: 612 * scale,
+      scale,
     }),
+    getTextContent: async () => ({ items: [{ str: "Exact source text" }], styles: {} }),
     render: () => ({ promise: Promise.resolve(), cancel: () => {} }),
   };
   return { getPage: async () => page };
@@ -42,7 +50,7 @@ function makeFakePdf() {
 
 /** Unique-URL citation per test — the module-level doc cache in pdf-view
  *  persists across tests, so each test gets its own cache key. */
-function makeCitation(sha: string): JbookPdfCitation {
+function makeCitation(sha: string): JbookPdfCitation & PdfPageCitation {
   return {
     kind: "jbook_pdf",
     amount_text: "79.440",
@@ -175,6 +183,8 @@ describe("PdfView — loading and ready states", () => {
     ).not.toBeNull();
     expect(screen.getByTestId("pdf-highlight")).toBeInTheDocument();
     expect(screen.queryByTestId("pdf-loading-skeleton")).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("pdf-text-layer")).toHaveAttribute("data-text-ready", "true"));
+    expect(screen.getByTestId("pdf-text-layer")).toHaveTextContent("Exact source text");
   });
 
   it("degraded fallback: data-degraded='pdf' when the document fails to load", async () => {
@@ -198,6 +208,33 @@ describe("PdfView — loading and ready states", () => {
 });
 
 describe("PdfView — zoom overlay", () => {
+  it("makes the cited number readable when focusing evidence on a phone", async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    try {
+      const { PdfView } = await import("@/components/citation-panel/pdf-view");
+      render(<PdfView citation={makeCitation("sha-focus-mobile")} />);
+      fireEvent.click(await screen.findByTestId("pdf-focus-evidence"));
+      const overlay = await screen.findByTestId("pdf-zoom-overlay");
+      expect(overlay).toHaveTextContent("400%");
+      await waitFor(() => expect(overlay.querySelector('[data-testid="pdf-zoom-highlight"]')).not.toBeNull());
+      expect(screen.getByTestId("pdf-zoom-in")).toBeDisabled();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: previousWidth });
+    }
+  });
+  it("focuses the recorded evidence at 200% while retaining the source text layer", async () => {
+    const { PdfView } = await import("@/components/citation-panel/pdf-view");
+    render(<PdfView citation={makeCitation("sha-focus")} />);
+    const trigger = await screen.findByTestId("pdf-focus-evidence");
+    fireEvent.click(trigger);
+    const overlay = await screen.findByTestId("pdf-zoom-overlay");
+    expect(overlay).toHaveTextContent("200%");
+    await waitFor(() => expect(overlay.querySelector('[data-testid="pdf-text-layer"]')).toHaveAttribute("data-text-ready", "true"));
+    expect(overlay.querySelector('[data-testid="pdf-zoom-highlight"]')).not.toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
   it("Enlarge opens an aria-modal dialog with zoom controls; Esc closes it", async () => {
     const { PdfView } = await import("@/components/citation-panel/pdf-view");
     render(<PdfView citation={makeCitation("sha-overlay")} />);
@@ -220,6 +257,7 @@ describe("PdfView — zoom overlay", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("pdf-zoom-overlay")).toBeNull();
     });
+    await waitFor(() => expect(screen.getByTestId("pdf-enlarge")).toHaveFocus());
   });
 
   it("zoom-in re-renders the page at a larger scale (not CSS scaling)", async () => {

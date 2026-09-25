@@ -2,27 +2,29 @@ import type { Metadata, Viewport } from "next";
 import { readFileSync } from "fs";
 import { join } from "path";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import "./globals.css";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
-import { ReceiptsProvider, ReceiptsToggle } from "@/components/receipts-toggle";
-import { CommandPalette, SearchTriggerButton } from "@/components/search/command-palette";
-import { MobileNav } from "@/components/mobile-nav";
+import { ReceiptsProvider } from "@/components/receipts-toggle";
+import { CommandPalette } from "@/components/search/command-palette";
+import { SiteHeader } from "@/components/site-header";
+import { FooterCorpus } from "@/components/footer-corpus";
 import { websiteJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { siteFeedLinks } from "@/lib/feeds";
 import { Analytics } from "@vercel/analytics/next";
 
-// Read built_at from site_meta.json at build time
-function getBuiltAt(): string {
+// Read built_at + corpus counts from site_meta.json at build time
+function getSiteMetaPartial(): { builtAt: string; counts: { programs: number; citations: number; companies: number; agencies: number } | null } {
   try {
     const metaPath = join(process.cwd(), "..", "data", "site", "json", "site_meta.json");
     const meta = JSON.parse(readFileSync(metaPath, "utf8"));
-    return meta.built_at ?? "";
+    return { builtAt: meta.built_at ?? "", counts: meta.counts ?? null };
   } catch {
-    return "";
+    return { builtAt: "", counts: null };
   }
 }
 
-const builtAt = getBuiltAt();
+const { builtAt, counts } = getSiteMetaPartial();
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -65,6 +67,17 @@ export default function RootLayout({
         {siteFeedLinks().map((l) => (
           <link key={l.href} rel={l.rel} type={l.type} href={l.href} title={l.title} />
         ))}
+        {/* The type system's two critical-path faces (the LCP heading is the
+            serif; the html default is the sans), preloaded so the swap lands
+            before first paint. The mono (identifiers) and the italic are
+            CSS-discovered: a page where no identifier paints does not pay
+            for the face (gate 26 leg (0) asks the browser to load each face
+            from the origin rather than requiring it on the critical path).
+            Paths carry a version directory and ship with an immutable cache
+            header (public/vercel.json); a re-vendor changes the directory,
+            never the bytes at a path. */}
+        <link rel="preload" href="/fonts/source-serif-4/v14/SourceSerif4Variable-Roman.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/source-sans-3/v19/SourceSans3Variable-Roman.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         {/* Site-wide WebSite + SearchAction JSON-LD */}
         <script
           type="application/ld+json"
@@ -78,266 +91,36 @@ export default function RootLayout({
             Skip to content
           </a>
 
-          {/* ── Site Header ──
-              Fully OPAQUE bg (no translucency/backdrop-blur): the sticky bar
-              must occlude scrolled content — the 60%-tint variant let page
-              chrome ghost through at mobile widths (visual-judge finding,
-              years-390-scrolled). */}
-          <header className="border-b border-border bg-background sticky top-0 z-40">
-            {/* `spine`, not `container mx-auto px-4` — ROADMAP #42. The bar
-                and every page body now resolve their left edge from the same
-                three custom properties (globals.css), so the wordmark and the
-                page title line up at EVERY width rather than only where
-                Tailwind's breakpoint clamp happened to coincide with a page's
-                `max-w-*`. */}
-            <div className="spine flex h-14 items-center gap-4 min-w-0">
-              {/* Brand — always visible */}
-              <Link
-                href="/"
-                className="font-semibold text-foreground hover:text-primary shrink-0 truncate max-w-[9rem] sm:max-w-none"
-              >
-                {SITE_NAME}
-              </Link>
-
-              {/* Desktop nav — hidden below lg.
-                  HISTORICAL, and the fix it describes STANDS (the switch is
-                  still at `lg`) — but the mechanism below is gone as of
-                  ROADMAP #42: this bar no longer uses Tailwind's `container`,
-                  and `.spine` has no breakpoint clamp, so 768–1023 now gets
-                  the full viewport width instead of a 768px box. The nav stays
-                  at `lg` because ten links plus the right-hand cluster is
-                  still more than a ~750px reading bar wants, not because of
-                  the clamp.
-                  Was `md:flex` (768px). Tailwind's `container` (used here AND
-                  by every page body, so the wordmark stays aligned with page
-                  content) clamps max-width to the CURRENT breakpoint, so
-                  anywhere in 768–1023 the header box was pinned to 768px
-                  while nine nav links + search + receipts toggle needed more
-                  — the right cluster is `shrink-0`, so nothing gave way and
-                  the header (and with it, `documentElement`) overflowed by
-                  up to +167px (measured: 768px→935px, 900px→1001px,
-                  1000px→1051px; clean again at 1024, where `container`
-                  itself advances to the `lg` clamp). Sprint C Task C6
-                  (ROADMAP #65). Moving the switch to `lg` (1024px) makes the
-                  hamburger cover the whole band instead: at 768–1023 the
-                  header carries only the wordmark, search trigger, and
-                  hamburger — comfortably inside a 768px-clamped container —
-                  and the desktop nav only appears once `container` itself
-                  widens to match at 1024. */}
-              {/* gap-3 below xl (tri-persona Wave 3, Task 3). Adding the
-                  tenth link (Glossary) needed ~75px and the 1024px band —
-                  where `container` clamps the bar to exactly 1024 — had 73px
-                  of slack, measured on the pre-fix build (bar 1024 − 32
-                  padding − 108 brand − 588 nav − 191 right cluster − 32 bar
-                  gaps). Tightening the eight inter-link gaps from 16px to
-                  12px returns 32px, which covers it with room to spare;
-                  `xl:gap-4` restores the original spacing at 1280+, where
-                  there were already 329px of slack. */}
-              <nav
-                data-site-nav
-                className="hidden lg:flex items-center gap-3 xl:gap-4 text-sm"
-                aria-label="Main navigation"
-              >
-                <Link
-                  href="/programs/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Programs
-                </Link>
-                <Link
-                  href="/companies/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Companies
-                </Link>
-                <Link
-                  href="/district/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Districts
-                </Link>
-                <Link
-                  href="/years/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Years
-                </Link>
-                {/* Experimental flowdown (Phase 5H) — fits the 1440 header;
-                    mirrored in <MobileNav> below md. */}
-                <Link
-                  href="/flow/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Flow
-                </Link>
-                <Link
-                  href="/feed/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Feed
-                </Link>
-                <Link
-                  href="/data/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Data
-                </Link>
-                <Link
-                  href="/methodology/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Methodology
-                </Link>
-                {/* Round-1 judging: /coverage/ is the site's best answer to
-                    "what does this NOT cover?" and it shipped footer-only, so
-                    the reader most likely to want it — a staffer deciding
-                    whether to cite us — had to go looking. */}
-                <Link
-                  href="/coverage/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Coverage
-                </Link>
-                {/* Tri-persona Wave 3, Task 3 — the layman review's finding:
-                    /glossary/ is "the cure, hidden below the disease". It was
-                    linked twice per page and BOTH links were in the footer,
-                    while TOA is stamped on ~80,000 figures above it. A reader
-                    who does not know a word does not scroll past six thousand
-                    pixels of it to look for a glossary. The footer entry
-                    stays; this is the one a reader meets before the jargon.
-                    Sprint C Task C3 declined a tenth nav item rather than
-                    re-measure the 768–1023 fix — that measurement is now
-                    done and recorded on the <nav> above. */}
-                <Link
-                  href="/glossary/"
-                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                >
-                  Glossary
-                </Link>
-              </nav>
-
-              {/* Right-side controls */}
-              <div className="ml-auto flex items-center gap-2 shrink-0">
-                {/* Search trigger — always visible */}
-                <SearchTriggerButton />
-                {/* Receipts toggle — desktop only (also in mobile menu).
-                    Moved from `md:flex` to `lg:flex` with the nav above
-                    (Sprint C Task C6, ROADMAP #65) — it is part of the same
-                    right-hand cluster that pushed the header past its
-                    `container` clamp in the 768–1023 band. */}
-                <span className="hidden lg:flex">
-                  <ReceiptsToggle />
-                </span>
-                {/* Mobile hamburger — visible below lg (was below md;
-                    Sprint C Task C6 / ROADMAP #65 widened the hamburger's
-                    range to cover 768–1023, see the nav comment above).
-                    NOT `relative`: the panel MobileNav renders is
-                    `absolute left-0 top-14 w-full`, and a positioned wrapper
-                    here becomes its containing block. This span is 32px wide,
-                    so `w-full` resolved to 32px and the whole menu rendered as
-                    a sliver pinned to the right edge — nine 24px hit boxes
-                    reading "Pro", "Com", "Dis"… Round-3 judging: two of three
-                    judges called it the single largest defect at 390, and it
-                    was on every page. Without `relative` the panel positions
-                    against the sticky <header>, which is what `top-14`
-                    (below the 56px bar) and `w-full` were written for. */}
-                <span className="flex lg:hidden">
-                  <MobileNav />
-                </span>
-              </div>
-            </div>
-          </header>
-
-          {/* ── Main Content ── */}
+          <SiteHeader />
           <main id="main-content" tabIndex={-1}>
             {children}
           </main>
 
           {/* ── Site Footer ── */}
-          <footer className="border-t border-border mt-16 py-8 text-sm text-muted-foreground">
-            <div className="spine flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <span className="font-medium text-foreground">{SITE_NAME}</span>
-                {" — "}
-                <span>Federal defense budget data with citation provenance.</span>
+          <footer className="site-footer">
+            <div className="spine">
+              <div className="site-footer-top">
+                <div>
+                  <Link href="/" className="site-footer-brand">{SITE_NAME}</Link>
+                  {/* The corpus statement, ONE sentence with the four linked
+                      figures (round-5: the homepage stats strip is dead; the
+                      data-stat contract — linkgraph gate: every [data-stat]
+                      is or contains an <a> — lives here). No brand blurb.
+                      HOMEPAGE ONLY (FooterCorpus pathname-checks): on every
+                      other route the sentence is dead weight against gate
+                      1's ceilings — it put /companies/ 65 bytes and
+                      /coverage/ 90 bytes over theirs. */}
+                  <FooterCorpus counts={counts} />
+                </div>
+                <nav aria-label="Footer" className="site-footer-links">
+                  <div><strong className="t-label">Explore</strong><Link href="/explore/">Visual field guide</Link><Link href="/programs/">Programs</Link><Link href="/agency/">Agencies</Link><Link href="/district/">Districts</Link></div>
+                  <div><strong className="t-label">Investigate</strong><Link href="/feed/">Changes &amp; signals</Link><Link href="/companies/">Companies</Link><Link href="/filings/">Lobbying filings</Link><Link href="/years/">Compare years</Link></div>
+                  <div><strong className="t-label">Verify &amp; reuse</strong><Link href="/methodology/">Methodology</Link><Link href="/coverage/">Coverage</Link><Link href="/glossary/">Glossary</Link><Link href="/downloads/">Downloads</Link></div>
+                </nav>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs">
-                {builtAt && (
-                  <span>
-                    Data as of{" "}
-                    <time dateTime={builtAt}>
-                      {new Date(builtAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </time>
-                  </span>
-                )}
-                <Link href="/filings/" className="hover:text-foreground transition-colors">
-                  Lobbying filings
-                </Link>
-                <Link href="/methodology/" className="hover:text-foreground transition-colors">
-                  Methodology
-                </Link>
-                {/* Sprint C Task C1 (ROADMAP #60) — TOA is stamped on ~80,000
-                    figures sitewide and expanded nowhere; this is the page
-                    that expands it, and every other term the site stamps.
-                    NOTE (disclosed in the Sprint C report, not silently
-                    absorbed): this footer ships on 6,700+ pages, so adding
-                    ONE more entry costs every page a few dozen bytes via the
-                    layout's own RSC flight-data serialization — confirmed by
-                    A/B build (a plain <a> pays the identical cost; the tree
-                    is serialized either way because sibling client
-                    components force it). /coverage/ had only 9 gzip bytes of
-                    ceiling headroom left BEFORE this change (unrelated prior
-                    growth); this link alone tips it a few bytes over. */}
-                <Link href="/glossary/" className="hover:text-foreground transition-colors">
-                  Glossary
-                </Link>
-                {/* Sprint C Task C3 (ROADMAP #62) — the /agency/{org}/ pages
-                    (23 of them, linked from every program page) had no
-                    index and nothing in nav or footer pointed at one, so
-                    trimming the URL to /agency/ 404'd. FOOTER, not nav: C6
-                    (just above, in the header) moved the desktop nav switch
-                    from `md:` to `lg:` because nine links already overflowed
-                    the 768–1023px band at `md`; a tenth nav item was not
-                    worth re-measuring that fix against when this footer,
-                    which already carries eight entries, was the lower-risk
-                    place for a ninth. */}
-                <Link href="/agency/" className="hover:text-foreground transition-colors">
-                  Agencies
-                </Link>
-                {/* §Coverage — what the site covers, what it does not, and the
-                    dated target for each. Chrome-level so it is reachable from
-                    every page (gate 13 pins the page type's reachability). */}
-                <Link href="/coverage/" className="hover:text-foreground transition-colors">
-                  Coverage
-                </Link>
-                <Link href="/downloads/" className="hover:text-foreground transition-colors">
-                  Downloads
-                </Link>
-                <Link href="/about/" className="hover:text-foreground transition-colors">
-                  About
-                </Link>
-                {/* §B′3 (#58) — publisher contact and data licence, visible
-                    site-wide (not only on /about/, and not only in JSON-LD).
-                    Kept to two short entries: this footer ships on 6,700+
-                    pages. */}
-                <a
-                  href="mailto:andes.han.lee@gmail.com"
-                  className="hover:text-foreground transition-colors"
-                >
-                  Contact
-                </a>
-                <a
-                  href="https://creativecommons.org/publicdomain/zero/1.0/"
-                  className="hover:text-foreground transition-colors"
-                  rel="license noopener noreferrer"
-                  target="_blank"
-                >
-                  Data: CC0 1.0
-                </a>
+              <div className="site-footer-bottom">
+                <span>{builtAt && <>Site export <time dateTime={builtAt}>{new Date(builtAt).toLocaleDateString("en-US", {year:"numeric",month:"long",day:"numeric"})}</time>. </>}Source dates vary by dataset.</span>
+                <div><Link href="/about/">About</Link><a href="mailto:andes.han.lee@gmail.com">Contact</a><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license noopener noreferrer" target="_blank">Data: CC0 1.0 <ArrowUpRight size="1em" aria-hidden /></a></div>
               </div>
             </div>
           </footer>

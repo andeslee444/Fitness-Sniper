@@ -353,14 +353,8 @@ describe("CitationPanelProvider — kind dispatch", () => {
       (a) => a.getAttribute("href") === WORKBOOK_CITATION.official_url,
     );
     expect(officialLinks).toHaveLength(0);
-    // the .xlsx download stays
-    expect(
-      Array.from(container.querySelectorAll("a[href]")).some((a) =>
-        (a.getAttribute("href") ?? "").includes(
-          `${WORKBOOK_CITATION.sha256}.xlsx`,
-        ),
-      ),
-    ).toBe(true);
+    // Saved bytes are downloaded through the named, verified download control.
+    expect(container.querySelector('[data-testid="workbook-download"]')).toHaveAttribute("data-filename");
   });
 
   it("lda card: renders human-readable LDA link", async () => {

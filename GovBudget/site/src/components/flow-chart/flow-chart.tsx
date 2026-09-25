@@ -227,7 +227,7 @@ export function FlowChart() {
         aria-label="Budget river"
       >
         <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-lg font-semibold">Budget river</h2>
+          <h2>Budget river</h2>
           <span className="text-xs font-medium text-muted-foreground">
             {budget.label} · USD thousands
           </span>
@@ -305,12 +305,12 @@ export function FlowChart() {
                     {p.pe_bli}
                   </Link>
                   {p.confidence !== "high" && (
-                    <span className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="rounded bg-muted px-1 py-0.5 text-xs text-muted-foreground">
                       {p.confidence} confidence
                     </span>
                   )}
                 </span>
-                <span className="font-mono tabular-nums text-muted-foreground">
+                <span className="t-figure t-figure--2 text-muted-foreground">
                   {displayAmount(p.value, budgetUnits)}
                 </span>
               </li>
@@ -326,7 +326,7 @@ export function FlowChart() {
         aria-label="Spend river"
       >
         <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h2 className="text-lg font-semibold">Spend river</h2>
+          <h2>Spend river</h2>
           <span className="text-xs font-medium text-muted-foreground">
             DoD prime contract obligations · USD · FY{activeFy}
           </span>
@@ -442,7 +442,7 @@ export function FlowChart() {
           {tip.note && <p className="mt-1 text-muted-foreground">{tip.note}</p>}
           {tip.sections.map((sec) => (
             <div key={sec.heading} className="mt-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="t-label">
                 {sec.heading}
               </p>
               <ul>
@@ -454,7 +454,7 @@ export function FlowChart() {
                     <span className="min-w-0 truncate text-muted-foreground">
                       {row.label}
                     </span>
-                    <span className="shrink-0 font-mono tabular-nums text-foreground">
+                    <span className="t-figure t-figure--2 shrink-0 text-foreground">
                       {row.value}
                       {row.pct ? (
                         <span className="text-muted-foreground"> · {row.pct}</span>
@@ -654,7 +654,7 @@ function RiverTable({
             </th>
             <td
               data-primary-value="chart-amount"
-              className="px-2 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+              className="t-figure t-figure--2 px-2 py-1 text-right whitespace-nowrap"
             >
               <Cite
                 value={n.value}
@@ -1272,7 +1272,7 @@ function DrillDialog({
                       <span className="min-w-0 truncate text-foreground" title={m.k}>
                         {m.l}
                       </span>
-                      <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
+                      <span className="shrink-0 t-figure t-figure--2 text-muted-foreground">
                         {displayAmount(m.v, item.units)}
                       </span>
                     </li>

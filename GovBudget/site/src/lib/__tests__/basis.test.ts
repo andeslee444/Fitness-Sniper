@@ -24,7 +24,7 @@ describe("basisChipForExhibit", () => {
   });
 
   it("leaves non-TOA bases alone", () => {
-    expect(basisChipForExhibit("jbook-detail", "rdte")).toBe("P-40 detail");
+    expect(basisChipForExhibit("jbook-detail", "rdte")).toBe("J-book detail");
   });
 });
 

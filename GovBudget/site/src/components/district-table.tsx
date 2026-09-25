@@ -33,7 +33,7 @@ function SortHeader({
   return (
     <th
       className={[
-        "py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide whitespace-nowrap",
+        "t-label py-3 text-left whitespace-nowrap",
         "cursor-pointer select-none hover:text-foreground transition-colors",
         className,
       ]
@@ -296,7 +296,7 @@ export function DistrictTable({ districts }: Props) {
                   {/* No nowrap here: long special labels ("DC (undistricted)")
                       may wrap on narrow phones so the dollar column stays
                       fully on-screen; plain codes ("CO-05") never wrap. */}
-                  <td className="px-3 sm:px-4 py-3 font-mono">
+                  <td className="t-figure t-figure--2 px-3 sm:px-4 py-3">
                     <Link
                       href={`/district/${d.pop_district}/`}
                       className="text-primary hover:underline"
@@ -328,7 +328,7 @@ export function DistrictTable({ districts }: Props) {
                       what hiding the State column below `sm` is protecting. */}
                   <td
                     data-primary-value="linkable-dollars"
-                    className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap"
+                    className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 t-figure t-figure--2 text-right whitespace-nowrap"
                   >
                     {d.total_linkable_dollars > 0 ? (
                       // Derived 'district' aggregate citation — the

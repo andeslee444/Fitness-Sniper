@@ -4,6 +4,7 @@ import { getDistrictIndex, getDistrictDetail } from "@/lib/data";
 import { districtDisplayLabel, formatAmountNoCurrency } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PageIntro } from "@/components/page-intro";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
@@ -178,15 +179,19 @@ export default async function DistrictDetailPage({ params }: Props) {
           ]}
         />
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-1">
-            {heading}
-            {isSpecialCode && (
-              <span className="ml-3 align-middle font-mono text-sm font-normal text-muted-foreground">
-                {district}
-              </span>
-            )}
-          </h1>
+        {/* 2026-09-25 integration: the editorial redesign's masthead. The
+            coverage note moved under the summary stats, its long form behind
+            a <details> (the redesign's order), and keeps this branch's
+            reviewed wording (Task 26's mechanism sentence; the
+            high-confidence-linked slice). The redesign's rewrite of that
+            sentence ("Each published link has been hand-adjudicated; high-
+            confidence links also underwent adversarial review") was not
+            carried: /methodology/ §4 publishes a measured adjudication
+            coverage, not a universal. */}
+        <PageIntro eyebrow="District dossier" title={heading}
+          description="The documented connections between this place, defense programs, and contract awards."
+          actions={<><a href="#linked-programs">Explore linked programs</a><Link href="/district/">Find another district</Link></>}>
+          {isSpecialCode && <p className="t-id mb-3">District code {district}</p>}
           <p className="text-muted-foreground text-sm">
             {detail.program_count} linked program
             {detail.program_count !== 1 ? "s" : ""} via high-confidence
@@ -195,12 +200,70 @@ export default async function DistrictDetailPage({ params }: Props) {
           {/* Scope note — same coverage contract as the district index */}
           <CoverageNote id="districts" className="mt-1" />
 
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="t-figure t-figure--5">
+                {detail.program_count}
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                linked programs
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="t-figure t-figure--5">
+                {/* Derived 'district' aggregate citation — the award-DISTINCT
+                    total for this district, from fct_district_totals (#51).
+                    fct_district_programs is per (district, pe_bli, account)
+                    and NOT summable: an award matched to N program elements
+                    appears N times with the same dollars there. State A when the
+                    citation resolves; honest state C otherwise. */}
+                <Cite
+                  value={detail.total_linkable_dollars}
+                  units="USD"
+                  dataset="fct_district_totals"
+                  factId={detail.total_linkable_fact_id}
+                />
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                linkable obligations <FyRange separator="· " /> ·{" "}
+                {detail.award_count} distinct award
+                {detail.award_count !== 1 ? "s" : ""}
+              </p>
+              {citedEqualsLinkable && (
+                <p className="text-muted-foreground text-xs mt-1">
+                  every linked dollar carries a USAspending citation
+                </p>
+              )}
+            </div>
+            {!citedEqualsLinkable && (
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="t-figure t-figure--5">
+                  {/* #51: capped at total_linkable_dollars by construction —
+                      see the matching clamp in export_site.py. */}
+                  <Cite
+                    value={detail.total_cited_dollars}
+                    units="USD"
+                    dataset="fct_district_totals"
+                    factId={detail.total_cited_fact_id}
+                  />
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  of which cited (USAspending) <FyRange separator="· " />
+                </p>
+              </div>
+            )}
+          </div>
           {/* §P2-6: this was an amber banner ABOVE the <h1> — the page opened
               with what read as a warning before the reader knew what page they
               were on. It is not a warning: it is an honest account of what
               district coverage means here, which is a credibility asset. Calm
               register, and after the heading. */}
-          <ScopeNote className="mt-3" label="Coverage note">
+          <ScopeNote className="mt-4" label="Coverage note">
+            <p className="text-sm font-medium text-foreground">These are high-confidence program links, not a total of defense spending in this district.</p>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm font-medium underline decoration-dotted underline-offset-4">How this evidence is linked and how much it covers</summary>
+              <div className="mt-3 text-sm leading-6">
             {/* Until 2026-09 this explained the gap by one organization's
                 account structure, on a page whose sidecars were 92 Navy /
                 59 Air Force / 22 Army against 14 DARPA sitewide (measured
@@ -272,63 +335,11 @@ export default async function DistrictDetailPage({ params }: Props) {
                 for that comparison in full.
               </p>
             )}
+              </div>
+            </details>
           </ScopeNote>
 
-          {/* Summary stats */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
-                {detail.program_count}
-              </p>
-              <p className="text-muted-foreground text-xs mt-1">
-                linked programs
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
-                {/* Derived 'district' aggregate citation — the award-DISTINCT
-                    total for this district, from fct_district_totals (#51).
-                    fct_district_programs is per (district, pe_bli, account)
-                    and NOT summable: an award matched to N program elements
-                    appears N times with the same dollars there. State A when the
-                    citation resolves; honest state C otherwise. */}
-                <Cite
-                  value={detail.total_linkable_dollars}
-                  units="USD"
-                  dataset="fct_district_totals"
-                  factId={detail.total_linkable_fact_id}
-                />
-              </p>
-              <p className="text-muted-foreground text-xs mt-1">
-                linkable obligations <FyRange separator="· " /> ·{" "}
-                {detail.award_count} distinct award
-                {detail.award_count !== 1 ? "s" : ""}
-              </p>
-              {citedEqualsLinkable && (
-                <p className="text-muted-foreground text-xs mt-1">
-                  every linked dollar carries a USAspending citation
-                </p>
-              )}
-            </div>
-            {!citedEqualsLinkable && (
-              <div className="rounded-lg border border-border bg-card p-4">
-                <p className="text-2xl font-bold tabular-nums">
-                  {/* #51: capped at total_linkable_dollars by construction —
-                      see the matching clamp in export_site.py. */}
-                  <Cite
-                    value={detail.total_cited_dollars}
-                    units="USD"
-                    dataset="fct_district_totals"
-                    factId={detail.total_cited_fact_id}
-                  />
-                </p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  of which cited (USAspending) <FyRange separator="· " />
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        </PageIntro>
 
         {/* ── Obligations by fiscal year (ROADMAP #6) ────────────────────────
             No chart library, by design: ten rows of a table is the whole
@@ -340,10 +351,7 @@ export default async function DistrictDetailPage({ params }: Props) {
             6's chart-table leg has nothing to check here. */}
         {byYear.length > 0 && (
           <section className="mb-8" aria-labelledby="district-by-year-heading">
-            <h2
-              id="district-by-year-heading"
-              className="text-lg font-semibold mb-2"
-            >
+            <h2 id="district-by-year-heading" className="mb-2">
               Obligations by fiscal year
             </h2>
             <p className="text-muted-foreground text-sm mb-3">
@@ -366,30 +374,18 @@ export default async function DistrictDetailPage({ params }: Props) {
                 </caption>
                 <thead className="bg-muted/50">
                   <tr>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide"
-                    >
+                    <th scope="col" className="px-4 py-3 text-left t-label">
                       Fiscal year
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide"
-                    >
+                    <th scope="col" className="px-4 py-3 text-right t-label">
                       Obligations
                     </th>
                     {hasDeobligations && (
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell"
-                      >
+                      <th scope="col" className="px-4 py-3 text-right t-label hidden sm:table-cell">
                         Before deobligations
                       </th>
                     )}
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell"
-                    >
+                    <th scope="col" className="px-4 py-3 text-right t-label hidden md:table-cell">
                       Awards active
                     </th>
                   </tr>
@@ -405,7 +401,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                         row.fiscal_year === partialFy ? "" : undefined
                       }
                     >
-                      <td className="px-4 py-3 font-mono tabular-nums">
+                      <td className="t-id px-4 py-3">
                         FY{row.fiscal_year}
                         {row.fiscal_year === partialFy && (
                           <span className="ml-2 font-sans text-xs text-muted-foreground">
@@ -413,7 +409,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono">
+                      <td className="t-figure t-figure--2 px-4 py-3 text-right">
                         <Cite
                           value={row.total_obligation}
                           units="USD"
@@ -423,7 +419,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                         />
                       </td>
                       {hasDeobligations && (
-                        <td className="px-4 py-3 text-right font-mono text-muted-foreground hidden sm:table-cell">
+                        <td className="t-figure t-figure--2 px-4 py-3 text-right text-muted-foreground hidden sm:table-cell">
                           <Cite
                             value={row.positive_obligation}
                             units="USD"
@@ -467,6 +463,11 @@ export default async function DistrictDetailPage({ params }: Props) {
           </section>
         )}
 
+        <div id="linked-programs" className="scroll-mt-24 mb-4">
+          <p className="t-label mb-2">Program connections</p>
+          <h2>Follow a program to its receipts.</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Amounts below are linked award obligations over <FyRange />. Shared awards may appear against more than one program; the district total counts each award once.</p>
+        </div>
         {/* Program table */}
         {/* §P1-7 sort contract (gate 24 leg f): exporter-declared order —
             fct_district_programs is queried `order by pop_state, pop_district,
@@ -479,19 +480,19 @@ export default async function DistrictDetailPage({ params }: Props) {
           >
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="px-4 py-3 text-left t-label">
                   Program
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">
+                <th className="px-4 py-3 text-left t-label hidden sm:table-cell">
                   Org
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                <th className="px-4 py-3 text-right t-label">
                   Obligations
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                <th className="px-4 py-3 text-right t-label hidden md:table-cell">
                   Recipients
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                <th className="px-4 py-3 text-right t-label hidden md:table-cell">
                   Transactions
                 </th>
               </tr>
@@ -503,6 +504,8 @@ export default async function DistrictDetailPage({ params }: Props) {
                   // hold one row per member of a shared budget-line code.
                   key={prog.split_key}
                   className="hover:bg-muted/40 transition-colors"
+                  data-program-key={prog.split_key}
+                  data-program-account={prog.account ?? undefined}
                   data-sort-value={String(prog.total_obligation ?? -Infinity)}
                 >
                   <td className="px-4 py-3">
@@ -516,7 +519,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                         programs share '0145', the bare code everywhere else.
                         Printing the bare code on both rows would name neither
                         member (Task 27). */}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    <span className="t-id ml-2">
                       {prog.split_key}
                     </span>
                   </td>
@@ -524,7 +527,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                     {prog.organization}
                   </td>
                   <td
-                    className="px-4 py-3 text-right font-mono"
+                    className="t-figure t-figure--2 px-4 py-3 text-right"
                     // #51: when this row's award is ALSO matched to other
                     // program elements, the dollar figure is one award
                     // attributed whole to each of them, not N awards' worth

@@ -19,7 +19,9 @@ from govbudget.export_site import fact_id_workbook
 from govbudget.flow_chart import (
     COMPETED_CLASSES,
     OFFERS_BUCKETS,
+    PAYLOAD_BUDGET_BYTES,
     build_flow_chart,
+    serialize_flow_chart,
 )
 
 FLOW_COLS = (
@@ -171,6 +173,20 @@ def _cit_index(cit_rows):
 
 def _node_by_id(river, node_id):
     return next(n for n in river["nodes"] if n["id"] == node_id)
+
+
+def test_compact_transport_preserves_every_flow_field(flow_db, bl_rows):
+    payload, _ = _build(flow_db, bl_rows)
+    serialized = serialize_flow_chart(payload)
+    assert json.loads(serialized) == payload
+    assert len(serialized.encode("utf-8")) < len(json.dumps(payload).encode("utf-8"))
+
+
+def test_real_export_payload_respects_size_budget():
+    path = Path(__file__).resolve().parents[1] / "data/site/json/flow_chart.json"
+    if not path.exists():
+        pytest.skip("No real exported flow payload")
+    assert path.stat().st_size <= PAYLOAD_BUDGET_BYTES
 
 
 # ---------------------------------------------------------------------------

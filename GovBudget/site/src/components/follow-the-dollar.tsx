@@ -266,7 +266,7 @@ export function FollowTheDollar({ data }: Props) {
 
   return (
     <section className="mt-8 pt-6 border-t border-border" id="follow-the-dollar">
-      <h2 className="text-xl font-semibold mb-1">Follow the dollar</h2>
+      <h2 className="mb-1">Follow the dollar</h2>
       <p className="text-sm text-muted-foreground mb-1">
         Appropriation → program element → top high-confidence awards →
         recipient families → congressional districts.
@@ -279,7 +279,7 @@ export function FollowTheDollar({ data }: Props) {
         <svg
           viewBox={`0 0 ${VIEW_W} ${viewH}`}
           className="min-w-[860px] w-full h-auto"
-          role="img"
+          role="group"
           aria-label={`Follow-the-dollar diagram for program ${header.pe_bli}: appropriation to program element to awards to recipient families to congressional districts`}
           aria-describedby={chartDescId("follow-the-dollar")}
           data-flow-svg={header.pe_bli}
@@ -389,7 +389,7 @@ export function FollowTheDollar({ data }: Props) {
             <text x={COL.app.x + COL.app.w / 2} y={yApp - 2} textAnchor="middle" className="fill-foreground" fontSize={11} fontWeight={600}>
               {header.org ?? appropriation.split(" ")[0]}
             </text>
-            <text x={COL.app.x + COL.app.w / 2} y={yApp + 12} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
+            <text x={COL.app.x + COL.app.w / 2} y={yApp + 12} textAnchor="middle" className="fill-muted-foreground" fontSize={10}>
               {appropriation}
             </text>
           </g>
@@ -405,10 +405,10 @@ export function FollowTheDollar({ data }: Props) {
               className="fill-muted stroke-border"
               strokeWidth={1.5}
             />
-            <text x={COL.pe.x + COL.pe.w / 2} y={yPe - 4} textAnchor="middle" className="fill-foreground" fontSize={11} fontWeight={700} fontFamily="var(--font-mono)">
+            <text x={COL.pe.x + COL.pe.w / 2} y={yPe - 4} textAnchor="middle" className="fill-foreground" fontSize={11} fontWeight={600} fontFamily="var(--font-id)">
               {header.pe_bli}
             </text>
-            <text x={COL.pe.x + COL.pe.w / 2} y={yPe + 11} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
+            <text x={COL.pe.x + COL.pe.w / 2} y={yPe + 11} textAnchor="middle" className="fill-muted-foreground" fontSize={10}>
               {fy26Label ?? truncate(header.title ?? "", 30)}
             </text>
           </g>
@@ -432,10 +432,10 @@ export function FollowTheDollar({ data }: Props) {
                   className="fill-card stroke-border"
                   strokeWidth={1}
                 />
-                <text x={COL.award.x + 8} y={y - 3} className="fill-foreground" fontSize={9.5} fontFamily="var(--font-mono)">
+                <text x={COL.award.x + 8} y={y - 3} className="fill-foreground" fontSize={10} fontFamily="var(--font-id)">
                   {truncate(a.piid, 18)}
                 </text>
-                <text x={COL.award.x + 8} y={y + 10} className="fill-muted-foreground" fontSize={9}>
+                <text x={COL.award.x + 8} y={y + 10} className="fill-muted-foreground" fontSize={10}>
                   {truncate(a.recipient_name, 28)}
                 </text>
                 {a.dollars !== null && (
@@ -514,7 +514,7 @@ export function FollowTheDollar({ data }: Props) {
                     className="fill-primary"
                     fontSize={10}
                     fontWeight={600}
-                    fontFamily="var(--font-mono)"
+                    fontFamily="var(--font-id)"
                   >
                     {d}
                   </text>
@@ -543,13 +543,13 @@ export function FollowTheDollar({ data }: Props) {
           </caption>
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+              <th className="t-label px-4 py-2.5 text-left">
                 District
               </th>
-              <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">
+              <th className="t-label px-4 py-2.5 text-left hidden sm:table-cell">
                 Recipients in diagram
               </th>
-              <th className="px-4 py-2.5 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+              <th className="t-label px-4 py-2.5 text-right">
                 Program obligations
               </th>
             </tr>
@@ -557,7 +557,7 @@ export function FollowTheDollar({ data }: Props) {
           <tbody className="divide-y divide-border">
             {districtRows.map((row) => (
               <tr key={row.district} className="hover:bg-muted/40 transition-colors">
-                <td className="px-4 py-2.5 font-mono">
+                <td className="t-figure t-figure--2 px-4 py-2.5">
                   <Link
                     href={`/district/${row.district}/`}
                     className="text-primary hover:underline"
@@ -568,7 +568,7 @@ export function FollowTheDollar({ data }: Props) {
                 <td className="px-4 py-2.5 text-muted-foreground hidden sm:table-cell">
                   {row.familyNames.map((n) => truncate(n, 30)).join(", ")}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono">
+                <td className="t-figure t-figure--2 px-4 py-2.5 text-right">
                   {row.totalObligation !== null && row.factId ? (
                     <Cite
                       value={row.totalObligation}

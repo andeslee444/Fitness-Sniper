@@ -187,11 +187,11 @@ export function DownloadCards({
               .join(" ")}
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="font-mono text-sm font-semibold text-foreground">
+              <span className="text-sm font-medium text-foreground">
                 {ds.name}
               </span>
               {ds.rowCount !== undefined && (
-                <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                <span className="t-figure t-figure--3 ml-auto shrink-0 text-muted-foreground">
                   {ds.rowCount.toLocaleString("en-US")} rows
                 </span>
               )}

@@ -262,46 +262,22 @@ def load_verdicts(dsn: str, sample_id: str, verdicts_path: Path, *, rubric: str)
     return len(v)
 
 
-def precision_tally_sql(sample_id: str | None) -> str:
-    """Twin of export_site._precision_tally_sql — export_site never imports
-    scripts/, so the text is duplicated by hand;
-    tests/test_export_site_link_precision.py asserts the two tallies agree on
-    one fixture. Change both or neither.
-
-    Per published method: confirmed / judged under ONE rubric, from the
-    method's LATEST run (or the given run), counted under the method the link
-    publishes under TODAY; rows the corpus no longer publishes at high/medium
-    drop out of both numbers.
-    """
-    run_clause = "" if sample_id is None else "and s.sample_id = %(sample_id)s"
-    return f"""
-        with judged as (
-            select s.sample_id, b.method, s.verdict, s.adjudicated_at
-            from link_precision_samples s
-            join budget_line_awards b
-              on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli
-            where s.verdict is not null
-              and s.rubric = %(rubric)s
-              and b.confidence in ('high', 'medium')
-              {run_clause}
-        ),
-        latest as (
-            select method, max(sample_id) as sample_id from judged group by method
-        )
-        select j.method, j.sample_id,
-               count(*) filter (where j.verdict = 'confirmed') as confirmed,
-               count(*) as sampled,
-               max(j.adjudicated_at) as judged_at
-        from judged j
-        join latest l on l.method = j.method and l.sample_id = j.sample_id
-        group by j.method, j.sample_id
-        order by j.method
-    """
+# The tally query is SHARED with export_site (govbudget.link_precision), so
+# the operator report and the published figure can no longer drift apart by
+# hand: distinct (award_piid, pe_bli, method) units, and — when
+# `published_links` is given — the mart's own published population after
+# dbt's adjudication overlays (see export_site's note above its import).
+from govbudget.link_precision import (  # noqa: E402
+    precision_tally_sql,
+    published_link_rows,
+    tally_params,
+)
 
 
 def precision_runs_by_method(dsn: str, sample_id: str | None = None, *,
                              rubric: str = "attribution",
                              pinned_samples: dict[str, str] | None = None,
+                             published_links: list[dict] | None = None,
                              ) -> dict[str, tuple[str, int, int]]:
     """{method: (sample_id, confirmed, judged)} under one rubric.
 
@@ -310,12 +286,18 @@ def precision_runs_by_method(dsn: str, sample_id: str | None = None, *,
     against that run alone and, if the run judged nothing the method still
     publishes, it is dropped (the export names it unmeasured) — never a
     fallback to the latest run.
+
+    `published_links` (published_link_rows over the warehouse) tallies over
+    the mart's published population, as the export does; None tallies over
+    budget_line_awards at high/medium.
     """
     _require_rubric(rubric)
 
     def _tally(pg, run: str | None) -> dict[str, tuple[str, int, int]]:
-        rows = pg.execute(precision_tally_sql(run),
-                          {"rubric": rubric, "sample_id": run}).fetchall()
+        rows = pg.execute(
+            precision_tally_sql(run, from_mart=published_links is not None),
+            tally_params(rubric, run, published_links),
+        ).fetchall()
         return {m: (sid, c, n) for m, sid, c, n, _judged in rows}
 
     with psycopg.connect(dsn) as pg:
@@ -331,10 +313,12 @@ def precision_runs_by_method(dsn: str, sample_id: str | None = None, *,
 def precision_by_method(dsn: str, sample_id: str | None = None, *,
                         rubric: str = "attribution",
                         pinned_samples: dict[str, str] | None = None,
+                        published_links: list[dict] | None = None,
                         ) -> dict[str, tuple[int, int]]:
     """{method: (confirmed, judged)} under one rubric (pinned as asked)."""
     return {m: (c, n) for m, (_sid, c, n) in precision_runs_by_method(
-        dsn, sample_id, rubric=rubric, pinned_samples=pinned_samples).items()}
+        dsn, sample_id, rubric=rubric, pinned_samples=pinned_samples,
+        published_links=published_links).items()}
 
 
 def main(argv=None) -> None:
@@ -359,6 +343,12 @@ def main(argv=None) -> None:
 
     report = sub.add_parser("report", help="audit view: every rubric, every stratum")
     report.add_argument("--sample-id")
+    report.add_argument(
+        "--warehouse", type=Path, default=None,
+        help="DuckDB warehouse whose fct_budget_to_awards is the PUBLISHED"
+             " population (after adjudication overlays) — the population the"
+             " export tallies, e.g. data/duckdb/govbudget.duckdb. Omitted:"
+             " budget_line_awards at high/medium.")
 
     args = ap.parse_args(argv)
     if args.cmd == "draw":
@@ -388,6 +378,18 @@ def main(argv=None) -> None:
         def _line(m: str, sid: str, c: int, n: int, note: str = "") -> str:
             return f"  {m:<24} {c}/{n} = {100 * c / max(n, 1):.1f}%  ({sid}){note}"
 
+        links = None
+        if args.warehouse is not None:
+            links = published_link_rows(args.warehouse)
+            if links is None:
+                raise ValueError(
+                    f"{args.warehouse} has no fct_budget_to_awards mart; the"
+                    " published population cannot be read from it")
+            print(f"# population: {len(links)} published links in {args.warehouse}")
+        else:
+            print("# population: budget_line_awards at high/medium"
+                  " (pass --warehouse for the published mart, as exported)")
+
         for rubric in sorted(RUBRICS):
             published = rubric == "attribution"
             tag = "" if published else \
@@ -395,12 +397,14 @@ def main(argv=None) -> None:
             pins = PINNED_SAMPLES if published and not args.sample_id else {}
             print(f"## rubric={rubric}{tag}")
             figures = precision_runs_by_method(DSN, args.sample_id, rubric=rubric,
-                                               pinned_samples=pins)
+                                               pinned_samples=pins,
+                                               published_links=links)
             for m, (sid, c, n) in sorted(figures.items()):
                 print(_line(m, sid, c, n, "  [pinned]" if m in pins else ""))
             if not pins:
                 continue
-            latest = precision_runs_by_method(DSN, args.sample_id, rubric=rubric)
+            latest = precision_runs_by_method(DSN, args.sample_id, rubric=rubric,
+                                              published_links=links)
             for m, run in sorted(pins.items()):
                 if m not in figures:
                     print(f"  {m:<24} UNMEASURED — pinned run {run} judged no link"

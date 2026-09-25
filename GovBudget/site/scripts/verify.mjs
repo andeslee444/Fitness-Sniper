@@ -49,6 +49,10 @@ import { runFlowdownGate } from "./gates/flowdown.mjs";
 import { runBasisGate } from "./gates/basis.mjs";
 // PM-review Sprint 2 gates
 import { runDataTruthGate } from "./gates/datatruth.mjs";
+// Design-system gates (static source scan)
+import { runTokensGate } from "./gates/tokens.mjs";
+import { runTypeGate } from "./gates/type.mjs";
+import { runCopyGate } from "./gates/copy.mjs";
 
 const PORT = 4173;
 
@@ -194,6 +198,15 @@ async function main() {
     const g22 = await runFlowdownGate({ baseUrl: BASE_URL });
     gateResults.push({ n: 22, name: "flowdown", pass: g22.pass });
     printGate(22, "flowdown", g22);
+
+    // ── Gate 26: type (the type system, RENDERED — live) ──────────────────
+    // The rendered half of gate 25: the vendored faces loaded, every label /
+    // figure / identifier / heading resolved to its role, nothing painted
+    // off the ladder, money never in the mono, no Google Fonts request.
+    console.log("\n--- gate 26 type ---");
+    const g26 = await runTypeGate({ baseUrl: BASE_URL });
+    gateResults.push({ n: 26, name: "type", pass: g26.pass });
+    printGate(26, "type", g26);
   } finally {
     // Stop the server before LHCI (LHCI serves its own static dist)
     await serverHandle.close();
@@ -279,6 +292,25 @@ async function main() {
   const g24 = await runDataTruthGate();
   gateResults.push({ n: 24, name: "datatruth", pass: g24.pass });
   printGate(24, "datatruth", g24);
+
+  // ── Gate 25: tokens (design system — "tokens are the palette", static) ───
+  // Pure source scan: no raw hex / rgb() / oklch() colour and no untokenised
+  // font-family outside globals.css, with the existing debt enumerated in
+  // token-allowlist.json. Freezes the drift at its current size.
+  console.log("\n--- gate 25 tokens ---");
+  const g25 = await runTokensGate();
+  gateResults.push({ n: 25, name: "tokens", pass: g25.pass });
+  printGate(25, "tokens", g25);
+
+  // ── Gate 27: copy (the voice, on every built page — static) ─────────────
+  // docs/superpowers/VOICE.md as regexes over the built HTML's authored text:
+  // no invitation verbs, tricolons, "a different way into", pointer verbs,
+  // Title Case headings, second spellings of fixed actions, off-shape meta
+  // titles. Cited and data-bound text is out of scope by attribute.
+  console.log("\n--- gate 27 copy ---");
+  const g27 = await runCopyGate();
+  gateResults.push({ n: 27, name: "copy", pass: g27.pass });
+  printGate(27, "copy", g27);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");

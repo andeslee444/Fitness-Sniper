@@ -263,6 +263,95 @@ def _make_site_with_jbook_pdf_at_word(
     return fid
 
 
+def _synthetic_pdf_receipt(tmp_path, *, header="Dollars in Thousands", glyph="78,345", canonical=78.345):
+    import pdfplumber
+    from pdf_factory import make_pdf
+
+    pdf = tmp_path / "source.pdf"
+    # The amount repeats; the stored location is the LAST occurrence, on the
+    # program element's own row, so the verifier must use the stored bbox
+    # rather than the first match — and the row-label leg then reads the
+    # PE's own label on the highlighted row.
+    make_pdf(pdf, [[header, f"Other column {glyph}", f"PE 0207146F {glyph}"]])
+    sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+    (tmp_path / "pdfs").mkdir()
+    shutil.copyfile(pdf, tmp_path / "pdfs" / f"{sha}.pdf")
+    with pdfplumber.open(pdf) as doc:
+        word = [word for word in doc.pages[0].extract_words() if word["text"] == glyph][-1]
+    fid = fact_id_jbook(sha, "0207146F", None, "BudgetYearOne", canonical)
+    _write_parquet(
+        tmp_path / "data" / "jbook_details.parquet",
+        "fact_id varchar, pe_bli varchar, project_number varchar,"
+        " project_title varchar, exhibit_family varchar, amount_millions double",
+        [(fid, "0207146F", None, None, "rdte", canonical)],
+    )
+    record = {definition.strip().split()[0]: None for definition in _CIT_COL_DEFS.split(",")}
+    record.update(
+        fact_id=fid, kind="jbook_pdf", units="USD thousands", amount_text=glyph,
+        page_number=1, x0=word["x0"], x1=word["x1"], top_pt=word["top"],
+        bottom_pt=word["bottom"], page_width=612, page_height=792,
+        resolution="unique", sha256=sha,
+        hosted_pdf_url=f"/pdfs/{sha}.pdf#page=1",
+        official_url="https://example.mil/source.pdf#page=1",
+    )
+    return record
+
+
+def _verify_pdf_record(site, record):
+    from govbudget.verify_phase5b1 import _verify_jbook_pdf
+    return _verify_jbook_pdf(site, tuple(record.values()), {key: i for i, key in enumerate(record)})
+
+
+def test_pdf_thousands_units_and_repeated_amount_location(tmp_path):
+    record = _synthetic_pdf_receipt(tmp_path)
+    assert _verify_pdf_record(tmp_path, record) is None
+    record["units"] = "USD millions"
+    assert "units mismatch" in _verify_pdf_record(tmp_path, record)
+
+
+def test_pdf_year_lookalike_cannot_prove_amount(tmp_path):
+    record = _synthetic_pdf_receipt(tmp_path, header="COST ($ in Millions)", glyph="2027", canonical=2.027)
+    assert "units cannot be verified" in _verify_pdf_record(tmp_path, record)
+
+
+def test_pdf_canonical_amount_required(tmp_path):
+    record = _synthetic_pdf_receipt(tmp_path)
+    record["fact_id"] = "missing-fact"
+    assert "canonical detail amount" in _verify_pdf_record(tmp_path, record)
+
+
+def _unresolved_pdf_record(record):
+    record["resolution"] = "unresolved"
+    for key in ("amount_text", "units", "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height"):
+        record[key] = None
+    for key in ("hosted_pdf_url", "official_url"):
+        record[key] = record[key].split("#", 1)[0]
+    return record
+
+
+def test_unresolved_pdf_document_is_verified_and_reported_separately(tmp_path):
+    record = _unresolved_pdf_record(_synthetic_pdf_receipt(tmp_path))
+    _write_parquet(tmp_path / "citations" / "citations.parquet", _CIT_COL_DEFS, [tuple(record.values())])
+    result = citation_gate5b1(tmp_path)
+    assert result["ok"], result["failures"]
+    assert result["jbook_pdf_unresolved_total"] == 1
+    assert result["jbook_pdf_unresolved_sampled"] == 1
+    (tmp_path / "pdfs" / f"{record['sha256']}.pdf").write_bytes(b"tampered")
+    assert "sha256 mismatch" in _verify_pdf_record(tmp_path, record)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("amount_text", "78,345"), ("units", "USD millions"), ("page_number", 1),
+    ("x0", 72), ("page_width", 612),
+    ("official_url", "https://example.mil/source.pdf#page=1"),
+    ("hosted_pdf_url", "/pdfs/wrong.pdf"), ("official_url", None),
+])
+def test_unresolved_pdf_rejects_stale_locator_and_invalid_urls(tmp_path, field, value):
+    record = _unresolved_pdf_record(_synthetic_pdf_receipt(tmp_path))
+    record[field] = value
+    assert _verify_pdf_record(tmp_path, record) is not None
+
+
 def _make_site_with_workbook(site_dir: Path) -> tuple[str, str]:
     """Build site dir with a workbook citation.
 
@@ -610,6 +699,16 @@ class TestStratifiedSampling:
 
         all_rows = jbook_rows + wb_rows + lda_rows
 
+        # The units leg needs each fact's canonical amount; the row-label
+        # leg reads the same file for the fact's program element.
+        _write_parquet(
+            site / "data" / "jbook_details.parquet",
+            "fact_id varchar, pe_bli varchar, project_number varchar,"
+            " project_title varchar, exhibit_family varchar,"
+            " amount_millions double",
+            [(row[0], "0601101E", None, None, "rdte", 280.494)
+             for row in jbook_rows],
+        )
         _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, all_rows)
         _write_manifest(site)
 
@@ -2510,7 +2609,16 @@ class TestRowLabelLeg:
         assert res["row_label"]["checked"] == 1
 
     # ── item 2: every skip path is counted ──────────────────────────────
-    def test_citation_with_no_detail_row_is_counted_as_a_skip(self, tmp_path):
+    def test_citation_with_no_detail_row_fails_the_units_leg_before_the_skip(
+        self, tmp_path,
+    ):
+        """Merged 2026-09-25. This used to pass as a COUNTED row-label skip.
+        The units leg (2026-09-23) now runs first and needs the fact's one
+        canonical jbook_details amount to check the page's printed scale, so
+        a resolved receipt with no detail row FAILS — louder than the count,
+        and the same verdict the integrity gate's orphan check reaches. The
+        row-label accounting still adds up: the row is sampled, never
+        checked and never skipped, i.e. it failed an earlier leg."""
         site = tmp_path / "site"
         _make_site_with_jbook_pdf_at_word(
             site,
@@ -2521,11 +2629,13 @@ class TestRowLabelLeg:
         )
         _write_manifest(site, datasets={"jbook_details": 0}, citations={"jbook_pdf": 1})
         res = citation_gate5b1(site)
-        assert res["ok"] is True, res["failures"]
+        assert res["ok"] is False
+        assert any("canonical detail amount" in reason
+                   for _fid, reason in res["failures"]), res["failures"]
         rl = res["row_label"]
         assert rl["sampled"] == 1
         assert rl["checked"] == 0
-        assert rl["skipped_no_detail"] == 1
+        assert rl["skipped_no_detail"] == 0
 
     def test_null_bbox_is_counted_as_a_skip(self, tmp_path):
         site = tmp_path / "site"

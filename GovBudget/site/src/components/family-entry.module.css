@@ -1,0 +1,81 @@
+.feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+  margin: 2.2rem 0 2.8rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.featureCopy { padding: clamp(1.5rem, 3.2vw, 2.75rem); }
+.eyebrow {
+  margin-bottom: 1.15rem;
+}
+.description { max-width: 45ch; margin: 1.2rem 0 1.5rem; color: var(--muted-foreground); }
+.featureLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: 46px;
+  padding: .8rem 1rem;
+  border: 1px solid #315860;
+  background: #102d35;
+  color: #e5f3ee;
+  box-shadow: inset 0 1px 0 #ffffff18, 0 2px 0 #071a21;
+  font: var(--type-ui);
+  font-weight: 500;
+  transition: background .14s, transform .14s, box-shadow .14s;
+}
+.featureLink:hover { background: #20434a; }
+.featureLink:active { transform: translateY(1px); box-shadow: inset 0 1px 2px #071a2155; }
+.featureLink:focus-visible,.compactLink:focus-visible { outline: 2px solid var(--cite-decoration); outline-offset: 5px; }
+.featureNote { max-width: 45ch; margin-top: 1rem; color: var(--muted-foreground); font-size: var(--text-label); line-height: 1.6; }
+.plate {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 1.3rem 1.5rem 1rem;
+  border-left: 1px solid #436067;
+  background-color: #0d222b;
+  background-image: linear-gradient(#9ec3c508 1px, transparent 1px), linear-gradient(90deg, #9ec3c508 1px, transparent 1px), radial-gradient(ellipse at 55% 45%, #183c44 0%, transparent 70%);
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+  color: #d3e9e8;
+}
+.plateHeader { display: flex; justify-content: space-between; gap: 1rem; font: var(--type-id); color: #a7c8cc; }
+.schematic { display: block; width: 100%; flex: 1; min-height: 220px; max-height: 320px; margin: .6rem 0; }
+.variantPreview { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid #3d5962; background: #091c23a6; font: var(--type-id); }
+.variantPreview span { padding: .65rem .15rem; text-align: center; }
+.variantPreview span + span { border-left: 1px solid #3d5962; }
+.plateNote { margin-top: .8rem; color: #a1bec4; font: var(--type-id); line-height: 1.6; }
+.compact { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.2rem; margin: 1.3rem 0; border: 1px solid var(--border); border-left: 3px solid #4e7e80; background: var(--card); }
+.compact > svg { flex: 0 0 auto; color: var(--muted-foreground); }
+.compact > div { flex: 1; min-width: 0; }
+.compactTitle { font: var(--type-ui); font-weight: 500; }
+.compactDescription { margin-top: .3rem; color: var(--muted-foreground); font-size: var(--text-label); line-height: 1.6; }
+.compactLink { display: inline-flex; align-items: center; gap: .75rem; min-height: 44px; padding: .5rem 0; font: var(--type-ui); font-weight: 500; text-decoration: underline; text-decoration-color: var(--cite-decoration); text-underline-offset: .35em; }
+.compactLink svg { flex: 0 0 auto; }
+@media (max-width: 767px) {
+  .feature { grid-template-columns: 1fr; }
+  .plate { border-left: 0; border-top: 1px solid #436067; }
+  .feature h2 br { display: none; }
+  .compact { flex-wrap: wrap; gap: .65rem 1rem; }
+  .compact > div { flex-basis: calc(100% - 40px); }
+  .compactLink { margin-left: 39px; }
+}
+@media (max-width: 420px) {
+  .plate { padding-inline: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .featureLink { transition: none; } }
+@media print { .feature { display: block; } .plate { display: none; } .featureLink { background: white; color: black; box-shadow: none; } .compact { break-inside: avoid; } }
+/* Shared family palette and drawing on discovery and record destinations. */
+.familyNavigation,.feature{--paper:var(--stage-paper);--sheet:var(--stage-sheet);--ink:var(--stage-ink);--muted-ink:var(--stage-muted-ink);--rule:var(--stage-rule);--accent:var(--stage-accent);color:var(--ink)}
+.feature{background:var(--paper);border-color:var(--rule)}
+.plate{background:var(--sheet);background-image:none;color:var(--ink);border-color:var(--rule)}
+.plateHeader,.plateNote{color:var(--muted-ink)}.variantPreview{background:var(--paper);border-color:var(--rule)}.variantPreview span+span{border-color:var(--rule)}
+.featureLink{color:var(--sheet);background:var(--accent);border-color:var(--accent);box-shadow:none}.featureLink:hover{background:var(--ink)}
+:global([data-f15-program]){--paper:var(--stage-paper);--sheet:var(--stage-sheet);--ink:var(--stage-ink);--muted-ink:var(--stage-muted-ink);--rule:var(--stage-rule);--accent:var(--stage-accent);--foreground:var(--ink);--muted-foreground:var(--muted-ink);--card:var(--sheet);--border:var(--rule);--primary:var(--accent);--muted:var(--stage-muted);color:var(--ink);padding-top:0}
+:global(body):has(:global([data-f15-program])) :global(main){background:var(--stage-paper)}
+:global([data-f15-program]){--background:var(--paper);--card-foreground:var(--ink);--primary-foreground:var(--sheet);--scope-bg:var(--muted);--scope-border:var(--rule);--cite-decoration:var(--muted-ink);--cite-decoration-hover:var(--ink);color-scheme:light}
+/* Keep accounting notes legible on the field guide's fixed paper palette. */
+:global([data-f15-program]) :global([data-derivation-exact]){color:var(--muted-ink)}
+.feature{--muted-foreground:var(--muted-ink)}

@@ -12,7 +12,7 @@
  * PANEL PATH: footnoteInputFromCitation maps a live citation payload (the
  * cite-shard row shape) + the threaded figure/program context into the
  * formatter input; for the pdf and workbook golden facts the end-to-end
- * panel path must reproduce the gate goldens verbatim.
+ * panel path preserves the gate fields and adds the figure's declared status.
  */
 
 import { describe, it, expect } from "vitest";
@@ -300,8 +300,69 @@ const DERIVED_CITATION = {
 const F35 = { name: "F-35", code: "ATA000" };
 const ORIGIN = "https://fiscalreceipts.com";
 
+describe("footnote status follows the clicked figure in every export style", () => {
+  for (const measure of ["request", "actuals", "enacted"] as const) {
+    for (const style of ["chicago", "ap", "bibtex", "json"] as const) {
+      it(`${style} preserves declared ${measure} alongside year, value and source`, () => {
+        const input = footnoteInputFromCitation(WORKBOOK_CITATION, "5b532c52d3ebb4c2", {
+          program: F35,
+          figure: { fy: 2024, measure, basis: "toa", edition: 2026 },
+        });
+        expect(input.measure).toBe(measure);
+        expect(input.rowName).toBe("Total Obligation Authority (P-1)");
+        const text = formatFootnote(input, style);
+        if (style === "json") {
+          const parsed = JSON.parse(text);
+          expect(parsed.fiscal_year).toBe(2024);
+          expect(parsed.measure).toBe(measure);
+          expect(parsed.row).toBe("Total Obligation Authority (P-1)");
+          expect(parsed.value).toBe("$5,565,655 thousand");
+        } else {
+          expect(text).toContain(`FY2024 ${measure} Total Obligation Authority (P-1)`);
+          expect(text).toContain("5,565,655 thousand");
+        }
+        expect(text).toContain("FY2026 Department of Defense Budget: Procurement Programs (P-1)");
+        expect(text).toContain("sheet Exhibit P-1, cells O839,O840,O841");
+        expect(text).toContain("4d965906");
+        expect(text).toContain("2026-06-10");
+        expect(text).toContain("https://fiscalreceipts.com/fact/5b532c52");
+      });
+    }
+  }
+
+  it("does not infer a status from the workbook year, column or a missing figure", () => {
+    for (const figure of [undefined, { fy: 2024, basis: "toa", edition: 2026 }]) {
+      const input = footnoteInputFromCitation(WORKBOOK_CITATION, "5b532c52d3ebb4c2", { figure });
+      expect(input.measure).toBeNull();
+      expect(JSON.parse(formatFootnote(input, "json"))).not.toHaveProperty("measure");
+      expect(formatFootnote(input)).not.toMatch(/\b(request|actuals|enacted)\b/);
+    }
+  });
+
+  it("retains an extended declared measure without collapsing it to a generic request", () => {
+    const input = footnoteInputFromCitation(WORKBOOK_CITATION, "5b532c52d3ebb4c2", {
+      figure: { fy: 2026, measure: "reconciliation-request", basis: "toa" },
+    });
+    expect(formatFootnote(input)).toContain("FY2026 reconciliation request Total Obligation Authority (P-1)");
+    expect(JSON.parse(formatFootnote(input, "json")).measure).toBe("reconciliation-request");
+  });
+
+  it("keeps a derived row's stated measure once while preserving its formula and inputs", () => {
+    const input = footnoteInputFromCitation(DERIVED_CITATION, "cde21cb5a87292ec", {
+      figure: { fy: 2024, measure: "request-vs-actuals", basis: "toa" },
+    });
+    const text = formatFootnote(input);
+    expect(text).toContain('"FY2024 request vs actuals (derived): $286,534 thousand."');
+    expect(text).not.toContain("request vs actuals request vs actuals");
+    expect(text).toContain(DERIVED_CITATION.formula);
+    expect(text).toContain("https://fiscalreceipts.com/fact/5b532c52");
+    expect(text).toContain("https://fiscalreceipts.com/fact/666be822");
+    expect(JSON.parse(formatFootnote(input, "json")).measure).toBe("request-vs-actuals");
+  });
+});
+
 describe("footnoteInputFromCitation — the panel path", () => {
-  it("pdf golden fact end-to-end: citation + figure ctx → pdf.txt verbatim", () => {
+  it("pdf citation keeps known source fields and status without inferring an exhibit or row", () => {
     const input = footnoteInputFromCitation(PDF_CITATION, "bb54b1658b2746cb", {
       origin: ORIGIN,
       program: F35,
@@ -315,10 +376,15 @@ describe("footnoteInputFromCitation — the panel path", () => {
         edition: 2026,
       },
     });
-    expect(formatFootnote(input)).toBe(gateGolden("pdf"));
+    expect(input.measure).toBe("actuals");
+    expect(input.locator).toEqual({ page: 55 });
+    expect(input.rowName).toBeNull();
+    expect(formatFootnote(input)).toBe(formatFootnote({
+      ...gateFixture("pdf"), measure: "actuals", rowName: null, locator: { page: 55 },
+    }));
   });
 
-  it("workbook golden fact end-to-end: citation + figure ctx → workbook.txt verbatim", () => {
+  it("workbook golden fact retains every source field and the declared actuals status", () => {
     const input = footnoteInputFromCitation(
       WORKBOOK_CITATION,
       "5b532c52d3ebb4c2",
@@ -335,7 +401,8 @@ describe("footnoteInputFromCitation — the panel path", () => {
         },
       },
     );
-    expect(formatFootnote(input)).toBe(gateGolden("workbook"));
+    expect(input.measure).toBe("actuals");
+    expect(formatFootnote(input)).toBe(gateGolden("workbook").replace("FY2024 Total Obligation", "FY2024 actuals Total Obligation"));
   });
 
   it("derived fact: formula, both input-fact permalinks, value with unit", () => {
@@ -380,7 +447,7 @@ describe("footnoteInputFromCitation — the panel path", () => {
     expect(s).not.toMatch(/null|undefined/);
   });
 
-  it("rdte jbook-detail figure derives the R-2 row name, not P-40", () => {
+  it("rdte document family does not establish the cited page's exhibit or row", () => {
     const input = footnoteInputFromCitation(
       {
         ...PDF_CITATION,
@@ -402,8 +469,9 @@ describe("footnoteInputFromCitation — the panel path", () => {
       },
     );
     const s = formatFootnote(input);
-    expect(s).toContain("Total Program Element");
-    expect(s).toContain("Exhibit R-2");
+    expect(input.locator).toEqual({ page: PDF_CITATION.page_number });
+    expect(s).not.toContain("Total Program Element");
+    expect(s).not.toContain("Exhibit R-2");
     expect(s).not.toContain("Net Procurement");
   });
 

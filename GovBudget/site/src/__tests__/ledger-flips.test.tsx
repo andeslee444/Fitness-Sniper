@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render, within } from "@testing-library/react";
 import React from "react";
 import { DistrictTable } from "@/components/district-table";
 import { DownloadCards } from "@/components/download-cards";
@@ -54,6 +54,21 @@ function districtRow(overrides: Partial<DistrictIndexRow> = {}): DistrictIndexRo
 }
 
 describe("DistrictTable linkable dollars — Cite states", () => {
+  it("labels the cross-service linked obligations accurately and keeps the money sort and citations", () => {
+    const { container } = render(<DistrictTable districts={[
+      districtRow({ pop_district: "AL-02", pop_state: "AL", total_linkable_dollars: 100, total_linkable_fact_id: "c".repeat(16) }),
+      districtRow({ pop_district: "VA-08", total_linkable_dollars: 200 }),
+    ]} />);
+    expect(container.textContent).not.toContain("DARPA");
+    expect(within(container).getByRole("columnheader", { name: /Linked award obligations/ })).toBeInTheDocument();
+    fireEvent.click(within(container).getByRole("button", { name: "Linked obligations" }));
+    const table = within(container).getByRole("table");
+    expect(table).toHaveAttribute("data-sort-order", "total_linkable_dollars:desc");
+    const values = [...table.querySelectorAll("tbody [data-amount]")];
+    expect(values.map((el) => el.getAttribute("data-fact-id"))).toEqual(["a".repeat(16), "c".repeat(16)]);
+    expect(values.every((el) => el.getAttribute("data-dataset") === "fct_district_totals")).toBe(true);
+  });
+
   it("renders state A with the sidecar fact_id and fct_district_totals dataset", () => {
     const { container } = render(
       <DistrictTable districts={[districtRow()]} />,

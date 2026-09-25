@@ -57,6 +57,7 @@ from govbudget.jbooks.collision_keys import SplitAxis, require_resolved
 from govbudget.influence.mentions import (
     _build_word_boundary_re as _mention_word_re,
 )
+from govbudget.jbooks.citation_units import jbook_pdf_citation_units, pdf_page_currency_units
 
 
 # ---------------------------------------------------------------------------
@@ -2543,6 +2544,7 @@ def export_site(
         # fact_id set makes citations ⊆ jbook_details BY CONSTRUCTION —
         # the invariant jbook_no_orphan_citations checks.
         detail_fids = {r[0] for r in detail_rows}
+        page_units: dict[tuple[str, int], str | None] = {}
         for (doc_sha, pe_bli, project_number, scenario, amount_millions,
              amount_text, page_number, x0, x1, top_pt, bottom_pt,
              page_width, page_height, resolution, candidate_pages,
@@ -2553,11 +2555,35 @@ def export_site(
             fid = fact_id_jbook(doc_sha, pe_bli, project_number, scenario, amount_millions)
             if fid not in detail_fids:
                 continue  # cross-edition or superseded provenance — fenced out
-            hosted = f"{pdf_base_url}/{doc_sha}.pdf#page={page_number}"
-            official = f"{source_url}#page={page_number}"
+            try:
+                citation_units = jbook_pdf_citation_units(amount_text, amount_millions)
+            except ValueError:
+                # The provenance matcher also searches thousand-scaled glyphs.
+                # Confirm the cited PAGE's declared units before labelling one.
+                import pdfplumber
+                page_key = (doc_sha, int(page_number)) if page_number is not None else None
+                if page_key is not None and page_key not in page_units:
+                    with pdfplumber.open(pdfs_dir / f"{doc_sha}.pdf") as source_pdf:
+                        page_idx = int(page_number) - 1
+                        page_units[page_key] = (
+                            pdf_page_currency_units(source_pdf.pages[page_idx].extract_text() or "")
+                            if 0 <= page_idx < len(source_pdf.pages) else None
+                        )
+                try:
+                    citation_units = jbook_pdf_citation_units(amount_text, amount_millions, source_units=page_units.get(page_key))
+                except ValueError:
+                    # Retain the document receipt without presenting an unproven
+                    # numeral (often a year/activity on a contents page) as money.
+                    # File/read errors above still fail the export loudly.
+                    resolution = "unresolved"
+                    citation_units = amount_text = page_number = None
+                    x0 = x1 = top_pt = bottom_pt = page_width = page_height = None
+            anchor = f"#page={page_number}" if resolution != "unresolved" else ""
+            hosted = f"{pdf_base_url}/{doc_sha}.pdf{anchor}"
+            official = f"{source_url.split('#', 1)[0]}{anchor}" if source_url else None
             ret_at = downloaded_at.isoformat() if downloaded_at else None
             citation_rows.append((
-                fid, "jbook_pdf", "USD millions",
+                fid, "jbook_pdf", citation_units,
                 amount_text,
                 int(page_number) if page_number is not None else None,
                 float(x0) if x0 is not None else None,
@@ -2959,6 +2985,12 @@ def export_site(
     # replacement sentence renders from this block, number for number.
     published_link_methods = _published_link_methods(duckdb_path)
     published_high_links = _published_high_links(duckdb_path)
+    # The mart's published (award_piid, pe_bli, method) population after
+    # dbt's adjudication overlays — the unit both precision tallies count
+    # (see the note above `_precision_tally_sql`'s import). None on a
+    # warehouse with no link mart (fixtures); the tallies then read
+    # budget_line_awards.
+    published_links = _published_link_rows(duckdb_path)
     # ONE timestamp for the run: the manifest's `built_at` and the
     # adjudication block's `measured_on` are the same instant by construction,
     # so the census date the page renders can never drift from the build's
@@ -2967,7 +2999,8 @@ def export_site(
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
     with psycopg.connect(dsn) as pg_precision:
         link_precision = _link_precision_for_export(
-            pg_precision, published_link_methods)
+            pg_precision, published_link_methods,
+            published_links=published_links)
         link_adjudication = _link_adjudication_block(
             pg_precision,
             high_links=published_high_links,
@@ -2978,7 +3011,8 @@ def export_site(
         # produced. Same threading reason as link_precision above — the
         # sidecar writer holds only a duckdb connection, so a Postgres-scoped
         # figure travels via manifest.
-        announcement_llm_scope = _announcement_llm_scope(pg_precision)
+        announcement_llm_scope = _announcement_llm_scope(
+            pg_precision, published_links=published_links)
 
     manifest = {
         "built_at": built_at,
@@ -3157,14 +3191,22 @@ def export_site(
         json.dumps(manifest, indent=2, sort_keys=True)
     )
 
+    # Family history is a bounded additive projection over the completed
+    # artifacts. It preserves canonical program facts and rechecks every new
+    # historical workbook input before adding annual/cumulative receipts.
+    from govbudget.f15_funding_history import export_f15_funding_history
+    family_history = export_f15_funding_history(
+        duckdb_path=duckdb_path, out_dir=out_dir,
+    )
+
     return {
         "datasets": len(final_counts),
-        "citations": len(citation_rows),
+        "citations": family_history["citations"] if family_history else len(citation_rows),
         "pdfs": n_pdfs,
         "workbooks": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
         "skipped_zero_amount": skipped_zero_amount,
-        "json_files": n_json,
+        "json_files": family_history["json_files"] if family_history else n_json,
         # None when dossiers_raw_dir was not passed (existing callers/tests);
         # {written, total_dropped, dropped_by_pe, skipped} otherwise.
         "dossiers": dossier_summary,
@@ -3317,41 +3359,24 @@ def _org_absences(manifest_path: Path | None = None,
     return dict(sorted(out.items()))
 
 
-def _precision_tally_sql(sample_id: str | None) -> str:
-    """Twin of scripts/precision_study.py's precision_tally_sql — export_site
-    never imports scripts/, so the text is duplicated by hand and
-    tests/test_export_site_link_precision.py asserts the two tallies agree on
-    one fixture. Change both or neither.
-
-    Per published method: confirmed / judged under ONE rubric, from the
-    method's LATEST run (or the given run), counted under the method the link
-    publishes under TODAY (join to budget_line_awards); rows the corpus no
-    longer publishes at high/medium drop out of both numbers.
-    """
-    run_clause = "" if sample_id is None else "and s.sample_id = %(sample_id)s"
-    return f"""
-        with judged as (
-            select s.sample_id, b.method, s.verdict, s.adjudicated_at
-            from link_precision_samples s
-            join budget_line_awards b
-              on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli
-            where s.verdict is not null
-              and s.rubric = %(rubric)s
-              and b.confidence in ('high', 'medium')
-              {run_clause}
-        ),
-        latest as (
-            select method, max(sample_id) as sample_id from judged group by method
-        )
-        select j.method, j.sample_id,
-               count(*) filter (where j.verdict = 'confirmed') as confirmed,
-               count(*) as sampled,
-               max(j.adjudicated_at) as judged_at
-        from judged j
-        join latest l on l.method = j.method and l.sample_id = j.sample_id
-        group by j.method, j.sample_id
-        order by j.method
-    """
+# ONE tally query for the exporter and the operator report
+# (scripts/precision_study.py imports the same module), so the two can no
+# longer drift apart by hand. Per published method: confirmed / judged under
+# ONE rubric, from the method's LATEST run (or the given run), counted under
+# the method the link publishes under TODAY, over DISTINCT
+# (award_piid, pe_bli, method) units — a sampled pair is counted once however
+# many fiscal editions carry it (the old budget_line_awards join counted it
+# once per edition row). The export passes `published_links` (the mart's own
+# high/medium population AFTER dbt's adjudication overlays and demotions, from
+# `_published_link_rows`), so a link an adjudication excluded never counts as
+# published evidence; without it (tests, the operator's --sample-id view) the
+# relation is budget_line_awards at high/medium, deduplicated the same way.
+# Rows the corpus no longer publishes drop out of both numbers either way.
+from govbudget.link_precision import (  # noqa: E402 — grouped with its users
+    precision_tally_sql as _precision_tally_sql,
+    published_link_rows as _published_link_rows,
+    tally_params as _precision_tally_params,
+)
 
 
 #: The rubrics link_precision_samples.rubric may carry (migration 015 CHECK).
@@ -3371,7 +3396,8 @@ _PRECISION_RUBRICS = ("attribution", "rule-fired")
 _PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
 
 
-def _link_precision_for_export(pg, published_methods: set[str] | None) -> dict:
+def _link_precision_for_export(pg, published_methods: set[str] | None, *,
+                               published_links: list[dict] | None = None) -> dict:
     """`_link_precision_block` AS THE EXPORT CALLS IT — with the pin.
 
     The pin is policy, not a default: `_link_precision_block` takes each
@@ -3387,11 +3413,16 @@ def _link_precision_for_export(pg, published_methods: set[str] | None) -> dict:
     (tests/test_export_site_announcement_scope.py exercises this function and
     watches which run it asks Postgres for; gate 24 leg n binds the sample_id
     the shipped site_meta reports for the pinned tier).
+
+    `published_links` (the export passes `_published_link_rows(duckdb_path)`)
+    tallies over the mart's published population — see the note above
+    `_precision_tally_sql`'s import.
     """
     return _link_precision_block(
         pg,
         published_methods=published_methods,
         pinned_samples=_PINNED_PRECISION_SAMPLES,
+        published_links=published_links,
     )
 
 
@@ -3480,7 +3511,8 @@ def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
 def _link_precision_block(pg, published_methods: set[str] | None = None,
                           sample_id: str | None = None,
                           rubric: str = "attribution",
-                          pinned_samples: dict[str, str] | None = None) -> dict:
+                          pinned_samples: dict[str, str] | None = None,
+                          published_links: list[dict] | None = None) -> dict:
     """The held-out link-precision study (ROADMAP #72, #79), tallied under the
     tier each sampled link publishes under TODAY, under ONE rubric.
 
@@ -3504,12 +3536,18 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     question comes back in `unmeasured`, and /methodology/ names it; the page
     also names the rubric next to the figures (gate 24 leg n checks both).
 
-    THE POPULATION (2026-09-04, final review C1). Join every sampled row to
-    `budget_line_awards` on (award_piid, pe_bli), keep only rows the corpus
-    still publishes (confidence high or medium), and tally by the CURRENT
-    method: `fpds-ap+account` was withdrawn hours after its draw and its links
-    publish under `fpds-ap`; six announcement links stopped publishing. Rows
-    that no longer publish drop out of both numerator and denominator.
+    THE POPULATION (2026-09-04, final review C1; pair grain 2026-09-24). Join
+    every sampled row to the PUBLISHED links on (award_piid, pe_bli), keep only
+    links the corpus still publishes (confidence high or medium), and tally by
+    the CURRENT method: `fpds-ap+account` was withdrawn hours after its draw
+    and its links publish under `fpds-ap`; six announcement links stopped
+    publishing. Rows that no longer publish drop out of both numerator and
+    denominator. The published relation is DISTINCT (award_piid, pe_bli,
+    method), so a pair carried by several fiscal editions counts once; with
+    `published_links` (the export's `_published_link_rows`) it is the mart's
+    own population after dbt's adjudication overlays and demotions, so a link
+    an adjudication excluded never counts as published evidence. Without it
+    (tests, fixture warehouses) it is budget_line_awards at high/medium.
 
     THE RUN (final review I1, refined for #79). A study run may re-judge one
     stratum only, so each method's figure comes from the LATEST sample_id
@@ -3540,10 +3578,10 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     figures; methods with no figure of their own come back in `unmeasured`.
     Pass None (tests, fixture warehouses) to skip both.
 
-    scripts/precision_study.py's precision_by_method is the twin of this
-    query; export_site never imports from scripts/, so the two are kept in
-    step by hand and by tests/test_export_site_link_precision.py. The pin
-    travels the other way: precision_study imports
+    scripts/precision_study.py's precision_by_method runs the SAME query —
+    both import govbudget.link_precision, so the two cannot drift apart by
+    hand; tests/test_export_site_link_precision.py still asserts they agree
+    on one fixture. The pin travels the same way: precision_study imports
     `_PINNED_PRECISION_SAMPLES` as its PINNED_SAMPLES and its `report` prints
     a pinned tier at the pinned run (Task 26 fix wave).
     """
@@ -3551,7 +3589,8 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
     def _tally(run: str | None) -> dict[str, dict]:
         rows = pg.execute(
-            _precision_tally_sql(run), {"rubric": rubric, "sample_id": run}
+            _precision_tally_sql(run, from_mart=published_links is not None),
+            _precision_tally_params(rubric, run, published_links),
         ).fetchall()
         out: dict[str, dict] = {}
         for method, run_id, confirmed, sampled, judged_at in rows:
@@ -3588,7 +3627,9 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     }
 
 
-def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
+def _announcement_scope_precision(pg, sample_id: str | None, *,
+                                  published_links: list[dict] | None = None,
+                                  ) -> dict | None:
     """The held-out precision pair for the links ONE announcement pass
     produced: ``{sample_id, sampled_at, drawn, sampled, confirmed}``, or None.
 
@@ -3597,9 +3638,11 @@ def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
     then says the pass's precision is not yet measured rather than reaching
     for the tier-wide figure, which was sampled before these links existed.
 
-    Same population rule as `_link_precision_block`: a sampled link counts only
-    while the corpus publishes it at high or medium under that method, so a
-    link the loader's guards later drop leaves both numerator and denominator.
+    Same population rule — and the same shared tally query, `published_links`
+    included — as `_link_precision_block`: a sampled link counts only while the
+    corpus publishes it at high or medium under that method (once per
+    (award_piid, pe_bli), however many editions carry it), so a link the
+    loader's guards later drop leaves both numerator and denominator.
     Only `attribution` verdicts count (migration 015) — a `rule-fired` verdict
     answers whether the mechanical rule fired, which this route has none of.
 
@@ -3628,18 +3671,12 @@ def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
         "   and verdict is not null",
         (sample_id,),
     ).fetchone()
-    confirmed, sampled, judged_at = pg.execute(
-        "select count(*) filter (where s.verdict = 'confirmed'), count(*),"
-        "       max(s.adjudicated_at)"
-        " from link_precision_samples s"
-        " join budget_line_awards b"
-        "   on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli"
-        " where s.sample_id = %s and s.rubric = 'attribution'"
-        "   and s.verdict is not null"
-        "   and b.method = 'announcement+lexicon'"
-        "   and b.confidence in ('high', 'medium')",
-        (sample_id,),
-    ).fetchone()
+    rows = pg.execute(
+        _precision_tally_sql(sample_id, from_mart=published_links is not None),
+        _precision_tally_params("attribution", sample_id, published_links),
+    ).fetchall()
+    row = next((r for r in rows if r[0] == "announcement+lexicon"), None)
+    confirmed, sampled, judged_at = (row[2], row[3], row[4]) if row else (0, 0, None)
     if not sampled:
         return None
     return {
@@ -3651,7 +3688,7 @@ def _announcement_scope_precision(pg, sample_id: str | None) -> dict | None:
     }
 
 
-def _announcement_llm_scope(pg) -> dict:
+def _announcement_llm_scope(pg, *, published_links: list[dict] | None = None) -> dict:
     """What the announcement LLM-alias pass has covered (ROADMAP findings :118-119).
 
     Returns ``{}`` when no pass has been recorded, else::
@@ -3738,7 +3775,8 @@ def _announcement_llm_scope(pg) -> dict:
         "pct_value_attempted": pct_attempted,
         "pct_value_remaining": round(100.0 - pct_attempted, 1),
         "links_new_this_pass": int(links_new) if links_new is not None else None,
-        "precision": _announcement_scope_precision(pg, precision_sample_id),
+        "precision": _announcement_scope_precision(
+            pg, precision_sample_id, published_links=published_links),
     }
 
 
@@ -9448,7 +9486,7 @@ def _write_all_sidecars(
         for _kind, entries in kinds.items():
             entries.sort(key=lambda e: e["fy"])
 
-    # fy2024_fact_id index: pe_bli → fact_id (jbook_details WHERE
+    # fy2024_fact_id index: member split_key → fact_id (jbook_details WHERE
     # project_number IS NULL AND scenario='PriorYear'; nullable if absent).
     # ONLY populated when that fact_id exists in _cited_fact_ids; otherwise
     # null so the page renders honest Cite state C (data-uncited) instead of
@@ -9458,31 +9496,39 @@ def _write_all_sidecars(
     # even though detail_rows is already fenced at the export query
     # (a first-PriorYear-in-sha-order pick across editions would be an
     # arbitrary edition's figure under an FY2024 label).
-    fy2024_fact_id: dict[str, str] = {}
+    # Keyed by the PAGE identity (ident.split_key over the row's own
+    # account/organization, like details_by_key): since Wave 5 both members
+    # of a shared code carry their own PriorYear root row, and a bare-code
+    # key handed each member whichever member's row came first — a
+    # resolvable citation under the other program's figure. Ordinary
+    # pe_blis collapse to (pe, None, None), so their pick is unchanged.
+    fy2024_fact_id: dict[tuple, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario, *rest) = row
         if row[10] != 2026:
             continue
         if project_number is None and scenario == "PriorYear":
-            if pe_bli not in fy2024_fact_id and fid in _cited_fact_ids:
-                fy2024_fact_id[pe_bli] = fid
+            key = ident.split_key(pe_bli, row[13], row[8])
+            if key not in fy2024_fact_id and fid in _cited_fact_ids:
+                fy2024_fact_id[key] = fid
 
-    # fy2024_xml_path index: pe_bli → xml_path for PriorYear root rows that
+    # fy2024_xml_path index: member split_key → xml_path for PriorYear root rows that
     # have NO citation row (zero_amount facts).  Lets the program headline
     # FY24 figure render honest Cite state B (xml-path chip) instead of
     # state C — required by the dataset-ledger render gate, since
     # jbook_details is a cited dataset and may no longer render ⁂.
-    # Same PB2026 fence as fy2024_fact_id above.
-    fy2024_xml_path: dict[str, str] = {}
+    # Same PB2026 fence and same page-identity key as fy2024_fact_id above.
+    fy2024_xml_path: dict[tuple, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario,
          _amount_millions, _units, xml_path, *rest) = row
         if row[10] != 2026:
             continue
         if project_number is None and scenario == "PriorYear":
-            if (pe_bli not in fy2024_xml_path and fid not in _cited_fact_ids
+            key = ident.split_key(pe_bli, row[13], row[8])
+            if (key not in fy2024_xml_path and fid not in _cited_fact_ids
                     and xml_path):
-                fy2024_xml_path[pe_bli] = xml_path
+                fy2024_xml_path[key] = xml_path
 
     # budget_lines index: pe_bli → list of bl dicts
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
@@ -10377,17 +10423,19 @@ def _write_all_sidecars(
             "award_count": len(_awards_for(pe_bli, account, org)),
             "exhibit_family": exhibit_family,
             "fy2024_actual_millions": fy2024_actual_millions,
-            # Task E3: gated on owns_detail — fy2024_fact_id/xml_path come
-            # from jbook_details, which for a split key belongs entirely to
-            # the matched account (see the details owns_detail gate in
-            # the sidecar loop above). Without this gate the SYNTHETIC
-            # side's entry would carry the sibling's fact_id pointing at a
-            # value (fy2024_actual_millions) this row does not have — a
-            # dangling citation, not a wrong number, but still a defect.
-            "fy2024_fact_id": fy2024_fact_id.get(pe_bli) if owns_detail else None,
+            # The amount and its source must belong to this exact member:
+            # both accounts of a shared code may own real detail since Wave 5,
+            # so the index is keyed by the member's split_key (see its
+            # construction). Still gated on owns_detail — a member with no
+            # detail of its own has no PriorYear row to cite.
+            "fy2024_fact_id": (
+                fy2024_fact_id.get(ident.split_key(pe_bli, account, org))
+                if owns_detail else None
+            ),
             "fy2024_xml_path": (
-                fy2024_xml_path.get(pe_bli)
-                if owns_detail and pe_bli not in fy2024_fact_id
+                fy2024_xml_path.get(ident.split_key(pe_bli, account, org))
+                if owns_detail
+                and ident.split_key(pe_bli, account, org) not in fy2024_fact_id
                 else None
             ),
             "fully_reconciled": fully_reconciled,
@@ -10723,6 +10771,7 @@ def _write_all_sidecars(
     def _scoped_amounts(
         pe_bli: str,
         account: str | None = None,
+        organization: str | None = None,
         *,
         details: list[dict] | None = None,
         budget_lines: list[dict] | None = None,
@@ -10743,7 +10792,15 @@ def _write_all_sidecars(
         resolvable citation under a sentence it does not belong to, which no
         number↔citation gate can see. Omitted (rollup and decade pages, which
         are never split) they fall back to the bare-code lists, byte for
-        byte."""
+        byte.
+
+        The trajectory figures follow the same rule (2026-09-24): an
+        ORGANIZATION-split member reads only its own organization's
+        component row, keyed (pe, org) with the fact id
+        `_trajectory_citation_key` mints for it, and an ACCOUNT-split member
+        its own account's rows. Reading every component organization under
+        `account` used to put the sibling organization's figures in scope,
+        under a '{pe}|{org}|None' key no citation carries."""
         idx: dict = {}
 
         def _add(value, fid):
@@ -10759,8 +10816,13 @@ def _write_all_sidecars(
                 _add(Decimal(str(b["amount_thousands"])) * 1_000, b["fact_id"])
 
         if pe_bli in ident.split_pe_blis:
-            for t_org in traj_orgs_by_pe.get(pe_bli, []):
-                t_metrics = traj_index.get((pe_bli, t_org, account))
+            _acct_split = ident.is_account_split(pe_bli)
+            own_orgs = (traj_orgs_by_pe.get(pe_bli, []) if _acct_split
+                        else [organization])
+            for t_org in own_orgs:
+                t_key = ((pe_bli, t_org, account) if _acct_split
+                         else (pe_bli, t_org))
+                t_metrics = traj_index.get(t_key)
                 if not t_metrics:
                     continue
                 for metric in ("fy2024_actuals", "fy2025_total",
@@ -10770,7 +10832,10 @@ def _write_all_sidecars(
                         _add(
                             Decimal(str(v)) * 1_000,
                             fact_id_derived(
-                                "trajectory", f"{pe_bli}|{t_org}|{account}", metric,
+                                "trajectory", _trajectory_citation_key(
+                                    pe_bli, [t_org],
+                                    account if _acct_split else None,
+                                ), metric,
                             ),
                         )
             return idx
@@ -10816,7 +10881,8 @@ def _write_all_sidecars(
         if not entries:
             return entries
         scoped = _scoped_amounts(
-            pe_bli, account, details=details, budget_lines=budget_lines,
+            pe_bli, account, organization,
+            details=details, budget_lines=budget_lines,
         )
         out: list[dict] = []
         for e in entries:
@@ -11183,13 +11249,14 @@ def _write_all_sidecars(
             obj["decade_series"] = decade_series_by_pe[slug]
             if slug in rva_by_pe:
                 obj["book_diff"] = rva_by_pe[slug]
-        # lineage stays bare pe_bli (Task E3 disclosed limitation): rail
-        # edges are extracted from cross-edition narrative text with no
-        # account concept, so both of a split key's pages honestly share
-        # whatever lineage was found for the bare key — same bucket as
-        # awards/mentions, never a wrong number (every rail figure still
-        # carries its own fact_id).
-        if pe_bli in lineage_by_pe:
+        # Lineage has no member discriminator: rail edges are extracted from
+        # cross-edition narrative text with no account or organization
+        # concept, so nothing proves which member of a shared code an edge
+        # describes. It stays at its bare-code evidence surface rather than
+        # claim it describes both programs (2026-09-24; it used to publish on
+        # both member pages as a Task E3 disclosed limitation). No member
+        # page carried lineage when this landed, so no shipped byte moved.
+        if not is_split and pe_bli in lineage_by_pe:
             obj["lineage"] = lineage_by_pe[pe_bli]
         if slug in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[slug]
@@ -12249,6 +12316,15 @@ def _write_all_sidecars(
         "uncited_datasets": manifest.get("uncited_datasets", []),
     }
 
+    # Company-label near ties among the top-200 published families, measured
+    # from the award mart (govbudget.entity_label_review); the site gate
+    # recomputes the same claim from raw Parquet. Omitted on fixture
+    # warehouses without registration history.
+    from govbudget.entity_label_review import build_entity_label_review
+
+    label_review = build_entity_label_review(con)
+    if label_review is not None:
+        site_meta["entity_label_review"] = label_review
     _write_json(json_dir / "site_meta.json", site_meta)
     n_files += 1
 
@@ -12443,10 +12519,13 @@ def _write_all_sidecars(
     # 19. flow_chart.json (Phase 5H — /flow/ flowdown, precomputed layout) #
     # ------------------------------------------------------------------ #
     if flow_payload is not None:
-        from govbudget.flow_chart import PAYLOAD_BUDGET_BYTES
+        from govbudget.flow_chart import PAYLOAD_BUDGET_BYTES, serialize_flow_chart
 
         flow_path = json_dir / "flow_chart.json"
-        _write_json(flow_path, flow_payload)
+        # Compact separators on top of flow_chart's integral-float compaction:
+        # the same parsed JSON, fewer transport bytes, no member or receipt
+        # dropped (the 2026-09-24 refresh overran the budget by 262 bytes).
+        flow_path.write_text(serialize_flow_chart(flow_payload), encoding="utf-8")
         flow_size = flow_path.stat().st_size
         if flow_size > PAYLOAD_BUDGET_BYTES:
             print(

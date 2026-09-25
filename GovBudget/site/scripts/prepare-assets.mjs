@@ -7,8 +7,10 @@
  */
 
 import fs from "fs";
+import { createHash } from "node:crypto";
 import path from "path";
 import { fileURLToPath } from "url";
+import { filterSupportedConcentrationCards } from "../src/lib/concentration-evidence.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteDir = path.resolve(__dirname, "..");
@@ -192,6 +194,38 @@ copyFile(
 );
 console.log("✓  years_matrix.json → public/json/");
 
+// ── 5d1. Copy the F-15 funding-history sidecar (codex/f15-family-browser) ──
+// Family annual totals are server-rendered; older workbook rows load
+// automatically into the all-years table from this same-origin sidecar.
+const familyHistorySrc = path.join(jsonDir, "f15_funding_history.json");
+if (fs.existsSync(familyHistorySrc)) {
+  copyFile(familyHistorySrc, path.join(jsonDestDir, "f15_funding_history.json"));
+  console.log("✓  f15_funding_history.json → public/json/");
+} else {
+  fs.rmSync(path.join(jsonDestDir, "f15_funding_history.json"), { force: true });
+}
+
+// ── 5d2. Copy the verified PDF source receipts (codex/f15-family-browser) ───
+// budget-pdf-receipts/ — the glyph-aligned PDF receipts the citation panel
+// renders (v2/ is 4,096 three-hex-prefix shards). FATAL unless the audit says
+// schema 2, full corpus, and the SHA-256 of THIS citations.json: any
+// export-site re-run invalidates it until export-budget-pdf-receipts re-runs.
+const budgetPdfSrc = path.join(jsonDir, "budget-pdf-receipts");
+const budgetPdfAuditPath = path.join(jsonDir, "budget_pdf_receipts_audit.json");
+const budgetPdfAudit = fs.existsSync(budgetPdfAuditPath) ? JSON.parse(fs.readFileSync(budgetPdfAuditPath, "utf8")) : null;
+const citationHash = createHash("sha256").update(fs.readFileSync(path.join(jsonDir, "citations.json"))).digest("hex");
+const pdfV2 = path.join(budgetPdfSrc, "v2");
+if (budgetPdfAudit?.schema_version !== 2 || !budgetPdfAudit.full_corpus || budgetPdfAudit.citation_sha256 !== citationHash
+  || !fs.existsSync(pdfV2) || fs.readdirSync(pdfV2).filter(name => /^[a-f0-9]{3}\.json$/.test(name)).length !== 4096) {
+  console.error("❌ PDF source receipts are missing, partial, or stale. Run `govbudget export-budget-pdf-receipts` before building.");
+  process.exit(1);
+}
+if (fs.existsSync(budgetPdfSrc)) {
+  copyDir(budgetPdfSrc, path.join(jsonDestDir, "budget-pdf-receipts"));
+} else {
+  fs.rmSync(path.join(jsonDestDir, "budget-pdf-receipts"), { recursive: true, force: true });
+}
+
 // ── 5e. Copy the flowdown payload (Phase 5H — /flow/ two-river sankey) ───────
 copyFile(
   path.join(jsonDir, "flow_chart.json"),
@@ -225,10 +259,13 @@ console.log("✓  programs_excluded.json → public/json/");
 // asserts this shipped copy parses and carries a real digest.
 // ROADMAP #88: the "Show all" button no longer fetches THIS file — it
 // fetches one of the per-section sidecars copied in 5h below.
-copyFile(
-  path.join(jsonDir, "feed.json"),
-  path.join(jsonDestDir, "feed.json")
-);
+// Published FILTERED, not copied (codex/f15-family-browser, b803e860): match
+// the server feed (data.ts getFeed) and the RSS/Atom publisher
+// (generate-feeds.mjs) — no concentration claim may link to an ambiguous
+// program code or a page without cited concentration.
+const readFeedInput = name => JSON.parse(fs.readFileSync(path.join(jsonDir, name), "utf8"));
+const publishedFeed = filterSupportedConcentrationCards(readFeedInput("feed.json"), readFeedInput("programs.json"), readFeedInput("citations.json"));
+fs.writeFileSync(path.join(jsonDestDir, "feed.json"), JSON.stringify(publishedFeed));
 console.log("✓  feed.json → public/json/");
 
 // ── 5h. Copy the per-event-type feed sidecars (ROADMAP #88) ────────────────
@@ -239,6 +276,10 @@ console.log("✓  feed.json → public/json/");
 // event type and pruned-before-emit upstream): a retired event type must
 // vanish here too. A missing source directory is FATAL (copyDir exits 1) —
 // an export that predates #88 must not build a page whose button 404s.
+// The sidecars are copied as exported: the concentration filter in 5g is
+// JS-only (no exporter mirror), so a card it drops would leave /feed/'s
+// section total and the sidecar's total disagreeing — gate 1's feed gate leg
+// (o) goes red on exactly that. It drops no card on the 2026-09-25 corpus.
 const feedSectionsSrc = path.join(jsonDir, "feed-sections");
 copyDir(feedSectionsSrc, path.join(jsonDestDir, "feed-sections"));
 console.log(

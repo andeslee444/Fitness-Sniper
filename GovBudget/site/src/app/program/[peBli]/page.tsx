@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { RecipientSummaryGap } from "@/components/recipient-summary-gap";
 import {
   getProgramMap,
   getProgramDetails,
@@ -22,15 +23,12 @@ import {
 } from "@/lib/data";
 import { GaoProgramFindingsBlock } from "@/components/gao-program-findings";
 import type {
-  CitationsMap,
-  JbookPdfCitation,
   LobbiedBy,
   NamedPrime,
   ProgramBudgetLine,
   ProgramDetails,
   ProgramRow,
   ProgramSummary,
-  WorkbookCitation,
 } from "@/lib/data";
 import {
   decadeProgramRow,
@@ -97,6 +95,14 @@ import {
   sharedCodeWithheldReason,
   WHO_GETS_IT_WITHHELD_LEAD,
 } from "@/lib/concentration-basis";
+import { WatchFeed } from "@/components/watch-feed";
+import { ProgramExhibit } from "@/components/program-exhibit";
+import { ProgramFamilyEntry, F15ProgramNavigation, F15ProgramIllustration, F15ProgramSources, isF15Program } from "@/components/family-entry";
+import { PROGRAM_EXHIBITS, validateExhibitNarratives } from "@/lib/program-exhibits";
+import { ProgramEvidencePath, ProgramWayfinding } from "@/components/program-wayfinding";
+import programStyles from "@/components/program-wayfinding.module.css";
+import { ProgramSources } from "@/components/program-sources";
+import { programSourceEntries } from "@/lib/source-document";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
 
@@ -235,7 +241,7 @@ function StubPage({ peBli }: { peBli: string }) {
             { label: `Budget line ${peBli}` },
           ]}
         />
-        <h1 className="text-2xl font-semibold mb-2 text-foreground">
+        <h1 className="mb-2 text-foreground">
           Budget line {peBli}
         </h1>
         <p className="mb-6 text-muted-foreground leading-7">
@@ -445,6 +451,7 @@ export default async function ProgramPage({
   const siblings = getProgramsByBareKey(resolvedProgram.pe_bli);
   const accountSplit = siblings.length > 1 && stubDimension(siblings) === "account";
   const peIndex = getPeLinkIndex();
+  const sharesBudgetCode = getSplitProgramKeys().includes(program.pe_bli);
 
   // Build set of linkable family_keys (entities_top).
   // Passed to ProgramMentions (client component) as a plain string[] — Sets are
@@ -509,8 +516,10 @@ export default async function ProgramPage({
   // exporter still emits both bases), which is what /methodology/ and the
   // download read, and nothing in the site's citation integrity depends on a
   // page carrying a fid it does not render: render-static leg A resolves
-  // rendered [data-fact-id]s against the whole citations.json, PrimarySources
-  // reads only jbook_pdf/workbook kinds, and these derived rows carry no
+  // rendered [data-fact-id]s against the whole citations.json, the primary
+  // sources list (programSourceEntries since the 2026-09 receipts work; it
+  // was PrimarySources when this was checked) reads only document kinds —
+  // workbook, jbook_pdf, jbook_narrative — and these derived rows carry no
   // inputs. Checked before removing — no gate requires them (fix round 2,
   // finding 9).
   for (const fid of [
@@ -613,15 +622,18 @@ export default async function ProgramPage({
   // null on every line nobody ratified, which is most of them.
   const gaoProgram = getGaoProgramFindings(peBli);
 
-  // ── Dossier + category hero (Task 8a — top-50 pages only) ─────────────────
+  // ── Research dossier (top-50 pages only) ────────────────────────────────
   // getDossier returns null when no dossier file exists (cited-or-absent:
   // zero placeholder text) and THROWS on ungated content (loud build error).
   // Its fact_ids join the page slice so fact chips open the citation panel.
   const dossier = getDossier(peBli);
+  const category = getCategories()?.[peBli] ?? null;
   if (dossier) {
     pageFactIds.push(...dossierFactIds(dossier));
   }
-  const category = getCategories()?.[peBli] ?? null;
+
+  const visualExhibit = PROGRAM_EXHIBITS[program.slug] ?? null;
+  if (visualExhibit) validateExhibitNarratives(visualExhibit, details.narratives);
 
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
@@ -683,7 +695,7 @@ export default async function ProgramPage({
     budgetLines: details.budget_lines,
     projectCount,
     dossier,
-    serviceOrg: details.service_org ?? "",
+    serviceOrg: coverageOrg,
     serviceIngested,
     serviceAbsence,
     // ROADMAP #28: the decade card names the edition the page's own decade
@@ -698,7 +710,8 @@ export default async function ProgramPage({
       // footnote head is `{title} ({pe_bli})`, never a re-derived page title.
       program={{ name: program.title, code: program.pe_bli }}
     >
-    <div className="spine py-8">
+    <div className="spine py-8" data-f15-program={isF15Program(program.slug) ? "" : undefined}>
+      <F15ProgramNavigation programSlug={program.slug} />
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[
@@ -711,7 +724,7 @@ export default async function ProgramPage({
       {/* Print-only byline (Phase 5C Task 9) — hidden on screen, revealed by
           the @media print stylesheet ([data-print-only] → display:block). */}
       <p data-print-only className="hidden text-xs text-muted-foreground mb-4">
-        Printed from {SITE_URL}/program/{peBli}/ — data as of{" "}
+        Printed from {SITE_URL}/program/{peBli}/ — site export{" "}
         {new Date(getSiteMeta().built_at).toLocaleDateString("en-US", {
           year: "numeric",
           month: "long",
@@ -721,7 +734,7 @@ export default async function ProgramPage({
         provenance.
       </p>
 
-      {/* Header — top-50 pages get a category hero background (Task 8a).
+      {/* Header — the title and accounting identity stay on a reading surface.
           orgHasPage gates the org link: rollup/trajectory-only programs carry
           service orgs (Army/Navy/Air Force/DHA…) that have no agency pages —
           plain text instead of a dead link (G1 contract).
@@ -731,11 +744,14 @@ export default async function ProgramPage({
         <ProgramHeader
           program={program}
           category={category}
+          illustration={isF15Program(program.slug) ? <F15ProgramIllustration programSlug={program.slug} /> : undefined}
           orgHasPage={getAgencies().some((a) => a.org === program.org)}
           tier={tier}
           accountSplit={accountSplit}
         />
       </div>
+
+      <F15ProgramSources programSlug={program.slug} />
 
       {/* #56 shared-key disclosure — this budget line number (peBli) is
           coincidentally shared by another appropriation account entirely.
@@ -745,26 +761,10 @@ export default async function ProgramPage({
       {/* §P1-8 watch feed — rendered only when this program has feed events,
           the same rule the metadata autodiscovery uses. "The site that tells
           you when a program's budget moves, with the receipt attached." */}
-      {programFeedAlternates(peBli, program.title) && (
-        <p data-feed-subscribe="" className="mt-2 text-xs text-muted-foreground">
-          Watch this program:{" "}
-          <a
-            href={feedLinks(programFeedPaths(peBli)).rss}
-            className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
-            title={`${program.title} watch feed — RSS`}
-          >
-            RSS
-          </a>
-          {" \u00b7 "}
-          <a
-            href={feedLinks(programFeedPaths(peBli)).atom}
-            className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
-            title={`${program.title} watch feed — Atom`}
-          >
-            Atom
-          </a>
-        </p>
-      )}
+      {(programFeedAlternates(peBli, program.title) || visualExhibit) && <WatchFeed
+        urls={programFeedAlternates(peBli, program.title) ? feedLinks(programFeedPaths(peBli)) : null}
+        label="Watch this program" scope="program" program={program.slug} />}
+
 
       {/* ═══ Canonical section skeleton (Phase 5F §2d) — every program page,
           both tiers, renders these thirteen data-section blocks in this order;
@@ -774,6 +774,15 @@ export default async function ProgramPage({
       <ProgramSection id="answer-strip">
         <AnswerStrip program={program} summary={summary} whatItIs={whatItIs} />
       </ProgramSection>
+
+      <ProgramWayfinding code={program.pe_bli} isProcurement={program.exhibit_family === "procurement"} />
+      <ProgramEvidencePath />
+
+      <ProgramFamilyEntry programSlug={program.slug} />
+
+      {visualExhibit && <ProgramExhibit config={visualExhibit} cards={summary.cards} narratives={details.narratives} citations={citationsSlice}
+        exhibitFamily={normalizeExhibitFamily(program.exhibit_family)}
+        reconciliationKeys={Array.from(reconKeySet(summary))} />}
 
       {/* 2 · Budget figures — the summary UNION cards (§P0-2) + the
           reconciliation strip (§P0-1). */}
@@ -814,7 +823,7 @@ export default async function ProgramPage({
       <ProgramSection id="lineage">
         {hasLineage(details) && lineage ? (
           <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-3 text-foreground">
+            <h2 className="mb-3 text-foreground">
               Program Lineage
             </h2>
             <LineageRail
@@ -830,9 +839,9 @@ export default async function ProgramPage({
             />
             {lineage.family && lineage.family.funding_line.length > 0 && (
               <div className="mt-5">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="t-label mb-2">
                   Family Funding Line
-                </h3>
+                </p>
                 <FamilyFundingLine
                   family={lineage.family}
                   selfPe={peBli}
@@ -859,10 +868,15 @@ export default async function ProgramPage({
           </div>
         ) : (
           <SectionEmpty title="Program Lineage">
-            No predecessor/successor lineage was recorded for this program
-            element — no FY-to-FY transfer into or out of this line was stated
-            in the ingested J-books, and none was inferred from the program
-            structure.
+            {sharesBudgetCode ? (
+              <>This code is shared by more than one budget line. No predecessor
+                or successor is assigned to this specific account or organization.</>
+            ) : (
+              <>No predecessor/successor lineage was recorded for this program
+                element — no FY-to-FY transfer into or out of this line was stated
+                in the ingested J-books, and none was inferred from the program
+                structure.</>
+            )}
           </SectionEmpty>
         )}
       </ProgramSection>
@@ -881,7 +895,7 @@ export default async function ProgramPage({
           />
         ) : showServiceBooksNote ? (
           <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-2 text-foreground">
+            <h2 className="mb-2 text-foreground">
               Description
             </h2>
             <ServiceBooksNote serviceOrg={coverageOrg} />
@@ -1028,8 +1042,13 @@ export default async function ProgramPage({
           />
         ) : (
           <SectionEmpty title="Lobbying Mentions">
-            No Senate LDA lobbying filing in the tracked data mentions this
-            program element by code or alias.
+            {sharesBudgetCode ? (
+              <>This code is shared by more than one budget line. No lobbying
+                matches are assigned to this specific account or organization.</>
+            ) : (
+              <>No Senate LDA lobbying filing in the tracked data mentions this
+                program element by code or alias.</>
+            )}
           </SectionEmpty>
         )}
       </ProgramSection>
@@ -1051,7 +1070,7 @@ export default async function ProgramPage({
       <ProgramSection id="oversight">
         {gao || gaoProgram ? (
           <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-2 text-foreground">
+            <h2 className="mb-2 text-foreground">
               Oversight
             </h2>
             {gaoProgram && (
@@ -1065,7 +1084,7 @@ export default async function ProgramPage({
               data-gao-scope="department"
               className="rounded-lg border border-border bg-muted/40 px-3 py-2.5"
             >
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="t-label">
                 Department-level designation (not specific to this program)
               </p>
               <p className="mt-1 text-sm text-foreground">
@@ -1133,10 +1152,9 @@ export default async function ProgramPage({
         )}
       </ProgramSection>
 
-      {/* 12 · Primary sources — J-book PDF pages when cited on this page;
-          otherwise the workbook source documents (rollup tier). */}
+      {/* 12 · Primary sources — verified budget PDF receipts and original workbook downloads. */}
       <ProgramSection id="sources">
-        <PrimarySources citationsSlice={citationsSlice} />
+        <ProgramSources entries={programSourceEntries(citationsSlice)} program={program.slug} />
       </ProgramSection>
     </div>
     </CitationPanelProvider>
@@ -1249,103 +1267,6 @@ function SharedKeyDisclosure({
   );
 }
 
-// ── Primary sources (§2d section 12) ─────────────────────────────────────────
-
-function PrimarySources({ citationsSlice }: { citationsSlice: CitationsMap }) {
-  // DEDUPE BY DESTINATION (tri-persona review Wave 4, item 5). Every figure
-  // on a program page carries its own fact_id, and dozens of them cite the
-  // same PDF page — so this list rendered "Budget Justification PDF (page
-  // 12)" four identical times on /program/0604015F/ and five on B02100. Five
-  // links, one destination: a reader counting sources over-counts, and a
-  // reader clicking twice thinks the second link is broken.
-  //
-  // Keyed on the resolved URL (document + page), which is what the link
-  // actually promises — the workbook branch below has always deduped by
-  // sha256:sheet for exactly this reason; the PDF branch simply never did.
-  const seenPdf = new Set<string>();
-  const pdfLinks: [string, JbookPdfCitation][] = [];
-  for (const [factId, cit] of Object.entries(citationsSlice)) {
-    if (cit.kind !== "jbook_pdf") continue;
-    const url = cit.official_url;
-    if (!url?.includes("#page=")) continue;
-    if (seenPdf.has(url)) continue;
-    seenPdf.add(url);
-    pdfLinks.push([factId, cit as JbookPdfCitation]);
-    if (pdfLinks.length >= 5) break;
-  }
-
-  if (pdfLinks.length > 0) {
-    return (
-      <div className="mt-8 pt-6 border-t border-border mb-8">
-        <h2 className="text-base font-semibold mb-3 text-foreground">
-          Primary Sources
-        </h2>
-        <ul className="space-y-1.5">
-          {pdfLinks.map(([factId, cit]) => (
-            <li key={factId}>
-              <a
-                href={cit.official_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Budget Justification PDF (page {cit.page_number})
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  // Rollup tier: no J-book PDF pages are cited — list the workbook source
-  // documents instead (deduped by sheet), so every page still ends at its
-  // primary sources.
-  const seen = new Set<string>();
-  const workbookLinks: [string, WorkbookCitation][] = [];
-  for (const [factId, cit] of Object.entries(citationsSlice)) {
-    if (cit.kind !== "workbook") continue;
-    const wb: WorkbookCitation = cit;
-    if (!wb.official_url) continue;
-    const key = `${wb.sha256}:${wb.sheet}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    workbookLinks.push([factId, wb]);
-    if (workbookLinks.length >= 3) break;
-  }
-
-  if (workbookLinks.length > 0) {
-    return (
-      <div className="mt-8 pt-6 border-t border-border mb-8">
-        <h2 className="text-base font-semibold mb-3 text-foreground">
-          Primary Sources
-        </h2>
-        <ul className="space-y-1.5">
-          {workbookLinks.map(([factId, wb]) => (
-            <li key={factId}>
-              <a
-                href={wb.official_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Budget workbook — sheet {wb.sheet}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  return (
-    <SectionEmpty title="Primary Sources" className="mt-8 pt-6 border-t border-border">
-      No document-tier citations resolve on this page — its figures are
-      derived-tier only; open any cited number for its derivation chain.
-    </SectionEmpty>
-  );
-}
-
 // ── Above-the-fold answer strip (Phase 5C Task 10, Goal 5) ───────────────────
 // Answers the three reader questions in one compact row directly under the
 // header: WHAT IT IS / WHAT CHANGED / WHO GETS IT.
@@ -1368,8 +1289,8 @@ function AnswerItem({
   children: ReactNode;
 }) {
   return (
-    <div data-testid={testId} className="min-w-0 px-4 py-2.5 md:py-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
+    <div data-testid={testId} className={programStyles.answerItem}>
+      <div className={programStyles.answerLabel}>
         {label}
       </div>
       <div className="text-sm leading-snug text-foreground">{children}</div>
@@ -1519,6 +1440,7 @@ function WhoGetsItBody({
   lobbiedBy,
   withheld,
   peBli,
+  awardCount,
 }: {
   hhi: ProgramRow["hhi"];
   primes: NamedPrime[];
@@ -1527,6 +1449,7 @@ function WhoGetsItBody({
    *  shared-code branch and data.ts's field doc. */
   withheld: boolean;
   peBli: string;
+  awardCount: number;
 }) {
   // ROADMAP #80 (fix round 1): ONE basis per page, and only where it
   // publishes — the same decision the Contractor Concentration card makes
@@ -1601,7 +1524,7 @@ function WhoGetsItBody({
             would. */}
         <span
           data-who-lobby-badge
-          className="my-1 inline-block rounded border border-amber-600/60 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide leading-none text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+          className="my-1 inline-block rounded border border-amber-600/60 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold leading-none text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
         >
           Lobbying — not a contract
         </span>{" "}
@@ -1717,6 +1640,16 @@ function WhoGetsItBody({
     );
   }
 
+  // No concentration row, nothing withheld — but award records ARE listed
+  // below: the redesign's RecipientSummaryGap (2026-09-25 integration) points
+  // at the Related Awards table (#program-awards) rather than denying the
+  // links, which is what the redesign's program-skeleton leg (j) holds a
+  // "none" tier to. Its zero-award branch is this function's last sentence
+  // verbatim; the sentence stays inline below so gate 21's source-order
+  // checks (program-concentration.test.tsx) still find the three "none"
+  // branches in this file.
+  if (awardCount > 0) return <RecipientSummaryGap awardCount={awardCount} />;
+
   return (
     <span data-who-tier="none" className="text-muted-foreground">
       No company is linked to this line. Award records do not carry the
@@ -1757,7 +1690,7 @@ function AnswerStrip({
   const exhibitFamily = normalizeExhibitFamily(program.exhibit_family);
 
   return (
-    <div className="mb-6 grid grid-cols-1 md:grid-cols-3 rounded-lg border border-border bg-card divide-y md:divide-y-0 md:divide-x divide-border">
+    <div className={programStyles.answerStrip}>
       {/* WHAT IT IS (§P1-2) — dossier prose when the page has a dossier,
           otherwise a field-generated J-book sentence; rollup pages keep their
           honest tail. See WhatItIsBody / lib/what-it-is.ts. */}
@@ -1839,6 +1772,7 @@ function AnswerStrip({
           lobbiedBy={lobbiedBy}
           withheld={withheld}
           peBli={program.pe_bli}
+          awardCount={program.award_count}
         />
       </AnswerItem>
     </div>

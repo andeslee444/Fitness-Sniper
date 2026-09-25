@@ -1,0 +1,34 @@
+.toc:global(.doc-toc) { display: block; }
+.summary {
+  cursor: pointer;
+  padding: .75rem 1rem;
+  font: var(--type-ui);
+  font-weight: 600;
+  color: var(--foreground);
+}
+.summary:focus-visible { outline: 2px solid var(--cite-decoration); outline-offset: 3px; }
+@media (max-width: 63.999rem) {
+  .toc {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+    background: var(--card);
+  }
+  .desktopTitle { display: none; }
+  .disclosure[open] > .summary { border-bottom: 1px solid var(--border); }
+  .disclosure > :global(.doc-toc-list) {
+    padding: .65rem 1rem;
+    max-height: min(52vh, 24rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .disclosure :global(.doc-toc-link) { padding-block: .55rem; font: var(--type-ui); }
+}
+@media (min-width: 64rem) {
+  .summary { display: none; }
+}
+@media print {
+  .toc:global(.doc-toc) { display: none; }
+}

@@ -36,6 +36,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
     { url: `${base}/programs/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${base}/explore/`, lastModified: now, changeFrequency: "monthly", priority: 0.85 },
+    { url: `${base}/families/f-15/`, lastModified: now, changeFrequency: "monthly", priority: 0.85 },
     { url: `${base}/companies/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     // §P1-3: the curated rename/acquisition table — a publishable asset in
     // its own right, not just an appendix to /companies/.

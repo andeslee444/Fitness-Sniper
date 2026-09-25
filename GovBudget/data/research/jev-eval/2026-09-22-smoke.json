@@ -1,0 +1,15 @@
+{
+  "model": "jev-1.13.0",
+  "seconds": 0.458,
+  "answers": {
+    "transfer_supported": {
+      "type": "noul",
+      "noul": 0.98
+    }
+  },
+  "usage": {
+    "input_tokens": 406,
+    "output_tokens": 21
+  },
+  "description": "Initial connectivity probe using first lineage seed source sentence and proposed direction. Source state excludes label and reviewer note."
+}

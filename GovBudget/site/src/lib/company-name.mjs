@@ -202,6 +202,19 @@ const CASED = new Map(
     ELI: "Eli", // Eli Lilly and Company
     OLIN: "Olin",
     ROOT: "Root", // Brown & Root
+    // September 2026 refresh: short initialisms remain exactly as filed.
+    FCN: "FCN",
+    NAN: "NAN",
+    // Official spellings: mcdean.com and
+    // apmollerfonde.dk/fonden/om-fonden/ (checked 2026-09-24).
+    DEAN: "Dean",
+    "MØLLER": "Møller",
+    "MØLLERS": "Møllers",
+    "MC-KINNEY": "Mc-Kinney",
+    OG: "og",
+    FOND: "Fond",
+    TIL: "til",
+    ALMENE: "almene",
   }),
 );
 

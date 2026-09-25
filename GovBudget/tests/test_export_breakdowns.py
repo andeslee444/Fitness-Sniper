@@ -148,6 +148,8 @@ def _make_duckdb(tmp_path: Path) -> Path:
         "('0602025E', 'DARPA', 'rdte', 'DARPA Manufacturing', 1, 50.0,"
         " false, NULL, NULL)"
     )
+    con.execute("ALTER TABLE dim_programs ADD COLUMN account varchar")
+    con.execute("ALTER TABLE dim_programs ADD COLUMN account_title varchar")
     con.execute(
         "CREATE TABLE fct_district_programs ("
         "  pop_state varchar, pop_district varchar, pe_bli varchar,"
@@ -161,6 +163,7 @@ def _make_duckdb(tmp_path: Path) -> Path:
         "('VA', 'VA-08', '0601101E', NULL, 'DARPA Research', 'DARPA', 15, 5, 3, 50000000.0),"
         "('VA', 'VA-08', '0602025E', NULL, 'DARPA Manufacturing', 'DARPA', 8, 3, 2, 20000000.0)"
     )
+    con.execute("ALTER TABLE fct_district_programs ADD COLUMN account varchar")
     con.close()
     return db_path
 

@@ -29,9 +29,9 @@
 #   data/site/workbooks/  → r2:<bucket>/workbooks/
 #   data/site/citations/  → r2:<bucket>/citations/
 #
-# Sync is idempotent: rclone compares checksums and only transfers changed
-# files.  Destination objects NOT present in the source are preserved (no
-# --delete flag) so accidental partial runs are safe.
+# Upload is idempotent: rclone compares checksums and only transfers changed
+# files. Use copy, not sync: destination objects absent from a local export
+# must remain available to existing receipts and earlier deployments.
 #
 # EXIT CODES:
 #   0  success (or dry-run completed)
@@ -118,7 +118,7 @@ for folder in "${FOLDERS[@]}"; do
 
   echo "  SYNC  ${folder}/ → ${RCLONE_REMOTE}:${R2_BUCKET}/${folder}/"
   # shellcheck disable=SC2086
-  rclone sync \
+  rclone copy \
     $DRY_FLAG \
     --progress \
     --checksum \

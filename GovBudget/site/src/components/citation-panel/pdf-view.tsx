@@ -49,6 +49,8 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { pdfHighlightRect, type PdfPageCitation } from "@/lib/citations";
 import { usdEquivalence } from "@/lib/format";
 import { useAssetUrl } from "@/components/asset-config";
+import { officialDocumentUrl } from "@/lib/source-document";
+import styles from "./pdf-evidence.module.css";
 
 // ── PDF.js lazy import ───────────────────────────────────────────────────────
 // Imported dynamically to avoid SSR issues (PDF.js expects browser globals).
@@ -149,8 +151,6 @@ function getCachedDocument(
 
 // ── Render helpers ────────────────────────────────────────────────────────────
 
-/** J-book pages are 792pt wide (landscape letter) — highlight-math contract. */
-const PAGE_WIDTH_PT = 792;
 /**
  * Highlight band style — shared by the panel view and the zoom overlay.
  * amber-400/30 fill + amber-600 border: strong enough to spot on dense
@@ -175,7 +175,7 @@ function deviceDpr(): number {
 
 /**
  * Kick off a PDF.js render of `page` into `canvas`.
- * The backing store is sized at (cssWidth / 792) × oversample, capped at
+ * The backing store uses the source page width × oversample, capped at
  * MAX_CANVAS_PIXELS; CSS sizing is left to the caller (the canvas keeps its
  * intrinsic aspect ratio when styled with a width).
  */
@@ -185,7 +185,7 @@ function startPageRender(
   cssWidth: number,
   oversample: number,
 ): RenderTask {
-  let scale = (cssWidth / PAGE_WIDTH_PT) * oversample;
+  let scale = (cssWidth / page.getViewport({ scale: 1 }).width) * oversample;
   const probe = page.getViewport({ scale });
   const pixels = probe.width * probe.height;
   if (pixels > MAX_CANVAS_PIXELS) {
@@ -254,11 +254,12 @@ interface PdfViewProps {
   /** Official-source link label override (narrative card: "Open official
    *  source at p.N"). Defaults to the jbook_pdf wording. */
   officialLinkLabel?: string;
+  showOfficialLink?: boolean;
 }
 
 type ViewState = "loading" | "ready" | "error";
 
-export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
+export function PdfView({ citation, officialLinkLabel, showOfficialLink = true }: PdfViewProps) {
   const assetUrl = useAssetUrl();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -269,8 +270,11 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
   // Bumped on every open — remounts the overlay via key, resetting its zoom
   // and render state without effect-driven resets.
   const [overlayEpoch, setOverlayEpoch] = useState(0);
+  const [initialZoom, setInitialZoom] = useState(1);
+  const overlayTrigger = useRef<HTMLButtonElement | null>(null);
 
   const pdfUrl = assetUrl(stripFragment(citation.hosted_pdf_url));
+  const officialUrl = officialDocumentUrl(citation);
 
   // Measure container width once mounted
   useEffect(() => {
@@ -371,7 +375,7 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
           reconciles with the surface card's compact figure. */}
       {citation.amount_text && (
         <div>
-          <span className="text-xl font-semibold tabular-nums">
+          <span className="t-figure t-figure--4">
             {citation.amount_text}
           </span>
           {citation.units && (
@@ -381,7 +385,7 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
           )}
           {(() => {
             const eq = usdEquivalence(
-              Number(citation.amount_text.replace(/,/g, "")),
+              Number(citation.amount_text.replace(/[(),]/g, "")),
               citation.units,
             );
             return eq ? (
@@ -409,12 +413,24 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
         </div>
       )}
 
+      <div className={styles.toolbar}>
+        <p className={styles.caption}>Saved source copy · PDF page {citation.page_number}. {citation.amount_text ? "The cited amount is highlighted." : "The recorded passage start is highlighted."}</p>
+        {viewState === "ready" && <button type="button" className={styles.focus} data-testid="pdf-focus-evidence" onClick={(event) => {
+          overlayTrigger.current = event.currentTarget;
+          setInitialZoom(window.innerWidth < 640 ? ZOOM_MAX : 2);
+          setOverlayEpoch(e => e + 1); setOverlayOpen(true);
+        }}>Focus cited evidence</button>}
+      </div>
+
       {/* PDF canvas with highlight overlay. The outer wrapper anchors the
           Enlarge button; the inner container scrolls (auto-centered on the
           highlight) when the rendered page overflows. */}
       <div className="relative">
         <div
           ref={containerRef}
+          tabIndex={0}
+          role="region"
+          aria-label={`Scrollable source preview, PDF page ${citation.page_number}`}
           className={`relative w-full max-h-96 overflow-auto rounded-md border border-border bg-muted ${
             viewState !== "ready" ? "aspect-[792/612]" : ""
           }`}
@@ -458,13 +474,13 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
               </p>
               {error && (
                 /* text-muted-foreground/70 would fail WCAG AA; use full opacity */
-                <p className="text-xs font-mono text-muted-foreground max-w-full truncate">
+                <p className="t-id max-w-full truncate">
                   {error}
                 </p>
               )}
               {citation.official_url && (
                 <a
-                  href={citation.official_url}
+                  href={officialUrl ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -492,6 +508,7 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
             }}
             aria-label={`Budget justification PDF page ${citation.page_number}`}
           />
+          {viewState === "ready" && <PdfSelectableText url={pdfUrl} pageNumber={citation.page_number} cssWidth={containerWidth} />}
 
           {/* Highlight overlay */}
           {highlight && (
@@ -516,7 +533,9 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
           <button
             type="button"
             data-testid="pdf-enlarge"
-            onClick={() => {
+            onClick={(event) => {
+              overlayTrigger.current = event.currentTarget;
+              setInitialZoom(1);
               setOverlayEpoch((e) => e + 1);
               setOverlayOpen(true);
             }}
@@ -538,12 +557,14 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
         url={pdfUrl}
         open={overlayOpen}
         onOpenChange={setOverlayOpen}
+        initialZoom={initialZoom}
+        onReturnFocus={() => overlayTrigger.current?.focus()}
       />
 
       {/* Official source link (always visible) */}
-      {citation.official_url && (
+      {showOfficialLink && officialUrl && (
         <a
-          href={citation.official_url}
+          href={officialUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
@@ -574,6 +595,8 @@ interface PdfZoomOverlayProps {
   url: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialZoom: number;
+  onReturnFocus: () => void;
 }
 
 function PdfZoomOverlay({
@@ -581,6 +604,8 @@ function PdfZoomOverlay({
   url,
   open,
   onOpenChange,
+  initialZoom,
+  onReturnFocus,
 }: PdfZoomOverlayProps) {
   // Callback refs (state-backed): the dialog content mounts inside a Radix
   // portal/presence, so plain refs are not reliably populated when an
@@ -588,7 +613,7 @@ function PdfZoomOverlay({
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const [fitWidth, setFitWidth] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(initialZoom);
   // Last CSS width the canvas successfully rendered at. "ready"/"loading" are
   // DERIVED (renderedWidth vs pageCssWidth) so effects never set state
   // synchronously; the parent remounts this component (key=epoch) per open,
@@ -681,6 +706,10 @@ function PdfZoomOverlay({
           /* Radix conveys modality via aria-hidden on outside content;
              set aria-modal explicitly for AT that keys off the attribute. */
           aria-modal="true"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            onReturnFocus();
+          }}
         >
           <DialogPrimitive.Title className="sr-only">
             Enlarged PDF page {citation.page_number}
@@ -735,6 +764,9 @@ function PdfZoomOverlay({
           {/* Scroll/pan viewport */}
           <div
             ref={setScrollEl}
+            tabIndex={0}
+            role="region"
+            aria-label="Scrollable enlarged source page"
             className="relative min-h-0 flex-1 overflow-auto bg-muted p-4"
           >
             {failed ? (
@@ -766,6 +798,7 @@ function PdfZoomOverlay({
                   }
                   aria-label={`Budget justification PDF page ${citation.page_number}, enlarged`}
                 />
+                {ready && <PdfSelectableText url={url} pageNumber={citation.page_number} cssWidth={pageCssWidth} />}
                 {highlight && (
                   <div
                     className="absolute pointer-events-none"
@@ -797,4 +830,44 @@ function PdfZoomOverlay({
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );
+}
+
+/** PDF.js places the document's own text over its glyphs; no OCR or inferred selection rectangles. */
+function PdfSelectableText({ url, pageNumber, cssWidth }: { url: string; pageNumber: number; cssWidth: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = ref.current;
+    if (!container || cssWidth <= 0) return;
+    let cancelled = false;
+    let layer: import("pdfjs-dist").TextLayer | null = null;
+    (async () => {
+      try {
+        const pdfjs = await getPdfJs();
+        const pdf = await getCachedDocument(pdfjs, url);
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        if (cancelled) return;
+        const viewport = page.getViewport({ scale: cssWidth / page.getViewport({ scale: 1 }).width });
+        container.style.setProperty("--total-scale-factor", String(viewport.scale));
+        layer = new pdfjs.TextLayer({ textContentSource: content, container, viewport });
+        await layer.render();
+        // These transparent selection boxes use the document's measured glyph
+        // size and rotation. They are source geometry, like the canvas/bbox,
+        // not text styled with the site's UI typography ladder.
+        const minimum = Number(container.style.getPropertyValue("--min-font-size")) || 1;
+        for (const span of container.querySelectorAll<HTMLElement>("span")) {
+          const height = parseFloat(span.style.getPropertyValue("--font-height"));
+          if (!Number.isFinite(height)) continue;
+          span.style.fontSize = `${viewport.scale * minimum * height}px`;
+          span.style.transform = `rotate(${span.style.getPropertyValue("--rotate") || "0deg"}) scaleX(${span.style.getPropertyValue("--scale-x") || "1"}) scale(${1 / minimum})`;
+        }
+        if (!cancelled) container.dataset.textReady = "true";
+      } catch {
+        // The scanned page and recorded highlight remain usable when text is unavailable.
+        if (!cancelled) container.dataset.textReady = "false";
+      }
+    })();
+    return () => { cancelled = true; layer?.cancel(); container.replaceChildren(); };
+  }, [url, pageNumber, cssWidth]);
+  return <div ref={ref} className={styles.textLayer} data-testid="pdf-text-layer" aria-label="Selectable source document text" />;
 }

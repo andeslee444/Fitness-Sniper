@@ -248,6 +248,10 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.execute("insert into fct_state_per_capita values ('CA','Education','2025',5000000000.0,39500000,126.58,2020,'https://example.com/spend','https://example.com/pop','full state')")
 
+    con.execute("alter table fct_district_programs add column account varchar")
+    con.execute("alter table dim_programs add column account varchar")
+    con.execute("alter table dim_programs add column account_title varchar")
+    con.execute("alter table fct_budget_to_awards add column account varchar")
     con.close()
 
 
@@ -566,6 +570,68 @@ def test_export_site_citations_jbook_pdf(pg_dsn, tmp_path):
         assert official.endswith(f"#page={page_n}"), f"bad official_url: {official}"
         assert res in ("unique", "ambiguous_first")
         assert (site / "pdfs" / f"{doc_sha}.pdf").exists()
+
+
+@pytest.mark.parametrize("header,expected_resolution,expected_units", [
+    ("Dollars in Thousands", "unique", "USD thousands"),
+    ("COST ($ in Millions)", "unresolved", None),
+])
+def test_export_site_pdf_scale_evidence_and_degraded_receipt(
+    pg_dsn, tmp_path, header, expected_resolution, expected_units,
+):
+    import pdfplumber
+    from pdf_factory import make_pdf
+    from govbudget.verify_phase5b1 import citation_gate5b1, integrity_gate5b1
+
+    source = tmp_path / "source.pdf"
+    make_pdf(source, [[header, "PE 0601101E 280,494"]])
+    _, sha = _seed_jbook_doc(pg_dsn, pdf_path=source)
+    with pdfplumber.open(source) as pdf:
+        word = next(w for w in pdf.pages[0].extract_words() if w["text"] == "280,494")
+    # Simulate a cached provenance match made by the old scale-agnostic resolver.
+    with psycopg.connect(pg_dsn, autocommit=True) as pg:
+        pg.execute(
+            "insert into provenance_pages (document_sha256, pe_bli, project_number,"
+            " scenario, amount_millions, amount_text, page_number, x0, x1, top_pt,"
+            " bottom_pt, page_width, page_height, resolution, candidate_pages)"
+            " values (%s, '0601101E', null, 'PriorYear', 280.494, '280,494', 1,"
+            " %s, %s, %s, %s, 612, 792, 'unique', 1)",
+            (sha, word["x0"], word["x1"], word["top"], word["bottom"]),
+        )
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+    with duckdb.connect() as con:
+        cursor = con.execute(
+            "select * from read_parquet(?) where kind = 'jbook_pdf'",
+            [str(site / "citations" / "citations.parquet")],
+        )
+        rows = cursor.fetchall()
+        assert len(rows) == 1
+        citation = dict(zip([column[0] for column in cursor.description], rows[0]))
+        canonical = con.execute(
+            "select fact_id, amount_millions from read_parquet(?)",
+            [str(site / "data" / "jbook_details.parquet")],
+        ).fetchall()
+    fid = fact_id_jbook(sha, "0601101E", None, "PriorYear", "280.494")
+    assert canonical == [(fid, 280.494)]
+    assert citation["fact_id"] == fid
+    assert citation["sha256"] == sha
+    assert citation["resolution"] == expected_resolution
+    assert citation["units"] == expected_units
+    if expected_resolution == "unresolved":
+        for field in ("amount_text", "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height"):
+            assert citation[field] is None
+        assert citation["hosted_pdf_url"] == f"/pdfs/{sha}.pdf"
+        assert citation["official_url"] == "https://example.mil/darpa.pdf"
+    else:
+        assert citation["amount_text"] == "280,494"
+    result = citation_gate5b1(site)
+    assert result["ok"], result["failures"]
+    assert result["jbook_pdf_unresolved_total"] == int(expected_resolution == "unresolved")
+    result = integrity_gate5b1(site)
+    assert result["ok"], result
 
 
 def test_export_site_citations_workbook_fact_id_matches_budget_lines(pg_dsn, tmp_path):

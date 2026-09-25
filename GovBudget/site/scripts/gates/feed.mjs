@@ -111,7 +111,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { JSDOM } from "jsdom";
-import { companyDisplay } from "../../src/lib/company-name.mjs";
+import { companyLabel } from "../../src/lib/company-name.mjs";
 import { hhiBand } from "../../src/lib/hhi-band.mjs";
 import {
   FR_NS,
@@ -613,9 +613,25 @@ function parseXmlFile(absPath) {
   return doc;
 }
 
+/** Derive attribution from the source entity, never from the published XML. */
+export function companyLinkageReference(entity, details) {
+  return {
+    slug: entity.slug,
+    // The company page and feed use the curated source label when present,
+    // with registry-name casing as the fallback. Reading the source here
+    // preserves the exact-name check even when a registration group is
+    // deliberately labelled more narrowly than its registry name.
+    displayName: companyLabel(entity.display_name, entity.label),
+    familyKey: entity.family_key,
+    ...companyWatchPeBlis(details),
+  };
+}
+
 /** Rebuild the expected feed set from the sidecars — the same inputs the generator read. */
 function expectedTargets() {
-  const cards = readJson(path.join(jsonDir, "feed.json")).cards ?? [];
+  // Inventory is the shipped publication. The coverage gate independently
+  // checks its exact membership against source cards and rendered receipts.
+  const cards = readJson(path.join(outDir, "json", "feed.json")).cards ?? [];
   const meta = readJson(path.join(jsonDir, "site_meta.json"));
   const programPages = new Set(
     fs
@@ -628,19 +644,9 @@ function expectedTargets() {
   for (const e of entitiesTop) {
     const detPath = path.join(jsonDir, "entity_details", `${e.slug}.json`);
     if (!fs.existsSync(detPath)) continue;
-    const watch = companyWatchPeBlis(readJson(detPath));
+    const watch = companyLinkageReference(e, readJson(detPath));
     if (watch.peBlis.size === 0) continue;
-    companyWatch.push({
-      slug: e.slug,
-      // §P2-4: the feed's linkage entity carries the DISPLAY casing, the same
-      // string the company page's <h1> shows. Re-derived here from the
-      // registry name through the shared rule — never read back off the
-      // published XML, so a generator that stopped applying the rule (or
-      // applied a different one) still fails this leg.
-      displayName: companyDisplay(e.display_name),
-      familyKey: e.family_key,
-      ...watch,
-    });
+    companyWatch.push(watch);
   }
   return {
     cards,
@@ -1091,7 +1097,7 @@ function runSyndicatedQualifierLeg(errors, notes, targets, docs) {
  * reference. Mislabelling (mention published as award), a missing block, a
  * wrong company name, or an unknown basis id all fail.
  */
-function runLinkageLeg(errors, notes, targets, docs, companyWatchBySlug) {
+export function runLinkageLeg(errors, notes, targets, docs, companyWatchBySlug) {
   const companyTargets = targets.filter((t) => t.kind === "company");
   if (companyTargets.length === 0) {
     errors.push(

@@ -1,0 +1,591 @@
+/* The plate, not the instrument: the DEFAULT view is the drawn planform
+   on the hangar floor — the same hand and wiring as the homepage plates
+   (external <use>, container color = ink) — no dark box, no chrome band.
+   The procedural three.js scene is the opt-in "Inspect in 3D"; only while
+   it is active does the instrument take its dark register ([data-active]).
+   Hex values below are the file's pre-existing dark-register set (token
+   allowlist is per-file); the paper register speaks in .family's vars. */
+.instrument {
+  --model-ink: #0b2229;
+  --model-line: #31525b;
+  --model-cyan: #b4e2dc;
+  isolation: isolate;
+  overflow: hidden;
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+  box-shadow: none;
+}
+.instrument[data-active="true"] {
+  background: var(--model-ink);
+  color: #dcebe9;
+}
+
+/* The plate's register mark — mono, an identifier, top-left, the same
+   treatment the homepage plates wear (`02 / AIR`, `03 / CYBER`). It is the
+   model program: `01 / AIR`. */
+.plateCorner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  line-height: 1.5;
+  color: var(--muted-ink);
+  pointer-events: none;
+}
+
+.stage {
+  position: relative;
+  height: 430px;
+  min-height: 320px;
+  isolation: isolate;
+}
+/* The dark vitrine and its grid exist only while the model is live. */
+.instrument[data-active="true"] .stage {
+  background: radial-gradient(ellipse at 54% 55%, #18333b 0, #0a1d24 75%);
+}
+.instrument[data-active="true"] .stage::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #b6d7d605 1px, transparent 1px),
+    linear-gradient(#b6d7d605 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.45;
+}
+.poster {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ink);
+  transition: opacity var(--motion-base) ease;
+}
+/* The drawn plate arrives by external <use>; the container's color sets
+   the ink on the page's paper. Two renders of the SAME plate, exactly one
+   visible per width — `.poster .plateX` must out-specificity `.poster svg`
+   or both copies render at every width (the homepage hero's ghost-plate
+   lesson, all six iteration-5 critics). */
+.poster svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* `meet` at ≥768: an aspect-correct 15/8 wrapper, margin:auto centered, so
+   the callout markers (anchored in viewBox percent) land on the drawing
+   whatever the stage's own aspect ratio. */
+.poster .plateFull {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  aspect-ratio: 15 / 8;
+  max-width: 100%;
+  max-height: 100%;
+}
+/* `xMinYMid slice` at ≤767: the wrapper stays inset:0 and the svg's own
+   viewport does the cropping — no descendant rect escapes its container
+   (the containment proof counts geometry, not clipping). */
+.poster .plateCrop {
+  display: none;
+}
+@media (max-width: 767px) {
+  .poster .plateFull {
+    display: none;
+  }
+  .poster .plateCrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+  }
+}
+
+/* The callouts ARE the section rail: numbered markers at the measured
+   plate anchors, staggered off the point with a short leader so the three
+   nose anchors (02/03/04) never stack. Active = rust on the marker AND the
+   rail item — one instrument. */
+.plateMarker {
+  position: absolute;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  z-index: 2;
+}
+.markerNum {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: var(--paper);
+  transition:
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease;
+}
+.markerLeader {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1px;
+  background: var(--rule);
+  transform-origin: left center;
+}
+/* The stagger, per marker: chip center offset from the anchor, leader
+   rotated to meet it. */
+.plateMarker[data-marker="0"] .markerNum { transform: translate(17px, 13px); }
+.plateMarker[data-marker="0"] .markerLeader { width: 30px; transform: rotate(40deg); }
+.plateMarker[data-marker="1"] .markerNum { transform: translate(13px, -41px); }
+.plateMarker[data-marker="1"] .markerLeader { width: 32px; transform: rotate(-51deg); }
+.plateMarker[data-marker="2"] .markerNum { transform: translate(-45px, -37px); }
+.plateMarker[data-marker="2"] .markerLeader { width: 36px; transform: rotate(217deg); }
+.plateMarker[data-marker="3"] .markerNum { transform: translate(-43px, 15px); }
+.plateMarker[data-marker="3"] .markerLeader { width: 34px; transform: rotate(141deg); }
+.plateMarker:hover .markerNum {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.plateMarker[aria-pressed="true"] .markerNum {
+  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.plateMarker:focus-visible {
+  outline: none;
+}
+.plateMarker:focus-visible .markerNum {
+  outline: 2px solid #e8b77e;
+  outline-offset: 2px;
+}
+.posterHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+  z-index: 2;
+}
+.scene :global(canvas) {
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline-offset: -4px;
+  cursor: grab;
+}
+.scene :global(canvas:active) {
+  cursor: grabbing;
+}
+.scene :global(canvas:focus-visible) {
+  outline: 2px solid #e4b57b;
+}
+.scene :global(.f15-model-pin) {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #90c8cb;
+  background: #0c242de8;
+  color: #d4eeee;
+  font: var(--type-id);
+  box-shadow: 0 0 0 4px #081b2277;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+.scene :global(.f15-model-pin:hover) {
+  background: #244c56;
+  box-shadow: 0 0 0 5px #91c5c222;
+}
+.scene :global(.f15-model-pin[aria-pressed="true"]) {
+  color: #0d252c;
+  background: #b6dcd5;
+  border-color: #dbf2e6;
+  box-shadow: 0 0 0 5px #9bd4c92a;
+}
+.scene :global(.f15-model-pin:focus-visible) {
+  outline: 2px solid #edb87a;
+  outline-offset: 4px;
+}
+
+/* The ONE bordered control on the plate. */
+.activate {
+  position: absolute;
+  bottom: 28px;
+  left: auto;
+  right: 24px;
+  transform: none;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  padding: 12px 17px;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast);
+}
+.activate > span:nth-child(2) {
+  font: var(--type-ui); font-weight: 600;
+  font-weight: 600;
+}
+.activate:hover {
+  background: var(--ink);
+  color: var(--sheet);
+}
+.instrument[data-active="true"] .activate {
+  border-color: #91b3af;
+  color: #e0eeea;
+}
+.instrument[data-active="true"] .activate:hover {
+  background: #23423f;
+  color: #e0eeea;
+}
+
+.loading {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #09202cec;
+  border: 1px solid #52737b;
+  color: #dcebe9;
+  padding: 14px 18px;
+  font: var(--type-ui);
+  pointer-events: none;
+}
+.loadingDot {
+  width: 5px;
+  height: 5px;
+  background: #b6dcd5;
+  border-radius: 50%;
+}
+
+/* The bottom-left plate stamp: variant · nickname · year — mono, because
+   identifiers are mono's job. While the model is live the same corner
+   carries the control hint in SANS (mono is not for instructions). */
+.plateStamp {
+  position: absolute;
+  z-index: 3;
+  bottom: 28px;
+  left: 24px;
+  max-width: 45%;
+  line-height: 1.6;
+  color: var(--muted-ink);
+  pointer-events: none;
+}
+.plateStamp[data-live] {
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  letter-spacing: 0; text-transform: none;
+}
+.instrument[data-active="true"] .plateStamp {
+  color: #a6c4c3;
+}
+
+.compareLegend {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  gap: 17px;
+  padding: 7px 11px;
+  background: #0b202adb;
+  border: 1px solid #29474e;
+  color: #dcebe9;
+  font: var(--type-id);
+  white-space: nowrap;
+}
+.compareLegend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.compareLegend i {
+  width: 13px;
+  height: 2px;
+  background: #c2dcdb;
+}
+.compareLegend span:last-child {
+  color: #e5b77e;
+}
+.compareLegend span:last-child i {
+  background: #e5b77e;
+}
+
+/* The 3D toolbar only renders while the model is live — it keeps the
+   dark register (the instrument is dark then). */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-top: 1px solid #31525b;
+  background: #10272e;
+}
+.viewButtons,
+.utilities {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: #c3d9d9;
+  font: var(--type-id);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast),
+    transform var(--motion-fast),
+    box-shadow var(--motion-fast);
+}
+.toolbar button:hover:not(:disabled) {
+  border-color: #92b8bc;
+}
+.toolbar button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 2px #02111555;
+}
+.toolbar button[aria-pressed="true"] {
+  background: #bad5cb;
+  color: #102c33;
+  border-color: #d2e5d9;
+}
+.toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.utilities button:has(svg) {
+  padding: 6px;
+}
+.topicKeys {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid #29434d;
+}
+.topicKeys button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 15px 13px;
+  text-align: left;
+  min-height: 48px;
+  border-right: 1px solid #29434d;
+  background: #10252e;
+  color: #adcad0;
+  font: var(--type-ui);
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.topicKeys button:last-child {
+  border-right: 0;
+}
+.topicKeys button > span {
+  font: var(--type-id);
+  color: #638c98;
+}
+.topicKeys button:hover {
+  background: #17333d;
+}
+.topicKeys button[aria-pressed="true"] {
+  background: #213d45;
+  color: #eff2e6;
+  box-shadow: inset 0 -2px #c4d9cc;
+}
+.topicKeys button[aria-pressed="true"] > span {
+  color: #bed9ca;
+}
+
+/* The caption bar beneath the plate — one treatment on every page that
+   shows a plate: quiet small print on paper, the conceptual-illustration
+   disclaimer said once. */
+.caption {
+  margin: 0;
+  padding: 14px 0 0;
+  color: var(--muted-ink);
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-label);
+  line-height: 1.65;
+  background: transparent;
+  max-width: none !important;
+}
+.instrument[data-active="true"] .caption {
+  color: #9bb6bc;
+  border-top-color: #34514f;
+  padding: 14px 24px;
+}
+.error {
+  margin: 0;
+  padding: 12px 0 0;
+  color: var(--ink);
+  font-size: var(--text-label);
+  line-height: 1.5;
+}
+.instrument button:focus-visible {
+  outline: 2px solid #e8b77e;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .stage {
+    height: 300px;
+    min-height: 300px;
+  }
+  .activate {
+    right: 16px;
+    bottom: 18px;
+    padding: 9px 12px;
+  }
+  .plateStamp {
+    left: 16px;
+    bottom: 18px;
+    max-width: 48%;
+  }
+  .toolbar {
+    padding: 9px;
+    gap: 8px;
+  }
+  .toolbar button {
+    min-height: 34px;
+    padding: 5px 8px;
+  }
+  .topicKeys button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 12px 9px;
+  }
+  .compareLegend {
+    top: 14px;
+    gap: 10px;
+    padding: 6px 8px;
+  }
+  .caption {
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .instrument * {
+    transition: none !important;
+  }
+}
+@media print {
+  .scene,
+  .activate,
+  .toolbar,
+  .loading {
+    display: none !important;
+  }
+  .poster {
+    opacity: 1 !important;
+  }
+  .stage {
+    aspect-ratio: 2;
+  }
+  .topicKeys button {
+    color: #243b40;
+  }
+  .instrument {
+    break-inside: avoid;
+  }
+}
+
+@media (min-width: 900px) {
+  .stage {
+    aspect-ratio: auto;
+    min-height: 430px;
+    height: 430px;
+  }
+  .instrument {
+    display: flex;
+    flex-direction: column;
+  }
+  .stage {
+    flex: none;
+  }
+  .toolbar button {
+    min-height: 36px;
+  }
+  .activate > span:nth-child(2) {
+  }
+}
+
+/* Touch controls keep configuration switches and camera nudges on separate rows. */
+@media (max-width: 760px) {
+  .toolbar { display: block; padding: 10px 12px; }
+  .viewButtons { margin-bottom: 8px; }
+  .utilities { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .utilities > button:first-child { grid-column: 1 / -1; }
+  .utilities:has(> button:nth-child(2):not(:has(svg))) > button:first-child { grid-column: span 2; }
+  .utilities > button:nth-child(2):not(:has(svg)) { grid-column: span 3; }
+}
+
+/* ── Round-6 mobile critique #6 + #13: at 390 every plate overlay stacks
+   into ONE mono line under the image — the variant stamp and the 3D
+   control, `F-15EX · EAGLE II · 2021 · Inspect in 3D` — and the drawn
+   plate is cropped with intent to the nose and cockpit (the plateCrop
+   copy's xMinYMid slice), not the whole aircraft shrunk to a postage
+   stamp. Scoped to :not([data-active]): the live 3D instrument keeps its
+   dark stage, hint stamp and toolbar. ── */
+@media (max-width: 600px) {
+  .instrument:not([data-active="true"]) .stage {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 0;
+  }
+  .instrument:not([data-active="true"]) .poster {
+    position: relative;
+    flex: 0 0 100%;
+    height: 15rem;
+  }
+  .instrument:not([data-active="true"]) .plateStamp {
+    position: static;
+    order: 2;
+    flex: 1 1 auto;
+    max-width: none;
+    align-self: center;
+    padding: 0.6rem 0;
+  }
+  .instrument:not([data-active="true"]) .activate {
+    position: static;
+    order: 3;
+    flex: 0 0 auto;
+    margin: 0.45rem 0 0.45rem 0.75rem;
+    padding: 0.45rem 0.65rem;
+  }
+}

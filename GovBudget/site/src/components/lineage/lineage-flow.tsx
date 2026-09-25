@@ -83,7 +83,7 @@ function StatedCiteMarker({ factId }: { factId: string }) {
       type="button"
       data-lineage-cite=""
       data-fact-id={factId}
-      className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-card px-1 py-0.5 align-middle font-mono text-xs whitespace-nowrap text-muted-foreground underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 transition-colors hover:border-primary/50 hover:bg-muted hover:text-foreground hover:decoration-solid hover:decoration-(--cite-decoration-hover) focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-card px-1 py-0.5 align-middle t-id whitespace-nowrap underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 transition-colors hover:border-primary/50 hover:bg-muted hover:text-foreground hover:decoration-solid hover:decoration-(--cite-decoration-hover) focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       title="View the source sentence stating this link (official J-book page)"
       aria-label="View source citation for this lineage link"
       onClick={(e) => {
@@ -288,7 +288,7 @@ function NodeLabel({
         x={cx}
         y={node.y0 + 30}
         textAnchor="middle"
-        fontSize={8}
+        fontSize={10}
         className="fill-muted-foreground"
       >
         {node.resolved ? node.short ?? "—" : "(unresolved)"}
@@ -376,7 +376,7 @@ function IdentityTable({
                 </span>
               ) : null}
               {!node.resolved ? (
-                <span className="block font-normal italic text-muted-foreground">
+                <span className="block font-normal text-muted-foreground">
                   no program page in this corpus (unresolved reference)
                 </span>
               ) : null}
@@ -391,7 +391,7 @@ function IdentityTable({
                 measures cells everywhere else too. */}
             <td
               data-primary-value="lineage-amount"
-              className="px-2 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+              className="t-figure t-figure--2 px-2 py-1 text-right whitespace-nowrap"
             >
               {node.amount ? (
                 <span>
@@ -639,20 +639,20 @@ export function LineageFlow({
               className="min-w-0 rounded-lg border border-border bg-card p-3"
             >
               <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="t-label">
                   Family {f.family_id}
-                </h3>
+                </p>
                 <span className="text-xs text-muted-foreground">
                   {f.nodes.length} identities · {f.edges.length} stated{" "}
                   {f.edges.length === 1 ? "link" : "links"}
                 </span>
                 {f.has_split && (
-                  <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium text-muted-foreground">
                     branches — the funding line follows the 1:1 chain only
                   </span>
                 )}
                 {f.cyclic && (
-                  <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium text-muted-foreground">
                     editions disagree on direction — step order is not a claim
                   </span>
                 )}
@@ -737,10 +737,10 @@ export function LineageFlow({
                     className="min-w-0 rounded-lg border border-dashed border-amber-500/50 bg-amber-500/10 p-3"
                   >
                     <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-200">
+                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
                         Candidate {i + 1}
-                      </h3>
-                      <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-semibold whitespace-nowrap text-amber-800 dark:text-amber-200">
+                      </p>
+                      <span className="rounded bg-amber-500/20 px-1 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-800 dark:text-amber-200">
                         candidate (unverified)
                       </span>
                       {c.basis && (

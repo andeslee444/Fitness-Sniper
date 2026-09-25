@@ -31,6 +31,9 @@ from govbudget.entity_display_aliases import (
 )
 
 SEED = ROOT / "data-seeds" / "entity_display_aliases.csv"
+HISTORICAL_SEED = (
+    ROOT / "data-seeds" / "history" / "entity_display_aliases.2026-09-01.csv"
+)
 
 HEADER = ",".join(REQUIRED_COLUMNS)
 
@@ -106,6 +109,23 @@ def test_the_marinette_shipyard_is_not_titled_an_italian_research_council():
     assert labels.get("CONSIGLIO NAZIONALE DELLE RICERCHE") == (
         "Marinette Marine Corporation"
     )
+
+
+def test_flagship_review_survives_its_family_falling_out_of_published_set():
+    """A changed parent argmax must not transfer a review to an unrelated key.
+
+    The former dominant Raytheon UEI moved to RTX during the September refresh;
+    the remaining Rockwell family is below the published top 200. Preserve its
+    original review while keeping the active RTX label grounded in its source.
+    """
+    historical = alias_map(load_display_aliases(HISTORICAL_SEED))
+    assert historical["ROCKWELL COLLINS AUSTRALIA"] == (
+        "RTX (Raytheon Company registrations)"
+    )
+    active = {a.family_key: a for a in load_display_aliases(SEED)}
+    assert "ROCKWELL COLLINS AUSTRALIA" not in active
+    assert active["RTX"].evidence == "sourced"
+    assert active["RTX"].display_name == "RTX Corporation"
 
 
 def test_shipped_seed_keys_are_warehouse_keys_not_names():

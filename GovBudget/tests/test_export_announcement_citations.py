@@ -254,6 +254,9 @@ def test_mechanical_links_keep_the_derived_row_and_subaward_links_do_not(tmp_pat
     # and the subaward row is never an announcement card
     assert by_fid[_SUB_FID][_CIT_IDX["official_url"]].startswith(
         "https://www.usaspending.gov/award/")
+    # link-only evidence retains the medium-confidence formula and no amount
+    assert by_fid[_SUB_FID][_CIT_IDX["recorded_value"]] is None
+    assert "subaward+lexicon" in by_fid[_SUB_FID][_CIT_IDX["formula"]]
 
 
 def test_fact_ids_are_the_derived_ids_the_program_pages_already_reference(tmp_path):
