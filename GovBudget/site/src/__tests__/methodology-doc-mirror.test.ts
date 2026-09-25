@@ -314,3 +314,111 @@ describe("methodology §4 ↔ docs §4 — the Task 26 passages", () => {
     );
   });
 });
+
+/**
+ * 2026-09-25 final integration review (findings #4/#6/#12). The Medium
+ * sentence's account / sub-agency precision figure is derived on the page
+ * from site_meta.link_precision.methods["account+subagency"]; the merge's
+ * published-population rule moved it from 0 of 60 to 0 of 58 (two sampled
+ * links no longer publish), and docs §4 kept printing "0 of 60" in two places,
+ * one of them "the figure the page prints". Nothing bound them. This binds
+ * the mirrored sentence to the shipped export — re-state docs §4 when it reds —
+ * and holds the study paragraph to a figure that cannot drift.
+ */
+describe("methodology §4 ↔ docs §4 — the account / sub-agency precision figure", () => {
+  type Method = { confirmed: number; sampled: number; judged?: string | null; sample_id?: string };
+  const meta = JSON.parse(
+    fs.readFileSync(path.join(SITE, "..", "data", "site", "json", "site_meta.json"), "utf8"),
+  ) as { link_precision?: { methods?: Record<string, Method> } };
+  const sub = meta.link_precision?.methods?.["account+subagency"] ?? null;
+  const n = (v: number) => v.toLocaleString("en-US");
+  const docSection = () =>
+    norm(between(fs.readFileSync(DOC, "utf8"), "\n## 4.", "\n## 5.").replace(/\*\*/g, ""));
+  const LEAD =
+    "A held-out sample of account / sub-agency links, judged on program attribution, confirmed";
+
+  it("the export carries the figure (non-vacuity)", () => {
+    expect(sub, "site_meta.link_precision.methods['account+subagency'] is missing").not.toBeNull();
+  });
+
+  it("the page renders that sentence from site_meta, never from a literal", () => {
+    const src = fs.readFileSync(PAGE, "utf8").replace(/\s+/g, " ");
+    expect(src).toContain(
+      'judged on program attribution, confirmed{" "} {formatCount(linkPrecisionSubagency.confirmed)} of{" "} {formatCount(linkPrecisionSubagency.sampled)}',
+    );
+  });
+
+  it("the docs mirror states the shipped export's figure, in the page's words", () => {
+    const judged = sub!.judged ? ` (${sub!.judged})` : "";
+    expect(docSection()).toContain(`${LEAD} ${n(sub!.confirmed)} of ${n(sub!.sampled)}${judged}.`);
+  });
+
+  it("types no other figure for that tier, and never calls a typed count the page's figure", () => {
+    const doc = docSection();
+    for (const m of doc.matchAll(/confirmed (\d[\d,]*) of (\d[\d,]*)/g)) {
+      expect(`${m[1]} of ${m[2]}`).toBe(`${n(sub!.confirmed)} of ${n(sub!.sampled)}`);
+    }
+    expect(doc).not.toMatch(/\d[\d,]* of \d[\d,]* is the figure the page prints/);
+  });
+
+  it("the study paragraph's 'none of the 60 was confirmed' holds while that sample is the published one", () => {
+    const doc = docSection();
+    expect(doc).toContain("none of the 60 was confirmed");
+    if (sub!.sample_id === "2026-09-05") expect(sub!.confirmed).toBe(0);
+  });
+});
+
+/**
+ * 2026-09-25 review round 2. The company-family High sentence said "the
+ * recipients share one reported parent UEI" on /methodology/ §4 and in
+ * docs/methodology.md §4 (and /companies/ copied it), which is wider than the
+ * rule in src/govbudget/entity_graph.py build_entity_xwalk: a family is keyed
+ * on the normalized reported parent NAME (on the parent UEI only where no
+ * name is reported), both methods grade high, and any family whose members
+ * report more than one distinct parent UEI is downgraded to medium — so a
+ * high family can hold a member with no parent UEI (240 of the lake's 112,541
+ * high families, measured 2026-09-25). One sentence on all three surfaces,
+ * and none may go back to the shared-UEI wording.
+ */
+describe("methodology §4 ↔ docs §4 ↔ /companies/ — the company-family High tier", () => {
+  const HIGH =
+    "High confidence (registry fact): the recipients are grouped under one reported parent name, " +
+    "or one parent UEI where no name is reported, and never span two different parent UEIs; " +
+    "that does not prove ownership.";
+  const COMPANIES = path.join(SITE, "src", "app", "companies", "page.tsx");
+  const docSection = () =>
+    norm(between(fs.readFileSync(DOC, "utf8"), "\n## 4.", "\n## 5.").replace(/[*]/g, ""));
+  /** §4 of the page, rendered text only: the JSX comments that record the
+   *  old wording are history, not copy. */
+  const pageSection = () =>
+    norm(
+      between(fs.readFileSync(PAGE, "utf8"), "{/* §4", "{/* §5").replace(/\{\/\*[\s\S]*?\*\/\}/g, ""),
+    );
+  /** /companies/' confidence paragraph, rendered text (comments dropped). */
+  const companiesPara = () => {
+    const src = fs.readFileSync(COMPANIES, "utf8");
+    const m = /<p[^>]*data-confidence-method[^>]*>([\s\S]*?)\{showConfidence/.exec(src);
+    expect(m, "/companies/ confidence paragraph not found").toBeTruthy();
+    return norm(m![1].replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\{" "\}/g, " "));
+  };
+
+  it("the page and the docs state the same High sentence", () => {
+    expect(pageSection()).toContain(HIGH);
+    expect(docSection()).toContain(HIGH);
+  });
+
+  it("/companies/ states the same rule, briefly, with no ownership claim", () => {
+    const para = companiesPara();
+    expect(para).toContain(
+      "high = recipients grouped under one reported parent name, never two different parent UEIs;",
+    );
+    expect(para).not.toMatch(/subsidiar|owned by|common parent/i);
+  });
+
+  it("no surface goes back to the wider shared-UEI wording", () => {
+    for (const text of [pageSection(), docSection(), companiesPara()]) {
+      expect(text).not.toMatch(/share one reported parent UEI/);
+      expect(text).not.toMatch(/report the same parent UEI/);
+    }
+  });
+});

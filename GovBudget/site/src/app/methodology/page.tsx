@@ -899,9 +899,24 @@ export default function MethodologyPage() {
                       verify ownership, so "subsidiaries" and "registered …
                       in SAM.gov" overclaimed — folded into this branch's
                       shorter sentence; "slightly different" came off the
-                      Medium sentence to pay for it (+17 / −19 rendered). */}
-                  <em>High confidence</em> (registry fact): the recipients share
-                  one reported parent UEI, which does not prove ownership.{" "}
+                      Medium sentence to pay for it (+17 / −19 rendered).
+                      Review round 2 (same day): "share one reported parent
+                      UEI" was wider than the rule. entity_graph.
+                      build_entity_xwalk keys a family on the normalized
+                      reported parent NAME (on the parent UEI only where no
+                      name is reported), grades those two methods high, and
+                      downgrades to medium every family whose members report
+                      more than one distinct parent UEI — so a high family can
+                      hold a member with no parent UEI at all. Measured
+                      2026-09-25 on the lake's entity_xwalk: 112,541 high
+                      families, 112,472 keyed on a parent name and 69 on a
+                      parent UEI, 240 holding a member with no parent UEI, 0
+                      spanning two. docs/methodology.md §4 mirrors this
+                      sentence (methodology-doc-mirror.test.ts). */}
+                  <em>High confidence</em> (registry fact): the recipients are
+                  grouped under one reported parent name, or one parent UEI
+                  where no name is reported, and never span two different
+                  parent UEIs; that does not prove ownership.{" "}
                   <em>Medium confidence</em> (name inference): legal-name
                   variants normalize to the same string. Where a whole
                   table is uniform, the per-row chip is suppressed and the method
@@ -1300,11 +1315,17 @@ export default function MethodologyPage() {
               universe — those features require full R-2/P-40 J-book data, so
               that is their denominator.
             </p>
+            {/* 2026-09-25 final review #8: this promised "a dated target beside
+                each figure", and /coverage/ says no row carries one (every
+                Target cell reads "No dated target…"). It now names what the
+                table does carry — the blocker and where the work stands, the
+                page's own lede — and loses the em-dash pair gate 27 leg 13
+                had exempted as production debt (#175). */}
             <p className="text-muted-foreground leading-7 mb-5">
               These blocks say what each surface covers and why. For the same
-              coverage laid out in one table — with the specific blocker and a
-              dated target beside each figure, and a plain statement of which gap
-              is a methodology limit rather than a queue — see{" "}
+              coverage in one table, giving the specific blocker beside each
+              figure, where the work on it stands and which gap is a
+              methodology limit rather than a queue, see{" "}
               <Link href="/coverage/" className="underline hover:text-foreground">
                 Coverage
               </Link>

@@ -401,13 +401,13 @@ def _assemble(key: str, *, site_json_dir: Path, snapshots_dir: Path,
     may be cited would have produced a false claim no citation gate can see.
     The bundle now offers only this page's own rows because the sidecar now
     holds only this page's own rows — there is no filter here to keep in step.
-    `mentions` follow the sidecar too, and their rule is PER ROW (ROADMAP
-    #82 mention axis, narrowed 2026-09-18): a `pe_literal` filing names the
-    budget LINE itself, so on a shared code it is evidence for both members
-    and both bundles carry it; a `multi_token`/`alias` row matched ONE
-    member's title and reaches only that member's sidecar, so only that
-    member's bundle offers it. The sidecar declares which with
-    `mentions_shared_code: {evidence_kind: basis}`.
+    `mentions` follow the sidecar too. Since ruling R-INT-9 (2026-09-25) a
+    shared-code member's sidecar carries NO lobbying row — fct_program_lobbying
+    is keyed on the bare code, so no row can say which member it describes —
+    and so a member's bundle offers no mention at all; an ordinary program's
+    bundle carries its page's rows as before. (Retired with that ruling: the
+    #82 per-row rule of 2026-09-18 and its `mentions_shared_code`
+    declaration, which the exporter no longer writes.)
 
     Bundle hygiene applied here:
     - projects: only rows whose fact_id is in citations_keyset are included;

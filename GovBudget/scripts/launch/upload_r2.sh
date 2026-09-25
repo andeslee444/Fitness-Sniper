@@ -42,6 +42,8 @@ set -euo pipefail
 # ── Config ────────────────────────────────────────────────────────────────────
 RCLONE_REMOTE="${RCLONE_REMOTE:-r2}"
 R2_BUCKET="${R2_BUCKET:-govbudget-assets}"
+# From the script's own location, not $PWD: this uploads the data/site/ of the
+# checkout the script lives in (deploy.sh calls it by its own REPO_ROOT).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DATA_SITE="${REPO_ROOT}/data/site"
 
@@ -116,7 +118,8 @@ for folder in "${FOLDERS[@]}"; do
     continue
   fi
 
-  echo "  SYNC  ${folder}/ → ${RCLONE_REMOTE}:${R2_BUCKET}/${folder}/"
+  # "COPY", not "SYNC": rclone copy never deletes on the destination.
+  echo "  COPY  ${folder}/ → ${RCLONE_REMOTE}:${R2_BUCKET}/${folder}/"
   # shellcheck disable=SC2086
   rclone copy \
     $DRY_FLAG \

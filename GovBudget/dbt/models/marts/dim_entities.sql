@@ -44,7 +44,13 @@ base as (
         max(coalesce(parent_uei, recipient_uei)) filter (where rk = 1) as dominant_registration_uei,
         count(*) as uei_count,
         sum(total_obligation) as total_obligation,
-        min(confidence) as worst_confidence
+        -- The WORST member's tier. Not min(confidence): as text 'high' sorts
+        -- before 'medium', so min() returned the BEST tier and graded a family
+        -- high when any one member was (29 families, NAN on /companies/;
+        -- integration final check, 2026-09-25). Ranked instead; an unknown
+        -- tier maps to NULL and fails accepted_values in schema.yml.
+        case max(case confidence when 'high' then 1 when 'medium' then 2 end)
+            when 1 then 'high' when 2 then 'medium' end as worst_confidence
     from ranked
     group by family_key
 ),

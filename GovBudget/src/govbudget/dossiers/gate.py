@@ -187,15 +187,15 @@ def _has_no_players_evidence(duckdb_path, pe_bli: str, page_slug: str | None = N
         test (_concentration_is_this_members above).
       - fct_program_lobbying is keyed by the bare pe_bli, and every mention
         on the code counts for BOTH members. That is deliberately STRICTER
-        than the page since 60d0ca8e (2026-09-18, the #82 mention axis): a
-        split member's sidecar now carries only the rows
-        export_site._mention_is_about attributes to its own title (a
-        `pe_literal` row on both members, a `multi_token`/`alias` row only
-        where the member's title carries every matched term), so a member
-        can be refused the exception over rows its page does not render.
-        That errs toward a loud gate failure, never toward excusing a page
-        for not citing rows it does render; narrowing this count to the
-        page's per-row rule is a separate change.
+        than the page: since ruling R-INT-9 (2026-09-25) a shared-code
+        member's sidecar carries NO lobbying row at all (export_site ships
+        `mentions` [] on every member of a shared code — no row keyed on a
+        bare code can say which member it describes), so a member can be
+        refused the exception over rows its page does not render and its
+        bundle does not offer. That errs toward a loud gate failure, never
+        toward excusing a page for not citing rows it does render; making
+        this count match the page (nothing, on a member) is a separate
+        change.
 
     Anything unknown — no duckdb, a page identity that does not resolve, a
     missing mart, a query error — returns False. The exception must be

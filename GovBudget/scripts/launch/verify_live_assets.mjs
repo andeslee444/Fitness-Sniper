@@ -5,7 +5,7 @@
  *
  * WHY THIS IS NOT A GATE IN `npm run verify`.
  *
- *   The 24-gate suite reads `site/out/` and a local static server. It is
+ *   The `npm run verify` gate suite reads `site/out/` and a local static server. It is
  *   hermetic on purpose: it runs offline, it is deterministic, and a network
  *   flake must never turn it red for reasons that have nothing to do with the
  *   site. This check is the opposite of all three — it asks a remote host a
@@ -32,9 +32,23 @@
  *      ingestion phase mints new citations, the deploy ships pages that cite
  *      them, and the binaries were never synced — the citation panel falls
  *      back to "open official source" and nothing notices.
- *   2. citations/citations.parquet is reachable (the Explorer + citation
+ *   2. EVERY budget book behind the verified PDF receipts, and every workbook
+ *      those receipts offer for download, is on the asset host (same
+ *      200/206 + non-empty + magic test: `%PDF-` for books, the zip `PK\x03\x04`
+ *      for .xlsx workbooks). The receipt books are NOT jbook_pdf citations —
+ *      citations.json never names them — so assertion 1 cannot see them
+ *      (backlog finding #19, 2026-09-25: its five probes landed on older
+ *      jbook PDFs while all 21 receipt books went unchecked). The set is read
+ *      from the receipt shards (data/site/json/budget-pdf-receipts/v2/, the
+ *      export, unioned with site/out/json/budget-pdf-receipts/v2/, the copy the
+ *      deployed pages fetch): every `parts[].hosted_pdf_url` and
+ *      `parts[].workbook_sha256`. ALL of them, not the newest N: which books
+ *      were added since the last deploy is not recorded anywhere locally, so
+ *      the only set guaranteed to contain them is the whole set — and each
+ *      probe is a 1 KB ranged GET.
+ *   3. citations/citations.parquet is reachable (the Explorer + citation
  *      lookups read it) — proves the data/ and citations/ syncs landed too.
- *   3. The site host's /fact/ rewrite resolves — this comes from
+ *   4. The site host's /fact/ rewrite resolves — this comes from
  *      site/out/vercel.json and silently dies if the wrong directory was
  *      deployed.
  *
@@ -43,7 +57,11 @@
  *   node scripts/launch/verify_live_assets.mjs --count=8
  *   node scripts/launch/verify_live_assets.mjs --asset-base=https://... --site=https://...
  *   node scripts/launch/verify_live_assets.mjs --sha=<sha256>   # check exactly this asset
+ *                                                               # (no receipt probes)
  *   node scripts/launch/verify_live_assets.mjs --skip-site      # asset host only
+ *
+ * --count applies to assertion 1 only; the receipt probes (assertion 2) are
+ * never sampled.
  *
  * The asset host defaults to site/public/config.json's `assetBaseUrl`, so the
  * check follows the same host the built pages were told to use.
@@ -51,7 +69,9 @@
  * EXIT CODES
  *   0  every assertion passed
  *   1  an assertion failed (missing asset, bad status, empty or non-PDF body)
- *   2  could not even set up (no citations.json, no PDFs, bad arguments)
+ *   2  could not even set up (no citations.json, no PDFs, no receipt shards,
+ *      a receipt part whose hosted_pdf_url is not /pdfs/<sha256>.pdf, bad
+ *      arguments)
  */
 
 import fs from "fs";
@@ -63,6 +83,15 @@ const repoRoot = path.resolve(__dirname, "..", "..");
 const pdfDir = path.join(repoRoot, "data", "site", "pdfs");
 const citationsPath = path.join(repoRoot, "data", "site", "json", "citations.json");
 const configPath = path.join(repoRoot, "site", "public", "config.json");
+/**
+ * Receipt shard directories, export first. prepare-assets.mjs copies the
+ * export into site/out/ at build time; both are read so a book cited by
+ * either the export or the deployed copy is probed.
+ */
+const receiptShardDirs = [
+  path.join(repoRoot, "data", "site", "json", "budget-pdf-receipts", "v2"),
+  path.join(repoRoot, "site", "out", "json", "budget-pdf-receipts", "v2"),
+];
 
 const DEFAULT_COUNT = 5;
 const DEFAULT_SITE = "https://fiscalreceipts.com";
@@ -216,6 +245,92 @@ async function selectTargets(count) {
   return eligible.slice(0, count).map((p) => ({ ...p, source: "newest cited" }));
 }
 
+/**
+ * Every asset-host binary the verified PDF receipts depend on (assertion 2):
+ *   books      — each part's hosted_pdf_url (/pdfs/<sha>.pdf), the page the
+ *                receipt highlights;
+ *   workbooks  — each part's workbook_sha256, which the receipt's download
+ *                button fetches as /workbooks/<sha>.xlsx
+ *                (components/workbook-download.tsx). A workbook_sha256 that
+ *                is not 64 hex gets no button (lib/source-document.ts), so it
+ *                is no dependency and is not probed.
+ * A part whose hosted_pdf_url is not exactly /pdfs/<64 hex>.pdf is a setup
+ * error, not a skip: the probe could not cover it, and a silent skip is the
+ * blind spot this assertion exists to close.
+ */
+function receiptTargets() {
+  const books = new Map();
+  const workbooks = new Map();
+  const scanned = [];
+  // Part counts are kept per shard directory: the export and the site/out
+  // copy normally hold the same receipts, and summing them would double-count.
+  const note = (map, key, part, dirIdx) => {
+    const entry = map.get(key) ?? { edition: part.edition, exhibit: part.exhibit, partsByDir: [] };
+    entry.partsByDir[dirIdx] = (entry.partsByDir[dirIdx] ?? 0) + 1;
+    map.set(key, entry);
+  };
+  for (const [dirIdx, dir] of receiptShardDirs.entries()) {
+    if (!fs.existsSync(dir)) continue;
+    const rel = path.relative(repoRoot, dir);
+    const shards = fs.readdirSync(dir).filter((n) => /^[0-9a-f]{3}\.json$/.test(n));
+    let parts = 0;
+    for (const name of shards) {
+      let shard;
+      try {
+        shard = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+      } catch (e) {
+        console.error(`ERROR: receipt shard ${rel}/${name} is not readable JSON: ${e.message}`);
+        process.exit(2);
+      }
+      for (const [factId, receipt] of Object.entries(shard)) {
+        for (const part of receipt?.parts ?? []) {
+          parts += 1;
+          const m = /^\/pdfs\/([0-9a-f]{64})\.pdf$/.exec(part?.hosted_pdf_url ?? "");
+          if (!m) {
+            console.error(
+              `ERROR: receipt ${factId} in ${rel}/${name} has a part whose hosted_pdf_url ` +
+                `is ${JSON.stringify(part?.hosted_pdf_url)}, not /pdfs/<sha256>.pdf — ` +
+                `this check cannot probe it.`,
+            );
+            process.exit(2);
+          }
+          note(books, m[1], part, dirIdx);
+          const wb = part.workbook_sha256;
+          if (typeof wb === "string" && /^[a-f0-9]{64}$/i.test(wb)) note(workbooks, wb, part, dirIdx);
+        }
+      }
+    }
+    scanned.push({ rel, shards: shards.length, parts });
+  }
+  if (scanned.length === 0) {
+    console.error(
+      `ERROR: no receipt shards at ${receiptShardDirs.map((d) => path.relative(repoRoot, d)).join(" or ")} — ` +
+        `run \`govbudget export-budget-pdf-receipts\` (the site build refuses to run without them).`,
+    );
+    process.exit(2);
+  }
+  if (books.size === 0) {
+    console.error(
+      `ERROR: the receipt shards (${scanned.map((s) => s.rel).join(", ")}) name no budget ` +
+        `book — the receipts and the build have diverged.`,
+    );
+    process.exit(2);
+  }
+  const flatten = (sha, { edition, exhibit, partsByDir }) => ({
+    sha,
+    edition,
+    exhibit,
+    parts: Math.max(0, ...partsByDir.filter((n) => n !== undefined)),
+  });
+  const newestFirst = (a, b) =>
+    (b[1].edition ?? 0) - (a[1].edition ?? 0) || String(a[1].exhibit).localeCompare(String(b[1].exhibit));
+  return {
+    scanned,
+    books: [...books].sort(newestFirst).map(([sha, meta]) => flatten(sha, meta)),
+    workbooks: [...workbooks].sort(newestFirst).map(([sha, meta]) => flatten(sha, meta)),
+  };
+}
+
 // ── Assertions ───────────────────────────────────────────────────────────────
 
 const results = [];
@@ -234,22 +349,23 @@ async function fetchWithTimeout(url, init = {}) {
   }
 }
 
-/** 200/206 + non-zero body + `%PDF-` magic. */
-async function checkPdf(target) {
-  const url = `${assetBase}/pdfs/${target.sha}.pdf`;
-  const short = `${target.sha.slice(0, 12)}…`;
+const PDF_MAGIC = { bytes: [0x25, 0x50, 0x44, 0x46, 0x2d], name: "%PDF-", kind: "a PDF" };
+const XLSX_MAGIC = { bytes: [0x50, 0x4b, 0x03, 0x04], name: "PK\\x03\\x04 (zip)", kind: "an .xlsx" };
+
+/** 200/206 + non-zero body + the file type's magic bytes. */
+async function checkBinary(url, label, magicSpec) {
   let res;
   try {
     // Ranged GET: enough bytes to see the magic without pulling 20 MB.
     res = await fetchWithTimeout(url, { headers: { Range: "bytes=0-1023" } });
   } catch (e) {
-    record(false, `PDF ${short}`, `request failed: ${e.message} (${url})`);
+    record(false, label, `request failed: ${e.message} (${url})`);
     return;
   }
   if (res.status !== 200 && res.status !== 206) {
     record(
       false,
-      `PDF ${short}`,
+      label,
       `HTTP ${res.status} from ${url} — the binary is not on the CDN. ` +
         `Run scripts/launch/upload_r2.sh --live.`,
     );
@@ -257,25 +373,64 @@ async function checkPdf(target) {
   }
   const body = new Uint8Array(await res.arrayBuffer());
   if (body.length === 0) {
-    record(false, `PDF ${short}`, `HTTP ${res.status} but a ZERO-length body (${url})`);
+    record(false, label, `HTTP ${res.status} but a ZERO-length body (${url})`);
     return;
   }
-  const magic = new TextDecoder().decode(body.slice(0, 5));
-  if (magic !== "%PDF-") {
+  const head = body.slice(0, magicSpec.bytes.length);
+  if (head.length !== magicSpec.bytes.length || magicSpec.bytes.some((b, i) => head[i] !== b)) {
     record(
       false,
-      `PDF ${short}`,
+      label,
       `HTTP ${res.status}, ${body.length} bytes, but the body does not start ` +
-        `with %PDF- (got ${JSON.stringify(magic)}) — an error page, not a PDF`,
+        `with ${magicSpec.name} (got ${JSON.stringify(new TextDecoder().decode(head))}) — ` +
+        `an error page, not ${magicSpec.kind}`,
     );
     return;
   }
   const total = res.headers.get("content-range")?.split("/")[1];
   record(
     true,
-    `PDF ${short}`,
-    `HTTP ${res.status}, %PDF- magic, ${total ? `${total} bytes total` : `${body.length} bytes`}`,
+    label,
+    `HTTP ${res.status}, ${magicSpec.name} magic, ${total ? `${total} bytes total` : `${body.length} bytes`}`,
   );
+}
+
+/** Assertion 1 probe: 200/206 + non-zero body + `%PDF-` magic. */
+async function checkPdf(target) {
+  await checkBinary(`${assetBase}/pdfs/${target.sha}.pdf`, `PDF ${target.sha.slice(0, 12)}…`, PDF_MAGIC);
+}
+
+/** Assertion 2 probes: every receipt book and receipt workbook. */
+async function checkReceiptAssets(receipts, alreadyChecked) {
+  const localNote = (dir, file) =>
+    fs.existsSync(path.join(repoRoot, "data", "site", dir, file))
+      ? ""
+      : ` [NOT in data/site/${dir}/ — upload_r2.sh cannot ship it]`;
+  const books = receipts.books.filter((b) => !alreadyChecked.has(b.sha));
+  const skipped = receipts.books.length - books.length;
+  console.log(
+    `── ${receipts.books.length} receipt budget book(s) [every book a receipt part cites` +
+      `${skipped ? `; ${skipped} already probed above` : ""}] ──`,
+  );
+  for (const b of books) {
+    await checkBinary(
+      `${assetBase}/pdfs/${b.sha}.pdf`,
+      `PDF ${b.sha.slice(0, 12)}… PB${b.edition} ${b.exhibit} (${b.parts.toLocaleString("en-US")} receipt part${b.parts === 1 ? "" : "s"})` +
+        localNote("pdfs", `${b.sha}.pdf`),
+      PDF_MAGIC,
+    );
+  }
+  console.log("");
+  console.log(
+    `── ${receipts.workbooks.length} receipt workbook(s) [every workbook a receipt offers for download] ──`,
+  );
+  for (const w of receipts.workbooks) {
+    await checkBinary(
+      `${assetBase}/workbooks/${w.sha}.xlsx`,
+      `XLSX ${w.sha.slice(0, 12)}… PB${w.edition} ${w.exhibit}` + localNote("workbooks", `${w.sha}.xlsx`),
+      XLSX_MAGIC,
+    );
+  }
 }
 
 async function checkUrl(label, url, { expectBody = true } = {}) {
@@ -309,10 +464,24 @@ async function main() {
   console.log("");
 
   const targets = await selectTargets(opts.count);
+  // Read the receipt set BEFORE any request, so a setup error (exit 2) never
+  // follows a half-finished run.  --sha means "exactly this asset".
+  const receipts = opts.shas.length > 0 ? null : receiptTargets();
+  if (receipts) {
+    for (const s of receipts.scanned) {
+      console.log(`  receipts:   ${s.rel} — ${s.shards} shards, ${s.parts.toLocaleString("en-US")} parts`);
+    }
+    console.log("");
+  }
   console.log(
     `── ${targets.length} recently-added jbook_pdf asset(s) [${targets[0].source}] ──`,
   );
   for (const t of targets) await checkPdf(t);
+
+  if (receipts) {
+    console.log("");
+    await checkReceiptAssets(receipts, new Set(targets.map((t) => t.sha)));
+  }
 
   console.log("");
   console.log("── R2 data assets ──");

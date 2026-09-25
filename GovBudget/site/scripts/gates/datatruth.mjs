@@ -2541,9 +2541,10 @@ export function orgAttributionFindings(pages, orgMix) {
         // by a space or a stop. That turns a wrong match into a NEVER match,
         // and (p3) goes silent on the one org instead of reporting it. Same
         // form as program-skeleton.mjs titleCarriesTerm(), which fixed this
-        // first. (All 8 shipped header.org values are word-char-only today, so
-        // nothing about the live sweep changes: A, DARPA, DISA, F, MDA, N, OSD,
-        // SOCOM, re-read 2026-09-18.)
+        // first (removed 2026-09-25 with the title-basis mention rule that
+        // ruling R-INT-9 retired). (All 8 shipped header.org values are
+        // word-char-only today, so nothing about the live sweep changes: A,
+        // DARPA, DISA, F, MDA, N, OSD, SOCOM, re-read 2026-09-18.)
         const hit = new RegExp(
           `(?<![A-Za-z0-9])${escapeRe(org)}(?![A-Za-z0-9])`,
           "i",

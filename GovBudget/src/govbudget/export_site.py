@@ -50,13 +50,6 @@ from govbudget.lineage.model import DISPLAY_NARRATIVE_FY
 # (jbooks.era_keys imports nothing from this module — no cycle.)
 from govbudget.jbooks.era_keys import is_era_procurement_key
 from govbudget.jbooks.collision_keys import SplitAxis, require_resolved
-# ROADMAP #82 (mention axis): the SAME word-boundary test the mention
-# matcher ran against the filing text, imported rather than mirrored so a
-# change to the matcher's boundary rule cannot silently disagree with the
-# exporter's per-member attribution (see _mention_is_about).
-from govbudget.influence.mentions import (
-    _build_word_boundary_re as _mention_word_re,
-)
 from govbudget.jbooks.citation_units import jbook_pdf_citation_units, pdf_page_currency_units
 
 
@@ -2395,50 +2388,9 @@ def export_site(
         dataset_counts["jbook_narratives"] = len(narr_rows_with_fid)
 
         # ---- 2c. budget_lines.parquet (only rows with source_document_id) ----
-        all_bl = pg.execute(
-            """
-            select bl.exhibit, bl.fiscal_year, bl.account, bl.account_title,
-                   bl.organization, bl.budget_activity, bl.budget_activity_title,
-                   bl.pe_bli, bl.title, bl.amount_type, bl.amount_thousands,
-                   bl.source_document_id, j.sha256 as document_sha256,
-                   bl.source_sheet,
-                   coalesce(array_to_string(bl.source_cells, ','), '') as source_cells
-            from budget_lines bl
-            left join jbook_documents j on j.id = bl.source_document_id
-            where bl.fiscal_year = 2026
-            order by bl.exhibit, bl.pe_bli, bl.amount_type
-            """
-        ).fetchall()
-
-        bl_rows = []
-        bl_excluded = 0
-        bl_excluded_null_amount = 0
-        for row in all_bl:
-            (exhibit, fiscal_year, account, account_title, organization,
-             budget_activity, budget_activity_title, pe_bli, title,
-             amount_type, amount_thousands, source_document_id,
-             document_sha256, source_sheet, source_cells) = row
-            if source_document_id is None:
-                bl_excluded += 1
-                continue
-            if document_sha256 is None:
-                bl_excluded += 1
-                continue
-            if amount_thousands is None:
-                bl_excluded_null_amount += 1
-                continue
-            fid = fact_id_workbook(
-                document_sha256, exhibit, fiscal_year, account,
-                organization, budget_activity, pe_bli, amount_type,
-            )
-            bl_rows.append((
-                fid, exhibit,
-                int(fiscal_year) if fiscal_year is not None else None,
-                account, account_title, organization, budget_activity,
-                budget_activity_title, pe_bli, title, amount_type,
-                float(amount_thousands),
-                "USD thousands", document_sha256, source_sheet, source_cells,
-            ))
+        # _load_budget_line_rows owns the query and its TOTAL order (final
+        # integration review finding #3, 2026-09-25) — see its docstring.
+        bl_rows, bl_excluded, bl_excluded_null_amount = _load_budget_line_rows(pg)
 
         if bl_excluded:
             print(f"budget_lines.parquet: excluded {bl_excluded} rows lacking source_document_id (pre-backfill)")
@@ -6324,6 +6276,99 @@ _FY26_SPLIT_KEYS = {
 }
 
 
+def _load_budget_line_rows(pg) -> tuple[list[tuple], int, int]:
+    """The FY2026 budget_lines rows every workbook citation, sidecar and
+    summed (derived) citation is built from, in ONE TOTAL ORDER.
+
+    Returns (bl_rows, excluded_no_source, excluded_null_amount). bl_rows
+    cols: (fact_id, exhibit, fiscal_year, account, account_title,
+    organization, budget_activity, budget_activity_title, pe_bli, title,
+    amount_type, amount_thousands, units, document_sha256, source_sheet,
+    source_cells). Rows lacking a source document (or its sha256) or an
+    amount are counted and dropped, as before.
+
+    WHY THE ORDER IS TOTAL (final integration review finding #3,
+    2026-09-25). The query used to end `order by bl.exhibit, bl.pe_bli,
+    bl.amount_type`. Those three keys TIE for every line a program spreads
+    across organizations, accounts or budget activities (F015EX files its
+    FY2026 request under BA-01, BA-05 and BA-07), and Postgres returns tied
+    rows in whatever order its sort leaves the heap — which moves whenever a
+    row is rewritten. That order flows, unsorted, into the `inputs` of every
+    summed citation (_build_fy26_split_index, the trajectory rows), into the
+    order of a multi-part PDF receipt's parts (program_pdf_receipts.
+    attach_additive_receipts concatenates its inputs' parts, and the drawer
+    opens on parts[0]), into each sidecar's budget_lines list and into the
+    `#n` suffix of a repeated component entity. Measured: 26 receipts changed
+    part order between production (81929a6b) and the integration export
+    with no code change behind it; /program/F015EX/'s reconciliation chip
+    (cf802c75afa0f505) opened on line 44 in one and line 7 in the other.
+    The live branch runs the same three-key query (its export_site line
+    2050); its order was an accident of the heap, not a rule.
+
+    THE ORDER, after the three original keys: organization, appropriation
+    account, budget activity, then the row id. Within one organization and
+    account, ascending budget activity is the order the P-1/R-1 prints a
+    program's lines in (F015EX: BA-01 line 7, BA-05 line 44, BA-07 lines
+    112 and 134). budget_lines is unique on (exhibit,
+    fiscal_year, account, organization, budget_activity, pe_bli,
+    amount_type), so within FY2026 the first six keys are already total
+    except for rows whose budget_activity is NULL; the id settles those.
+    No key reproduces production's order: measured over the 145 summed
+    citations whose inputs are all FY2026 budget lines, this one matches
+    production on 64 (the best of every natural key tried; the fact-id hash
+    order matched 31), and over the 493 multi-part receipts it leaves 463
+    in production's order and 471 in the integration export's. On F015EX
+    both the headline receipt (4a9ae7cc78dcf0ba, which production already
+    opens on line 7) and the reconciliation chip now open on line 7.
+    """
+    all_bl = pg.execute(
+        """
+        select bl.exhibit, bl.fiscal_year, bl.account, bl.account_title,
+               bl.organization, bl.budget_activity, bl.budget_activity_title,
+               bl.pe_bli, bl.title, bl.amount_type, bl.amount_thousands,
+               bl.source_document_id, j.sha256 as document_sha256,
+               bl.source_sheet,
+               coalesce(array_to_string(bl.source_cells, ','), '') as source_cells
+        from budget_lines bl
+        left join jbook_documents j on j.id = bl.source_document_id
+        where bl.fiscal_year = 2026
+        order by bl.exhibit, bl.pe_bli, bl.amount_type,
+                 bl.organization, bl.account, bl.budget_activity, bl.id
+        """
+    ).fetchall()
+
+    bl_rows: list[tuple] = []
+    excluded = 0
+    excluded_null_amount = 0
+    for row in all_bl:
+        (exhibit, fiscal_year, account, account_title, organization,
+         budget_activity, budget_activity_title, pe_bli, title,
+         amount_type, amount_thousands, source_document_id,
+         document_sha256, source_sheet, source_cells) = row
+        if source_document_id is None:
+            excluded += 1
+            continue
+        if document_sha256 is None:
+            excluded += 1
+            continue
+        if amount_thousands is None:
+            excluded_null_amount += 1
+            continue
+        fid = fact_id_workbook(
+            document_sha256, exhibit, fiscal_year, account,
+            organization, budget_activity, pe_bli, amount_type,
+        )
+        bl_rows.append((
+            fid, exhibit,
+            int(fiscal_year) if fiscal_year is not None else None,
+            account, account_title, organization, budget_activity,
+            budget_activity_title, pe_bli, title, amount_type,
+            float(amount_thousands),
+            "USD thousands", document_sha256, source_sheet, source_cells,
+        ))
+    return bl_rows, excluded, excluded_null_amount
+
+
 def _build_fy26_split_index(
     *, bl_rows: list, duckdb_path=None,
 ) -> tuple[dict[str, dict], list[tuple]]:
@@ -7461,6 +7506,12 @@ def _build_named_primes(
     organization), and a stem outside the index (a non-dim_programs page)
     resolves to (stem, None, None), the pre-#82 lookup byte for byte.
 
+    RULING R-INT-9 (2026-09-25): a shared-code member's entry here is a
+    CANDIDATE only — _summary_block publishes named_primes [] on every
+    member of a shared code, as production does, and the census printed
+    after the builders names any member page withheld (0 measured
+    2026-09-25).
+
     Matching is DETERMINISTIC lexicon matching — the same
     word-boundary-substring discipline fct_program_lobbying uses — against
     dim_entities' top-200 family_key and display_name strings
@@ -7593,16 +7644,19 @@ def _build_lobbied_by(
     and /company/{slug}/ never spell the same company two ways.
 
     ROADMAP #82: keyed by SLUG, evaluated PER MEMBER. The families list is
-    the same for both members of a shared code — true of a `pe_literal` row,
-    which names the budget LINE and nothing finer, and true TODAY of the only
-    other tier this card admits: a curated `alias` is seeded per CODE
-    (`dbt/seeds/program_aliases.csv` keys on `pe_bli`), and measured
-    2026-09-18 the 13 shared codes carry zero alias rows. It is not a blanket
-    rule about every tier — `_mention_is_about` treats an alias as
-    TITLE-grain, so the same row can publish on one member's Lobbying
-    Mentions list while naming companies in both members' cards. The grain
-    question is filed under ROADMAP #115; nothing renders differently today.
-    Whether the tier APPLIES is each member's own question either way:
+    the same for both members of a shared code: the mart is keyed on the
+    bare code, and a curated `alias` is seeded per CODE too
+    (`dbt/seeds/program_aliases.csv` keys on `pe_bli`; measured 2026-09-18,
+    the 13 shared codes carry zero alias rows).
+
+    RULING R-INT-9 (2026-09-25): a shared-code member's entry here is a
+    CANDIDATE only. _summary_block withholds the lobbying tier (lobbied_by
+    None) on every member of a shared code, as production does, because a
+    bare-code filing cannot say which member it describes — #82's premise
+    that a `pe_literal` row "names the line" is false for the numeric codes
+    (their rows matched dates and bill numbers). The census printed after
+    this builder names the member pages withheld. Ordinary programs are
+    unaffected. Whether the tier APPLIES is each member's own question:
     `concentration_for` is None on a member whose figure is
     withheld (more than one member linked) or never its own, `named_primes_by_slug`
     is the dossier tier keyed the same way, and `awards_for(pe_bli, account,
@@ -8221,13 +8275,32 @@ def _load_subaward_lake_rows(
     Subawards tab lists the record (true of all 112 records behind the 113
     links at 2026-09-10, and each permalink's key equals
     prime_award_unique_key). When the column is blank the same URL is built
-    from prime_award_unique_key; when both are absent permalink is None and
-    the caller raises.
+    from prime_award_unique_key.
 
-    Monthly FSRS re-reports put up to 25 rows behind one key. Name, permalink
-    and key are single-valued today; the pick is deterministic regardless:
-    latest subaward_action_date, then latest report modification, then
-    permalink, then name.
+    EVIDENCE ROWS ONLY. A link's match basis is the subaward DESCRIPTION
+    ('subaward-description-exact'), so only lake rows that carry a non-blank
+    subaward_description are evidence for it; a key whose rows all lack one
+    is refused like a key the lake does not hold (the live branch's rule,
+    81929a6b _enrich_subaward_link_sources).
+
+    FAIL-CLOSED IDENTITY (restored 2026-09-25 from the live branch — final
+    integration review finding #13). Monthly FSRS re-reports put up to 25
+    rows behind one key. Across a key's evidence rows the (trimmed)
+    (prime_award_unique_key, subawardee_name) pair must be EXACTLY ONE
+    identity, the subawardee must be non-blank, the prime key must be a
+    contract award of the link's own PIID (CONT_AWD_{piid}_…), and a
+    non-blank usaspending_permalink must be that prime key's page — or this
+    RAISES, naming the key. Picking "the latest row" instead (this
+    function's #84 behaviour) would have cited one of two recipients or two
+    awards in silence. Measured read-only 2026-09-25 on the live lake: the
+    113 keys behind the 114 subaward links carry 239 rows, every one with a
+    description; 0 keys have more than one identity, 0 a blank recipient,
+    0 a prime key outside CONT_AWD_{piid}_, 0 a permalink naming another
+    key — the check fires 0 times today.
+
+    Within the one identity the permalink pick stays deterministic: latest
+    subaward_action_date, then latest report modification, then permalink,
+    then name.
 
     Returns {} when the lake directory does not exist (degenerate/test
     exports) — the caller's missing-row check then fails any subaward link,
@@ -8252,43 +8325,85 @@ def _load_subaward_lake_rows(
             with lake as (
               select prime_award_piid, subaward_number, subawardee_name,
                      prime_award_unique_key, usaspending_permalink,
-                     subaward_action_date,
+                     subaward_description, subaward_action_date,
                      subaward_sam_report_last_modified_date
               from read_parquet('{glob}', hive_partitioning=true,
                                 union_by_name=true)
               where prime_award_piid is not null
                 and subaward_number is not null
-            ),
-            hit as (
-              select l.*
-              from lake l
-              join _sub_keys k
-                on k.prime_award_piid = l.prime_award_piid
-               and k.subaward_number = l.subaward_number
             )
-            select prime_award_piid, subaward_number, subawardee_name,
-                   prime_award_unique_key, usaspending_permalink
-            from hit
-            qualify row_number() over (
-              partition by prime_award_piid, subaward_number
-              order by try_cast(subaward_action_date as date) desc nulls last,
-                       subaward_sam_report_last_modified_date desc nulls last,
-                       usaspending_permalink, subawardee_name
-            ) = 1
-            order by prime_award_piid, subaward_number
+            select l.prime_award_piid, l.subaward_number,
+                   nullif(trim(l.subawardee_name), ''),
+                   nullif(trim(l.prime_award_unique_key), ''),
+                   nullif(trim(l.usaspending_permalink), ''),
+                   nullif(trim(l.subaward_description), '') is not null
+            from lake l
+            join _sub_keys k
+              on k.prime_award_piid = l.prime_award_piid
+             and k.subaward_number = l.subaward_number
+            order by l.prime_award_piid, l.subaward_number,
+                     try_cast(l.subaward_action_date as date) desc nulls last,
+                     l.subaward_sam_report_last_modified_date desc nulls last,
+                     l.usaspending_permalink, l.subawardee_name
             """
         ).fetchall()
     finally:
         con.close()
 
+    evidence: dict[tuple[str, str], list[tuple]] = {}
+    undescribed: set[tuple[str, str]] = set()
+    for piid, number, name, prime_key, permalink, described in rows:
+        if described:
+            evidence.setdefault((piid, number), []).append(
+                (name, prime_key, permalink))
+        else:
+            undescribed.add((piid, number))
+
+    blank = sorted(undescribed - set(evidence))
+    if blank:
+        raise RuntimeError(
+            f"Subaward evidence for {len(blank)} (prime PIID, subaward number)"
+            f" key(s) has no row with a subaward description (e.g."
+            f" {blank[:3]}): the link's basis is the description"
+            " ('subaward-description-exact'), so a record without one is not"
+            " its evidence. Re-run govbudget sync-subawards, then the loader"
+            " (scripts/load_announcement_links.py), then export."
+        )
+
     out: dict[tuple[str, str], dict] = {}
-    for piid, number, name, prime_key, permalink in rows:
-        prime_key = (prime_key or "").strip() or None
-        url = (permalink or "").strip() or (
-            _USASPENDING_AWARD_URL.format(key=prime_key) if prime_key else None)
+    for (piid, number), ev in sorted(evidence.items()):
+        identities = sorted({(pk or "", nm or "") for nm, pk, _pl in ev})
+        if len(identities) != 1:
+            raise RuntimeError(
+                f"Subaward evidence for {piid}/{number} has"
+                f" {len(identities)} source identities; expected exactly one"
+                f" (prime_award_unique_key, subawardee): {identities[:4]}."
+                " A kind='subaward' citation names ONE record; picking one"
+                " would cite a recipient or award the others contradict."
+            )
+        name, prime_key, permalink = ev[0]
+        if not name:
+            raise RuntimeError(
+                f"Subaward evidence for {piid}/{number} carries no subawardee"
+                " name: the citation card needs the recipient the record names."
+            )
+        if not prime_key or not prime_key.startswith(f"CONT_AWD_{piid}_"):
+            raise RuntimeError(
+                f"Subaward evidence for {piid}/{number} names prime award"
+                f" {prime_key!r}, not a contract award of the link's own PIID"
+                f" (CONT_AWD_{piid}_…)."
+            )
+        own_page = _USASPENDING_AWARD_URL.format(key=prime_key)
+        stray = sorted({pl for _nm, _pk, pl in ev if pl and pl != own_page})
+        if stray:
+            raise RuntimeError(
+                f"Subaward evidence for {piid}/{number}: usaspending_permalink"
+                f" {stray[0]!r} is not the page of its prime award"
+                f" {prime_key!r} ({own_page})."
+            )
         out[(piid, number)] = {
-            "subawardee": (name or "").strip() or None,
-            "permalink": url,
+            "subawardee": name,
+            "permalink": permalink or own_page,
             "prime_award_unique_key": prime_key,
         }
     return out
@@ -8326,7 +8441,9 @@ def _build_budget_to_awards_citation_rows(
 
     RAISES, likewise, when a 'subaward+lexicon' link has no source row, or
     its source row names a subaward the lake does not hold, or the lake row
-    yields no URL — a fabricated or generic citation is never minted.
+    yields no URL or no subawardee — a fabricated or generic citation is
+    never minted. (The lake rows themselves are identity-checked, fail
+    closed, by _load_subaward_lake_rows.)
 
     RAISES when the mart holds an 'announcement+lexicon' link with no usable
     source row (fix round 1). Falling back to the derived row for those links
@@ -8460,6 +8577,11 @@ def _build_budget_to_awards_citation_rows(
             sub_missing.add((piid, pe, f"subaward {number!r} not in the lake"))
         elif not lake.get("permalink"):
             sub_missing.add((piid, pe, f"subaward {number!r} has no USAspending URL"))
+        elif not str(lake.get("subawardee") or "").strip():
+            # _load_subaward_lake_rows already refuses a blank recipient; this
+            # keeps the mint fail-closed for any other caller (2026-09-25,
+            # the live branch's "verified source identity" rule).
+            sub_missing.add((piid, pe, f"subaward {number!r} has no subawardee"))
     if sub_missing:
         listed = sorted(sub_missing)
         raise RuntimeError(
@@ -8478,6 +8600,8 @@ def _build_budget_to_awards_citation_rows(
             "  'has no USAspending URL' — the lake row carries neither"
             " usaspending_permalink nor prime_award_unique_key; nothing"
             " honest to cite.\n"
+            "  'has no subawardee' — the record names no recipient; the"
+            " citation card has nothing to name.\n"
             "Not raising would silently revert these links to generic derived"
             " citation rows, and the export would look correct (ROADMAP #84)."
         )
@@ -10165,41 +10289,39 @@ def _write_all_sidecars(
             f" NEITHER member, never on both"
         )
 
-    # ROADMAP #82 (mention axis), dated 2026-09-18: the same "neither member
-    # rather than both" rule for lobbying rows. A `multi_token`/`alias` row on
-    # a shared code whose matched terms appear in NO member's title is
-    # evidence about none of them. That can happen: the mart is keyed on the
-    # bare code and its rows were written by an earlier `influence pull` /
-    # `rematch`, whose term index is last-title-wins on a shared code
-    # (ROADMAP #115) — measured 2026-09-18, the shipped `1350` rows carry
-    # `Weapons|Ammunition` while today's index for `1350` holds "Missile
-    # Industrial Facilities", so a title edit between runs can leave a row
-    # whose terms match no current member. Such a row publishes on NEITHER
-    # member and is counted here. Measured 2026-09-18: ZERO — every
-    # multi_token row on 0145, 1350 and 2292 matches exactly one member's
-    # title (2292's two members share a title, so both match). The count is
-    # printed only when it is non-zero, like the narrative census above.
-    _member_titles_by_pe: dict[str, list[str]] = defaultdict(list)
-    for _r in all_prog_rows:
-        if _r[0] in ident.split_pe_blis:
-            _member_titles_by_pe[_r[0]].append(_r[3])
-    _unattributed_mentions = 0
-    _unattributed_mention_where: set[str] = set()
-    for _pe in sorted(ident.split_pe_blis):
-        _titles = _member_titles_by_pe.get(_pe, [])
-        for _m in mentions_by_pe.get(_pe, []):
-            if not any(_mention_is_about(_m, _t) for _t in _titles):
-                _unattributed_mentions += 1
-                _unattributed_mention_where.add(
-                    f"{_pe}/{_m.get('matched_term')}"
+    # RULING R-INT-9 (mention axis), dated 2026-09-25 — supersedes the
+    # ROADMAP #82 per-row attribution of 2026-09-18. Every lobbying row on a
+    # shared BLI code is WITHHELD from every member page (see the sidecar
+    # loop): the mart keys a filing on the bare code, and the numeric codes'
+    # `pe_literal` rows matched dates and bill numbers, not budget lines.
+    # This census is the only signal those rows exist — nothing renders them
+    # on a program page — so it prints whenever the corpus has shared codes,
+    # zero included, with the per-code and per-tier breakdown. Measured
+    # 2026-09-25 on the integration export in data/site (before the ruling):
+    # 76 mart rows on 6 codes (0145: 5 multi_token; 1350: 2 multi_token;
+    # 20: 22 pe_literal; 2292: 18 multi_token; 30: 26 pe_literal; 500: 3
+    # pe_literal), which the #82 rule had published as 171 row-instances
+    # across 11 member pages.
+    if ident.split_pe_blis:
+        _withheld_mentions: dict[str, Counter] = {}
+        for _pe in sorted(ident.split_pe_blis):
+            _rows = mentions_by_pe.get(_pe, [])
+            if _rows:
+                _withheld_mentions[_pe] = Counter(
+                    str(_m.get("evidence_kind")) for _m in _rows
                 )
-    if _unattributed_mentions:
+        _n_withheld = sum(sum(c.values()) for c in _withheld_mentions.values())
+        _where = "; ".join(
+            f"{_pe}: " + ", ".join(f"{n} {k}" for k, n in sorted(c.items()))
+            for _pe, c in _withheld_mentions.items()
+        )
         print(
-            f"program_details (ROADMAP #82, mention axis, rule of 2026-09-18):"
-            f" {_unattributed_mentions} lobbying mention row(s) on shared BLI"
-            f" codes matched no member program's title"
-            f" ({', '.join(sorted(_unattributed_mention_where))}) — published"
-            f" on NEITHER member, never on both"
+            "program_details (R-INT-9, mention axis, ruling of 2026-09-25):"
+            f" {_n_withheld} lobbying mention row(s) on"
+            f" {len(_withheld_mentions)} shared BLI code(s) withheld from"
+            f" every member page ({_where or 'none'}) — a filing keyed on a"
+            " shared code cannot say which program it describes; every row"
+            " stays on its /filing/ page"
         )
 
     # Curated published labels (ROADMAP #10 option A). Loaded ONCE, here, and
@@ -10971,6 +11093,33 @@ def _write_all_sidecars(
         entity_labels=entity_labels,
     )
 
+    # RULING R-INT-9 census (2026-09-25): the WHO-GETS-IT fallback tiers the
+    # builders above would have published on a shared-code member page, and
+    # which _summary_block withholds. Printed whenever the corpus has shared
+    # codes — zero included — so the withholding is always stated in the
+    # export log, never inferred from an absence. Measured 2026-09-25 on the
+    # integration export in data/site (before this ruling): the lobbying tier
+    # on 7 member pages (20-DCSA, 20-DTRA, 30-DMACT, 30-DTRA, 30-OSD,
+    # 500-DHRA, 500-DLA), named primes on 0.
+    if ident.split_pe_blis:
+        _withheld_lobbied = sorted(
+            s for s in lobbied_by_slug
+            if ident.is_split(slug_index.get(s, (s, None, None))[0])
+        )
+        _withheld_primes = sorted(
+            s for s, primes in named_primes_by_slug.items()
+            if primes and ident.is_split(slug_index.get(s, (s, None, None))[0])
+        )
+        print(
+            "program_details (R-INT-9, WHO-GETS-IT, ruling of 2026-09-25):"
+            f" withheld the lobbying tier from {len(_withheld_lobbied)}"
+            " shared-code member page(s)"
+            f" ({', '.join(_withheld_lobbied) or 'none'}) and J-book-named"
+            f" primes from {len(_withheld_primes)}"
+            f" ({', '.join(_withheld_primes) or 'none'}) — withheld on every"
+            " shared-code member page, as production does"
+        )
+
     def _summary_block(pe_bli: str, slug: str) -> dict:
         """The sidecar's summary payload: union block + named_primes (always
         a list — honest empty when no dossier names a known family) +
@@ -10988,10 +11137,22 @@ def _write_all_sidecars(
 
         ROADMAP #70 moved AWARDS to the member (see _awards_for); #82 moves
         the two fallback tiers and the withheld marker with them, so every
-        WHO-GETS-IT input on this page is now about this page's program."""
+        WHO-GETS-IT input on this page is now about this page's program.
+
+        RULING R-INT-9 (2026-09-25): on a shared-code member page both
+        fallback tiers are WITHHELD — named_primes [] and lobbied_by None —
+        exactly as production does (the live branch, 2c7ebbb0). A lobbying
+        row is keyed on the bare code and cannot say which member it
+        describes (the numeric codes' `pe_literal` rows match dates and bill
+        numbers — see the mention withholding in the sidecar loop), and the
+        ruling takes the dossier tier with it. The page then renders the
+        honest-absence tier. The builders still decide per member; what they
+        would have published here is counted by the census printed after
+        them, never dropped in silence."""
         block = dict(summary_by_pe.get(slug) or _summary_absence_block())
-        block["named_primes"] = named_primes_by_slug.get(slug, [])
-        block["lobbied_by"] = lobbied_by_slug.get(slug)
+        withheld = ident.is_split(pe_bli)
+        block["named_primes"] = [] if withheld else named_primes_by_slug.get(slug, [])
+        block["lobbied_by"] = None if withheld else lobbied_by_slug.get(slug)
         _pe, _account, _org = slug_index.get(slug, (pe_bli, None, None))
         block["concentration_withheld"] = _concentration_withheld(_pe, _account, _org)
         return block
@@ -11234,15 +11395,24 @@ def _write_all_sidecars(
         # citation individually resolvable. `_details_for`/`_narratives_with_links`
         # resolve on the SAME axis `_awards_for` and `_concentration_for` use.
         own_details = _details_for(pe_bli, account, org) if owns_detail else []
-        # ROADMAP #82 (mention axis, fix round 1): on a shared code a lobbying
-        # row publishes only where it is evidence about THIS member (per-row,
-        # from the mart's evidence_kind + matched_term against this member's
-        # own title). Identity for every ordinary program — those rows are not
-        # on a shared code, so `is_split` is False and the bare-code list is
+        # RULING R-INT-9 (2026-09-25; supersedes the ROADMAP #82 mention axis
+        # of 2026-09-18): a shared-code member page publishes NO lobbying
+        # mention. fct_program_lobbying is keyed on the BARE code (no account,
+        # no organization — nothing in a Senate LDA filing could populate
+        # one), so no row can say which member it describes. #82 assumed a
+        # `pe_literal` row "names the line"; for the numeric codes it does
+        # not — measured 2026-09-25 against the filings' own activity text,
+        # every one of the 51 pe_literal rows on '20'/'30'/'500' matched a
+        # bill or public-law number ("H.R. 20", "P.L. 117-30"), a date
+        # ("September 30") or part of a larger figure ("2,500 megahertz"),
+        # never a budget line. Production (the live branch, 2c7ebbb0)
+        # withholds; this is its rule. Every row stays on its /filing/ page
+        # (76 of 76 measured), the page states the withholding ("This code is
+        # shared by more than one budget line…"),
+        # and the census above counts every row withheld. Identity for every
+        # ordinary program: `is_split` is False and the bare-code list is
         # passed through unchanged.
-        own_mentions = mentions_by_pe.get(pe_bli, [])
-        if is_split:
-            own_mentions = [m for m in own_mentions if _mention_is_about(m, title)]
+        own_mentions = [] if is_split else mentions_by_pe.get(pe_bli, [])
         obj = {
             # ROADMAP #70: this member's own links. For a shared BLI code the
             # sibling's awards belong on the sibling's page, and the bare key
@@ -11250,22 +11420,17 @@ def _write_all_sidecars(
             "awards": _awards_for(pe_bli, account, org),
             "budget_lines": own_bl,
             "details": own_details,
-            # ROADMAP #82, the mention axis: this member's OWN lobbying rows.
-            # The mart is keyed on the BARE code (fct_program_lobbying has no
-            # account and no organization column, and nothing in a Senate LDA
-            # filing could populate one), so which member a row is evidence
-            # about is decided here, PER ROW, from the mart's own evidence —
-            # see _mention_is_about. A `pe_literal` row names the budget line
-            # itself and is therefore true of every program that uses the
-            # code, so both members render it and the /filing/ page carries
-            # the shared-code note beside it (ROADMAP #82 Task 9); a
-            # `multi_token`/`alias` row qualified by matching ONE title's
-            # tokens, so it publishes only on the member whose own title
-            # carries every matched term — on the other member the rendered
-            # badge ("2+ distinct, non-generic words from this program's
-            # title") would be false. `mentions_shared_code` below declares
-            # that per-row basis in the payload, so gate 21 leg n check 8
-            # reads the claim instead of hard-coding it.
+            # Empty on every shared-code member (R-INT-9, above), so no
+            # `mentions_shared_code` basis is declared either: there is no row
+            # to declare one for. The regression guards for this withholding:
+            # gate 21 leg n check 8(b) (site/scripts/gates/program-skeleton.mjs,
+            # run by `npm run verify`) fails any member whose sidecar carries a
+            # mention row, a lobbied_by block, a named prime or any
+            # `mentions_shared_code` declaration — a declaration excuses
+            # nothing — and any member page that renders a mention row, the
+            # lobbying or J-book WHO tier, or anything but the live empty
+            # state; tests/test_collision_slugs.py section (d) and
+            # tests/test_program_member_enrichment.py pin this exporter side.
             "mentions": _build_mentions(own_mentions, top200_family_keys),
             "narratives": (
                 _narratives_with_links(
@@ -11279,16 +11444,6 @@ def _write_all_sidecars(
             ),
             "summary": _summary_block(pe_bli, slug),
         }
-        if is_split and obj["mentions"]:
-            # {evidence_kind: basis} over the kinds THIS page publishes —
-            # "code" for pe_literal, "title" for every other tier. A blanket
-            # `true` was the earlier shape and it asserted the pe_literal rule
-            # over every row, which is false for the 7 multi_token rows
-            # measured on 0145/1350 (see _mention_basis).
-            obj["mentions_shared_code"] = {
-                str(m.get("evidence_kind")): _mention_basis(m.get("evidence_kind"))
-                for m in own_mentions
-            }
         if slug in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[slug]
             if slug in rva_by_pe:
@@ -14634,12 +14789,11 @@ def _emit_filing_sidecars(
     programs share — the link is then the disambiguation stub and the page
     says so beside it. The reason the mention cannot name one program is the
     mart's, not the filing's: fct_program_lobbying is keyed on the bare
-    pe_bli. It holds for a `pe_literal` row because the filing named the LINE
-    and nothing finer; for a `multi_token`/`alias` row the matched terms came
-    from ONE member's title, and which one is recoverable (the program page
-    does exactly that — see _mention_is_about) but is not carried on the row.
-    The rendered note's wording still states only the first case — ROADMAP
-    #115.
+    pe_bli, and nothing on the row names an account or organization. This
+    /filing/ page is where such a row stays published: under RULING R-INT-9
+    (2026-09-25) no shared-code member's program page lists it, and the
+    chooser link is the only program destination offered. The rendered
+    note's wording is ROADMAP #115's.
 
     Returns number of files written (0 when the lda parquets are absent).
     """
@@ -16509,85 +16663,22 @@ def refresh_usaspending_ids(
 
 
 # ---------------------------------------------------------------------------
-# ROADMAP #82 (mention axis), fix round 1 — 2026-09-18
+# Lobbying mentions on shared BLI codes — RULING R-INT-9 (2026-09-25)
 # ---------------------------------------------------------------------------
-# On a shared BLI code the basis on which a lobbying row reaches a member page
-# is PER ROW, and the row's own `evidence_kind` (fct_program_lobbying, #52)
-# says which. Nothing here infers anything from the filing's text:
-#
-#   pe_literal          -> "code". The activity description contains the bare
-#                          budget-line code itself ("30"), which names the LINE
-#                          and nothing finer — fct_program_lobbying has no
-#                          account or organization column and nothing in a
-#                          Senate LDA filing could populate one. The row is
-#                          evidence about the CODE, true of every program that
-#                          uses it, so every member renders it.
-#   multi_token / alias -> "title". The row qualified by matching >=2 distinct
-#                          non-generic tokens of ONE program's title, or one
-#                          curated alias (influence/mentions.py find_mentions).
-#                          The mart is keyed on the bare code, so such a row
-#                          arrives at BOTH members whichever title it matched,
-#                          and `build_program_terms` is last-title-wins on a
-#                          shared code (ROADMAP #115) so only one member's
-#                          tokens were ever searched. On a shared code it
-#                          publishes only on the member whose OWN dim_programs
-#                          title carries every matched term. The two kinds
-#                          render different badges (site/src/lib/evidence.ts):
-#                          · multi_token — "at least two distinct, non-generic
-#                            words from this program's title", which the title
-#                            test is exactly; on a member whose title carries
-#                            none of them the badge is false, so the row does
-#                            not publish there.
-#                          · alias — "a curated, human-verified alias for this
-#                            program". The title test is NOT that claim: an
-#                            alias phrase need not appear in the title, so on
-#                            a shared code an alias row is dropped from every
-#                            member whose title lacks it — possibly both. That
-#                            is conservative (fewer rows publish, none on the
-#                            wrong member), and 0 alias rows sit on a shared
-#                            code (measured read-only 2026-09-25); keying an
-#                            alias row on its owning member instead is a
-#                            separate decision.
-#
-# Measured 2026-09-18 on the shipped corpus (6 of the 13 shared codes carry
-# mentions): /program/0145-APN/ "F/A-18E/F (Fighter) Hornet" rendered 5 rows
-# matched `General|Purpose` (the sibling 0145-PANMC is "General Purpose
-# Bombs") and /program/1350-WPN/ "Missile Industrial Facilities" rendered 2
-# matched `Weapons|Ammunition` (sibling "Infantry Weapons Ammunition") —
-# 7 rendered rows whose badge named words that were not in the page's title.
-# 2292's two members have identical titles, so both keep all 18 of theirs;
-# 20/30/500 are pe_literal throughout and are untouched.
-
-
-def _mention_basis(evidence_kind: str | None) -> str:
-    """The basis a mention row publishes on: "code" or "title" (above)."""
-    return "code" if evidence_kind == "pe_literal" else "title"
-
-
-def _mention_terms(matched_term: str | None) -> list[str]:
-    """`matched_term` as the list of terms that had to match.
-
-    multi_token joins its tokens with "|" (influence/mentions.py); every other
-    tier stores a single term (the pe code, or a curated alias phrase).
-    """
-    return [t for t in (matched_term or "").split("|") if t]
-
-
-def _mention_is_about(mention: dict, title: str | None) -> bool:
-    """Is this lobbying row evidence about the program titled `title`?
-
-    True for every "code"-basis row (the filing names the shared line, which
-    every member uses). For a "title"-basis row, true only when the title
-    carries EVERY term in matched_term — same word-boundary test the matcher
-    used against the filing text, so the answer here is the answer that put
-    the row in the mart.
-    """
-    if _mention_basis(mention.get("evidence_kind")) == "code":
-        return True
-    terms = _mention_terms(mention.get("matched_term"))
-    if not terms or not title:
-        return False
-    return all(_mention_word_re(t).search(title) for t in terms)
+# ROADMAP #82's mention axis (fix round 1, 2026-09-18) attributed a shared
+# code's lobbying rows PER ROW: a `pe_literal` row to every member (on the
+# premise that the filing's bare code "names the LINE"), a `multi_token` /
+# `alias` row to the member whose own title carried every matched term.
+# R-INT-9 retired it: the premise is false for the numeric codes — measured
+# 2026-09-25, all 51 `pe_literal` rows on '20'/'30'/'500' matched a bill or
+# public-law number, a date or part of a larger figure — and production (the
+# live branch, 2c7ebbb0 / c2ac0b90) withholds every lobbying row, the
+# lobbying tier and the named primes from every member of a shared code. The
+# sidecar loop in _write_all_sidecars now does the same; the mention-axis
+# census there counts what is withheld. The per-row helpers (_mention_basis,
+# _mention_terms, _mention_is_about) and their `mentions_shared_code`
+# declaration went with the rule: nothing on a member page is left to
+# attribute or declare.
 
 
 def _build_mentions(raw_mentions: list, top200_family_keys: set) -> list:

@@ -189,13 +189,32 @@ export default function CompaniesPage() {
             /methodology/ §4 and /companies/families/: the registered parent
             name a tier reads IS the SAM registration, so an extract promotes
             no tier. Deleted, not replaced: this page has ~6 gzip bytes of
-            headroom, and "See methodology §4" follows. */}
+            headroom, and "See methodology §4" follows.
+            2026-09-25 final review #7: the high tier read "a registered
+            common parent for the subsidiaries" — an ownership claim that
+            /methodology/ §4 ("which does not prove ownership") and the
+            company pages disclaim. It now says what the registry shows.
+            Review round 2 (same day): "recipients that report the same parent
+            UEI" was wider than the rule. entity_graph.build_entity_xwalk
+            groups a high family on the reported parent NAME, downgrades any
+            family spanning two distinct parent UEIs, and lets a member with
+            no parent UEI in. Measured 2026-09-25 on entities_top.json, the
+            curated merges and the lake's entity_xwalk: the 144 high rows of
+            197 are 142 single registry families — every one keyed on a
+            parent name, none with two parent UEIs, 3 holding a member with
+            no parent UEI (e.g. UNIVERSITY OF TEXAS SYSTEM) — and 2 curated
+            merges (Huntington Ingalls, Teledyne) whose member families are
+            each high on that rule; the next sentence is what grades those
+            two. /methodology/ §4 states the rule in full (it also keys on a
+            parent UEI where no name is reported, a case none of these 200
+            families takes). */}
         <p className="text-sm text-muted-foreground" data-confidence-method>
           Obligation totals carry derived USAspending citations — click a
           figure to inspect the derivation. Confidence reflects the
-          entity-resolution method: <strong>high</strong> = a registered common
-          parent for the subsidiaries; <strong>medium</strong> = name
-          inference. A merged family is only as good as its worst member.{" "}
+          entity-resolution method: <strong>high</strong> = recipients
+          grouped under one reported parent name, never two different parent
+          UEIs; <strong>medium</strong> = name inference. A merged family is
+          only as good as its worst member.{" "}
           {showConfidence ? (
             <>
               {highCount} of these {rows.length} families resolve at high

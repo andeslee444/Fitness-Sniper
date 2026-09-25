@@ -249,6 +249,48 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   ("N linked award records are listed below.", the live branch's link) — a
   count of this page's rows, bound by gate 21 leg (j) to the page's sidecar,
   not the count of the line's links that #80 fix round 2 found goes false.
+  A ninth, **R-INT-9** (#82), came out of the final integration review: on
+  every member page of a shared code, lobbying mentions, the `lobbied_by`
+  block and named primes are withheld exactly as production withholds them
+  (the live branch's 2c7ebbb0 and c2ac0b90), and the Lobbying Mentions
+  section reads "This code is shared by more than one budget line. No
+  lobbying matches are assigned to this specific account or organization."
+  #82's per-member narratives and details are unchanged. The #82 rule it
+  supersedes sent every `pe_literal` row to every member, on the premise that
+  a bare code in a filing names the line. For the numeric codes that premise
+  is false: on 20, 30 and 500 every such row matched a bill or public-law
+  number ("H.R. 20", "P.L. 117-30"), a date ("September 30") or part of a
+  larger figure (a spectrum quantity, "2,500 megahertz"), and the merged
+  build told readers on 7 member pages that companies "named this program in
+  Senate lobbying filings". Gate 21 leg n check 8(b) now fails any member
+  sidecar that carries a mention row, a `lobbied_by` block, a named prime or
+  a `mentions_shared_code` declaration, and any member page that renders a
+  mention row, the lobbying or J-book answer to "Who gets it", or anything
+  but that sentence; the check it replaces passed the merged build, because
+  it accepted a declared basis. The same review fix round restores
+  two live-branch guards the merge had dropped: the subaward exporter again
+  refuses a subaward row that does not resolve to exactly one prime award
+  and one subawardee or that lacks a recipient or description, and
+  verify-phase5b1 checks subaward rows as strictly as the live branch did.
+  It also gives a multi-part PDF receipt's parts a deterministic order, so a
+  re-export no longer changes which page its citation panel opens on.
+  Production's order was an artefact of disk order: the budget-lines query
+  sorted on three keys that tie for a program filed under several budget
+  activities, and Postgres returned the tied rows unordered. The receipt
+  that moved on /program/F015EX/ is its reconciliation chip,
+  cf802c75afa0f505, not the headline receipt (4a9ae7cc, which opens on line
+  7, page 123, in both builds): production's parts ran [line 44 p126, 112,
+  134, 7], the integration's [7 p123, 44, 112, 134]. The new total order
+  (organization, account, budget activity, then row id, after the three
+  original keys) keeps the integration's order for it, so the deploy moves
+  that chip's first page from 126 to 123. Across the corpus, 25 of the 348
+  multi-part summed receipts open on a different first part than production
+  (measured on a read-only re-export, 2026-09-25). The same check found
+  `dim_entities.worst_confidence` computed as `min(confidence)` over text,
+  which returns the BEST tier ('high' sorts before 'medium'): 29 families
+  with a medium member read high, one published (NAN on /companies/). It is
+  now the weakest member's tier, pinned by accepted_values and a singular
+  dbt test (`assert_dim_entities_worst_confidence_is_worst`).
   The merged crosswalk is `roadmap-completion-2026-09-05`'s (#78, #85 and #86 carry
   dated integration lines; the live branch's ambiguous-account abort was not carried, #170, and
   neither was its detail-token scoping, #171). The live branch's backlog
@@ -1447,6 +1489,35 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   against Postgres and the shipped narratives parquet: the 10 account-split
   codes have 20 member pages, all organization N; all 40 PB2026 narratives
   on those codes are organization N, and 0 are refused, so no page changes.
+
+  *Integration 2026-09-25 (ruling R-INT-9):* the mention axis above (the
+  2026-09-12 addendum's per-row rule and fix round 1's
+  `mentions_shared_code` basis) is superseded on every member page of a
+  shared code. There the exporter ships `mentions` empty, `lobbied_by` null
+  and `named_primes` empty, as production does (the live branch's 2c7ebbb0
+  and c2ac0b90), and the Lobbying Mentions section says the code is shared
+  by more than one budget line and no lobbying match is assigned to the
+  member. The narratives, details and title block above are unchanged. The
+  premise of the superseded rule, that a `pe_literal` row names the budget
+  line, is false for numeric codes: each of the 51 `pe_literal` rows on 20,
+  30 and 500 matched a bill or public-law number, a date, or part of a
+  larger figure (a spectrum quantity) (final integration review, findings #1
+  and #11, 2026-09-25). Withdrawn with it,
+  measured on the chain F export's sidecars on 2026-09-25: 171 mention rows
+  on 11 member pages (`pe_literal`: 22 on each of 20-DTRA and 20-DCSA, 26 on
+  each of 30-OSD, 30-DMACT and 30-DTRA, 3 on each of 500-DHRA and 500-DLA;
+  `multi_token`, the title-basis rows fix round 1 kept: 5 on 0145-PANMC, 2
+  on 1350-PANMC, 18 on each of 2292-PMC and 2292-WPN), and the lobbying
+  answer to "Who gets it" on the 7 members of 20, 30 and 500. No member
+  carried a named prime. Pinned on the page side by
+  `site/src/__tests__/program-split-lobbying-withheld.test.tsx`, whose
+  export check stays red until export-site re-runs with the R-INT-9
+  exporter, and in the build by gate 21 leg n check 8(b) (review round 2,
+  2026-09-25), which fails a member on any lobbying row, lobbying or J-book
+  answer or named prime whatever its sidecar declares, and requires the
+  empty-state sentence on every member page. Run read-only against the
+  chain F export and the 42eed1e4 build, it fails exactly these 11 pages
+  (65 findings); the check 8 it replaces passed them.
 - **#83 Two definitions of "account-split"** (`scripts/collision_keys.py` vs
   `_ProgramIdentity.is_account_split`) — fail-closed today; unify.
   **Status:** CLOSED 2026-09-10 — one rule, `govbudget.jbooks.collision_keys.classify_shared_keys` (an axis resolves a key only when every row's value is present and pairwise distinct; ACCOUNT, else ORGANIZATION, else UNRESOLVED); `_ProgramIdentity` and both link loaders import it, `scripts/collision_keys.py` deleted; the 13 live keys classify as before (10/3/0, 27 composite slugs); an unresolved key now stops export-site (`UnresolvedSharedKeyError`) and is excluded by the loaders; identity of the three callers' function objects and the two formerly divergent shapes are pinned by tests/test_collision_keys.py.
@@ -3323,7 +3394,75 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   gate fails on any entry that matches nothing, so no entry can outlive its
   string. Do the two `"*"` entries first. Source: the integration's
   copy-gate report (`gatefix-copy.md`, the branch ledger). Effort: days.
+  *Review fix round, 2026-09-25:* the first burn-down. /methodology/'s
+  pointer to /coverage/ lost its em-dash pair when final-review finding #8
+  reworded it, and its leg-13 entry was deleted in the same change, leaving
+  583 entries.
   **Status:** open (2026-09-25).
+
+- **#176 The lobbying matcher reads a year, a bill number or a quantity as a
+  numeric budget-line code and badges the row "PE code cited directly".**
+  `src/govbudget/influence/mentions.py` adds each program's bare `pe_bli` as
+  a code term (`_candidate_terms_typed`), `_build_word_boundary_re` matches
+  it as a free-standing token, and `find_mentions` tags any hit
+  `pe_literal`, the strongest tier. The site labels that tier "PE code cited
+  directly" (`site/src/lib/evidence.ts`), and it is one of the two tiers
+  that may name a company in a program's answer to "Who gets it". Nothing
+  asks whether the token is a year, a bill number or a quantity. Measured
+  read-only on 2026-09-25 from `data/site/data/fct_program_lobbying.parquet`
+  (14,016 rows): all 1,631 `pe_literal` rows sit on 45 codes of one to four
+  digits, led by 2025 (683 rows), 2026 (455), 14 (80), 4213 (54) and 22
+  (51). The final integration review (finding #10) read the 2025 and 2026
+  rows against the filings' own text: 638 of the 683 and 413 of the 455
+  carry the code as a year ("Fiscal Year 2025", "Act of 2025"), and only 5
+  of the 683 mention the Amphibious Combat Vehicle, budget line 2025, at
+  all. On the integration build /company/raytheon/ carries 7 rows reading
+  "Amphibious Combat Vehicle Family of Vehicles … matched on 2025 · PE code
+  cited directly", /program/2025/ lists 767 mentions and opens on an Abbott
+  Laboratories filing about "The Strengthening Benefit Plans Act of 2025",
+  and the 14,016 program mentions /methodology/ counts, "qualifying only
+  when the exact PE/BLI code appears", include every one of these rows. On
+  the members of a shared code R-INT-9 now withholds them (#82); everywhere
+  else they publish, as they do in production (81929a6b), so the defect
+  predates the merge. How many of the 1,631 rows are real code citations is
+  unmeasured. Fix: require a numeric code to appear with context that makes
+  it a budget line (a PE or BLI label, or the program's own title words
+  nearby), or publish bare numeric hits below `pe_literal`; then re-measure
+  the 14,016 and gate 21 leg (j)'s "Who gets it" census. Source:
+  `src/govbudget/influence/mentions.py`, `site/src/lib/evidence.ts`, the
+  final integration review (finding #10). Effort: days.
+  **Status:** open (2026-09-25; scheduled in the decisions wave).
+
+- **#177 A deploy overwrites fixed-name `data/*.parquet` on R2 before Vercel
+  serves the pages that read them.** `scripts/launch/deploy.sh` runs
+  `upload_r2.sh --live` first and the Vercel deploy second, on the ground
+  that "upload_r2.sh never deletes, so an early sync is safe". That holds
+  for the content-addressed `pdfs/` and `workbooks/`, but `data/*.parquet`
+  have fixed names, and `rclone copy --checksum` replaces a changed object
+  in place (`scripts/launch/upload_r2.sh`). The integration export changed
+  the columns of `data/fct_program_concentration.parquet` (#80: `hhi`,
+  `top_family`, `family_count` became `hhi_all`, `hhi_high` and their
+  siblings), and production's /data/ Explorer preset "Most concentrated
+  programs (HHI)" queries `SELECT pe_bli, hhi, family_count, top_family …
+  ORDER BY hhi DESC` (81929a6b, `site/src/components/explorer.tsx`). Checked
+  by the final integration review (finding #17) on 2026-09-25: the live R2
+  object is 10,895 bytes with the old columns, the local file is 17,903
+  bytes with the new ones, and the old preset raises a DuckDB Binder Error
+  against the new file; every other shipped parquet only gains columns or
+  is unchanged. So production's preset fails from the end of the R2 step
+  until Vercel serves the new pages, indefinitely if the Vercel step fails,
+  and after any Vercel rollback to a pre-integration deployment
+  that does not also restore the R2 object. No local copy of the old-schema
+  file remains: `data/refresh/2026-09-24/rollback/site/data/` already
+  carries the new columns (checked 2026-09-25), so the live R2 object is
+  the only copy. Fix: before the R2 step, copy the live `data/` prefix
+  aside (`rclone copy` to a dated R2 prefix) so a rollback can restore it;
+  then either version the parquet keys per build, or deploy pages before
+  data when a schema changes, or ship a temporary alias column. Source:
+  `scripts/launch/deploy.sh`, `scripts/launch/upload_r2.sh`, the final
+  integration review (finding #17). Effort: hours.
+  **Status:** open (2026-09-25; the window applies to this integration's
+  own deploy).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

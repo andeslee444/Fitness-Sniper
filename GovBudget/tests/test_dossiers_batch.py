@@ -1269,12 +1269,13 @@ class TestGate:
     def test_a_lobbying_mention_on_the_shared_code_denies_both_members(
         self, gate_fixture, split_key_duckdb,
     ):
-        """fct_program_lobbying is keyed by the bare pe_bli. A `pe_literal`
-        mention names the code itself, so both members' sidecars render it
-        (export_site._mention_is_about) and neither page may be excused for
-        not citing it. The gate counts EVERY mention on the code for both
-        members — stricter than the page for multi_token/alias rows since
-        2026-09-18 (see _has_no_players_evidence)."""
+        """fct_program_lobbying is keyed by the bare pe_bli, so the gate
+        counts EVERY mention on the code for BOTH members, whatever its tier.
+        Since ruling R-INT-9 (2026-09-25) neither member's sidecar carries the
+        row (export_site ships `mentions` [] on every member of a shared
+        code), so this is stricter than the page on every tier: the member is
+        refused the exception over a row its page does not render (see
+        _has_no_players_evidence) — a loud failure, never an excuse."""
         con = duckdb.connect(str(split_key_duckdb))
         con.execute("insert into fct_program_lobbying values (?,?,?)",
                     [PE2, "RAYTHEON", "pe_literal"])

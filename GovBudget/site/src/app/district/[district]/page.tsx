@@ -122,8 +122,17 @@ export default async function DistrictDetailPage({ params }: Props) {
   // while they coincide and say so, and to split back into two the moment they
   // diverge (a crosswalk row whose citation does not resolve). Deciding this
   // per district from the data means neither state can be a lie.
+  //
+  // Compared in whole CENTS (2026-09-25 final review #5). Both totals are
+  // float sums of per-program obligations and the exporter's clamp does not
+  // round, so an exact === split 14 districts on float noise alone — AL-02
+  // shipped cited 4,589,898,661.98 against linkable 4,589,898,661.9800005 and
+  // rendered a second, identical "$4.59B of which cited" tile — and each
+  // re-export picked a different set. A dollar amount is equal to the cent or
+  // it is not; CA-51's real $340,858 gap still splits.
+  const cents = (usd: number) => Math.round(usd * 100);
   const citedEqualsLinkable =
-    detail.total_cited_dollars === detail.total_linkable_dollars;
+    cents(detail.total_cited_dollars) === cents(detail.total_linkable_dollars);
 
   // R-28b-4: the fact id of every state-A <Cite> this page renders, and no
   // other — each entry carries the condition its <Cite> renders under below

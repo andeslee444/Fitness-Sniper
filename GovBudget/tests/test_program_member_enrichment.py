@@ -70,10 +70,32 @@ def _member_export(tmp_path, extra_details=(), extra_narratives=()):
         ('shared-filing','0145','General Purpose Bombs','General|Purpose',
         'General purpose bombs lobbying','https://example.test/filing',
         'A client','lockheed','2026','keyword')''')
+    # RULING R-INT-9 (2026-09-25): the live 30-OSD shape. A `pe_literal` match
+    # of the bare code '30' that is really a date in the filing's text, filed
+    # by a profiled company. Under the retired #82 mention rule this row
+    # published on BOTH '30' members and put Lockheed Martin in the
+    # WHO-GETS-IT lobbying card of every member without a stronger answer.
+    con.execute('''insert into fct_program_lobbying values
+        ('date-filing','30','OSD','30',
+        'Appropriations for the fiscal year ending September 30, 2026',
+        'https://example.test/filing-2','Lockheed Martin','lockheed','2026',
+        'pe_literal')''')
     con.close()
     out = tmp_path / 'site'
     data = out / 'data'
     data.mkdir(parents=True)
+    # ...and a slug-named dossier on 30-OSD whose cited players claim names a
+    # profiled family, so the named-primes tier has something to publish too
+    # ('narr-2' is 30-OSD's own narrative, cited below).
+    dossiers = out / 'json' / 'dossiers'
+    dossiers.mkdir(parents=True)
+    (dossiers / '30-OSD.json').write_text(json.dumps({
+        'pe_bli': '30', 'slug': '30-OSD',
+        'dossier': {'players': {'claims': [{
+            'text': 'Lockheed Martin supports the program office.',
+            'citation': {'fact_id': 'narr-2'},
+        }]}},
+    }))
     narratives = []
     details = []
     bl_rows = []
@@ -308,20 +330,54 @@ def test_member_sidecars_keep_their_own_details_prose_and_sources(member_export)
         cited = [r['fact_id'] for r in obj['details'] + obj['narratives']]
         assert {citations[fid]['official_url'] for fid in cited} == {
             f'https://example.mil/document-{i}.pdf'}
-        # ROADMAP #82 (mention axis), the merged rule: on a shared code a
-        # title-basis lobbying row publishes only on the member whose own
-        # title carries every matched term. 'General|Purpose' is in
-        # 0145-PANMC's title ("General Purpose Bombs") and not in 0145-APN's
-        # ("Hornet"); code '30' has no lobbying rows.
-        if slug == '0145-PANMC':
-            assert [(m['filing_uuid'], m['matched_term'], m['evidence_kind'])
-                    for m in obj['mentions']] == [
-                ('shared-filing', 'General|Purpose', 'keyword')]
-        else:
-            assert obj['mentions'] == []
-        assert obj['summary']['named_primes'] == []
-        assert obj['summary']['lobbied_by'] is None
+        # RULING R-INT-9 (2026-09-25; supersedes the ROADMAP #82 mention axis,
+        # whose assertion this was): no lobbying row, lobbying tier or named
+        # prime publishes on a shared-code member page — production's rule
+        # (the live branch, 2c7ebbb0). Each withheld tier has something to
+        # publish in this fixture, so each line failed under the #82 rule:
+        # 'General|Purpose' matched 0145-PANMC's own title and published
+        # there; the '30' pe_literal date match published on both '30'
+        # members and named Lockheed Martin in 30-DTRA's lobbying card; the
+        # 30-OSD dossier named Lockheed Martin as a prime.
+        assert obj['mentions'] == [], slug
+        assert 'mentions_shared_code' not in obj, slug
+        assert obj['summary']['named_primes'] == [], slug
+        assert obj['summary']['lobbied_by'] is None, slug
     assert not (member_export / 'json/program_details/0145.json').exists()
+
+
+def test_an_ordinary_program_keeps_its_lobbying_mentions(member_export):
+    """R-INT-9 is a shared-code rule only: an unsplit code's sidecar keeps the
+    bare-code mention list, row for row."""
+    obj = json.loads(
+        (member_export / 'json/program_details/0601101E.json').read_text())
+    assert [(m['matched_term'], m['evidence_kind']) for m in obj['mentions']] == [
+        ('darpa', 'alias')]
+
+
+_R_INT_9_MENTIONS = 'program_details (R-INT-9, mention axis, ruling of 2026-09-25): '
+_R_INT_9_WHO = 'program_details (R-INT-9, WHO-GETS-IT, ruling of 2026-09-25): '
+
+
+def test_the_r_int_9_census_names_every_withheld_row_and_tier(tmp_path, capsys):
+    """Nothing renders a withheld row or tier, so the census is the only
+    signal they exist. Both lines print once, with counts and names."""
+    capsys.readouterr()
+    _member_export(tmp_path)
+    printed = capsys.readouterr().out.splitlines()
+    mentions = [ln for ln in printed if ln.startswith(_R_INT_9_MENTIONS)]
+    who = [ln for ln in printed if ln.startswith(_R_INT_9_WHO)]
+    assert mentions == [
+        _R_INT_9_MENTIONS + '2 lobbying mention row(s) on 2 shared BLI code(s)'
+        ' withheld from every member page (0145: 1 keyword; 30: 1 pe_literal)'
+        ' — a filing keyed on a shared code cannot say which program it'
+        ' describes; every row stays on its /filing/ page'
+    ], printed
+    assert who == [
+        _R_INT_9_WHO + 'withheld the lobbying tier from 1 shared-code member'
+        ' page(s) (30-DTRA) and J-book-named primes from 1 (30-OSD) — withheld'
+        ' on every shared-code member page, as production does'
+    ], printed
 
 
 def test_years_matrix_projects_use_each_members_source(member_export):

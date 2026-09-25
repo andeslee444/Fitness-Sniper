@@ -334,9 +334,14 @@ def _write_lake(tmp_path: Path) -> Path:
     (lake / "fy=2023").mkdir(parents=True)
     con = duckdb.connect()
     con.execute(f"create table c (prime_award_piid varchar, {_LAKE_COLS})")
+    # Two monthly re-reports of the SAME record (one identity, two
+    # descriptions and dates) — the shape the fail-closed identity check
+    # accepts. Until 2026-09-25 the older row carried 'OLD NAME' and the test
+    # below pinned "the latest report wins"; two recipients behind one key now
+    # RAISE instead (finding #13), pinned by the tests after it.
     con.execute(
         "insert into c values "
-        f"('{_PIID}', '{_KEY}', '{_NUMBER}', 'OLD NAME', 'old desc', '{_PRIME_URL}',"
+        f"('{_PIID}', '{_KEY}', '{_NUMBER}', '{_SUBAWARDEE}', 'old desc', '{_PRIME_URL}',"
         " '2019-02-01', '2019-03-01'),"
         f"('{_PIID}', '{_KEY}', '{_NUMBER}', '{_SUBAWARDEE}', 'new desc',"
         f" '{_PRIME_URL}', '2020-06-15', '2020-07-01'),"
@@ -370,7 +375,7 @@ def test_load_subaward_lake_rows_reads_a_mixed_schema_lake_by_name(tmp_path):
     db = _write_lake(tmp_path)
     out = _load_subaward_lake_rows(db, {(_PIID, _NUMBER)})
     assert out == {(_PIID, _NUMBER): {
-        "subawardee": _SUBAWARDEE,          # the LATEST report wins
+        "subawardee": _SUBAWARDEE,          # one identity across both reports
         "permalink": _PRIME_URL,
         "prime_award_unique_key": _KEY,
     }}
@@ -396,6 +401,108 @@ def test_load_subaward_lake_rows_without_a_lake_is_empty_not_an_error(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# The fail-closed identity check (restored 2026-09-25 from the live branch,
+# 81929a6b _enrich_subaward_link_sources — final integration review findings
+# #13 and #15). Ports of the live tests
+# test_enrichment_requires_both_prime_and_subaward_identity and
+# test_missing_or_ambiguous_raw_evidence_blocks_export, run through the
+# merged loader AND the citation builder the export calls it for.
+# ---------------------------------------------------------------------------
+
+_SUB_COLS = (
+    "prime_award_piid varchar, prime_award_unique_key varchar,"
+    " subaward_number varchar, subawardee_name varchar,"
+    " subaward_description varchar, usaspending_permalink varchar,"
+    " subaward_action_date varchar, subaward_sam_report_last_modified_date varchar"
+)
+
+
+def _evidence_lake(tmp_path: Path, rows: list[tuple]) -> Path:
+    """A contract-shaped subawards lake in the live layout. Each row is
+    (piid, prime_key, number, subawardee, description[, permalink]); the
+    permalink defaults to blank (the loader then builds the prime page)."""
+    lake = tmp_path / "parquet" / "subawards" / "fy=2024"
+    lake.mkdir(parents=True)
+    full = [(*r, *([""] if len(r) == 5 else []), "2024-01-01", "2024-02-01")
+            for r in rows]
+    _write_parquet(lake / "part_000.parquet", _SUB_COLS, full)
+    (tmp_path / "duckdb").mkdir()
+    return tmp_path / "duckdb" / "govbudget.duckdb"
+
+
+def test_the_loader_needs_both_the_prime_piid_and_the_subaward_number(tmp_path):
+    """Live: test_enrichment_requires_both_prime_and_subaward_identity. A row
+    sharing only the number (another prime) or only the prime (another
+    number) is not the record."""
+    db = _evidence_lake(tmp_path, [
+        (_PIID, _KEY, _NUMBER, _SUBAWARDEE, "Matching source description"),
+        ("WRONG", "CONT_AWD_WRONG_9700", _NUMBER, "Wrong recipient", "Another"),
+        (_PIID, _KEY, "OTHER", "Wrong subaward", "Another source"),
+    ])
+    assert _load_subaward_lake_rows(db, {(_PIID, _NUMBER)}) == {(_PIID, _NUMBER): {
+        "subawardee": _SUBAWARDEE,
+        "permalink": _PRIME_URL,
+        "prime_award_unique_key": _KEY,
+    }}
+
+
+@pytest.mark.parametrize(("rows", "message"), [
+    # the requested number is absent: nothing to cite (the builder's raise)
+    ([(_PIID, _KEY, "OTHER", _SUBAWARDEE, "Description")], "not in the lake"),
+    # the record carries no description: not the link's evidence
+    ([(_PIID, _KEY, _NUMBER, _SUBAWARDEE, "")], "no row with a subaward description"),
+    ([(_PIID, _KEY, _NUMBER, _SUBAWARDEE, "   ")], "no row with a subaward description"),
+    # no recipient
+    ([(_PIID, _KEY, _NUMBER, "", "Description")], "carries no subawardee"),
+    # a prime award that is not this PIID's contract award
+    ([(_PIID, "CONT_AWD_WRONG_9700", _NUMBER, _SUBAWARDEE, "Description")],
+     "not a contract award of the link's own PIID"),
+    ([(_PIID, f"CONT_IDV_{_PIID}_9700", _NUMBER, _SUBAWARDEE, "Description")],
+     "not a contract award of the link's own PIID"),
+    # two recipients behind one key (was: the latest report won, in silence)
+    ([(_PIID, _KEY, _NUMBER, "Recipient A", "Description"),
+      (_PIID, _KEY, _NUMBER, "Recipient B", "Description")],
+     "2 source identities; expected exactly one"),
+    # two prime awards behind one key
+    ([(_PIID, _KEY, _NUMBER, _SUBAWARDEE, "Description"),
+      (_PIID, f"CONT_AWD_{_PIID}_9700_OTHER_9700", _NUMBER, _SUBAWARDEE, "Description")],
+     "2 source identities; expected exactly one"),
+    # a permalink naming another award than the record's prime key
+    ([(_PIID, _KEY, _NUMBER, _SUBAWARDEE, "Description",
+       "https://www.usaspending.gov/award/CONT_AWD_ELSEWHERE_9700/")],
+     "is not the page of its prime award"),
+])
+def test_missing_or_ambiguous_raw_evidence_blocks_export(tmp_path, rows, message):
+    """Live: test_missing_or_ambiguous_raw_evidence_blocks_export, plus the
+    CONT_IDV, two-prime and stray-permalink cases. Every one fails the
+    export — the loader raises, or (absent record) the builder does."""
+    db = _evidence_lake(tmp_path, rows)
+    with pytest.raises(RuntimeError, match=message):
+        lake = _load_subaward_lake_rows(db, _subaward_lake_keys(_SUB_SOURCES))
+        _build(tmp_path, subaward_lake=lake)
+
+
+def test_a_blank_description_beside_a_described_report_is_ignored(tmp_path):
+    """Only described rows are evidence; an undescribed re-report of the same
+    key neither blocks the export nor adds an identity."""
+    db = _evidence_lake(tmp_path, [
+        (_PIID, _KEY, _NUMBER, _SUBAWARDEE, "Description"),
+        (_PIID, _KEY, _NUMBER, "SOMEONE ELSE", ""),
+    ])
+    out = _load_subaward_lake_rows(db, {(_PIID, _NUMBER)})
+    assert out[(_PIID, _NUMBER)]["subawardee"] == _SUBAWARDEE
+
+
+def test_the_builder_refuses_a_lake_entry_without_a_subawardee(tmp_path):
+    """Defense in depth for any caller that hands the builder its own lake
+    map: the mint needs the recipient the card names."""
+    with pytest.raises(RuntimeError, match="has no subawardee"):
+        _build(tmp_path, subaward_lake={(_PIID, _NUMBER): {
+            "subawardee": None, "permalink": _PRIME_URL,
+            "prime_award_unique_key": _KEY}})
+
+
+# ---------------------------------------------------------------------------
 # verify_phase5b1 — the new kind must be verifiable, not "unknown"
 # ---------------------------------------------------------------------------
 
@@ -411,9 +518,27 @@ def test_verify_subaward_accepts_a_well_formed_row():
     assert _verify_subaward(_good_row(), _CIT_IDX) is None
 
 
-def test_verify_subaward_accepts_a_null_subawardee():
-    """Absence is honest; the card says 'not recorded'."""
-    assert _verify_subaward(_good_row(subawardee=None), _CIT_IDX) is None
+def test_verify_subaward_rejects_a_null_subawardee():
+    """Was: accepted ("absence is honest; the card says 'not recorded'").
+    Rewritten 2026-09-25 (final integration review finding #15): the site's
+    card parser refuses a null subawardee (so that row rendered the degraded
+    panel, never 'not recorded'), the exporter now refuses to mint one, and
+    0 of the 114 published rows carry one — the gate matches the live
+    branch's stricter check at no cost."""
+    reason = _verify_subaward(_good_row(subawardee=None), _CIT_IDX)
+    assert reason is not None and "subawardee" in reason
+    reason = _verify_subaward(_good_row(subawardee="  "), _CIT_IDX)
+    assert reason is not None and "subawardee" in reason
+
+
+def test_verify_subaward_rejects_an_idv_prime_key():
+    """2026-09-25 (finding #15): the award page must be the formula PIID's
+    CONTRACT award. A CONT_IDV_ key of the same PIID used to pass; the live
+    branch, the exporter and the card all refuse it, and 0 of the 114
+    published rows carry one."""
+    idv = f"https://www.usaspending.gov/award/CONT_IDV_{_PIID}_9700/"
+    reason = _verify_subaward(_good_row(url=idv), _CIT_IDX)
+    assert reason is not None and "CONT_AWD_" in reason
 
 
 @pytest.mark.parametrize("bad_url", [

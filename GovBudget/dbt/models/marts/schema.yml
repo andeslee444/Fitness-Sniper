@@ -12,6 +12,12 @@ models:
       - name: family_key
         description: "Unique — a duplicate means the SAM LEFT JOIN fanned out (entities.parquet carried two rows for one sam_uei) and every /companies/ figure is double-counting."
         data_tests: [unique, not_null]
+      - name: worst_confidence
+        description: "The weakest member's tier (medium if ANY member is medium). Ranked, never min() over the text (which returned the best tier)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['high', 'medium']
   - name: fct_award_transactions
     columns:
       - name: transaction_key

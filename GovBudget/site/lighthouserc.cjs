@@ -34,8 +34,21 @@ module.exports = {
         "total-blocking-time": ["error", { maxNumericValue: 300 }],
       },
     },
+    // Reports stay on this machine.  Until 2026-09-25 this was
+    // "temporary-public-storage", which posted a report on pages that had not
+    // been deployed yet to a public URL on every `npm run verify` (backlog
+    // finding #20).  Gate 7 (scripts/verify.mjs runLhci) reads only lhci's
+    // exit code, never a report URL, so the target does not change the gate.
+    // outputDir resolves against the cwd verify.mjs gives lhci (site/), i.e.
+    // site/.lighthouseci/reports/ — ignored by site/.gitignore's
+    // `.lighthouseci/`, and outside lhci's own clear-on-collect sweep (which
+    // deletes only .lighthouseci/lhr-*.json|html).  The filename carries no
+    // timestamp, so each run overwrites the last: one report per URL plus
+    // manifest.json, bounded, never accumulating.
     upload: {
-      target: "temporary-public-storage",
+      target: "filesystem",
+      outputDir: "./.lighthouseci/reports",
+      reportFilenamePattern: "%%HOSTNAME%%-%%PATHNAME%%.report.%%EXTENSION%%",
     },
   },
 };

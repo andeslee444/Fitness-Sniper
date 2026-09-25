@@ -130,11 +130,20 @@ export function getCoverage(
     case "company-awards": {
       const num = getCompaniesWithAwardsCount();
       const den = getCompaniesCount();
+      // 2026-09-25 final review #9: this ended "— only high-confidence
+      // USASpending matches are included", above tables that list medium
+      // rows (/company/ernst-young/ lists only medium ones) and above the
+      // program page's own medium caveat; `num` itself counts every company
+      // with an award row of either tier. It now names both published tiers
+      // (low never publishes) and says which is weaker — the one thing a
+      // company page, which carries no caveat paragraph, otherwise leaves
+      // unsaid. coverage-note-company-awards.test.ts binds the tier list to
+      // the sidecars; gate G2 (coverage.mjs) still binds "N of M".
       return {
         id,
         numerator: num,
         denominator: den,
-        note: `Award linkage is shown for ${formatCount(num)} of ${formatCount(den)} profiled companies — only high-confidence USASpending matches are included.`,
+        note: `Award linkage is shown for ${formatCount(num)} of ${formatCount(den)} profiled companies — high- and medium-confidence USAspending matches, each row labeled; medium is the weaker evidence.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-company-awards",
         linkText: "why partial award coverage? →",

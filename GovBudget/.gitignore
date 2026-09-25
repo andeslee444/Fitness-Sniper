@@ -13,3 +13,7 @@ logs/
 data/raw_docs/
 data/site/
 data/refresh/
+# PDF page caches (config.ROOT/"tmp"/"pdfs", program_pdf_receipts.py) —
+# derived, ~0.5 GB, files up to ~52 MB; must never reach the fiscalreceipts
+# subtree publish.  Anchored: only GovBudget/tmp/, not every dir named tmp.
+/tmp/

@@ -136,9 +136,10 @@ and 100% citation resolution.
 
 **Company families — registry fact vs. name inference.** When we say a company
 received a total figure across its member recipients, we rely on one of two
-methods. *High confidence* (registry fact): the recipients share one reported
-parent UEI, which does not prove ownership. *Medium confidence* (name
-inference): legal-name variants normalize to the same string (e.g., "THE
+methods. *High confidence* (registry fact): the recipients are grouped under
+one reported parent name, or one parent UEI where no name is reported, and
+never span two different parent UEIs; that does not prove ownership. *Medium
+confidence* (name inference): legal-name variants normalize to the same string (e.g., "THE
 BOEING COMPANY" and "BOEING COMPANY, THE (INC)"). Where a whole table is
 uniform, the per-row chip is suppressed and the method stated once.
 
@@ -215,7 +216,7 @@ publishing at high with no adjudication is NAMED. This replaced
 account-based — the award drew from the same appropriation account as the
 program, usually under the same sub-agency — an association, not evidence
 this specific program paid for the contract. A held-out sample of account /
-sub-agency links, judged on program attribution, confirmed 0 of 60
+sub-agency links, judged on program attribution, confirmed 0 of 58
 (2026-09-11). Where the evidence is
 instead an FPDS acquisition-program tag or a subaward description (both below),
 the program is established but which of its budget lines paid is not.
@@ -335,7 +336,9 @@ description and the program's narrative, project titles and lexicon names in
 each packet) was judged on program attribution by two independent adversarial
 lenses per packet — an attribution judge and a skeptical refuter, arbiter on
 disagreement, default refuted (120 judgements, 0 disagreements) — and
-**0 of 60** is the figure the page prints. Under that rubric a link confirms
+**none of the 60 was confirmed**. The page prints that result over the sampled
+links the corpus still publishes (the rule above), so its denominator moves
+with the corpus while this study's verdicts do not. Under that rubric a link confirms
 only when the award's own record names work the program element's narrative or
 project titles own; no sampled link cleared it — several awards name a
 different DARPA effort outright, and what the reviewers found in common

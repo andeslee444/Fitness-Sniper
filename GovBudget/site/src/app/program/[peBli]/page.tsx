@@ -451,6 +451,15 @@ export default async function ProgramPage({
   const siblings = getProgramsByBareKey(resolvedProgram.pe_bli);
   const accountSplit = siblings.length > 1 && stubDimension(siblings) === "account";
   const peIndex = getPeLinkIndex();
+  // R-INT-9 (2026-09-25): on a member of a shared code the exporter ships
+  // mentions [], lobbied_by null and named_primes [] — a bare code in a
+  // filing ("20", "30", "500") cannot say which member it is about, and for
+  // those numbers it was a bill or public-law number, a date or part of a
+  // larger figure (a spectrum quantity). This flag only picks the
+  // empty-state sentence that says so; the WHO answer falls to award / none
+  // on its own because both lobbying inputs are empty.
+  // program-split-lobbying-withheld.test.tsx pins both halves; gate 21 leg n
+  // check 8(b) holds every built member page to them.
   const sharesBudgetCode = getSplitProgramKeys().includes(program.pe_bli);
 
   // Build set of linkable family_keys (entities_top).
@@ -1629,7 +1638,8 @@ function WhoGetsItBody({
   // Reached only when no stronger tier answered — and none can: the award
   // tier needs program.hhi, which is the same withheld block; the J-book and
   // lobbying tiers are suppressed by the exporter's own per-member awards
-  // guard, because their closing sentences ("not yet crosswalked to award
+  // guard (and, since R-INT-9, withheld outright on every shared-code
+  // member), because their closing sentences ("not yet crosswalked to award
   // data", "No contract award is linked to this line") are false above this
   // page's Related Awards table. gate 21 leg n check 7 holds that: a
   // withheld payload must render THIS branch, and nothing else may stamp

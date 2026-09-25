@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -677,18 +676,16 @@ def _make_collision_duckdb(db_path: Path) -> None:
         " ('3010', 8411.8, 'HUNTINGTON INGALLS INDUSTRIES', 3, 8, 3059296982.0,"
         "  8411.8, 'HUNTINGTON INGALLS INDUSTRIES', 3, 8, 3059296982.0)"
     )
-    # ROADMAP #82 (mention axis), fix round 1: lobbying rows on the shared
-    # code, one per evidence tier. fct_program_lobbying is keyed on the BARE
-    # pe_bli (it has no account column and a Senate LDA filing carries
-    # nothing that could populate one), so ALL FOUR of these arrive at both
-    # member pages and the exporter decides per row which page each is
-    # evidence about:
-    #   pe_literal  '3010'                      -> both (names the LINE)
-    #   multi_token 'Shipboard|Communications'  -> the OPN member only
-    #   alias       'Flight'                    -> the SCN member only
-    #   multi_token 'Orphan|Volume'             -> NEITHER, and counted
-    # The last is the mention-axis twin of the orphan J-book volume above:
-    # terms that match no member's title are evidence about no member.
+    # Lobbying rows on the shared code, one per evidence tier.
+    # fct_program_lobbying is keyed on the BARE pe_bli (it has no account
+    # column and a Senate LDA filing carries nothing that could populate
+    # one), so ALL FOUR arrive at both member pages. Under RULING R-INT-9
+    # (2026-09-25) every one is withheld from both members and counted by the
+    # census. Under the retired ROADMAP #82 per-row rule (2026-09-18) they
+    # went, in order: both members (pe_literal), the OPN member only
+    # (Shipboard|Communications), the SCN member only (Flight), neither
+    # (Orphan|Volume) — so each row still pins a distinct way the old rule
+    # could publish, and section (d) proves none does now.
     _lob = (
         ("11111111-1111-4111-8111-111111111111", "3010", "pe_literal"),
         ("22222222-2222-4222-8222-222222222222", "Shipboard|Communications",
@@ -1211,110 +1208,110 @@ def test_an_ordinary_programs_narratives_are_unchanged(collision_export):
 
 
 # ---------------------------------------------------------------------------
-# (d) ROADMAP #82, the MENTION axis (fix round 1): per-row attribution
+# (d) The MENTION axis — RULING R-INT-9 (2026-09-25): every row withheld
 # ---------------------------------------------------------------------------
 #
-# fct_program_lobbying is keyed on the bare pe_bli, so every mention on a
-# shared code arrives at both members. WHICH member a row is evidence about
-# is decided from the mart's own evidence, never from the filing's text:
-# a `pe_literal` row names the budget LINE itself and is true of every
-# program using it; a `multi_token`/`alias` row qualified by matching ONE
-# title's terms and is evidence about the program whose title carries them —
-# which is exactly what the rendered badge claims ("2+ distinct, non-generic
-# words from this program's title").
+# fct_program_lobbying is keyed on the bare pe_bli, so no lobbying row can say
+# which member of a shared code it describes. ROADMAP #82 (fix round 1,
+# 2026-09-18) attributed rows PER ROW: a `pe_literal` row to every member, on
+# the premise that the bare code "names the LINE"; a `multi_token`/`alias` row
+# to the member whose own title carried every matched term. R-INT-9 retired
+# that rule. The premise is false for the numeric codes — measured
+# 2026-09-25, every pe_literal row on '20'/'30'/'500' matched a bill or
+# public-law number, a date or part of a larger figure, and production
+# published none of them (the live branch, 2c7ebbb0, withholds every lobbying
+# row, the lobbying tier and the named primes from every member of a shared
+# code).
 #
-# Measured 2026-09-18 on the shipped corpus: /program/0145-APN/ "F/A-18E/F
-# (Fighter) Hornet" rendered 5 rows badged `General|Purpose` (its SIBLING is
-# "General Purpose Bombs") and /program/1350-WPN/ "Missile Industrial
-# Facilities" rendered 2 badged `Weapons|Ammunition`.
+# The tests below were the #82 per-row tests. Each is rewritten, on the SAME
+# fixture row it used, to the ruled behaviour: the row is withheld from both
+# members. Every tier the old rule could publish is still exercised.
 
 
 def _mention_terms(sidecar: dict) -> set:
     return {m["matched_term"] for m in sidecar["mentions"]}
 
 
-def test_a_pe_literal_mention_publishes_on_every_member(collision_export):
-    """The filing's text contains the code '3010' itself, which names the
-    LINE and nothing finer — so it is evidence for both programs."""
+def test_a_pe_literal_mention_is_withheld_from_every_member(collision_export):
+    """Was: published on both members ("names the LINE"). The bare code in a
+    filing's text is not evidence about either program sharing it."""
     for slug in ("3010-SCN", "3010-OPN"):
-        assert "3010" in _mention_terms(_sidecar(collision_export, slug))
+        assert "3010" not in _mention_terms(_sidecar(collision_export, slug))
 
 
-def test_a_multi_token_mention_publishes_only_on_the_member_it_matched(
+def test_a_multi_token_mention_is_withheld_even_from_the_member_it_matched(
     collision_export,
 ):
-    opn = _sidecar(collision_export, "3010-OPN")
-    scn = _sidecar(collision_export, "3010-SCN")
-    assert "Shipboard|Communications" in _mention_terms(opn)
-    assert "Shipboard|Communications" not in _mention_terms(scn)
+    """Was: published on the OPN member, whose title carries both words."""
+    for slug in ("3010-OPN", "3010-SCN"):
+        assert "Shipboard|Communications" not in _mention_terms(
+            _sidecar(collision_export, slug))
 
 
-def test_an_alias_mention_publishes_only_on_the_member_it_matched(
+def test_an_alias_mention_is_withheld_even_from_the_member_it_matched(
     collision_export,
 ):
-    scn = _sidecar(collision_export, "3010-SCN")
-    opn = _sidecar(collision_export, "3010-OPN")
-    assert "Flight" in _mention_terms(scn)          # "LPD Flight II"
-    assert "Flight" not in _mention_terms(opn)
+    """Was: published on the SCN member ("LPD Flight II")."""
+    for slug in ("3010-SCN", "3010-OPN"):
+        assert "Flight" not in _mention_terms(_sidecar(collision_export, slug))
 
 
 def test_a_mention_matching_no_member_title_publishes_on_neither(
     collision_export,
 ):
-    """The mention-axis twin of the orphan volume: terms that appear in no
-    member's title are evidence about no member, so the row publishes
-    nowhere rather than on both."""
+    """Unchanged outcome, now for the ruled reason: every row on a shared code
+    is withheld, including one whose terms match no member's title."""
     for slug in ("3010-SCN", "3010-OPN"):
         assert "Orphan|Volume" not in _mention_terms(_sidecar(collision_export, slug))
 
 
-def test_mentions_shared_code_declares_the_basis_per_evidence_kind(
+def test_no_member_declares_a_mention_basis_because_none_publishes(
     collision_export,
 ):
-    """The declaration gate 21 leg n check 8 reads. A blanket `true` asserted
-    the pe_literal rule over every row, which is false for a multi_token
-    one."""
-    scn = _sidecar(collision_export, "3010-SCN")
-    opn = _sidecar(collision_export, "3010-OPN")
-    assert scn["mentions_shared_code"] == {"pe_literal": "code", "alias": "title"}
-    assert opn["mentions_shared_code"] == {
-        "pe_literal": "code", "multi_token": "title",
-    }
-
-
-def test_every_title_basis_mention_is_true_of_the_page_that_renders_it(
-    collision_export,
-):
-    """The property check 8 asserts on the built corpus, computed here from
-    the page's own title."""
-    programs = json.loads((collision_export / "json" / "programs.json").read_text())
-    by_slug = {p["slug"]: p for p in programs}
-    for slug in ("3010-SCN", "3010-OPN"):
+    """Was: `mentions_shared_code` declared {pe_literal: code, ...} per member.
+    With no row published there is nothing to declare. The site gate agrees
+    from the other side: gate 21 leg n check 8(b) fails a member sidecar that
+    carries ANY mention row or ANY `mentions_shared_code` declaration (a
+    declaration excuses nothing), and a member page that renders a mention
+    row, the lobbying or J-book WHO tier, or anything but the live empty
+    state — so a regression of this withholding cannot pass `npm run verify`
+    silently, and this test catches it before the export ships."""
+    for slug in ("3010-SCN", "3010-OPN", "2292-PMC", "2292-WPN"):
         side = _sidecar(collision_export, slug)
-        title = by_slug[slug]["title"]
-        checked = 0
-        for m in side["mentions"]:
-            if m["evidence_kind"] == "pe_literal":
-                continue
-            checked += 1
-            for term in m["matched_term"].split("|"):
-                assert re.search(
-                    r"(?<![A-Za-z0-9])" + re.escape(term) + r"(?![A-Za-z0-9])",
-                    title,
-                    re.IGNORECASE,
-                ), (slug, title, term)
-        assert checked, f"{slug} must render a title-basis mention to check"
+        assert side["mentions"] == [], slug
+        assert "mentions_shared_code" not in side, slug
 
 
-def test_the_mention_census_line_names_the_row_that_matched_no_member(
+def test_no_shared_code_member_page_renders_a_mention_of_any_tier(
+    collision_export,
+):
+    """Was: every title-basis mention was true of the page rendering it. The
+    ruled property is stronger and corpus-wide: no member page of any shared
+    code (every programs.json row whose slug is not its bare code) lists a
+    lobbying row, a lobbying tier or a named prime. Non-vacuous: the fixture
+    puts four rows on 3010, one per way the old rule could publish."""
+    programs = json.loads((collision_export / "json" / "programs.json").read_text())
+    members = sorted(p["slug"] for p in programs if p["slug"] != p["pe_bli"])
+    assert members == ["2292-PMC", "2292-WPN", "3010-OPN", "3010-SCN"]
+    for slug in members:
+        side = _sidecar(collision_export, slug)
+        assert side["mentions"] == [], slug
+        assert side["summary"]["lobbied_by"] is None, slug
+        assert side["summary"]["named_primes"] == [], slug
+
+
+def test_the_mention_census_line_counts_every_row_withheld(
     collision_export, collision_pg_dsn, tmp_path, capsys
 ):
-    """The census print is the ONLY signal a row published on NEITHER member.
+    """The census print is the ONLY signal a withheld row exists.
 
-    Nothing renders such a row — that is the point — so if the print stopped
-    firing, rows would disappear from the corpus in silence and the export log
-    would say the corpus was clean. Driven here by the fixture's
-    `Orphan|Volume`, the mention-axis twin of the orphan J-book volume.
+    Nothing renders such a row on a program page — that is the point — so if
+    the print stopped firing, rows would leave the program pages in silence
+    and the export log would say nothing. Was: one line naming the single row
+    that matched no member (`3010/Orphan|Volume`). Now: one line counting all
+    four rows on 3010, per tier. The WHO-GETS-IT census prints too, zero
+    included (both 3010 members carry award links and 2292 has no lobbying
+    rows, so no member had a lobbying tier to withhold).
 
     Re-exports rather than reading the module-scoped fixture's output, because
     capsys cannot see what a module-scoped fixture printed. `collision_export`
@@ -1329,19 +1326,22 @@ def test_the_mention_census_line_names_the_row_that_matched_no_member(
         collision_pg_dsn, db, out_dir=tmp_path / "census-site",
         pdf_base_url="https://cdn.example/pdfs",
     )
-    lines = [
-        ln for ln in capsys.readouterr().out.splitlines()
-        if "mention axis" in ln and "matched no member" in ln
-    ]
+    out = capsys.readouterr().out.splitlines()
+    lines = [ln for ln in out if "mention axis" in ln]
     assert len(lines) == 1, lines
-    assert "1 lobbying mention row(s)" in lines[0]
-    assert "3010/Orphan|Volume" in lines[0]
-    assert "NEITHER member" in lines[0]
+    assert "R-INT-9" in lines[0]
+    assert "4 lobbying mention row(s) on 1 shared BLI code(s)" in lines[0]
+    assert "(3010: 1 alias, 2 multi_token, 1 pe_literal)" in lines[0]
+    assert "withheld from every member page" in lines[0]
+    assert not [ln for ln in out if "matched no member" in ln]
+    who = [ln for ln in out if "R-INT-9, WHO-GETS-IT" in ln]
+    assert len(who) == 1, who
+    assert "withheld the lobbying tier from 0 shared-code member page(s) (none)" in who[0]
 
 
 def test_an_ordinary_programs_mentions_are_unchanged(collision_export):
-    """Attribution runs only on a shared code; an unsplit program keeps the
-    bare-code list and declares nothing."""
+    """The R-INT-9 withholding runs only on a shared code; an unsplit program
+    keeps the bare-code list and declares nothing."""
     side = _sidecar(collision_export, "0601101E")
     assert _mention_terms(side) == {"darpa"}
     assert "mentions_shared_code" not in side

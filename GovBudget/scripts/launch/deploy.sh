@@ -24,8 +24,41 @@
 #   ./scripts/launch/deploy.sh --skip-r2      # pages-only redeploy (no new assets)
 #   ./scripts/launch/deploy.sh --no-verify    # skip the post-deploy check (discouraged)
 #
+# WHICH CHECKOUT IT DEPLOYS.  The one it lives in.  REPO_ROOT and SITE_OUT are
+# derived from this script's own path, never from $PWD, so
+#   /path/to/checkout-A/scripts/launch/deploy.sh
+# deploys checkout-A's site/out/ and checkout-A's data/site/, wherever it is
+# invoked from.  Running another worktree's copy deploys THAT worktree's build.
+#
+# PROVENANCE GUARD (preflight, also enforced under --dry-run).  Refuses unless
+#   (a) site/out/.build-meta.json git_head == `git rev-parse HEAD` of this
+#       checkout — the build is of the commit this checkout is at;
+#   (b) `git status --porcelain --untracked-files=no -- .` (run in REPO_ROOT)
+#       is empty — no staged or unstaged change to a tracked file under this
+#       project.  One exemption: site/public/llms.txt, a tracked file the
+#       build itself rewrites, when it is byte-identical to site/out/llms.txt
+#       (see below); and
+#   (c) `git ls-files --others --exclude-standard` finds no untracked,
+#       non-ignored file under the BUILD INPUTS — site/src, site/scripts,
+#       site/public, src, dbt, data-seeds, migrations.  A new component that
+#       a committed file imports but nobody `git add`ed is compiled into
+#       site/out/ yet is not in HEAD, so HEAD could not rebuild what shipped.
+#       The paths are refused whole (a stray test file under site/src counts
+#       too): cheaper to commit it than to prove a build never read it.
+#       Ignored files (data/, tmp/, site/out/) and untracked files outside
+#       those paths are fine — data/research/ in particular, where
+#       verify-phase5 writes its eval runs.
+# All three are printed.  To deploy, commit (or discard) the changes, rebuild
+# site/out/ at that commit, and re-run.
+#
+# WHAT IT CANNOT CHECK.  .build-meta.json records git_head only, not whether
+# the tree was clean WHEN site/out/ was built, so a build made on a dirty tree
+# that was cleaned (checkout, stash) before this guard runs still passes.  The
+# OK line says exactly what was checked, not that site/out/ "is a build of
+# HEAD".
+#
 # PREREQUISITES
-#   - `site/out/` built and current:
+#   - `site/out/` built and current, at this checkout's HEAD (see above):
 #       cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build
 #     Vercel does NOT build this site.  See the note on --archive/cwd below.
 #   - rclone configured with an `r2` remote (see upload_r2.sh --help)
@@ -45,6 +78,8 @@
 
 set -euo pipefail
 
+# From the script's own location, not $PWD: this script deploys the checkout
+# it lives in (see WHICH CHECKOUT IT DEPLOYS above).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_OUT="${REPO_ROOT}/site/out"
 
@@ -105,6 +140,96 @@ command -v node   >/dev/null 2>&1 || fail_preflight "node not found"
 [[ -f "${SITE_OUT}/vercel.json" ]] || fail_preflight \
   "site/out/vercel.json missing — the /fact/ rewrite would silently die.
    Check site/scripts/prepare-assets.mjs and rebuild."
+
+# ── Provenance guard: site/out/ is a build of THIS checkout's HEAD, clean ────
+# Integration 2026-09-25 (review finding #18): the only written runbook pointed
+# at another worktree's deploy.sh, which would have shipped a pre-merge build.
+# The build carries its commit in .build-meta.json (write-build-meta.mjs,
+# postbuild); refuse any mismatch rather than trust the operator's cwd.
+command -v git >/dev/null 2>&1 || fail_preflight "git not found — cannot prove what site/out/ was built from"
+BUILD_META="${SITE_OUT}/.build-meta.json"
+[[ -f "$BUILD_META" ]] || fail_preflight \
+  "site/out/.build-meta.json missing — cannot prove which commit site/out/ was
+   built from.  Rebuild: cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build"
+BUILD_HEAD="$(node -e '
+  const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  process.stdout.write(typeof m.git_head === "string" ? m.git_head : "");
+' "$BUILD_META" 2>/dev/null)" || fail_preflight "site/out/.build-meta.json is not readable JSON — rebuild."
+CHECKOUT_HEAD="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || fail_preflight \
+  "git rev-parse HEAD failed in ${REPO_ROOT} — not a git checkout?"
+# ONE tracked file is a build OUTPUT: prepare-assets.mjs (prebuild) rewrites
+# site/public/llms.txt from the exported data on every build (its counts move
+# with every refresh — see its commit history), and next build copies it into
+# site/out/.  Without this exemption every data-changing refresh, including the
+# unattended `govbudget refresh` deploy stage, would be refused.  It is exempt
+# ONLY when the working copy is byte-identical to site/out/llms.txt, i.e. the
+# modification is exactly what this build wrote and shipped; any other change
+# to it (or a deletion) still refuses.
+LLMS_SRC="site/public/llms.txt"
+EXCLUDE=()
+LLMS_NOTE=""
+if ! git -C "$REPO_ROOT" diff --quiet HEAD -- "$LLMS_SRC" 2>/dev/null \
+   && cmp -s "${REPO_ROOT}/${LLMS_SRC}" "${SITE_OUT}/llms.txt"; then
+  EXCLUDE=(":(exclude)${LLMS_SRC}")
+  LLMS_NOTE="${LLMS_SRC} differs from HEAD but is byte-identical to site/out/llms.txt (the build wrote it)"
+fi
+TRACKED_CHANGES="$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no -- . ${EXCLUDE[@]+"${EXCLUDE[@]}"})" \
+  || fail_preflight "git status failed in ${REPO_ROOT}"
+# (c) Untracked, non-ignored files under the paths a build reads.  data/research/
+# IS an input (the exporter globs data/research/dossiers-raw/*.json, among
+# others) except data/research/eval-runs/, where verify-phase5 writes its eval
+# runs — outputs of the gates, not inputs to the build.  The rest of data/ is
+# ignored exports and caches.
+BUILD_INPUT_PATHS=(site/src site/scripts site/public src dbt data-seeds migrations data/research ":(exclude)data/research/eval-runs")
+# --full-name: paths from the repository top, as `git status` prints them above.
+UNTRACKED_INPUTS="$(git -C "$REPO_ROOT" ls-files --others --exclude-standard --full-name -- "${BUILD_INPUT_PATHS[@]}")" \
+  || fail_preflight "git ls-files failed in ${REPO_ROOT}"
+
+echo "  checkout:        ${REPO_ROOT}"
+echo "  site/out built:  ${BUILD_HEAD:-<none>}   (site/out/.build-meta.json git_head)"
+echo "  checkout HEAD:   ${CHECKOUT_HEAD}   (git rev-parse HEAD)"
+if [[ -z "$TRACKED_CHANGES" ]]; then
+  echo "  tracked changes: none   (git status --porcelain --untracked-files=no -- .)"
+else
+  echo "  tracked changes: $(printf '%s\n' "$TRACKED_CHANGES" | wc -l | tr -d ' ') path(s)   (git status --porcelain --untracked-files=no -- .)"
+  printf '%s\n' "$TRACKED_CHANGES" | sed 's/^/                     /'
+fi
+if [[ -n "$LLMS_NOTE" ]]; then
+  echo "  exempt:          ${LLMS_NOTE}"
+fi
+if [[ -z "$UNTRACKED_INPUTS" ]]; then
+  echo "  untracked inputs: none   (git ls-files --others --exclude-standard -- ${BUILD_INPUT_PATHS[*]})"
+else
+  echo "  untracked inputs: $(printf '%s\n' "$UNTRACKED_INPUTS" | wc -l | tr -d ' ') path(s)   (git ls-files --others --exclude-standard -- ${BUILD_INPUT_PATHS[*]})"
+  printf '%s\n' "$UNTRACKED_INPUTS" | sed 's/^/                     ?? /'
+fi
+
+GUARD_NOTE=""
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  GUARD_NOTE="
+   (--dry-run enforces this too: a real deploy would stop here.)"
+fi
+if [[ "$BUILD_HEAD" != "$CHECKOUT_HEAD" ]]; then
+  fail_preflight "REFUSING TO DEPLOY: site/out/ was built from ${BUILD_HEAD:-<unknown>},
+   but this checkout is at ${CHECKOUT_HEAD}.  Rebuild site/out/ at HEAD
+   (cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build),
+   or run the deploy.sh of the checkout that built it.${GUARD_NOTE}"
+fi
+if [[ -n "$TRACKED_CHANGES" ]]; then
+  fail_preflight "REFUSING TO DEPLOY: tracked files under ${REPO_ROOT} are modified
+   (listed above), so site/out/ may not be a build of HEAD.  Commit or discard
+   them, rebuild, and re-run.${GUARD_NOTE}"
+fi
+if [[ -n "$UNTRACKED_INPUTS" ]]; then
+  fail_preflight "REFUSING TO DEPLOY: untracked files sit under the build inputs
+   (${BUILD_INPUT_PATHS[*]}; listed above).  The build or the
+   export may have read them and HEAD does not contain them, so HEAD may not
+   rebuild what would ship.  git add and commit them (or delete them, or
+   ignore them if they are not inputs), rebuild, and re-run.${GUARD_NOTE}"
+fi
+echo "  provenance:      OK — git_head matches HEAD; no tracked changes; no untracked build inputs"
+echo "                   (not checked: whether the tree was clean when site/out/ was built —"
+echo "                   .build-meta.json records git_head only)"
 
 if [[ "$SKIP_R2" -eq 0 ]]; then
   command -v rclone >/dev/null 2>&1 || fail_preflight \

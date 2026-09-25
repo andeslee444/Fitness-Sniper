@@ -1324,29 +1324,25 @@ export interface ProgramDetails {
    */
   fy2026_absent?: Fy2026Absent;
   /**
-   * ROADMAP #82 (mention axis, 2026-09-12; narrowed 2026-09-18): this page is
-   * one member of a shared BLI code, and `mentions` is keyed on that bare
-   * code in the mart — fct_program_lobbying has no account and no
-   * organization column. This declares, per evidence tier, WHY each of this
-   * page's rows is on it:
+   * RETIRED by ruling R-INT-9 (2026-09-25). ROADMAP #82's mention axis
+   * (2026-09-12, narrowed 2026-09-18) wrote this on a member of a shared BLI
+   * code to declare, per evidence tier, why each lobbying row was on the page
+   * ({pe_literal: "code"} — "the filing names the line"; multi_token/alias:
+   * "title"). The "code" premise was false for the numeric codes (on
+   * '20'/'30'/'500' every pe_literal row matched a bill or public-law number,
+   * a date or part of a larger figure), and fct_program_lobbying is keyed on
+   * the bare code, so no row can say which member it describes. The exporter
+   * now ships `mentions` [] (and no lobbied_by, no named primes) on every
+   * member and writes no declaration; the page states the withholding.
    *
-   *   "pe_literal" -> "code"  — the filing's activity description contains
-   *     the budget-line code itself, which names the LINE and nothing finer.
-   *     That is evidence for every program using the code, so both members
-   *     render the row and the /filing/ page says the mention cannot tell
-   *     them apart.
-   *   "multi_token" / "alias" -> "title" — the row qualified by matching one
-   *     program title's tokens (or a curated alias). It is on THIS page
-   *     because THIS page's title carries every matched term, which is what
-   *     the rendered badge claims; a sibling renders it only if its own title
-   *     does too (2292's members share a title; 0145's and 1350's do not).
-   *
-   * Unlike either, `narratives` and `details` are J-book rows and belong to
-   * the ONE member whose own volume carries them. Nothing renders this field:
-   * it is the rule stated where the data is, so gate 21 leg n check 8 reads
-   * the declaration (and re-derives the title test from programs.json titles,
-   * so a wrong declaration fails) instead of assuming it. Absent on every
-   * ordinary program and on any member with no mentions.
+   * Nothing renders this field, and no export made by the R-INT-9 exporter
+   * carries it (the chain F export in data/site, which predates the ruling,
+   * still does on 11 members). It stays in the type only because gate 21
+   * leg n check 8(b) reads it: a member
+   * sidecar that carries ANY declaration fails there as the retired
+   * exporter's signature, and a declaration excuses no row. `narratives` and
+   * `details` are unaffected — J-book rows, each on the ONE member whose own
+   * volume carries it.
    */
   mentions_shared_code?: Record<string, "code" | "title">;
   /**

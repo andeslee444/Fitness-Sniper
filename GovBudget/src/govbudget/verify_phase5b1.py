@@ -1529,16 +1529,21 @@ def _verify_subaward(row: tuple, idx: dict) -> str | None:
 
     Rules (docstring and code list the SAME fields — the #87 lesson):
     1. official_url fullmatches https://www.usaspending.gov/award/{KEY}/.
-    2. query_body is a JSON object with a non-empty string subaward_number;
-       subawardee is a non-empty string or null (absence is honest, a blank
-       is not).
+    2. query_body is a JSON object with a non-empty string subaward_number
+       and a non-empty string subawardee. (A null subawardee used to pass as
+       "honest absence"; the exporter now refuses to mint one — see
+       export_site._load_subaward_lake_rows — and the site's card parser
+       rejects it, so the gate refuses it too: 2026-09-25, final integration
+       review finding #15, measured 0 of 114 published rows.)
     3. match_basis is one of _SUBAWARD_MATCH_BASES.
     4. formula is non-empty and contains method='subaward+lexicon'; it is
        the full link sentence (_SUBAWARD_FORMULA_RE) at confidence='medium',
        and the award page in rule 1 is THIS link's prime award — its key
-       starts CONT_AWD_{piid}_ or CONT_IDV_{piid}_ for the formula's PIID
-       (2026-09-23: a URL naming another award, or a tier upgraded past
-       medium, is refused).
+       starts CONT_AWD_{piid}_ for the formula's PIID (2026-09-23: a URL
+       naming another award, or a tier upgraded past medium, is refused;
+       2026-09-25, finding #15: a CONT_IDV_ key is refused too — the live
+       branch's rule, the exporter's, and the card's; measured 0 of 114
+       published rows).
     5. recorded_value, sha256, amount_text, amount_thousands and units are
        all null — link evidence never carries an attributed amount.
     """
@@ -1565,10 +1570,9 @@ def _verify_subaward(row: tuple, idx: dict) -> str | None:
     if not isinstance(number, str) or not number.strip():
         return "subaward: query_body carries no subaward_number"
     subawardee = body.get("subawardee")
-    if subawardee is not None and (
-            not isinstance(subawardee, str) or not subawardee.strip()):
-        return (f"subaward: query_body subawardee must be a non-empty string"
-                f" or null: {subawardee!r}")
+    if not isinstance(subawardee, str) or not subawardee.strip():
+        return (f"subaward: query_body subawardee must be a non-empty string:"
+                f" {subawardee!r}")
     basis = body.get("match_basis")
     if basis not in _SUBAWARD_MATCH_BASES:
         return (f"subaward: match_basis {basis!r} is not a basis the subaward"
@@ -1584,10 +1588,10 @@ def _verify_subaward(row: tuple, idx: dict) -> str | None:
                 f" medium-confidence subaward link: {formula!r}")
     key = _SUBAWARD_URL_RE.fullmatch(str(official_url)).group("key")
     piid = link.group("piid")
-    if not (key.startswith(f"CONT_AWD_{piid}_")
-            or key.startswith(f"CONT_IDV_{piid}_")):
+    if not key.startswith(f"CONT_AWD_{piid}_"):
         return (f"subaward: official_url names award {key!r}, not the prime"
-                f" award {piid!r} the link formula states")
+                f" contract award {piid!r} the link formula states"
+                f" (CONT_AWD_{piid}_…)")
 
     for col in ("recorded_value", "sha256", "amount_text", "amount_thousands",
                 "units"):
