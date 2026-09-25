@@ -45,7 +45,6 @@ vi.mock("@/lib/data", async (importOriginal) => ({
     geo_grand_total: 90_000_000,
   }),
   getDistrictDetail: () => detail,
-  collectCitations: () => ({}),
 }));
 
 function program(over: Partial<DistrictProgram>): DistrictProgram {

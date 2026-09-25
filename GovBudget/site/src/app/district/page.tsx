@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDistrictIndex, collectCitations, getProgramsCount } from "@/lib/data";
+import { getDistrictIndex, getProgramsCount } from "@/lib/data";
 import { getCrosswalkCounts } from "@/lib/corpus";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -44,25 +44,23 @@ export const metadata: Metadata = {
 export default function DistrictIndexPage() {
   const index = getDistrictIndex();
 
-  // Citation slice: the geography grand total (derived, dim_geography) plus
-  // every district row's linkable-dollars aggregate citation (derived,
-  // 'district' surface) so the table figures open the panel in state A.
-  const indexFactIds: string[] = [];
-  if (index.geo_grand_total_fact_id) {
-    indexFactIds.push(index.geo_grand_total_fact_id);
-  }
-  for (const d of index.districts) {
-    if (d.total_linkable_fact_id) indexFactIds.push(d.total_linkable_fact_id);
-  }
-  const citationsSlice = collectCitations(indexFactIds);
-
   const totalLinkable = index.districts.reduce(
     (sum, d) => sum + d.total_linkable_dollars,
     0,
   );
 
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    // §P2-1 page weight (Task 28b): citations resolve LAZILY through
+    // cite-shards, so the provider mounts with an EMPTY embedded slice — the
+    // same treatment, for the same reason, as /district/{code}/ (see its note)
+    // and /programs/. The slice this page built held the grand total plus
+    // every row's linkable-dollars citation: 190 derived rows, 168,934 of the
+    // page's 447,757 raw bytes on chain C run 2's build. Every cited figure is
+    // still a state-A <Cite>, so a click opens its citation from the shard.
+    // Nothing drillable is lost: a row's inputs are that district's program
+    // rows, which this page never embedded, so its input chips were already
+    // plain; the grand total's citation has no fact-id inputs at all.
+    <CitationPanelProvider citations={{}}>
       <div className="spine py-8">
         <Breadcrumbs
           items={[

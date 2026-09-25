@@ -48,7 +48,6 @@ vi.mock("@/lib/data", async (importOriginal) => ({
     geo_grand_total: 30_000_000,
   }),
   getDistrictDetail: () => detail,
-  collectCitations: () => ({}),
 }));
 
 function year(fy: number): DistrictYear {

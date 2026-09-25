@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDistrictIndex, getDistrictDetail, collectCitations } from "@/lib/data";
+import { getDistrictIndex, getDistrictDetail } from "@/lib/data";
 import { districtDisplayLabel, formatAmountNoCurrency } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -90,28 +90,6 @@ export default async function DistrictDetailPage({ params }: Props) {
     (r) => r.positive_obligation > r.total_obligation + 0.005,
   );
 
-  // Collect fact_ids for cited dollars — per-program USAspending citations
-  // plus the district's derived aggregate citations (header stats) plus the
-  // by-year rows. Only ids that are actually RENDERED go in: collectCitations
-  // embeds each one's full citation row in the page's RSC payload, so an
-  // unrendered id is pure page weight (the gross column is conditional).
-  const pageFactIds: string[] = [];
-  for (const prog of detail.programs) {
-    if (prog.fact_id) pageFactIds.push(prog.fact_id);
-  }
-  for (const row of byYear) {
-    // Both ids are non-null by construction (the exporter drops a row whose
-    // citations do not resolve); the guard keeps collectCitations from being
-    // handed a null if that ever changes.
-    if (row.total_fact_id) pageFactIds.push(row.total_fact_id);
-    if (hasDeobligations && row.positive_fact_id) {
-      pageFactIds.push(row.positive_fact_id);
-    }
-  }
-  if (detail.total_linkable_fact_id) pageFactIds.push(detail.total_linkable_fact_id);
-  if (detail.total_cited_fact_id) pageFactIds.push(detail.total_cited_fact_id);
-  const citationsSlice = collectCitations(pageFactIds);
-
   const stateLabel = detail.pop_state ? ` — ${detail.pop_state}` : "";
 
   // The organizations actually present below — DERIVED, never authored, so
@@ -147,7 +125,28 @@ export default async function DistrictDetailPage({ params }: Props) {
     detail.total_cited_dollars === detail.total_linkable_dollars;
 
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    // §P2-1 page weight (Task 28b): citations resolve LAZILY through
+    // cite-shards (/json/cite-shards/{fact_id[:2]}.json), so the provider
+    // mounts with an EMPTY embedded slice — the treatment /programs/, /feed/,
+    // /years/, /flow/ and /lineage/ already use, and the same fetch-on-miss
+    // path a program page takes for any fact outside its own slice. The slice
+    // this page used to build (collectCitations over the page's fact ids) was
+    // serialized whole into the RSC payload: 50,556 of /district/VA-11/'s
+    // 171,862 raw bytes on chain C run 2's build, which put the page class
+    // over its INITIAL gate-1 ceiling. Every cited figure is still a state-A
+    // <Cite> with its fact id in the static HTML; a click resolves that fact
+    // from its shard, showing the panel's loading state while it does and its
+    // degraded state if the shard cannot be reached.
+    //
+    // What this gives up, stated here rather than left to be found: the
+    // header total (and the cited total, where it renders) is a derived
+    // citation whose inputs are this page's own program rows — on all 189
+    // pages of that build — and its input chips were clickable only because
+    // those rows sat in the slice. The panel's hasCitation() is synchronous
+    // and knows only the slice plus facts already opened on this page view,
+    // so a chip now renders plain until the reader has opened that row. Each
+    // input is still one click away as its own figure in the program table.
+    <CitationPanelProvider citations={{}}>
       <div className="spine py-8">
         <Breadcrumbs
           items={[
