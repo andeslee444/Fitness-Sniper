@@ -201,14 +201,16 @@ export const PAGE_WEIGHT_BUDGET = [
   // RE-MEASURED 2026-09-25 (chain E, build of 594d1f0c): 700,649 / 68,999 ->
   // 700,393 / 68,855, the Task 26 fix wave's shorter /companies/ prose. 145
   // gzip left; the drift leg now fires at about 68,928. CEILINGS UNCHANGED.
-  // INTEGRATION 2026-09-25 (merge of codex/f15-family-browser): that branch
-  // raised this pair to 740,000 / 73,500 (its 2026-09-12 type system: two font preloads, t-* class
-  // names and data-prose attributes on every page, measured there at
-  // +265…+370 gzip a page). NOT taken — a merge never
-  // raises a ceiling; the pair below is this branch's, unchanged. The
-  // controller rules on the merged build's weight (trim, or an owner-ruled
-  // raise argued in the same breath).
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "700,393 / 68,855" },
+  // R-INT-1 (integration ruling 2026-09-25, the controller under the owner's
+  // delegation): max of the two reviewed branches — this branch 6c3c07e1
+  // 710,000 / 69,000, live 81929a6b 740,000 / 73,500 (its 2026-09-12 type
+  // system: two font preloads, t-* class names and data-prose attributes on
+  // every page, measured there at +265…+370 gzip a page); production already
+  // serves these pages under the live ceiling; any merged page above it is
+  // trimmed, never raised. The `measured` stamp is still this branch's
+  // (chain E): re-measure it on the first merged build, never from an
+  // estimate.
+  { label: "/companies/", file: "companies/index.html", maxRaw: 740_000, maxGzip: 73_500, measured: "700,393 / 68,855" },
   // New page from codex/f15-family-browser (merged 2026-09-25), entry and
   // ceilings exactly as that branch set them. A six-record aircraft register
   // with its sourced inspection topics and the cited funding-year matrix;
@@ -295,17 +297,18 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // ~6% headroom against the new measurement: 101,000 is 6.34% over raw,
   // 14,450 is 6.02% over gzip.
-  // INTEGRATION 2026-09-25 (merge of codex/f15-family-browser): that branch
-  // raised this pair to 105,000 / 15,600 (the same type-system re-baseline as
-  // /companies/). NOT taken — a merge never
-  // raises a ceiling; the pair below is this branch's, unchanged. The
-  // controller rules on the merged build's weight (trim, or an owner-ruled
-  // raise argued in the same breath).
+  // R-INT-1 (integration ruling 2026-09-25, the controller under the owner's
+  // delegation): max of the two reviewed branches — this branch 6c3c07e1
+  // 101,000 / 14,450, live 81929a6b 105,000 / 15,600 (the same type-system
+  // re-baseline as /companies/); production already serves these pages under
+  // the live ceiling; any merged page above it is trimmed, never raised. The
+  // `measured` stamp below is still this branch's: re-measure it on the first
+  // merged build.
   // RE-MEASURED 2026-09-18 (chain D): 94,830 / 13,678 -> 96,649 / 14,272.
   // Also caught by the drift leg (claimed 772 gzip left, 178 remain).
   // CEILINGS UNCHANGED. 178 bytes is thin — the next sentence added to the
   // dataset inventory needs a trim of its own, not a raise.
-  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "96,652 / 14,278" },
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "96,652 / 14,278" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -557,13 +560,16 @@ export const PAGE_WEIGHT_BUDGET = [
   // 153,570 / 42,935. The Task 26 fix wave cut 400 raw bytes, yet gzip GREW
   // by 22 (the wave's simulation predicted -111). 65 gzip left; the drift leg
   // now fires at about 42,968. CEILING UNCHANGED — R-C-1 is spent.
-  // INTEGRATION 2026-09-25 (merge of codex/f15-family-browser): that branch
-  // raised this pair to 162,000 / 45,400 (the type-system re-baseline;
-  // it also moved the gate count on the page 24 -> 25). NOT taken — a merge never
-  // raises a ceiling; the pair below is this branch's, unchanged. The
-  // controller rules on the merged build's weight (trim, or an owner-ruled
-  // raise argued in the same breath).
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 43_000, measured: "153,570 / 42,935" },
+  // R-INT-1 (integration ruling 2026-09-25, the controller under the owner's
+  // delegation): max of the two reviewed branches — this branch 6c3c07e1
+  // 155,000 / 43,000, live 81929a6b 162,000 / 45,400 (the type-system
+  // re-baseline; it also moved the gate count on the page 24 -> 25);
+  // production already serves these pages under the live ceiling; any merged
+  // page above it is trimmed, never raised. This is an owner-delegated
+  // ruling, not a chain raise: R-C-1 stays spent. The `measured` stamp below
+  // is still this branch's (chain E): re-measure it on the first merged
+  // build.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "153,570 / 42,935" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -680,13 +686,17 @@ export const PAGE_WEIGHT_BUDGET = [
   // 4's final build (git_head 71d3e053) weighed this page at 99,824 raw —
   // 1,676 bytes under the restored ceiling. A lowered ceiling, not a raise;
   // maxGzip 20,750 stands.
-  // INTEGRATION 2026-09-25 (merge of codex/f15-family-browser): that branch
-  // set this pair to 103,000 / 20,200 (the type-system re-baseline from the
-  // pre-R-D-2 101,500 / 18,750). NOT taken: its raw half is a raise, and its
-  // gzip half was derived from a page without this branch's Task 21b/21d/22a
-  // disclosure (this branch's own stamp below, 20,450, is already over it).
-  // The pair below is this branch's, unchanged; the controller rules.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 20_750, measured: "99,824 / 20,450" },
+  // R-INT-1 (integration ruling 2026-09-25, the controller under the owner's
+  // delegation): max of the two reviewed branches — this branch 6c3c07e1
+  // 101,500 / 20,750, live 81929a6b 103,000 / 20,200 (the type-system
+  // re-baseline from the pre-R-D-2 101,500 / 18,750), so raw 103,000 is the
+  // live branch's and gzip 20,750 is this branch's (the live branch's gzip
+  // was derived from a page without this branch's Task 21b/21d/22a
+  // disclosure; this branch's own stamp below, 20,450, is already over it);
+  // production already serves these pages under the live ceiling; any merged
+  // page above it is trimmed, never raised. The `measured` stamp below is
+  // still this branch's: re-measure it on the first merged build.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_000, maxGzip: 20_750, measured: "99,824 / 20,450" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it

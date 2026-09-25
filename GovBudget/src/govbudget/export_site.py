@@ -9319,11 +9319,20 @@ def _write_all_sidecars(
     # still tells its narratives which appropriation they belong to. A
     # (document, pe_bli) pair that names TWO accounts is left out rather than
     # guessed — measured 2026-09-12: 0 such pairs in the shipped corpus.
+    #
+    # Organization, dated 2026-09-25 (integration ruling on the narrative org
+    # rule): the live branch 81929a6b keyed this lookup by (document, pe_bli,
+    # ORGANIZATION) and required the member it names to carry the narrative's
+    # own organization. That stricter check is ported below as a guard in
+    # FRONT of `split_key` (which ignores organization on an account-split
+    # code): `_doc_accounts_by_org` is its (document, pe_bli, org) lookup.
     _doc_accounts: dict[tuple[str, str], set[str]] = {}
+    _doc_accounts_by_org: dict[tuple[str, str, str | None], set[str]] = {}
     for row in detail_rows:
         _sha, _pe, _acct = row[11], row[1], row[13]
         if _sha and _acct:
             _doc_accounts.setdefault((_sha, _pe), set()).add(_acct)
+            _doc_accounts_by_org.setdefault((_sha, _pe, row[8]), set()).add(_acct)
     _doc_account: dict[tuple[str, str], str] = {
         k: next(iter(v)) for k, v in _doc_accounts.items() if len(v) == 1
     }
@@ -10050,7 +10059,22 @@ def _write_all_sidecars(
     # `_doc_account[(document_sha256, pe_bli)]` — the appropriation that same
     # document filed this line's P-40 rows under — for the account axis.
     # Document metadata on both axes; nothing is inferred from the prose.
+    #
+    # ORGANIZATION ON THE ACCOUNT AXIS (integration ruling, 2026-09-25):
+    # `split_key` drops organization on an account-split code, so on its own
+    # it would file a narrative under the member whose ACCOUNT its document
+    # names even when the narrative's organization is not that member's. The
+    # live branch 81929a6b refused that case (`_narrative_member_key`: the
+    # document's accounts are looked up under the narrative's own org, and
+    # the member must carry that (account, org) pair); the controller adopted
+    # the stricter rule — the smaller claim, fail-closed. A refused row
+    # publishes on NEITHER member and joins the census below. Measured
+    # 2026-09-25 against Postgres and the shipped narratives parquet: 0 of
+    # the 40 PB2026 narratives on the 10 account-split codes are refused
+    # (every member of those codes is org N, and so is every narrative), so
+    # no page changes today.
     narr_by_key: dict[tuple[str, str | None, str | None], list] = defaultdict(list)
+    _narr_org_refused: list[tuple[str, str, str | None]] = []
     narr_pq = out_dir / "data" / "jbook_narratives.parquet"
     if narr_pq.exists():
         import duckdb as _duckdb2
@@ -10061,6 +10085,22 @@ def _write_all_sidecars(
         ).fetchall()
         for (narr_fid, pe_bli, kind, title, body, xml_path,
              narr_org, narr_sha) in narr_rows:
+            _narr_acct = _doc_account.get((narr_sha, pe_bli))
+            if ident.is_account_split(pe_bli) and _narr_acct is not None:
+                _member_orgs = {
+                    _o for _a, _t, _o, _hd in ident.accounts(pe_bli)
+                    if _a == _narr_acct
+                }
+                # Only when the account names a member: an account naming NO
+                # member already publishes nowhere and is counted under its
+                # own key by the census, exactly as before this guard.
+                if _member_orgs and (
+                    narr_org not in _member_orgs
+                    or _doc_accounts_by_org.get((narr_sha, pe_bli, narr_org))
+                    != {_narr_acct}
+                ):
+                    _narr_org_refused.append((pe_bli, _narr_acct, narr_org))
+                    continue
             entry: dict = {"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""}
             # Only attach fact_id when the citation row was emitted (xml_path non-null,
             # sha256 matched a document row). The _cited_fact_ids set is the authoritative
@@ -10068,9 +10108,7 @@ def _write_all_sidecars(
             if narr_fid and narr_fid in _cited_fact_ids:
                 entry["fact_id"] = narr_fid
             narr_by_key[
-                ident.split_key(
-                    pe_bli, _doc_account.get((narr_sha, pe_bli)), narr_org,
-                )
+                ident.split_key(pe_bli, _narr_acct, narr_org)
             ].append(entry)
 
     def _narratives_for(
@@ -10111,6 +10149,12 @@ def _write_all_sidecars(
             if _key[0] == _pe and _key not in _member_keys:
                 _unattributed_det += len(_rows)
                 _unattributed_where.add(f"{_pe}/{_key[1] or _key[2] or '?'}")
+    # The organization guard's refusals (2026-09-25, above): the document
+    # names a member's account, but the narrative's organization is not that
+    # member's, or the document files no such account under that organization.
+    for _pe, _acct, _org in _narr_org_refused:
+        _unattributed_narr += 1
+        _unattributed_where.add(f"{_pe}/{_acct}@{_org or '?'}")
     if _unattributed_narr or _unattributed_det:
         print(
             f"program_details (ROADMAP #82, narrative axis, rule of 2026-09-12):"

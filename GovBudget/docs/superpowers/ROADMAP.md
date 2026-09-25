@@ -196,6 +196,59 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Findings log (what we learned; feeds future phases)
 
+- **2026-09-25: Integration of the live branch.** Production
+  (fiscalreceipts.com) was deployed on 2026-09-24 from
+  `codex/f15-family-browser` (81929a6b), not from
+  `roadmap-completion-2026-09-05`, so deploying the latter alone would have
+  removed the live branch's site features (among them verified government PDF
+  receipts and the F-15 family funding history). Both branches are merged in
+  f0ed21eb on `integration-2026-09-25` (parents 6c3c07e1 and 81929a6b). Four
+  rulings, made by the controller under the owner's delegation: **R-INT-1**,
+  where the two branches' reviewed page-weight ceilings differ, the merged
+  ceiling is the higher of the two per metric and never more, and a merged
+  page over it is trimmed, never raised. `site/scripts/gates/build.mjs`
+  applies it to the four pages the live branch had raised for its type
+  system: /companies/ 740,000 / 73,500, /data/ 105,000 / 15,600 and
+  /methodology/ 162,000 / 45,400 (the live branch's pairs), and /coverage/
+  103,000 raw (the live branch's) with 20,750 gzip (this branch's); every
+  other ceiling and every `measured` stamp is unchanged. **R-INT-2**,
+  contractor concentration keeps #80 (the high-confidence figure or none), with
+  the live branch's validator kept in front as a fail-closed guard; **R-INT-3**,
+  an older GAO edition publishes only when its ratified anchor passes on the
+  same page; **R-INT-4**, company labels take the live branch's wording, the
+  smaller claim. A fifth, **R-INT-5**, governs this ledger: on #78, #79, #85
+  and #86 the live branch's second Status line was relabelled "Status on that
+  branch:", with no words deleted, so each entry keeps exactly one grep-able
+  Status line (`tests/test_roadmap_backlog.py`). On #166–#169 each
+  superseded "Status: OPEN — scoped 2026-09-22" marker was relabelled "Status
+  (2026-09-22):" the same way. On #166–#168 the latest state sat under a
+  dated "Status (2026-09-24):" label the grep cannot see, so a plain line
+  restating it (PUBLISHED on #166 and #168, PARTIAL on #167, as of
+  2026-09-24) was added beneath; #169 already carried its latest state
+  (PARTIAL, as of its 2026-09-22 implementation update) as a second plain
+  marker, which the test missed because it ended an entry at its first
+  blank line; it now reads each entry to the next top-level block. A sixth, **R-INT-6** (#82), adopts
+  the live branch's narrative organization rule on account-split codes: a
+  narrative publishes on a member only when its document's organization is
+  that member's and the document's detail rows under that organization name
+  exactly that member's appropriation; a refused narrative publishes on
+  neither member and is counted in the #82 census print. Measured
+  2026-09-25, it refuses none of the 40 PB2026 narratives on the 10
+  account-split codes. The merged crosswalk is
+  `roadmap-completion-2026-09-05`'s (#78, #85 and #86 carry dated integration
+  lines; the live branch's ambiguous-account abort was not carried, #170, and
+  neither was its detail-token scoping, #171). The live branch's backlog
+  #89–#92 are renumbered #166–#169 (the note above #166). The other session
+  is not running; its work is committed (81929a6b, the tip of
+  `codex/f15-family-browser`) and merged here. It must not deploy from
+  `codex/f15-family-browser` again: production's `git_head` is 81929a6b
+  (`/.build-meta.json`, read 2026-09-25), and a deploy built from that branch
+  would drop this integration's work. New work branches from `main` once
+  this merge lands there. This supersedes the shared-lake note below
+  (2026-09-24), which says "the other session must re-run its own `govbudget
+  build` and export before it trusts its lake": that session's work now
+  lives on this branch.
+
 - **2026-09-22: Jev tested; supporting editorial pilot prioritized behind core product work.**
   Direct `jev-1.13.0` calls evaluated 155 distinct baseline cases, then repeated
   71 lineage cases with revised questions; with the connectivity probe, 227 API
@@ -1296,7 +1349,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   every award of the org's account (177 × 13,216 for DARPA). Add a default
   window (the line's own edition FY) or a per-edition line filter, and a
   projected-row dry-run abort. **Status:** CLOSED 2026-09-05 (code) — default window = each line's own PB-edition FY (federal FY, resolved per line); `--fy-start/--fy-end` required together (one bound alone exits 2); `--all-years` is the opt-in to the old unbounded shape; EVERY run (default included, per the 2026-09-11 controller ruling) is planned first by `plan_crosswalk_org` and aborts above 500,000 projected pairs unless `--yes`; `--dry-run` prints pairs per org and edition FY and writes nothing. Data unchanged: the 124,502 mechanical DARPA rows (all `fiscal_year=2026`, rationale "all loaded award years") are still in `budget_line_awards`; the re-run under the new default (plans 761,029 DARPA pairs, measured read-only 2026-09-05, so it needs `--yes`) is the controller's call and is what #85 is blocked on. Canonical invocation: LAUNCH.md Step 0.
-  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status:** CLOSED 2026-09-24 — per-edition federal-FY defaults, paired bounds, edition selector, dry-run, aggregate 100,000-row default cap and atomic writes; live FY2026 DARPA preview 39,192 candidates, zero writes.
+  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status on that branch:** CLOSED 2026-09-24 — per-edition federal-FY defaults, paired bounds, edition selector, dry-run, aggregate 100,000-row default cap and atomic writes; live FY2026 DARPA preview 39,192 candidates, zero writes.
   *Addendum 2026-09-25 (Task 26 fix wave; A's review deferral):* the published
   grain is not asserted. `budget_line_awards` is unique on (pe_bli, exhibit,
   fiscal_year, award_piid), so the `--yes` re-run above — any run over
@@ -1314,11 +1367,28 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   12,601 `fct_budget_to_awards` rows over 12,601 distinct pairs; its 9,547
   mechanical rows all at fiscal_year 2026). Land backlog #151 before the
   re-run; LAUNCH.md Step 0 carries the warning.
+  *Integration 2026-09-25 (merge f0ed21eb):* the 2026-09-24 CLOSED line above
+  describes the live branch's crosswalk, which the merge did not carry; the
+  merged crosswalk is this branch's reviewed implementation
+  (`src/govbudget/jbooks/crosswalk.py`, `src/govbudget/cli.py`). The CLI plans
+  every organization before it writes anything and aborts when the projected
+  total across all of them exceeds `ALL_YEARS_ABORT_ROWS` = 500,000 pairs
+  unless `--yes`; there is no 100,000-row cap and no `--max-rows`. Writes are
+  not atomic across a run: `crosswalk_org` commits each budget line's upserts
+  on that line's own connection. An award is a candidate when its
+  funding-account list contains the line's account (`like`), and
+  `matched_obligation` sums only the transactions funded from exactly that
+  account. Carried from the live branch: the edition selector (`--fiscal-year`
+  plans and writes one PB edition's lines and never widens a line's award
+  window) and window validation (a reversed window or a year outside
+  1900–2200 exits 2 before any database connection). Its FY2026 DARPA preview
+  (39,192 candidates) came from that branch's planner. Identities carrying two
+  or more accounts: #170.
 - **#79 Precision study rubric.** `link_precision_samples` needs a `rubric`
   column; strata judged on different questions must not publish side by side.
   Re-adjudicate `account+subagency` against program attribution (its first
   study confirmed only that the rule fired). **Status:** CLOSED 2026-09-11 — migration 015 `rubric` column ('attribution' | 'rule-fired'; the 2026-09-04 account+subagency rows stamped rule-fired, the other four strata attribution); exporter and CLI filter on rubric, `_UNRUBRICKED_PRECISION_STRATA` deleted; each tier's figure comes from the latest run that judged it (a run may re-judge one stratum, nothing pools); account+subagency re-drawn (60 links, seed 20260905, sample `2026-09-05`) with attribution packets (award description + program narrative/projects/lexicon + lake evidence) and judged adversarially on program attribution — attribution judge + skeptical refuter per packet, arbiter on disagreement, default refuted, 120 judgements, 0 disagreements — at **0/60** (loaded 2026-09-11; the 2026-09-04 rule-fired rows kept for audit, 55/55 unpublished); /methodology/ prints the figure beside the tier's "association, not evidence this program paid" sentence and the rule-fired history sentence retired itself off the derived unmeasured list; gate 24 leg n requires the paragraph to name the rubric. Owner call on what the tier does next: #107.
-  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status:** CLOSED 2026-09-24 — restored the existing explicit-rubric migration, loader and reviews; shared pair-grain tally reads actual published mart membership and pins tier versus wave sampling frames. No new verdicts invented; methodology review coverage and exclusions are derived.
+  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status on that branch:** CLOSED 2026-09-24 — restored the existing explicit-rubric migration, loader and reviews; shared pair-grain tally reads actual published mart membership and pins tier versus wave sampling frames. No new verdicts invented; methodology review coverage and exclusions are derived.
 - **#80 Owner call: should `fct_program_concentration` (program-page HHI +
   program_dollars) be high-only?** It is high+medium by construction; 158 of
   438 programs' blocks rest entirely on medium links, and medium is now
@@ -1347,6 +1417,22 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   **Addendum 2026-09-19 (Task 27).** The title-keyed `member_slugs_by_title` is replaced by the account-keyed split key on district rows; 2292 (identical member titles) now links its member page — exactly one district row changes its link, AZ-07's, from `/program/2292/` to `/program/2292-WPN/` (0145, 3010 and 3215 publish distinct member titles, so the title proxy already reached their member pages; what changes for their 10 rows is the rendered code and the fact id).
 
   **Addendum 2026-09-25 (ledger sweep; Task 9 review rider).** The district member link is no longer fixture-pinned. The Task 9 review found 0 of 392 district rows on a shared code (true of the pre-wave-4 mart); after the wave-4 load and Task 27's grain change, chain C run 4 (2026-09-25) measured **11** of the 611 `fct_district_programs` rows on shared codes — `0145` ×2 → `/program/0145-APN/`, `2292` ×1 → `/program/2292-WPN/`, `3010` ×1 → `/program/3010-SCN/`, `3215` ×7 → `/program/3215-WPN/` — each carrying its own split key, which gate 9 leg g checks on every row.
+
+  *Integration 2026-09-25 (ruling R-INT-6):* on an account-split code a
+  narrative publishes on a member only when its document's organization is
+  that member's organization and the document's detail rows under that
+  organization name exactly that member's appropriation. This is the live
+  branch's rule (`_narrative_member_key` at 81929a6b), stricter than this
+  branch's 2026-09-12 key above, which on the account axis reads only the
+  document's appropriation. The merged exporter applies it as a guard in
+  front of `split_key` (`_write_all_sidecars`, `src/govbudget/export_site.py`).
+  A refused narrative publishes on neither member and is counted in the #82
+  census print as `<code>/<account>@<org>`, pinned by
+  `test_the_narrative_census_counts_each_org_guard_refusal`
+  (`tests/test_program_member_enrichment.py`). Measured read-only 2026-09-25
+  against Postgres and the shipped narratives parquet: the 10 account-split
+  codes have 20 member pages, all organization N; all 40 PB2026 narratives
+  on those codes are organization N, and 0 are refused, so no page changes.
 - **#83 Two definitions of "account-split"** (`scripts/collision_keys.py` vs
   `_ProgramIdentity.is_account_split`) — fail-closed today; unify.
   **Status:** CLOSED 2026-09-10 — one rule, `govbudget.jbooks.collision_keys.classify_shared_keys` (an axis resolves a key only when every row's value is present and pairwise distinct; ACCOUNT, else ORGANIZATION, else UNRESOLVED); `_ProgramIdentity` and both link loaders import it, `scripts/collision_keys.py` deleted; the 13 live keys classify as before (10/3/0, 27 composite slugs); an unresolved key now stops export-site (`UnresolvedSharedKeyError`) and is excluded by the loaders; identity of the three callers' function objects and the two formerly divergent shapes are pinned by tests/test_collision_keys.py.
@@ -1357,15 +1443,50 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   title variants per (pe_bli, exhibit, FY, account) key and the last iteration's
   token overlap wins the tag (±346 medium / +119 high on an identical re-run).
   **Status:** CLOSED 2026-09-05 — the reproducible source was `any_value()` over an award's transactions (three consecutive identical read-only runs changed the picked description for ~6,000 of 13,216 `097-0400` awards and the sub-agency for ~380), not the title variants (3 of 22,527 per-organization keys, all org F, none DARPA); both fixed: `_load_lines` takes one canonical title per key (latest document, explicit ORDER BY in `CANONICAL_LINE_SQL`) and `_fetch_candidates`/`_grade` grade every award from all of its transactions in the window (any-transaction sub-agency — controller ruling, documented; union-of-descriptions tokens; latest-transaction recipient; exact-decimal obligation). Order-independence and two-run tests in tests/jbooks/test_crosswalk.py; upsert guard byte-identical; no prose edit owed (tier sentences re-read). Live re-run + md5 check (LAUNCH.md) is the controller's step.
-  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status:** CLOSED 2026-09-24 — canonical title/recipient choice and all-transaction classification are deterministic; shuffled assignments, protected evidence and exact account identity tested.
+  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status on that branch:** CLOSED 2026-09-24 — canonical title/recipient choice and all-transaction classification are deterministic; shuffled assignments, protected evidence and exact account identity tested.
   *Addendum 2026-09-25 (Task 26 fix wave):* that live re-run is the `--yes`
   multi-edition DARPA run #78's addendum warns about — it writes one
   (pe_bli, award_piid) pair as several rows, which the concentration sums do
   not yet guard. Land backlog #151's grain test and collapse first.
+  *Integration 2026-09-25 (merge f0ed21eb):* the 2026-09-24 CLOSED line above
+  describes the live branch's crosswalk, which the merge did not carry; the
+  merged crosswalk is this branch's implementation, deterministic as the
+  2026-09-05 line states: one canonical title per (pe_bli, exhibit,
+  fiscal_year, account) key (`CANONICAL_LINE_SQL`) and every award graded
+  from all of its transactions in the window, pinned by
+  `test_one_canonical_title_per_key`,
+  `test_tags_independent_of_transaction_order_in_lake` and
+  `test_two_runs_over_same_fixtures_produce_identical_rows`
+  (`tests/jbooks/test_crosswalk.py`). Account identity is not exact: an award
+  is a candidate when its funding-account list contains the line's account
+  (`like`), and nothing aborts when one (pe_bli, exhibit, fiscal_year,
+  organization) identity carries two or more accounts — an award that is a
+  candidate under two of them is upserted onto one row and the account sorted
+  last sets its grade and `matched_obligation` (#170). The live branch's
+  shuffled-assignment, exact-account and ambiguous-account tests were not
+  carried. Nor was its scoping of the detail tokens to the line's own
+  (organization, edition, account): the merged crosswalk adds the
+  project-title tokens of every non-superseded detail row filed under the
+  code to each of its lines, whatever the row's organization, edition or
+  account (#171).
 - **#86 Task-5 deferred minors:** `_ALIASES_CSV` via `config.ROOT`; upsert count
   overstates guarded skips; NULL `action_date` untested under an FY window;
   f-string SQL for `fed_account`. **Status:** CLOSED 2026-09-11 — seed path via `config.ROOT`; `crosswalk_org` returns `CrosswalkResult(written, skipped)` from the Postgres INSERT count and the CLI prints both; awards whose `action_date` is NULL or not a date are excluded under an FY window by `try_cast(… as date)` (`FED_FY_EXPR`, shared by the planner, 0 of 39.8M lake rows affected); `fed_account` and the FY bounds are DuckDB `?` parameters at both sites (`_candidate_where` returns `(sql, params)`).
-  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status:** CLOSED 2026-09-24 — configured aliases path, protected-row actual-write counts, null/invalid-date exclusions and parameterized account predicates covered in the crosswalk safeguards.
+  *From branch `codex/f15-family-browser`, merged 2026-09-25:* **Status on that branch:** CLOSED 2026-09-24 — configured aliases path, protected-row actual-write counts, null/invalid-date exclusions and parameterized account predicates covered in the crosswalk safeguards.
+  *Integration 2026-09-25 (merge f0ed21eb):* the 2026-09-24 CLOSED line above
+  describes the live branch's crosswalk, which the merge did not carry; the
+  merged crosswalk is this branch's implementation, which closes the same four
+  items as the 2026-09-11 line states: `_ALIASES_CSV` anchored to
+  `config.ROOT`; `CrosswalkResult(written, skipped)` counted from the INSERT
+  row count; awards whose `action_date` is NULL or not a date excluded under
+  an FY window through `try_cast` (`FED_FY_EXPR`); and `fed_account` and the
+  FY bounds bound as DuckDB `?` parameters. They are pinned by
+  `test_aliases_csv_is_anchored_to_config_root`,
+  `test_upsert_count_excludes_rows_the_method_guard_left_alone`,
+  `test_undated_and_malformed_action_dates_are_excluded_under_an_fy_window`
+  and `test_fed_account_is_bound_as_a_query_parameter`
+  (`tests/jbooks/test_crosswalk.py`); the live branch's safeguard tests were
+  not carried.
 - **#87 Task-4 deferred minors:** gate docstring rule 5 vs code; gate accepts
   `archive_url` with null sha256; source map keyed (award_piid, pe_bli) collapses
   a second announcement row per pair; loader delete is effectively a truncate.
@@ -2841,9 +2962,18 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 entries below were filed as #89–#92 on that branch; this branch had already
 used #89–#92 (the service decade backfill, cross-sibling page resolution, the
 5G evidence pack and outlay-stage flows above), so they are renumbered
-#89 → #166, #90 → #167, #91 → #168 and #92 → #169 with their text otherwise
-unchanged. Plans and reports written on that branch that cite "Roadmap
-#89–92" (or #89–90, #89–91, #90, #92) mean these four.
+#89 → #166, #90 → #167, #91 → #168 and #92 → #169. Their text is otherwise
+the live branch's, with three kinds of change. The two cross-references
+between them are renumbered to match: #168's "Measure return/reuse using
+#167" (was #90) and #169's "supporting work alongside #166" (was #89). Under
+R-INT-5 (the findings log, 2026-09-25), each entry's superseded "Status: OPEN
+— scoped 2026-09-22" marker is relabelled "Status (2026-09-22):", with no
+words deleted. And #166, #167 and #168 each end with a plain Status line,
+added at the integration, restating the live branch's 2026-09-24 state
+(PUBLISHED, PARTIAL and PUBLISHED); #169's own PARTIAL line already ended
+it. So the one plain Status line in each entry is its latest state. Plans
+and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
+#89–91, #90, #92) mean these four.
 
 - **#166 Three complete flagship investigation journeys.** Start with the
   existing F-15 family experience, then reuse the answer/receipt pattern for
@@ -2869,7 +2999,7 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   restores the same context; desktop, mobile, keyboard and copy/restore paths
   are checked on the release build. Copied findings retain source IDs, dates,
   basis and scope. Relevant trust fixes gate dependent claims, not all UI work.
-  **Status:** OPEN — scoped 2026-09-22; builds on existing F-15 work, with final
+  **Status (2026-09-22):** OPEN — scoped 2026-09-22; builds on existing F-15 work, with final
   acceptance/publication status to be checked rather than inferred from git.
 
   **Implementation update (2026-09-22):** added deterministic **Copy answer** to
@@ -2888,6 +3018,8 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   **Status (2026-09-24):** PUBLISHED — the answer/receipt journey is live and
   the refreshed release is verified. Human comprehension remains unmeasured;
   the five-reader pilot is the next product acceptance step.
+  **Status:** PUBLISHED, as of 2026-09-24 (restated 2026-09-25 in grep-able
+  form at the integration merge).
 
 - **#167 Measure reader success on the existing journey.** Basic Vercel
   Analytics is already installed; add a small action funnel for brief/funding
@@ -2904,7 +3036,7 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   confusion/time-to-evidence. Pilot usability goal: at least four of five readers
   complete the task without help and correctly distinguish the fiscal status.
   A five-person pilot is usability evidence, not a population retention estimate.
-  **Status:** OPEN — scoped 2026-09-22; first parallel implementation slice.
+  **Status (2026-09-22):** OPEN — scoped 2026-09-22; first parallel implementation slice.
 
   **Implementation update (2026-09-22):** added the controlled reader-action
   event helper and instrumented selection, central receipt opening, official
@@ -2917,6 +3049,8 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   Production page-view reporting and two HTTP-200 custom-event sends are
   verified; Hobby does not provide custom-event reporting. Human baseline and
   all five reader sessions remain unmeasured. The pilot needs no paid plan.
+  **Status:** PARTIAL, as of 2026-09-24 (restated 2026-09-25 in grep-able form
+  at the integration merge).
 
 - **#168 Reviewed changes briefing and discoverable watch feeds.** Assemble a
   small set of source-backed change explanations around the flagship programs:
@@ -2935,7 +3069,7 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   remain distinct. Timely/recurring-update promises depend on #8's validated
   refresh-to-publication cycle. Measure return/reuse using #167; decide cadence
   from available meaningful changes rather than inventing weekly news.
-  **Status:** OPEN — scoped 2026-09-22; UI and dated examples can proceed in
+  **Status (2026-09-22):** OPEN — scoped 2026-09-22; UI and dated examples can proceed in
   parallel, freshness promises depend on #8.
 
   **Implementation update (2026-09-22):** added three dated PB2026 comparison
@@ -2950,6 +3084,8 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   live; the refresh-to-feed publication cycle passed. No extra spending-change
   briefing was added from archive backfills or revisions. Recurring cadence
   and reader return/reuse evidence remain open.
+  **Status:** PUBLISHED, as of 2026-09-24 (restated 2026-09-25 in grep-able
+  form at the integration merge).
 
 - **#169 Jev internal editorial-review pilot.** Use the tested adapter as the
   starting point for a bounded offline review of one existing dossier/briefing
@@ -2970,7 +3106,7 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   **Deferred product bets:** public "check any claim," automatic change stories
   and "follow the promise" require their own retrieval, source-coverage and
   held-out evaluation plans. Document organization is not the product objective.
-  **Status:** OPEN — scoped 2026-09-22; API experiment complete, production
+  **Status (2026-09-22):** OPEN — scoped 2026-09-22; API experiment complete, production
   integration not implemented; supporting work alongside #166 rather than its
   prerequisite. [Experiment](../../data/research/jev-eval/2026-09-22-report.md).
 
@@ -2984,6 +3120,155 @@ unchanged. Plans and reports written on that branch that cite "Roadmap
   **Status:** PARTIAL — engineering experiment and assistant review complete;
   keep Jev internal. Human held-out labels, false-approval/false-flag rates and
   net reviewer time remain unmeasured. No expansion or model publication gate.
+
+- **#170 Crosswalk lets the last account win on (pe_bli, exhibit, FY, org)
+  identities that carry two or more accounts.** Re-measured read-only from
+  Postgres `budget_lines` on 2026-09-25, counting distinct `account` per
+  (pe_bli, exhibit, fiscal_year, organization): 47 of the 22,425 identities
+  carry two or more accounts, and 31 of those carry exactly two. By
+  organization: N, 30 with two and 1 with seven; F, 1 with two and 1 with
+  six; A, 1 with seven; '' (empty), 4 with four, 6 with five and 3 with
+  seven. The 13 empty-organization identities are all code `9999999999`, and
+  the default run never processes them: without `--org`, the CLI's
+  organization list keeps only `organization is not null and organization <>
+  ''` (`src/govbudget/cli.py:861`). The default run therefore touches 34 of
+  the 47 (N 31, F 2, A 1). Where the last account wins: `_load_lines`
+  returns one canonical line per (pe_bli, exhibit, fiscal_year, account) and
+  sorts the lines by account first (`src/govbudget/jbooks/crosswalk.py:348`),
+  so an identity's accounts run one after another, in account order. Each
+  line upserts on `budget_line_awards`' key UNIQUE (pe_bli, exhibit,
+  fiscal_year, award_piid) (`crosswalk.py:599`), which names no account, and
+  `crosswalk_org` does not write the table's `account` column (migration
+  014). So when an award is a candidate under two of an identity's accounts,
+  the later line's `do update` (`crosswalk.py:600`–`604`) replaces the
+  mechanical row's confidence, method, score, rationale and
+  `matched_obligation` with its own, silently. No stored row shows this yet:
+  the only mechanical rows are DARPA's 124,500 (`account` 114,637,
+  `account+subagency` 9,336, `account+tokens` 527), and no DARPA identity
+  carries two accounts. The 107 rows on the 34 identities (all organization
+  N) come from the evidence loaders (`announcement+lexicon` 25, `fpds-ap` 36,
+  `subaward+lexicon` 46), which the upsert's method guard
+  (`crosswalk.py:605`) never overwrites. The key names no organization
+  either: 10 (pe_bli, exhibit, fiscal_year) triples are filed by two or more
+  non-empty organizations (codes 20, 30 and 500 in FY2024–FY2026, and code
+  `FY2024CR` in FY2025), so two organizations' runs can also write one row.
+  The live branch's planner (`codex/f15-family-browser`, not merged) aborted
+  on an ambiguous or missing account instead. Fix: fail loudly before any
+  write. The CLI already plans every organization before its first write; the
+  plan should exit non-zero, naming each identity and its accounts, when two
+  planned lines share (pe_bli, exhibit, fiscal_year), across accounts or
+  across organizations, and `crosswalk_org` should refuse the same input when
+  it is called directly. Source: `src/govbudget/jbooks/crosswalk.py`, the
+  integration's Python report (`integration-report-python.md`, the branch
+  ledger) and #78, #85 above. Effort: hours.
+  **Status:** open (2026-09-25; scheduled in the decisions wave).
+
+- **#171 The crosswalk's detail tokens are no longer scoped to the line's own
+  organization, edition and account.** The merge dropped the live branch's
+  scoping. On `codex/f15-family-browser` (81929a6b) the planner added a
+  project title's tokens to a line only when the title's document had the
+  line's organization and fiscal year and the detail row's account was the
+  line's account or NULL. The merged `crosswalk_org` reads every
+  non-superseded `budget_line_details` row
+  (`src/govbudget/jbooks/crosswalk.py:551`), indexes the project-title tokens
+  by `pe_bli` alone (`crosswalk.py:555`–`558`) and adds them to every line of
+  that code (`crosswalk.py:583`); `_grade` returns `high` / `account+tokens`
+  once the overlap with an award's description tokens reaches `min_overlap`,
+  2 by default (`crosswalk.py:502`–`508`). So a line can reach the high tier
+  on project titles from another organization's book, another edition or
+  another account. What bounds the published effect today:
+  `dbt/models/marts/fct_budget_to_awards.sql:70`–`76` publishes an
+  unadjudicated `account+tokens`/`high` pair as `medium` (#75 addendum,
+  ruling 3), and an adjudicated pair publishes its adjudicated confidence, so
+  no token match publishes as `high` without an adjudication verdict. Measured
+  read-only 2026-09-25: `fct_budget_to_awards` publishes 251
+  `account+tokens` links, all DARPA, edition FY2026, exhibit R-1 (113
+  unadjudicated at medium; 104 adjudicated medium and 34 adjudicated high).
+  With each award's description tokens re-derived from today's contracts
+  lake, all 251 still overlap the unscoped tokens in two or more words, and 82
+  fall below two under the scoped rule: 50 unadjudicated and 32 adjudicated.
+  All 82 lose the overlap on the edition leg alone (the DARPA detail rows
+  carry no account, and scoping by organization alone loses none): the words
+  that lift them to two come only from the code's project titles in other
+  editions. Re-graded under the scoped rule, the 50 unadjudicated links fall
+  to `account`/`low`, which the mart does not publish; the 32 adjudicated
+  links would carry `account+subagency` and keep their adjudicated medium.
+  Fix: scope the detail tokens to the line's own (organization, edition,
+  account), as the live branch did, and re-measure the published links after
+  the next crosswalk run. Source: `src/govbudget/jbooks/crosswalk.py`,
+  `dbt/models/marts/fct_budget_to_awards.sql`, #75 and #85 above. Effort:
+  hours.
+  **Status:** open (2026-09-25).
+
+- **#172 `export_site.py` reads through DuckDB's process-wide default
+  connection, and several of those reads fall back silently.** 14 call sites
+  in `src/govbudget/export_site.py` run `duckdb.sql(...)` (imported as
+  `_duckdb` or `_duckdb2`), which uses the one default connection that every
+  module in the process shares. Several sit inside `try` / `except Exception`
+  blocks that swallow the error: `export_site.py:2947` records a written
+  parquet's row count as 0; `:5042` drops the paymentaccuracy.gov source URL
+  from the improper-payment derived citations' inputs; `:8626` and `:8641`
+  leave the lobbyist-to-filing and filing-URL maps empty. On DuckDB 1.5.3,
+  one failed statement on that connection while an earlier result is still
+  pending leaves it aborted for the rest of the process ("Current transaction
+  is aborted"). The post-merge Python fixer found this through the test
+  suite: `tests/test_fiscaldata.py:42` leaves a pending
+  `duckdb.sql(...).fetchone()` result, and `scripts/precision_study.py:179`
+  then runs a lake query on the same connection that fails and is caught.
+  After that the narratives read (now `export_site.py:10081`) raises, loudly,
+  while the guarded reads above would degrade quietly. The tests are isolated
+  (an autouse fixture in `tests/test_program_member_enrichment.py`); the
+  exporter is not. Whether a real export has ever degraded this way is
+  unmeasured. Fix: give each reader its own `duckdb.connect()`, and make the
+  guarded reads report what they dropped. Source: the integration's Python
+  fixer report (`integration-fix-python.md`, the branch ledger). Effort:
+  hours.
+  **Status:** open (2026-09-25).
+
+- **#173 /methodology/'s dbt-assertion count silently falls back to the last
+  export's number.** `buildCheckCounts` in `site/src/lib/data.ts` recounts
+  the test nodes in `dbt/target/manifest.json` only when that file exists
+  (`data.ts:535`). When it is missing, the object spread at `data.ts:512`
+  keeps the `build_checks.dbt_assertions` that `site_meta.json` carries, and
+  when it is unreadable the `catch` at `data.ts:541` copies that value back.
+  That value is whatever the last `export-site` in the shared data lake
+  wrote, from its own checkout's manifest
+  (`src/govbudget/export_site.py:1324`–`1331`, which omits the field when the
+  manifest is missing). Gate 24 leg e skips the dbt comparison when the
+  manifest is missing (`site/scripts/gates/datatruth.mjs:623` and `:656`), so
+  nothing flags it. `dbt/target/` is gitignored (`.gitignore:7`), so a fresh
+  checkout or worktree has no manifest until dbt runs. Measured 2026-09-25:
+  the shared
+  `site_meta.json` carries 118 dbt assertions and 24 site gates; the main
+  checkout's manifest (generated 2026-09-24) holds 100 test nodes and the
+  integration worktree's (generated 2026-09-25) 118. The site-gate count had
+  the same drift and, since the integration, fails the build instead
+  (`data.ts:529`). Fix: treat a missing or unreadable manifest the same way,
+  or print "—"; never print the lake's number. Source: `site/src/lib/data.ts`.
+  Effort: hours.
+  **Status:** open (2026-09-25).
+
+- **#174 `docs/methodology.md` §5 says every table shows a "data as of"
+  date; the site does not.** Checked read-only 2026-09-25. No component in
+  the merged `site/src` renders a "data as of" date; the only occurrence is
+  the comment at `site/src/app/methodology/page.tsx:503` recording that the
+  redesign retired it. None of the 2,854 HTML pages with a `<table>` in the
+  main checkout's last build (`site/out`, 2026-09-24) contains the phrase,
+  and neither do five production pages fetched the same day (`/`,
+  `/methodology/`, `/program/0207146F/`, `/data/`, `/companies/`). What the
+  site prints instead is the export's build date: the footer's "Site export
+  <date>. Source dates vary by dataset." (`site/src/app/layout.tsx:122`),
+  /methodology/'s "generated <date>", /data/'s "Built: <date>" and the
+  program page's print byline. The §5 sentence is false today. Fix: reword
+  it to what the site shows — the site export's build date, not a data date:
+  the footer's "Site export <date>. Source dates vary by dataset."
+  (`site/src/app/layout.tsx:122`), the /methodology/ header's "generated
+  <date>" (`site/src/app/methodology/page.tsx:509`) and /data/'s "Built:
+  <date>" (`site/src/app/data/page.tsx:236`) — following #134's wording call
+  (the controller's recommendation under the owner's delegation, 2026-09-25:
+  "Built <date>"), which the decisions wave implements after the integration
+  deploy. Source: `docs/methodology.md`. Effort: hours.
+  **Status:** open (2026-09-25).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

@@ -225,23 +225,45 @@ describe("GAO ratification boundary", () => {
     const anchor = assessment("GAO-25-107569");
     const chained = olderEdition("GAO-24-106831", 2024, "GAO-25-107569");
     const otherProgram = olderEdition("GAO-23-106059", 2023, "GAO-25-107569", "mh139a", "MH-139A");
-    const unratifiedAnchor = assessment("GAO-25-107569", "B-52");
-    const orphan = olderEdition("GAO-24-106831", 2024, "GAO-25-107569", "b52", "B-52");
+    // Fix round 1 (2026-09-25): the B-52 anchor and its older edition share
+    // ONE program key, "b52". The first version of this case left the anchor
+    // on the default "f15ex" key, so the key mismatch dropped the older
+    // edition whatever the anchor's verdict was, and the case proved nothing
+    // about the verdict. Now only the anchor's verdict can drop it.
+    const b52Anchor = assessment("GAO-25-107569", "B-52", { edition_year: 2025, inherited_from: null, program_key: "b52" });
+    const b52Older = olderEdition("GAO-24-106831", 2024, "GAO-25-107569", "b52", "B-52");
     const data: Record<string, GaoProgramFindings> = {
       // anchor ratified here: its own edition chain renders; a row chained
       // to the same product under another program key does not.
       "0207146F": { assessments: [anchor, chained, otherProgram], reports: [] },
       // anchor NOT ratified here ('n'): its chained older edition drops too.
-      "0101127F": { assessments: [unratifiedAnchor, orphan], reports: [] },
+      "0101127F": { assessments: [b52Anchor, b52Older], reports: [] },
       // an older edition alone, its anchor ratified only on ANOTHER page.
       "F015EX": { assessments: [chained], reports: [] },
     };
+    // Precondition that keeps this case honest: on 0101127F the older
+    // edition's chain (inherited_from + program_key) matches an anchor row,
+    // so a rule that accepted ANY inherited_from === null row as the anchor
+    // would publish it.
+    expect(data["0101127F"].assessments.some(row =>
+      row.inherited_from === null &&
+      row.product_number === b52Older.inherited_from &&
+      row.program_key === b52Older.program_key)).toBe(true);
     const decisions = parseGaoRatifications(header + "GAO-25-107569,F-15EX,0207146F,y\nGAO-25-107569,B-52,0101127F,n");
     const result = selectPublishedGaoFindings(data, decisions);
     expect(Object.keys(result)).toEqual(["0207146F"]);
     expect(result["0207146F"].assessments).toEqual([anchor, chained]);
     // The guard alone would publish the anchor and nothing chained to it.
     expect(selectRatifiedGaoFindings(data, decisions)["0207146F"].assessments).toEqual([anchor]);
+
+    // Counter-case: the SAME fixture, with ONLY the B-52 verdict changed to
+    // 'y'. The anchor is ratified now, so its older edition publishes behind
+    // it: the verdict alone decided the outcome above.
+    const b52Ratified = parseGaoRatifications(header + "GAO-25-107569,F-15EX,0207146F,y\nGAO-25-107569,B-52,0101127F,y");
+    const counter = selectPublishedGaoFindings(data, b52Ratified);
+    expect(Object.keys(counter)).toEqual(["0207146F", "0101127F"]);
+    expect(counter["0101127F"].assessments).toEqual([b52Anchor, b52Older]);
+    expect(counter["0207146F"].assessments).toEqual([anchor, chained]);
   });
 
   it.each(["0207146F", "0102110F"])("publishes the ratified annual assessment for %s and the older editions chained to it", slug => {

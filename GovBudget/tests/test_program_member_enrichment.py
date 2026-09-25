@@ -1,6 +1,7 @@
 """Shared BLI codes must not copy another program's prose, figures or receipts."""
 from pathlib import Path
 import json
+import re
 
 import duckdb
 import pytest
@@ -129,9 +130,10 @@ def _narrative_fids(out, slug):
     return {n.get('fact_id') or n['title'] for n in obj['narratives']}
 
 
-def test_narrative_assignment_needs_one_account_from_its_own_document(tmp_path):
+def test_narrative_assignment_needs_one_account_from_its_own_document_and_org(tmp_path):
     """A shared code's narrative publishes on a member only when its OWN
-    document names exactly one member (ROADMAP #82, narrative axis).
+    document names exactly one member, under that member's OWN organization
+    (ROADMAP #82, narrative axis).
 
     Rewritten at the 2026-09-25 integration. The live branch unit-tested this
     rule through two helpers of its own (`_narrative_document_accounts`,
@@ -139,6 +141,12 @@ def test_narrative_assignment_needs_one_account_from_its_own_document(tmp_path):
     #82 implementation, which resolves the same rule inline (`_doc_account` +
     `_ProgramIdentity.split_key` inside `_emit_json_sidecars`). So the cases
     now run through the sidecar writer and assert what each page publishes.
+
+    Fix round 1 (2026-09-25, controller ruling): the live branch's org case —
+    `_narrative_member_key(ident, '0145', 'A', 'aircraft', accounts) is None`
+    — is back. The merged exporter now carries the live branch's stricter
+    organization check on an account-split code, so a narrative whose own
+    org is not its member's org publishes nowhere.
     """
     out = _member_export(
         tmp_path,
@@ -147,6 +155,13 @@ def test_narrative_assignment_needs_one_account_from_its_own_document(tmp_path):
             # the document cannot say which member its prose is about.
             detail('mixed-a', '0145', '1506N', 'mixed', amount=1.0, project='M1'),
             detail('mixed-b', '0145', '1508N', 'mixed', amount=2.0, project='M2'),
+            # 'aircraft' files 0145's P-40 rows under 1506N for org N — the
+            # live branch's own fixture document.
+            detail('aircraft-a', '0145', '1506N', 'aircraft', amount=3.0, project='AC'),
+            # 'army-book' files 0145 under 1506N for org A: the document's
+            # account names the 0145-APN member, but that member is org N.
+            detail('army-a', '0145', '1506N', 'army-book', org='A', amount=5.0,
+                   project='AR'),
         ],
         extra_narratives=[
             ('narr-mixed', '0145', 'Mixed book', 'N', 'mixed'),
@@ -154,24 +169,123 @@ def test_narrative_assignment_needs_one_account_from_its_own_document(tmp_path):
             ('narr-osd', '30', 'OSD book', 'OSD', 'no-detail-osd'),
             ('narr-unknown-org', '30', 'Unknown org', 'UNKNOWN', 'no-detail-x'),
             ('narr-unsplit', '0601101E', 'Ordinary code', 'DARPA', 'no-detail-y'),
+            # The live branch's case ('aircraft', org 'A'): the document names
+            # 1506N only under org N, so under org A it names no account.
+            ('narr-aircraft-n', '0145', 'Aircraft book', 'N', 'aircraft'),
+            ('narr-aircraft-a', '0145', 'Aircraft book, org A', 'A', 'aircraft'),
+            # The document names 1506N under org A, and no 0145 member is
+            # (1506N, A): the member-organization half of the rule.
+            ('narr-army', '0145', 'Army book', 'A', 'army-book'),
+            # Same document, narrative org N: 0145-APN IS (1506N, N), but the
+            # document names no account for 0145 under org N — the live
+            # branch's (document, code, ORG) lookup half of the rule.
+            ('narr-army-n', '0145', 'Army book, org N', 'N', 'army-book'),
         ],
     )
     # A document with ONE account for the code assigns its narrative to
-    # that member (the fixture's own documents, unchanged by the extras).
-    assert _narrative_fids(out, '0145-APN') == {'narr-0'}
+    # that member when the narrative's org is the member's org — the
+    # fixture's own documents, and the live branch's ('aircraft', 'N') case.
+    assert _narrative_fids(out, '0145-APN') == {'narr-0', 'narr-aircraft-n'}
     assert _narrative_fids(out, '0145-PANMC') == {'narr-1'}
     # An organization-split code keys on the row's own org; an org that
     # names no member publishes nowhere.
     assert _narrative_fids(out, '30-OSD') == {'narr-2', 'narr-osd'}
     assert _narrative_fids(out, '30-DTRA') == {'narr-3'}
-    # Mixed-account and detail-less documents land on NEITHER member.
+    # Mixed-account and detail-less documents land on NEITHER member, and so
+    # does a narrative whose own org is not the org of the member its
+    # document's account names (both halves of the live branch's org rule).
     published = set().union(*(
         _narrative_fids(out, slug)
         for slug in ('0145-APN', '0145-PANMC', '30-OSD', '30-DTRA')
     ))
-    assert not published & {'narr-mixed', 'narr-missing', 'narr-unknown-org'}
+    assert not published & {
+        'narr-mixed', 'narr-missing', 'narr-unknown-org',
+        'narr-aircraft-a', 'narr-army', 'narr-army-n',
+    }
     # An ordinary (unsplit) code keeps the bare-code list.
     assert 'narr-unsplit' in _narrative_fids(out, '0601101E')
+
+
+_CENSUS_PREFIX = 'program_details (ROADMAP #82, narrative axis, rule of 2026-09-12): '
+_CENSUS_RE = re.compile(
+    r'(\d+) J-book narrative row\(s\) and (\d+) detail row\(s\) on shared BLI'
+    r' codes come from a document whose own account/organization matches no'
+    r' member page \((.*)\) — published on NEITHER member, never on both$'
+)
+
+
+def _narrative_census(printed: str) -> tuple[int, int, list[str]]:
+    """(narrative rows, detail rows, where-labels) from the ONE #82
+    narrative-axis census line the sidecar writer printed."""
+    lines = [ln for ln in printed.splitlines() if ln.startswith(_CENSUS_PREFIX)]
+    assert len(lines) == 1, lines
+    m = _CENSUS_RE.fullmatch(lines[0][len(_CENSUS_PREFIX):])
+    assert m, lines[0]
+    return int(m.group(1)), int(m.group(2)), m.group(3).split(', ')
+
+
+def test_the_narrative_census_counts_each_org_guard_refusal(tmp_path, capsys):
+    """The census print is the ONLY signal that a narrative the organization
+    guard refused (integration ruling R-INT-6, 2026-09-25) published
+    nowhere: no page renders it, so if the refusals stopped reaching the
+    print, rows would leave the corpus in silence. Each refusal is counted
+    and labelled `<code>/<account>@<org>` — the account its document names
+    and the narrative's own organization.
+
+    Refused here: 'aircraft' and 'army-book' under org A (no 0145 member is
+    org A) and 'army-book' under org N (the document files no 0145 account
+    under org N). The fixture's own detail-less narrative ('unknown', 0145/?)
+    is the one row the census counted before the guard existed.
+    """
+    capsys.readouterr()
+    out = _member_export(
+        tmp_path,
+        extra_details=[
+            detail('aircraft-a', '0145', '1506N', 'aircraft', amount=3.0, project='AC'),
+            detail('army-a', '0145', '1506N', 'army-book', org='A', amount=5.0,
+                   project='AR'),
+        ],
+        extra_narratives=[
+            ('narr-aircraft-a', '0145', 'Aircraft book, org A', 'A', 'aircraft'),
+            ('narr-army', '0145', 'Army book', 'A', 'army-book'),
+            ('narr-army-n', '0145', 'Army book, org N', 'N', 'army-book'),
+        ],
+    )
+    narratives, details, where = _narrative_census(capsys.readouterr().out)
+    assert (narratives, details) == (1 + 3, 0)
+    # Two refusals share '0145/1506N@A'; the labels are a set, the count is not.
+    assert where == ['0145/1506N@A', '0145/1506N@N', '0145/?']
+    published = set().union(*(
+        _narrative_fids(out, slug) for slug in ('0145-APN', '0145-PANMC')
+    ))
+    assert not published & {'narr-aircraft-a', 'narr-army', 'narr-army-n'}
+
+
+def test_the_narrative_census_counts_a_volume_no_member_owns(tmp_path, capsys):
+    """The census line's original case (2026-09-12), in its live shape: the
+    PROC_DoDEA PB2026 volume files narratives and detail rows under code '30'
+    for an organization that has no dim_programs row, so no member page is
+    true of them. They publish on NEITHER of '30''s members and the census
+    counts them under '30/<org>'."""
+    capsys.readouterr()
+    out = _member_export(
+        tmp_path,
+        extra_details=[
+            detail('dodea-d1', '30', '0300D', 'dodea-book', org='DoDEA', amount=1.0,
+                   project='D1'),
+            detail('dodea-d2', '30', '0300D', 'dodea-book', org='DoDEA', amount=2.0,
+                   project='D2'),
+        ],
+        extra_narratives=[
+            ('dodea-1', '30', 'DoDEA book', 'DoDEA', 'dodea-book'),
+            ('dodea-2', '30', 'DoDEA book, second', 'DoDEA', 'dodea-book'),
+        ],
+    )
+    narratives, details, where = _narrative_census(capsys.readouterr().out)
+    assert (narratives, details) == (1 + 2, 2)
+    assert where == ['0145/?', '30/DoDEA']
+    for slug in ('30-OSD', '30-DTRA'):
+        assert not _narrative_fids(out, slug) & {'dodea-1', 'dodea-2'}, slug
 
 
 def test_member_sidecars_keep_their_own_details_prose_and_sources(member_export):

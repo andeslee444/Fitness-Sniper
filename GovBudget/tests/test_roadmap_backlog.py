@@ -80,24 +80,86 @@ def backlog_section() -> str:
     return text[start : nxt if nxt != -1 else len(text)]
 
 
-def entries() -> list[tuple[int, str]]:
-    """[(number, body)] for every `- **#N ...` bullet in the backlog section."""
-    lines = backlog_section().splitlines()
+
+
+def _ends_entry(line: str, after_blank: bool) -> bool:
+    """True when `line` starts the next top-level block, so the entry above it
+    has ended: the next `- **#N` bullet, or unindented prose after a blank
+    line (a heading, the 2026-08-24 sweep note, the integration note above
+    #166, the numbered list #1-#69). A heading glued to an entry with no blank
+    line stays with that entry, so a Status marker under it is still counted.
+
+    An indented line after a blank line is still the entry's own — a second
+    paragraph (`**Implementation update …**`, a dated addendum) — and so is an
+    unindented line with no blank line before it (a lazy continuation). A
+    top-level bullet that is not a numbered entry stays with the entry above
+    it too, so nothing in the list escapes the checks below.
+    """
+    if ENTRY_RE.match(line):
+        return True
+    return (
+        after_blank
+        and bool(line.strip())
+        and not line[0].isspace()
+        and not line.startswith("- ")
+    )
+
+
+def entries(section: str | None = None) -> list[tuple[int, str]]:
+    """[(number, body)] for every `- **#N ...` bullet in the backlog section.
+
+    An entry runs to the next top-level block (`_ends_entry`), NOT to its
+    first blank line. Until 2026-09-25 it stopped at the first blank line, so
+    everything in an entry's second paragraph was invisible to every check
+    here: #169 (#92 on the live branch) carried a second plain Status marker
+    below a blank line, and the one-Status rule passed. The prose that follows the list (the 2026-08-24 sweep note, which
+    mentions `**Status:` a few dozen times) is unindented after a blank line,
+    so it still ends the last entry.
+    """
+    lines = (backlog_section() if section is None else section).splitlines()
     out, i = [], 0
     while i < len(lines):
         m = ENTRY_RE.match(lines[i])
         if not m:
             i += 1
             continue
-        # An entry runs to the next bullet or the next blank line — the prose
-        # that follows the list (the 2026-08-24 sweep note) is not an entry,
-        # and it mentions `**Status:` a few dozen times.
-        j = i + 1
-        while j < len(lines) and lines[j].strip() and not ENTRY_RE.match(lines[j]):
+        j, after_blank = i + 1, False
+        while j < len(lines) and not _ends_entry(lines[j], after_blank):
+            after_blank = not lines[j].strip()
             j += 1
-        out.append((int(m.group(1)), "\n".join(lines[i:j])))
+        out.append((int(m.group(1)), "\n".join(lines[i:j]).rstrip()))
         i = j
     return out
+
+
+def test_an_entry_runs_past_its_blank_lines_to_the_next_top_level_block():
+    """The parser, pinned on a synthetic section: a second paragraph is part
+    of its entry (its Status marker counts), and the prose after the list is
+    not."""
+    section = "\n".join([
+        SECTION_HEADING,
+        "",
+        "- **#1 First.** Body.",
+        "  **Status (2026-09-22):** OPEN.",
+        "",
+        "  **Implementation update:** more.",
+        "  **Status:** PARTIAL.",
+        "- **#2 Second.** Body.",
+        "  **Status:** open.",
+        "",
+        "*Prose after the list.* It mentions `**Status:**` twice: **Status:**.",
+        "",
+        "1. **A numbered entry.** **Status: CLOSED**",
+    ])
+    got = dict(entries(section))
+    assert sorted(got) == [1, 2]
+    assert got[1].endswith("  **Status:** PARTIAL."), got[1]
+    assert len(STATUS_RE.findall(got[1])) == 1
+    assert got[2] == "- **#2 Second.** Body.\n  **Status:** open.", got[2]
+    # The blind spot this parser closes: the old one ended #1 at its first
+    # blank line and never saw a second plain marker below it.
+    doubled = section.replace("**Status (2026-09-22):**", "**Status:**")
+    assert len(STATUS_RE.findall(dict(entries(doubled))[1])) == 2
 
 
 def test_backlog_numbers_are_contiguous_and_ascending():
@@ -109,9 +171,9 @@ def test_backlog_numbers_are_contiguous_and_ascending():
 
 
 def test_every_entry_carries_exactly_one_status_line():
-    for num, body in entries():
-        found = STATUS_RE.findall(body)
-        assert len(found) == 1, f"#{num} has {len(found)} Status markers, want 1"
+    counts = {num: len(STATUS_RE.findall(body)) for num, body in entries()}
+    bad = {f"#{num}": n for num, n in counts.items() if n != 1}
+    assert not bad, f"Status markers per entry, want exactly 1 each: {bad}"
 
 
 @pytest.mark.parametrize("subject", SUBJECTS)
