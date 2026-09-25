@@ -10,7 +10,7 @@
   question: How many distinct entity family groups are tracked in the warehouse?
   answer_sql: |
     select count(*) from dim_entities
-  expected_answer: '114806'
+  expected_answer: '116442'
   expected_citation_kind: warehouse
   notes: dim_entities row count
 - id: q003
@@ -20,7 +20,7 @@
     select round(total_obligation / 1e9, 2)
     from dim_entities
     where family_key = 'LOCKHEED MARTIN'
-  expected_answer: '502.12'
+  expected_answer: '532.16'
   tolerance: 0.01
   expected_citation_kind: warehouse
   notes: keyed on family_key, not display_name — display_name is the dominant registry
@@ -190,7 +190,7 @@
     award records in the crosswalk?
   answer_sql: |
     select count(distinct pe_bli) from fct_budget_to_awards
-  expected_answer: '444'
+  expected_answer: '536'
   expected_citation_kind: warehouse
   notes: fct_budget_to_awards PE coverage. 24 at pin (DARPA-only crosswalk, pinned
     2026-06-10, 66d18a88); 444 after the 2026-09-04 tiers (fpds-ap / announcement+lexicon
@@ -239,7 +239,7 @@
     select round(hhi, 1), family_count
     from fct_agency_concentration
     where awarding_sub_agency_name = 'Missile Defense Agency'
-  expected_answer: 2118.5, 3319
+  expected_answer: 2159.3, 3330
   tolerance: 0.1
   expected_citation_kind: warehouse
   notes: MDA moderately concentrated; HHI and family_count both move with the entity
@@ -257,16 +257,16 @@
   notes: 'ROADMAP #80, re-measured after fix round 1 (2026-09-11): hhi_high is NULL
     below 3 high-confidence awards across 2 families HOLDING POSITIVE DOLLARS with
     positive net program dollars, so the ranking is over the 37 programs that clear
-    the floor (57 cleared the first, count-only floor; 13 of those summed to zero or
-    negative high-confidence dollars and 7 rested on a single positive-dollar
-    family — 0603882C, this question''s previous expected answer, was one of the
-    seven). Nothing ties at 10,000 any more: the head of the ranking is 2307 at
-    9,926.75 over ATA000 at 9,873.14 — a margin of 53.61 points, which is why the
-    dollar and pe_bli tie-breakers plus round(hhi_high, 6) stay: DuckDB sums the
-    squared shares in parallel and a future tie must not flip run to run. Expected
-    computed read-only from the live lake with the fixed mart SQL, stable across six
-    runs (2026-09-11); the runner-up and margin re-derived from the same lake in fix
-    round 2; refresh with `evals refresh` after the rebuild if the lake moved.'
+    the floor (57 cleared the first, count-only floor; 13 of those summed to zero
+    or negative high-confidence dollars and 7 rested on a single positive-dollar family
+    — 0603882C, this question''s previous expected answer, was one of the seven).
+    Nothing ties at 10,000 any more: the head of the ranking is 2307 at 9,926.75 over
+    ATA000 at 9,873.14 — a margin of 53.61 points, which is why the dollar and pe_bli
+    tie-breakers plus round(hhi_high, 6) stay: DuckDB sums the squared shares in parallel
+    and a future tie must not flip run to run. Expected computed read-only from the
+    live lake with the fixed mart SQL, stable across six runs (2026-09-11); the runner-up
+    and margin re-derived from the same lake in fix round 2; refresh with `evals refresh`
+    after the rebuild if the lake moved.'
 - id: q024
   question: Which federal agency has the highest estimated improper payment exposure
     in the warehouse (derived from program-level rates), and what is the approximate
@@ -359,7 +359,7 @@
     mart?
   answer_sql: |
     select count(distinct pop_district) from dim_geography where pop_district is not null
-  expected_answer: '490'
+  expected_answer: '491'
   expected_citation_kind: warehouse
   notes: districts with at least one contract; re-verified 2026-07-01
 - id: q033
@@ -422,7 +422,7 @@
     select round(sum(obligation) / 1e12, 2)
     from fct_award_transactions
     where award_type = 'contract'
-  expected_answer: '3.79'
+  expected_answer: '4.01'
   tolerance: 0.01
   expected_citation_kind: warehouse
   notes: ~$3.79T across FY2017-2026 contracts; re-verified 2026-07-01
