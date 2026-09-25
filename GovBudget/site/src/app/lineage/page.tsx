@@ -152,7 +152,7 @@ export default function LineagePage() {
             in a family routinely draw money side by side for whole decades —
             which is exactly why the family funding line on a program page
             refuses to sum them — so placing a successor to the right of its
-            predecessor on a <em>year</em> axis would assert a hand-off date
+            predecessor on a <em>year</em>{" "}axis would assert a hand-off date
             the record does not contain. Left-to-right here means &ldquo;the
             books say this one came from that one&rdquo;, nothing more.
           </p>

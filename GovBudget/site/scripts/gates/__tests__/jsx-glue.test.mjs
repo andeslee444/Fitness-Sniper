@@ -23,6 +23,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, it, expect } from "vitest";
 import {
+  INLINE_ELEMENTS,
   cleanJsxText,
   findGlueSites,
   findGlueSitesInSource,
@@ -115,8 +116,107 @@ describe("findGlueSitesInSource — the entity trim", () => {
   });
 });
 
+/**
+ * Task 29S (2026-09-25). The same Turbopack trim, one neighbour over: chain C
+ * run 3's built /methodology/ rendered "never the name.</strong>A family’s",
+ * "<em>XML</em>mean", "extent_competed</code>(full & open" (ten sites);
+ * /fact/ rendered "{id}</span>resolves"; /lineage/ "<em>year</em>axis"; 48
+ * /program/ pages "F-35 C2D2</span>is one of the lines". Leg (sp) scoped
+ * element neighbours out as layout — true of a block sibling, false of an
+ * inline one, whose trimmed space is a missing space in a sentence.
+ */
+/** A component whose <p> children are exactly `children` (line 4 onward). */
+const wrapEl = (children) =>
+  `export function X({ t }: { t: string }) {\n  return (\n    <p>\n${children}\n    </p>\n  );\n}\n`;
+
+describe("findGlueSitesInSource — the entity trim after an inline element", () => {
+  it("reports the /methodology/ shape: a space-led, multi-line, entity-bearing run after </strong>", () => {
+    const src = wrapEl(
+      "      <strong>The tier grades the grouping, never the name.</strong> A\n      family&rsquo;s label is the registered parent name.",
+    );
+    const hits = findGlueSitesInSource("fixture.tsx", src, ".");
+    expect(hits).toHaveLength(1);
+    expect(hits[0].why).toBe("entity-trim");
+    expect(hits[0].left.endsWith("never the name.</strong>")).toBe(true);
+    expect(hits[0].right.startsWith("A family")).toBe(true);
+    expect(hits[0].line).toBe(4);
+  });
+
+  it.each([...INLINE_ELEMENTS])("fires after <%s>", (tag) => {
+    const src = wrapEl(
+      `      <${tag}>XML</${tag}> mean different\n      things. &ldquo;–&rdquo; is absent.`,
+    );
+    const hits = findGlueSitesInSource("fixture.tsx", src, ".");
+    expect(hits.map((h) => h.why)).toEqual(["entity-trim"]);
+  });
+
+  it("the element list is the inline text elements the brief names, no more", () => {
+    expect([...INLINE_ELEMENTS].sort()).toEqual(
+      ["a", "abbr", "b", "cite", "code", "em", "i", "span", "strong", "sub", "sup"],
+    );
+  });
+
+  it("fires when the run opens on punctuation — the author typed the space, so its loss is glue", () => {
+    // /methodology/ rendered "extent_competed(full & open" and
+    // "Defense Research Sciences“zeroed out”".
+    for (const run of [
+      `<code className="text-xs">extent_competed</code> (full &amp;\n      open / set-aside)`,
+      `<em>Defense Research Sciences</em> &ldquo;zeroed out&rdquo; described\n      a renumbering`,
+    ]) {
+      const hits = findGlueSitesInSource("fixture.tsx", wrapEl(`      ${run}`), ".");
+      expect(hits).toHaveLength(1);
+    }
+  });
+
+  it("fires when the element wraps an expression (/program/'s title span)", () => {
+    const src = wrapEl(
+      "      <span data-program-name>{t}</span> is one of the lines that\n      funds it, and GAO&rsquo;s work above says nothing.",
+    );
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toHaveLength(1);
+  });
+
+  it('is silent once the space is an explicit {" "} child — the #106 idiom', () => {
+    const src = wrapEl(
+      '      <strong>The tier grades the grouping, never the name.</strong>{" "}A\n      family&rsquo;s label is the registered parent name.',
+    );
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+  });
+
+  it("is silent after a block-level neighbour — layout, not prose", () => {
+    for (const tag of ["div", "p", "ul", "li", "h3", "section"]) {
+      const src = wrapEl(
+        `      <${tag}>XML</${tag}> mean different\n      things. &ldquo;–&rdquo; is absent.`,
+      );
+      expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+    }
+  });
+
+  it("is silent on the entity-free run both compilers keep", () => {
+    const src = wrapEl("      <em>XML</em> mean different\n      things, and absent is absent.");
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+  });
+
+  it("is silent on a single-line run, entity or not", () => {
+    // The run must END on its line too: a run that is the last child carries
+    // the newline before </p>, and that is turbopackTrimsLeadingSpace's
+    // multi-line shape.
+    const src = wrapEl("      <em>XML</em> mean &ldquo;different&rdquo; things.<br />");
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+  });
+
+  it("is silent on /lineage/'s quote-glyph span: a line break is JSX's no-space, and the glyph is meant to touch", () => {
+    // lineage-flow.tsx / lineage-rail.tsx render “cited with the open-quote
+    // glyph flush against the word. The author wrote a LINE BREAK, not a
+    // space, after </span>: nothing was typed, so nothing was trimmed.
+    const src = wrapEl(
+      '      <span aria-hidden="true" className="not-italic">\n        &#8220;\n      </span>\n      cited',
+    );
+    expect(findGlueSitesInSource("fixture.tsx", src, ".")).toEqual([]);
+  });
+});
+
 describe("site/src", () => {
-  it("carries no glue site of either kind (the #106 sweep fixed five)", () => {
+  it("carries no glue site of any kind (#106 fixed five; Task 29S fourteen after inline elements)", () => {
     const { hits, filesScanned } = findGlueSites(srcDir);
     expect(filesScanned).toBeGreaterThan(100);
     expect(hits.map((h) => `${h.file}:${h.line} (${h.why})`)).toEqual([]);

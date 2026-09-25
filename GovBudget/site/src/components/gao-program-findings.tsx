@@ -193,7 +193,7 @@ export function GaoProgramFindingsBlock({
         className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground"
       >
         GAO assessed the program, not this budget line.{" "}
-        <span data-program-name>{programTitle}</span> is one of the lines that
+        <span data-program-name>{programTitle}</span>{" "}is one of the lines that
         funds it, and GAO&rsquo;s work above says nothing about this line&rsquo;s
         own figures. Which line each GAO item attaches to is a hand-ratified
         crosswalk —{" "}

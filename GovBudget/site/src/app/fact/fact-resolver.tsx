@@ -198,7 +198,7 @@ function Explainer() {
     <section data-testid="fact-explainer" className="mt-4 space-y-3">
       <h2 className="text-lg font-semibold">How fact permalinks work</h2>
       <p className="text-sm text-muted-foreground leading-6">
-        <span className="font-mono">/fact/{"{id}"}</span> resolves a fact id to
+        <span className="font-mono">/fact/{"{id}"}</span>{" "}resolves a fact id to
         the receipt behind it: the recorded value, the official source
         document, the exact page or cells, the document&apos;s SHA-256, and
         the retrieval date. Both the short public id (8 characters, shown on

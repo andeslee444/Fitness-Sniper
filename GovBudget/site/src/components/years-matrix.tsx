@@ -1085,7 +1085,7 @@ export function YearsMatrix() {
           data-testid="fy26-pct-legend"
           className="text-xs leading-5 text-muted-foreground"
         >
-          <span className="font-mono text-foreground">%Δ</span> is computed on
+          <span className="font-mono text-foreground">%Δ</span>{" "}is computed on
           FY2026&apos;s combined figure (discretionary request + one-time
           reconciliation money) vs. FY2025 enacted. Where a program carries
           reconciliation funding, this combined rate can differ sharply — even

@@ -6,6 +6,7 @@ import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
 import {
   getDatasetManifest,
+  getEntitiesTop,
   getGaoCrosswalkStats,
   getGaoEditions,
   getFlowChartMeta,
@@ -18,6 +19,10 @@ import { crosswalkValue } from "@/lib/corpus";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
 import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
+import {
+  labelCensusSentence,
+  labelMarginCensus,
+} from "@/lib/entity-label-margins.mjs";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
@@ -134,6 +139,21 @@ export default function MethodologyPage() {
   // runs the bounded extract — which is why §4 states the status from this
   // number rather than describing an extract the build does not have.
   const samRegistrations = siteMeta.counts.companies_with_sam ?? 0;
+  // Task 29S (ROADMAP #10 A): the narrow-label census, DERIVED. §4 typed "15
+  // of the 200 families we publish carry a label that beat its runner-up by
+  // under 15%", and the 2026-09-06 FY2026 refresh made it false (chain C run
+  // 3's recompute: 14). The margins live in the award lake, not in any
+  // payload, so the page states what the build CAN count — the published
+  // families and how many carry a seed label (the exporter sets `label` on
+  // entities_top.json exactly when data-seeds/entity_display_aliases.csv
+  // carries the key). Gate 24 leg l computes the same census through the
+  // same helper from the seed and the lake, and fails unless this sentence
+  // is the one it would render.
+  const entitiesTop = getEntitiesTop();
+  const labelCensus = labelMarginCensus(
+    entitiesTop,
+    entitiesTop.filter((e) => e.label).map((e) => e.family_key),
+  );
   // ROADMAP #111 / Group C polish fix round 1: the edition the residual
   // clause in §5 names. The org pages it summarises stopped typing a year
   // when the absence payload gained `fy` (program-tier.orgAbsenceWording);
@@ -835,13 +855,12 @@ export default function MethodologyPage() {
                   chip is suppressed and the method stated once in the header.
                 </p>
                 <p className="mt-2">
-                  <strong>The tier grades the grouping, never the name.</strong> A
+                  <strong>The tier grades the grouping, never the name.</strong>{" "}A
                   family&rsquo;s label is the registered parent name of its largest
-                  member, chosen by an argmax over obligations: 15 of the 200
-                  families we publish carry a label that beat its runner-up by
-                  under 15%. Those carry a reviewed label from a curated seed
-                  instead, each company page still showing its registered name, and
-                  a new one fails the build.
+                  member, chosen by an argmax over obligations.{" "}
+                  {/* Task 29S: the narrow-label census, DERIVED (labelCensus
+                      above) — this sentence used to type "15 of the 200". */}
+                  {labelCensusSentence(labelCensus)}
                   {/* ROADMAP #10: the SAM extract's status, DERIVED — the count
                       is site_meta.counts.companies_with_sam, so the page states
                       what this build has instead of promising an extract. Zero
@@ -859,7 +878,7 @@ export default function MethodologyPage() {
                       label from rn = 1 and this registration from
                       max(coalesce(parent_uei, recipient_uei)) filter (rk = 1),
                       so on an obligation tie they are two different members —
-                      and for the 15 seed-labelled families the label is not a
+                      and for a relabelled family the label is not a
                       registration at all. It now states the same rule as
                       components/sam-registration.tsx and the citation formula
                       in export_site.py; sam-registration.test.tsx reds if any
@@ -1166,7 +1185,7 @@ export default function MethodologyPage() {
             <h2 className="text-xl font-semibold mb-4">5. Known limitations</h2>
             <ul className="list-disc list-outside space-y-2 text-muted-foreground leading-7 pl-5">
               <li>
-                <strong>FY attribution is approximate.</strong> Contracts execute
+                <strong>FY attribution is approximate.</strong>{" "}Contracts execute
                 across multiple fiscal years; our current method assigns links
                 based on which fiscal years&apos; award transactions share the
                 same federal account code.
@@ -1374,7 +1393,7 @@ export default function MethodologyPage() {
                   recompute-verified trajectory mart.
                 </p>
                 <p className="mt-2">
-                  &ldquo;–&rdquo; and a zero tagged <em>XML</em> mean different
+                  &ldquo;–&rdquo; and a zero tagged <em>XML</em>{" "}mean different
                   things. &ldquo;–&rdquo; is <em>absent</em>: the trajectory
                   workbook simply has no row for that program and column (most
                   DARPA program elements, for example, carry no FY2026 Total
@@ -1539,9 +1558,9 @@ export default function MethodologyPage() {
                 </p>
                 <p className="mt-2">
                   Spend-river edges are colored by FPDS{" "}
-                  <code className="text-xs">extent_competed</code> (full &amp;
+                  <code className="text-xs">extent_competed</code>{" "}(full &amp;
                   open / set-aside / other than full / not competed), with the
-                  distribution of <em>offers received</em> on hover. FPDS records
+                  distribution of <em>offers received</em>{" "}on hover. FPDS records
                   how many offers came in — never who the losing bidders were —
                   so the chart states offer counts and implies nothing more.
                   Negative flows (net de-obligations, where an office clawed back
@@ -1633,18 +1652,18 @@ export default function MethodologyPage() {
                   </strong>
                 </p>
                 <p className="mt-2">
-                  <strong>What we got wrong.</strong> Until August 2026 this
+                  <strong>What we got wrong.</strong>{" "}Until August 2026 this
                   section published 87 cards reading &ldquo;
-                  <em>&lt;program&gt;</em> zeroed out in FY2026 (had $0 in
+                  <em>&lt;program&gt;</em>{" "}zeroed out in FY2026 (had $0 in
                   FY25)&rdquo;. Both halves of that sentence were false. The
                   underlying query treated a program&rsquo;s{" "}
-                  <em>absence</em> from our FY2026 extract as a zero, and none of
+                  <em>absence</em>{" "}from our FY2026 extract as a zero, and none of
                   the 87 was a genuine zero. Separately, a formatting bug printed
                   the FY2025 amount as &ldquo;$0&rdquo; on every card, hiding
                   $7.07B of real FY2025 money.
                 </p>
                 <p className="mt-2">
-                  <strong>Why absence is not zero.</strong> In DoD&rsquo;s
+                  <strong>Why absence is not zero.</strong>{" "}In DoD&rsquo;s
                   published R-1/P-1 workbooks a blank FY2026 cell and a{" "}
                   <code className="text-xs bg-muted px-1 rounded">0</code> cell mean
                   different things, and both appear in the same file. Our loader
@@ -1654,7 +1673,7 @@ export default function MethodologyPage() {
                   clearest case: the FY2026 request retired 14 of its old program
                   elements and introduced 8 new ones, while DARPA&rsquo;s total
                   request <em>rose</em> to $4.92B from $4.15B. Calling{" "}
-                  <em>Defense Research Sciences</em> &ldquo;zeroed out&rdquo; described
+                  <em>Defense Research Sciences</em>{" "}&ldquo;zeroed out&rdquo; described
                   a renumbering as a cancellation.
                 </p>
                 <p className="mt-2">

@@ -218,6 +218,12 @@ import { createRequire } from "module";
 import { feedGuid, FR_NS } from "../../src/lib/feed-model.mjs";
 import { exemptFromNotationSweep } from "./source-text-kinds.mjs";
 import { displayCompanyName } from "../../src/lib/company-name.mjs";
+import {
+  NEAR_TIE_MARGIN,
+  isNearTie,
+  labelCensusFindings,
+  labelMarginCensus,
+} from "../../src/lib/entity-label-margins.mjs";
 import { normalizeAmount, valuesAgree } from "./basis.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -3562,7 +3568,8 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
 // The row may RELABEL the family or merely PIN the argmax winner — the seed's
 // `evidence` column types which — but a near-tie must have been looked at by a
 // human, and the looking must be written down. 15 published families ($255.2B,
-// 9.7% of published family dollars) are inside the threshold today.
+// 9.7% of published family dollars) were inside the threshold when this leg
+// was written (2026-09-01); the live count is in this leg's note.
 //
 // Everything is recomputed rather than read back:
 //   * the margins come from familylabel-recompute.py (DuckDB over the award
@@ -3577,6 +3584,15 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
 // would have to be updated by the same person who broke the thing it pins:
 // the recompute must cover ≥100 families, at least one must be inside the
 // threshold, and the seed must resolve ≥1 relabel onto a built page.
+//
+// Task 29S: the threshold, the near-tie predicate and the census live in ONE
+// module, src/lib/entity-label-margins.mjs, which /methodology/ imports too.
+// The page used to TYPE the census ("15 of the 200 …") and this leg read the
+// literal back; the 2026-09-06 FY2026 refresh made it false before anyone
+// retyped it. The page now renders labelCensusSentence() of its own census
+// (entities_top.json + the labels the exporter resolved from the seed), and
+// part (4) below requires the built page to contain exactly the sentence
+// this leg's census renders (the lake recompute + the seed parsed here).
 
 const DISPLAY_ALIAS_SEED = path.resolve(
   repoRoot,
@@ -3584,13 +3600,9 @@ const DISPLAY_ALIAS_SEED = path.resolve(
   "entity_display_aliases.csv",
 );
 
-/**
- * The margin below which a label is a coin-flip win. Deliberately the same
- * number the spike measured the blast radius at
- * (docs/superpowers/reviews/10-entity-resolution-spike.md §1) — lowering it to
- * make a family pass is the one edit this constant must never see.
- */
-const NEAR_TIE_MARGIN = 0.15;
+// NEAR_TIE_MARGIN (15%) is imported from src/lib/entity-label-margins.mjs —
+// the one copy, shared with the page that states it (Task 29S). Lowering it
+// to make a family pass is the one edit it must never see.
 
 /** Slug for a warehouse family_key — export_site.py's own derivation. */
 function familySlug(familyKey) {
@@ -3672,7 +3684,14 @@ function runFamilyLabelLeg(errors, notes) {
   }
 
   // ── THE RULE ────────────────────────────────────────────────────────────
-  const nearTies = families.filter((f) => f.margin < NEAR_TIE_MARGIN);
+  const nearTies = families.filter(isNearTie);
+  let census;
+  try {
+    census = labelMarginCensus(families, aliases.keys());
+  } catch (e) {
+    errors.push(`leg l: ${e.message}`);
+    return;
+  }
   if (nearTies.length === 0) {
     errors.push(
       `leg l: no published family is inside the ${(NEAR_TIE_MARGIN * 100).toFixed(0)}% ` +
@@ -3817,36 +3836,17 @@ function runFamilyLabelLeg(errors, notes) {
 
   // (4) /methodology/ states the size of this problem in prose. A true
   //     sentence that has rotted is the Sprint-3 defect species — a real
-  //     number carrying a claim that stopped being true — so the two counts
-  //     in it are read back and compared to the recompute, not trusted.
+  //     number carrying a claim that stopped being true — so the sentence is
+  //     not read back and trusted: the page renders labelCensusSentence() of
+  //     ITS census, and the built text must contain exactly the sentence of
+  //     THIS leg's census (threshold, published families, seeded families —
+  //     from the recompute and the seed, never from entities_top.json).
   const method = readHtml("/methodology/");
   if (!method) {
     errors.push("leg l: built /methodology/ missing");
   } else {
-    const text = method.text.replace(/\s+/g, " ");
-    const m = text.match(
-      /([\d,]+) of the ([\d,]+) families we publish carry a label that beat its runner-up by under (\d+)%/i,
-    );
-    if (!m) {
-      errors.push(
-        "leg l (/methodology/): the near-tie sentence is missing or reworded — " +
-          "the page explains why a family carries a curated label, and this leg " +
-          "cannot check a claim it cannot find",
-      );
-    } else {
-      const [stated, denom, pct] = m.slice(1).map((v) => Number(v.replace(/,/g, "")));
-      if (stated !== nearTies.length || denom !== families.length) {
-        errors.push(
-          `leg l (/methodology/): states "${m[0]}", but the recompute finds ` +
-            `${nearTies.length} of ${families.length}`,
-        );
-      }
-      if (pct !== NEAR_TIE_MARGIN * 100) {
-        errors.push(
-          `leg l (/methodology/): states a ${pct}% margin; the gate enforces ` +
-            `${NEAR_TIE_MARGIN * 100}%`,
-        );
-      }
+    for (const finding of labelCensusFindings(method.text, census)) {
+      errors.push(`leg l (/methodology/): ${finding}`);
     }
   }
 
@@ -3858,7 +3858,9 @@ function runFamilyLabelLeg(errors, notes) {
         `entity_display_aliases.csv (${relabelled.length} relabelled, ` +
         `${aliases.size - relabelled.length} pinned), ${labelled} rendered ` +
         `label element(s) all match the seed, ${pagesChecked} company page(s) ` +
-        `publish it beside their registry string ✓`,
+        `publish it beside their registry string; /methodology/ states the ` +
+        `census exactly (${census.curated} of ${census.published} seeded, ` +
+        `under ${census.thresholdPct}%) ✓`,
     );
   }
 }

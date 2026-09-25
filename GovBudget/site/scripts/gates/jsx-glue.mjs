@@ -35,8 +35,9 @@
  *   - an all-caps ≤3-letter prefix ending the text ("FY" in FY{year},
  *     "BA" in BA{n}) — the site's own code-formatting idiom.
  * Expressions that render JSX are treated as elements, not text, and element
- * neighbours are out of scope: block-level siblings gluing is layout, not
- * prose.
+ * neighbours are out of scope for THIS (newline) rule: block-level siblings
+ * gluing is layout, not prose. (Inline elements under the Turbopack trim are
+ * the one exception — see the last section.)
  *
  * THE SECOND TRIM (ROADMAP #106, 2026-09-05). Babel's cleaner keeps a FIRST
  * line's leading space, so `{n} whose cited record stops in an\n  earlier
@@ -51,9 +52,32 @@
  * false positive across all 136 .tsx files. Delete when a Next upgrade stops
  * trimming; every site it flagged stays correct regardless.
  *
+ * THE SAME TRIM AFTER AN INLINE ELEMENT (Task 29S, 2026-09-25). The trim is a
+ * property of the TEXT RUN, not of what precedes it, so it eats the space
+ * after `</strong>` exactly as it does after `{n}`. Chain C run 3's built
+ * /methodology/ rendered "never the name.</strong>A family’s" and nine more;
+ * /fact/ "{id}</span>resolves"; /lineage/ "<em>year</em>axis"; 48
+ * /program/ pages "F-35 C2D2</span>is one of the lines". The element-
+ * neighbour exclusion above was right for BLOCK siblings and wrong for the
+ * inline text elements in INLINE_ELEMENTS, whose trimmed space is a missing
+ * space inside a sentence. So an INLINE_ELEMENTS element followed directly by
+ * a run of turbopackTrimsLeadingSpace()'s shape is reported too, with no edge
+ * exemption: the author typed a same-line space, so "extent_competed(full"
+ * and "Sciences“zeroed" are glue even though the run opens on punctuation.
+ * Still out of scope, each by construction rather than by list:
+ *   - block elements and components (a component's rendered tag is not
+ *     knowable from the call site) — measured 2026-09-25: no run of this
+ *     shape follows either anywhere in site/src, so the scope hides nothing;
+ *   - a run that starts with a LINE BREAK after the element (`</span>\n
+ *     cited`): JSX defines that as no space, nothing was typed, nothing was
+ *     trimmed — /lineage/'s “cited quote-glyph spans are this shape on
+ *     purpose, the glyph set flush against the word.
+ * The fix is the #106 idiom: `</strong>{" "}A family&rsquo;s…`.
+ *
  * Export: findGlueSites(rootDir) → { hits: [{ file, line, why, left, right }], filesScanned }
  *         findGlueSitesInSource(file, src, rootDir) → the hits for one source
  *         turbopackTrimsLeadingSpace(rawJsxText) → boolean
+ *         INLINE_ELEMENTS → the tags whose trailing space is prose
  */
 
 import fs from "fs";
@@ -101,6 +125,26 @@ export function cleanJsxText(raw) {
 }
 
 const WORD = /[0-9A-Za-z]/;
+
+/**
+ * Intrinsic phrasing elements that sit INSIDE a sentence, so a space trimmed
+ * after one is a missing space in prose (Task 29S). Lower-case intrinsic tags
+ * only: `<Link>` and every other component are out, their rendered tag not
+ * being knowable from the call site.
+ */
+export const INLINE_ELEMENTS = new Set([
+  "strong",
+  "em",
+  "b",
+  "i",
+  "code",
+  "span",
+  "a",
+  "abbr",
+  "cite",
+  "sup",
+  "sub",
+]);
 
 /**
  * An HTML character reference as JSX text carries it: &apos; &rsquo; &amp;
@@ -209,6 +253,9 @@ export function findGlueSitesInSource(file, src, rootDir = path.dirname(file)) {
           if (isWhitespaceExpr(k)) seq.push({ kind: "space" });
           else if (rendersJsx(k.expression)) seq.push({ kind: "el" });
           else seq.push({ kind: "expr", node: k, vals: branchValues(k.expression) });
+        } else if (ts.isJsxElement(k) || ts.isJsxSelfClosingElement(k)) {
+          const tag = ts.isJsxElement(k) ? k.openingElement.tagName : k.tagName;
+          seq.push({ kind: "el", tag: tag.getText(sf), node: k });
         } else {
           seq.push({ kind: "el" });
         }
@@ -226,6 +273,27 @@ export function findGlueSitesInSource(file, src, rootDir = path.dirname(file)) {
         if (j >= seq.length) break;
         const b = seq[j];
         if (b.kind === "space") continue;
+
+        // Task 29S: the #106 trim after an inline text element. Adjacent
+        // JsxText children do not exist, so an element's text neighbour is
+        // always seq[i + 1] with no gap between them.
+        if (
+          a.kind === "el" &&
+          b.kind === "text" &&
+          INLINE_ELEMENTS.has(a.tag) &&
+          turbopackTrimsLeadingSpace(b.raw)
+        ) {
+          const pos = sf.getLineAndCharacterOfPosition(b.node.getStart(sf));
+          hits.push({
+            file: path.relative(rootDir, file),
+            line: pos.line + 1,
+            why: "entity-trim",
+            left: a.node.getText(sf).replace(/\s+/g, " ").slice(-60),
+            right: b.cleaned.replace(/^\s+/, "").replace(/\s+/g, " ").slice(0, 60),
+          });
+          continue;
+        }
+
         const pair = `${a.kind}+${b.kind}`;
         if (pair !== "expr+text" && pair !== "text+expr") continue;
 
