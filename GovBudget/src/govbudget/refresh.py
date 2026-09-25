@@ -169,7 +169,7 @@ class Stage:
     env: dict[str, str] = field(default_factory=dict)
 
 
-# ── the two doors to the outside world ──────────────────────────────────────
+# ── the two subprocess doors (the module docstring lists the others) ────────
 
 
 def _run(argv: list[str], *, cwd: Path | None = None, env: dict | None = None) -> int:

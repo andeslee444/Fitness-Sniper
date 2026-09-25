@@ -7356,11 +7356,11 @@ def _who_gets_it_fid(block: dict | None) -> str | None:
     high-only index publishes (hhi_high non-null ⇒ ≥3 high awards across ≥2
     positive-dollar families with positive linked dollars). Below that floor
     the strip cites NOTHING: the all-tier figure is dominated by the
-    account+subagency tier, which the 2026-09-04 adjudication measured at
-    0 of 60 for program attribution (ROADMAP #79), so substituting it would
-    answer "who gets it" with a tier that does not answer it. The *_all
-    columns and their fids stay in the data for /methodology/ and the
-    download; nothing on a page reads them.
+    account+subagency tier, which the 2026-09-05 attribution sample (loaded
+    2026-09-11) measured at 0 of 60 for program attribution (ROADMAP #79), so
+    substituting it would answer "who gets it" with a tier that does not
+    answer it. The *_all columns and their fids stay in the data for
+    /methodology/ and the download; nothing on a page reads them.
 
     A non-None return is exactly the condition under which the page renders
     the award tier; the named-primes and uncrosswalked fallbacks key off it,
