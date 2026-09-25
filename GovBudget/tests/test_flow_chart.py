@@ -706,3 +706,290 @@ def test_real_export_labels_clean():
                 assert "lbl" in n and n["lbl"]["x"] >= last_x1, (
                     f"FY{fy} {n['id']}: family labels belong in the right gutter"
                 )
+
+
+# ---------------------------------------------------------------------------
+# Payload size (gate 22 leg a's 600KB budget) — serialization, never the budget
+# ---------------------------------------------------------------------------
+#
+# The 2026-09-06 FY2026 refresh took the real flow_chart.json to 615,051 bytes
+# against PAYLOAD_BUDGET_BYTES 614,400. The fix is in what the payload carries
+# and how its numbers are written; the budget is not raised. The tests below
+# pin three things: the budget itself, that the smaller payload changes no
+# value any consumer reads, and that every field a consumer reads survives.
+
+import math  # noqa: E402  (grouped with the section)
+import re  # noqa: E402
+
+from govbudget.flow_chart import (  # noqa: E402
+    PAYLOAD_BUDGET_BYTES,
+    _compact_numbers,
+)
+
+_REPO = Path(__file__).resolve().parents[1]
+
+# Every field a consumer of flow_chart.json reads or types as required, by
+# object kind: site/src/lib/flow.ts (the /flow/ island's payload types and
+# what flow-chart.tsx renders), site/src/lib/data.ts (getFlowChartMeta,
+# getFlowsOutsideBridgeCount), gate 22 (flowdown.mjs legs a-d), gate 24 leg p
+# and the coverage gate. A size fix may drop a field none of them reads and
+# flow.ts types optional; it may never drop one of these.
+_CONSUMER_FIELDS = {
+    "payload": {"schema_version", "budget", "spend"},
+    "budget": {"units", "fiscal_year", "label", "levels", "width", "height",
+               "nodes", "edges", "bridge"},
+    "bridge": {"budget_total", "budget_total_str", "crosswalked_total",
+               "crosswalked_total_str", "not_yet_crosswalked",
+               "not_yet_crosswalked_str", "crosswalked_pe_count",
+               "crosswalk_universe_pe_count", "high_confidence_pe_count",
+               "crosswalked_node", "not_crosswalked_node", "coverage_note",
+               "programs"},
+    "program": {"pe_bli", "value", "confidence", "families"},
+    "family": {"family_key", "confidence"},
+    "spend": {"units", "source_note", "competed_classes", "offers_buckets",
+              "levels", "default_fy", "fys", "width", "height", "by_fy",
+              "notes"},
+    "spend_notes": {"fy2026_partial", "offers"},
+    "spend_fy": {"total", "total_str", "nodes", "edges"},
+    "node": {"id", "fid", "label", "level", "value", "x0", "x1", "y0", "y1"},
+    "other": {"count", "members", "omitted", "omitted_value"},
+    "member": {"k", "l", "v"},
+    "lbl": {"x", "y", "a"},
+    "budget_edge": {"s", "t", "v", "f", "g"},
+    "spend_edge": {"s", "t", "v", "f", "g", "c", "o"},
+}
+
+
+def _is_num(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _assert_consumer_fields(payload) -> int:
+    """Walk the payload; every consumer field present with its JSON type."""
+    checked = 0
+
+    def need(obj, kind):
+        nonlocal checked
+        missing = _CONSUMER_FIELDS[kind] - set(obj)
+        assert not missing, f"{kind} lost consumer field(s) {sorted(missing)}"
+        checked += 1
+
+    need(payload, "payload")
+    b = payload["budget"]
+    need(b, "budget")
+    need(b["bridge"], "bridge")
+    for p in b["bridge"]["programs"]:
+        need(p, "program")
+        assert isinstance(p["pe_bli"], str) and _is_num(p["value"])
+        for f in p["families"]:
+            need(f, "family")
+    s = payload["spend"]
+    need(s, "spend")
+    need(s["notes"], "spend_notes")
+    rivers = [(b, "budget_edge")] + [
+        (s["by_fy"][fy], "spend_edge") for fy in s["by_fy"]
+    ]
+    for fy in s["by_fy"]:
+        need(s["by_fy"][fy], "spend_fy")
+        assert _is_num(s["by_fy"][fy]["total"])
+    for river, edge_kind in rivers:
+        for n in river["nodes"]:
+            need(n, "node")
+            for k in ("value", "x0", "x1", "y0", "y1"):
+                assert _is_num(n[k]), (n["id"], k)
+            if "other" in n:
+                need(n["other"], "other")
+                for m in n["other"]["members"]:
+                    need(m, "member")
+                    assert _is_num(m["v"])
+            if "lbl" in n:
+                need(n["lbl"], "lbl")
+        for e in river["edges"]:
+            need(e, edge_kind)
+            assert all(_is_num(x) for x in e["g"]) and len(e["g"]) == 4
+            if edge_kind == "spend_edge":
+                assert len(e["c"]) == len(COMPETED_CLASSES)
+                assert len(e["o"]) == len(OFFERS_BUCKETS)
+    return checked
+
+
+def _gate22_payload_legs(payload) -> list[str]:
+    """Python port of gate 22's PAYLOAD-INTERNAL legs, run on parsed JSON.
+
+    Mirrors site/scripts/gates/flowdown.mjs checkRiver (leg a: in/out
+    conservation, Other drill-down members+omitted, proportional heights,
+    band containment and thickness), leg b's exact milli-unit bridge identity
+    and program sum, and leg d's class/offers partitions — same tolerances,
+    same float arithmetic the gate does on JSON.parse output. The lake legs
+    are not here: they compare payload VALUES to the lake, and
+    test_compaction_changes_no_value pins that no value moved.
+    """
+    TOL_INTERNAL, TOL_CITE = 0.005, 0.001
+    errors: list[str] = []
+
+    def milli(s: str) -> int:
+        m = re.fullmatch(r"(-?)(\d+)(?:\.(\d{1,3}))?", str(s))
+        assert m, f"not a canonical decimal string: {s}"
+        v = int(m[2]) * 1000 + int((m[3] or "").ljust(3, "0"))
+        return -v if m[1] else v
+
+    def check_river(label, river, terminal, root_level="total"):
+        nodes, edges = river["nodes"], river["edges"]
+        inflow: dict[int, float] = {}
+        outflow: dict[int, float] = {}
+        for e in edges:
+            outflow[e["s"]] = outflow.get(e["s"], 0) + e["v"]
+            inflow[e["t"]] = inflow.get(e["t"], 0) + e["v"]
+        for i, n in enumerate(nodes):
+            if n["level"] != root_level and abs(inflow.get(i, 0) - n["value"]) > TOL_INTERNAL:
+                errors.append(f"a: {label} {n['id']} inflow")
+            if n["level"] not in terminal and abs(outflow.get(i, 0) - n["value"]) > TOL_INTERNAL:
+                errors.append(f"a: {label} {n['id']} outflow")
+            if "other" in n:
+                ms = sum(m["v"] for m in n["other"]["members"])
+                if abs(ms + n["other"]["omitted_value"] - n["value"]) > TOL_INTERNAL:
+                    errors.append(f"a: {label} {n['id']} drilldown")
+        root = next(n for n in nodes if n["level"] == root_level)
+        if root["value"] > 0:
+            scale = (root["y1"] - root["y0"]) / root["value"]
+            for n in nodes:
+                if abs(n["y1"] - n["y0"] - max(n["value"], 0) * scale) > 0.05:
+                    errors.append(f"a: {label} {n['id']} height")
+            pos_out: dict[int, float] = {}
+            pos_in: dict[int, float] = {}
+            for e in edges:
+                pos_out[e["s"]] = pos_out.get(e["s"], 0) + max(e["v"], 0)
+                pos_in[e["t"]] = pos_in.get(e["t"], 0) + max(e["v"], 0)
+
+            def factor(node, pos):
+                return min(1, max(node["value"], 0) / pos) if pos and pos > 0 else 0
+
+            for e in edges:
+                sn, tn = nodes[e["s"]], nodes[e["t"]]
+                sy0, sy1, ty0, ty1 = e["g"]
+                if (sy0 < sn["y0"] - 0.02 or sy1 > sn["y1"] + 0.02
+                        or ty0 < tn["y0"] - 0.02 or ty1 > tn["y1"] + 0.02):
+                    errors.append(f"a: {label} {sn['id']}->{tn['id']} escapes")
+                exp_s = max(e["v"], 0) * scale * factor(sn, pos_out.get(e["s"]))
+                exp_t = max(e["v"], 0) * scale * factor(tn, pos_in.get(e["t"]))
+                if abs(sy1 - sy0 - exp_s) > 0.05 or abs(ty1 - ty0 - exp_t) > 0.05:
+                    errors.append(f"a: {label} {sn['id']}->{tn['id']} thickness")
+
+    b, s = payload["budget"], payload["spend"]
+    check_river("budget", b, ("bridge",))
+    for fy, river in s["by_fy"].items():
+        check_river(f"spend FY{fy}", river, ("family",))
+    br = b["bridge"]
+    if milli(br["budget_total_str"]) - milli(br["crosswalked_total_str"]) != milli(
+            br["not_yet_crosswalked_str"]):
+        errors.append("b: bridge remainder not exact")
+    by_id = {n["id"]: n for n in b["nodes"]}
+    for nid, key in (("b:total", "budget_total_str"),
+                     ("b:bridge:crosswalked", "crosswalked_total_str"),
+                     ("b:bridge:not-crosswalked", "not_yet_crosswalked_str")):
+        if abs(by_id[nid]["value"] - float(br[key])) > TOL_CITE:
+            errors.append(f"b: {nid} != {key}")
+    if abs(sum(p["value"] for p in br["programs"]) - float(br["crosswalked_total_str"])) > 0.01:
+        errors.append("b: programs sum != crosswalked_total")
+    if not re.search("not yet crosswalked", br["coverage_note"], re.I):
+        errors.append("b: coverage_note lost the gap")
+    if s["competed_classes"] != list(COMPETED_CLASSES) or s["offers_buckets"] != list(OFFERS_BUCKETS):
+        errors.append("d: vocabulary drifted")
+    for fy, river in s["by_fy"].items():
+        for e in river["edges"]:
+            if abs(sum(e["c"]) - e["v"]) > TOL_INTERNAL or abs(sum(e["o"]) - e["v"]) > TOL_INTERNAL:
+                errors.append(f"d: FY{fy} #{e['s']}->#{e['t']} partition")
+    return errors
+
+
+def _as_shipped(payload) -> dict:
+    """What every consumer reads: export_site._write_json's bytes, re-parsed."""
+    return json.loads(json.dumps(payload, sort_keys=True))
+
+
+def test_payload_budget_is_never_raised():
+    """614,400 bytes here AND in gate 22 — the refresh overshoot is fixed in
+    the payload, and a later one must be too."""
+    assert PAYLOAD_BUDGET_BYTES == 600 * 1024 == 614_400
+    gate = (_REPO / "site/scripts/gates/flowdown.mjs").read_text()
+    assert re.search(r"^const PAYLOAD_BUDGET_BYTES = 600 \* 1024;$", gate, re.M)
+
+
+def test_integral_values_serialize_without_a_trailing_zero(flow_db, bl_rows):
+    """JSON has one number type: 30000.0 and 30000 parse to the same double in
+    JS and compare equal in Python. The ".0" is two bytes of Python float repr,
+    not precision, and the real payload carried 7,158 of them."""
+    payload, _ = _build(flow_db, bl_rows)
+    raw = json.dumps(payload, sort_keys=True)
+    assert re.search(r"\d\.0(?=[,\]}])", raw) is None, (
+        re.search(r".{40}\d\.0(?=[,\]}])", raw)
+    )
+    # the fixture really does carry integral values (else this passes vacuously)
+    assert _node_by_id(payload["budget"], "b:other:component")["value"] == 30000
+
+
+def test_compaction_changes_no_value(flow_db, bl_rows, collision_db,
+                                     collision_bl_rows, monkeypatch):
+    """Identical numbers, fewer bytes: the payload with compaction disabled
+    equals the shipped one value-for-value (Python ==, i.e. 30000 == 30000.0),
+    so no rendered number, label, geometry or gate recompute can move."""
+    from govbudget import flow_chart
+
+    for build in (lambda: _build(flow_db, bl_rows)[0],
+                  lambda: _build_collide(collision_db, collision_bl_rows)[0]):
+        shipped = _as_shipped(build())
+        with monkeypatch.context() as m:
+            m.setattr(flow_chart, "_compact_numbers", lambda obj: obj)
+            reference = _as_shipped(build())
+        assert shipped == reference
+        assert len(json.dumps(shipped, sort_keys=True)) < len(
+            json.dumps(reference, sort_keys=True))
+
+
+def test_compact_numbers_is_exact():
+    assert _compact_numbers(2.0) == 2 and type(_compact_numbers(2.0)) is int
+    assert type(_compact_numbers(2.5)) is float
+    # -0.0 keeps its sign bit: JSON.parse("-0.0") is -0, "0" would be +0
+    z = _compact_numbers(-0.0)
+    assert type(z) is float and math.copysign(1.0, z) == -1.0
+    # 1e16 would print as 17 digits where repr prints "1e+16": left alone
+    assert type(_compact_numbers(1e16)) is float
+    assert _compact_numbers(True) is True
+    assert _compact_numbers({"a": [1.0, {"b": 0.5}], "s": "1.0"}) == {
+        "a": [1, {"b": 0.5}], "s": "1.0"}
+    assert type(_compact_numbers({"a": [1.0]})["a"][0]) is int
+
+
+def test_bridge_programs_carry_no_unread_title(flow_db, bl_rows):
+    """No consumer reads bridge.programs[].title: the /flow/ list renders the
+    PE code (a link to /program/{pe}/, which carries the cited title), the
+    confidence badge and the value, and flow.ts types `title` optional. It was
+    18,253 bytes of the real payload that nothing drew."""
+    payload, _ = _build(flow_db, bl_rows)
+    progs = payload["budget"]["bridge"]["programs"]
+    assert progs, "fixture must carry bridge programs"
+    for p in progs:
+        assert "title" not in p, p
+
+
+def test_consumer_fields_survive(flow_db, bl_rows, collision_db, collision_bl_rows):
+    for payload in (_build(flow_db, bl_rows)[0],
+                    _build_collide(collision_db, collision_bl_rows)[0]):
+        assert _assert_consumer_fields(_as_shipped(payload)) > 20
+
+
+def test_gate22_payload_legs_hold_on_the_shipped_bytes(
+        flow_db, bl_rows, collision_db, collision_bl_rows):
+    for payload in (_build(flow_db, bl_rows)[0],
+                    _build_collide(collision_db, collision_bl_rows)[0]):
+        assert _gate22_payload_legs(_as_shipped(payload)) == []
+
+
+def test_gate22_payload_port_can_fail(flow_db, bl_rows):
+    """Proof the port above is not vacuous: break one value, it reports."""
+    shipped = _as_shipped(_build(flow_db, bl_rows)[0])
+    shipped["spend"]["by_fy"]["2025"]["edges"][0]["c"][0] += 1
+    shipped["budget"]["bridge"]["not_yet_crosswalked_str"] = "1.000"
+    errs = _gate22_payload_legs(shipped)
+    assert any(e.startswith("d:") for e in errs)
+    assert any(e.startswith("b: bridge remainder") for e in errs)

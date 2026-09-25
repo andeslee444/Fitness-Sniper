@@ -45,6 +45,7 @@ vs USD obligations per FY) — nothing here implies equivalence.
 from __future__ import annotations
 
 import json
+import math
 from decimal import Decimal
 from pathlib import Path
 
@@ -112,6 +113,37 @@ def _fnum(d: Decimal) -> float:
 
 def _r2(x: float) -> float:
     return round(x, 2)
+
+
+# Below 1e16 Python's float repr is plain digits, so an integral float's int
+# form is its repr minus ".0"; at 1e16 and up repr switches to "1e+16", which
+# the int form (17+ digits) would only lengthen.
+_COMPACT_BELOW = 1e16
+
+
+def _compact_numbers(obj):
+    """Write every integral float as an int — same JSON value, fewer bytes.
+
+    JSON has one number type. `121837608.0` and `121837608` parse to the same
+    IEEE-754 double in the browser (JSON.parse) and compare equal in Python,
+    so no consumer can read a different value; the ".0" is Python's float
+    repr, two bytes of formatting with no precision in it. The real payload
+    carried 7,158 of them (14,316 bytes) when the 2026-09-06 FY2026 refresh
+    took it past PAYLOAD_BUDGET_BYTES. -0.0 stays a float: JSON.parse("-0.0")
+    is -0 and "0" would be +0, and this pass may not flip even a sign bit.
+    Applied once, to the finished payload in build_flow_chart — the layout
+    and label maths still run on the floats they always did.
+    """
+    if isinstance(obj, float):
+        if (obj.is_integer() and abs(obj) < _COMPACT_BELOW
+                and not (obj == 0 and math.copysign(1.0, obj) < 0)):
+            return int(obj)
+        return obj
+    if isinstance(obj, dict):
+        return {k: _compact_numbers(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_compact_numbers(v) for v in obj]
+    return obj
 
 
 # ---------------------------------------------------------------------------
@@ -513,14 +545,6 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
         except _duckdb.CatalogException:
             pass
 
-        pe_titles: dict[str, str] = {}
-        try:
-            pe_titles = dict(con.execute(
-                "select pe_bli, title from dim_pe_titles"
-            ).fetchall())
-        except _duckdb.CatalogException:
-            pass
-
         # ---- spend leaves per FY ----------------------------------------
         spend_fys = [r[0] for r in con.execute(
             "select distinct fiscal_year from fct_flow_edges"
@@ -556,7 +580,7 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
 
     budget_river = _build_budget_river(
         budget_leaves, label_maps, bl_lookup, xwalk_conf, xwalk_fams,
-        pe_titles, top_n=top_n, mint=mint, fact_id_derived=fact_id_derived,
+        top_n=top_n, mint=mint, fact_id_derived=fact_id_derived,
     )
 
     spend = _build_spend_rivers(
@@ -564,11 +588,11 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
         mint=mint, fact_id_derived=fact_id_derived,
     )
 
-    payload = {
+    payload = _compact_numbers({
         "schema_version": 1,
         "budget": budget_river,
         "spend": spend,
-    }
+    })
     return payload, citation_rows
 
 
@@ -578,7 +602,7 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
 
 
 def _build_budget_river(budget_leaves, label_maps, bl_lookup, xwalk_conf,
-                        xwalk_fams, pe_titles, *, top_n, mint,
+                        xwalk_fams, *, top_n, mint,
                         fact_id_derived) -> dict:
     UNITS = "USD thousands"
 
@@ -765,13 +789,17 @@ def _build_budget_river(budget_leaves, label_maps, bl_lookup, xwalk_conf,
     _place_labels(nodes, UNITS)
 
     # ---- bridge summary ------------------------------------------------------
+    # No `title`: nothing reads it. The /flow/ list renders the PE code (a
+    # link to /program/{pe}/, the page that publishes the program's title),
+    # the confidence badge and the value; flow.ts types the field optional;
+    # no gate recomputes it. It was 18,253 bytes of the payload the
+    # 2026-09-06 FY2026 refresh pushed past PAYLOAD_BUDGET_BYTES.
     programs = []
     for pe in sorted(crosswalked_pes):
         fams = xwalk_fams.get(pe, {})
         fam_keys = sorted(fams)
         entry = {
             "pe_bli": pe,
-            "title": pe_titles.get(pe) or pe,
             "value": _fnum(pe_values[pe]),
             "confidence": xwalk_conf[pe],
             "families": [

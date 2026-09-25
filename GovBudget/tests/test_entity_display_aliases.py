@@ -75,10 +75,33 @@ def test_shipped_seed_loads():
 
 
 def test_shipped_seed_covers_the_flagship():
-    """The defect that occasioned the layer must actually be fixed by it."""
+    """The defect that occasioned the layer must stay fixed by it.
+
+    The flagship was a family of RAYTHEON COMPANY registrations titled
+    ROCKWELL COLLINS AUSTRALIA PTY LIMITED. After the 2026-09-06 FY2026
+    refresh that key left the published 200 (the rebuilt xwalk files its old
+    dominant member, XSV6AZJ6SDJ7, under RTX), and gate 24 leg (l) refuses a
+    row that relabels no published family, so its row was retired. Raytheon
+    Company's registrations now publish as RAYTHEON, whose dominant member
+    still carries the Rockwell string as its third-placed parent registration:
+    that family must be curated under the recipients' own name, and no label
+    may carry the Rockwell string.
+    """
     labels = alias_map(load_display_aliases(SEED))
-    assert "ROCKWELL COLLINS AUSTRALIA" in labels
-    assert "ROCKWELL" not in labels["ROCKWELL COLLINS AUSTRALIA"].upper()
+    assert labels.get("RAYTHEON") == "Raytheon Company"
+    assert all("ROCKWELL" not in label.upper() for label in labels.values())
+
+
+def test_the_marinette_shipyard_is_not_titled_an_italian_research_council():
+    """CONSIGLIO NAZIONALE DELLE RICERCHE (Italy's national research council)
+    won the label of a family that is 99.98% MARINETTE MARINE CORPORATION, a
+    Marinette, WI recipient, by 8.9% over the Italian presidency's
+    secretariat. The parent field there names no owner the lake can support,
+    so the family publishes under the recipient's own registered name."""
+    labels = alias_map(load_display_aliases(SEED))
+    assert labels.get("CONSIGLIO NAZIONALE DELLE RICERCHE") == (
+        "Marinette Marine Corporation"
+    )
 
 
 def test_shipped_seed_keys_are_warehouse_keys_not_names():
