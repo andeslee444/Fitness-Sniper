@@ -49,9 +49,17 @@
 -- NOT COVERED, DELIBERATELY: the 3 ORGANIZATION-split codes ('20', '30',
 -- '500'), whose members share one account ('0300D') and so are not selected by
 -- the `count(distinct account) > 1` definition of "shared" below. An account
--- can never name one of their members, and both link loaders exclude them
--- (ROADMAP #70/#83), so they carry no crosswalk links at all today; the
+-- can never name one of their members. They carry no crosswalk links today
+-- (measured read-only 2026-09-25), but that zero is measured, not
+-- structural: both link loaders exclude them (ROADMAP #70/#83), while the
+-- mechanical crosswalk (jbooks/crosswalk.py) has no such exclusion and has
+-- none only because every mechanical row in the corpus is DARPA's. The
 -- exporter keeps them on the stub via _ProgramIdentity.is_account_split.
+--
+-- ALSO NOT COVERED: a shared code whose high links are ALL account-NULL. The
+-- `having` clause below needs a resolved link beside the unresolved one; an
+-- all-NULL shared code is addressed by the exporter to the disambiguation
+-- stub under a both-members label rather than to either member.
 with shared as (
     -- the codes whose members an ACCOUNT can tell apart
     select pe_bli

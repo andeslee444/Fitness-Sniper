@@ -33,13 +33,15 @@ _SCHEMA = (
 
 # Four concentration_shift cards with DISTINCT matched dollars. The exporter
 # ranks a concentration_shift card by its magnitude.to.value, which IS
-# comparison_value (matched obligations) — so 40M, 30M, 20M, 10M gives an
-# unambiguous descending order.
+# comparison_value (matched obligations) — 40M, 30M, 20M, 10M gives an
+# unambiguous descending order: 0301235N, 0101213F, 0401236F, 0201234A. That
+# order is deliberately NOT pe_bli order, so a writer that re-sorted the
+# section by pe_bli would fail the "no re-sort" assertion below.
 _CONC_ROWS = (
-    "('concentration_shift', '0101213F', NULL, NULL, 3200.0, 40000000.0, NULL, 2024, 'hhi_dollars', NULL),"
-    "('concentration_shift', '0201234A', NULL, NULL, 3100.0, 30000000.0, NULL, 2024, 'hhi_dollars', NULL),"
-    "('concentration_shift', '0301235N', NULL, NULL, 3000.0, 20000000.0, NULL, 2024, 'hhi_dollars', NULL),"
-    "('concentration_shift', '0401236F', NULL, NULL, 2900.0, 10000000.0, NULL, 2024, 'hhi_dollars', NULL)"
+    "('concentration_shift', '0101213F', NULL, NULL, 3200.0, 30000000.0, NULL, 2024, 'hhi_dollars', NULL),"
+    "('concentration_shift', '0201234A', NULL, NULL, 3100.0, 10000000.0, NULL, 2024, 'hhi_dollars', NULL),"
+    "('concentration_shift', '0301235N', NULL, NULL, 3000.0, 40000000.0, NULL, 2024, 'hhi_dollars', NULL),"
+    "('concentration_shift', '0401236F', NULL, NULL, 2900.0, 20000000.0, NULL, 2024, 'hhi_dollars', NULL)"
 )
 _ENTRANT_ROW = (
     "('new_entrant', NULL, NULL, 'ACME ROBOTICS', 3100000.0, 2025.0, NULL, 2025, 'dollars', NULL)"
@@ -115,7 +117,8 @@ class TestOneSidecarPerEventType:
         # The SAME sequence the page sliced its first `shown` cards from,
         # continued at `shown` — no gap, no overlap, no re-sort.
         assert [c["pe_bli"] for c in side["cards"]] == [c["pe_bli"] for c in feed_conc[2:]]
-        assert [c["pe_bli"] for c in side["cards"]] == ["0301235N", "0401236F"]
+        assert [c["pe_bli"] for c in feed_conc[:2]] == ["0301235N", "0101213F"]
+        assert [c["pe_bli"] for c in side["cards"]] == ["0401236F", "0201234A"]
 
     def test_non_truncated_section_gets_an_empty_cards_list(self, tmp_path):
         json_dir, _ = _emit(tmp_path, _ALL_ROWS, section_cap=2)
@@ -199,11 +202,18 @@ class TestKeyedDirectoryHygiene:
 
     def test_a_bad_event_type_writes_no_files_at_all(self, tmp_path):
         # Validation is a PRE-PASS: a poisoned mart must not leave a
-        # half-written directory behind for prepare-assets to mirror.
-        bad = "('../evil', '0101213F', NULL, NULL, 1.0, 2.0, NULL, 2024, 'hhi_dollars', NULL)"
-        with pytest.raises(ValueError):
+        # half-written directory behind for prepare-assets to mirror. The bad
+        # type sorts AFTER the good one, so a writer that validated inside
+        # its write loop would already have pruned the directory and written
+        # yoy_swing.json; the pre-existing directory must come back untouched.
+        sections = tmp_path / "json" / "feed-sections"
+        sections.mkdir(parents=True)
+        (sections / "previous_run.json").write_text('{"cards": []}')
+        bad = "('zz-evil', '0101213F', NULL, NULL, 1.0, 2.0, NULL, 2024, 'hhi_dollars', NULL)"
+        with pytest.raises(ValueError, match="zz-evil"):
             _emit(tmp_path, _SWING_ROW + ", " + bad)
-        assert list((tmp_path / "json" / "feed-sections").glob("*.json")) == []
+        assert sections.is_dir()
+        assert sorted(p.name for p in sections.iterdir()) == ["previous_run.json"]
 
     def test_negative_cap_is_rejected(self, tmp_path):
         with pytest.raises(ValueError, match="section_cap"):

@@ -192,7 +192,7 @@ models:
       - name: pe_bli
         data_tests: [not_null]
       - name: account
-        description: "The member appropriation account whose high-confidence links produced these dollars ('1506N'), for the pe_bli values two programs share. NULL — and so NOT not_null-tested — for every code that names one program (597 of the 608 rows measured read-only 2026-09-19); a NULL on a SHARED code names both members, which is the case assert_district_programs_single_member_high_links still guards. The exporter turns (pe_bli, account) into the member's page slug through _ProgramIdentity.slug; the slug itself is never computed here."
+        description: "The member appropriation account whose high-confidence links produced these dollars ('1506N'), for the pe_bli values two programs share. NULL — and so NOT not_null-tested — for every code that names one program (597 of the 608 rows measured read-only 2026-09-19); a NULL on a SHARED code names both members: a NULL beside an account-resolved high link on the same code is what assert_district_programs_single_member_high_links guards, and a shared code whose high links are all account-NULL passes it and is addressed by the exporter to the disambiguation stub under a both-members label. The exporter turns (pe_bli, account) into the member's page slug through _ProgramIdentity.slug; the slug itself is never computed here."
       - name: total_obligation
         description: "Sum of all transaction obligations for this (district, program element, account) combination. Positive and negative values possible (de-obligations; 11 of the 608 rows are negative, measured read-only 2026-09-19)."
   - name: fct_district_totals

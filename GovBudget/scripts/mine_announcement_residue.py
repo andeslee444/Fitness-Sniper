@@ -316,11 +316,15 @@ def collect_verdicts(queue, verdicts, indexes=None):
     one bad row — which is exactly what happened live: the real run aborted on
     chunk_090_N.json, which swaps articles 1330165/962429 between records 31
     and 33 for N0017417C0022/N0003017C0002 (2 of the run's 1,086 `link`
-    proposals; every other link resolved). Each failure records an example
-    alongside its count — `<counter>_examples`, a list of
+    proposals; every other link resolved). That includes a field of the wrong
+    JSON type — a list or object where `verdict`, `match_basis` or `piid`
+    belongs is counted under the matching counter below, never a TypeError.
+    Every counter below except `invalid_pe_bli` and `malformed_file` also
+    records an example alongside its count — `<counter>_examples`, a list of
     `{chunk, piid, pe_bli, ...detail}` — because a basis, an index or a program
     name a citation card cannot word is the exact failure Task 25b's report
-    discloses:
+    discloses (`malformed_lens`, the shape check on the lens answers, is a
+    count only too):
 
       invalid_verdict      — `verdict` is not one of 'link'/'weak'/'wrong'.
       invalid_record_index — `record_index` is not among the records of that
@@ -419,7 +423,9 @@ def collect_verdicts(queue, verdicts, indexes=None):
                 malformed_lens += 1
                 continue
             verdict = prop.get("verdict")
-            if verdict not in counts:
+            # isinstance first: a list/object verdict is unhashable and would
+            # raise TypeError on the membership test (Task 26 fix wave)
+            if not isinstance(verdict, str) or verdict not in counts:
                 # an unrecognized verdict is content a broken lens produced,
                 # not a protocol violation — counted and skipped rather than
                 # aborting a 150-chunk collection over one bad row
@@ -433,6 +439,15 @@ def collect_verdicts(queue, verdicts, indexes=None):
             if verdict != "link":
                 continue
             aid, piid = str(prop.get("article_id")), prop.get("piid")
+            if isinstance(piid, (list, dict)):
+                # unhashable: the tuple lookup below would raise TypeError. It
+                # names no record of this chunk, so it is counted as one.
+                unknown_article_piid += 1
+                unknown_article_piid_examples.append({
+                    "chunk": chunk["file"], "piid": piid,
+                    "pe_bli": prop.get("pe_bli"), "article_id": aid,
+                })
+                continue
             found = by_pair.get((aid, piid), [])
             index = prop.get("record_index")
             if isinstance(index, str):
@@ -497,7 +512,7 @@ def collect_verdicts(queue, verdicts, indexes=None):
                 })
                 continue
             basis = prop.get("match_basis")
-            if basis not in BASIS_VOCAB:
+            if not isinstance(basis, str) or basis not in BASIS_VOCAB:
                 # content the refute lenses were meant to catch, not a broken
                 # protocol — counted and skipped, never raised, so one bad
                 # basis cannot abort a 150-chunk collection (see docstring)

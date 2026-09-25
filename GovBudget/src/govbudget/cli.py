@@ -1849,7 +1849,7 @@ def cmd_verify_phase5b1(args) -> None:
         # bboxes) must read `checked=0 skipped_no_detail=N`, not vanish.
         if rl.get("sampled"):
             print(
-                f"  row labels: sampled={rl['sampled']}"
+                f"  row labels: jbook_pdf_sampled={rl['sampled']}"
                 f" checked={rl.get('checked', 0)}"
                 f" fallback_summary_row={rl.get('fallback_summary_row', 0)}"
                 f" fallback_pe_line={rl.get('fallback_pe_line', 0)}"

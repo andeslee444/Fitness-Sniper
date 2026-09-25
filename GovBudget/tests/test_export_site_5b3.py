@@ -1263,6 +1263,44 @@ class TestBuildUsaspendingCitationRows:
                     f"official_url should reference usaspending.gov: {official_url}"
 
 
+class TestRequireAccountColumn:
+    """`_require_account_column`'s probe (Task 26 fix wave): only a MISSING
+    RELATION reads as "table absent" — the rule `_published_high_links`
+    (R-6c-7) and `_fetch_member_page_rows` already follow — and the refusal
+    names every missing column and the change that added it."""
+
+    def test_a_broken_view_raises_instead_of_reading_as_absent(self):
+        from govbudget.export_site import _require_account_column
+
+        con = duckdb.connect()
+        assert _require_account_column(con, "fct_district_programs") is False
+        con.execute("create table t (a integer, account varchar)")
+        con.execute(
+            "create view fct_district_programs as select a, account from t")
+        assert _require_account_column(con, "fct_district_programs") is True
+        con.execute("alter table t rename column account to acct")
+        # Absent would publish every district surface as [] with no error.
+        with pytest.raises(duckdb.BinderException):
+            _require_account_column(con, "fct_district_programs")
+
+    def test_the_refusal_names_every_missing_column_and_its_own_change(self):
+        from govbudget.export_site import _require_account_column
+
+        con = duckdb.connect()
+        con.execute("create table dim_programs (pe_bli varchar, title varchar)")
+        with pytest.raises(RuntimeError) as exc:
+            _require_account_column(
+                con, "dim_programs", columns=("account", "account_title"))
+        msg = str(exc.value)
+        assert "`account`" in msg and "`account_title`" in msg, msg
+        # dim_programs' account identity is Sprint E's, not Task 27's.
+        assert "Sprint E" in msg and "Task 27" not in msg, msg
+        con.execute(
+            "create table fct_district_programs (pe_bli varchar, title varchar)")
+        with pytest.raises(RuntimeError, match="Task 27"):
+            _require_account_column(con, "fct_district_programs")
+
+
 # ---------------------------------------------------------------------------
 # fact_id_state_soql / fact_id_state_file tests
 # ---------------------------------------------------------------------------

@@ -119,6 +119,31 @@ def test_the_exporter_refuses_the_same_row_without_the_constraint(clean):
             pg.commit()
 
 
+def test_the_exporter_refuses_more_value_attempted_than_the_residue_holds(clean):
+    """The third CHECK of migration 016 (value_attempted_within_residue) is the
+    one behind the percentage /methodology/ prints verbatim: without its
+    read-time twin, a pre-016 restore would publish a share above 100% and a
+    negative remainder (Task 26 fix wave)."""
+    with psycopg.connect(clean) as pg:
+        pg.execute("alter table announcement_llm_scope"
+                   " drop constraint value_attempted_within_residue")
+        pg.commit()
+    try:
+        with psycopg.connect(clean) as pg:
+            pg.execute(INSERT, ("2026-09-12", 10, 2, 8, 8, 100, 150, None))
+            pg.commit()
+        with psycopg.connect(clean) as pg:
+            with pytest.raises(ValueError, match="value_attempted"):
+                _announcement_llm_scope(pg)
+    finally:
+        with psycopg.connect(clean) as pg:
+            pg.execute("delete from announcement_llm_scope")
+            pg.execute("alter table announcement_llm_scope add constraint"
+                       " value_attempted_within_residue"
+                       " check (value_attempted <= value_residue)")
+            pg.commit()
+
+
 # ---------------------------------------------------------------------------
 # The pass's own precision pair (R-25b-1)
 # ---------------------------------------------------------------------------

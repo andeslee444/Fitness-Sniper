@@ -903,6 +903,30 @@ def test_collect_counts_an_unrecognized_verdict_and_never_raises():
     assert result["verdict_counts"] == {"link": 1, "weak": 0, "wrong": 0}
 
 
+@pytest.mark.parametrize("field, value, counter", [
+    ("verdict", ["link"], "invalid_verdict"),
+    ("match_basis", ["llm-alias"], "invalid_match_basis"),
+    ("piid", ["P2"], "unknown_article_piid"),
+])
+def test_an_unhashable_field_is_counted_not_raised(field, value, counter):
+    """Task 26 fix wave (review minor): a lens that emits a LIST or object
+    where a string belongs used to raise TypeError ('unhashable type') on the
+    membership test, aborting the whole collection — the docstring's "EVERY
+    per-proposal validation failure is COUNTED" was false for these three.
+    Now counted under the matching counter, with an example, and the valid
+    proposal beside it still survives."""
+    queue = [_one_chunk(pairs=(("1", "P1"), ("2", "P2")))]
+    verdicts = {"chunk_000_N.json": {"proposals": [
+        _link("1", "P1"),
+        {**_link("2", "P2"), field: value},
+    ]}}
+    packets, result = collect_verdicts(queue, verdicts,
+                                       indexes={"N": read_index_rows(INDEX_N)})
+    assert [p["piid"] for p in packets] == ["P1"]
+    assert result[counter] == 1
+    assert len(result[f"{counter}_examples"]) == 1
+
+
 # --- Fix round 1, item 1 (Critical). `residue_manifest.json`'s earlier_pass
 # --- published an ENTRY count (3,840 over 3,832 distinct keys) that was never
 # --- intersected with TODAY's residue, and scripts/load_announcement_scope.py

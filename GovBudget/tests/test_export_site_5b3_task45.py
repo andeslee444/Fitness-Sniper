@@ -1006,6 +1006,33 @@ class TestEmitDistrictSidecars:
         index = json.loads((dist_dir / "index.json").read_text())
         assert index["geo_grand_total"] is None
 
+    def test_a_null_gross_by_year_row_raises_rather_than_publishing_net(
+        self, tmp_path,
+    ):
+        """Task 26 fix wave: the sidecar's `positive_obligation` used to fall
+        back to the net total when the mart's gross was NULL — the same
+        mislabelled value the citation row carried. Both sites now refuse."""
+        db_path = _make_duckdb_with_districts(tmp_path)
+        con = duckdb.connect(str(db_path))
+        con.execute("UPDATE fct_district_totals_by_year"
+                    " SET positive_obligation = NULL"
+                    " WHERE pop_district = 'VA-08' AND fiscal_year = 2025")
+        con.close()
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        cited = set()
+        for fy in (2024, 2025):
+            cited.add(fact_id_derived("district_year", f"VA-08|{fy}", "total_obligation"))
+            cited.add(fact_id_derived("district_year", f"VA-08|{fy}", "positive_obligation"))
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            with pytest.raises(ValueError, match="positive_obligation"):
+                _emit_district_sidecars(
+                    dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=cited
+                )
+        finally:
+            con.close()
+
     def test_by_year_rows_emitted_when_citations_resolve(self, tmp_path):
         """ROADMAP #6: by_year carries one row per (district, FY), cited."""
         db_path = _make_duckdb_with_districts(tmp_path)

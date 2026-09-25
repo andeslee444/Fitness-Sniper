@@ -185,12 +185,17 @@ def _has_no_players_evidence(duckdb_path, pe_bli: str, page_slug: str | None = N
       - fct_program_concentration is keyed by the bare pe_bli, so its figure
         counts as this member's only under _concentration_for's own member
         test (_concentration_is_this_members above).
-      - fct_program_lobbying is keyed by the bare pe_bli AND published whole
-        on BOTH members' sidecars (export_site's program_details "mentions"
-        block reads mentions_by_pe[pe_bli]), so a mention on a shared code is
-        citable at either member's page identity and counts for both. No
-        member test is applied to it: that would grant the exception to a
-        page that renders the very rows it is being excused for not citing.
+      - fct_program_lobbying is keyed by the bare pe_bli, and every mention
+        on the code counts for BOTH members. That is deliberately STRICTER
+        than the page since 60d0ca8e (2026-09-18, the #82 mention axis): a
+        split member's sidecar now carries only the rows
+        export_site._mention_is_about attributes to its own title (a
+        `pe_literal` row on both members, a `multi_token`/`alias` row only
+        where the member's title carries every matched term), so a member
+        can be refused the exception over rows its page does not render.
+        That errs toward a loud gate failure, never toward excusing a page
+        for not citing rows it does render; narrowing this count to the
+        page's per-row rule is a separate change.
 
     Anything unknown — no duckdb, a page identity that does not resolve, a
     missing mart, a query error — returns False. The exception must be
@@ -436,7 +441,10 @@ def dossier_gate(
                         disclosed = True
                         no_evidence_exempt.append(page_slug)
                 if not disclosed:
-                    empty_required.append(f"{pe_bli}: {section}")
+                    # Named by the PAGE (page_slug), like missing_files: on a
+                    # shared code "3010: players" does not say which member
+                    # page failed.
+                    empty_required.append(f"{page_slug}: {section}")
             for i, claim in enumerate(claims):
                 total_claims += 1
                 citation = claim["citation"]
@@ -492,9 +500,10 @@ def dossier_gate(
         "no_evidence_exempt": no_evidence_exempt,
         "note": (
             "players exempted on "
-            f"{len(no_evidence_exempt)} page(s) (2026-09-12): the warehouse "
-            "carries no award, lobbying or concentration row at this page's "
-            "identity — nothing to cite: "
+            f"{len(no_evidence_exempt)} page(s) (rule of 2026-09-12): no "
+            "award link at this page's identity, no lobbying mention on its "
+            "budget-line code, and no concentration figure that is this "
+            "page's — nothing to cite: "
             + ", ".join(no_evidence_exempt)
         ) if no_evidence_exempt else "",
     }

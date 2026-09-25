@@ -1218,7 +1218,9 @@ class TestGate:
         res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
         rs = res["checks"]["required_sections"]
         assert not rs["ok"]
-        assert f"{PE2}: players" in rs["empty"]
+        # Labelled by the PAGE, not the code: "3010: players" does not say
+        # which of two member pages failed.
+        assert f"{PE2}-OPN: players" in rs["empty"]
         assert rs["no_evidence_exempt"] == []
 
     def test_the_evidence_query_is_page_keyed_not_bare_keyed(
@@ -1234,14 +1236,45 @@ class TestGate:
         assert no_ev(split_key_duckdb, PE2) is False
         assert no_ev(split_key_duckdb, PE2, f"{PE2}-NOPE") is False
 
+    def test_the_evidence_query_is_page_keyed_on_an_organization_split_code(
+        self, tmp_path,
+    ):
+        """The ORGANIZATION axis of the same rule (the three #45 codes, e.g.
+        '20' = DCSA and DTRA under ONE account, 0300D). An account cannot
+        tell these members apart, so the awards filter keys on organization:
+        the member with no links of its own is exempt, its linked sibling is
+        not."""
+        db = tmp_path / "org_split.duckdb"
+        con = duckdb.connect(str(db))
+        con.execute("create table dim_programs (pe_bli varchar, account varchar,"
+                    " account_title varchar, org varchar, exhibit_family varchar)")
+        for org in ("DCSA", "DTRA"):
+            con.execute("insert into dim_programs values (?,?,?,?,?)",
+                        ["20", "0300D", "Procurement, Defense-Wide", org,
+                         "procurement"])
+        con.execute("create table fct_budget_to_awards (pe_bli varchar,"
+                    " account varchar, organization varchar, award_piid varchar)")
+        con.execute("insert into fct_budget_to_awards values (?,?,?,?)",
+                    ["20", "0300D", "DTRA", "HDTRA1-0001"])
+        con.execute("create table fct_program_lobbying (pe_bli varchar,"
+                    " family_key varchar, evidence_kind varchar)")
+        con.execute("create table fct_program_concentration (pe_bli varchar,"
+                    " hhi_all double)")
+        con.close()
+        no_ev = gate_module._has_no_players_evidence
+        assert no_ev(db, "20", "20-DCSA") is True
+        assert no_ev(db, "20", "20-DTRA") is False
+        assert no_ev(db, "20") is False
+
     def test_a_lobbying_mention_on_the_shared_code_denies_both_members(
         self, gate_fixture, split_key_duckdb,
     ):
-        """fct_program_lobbying is keyed by the bare pe_bli AND published
-        whole on both members' sidecars (export_site's program_details
-        "mentions"), so a mention on a shared code IS citable at either
-        member's page identity. No member test is applied to it — that would
-        excuse a page for not citing rows it actually renders."""
+        """fct_program_lobbying is keyed by the bare pe_bli. A `pe_literal`
+        mention names the code itself, so both members' sidecars render it
+        (export_site._mention_is_about) and neither page may be excused for
+        not citing it. The gate counts EVERY mention on the code for both
+        members — stricter than the page for multi_token/alias rows since
+        2026-09-18 (see _has_no_players_evidence)."""
         con = duckdb.connect(str(split_key_duckdb))
         con.execute("insert into fct_program_lobbying values (?,?,?)",
                     [PE2, "RAYTHEON", "pe_literal"])
@@ -1250,7 +1283,7 @@ class TestGate:
         res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
         rs = res["checks"]["required_sections"]
         assert not rs["ok"]
-        assert f"{PE2}: players" in rs["empty"]
+        assert f"{PE2}-SCN: players" in rs["empty"]
 
     def test_a_non_split_programs_own_concentration_row_denies_the_exception(
         self, gate_fixture, split_key_duckdb,
@@ -1287,7 +1320,7 @@ class TestGate:
         res = _run_gate(gate_fixture)  # no duckdb_path kwarg
         rs = res["checks"]["required_sections"]
         assert not rs["ok"]
-        assert f"{PE2}: players" in rs["empty"]
+        assert f"{PE2}-SCN: players" in rs["empty"]
 
     def test_the_no_evidence_exception_is_players_only(
         self, gate_fixture, split_key_duckdb,
@@ -1299,7 +1332,7 @@ class TestGate:
         res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
         rs = res["checks"]["required_sections"]
         assert not rs["ok"]
-        assert f"{PE2}: what_it_is" in rs["empty"]
+        assert f"{PE2}-SCN: what_it_is" in rs["empty"]
 
     def test_missing_dossier_file_fails(self, gate_fixture):
         (gate_fixture.dossier_dir / f"{PE2}.json").unlink()

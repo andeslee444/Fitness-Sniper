@@ -993,3 +993,59 @@ def test_gate22_payload_port_can_fail(flow_db, bl_rows):
     errs = _gate22_payload_legs(shipped)
     assert any(e.startswith("d:") for e in errs)
     assert any(e.startswith("b: bridge remainder") for e in errs)
+
+
+def _mutate_edge_value(river):
+    e = next(e for e in river["edges"] if e["v"] > 0)
+    e["v"] += 1
+    return "inflow"
+
+
+def _mutate_edge_value_source(river):
+    e = next(e for e in river["edges"] if e["v"] > 0)
+    e["v"] += 1
+    return "outflow"
+
+
+def _mutate_drilldown(river):
+    n = next(n for n in river["nodes"] if "other" in n)
+    n["other"]["omitted_value"] += 1
+    return "drilldown"
+
+
+def _mutate_height(river):
+    n = next(n for n in river["nodes"] if n["level"] != "total")
+    n["y1"] += 1
+    return "height"
+
+
+def _mutate_escape(river):
+    e = next(e for e in river["edges"] if e["v"] > 0)
+    e["g"][0] -= 5
+    return "escapes"
+
+
+def _mutate_thickness(river):
+    e = next(e for e in river["edges"] if e["v"] > 0)
+    sn = river["nodes"][e["s"]]
+    # shrink the source band inside its node: contained, wrong thickness
+    e["g"][1] = e["g"][0] + (e["g"][1] - e["g"][0]) / 2
+    assert e["g"][1] <= sn["y1"] + 0.02
+    return "thickness"
+
+
+@pytest.mark.parametrize("mutate", [
+    _mutate_edge_value, _mutate_edge_value_source, _mutate_drilldown,
+    _mutate_height, _mutate_escape, _mutate_thickness,
+])
+def test_gate22_payload_port_leg_a_each_check_can_fail(flow_db, bl_rows, mutate):
+    """Polish (Task 29 fix round, closed in the Task 26 fix wave): one
+    mutation per leg-a check the port carries — in/out conservation, the
+    Other drill-down's members + omitted, proportional height, band
+    containment and band thickness. The unmutated payload is clean, so each
+    named error is the mutation's own."""
+    shipped = _as_shipped(_build(flow_db, bl_rows)[0])
+    assert _gate22_payload_legs(shipped) == []
+    check = mutate(shipped["budget"])
+    errs = _gate22_payload_legs(shipped)
+    assert any(e.startswith("a: budget ") and e.endswith(check) for e in errs), errs

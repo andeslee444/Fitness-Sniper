@@ -53,9 +53,13 @@ from pathlib import Path
 
 import psycopg
 
+from govbudget import config
+
 ROOT = Path(__file__).resolve().parents[1]
 ANN = ROOT / "data" / "research" / "announcements"
-DSN = "postgresql://localhost/govbudget"
+# The database the exporter reads: config.PG_DSN honours GOVBUDGET_PG_DSN
+# and the gitignored .env (tests/test_loader_dsn.py).
+DSN = config.PG_DSN
 
 #: The wave result files that PRECEDE this pass, in the order the link loader
 #: is given them. Their surviving pairs are what makes a wave-4 pair "new":

@@ -54,6 +54,7 @@ from pathlib import Path
 import duckdb
 import psycopg
 
+from govbudget import config
 from govbudget.jbooks.collision_keys import (
     member_for_document,
     partition_split_keys,
@@ -103,7 +104,9 @@ def money_color_ok(award_accounts: set[str], line_accounts: set[str]) -> bool:
 CATCHALL_TITLE = re.compile(r"(less than|under|<)\s*\$|^other\b|^miscellaneous", re.I)
 
 ROOT = Path(__file__).resolve().parents[1]
-DSN = "postgresql://localhost/govbudget"
+# The database the exporter reads: config.PG_DSN honours GOVBUDGET_PG_DSN
+# and the gitignored .env (tests/test_loader_dsn.py).
+DSN = config.PG_DSN
 ANN_URL = "https://www.defense.gov/News/Contracts/Contract/Article/{id}/"
 MANIFEST = ROOT / "data/raw/announcements/manifest.jsonl"
 WAYBACK_URL = "https://web.archive.org/web/{ts}/{url}"

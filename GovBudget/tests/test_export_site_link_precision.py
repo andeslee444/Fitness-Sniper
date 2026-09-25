@@ -249,6 +249,71 @@ def test_precision_study_twin_agrees_with_the_exporter(seeded):
     assert set(audit["methods"]) == {"account+subagency"}
 
 
+@pytest.fixture()
+def seeded_wave(seeded):
+    """`seeded` plus a NEWER announcement+lexicon run under the id the real
+    wave-4 sample carries (2026-09-12): both published announcement links
+    re-judged, both confirmed. Unpinned, "latest run" makes it the tier's
+    figure (2/2); the export pins the tier to 2026-09-04 (1/2 — LPB-A3 no
+    longer publishes)."""
+    with psycopg.connect(seeded) as pg:
+        for piid in ("LPB-A1", "LPB-A2"):
+            pg.execute(
+                "insert into link_precision_samples (sample_id, award_piid, pe_bli,"
+                " method, rubric, verdict, reason, adjudicated_at)"
+                " values ('2026-09-12', %s, 'LPB0603286E', 'announcement+lexicon',"
+                " 'attribution', 'confirmed', 'fixture',"
+                " '2026-09-19 04:10:00-04'::timestamptz)",
+                (piid,),
+            )
+        pg.commit()
+    yield seeded
+    with psycopg.connect(seeded) as pg:
+        pg.execute("delete from link_precision_samples where sample_id = '2026-09-12'"
+                   " and award_piid like 'LPB-%'")
+        pg.commit()
+
+
+def test_the_cli_twin_carries_the_exporters_pin(seeded_wave):
+    """Task 26 (confirmed finding): the CLI twin never got the 2026-09-19 pin,
+    so an operator reading `report` saw the one-wave sample as the tier's
+    figure while the page published the pinned run. The pin is now ONE
+    constant, and the twin applies it the way the export call site does."""
+    import precision_study
+
+    assert precision_study.PINNED_SAMPLES is export_site._PINNED_PRECISION_SAMPLES
+    with psycopg.connect(seeded_wave) as pg:
+        exported = export_site._link_precision_for_export(pg, PUBLISHED)
+    cli = precision_by_method(seeded_wave, pinned_samples=precision_study.PINNED_SAMPLES)
+    for method, figures in exported["methods"].items():
+        assert cli[method] == (figures["confirmed"], figures["sampled"]), method
+    assert exported["methods"]["announcement+lexicon"]["sample_id"] == "2026-09-04"
+    assert cli["announcement+lexicon"] == (1, 2)
+    # The pin is what makes them agree: unpinned, the twin reads the newer run.
+    assert precision_by_method(seeded_wave)["announcement+lexicon"] == (2, 2)
+
+
+def test_report_prints_the_pinned_figure_and_tags_the_newer_run(
+    seeded_wave, monkeypatch, capsys,
+):
+    """`report` under rubric=attribution prints the PUBLISHED figure for a
+    pinned tier (its pinned run), and the newer run on its own line tagged
+    NOT PUBLISHED — never the newer run as the tier's figure."""
+    import precision_study
+
+    monkeypatch.setattr(precision_study, "DSN", seeded_wave)
+    precision_study.main(["report"])
+    out = capsys.readouterr().out
+    attribution = out.split("## rubric=attribution")[1].split("## rubric=")[0]
+    lines = [ln for ln in attribution.splitlines() if "announcement+lexicon" in ln]
+    published = [ln for ln in lines if "NOT PUBLISHED" not in ln]
+    newer = [ln for ln in lines if "NOT PUBLISHED" in ln]
+    assert len(published) == 1, lines
+    assert "1/2" in published[0] and "2026-09-04" in published[0], published
+    assert len(newer) == 1, lines
+    assert "2/2" in newer[0] and "2026-09-12" in newer[0], newer
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # site_meta.link_adjudication — per-award hand-adjudication COVERAGE (#109)
 # ═══════════════════════════════════════════════════════════════════════════

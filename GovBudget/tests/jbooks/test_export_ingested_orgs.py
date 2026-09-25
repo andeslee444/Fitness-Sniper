@@ -8,9 +8,11 @@ to decide the rollup-note wording. It must:
     workbook_org — because the site keys the note off details.service_org (a
     workbook org), NOT the jbook_documents document org (CYBERCOM→CYBER,
     CHIPS/DPAP→OSD);
-  * exclude orgs whose FY2026 book was never loaded — DHA, DEFW, IG (no book at
-    all) and any org whose book DOWNLOADED but extracted no detail — so those
-    pages keep the honest "not yet ingested" wording;
+  * exclude orgs whose FY2026 book loaded no detail — DHA (its book carries no
+    embedded XML), DEFW (a summary line only), IG (no justification book
+    published), and any org whose book DOWNLOADED but extracted no detail.
+    DHA's, DEFW's and IG's pages state the recorded absence instead
+    (site_meta.org_absences, ROADMAP #111), never "not yet ingested";
   * exclude non-2026 / non-downloaded rows.
 """
 import psycopg
@@ -90,7 +92,9 @@ def test_ingested_set_excludes_orgs_with_no_loaded_book(pg_dsn):
         got = _ingested_service_orgs(con)
 
     for org in ["DHA", "DEFW", "IG"]:
-        assert org not in got, f"{org} has no FY2026 book — its rollup pages MUST stay 'not yet ingested'"
+        assert org not in got, (
+            f"{org} has no loaded FY2026 book — it must stay out of the ingested"
+            " set; its pages state the recorded absence (site_meta.org_absences)")
 
 
 def test_ingested_set_excludes_wrong_year_and_pending_status(pg_dsn):

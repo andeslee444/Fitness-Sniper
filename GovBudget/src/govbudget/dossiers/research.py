@@ -176,9 +176,14 @@ def top50(
     try:
         from govbudget.export_site import _fetch_program_identity
 
-        # The PAGE identity map (chain-B fix 3). _fetch_program_identity
-        # degrades to "no split keys" when dim_programs lacks the columns, so
-        # a minimal fixture warehouse keeps returning bare keys.
+        # The PAGE identity map (chain-B fix 3). Since R-27-8 (2026-09-19)
+        # _fetch_program_identity returns the empty map ("no split keys")
+        # only when dim_programs is ABSENT; a dim_programs present without
+        # `account` or `account_title` RAISES. So the account-less
+        # dim_programs fallback below can never succeed: a table missing
+        # `account` has already raised here, and an absent one fails both
+        # queries. It stays only because the helper is shared with the
+        # fct_budget_trajectory read.
         ident = _fetch_program_identity(con)
         progs = _query_with_account_fallback(
             "select pe_bli, title, org, account from dim_programs",

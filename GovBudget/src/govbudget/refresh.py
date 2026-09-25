@@ -7,15 +7,19 @@ and nothing said so on any page until the freshness block shipped 2026-09-01.
 DESIGN, and why it is this boring:
 
   * Every stage is a SUBPROCESS of the commands an operator would type, not an
-    in-process call. `cmd_build` ends in `sys.exit(rc)` (cli.py:1799-1812) and
+    in-process call. `cmd_build` ends in `sys.exit(rc)` (cli.py) and
     several other commands exit non-zero on partial failure, so importing and
     calling them would either kill the orchestrator mid-run or require each one
     to be refactored. A subprocess boundary also means the orchestrator cannot
     accidentally hold the DuckDB lock while dbt wants it.
 
-  * The ONLY two doors to the outside world are `_run` and `_capture`, both
-    module-level, so the whole graph is testable with no network, no Postgres
-    and no lake (tests/test_refresh.py).
+  * The doors to the outside world are module-level, so tests replace them
+    one at a time rather than the whole graph: `_run` and `_capture` for the
+    subprocesses; each preflight check (`_check_disk`, `_check_postgres`,
+    `_check_duckdb`) and `drift_report` (which reads the manifest) for the
+    rest; and the run record and its lock go wherever `run_refresh`'s
+    `state_path` points. That is how tests/test_refresh.py runs the graph
+    with no network, no Postgres and no lake.
 
   * Stage order is LAUNCH.md Step 0's canonical order, not a paraphrase:
     export-facts -> build -> export-site. The mart reads the parquet
@@ -26,7 +30,7 @@ DESIGN, and why it is this boring:
 
   * A non-zero exit from any stage is fatal for the run. That matters most for
     `sync-archive`, which iterates FY by FY and CONTINUES past a failed FY,
-    exiting 1 only at the end (`cmd_sync_archive`, cli.py:51-54): the
+    exiting 1 only at the end (`cmd_sync_archive`'s final `sys.exit(1)`): the
     orchestrator stops there and the operator reads the printed
     `PartitionShrinkError` / traceback to learn WHICH FY refused.
 
@@ -239,11 +243,12 @@ def build_stages(root: Path, now: dt.datetime) -> list[Stage]:
         Stage("preflight", []),
         Stage("sync-archive", gb + ["sync-archive"]),
         # NOTE: cmd_sync_subawards returns early when the manifest already holds
-        # this dataset+FY (cli.py:67-69), so after the first successful pull for
-        # a given FY this stage prints "skipped" every month. That is existing
-        # behavior, deliberately not changed here — when a partial-FY subaward
-        # file may be replaced is its own decision. The stall check below turns
-        # the silence into an alarm so nobody reads "skipped" as "refreshed".
+        # this dataset+FY (its `has_dataset_fy` check), so after the first
+        # successful pull for a given FY this stage prints "skipped" every
+        # month. That is existing behavior, deliberately not changed here —
+        # when a partial-FY subaward file may be replaced is its own decision.
+        # The stall check below turns the silence into an alarm so nobody
+        # reads "skipped" as "refreshed".
         Stage("sync-subawards", gb + ["sync-subawards", "--fy", str(subaward_fy)]),
         Stage("sync-fiscaldata", gb + ["sync-fiscaldata"]),
         Stage("influence-pull",
@@ -554,8 +559,9 @@ def _stall_alarms(record: dict, after: dict) -> list[str]:
     """A sync stage that exited 0 without advancing its dataset SKIPPED it.
 
     The concrete case this exists for: cmd_sync_subawards returns early once
-    the manifest holds its dataset+FY (cli.py:67-69), so a monthly run reports
-    a green sync-subawards forever. Green must not read as refreshed.
+    the manifest holds its dataset+FY (its `has_dataset_fy` check), so a
+    monthly run reports a green sync-subawards forever. Green must not read as
+    refreshed.
     """
     # An unparseable line drops its dataset from the report, so "no record at
     # all" would be a false statement about a record that exists but could not

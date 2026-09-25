@@ -2283,7 +2283,7 @@ class TestRowLabelLeg:
         assert _toa_column_value(words, 347.1, 390.0) == "5,565.655"
         assert _toa_column_value(words, 10.0, 18.0) is None
 
-    def test_toa_column_is_found_by_the_right_edge_not_the_left(self):
+    def test_toa_column_is_found_by_span_overlap_not_the_left_edge(self):
         """Item 1: P-40 value columns are RIGHT-aligned.
 
         Reviewer's exemplar — doc e7e1302…, page 223: the column whose right

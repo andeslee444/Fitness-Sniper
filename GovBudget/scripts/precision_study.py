@@ -11,7 +11,9 @@ load   : ingest adjudicator verdicts JSON -> link_precision_samples, stamped
          sample_id never mixes rubrics.
 report : precision per method under EACH rubric, counted under the tier each
          sampled link publishes under TODAY. Only rubric='attribution' is
-         published (precision_by_method's default; export_site's twin).
+         published (precision_by_method's default; export_site's twin), and
+         a PINNED tier (below) prints at its pinned run, with the tier's
+         latest run, when it differs, on its own line tagged NOT PUBLISHED.
 
 RUBRICS (ROADMAP #79). A verdict is comparable only to a verdict that answered
 the same question. The 2026-09-04 run judged four strata on program
@@ -26,10 +28,20 @@ answer another question stays UNMEASURED on /methodology/ until it is
 re-judged on attribution under a new sample_id.
 
 LATEST RUN, PER METHOD (final review I1, refined for #79). A study run may
-re-judge one stratum only. Each published method's figure comes from the
-latest sample_id that judged THAT method under the rubric; a re-measurement
-replaces the number it corrects and never pools with it, and the other
-methods keep their own latest run.
+re-judge one stratum only. Each method's figure comes from the latest
+sample_id that judged THAT method under the rubric; a re-measurement replaces
+the number it corrects and never pools with it, and the other methods keep
+their own latest run.
+
+EXCEPT A PINNED TIER (2026-09-19, R-25b-1; mirrored here in the Task 26 fix
+wave). `PINNED_SAMPLES` is export_site's `_PINNED_PRECISION_SAMPLES` — the
+same object, imported, not a copy. It pins `announcement+lexicon` to the
+2026-09-04 draw over the whole tier: the 2026-09-12 run is a draw over ONE
+wave's links, and "latest run" would have made it the tier's published
+figure. The export re-tallies a pinned tier at its pinned run alone (and
+reports it UNMEASURED if that run judged nothing the tier still publishes);
+`precision_by_method(pinned_samples=...)` does the same, and `report` passes
+the pin for the published rubric.
 """
 import argparse
 import json
@@ -39,6 +51,8 @@ import sys
 from pathlib import Path
 
 import psycopg
+
+from govbudget.export_site import _PINNED_PRECISION_SAMPLES
 
 ROOT = Path(__file__).resolve().parents[1]
 DSN = os.environ.get("GOVBUDGET_PG_DSN", "postgresql://localhost/govbudget")
@@ -51,6 +65,11 @@ PACKETS_DIR = ROOT / "data" / "research" / "precision"
 # stratum with no published rows, so a fresh draw never touches it.
 METHODS = ("fpds-ap+account", "fpds-ap", "announcement+lexicon", "subaward+lexicon",
            "account+subagency")
+
+#: Published tier -> the run its /methodology/ figure comes from. The
+#: exporter's constant itself (see the module docstring), so the CLI and the
+#: page can never pin different runs.
+PINNED_SAMPLES = _PINNED_PRECISION_SAMPLES
 
 #: rubric -> the question an adjudicator answers. The key is what
 #: link_precision_samples.rubric stores (migration 015 CHECK constraint); the
@@ -280,14 +299,42 @@ def precision_tally_sql(sample_id: str | None) -> str:
     """
 
 
-def precision_by_method(dsn: str, sample_id: str | None = None, *,
-                        rubric: str = "attribution") -> dict[str, tuple[int, int]]:
-    """{published method: (confirmed, judged)} under one rubric."""
+def precision_runs_by_method(dsn: str, sample_id: str | None = None, *,
+                             rubric: str = "attribution",
+                             pinned_samples: dict[str, str] | None = None,
+                             ) -> dict[str, tuple[str, int, int]]:
+    """{method: (sample_id, confirmed, judged)} under one rubric.
+
+    `pinned_samples` maps a method to the run its figure must come from, the
+    way export_site._link_precision_block takes it: the method is re-tallied
+    against that run alone and, if the run judged nothing the method still
+    publishes, it is dropped (the export names it unmeasured) — never a
+    fallback to the latest run.
+    """
     _require_rubric(rubric)
+
+    def _tally(pg, run: str | None) -> dict[str, tuple[str, int, int]]:
+        rows = pg.execute(precision_tally_sql(run),
+                          {"rubric": rubric, "sample_id": run}).fetchall()
+        return {m: (sid, c, n) for m, sid, c, n, _judged in rows}
+
     with psycopg.connect(dsn) as pg:
-        rows = pg.execute(precision_tally_sql(sample_id),
-                          {"rubric": rubric, "sample_id": sample_id}).fetchall()
-    return {m: (c, n) for m, _sid, c, n, _judged in rows}
+        tally = _tally(pg, sample_id)
+        for method, pinned_run in (pinned_samples or {}).items():
+            tally.pop(method, None)
+            pinned = _tally(pg, pinned_run).get(method)
+            if pinned is not None:
+                tally[method] = pinned
+    return tally
+
+
+def precision_by_method(dsn: str, sample_id: str | None = None, *,
+                        rubric: str = "attribution",
+                        pinned_samples: dict[str, str] | None = None,
+                        ) -> dict[str, tuple[int, int]]:
+    """{method: (confirmed, judged)} under one rubric (pinned as asked)."""
+    return {m: (c, n) for m, (_sid, c, n) in precision_runs_by_method(
+        dsn, sample_id, rubric=rubric, pinned_samples=pinned_samples).items()}
 
 
 def main(argv=None) -> None:
@@ -332,13 +379,37 @@ def main(argv=None) -> None:
         # are marked so an operator never mistakes them for a page figure.
         # Counts are over PUBLISHED links, so a stratum's total can be below
         # the number drawn (links deleted or demoted since the draw).
+        #
+        # Without --sample-id the attribution block is the PUBLISHED view:
+        # a pinned tier prints at its pinned run (as the export publishes it)
+        # and the tier's latest run, when it differs from the pin, prints on
+        # its own tagged line. With --sample-id every figure is that one
+        # run's, pins not applied.
+        def _line(m: str, sid: str, c: int, n: int, note: str = "") -> str:
+            return f"  {m:<24} {c}/{n} = {100 * c / max(n, 1):.1f}%  ({sid}){note}"
+
         for rubric in sorted(RUBRICS):
-            tag = "" if rubric == "attribution" else \
+            published = rubric == "attribution"
+            tag = "" if published else \
                 "  [NOT PUBLISHED — rubric answers a different question]"
+            pins = PINNED_SAMPLES if published and not args.sample_id else {}
             print(f"## rubric={rubric}{tag}")
-            for m, (c, n) in sorted(precision_by_method(DSN, args.sample_id,
-                                                        rubric=rubric).items()):
-                print(f"  {m:<24} {c}/{n} = {100 * c / max(n, 1):.1f}%")
+            figures = precision_runs_by_method(DSN, args.sample_id, rubric=rubric,
+                                               pinned_samples=pins)
+            for m, (sid, c, n) in sorted(figures.items()):
+                print(_line(m, sid, c, n, "  [pinned]" if m in pins else ""))
+            if not pins:
+                continue
+            latest = precision_runs_by_method(DSN, args.sample_id, rubric=rubric)
+            for m, run in sorted(pins.items()):
+                if m not in figures:
+                    print(f"  {m:<24} UNMEASURED — pinned run {run} judged no link"
+                          " this tier still publishes")
+                if m in latest and latest[m][0] != run:
+                    sid, c, n = latest[m]
+                    print(_line(m, sid, c, n,
+                                f"  [NOT PUBLISHED — latest run; the published"
+                                f" figure is pinned to {run}]"))
 
 
 if __name__ == "__main__":

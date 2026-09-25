@@ -382,6 +382,21 @@ class TestGeographyCitationRows:
         assert fact_id_derived(
             "district_year", "CA-18|2025", "total_obligation") not in by_fid
 
+    def test_a_null_gross_never_publishes_the_net_figure(self, tmp_path):
+        """Task 26 fix wave: the gross card used to fall back to the NET total
+        when positive_obligation was NULL, under wording that says "gross
+        obligations (positive transactions only…)". Unreachable on the mart
+        (its gross is a sum of greatest(…, 0) and never NULL), so the fallback
+        was a silent substitution; it is now a loud refusal."""
+        db = _make_geo_duckdb(tmp_path)
+        _add_by_year_mart(db)
+        con = duckdb.connect(str(db))
+        con.execute("UPDATE fct_district_totals_by_year"
+                    " SET positive_obligation = NULL WHERE fiscal_year = 2025")
+        con.close()
+        with pytest.raises(ValueError, match="positive_obligation"):
+            _build_geography_citation_rows(duckdb_path=db)
+
     def test_district_year_formula_is_metric_conditional(self, tmp_path):
         """Fix round 1, Critical 1 — the two cards may not claim each other's
         summability.

@@ -11,8 +11,12 @@
 #   ./scripts/launch/refresh.sh --quarterly     # + the LDA pull
 #   ./scripts/launch/refresh.sh --until build   # any `govbudget refresh` flag
 #
-# --yes is always passed: a scheduled job has no TTY to confirm on. --from is
-# never passed here, because --from skips the preflight stage.
+# --yes is always passed: a scheduled job has no TTY to confirm on. This
+# wrapper never ADDS --from (the plist templates pass nothing or --quarterly),
+# but a caller's own flags are forwarded as given: `refresh.sh --from STAGE`
+# skips the preflight stage (for any STAGE after it), and with --yes forced
+# nothing asks first. To resume by hand, run
+# `uv run python -m govbudget refresh --from STAGE`, which does ask.
 
 set -euo pipefail
 

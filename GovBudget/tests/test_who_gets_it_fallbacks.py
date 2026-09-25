@@ -1,9 +1,12 @@
 """WHO-GETS-IT fallbacks on shared BLI codes (ROADMAP #82).
 
-fct_program_concentration aggregates by BARE pe_bli. For '3010' its figure is
-the union of LPD Flight II's (1611N) and Shipboard Tactical Communications'
-(1810N) links, so the exporter withholds it from both member pages
-(_concentration_for -> None). Before this task the two fallback builders still
+fct_program_concentration aggregates by BARE pe_bli. On '3010' more than one
+member — LPD Flight II (1611N) and Shipboard Tactical Communications (1810N) —
+carries published links, so the exporter withholds the bare-key figure from
+both member pages (_concentration_for -> None; #70/#82). The rule is on LINKS,
+not money: the printed high-confidence figure may be one member's money (on
+3010 it is SCN's), and only the unprinted all-links figure pools both
+members'. Before this task the two fallback builders still
 read the RAW hhi_by_pe: _build_lobbied_by saw a bare-key figure and skipped
 the code (the fallback a withheld page needs most), while _build_named_primes
 looked up hhi_by_pe[dossier stem] — a SLUG since Sprint E ('3010-SCN') — and
@@ -64,7 +67,9 @@ ENTITY_ROWS = [
 
 
 def _withheld_for_3010(pe_bli, account=None, organization=None):
-    """The live 3010 shape: both members linked -> the union figure is nobody's."""
+    """The live 3010 shape: both members carry links -> the bare-key figure
+    is withheld from both member pages (a rule on links; the printed
+    high-confidence figure may be one member's money)."""
     return None if pe_bli == "3010" else LINKED
 
 

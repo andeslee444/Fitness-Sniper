@@ -12,8 +12,11 @@ emitted as a hand-written PDF 1.4 with a base-14 Helvetica font and one
 `Tj` per cell. Extraction in the tests goes through real `pdfplumber`
 words, never a mocked list.
 
-Two properties this page exists to have, both asserted by
-`test_p40_fixture_columns_are_right_aligned`:
+Two properties this page exists to have (tests/test_verify_phase5b1.py): the
+first is asserted by `test_fixture_value_columns_are_right_aligned`; the second
+is what `test_highlight_off_the_toa_row_with_a_different_basis_fails` relies on
+when it requires the failure to name the FY 2025 column's TOA (407.046) rather
+than the FY 2024 column's (97.500):
 
   * value columns are RIGHT-aligned, so a cell's `x0` moves with the number's
     WIDTH (a Helvetica digit is 0.556 em: at 9 pt one character is 5.0 pt,

@@ -1345,3 +1345,21 @@ def test_an_ordinary_programs_mentions_are_unchanged(collision_export):
     side = _sidecar(collision_export, "0601101E")
     assert _mention_terms(side) == {"darpa"}
     assert "mentions_shared_code" not in side
+
+
+def test_a_member_with_no_account_title_is_refused_by_name():
+    """Polish (Task 27 round-2 re-review, closed in the Task 26 fix wave): a
+    dim_programs row carrying an account but a NULL account_title cannot
+    derive its member slug. 0 such rows today; if one appears, the refusal
+    names the (pe_bli, account) pair rather than only the code."""
+    import pytest
+
+    from govbudget.export_site import _ProgramIdentity, _district_row_member_slug
+
+    ident = _ProgramIdentity([
+        ("0145", "1506N", None, "N", True),
+        ("0145", "1508N",
+         "Procurement of Ammunition, Navy and Marine Corps", "N", True),
+    ])
+    with pytest.raises(ValueError, match=r"'0145'.*'1506N'.*account_title"):
+        _district_row_member_slug(ident, "0145", "1506N")

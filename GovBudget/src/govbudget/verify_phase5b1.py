@@ -271,9 +271,9 @@ def _toa_column_value(words: list[dict], x0: float, x1: float) -> str | None:
     `52.191` at x0 347.1. A left-edge match with a 2 pt tolerance therefore
     found the TOA cell only when the two numbers happened to be the same
     width — it went blind precisely when they DISAGREED, which is the only
-    case the check exists for (it missed 4 of the 7 real mismatches in the
-    2026-09-12 export, including `7de179a27454c103` p157, cited 200.000 where
-    TOA reads 0.000).
+    case the check exists for (on the 2026-09-12 export it missed
+    `7de179a27454c103` p157, cited 200.000 where TOA reads 0.000, among
+    others).
 
     The right edge alone is not enough either: a footnote marker printed
     inside the column shifts it (fact `69b206a2802ea3ec` p18 — the TOA cell is
@@ -335,7 +335,7 @@ def _row_basis_check(
         f"TOA basis mismatch: highlighted region on page {page_number} sits on"
         f" the {label[:48]!r} row at {amount_text}, but Total Obligation"
         f" Authority — the basis this site publishes — carries {toa} in the"
-        f" same column",
+        f" highlight's column",
     )
 
 

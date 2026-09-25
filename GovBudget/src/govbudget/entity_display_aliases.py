@@ -13,9 +13,10 @@ The flagship, as measured then: `ROCKWELL COLLINS AUSTRALIA` held 15 members
 and was 97.3% `RAYTHEON COMPANY` ($18.93B of $19.47B), all sharing parent UEI
 `EGAVSJTA2D81`. It won its name by 3.1% — and RTX reverted that registration
 in FY2026, so the site published a label the registrant had already corrected.
-(The 2026-09-06 FY2026 refresh rebuilt the crosswalk: that Raytheon UEI now
-sits in the RTX family, the key left the published 200, and its row was
-retired — see the RTX event note in data-seeds/entity_family_events.csv.)
+(The 2026-09-06 FY2026 refresh regrouped the UEIs — the UEI-to-family
+resolution, not the budget-to-contract crosswalk: that Raytheon UEI now sits
+in the RTX family, the key left the published 200, and its row was retired —
+see the RTX event note in data-seeds/entity_family_events.csv.)
 
 RETIRED ROWS. The seed has no retirement column, and gate 24 leg (l) fails a
 row whose key no published family has, so a row whose family leaves the
@@ -140,6 +141,8 @@ class DisplayAlias:
     source_form: str
     source_date: str
     #: The date the numbers quoted in `note` were measured against the lake.
+    #: A later figure the note adds carries its own inline date ("measured
+    #: 2026-09-25 it ranks 488th") and does not move this column.
     measured_on: str
     note: str
 

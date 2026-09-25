@@ -37,8 +37,14 @@ with award_dollars as (
     group by award_id_piid
 ),
 links as (
-    -- one row per published (pe_bli, award_piid) link; confidence is the
-    -- PUBLISHED confidence (adjudication overlay + demotion applied upstream)
+    -- one row per published (pe_bli, award_piid) link — true of the corpus
+    -- (measured read-only 2026-09-25: 12,601 mart rows, 12,601 distinct
+    -- pairs), but NOT asserted: budget_line_awards is unique on (pe_bli,
+    -- exhibit, fiscal_year, award_piid), so a second edition-year row for one
+    -- pair (a multi-edition crosswalk run, ROADMAP #78) would add that award's
+    -- dollars twice to the family and program sums below; only award_count's
+    -- count(distinct) would not show it. Confidence is the PUBLISHED
+    -- confidence (adjudication overlay + demotion applied upstream).
     select
         l.pe_bli,
         l.award_piid,

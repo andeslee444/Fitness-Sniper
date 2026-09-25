@@ -455,12 +455,30 @@ def test_cmd_sync_fiscaldata_threads_allow_shrink_to_sync_mts_outlays(tmp_path, 
 
 def test_dbt_source_glob_does_not_match_the_mts_incoming_sibling():
     """Pins the 'invisible to dbt' property the report claims: dbt's source
-    for mts_outlays globs '*.parquet' (dbt/models/sources.yml:17), which does
-    not match a crashed run's leftover mts_table_5.parquet.incoming sibling."""
+    for mts_outlays globs the file name read here out of
+    dbt/models/sources.yml's own `external_location` (not a hard-coded
+    copy of it), and that glob does not match a crashed run's leftover
+    mts_table_5.parquet.incoming sibling."""
     import fnmatch
+    import re
+    from pathlib import Path
 
-    assert fnmatch.fnmatch("mts_table_5.parquet", "*.parquet")
-    assert not fnmatch.fnmatch("mts_table_5.parquet.incoming", "*.parquet")
+    import yaml
+
+    sources = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "dbt" / "models" / "sources.yml")
+        .read_text())
+    (loc,) = [
+        t["meta"]["external_location"]
+        for src in sources["sources"] for t in src["tables"]
+        if t["name"] == "mts_outlays"
+    ]
+    # "read_parquet('{{ env_var(…) }}/parquet/mts_outlays/<GLOB>')" -> <GLOB>
+    m = re.search(r"/mts_outlays/([^'/]+)'\)", loc)
+    assert m, loc
+    name_glob = m.group(1)
+    assert fnmatch.fnmatch("mts_table_5.parquet", name_glob)
+    assert not fnmatch.fnmatch("mts_table_5.parquet.incoming", name_glob)
 
 
 @pytest.mark.parametrize(

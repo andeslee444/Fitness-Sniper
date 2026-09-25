@@ -23,9 +23,11 @@
 --
 -- positive_obligation is the GROSS figure — the same dollars before
 -- deobligations are netted out (sum of positive transactions). 53 of the 924
--- district-year cells are net-negative; a page that renders only the net
--- number publishes an unexplained negative. The net figure stays the
--- headline ("publish the smaller true number"); the gross sits beside it.
+-- district-year cells were net-negative when this model was written
+-- (2026-09-10; schema.yml carries the latest dated count); a page that
+-- renders only the net number publishes an unexplained negative. The net
+-- figure stays the headline ("publish the smaller true number"); the gross
+-- sits beside it.
 with linked as (
     select
         t.pop_state,

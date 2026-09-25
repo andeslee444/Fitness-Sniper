@@ -521,6 +521,13 @@ def _district_row_member_slug(ident, pe_bli: str, account: str | None) -> str | 
         return None
     for acct, account_title, organization, _has_detail in ident.accounts(pe_bli):
         if acct == account:
+            if account_title is None:
+                # 0 such dim_programs rows today; named, not left to
+                # ident.slug's code-only message (Task 26 fix wave).
+                raise ValueError(
+                    f"dim_programs ({pe_bli!r}, {acct!r}) carries an account"
+                    " but no account_title, so a district row on it cannot"
+                    " name its member page")
             return ident.slug(pe_bli, acct, account_title, organization)
     return None
 
@@ -629,6 +636,19 @@ def _query_with_account_fallback(
         return out
 
 
+#: The change that gave each table its account identity — what a warehouse
+#: missing the column predates. Per table because they did not arrive
+#: together: dim_programs and fct_budget_to_awards were re-grained on
+#: (account, pe_bli) in Sprint E; the district marts took `account` into
+#: their grain in Task 27.
+_ACCOUNT_IDENTITY_SINCE = {
+    "dim_programs": "Sprint E (ROADMAP #67, 2026-08-20)",
+    "fct_budget_to_awards": "Sprint E (ROADMAP #67, 2026-08-20)",
+    "fct_district_programs": "Task 27 (2026-09-19)",
+    "fct_district_programs_by_year": "Task 27 (2026-09-19)",
+}
+
+
 def _require_account_column(
     con, table: str, *, columns: tuple[str, ...] = ("account",),
 ) -> bool:
@@ -652,20 +672,31 @@ def _require_account_column(
 
     Fix round 2, 2026-09-19 (R-27-8): `columns` generalizes the same probe to
     dim_programs, whose `account` AND `account_title` are what resolve a
-    district row's member at all — see _fetch_program_identity. The two
-    tables fail for one reason and the message says it once.
+    district row's member at all — see _fetch_program_identity. The tables
+    fail for one reason; the message names every missing column and the
+    change that added it to THIS table (_ACCOUNT_IDENTITY_SINCE).
+
+    ONLY THE MISSING RELATION reads as absent (Task 26 fix wave) — the rule
+    _published_high_links (R-6c-7) and _fetch_member_page_rows already
+    follow. A BinderException from a view over a renamed column, or an IO
+    error, used to return False too, and every district surface then
+    published [] with no error until gate 9 noticed.
     """
+    import duckdb as _duckdb
+
     try:
         cols = {
             d[0] for d in con.execute(f"select * from {table} limit 0").description
         }
-    except Exception:
+    except _duckdb.CatalogException:
         return False
     missing = [c for c in columns if c not in cols]
     if missing:
+        since = _ACCOUNT_IDENTITY_SINCE.get(table, "its account identity")
+        named = ", ".join(f"`{c}`" for c in missing)
         raise RuntimeError(
-            f"{table} carries no `{missing[0]}` column: this warehouse"
-            " predates Task 27 (2026-09-19), so every shared budget-line"
+            f"{table} carries no {named} column{'s' if len(missing) > 1 else ''}:"
+            f" this warehouse predates {since}, so every shared budget-line"
             " code's two members would publish fused under one title. Run"
             " `govbudget build` before export-site."
         )
@@ -3333,7 +3364,8 @@ _PRECISION_RUBRICS = ("attribution", "rule-fired")
 #: would have replaced the tier's figure with a narrower population's the
 #: moment it loaded. That wave's pair is published by `_announcement_llm_scope`
 #: instead, where the paragraph says whose links it measured. Unpin a tier only
-#: with a fresh draw over the tier itself.
+#: with a fresh draw over the tier itself. scripts/precision_study.py imports
+#: this object (its PINNED_SAMPLES), so the operator CLI pins the same run.
 _PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
 
 
@@ -3508,7 +3540,10 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
 
     scripts/precision_study.py's precision_by_method is the twin of this
     query; export_site never imports from scripts/, so the two are kept in
-    step by hand and by tests/test_export_site_link_precision.py.
+    step by hand and by tests/test_export_site_link_precision.py. The pin
+    travels the other way: precision_study imports
+    `_PINNED_PRECISION_SAMPLES` as its PINNED_SAMPLES and its `report` prints
+    a pinned tier at the pinned run (Task 26 fix wave).
     """
     if rubric not in _PRECISION_RUBRICS:
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
@@ -3659,7 +3694,7 @@ def _announcement_llm_scope(pg) -> dict:
     fails any uncited `$…` token, and an allowlist entry must be a literal — a
     derived figure can never be one.
 
-    Twin of scripts/load_announcement_scope.py, which writes the row. The two
+    Twin of scripts/load_announcement_scope.py, which writes the row. The three
     invariants below are ALSO table CHECK constraints (migration 016); they are
     re-asserted here because a database restored from a pre-016 dump, or
     migrated without them, would otherwise publish impossible arithmetic.
@@ -3679,6 +3714,11 @@ def _announcement_llm_scope(pg) -> dict:
             f"announcement_llm_scope {as_of}: records_attempted {attempted} "
             f"exceeds records_residue {residue} — a pass cannot cover more "
             f"records than the residue holds")
+    if value_attempted > value_residue:
+        raise ValueError(
+            f"announcement_llm_scope {as_of}: value_attempted {value_attempted}"
+            f" exceeds value_residue {value_residue} — the published share"
+            f" would pass 100%")
     if deterministic + residue != total:
         raise ValueError(
             f"announcement_llm_scope {as_of}: records_deterministic "
@@ -7864,6 +7904,14 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
              dy_positive) in dy_rows:
             if not dy_district or dy_total is None:
                 continue
+            # Gross is never NULL on the mart (a sum of greatest(…, 0)); a
+            # NULL here would once have published the NET figure under the
+            # gross wording below. Refuse instead (Task 26 fix wave).
+            if dy_positive is None:
+                raise ValueError(
+                    f"fct_district_totals_by_year {dy_state}/{dy_district}"
+                    f" FY{dy_fy}: positive_obligation is NULL beside a net"
+                    " total — the gross card would publish the net figure")
             base_where = (
                 f"where pop_state = '{dy_state}' and pop_district ="
                 f" '{dy_district}' and fiscal_year = {int(dy_fy)}"
@@ -7889,7 +7937,7 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                 ),
                 (
                     "positive_obligation",
-                    float(dy_positive if dy_positive is not None else dy_total),
+                    float(dy_positive),
                     "gross obligations (positive transactions only, before"
                     " deobligations are subtracted)",
                     "Gross is the transaction-level"
@@ -9783,8 +9831,15 @@ def _write_all_sidecars(
     # Non-split pe_blis cannot drift: split_key normalizes every one of them
     # to (pe_bli, None, None), which is exactly what _awards_for looks up.
     #
-    # Zero today: both link scripts resolve the member before publishing, and
-    # the mechanical crosswalk writes no rows on these keys at all.
+    # Zero today, and only partly by construction: both link scripts resolve
+    # the member before publishing, but the mechanical crosswalk
+    # (jbooks/crosswalk.py crosswalk_org) has NO split-key guard. It has no
+    # rows on these keys because every row it has in the corpus came from a
+    # DARPA run (LAUNCH.md Step 0 passes --org DARPA) and no split key is a
+    # DARPA line (measured read-only 2026-09-25: all 124,500 mechanical rows
+    # in budget_line_awards are DARPA's; the 13 split keys are N, DTRA, DCSA,
+    # DMACT, OSD, DHRA and DLA codes). This diagnostic is what would say so
+    # if another organization were ever run.
     _readable_split_keys = {
         ident.split_key(pe_bli, account, organization)
         for pe_bli in ident.split_pe_blis
@@ -10005,7 +10060,7 @@ def _write_all_sidecars(
                 _unattributed_where.add(f"{_pe}/{_key[1] or _key[2] or '?'}")
     if _unattributed_narr or _unattributed_det:
         print(
-            f"program_details (ROADMAP #82, narrative axis, 2026-09-12):"
+            f"program_details (ROADMAP #82, narrative axis, rule of 2026-09-12):"
             f" {_unattributed_narr} J-book narrative row(s) and"
             f" {_unattributed_det} detail row(s) on shared BLI codes come from"
             f" a document whose own account/organization matches no member"
@@ -10043,7 +10098,7 @@ def _write_all_sidecars(
                 )
     if _unattributed_mentions:
         print(
-            f"program_details (ROADMAP #82, mention axis, 2026-09-18):"
+            f"program_details (ROADMAP #82, mention axis, rule of 2026-09-18):"
             f" {_unattributed_mentions} lobbying mention row(s) on shared BLI"
             f" codes matched no member program's title"
             f" ({', '.join(sorted(_unattributed_mention_where))}) — published"
@@ -12132,8 +12187,9 @@ def _write_all_sidecars(
         # unpinned_tier, by_method, unadjudicated_methods, high} — per-award
         # hand-adjudication COVERAGE of the crosswalk, {} until an
         # adjudication touches a published link. `measured_on` is this run's
-        # date and `as_of` the last adjudication's: they are 10 days apart and
-        # the census belongs to the first (fix round 1, C1). `high` is the
+        # date and `as_of` the last adjudication's: they differ whenever the
+        # corpus moved after the last adjudication, and the census belongs to
+        # the first (fix round 1, C1). `high` is the
         # High tier's own census, counted over the MART's high rows. Same
         # Postgres-scope/threading reason as link_precision below; gate 24
         # leg o binds the rendered sentences to it.
@@ -14012,9 +14068,12 @@ def _emit_district_sidecars(
     _district_program_key).
 
     `ident` is the export's one _ProgramIdentity (built once per export). It
-    defaults to reading dim_programs off `con`, which degrades to the empty
-    identity — every row unsplit, i.e. pre-Task-27 behaviour — when the
-    fixture has no dim_programs.
+    defaults to reading dim_programs off `con` (_fetch_program_identity, the
+    R-27-8 rule): an ABSENT dim_programs gives the empty identity, a present
+    one missing `account` or `account_title` raises. Against the empty
+    identity an account-NULL row keeps the bare key, and a row that carries
+    an account raises in _district_program_key rather than publishing under
+    it.
 
     Returns number of files written.
     """
@@ -14319,12 +14378,18 @@ def _emit_district_sidecars(
             "district_year", f"{dy_district}|{fy}", "positive_obligation")
         if total_fid not in cited_fact_ids or positive_fid not in cited_fact_ids:
             continue
+        # Same refusal as the citation row's (see
+        # _build_geography_citation_rows): never the net figure as gross.
+        if dy_positive is None:
+            raise ValueError(
+                f"fct_district_totals_by_year {dy_district} FY{fy}:"
+                " positive_obligation is NULL beside a net total — the"
+                " sidecar would publish the net figure as gross")
         by_year.setdefault(dy_district, []).append({
             "award_count": int(dy_awards or 0),
             "fiscal_year": fy,
             "positive_fact_id": positive_fid,
-            "positive_obligation": float(
-                dy_total if dy_positive is None else dy_positive),
+            "positive_obligation": float(dy_positive),
             "total_fact_id": total_fid,
             "total_obligation": float(dy_total or 0.0),
         })
@@ -14947,8 +15012,8 @@ def _emit_gao_program_findings_sidecar(
         )
     print(
         f"gao_program_findings: {len(by_slug)} program page(s) carry "
-        f"{n_items} ratified GAO item(s), {inherited} inherited from an "
-        f"earlier edition; {len(editions)} edition(s)"
+        f"{n_items} GAO item(s) — {accepted} ratified, {inherited} inherited "
+        f"from an earlier edition; {len(editions)} edition(s)"
     )
     _write_json(json_dir / "gao_program_findings.json", payload)
 
@@ -16334,14 +16399,25 @@ def refresh_usaspending_ids(
 #                          arrives at BOTH members whichever title it matched,
 #                          and `build_program_terms` is last-title-wins on a
 #                          shared code (ROADMAP #115) so only one member's
-#                          tokens were ever searched. It is evidence about the
-#                          member whose OWN dim_programs title carries every
-#                          matched term, and that is exactly what the rendered
-#                          badge claims — "at least two distinct, non-generic
-#                          words from this program's title"
-#                          (site/src/lib/evidence.ts). On a member whose title
-#                          carries none of them the badge is false, so the row
-#                          does not publish there.
+#                          tokens were ever searched. On a shared code it
+#                          publishes only on the member whose OWN dim_programs
+#                          title carries every matched term. The two kinds
+#                          render different badges (site/src/lib/evidence.ts):
+#                          · multi_token — "at least two distinct, non-generic
+#                            words from this program's title", which the title
+#                            test is exactly; on a member whose title carries
+#                            none of them the badge is false, so the row does
+#                            not publish there.
+#                          · alias — "a curated, human-verified alias for this
+#                            program". The title test is NOT that claim: an
+#                            alias phrase need not appear in the title, so on
+#                            a shared code an alias row is dropped from every
+#                            member whose title lacks it — possibly both. That
+#                            is conservative (fewer rows publish, none on the
+#                            wrong member), and 0 alias rows sit on a shared
+#                            code (measured read-only 2026-09-25); keying an
+#                            alias row on its owning member instead is a
+#                            separate decision.
 #
 # Measured 2026-09-18 on the shipped corpus (6 of the 13 shared codes carry
 # mentions): /program/0145-APN/ "F/A-18E/F (Fighter) Hornet" rendered 5 rows

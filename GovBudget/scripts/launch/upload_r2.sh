@@ -22,11 +22,12 @@
 #
 #   3. Set R2_BUCKET to your bucket name (env var or edit the default below).
 #
-# WHAT IS SYNCED:
-#   data/site/pdfs/       → r2:<bucket>/pdfs/       (~149 MB)
-#   data/site/data/       → r2:<bucket>/data/        (~3.2 MB)
-#   data/site/workbooks/  → r2:<bucket>/workbooks/   (~1.2 MB)
-#   data/site/citations/  → r2:<bucket>/citations/   (~1 MB)
+# WHAT IS SYNCED (sizes are not restated here — they grow with every ingest;
+# docs/superpowers/LAUNCH.md §4d carries the dated measurement):
+#   data/site/pdfs/       → r2:<bucket>/pdfs/
+#   data/site/data/       → r2:<bucket>/data/
+#   data/site/workbooks/  → r2:<bucket>/workbooks/
+#   data/site/citations/  → r2:<bucket>/citations/
 #
 # Sync is idempotent: rclone compares checksums and only transfers changed
 # files.  Destination objects NOT present in the source are preserved (no

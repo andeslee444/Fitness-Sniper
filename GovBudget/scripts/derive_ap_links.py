@@ -30,6 +30,7 @@ from pathlib import Path
 import duckdb
 import psycopg
 
+from govbudget import config
 from govbudget.jbooks.collision_keys import (
     member_for_award,
     partition_split_keys,
@@ -44,7 +45,9 @@ CATCHALL_TITLE = re.compile(r"(less than|under|<)\s*\$|^other\b|^miscellaneous",
 
 ROOT = Path(__file__).resolve().parents[1]
 RESEARCH = ROOT / "data" / "research"
-DSN = "postgresql://localhost/govbudget"
+# The database the exporter reads: config.PG_DSN honours GOVBUDGET_PG_DSN
+# and the gitignored .env (tests/test_loader_dsn.py).
+DSN = config.PG_DSN
 AGENCY_BY_LETTER = {"D": "097", "N": "017", "A": "021", "F": "057", "M": "017"}
 
 
