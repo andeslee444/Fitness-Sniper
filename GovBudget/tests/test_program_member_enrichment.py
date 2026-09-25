@@ -6,10 +6,7 @@ import duckdb
 import pytest
 
 from govbudget.export_site import (
-    _ProgramIdentity,
     _emit_json_sidecars,
-    _narrative_document_accounts,
-    _narrative_member_key,
     _write_typed_parquet,
 )
 from jbooks.test_export_site_pg import _make_test_duckdb
@@ -22,35 +19,42 @@ MEMBERS = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _fresh_default_duckdb_connection():
+    """Run each case on its own DuckDB default connection.
+
+    `_emit_json_sidecars` reads the narratives parquet through `duckdb.sql`,
+    i.e. the PROCESS-GLOBAL default connection. In a full pytest run that
+    connection arrives already aborted: tests/test_fiscaldata.py leaves a
+    pending `duckdb.sql(...).fetchone()` result on it, and
+    tests/test_precision_study.py then runs a lake query there that fails on
+    purpose and is caught (DuckDB 1.5.3 keeps the transaction aborted), so
+    every later `duckdb.sql` raises "Current transaction is aborted". These
+    cases test the exporter, not that leftover state, so they get a fresh
+    default connection and hand the previous one back untouched.
+    """
+    previous = duckdb.default_connection()
+    fresh = duckdb.connect()
+    duckdb.set_default_connection(fresh)
+    try:
+        yield
+    finally:
+        duckdb.set_default_connection(previous)
+        fresh.close()
+
+
 def detail(fid, pe, account, sha, org='N', amount=12.5, project=None):
     return (fid, pe, project, 'Project' if project else None,
             'PriorYear', amount, 'USD millions', f'line[{fid}]', org,
             'procurement', 2026, sha, 'unique', account)
 
 
-def test_narrative_assignment_needs_a_unique_exact_document_program_and_org():
-    ident = _ProgramIdentity(MEMBERS)
-    accounts = _narrative_document_accounts([
-        detail('a', '0145', '1506N', 'aircraft'),
-        detail('b', '0145', '1508N', 'bombs'),
-        detail('c', '0145', '1506N', 'mixed'),
-        detail('d', '0145', '1508N', 'mixed'),
-    ])
-    assert _narrative_member_key(ident, '0145', 'N', 'aircraft', accounts) == (
-        '0145', '1506N', None)
-    assert _narrative_member_key(ident, '0145', 'N', 'bombs', accounts) == (
-        '0145', '1508N', None)
-    for sha, org in [('missing', 'N'), ('mixed', 'N'), ('aircraft', 'A')]:
-        assert _narrative_member_key(ident, '0145', org, sha, accounts) is None
-    assert _narrative_member_key(ident, '30', 'OSD', 'osd', accounts) == (
-        '30', None, 'OSD')
-    assert _narrative_member_key(ident, '30', 'UNKNOWN', 'osd', accounts) is None
-    assert _narrative_member_key(ident, 'UNSPLIT', 'N', 'missing', accounts) == (
-        'UNSPLIT', None, None)
+def _member_export(tmp_path, extra_details=(), extra_narratives=()):
+    """Run the sidecar writer over the four MEMBERS plus any extra rows.
 
-
-@pytest.fixture()
-def member_export(tmp_path):
+    `extra_details` are `detail(...)` tuples; `extra_narratives` are
+    (fact_id, pe_bli, title, org, document_sha256) for FY2026 narrative rows.
+    """
     db = tmp_path / 'warehouse.duckdb'
     _make_test_duckdb(db)
     con = duckdb.connect(str(db))
@@ -87,6 +91,10 @@ def member_export(tmp_path):
     narratives.append(('unknown', '0145', 'description', 'Unassigned',
                        'A shared code alone does not assign this narrative.',
                        'line[1]', 'N', 2026, 'no-detail-document'))
+    details.extend(extra_details)
+    for fid, pe, title, org, sha in extra_narratives:
+        narratives.append((fid, pe, 'description', title,
+                           f'{title} source text.', 'line[1]', org, 2026, sha))
     _write_typed_parquet(data / 'jbook_narratives.parquet', columns=[
         ('fact_id', 'varchar'), ('pe_bli', 'varchar'), ('kind', 'varchar'),
         ('title', 'varchar'), ('body', 'varchar'), ('xml_path', 'varchar'),
@@ -111,6 +119,61 @@ def member_export(tmp_path):
     return out
 
 
+@pytest.fixture()
+def member_export(tmp_path):
+    return _member_export(tmp_path)
+
+
+def _narrative_fids(out, slug):
+    obj = json.loads((out / f'json/program_details/{slug}.json').read_text())
+    return {n.get('fact_id') or n['title'] for n in obj['narratives']}
+
+
+def test_narrative_assignment_needs_one_account_from_its_own_document(tmp_path):
+    """A shared code's narrative publishes on a member only when its OWN
+    document names exactly one member (ROADMAP #82, narrative axis).
+
+    Rewritten at the 2026-09-25 integration. The live branch unit-tested this
+    rule through two helpers of its own (`_narrative_document_accounts`,
+    `_narrative_member_key`); the merged exporter keeps this branch's reviewed
+    #82 implementation, which resolves the same rule inline (`_doc_account` +
+    `_ProgramIdentity.split_key` inside `_emit_json_sidecars`). So the cases
+    now run through the sidecar writer and assert what each page publishes.
+    """
+    out = _member_export(
+        tmp_path,
+        extra_details=[
+            # 'mixed' files P-40 rows for 0145 under BOTH appropriations, so
+            # the document cannot say which member its prose is about.
+            detail('mixed-a', '0145', '1506N', 'mixed', amount=1.0, project='M1'),
+            detail('mixed-b', '0145', '1508N', 'mixed', amount=2.0, project='M2'),
+        ],
+        extra_narratives=[
+            ('narr-mixed', '0145', 'Mixed book', 'N', 'mixed'),
+            ('narr-missing', '0145', 'No detail rows', 'N', 'missing'),
+            ('narr-osd', '30', 'OSD book', 'OSD', 'no-detail-osd'),
+            ('narr-unknown-org', '30', 'Unknown org', 'UNKNOWN', 'no-detail-x'),
+            ('narr-unsplit', '0601101E', 'Ordinary code', 'DARPA', 'no-detail-y'),
+        ],
+    )
+    # A document with ONE account for the code assigns its narrative to
+    # that member (the fixture's own documents, unchanged by the extras).
+    assert _narrative_fids(out, '0145-APN') == {'narr-0'}
+    assert _narrative_fids(out, '0145-PANMC') == {'narr-1'}
+    # An organization-split code keys on the row's own org; an org that
+    # names no member publishes nowhere.
+    assert _narrative_fids(out, '30-OSD') == {'narr-2', 'narr-osd'}
+    assert _narrative_fids(out, '30-DTRA') == {'narr-3'}
+    # Mixed-account and detail-less documents land on NEITHER member.
+    published = set().union(*(
+        _narrative_fids(out, slug)
+        for slug in ('0145-APN', '0145-PANMC', '30-OSD', '30-DTRA')
+    ))
+    assert not published & {'narr-mixed', 'narr-missing', 'narr-unknown-org'}
+    # An ordinary (unsplit) code keeps the bare-code list.
+    assert 'narr-unsplit' in _narrative_fids(out, '0601101E')
+
+
 def test_member_sidecars_keep_their_own_details_prose_and_sources(member_export):
     expected = {
         '0145-APN': (0, '1506N', 'N'), '0145-PANMC': (1, '1508N', 'N'),
@@ -131,7 +194,17 @@ def test_member_sidecars_keep_their_own_details_prose_and_sources(member_export)
         cited = [r['fact_id'] for r in obj['details'] + obj['narratives']]
         assert {citations[fid]['official_url'] for fid in cited} == {
             f'https://example.mil/document-{i}.pdf'}
-        assert obj['mentions'] == []
+        # ROADMAP #82 (mention axis), the merged rule: on a shared code a
+        # title-basis lobbying row publishes only on the member whose own
+        # title carries every matched term. 'General|Purpose' is in
+        # 0145-PANMC's title ("General Purpose Bombs") and not in 0145-APN's
+        # ("Hornet"); code '30' has no lobbying rows.
+        if slug == '0145-PANMC':
+            assert [(m['filing_uuid'], m['matched_term'], m['evidence_kind'])
+                    for m in obj['mentions']] == [
+                ('shared-filing', 'General|Purpose', 'keyword')]
+        else:
+            assert obj['mentions'] == []
         assert obj['summary']['named_primes'] == []
         assert obj['summary']['lobbied_by'] is None
     assert not (member_export / 'json/program_details/0145.json').exists()

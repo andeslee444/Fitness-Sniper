@@ -89,13 +89,15 @@ def test_shipped_seed_covers_the_flagship():
     row that relabels no published family, so its row was retired. The
     RAYTHEON family — 49 of its 66 members Raytheon Company registrations,
     holding $30.9B of its $32.3B (measured 2026-09-25; 25 more Raytheon Company
-    registrations sit in RTX) — now publishes as "Raytheon Company", and its
+    registrations sit in RTX) — now publishes as "Raytheon Company
+    registrations" (ruling R-INT-4, 2026-09-25: the live site's label, which
+    names the registration grouping and claims no ownership), and its
     dominant member still carries the Rockwell string as its third-placed
     parent registration: that family must be curated under the recipients' own
     name, and no label may carry the Rockwell string.
     """
     labels = alias_map(load_display_aliases(SEED))
-    assert labels.get("RAYTHEON") == "Raytheon Company"
+    assert labels.get("RAYTHEON") == "Raytheon Company registrations"
     assert all("ROCKWELL" not in label.upper() for label in labels.values())
 
 
@@ -104,10 +106,12 @@ def test_the_marinette_shipyard_is_not_titled_an_italian_research_council():
     won the label of a family that is 99.98% MARINETTE MARINE CORPORATION, a
     Marinette, WI recipient, by 8.9% over the Italian presidency's
     secretariat. The parent field there names no owner the lake can support,
-    so the family publishes under the recipient's own registered name."""
+    so the family publishes under the recipient's own registered name,
+    qualified for the five other members ($605,044 together) that are not
+    Marinette Marine (ruling R-INT-4, 2026-09-25: the live site's label)."""
     labels = alias_map(load_display_aliases(SEED))
     assert labels.get("CONSIGLIO NAZIONALE DELLE RICERCHE") == (
-        "Marinette Marine Corporation"
+        "Marinette Marine Corporation and other recipients"
     )
 
 
@@ -126,6 +130,39 @@ def test_flagship_review_survives_its_family_falling_out_of_published_set():
     assert "ROCKWELL COLLINS AUSTRALIA" not in active
     assert active["RTX"].evidence == "sourced"
     assert active["RTX"].display_name == "RTX Corporation"
+
+
+#: Ruling R-INT-4 (2026-09-25, integration of the live branch): these six
+#: families publish the live site's labels verbatim. Each differs from the
+#: casing rule's rendering of its registry string, so each row RELABELS and
+#: must not be typed `pin` — gate 24 leg (l) fails a pin whose label moves
+#: the on-screen string, and the four rows that were pins of the registry
+#: string before the ruling (RAYTHEON, TRANSDIGM GROUP, SERCO, VERITAS)
+#: became `measured` with it.
+R_INT_4_LABELS = {
+    "RAYTHEON": "Raytheon Company registrations",
+    "TRANSDIGM GROUP": "TransDigm Group registrations",
+    "SERCO": "Serco Inc. registrations",
+    "VERITAS CAPITAL FUND MANAGEMENT": "Veritas Capital registrations",
+    "CONSIGLIO NAZIONALE DELLE RICERCHE": (
+        "Marinette Marine Corporation and other recipients"
+    ),
+    "BROWN ROOT INDUSTRIAL SERVICES HOLDINGS": "KBR Wyle Services LLC",
+}
+
+
+def test_ruling_r_int_4_labels_ship_verbatim_as_relabels():
+    active = {a.family_key: a for a in load_display_aliases(SEED)}
+    for key, label in R_INT_4_LABELS.items():
+        assert active[key].display_name == label, key
+        assert active[key].evidence == "measured", key
+        assert active[key].relabels, key
+        # The seed's own measurement date survives the ruling (the ruling
+        # changed labels, not the numbers the notes quote).
+        assert active[key].measured_on == "2026-09-24", key
+    # A qualified label must not be described as a pin in its own note.
+    for key in R_INT_4_LABELS:
+        assert "PINNED" not in active[key].note, key
 
 
 def test_shipped_seed_keys_are_warehouse_keys_not_names():

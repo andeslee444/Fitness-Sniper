@@ -267,6 +267,44 @@ describe("FactResolver", () => {
     expect(within(card).queryByText(absentLabel)).not.toBeInTheDocument();
   });
 
+  // Integration 2026-09-25: the receipt's kind label for a subaward row is
+  // this branch's "FSRS subaward record via USAspending" (the same words as
+  // footnote.ts's copied label), not the live branch's "Subaward link
+  // evidence"; the live branch's record label and action stay.
+  it("labels a subaward receipt as the FSRS record it is", async () => {
+    const fid = "5ab0000000000001";
+    setUrl(`/fact/?id=${fid}`);
+    mockFetchWithShard({
+      [fid]: {
+        ...PDF_CITATION,
+        kind: "subaward",
+        official_url:
+          "https://www.usaspending.gov/award/CONT_AWD_N6833517C0392_9700_-NONE-_-NONE-/",
+        query_body: JSON.stringify({
+          subaward_number: "000000821",
+          subawardee: "INTERNATIONAL COMPUTER SCIENCE INSTITUTE",
+          match_basis: "subaward-description-exact",
+        }),
+        recorded_value: null,
+        formula:
+          "crosswalk link: pe_bli=0605502N matched to award PIID N6833517C0392" +
+          " via method='subaward+lexicon', confidence='medium'",
+        inputs: null,
+        units: null,
+        amount_text: null,
+        hosted_pdf_url: null,
+        sha256: null,
+        page_number: null,
+        retrieved_at: null,
+      },
+    });
+    render(<FactResolver />);
+    const card = await screen.findByTestId("fact-card");
+    expect(within(card).getByText("FSRS subaward record via USAspending")).toBeInTheDocument();
+    expect(card.textContent).not.toMatch(/Subaward link evidence/i);
+    expect(within(card).getByText("Inferred program link")).toBeInTheDocument();
+  });
+
   it("renders the CANONICAL permalink, never the runtime origin (M3)", async () => {
     setUrl(`/fact/?id=${PDF_FID}`);
     mockFetchWithShard({ [PDF_FID]: PDF_CITATION });

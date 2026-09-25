@@ -98,7 +98,7 @@ def test_two_members_in_one_district_keep_separate_amounts_and_receipts(tmp_path
     _emit_district_sidecars(
         dist_dir=out, con=con,
         prog_titles={'3010': 'LPD Flight II / Shipboard Tactical Communications'},
-        cited_fact_ids=set(by_fid), shared_pe_blis={'3010'},
+        cited_fact_ids=set(by_fid),
     )
     _emit_breakdowns(
         json_dir=tmp_path, con=con, citation_rows=citations + geography,

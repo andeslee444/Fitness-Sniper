@@ -509,12 +509,22 @@ describe("/district/{code}/ keeps its derived cards' inputs clickable (R-28b-4)"
         `#${FID.progB.slice(-8)}`,
       ]);
 
+      // Integration 2026-09-25: the live branch's source-document links
+      // (<SourceDocumentLinks resolveInputs> in the panel) resolve the derived
+      // card's inputs to name their source documents, through the SAME
+      // fetch-on-miss path — one shard per input, in input order, each once.
+      // Wait for both, so the chip below is clicked after they land.
+      await waitFor(() => {
+        expect(shardCalls()).toEqual([shardOf(id), shardOf(FID.progA), shardOf(FID.progB)]);
+      });
+
       fireEvent.click(clickable[0]);
       await waitFor(() => {
         expect(panelQueryAll("usaspending-card")).toHaveLength(1);
       });
-      // the SAME fetch-on-miss path: one shard per fact, nothing else fetched
-      expect(shardCalls()).toEqual([shardOf(id), shardOf(FID.progA)]);
+      // The chip's row comes from the shard already fetched for its input:
+      // one shard per fact, nothing fetched twice, nothing else fetched.
+      expect(shardCalls()).toEqual([shardOf(id), shardOf(FID.progA), shardOf(FID.progB)]);
     },
   );
 });

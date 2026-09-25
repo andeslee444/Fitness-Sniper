@@ -3655,12 +3655,17 @@ export function familyCoverageFindings(truth) {
 
 /**
  * No two published families may render one name (Task 29 fix round 1). The
- * Brown & Root holding family publishes as "KBR Wyle Services, LLC", its
- * recipients' own registered name, and a separate registry family (KBR WYLE
- * SERVICES, rank 488 on 2026-09-25) carries that string. Unpublished, it has
- * no page or /companies/ row; published, two rows would read the same. The
- * rendered name is the seed label where there is one, else the casing rule's
- * rendering of the registry string; compared case- and space-insensitively.
+ * Brown & Root holding family publishes as "KBR Wyle Services LLC", its
+ * recipients' own registered name (the live branch's label, ruling R-INT-4,
+ * 2026-09-25; it was "KBR Wyle Services, LLC"), and a separate registry
+ * family (KBR WYLE SERVICES, rank 488 on 2026-09-25) carries that name as
+ * "KBR WYLE SERVICES, LLC". Unpublished, it has no page or /companies/ row;
+ * published, two rows would read the same. The rendered name is the seed
+ * label where there is one, else the casing rule's rendering of the registry
+ * string; compared case-, space- and punctuation-insensitively (periods
+ * dropped, commas read as spaces). Integration 2026-09-25: the comparison
+ * was case- and space-only, so dropping the label's comma silently stopped
+ * this leg from seeing the KBR pair at all.
  *
  * @param {{ family_key: string, display_name: string }[]} families
  * @param {Map<string, { label: string }>} aliases
@@ -3671,7 +3676,12 @@ export function publishedNameCollisions(families, aliases) {
   for (const f of families) {
     const shown =
       aliases.get(f.family_key)?.label ?? displayCompanyName(f.display_name).display;
-    const k = String(shown).replace(/\s+/g, " ").trim().toUpperCase();
+    const k = String(shown)
+      .replace(/\./g, "")
+      .replace(/,/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
     if (!byName.has(k)) byName.set(k, []);
     byName.get(k).push({ key: f.family_key, shown });
   }
@@ -3680,8 +3690,9 @@ export function publishedNameCollisions(families, aliases) {
     .map(
       (v) =>
         `leg l: ${v.map((x) => x.key).join(" and ")} both publish as ` +
-        `${JSON.stringify(v[0].shown)} — two families the reader cannot tell ` +
-        `apart; qualify one label in data-seeds/entity_display_aliases.csv`,
+        `${[...new Set(v.map((x) => JSON.stringify(x.shown)))].join(" / ")} — ` +
+        `two families the reader cannot tell apart; qualify one label in ` +
+        `data-seeds/entity_display_aliases.csv`,
     );
 }
 

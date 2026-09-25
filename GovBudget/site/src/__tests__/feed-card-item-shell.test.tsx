@@ -213,8 +213,10 @@ describe("<FeedCardItemShell> is what both /feed/ card trees render", () => {
   // The code chip now prints the page the card addresses (feedProgramKey);
   // the event's identities (data-xml-path, guid, basis entity) keep the bare
   // code, and an ordinary card prints its pe_bli exactly as before.
+  // Integration 2026-09-25: the chip carries the live branch's type-system
+  // class `t-id` (it was `font-mono text-xs`); it is the card's only span.t-id.
   const codeChips = (el: HTMLElement) =>
-    Array.from(el.querySelectorAll("span.font-mono.text-xs")).map((s) => s.textContent);
+    Array.from(el.querySelectorAll("span.t-id")).map((s) => s.textContent);
 
   it("a member card prints its member's page key beside its member link, from both trees", () => {
     const MEMBER: FeedCard = {

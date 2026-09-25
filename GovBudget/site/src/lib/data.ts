@@ -28,7 +28,7 @@ import {
 } from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
-import { parseGaoRatifications, selectRatifiedGaoFindings } from "./program-evidence";
+import { parseGaoRatifications, selectPublishedGaoFindings } from "./program-evidence";
 import { normalizeProgramHHI, filterSupportedConcentrationCards } from "./concentration-evidence.mjs";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
@@ -516,13 +516,20 @@ export function getSiteMeta(): SiteMeta {
 
 function buildCheckCounts(fallback: SiteMeta["build_checks"]): Partial<NonNullable<SiteMeta["build_checks"]>> {
   const out: Partial<NonNullable<SiteMeta["build_checks"]>> = {};
-  try {
-    const verify = readFileSync(join(process.cwd(), "scripts", "verify.mjs"), "utf8");
-    const n = (verify.match(/gateResults\.push\(\{\s*n:\s*\d+/g) ?? []).length;
-    if (n) out.npm_gates = n;
-  } catch {
-    if (fallback?.npm_gates) out.npm_gates = fallback.npm_gates;
+  // The site-gate count is ALWAYS this checkout's registry: one
+  // gateResults.push({ n: N, … }) per registered gate in scripts/verify.mjs
+  // (27 at the 2026-09-25 integration merge). Integration 2026-09-25: an
+  // unreadable registry, or one the pattern no longer reads, is an error, not
+  // a reason to print site_meta.json's number — that value is whatever the
+  // last export-site in the shared lake wrote (24 on the pre-merge export).
+  // gate-count.test.ts pins registry shape and value; gate 24 leg e holds the
+  // rendered sentence to its own independent recount.
+  const verifyPath = join(process.cwd(), "scripts", "verify.mjs");
+  const gates = (readFileSync(verifyPath, "utf8").match(/gateResults\.push\(\{\s*n:\s*\d+/g) ?? []).length;
+  if (!gates) {
+    throw new Error(`[govbudget/data] ${verifyPath} registers no gateResults.push({ n: … }) — /methodology/ cannot state a site-gate count`);
   }
+  out.npm_gates = gates;
   try {
     const manifest = join(process.cwd(), "..", "dbt", "target", "manifest.json");
     if (existsSync(manifest)) {
@@ -694,7 +701,7 @@ export interface ProgramHHI {
  * fail-closed guard — a non-null result keeps the exporter's ProgramHHI
  * block unchanged — so this shape is never stored on a ProgramRow. It is
  * declared here so concentration-evidence.d.mts can name what the function
- * really returns (it still says ProgramHHI).
+ * really returns.
  */
 export interface NormalizedProgramHHI {
   link_scope: "high-and-medium";
@@ -3195,33 +3202,18 @@ function gaoProgramFindingsFile(): GaoProgramFindingsFile | null {
       _gaoProgramFindings = null;
     }
     if (_gaoProgramFindings) {
-      // Integration 2026-09-25. The f15-family-browser branch's guard: a
-      // ratified anchor or related report renders only when
+      // Integration 2026-09-25 (ruling R-INT-3). The f15-family-browser
+      // branch's guard: a ratified anchor or related report renders only when
       // data-seeds/gao_program_xwalk.csv holds a 'y' verdict for its exact
       // (product, GAO program, slug) — selectRatifiedGaoFindings, unchanged.
       // ROADMAP #30 (gate 21 leg h8): an older WSAA edition carries no verdict
       // of its own; it renders behind the ratified anchor it is chained to
       // (inherited_from + program_key), so it survives exactly when THAT
-      // anchor survives the guard on the same page. The guard alone dropped
-      // all 70 inherited editions on the 2026-09-25 run-4 export while
-      // /methodology/ still printed "70 earlier editions inherited".
+      // anchor survives the guard on the same page. Both halves live in
+      // selectPublishedGaoFindings (lib/program-evidence.ts), which
+      // program-evidence.test.tsx pins on fixtures.
       const decisions = parseGaoRatifications(readFileSync(join(process.cwd(), "..", "data-seeds", "gao_program_xwalk.csv"), "utf8"));
-      const ratified = selectRatifiedGaoFindings(_gaoProgramFindings.by_slug, decisions);
-      const by_slug: Record<string, GaoProgramFindings> = {};
-      for (const [slug, findings] of Object.entries(_gaoProgramFindings.by_slug)) {
-        const anchors = ratified[slug]?.assessments ?? [];
-        const assessments = findings.assessments.filter((row) =>
-          row.inherited_from === null
-            ? anchors.includes(row)
-            : anchors.some(
-                (anchor) =>
-                  anchor.product_number === row.inherited_from &&
-                  anchor.program_key === row.program_key,
-              ),
-        );
-        const reports = ratified[slug]?.reports ?? [];
-        if (assessments.length || reports.length) by_slug[slug] = { assessments, reports };
-      }
+      const by_slug = selectPublishedGaoFindings(_gaoProgramFindings.by_slug, decisions);
       const accepted = decisions.filter(row => row.verdict === "y").length;
       const rejected = decisions.filter(row => row.verdict === "n").length;
       _gaoProgramFindings = {

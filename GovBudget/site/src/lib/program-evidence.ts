@@ -44,3 +44,35 @@ export function selectRatifiedGaoFindings(bySlug: Record<string, GaoProgramFindi
   }
   return selected;
 }
+
+/**
+ * What a program page publishes from gao_program_findings.json (integration
+ * 2026-09-25, ruling R-INT-3). The ratification guard above decides the
+ * ANCHORS: an assessment a person ratified (inherited_from === null) and a
+ * related report render only with a 'y' verdict for their exact (product,
+ * GAO program, slug). An older WSAA edition carries no verdict of its own
+ * (ROADMAP #30, gate 21 leg h8): it renders behind the ratified anchor it is
+ * chained to (inherited_from + program_key), so it passes exactly when THAT
+ * anchor passes the guard on the same page. The guard alone dropped all 70
+ * inherited editions on the 2026-09-25 run-4 export while /methodology/
+ * still printed "70 earlier editions inherited".
+ */
+export function selectPublishedGaoFindings(bySlug: Record<string, GaoProgramFindings>, decisions: GaoRatification[]) {
+  const ratified = selectRatifiedGaoFindings(bySlug, decisions);
+  const published: Record<string, GaoProgramFindings> = {};
+  for (const [slug, findings] of Object.entries(bySlug)) {
+    const anchors = ratified[slug]?.assessments ?? [];
+    const assessments = findings.assessments.filter((row) =>
+      row.inherited_from === null
+        ? anchors.includes(row)
+        : anchors.some(
+            (anchor) =>
+              anchor.product_number === row.inherited_from &&
+              anchor.program_key === row.program_key,
+          ),
+    );
+    const reports = ratified[slug]?.reports ?? [];
+    if (assessments.length || reports.length) published[slug] = { assessments, reports };
+  }
+  return published;
+}

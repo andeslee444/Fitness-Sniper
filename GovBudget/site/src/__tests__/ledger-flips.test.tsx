@@ -60,8 +60,11 @@ describe("DistrictTable linkable dollars — Cite states", () => {
       districtRow({ pop_district: "VA-08", total_linkable_dollars: 200 }),
     ]} />);
     expect(container.textContent).not.toContain("DARPA");
-    expect(within(container).getByRole("columnheader", { name: /Linked award obligations/ })).toBeInTheDocument();
-    fireEvent.click(within(container).getByRole("button", { name: "Linked obligations" }));
+    // Integration 2026-09-25: the merged table keeps this branch's reviewed
+    // labels ("Linked place-of-performance $" / "Linked $"), which name the
+    // attribution basis; the live branch's "Linked award obligations" did not.
+    expect(within(container).getByRole("columnheader", { name: /Linked place-of-performance \$/ })).toBeInTheDocument();
+    fireEvent.click(within(container).getByRole("button", { name: "Linked $" }));
     const table = within(container).getByRole("table");
     expect(table).toHaveAttribute("data-sort-order", "total_linkable_dollars:desc");
     const values = [...table.querySelectorAll("tbody [data-amount]")];

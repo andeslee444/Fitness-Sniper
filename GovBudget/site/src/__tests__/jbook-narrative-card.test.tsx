@@ -185,7 +185,12 @@ describe("JbookNarrativeCard — verbatim page-local source passages", () => {
     for (const record of family.records) for (const narrative of record.narratives) {
       const enriched = family.citations[narrative.factId] as JbookNarrativeCitation;
       const original = getCitation(narrative.factId) as JbookNarrativeCitation;
-      expect(enriched.source_passage).toEqual({ title: narrative.title, body: narrative.body });
+      // The live branch's 0e94b1bb (2026-09-24) made the passage the record's
+      // own narrative object, so the Flight payload carries each long passage
+      // once; f15-family-data.test.ts pins the identity. It still reads as
+      // the narrative's exact title and body.
+      expect(enriched.source_passage).toBe(narrative);
+      expect(enriched.source_passage).toMatchObject({ title: narrative.title, body: narrative.body });
       expect(enriched).not.toBe(original);
       expect(original.source_passage).toBeUndefined();
       const { source_passage, ...unchanged } = enriched;

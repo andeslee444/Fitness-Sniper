@@ -5,7 +5,7 @@ import { CitationPanelContext } from "@/components/cite";
 import { ProgramNarratives } from "@/components/program-narratives";
 import { ProgramDetailsTable } from "@/components/program-details-table";
 import { FollowTheDollar, getFlowData } from "@/components/follow-the-dollar";
-import { getProgramDetails } from "@/lib/data";
+import { getProgramDetails, getProgramMap } from "@/lib/data";
 
 afterEach(cleanup);
 
@@ -32,7 +32,9 @@ describe("program keyboard source access", () => {
   });
 
   it("exposes linked flow-chart destinations inside a named group rather than an atomic image", () => {
-    const data = getFlowData("F15EWS")!;
+    // getFlowData takes the page's program ROW (slug, title, org, …), not a
+    // bare code: a shared-code member heads its view with its own row.
+    const data = getFlowData(getProgramMap().get("F15EWS")!)!;
     render(<FollowTheDollar data={data} />);
     const chart = screen.getByRole("group", { name: /Follow-the-dollar diagram for program F15EWS/ });
     expect(within(chart).getByRole("link", { name: "District page: MO-01" })).toHaveAttribute("href", "/district/MO-01/");

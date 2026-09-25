@@ -92,13 +92,16 @@ systems are published alongside the data.
 
 ## 3. How we verify
 
-**Reconciliation.** Every figure extracted from a J-book clears two arithmetic
-checks. Check A: project-level amounts within an exhibit must sum to the
-program-element total in that same exhibit (tolerance: ±$0.001M). Check B:
-that program-element total must match the corresponding row in the official R-1
-or P-1 Excel rollup for the same program, appropriation, and fiscal year.
-Failures do not get published — they go to a human review queue. No
-unreconciled figure is served without a visible flag.
+**Reconciliation.** We apply two arithmetic checks to J-book figures. Check A:
+project-level amounts within an exhibit must sum to the program-element total
+in that same exhibit (tolerance: ±$0.001M). Check B: that program-element total
+must match the corresponding row in the official R-1 or P-1 Excel rollup for
+the same program, appropriation, and fiscal year. A failure does not suppress
+the figure — it marks the row unreconciled, files a review-queue record against
+the specific failed check, and the program page carries a Partial
+Reconciliation badge instead of a Reconciled one. A build gate then refuses any
+unreconciled row that has no queue record, so a figure can fail these checks in
+the open but never in silence.
 
 **Zero-absent rule.** When a program has no funding for a given fiscal year,
 the official rollup workbook simply omits the row (an absent row means zero).
@@ -115,31 +118,29 @@ SHA-256 matches the download manifest, and the XML element path resolves to a
 real node in that document. A number whose citation chain breaks does not
 render.
 
-**Per-build automated checks.** A Python test suite and a browser test suite
-both run green before any build ships, alongside the site verification gates
-and the dbt data-model assertions. The counts of gates, assertions, and
-evaluation questions are derived on every build from the artifacts that
-define them — dbt's compiled manifest, the `verify.mjs` gate registry, and
-the eval set with the gate's own threshold constant — and published in §3 of
-the live methodology page; this document does not pin them (an earlier
-revision's "197 test functions, 21 dbt assertions, 45 eval pairs, ≥41
-correct" had all drifted). As of the 2026-08-31 build: 24 site verification
-gates, 99 dbt data-model assertions, and a 48-question analyst-agent
-evaluation set requiring at least 44 correct answers and 100% citation
-resolution before shipping.
+**Per-build automated checks.** The automated check inventory includes Python
+and browser tests, alongside the site verification gates and the dbt data-model
+assertions. The counts of gates, assertions, and evaluation questions are
+derived on every build from the artifacts that define them — dbt's compiled
+manifest, the `verify.mjs` gate registry, and the eval set with the gate's own
+threshold constant — and published in §3 of the live methodology page; this
+document does not pin them (an earlier revision's "197 test functions, 21 dbt
+assertions, 45 eval pairs, ≥41 correct" had all drifted). As of the 2026-08-31
+build: 24 site verification gates, 99 dbt data-model assertions, and a
+48-question analyst-agent evaluation set requiring at least 44 correct answers
+and 100% citation resolution.
 
 ---
 
 ## 4. How confident to be
 
 **Company families — registry fact vs. name inference.** When we say a company
-received a total figure across its subsidiaries, we rely on one of two methods.
-*High confidence* (registry fact): the subsidiaries share one registered parent
-UEI in SAM.gov, so the *grouping* is a registry fact rather than a guess.
-*Medium confidence* (name inference): slightly different legal-name variants
-normalize to the same string (e.g., "THE BOEING COMPANY" and "BOEING COMPANY,
-THE (INC)"). Where a whole table is uniform, the per-row chip is suppressed and
-the method stated once.
+received a total figure across its member recipients, we rely on one of two
+methods. *High confidence* (registry fact): the recipients share one reported
+parent UEI, which does not prove ownership. *Medium confidence* (name
+inference): legal-name variants normalize to the same string (e.g., "THE
+BOEING COMPANY" and "BOEING COMPANY, THE (INC)"). Where a whole table is
+uniform, the per-row chip is suppressed and the method stated once.
 
 **The tier grades the grouping, never the name.** A family's label is the
 registered parent name of its largest member, chosen by an argmax over

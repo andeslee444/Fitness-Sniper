@@ -10,12 +10,15 @@
  *    leg now names the skipped keys instead.
  *
  * 2. NO TWO PUBLISHED FAMILIES RENDER ONE NAME. The Brown & Root holding
- *    family publishes as "KBR Wyle Services, LLC" (its recipients' own
- *    registered name), and a separate registry family, KBR WYLE SERVICES
- *    (rank 488 on 2026-09-25), carries that string too. Outside the top 200 it
- *    has no company page and no /companies/ row; if it ever enters the
- *    published set, two rows would read the same, so the leg fails until one
- *    is qualified.
+ *    family publishes as "KBR Wyle Services LLC" (its recipients' own
+ *    registered name; the live branch's label, ruling R-INT-4 — it was
+ *    "KBR Wyle Services, LLC"), and a separate registry family, KBR WYLE
+ *    SERVICES (rank 488 on 2026-09-25), carries that name as "KBR WYLE
+ *    SERVICES, LLC". Outside the top 200 it has no company page and no
+ *    /companies/ row; if it ever enters the published set, two rows would
+ *    read the same, so the leg fails until one is qualified. The comparison
+ *    ignores case, spacing and punctuation: without the comma the two
+ *    strings differ only in it, and a case/space-only key missed the pair.
  *
  * Pure helpers, fixtures only — no recompute, no build.
  */
@@ -64,7 +67,7 @@ describe("familyCoverageFindings — the census counts the whole published set",
 
 describe("publishedNameCollisions — one name, one published family", () => {
   const aliases = new Map([
-    ["BROWN ROOT INDUSTRIAL SERVICES HOLDINGS", { label: "KBR Wyle Services, LLC", evidence: "measured" }],
+    ["BROWN ROOT INDUSTRIAL SERVICES HOLDINGS", { label: "KBR Wyle Services LLC", evidence: "measured" }],
   ]);
 
   it("is silent while the registry family holding the same string is unpublished", () => {
@@ -84,7 +87,18 @@ describe("publishedNameCollisions — one name, one published family", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toContain("BROWN ROOT INDUSTRIAL SERVICES HOLDINGS");
     expect(findings[0]).toContain("KBR WYLE SERVICES");
-    expect(findings[0]).toContain('"KBR Wyle Services, LLC"');
+    expect(findings[0]).toContain('"KBR Wyle Services LLC"');
+  });
+
+  it("FAILS on a relabel and a registry string that differ only in punctuation", () => {
+    // The pair above, isolated: the seed label drops the comma the registry
+    // string keeps ("KBR Wyle Services LLC" vs "KBR WYLE SERVICES, LLC").
+    const findings = publishedNameCollisions(
+      [fam("ACME HOLDINGS", "ACME HOLDINGS INC"), fam("ACME", "ACME CORP., L.L.C.")],
+      new Map([["ACME HOLDINGS", { label: "Acme Corp LLC", evidence: "measured" }]]),
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toContain('"Acme Corp LLC"');
   });
 
   it("FAILS on two registry strings that differ only in case or spacing", () => {

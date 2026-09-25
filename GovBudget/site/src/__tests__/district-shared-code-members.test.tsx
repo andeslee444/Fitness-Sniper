@@ -134,7 +134,9 @@ describe("/district/{code}/ shared-code members", () => {
     );
     expect(rows).toHaveLength(3);
 
-    const codes = rows.map((r) => r.querySelector("span.font-mono")?.textContent);
+    // Integration 2026-09-25: the code label carries the live branch's
+    // type-system class `t-id` (it was `font-mono`); the text is unchanged.
+    const codes = rows.map((r) => r.querySelector("span.t-id")?.textContent);
     // NOT ["0145", "0145", …] — two rows printing one code name neither member.
     expect(codes).toEqual(["0145-APN", "0145-PANMC", "0601101E"]);
 
@@ -161,7 +163,7 @@ describe("/district/{code}/ shared-code members", () => {
     const row = container.querySelector(
       'table[data-sort-table="district-programs"] tbody tr'
     )!;
-    expect(row.querySelector("span.font-mono")?.textContent).toBe("0601101E");
+    expect(row.querySelector("span.t-id")?.textContent).toBe("0601101E");
     expect(row.querySelector("a")?.getAttribute("href")).toBe("/program/0601101E");
   });
 });

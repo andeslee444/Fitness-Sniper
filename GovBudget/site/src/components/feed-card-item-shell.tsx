@@ -157,7 +157,7 @@ export function FeedCardItemShell({
                 2292 members carry one title, so the bare code named neither.
                 The event's identities (data-xml-path above, the guid, the
                 basis entity) stay on the bare pe_bli. */}
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="t-id">
               {feedProgramKey(card)}
             </span>
             {card.program_url && hasProgramPage && (
@@ -171,7 +171,7 @@ export function FeedCardItemShell({
           </div>
         )}
         {card.family_key && !card.pe_bli && (
-          <p className="mt-1 text-xs font-mono">
+          <p className="mt-1 t-id">
             {companySlug ? (
               <Link
                 href={`/company/${companySlug}/`}
@@ -192,7 +192,7 @@ export function FeedCardItemShell({
         {card.figure_value !== null && (
           <span
             data-primary-value="feed-figure"
-            className="text-sm font-mono font-semibold"
+            className="t-figure t-figure--3"
           >
             {isConcentration || card.figure_units === "hhi" ? (
               <Cite
@@ -242,12 +242,14 @@ export function FeedCardItemShell({
           </span>
         )}
         <div className="sm:mt-1">
-          {/* Slightly larger + higher-contrast than muted-foreground
-              (visual-judge nit: "why?" was easy to miss). href keeps the
-              /methodology/#feed-{type} anchor the feed gate greps for. */}
+          {/* Higher-contrast than muted-foreground (visual-judge nit: "why?"
+              was easy to miss). The size is text-xs, on the type ladder: the
+              2026-09-12 type system retired the old off-ladder 13px (gate 25
+              tokens, check 6). href keeps the /methodology/#feed-{type}
+              anchor the feed gate greps for. */}
           <Link
             href={card.why_url}
-            className="text-[13px] text-foreground/70 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+            className="text-xs text-foreground/70 underline decoration-dotted hover:text-foreground hover:decoration-solid"
             title="Why am I seeing this?"
           >
             why flagged?

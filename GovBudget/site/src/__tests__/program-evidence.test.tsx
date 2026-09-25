@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { normalizeProgramHHI, parseGaoRatifications, selectRatifiedGaoFindings } from "@/lib/program-evidence";
+import { normalizeProgramHHI, parseGaoRatifications, selectPublishedGaoFindings, selectRatifiedGaoFindings } from "@/lib/program-evidence";
 import { getCitations, getFeed, getGaoCrosswalkStats, getGaoProgramFindings, getPrograms, type CitationsMap, type DerivedCitation, type GaoAssessment, type GaoProgramFindings, type GaoRelatedReport } from "@/lib/data";
 import { ProgramConcentration } from "@/components/program-concentration";
+import { concentrationHeadline } from "@/lib/concentration-basis";
 
 afterEach(cleanup);
 
@@ -118,14 +119,49 @@ describe("concentration evidence selection", () => {
     })).toBeNull();
   });
 
-  it.each(["0592", "0207146F", "0102110F"])("restores %s with traceable figures and an explicit scope", slug => {
+  // Integration 2026-09-25, ruling R-INT-2. The f15-family-browser branch
+  // published the all-link figure on these three pages; the merged site
+  // keeps ROADMAP #80 (publish the smaller true number): a page headlines
+  // the HIGH-confidence figure where it clears the mart's floor, and
+  // otherwise states the withholding and prints no figure. The all-link
+  // validator stays in front as a fail-closed guard — getPrograms() keeps a
+  // block only when normalizeProgramHHI() resolves it against citations.
+  // Expected states measured on the 2026-09-25 run-4 export: 0207146F clears
+  // the floor (3 high awards, 2 positive families); 0592 and 0102110F each
+  // have one high-confidence family, so their high index is withheld.
+  it.each([
+    ["0207146F", "published"],
+    ["0592", "withheld"],
+    ["0102110F", "withheld"],
+  ] as const)("%s headlines the high-confidence figure or the withheld state (#80), behind the all-link validator", (slug, expected) => {
     const hhi = getPrograms().find(row => row.slug === slug)!.hhi;
     expect(hhi).not.toBeNull();
+    // The live branch's validator is still guarding this block.
+    expect(normalizeProgramHHI(hhi, getCitations())).not.toBeNull();
+    const head = concentrationHeadline(hhi!);
+    expect(head.published ? "published" : "withheld").toBe(expected);
     const { container } = render(<ProgramConcentration hhi={hhi} />);
     expect(screen.getByRole("heading", { name: "Contractor Concentration" })).toBeVisible();
-    expect(screen.getByText(/High- and medium-confidence program–award links/)).toBeVisible();
-    expect(container.querySelector(`[data-fact-id="${hhi!.hhi_fact_id}"]`)).not.toBeNull();
-    expect(container.querySelector(`[data-fact-id="${hhi!.program_dollars_fact_id}"]`)).not.toBeNull();
+    // The all-link figures never reach the card, on either state.
+    expect(container.querySelector(`[data-fact-id="${hhi!.hhi_all_fact_id}"]`)).toBeNull();
+    expect(container.querySelector(`[data-fact-id="${hhi!.program_dollars_all_fact_id}"]`)).toBeNull();
+    expect(screen.queryByText(/High- and medium-confidence program–award links/)).toBeNull();
+    if (head.published) {
+      const bands = container.querySelectorAll("[data-hhi-band]");
+      expect(bands).toHaveLength(1);
+      expect(bands[0]).toHaveAttribute("data-hhi-basis", "high");
+      expect(hhi!.hhi_high_fact_id).not.toBeNull();
+      expect(hhi!.program_dollars_high_fact_id).not.toBeNull();
+      expect(container.querySelector(`[data-fact-id="${hhi!.hhi_high_fact_id}"]`)).not.toBeNull();
+      expect(container.querySelector(`[data-fact-id="${hhi!.program_dollars_high_fact_id}"]`)).not.toBeNull();
+      expect(container.querySelector("[data-concentration-withheld]")).toBeNull();
+    } else {
+      expect(hhi!.hhi_high).toBeNull();
+      expect(container.querySelector('[data-concentration-withheld="below-floor"]')).not.toBeNull();
+      expect(container.querySelector("[data-hhi-band]")).toBeNull();
+      expect(container.querySelector("[data-amount]")).toBeNull();
+      expect(container.querySelector("[data-fact-id]")).toBeNull();
+    }
   });
 
   it("gives every published concentration feed destination a cited concentration card", () => {
@@ -140,11 +176,18 @@ describe("concentration evidence selection", () => {
 });
 
 const header = "product_number,gao_program,slug,verdict,notes\r\n";
-const assessment = (product_number: string, common_name = "F-15EX"): GaoAssessment => ({
+const assessment = (
+  product_number: string, common_name = "F-15EX",
+  chain: Pick<GaoAssessment, "edition_year" | "inherited_from" | "program_key"> = { edition_year: 2025, inherited_from: null, program_key: "f15ex" },
+): GaoAssessment => ({
   product_number, common_name, gao_program: "different long title", assessment_type: "MDAP", description: "Original report wording.",
   pdf_page: 1, pdf_url: "https://www.gao.gov/assets/report.pdf", released: "2025-06-01", report_page: 1,
   report_title: "Weapon Systems Annual Assessment", report_url: "https://www.gao.gov/products/report", service: "Air Force",
+  ...chain,
 });
+// An older WSAA edition chained to the ratified anchor `anchor` (#30).
+const olderEdition = (product_number: string, edition_year: number, anchor: string, program_key = "f15ex", common_name = "F-15EX") =>
+  assessment(product_number, common_name, { edition_year, inherited_from: anchor, program_key });
 
 describe("GAO ratification boundary", () => {
   it("reads quoted commas, escaped quotes, CRLF, and duplicate identical decisions", () => {
@@ -175,20 +218,64 @@ describe("GAO ratification boundary", () => {
     expect(result["0207146F"].assessments[0]).toBe(accepted);
   });
 
-  it.each(["0207146F", "0102110F"])("publishes only the ratified annual assessment for %s", slug => {
-    expect(getGaoProgramFindings(slug)?.assessments.map(row => row.product_number)).toEqual(["GAO-25-107569"]);
+  // Integration 2026-09-25, ruling R-INT-3: an older edition carries no
+  // verdict of its own and passes only when the ratified anchor it is
+  // chained to (inherited_from + program_key) passes on the SAME page.
+  it("an older edition passes only behind its ratified anchor on the same page", () => {
+    const anchor = assessment("GAO-25-107569");
+    const chained = olderEdition("GAO-24-106831", 2024, "GAO-25-107569");
+    const otherProgram = olderEdition("GAO-23-106059", 2023, "GAO-25-107569", "mh139a", "MH-139A");
+    const unratifiedAnchor = assessment("GAO-25-107569", "B-52");
+    const orphan = olderEdition("GAO-24-106831", 2024, "GAO-25-107569", "b52", "B-52");
+    const data: Record<string, GaoProgramFindings> = {
+      // anchor ratified here: its own edition chain renders; a row chained
+      // to the same product under another program key does not.
+      "0207146F": { assessments: [anchor, chained, otherProgram], reports: [] },
+      // anchor NOT ratified here ('n'): its chained older edition drops too.
+      "0101127F": { assessments: [unratifiedAnchor, orphan], reports: [] },
+      // an older edition alone, its anchor ratified only on ANOTHER page.
+      "F015EX": { assessments: [chained], reports: [] },
+    };
+    const decisions = parseGaoRatifications(header + "GAO-25-107569,F-15EX,0207146F,y\nGAO-25-107569,B-52,0101127F,n");
+    const result = selectPublishedGaoFindings(data, decisions);
+    expect(Object.keys(result)).toEqual(["0207146F"]);
+    expect(result["0207146F"].assessments).toEqual([anchor, chained]);
+    // The guard alone would publish the anchor and nothing chained to it.
+    expect(selectRatifiedGaoFindings(data, decisions)["0207146F"].assessments).toEqual([anchor]);
   });
 
-  it("reports stats for actual ratifications and the rendered population", () => {
+  it.each(["0207146F", "0102110F"])("publishes the ratified annual assessment for %s and the older editions chained to it", slug => {
+    const rows = getGaoProgramFindings(slug)!.assessments;
+    const anchors = rows.filter(row => row.inherited_from === null);
+    expect(anchors.map(row => row.product_number)).toEqual(["GAO-25-107569"]);
+    // Every other row is an older edition of that same anchor's program.
+    for (const row of rows.filter(row => row.inherited_from !== null)) {
+      expect(row.inherited_from).toBe("GAO-25-107569");
+      expect(row.program_key).toBe(anchors[0].program_key);
+      expect(row.edition_year).toBeLessThan(anchors[0].edition_year);
+    }
+    // Measured on the 2026-09-25 run-4 export: the 2024 and 2023 editions.
+    expect(rows.map(row => row.product_number)).toEqual(["GAO-25-107569", "GAO-24-106831", "GAO-23-106059"]);
+  });
+
+  it("reports stats for actual ratifications and the rendered population, matching the export", () => {
     const decisions = parseGaoRatifications(readFileSync(join(process.cwd(), "../data-seeds/gao_program_xwalk.csv"), "utf8"));
     const findings = JSON.parse(readFileSync(join(process.cwd(), "../data/site/json/gao_program_findings.json"), "utf8"));
-    const selected = selectRatifiedGaoFindings(findings.by_slug, decisions);
-    expect(getGaoCrosswalkStats()).toMatchObject({
+    const selected = selectPublishedGaoFindings(findings.by_slug, decisions);
+    const stats = getGaoCrosswalkStats()!;
+    expect(stats).toMatchObject({
       accepted: decisions.filter(row => row.verdict === "y").length,
       rejected: decisions.filter(row => row.verdict === "n").length,
       adjudicated: decisions.length,
       pages_with_findings: Object.keys(selected).length,
       rendered_items: Object.values(selected).reduce((sum, row) => sum + row.assessments.length + row.reports.length, 0),
+      inherited_items: Object.values(selected).reduce((sum, row) => sum + row.assessments.filter(a => a.inherited_from !== null).length, 0),
     });
+    // The guard drops nothing the exporter published: the rendered
+    // population is the export's own (132 items, 70 inherited, on
+    // 2026-09-25's run-4 export).
+    expect(stats.rendered_items).toBe(findings.stats.rendered_items);
+    expect(stats.inherited_items).toBe(findings.stats.inherited_items);
+    expect(stats.pages_with_findings).toBe(findings.stats.pages_with_findings);
   });
 });
