@@ -14,6 +14,9 @@
  *     ([data-degraded="citation"]) — never a silent no-op or fake success.
  *     The embedded fast path is untouched (no fetch, zero behavior change on
  *     existing pages).
+ *   - Opt-in shardResolvableIds (Task 28b): ids a page lists as served by
+ *     the shards count as available to hasCitation() before they are
+ *     fetched; opening one is the fetch-on-miss above, nothing else.
  *   - Dispatches to the right card based on citation.kind
  *   - Drill-down history (Phase 5D Task 3b): opening another citation while
  *     the panel is already open (derived-input chips, breakdown-table row
@@ -85,6 +88,16 @@ interface CitationPanelProviderProps {
   /** Pre-sliced citations for the current page (from collectCitations()). */
   citations: CitationsMap;
   /**
+   * OPT-IN (Task 28b, ruling R-28b-4): fact ids whose bodies are NOT in
+   * `citations` but which the cite shards serve — the ids of the figures the
+   * page itself renders, never their bodies. For a listed id hasCitation()
+   * answers true, so a derived card's input chip naming it is clickable, and
+   * opening it takes the same fetch-on-miss path as any other id missing
+   * from the slice. Omitted (every page but /district/{code}/), hasCitation()
+   * knows the slice plus facts already resolved on this page view, as before.
+   */
+  shardResolvableIds?: readonly string[];
+  /**
    * Program context for the copy-as-footnote formatter (§P0-3) — the page's
    * program title + PE/BLI code. Optional: non-program pages omit it and the
    * footnote falls back to the trimmed page title as its head.
@@ -117,6 +130,7 @@ interface StackEntry {
 
 export function CitationPanelProvider({
   citations,
+  shardResolvableIds,
   program = null,
   children,
 }: CitationPanelProviderProps) {
@@ -194,12 +208,20 @@ export function CitationPanelProvider({
     [open, activeFactId, activeFigure, lookup, showCitation],
   );
 
+  // The page's opt-in shard-resolvable ids (empty when the prop is omitted).
+  const shardResolvable = useMemo(
+    () => new Set(shardResolvableIds),
+    [shardResolvableIds],
+  );
+
   // Derived-card input chips ask this before rendering a clickable chip —
   // calling openPanel again from inside the panel REPLACES the active card
-  // (stack navigation with Back).
+  // (stack navigation with Back). A listed id may have no body yet;
+  // openPanel's fetch-on-miss above resolves it on open.
   const hasCitation = useCallback(
-    (factId: string) => lookup(factId) !== undefined,
-    [lookup],
+    (factId: string) =>
+      lookup(factId) !== undefined || shardResolvable.has(factId),
+    [lookup, shardResolvable],
   );
 
   const goBack = useCallback(() => {

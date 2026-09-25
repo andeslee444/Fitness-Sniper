@@ -21,6 +21,16 @@
  * (lib/cite-shards.ts) — the same path a program page takes for any fact
  * outside its own slice.
  *
+ * FIX ROUND 1 (ruling R-28b-4). The empty slice also emptied what the panel's
+ * synchronous hasCitation() knows, so the header total's derived card — whose
+ * inputs are the page's own program rows — rendered its input chips plain:
+ * 674 chips on 213 cards across the 189 detail pages of that build. The
+ * detail page now passes the provider `shardResolvableIds`, the ids (never the
+ * bodies) of the state-A figures it renders; for a listed id hasCitation()
+ * answers true and a click fetches the body through the same fetch-on-miss
+ * path. The prop is opt-in: /district/ and every other page pass none, and
+ * their providers behave as before.
+ *
  * Same seams as district-shared-code-members.test.tsx — @/lib/data's district
  * readers and @/lib/fy-range — plus @/lib/corpus and @/lib/og, which the index
  * calls at module scope; CoverageNote still reads the shipped sidecars, as it
@@ -31,6 +41,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import type {
   Citation,
   CitationsMap,
@@ -39,12 +51,16 @@ import type {
   DistrictProgram,
 } from "@/lib/data";
 import { __resetCiteShardCache } from "@/lib/cite-shards";
+import { CitationPanelContext } from "@/components/cite";
+import { CitationPanelProvider } from "@/components/citation-panel";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const FID = {
   progA: "a1a1a1a1a1a1a1a1",
   progB: "b2b2b2b2b2b2b2b2",
+  // a program row with no obligation renders "—", not a Cite
+  progNull: "4b4b4b4b4b4b4b4b",
   fy25Net: "c3c3c3c3c3c3c3c3",
   fy25Gross: "d4d4d4d4d4d4d4d4",
   fy26Net: "e5e5e5e5e5e5e5e5",
@@ -141,7 +157,7 @@ function program(over: Partial<DistrictProgram>): DistrictProgram {
 const DETAIL: DistrictDetail = {
   pop_district: "ZZ-01",
   pop_state: "ZZ",
-  program_count: 2,
+  program_count: 3,
   award_count: 3,
   programs: [
     program({ fact_id: FID.progA, total_obligation: 8_000_000 }),
@@ -152,6 +168,14 @@ const DETAIL: DistrictDetail = {
       program_url: "/program/0603000N/",
       title: "Another Program",
       total_obligation: 2_500_000,
+    }),
+    program({
+      fact_id: FID.progNull,
+      pe_bli: "0604000A",
+      split_key: "0604000A",
+      program_url: "/program/0604000A/",
+      title: "A Program With No Obligation",
+      total_obligation: null,
     }),
   ],
   by_year: [
@@ -214,7 +238,10 @@ const INDEX: DistrictIndex = {
 
 const seen = vi.hoisted(() => ({
   providerCitations: [] as unknown[],
+  providerResolvable: [] as unknown[],
   sliced: [] as string[][],
+  // per-test override of the detail sidecar (null → DETAIL)
+  detail: null as DistrictDetail | null,
 }));
 
 vi.mock("@/lib/fy-range", () => ({
@@ -232,6 +259,7 @@ vi.mock("@/components/citation-panel", async (importOriginal) => {
     props: React.ComponentProps<typeof real.CitationPanelProvider>,
   ) {
     seen.providerCitations.push(props.citations);
+    seen.providerResolvable.push(props.shardResolvableIds);
     return <real.CitationPanelProvider {...props} />;
   }
   return { ...real, CitationPanelProvider: RecordingProvider };
@@ -248,7 +276,7 @@ vi.mock("@/lib/data", async (importOriginal) => {
   return {
     ...real,
     getDistrictIndex: () => INDEX,
-    getDistrictDetail: () => DETAIL,
+    getDistrictDetail: () => seen.detail ?? DETAIL,
     getProgramsCount: () => 1741,
     collectCitations: slice,
     collectCitationsWithInputs: slice,
@@ -275,7 +303,9 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   seen.providerCitations.length = 0;
+  seen.providerResolvable.length = 0;
   seen.sliced.length = 0;
+  seen.detail = null;
   __resetCiteShardCache();
   // A shard request returns ONLY that shard's rows, as the real files do;
   // anything else (asset-config's /config.json) rejects and falls back.
@@ -310,6 +340,37 @@ function factIds(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll("[data-amount][data-fact-id]"))
     .map((el) => el.getAttribute("data-fact-id")!)
     .sort();
+}
+
+/** Every rendered [data-fact-id], deduplicated and sorted. */
+function renderedIds(container: HTMLElement): string[] {
+  return [
+    ...new Set(
+      Array.from(container.querySelectorAll("[data-fact-id]")).map(
+        (el) => el.getAttribute("data-fact-id")!,
+      ),
+    ),
+  ].sort();
+}
+
+const shardOf = (id: string) => `/json/cite-shards/${id.slice(0, 2)}.json`;
+
+function panelQueryAll(testId: string): Element[] {
+  return Array.from(
+    document.querySelectorAll(`[data-testid="citation-panel"] [data-testid="${testId}"]`),
+  );
+}
+
+/** Click a figure, wait for its derived card, return the card's chip counts. */
+async function openDerived(container: HTMLElement, id: string) {
+  fireEvent.click(container.querySelector(`[data-fact-id="${id}"]`)!);
+  await waitFor(() => {
+    expect(panelQueryAll("derived-card")).toHaveLength(1);
+  });
+  return {
+    clickable: panelQueryAll("derived-input-chip"),
+    plain: panelQueryAll("derived-input-chip-static"),
+  };
 }
 
 function shardCalls(): string[] {
@@ -388,5 +449,147 @@ describe("/district/ citations come from the cite shards", () => {
       ).not.toBeNull();
     });
     expect(shardCalls()).toEqual(["/json/cite-shards/29.json"]);
+  });
+});
+
+// ── R-28b-4: the detail page lists the ids it renders ────────────────────────
+
+describe("/district/{code}/ keeps its derived cards' inputs clickable (R-28b-4)", () => {
+  it("passes the provider exactly the fact ids it renders — ids only, no bodies", async () => {
+    const container = await renderDetail();
+    const rendered = renderedIds(container);
+    expect(rendered).not.toContain(FID.progNull); // rendered "—", so not listed
+    expect(seen.providerResolvable.length).toBeGreaterThan(0);
+    for (const listed of seen.providerResolvable) {
+      expect(Array.isArray(listed)).toBe(true);
+      const ids = listed as unknown[];
+      for (const id of ids) expect(id).toMatch(/^[0-9a-f]{16}$/);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect([...(ids as string[])].sort()).toEqual(rendered);
+    }
+    // ...and the embedded slice stays empty: the list carries no bodies
+    for (const citations of seen.providerCitations) {
+      expect(citations).toEqual({});
+    }
+    expect(seen.sliced).toEqual([]);
+  });
+
+  it("the list follows what renders: no cited card and no gross column list neither id", async () => {
+    seen.detail = {
+      ...DETAIL,
+      total_cited_dollars: DETAIL.total_linkable_dollars,
+      by_year: DETAIL.by_year!.map((r) => ({
+        ...r,
+        positive_obligation: r.total_obligation,
+      })),
+    };
+    const container = await renderDetail();
+    const expected = [FID.progA, FID.progB, FID.fy25Net, FID.fy26Net, FID.linkable].sort();
+    expect(renderedIds(container)).toEqual(expected);
+    for (const listed of seen.providerResolvable) {
+      expect([...(listed as string[])].sort()).toEqual(expected);
+    }
+  });
+
+  it.each([
+    ["the header (linkable) total", FID.linkable],
+    ["the cited total", FID.cited],
+  ])(
+    "%s's derived card shows its inputs as clickable chips, and a chip opens its row from the shard",
+    async (_label, id) => {
+      const container = await renderDetail();
+      const { clickable, plain } = await openDerived(container, id);
+      expect(plain).toHaveLength(0);
+      expect(clickable.map((c) => c.textContent)).toEqual([
+        `#${FID.progA.slice(-8)}`,
+        `#${FID.progB.slice(-8)}`,
+      ]);
+
+      fireEvent.click(clickable[0]);
+      await waitFor(() => {
+        expect(panelQueryAll("usaspending-card")).toHaveLength(1);
+      });
+      // the SAME fetch-on-miss path: one shard per fact, nothing else fetched
+      expect(shardCalls()).toEqual([shardOf(id), shardOf(FID.progA)]);
+    },
+  );
+});
+
+// ── the list is opt-in ───────────────────────────────────────────────────────
+
+describe("shardResolvableIds is opt-in — a provider without it is unchanged", () => {
+  function Probe({ ids }: { ids: string[] }) {
+    const { hasCitation } = React.useContext(CitationPanelContext);
+    return (
+      <ul>
+        {ids.map((id) => (
+          <li key={id} data-probe={id}>
+            {String(hasCitation!(id))}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  const probe = (container: HTMLElement) =>
+    Object.fromEntries(
+      Array.from(container.querySelectorAll("[data-probe]")).map((el) => [
+        el.getAttribute("data-probe"),
+        el.textContent,
+      ]),
+    );
+
+  it("without the prop, hasCitation() knows the embedded slice and nothing else", () => {
+    const { container } = render(
+      <CitationPanelProvider citations={{ [FID.progA]: ALL[FID.progA] }}>
+        <Probe ids={[FID.progA, FID.progB, FID.linkable]} />
+      </CitationPanelProvider>,
+    );
+    expect(probe(container)).toEqual({
+      [FID.progA]: "true",
+      [FID.progB]: "false",
+      [FID.linkable]: "false",
+    });
+  });
+
+  it("with the prop, a listed id also answers true; an unlisted one still does not", () => {
+    const { container } = render(
+      <CitationPanelProvider
+        citations={{ [FID.progA]: ALL[FID.progA] }}
+        shardResolvableIds={[FID.progB]}
+      >
+        <Probe ids={[FID.progA, FID.progB, FID.linkable]} />
+      </CitationPanelProvider>,
+    );
+    expect(probe(container)).toEqual({
+      [FID.progA]: "true",
+      [FID.progB]: "true",
+      [FID.linkable]: "false",
+    });
+  });
+
+  it("/district/ passes no list, so a row's inputs (never rendered there) stay plain chips", async () => {
+    const container = await renderIndex();
+    expect(seen.providerResolvable.length).toBeGreaterThan(0);
+    for (const listed of seen.providerResolvable) expect(listed).toBeUndefined();
+    const { clickable, plain } = await openDerived(container, FID.linkable);
+    expect(clickable).toHaveLength(0);
+    expect(plain).toHaveLength(2);
+  });
+
+  it("only /district/{code}/ passes the list; every other provider mount passes the props it did", () => {
+    const SRC = resolve(__dirname, "..");
+    const tsx = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        if (e.name === "__tests__" || e.name === "node_modules") return [];
+        const full = join(dir, e.name);
+        if (e.isDirectory()) return tsx(full);
+        return e.name.endsWith(".tsx") && !e.name.endsWith(".test.tsx") ? [full] : [];
+      });
+    const owners = tsx(SRC)
+      .filter((f) => readFileSync(f, "utf8").includes("shardResolvableIds="))
+      .map((f) => relative(SRC, f))
+      .sort();
+    expect(owners).toEqual(["app/district/[district]/page.tsx"]);
   });
 });

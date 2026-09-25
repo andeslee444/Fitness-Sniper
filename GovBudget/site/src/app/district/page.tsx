@@ -59,7 +59,11 @@ export default function DistrictIndexPage() {
     // still a state-A <Cite>, so a click opens its citation from the shard.
     // Nothing drillable is lost: a row's inputs are that district's program
     // rows, which this page never embedded, so its input chips were already
-    // plain; the grand total's citation has no fact-id inputs at all.
+    // plain; the grand total's citation has no fact-id inputs at all. That is
+    // also why this page, unlike /district/{code}/, passes no
+    // shardResolvableIds (R-28b-4): none of the 599 inputs on its 180 row
+    // cards of that build is a figure it renders, so listing its own ids
+    // would make no chip clickable.
     <CitationPanelProvider citations={{}}>
       <div className="spine py-8">
         <Breadcrumbs

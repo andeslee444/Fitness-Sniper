@@ -13,9 +13,11 @@
  *   - Input chips:
  *       16-hex fact_id inputs → clickable chips that open THAT citation in
  *       the panel (replacing the current card — "stack/replace" navigation).
- *       Chips are only clickable when the input citation is present in the
- *       page's citation slice (hasCitation); otherwise they render as plain
- *       mono chips with an explanatory title.
+ *       Chips are only clickable when the panel's hasCitation() answers
+ *       true — the input is in the page's citation slice, was already
+ *       resolved on this page view, or is one the page listed as
+ *       shard-resolvable; otherwise they render as plain mono chips with an
+ *       explanatory title.
  *       URL inputs → external links (new tab).
  *   - "recorded {retrieved_at}" note when present
  */

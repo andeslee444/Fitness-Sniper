@@ -62,8 +62,10 @@ interface CitationPanelContextValue {
    */
   openPanel: (factId: string, figure?: FootnoteFigure) => void;
   /**
-   * True when the given fact_id is available in the current page's citation
-   * slice (derived-card input chips use this to decide clickability).
+   * True when the given fact_id is available to the current page's panel —
+   * in its citation slice, already resolved on this page view, or listed by
+   * the page as shard-resolvable (derived-card input chips use this to
+   * decide clickability).
    * Optional — consumers treat a missing implementation as "not available".
    */
   hasCitation?: (factId: string) => boolean;

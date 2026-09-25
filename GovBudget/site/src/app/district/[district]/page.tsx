@@ -124,6 +124,26 @@ export default async function DistrictDetailPage({ params }: Props) {
   const citedEqualsLinkable =
     detail.total_cited_dollars === detail.total_linkable_dollars;
 
+  // R-28b-4: the fact id of every state-A <Cite> this page renders, and no
+  // other — each entry carries the condition its <Cite> renders under below
+  // (a program row with no obligation renders "—", not a Cite). Ids only:
+  // the provider fetches a body from the shards when it is opened.
+  const renderedFactIds = [
+    ...new Set(
+      [
+        detail.total_linkable_fact_id,
+        citedEqualsLinkable ? null : detail.total_cited_fact_id,
+        ...byYear.flatMap((row) => [
+          row.total_fact_id,
+          hasDeobligations ? row.positive_fact_id : null,
+        ]),
+        ...detail.programs.map((prog) =>
+          prog.total_obligation !== null ? prog.fact_id : null,
+        ),
+      ].filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
   return (
     // §P2-1 page weight (Task 28b): citations resolve LAZILY through
     // cite-shards (/json/cite-shards/{fact_id[:2]}.json), so the provider
@@ -138,15 +158,17 @@ export default async function DistrictDetailPage({ params }: Props) {
     // from its shard, showing the panel's loading state while it does and its
     // degraded state if the shard cannot be reached.
     //
-    // What this gives up, stated here rather than left to be found: the
-    // header total (and the cited total, where it renders) is a derived
-    // citation whose inputs are this page's own program rows — on all 189
-    // pages of that build — and its input chips were clickable only because
-    // those rows sat in the slice. The panel's hasCitation() is synchronous
-    // and knows only the slice plus facts already opened on this page view,
-    // so a chip now renders plain until the reader has opened that row. Each
-    // input is still one click away as its own figure in the program table.
-    <CitationPanelProvider citations={{}}>
+    // The drill-down an empty slice would have cost, and how it is kept
+    // (fix round 1, ruling R-28b-4): the header total (and the cited total,
+    // where it renders) is a derived citation whose inputs are this page's
+    // own program rows — on all 189 pages of that build. Its input chips are
+    // clickable only when the panel's synchronous hasCitation() answers true,
+    // and with an empty slice alone it knows only facts already resolved on
+    // this page view. So the provider is also handed renderedFactIds — the
+    // ids, never the bodies — and treats each as resolvable: its chip is
+    // clickable, and a click fetches its body through the same shard path.
+    // On /district/VA-11/ of that build that is 49 ids, 1,054 raw bytes.
+    <CitationPanelProvider citations={{}} shardResolvableIds={renderedFactIds}>
       <div className="spine py-8">
         <Breadcrumbs
           items={[
