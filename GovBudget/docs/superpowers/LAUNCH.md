@@ -110,11 +110,14 @@ shape, #85's question, not the window's). Run `--dry-run` before any write; it
 plans under whichever window you gave, prints the pairs per organization and
 edition FY, and writes nothing.
 
-**Grain warning (Task 26 fix wave, 2026-09-25).** A `--yes` run whose window
-spans several editions — the full DARPA re-run above is one — writes a
-(pe_bli, award_piid) pair once per edition year its award's transactions fall
-in: `budget_line_awards` is unique on (pe_bli, exhibit, fiscal_year,
-award_piid), not on the pair, and nothing downstream asserts the pair grain.
+**Grain warning (Task 26 fix wave, 2026-09-25).** A `--yes` run over several
+PB editions — the full DARPA re-run above is one — writes a (pe_bli,
+award_piid) pair once per line-edition whose window the award falls in: under
+the default window, once per edition year its transactions fall in; under
+`--fy-start/--fy-end` or `--all-years`, once per matching edition
+(`_line_window` in `src/govbudget/jbooks/crosswalk.py`). `budget_line_awards`
+is unique on (pe_bli, exhibit, fiscal_year, award_piid), not on the pair, and
+nothing downstream asserts the pair grain.
 `fct_program_concentration` would then add that award's dollars twice to its
 family and program sums (the district marts' `select distinct` collapses such
 rows only while their labels agree). It is unique today — 12,601
@@ -562,9 +565,9 @@ Two commands require `ANTHROPIC_API_KEY` to run live.  Without it both
 commands report `BLOCKED` (not `FAIL`) and exit with code 2.
 
 > **Status 2026-09-25.** The dossier batch has run: the paid batch produced
-> all 50 dossiers on 2026-07-02 (`d1581362`); 40 of the top-50 were
-> re-authored by subagents on 2026-07-05 (`f32a74b8`, the 10 stable programs
-> kept theirs); the set changed again through small paid runs as the top-50
+> all 50 dossiers on 2026-07-02 (`d1581362`); 40 dossiers were authored by
+> subagents on 2026-07-05 for the programs the service J-book ingestion moved
+> into the top-50 (`f32a74b8`; the 10 stable programs kept theirs); the set changed again through small paid runs as the top-50
 > moved — two members on 2026-08-11 (`031d61ce`, $0.46), the
 > two split programs on 2026-08-21 (`ff846674`, $0.41) and fifteen Navy
 > programs on 2026-08-31 (`24a06f8b`, $0.55) — and one dossier (3010-SCN)

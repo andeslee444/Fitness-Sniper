@@ -318,6 +318,19 @@ describe("findGlueSitesInSource — a JSX comment between two text runs", () => 
     }
   });
 
+  it("a reference the decoder has no name for is content, not punctuation: '&rarr;' and '&minus;' after a comment are glue (round 2)", () => {
+    // &rarr; ×14, &minus; ×4, &middot; ×2, &dagger; ×1 in site/src. They used
+    // to decode to ";", which the right-edge exemption carries, so
+    // "floor→ section" and "floor−5" passed silently.
+    for (const run of [
+      "      above the floor\n      {/* c */}\n      &rarr; section 4 states.",
+      "      above the floor\n      {/* c */}\n      &minus;5 in section 4.",
+    ]) {
+      const hits = findGlueSitesInSource("fixture.tsx", wrapEl(run), ".");
+      expect(hits.map((h) => h.why)).toEqual(["comment"]);
+    }
+  });
+
   it("a closing quote written as a reference is not an opener: '&rdquo;' ⏎ {comment} ⏎ 'section' is glue", () => {
     const src = wrapEl("      above the &ldquo;floor&rdquo;\n      {/* c */}\n      section 4 states.");
     expect(findGlueSitesInSource("fixture.tsx", src, ".")).toHaveLength(1);

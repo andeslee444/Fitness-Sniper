@@ -161,15 +161,27 @@ const COMMENT_JOIN_RIGHT_OK = /[.,;:!?)\]}”’"'%…/\-–—\u00a0]/;
  * quotes and dashes as &ldquo; &rsquo; &mdash; … — so the join's edge
  * character is the reference's character, not its closing ";". A
  * non-breaking space (&nbsp;) is a space: both OK sets carry it.
+ *
+ * A reference this table has no name for (&rarr;, &minus;, &middot;,
+ * &dagger;, … — all in site/src) decodes to UNKNOWN_REF, which neither OK
+ * set carries: an unrecognised character touching a word is treated as
+ * glue-able content. (Round 2 of the Task 26 fix wave: the fallback was
+ * ";", which the right-edge set exempts, so "floor→ section" and "floor−5"
+ * passed silently.)
  */
 const NAMED_REFS = {
   ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’", apos: "'", quot: '"',
   mdash: "—", ndash: "–", hellip: "…", amp: "&", nbsp: "\u00a0", lt: "<", gt: ">",
 };
+const UNKNOWN_REF = "\ufffd";
 const decodeRef = (body) => {
-  if (/^#x/i.test(body)) return String.fromCodePoint(parseInt(body.slice(2), 16));
-  if (body[0] === "#") return String.fromCodePoint(parseInt(body.slice(1), 10));
-  return NAMED_REFS[body] ?? ";";
+  const cp = /^#x/i.test(body)
+    ? parseInt(body.slice(2), 16)
+    : body[0] === "#"
+      ? parseInt(body.slice(1), 10)
+      : null;
+  if (cp === null) return NAMED_REFS[body] ?? UNKNOWN_REF;
+  return cp <= 0x10ffff ? String.fromCodePoint(cp) : UNKNOWN_REF;
 };
 const REF = "&(#\\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);";
 const lastRenderedChar = (s) => {

@@ -16,7 +16,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5A | Influence layer (Senate LDA) | verify-phase5a | ✅ merged | 4,258 filings; 32,780 program mentions/245 programs; match 80% *(at 5A; the gate floor was raised to 0.85 on 2026-09-01, `bcfe9680` — measured 46/50 = 92% on the re-pulled 5,393-filing corpus; noted 2026-09-25)* |
 | 5B-1 | Citation + export backbone | verify-phase5b1 | ✅ merged | 44,754 citations (3,417 pdf / 8,557 workbook / 32,780 lda); 0 unresolved; 50/50 re-derived |
 | 5B-2 | Site skeleton: Next.js SSG + DuckDB-WASM + PDF.js citation panel + receipts mode + two-tier search + SEO | verify-phase5b2 | ✅ merged | 556 SSG pages (326 program/200 company/20 agency); 7 gates PASS; search 24/24 incl. typos; LHCI ≥90; a11y 0 serious; visual gate r2 medians 5/5/5/5 (r1 FAILED on doubled uncited-flag + mobile nav — agent-visual judging caught what no mechanical gate saw); 8,834 amount spans full-corpus verified cited/chipped/flagged |
-| 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | ✅ merged (dossier batch pending API key) | 4,923 pages (feed 290 cards/4 types; 106 district; 4,258 filing w/ noindex policy; 554 OG cards); 7+ citation kinds, uncited_datasets 11→4 (dim_geography, dim_lobbyists, fct_budget_to_awards, jbook_narratives); 12 npm gates PASS; visual r3 5/5/5/5; 692 pytest/192 vitest. Dossier LLM batch BLOCKED on ANTHROPIC_API_KEY (cost-capped ≤$50; `govbudget dossiers submit` when exported) *(resolved, noted 2026-09-25: the batch ran 2026-07-02 — 50/50 dossiers, 973/974 claims warehouse-cited, `d1581362`; 40 of the top-50 were re-authored by subagents on 2026-07-05, `f32a74b8` (the 10 stable programs kept theirs), and the set changed again through small paid runs on 2026-08-11 (`031d61ce`), 2026-08-21 (`ff846674`), 2026-08-31 (`24a06f8b`) and 2026-09-12 (`cc399d74`, 3010-SCN); `uncited_datasets` is `[]` in the 2026-09-25 export, so all four datasets named here now carry a citation kind)* |
+| 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | ✅ merged (dossier batch pending API key) | 4,923 pages (feed 290 cards/4 types; 106 district; 4,258 filing w/ noindex policy; 554 OG cards); 7+ citation kinds, uncited_datasets 11→4 (dim_geography, dim_lobbyists, fct_budget_to_awards, jbook_narratives); 12 npm gates PASS; visual r3 5/5/5/5; 692 pytest/192 vitest. Dossier LLM batch BLOCKED on ANTHROPIC_API_KEY (cost-capped ≤$50; `govbudget dossiers submit` when exported) *(resolved, noted 2026-09-25: the batch ran 2026-07-02 — 50/50 dossiers, 973/974 claims warehouse-cited, `d1581362`; 40 dossiers were authored by subagents on 2026-07-05 for the programs the service J-book ingestion moved into the top-50, `f32a74b8` (the 10 stable programs kept theirs), and the set changed again through small paid runs on 2026-08-11 (`031d61ce`), 2026-08-21 (`ff846674`), 2026-08-31 (`24a06f8b`) and 2026-09-12 (`cc399d74`, 3010-SCN); `uncited_datasets` is `[]` in the 2026-09-25 export, so all four datasets named here now carry a citation kind)* |
 | 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | ✅ COMPLETE | Analyst agent (sandboxed text-to-SQL: enable_external_access=false, cached schema card, 8-turn tool loop); eval set drift-corrected (freshness gate); verify-phase5 exits 0; live eval 45/45 accuracy + 40/40 citation resolution (100%) — run artifact data/research/eval-runs/eval-20260702T085924Z.json (2026-07-02); verify-phase1..5b3 + phase5 assembly all PASS; site live at https://govbudget.vercel.app; launch tooling (R2 upload/CORS/config-rewrite + LAUNCH.md); 830 pytest/192 vitest |
 | 5C | UX trust journey: linkgraph integrity, coverage notes, degraded-mode, receipt moment, 5 persona journeys, answer-fold, motion | 7 npm gates (G1–G7) | ✅ COMPLETE 2026-07-02 | 7 new gates all green; every gate has recorded proof-can-fail; 19/19 total npm gates; visual judges round-2 medians D1–D4:4 V1:5 V2:5 V3:4(after fix) V4:5 V5:4; final opus review SHIP; deployed https://govbudget.vercel.app; live computer-use verification of all 5 persona journeys PASS (PDF panel/downloads verified in degraded mode pending R2); data bug: 146/1,982 PEs had doubled trajectory rows — fixed (detail-only pivot + exporter derived-input join mirror); 4,446 trajectory citations re-verified; 136 dead-link feed events resolved from fct_budget_lines detail *(the degraded-mode caveat is resolved, noted 2026-09-25: R2 went live at `assets.fiscalreceipts.com` on 2026-07-02 — see Remaining launch items — and `scripts/launch/deploy.sh`, since `712485dc` (2026-08-06), syncs R2 before its Vercel deploy unless run with `--skip-r2`, its pages-only mode)* |
 | 5D | Years matrix (/years/): 462 programs × FY columns, project sub-rows, cited cells via sharded lazy citations; derived breakdown tables (show-your-work, 1,068 sidecars) | G8 yearsmatrix gate (20th) | ✅ COMPLETE 2026-07-02 | judges r1 8/9 → M2 fix (sticky sum row, legend, decimal rule) → M2 re-score 5/5/5; 20/20 gates; 1,007 pytest / 271 vitest; live at fiscalreceipts.com/years/ |
@@ -970,10 +970,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   projected-row dry-run abort. **Status:** CLOSED 2026-09-05 (code) — default window = each line's own PB-edition FY (federal FY, resolved per line); `--fy-start/--fy-end` required together (one bound alone exits 2); `--all-years` is the opt-in to the old unbounded shape; EVERY run (default included, per the 2026-09-11 controller ruling) is planned first by `plan_crosswalk_org` and aborts above 500,000 projected pairs unless `--yes`; `--dry-run` prints pairs per org and edition FY and writes nothing. Data unchanged: the 124,502 mechanical DARPA rows (all `fiscal_year=2026`, rationale "all loaded award years") are still in `budget_line_awards`; the re-run under the new default (plans 761,029 DARPA pairs, measured read-only 2026-09-05, so it needs `--yes`) is the controller's call and is what #85 is blocked on. Canonical invocation: LAUNCH.md Step 0.
   *Addendum 2026-09-25 (Task 26 fix wave; A's review deferral):* the published
   grain is not asserted. `budget_line_awards` is unique on (pe_bli, exhibit,
-  fiscal_year, award_piid), so the `--yes` re-run above — any run whose window
-  spans several editions — writes one (pe_bli, award_piid) pair once per
-  edition year its award's transactions fall in, and nothing asserts the pair
-  grain downstream: `fct_program_concentration` would add that award's dollars
+  fiscal_year, award_piid), so the `--yes` re-run above — any run over
+  several PB editions — writes one (pe_bli, award_piid) pair once per
+  line-edition whose window the award falls in (under the default window,
+  once per edition year its transactions fall in; under `--fy-start/--fy-end`
+  or `--all-years`, once per matching edition — `_line_window`,
+  `src/govbudget/jbooks/crosswalk.py`; qualified in fix-wave round 2), and
+  nothing asserts the pair grain downstream: `fct_program_concentration` would add that award's dollars
   twice to its family and program sums (the district marts join through a
   `select distinct` over award, program, account, title and organization, so
   they double only where the edition rows carry different labels — #152).
@@ -2028,10 +2031,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   would still withhold 3010 and 3215. The branch keeps the link rule (the
   smaller claim, consistent with #70/#82); a change moves both surfaces
   together. The rule governs pages and cards only: the downloadable warehouse
-  ships `fct_program_concentration` at code grain with both bases for every
-  code, 3010 and 3215 included (run-4 export, read 2026-09-25: hhi_all 9,329
-  over $7.78B and 3,010 — the pooled figures), as `docs/methodology.md` §4
-  says both bases ship there; whether shared-code rows in that copy should
+  ships `fct_program_concentration` at code grain — the all-links basis for
+  every code, the high-only index only where it clears the floor (63 of its
+  536 rows) — 3010 and 3215 included (run-4 export, read 2026-09-25: hhi_all
+  9,329 over $7.78B and 3,010, the pooled figures; hhi_high null on 3010,
+  3,122 on 3215; restated in fix-wave round 2, which found "both bases for
+  every code" overstated); `docs/methodology.md` §4 says both bases ship
+  there; whether shared-code rows in that copy should
   follow `_concentration_owner` or be labelled code-level is part of this
   call (added 2026-09-25, Task 26). Decide with #129 (b).
   **Status:** open (owner call, 2026-09-25).
@@ -2203,7 +2209,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (2026-09-25).
 
 - **#143 Gate 24 leg (p1) and its sidecar floor have no proof-it-can-fail
-  test.** `runCrosswalkCountLeg` (`site/scripts/gates/datatruth.mjs:2557`) is
+  test.** `runCrosswalkCountLeg` (`site/scripts/gates/datatruth.mjs`) is
   not exported and has no injected seam, and it holds (p1)'s id-order check,
   its per-slot value check and the `MIN_FLOW_SIDECARS` floor (`:2348`, 120).
   `site/scripts/gates/__tests__/crosswalk-counts.test.mjs` imports only the
@@ -2297,9 +2303,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 - **#150 `generate-og.mjs` never prunes.** It writes a PNG per current page
   and skips fresh ones (`site/scripts/generate-og.mjs:234-242`) but deletes
-  nothing, so `site/public/og/` holds 2,822 PNGs against the 2,811 chain C run
-  4 rendered — eleven stale cards for families that left the top 200 ship in
-  `out/og/` (counted 2026-09-25). Fix: prune PNGs outside the current render
+  nothing, so `site/public/og/` carries twelve stale company cards that ship
+  in `out/og/`: 212 `company-*.png` files against the 200 families in
+  `data/site/json/entities_top.json`, and the twelve outside that list all
+  date 2026-09-19, older than the run-4 export, so run 4 never wrote them
+  (counted 2026-09-25; corrected in fix-wave round 2 from "eleven", which
+  subtracted run 4's 2,811 rendered cards from the 2,822 PNGs instead of
+  counting cards outside the current set). Fix: prune PNGs outside the current render
   set (gitignored build output), then re-read gate 11's count note. Source:
   chain C run 4 via `task-26-polish-list.md` item 16. Effort: hours.
   **Status:** open (2026-09-25).
@@ -2400,7 +2410,11 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   world ──" above `_run`/`_capture`, while the module docstring (Task 26) now
   names the preflight checks, `drift_report` and the run record too. Fix:
   "the two subprocess doors". Source: implementer A, found after its commit.
-  Effort: minutes. **Status:** open (2026-09-25).
+  Effort: minutes.
+  *Superseded marker, as filed in `2ef7471e`: open (2026-09-25).*
+  **Status:** CLOSED 2026-09-25 — `2631383e` (banner now reads "the two
+  subprocess doors (the module docstring lists the others)"); filed after
+  the fix landed.
 
 - **#160 The latent SAM clause names the wrong registration.** When
   `companies_with_sam > 0`, `/methodology/` (`site/src/app/methodology/page.tsx:906`)
