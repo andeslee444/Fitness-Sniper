@@ -19,6 +19,7 @@ import {
 } from "./dossier";
 import type { FamilyEventsPayload } from "./entity-families";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
+import { flowSidecarOwners } from "./flow-owner";
 import {
   isZeroContentDetails,
   setIngestedServiceOrgs,
@@ -107,8 +108,9 @@ export interface SiteMeta {
    * turns the rule into the sentence those pages render instead of the
    * generic "not yet ingested", and `fy` is the edition that sentence names —
    * carried here so no fiscal year is typed into THOSE sentences. Not into
-   * the site: the ingested coverage note (service-books-note.tsx) and
-   * what-it-is.ts still type FY2026, and this payload does not reach them.
+   * the site: the ingested-branch sentences in service-books-note.tsx and
+   * what-it-is.ts still type FY2026 — this payload reaches what-it-is.ts
+   * (serviceAbsence, fed to orgAbsenceWording) but not those branches.
    * Absent on pre-17c exports; {} when no absence is recorded. An entry with
    * no `fy` (an export that predates the field) makes orgAbsenceWording THROW
    * where the sentence is built, rather than render a yearless "FY".
@@ -205,34 +207,6 @@ export interface SiteMeta {
    */
   programs_coverage?: SiteMetaProgramsCoverage;
   /**
-   * ROADMAP #72: held-out precision study on the published link tiers, from a
-   * stratified random sample per method hand-adjudicated with the same
-   * two-reviewer rubric the waves use (scripts/precision_study.py
-   * draw/load/report against link_precision_samples).
-   *
-   * `methods` counts each sampled link under the tier it PUBLISHES under
-   * today, not the one it carried when the sample was drawn — the 2026-09-04
-   * final review found the page printing 34/60 for `fpds-ap+account`, a tier
-   * withdrawn the same day, and a flattering 60/60 for the `fpds-ap` tier its
-   * links had moved into (the honest pooled figure is 94/120). Sampled links
-   * the corpus no longer publishes count toward neither number.
-   *
-   * `unmeasured` is every published tier with NO figure under the published
-   * rubric — because the study drew no sample from it, or because its only
-   * verdicts answered a different question (the 2026-09-04 `account+subagency`
-   * sample was judged on whether the mechanical rule had fired; migration 015
-   * stores those rows under rubric `rule-fired` and they are never published —
-   * that tier left this list on 2026-09-11, when a fresh sample judged on
-   * program attribution loaded at 0/60).
-   * /methodology/ names them in prose so a tier with no number never reads as
-   * one that passed; gate 24 leg n enforces that.
-   *
-   * `sampled_at` dates the study so a reader can see how far the corpus may
-   * have moved since. {} until a study's verdicts are loaded — /methodology/
-   * renders the paragraph only when `methods` is non-empty. Optional (not
-   * just possibly-empty) because it is absent on pre-#72 exports.
-   */
-  /**
    * ROADMAP #109: per-award hand-adjudication COVERAGE of the budget→award
    * crosswalk — how many of the links the crosswalk grades high or medium
    * carry an `award_pe_adjudications` row at all, what those adjudications
@@ -314,6 +288,34 @@ export interface SiteMeta {
       >;
     };
   };
+  /**
+   * ROADMAP #72: held-out precision study on the published link tiers, from a
+   * stratified random sample per method hand-adjudicated with the same
+   * two-reviewer rubric the waves use (scripts/precision_study.py
+   * draw/load/report against link_precision_samples).
+   *
+   * `methods` counts each sampled link under the tier it PUBLISHES under
+   * today, not the one it carried when the sample was drawn — the 2026-09-04
+   * final review found the page printing 34/60 for `fpds-ap+account`, a tier
+   * withdrawn the same day, and a flattering 60/60 for the `fpds-ap` tier its
+   * links had moved into (the honest pooled figure is 94/120). Sampled links
+   * the corpus no longer publishes count toward neither number.
+   *
+   * `unmeasured` is every published tier with NO figure under the published
+   * rubric — because the study drew no sample from it, or because its only
+   * verdicts answered a different question (the 2026-09-04 `account+subagency`
+   * sample was judged on whether the mechanical rule had fired; migration 015
+   * stores those rows under rubric `rule-fired` and they are never published —
+   * that tier left this list on 2026-09-11, when a fresh sample judged on
+   * program attribution loaded at 0/60).
+   * /methodology/ names them in prose so a tier with no number never reads as
+   * one that passed; gate 24 leg n enforces that.
+   *
+   * `sampled_at` dates the study so a reader can see how far the corpus may
+   * have moved since. {} until a study's verdicts are loaded — /methodology/
+   * renders the paragraph only when `methods` is non-empty. Optional (not
+   * just possibly-empty) because it is absent on pre-#72 exports.
+   */
   link_precision?: {
     /** The ONE question every figure in `methods` answered (ROADMAP #79):
      *  always "attribution" on a current export — the exporter reads
@@ -352,8 +354,9 @@ export interface SiteMeta {
    * uncited `$…` token and an allowlist entry must be a literal, so the page
    * publishes the share of residue VALUE as a percentage instead. The
    * percentages are shares of VALUE, never of records — the page says so in
-   * every clause that carries one, because 10.6% of the residue's value is
-   * 44.9% of its records.
+   * every clause that carries one, because the two differ widely: on the
+   * 2026-09-25 run-4 export the unattempted residue is 10.9% of its value
+   * and 44.9% of its records (12,740 of 28,344).
    *
    * All fields or none — the exporter returns {} until a pass is recorded, and
    * the page then renders no paragraph at all. Optional (not merely
@@ -617,8 +620,9 @@ export interface ProgramTrajectoryFactIds {
  * the mart also publishes `positive_family_count_high` so the floor is
  * auditable, though this block does not carry it). Not only when
  * `award_count_high === 0`: 0603882C has 4 high awards and a null
- * `top_family_high`, and across the 407 withheld rows there are 0 with a
- * top family but no index. That pairing is what `concentrationHeadline()`
+ * `top_family_high`, and across the withheld rows there are 0 with a top
+ * family but no index (407 withheld on 2026-09-11; 472 of the 533 HHI blocks
+ * in programs.json on the 2026-09-25 run-4 export, still 0 with a top family). That pairing is what `concentrationHeadline()`
  * tests and what the card's fixtures encode.
  *
  * `program_dollars_high` is null IFF `award_count_high === 0`; where it is
@@ -1050,7 +1054,8 @@ export interface ProgramSummary {
    * program with no concentration row at all both arrive as `hhi === null`,
    * and which of those it is decides which sentence is true. Optional:
    * pre-#82 sidecars and test fixtures omit it, which reads as false. True
-   * on exactly two pages today (3010-SCN, 3010-OPN).
+   * on six pages of the 2026-09-25 run-4 export (0145-APN, 0145-PANMC,
+   * 3010-SCN, 3010-OPN, 3215-WPN, 3215-OPN); it was two on 2026-09-11.
    */
   concentration_withheld?: boolean;
 }
@@ -1962,8 +1967,9 @@ export interface EntityLinkedProgram {
  * returns the same string (10-entity-resolution-spike.md §4).
  *
  * It rides on entity_details/{slug}.json rather than entities_top.json because
- * the latter is read by /companies/, which has ~1,800 bytes of gzip headroom
- * and never renders this line.
+ * the latter is read by /companies/, whose gzip headroom is a few bytes
+ * (6 on chain C run 4's final build, 2026-09-25) and which never renders
+ * this line.
  */
 export interface EntitySamRegistration {
   uei: string;
@@ -2883,8 +2889,10 @@ export interface FlowSidecar {
 const _flows = new Map<string, FlowSidecar | null>();
 
 /**
- * Flow sidecar for a crosswalked program — null when the program has no
- * flows/{pe_bli}.json (only the 17 crosswalked programs have one).
+ * Flow sidecar by its file name — the BARE pe_bli — or null when there is no
+ * flows/{pe_bli}.json. A program page reads its sidecar through
+ * getFlowSidecarForPage, never by its own slug: a member of a shared code
+ * ('0145-APN') draws the bare code's file when it owns it.
  */
 export function getFlow(peBli: string): FlowSidecar | null {
   if (_flows.has(peBli)) return _flows.get(peBli)!;
@@ -2897,6 +2905,69 @@ export function getFlow(peBli: string): FlowSidecar | null {
   }
   _flows.set(peBli, flow);
   return flow;
+}
+
+let _districtMemberKeys: Map<string, Set<string>> | null = null;
+
+/**
+ * bare pe_bli → every split_key its rows carry across the district sidecars —
+ * the member-grain mart (fct_district_programs, Task 27) read back off the
+ * shipped files. For a code that names one program the set is {pe_bli}; for a
+ * shared code it names which members' high-confidence links record a place
+ * of performance.
+ */
+export function getDistrictMemberKeys(): Map<string, Set<string>> {
+  if (_districtMemberKeys) return _districtMemberKeys;
+  const keys = new Map<string, Set<string>>();
+  for (const d of getDistrictIndex().districts) {
+    for (const p of getDistrictDetail(d.pop_district).programs) {
+      const set = keys.get(p.pe_bli) ?? new Set<string>();
+      set.add(p.split_key);
+      keys.set(p.pe_bli, set);
+    }
+  }
+  return (_districtMemberKeys = keys);
+}
+
+let _flowOwners: Map<string, string> | null = null;
+let _flowByPage: Map<string, string> | null = null;
+
+/**
+ * Sidecar name → the slug of the program page that draws it (lib/flow-owner's
+ * rule). Only sidecars carrying at least one award count: an empty one draws
+ * nothing (the exporter writes none, and getFlowData refuses one).
+ */
+export function getFlowSidecarOwners(): Map<string, string> {
+  if (_flowOwners) return _flowOwners;
+  const flowsDir = join(jsonDir(), "flows");
+  const sidecars = existsSync(flowsDir)
+    ? readdirSync(flowsDir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => f.slice(0, -".json".length))
+        .filter((name) => (getFlow(name)?.awards.length ?? 0) > 0)
+    : [];
+  _flowOwners = flowSidecarOwners({
+    sidecars,
+    programs: getPrograms(),
+    districtMemberKeys: getDistrictMemberKeys(),
+  });
+  _flowByPage = new Map([..._flowOwners].map(([name, slug]) => [slug, name]));
+  return _flowOwners;
+}
+
+/** The flows sidecar name this program page draws, or null when it draws none. */
+export function getFlowSidecarForPage(slug: string): string | null {
+  getFlowSidecarOwners();
+  return _flowByPage!.get(slug) ?? null;
+}
+
+/**
+ * How many program pages draw a follow-the-dollar view. lib/corpus asserts it
+ * equals the sidecar count, which is the figure every page prints as "programs
+ * [with] a follow-the-dollar view".
+ */
+export function getFlowViewCount(): number {
+  return getFlowSidecarOwners().size;
 }
 
 // ── gao_overlays.json ─────────────────────────────────────────────────────────
@@ -3397,7 +3468,12 @@ export function getFlowChartMeta(): FlowChartMeta {
 
 // ── Coverage count helpers (Phase 5C) ─────────────────────────────────────────
 
-/** Number of crosswalked flow sidecars (programs with high-confidence budget→award links). */
+/**
+ * Number of flows sidecars — bare codes with a high-confidence award obligated
+ * at a recorded place of performance. lib/corpus asserts one program page
+ * draws each (getFlowViewCount), which is what lets every page print this as
+ * programs that have a follow-the-dollar view.
+ */
 export function getFlowsCount(): number {
   const flowsDir = join(jsonDir(), "flows");
   if (!existsSync(flowsDir)) return 0;

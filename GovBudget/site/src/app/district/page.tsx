@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getDistrictIndex, getProgramsCount } from "@/lib/data";
-import { getCrosswalkCounts } from "@/lib/corpus";
+import { crosswalkValue } from "@/lib/corpus";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { exactTitle, formatAmountNoCurrency, formatCount } from "@/lib/format";
@@ -18,18 +18,24 @@ import { FyRange } from "@/components/fy-range";
 // "1,993"/"1,741" the corpus statement uses elsewhere).
 //
 // ONE declaration of what "crosswalked" counts — lib/corpus
-// getCrosswalkCounts(). The number here is the district-linkable tier (a
-// high-confidence link whose award records a place of performance); /flow/
-// publishes the bridge tier, which is a different question, and
+// getCrosswalkCounts(), read through its own accessor (Task 26: this was a
+// local `find(...)!.value`, which threw a TypeError on a typo where the
+// accessor throws a named error). The number here is the district-linkable
+// tier (a high-confidence award obligating money at a recorded place of
+// performance — one flows sidecar, and one program page drawing it, each);
+// /flow/ publishes the bridge tier, which is a different question, and
 // /coverage/#crosswalk reconciles the two.
-const _linkable = getCrosswalkCounts().find((c) => c.id === "district-linkable")!.value;
+const _linkable = crosswalkValue("district-linkable");
 const _flowsCount = formatCount(_linkable);
 const _programsCount = formatCount(getProgramsCount());
 const _unlinkedCount = formatCount(getProgramsCount() - _linkable);
 
 export const metadata: Metadata = {
   title: "Congressional Districts",
-  description: `Defense spending by congressional district — programs, recipients, and awarded dollars, for the ${_flowsCount} of ${_programsCount} program elements whose awards are linked at high confidence.`,
+  // Task 26: "whose awards are linked at high confidence" named the wrong
+  // set — ~100 more elements carry high-confidence links whose awards record
+  // no place of performance; this count is the ones with a view.
+  description: `Defense spending by congressional district — programs, recipients, and awarded dollars, for the ${_flowsCount} of ${_programsCount} program elements with a follow-the-dollar view.`,
   alternates: { canonical: `${SITE_URL}/district/` },
   openGraph: {
     title: `Congressional Districts — ${SITE_NAME}`,
@@ -88,10 +94,12 @@ export default function DistrictIndexPage() {
           {/* The coverage note, the scope note and the reconciliation
               paragraph used to sit here, between the heading and the table.
               21d moved all three directly under <DistrictTable>, which is what
-              they qualify; nothing was cut, and the one reworded clause is the
-              reconciliation paragraph's pointer at "the table below", which
-              the move would have made false (this page's own round-1 ruling:
-              named, not placed). The stat cards stay — they are data. */}
+              they qualify. Their wording has changed since, separately:
+              a1e8dc86 rewrote the scope note, b41561c7 the reconciliation
+              lead-in (whose pointer at "the table below" the move would have
+              made false — this page's own round-1 ruling: named, not placed),
+              and Task 26 the scope note's mechanism sentence. The stat cards
+              stay — they are data. */}
           {/* The stat row, reconciled.
               Two figures ~457× apart sat side by side with nothing relating
               them, and "all-district" read as "the 106 districts shown" when
@@ -181,33 +189,42 @@ export default function DistrictIndexPage() {
           {/* The mechanism, not an organization. This said the linkage was
               a "DARPA crosswalk" until 2026-09-18, which the shipped flow
               sidecars contradict (92 Navy / 59 Air Force / 22 Army against
-              14 DARPA); gate 24 leg (p3) recomputes that mix rather than
-              trusting this comment. The tier is NOT described as
-              hand-adjudicated: 708 of the 768 links published at high come
-              from the announcement path, which carries no per-link
-              adjudication (ROADMAP #109).
+              14 DARPA that day; 139 / 88 / 56 against 14 on run 4); gate 24
+              leg (p3) recomputes that mix rather than trusting this comment.
 
-              WHAT THE DISJUNCTION BELOW LEAVES OUT, measured 2026-09-18 off
-              site_meta.link_adjudication.high.by_path: "an announcement that
-              names the program" is announcement+lexicon (708) and "an account
-              plus program-specific tokens" is account+tokens (34) — 742 of the
-              768 links published at high. The other 26 are adjudicator-pinned
-              account matches: account (3) and account+subagency (23), both
-              two-lens on every link. They are omitted deliberately — naming a
-              third path here would cost more than it tells a district reader,
-              and /methodology/ §4 states the full tier composition — but they
-              ARE links this sentence does not describe, so if that ratio moves
-              much off 742/768, re-word rather than leaving the reader with a
-              disjunction that has quietly stopped covering the tier. */}
+              Task 26 (final review): the next sentence was a disjunction — "a
+              contract announcement that names the program, or an account plus
+              program-specific tokens" — that stopped covering the tier it
+              described: on run 4 it left out the 25 adjudicator-pinned
+              account (3) and account+subagency (22) links of the 1,133
+              published at high, and "names the program" claims more than
+              /methodology/ §4 does for an announcement link whose match basis
+              went unrecorded (326 of 1,074). It now says what every high link
+              shares — more than an account code ties it — and points at §4
+              for what that evidence is, so no tier change can quietly falsify
+              an enumeration here.
+
+              The complement is the pages with NO VIEW (programs.json rows −
+              district-linkable, which gate 24 leg (p2) admits). It said "no
+              district-level linkage", which is 3 fewer on run 4: 356010,
+              845550 and 9140MA7804 have district rows but no positive linked
+              obligation at any of them, so they appear on district pages yet
+              draw no view (the exporter writes a sidecar only for a positive
+              one). */}
           <p>
             District data reflects only high-confidence award crosswalk
-            links. A budget line earns one only where the award record says
-            more than an account code: a contract announcement that names the
-            program, or an account plus program-specific tokens.{" "}
-            {_unlinkedCount} of {_programsCount} program elements have no
-            district-level linkage. That is a limit of what the award records
-            contain — one appropriation account funds dozens to hundreds of
-            program elements — and not a queue position.
+            links. A budget line earns one only where more than an account
+            code ties the award to it;{" "}
+            <Link
+              href="/methodology/#crosswalk-confidence"
+              className="underline hover:text-foreground"
+            >
+              methodology §4
+            </Link>{" "}
+            says what does. {_unlinkedCount} of {_programsCount} program
+            elements have no follow-the-dollar view. That is a limit of what
+            the award records contain — one appropriation account funds dozens
+            to hundreds of program elements — and not a queue position.
           </p>
         </ScopeNote>
         {index.geo_grand_total !== null && (

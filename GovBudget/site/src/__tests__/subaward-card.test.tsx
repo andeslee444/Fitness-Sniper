@@ -128,6 +128,25 @@ describe("SubawardCard", () => {
     expect(caveat).toContain("award data");
   });
 
+  /**
+   * Task 26 (polish 7): the naming clause was gated on ANY non-empty basis,
+   * so an LLM-judged or future basis token would have licensed "names this
+   * program". Only the one basis verify_phase5b1's _SUBAWARD_MATCH_BASES
+   * admits — subaward-description-exact — may make that claim.
+   */
+  it("makes the naming claim only on the exact-description basis", () => {
+    const { container } = render(
+      <SubawardCard url={PRIME_URL} body={{ ...BODY, match_basis: "llm-description" }} />,
+    );
+    const caveat = container.querySelector('[data-testid="subaward-caveat"]')!
+      .textContent!;
+    expect(caveat).not.toContain("names this program");
+    // A basis WAS recorded, so the card must not say none was.
+    expect(caveat).not.toContain("No basis was recorded");
+    expect(caveat).toContain("not an exact description match");
+    expect(caveat).toContain("one hop removed");
+  });
+
   it("treats a blank match basis as no basis, in the caveat as in the phrase", () => {
     const { container } = render(
       <SubawardCard url={PRIME_URL} body={{ ...BODY, match_basis: "   " }} />,

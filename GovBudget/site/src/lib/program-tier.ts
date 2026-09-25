@@ -132,7 +132,9 @@ const ORG_ABSENCE_RULES: readonly OrgAbsenceRule[] = [
 let _orgAbsences: ReadonlyMap<string, OrgAbsence> = new Map();
 
 /**
- * Inject site_meta.org_absences ({org: {rule, checked_on, checked_url}}).
+ * Inject site_meta.org_absences ({org: {rule, fy, checked_on, checked_url}} —
+ * `fy` is the edition the sentence names; orgAbsenceWording throws without
+ * it).
  * Called once at build time by data.ts, beside setIngestedServiceOrgs.
  *
  * The default is EMPTY, unlike the ingested set's A/N/F fallback, and the
@@ -164,9 +166,12 @@ export function setOrgAbsences(
       // `OrgAbsence.fy` is declared `number` because every consumer wants a
       // year; a payload written before the field carries none, so this entry
       // can hold `undefined` behind a `number`. That is tolerable only while
-      // orgAbsenceWording is the ONLY reader of `.fy` (grep: it is — the
-      // throw at the top of it is the check), so a new reader either goes
-      // through the wording or repeats the Number.isInteger refusal. Widening
+      // every reader of `.fy` refuses a non-integer itself. There are two:
+      // orgAbsenceWording (the throw at the top of it) and
+      // app/methodology/page.tsx, which reads the absences' `fy` for §5's
+      // "no usable FY… book" clause behind its own Number.isInteger refusal.
+      // A new reader either goes through the wording or repeats that
+      // refusal. Widening
       // the field instead would hand every call site an `| undefined` that
       // `Number.isInteger` cannot narrow, which buys a cast at each of them.
       fy: raw.fy as number,

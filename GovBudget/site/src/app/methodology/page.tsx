@@ -106,7 +106,8 @@ export default function MethodologyPage() {
   // for the 14 DHA pages the moment their book was downloaded. "no usable
   // FY2026 justification book" is the predicate all three cases share, and
   // the rewrite is 9 rendered characters shorter than what it replaced (the
-  // page's gzip ceiling is never raised).
+  // page's gzip ceiling was not raised by that change — it was raised once
+  // later, 42,500 → 43,000, under R-C-1).
   const uningestedOrgs = getUningestedCoverageOrgs();
   const uningestedClause = uningestedOrgs
     .map((o) => `${o.org} (${formatCount(o.pages)})`)
@@ -140,6 +141,11 @@ export default function MethodologyPage() {
   // runs the bounded extract — which is why §4 states the status from this
   // number rather than describing an extract the build does not have.
   const samRegistrations = siteMeta.counts.companies_with_sam ?? 0;
+  // Task 26: the partial-year note said "FY2026 does not close until
+  // September 30, 2026" — a claim about the calendar, false from Oct 1 while
+  // this corpus stays a part-year one. It now states where the data ends
+  // (site_meta.award_fy_range.latest_action_date), true on every date.
+  const awardDataThrough = siteMeta.award_fy_range?.latest_action_date ?? null;
   // Task 29S (ROADMAP #10 A): the narrow-label census, DERIVED. §4 typed "15
   // of the 200 families we publish carry a label that beat its runner-up by
   // under 15%", and the 2026-09-06 FY2026 refresh made it false (chain C run
@@ -294,7 +300,8 @@ export default function MethodologyPage() {
   // text. Percentages, not dollars: the page's currency scan fails any uncited
   // `$…` token — and every percentage clause says "by announced value",
   // because these are shares of VALUE and the record shares are quite
-  // different numbers (10.6% of the residue's value is 44.9% of its records).
+  // different numbers (on the 2026-09-25 run-4 export the unattempted residue
+  // is 10.9% of its value and 44.9% of its records).
   //
   // The readiness test is per-FIELD rather than object-truthiness because the
   // exporter returns all keys or {}; if a future export ever emitted a partial
@@ -862,12 +869,8 @@ export default function MethodologyPage() {
                   one registered parent UEI in SAM.gov.{" "}
                   <em>Medium confidence</em> (name inference): slightly different
                   legal-name variants normalize to the same string. Where a whole
-                  table is uniform — as on{" "}
-                  <Link href="/companies/" className="underline hover:text-foreground">
-                    /companies/
-                  </Link>
-                  , every family of which resolves by name inference — the per-row
-                  chip is suppressed and the method stated once in the header.
+                  table is uniform, the per-row chip is suppressed and the method
+                  stated once.
                 </p>
                 <p className="mt-2">
                   <strong>The tier grades the grouping, never the name.</strong>{" "}A
@@ -882,8 +885,9 @@ export default function MethodologyPage() {
                       today: the extract is blocked on a credential only an
                       account holder can mint. The three preceding sentences
                       were trimmed to pay for this one (−98 raw / −24 gzip
-                      measured on the built page; the 42,500 ceiling is never
-                      raised). The measurement is of the branch this build
+                      measured on the built page; the 42,500 ceiling was not
+                      raised by that change — it was raised once later,
+                      42,500 → 43,000, under R-C-1). The measurement is of the branch this build
                       renders — the zero one; the > 0 clause has never been
                       weighed, and the day the extract runs is the day to
                       re-measure this page.
@@ -1298,9 +1302,8 @@ export default function MethodologyPage() {
                       to one organization, which is what gate 24 leg (p3) and
                       orgAttributionFindings care about. */}
                   {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs,
-                  spread across the service books. Pages outside it say so in
-                  place of the flow: we could not defend the link, not that no
-                  money moved.
+                  spread across the service books. Pages outside it say why in
+                  place of the flow; a missing flow never means no money moved.
                 </p>
               </section>
 
@@ -1378,7 +1381,10 @@ export default function MethodologyPage() {
                   FY2026 is a partial year
                 </h3>
                 <p>
-                  FY2026 does not close until September 30, 2026, and USAspending
+                  {awardDataThrough
+                    ? `FY2026 award data here runs through ${awardDataThrough}`
+                    : "FY2026 award data here is incomplete"}
+                  , and USAspending
                   reports awards on a rolling basis — any FY2026 award total shown
                   is a partial-year figure that will grow. FY2026 budget figures
                   are the requested amounts from the FY2026 J-books, not enacted
@@ -1505,7 +1511,7 @@ export default function MethodologyPage() {
                   comptroller sites sat behind CAC or Akamai access walls; the
                   embedded XML that anchors every figure to its page survives the
                   mirror intact. What remains figures-only is a small residual:
-                  lines that publish no R-2/P-40 narrative at all — classified,
+                  lines with no extractable R-2/P-40 narrative — classified,
                   SBIR, or spectrum program elements, plus R-1/P-1 workbook
                   remainders with no matching book entry.{" "}
                   {uningestedClause ? (
@@ -1563,7 +1569,7 @@ export default function MethodologyPage() {
                   (§4) links a program element to contractor families:{" "}
                   {formatCount(flowBridge.numerator ?? 0)} of {formatCount(flowBridge.denominator ?? 0)} crosswalked
                   PEs carry FY{flowMeta.budgetFy} request dollars (
-                  {crosswalkValue("high-confidence-links")}{" "}at high confidence).
+                  {formatCount(crosswalkValue("high-confidence-links"))}{" "}at high confidence).
                   Everything else terminates in an explicit &ldquo;not yet
                   crosswalked&rdquo; band — {flowMeta.bridge.pctNotCrosswalked}%
                   of the request. That band is an honest statement about our

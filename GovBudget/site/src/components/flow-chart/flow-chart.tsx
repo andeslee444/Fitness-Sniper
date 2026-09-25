@@ -744,9 +744,17 @@ type PlateRect = { x: number; y: number; w: number; h: number };
  * survives. Guillotine split: each hole cuts every current fragment into at
  * most four.
  *
- * MIRROR: scripts/gates/flowdown.mjs's `subtractRects` is the same function —
- * the gate uses it to ask what of a label box neither its plate nor a bar
- * covers. Change one, change the other.
+ * MIRROR: scripts/gates/flowdown.mjs's `subtractRects` is the same algorithm
+ * — the gate uses it to ask what of a label box neither its plate nor a bar
+ * covers. Nothing compares the two sources: this copy is not exported, and
+ * it never runs under vitest (jsdom has no getBBox, so NodeLabel's plate
+ * stays null and `parts` is always []). What does bind them is the RENDERED
+ * result — gate 22 leg h1 (flowdown.mjs platedLabelFindings) checks, on a
+ * real browser render, that every label is covered and no bar is notched,
+ * so a divergence here that leaves a gap or a notch fails there. Change one,
+ * and re-read the other. (Task 26: this said "Change one, change the other"
+ * and named no enforcer; one shared .mjs imported by both is the full fix,
+ * deferred because the gate file is not this change's to edit.)
  */
 function subtractRects(rect: PlateRect, holes: PlateRect[]): PlateRect[] {
   let frags: PlateRect[] = [rect];

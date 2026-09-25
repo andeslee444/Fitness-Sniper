@@ -2,9 +2,11 @@ import React from "react";
 import Link from "next/link";
 import {
   getFlow,
+  getFlowSidecarForPage,
   getDistrictDetail,
   getEntityTopMap,
   type FlowSidecar,
+  type ProgramRow,
 } from "@/lib/data";
 import { formatAmountNoCurrency } from "@/lib/format";
 import { companyLabel } from "@/lib/company-name.mjs";
@@ -13,9 +15,9 @@ import { ChartFigure, chartDescId } from "@/components/chart-figure";
 import { CoverageNote } from "@/components/coverage-note";
 
 /**
- * FollowTheDollar (Task 6b) — server-rendered SVG flow for the 17
- * crosswalked programs: appropriation → PE → top-12 awards → recipient
- * families → district chips.
+ * FollowTheDollar (Task 6b) — server-rendered SVG flow for every program page
+ * that draws a flows sidecar (lib/data getFlowSidecarForPage): appropriation →
+ * PE → top-12 awards → recipient families → district chips.
  *
  * Provenance contract (binding plan decision):
  *   - Award dollars inside the SVG are ILLUSTRATIVE transaction sums from the
@@ -27,14 +29,15 @@ import { CoverageNote } from "@/components/coverage-note";
  *     grain since Task 27. The note under the SVG says so.
  *
  * Addressing: a flows sidecar is one file per BARE pe_bli by design (gate 24
- * leg p string-matches those filenames), and its district rows are keyed by
- * DISTRICT within it. That stays consistent with the member grain because no
- * member page ever reaches this component: the bare code of a shared
- * budget-line code renders the disambiguation stub before getFlowData is
- * called, and a member slug ('0145-APN') has no flows/{slug}.json. Every
- * pe_bli that gets here therefore names one program, so its district rows
- * carry a null account and matching on pe_bli finds exactly one row per
- * district.
+ * leg p string-matches those filenames). A page asks lib/data which sidecar
+ * it draws (getFlowSidecarForPage): an ordinary page draws the file named for
+ * its own slug, and a member of a shared code ('0145-APN') draws the bare
+ * code's file when the member-grain district mart files every row on that
+ * code under it (lib/flow-owner — Task 26; until then no page drew those four
+ * sidecars and their members said their awards were not crosswalked at high
+ * confidence). The bare code's own URL is still the disambiguation stub and
+ * never gets here. District rows are matched on split_key, the mart's member
+ * address, which equals pe_bli for every code that names one program.
  *
  * Animation: compositor-only — dots translate along straight edges via CSS
  * transform keyframes (globals.css `flow-dot-travel`, per-edge --flow-dx/dy).
@@ -47,9 +50,8 @@ import { CoverageNote } from "@/components/coverage-note";
 export interface FlowDistrictRow {
   awardCount: number | null;
   district: string;
-  /** USAspending (district, pe_bli, account) fact_id — null only if the mart
-   *  row is missing. Every program reaching here names one program, so its
-   *  account is null and the id is the bare (district, pe_bli) pair. */
+  /** USAspending (district, pe_bli, account) fact_id — the page's own
+   *  member row (split_key); null only if the mart row is missing. */
   factId: string | null;
   familyNames: string[];
   totalObligation: number | null;
@@ -60,9 +62,29 @@ export interface FlowData {
   flow: FlowSidecar;
 }
 
-export function getFlowData(peBli: string): FlowData | null {
-  const flow = getFlow(peBli);
-  if (!flow || flow.awards.length === 0) return null;
+export function getFlowData(
+  program: Pick<ProgramRow, "slug" | "pe_bli" | "title" | "org" | "trajectory">,
+): FlowData | null {
+  const name = getFlowSidecarForPage(program.slug);
+  const sidecar = name ? getFlow(name) : null;
+  if (!sidecar || sidecar.awards.length === 0) return null;
+  // A shared code's sidecar header is keyed by the bare code alone, so it
+  // carries whichever member the exporter read last (flows/0145.json: the
+  // sibling's "General Purpose Bombs" and its FY2026 total). A member page
+  // heads its view with its OWN row — the same three fields the exporter's
+  // header equals on every ordinary code.
+  const flow: FlowSidecar =
+    name === program.slug
+      ? sidecar
+      : {
+          ...sidecar,
+          header: {
+            pe_bli: sidecar.header.pe_bli,
+            title: program.title,
+            org: program.org,
+            fy2026_total: program.trajectory?.fy2026_total ?? null,
+          },
+        };
 
   const districts = [
     ...new Set(
@@ -78,7 +100,7 @@ export function getFlowData(peBli: string): FlowData | null {
     let awardCount: number | null = null;
     try {
       const detail = getDistrictDetail(district);
-      const prog = detail.programs.find((p) => p.pe_bli === peBli);
+      const prog = detail.programs.find((p) => p.split_key === program.slug);
       if (prog) {
         factId = prog.fact_id;
         totalObligation = prog.total_obligation;

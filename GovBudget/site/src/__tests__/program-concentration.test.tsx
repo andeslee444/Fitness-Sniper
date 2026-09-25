@@ -5,8 +5,8 @@
  * Both bases are computed and both ship in the downloadable mart and in
  * citations. Only the high-confidence-only figures are rendered: the
  * all-links figures are dominated by the account+subagency tier, which the
- * 2026-09-04 adjudication measured at 0 of 60 for program attribution
- * (ROADMAP #79), and "publish the smaller true number" (owner decision
+ * 2026-09-05 attribution sample (loaded 2026-09-11) measured at 0 of 60 for
+ * program attribution (ROADMAP #79), and "publish the smaller true number" (owner decision
  * 2026-08-07) says shrink the claim rather than substitute a wider one.
  *
  * DOM contract (read by scripts/gates/feed.mjs leg l and gate 23 leg a2):
@@ -24,8 +24,13 @@
  * ROADMAP #82 added the SECOND withheld reason to this same vocabulary
  * (lib/concentration-basis.ts): "shared-code", where the mart's figure is
  * computed on a budget line more than one program uses and more than one of
- * them carries linked awards, so it is neither member's and the whole block
- * is withheld upstream — the card renders nothing at all there and the
+ * them carries linked awards, so it is not one member's alone to claim and
+ * the whole block is withheld upstream. (The rule is on LINKS. It is not a
+ * finding that a printed figure mixed two programs' money — none did; the
+ * withheld all-links figure on 3010 and 3215 does pool members' money, and
+ * is only ever kept off pages and feed cards. Task 26 retracted the earlier
+ * "neither member's" / "nobody's" wording here.) The card renders nothing
+ * at all there and the
  * answer strip's "none" tier is the only surface that can say why. The last
  * describe below pins that branch and its marker, [data-who-withheld].
  */
@@ -35,6 +40,7 @@ import fs from "fs";
 import path from "path";
 import React from "react";
 import { ProgramConcentration } from "@/components/program-concentration";
+import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
 import {
   concentrationHeadline,
   CONCENTRATION_WITHHELD_REASON,
@@ -99,6 +105,25 @@ describe("ProgramConcentration card", () => {
     expect(container.querySelector("[data-hhi-band]")).toBeNull();
     expect(container.querySelector("[data-concentration-withheld]")).toBeNull();
     expect(container.textContent).toBe("");
+  });
+
+  /**
+   * Task 26 (review minor): the Index tooltip typed the bands by hand as
+   * "1500–2500 moderate; >2500 concentrated", so an index of exactly 2,500
+   * rendered a "Highly Concentrated" badge under a tooltip calling it
+   * moderate — hhiBand's floor is `>= HHI_CONCENTRATED_MIN`. It is now built
+   * from the two constants, with the boundaries stated the way hhiBand
+   * applies them.
+   */
+  it("the Index tooltip states the bands from the constants, with 2,500 concentrated", () => {
+    const { container } = render(<ProgramConcentration hhi={A} />);
+    const title = container.querySelector("span[title^='Herfindahl']")!.getAttribute("title")!;
+    expect(title).toContain(
+      `Under ${HHI_MODERATE_MIN.toLocaleString("en-US")} competitive; ` +
+        `${HHI_MODERATE_MIN.toLocaleString("en-US")} to under ${HHI_CONCENTRATED_MIN.toLocaleString("en-US")} moderate; ` +
+        `${HHI_CONCENTRATED_MIN.toLocaleString("en-US")} or more concentrated`,
+    );
+    expect(title).not.toMatch(/>2500|1500–2500/);
   });
 
   it("published: one basis-stamped band, high-only measures, no second line", () => {
@@ -224,7 +249,8 @@ describe("the withheld sentences state the floor, not a count about this line", 
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// ROADMAP #82 — the second withheld reason: a figure that is nobody's
+// ROADMAP #82 — the second withheld reason: a figure over more than one
+// program's links (withheld on the link rule, not for a money mix)
 // ───────────────────────────────────────────────────────────────────────────
 
 describe("shared-code withholding (ROADMAP #82)", () => {

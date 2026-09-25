@@ -241,12 +241,16 @@ export default async function AgencyPage({
                       that carries an entity (&rsquo; below); this note
                       rendered "OSD's 128programs". Pluralised while open:
                       DMACT is the only agency page whose `program_count` is
-                      1, so it read "1programs". */}
+                      1, so it read "1programs". Task 26: the noun follows
+                      program_count and the VERB its subject, the unreconciled
+                      count — DCSA/DHRA/DLA (1 each) read "1 of DCSA's 6
+                      programs carry". */}
                   {formatCount(agency.fy2024_not_reconciled_count)} of{" "}
                   {org}&rsquo;s {formatCount(agency.program_count)}{" "}
-                  {agency.program_count === 1
-                    ? "program carries"
-                    : "programs carry"}{" "}
+                  {agency.program_count === 1 ? "program" : "programs"}{" "}
+                  {agency.fy2024_not_reconciled_count === 1
+                    ? "carries"
+                    : "carry"}{" "}
                   an FY2024 figure that has not reconciled between the
                   R-2/P-40 J-book program line (the FY24 total above) and the
                   P-1/R-1 workbook total obligation authority (TOA) Fiscal

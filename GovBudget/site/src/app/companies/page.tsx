@@ -164,7 +164,14 @@ export default function CompaniesPage() {
         )}
         {/* §P1-3: the confidence method, stated ONCE for the table — where a
             per-row badge could only repeat it. The chip column survives only
-            while the value actually varies. */}
+            while the value actually varies.
+            Task 26: both zero-SAM arms below said that raising families to
+            high confidence needed a SAM.gov entity extract this build lacked
+            — the opposite of the > 0 arms, the spike, dim_entities,
+            /methodology/ §4 and /companies/families/: the registered parent
+            name a tier reads IS the SAM registration, so an extract promotes
+            no tier. Deleted, not replaced: this page has ~6 gzip bytes of
+            headroom, and "See methodology §4" follows. */}
         <p className="text-sm text-muted-foreground" data-confidence-method>
           Obligation totals carry derived USAspending citations — click a
           figure to inspect the derivation. Confidence reflects the
@@ -175,31 +182,24 @@ export default function CompaniesPage() {
             <>
               {highCount} of these {rows.length} families resolve at high
               confidence and {rows.length - highCount} by name inference — the
-              biggest names on this list are mostly the latter.{" "}
+              biggest names on this list are mostly the latter.
               {samCovered > 0 ? (
                 <>
-                  This build carries SAM.gov registration records for{" "}
+                  {" "}This build carries SAM.gov registration records for{" "}
                   {samCovered} of the {companies.length} registry families
                   behind this list, shown on their company pages; they promote
                   no tier, because the registered parent name a tier reads is
                   itself SAM-sourced.
                 </>
-              ) : (
-                <>
-                  Promoting them would need a SAM.gov entity extract this build
-                  does not have.
-                </>
-              )}
+              ) : null}
             </>
           ) : (
             <>
               Every family on this list resolves at{" "}
               <strong>{uniformConfidence}</strong> confidence, so the per-row
               chip is suppressed: a badge that never varies tells you nothing.
-              {uniformConfidence === "medium"
-                ? samCovered > 0
-                  ? ` This build carries SAM.gov registration records for ${samCovered} of the ${companies.length} registry families behind this list, shown on their company pages; they promote no tier, because the registered parent name a tier reads is itself SAM-sourced.`
-                  : " Promoting the largest families to high confidence would need a SAM.gov entity extract this build does not have."
+              {uniformConfidence === "medium" && samCovered > 0
+                ? ` This build carries SAM.gov registration records for ${samCovered} of the ${companies.length} registry families behind this list, shown on their company pages; they promote no tier, because the registered parent name a tier reads is itself SAM-sourced.`
                 : ""}
             </>
           )}{" "}

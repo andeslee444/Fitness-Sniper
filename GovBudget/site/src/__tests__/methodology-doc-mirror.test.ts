@@ -169,3 +169,96 @@ describe("methodology §4 company families ↔ docs/methodology.md §4", () => {
     expect(text).not.toMatch(/The largest is a family that is/);
   });
 });
+
+/**
+ * Task 26 (final review): two more §4 passages the branch changed on the page
+ * and left behind in the markdown.
+ *
+ * 1. The company-families tier paragraph said "as on /companies/, every family
+ *    of which resolves by name inference — … stated once in the header",
+ *    while the final export publishes 149 high / 51 medium families and the
+ *    method note sits under the table. The page now states the rule alone;
+ *    the markdown carries the same sentence.
+ *
+ * 2. The budget-to-contract opener: the markdown typed the 2026-09-11 census
+ *    (9,587 of 12,595; three paths with no adjudication) while the page
+ *    rendered the run-4 export's (9,588 of 12,917; two paths). What the page
+ *    derives from site_meta.link_adjudication, the markdown can only copy —
+ *    so this binds the copy to the shipped export (ROADMAP #117's census
+ *    sentence, and the opener beside it): re-state docs §4 when it reds.
+ */
+describe("methodology §4 ↔ docs §4 — the Task 26 passages", () => {
+  const RULE =
+    "Where a whole table is uniform, the per-row chip is suppressed and the method stated once.";
+  const docSection = () =>
+    norm(between(fs.readFileSync(DOC, "utf8"), "\n## 4.", "\n## 5.").replace(/\*\*/g, ""));
+  const pageSection = () =>
+    norm(between(fs.readFileSync(PAGE, "utf8"), "{/* §4", "{/* §5"));
+
+  it("the company-family uniform-table rule is the same sentence on both, and names no page as uniform", () => {
+    expect(pageSection()).toContain(RULE);
+    expect(docSection()).toContain(RULE);
+    expect(pageSection()).not.toMatch(/every family of which resolves by name inference/);
+    expect(pageSection()).not.toMatch(/stated once in the header/);
+  });
+
+  const meta = JSON.parse(
+    fs.readFileSync(path.join(SITE, "..", "data", "site", "json", "site_meta.json"), "utf8"),
+  ) as {
+    link_adjudication: {
+      measured_on: string;
+      as_of: string;
+      published: number;
+      adjudicated: number;
+      unpinned: number;
+      unpinned_tier: string;
+      unadjudicated_methods: string[];
+      high: {
+        published_high: number;
+        adjudicated_high: number;
+        two_lens_high: number;
+        by_path: Record<string, { high: number; adjudicated: number; with_match_basis?: number }>;
+      };
+    };
+  };
+  const la = meta.link_adjudication;
+  const n = (v: number) => v.toLocaleString("en-US");
+  const and = (xs: string[]) =>
+    xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs.join("");
+
+  it("the opener states the shipped export's census, in the page's words", () => {
+    const doc = docSection();
+    expect(doc).toContain(
+      `As of ${la.measured_on}, ${n(la.adjudicated)} of the ${n(la.published)} links ` +
+        `the crosswalk grades high or medium carry a per-award hand adjudication — ` +
+        `the most recent made on ${la.as_of} —`,
+    );
+    expect(doc).toContain(
+      `${n(la.unpinned)} of those found work that could not be pinned to any one ` +
+        `program element; those links publish at ${la.unpinned_tier}.`,
+    );
+    expect(doc).toContain(
+      `The ${and(la.unadjudicated_methods)} paths carry no per-link adjudication`,
+    );
+  });
+
+  it("the High sentence states the shipped export's high census, in the page's words", () => {
+    const h = la.high;
+    const remainder = Object.entries(h.by_path)
+      .filter(([, v]) => v.high > v.adjudicated)
+      .map(([m]) => m)
+      .sort();
+    const doc = docSection();
+    expect(doc).toContain(
+      `${n(h.adjudicated_high)} of the ${n(h.published_high)} links published at high ` +
+        `carry a per-award hand adjudication, ${
+          h.two_lens_high === h.adjudicated_high ? `all ${n(h.two_lens_high)}` : n(h.two_lens_high)
+        } challenged by two independent adversarial reviewers; the other ` +
+        `${n(h.published_high - h.adjudicated_high)} rest on the ${and(remainder)} path`,
+    );
+    const ann = h.by_path["announcement+lexicon"];
+    expect(doc).toContain(
+      `Of the ${n(ann.high)} announcement links, a match basis is recorded on ${n(ann.with_match_basis ?? 0)}`,
+    );
+  });
+});

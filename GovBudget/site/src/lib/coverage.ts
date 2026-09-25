@@ -17,6 +17,7 @@ import "server-only";
  */
 
 import { formatCount } from "@/lib/format";
+import type { FlowAbsence } from "@/lib/flow-owner";
 // crosswalkValue is the registry's OWN accessor (lib/corpus): it throws
 // through the registry's invariants rather than falling back to a literal, and
 // it is the single read every page goes through, so a coverage note cannot
@@ -71,22 +72,40 @@ export interface Coverage {
   linkText: string;
 }
 
-export function getCoverage(id: CoverageId): Coverage {
+/**
+ * `absence` picks follow-the-dollar's empty-state reason (lib/flow-owner
+ * flowAbsenceReason, derived per page from its own links); every other id
+ * ignores it. The default is the reason that held on every page before
+ * Task 26 split it — "no-high-link".
+ */
+export function getCoverage(
+  id: CoverageId,
+  absence: FlowAbsence = "no-high-link",
+): Coverage {
   switch (id) {
     case "follow-the-dollar": {
       // ONE declaration of what "crosswalked" counts (lib/corpus
       // getCrosswalkCounts) — /flow/ publishes a different, equally true
       // ratio, and gate 24 leg (p) is what keeps the two from drifting into
-      // an apparent contradiction again.
+      // an apparent contradiction again. The registry refuses to build unless
+      // one program page draws each sidecar, so "N programs" is pages.
       const linkable = crosswalkValue("district-linkable");
       const num = formatCount(linkable);
       const den = formatCount(getProgramsCount());
+      // Task 26: a page with high-confidence links whose awards record no
+      // positive obligation at a place of performance has been crosswalked
+      // at high confidence — 102 such pages on the run-4 export said it had
+      // not. Each page now gets the reason that is true of it.
+      const why =
+        absence === "no-place-of-performance"
+          ? "none of this program's high-confidence awards records a positive obligation at a place of performance"
+          : "this program's awards haven't been crosswalked at high confidence";
       return {
         id,
         numerator: linkable,
         denominator: getProgramsCount(),
         note: `Follow-the-dollar covers ${num} of ${den} programs — only high-confidence budget→award links are shown.`,
-        emptyNote: `No follow-the-dollar view — this program's awards haven't been crosswalked at high confidence (flows cover ${num} of ${den} programs).`,
+        emptyNote: `No follow-the-dollar view — ${why} (flows cover ${num} of ${den} programs).`,
         anchor: "/methodology/#coverage-follow-the-dollar",
         linkText: "why coverage is partial? →",
       };

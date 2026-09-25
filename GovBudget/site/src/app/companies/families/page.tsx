@@ -125,6 +125,11 @@ export default function CompanyFamiliesPage() {
   const families = payload?.families ?? [];
   const rows = mergeCompanies(getEntitiesTop(), payload);
   const mergedRows = rows.filter((r) => r.merged);
+  // Task 26: the "Not in scope" note said "Every family on /companies/ still
+  // resolves by name inference" — false on the final export (149 high / 51
+  // medium). Counted here the way /companies/ counts its own sentence (the
+  // same merged rows, rows.length − high), never typed.
+  const nameInferred = rows.filter((r) => r.worstConfidence !== "high").length;
   const citationsSlice = collectCitationsWithInputs(companyRowFactIds(mergedRows));
 
   return (
@@ -193,12 +198,12 @@ export default function CompanyFamiliesPage() {
             resolution confidence from name-inference to SAM.gov
             registered-parent. A SAM.gov registration extract would not do it:
             the registered parent name a confidence tier reads is itself the
-            SAM registration, so fetching it from SAM returns the same string.
-            Every family on{" "}
+            SAM registration, so fetching it from SAM returns the same string.{" "}
+            {nameInferred} of the {rows.length} families on{" "}
             <Link href="/companies/" className="underline hover:text-foreground">
               /companies/
             </Link>{" "}
-            still resolves by name inference. This table changes which rows are
+            still resolve by name inference. This table changes which rows are
             combined; it does not change how the underlying families were
             inferred.
           </p>

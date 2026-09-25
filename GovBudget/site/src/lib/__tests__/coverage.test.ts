@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 // Hermetic mock — real data sidecars must not be read in unit tests.
 vi.mock("@/lib/data", () => ({
   getFlowsCount: () => 17,
+  // One program page draws each sidecar (lib/corpus refuses otherwise).
+  getFlowViewCount: () => 17,
   // 4 of the mocked 17 sidecars carry no FY2026 request dollars — the
   // registry (lib/corpus getCrosswalkCounts) reads this, and coverage.ts now
   // reads the registry.
@@ -99,6 +101,25 @@ describe("coverage manifest", () => {
     expect(c.note).toContain("10 of 24 crosswalked PEs");
     expect(c.note).toContain("98.7% of the FY2026 request is not yet crosswalked");
     expect(c.anchor).toBe("/methodology/#coverage-flowdown");
+  });
+
+  /**
+   * Task 26 (the final review's Critical). One empty note rendered on every
+   * program page with no view — "this program's awards haven't been
+   * crosswalked at high confidence" — including 102 on the run-4 export that
+   * list high-confidence awards whose records name no place of performance
+   * with a positive obligation. The reason is now the page's own.
+   */
+  it("follow-the-dollar's empty note gives the page's own reason", () => {
+    const none = getCoverage("follow-the-dollar", "no-high-link").emptyNote!;
+    expect(none).toContain("haven't been crosswalked at high confidence");
+    const noPlace = getCoverage("follow-the-dollar", "no-place-of-performance").emptyNote!;
+    expect(noPlace).not.toMatch(/haven't been crosswalked|not crosswalked/);
+    expect(noPlace).toContain(
+      "none of this program's high-confidence awards records a positive obligation at a place of performance",
+    );
+    // Both carry the G2 count.
+    expect(noPlace).toContain("17 of 420");
   });
 
   it("empty-state notes carry the same interpolated counts", () => {

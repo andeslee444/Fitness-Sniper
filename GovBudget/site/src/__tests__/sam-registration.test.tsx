@@ -102,7 +102,7 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     expect(note.textContent).not.toMatch(/CAGE|NAICS|Business types|expires/);
   });
 
-  it("is the only surface that describes the pick — /methodology/ states the same rule", () => {
+  it("the pick rule is stated identically on /company/ and /methodology/", () => {
     // The withdrawn identity had a THIRD home: /methodology/ §4 said the
     // published families "carry the SAM.gov registration that name is read
     // from", where "that name" is the family label (rn = 1). Both surfaces

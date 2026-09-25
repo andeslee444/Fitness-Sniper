@@ -260,9 +260,16 @@ LIMIT 50
       ];
 
     case "fct_program_concentration":
+      // Task 26 (review minor): the mart is grained on the BARE budget-line
+      // code, so a row is a budget line, not a program — on a code two
+      // programs share it pools both members' links, which is why their
+      // program pages withhold the figure. And the all-links preset ranked
+      // hhi_all as a concentration headline, the basis ruling R-0/60(c) keeps
+      // off every page (mostly account-level medium links, 0 of 60 on
+      // program attribution). Both labels now say what the rows are.
       return [
         {
-          label: "Most concentrated programs (high-confidence links only)",
+          label: "Most concentrated budget lines (high-confidence links only)",
           sql: t(`
 SELECT pe_bli, hhi_high, hhi_all, family_count_high, top_family_high
 FROM 'fct_program_concentration.parquet'
@@ -272,7 +279,8 @@ LIMIT 50
           `),
         },
         {
-          label: "Most concentrated programs (all published links)",
+          label:
+            "HHI over every published link, by budget line (not a program-attribution measure)",
           sql: t(`
 SELECT pe_bli, hhi_all, family_count_all, top_family_all
 FROM 'fct_program_concentration.parquet'

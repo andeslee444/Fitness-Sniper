@@ -38,13 +38,15 @@
  */
 
 import { useState } from "react";
-import type { FeedSectionCard, FeedSectionSidecar } from "@/lib/data";
+import type { FeedCard, FeedSectionCard, FeedSectionSidecar } from "@/lib/data";
 import { FeedCardItemClient } from "@/components/feed-card-item-client";
 import { formatCount } from "@/lib/format";
 
 interface FeedSectionExpandProps {
-  /** feed.json card.event_type this section renders — one of feed/page.tsx's EVENT_ORDER literals. */
-  eventType: string;
+  /** feed.json card.event_type this section renders — one of feed/page.tsx's
+   *  EVENT_ORDER literals, typed as the card's own union (Task 26 polish 11),
+   *  so a misspelled section cannot compile into a sidecar URL that 404s. */
+  eventType: FeedCard["event_type"];
   /** Cards already rendered statically (feed.json section_cap, today 75). */
   shown: number;
   /** Total cards in this section (all_section_cards.length). */

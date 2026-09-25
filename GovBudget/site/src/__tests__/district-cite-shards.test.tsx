@@ -288,6 +288,8 @@ vi.mock("@/lib/corpus", async (importOriginal) => ({
   getCrosswalkCounts: () => [
     { id: "district-linkable", value: 314, where: "/district/", counts: "program elements" },
   ],
+  // Task 26: the index reads the count through the registry's accessor.
+  crosswalkValue: () => 314,
 }));
 
 vi.mock("@/lib/og", async (importOriginal) => ({

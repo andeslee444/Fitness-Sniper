@@ -37,6 +37,7 @@ import {
   getDatasetManifest,
   getDetailGradeCount,
   getFlowChartMeta,
+  getFlowViewCount,
   getFlowsCount,
   getFlowsOutsideBridgeCount,
   getProgramPagesCount,
@@ -254,8 +255,11 @@ export function getCorpusCounts(): CorpusCount[] {
 //                                 request dollars (the /flow/ bridge)
 //   high-confidence-links         of those, the ones with a high-confidence link
 //   district-linkable             elements with a follow-the-dollar view (a
-//                                 high-confidence link whose award records a
-//                                 place of performance)
+//                                 high-confidence award with a positive
+//                                 obligation at a recorded place of
+//                                 performance) — one flows sidecar each, and
+//                                 one program page draws each sidecar
+//                                 (asserted below; lib/flow-owner)
 //   district-linkable-unbridged   of those, the ones NOT in the bridged set
 //
 // The last row is the point. The two published ratios are not nested: a reader
@@ -311,7 +315,8 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
       where: "the /flow/ bridge band",
       // Trimmed 2026-09-18 (the two longest sentences in this list) to pay for
       // the File C note /coverage/#crosswalk now publishes, on a page whose
-      // weight ceiling is never raised. What went here was the flourish "—
+      // gzip ceiling was raised once, later, under R-D-2 (chain D). What went
+      // here was the flourish "—
       // all the river can draw": the Sankey it refers to is the page this row
       // already points at. No number and no definition changed.
       counts: "Of those, the ones also carrying FY2026 request dollars.",
@@ -333,8 +338,17 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
       // is defined on the page already. The DEFINITION — a high-confidence
       // link naming a place of performance — is what this field is for and is
       // kept whole.
+      //
+      // Task 26: "whose high-confidence link names a place of performance" was
+      // 317 elements on the run-4 export, not the 314 this row holds — three
+      // (356010, 845550, 9140MA7804) record a place of performance only on
+      // zero or negative obligations, and the exporter writes a sidecar only
+      // for a positive one (export_site._emit_flows_sidecars). The definition
+      // now states the exporter's condition ("obligated", i.e. money put on
+      // the award there), 9 characters longer — paid for elsewhere on
+      // /coverage/ in the same wave.
       counts:
-        "Elements whose high-confidence link names a place of performance.",
+        "Elements with a high-confidence award obligated at a place of performance.",
     },
     {
       id: "district-linkable-unbridged",
@@ -365,6 +379,28 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
       );
     }
   }
+  // Task 26 (the final review's Critical): district-linkable counts SIDECARS,
+  // and /coverage/, /district/, /methodology/ and every program page print it
+  // as programs that HAVE a follow-the-dollar view. That is true only while
+  // each sidecar is drawn by exactly one page. A sidecar on a shared
+  // budget-line code whose district rows span two members (or none — an
+  // organization split) is drawn by nobody, and the printed figure would
+  // overstate the pages that draw one — which is what shipped on the run-4
+  // export (314 printed, 310 drawn) before member pages drew the sidecar they
+  // own. Refuse to build rather than print it; the fix is per-member flows
+  // sidecars in the exporter, not a smaller literal here.
+  const drawn = getFlowViewCount();
+  const linkable = by("district-linkable").value;
+  if (drawn !== linkable) {
+    throw new Error(
+      `[govbudget/corpus] ${linkable - drawn} flows sidecar(s) no program page ` +
+        `draws: ${linkable} sidecars, ${drawn} pages drawing one ` +
+        `(lib/flow-owner). district-linkable is printed as programs that have ` +
+        `a follow-the-dollar view, so every sidecar needs exactly one page — ` +
+        `a shared code's sidecar belongs to the one member its district rows ` +
+        `name.`,
+    );
+  }
   return rows;
 }
 
@@ -383,7 +419,9 @@ export function getCrosswalkCounts(): CrosswalkCount[] {
  * invariants (above) are the check, and a page that silently states a stale or
  * missing count is the defect, not the fallback.
  */
-export function crosswalkValue(id: (typeof CROSSWALK_COUNT_IDS)[number] | string): number {
+export type CrosswalkCountId = (typeof CROSSWALK_COUNT_IDS)[number];
+
+export function crosswalkValue(id: CrosswalkCountId): number {
   const row = getCrosswalkCounts().find((c) => c.id === id);
   if (!row) {
     throw new Error(

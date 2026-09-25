@@ -25,9 +25,11 @@
  * Either way the word 'roadmap' links to the methodology coverage anchor.
  *
  * data-coverage="service-books" is the G2 coverage-gate contract (the gate's
- * representative page is the first rollup-tier program page); every word of
- * the wording comes from the payload via serviceOrgName /
- * isIngestedServiceOrg / getOrgAbsence — no org is named in this file.
+ * representative page is the first rollup-tier program page); no org name
+ * and no absence rule is typed here — they come from the payload via
+ * serviceOrgName / isIngestedServiceOrg / getOrgAbsence. The ingested
+ * branches below still type "FY2026" (Task 26: this said "every word of the
+ * wording comes from the payload", which those two branches contradict).
  * data-section-empty marks it as the description section's explained empty
  * state for the program-skeleton gate. Gate 21 leg (o) reads the rendered
  * sentence back and fails when it disagrees with either payload.

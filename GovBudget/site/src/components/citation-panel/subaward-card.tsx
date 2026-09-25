@@ -56,6 +56,9 @@ interface SubawardCardProps {
   formula?: string | null;
 }
 
+/** The one match basis that licenses "names this program" (Task 26). */
+const SUBAWARD_EXACT_BASIS = "subaward-description-exact";
+
 export function SubawardCard({ url, body, formula }: SubawardCardProps) {
   const basisToken =
     typeof body.match_basis === "string" ? body.match_basis.trim() : "";
@@ -65,17 +68,29 @@ export function SubawardCard({ url, body, formula }: SubawardCardProps) {
       ? body.subawardee.trim()
       : null;
 
-  // What the FSRS record establishes — and only when a basis was recorded.
-  // With no basis the card refuses the naming claim rather than softening it.
-  const basisCaveat = basisToken
-    ? "The subaward's reported description of the work names this program," +
-      " and the prime award is linked on that basis — evidence one hop" +
-      " removed from the award itself, which is why these links publish at" +
-      " medium, never high."
-    : "No basis was recorded for this match, so nothing here establishes" +
-      " that the record's description named the program — the link rests on" +
-      " evidence one hop removed from the award itself, which is why these" +
-      " links publish at medium, never high.";
+  // What the FSRS record establishes — and only on the one basis that
+  // licenses it. Task 26 (polish 7): this was gated on ANY non-empty token,
+  // so an LLM-judged or future basis would have claimed the description
+  // "names this program". Only subaward-description-exact — the one basis
+  // verify_phase5b1's _SUBAWARD_MATCH_BASES admits — makes that claim; any
+  // other recorded basis says what it is not, and no basis says so.
+  const tail =
+    " the link rests on evidence one hop removed from the award itself," +
+    " which is why these links publish at medium, never high.";
+  const basisCaveat =
+    basisToken === SUBAWARD_EXACT_BASIS
+      ? "The subaward's reported description of the work names this program," +
+        " and the prime award is linked on that basis — evidence one hop" +
+        " removed from the award itself, which is why these links publish at" +
+        " medium, never high."
+      : basisToken
+        ? "This match's recorded basis is not an exact description match, so" +
+          " nothing here establishes that the record's description named the" +
+          " program —" +
+          tail
+        : "No basis was recorded for this match, so nothing here establishes" +
+          " that the record's description named the program —" +
+          tail;
 
   return (
     <div

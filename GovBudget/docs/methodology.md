@@ -138,7 +138,8 @@ received a total figure across its subsidiaries, we rely on one of two methods.
 UEI in SAM.gov, so the *grouping* is a registry fact rather than a guess.
 *Medium confidence* (name inference): slightly different legal-name variants
 normalize to the same string (e.g., "THE BOEING COMPANY" and "BOEING COMPANY,
-THE (INC)"). Both tiers appear on screen; the method is always disclosed.
+THE (INC)"). Where a whole table is uniform, the per-row chip is suppressed and
+the method stated once.
 
 **The tier grades the grouping, never the name.** A family's label is the
 registered parent name of its largest member, chosen by an argmax over
@@ -164,15 +165,21 @@ where it has not, the page shows no line rather than a guess. (ROADMAP #10.)
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of
-2026-09-11, 9,587 of the 12,595 links the crosswalk grades high or medium
+2026-09-25, 9,588 of the 12,917 links the crosswalk grades high or medium
 carry a per-award hand adjudication — the most recent made on 2026-09-01 —
 recording which program elements, if any, the award's own contract record
-supports. 8,474 of those found work that could not be pinned to any one
+supports. 8,475 of those found work that could not be pinned to any one
 program element; those links publish at medium.
-The announcement+lexicon, fpds-ap and subaward+lexicon paths carry no per-link
-adjudication — their precision is sampled instead (below). The page renders
+The fpds-ap and subaward+lexicon paths carry no per-link adjudication — their
+precision is sampled instead (below). The page renders
 every one of those figures from `site_meta.link_adjudication` and gate 24 leg
 o fails a build whose sentence states a number the block does not hold.
+(Re-stated 2026-09-25 from the chain C run-4 export, which is what the page
+renders; the 2026-09-11 census read 9,587 of 12,595, 8,474 unpinned. A path
+is named here only when none of its published links carries an adjudication:
+announcement+lexicon left the list when 2 of its 1,075 links gained one, and
+the other 1,073 carry none — the High sentence below names that path for
+them.)
 (The two dates are two facts and the page states both: the census is the
 export run's, the adjudication the last one made. They were welded until
 2026-09-11 — "as of 2026-09-01, 9,587 of 12,595" is a ratio that never held,
@@ -186,9 +193,10 @@ link the crosswalk grades high or medium. Backlog #109 carries the remaining
 five-path evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
 J-book pages also name. 60 of the 1,133 links published at high carry a
-per-award hand adjudication, all 60 of them challenged by two independent
+per-award hand adjudication, all 60 challenged by two independent
 adversarial reviewers; the other 1,073 rest on the announcement+lexicon path.
-(Re-measured 2026-09-19 (chain C), from the export's own
+(Re-measured 2026-09-19 (chain C), and unchanged on the 2026-09-25 run-4
+export, from the export's own
 `site_meta.link_adjudication.high`, after the announcement pass's wave 4 added
 367 links to that path; on 2026-09-11 the tier stood at 768 links, 60 adjudicated, all
 60 two-lens. These figures are derived on the page and only mirrored here, so

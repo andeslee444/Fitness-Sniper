@@ -9,12 +9,15 @@
  * high-confidence-only figures — and only where the mart's floor is cleared
  * (HIGH_ONLY_MIN_AWARDS distinct high-confidence awards across
  * HIGH_ONLY_MIN_FAMILIES contractor families holding positive dollars, with
- * positive linked dollars: 37 of 444 mart rows, measured 2026-09-11).
+ * positive linked dollars: 37 of 444 mart rows, measured 2026-09-11; the
+ * floor is bound to the SQL by concentration-floors-bound.test.ts).
  *
  * Below that floor NOTHING is published — not the all-links figure in its
- * place. account+subagency is 8,833 of the 11,512 medium-confidence links,
- * and the 2026-09-04 adjudication measured that tier at 0 of 60 for program
- * attribution (ROADMAP #79): it establishes that a program exists inside an
+ * place. account+subagency was 8,833 of the 11,512 medium-confidence links
+ * (measured 2026-09-11; 9,336 of the 12,917 graded links on the 2026-09-25
+ * run-4 export, site_meta.link_adjudication.by_method), and the 2026-09-05
+ * attribution sample (loaded 2026-09-11) measured that tier at 0 of 60 for
+ * program attribution (ROADMAP #79): it establishes that a program exists inside an
  * account, not that this budget line paid a contractor. Substituting it
  * would widen the claim to fit a number, which is the move the owner
  * decision of 2026-08-07 ("publish the smaller true number") forbids. The
@@ -40,7 +43,9 @@ import type { ProgramHHI } from "@/lib/data";
 export type ConcentrationBasis = "high";
 
 /**
- * Floor for a high-only index — mirrors fct_program_concentration.sql.
+ * Floor for a high-only index — mirrors fct_program_concentration.sql, and
+ * src/__tests__/concentration-floors-bound.test.ts reads the SQL's literals
+ * and fails on any disagreement (Task 26).
  * HIGH_ONLY_MIN_FAMILIES counts families holding POSITIVE dollars
  * (`positive_family_count_high`), not merely linked ones: a family that
  * contributed nothing does not make an index a statement about a market.

@@ -71,9 +71,10 @@ export function DistrictTable({ districts }: Props) {
   // above). Default to browsing by district code instead; the money column
   // stays sortable.
   //
-  // It was called DARPA-only until 2026-09; the sidecars are now 92 Navy, 59
-  // Air Force and 22 Army against 14 DARPA, and gate 24 leg (p) recomputes
-  // that mix rather than trusting this comment.
+  // It was called DARPA-only until 2026-09; the sidecars were 92 Navy, 59
+  // Air Force and 22 Army against 14 DARPA on 2026-09-18 (139 / 88 / 56
+  // against 14 on the 2026-09-25 run-4 export), and gate 24 leg (p)
+  // recomputes that mix rather than trusting this comment.
   const [sortKey, setSortKey] = useState<SortKey>("pop_district");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [stateFilter, setStateFilter] = useState<string>("");

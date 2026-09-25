@@ -40,6 +40,8 @@ vi.mock("@/lib/data", () => ({
   getPagesWithoutDetail: () => MOCK.remainder,
   getDossierCount: () => MOCK.dossiers,
   getFlowsCount: () => MOCK.flows,
+  // One program page draws each sidecar (lib/corpus refuses otherwise).
+  getFlowViewCount: () => MOCK.flows,
   getFlowsOutsideBridgeCount: () => MOCK.flowsOutsideBridge,
   getLineagePrograms: () => MOCK.lineage,
   getCompaniesCount: () => MOCK.companies,
@@ -278,7 +280,13 @@ describe("coverage map — the crosswalk gap is framed as a methodology limit", 
     expect(r().blocker).toMatch(/hand-adjudicated/i);
     expect(r().blocker).toMatch(/high means the contract/i);
     expect(r().blocker).toMatch(/independent adversarial reviewers/i);
-    expect(r().blocker).toMatch(/medium means only/i);
+    // Task 26: "medium means only that the award drew on the same account and
+    // agency" was false for the fpds-ap (1,865) and subaward+lexicon (114)
+    // links publishing at medium on run 4 — /methodology/ §4 says their
+    // program IS established. What every medium link shares is that its
+    // evidence stops short of proving the line paid.
+    expect(r().blocker).toMatch(/medium means the evidence stops short of proving this line paid/i);
+    expect(r().blocker).not.toMatch(/medium means only/i);
   });
 
   it("has no dated target, and says the limit is methodological", () => {
@@ -382,7 +390,7 @@ describe("coverage map — the crosswalk row publishes the File C result", () =>
     const prose = `${FILE_C_NOTE.lead} ${FILE_C_NOTE.tail}`;
     expect(prose).toMatch(/negative result/i);
     expect(prose).toMatch(/81%/);
-    expect(prose).toMatch(/44-link sample/);
+    expect(prose).toMatch(/sample of 44 /);
     // No currency token: prose-allowlist.json has no entry for this page.
     expect(prose).not.toMatch(/\$/);
   });
@@ -416,7 +424,7 @@ describe("coverage map — the crosswalk row publishes the File C result", () =>
   it("restores 'absolute' and gives the 44-link sample its own antecedent", () => {
     const prose = `${FILE_C_NOTE.lead}${FILE_C_NOTE.linkLabel}${FILE_C_NOTE.tail}`;
     expect(prose).toMatch(/absolute obligated flow/);
-    expect(prose).toMatch(/44-link sample of this site's own published crosswalk links/);
+    expect(prose).toMatch(/sample of 44 of this site's then-published links/);
     expect(prose).toMatch(/19 high \/ 25 medium/);
     // Still no currency token anywhere in the note.
     expect(prose).not.toMatch(/\$/);
@@ -428,6 +436,21 @@ describe("coverage map — the crosswalk row publishes the File C result", () =>
  * different matcher" to "an effort" two nouns back — the antecedent a reader
  * would actually land on. Named the matcher explicitly instead.
  */
+/**
+ * Task 26 (final review): /coverage/ headlines that its figures are recomputed
+ * at build time, and this note renders a one-off spike's sample — 44 links,
+ * 19 high / 25 medium, 81% — which nothing recomputes, drawn 2026-09-01 in the
+ * tier vocabulary before the 2026-09-04 withdrawals. The sample is dated and
+ * marked as of then; the page's heading is scoped to the coverage figures.
+ */
+describe("coverage map — the File C sample is a dated one-off measurement", () => {
+  it("dates the sample and marks its links as then-published", () => {
+    const prose = `${FILE_C_NOTE.lead}${FILE_C_NOTE.linkLabel}${FILE_C_NOTE.tail}`;
+    expect(prose).toMatch(/In a 2026-09-01 sample of 44 of this site's then-published links \(19 high \/ 25 medium\)/);
+    expect(prose).not.toMatch(/this site's own published/);
+  });
+});
+
 describe("coverage map — the lineage target names its own antecedent", () => {
   it("says what would stay in the candidate tier, not 'it'", () => {
     const t = byId.get("lineage")!.target;

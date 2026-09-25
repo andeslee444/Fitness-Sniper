@@ -65,7 +65,12 @@ function program(over: Partial<DistrictProgram>): DistrictProgram {
   };
 }
 
-/** The live shape of '0145' after the 2026-09-19 wave-4 load. */
+/**
+ * 0145's live member identities (accounts, slugs, titles), placed in ONE
+ * district — a hypothetical grain case. On the run-4 export only 0145-APN has
+ * district rows (MO-01, MA-06); the test pins what the page does the day both
+ * members land in one district.
+ */
 const MEMBERS: DistrictProgram[] = [
   program({
     account: "1506N",

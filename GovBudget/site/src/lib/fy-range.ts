@@ -28,8 +28,14 @@ export interface AwardFyRange {
   fyMax: number;
   /** Canonical wording, e.g. "FY2017–FY2026". */
   label: string;
-  /** True when fyMax is still in progress (latest action predates Sep 30). */
+  /**
+   * True when the corpus holds only part of fyMax (its latest action predates
+   * that year's Sep 30). A fact about the DATA, true on every later date —
+   * never read it as "the year is still open".
+   */
   maxPartial: boolean;
+  /** site_meta.award_fy_range.latest_action_date (ISO), or null when absent. */
+  latestActionDate: string | null;
   /**
    * Tooltip-grade sentence naming the range and, when the final year is still
    * open, saying so. Rendered as a title attribute, never as body copy.
@@ -79,8 +85,12 @@ export function getAwardFyRange(): AwardFyRange | null {
     raw.fy_min === raw.fy_max
       ? `fiscal year ${raw.fy_max}`
       : `fiscal years ${raw.fy_min} through ${raw.fy_max}`;
+  // Task 26: this said "it does not close until September 30" — a claim about
+  // the calendar, false from Oct 1 while max_partial stays true for the same
+  // corpus. It now says where the data ends, which no date can falsify.
+  const latest = raw.latest_action_date ?? null;
   const title = raw.max_partial
-    ? `USAspending award obligations across ${period}. FY${raw.fy_max} is a partial year — it does not close until September 30.`
+    ? `USAspending award obligations across ${period}. FY${raw.fy_max} is a partial year${latest ? ` — data through ${latest}` : ""}.`
     : `USAspending award obligations across ${period}.`;
 
   return {
@@ -88,6 +98,7 @@ export function getAwardFyRange(): AwardFyRange | null {
     fyMax: raw.fy_max,
     label,
     maxPartial: raw.max_partial,
+    latestActionDate: latest,
     title,
   };
 }

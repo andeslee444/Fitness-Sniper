@@ -70,18 +70,18 @@ export default async function DistrictDetailPage({ params }: Props) {
       : null;
 
   // ROADMAP #6, partial-year honesty. site_meta.award_fy_range.max_partial is
-  // true today (latest action 2026-04-23; FY2026 does not close until Sep 30),
-  // and a final row that ends on a half-collected year without saying so
-  // publishes a collapse that did not happen. DERIVED, never authored — the
+  // true on the run-4 export (latest action 2026-09-04, before FY2026's Sep 30
+  // close), and a final row that ends on a half-collected year without saying
+  // so publishes a collapse that did not happen. DERIVED, never authored — the
   // same source <FyRange/> reads, so the two can never disagree.
   const byYear = detail.by_year ?? [];
   const awardFyRange = getAwardFyRange();
   const partialFy = awardFyRange?.maxPartial ? awardFyRange.fyMax : null;
   // ...but the NOTE about the partial year belongs only on a page whose table
   // actually reaches it. max_partial is SITEWIDE and true on every page, while
-  // only 67 of 153 districts have an FY2026 row (measured 2026-09-11); on the
-  // other 86 the note asserted a figure that is not in the table (fix round 1,
-  // Critical 2). The inline "partial year" row label was already derived per
+  // only 67 of 153 districts had an FY2026 row (measured 2026-09-11; 110 of
+  // 189 on the 2026-09-25 run-4 export); on the others the note asserted a
+  // figure that is not in the table (fix round 1, Critical 2). The inline "partial year" row label was already derived per
   // row and is unchanged.
   const showsPartialFy =
     partialFy !== null && byYear.some((r) => r.fiscal_year === partialFy);
@@ -202,18 +202,40 @@ export default async function DistrictDetailPage({ params }: Props) {
               register, and after the heading. */}
           <ScopeNote className="mt-3" label="Coverage note">
             {/* Until 2026-09 this explained the gap by one organization's
-                account structure, on a page whose own programs are 92 Navy /
-                59 Air Force / 22 Army against 14 DARPA sitewide. It names the
-                mechanism now — gate 24 leg (p3) recomputes that mix. */}
+                account structure, on a page whose sidecars were 92 Navy /
+                59 Air Force / 22 Army against 14 DARPA sitewide (measured
+                2026-09-18; run 4: 139 / 88 / 56 against 14). It names the
+                mechanism now — gate 24 leg (p3) recomputes that mix.
+
+                Task 26 (final review): the mechanism sentence said "A link is
+                published only where something firmer says so: a contract
+                announcement that names the program, or an account plus
+                program-specific tokens". Unscoped that is false sitewide (the
+                crosswalk publishes 11,315 links, at high or medium, on neither
+                path), and in this page's scope — it counts only confidence='high'
+                (fct_district_programs) — it omitted the 25 adjudicator-pinned
+                account / account+subagency links of the 1,133 high on run 4,
+                and "names the program" claims more than /methodology/ §4 does
+                for an announcement link whose match basis went unrecorded (326
+                of 1,074). It now states the page's own scope and points at §4
+                for what the evidence is, rather than enumerating paths that
+                the next tier change would silently falsify. */}
             <p>
               {orgPhrase}, and that is a limit of the method rather than a
               fact about this district. An award record carries a Treasury
               account, and one account funds dozens to hundreds of program
               elements — so an account code alone cannot say which line paid
-              for a contract. A link is published only where something firmer
-              says so: a contract announcement that names the program, or an
-              account plus program-specific tokens. Everything else is absent
-              here rather than approximated.
+              for a contract. This page counts only links the crosswalk grades
+              high, where more than an account code ties the award to the
+              program;{" "}
+              <Link
+                href="/methodology/#crosswalk-confidence"
+                className="underline hover:text-foreground"
+              >
+                methodology §4
+              </Link>{" "}
+              says what does. Everything else is absent here rather than
+              approximated.
             </p>
             <p className="mt-2">
               Aggregate totals are derived from USAspending award transaction
@@ -419,11 +441,18 @@ export default async function DistrictDetailPage({ params }: Props) {
                 </tbody>
               </table>
             </div>
+            {/* Task 26: this said "FY{partialFy} is still open — it does not
+                close until September 30", a claim about the calendar that is
+                false from Oct 1 while max_partial (a claim about the data)
+                stays true for this corpus. It now states where the corpus's
+                data ends — site_meta.award_fy_range.latest_action_date — which
+                is true on every date. */}
             {showsPartialFy && (
               <p className="mt-2 text-xs text-muted-foreground">
-                FY{partialFy} is still open — it does not close until September
-                30, so its figure is a part-year total and is not comparable to
-                the full years above it.
+                {awardFyRange?.latestActionDate
+                  ? `FY${partialFy} runs only through ${awardFyRange.latestActionDate} in this corpus — a part-year total`
+                  : `FY${partialFy} is a part-year total in this corpus`}
+                , not comparable to the full years above it.
               </p>
             )}
             {hasDeobligations && (

@@ -2,7 +2,11 @@ import Link from "next/link";
 import type { ProgramHHI } from "@/lib/data";
 import { Cite } from "@/components/cite";
 import { ScopeNote } from "@/components/notes";
-import { hhiBand } from "@/lib/hhi-band.mjs";
+import {
+  hhiBand,
+  HHI_MODERATE_MIN,
+  HHI_CONCENTRATED_MIN,
+} from "@/lib/hhi-band.mjs";
 import {
   concentrationHeadline,
   CONCENTRATION_WITHHELD_REASON,
@@ -44,6 +48,21 @@ import {
 interface ProgramConcentrationProps {
   hhi: ProgramHHI | null;
 }
+
+/**
+ * The Index tooltip's bands, built from the constants hhiBand applies (Task
+ * 26: the hand-typed "1500–2500 moderate; >2500 concentrated" called an index
+ * of exactly 2,500 moderate while the badge beside it said Highly
+ * Concentrated — hhiBand's floor is `>= HHI_CONCENTRATED_MIN`).
+ */
+const fmtBand = (n: number) => n.toLocaleString("en-US");
+const HHI_TOOLTIP =
+  "Herfindahl-Hirschman Index: 0–10,000. " +
+  `Under ${fmtBand(HHI_MODERATE_MIN)} competitive; ` +
+  `${fmtBand(HHI_MODERATE_MIN)} to under ${fmtBand(HHI_CONCENTRATED_MIN)} moderate; ` +
+  `${fmtBand(HHI_CONCENTRATED_MIN)} or more concentrated. ` +
+  "Computed from high-confidence award links only, on positive-only " +
+  "contractor shares — click the value for the formula.";
 
 const BAND_COLOR: Record<string, string> = {
   competitive: "text-green-700",
@@ -137,7 +156,7 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
               Index
               <span
                 className="ml-1 text-muted-foreground/60 cursor-help"
-                title="Herfindahl-Hirschman Index: 0–10,000. <1500 competitive; 1500–2500 moderate; >2500 concentrated. Computed from high-confidence award links only, on positive-only contractor shares — click the value for the formula."
+                title={HHI_TOOLTIP}
               >
                 ⓘ
               </span>

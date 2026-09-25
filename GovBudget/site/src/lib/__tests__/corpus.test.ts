@@ -23,6 +23,8 @@ const state = {
       "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project detail",
   } as Record<string, unknown>,
   flows: 200,
+  /** Program pages that DRAW a view; null = one per sidecar, the live shape. */
+  flowViews: null as number | null,
   flowsOutsideBridge: 34,
   bridge: { universePeCount: 444, crosswalkedPeCount: 384, highConfidencePeCount: 240 },
 };
@@ -33,6 +35,7 @@ vi.mock("@/lib/data", () => ({
   getProgramPagesCount: () => state.programPages,
   getSiteMeta: () => state.meta,
   getFlowsCount: () => state.flows,
+  getFlowViewCount: () => state.flowViews ?? state.flows,
   getFlowsOutsideBridgeCount: () => state.flowsOutsideBridge,
   getFlowChartMeta: () => ({ bridge: state.bridge }),
 }));
@@ -58,6 +61,7 @@ function reset() {
     corpus_scope: SCOPE,
   };
   state.flows = 200;
+  state.flowViews = null;
   state.flowsOutsideBridge = 34;
   state.bridge = { universePeCount: 444, crosswalkedPeCount: 384, highConfidencePeCount: 240 };
 }
@@ -166,6 +170,22 @@ describe("getCrosswalkCounts", () => {
     expect(() => getCrosswalkCounts()).not.toThrow();
   });
 
+  /**
+   * Task 26 (the final review's Critical). district-linkable is the sidecar
+   * count, and /coverage/, /district/, /methodology/ and every program page
+   * print it as programs that HAVE a follow-the-dollar view. On the run-4
+   * export four sidecars sat on shared budget-line codes no page drew, so the
+   * figure said 314 where 310 pages drew one. Member pages now draw the
+   * sidecar they own (lib/flow-owner); a sidecar nobody owns is a count the
+   * site would print falsely, so the registry refuses to build.
+   */
+  it("throws when a flows sidecar is drawn by no program page", () => {
+    state.flowViews = 199;
+    expect(() => getCrosswalkCounts()).toThrow(
+      /1 flows sidecar\(s\) no program page draws/,
+    );
+  });
+
   it("throws when district-linkable exceeds the whole link universe", () => {
     state.flows = 500;
     expect(() => getCrosswalkCounts()).toThrow(/district-linkable/);
@@ -197,6 +217,9 @@ describe("crosswalkValue", () => {
   });
 
   it("throws on an id the registry does not publish, rather than rendering a blank", () => {
+    // The parameter is the id union (Task 26: it used to widen to `string`,
+    // so a typo compiled); the runtime refusal still covers an untyped caller.
+    // @ts-expect-error — not a CrosswalkCountId
     expect(() => crosswalkValue("no-such-count")).toThrow();
   });
 });

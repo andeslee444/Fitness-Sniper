@@ -60,7 +60,7 @@ import {
   getProgramsCount,
   getSiteMeta,
 } from "@/lib/data";
-import { getCrosswalkCounts } from "@/lib/corpus";
+import { crosswalkValue } from "@/lib/corpus";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
 
@@ -91,7 +91,12 @@ export const CROSSWALK_LIMIT_ID: CoverageMapId = "bridge";
 
 /**
  * The rows whose target names work this project intends to do — as opposed to
- * a methodology limit (bridge, flows, company-awards) or a source limit
+ * the rows whose target names a limit of the sources behind the gap, which is
+ * the page's own rendered word for both kinds of limit (coverage/page.tsx's
+ * policy paragraph: "…or the limit of the sources behind the gap"): the
+ * award records' account-code coarseness (bridge, flows, company-awards —
+ * called a methodology limit in their own target text, because no method
+ * over those records can close it) and the publishers' own coverage
  * (program-pages, awards-window).
  *
  * 2026-09-18. All seven used to end "pending a roadmap decision". Nothing was
@@ -147,9 +152,18 @@ export const COVERAGE_PROMISE_IDS: readonly CoverageMapId[] = [
  *     labels", where the sample is a "Stratified sample of 44 published links
  *     (19 high / 25 medium; 41 distinct awards)" and its 1,090 File C rows.
  *     The rendered sentence keeps "absolute" and gives the sample its own
- *     antecedent — "this site's own published crosswalk links (19 high / 25
- *     medium)" — so "44-link sample" is never read as "the corpus". It states
- *     no dollar figure (none is derivable here).
+ *     antecedent — "this site's then-published links (19 high / 25
+ *     medium)" — so the 44-link sample is never read as "the corpus". It
+ *     states no dollar figure (none is derivable here).
+ *   - Task 26 (final review): the sample was undated and in the present
+ *     tense ("own published"), on a page headlined "Every number on this
+ *     page is recomputed at build time". Nothing recomputes 44, 19/25 or
+ *     81%, and the draw predates the 2026-09-04 tier withdrawals, so "19
+ *     high" is that day's tier, not today's. It is now dated and marked
+ *     "then-published" — a one-off spike measurement — and the heading is
+ *     scoped to the coverage figures the gate does recompute. Paid for in
+ *     the same sentence ("44-link", "own" and "crosswalk" went: the section
+ *     is #crosswalk), 5 characters shorter than it was.
  *   - findings #3/#4 and §Implications: the field "contradicts ground truth
  *     on awards we can independently verify", and cannot serve "as a join
  *     key, … as corroborating evidence, [or] as a veto on suspect links".
@@ -170,9 +184,9 @@ export const FILE_C_NOTE = {
     "and 057-3600 (a 64 MB CSV)",
   tail:
     " carries only budget activities and junk codes, never program elements, " +
-    "so program-element grain is impossible by construction. In a 44-link " +
-    "sample of this site's own published crosswalk links (19 high / 25 " +
-    "medium), 81% of absolute obligated flow sat under junk or absent " +
+    "so program-element grain is impossible by construction. In a " +
+    "2026-09-01 sample of 44 of this site's then-published links (19 high / " +
+    "25 medium), 81% of absolute obligated flow sat under junk or absent " +
     "labels, and it contradicts ground truth on awards verified " +
     "independently. It cannot join, corroborate, or veto.",
 } as const;
@@ -267,9 +281,9 @@ export function getCoverageMap(): CoverageMapRow[] {
   // renders the list that says how they differ. Gate 24 leg (p) binds all of
   // it. `pctNotCrosswalked` still comes off the meta: it is a share of
   // dollars, not a count of program elements.
-  const crosswalk = getCrosswalkCounts();
-  const crosswalkValue = (id: string) =>
-    crosswalk.find((c) => c.id === id)!.value;
+  // Read through the registry's own accessor (Task 26): it throws a named
+  // error on an unknown id where a local `find(...)!.value` threw a TypeError,
+  // and its parameter is the id union, so a typo no longer compiles.
   const pctNotCrosswalked = getFlowChartMeta().bridge.pctNotCrosswalked;
   const linkable = crosswalkValue("district-linkable");
   const bridged = crosswalkValue("bridged-request");
@@ -521,13 +535,21 @@ export function getCoverageMap(): CoverageMapRow[] {
         // adjudication — the adversarial step is real, and it covers 60 of
         // 768, not the tier. The claim is now bounded to the links that
         // carry one; the gate mandates the bounded wording instead.
+        //
+        // Task 26 (review, rejected-as-Important but true): "medium means only
+        // that the award drew on the same account and agency" was false for
+        // the 1,865 fpds-ap and 114 subaward+lexicon links publishing at
+        // medium on run 4, whose program /methodology/ §4 says IS established
+        // (an FPDS tag or a subaward description); it undersold them. What
+        // every medium link shares is that the evidence stops short of the
+        // line — shorter, and true of all five paths that publish there.
         "and nothing else on the record narrows it. Most published links were " +
         "hand-adjudicated (September 2026) — /methodology/ states how many, " +
         "and which evidence paths carry no per-link adjudication at all: high " +
         "means the contract and the program's own J-book pages name the same " +
         "program, and where a per-award adjudication exists it was challenged " +
         "by two independent adversarial reviewers; medium " +
-        "means only that the award drew on the same account and agency. " +
+        "means the evidence stops short of proving this line paid. " +
         "Where evidence pinned an award " +
         "to a different organization's program, the link was removed — a " +
         // The File C negative result (spike 2026-09-01), stated where the

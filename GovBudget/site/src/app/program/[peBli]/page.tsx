@@ -47,6 +47,7 @@ import {
 import { findPeLinks } from "@/lib/pe-link";
 import { formatAmount } from "@/lib/format";
 import { hasLineage } from "@/lib/lineage";
+import { flowAbsenceReason } from "@/lib/flow-owner";
 import { Cite, CiteChips } from "@/components/cite";
 import { normalizeExhibitFamily } from "@/lib/basis";
 import { LineageRail } from "@/components/lineage/lineage-rail";
@@ -587,11 +588,16 @@ export default async function ProgramPage({
     }
   }
 
-  // Follow-the-dollar (Task 6b): only the 17 crosswalked programs have a
-  // flows sidecar. The cited per-district table needs the
-  // (district, pe_bli, account) USAspending fact_ids in the page slice —
-  // the member grain since Task 27.
-  const flowData = getFlowData(peBli);
+  // Follow-the-dollar (Task 6b): drawn only where the page owns a flows
+  // sidecar (lib/flow-owner — a member of a shared code draws the bare code's
+  // file when the district mart files it under that member; Task 26). The
+  // cited per-district table needs the (district, pe_bli, account)
+  // USAspending fact_ids in the page slice — the member grain since Task 27.
+  // Where there is no view, the note says which of two reasons holds for THIS
+  // page: no high-confidence link at all, or high-confidence links none of
+  // which records a positive obligation at a place of performance.
+  const flowData = getFlowData({ ...program, slug: peBli });
+  const flowAbsence = flowAbsenceReason(details.awards);
   if (flowData) {
     for (const row of flowData.districtRows) {
       if (row.factId) pageFactIds.push(row.factId);
@@ -979,7 +985,12 @@ export default async function ProgramPage({
         {flowData ? (
           <FollowTheDollar data={flowData} />
         ) : (
-          <CoverageNote id="follow-the-dollar" empty className="mt-8 mb-8" />
+          <CoverageNote
+            id="follow-the-dollar"
+            empty
+            absence={flowAbsence}
+            className="mt-8 mb-8"
+          />
         )}
       </ProgramSection>
 
@@ -1493,7 +1504,8 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  *
  * AWARD TIER (#80, fix round 1 2026-09-11). One basis, the card's:
  * high-confidence links alone, and only where the high-only index publishes
- * (37 of 444 mart rows). Below that floor this tier does not render at all —
+ * (37 of 444 mart rows on 2026-09-11; 63 of 536 on the lake behind the
+ * 2026-09-25 run-4 export). Below that floor this tier does not render at all —
  * the all-links figure is not substituted for it, because the
  * account+subagency tier that dominates it measured 0 of 60 on program
  * attribution (#79) — and the J-book / lobbying / honest-absence tiers

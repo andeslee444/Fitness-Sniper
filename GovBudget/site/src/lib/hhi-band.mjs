@@ -6,7 +6,10 @@
  *     "Contractor Concentration" badge — the destination page a homepage/
  *     feed concentration claim links to)
  *   - src/lib/hhi-scope-note.ts                  (per-card scope note,
- *     rendered on every /feed/ card by feed-card-item-shell.tsx)
+ *     rendered on /feed/'s hhi-unit (concentration_shift) cards by
+ *     feed-card-item-shell.tsx — hhiScopeNote returns null otherwise)
+ *   - src/app/methodology/page.tsx               (imports the two band
+ *     constants for §4's concentration passage)
  *   - scripts/gates/feed.mjs                     (leg l: claim vs. the
  *     destination page it links to)
  *
@@ -20,8 +23,10 @@
  * (correctly) moved on. Making the HHI band function .mjs from the start
  * means every consumer — TS pages via `import ... from "@/lib/hhi-band.mjs"`
  * (the site already does this for feed-model.mjs) and the gate script via a
- * plain relative import — share the literal same function. There is no
- * mirror to forget to update twice.
+ * plain relative import — share the literal same function. What is left is
+ * one hand copy of the bands in prose — glossary.ts's HHI entry — bound to
+ * these constants by hhi-band.test.ts, and the program-page tooltip, which
+ * builds its text from them (program-concentration.tsx).
  *
  * BANDS. Standard DOJ/FTC Horizontal Merger Guidelines convention:
  *   HHI <  1,500              unconcentrated    ("Competitive")

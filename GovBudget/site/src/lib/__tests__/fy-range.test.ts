@@ -66,10 +66,29 @@ describe("getAwardFyRange", () => {
     expect(r!.maxPartial).toBe(true);
   });
 
-  it("names the open final year in the title when it is partial", () => {
-    expect(getAwardFyRange()!.title).toMatch(
-      /FY2026 is a partial year — it does not close until September 30/,
-    );
+  it("names the partial final year in the title, with the data's own last date", () => {
+    // Task 26: "it does not close until September 30" was a claim about the
+    // CALENDAR, false from 2026-10-01 while max_partial (a claim about the
+    // DATA) stays true for this corpus. The title now says where the data ends.
+    const r = getAwardFyRange()!;
+    expect(r.title).toMatch(/FY2026 is a partial year — data through 2026-04-23\./);
+    expect(r.title).not.toMatch(/September 30|does not close|still open/);
+    expect(r.latestActionDate).toBe("2026-04-23");
+  });
+
+  it("states the partial year without a date when the export carries none", () => {
+    state.meta = {
+      award_fy_range: {
+        fy_min: 2017,
+        fy_max: 2026,
+        label: "FY2017–FY2026",
+        latest_action_date: null,
+        max_partial: true,
+      },
+    };
+    const r = getAwardFyRange()!;
+    expect(r.title).toMatch(/FY2026 is a partial year\.$/);
+    expect(r.latestActionDate).toBeNull();
   });
 
   it("omits the partial-year sentence when the final year has closed", () => {

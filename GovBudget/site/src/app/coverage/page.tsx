@@ -98,7 +98,8 @@ export default function CoveragePage() {
               under it; nothing was cut or reworded. The lede above and the
               <h2> stay — they introduce the table rather than qualifying it.
               Byte note: this is a move, not an addition, on a page whose
-              ceiling has ~430 gzip of headroom and is never raised. */}
+              ceiling had ~430 gzip of headroom then (its gzip ceiling was
+              raised once later, under R-D-2 in chain D). */}
 
           {/* ── The map ─────────────────────────────────────────────────────── */}
           {/* [data-first-data] marks the block gate 16's index-fold leg
@@ -210,8 +211,12 @@ export default function CoveragePage() {
           </p>
 
           <ScopeNote className="mt-6" label={null}>
+            {/* Task 26: this said "Every number on this page", and the File C
+                note below renders a dated one-off spike sample (44 links,
+                81%) that nothing recomputes. Scoped to what the gate does
+                recompute — 4 characters shorter. */}
             <h2 className="mb-2 text-lg font-semibold text-foreground">
-              Every number on this page is recomputed at build time
+              Every coverage figure is recomputed at build time
             </h2>
             {/* Trimmed 2026-09-18 to pay for the File C sentences below. What
                 went: "Nothing here is typed by hand." (the <h2> directly above

@@ -86,7 +86,7 @@ const SCOPED_EVENT_TYPES = new Set([
   "request_vs_actuals_gap",
 ]);
 
-const EVENT_ORDER = [
+const EVENT_ORDER: FeedCard["event_type"][] = [
   "yoy_swing",
   "zeroed_fy2026",
   "request_vs_actuals_gap",

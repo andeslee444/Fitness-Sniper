@@ -244,12 +244,21 @@ export function DownloadCards({
         {/* citations.parquet used to be listed here too, under a heading
             that says "not in table above" while it had a card of its own.
             One place now: the card. */}
+        {/* Task 26 (polish 18): this typed "(~149 MB total)" — the
+            2026-07-02 bundle; data/site/pdfs/ held 1.8 GB on 2026-09-25 — and
+            fell back to literal counts (34, 3) when the export carried none.
+            A size the export does not publish is dropped (the smaller true
+            claim), and a missing count renders no number rather than an old
+            one. */}
         <ul className="list-disc list-inside space-y-1 text-xs">
           <li>
-            <code>pdfs/</code> — {pdfCount ?? 34} SHA-named J-book PDFs (~149 MB total)
+            <code>pdfs/</code> —{" "}
+            {pdfCount !== undefined ? `${pdfCount} ` : ""}SHA-named J-book PDFs
           </li>
           <li>
-            <code>workbooks/</code> — {workbookCount ?? 3} R-1/P-1 Excel rollup files
+            <code>workbooks/</code> —{" "}
+            {workbookCount !== undefined ? `${workbookCount} ` : ""}R-1/P-1
+            Excel rollup files
           </li>
         </ul>
       </div>
