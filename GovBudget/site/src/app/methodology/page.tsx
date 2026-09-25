@@ -1671,9 +1671,9 @@ export default function MethodologyPage() {
                   Award Concentration Shifts (concentration_shift)
                 </h3>
                 <p>
-                  Programs whose Herfindahl-Hirschman Index (HHI), computed from
-                  high-confidence award transactions grouped by fiscal year, is
-                  non-trivial. The HHI floor is $5M in matched obligations.
+                  Each program-year with at least $5M in positive obligations on
+                  high-confidence links, and its Herfindahl-Hirschman Index (HHI)
+                  over them; no HHI floor applies.
                   On a budget line more than one program uses, only a program
                   carrying every crosswalk link (high or medium) gets a card,
                   linked to its page.
