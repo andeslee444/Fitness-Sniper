@@ -137,4 +137,25 @@ describe("DownloadCards — manifest-driven cited badges", () => {
     // …while workbook-cited datasets keep theirs
     expect(cardFor(container, "budget_lines").textContent).toContain("cited");
   });
+
+  /**
+   * Fix-wave round 2 (B4): the PDF line printed site_meta.pdf_count (204, the
+   * documents the export run copied) while the shipped pdfs/ directory held
+   * 225 (#164). Until the exporter counts or prunes the directory the line
+   * states no count — the same "smaller true claim" applied to its size.
+   */
+  it("states no PDF count, whatever the export carries", () => {
+    const { container } = render(
+      <DownloadCards
+        builtAt="2026-07-01T00:00:00Z"
+        inventory={INVENTORY}
+        pdfCount={204}
+        workbookCount={30}
+      />,
+    );
+    const text = container.textContent!.replace(/\s+/g, " ");
+    expect(text).toContain("pdfs/ — SHA-named J-book PDFs");
+    expect(text).not.toMatch(/\d+ SHA-named/);
+    expect(text).toContain("workbooks/ — 30 R-1/P-1 Excel rollup files");
+  });
 });

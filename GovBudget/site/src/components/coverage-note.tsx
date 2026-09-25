@@ -15,22 +15,39 @@ import { getCoverage, type CoverageId } from "@/lib/coverage";
 import type { FlowAbsence } from "@/lib/flow-owner";
 import Link from "next/link";
 
+/**
+ * Which note, and — for follow-the-dollar's EMPTY variant only — why this page
+ * draws no view. Fix-wave round 2 (B6): `absence` was optional everywhere, so
+ * a program page that stopped passing it would silently fall back to "no
+ * high-confidence link" on the 102 pages that have one; the empty
+ * follow-the-dollar note now cannot be written without its reason.
+ */
+type CoverageNoteVariant =
+  | {
+      id: Exclude<CoverageId, "follow-the-dollar">;
+      /** Render the empty-state variant (surface absent on this page). */
+      empty?: boolean;
+      absence?: undefined;
+    }
+  | { id: "follow-the-dollar"; empty?: false; absence?: undefined }
+  | {
+      id: "follow-the-dollar";
+      empty: true;
+      /**
+       * Why THIS page draws no view (lib/flow-owner flowAbsenceReason).
+       * Task 26 — one reason on every page was false on the pages whose
+       * high-confidence links record no place of performance.
+       */
+      absence: FlowAbsence;
+    };
+
 export function CoverageNote({
   id,
   empty = false,
   absence,
   collapsible = false,
   className = "",
-}: {
-  id: CoverageId;
-  /** Render the empty-state variant (surface absent on this page). */
-  empty?: boolean;
-  /**
-   * follow-the-dollar only: why THIS page draws no view (lib/flow-owner
-   * flowAbsenceReason). Task 26 — one reason on every page was false on the
-   * pages whose high-confidence links record no place of performance.
-   */
-  absence?: FlowAbsence;
+}: CoverageNoteVariant & {
   /**
    * Collapse the note sentence below `sm`, leaving only the methodology link
    * (e.g. "why one edition? →") — used on /years/ to tighten the 390px fold.

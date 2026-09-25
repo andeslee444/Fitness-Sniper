@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: `Congressional Districts — ${SITE_NAME}`,
     description:
-      "Defense spending by congressional district — programs, recipients, and awarded dollars for the budget lines whose awards are linked at high confidence.",
+      "Defense spending by congressional district — programs, recipients, and awarded dollars for the budget lines with a follow-the-dollar view.",
     url: `${SITE_URL}/district/`,
     siteName: SITE_NAME,
     images: coreOgImages("district-index"),
@@ -236,6 +236,13 @@ export default function DistrictIndexPage() {
               How the every-U.S.-district total and the
               linkable-to-a-budget-program figure relate:
             </strong>{" "}
+            {/* Fix-wave round 2 (B1): the sentence below tied the linkable
+                subtotal to "— {_flowsCount} of {_programsCount} programs —",
+                the programs with a view. The subtotal sums the district
+                table's rows, which span 317 programs on run 4: 356010, 845550
+                and 9140MA7804 carry only zero or negative obligations there
+                and draw no view. The count went (the lede above states the
+                view ratio) rather than a second, undeclared one arriving. */}
             {/* Round-1 judging: this said "right-hand" and "middle", which
                 is only true at desktop — below `sm` the three cards restack
                 2-then-1, putting the grand total bottom-left and the
@@ -251,9 +258,8 @@ export default function DistrictIndexPage() {
               linkable to a budget program
             </em>{" "}
             figure is the small slice of it we can tie back to a specific
-            budget program through the crosswalk — {_flowsCount} of{" "}
-            {_programsCount} programs — so it is a subset of the same
-            universe, roughly{" "}
+            budget program through the crosswalk, so it is a subset of the
+            same universe, roughly{" "}
             {(
               (totalLinkable / (index.geo_grand_total || 1)) *
               100

@@ -46,6 +46,18 @@ vi.mock("@/lib/data", () => ({
   }),
 }));
 
+/** site_meta.award_fy_range.latest_action_date, per case (round 2, B3). */
+let latestActionDate: string | null = "2026-09-04";
+vi.mock("@/lib/fy-range", () => ({
+  getAwardFyRange: () => ({
+    fyMin: 2017,
+    fyMax: 2026,
+    maxPartial: true,
+    label: "FY2017–FY2026",
+    latestActionDate,
+  }),
+}));
+
 import { getCoverage, COVERAGE_IDS } from "@/lib/coverage";
 
 describe("coverage manifest", () => {
@@ -120,6 +132,25 @@ describe("coverage manifest", () => {
     );
     // Both carry the G2 count.
     expect(noPlace).toContain("17 of 420");
+  });
+
+  /**
+   * Fix-wave round 2 (B3). The sitewide partial-year note (~2,587 pages) ended
+   * "…and the fiscal year does not close until September 30" — a claim about
+   * the calendar, false from 2026-10-01, the species Task 26 fixed on
+   * /district/, the <FyRange> tooltip and /methodology/. It now says where
+   * this corpus's data ends.
+   */
+  it("fy2026-partial states where the corpus ends, never when the year closes", () => {
+    latestActionDate = "2026-09-04";
+    const note = getCoverage("fy2026-partial").note;
+    expect(note).not.toMatch(/September 30|does not close|still open/);
+    expect(note).toContain("this corpus runs through 2026-09-04");
+    latestActionDate = null;
+    const undated = getCoverage("fy2026-partial").note;
+    expect(undated).not.toMatch(/September 30|does not close|runs through/);
+    expect(undated).toContain("rolling basis");
+    latestActionDate = "2026-09-04";
   });
 
   it("empty-state notes carry the same interpolated counts", () => {

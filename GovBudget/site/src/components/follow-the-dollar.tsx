@@ -9,6 +9,7 @@ import {
   type ProgramRow,
 } from "@/lib/data";
 import { formatAmountNoCurrency } from "@/lib/format";
+import { normalizeExhibitFamily } from "@/lib/basis";
 import { companyLabel } from "@/lib/company-name.mjs";
 import { Cite } from "@/components/cite";
 import { ChartFigure, chartDescId } from "@/components/chart-figure";
@@ -58,12 +59,32 @@ export interface FlowDistrictRow {
 }
 
 export interface FlowData {
+  /**
+   * The appropriation node's second line, from the page's own exhibit family
+   * (fix-wave round 2): "Procurement appropriation" on the 174 procurement
+   * views of run 4 — the four member views among them — "RDT&E
+   * appropriation" on the 140 RDT&E ones. It read "RDT&E appropriation" on
+   * all 314. A family the payload does not carry says only "Appropriation".
+   */
+  appropriationLabel: string;
   districtRows: FlowDistrictRow[];
   flow: FlowSidecar;
 }
 
+function appropriationLabel(family: string | null | undefined): string {
+  const f = normalizeExhibitFamily(family);
+  return f === "procurement"
+    ? "Procurement appropriation"
+    : f === "rdte"
+      ? "RDT&E appropriation"
+      : "Appropriation";
+}
+
 export function getFlowData(
-  program: Pick<ProgramRow, "slug" | "pe_bli" | "title" | "org" | "trajectory">,
+  program: Pick<
+    ProgramRow,
+    "slug" | "pe_bli" | "title" | "org" | "trajectory" | "exhibit_family"
+  >,
 ): FlowData | null {
   const name = getFlowSidecarForPage(program.slug);
   const sidecar = name ? getFlow(name) : null;
@@ -131,7 +152,11 @@ export function getFlowData(
     return a.district.localeCompare(b.district);
   });
 
-  return { districtRows, flow };
+  return {
+    appropriationLabel: appropriationLabel(program.exhibit_family),
+    districtRows,
+    flow,
+  };
 }
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
@@ -168,7 +193,7 @@ interface Props {
 }
 
 export function FollowTheDollar({ data }: Props) {
-  const { flow, districtRows } = data;
+  const { flow, districtRows, appropriationLabel: appropriation } = data;
   const { header } = flow;
   const awards = flow.awards;
 
@@ -228,7 +253,7 @@ export function FollowTheDollar({ data }: Props) {
   // <desc>. It says what the picture shows and what to take from it (how few
   // families and districts the awards concentrate in), not just its title.
   const desc =
-    `The program's money traced left to right: the ${header.org ?? "RDT&E"} ` +
+    `The program's money traced left to right: the ${header.org ?? appropriation.split(" ")[0]} ` +
     `appropriation, program element ${header.pe_bli}` +
     (header.title ? ` (${header.title})` : "") +
     `, its ${awards.length} largest high-confidence awards, the ` +
@@ -362,10 +387,10 @@ export function FollowTheDollar({ data }: Props) {
               strokeWidth={1}
             />
             <text x={COL.app.x + COL.app.w / 2} y={yApp - 2} textAnchor="middle" className="fill-foreground" fontSize={11} fontWeight={600}>
-              {header.org ?? "RDT&E"}
+              {header.org ?? appropriation.split(" ")[0]}
             </text>
             <text x={COL.app.x + COL.app.w / 2} y={yApp + 12} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
-              RDT&amp;E appropriation
+              {appropriation}
             </text>
           </g>
 

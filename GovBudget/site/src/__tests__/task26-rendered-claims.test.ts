@@ -51,8 +51,34 @@ describe("/methodology/ — sentences the final corpus or the calendar falsified
     expect(src).not.toMatch(/we could not defend the link/);
     expect(src).toContain("Pages outside it say why in place of the flow");
   });
+  it("the district lens claims neither a positive obligation nor a view count (round 2, B1)", () => {
+    // GA-02 has a page on the strength of 356010's eight transactions, all
+    // deobligations (−$2,328,281.28): no link places obligated dollars there,
+    // and the district set spans 317 programs, not the 314 with a view.
+    expect(src).not.toMatch(/places obligated dollars there/);
+    expect(src).not.toMatch(/-program scope/);
+    expect(src).toContain("link records an obligation there");
+  });
+
   it("states where FY2026's data ends, never that the year has yet to close", () => {
     expect(src).not.toMatch(/does not close until September 30/);
     expect(src).toContain("FY2026 award data here runs through ${awardDataThrough}");
+  });
+});
+
+describe("/program/{peBli}/ — the follow-the-dollar absence reason is the page's own (round 2, B6)", () => {
+  // CoverageNote's `absence` defaults to "no-high-link"; a page that stops
+  // passing it silently restores "haven't been crosswalked at high confidence"
+  // on the 102 pages whose high-confidence links record no place of
+  // performance. The type now requires it (coverage-note.tsx); this pins the
+  // page's wiring, which vitest does not type-check.
+  const page = read("program", "[peBli]", "page.tsx");
+  it("derives the reason from the page's own links", () => {
+    expect(page).toMatch(/const flowAbsence = flowAbsenceReason\(details\.awards\);/);
+  });
+  it("hands that reason to the follow-the-dollar empty note", () => {
+    const m = /<CoverageNote id="follow-the-dollar" empty ([^>]*)\/>/.exec(page);
+    expect(m, "the follow-the-dollar empty note").not.toBeNull();
+    expect(m![1]).toContain("absence={flowAbsence}");
   });
 });

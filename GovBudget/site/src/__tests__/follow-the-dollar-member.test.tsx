@@ -59,13 +59,24 @@ const MO01: Pick<DistrictDetail, "programs"> = {
 };
 
 vi.mock("@/lib/data", () => ({
-  getFlowSidecarForPage: (slug: string) => (slug === "0145-APN" ? "0145" : null),
-  getFlow: (name: string) => (name === "0145" ? SIDECAR : null),
+  getFlowSidecarForPage: (slug: string) =>
+    slug === "0145-APN" ? "0145" : slug === "0603114N" ? "0603114N" : null,
+  getFlow: (name: string) =>
+    name === "0145"
+      ? SIDECAR
+      : name === "0603114N"
+        ? { ...SIDECAR, header: { ...SIDECAR.header, pe_bli: "0603114N" } }
+        : null,
   getDistrictDetail: () => MO01,
   getEntityTopMap: () => new Map(),
 }));
 
-import { getFlowData } from "@/components/follow-the-dollar";
+// The scope note reads the crosswalk registry; it is not what these cases pin.
+vi.mock("@/components/coverage-note", () => ({ CoverageNote: () => null }));
+
+import { render } from "@testing-library/react";
+import React from "react";
+import { FollowTheDollar, getFlowData } from "@/components/follow-the-dollar";
 
 function row(over: Partial<ProgramRow>): ProgramRow {
   return {
@@ -73,6 +84,7 @@ function row(over: Partial<ProgramRow>): ProgramRow {
     pe_bli: "0145",
     title: "F/A-18E/F (Fighter) Hornet",
     org: "N",
+    exhibit_family: "procurement",
     trajectory: {
       n_org_components: 1,
       fy2024_actuals: 41329,
@@ -112,5 +124,38 @@ describe("getFlowData — the member of a shared code", () => {
     expect(
       getFlowData(row({ slug: "0145-PANMC", title: "General Purpose Bombs" })),
     ).toBeNull();
+  });
+});
+
+/**
+ * Fix-wave round 2 (B2): the appropriation node read "RDT&E appropriation" on
+ * every view — false on 174 of the 314 (procurement lines, the four member
+ * views among them: 1506N Aircraft Procurement, 1507N Weapons Procurement,
+ * 1611N Shipbuilding and Conversion). It now names the page's own exhibit
+ * family.
+ */
+describe("FollowTheDollar — the appropriation node names the page's own family", () => {
+  const svgText = (data: ReturnType<typeof getFlowData>) =>
+    render(<FollowTheDollar data={data!} />).container.textContent!.replace(/\s+/g, " ");
+
+  it("a procurement member never renders 'RDT&E appropriation'", () => {
+    const t = svgText(getFlowData(row({})));
+    expect(t).not.toContain("RDT&E appropriation");
+    expect(t).toContain("Procurement appropriation");
+  });
+
+  it("an RDT&E page still does", () => {
+    const t = svgText(
+      getFlowData(
+        row({
+          slug: "0603114N",
+          pe_bli: "0603114N",
+          title: "Power Projection Advanced Technology",
+          exhibit_family: "rdte",
+        }),
+      ),
+    );
+    expect(t).toContain("RDT&E appropriation");
+    expect(t).not.toContain("Procurement appropriation");
   });
 });

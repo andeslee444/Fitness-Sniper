@@ -115,6 +115,30 @@ describe.each(["index", "detail"] as const)("/district/ %s scope note", (which) 
   });
 });
 
+describe("/district/ index reconciliation (fix-wave round 2, B1)", () => {
+  // The linkable subtotal sums district rows of 317 programs on run 4 —
+  // 356010, 845550 and 9140MA7804 carry only zero or negative obligations
+  // and draw no view — so "314 of 1,938 programs" was not the set it sums.
+  it("ties the subtotal to the crosswalk without a view count", async () => {
+    const t = await scopeNote("index");
+    const i = t.indexOf("tie back to a specific budget program through the crosswalk");
+    expect(i).toBeGreaterThan(-1);
+    const sentence = t.slice(i, t.indexOf("% of it", i));
+    expect(sentence).not.toMatch(/\d[\d,]* of [\d,]+ programs/);
+    expect(sentence).toContain("through the crosswalk, so it is a subset of the same universe");
+  });
+});
+
+describe("/district/ index metadata (B6)", () => {
+  it("both descriptions name the view set, not 'whose awards are linked at high confidence'", async () => {
+    const { metadata } = await import("@/app/district/page");
+    const og = (metadata.openGraph as { description?: string }).description!;
+    expect(String(metadata.description)).toContain("with a follow-the-dollar view");
+    expect(og).toContain("with a follow-the-dollar view");
+    expect(og).not.toMatch(/whose awards are linked at high confidence/);
+  });
+});
+
 describe("/district/ index complement", () => {
   it("counts the program elements with no follow-the-dollar view", async () => {
     const t = await scopeNote("index");

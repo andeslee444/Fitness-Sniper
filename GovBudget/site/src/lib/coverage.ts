@@ -18,6 +18,7 @@ import "server-only";
 
 import { formatCount } from "@/lib/format";
 import type { FlowAbsence } from "@/lib/flow-owner";
+import { getAwardFyRange } from "@/lib/fy-range";
 // crosswalkValue is the registry's OWN accessor (lib/corpus): it throws
 // through the registry's invariants rather than falling back to a literal, and
 // it is the single read every page goes through, so a coverage note cannot
@@ -161,11 +162,21 @@ export function getCoverage(
       };
     }
     case "fy2026-partial": {
+      // Fix-wave round 2 (B3): this ended "…and the fiscal year does not
+      // close until September 30" — a claim about the calendar, false from
+      // 2026-10-01 while this corpus stays a part-year one — on ~2,587 pages.
+      // It now states where the corpus's data ends
+      // (site_meta.award_fy_range.latest_action_date, via lib/fy-range, the
+      // same source /district/ and the <FyRange> tooltip read), and drops the
+      // clause rather than guess when the export carries no date.
+      const through = getAwardFyRange()?.latestActionDate ?? null;
       return {
         id,
         numerator: null,
         denominator: null,
-        note: "FY2026 award data is a partial year — USASpending awards are reported on a rolling basis and the fiscal year does not close until September 30.",
+        note:
+          "FY2026 award data is a partial year — USAspending reports awards on a rolling basis" +
+          (through ? `, and this corpus runs through ${through}.` : "."),
         emptyNote: null,
         anchor: "/methodology/#coverage-fy2026-partial",
         linkText: "why partial FY2026 data? →",

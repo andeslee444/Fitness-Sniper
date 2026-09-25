@@ -84,7 +84,6 @@ export function DownloadCards({
   builtAt,
   inventory,
   datasets = {},
-  pdfCount,
   workbookCount,
   uncitedDatasets = [],
 }: {
@@ -96,7 +95,12 @@ export function DownloadCards({
   inventory: DownloadDataset[];
   /** site_meta.datasets row counts — used for the citations index only. */
   datasets?: Record<string, number>;
-  /** Number of J-book PDFs in the bundle (from site_meta.pdf_count). */
+  /**
+   * site_meta.pdf_count — accepted and NOT rendered (fix-wave round 2): it
+   * counts the documents the export run copied (204 on run 4), not the
+   * pdfs/ directory that ships (225). Render it again once the exporter
+   * prunes or counts the directory (#164).
+   */
   pdfCount?: number;
   /** Number of workbook files in the bundle (from site_meta.workbook_count). */
   workbookCount?: number;
@@ -251,9 +255,11 @@ export function DownloadCards({
             claim), and a missing count renders no number rather than an old
             one. */}
         <ul className="list-disc list-inside space-y-1 text-xs">
+          {/* Fix-wave round 2 (B4): no count either. pdf_count (204 on run
+              4) is the documents the export run copied; the pdfs/ directory
+              the R2 sync ships held 225 (#164, an exporter fix). */}
           <li>
-            <code>pdfs/</code> —{" "}
-            {pdfCount !== undefined ? `${pdfCount} ` : ""}SHA-named J-book PDFs
+            <code>pdfs/</code> — SHA-named J-book PDFs
           </li>
           <li>
             <code>workbooks/</code> —{" "}

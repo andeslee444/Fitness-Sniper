@@ -226,20 +226,72 @@ describe("methodology §4 ↔ docs §4 — the Task 26 passages", () => {
   const and = (xs: string[]) =>
     xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs.join("");
 
+  /**
+   * Fix-wave round 2 (B5). This bound the markdown's literal "As of
+   * 2026-09-25" to `measured_on` — the export RUN's UTC date — so any fresh
+   * export on a later day reddened it with an identical census. The census
+   * is what the markdown mirrors; its date is when someone last re-stated
+   * it. So the COUNTS are bound exactly, and the date only has to be a real
+   * date no later than the export's.
+   */
+  type Census = typeof la;
+  const OPENER =
+    /As of (\d{4}-\d{2}-\d{2}), ([\d,]+) of the ([\d,]+) links the crosswalk grades high or medium carry a per-award hand adjudication — the most recent made on (\d{4}-\d{2}-\d{2}) —/;
+  const num = (s: string) => Number(s.replace(/,/g, ""));
+  function openerFindings(doc: string, c: Census): string[] {
+    const m = OPENER.exec(doc);
+    if (!m) return ["docs §4 has no census opener in the page's words"];
+    const out: string[] = [];
+    const [, dated, adjudicated, published, asOf] = m;
+    const t = Date.parse(`${dated}T00:00:00Z`);
+    if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== dated) {
+      out.push(`"As of ${dated}" is not a calendar date`);
+    } else if (dated > c.measured_on) {
+      out.push(`"As of ${dated}" is later than the export (${c.measured_on})`);
+    }
+    if (num(adjudicated) !== c.adjudicated) out.push(`adjudicated ${adjudicated} ≠ ${c.adjudicated}`);
+    if (num(published) !== c.published) out.push(`published ${published} ≠ ${c.published}`);
+    if (asOf !== c.as_of) out.push(`last adjudication ${asOf} ≠ ${c.as_of}`);
+    if (
+      !doc.includes(
+        `${n(c.unpinned)} of those found work that could not be pinned to any one ` +
+          `program element; those links publish at ${c.unpinned_tier}.`,
+      )
+    ) {
+      out.push(`the unpinned sentence does not state ${n(c.unpinned)} at ${c.unpinned_tier}`);
+    }
+    if (!doc.includes(`The ${and(c.unadjudicated_methods)} paths carry no per-link adjudication`)) {
+      out.push(`the unadjudicated paths are not "${and(c.unadjudicated_methods)}"`);
+    }
+    return out;
+  }
+
   it("the opener states the shipped export's census, in the page's words", () => {
+    expect(openerFindings(docSection(), la)).toEqual([]);
+  });
+
+  it("a later export with the same census does not red it; a docs date after the export does", () => {
     const doc = docSection();
-    expect(doc).toContain(
-      `As of ${la.measured_on}, ${n(la.adjudicated)} of the ${n(la.published)} links ` +
-        `the crosswalk grades high or medium carry a per-award hand adjudication — ` +
-        `the most recent made on ${la.as_of} —`,
-    );
-    expect(doc).toContain(
-      `${n(la.unpinned)} of those found work that could not be pinned to any one ` +
-        `program element; those links publish at ${la.unpinned_tier}.`,
-    );
-    expect(doc).toContain(
-      `The ${and(la.unadjudicated_methods)} paths carry no per-link adjudication`,
-    );
+    const m = OPENER.exec(doc)!;
+    // chain E's fresh export, a day later, same counts: still true.
+    expect(openerFindings(doc, { ...la, measured_on: "2099-12-31" })).toEqual([]);
+    // a docs date the export cannot have measured: red.
+    expect(
+      openerFindings(doc.replace(`As of ${m[1]}`, "As of 2099-12-31"), la),
+    ).toEqual([`"As of 2099-12-31" is later than the export (${la.measured_on})`]);
+    expect(openerFindings(doc.replace(`As of ${m[1]}`, "As of 2026-02-30"), la)).toEqual([
+      `"As of 2026-02-30" is not a calendar date`,
+    ]);
+  });
+
+  it("a moved count reds it, whatever the date", () => {
+    const doc = docSection();
+    expect(openerFindings(doc, { ...la, adjudicated: la.adjudicated + 1 })).toEqual([
+      `adjudicated ${n(la.adjudicated)} ≠ ${la.adjudicated + 1}`,
+    ]);
+    expect(
+      openerFindings(doc, { ...la, unadjudicated_methods: [...la.unadjudicated_methods, "announcement+lexicon"] }),
+    ).toHaveLength(1);
   });
 
   it("the High sentence states the shipped export's high census, in the page's words", () => {

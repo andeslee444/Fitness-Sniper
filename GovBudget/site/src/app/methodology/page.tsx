@@ -1354,10 +1354,9 @@ export default function MethodologyPage() {
                   {formatCount(districts.denominator ?? 0)}{" "}
                   congressional districts appear in
                   the district lens. A district gets a page only when at least one
-                  high-confidence budget→award link places obligated dollars
-                  there — a consequence of the crosswalk&apos;s current{" "}
-                  {formatCount(ftd.numerator ?? 0)}-program scope, not evidence that other districts
-                  receive no defense money. District totals therefore understate
+                  high-confidence budget→award link records an obligation
+                  there — a consequence of the crosswalk&apos;s current scope,
+                  not evidence that other districts receive no defense money. District totals therefore understate
                   true defense spending everywhere they appear.
                 </p>
               </section>
