@@ -1,24 +1,38 @@
 """Task 28a — the feed's concentration_shift cards follow the #70/#82 rule.
 
 fct_feed_events computes a concentration_shift card's HHI per (BARE pe_bli,
-fiscal_year). On a budget-line code two programs share, that index describes
-the contractors of BOTH programs whenever both carry crosswalk links — the #56
-fusion. Program pages have withheld the pooled figure in exactly that case
-since ROADMAP #70/#82 (`_concentration_for`); the feed never applied the rule.
-The feed.json exported on 2026-09-24 carries 34 cards on four shared codes
-(0145, 2292, 3010, 3215), each titled with the both-members label and
-addressed to the bare /program/{code}/ disambiguation stub, which has no
-program_details sidecar — so /feed/ rendered them with no program link, and
-gate 8 leg l failed on the two that reach its first 75 cards in chain C run 2.
+fiscal_year) over HIGH-confidence crosswalk links only
+(dbt/models/marts/fct_feed_events.sql, `prog_family_year`). On a budget-line
+code more than one program shares, the program pages have withheld the pooled
+concentration block since ROADMAP #70/#82 whenever more than one member
+carries published links of any confidence (`_concentration_for`); until this
+task the feed did not apply it. The rule is a test on links, not a finding that
+every withheld index mixes two programs: a year's high-only index is computed
+over both programs' links only where both members carry high links (0145 in
+chain C run 2's export, built 2026-09-19 at e510d19d). On 3010 and 3215 every
+high link is one member's, so the index there is that member's alone — it is
+withheld with the pooled block by the same test, and whether to adopt a
+basis-aware test instead is an owner decision recorded 2026-09-24.
 
-The rule is ONE predicate, `_concentration_owner`, now called by the program
-pages and the feed alike:
+Chain C run 2's feed.json (built before this task) carries 33 cards on four
+shared codes — 0145 ×9, 3010 ×9, 3215 ×9, 2292 ×6 — each headed by the
+shared-code title label (both members' titles; 2292's two members share one)
+and addressed to the bare /program/{code}/ disambiguation stub, which has no
+program_details sidecar; gate 8 leg l failed in that run on the two that reach
+its first 75 cards (0145 FY2019 and FY2020).
 
-  * both members carry links  → the card is WITHHELD, and so are the derived
-    citations minted for it (no orphan receipt for a card that is not there);
-  * exactly one member does    → the card is that member's: addressed to
-    /program/{member slug}/, headed by the member's own title;
-  * an ordinary code           → the card is unchanged, byte for byte.
+The rule is ONE predicate, `_concentration_owner`, called by the program pages
+and — through `_concentration_page` — by the feed and its citation builder:
+
+  * more than one member key carries published links → the card is
+    WITHHELD, and so are the derived citations minted for it (no orphan
+    receipt for a card that is not there);
+  * exactly one member does, and no other key → the card is that member's:
+    addressed to /program/{member slug}/, headed by the member's own title;
+  * that member has no page → the export RAISES (an invariant breach, never a
+    silent withhold);
+  * an ordinary code → the card is unchanged from before Task 28a, pinned
+    against a golden the pre-28a emitter (e510d19d) wrote.
 
 These fixtures need no Postgres; tests/test_collision_slugs.py proves the
 same through a whole export_site run.
@@ -47,10 +61,13 @@ from govbudget.export_site import (
 SCN, OPN = "1611N", "1810N"
 PMC, WPN = "1109N", "1507N"
 
-# 3010: BOTH members carry a link (the 0145 / 3010 / 3215 shape, 2026-09-24).
-# 2292: only the WPN member does (the 2292 shape). Its two members carry
-#       DIFFERENT titles here — on the live corpus they share one — so the
-#       test can tell "the member's own title" from "the shared-code label".
+# 3010: BOTH members carry a link — the shape of 0145, 3010 and 3215 in chain
+#       C run 2's export (2026-09-19). SCN's link is high and OPN's medium, as
+#       on run 2's 3010 (SCN high ×1 + medium ×5, OPN medium ×3).
+# 2292: only the WPN member does — run 2's 2292 (2292-WPN high ×1, 2292-PMC
+#       none). Its two members carry DIFFERENT titles here — in run 2's export
+#       they share one, "Naval Strike Missile (NSM)" — so the test can tell
+#       "the member's own title" from "the shared-code label".
 # 0601101E: an ordinary code.
 _DIM_PROGRAMS = [
     ("3010", "N", "procurement", "LPD Flight II", SCN, "Shipbuilding and Conversion, Navy"),
@@ -71,6 +88,12 @@ _LINKS = [
     ("0601101E", "DARPA", "W911QX-24-C-0001", "Lockheed Martin", "high", None),
 ]
 
+# A link on 2292 whose account is NULL: its split key names neither member
+# page (an account NULL names every member), so it is filed under a key no
+# member page reads — the shape _write_all_sidecars' "awards:" diagnostic
+# prints. Zero in chain C run 2's export (its log carries no such line).
+_UNREAD_2292_LINK = ("2292", "N", "N0002421C0042", "Unknown Co", "medium", None)
+
 _FEED = [
     # (pe_bli, hhi, matched_dollars, fiscal_year)
     ("3010", 10000.0, 1372594624.0, 2019),
@@ -80,7 +103,7 @@ _FEED = [
 ]
 
 
-def _make_db(tmp_path: Path) -> Path:
+def _make_db(tmp_path: Path, *, extra_links=()) -> Path:
     db = tmp_path / "t.duckdb"
     con = duckdb.connect(str(db))
     con.execute(
@@ -100,7 +123,7 @@ def _make_db(tmp_path: Path) -> Path:
         " recipient_name varchar, recipient_uei varchar, method varchar,"
         " account varchar, confidence varchar, program_title varchar)"
     )
-    for pe, org, piid, name, conf, acct in _LINKS:
+    for pe, org, piid, name, conf, acct in (*_LINKS, *extra_links):
         con.execute(
             "insert into fct_budget_to_awards values"
             " (?, 'P-1', 2026, ?, ?, ?, 'UEI', 'fpds-ap', ?, ?, NULL)",
@@ -136,6 +159,13 @@ def _identity_inputs(con):
     return ident, awards_by_pe, member_pages
 
 
+def _ident() -> _ProgramIdentity:
+    return _ProgramIdentity([
+        (pe, acct, acct_title, org, True)
+        for pe, org, _fam, _title, acct, acct_title in _DIM_PROGRAMS
+    ])
+
+
 # The shared-code label every bare-keyed consumer uses (prog_titles) — what the
 # pre-28a card led with.
 _PROG_TITLES = {
@@ -146,17 +176,21 @@ _PROG_TITLES = {
 
 
 def _emit(tmp_path: Path, *, with_identity: bool = True, cited=None,
-          section_cap: int = 75, program_page_keys=None):
+          section_cap: int = 75, program_page_keys=None, extra_links=(),
+          member_pages=None):
     root = tmp_path / ("with-identity" if with_identity else "legacy")
     root.mkdir()
-    db = _make_db(root)
+    db = _make_db(root, extra_links=extra_links)
     con = duckdb.connect(str(db), read_only=True)
     json_dir = root / "json"
     json_dir.mkdir()
     kw = {}
     if with_identity:
-        ident, awards_by_pe, member_pages = _identity_inputs(con)
-        kw = dict(ident=ident, awards_by_pe=awards_by_pe, member_pages=member_pages)
+        ident, awards_by_pe, pages = _identity_inputs(con)
+        kw = dict(
+            ident=ident, awards_by_pe=awards_by_pe,
+            member_pages=pages if member_pages is None else member_pages,
+        )
     try:
         _emit_feed_sidecar(
             json_dir=json_dir, con=con, prog_titles=_PROG_TITLES,
@@ -172,40 +206,103 @@ def _cards(json_dir: Path) -> list[dict]:
     return json.loads((json_dir / "feed.json").read_text())["cards"]
 
 
+def _census(out: str) -> str:
+    lines = [
+        ln for ln in out.splitlines()
+        if ln.startswith("feed: ") and "concentration_shift" in ln
+    ]
+    assert len(lines) == 1, lines
+    return lines[0]
+
+
 # ---------------------------------------------------------------------------
 # the ONE predicate
 # ---------------------------------------------------------------------------
 
 
 class TestConcentrationOwner:
-    def _ident(self):
-        return _ProgramIdentity([
-            (pe, acct, acct_title, org, True)
-            for pe, org, _fam, _title, acct, acct_title in _DIM_PROGRAMS
-        ])
-
     def test_an_ordinary_code_owns_its_own_figure(self):
-        ident = self._ident()
-        assert _concentration_owner(ident, {}, "0601101E") == ("0601101E", None, None)
+        assert _concentration_owner(_ident(), {}, "0601101E") == ("0601101E", None, None)
 
     def test_two_linked_members_own_nothing(self):
-        ident = self._ident()
         links = {("3010", SCN, None): ["a"], ("3010", OPN, None): ["b"]}
-        assert _concentration_owner(ident, links, "3010") is None
+        assert _concentration_owner(_ident(), links, "3010") is None
 
     def test_the_one_linked_member_owns_the_figure(self):
-        ident = self._ident()
         links = {("2292", WPN, None): ["a"], ("2292", PMC, None): []}
-        assert _concentration_owner(ident, links, "2292") == ("2292", WPN, None)
+        assert _concentration_owner(_ident(), links, "2292") == ("2292", WPN, None)
 
     def test_a_shared_code_with_no_link_owns_nothing(self):
-        assert _concentration_owner(self._ident(), {}, "2292") is None
+        assert _concentration_owner(_ident(), {}, "2292") is None
 
     def test_a_single_key_no_member_page_reads_owns_nothing(self):
         # An account-NULL link on an account-split code names BOTH members —
         # the key exists, but no member page is addressed by it.
-        ident = self._ident()
-        assert _concentration_owner(ident, {("2292", None, None): ["a"]}, "2292") is None
+        assert _concentration_owner(_ident(), {("2292", None, None): ["a"]}, "2292") is None
+
+    def test_a_member_beside_a_key_no_member_page_reads_owns_nothing(self):
+        # The figure counts the unread key's links too, so it is not WPN's.
+        links = {("2292", WPN, None): ["a"], ("2292", None, None): ["b"]}
+        assert _concentration_owner(_ident(), links, "2292") is None
+
+
+# ---------------------------------------------------------------------------
+# only a member key is a member (ROADMAP #82's "more than one member")
+# ---------------------------------------------------------------------------
+
+
+class TestOnlyMemberKeysCountAsMembers:
+    """A link filed under a key no member page reads is not a member carrying
+    links. Counting it as one made the census say "whose members both carry
+    links" and set the page's shared-code sentence ("more than one of them
+    carries linked awards") on a code where ONE member does."""
+
+    _ONE_PLUS_UNREAD = {("2292", WPN, None): ["a"], ("2292", None, None): ["b"]}
+    _BOTH = {("3010", SCN, None): ["a"], ("3010", OPN, None): ["b"]}
+
+    def test_the_linked_member_keys_leave_out_an_unread_key(self):
+        from govbudget.export_site import _linked_member_keys
+
+        assert _linked_member_keys(_ident(), self._ONE_PLUS_UNREAD, "2292") == {
+            ("2292", WPN, None)
+        }
+        assert _linked_member_keys(_ident(), self._BOTH, "3010") == {
+            ("3010", SCN, None), ("3010", OPN, None)
+        }
+
+    def test_the_shared_code_reason_needs_more_than_one_linked_member(self):
+        from govbudget.export_site import _withheld_as_shared
+
+        ident = _ident()
+        assert _withheld_as_shared(ident, self._BOTH, "3010", SCN) is True
+        assert _withheld_as_shared(ident, self._BOTH, "3010", OPN) is True
+        # one member plus an unread key: withheld, but NOT for the reason the
+        # page's shared-code sentence gives
+        assert _withheld_as_shared(ident, self._ONE_PLUS_UNREAD, "2292", WPN) is False
+        assert _withheld_as_shared(ident, self._ONE_PLUS_UNREAD, "2292", PMC) is False
+        # an unlinked member of a two-linked code does not exist here; an
+        # ordinary code never takes the shared-code sentence
+        assert _withheld_as_shared(
+            ident, {("0601101E", None, None): ["x"]}, "0601101E"
+        ) is False
+
+    def test_the_census_does_not_count_an_unread_key_as_a_member(
+        self, tmp_path, capsys
+    ):
+        cards = _cards(_emit(tmp_path, extra_links=[_UNREAD_2292_LINK]))
+        assert [c for c in cards if c["pe_bli"] == "2292"] == []
+        line = _census(capsys.readouterr().out)
+        assert line.startswith(
+            "feed: 2 concentration_shift card(s) withheld on 1 shared code(s)"
+            " on which more than one member key carries published links"
+            " (#70/#82 rule): 3010;"
+        ), line
+        assert (
+            "; 1 withheld on 1 shared code(s) on which no single member page"
+            " carries the links: 2292" in line
+        ), line
+        # the unread key is named on its own, never counted as a member
+        assert "('2292', None, None)" in line, line
 
 
 # ---------------------------------------------------------------------------
@@ -220,18 +317,13 @@ class TestFeedFollowsTheRule:
 
     def test_the_census_line_counts_the_withheld_cards(self, tmp_path, capsys):
         _emit(tmp_path)
-        lines = [
-            ln for ln in capsys.readouterr().out.splitlines()
-            if ln.startswith("feed: ") and "concentration_shift" in ln
-        ]
-        assert len(lines) == 1, lines
-        assert lines[0].startswith(
+        line = _census(capsys.readouterr().out)
+        assert line == (
             "feed: 2 concentration_shift card(s) withheld on 1 shared code(s)"
-            " whose members both carry links (#70/#82 rule)"
-        ), lines[0]
-        assert "3010" in lines[0]
-        assert "1 published under the one member that carries links" in lines[0]
-        assert "2292-WPN" in lines[0]
+            " on which more than one member key carries published links"
+            " (#70/#82 rule): 3010; 1 published under the one member that"
+            " carries links: 2292-WPN"
+        ), line
 
     def test_one_member_linked_addresses_that_members_page(self, tmp_path):
         (card,) = [c for c in _cards(_emit(tmp_path)) if c["pe_bli"] == "2292"]
@@ -242,7 +334,10 @@ class TestFeedFollowsTheRule:
         # all stay the bare code the mart keyed the event on
         assert card["pe_bli"] == "2292"
 
-    def test_an_ordinary_card_is_byte_identical(self, tmp_path):
+    def test_an_ordinary_card_does_not_depend_on_the_identity(self, tmp_path):
+        """Identity-independence only: with and without the identity inputs
+        today's emitter writes the same ordinary card. That it is also the
+        card the pre-28a emitter wrote is the golden test below."""
         new = [c for c in _cards(_emit(tmp_path)) if c["pe_bli"] == "0601101E"]
         legacy = [
             c for c in _cards(_emit(tmp_path, with_identity=False))
@@ -272,6 +367,61 @@ class TestFeedFollowsTheRule:
         assert set(by_pe) == {"2292", "0601101E"}
         assert by_pe["2292"]["has_program_page"] is True
         assert by_pe["0601101E"]["has_program_page"] is True
+
+
+# ---------------------------------------------------------------------------
+# an owner without a member page is an invariant breach, not a withhold
+# ---------------------------------------------------------------------------
+
+
+class TestAnOwnerWithoutAPageIsLoud:
+    """On a real lake the identity map and the member-page rows both come
+    from dim_programs, so a member that owns a figure always has a page. A
+    silent withhold would hide the day they disagree — and the feed used to
+    withhold such a card while the citation builder, which never asked,
+    minted its receipts (orphans). Both now go through one decision, and it
+    raises."""
+
+    def test_the_decision_raises_naming_the_code_and_the_owner(self):
+        from govbudget.export_site import _concentration_page
+
+        with pytest.raises(ValueError, match=r"'2292'.*'1507N'"):
+            _concentration_page(_ident(), {("2292", WPN, None): ["a"]}, {}, "2292")
+
+    def test_the_decision_answers_every_other_case(self):
+        from govbudget.export_site import _concentration_page
+
+        ident = _ident()
+        pages = _member_pages(ident, [
+            (pe, acct, acct_title, org, title)
+            for pe, org, _fam, title, acct, acct_title in _DIM_PROGRAMS
+        ])
+        assert _concentration_page(
+            ident, {("2292", WPN, None): ["a"]}, pages, "2292"
+        ) == ("2292-WPN", "Naval Strike Missile (NSM)")
+        assert _concentration_page(
+            ident, {("3010", SCN, None): ["a"], ("3010", OPN, None): ["b"]},
+            pages, "3010",
+        ) is None
+        # an ordinary code is its own page; the caller keeps its own title
+        assert _concentration_page(ident, {}, pages, "0601101E") == ("0601101E", None)
+
+    def test_the_feed_raises_rather_than_withholding(self, tmp_path):
+        with pytest.raises(ValueError, match=r"'2292'.*'1507N'"):
+            _emit(tmp_path, member_pages={})
+
+    def test_the_citation_builder_raises_on_the_same_breach(
+        self, tmp_path, monkeypatch
+    ):
+        # The builder reads its member pages itself (it runs before the page
+        # rows exist); hand it rows that lack the owning member.
+        import govbudget.export_site as es
+
+        monkeypatch.setattr(es, "_member_pages", lambda ident, rows: {})
+        with pytest.raises(ValueError, match=r"'2292'.*'1507N'"):
+            _build_derived_citation_rows(
+                duckdb_path=_make_db(tmp_path), bl_rows=[], citation_rows=[],
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +469,126 @@ class TestCitationsMoveWithTheCards:
             assert c["magnitude"]["to"]["fact_id"] is not None, c
             referenced |= {c["figure_fact_id"], c["magnitude"]["to"]["fact_id"]}
         assert minted == referenced
+
+
+# ---------------------------------------------------------------------------
+# ordinary cards are the cards the PRE-28a emitter wrote (golden)
+# ---------------------------------------------------------------------------
+#
+# tests/fixtures/feed/ordinary_cards_pre28a.json was written by the emitter
+# as it stood at e510d19d, the commit before Task 28a — never by today's
+# code: `git show e510d19d:GovBudget/src/govbudget/export_site.py` saved
+# outside the tree as export_site_pre28a.py, imported under that name via
+# PYTHONPATH, and run through golden_emit(...) below on _make_golden_db's
+# fixture with golden_emit_kwargs(). The file's "produced_by" field repeats
+# the recipe. Regenerate it only from a pre-28a emitter.
+#
+# Every mart event type is present, not just concentration_shift: Task 28a
+# moved the card's program_url into a per-card variable set at the loop's top
+# and re-keyed the section sidecars' has_program_page — both touch every card.
+
+_GOLDEN = Path(__file__).parent / "fixtures" / "feed" / "ordinary_cards_pre28a.json"
+
+_GOLDEN_EXTRA_FEED = [
+    # (event_type, pe_bli, organization, family_key, headline_value,
+    #  comparison_value, pct_change, fiscal_year, units)
+    ("yoy_swing", "0603XYZ", "DARPA", None, 150000.0, 100000.0, 50.0, 2026,
+     "thousands_usd"),
+    ("zeroed_fy2026", "0604ABC", "A", None, 5000.0, 0.0, None, 2026,
+     "thousands_usd"),
+    ("new_entrant", None, None, "ACME", 2500000.0, 2024.0, None, 2024,
+     "dollars"),
+]
+
+_SHARED_CODES = frozenset({"3010", "2292"})
+
+
+def _make_golden_db(root: Path) -> Path:
+    db = _make_db(root)
+    con = duckdb.connect(str(db))
+    for row in _GOLDEN_EXTRA_FEED:
+        con.execute(
+            "insert into fct_feed_events values (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+            list(row),
+        )
+    con.close()
+    return db
+
+
+def golden_emit_kwargs() -> dict:
+    """What BOTH emitters are handed: the pre-28a one that wrote the golden
+    and today's. Every receipt the ordinary cards can carry resolves, so the
+    fact ids and headline segments are pinned too; 0604ABC has no page, so a
+    False has_program_page is pinned beside the True ones."""
+    cited = {
+        _fid("0601101E", 2024, "hhi"),
+        _fid("0601101E", 2024, "matched_dollars"),
+        *(fact_id_derived("trajectory", "0603XYZ|DARPA", m)
+          for m in ("fy2025_total", "fy2026_total", "fy2526_change")),
+        *(fact_id_derived("trajectory", "0604ABC|A", m)
+          for m in ("fy2025_total", "fy2026_total", "fy2526_change")),
+        fact_id_derived("feed", "new_entrant|ACME", "total_obligation"),
+    }
+    return dict(
+        prog_titles={**_PROG_TITLES, "0603XYZ": "Hypersonic Test Bed",
+                     "0604ABC": "Legacy Tactical Radio"},
+        cited_fact_ids=cited,
+        section_cap=0,
+        program_page_keys=frozenset({"0601101E", "0603XYZ", "2292-PMC",
+                                     "2292-WPN", "3010-SCN", "3010-OPN"}),
+        fy26_split_by_pe={"0603XYZ": {"has_reconciliation": True,
+                                      "discretionary": 120000.0,
+                                      "reconciliation": 30000.0}},
+        company_slug_by_family_key={"ACME": "acme"},
+    )
+
+
+def golden_emit(emit_feed_sidecar, root: Path, *, with_identity: bool) -> dict:
+    """Run an _emit_feed_sidecar on the golden fixture and return every card
+    NOT on a shared code: feed.json's, and each section sidecar's."""
+    root.mkdir(parents=True, exist_ok=True)
+    db = _make_golden_db(root)
+    con = duckdb.connect(str(db), read_only=True)
+    json_dir = root / "json"
+    json_dir.mkdir()
+    kw = golden_emit_kwargs()
+    if with_identity:
+        ident, awards_by_pe, member_pages = _identity_inputs(con)
+        kw.update(ident=ident, awards_by_pe=awards_by_pe, member_pages=member_pages)
+    try:
+        emit_feed_sidecar(json_dir=json_dir, con=con, **kw)
+    finally:
+        con.close()
+
+    def ordinary(cards):
+        return [c for c in cards if c.get("pe_bli") not in _SHARED_CODES]
+
+    return {
+        "feed_cards": ordinary(
+            json.loads((json_dir / "feed.json").read_text())["cards"]
+        ),
+        "section_cards": {
+            p.stem: ordinary(json.loads(p.read_text())["cards"])
+            for p in sorted((json_dir / "feed-sections").glob("*.json"))
+        },
+    }
+
+
+def test_ordinary_cards_are_the_cards_the_pre_28a_emitter_wrote(tmp_path):
+    golden = json.loads(_GOLDEN.read_text())
+    assert "e510d19d" in golden["produced_by"]
+    # an empty golden would pass trivially: one card of each mart type
+    assert sorted(c["event_type"] for c in golden["feed_cards"]) == [
+        "concentration_shift", "new_entrant", "yoy_swing", "zeroed_fy2026",
+    ]
+    now = golden_emit(_emit_feed_sidecar, tmp_path / "now", with_identity=True)
+    # json.dumps(sort_keys=True) is how _write_json serializes every card
+    assert json.dumps(now["feed_cards"], sort_keys=True) == json.dumps(
+        golden["feed_cards"], sort_keys=True
+    )
+    assert json.dumps(now["section_cards"], sort_keys=True) == json.dumps(
+        golden["section_cards"], sort_keys=True
+    )
 
 
 # ---------------------------------------------------------------------------

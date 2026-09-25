@@ -5,7 +5,7 @@ Per plan Task 7b + recon §G (anthropic 0.109.1, Batch API):
 - build_bundle(pe_bli)  — warehouse fact bundle assembled from the committed
   sidecars: program row (trajectory + its fact_ids, HHI), budget_lines and
   project details (each carries a citable fact_id), narratives IN FULL,
-  top-25 lobbying mentions, top-25 awards, feed events for the pe_bli, a
+  top-25 lobbying mentions, top-25 awards, feed events for the page, a
   flows summary when data/site/json/flows/{pe_bli}.json exists, the authored
   category row, and matched news snapshots (title+url+text, capped).  The
   rendered bundle is token-trimmed to <=40k tokens: snapshots shrink first,
@@ -381,8 +381,17 @@ def _assemble(key: str, *, site_json_dir: Path, snapshots_dir: Path,
     programs sharing a BLI code. Page-grain sources (the programs.json row,
     the program_details sidecar and therefore budget_lines / projects /
     narratives / mentions / awards) are read at that identity; the marts that
-    are keyed by CODE (the category seed, feed cards, flows, news snapshots)
-    are read at the bare pe_bli, which is the only key they have.
+    are keyed by CODE (the category seed, flows, news snapshots) are read at
+    the bare pe_bli, which is the only key they have. Feed cards are read at
+    the PAGE they address (export_site._feed_program_key: the key in the
+    card's program_url, else its pe_bli) — the key /feed/ links a card by.
+    Since Task 28a a concentration card on a shared code carries the bare
+    code as pe_bli but addresses the ONE member that carries its links
+    (/program/2292-WPN/), so a bare-code read would offer that member's
+    per-year HHI, with a resolvable fid, to its sibling's bundle too. For
+    every card on an ordinary program the page key IS the pe_bli, so those
+    bundles are unchanged; a card still addressed to a shared code's bare
+    stub reaches no member's bundle.
 
     ROADMAP #82 (narrative axis, 2026-09-12) is what makes that page-grain
     read mean what it says. Reading the right FILE was never enough while the
@@ -420,13 +429,17 @@ def _assemble(key: str, *, site_json_dir: Path, snapshots_dir: Path,
     feed_events: list[dict] = []
     feed_path = site_json_dir / "feed.json"
     if feed_path.exists():
+        # The page a card addresses, never its bare pe_bli (see the
+        # docstring): imported, not restated, so the two cannot drift.
+        from govbudget.export_site import _feed_program_key
+
         # why_url/program_url are internal site anchors (e.g.
         # '/methodology/#feed-…') — models have cited them verbatim as url
         # citations. Strip them; figure_fact_id is the citable identifier.
         feed_events = [
             {k: v for k, v in c.items() if k not in ("why_url", "program_url")}
             for c in _load_json(feed_path).get("cards", [])
-            if c.get("pe_bli") == pe_bli
+            if _feed_program_key(c) == page
         ]
 
     flows_summary: dict | None = None

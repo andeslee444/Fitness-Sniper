@@ -135,11 +135,13 @@ def _concentration_is_this_members(con, ident, pe_bli, account, organization) ->
     """Mirrors export_site._concentration_for's member test.
 
     fct_program_concentration aggregates by BARE pe_bli, so on a shared code
-    its figure describes the UNION of both members' links. That figure is one
-    member's own exactly when every link on the code carries that member's
-    key; when both members carry links it is neither's, the export withholds
-    it from both pages (ROADMAP #82), and it is therefore not this page's to
-    cite either. Non-split pe_blis take the bare row unchanged.
+    each basis is computed over every member's links on that basis. The
+    figure is one member's own exactly when every link on the code is filed
+    under that member's key; when more than one key carries links the export
+    withholds the whole block from every member page (ROADMAP #82) — even
+    where the high basis is one member's, as on 3010 and 3215
+    (export_site._concentration_owner) — and it is therefore not this page's
+    to cite either. Non-split pe_blis take the bare row unchanged.
     """
     if not con.execute(
         "select count(*) from fct_program_concentration where pe_bli = ?", [pe_bli]

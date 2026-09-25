@@ -1579,7 +1579,10 @@ class TestBundleHygieneRound2:
         assert "source_ref" not in row
         assert "ProgramElement" not in str(row)
 
-    def test_feed_events_strip_internal_urls(self, tmp_path, monkeypatch):
+    def test_feed_events_strip_internal_urls(self, tmp_path):
+        """Through _assemble itself (this used to re-type its selection
+        inline, and so stopped mirroring it the day the selection moved from
+        the bare pe_bli to the page the card addresses)."""
         import json
 
         from govbudget.dossiers import batch as B
@@ -1590,13 +1593,15 @@ class TestBundleHygieneRound2:
             "pe_bli": "0603467E", "headline": "h", "figure_fact_id": "abc",
             "why_url": "/methodology/#feed-x", "program_url": "/program/0603467E/",
         }]}))
-        events = B._assemble.__wrapped__ if hasattr(B._assemble, "__wrapped__") else None
-        # exercise via the same load path _assemble uses
-        cards = [
-            {k: v for k, v in c.items() if k not in ("why_url", "program_url")}
-            for c in json.loads((site / "feed.json").read_text())["cards"]
-            if c.get("pe_bli") == "0603467E"
-        ]
+        snaps = tmp_path / "snaps"
+        snaps.mkdir()
+        (snaps / "index.json").write_text(json.dumps({"snapshots": []}))
+        cats = tmp_path / "cats.csv"
+        cats.write_text("pe_bli,category,rationale,source_ref\n")
+        cards = B._assemble(
+            "0603467E", site_json_dir=site, snapshots_dir=snaps,
+            categories_csv=cats,
+        )["feed_events"]
         assert cards and "why_url" not in cards[0] and "program_url" not in cards[0]
         assert cards[0]["figure_fact_id"] == "abc"
 
@@ -1744,6 +1749,50 @@ class TestPageIdentityBundles:
         data = _bundle_json(self._build(split_site_fixture, PE))
         assert data["pe_bli"] == PE and data["page"] == PE
         assert [a["award_piid"] for a in data["awards"]] == ["W911QX24C0001"]
+
+    def test_a_feed_card_reaches_only_the_page_it_addresses(
+        self, split_site_fixture
+    ):
+        """Task 28a publishes a shared code's concentration card under the ONE
+        member that carries its links — program_url /program/{member slug}/ —
+        while its pe_bli stays the bare code (the guid's and every company
+        watchlist's key). Selecting feed cards by pe_bli offered that member's
+        per-year HHI, with a resolvable fid, to the sibling's bundle as well:
+        the #82 cross-member shape no citation gate sees. A card is selected
+        by the page it addresses (export_site._feed_program_key), the key
+        /feed/ links it by."""
+        fx = split_site_fixture
+        (fx.site_json / "feed.json").write_text(json.dumps({"cards": [
+            # 28a's member card: keyed on the bare code, addressed to SCN
+            {"pe_bli": SPLIT_PE, "event_type": "concentration_shift",
+             "figure_fact_id": "scnhhi",
+             "program_url": f"/program/{SPLIT_SCN}/",
+             "why_url": "/methodology/#feed-concentration_shift"},
+            # the pre-28a shape: the bare code's stub, which is no member's
+            {"pe_bli": SPLIT_PE, "event_type": "concentration_shift",
+             "figure_fact_id": "barehhi",
+             "program_url": f"/program/{SPLIT_PE}/"},
+            # an ordinary program: a linked card and one with no page link
+            {"pe_bli": PE, "event_type": "yoy_swing",
+             "figure_fact_id": "ordswing", "program_url": f"/program/{PE}/"},
+            {"pe_bli": PE, "event_type": "request_vs_actuals_gap",
+             "figure_fact_id": "ordrva", "program_url": None},
+            # a company card
+            {"pe_bli": None, "family_key": "ACME", "event_type": "new_entrant",
+             "figure_fact_id": "acmefact", "program_url": None},
+        ]}))
+
+        def events(key):
+            return _bundle_json(self._build(fx, key))["feed_events"]
+
+        assert [e["figure_fact_id"] for e in events(SPLIT_SCN)] == ["scnhhi"]
+        assert events(SPLIT_OPN) == []
+        assert [e["figure_fact_id"] for e in events(PE)] == ["ordswing", "ordrva"]
+        # the internal anchors are still stripped from what reaches the model
+        assert all(
+            "program_url" not in e and "why_url" not in e
+            for e in events(SPLIT_SCN) + events(PE)
+        )
 
     def test_an_unresolvable_award_fact_id_is_dropped_not_offered(
         self, split_site_fixture

@@ -704,9 +704,11 @@ def _make_collision_duckdb(db_path: Path) -> None:
             (_uuid, _term, f"https://lda.senate.gov/filings/{_uuid}/", _kind),
         )
     # Task 28a: a second shared code on which ONE member carries the links —
-    # the live '2292' shape (2026-09-24: its one link sits on 1507N). Its
-    # members get distinct titles here (the live pair share one) so a test
-    # can tell the member's own title from the both-members label. A mart
+    # the '2292' shape of chain C run 2's export (2026-09-19: its one link, a
+    # high one, sits on 2292-WPN, the Weapons Procurement, Navy member). Its
+    # members get distinct titles here (in that export both are "Naval Strike
+    # Missile (NSM)") so a test can tell the member's own title from the
+    # both-members label. A mart
     # figure on the bare code, so the program page and the feed can be seen
     # to hand it to the same member.
     con.execute(
@@ -1052,11 +1054,14 @@ def _conc_fid(pe: str, fy: int, metric: str) -> str:
 def test_the_feed_publishes_no_card_on_a_code_whose_members_both_carry_links(
     collision_export,
 ):
-    """3010's two members each carry a link, so the per-year HHI the mart
-    keys on the bare code describes both programs' contractors at once — the
-    figure both member pages already withhold (the test above). The feed
-    withholds it too, rather than headlining it under the both-members label
-    and linking the disambiguation stub."""
+    """3010's two members each carry a published link, which is the test
+    both member pages already withhold the pooled figure by (the test above).
+    The feed applies the same test to the per-year HHI and withholds it too,
+    rather than headlining it under the both-members label and linking the
+    disambiguation stub. (Both links here are medium, so the mart's
+    high-only per-year index would count neither; the card exists only as
+    this fixture's own row. The rule is about which links are published, not
+    about which of them a given index counts.)"""
     assert [c for c in _feed_cards(collision_export) if c["pe_bli"] == "3010"] == []
 
 
@@ -1117,7 +1122,8 @@ def test_the_feed_census_line_names_the_withheld_and_the_member_cards(
     assert len(lines) == 1, lines
     assert lines[0].startswith(
         "feed: 1 concentration_shift card(s) withheld on 1 shared code(s)"
-        " whose members both carry links (#70/#82 rule)"
+        " on which more than one member key carries published links"
+        " (#70/#82 rule)"
     ), lines[0]
     assert "3010" in lines[0] and "2292-WPN" in lines[0], lines[0]
 
