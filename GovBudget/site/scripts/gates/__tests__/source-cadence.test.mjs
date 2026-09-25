@@ -120,7 +120,7 @@ describe("leg m on the adopted refresh", () => {
   it("FAILS when the attribute and the visible name disagree", () => {
     const { errors } = run(
       ADOPTED,
-      `<span ${STALEST_ATTR}="subawards"> — its stalest part (contracts) was last fetched 2026-06-11.</span>`,
+      `<span ${STALEST_ATTR}="subawards"> — its least recently refreshed dataset (contracts) was last fetched 2026-06-11.</span>`,
     );
     expect(errors).toHaveLength(1);
   });

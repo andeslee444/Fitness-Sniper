@@ -24,8 +24,8 @@ download bulk ZIP files from `files.usaspending.gov`, convert them to
 compressed Parquet, and record the exact file name, URL, and SHA-256 hash of
 every file. Current scope: Department of Defense agencies, FY2017 onward.
 Source cadence: monthly (USAspending publishes new full-archive files on a
-monthly cycle); the live methodology page states when this corpus's stalest
-part was last fetched, derived from our download manifest.
+monthly cycle); the live methodology page states when this corpus's least
+recently refreshed dataset was last fetched, derived from our download manifest.
 
 **DoD budget justification books ("J-books").** The detailed budget submissions
 the Pentagon sends to Congress each spring, published at

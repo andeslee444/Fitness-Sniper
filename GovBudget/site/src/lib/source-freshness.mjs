@@ -24,14 +24,18 @@
 export const STALEST_ATTR = "data-source-stalest";
 
 /**
- * The clause after "Source cadence: <word>". "Last fetched" is the dataset's
- * NEWEST download (a dataset is fetched in several files); "stalest" means no
- * other part of the group has an older newest download.
+ * The clause after "Source cadence: <word>". "Last refreshed" is the
+ * dataset's NEWEST download (a dataset is fetched in several files, one per
+ * fiscal year); "least recently refreshed" means no other dataset in the group
+ * has an older newest download. It describes FETCH ACTIVITY, not data age: an
+ * older fiscal-year file of a more recently refreshed dataset can predate the
+ * date shown (2026-09-25 ruling — FY2017–FY2019 archives were fetched
+ * 2026-06-10, the subaward file 2026-06-11).
  *
  * @param {{ stalest_dataset: string, as_of: string }} group
  *   site_meta.source_freshness.groups[name]
  * @returns {string}
  */
 export function stalestPartClause({ stalest_dataset, as_of }) {
-  return ` — its stalest part (${stalest_dataset}) was last fetched ${as_of}.`;
+  return ` — its least recently refreshed dataset (${stalest_dataset}) was last fetched ${as_of}.`;
 }
