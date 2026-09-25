@@ -110,6 +110,19 @@ shape, #85's question, not the window's). Run `--dry-run` before any write; it
 plans under whichever window you gave, prints the pairs per organization and
 edition FY, and writes nothing.
 
+**Grain warning (Task 26 fix wave, 2026-09-25).** A `--yes` run whose window
+spans several editions — the full DARPA re-run above is one — writes a
+(pe_bli, award_piid) pair once per edition year its award's transactions fall
+in: `budget_line_awards` is unique on (pe_bli, exhibit, fiscal_year,
+award_piid), not on the pair, and nothing downstream asserts the pair grain.
+`fct_program_concentration` would then add that award's dollars twice to its
+family and program sums (the district marts' `select distinct` collapses such
+rows only while their labels agree). It is unique today — 12,601
+`fct_budget_to_awards` rows over 12,601 distinct pairs, measured read-only
+2026-09-25 — only because no such run is in the table. Do not run it until
+ROADMAP #151 (a grain test with its proof it can fail, and the collapse) has
+landed.
+
 **Determinism (#85, 2026-09-05).** Two `jbooks crosswalk` runs over the same
 lake and the same `budget_lines` write byte-identical mechanical rows. The
 run reads ONE canonical title per (pe_bli, exhibit, fiscal_year, account)

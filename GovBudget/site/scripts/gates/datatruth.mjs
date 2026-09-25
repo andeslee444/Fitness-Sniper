@@ -2512,6 +2512,13 @@ function quoteAround(text, at, window) {
  * The other 58 sit in no crosswalk-or-attribution sentence, which is what the
  * cue filter below is for; the earlier "five pages carrying 122 DARPA
  * mentions" predates both the /program/ sample and this build.
+ *
+ * The finding's advice (Task 26, 2026-09-25) points at the wording /district/
+ * ships since the fix wave. It used to recommend "an announcement that names
+ * the program, or account plus program tokens" — the two-path enumeration
+ * that wave removed from /district/ as false: it omitted the adjudicator-
+ * pinned high links and claimed "names the program" for announcement links
+ * with no recorded basis.
  */
 export function orgAttributionFindings(pages, orgMix) {
   const total = Object.values(orgMix).reduce((a, v) => a + v, 0);
@@ -2545,8 +2552,9 @@ export function orgAttributionFindings(pages, orgMix) {
         if (n * 2 >= total) continue;                      // it really is the majority
         found.push(
           `leg p3 (${p.url}): "${quoteAround(sentence, hit.index, ORG_QUOTE_WINDOW)}" attributes the ` +
-            `crosswalk to ${org}, which holds ${n} of ${total} flow sidecars. Name the mechanism (an ` +
-            `announcement that names the program, or account plus program tokens), not an organization`,
+            `crosswalk to ${org}, which holds ${n} of ${total} flow sidecars. Name the mechanism, not an ` +
+            `organization — as /district/ does: a link is counted "only where more than an account code ` +
+            `ties the award to it", and methodology §4 says what does`,
         );
       }
     }

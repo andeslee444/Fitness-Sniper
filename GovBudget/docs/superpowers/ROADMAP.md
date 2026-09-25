@@ -968,6 +968,20 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   every award of the org's account (177 × 13,216 for DARPA). Add a default
   window (the line's own edition FY) or a per-edition line filter, and a
   projected-row dry-run abort. **Status:** CLOSED 2026-09-05 (code) — default window = each line's own PB-edition FY (federal FY, resolved per line); `--fy-start/--fy-end` required together (one bound alone exits 2); `--all-years` is the opt-in to the old unbounded shape; EVERY run (default included, per the 2026-09-11 controller ruling) is planned first by `plan_crosswalk_org` and aborts above 500,000 projected pairs unless `--yes`; `--dry-run` prints pairs per org and edition FY and writes nothing. Data unchanged: the 124,502 mechanical DARPA rows (all `fiscal_year=2026`, rationale "all loaded award years") are still in `budget_line_awards`; the re-run under the new default (plans 761,029 DARPA pairs, measured read-only 2026-09-05, so it needs `--yes`) is the controller's call and is what #85 is blocked on. Canonical invocation: LAUNCH.md Step 0.
+  *Addendum 2026-09-25 (Task 26 fix wave; A's review deferral):* the published
+  grain is not asserted. `budget_line_awards` is unique on (pe_bli, exhibit,
+  fiscal_year, award_piid), so the `--yes` re-run above — any run whose window
+  spans several editions — writes one (pe_bli, award_piid) pair once per
+  edition year its award's transactions fall in, and nothing asserts the pair
+  grain downstream: `fct_program_concentration` would add that award's dollars
+  twice to its family and program sums (the district marts join through a
+  `select distinct` over award, program, account, title and organization, so
+  they double only where the edition rows carry different labels — #152).
+  Unique today
+  only because the table holds no such run (measured read-only 2026-09-25:
+  12,601 `fct_budget_to_awards` rows over 12,601 distinct pairs; its 9,547
+  mechanical rows all at fiscal_year 2026). Land backlog #151 before the
+  re-run; LAUNCH.md Step 0 carries the warning.
 - **#79 Precision study rubric.** `link_precision_samples` needs a `rubric`
   column; strata judged on different questions must not publish side by side.
   Re-adjudicate `account+subagency` against program attribution (its first
@@ -1010,6 +1024,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   title variants per (pe_bli, exhibit, FY, account) key and the last iteration's
   token overlap wins the tag (±346 medium / +119 high on an identical re-run).
   **Status:** CLOSED 2026-09-05 — the reproducible source was `any_value()` over an award's transactions (three consecutive identical read-only runs changed the picked description for ~6,000 of 13,216 `097-0400` awards and the sub-agency for ~380), not the title variants (3 of 22,527 per-organization keys, all org F, none DARPA); both fixed: `_load_lines` takes one canonical title per key (latest document, explicit ORDER BY in `CANONICAL_LINE_SQL`) and `_fetch_candidates`/`_grade` grade every award from all of its transactions in the window (any-transaction sub-agency — controller ruling, documented; union-of-descriptions tokens; latest-transaction recipient; exact-decimal obligation). Order-independence and two-run tests in tests/jbooks/test_crosswalk.py; upsert guard byte-identical; no prose edit owed (tier sentences re-read). Live re-run + md5 check (LAUNCH.md) is the controller's step.
+  *Addendum 2026-09-25 (Task 26 fix wave):* that live re-run is the `--yes`
+  multi-edition DARPA run #78's addendum warns about — it writes one
+  (pe_bli, award_piid) pair as several rows, which the concentration sums do
+  not yet guard. Land backlog #151's grain test and collapse first.
 - **#86 Task-5 deferred minors:** `_ALIASES_CSV` via `config.ROOT`; upsert count
   overstates guarded skips; NULL `action_date` untested under an FY window;
   f-string SQL for `fed_account`. **Status:** CLOSED 2026-09-11 — seed path via `config.ROOT`; `crosswalk_org` returns `CrosswalkResult(written, skipped)` from the Postgres INSERT count and the CLI prints both; awards whose `action_date` is NULL or not a date are excluded under an FY window by `try_cast(… as date)` (`FED_FY_EXPR`, shared by the planner, 0 of 39.8M lake rows affected); `fed_account` and the FY bounds are DuckDB `?` parameters at both sites (`_candidate_where` returns `(sql, params)`).
@@ -1820,7 +1838,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   name, a private DuckDB connection in every test that queries, and a fixture
   copy for the real-export tests. Standing rule meanwhile (2026-09-19): every
   implementer ends on the WHOLE suite, and a red whole run is re-run before
-  it is believed. Effort: hours. **Status:** open (2026-09-25).
+  it is believed. Effort: hours.
+  *Addendum 2026-09-25 (Task 26 fix wave; the review's minor 59, deferred by
+  implementer A):* (d) the same species, read-only: `tests/test_collision_keys.py:83`
+  and the other new tests that read the live lake make the DEFAULT suite
+  depend on whatever another session last wrote there. Fix with (c): move
+  live-lake assertions behind an opt-in marker (`-m live`) — a suite-policy
+  change across several files.
+  **Status:** open (2026-09-25).
 
 - **#119 Three exporter handlers turn a failed program identity into bare
   keys.** `_fetch_program_identity` raises `UnresolvedSharedKeyError` on a
@@ -2071,7 +2096,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   is now mostly an Elbit-parented member.** `data-seeds/entity_family_events.csv:5`
   merges "Rockwell Collins Australia Pty Limited" into RTX (acquisition
   2018-11-26, evidence `name-inferred`). After the 2026-09-06 FY2026 refresh
-  rebuilt the crosswalk, the key's 12 members are about 70% SPARTON DELEON
+  regrouped the UEIs (the UEI-to-family resolution, not the budget-to-contract
+  crosswalk — wording aligned 2026-09-25 with the seed note A corrected in the
+  Task 26 fix wave), the key's 12 members are about 70% SPARTON DELEON
   SPRINGS, LLC, which filed ELBIT SYSTEMS LTD among its parents in
   FY2021–FY2025 and RTX CORP alone in FY2026 (re-measured 2026-09-25 and
   published in the RTX event note on `/companies/families/`); the display
@@ -2276,6 +2303,159 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   set (gitignored build output), then re-read gate 11's count note. Source:
   chain C run 4 via `task-26-polish-list.md` item 16. Effort: hours.
   **Status:** open (2026-09-25).
+
+- **#151 Nothing asserts the published (pe_bli, award_piid) grain.**
+  `budget_line_awards` is unique on (pe_bli, exhibit, fiscal_year,
+  award_piid), and `src/govbudget/jbooks/crosswalk.py` (`plan_crosswalk_org`
+  `:330`, `crosswalk_org` `:480`) writes one row per line-edition, so a `--yes`
+  multi-edition run (#78, #85) writes one pair several times;
+  `dbt/models/marts/fct_program_concentration.sql:40`'s `links` CTE would then
+  add that award's dollars twice to the family and program sums, and the
+  precision/adjudication tallies count link rows. Unique today, measured
+  read-only 2026-09-25: 12,601 `fct_budget_to_awards` rows over 12,601
+  distinct pairs. Fix: a dbt uniqueness test on `fct_budget_to_awards`
+  (pe_bli, award_piid[, account]) with a proof it can fail; collapse the
+  `links` CTE (or DISTINCT in `_AWARD_LINKS_SQL`); EXISTS semi-joins in the
+  tallies. Warnings now sit in #78, #85 and LAUNCH.md Step 0. Source: Task 26
+  final review (rejected finding 0, minor 48), deferred by implementer A.
+  Effort: days (dbt run and test). **Status:** open (2026-09-25).
+
+- **#152 The district marts' award join can fan out on a second label.**
+  `dbt/models/marts/fct_district_programs.sql:52` and
+  `fct_district_programs_by_year.sql:39` join through `select distinct
+  award_piid, pe_bli, account, program_title, organization`; a (pe_bli,
+  account) that ever carried two titles or two organizations would emit two
+  rows per award and `sum(t.obligation)` would count its transactions twice.
+  Latent: at most one title and one organization over all 416 (pe_bli,
+  account) pairs with a high link (measured read-only 2026-09-25). Fix, in
+  lockstep in both models: `group by award_piid, pe_bli, account` with
+  `min()` labels, proved byte-identical by a dbt run. Source: Task 26 final
+  review (minor 49), deferred by A. Effort: hours. **Status:** open
+  (2026-09-25).
+
+- **#153 The mechanical crosswalk has no split-key guard.**
+  `src/govbudget/jbooks/crosswalk.py` `crosswalk_org` / `plan_crosswalk_org`
+  write organization-split and unresolved shared lines as readily as any
+  other, while both link loaders exclude them (#70, #83). It has no rows on
+  those keys only because every mechanical row is DARPA's and no split key is
+  a DARPA line (measured read-only 2026-09-25: 124,500 mechanical rows in
+  `budget_line_awards`, all `organization='DARPA'`; the 13 split keys are N,
+  DTRA, DCSA, DMACT, OSD, DHRA and DLA codes). Fix: drop org-split and
+  unresolved lines under `partition_split_keys`, handle account-split ones,
+  with an org-split fixture test. Source: Task 26 final review (minor 6, code
+  half), deferred by A. Effort: hours. **Status:** open (2026-09-25).
+
+- **#154 The GAO identity checks a sum, not each key.**
+  `src/govbudget/export_site.py:15002` raises only when `rendered_items !=
+  accepted + inherited`; a missing key and a doubled key that offset exactly
+  would pass. Fix: count matched rows per ratified (product, program, slug)
+  key and raise on any count != 1, with a test. Latent (the run-4 identity is
+  132 = 62 + 70). Source: Task 26 final review (minor 9), deferred by A.
+  Effort: hours. **Status:** open (2026-09-25).
+
+- **#155 `unadjudicated_methods` names a path only at exactly zero.**
+  `src/govbudget/export_site.py:3881` lists a method only when none of its
+  links is adjudicated, so `announcement+lexicon` left the list when 2 of its
+  1,075 links gained an adjudication (run 4); the High sentence names that
+  path for the other 1,073. A "none or almost none" predicate (say < 5%)
+  changes an exported block and the rendered /methodology/ sentence, on a
+  page with little gzip headroom (about 180 bytes under 43,000 on B's
+  estimate after the fix wave) and no raise left under R-C-1. Decide with
+  #109/#110. Source: Task 26
+  final review (minor 61), deferred by A. Effort: hours plus a page-weight
+  trim. **Status:** open (2026-09-25).
+
+- **#156 `links_new_this_pass` is frozen when the scope row is written.**
+  `scripts/load_announcement_scope.py` stores the count of links the pass
+  added at write time; /methodology/ renders it as the tier's draw gap. True
+  on the current corpus (measured 2026-09-25: the 392 wave-4-only surviving
+  pairs give 367 published in Postgres and 367 in the mart), but stale the
+  moment links move without a new scope row. Fix: re-derive at export time
+  (an exported value) or date the rendered figure. Source: Task 26 final
+  review (minor 45), deferred by A. Effort: hours. **Status:** open
+  (2026-09-25).
+
+- **#157 The loader's "replacing N stored … links" line is untested.**
+  `scripts/load_announcement_links.py:437` prints the count an operator is
+  told to read before the partition rebuild commits (LAUNCH.md Step 0), from
+  inside `main()`, which reads the real lake and wave files. Fix: extract the
+  count query and pin it (and the `OWNED_METHODS` join) with a capsys test.
+  Source: Task 13 minors via `task-26-polish-list.md` item 19, deferred by A.
+  Effort: hours. **Status:** open (2026-09-25).
+
+- **#158 verify-phase5b1's row-label leg: five robustness items.**
+  `src/govbudget/verify_phase5b1.py`: `_toa_column_value` needs a tie rule
+  and a numeric-shape guard (latent: widest highlight 38.52 pt against a ~50
+  pt column pitch, 0 of 250 disagreements); the 4,597 PE-level summary-row
+  accepts are invisible on the CLI line; wrapped summary labels ("Plus Cost
+  To / Complete") match nothing; `_label_failure_species` calls any `token:`
+  row "another project's row"; `_load_fid_to_jbook_detail` materialises all
+  21,993 detail rows to look up at most 50. All latent (0 today per
+  `task-22b-report.md`). The fifteen failing citations themselves are #126.
+  Source: Task 22b review via `task-26-polish-list.md` item 17 (the rest
+  after A's partial fix). Effort: hours each. **Status:** open (2026-09-25).
+
+- **#159 `refresh.py`'s section banner undercounts its doors.**
+  `src/govbudget/refresh.py:172` still reads "── the two doors to the outside
+  world ──" above `_run`/`_capture`, while the module docstring (Task 26) now
+  names the preflight checks, `drift_report` and the run record too. Fix:
+  "the two subprocess doors". Source: implementer A, found after its commit.
+  Effort: minutes. **Status:** open (2026-09-25).
+
+- **#160 The latent SAM clause names the wrong registration.** When
+  `companies_with_sam > 0`, `/methodology/` (`site/src/app/methodology/page.tsx:906`)
+  and `site/src/components/sam-registration.tsx:70` say the family's SAM.gov
+  registration is "the registration of the family's largest member", but the
+  join key is `max(coalesce(parent_uei, recipient_uei))`
+  (`src/govbudget/export_site.py:5168`), so for a member with a registered
+  parent it is the parent's. Renders on 0 pages (`companies_with_sam` = 0 on
+  run 4). The three twins are bound by `site/src/__tests__/sam-registration.test.tsx`
+  and must change in one commit across B's and A's files. Source: Task 26
+  final review (minor 12), deferred by B. Effort: hours. **Status:** open
+  (2026-09-25).
+
+- **#161 "No contract award is linked to this line" can be false on a
+  shared code.** The lobbying tier's sentence
+  (`site/src/app/program/[peBli]/page.tsx:1591`) is true of the page's
+  program but not of its budget line when an unlinked member sits on a
+  linked shared code (0 pages today). The fix — "…linked to this program" —
+  needs four files in one commit: the page (B), gate 21's anchored
+  `WHO_LOBBY_TEMPLATE` (`site/scripts/gates/program-skeleton.mjs:2940`, C),
+  `src/govbudget/export_site.py:7570` and
+  `tests/test_who_gets_it_fallbacks.py:227` (A). Not taken in the fix wave:
+  changing the gate's anchor alone would red it against the shipped page.
+  Source: Task 9 review via `task-26-polish-list.md` item 8, deferred by B.
+  Effort: hours. **Status:** open (2026-09-25).
+
+- **#162 One plate-geometry module for the flow chart and its gate.**
+  `site/src/components/flow-chart/flow-chart.tsx:759` and
+  `site/scripts/gates/flowdown.mjs:627` each carry `subtractRects`; nothing
+  compares them, and gate 22 leg h1 checks only the rendered result (both
+  comments now say so). Fix: a shared `site/src/lib/plate-geometry.mjs`
+  imported by both, so the gate tests the code the page runs. Source: Task 26
+  final review (minor 22/29), deferred by B. Effort: hours. **Status:** open
+  (2026-09-25).
+
+- **#163 The /district/ reconciliation's "314 of 1,938 programs" is off by
+  three.** `site/src/app/district/page.tsx:253` says the linkable subtotal
+  ties back to "{flows} of {programs} programs" (renders 314 of 1,938), but
+  the subtotal sums the district rows of 317 program elements: 356010,
+  845550 and 9140MA7804 carry district rows with only zero or negative
+  obligations and so draw no view (measured read-only 2026-09-25 on the run-4
+  export: 317 distinct `pe_bli` in `data/site/json/districts/`, 314 flows
+  sidecars). The fix wave's scope-note rewrite left this sentence as it was.
+  Fix: state 317 through a declared count gate 24 leg (p2) admits, or align
+  the exporter's two criteria. Source: implementer B (Task 26), deferred.
+  Effort: hours. **Status:** open (2026-09-25).
+
+- **#164 /downloads/ counts 204 J-book PDFs while 225 ship.**
+  `site/src/components/download-cards.tsx:256` renders
+  `site_meta.pdf_count` (204: the documents the export copied this run),
+  while `data/site/pdfs/` holds 225 files — the exporter never prunes stale
+  ones, and the R2 sync ships the directory (counted 2026-09-25). Fix: prune
+  at export, or count the directory. Same species as #150 (OG images).
+  Source: implementer B (Task 26, polish 18 follow-up), deferred. Effort:
+  hours. **Status:** open (2026-09-25).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

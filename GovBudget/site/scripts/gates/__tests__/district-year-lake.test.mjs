@@ -231,9 +231,11 @@ describe("gate 24 leg r — district-year cells vs the lake and the page", () =>
     expect(failures[0]).toContain("the page renders 9 where the lake says 4.37");
   });
 
-  it("mirrors the page's sign-then-round on a negative sub-$10 cell", () => {
+  it("mirrors the page's sign-then-round on a negative sub-$1,000 cell", () => {
     // compactFormat rounds the ABSOLUTE value and reapplies the sign, so
-    // -48.5 renders "-$49" where Math.round(-48.5) would be -48.
+    // -48.5 renders "-$49" where Math.round(-48.5) would be -48. (-48.5 sits
+    // in the under-$1,000 whole-dollar branch; Task 26 renamed this test,
+    // which said "sub-$10".)
     const { failures, checked } = checkDistrictYearSample({
       sample: [{ district: "ZZ-03", fy: 2025, total: -48.5 }],
       truth: {

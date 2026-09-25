@@ -28,12 +28,15 @@
 import { describe, it, expect } from "vitest";
 import { bridgeHighCensus, checkCrosswalkBlockerWording } from "../coverage.mjs";
 
-/** The bridge row's blocker cell as leg cm reads it from chain C run 4's
- *  build (out/coverage/index.html, git_head 71d3e053, built 2026-09-25):
- *  node-html-parser text, whitespace collapsed — so it opens with the
- *  mobile-only "In the way" label, a separate block span the leg's .text
- *  runs into the sentence. A later rebuild may render other words; the live
- *  leg reads whatever the page renders, and this fixture stays the dated
+/** The bridge row's blocker cell as leg cm will read it once the Task 26
+ *  fix wave is built: node-html-parser text, whitespace collapsed — so it
+ *  opens with the mobile-only "In the way" label, a separate block span the
+ *  leg's .text runs into the sentence. The words are coverage-map.ts's
+ *  blocker string at db7ea6b8 (2026-09-25). Chain C run 4's build
+ *  (out/coverage/index.html, git_head 71d3e053) rendered the same cell
+ *  character for character except the medium clause, which then read
+ *  "medium means only that the award drew on the same account and agency".
+ *  The live leg reads whatever the page renders; this fixture is the dated
  *  copy the unit cases mutate. */
 const SHIPPED =
   "In the wayAccount codes are too coarse to attribute awards to program elements. An " +
@@ -44,8 +47,8 @@ const SHIPPED =
   "which evidence paths carry no per-link adjudication at all: high means " +
   "the contract and the program's own J-book pages name the same program, " +
   "and where a per-award adjudication exists it was challenged by two " +
-  "independent adversarial reviewers; medium means only that the award drew " +
-  "on the same account and agency. Where evidence pinned an award to a " +
+  "independent adversarial reviewers; medium means the evidence stops short " +
+  "of proving this line paid. Where evidence pinned an award to a " +
   "different organization's program, the link was removed — a guess wearing " +
   "a citation is worse than an honest absence. File C, the last untested " +
   "official path, was examined and ruled out in September 2026.";
@@ -62,7 +65,7 @@ const RUN4_META = {
 };
 
 describe("leg cm[bridge] — the shipped blocker", () => {
-  it("passes on the blocker cell chain C run 4's build rendered (2026-09-25)", () => {
+  it("passes on the blocker cell the Task 26 fix wave ships (coverage-map.ts at db7ea6b8)", () => {
     expect(checkCrosswalkBlockerWording(SHIPPED, bridgeHighCensus(RUN4_META))).toEqual([]);
   });
 });

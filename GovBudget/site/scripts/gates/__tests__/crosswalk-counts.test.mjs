@@ -210,6 +210,30 @@ describe("orgAttributionFindings", () => {
     ).toEqual([]);
   });
 
+  it("passes the sentences the Task 26 fix wave ships on /district/ and /district/{code}/", () => {
+    // site/src/app/district/page.tsx and [district]/page.tsx at db7ea6b8:
+    // the mechanism is named without enumerating its paths.
+    expect(
+      orgAttributionFindings(
+        [
+          { url: "/district/", text: "District data reflects only high-confidence award crosswalk links. A budget line earns one only where more than an account code ties the award to it; methodology §4 says what does." },
+          { url: "/district/AL-02/", text: "This page counts only links the crosswalk grades high, where more than an account code ties the award to the program; methodology §4 says what does." },
+        ],
+        MIX,
+      ),
+    ).toEqual([]);
+  });
+
+  it("recommends that wording, not the retired two-path enumeration, when it fires", () => {
+    const found = orgAttributionFindings(
+      [{ url: "/district/", text: "High-confidence crosswalk links are concentrated in DARPA lines." }],
+      MIX,
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatch(/only where more than an account code ties the award to it/);
+    expect(found[0]).not.toMatch(/names the program, or account plus program tokens/);
+  });
+
   it("still names an organization that really does hold the majority", () => {
     // Not a false negative: if the sidecars were 92% DARPA, the sentence the
     // branch deleted would have been true, and the leg must say so by
