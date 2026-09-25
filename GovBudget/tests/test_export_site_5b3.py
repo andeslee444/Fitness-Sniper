@@ -1293,8 +1293,15 @@ class TestRequireAccountColumn:
                 con, "dim_programs", columns=("account", "account_title"))
         msg = str(exc.value)
         assert "`account`" in msg and "`account_title`" in msg, msg
-        # dim_programs' account identity is Sprint E's, not Task 27's.
-        assert "Sprint E" in msg and "Task 27" not in msg, msg
+        # Each table is dated by the change that gave IT the column:
+        # dim_programs #56 (730186d7), fct_budget_to_awards #70 (60d9bea2),
+        # the district marts Task 27 (d3a4bf0f).
+        assert "#56" in msg and "Task 27" not in msg, msg
+        con.execute(
+            "create table fct_budget_to_awards (pe_bli varchar, award_piid varchar)")
+        with pytest.raises(RuntimeError) as exc:
+            _require_account_column(con, "fct_budget_to_awards")
+        assert "#70" in str(exc.value) and "Sprint E" not in str(exc.value)
         con.execute(
             "create table fct_district_programs (pe_bli varchar, title varchar)")
         with pytest.raises(RuntimeError, match="Task 27"):

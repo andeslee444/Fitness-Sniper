@@ -638,12 +638,14 @@ def _query_with_account_fallback(
 
 #: The change that gave each table its account identity — what a warehouse
 #: missing the column predates. Per table because they did not arrive
-#: together: dim_programs and fct_budget_to_awards were re-grained on
-#: (account, pe_bli) in Sprint E; the district marts took `account` into
-#: their grain in Task 27.
+#: together: dim_programs has published `account` and `account_title` since
+#: ROADMAP #56 (730186d7, 2026-08-11) and was re-grained on (account, pe_bli)
+#: in Sprint E (#67, 2026-08-20); fct_budget_to_awards gained `account` with
+#: #70 (60d9bea2, 2026-09-04); the district marts took it into their grain in
+#: Task 27 (2026-09-19).
 _ACCOUNT_IDENTITY_SINCE = {
-    "dim_programs": "Sprint E (ROADMAP #67, 2026-08-20)",
-    "fct_budget_to_awards": "Sprint E (ROADMAP #67, 2026-08-20)",
+    "dim_programs": "ROADMAP #56 (2026-08-11)",
+    "fct_budget_to_awards": "ROADMAP #70 (2026-09-04)",
     "fct_district_programs": "Task 27 (2026-09-19)",
     "fct_district_programs_by_year": "Task 27 (2026-09-19)",
 }
@@ -9838,8 +9840,13 @@ def _write_all_sidecars(
     # DARPA run (LAUNCH.md Step 0 passes --org DARPA) and no split key is a
     # DARPA line (measured read-only 2026-09-25: all 124,500 mechanical rows
     # in budget_line_awards are DARPA's; the 13 split keys are N, DTRA, DCSA,
-    # DMACT, OSD, DHRA and DLA codes). This diagnostic is what would say so
-    # if another organization were ever run.
+    # DMACT, OSD, DHRA and DLA codes). If another organization were ever
+    # run, this diagnostic would say so only for an ACCOUNT-split code: the
+    # crosswalk writes account NULL, so the row lands on (pe_bli, None, None),
+    # a key no page reads. For the three ORGANIZATION-split codes ('20', '30',
+    # '500') it would NOT: the crosswalk writes the running organization, so
+    # the row files under that member's readable key (split_key's ORG axis)
+    # and publishes on its member page silently. ROADMAP #153 is the guard.
     _readable_split_keys = {
         ident.split_key(pe_bli, account, organization)
         for pe_bli in ident.split_pe_blis
