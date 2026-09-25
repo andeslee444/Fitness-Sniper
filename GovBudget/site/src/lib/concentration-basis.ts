@@ -75,9 +75,11 @@ export interface ConcentrationPublished {
  *   "shared-code"  — the mart row exists for a budget line MORE THAN ONE
  *                    program uses, and more than one of them carries linked
  *                    awards (any confidence), so the exporter withholds the
- *                    whole block from every member (#70/#82) — even where
- *                    the high-only figure would be one member's (3010, 3215;
- *                    see sharedCodeWithheldReason).
+ *                    whole block from every member (#70/#82) — a rule on
+ *                    links, applied even where every dollar in the high-only
+ *                    figure a page prints is one member's (0145, 3010 and
+ *                    3215 in chain C run 2's export; see
+ *                    sharedCodeWithheldReason).
  *                    sharedCodeWithheldReason() states it; the block never
  *                    reaches the page, so the answer strip's "none" tier is
  *                    the only surface that can say it, from the sidecar's
@@ -197,29 +199,29 @@ export const WHO_GETS_IT_WITHHELD_LEAD =
  * those, and #80 fix round 2 showed that a count is exactly what goes false.
  * "More than one", never "two": '30' is shared by THREE programs.
  *
- * WHICH FIGURE MIXES WHOSE MONEY (Task 28 fix round 1). The test is on links,
- * not on the figure a page would publish. A figure over ALL the line's links
- * pools more than one program's contractors on every page this renders — the
- * condition above guarantees it — and that is all the sentence's last clause
- * claims. A page publishes only the HIGH-confidence basis, and that figure
- * pools more than one program only where more than one member carries high
- * links: 0145 in chain C run 2's export (built 2026-09-19; 0145-APN 5 high,
- * 0145-PANMC 3 high). On
- * 3010 and 3215 every high link is one member's (3010-SCN's, 3215-WPN's; the
- * other member carries medium links only), so the high-only figure would be
- * that member's own — withheld anyway, because the rule counts every
- * published link. Adopting a basis-aware test instead would move the program
- * pages and the feed together; it is an owner decision, recorded 2026-09-24.
- * Until then the sentence claims the mixing of the all-links figure only.
- * (Its earlier "so the figure would mix their money" read as true of the
- * high-only figure too, which on 3010 and 3215 it is not.)
+ * A RULE ON LINKS, NOT A FINDING ABOUT MONEY (Task 28 fix round 2). The test
+ * never looks at the figure, and the last clause claims no more than the
+ * test: the index is published only when one program carries every link on
+ * the line. Until this round that clause said a figure over all the line's
+ * links "would mix their money", and on 0145 that was false: in chain C
+ * run 2's export (built 2026-09-19) 0145-PANMC's three links are IDV PIIDs
+ * whose transaction rows all carry obligation 0.0, so they add $0 to
+ * fct_program_concentration, and every 0145 figure, on either basis (every
+ * 0145 link is high), is 0145-APN's money. On 3010 and 3215 the high-only
+ * figure a page prints is one member's money too (every high link is
+ * 3010-SCN's / 3215-WPN's; the other member carries medium links only);
+ * only the all-links basis, which no page prints, pools two members'
+ * dollars there. So on none of the six pages this rendered in that export
+ * would the figure a page prints have mixed two programs' money. Adopting a
+ * money-aware test instead would move the program pages and the feed
+ * together; it is an owner decision, recorded 2026-09-24.
  */
 export function sharedCodeWithheldReason(peBli: string): string {
   return (
     `Award records are linked to this program — see Related Awards below — ` +
     `but no concentration index is published for it: the crosswalk computes ` +
     `concentration on budget line ${peBli}, which more than one program ` +
-    `uses, and more than one of them carries linked awards, so a figure over ` +
-    `all the line's links would mix their money.`
+    `uses, and more than one of them carries linked awards; the index is ` +
+    `published only when one program carries every link on the line.`
   );
 }

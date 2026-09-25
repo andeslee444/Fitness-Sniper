@@ -1456,9 +1456,11 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  *              a row below the high-only floor (#80 — the two shared strings
  *              in lib/concentration-basis.ts); and a row on a budget line
  *              more than one program uses, withheld from every linked member
- *              because it would mix their money (#82 — sharedCodeWithheldReason,
- *              stamped data-who-withheld). All three carry the same tier
- *              name, no dollars and no company names.
+ *              while more than one member carries published links — a rule
+ *              on links, not a finding that the figure mixes their money
+ *              (#82 — sharedCodeWithheldReason, stamped data-who-withheld).
+ *              All three carry the same tier name, no dollars and no company
+ *              names.
  *
  * WHY THE LOBBYING TIER IS SHAPED LIKE THIS. "Lobbied about it" and "was paid
  * for it" are different claims, and merging them is exactly the defect class
@@ -1672,8 +1674,8 @@ function WhoGetsItBody({
   // records (the exporter sets summary.concentration_withheld only for a
   // linked member — see _concentration_withheld), so the sentence below
   // would be false on it; and the mart's figure, computed on the bare line,
-  // describes more than one program's money, so it is published on neither
-  // member and the Contractor Concentration card renders nothing at all.
+  // is withheld from every member by the #70/#82 all-links rule, and the
+  // Contractor Concentration card renders nothing at all.
   // The strip is the only surface that can say why.
   //
   // Reached only when no stronger tier answered — and none can: the award

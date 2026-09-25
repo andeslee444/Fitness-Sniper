@@ -7,12 +7,14 @@ code more than one program shares, the program pages have withheld the pooled
 concentration block since ROADMAP #70/#82 whenever more than one member
 carries published links of any confidence (`_concentration_for`); until this
 task the feed did not apply it. The rule is a test on links, not a finding that
-every withheld index mixes two programs: a year's high-only index is computed
-over both programs' links only where both members carry high links (0145 in
-chain C run 2's export, built 2026-09-19 at e510d19d). On 3010 and 3215 every
-high link is one member's, so the index there is that member's alone — it is
-withheld with the pooled block by the same test, and whether to adopt a
-basis-aware test instead is an owner decision recorded 2026-09-24.
+a withheld index mixes two programs' money — and in chain C run 2's export
+(built 2026-09-19 at e510d19d) none did. A year's index weighs high-confidence
+links with positive obligations only: the three 0145-PANMC links are IDV PIIDs
+whose transaction rows all carry obligation 0.0, so every 0145 index was
+0145-APN's money; on 3010 and 3215 every high link is one member's, so every
+3010 index was 3010-SCN's and every 3215 index 3215-WPN's. They are withheld
+with the pooled block by the same test, and whether to adopt a money-aware
+test instead is an owner decision recorded 2026-09-24.
 
 Chain C run 2's feed.json (built before this task) carries 33 cards on four
 shared codes — 0145 ×9, 3010 ×9, 3215 ×9, 2292 ×6 — each headed by the
@@ -52,6 +54,7 @@ from govbudget.export_site import (
     _emit_feed_sidecar,
     _feed_program_key,
     _fetch_award_link_rows,
+    _fetch_member_page_rows,
     _fetch_program_identity,
     _link_keys,
     _member_pages,
@@ -469,6 +472,52 @@ class TestCitationsMoveWithTheCards:
             assert c["magnitude"]["to"]["fact_id"] is not None, c
             referenced |= {c["figure_fact_id"], c["magnitude"]["to"]["fact_id"]}
         assert minted == referenced
+
+
+# ---------------------------------------------------------------------------
+# the citation builder's member-page read fails loudly, and says what failed
+# ---------------------------------------------------------------------------
+
+
+class TestTheMemberPageReadIsNarrow:
+    """_fetch_member_page_rows (the citation builder's member pages) used to
+    turn ANY failed read into [] — and _concentration_page then raised that
+    the identity map and the page rows disagree, blaming a disagreement for
+    what was a failed read. Only an ABSENT dim_programs means "no rows"
+    (the _require_account_column semantics); any other failure propagates
+    with its own message."""
+
+    def test_an_absent_dim_programs_gives_no_rows(self):
+        con = duckdb.connect()
+        try:
+            assert _fetch_member_page_rows(con) == []
+        finally:
+            con.close()
+
+    def test_a_failed_read_propagates(self):
+        con = duckdb.connect()
+        try:
+            con.execute(
+                "create table dim_programs (pe_bli varchar, account varchar,"
+                " account_title varchar, org varchar)"
+            )
+            with pytest.raises(duckdb.BinderException, match="title"):
+                _fetch_member_page_rows(con)
+        finally:
+            con.close()
+
+    def test_the_citation_builder_names_the_failed_read(self, tmp_path):
+        # dim_programs without `title`: the identity read (account,
+        # account_title, org, exhibit_family) succeeds, the member-page read
+        # cannot. The builder must stop on the read, not on a "disagree".
+        db = _make_db(tmp_path)
+        con = duckdb.connect(str(db))
+        con.execute("alter table dim_programs drop column title")
+        con.close()
+        with pytest.raises(duckdb.BinderException, match="title"):
+            _build_derived_citation_rows(
+                duckdb_path=db, bl_rows=[], citation_rows=[],
+            )
 
 
 # ---------------------------------------------------------------------------

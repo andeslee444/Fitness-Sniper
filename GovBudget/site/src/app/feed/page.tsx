@@ -47,8 +47,15 @@ const EVENT_META: Record<
   },
   concentration_shift: {
     label: "Award Concentration Shifts",
+    // Task 28 fix round 2: this used to say every card "falls in the DOJ/FTC
+    // moderately or highly concentrated band". fct_feed_events has no HHI
+    // floor — its only condition is `having sum(dollars) >= 5000000` over
+    // high-confidence links' positive obligations — and 0605502E FY2017–2020
+    // (HHI 437–892) render "Competitive" in chain C run 2's export. The
+    // description states the mart's own universe, the band each card names
+    // (hhiScopeNote), and the #70/#82 shared-code rule (_concentration_owner).
     description:
-      "Programs whose Herfindahl-Hirschman Index (HHI) for a single fiscal year falls in the DOJ/FTC “moderately” or “highly concentrated” band (≥ $5M matched obligations). Each card is a one-year snapshot — it can land in a different band than the program's own pooled, all-years HHI, which that page publishes only where its high-confidence links clear the floor, and otherwise withholds.",
+      "Programs whose high-confidence award links carry at least $5M in matched obligations (positive obligations only) in a fiscal year — one card per year, headlined by that year's Herfindahl-Hirschman Index (HHI) across contractor families, whatever its value. Each card names its DOJ/FTC band: competitive, moderately concentrated or highly concentrated. On a budget line more than one program uses, only a program carrying every crosswalk link on the line, high or medium, gets a card. Each card is a one-year snapshot — it can land in a different band than the program's own pooled, all-years HHI, which that page publishes only where its high-confidence links clear the floor, and otherwise withholds.",
     anchorId: "feed-concentration_shift",
   },
   request_vs_actuals_gap: {

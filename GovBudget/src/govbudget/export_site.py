@@ -806,10 +806,12 @@ def _concentration_owner(ident, awards_by_pe, pe_bli: str):
 
     fct_program_concentration (pooled over every year) and fct_feed_events'
     concentration_shift events (one fiscal year each) both aggregate award
-    dollars by pe_bli alone. On a code more than one program shares, a
-    figure computed over more than one member's links counts more than one
-    program's contractors — the #56 fusion, in the figure a reader is most
-    likely to quote — so it is no single program's.
+    dollars by pe_bli alone. On a code more than one program shares, such a
+    figure is computed over every member's links on its basis, so it CAN
+    count more than one program's contractors — the #56 fusion, in the
+    figure a reader is most likely to quote. This function does not measure
+    whether it does: it asks which program carries the links, and hands a
+    figure only to the one program that carries every one of them.
 
       · an ordinary pe_bli → (pe_bli, None, None): the code names one program
         and the figure is that program's, exactly as before #70;
@@ -825,19 +827,33 @@ def _concentration_owner(ident, awards_by_pe, pe_bli: str):
         prints no such line, so none).
 
     "Carries links" counts every published link, high and medium confidence
-    alike — awards_by_pe's rows. That is the rule, not a finding that every
-    figure it withholds mixes programs. fct_feed_events computes its per-year
-    index over high-confidence links only: on 0145 both members carry high
-    links (in that export 0145-APN 5, 0145-PANMC 3), so the index is computed
-    over both programs' links; on 3010 and 3215 every high link is one
-    member's (3010-SCN 1 of its 6; 3215-WPN all 7; 3010-OPN and 3215-OPN carry
-    medium links only), so the index there is that member's alone. Those
-    cards are withheld anyway: the program pages withhold those codes' whole
-    pooled block, its high-confidence basis included, by this same test, and
-    a feed card may not publish what the page it would link to declines to.
-    A basis-aware test would publish them under 3010-SCN and 3215-WPN;
-    adopting one is an owner decision (recorded 2026-09-24) and would move
-    the program pages and the feed together.
+    alike — awards_by_pe's rows. It is a rule on LINKS, not a finding that a
+    figure it withholds mixes two programs' money, and in chain C run 2's
+    export no index a program page or feed card would print did. Both print
+    the high-confidence basis, and both marts' indexes weigh positive
+    obligations only:
+      · 0145: the three 0145-PANMC (1508N) links — N0001915D0030,
+        W52P1J19D0015 and N0001924D0104 — are IDV PIIDs whose transaction
+        rows all carry obligation 0.0 (27, 9 and 5 rows), so they drop out of
+        fct_feed_events (`obligation > 0`) and add $0 to
+        fct_program_concentration: every 0145 index, on either basis (every
+        0145 link is high), was 0145-APN's money (the pooled block's award
+        and family counts would still count 0145-PANMC's three links —
+        links, not money);
+      · 3010 and 3215: every high link is one member's (3010-SCN 1 of its 6;
+        3215-WPN all 7; 3010-OPN and 3215-OPN carry medium links only), so
+        every high-basis 3010 index was 3010-SCN's money and every
+        high-basis 3215 index 3215-WPN's.
+    The all-links basis, which no page prints (concentrationHeadline in
+    site/src/lib/concentration-basis.ts reads the high basis only), does
+    pool the OPN members' medium-link dollars with 3010-SCN's and 3215-WPN's.
+    The cards are withheld anyway: the program pages withhold those codes'
+    whole pooled block by this same test, and a feed card may not publish
+    what the page it would link to declines to. A money-aware test (withhold
+    only where more than one member carries positive dollars on the basis
+    the figure is computed over) would publish them under 0145-APN,
+    3010-SCN and 3215-WPN; adopting one is an owner decision (recorded
+    2026-09-24) and would move the program pages and the feed together.
     """
     if not ident.is_split(pe_bli):
         return ident.split_key(pe_bli, None, None)
@@ -916,13 +932,22 @@ def _fetch_member_page_rows(con) -> list[tuple]:
     split keys and slugs are the same all_prog_rows yields: every row of a
     shared code comes from dim_programs (the trajectory-only rows
     all_prog_rows adds have no dim_programs row, so are never shared), and
-    the slug does not read the title. An unreadable dim_programs gives []
-    — _concentration_page then raises for any figure a member owns."""
+    the slug does not read the title.
+
+    An ABSENT dim_programs gives [] (a fixture lake that never built the
+    mart; _concentration_page then raises for any figure a member owns). Any
+    other failure — a dim_programs missing one of these columns, say —
+    PROPAGATES with its own message: the _require_account_column semantics
+    (Task 28 fix round 2, 2026-09-24). Until then every failure gave [], and
+    _concentration_page's raise blamed a disagreement between the identity
+    map and the page rows for what was a failed read."""
+    import duckdb as _duckdb
+
     try:
         return con.execute(
             "select pe_bli, account, account_title, org, title from dim_programs"
         ).fetchall()
-    except Exception:
+    except _duckdb.CatalogException:
         return []
 
 
@@ -13230,12 +13255,16 @@ def _emit_feed_sidecar(
     published links (high or medium confidence — the program pages' test for
     the pooled figure), or a key no member page reads carries some, the card
     is WITHHELD — not emitted — and counted in one printed census line. That
-    is the rule, not a finding that each withheld index mixes two programs:
-    the per-year index counts high-confidence links only, so it is computed
-    over both programs' links only where both members carry high links (0145
-    in chain C run 2's export, built 2026-09-19); on 3010 and 3215 every high
-    link is one member's and the withheld index was that member's alone
-    (see _concentration_owner for the owner decision recorded 2026-09-24).
+    is a rule on links, not a finding that a withheld index mixes two
+    programs' money, and in chain C run 2's export (built 2026-09-19) none
+    of the 27 did: the per-year index counts high-confidence links with
+    positive obligations only (fct_feed_events: confidence = 'high',
+    `obligation > 0`). The three 0145-PANMC links are IDV PIIDs whose
+    transaction rows all carry obligation 0.0, so every 0145 index was
+    0145-APN's money; on 3010 and 3215 every high link is one member's, so
+    every 3010 index was 3010-SCN's and every 3215 index 3215-WPN's (see
+    _concentration_owner for the detail and the owner decision recorded
+    2026-09-24).
     When exactly one member key carries links, the card is that member's:
     program_url is /program/{member slug}/ and title/headline carry the
     member's program title (member_pages). A member that owns the figure but

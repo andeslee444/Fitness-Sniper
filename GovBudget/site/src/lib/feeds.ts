@@ -105,7 +105,7 @@ export function feedPageAlternates(labels: Record<string, string>): FeedAlternat
   );
 }
 
-/** Watch feed for one program element, or null when it has no events. */
+/** Watch feed for one program page — peBli is its page key (the pe_bli, or a shared code's member slug such as 2292-WPN) — or null when it has no events. */
 export function programFeedAlternates(
   peBli: string,
   title: string,

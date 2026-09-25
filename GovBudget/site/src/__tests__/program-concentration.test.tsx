@@ -242,18 +242,23 @@ describe("shared-code withholding (ROADMAP #82)", () => {
     expect(s).not.toMatch(/\$[\d]/);
   });
 
-  // Task 28 fix round 1 (B4). "so the figure would mix their money" read as
-  // true of every basis, but a page publishes only the high-confidence one,
-  // and on 3010 and 3215 every high-confidence link is one member's: that
-  // figure would be the member's own. The rule withholds it anyway — it
-  // counts every published link, high and medium (owner decision recorded
-  // 2026-09-24). What mixes the two programs' money, on every page this
-  // renders, is a figure over ALL the line's links: two members carrying at
-  // least one link each is the condition the sentence renders under.
-  it("says whose money a figure over all the line's links would mix — not that every figure would", () => {
-    const s = sharedCodeWithheldReason("3010");
-    expect(s).toMatch(/a figure over all the line's links would mix their money\.$/);
-    expect(s).not.toMatch(/so the figure would mix/);
+  // Task 28 fix round 2. The rule is on LINKS: the index is published only
+  // when one program carries every link on the line. It is not a finding
+  // that any figure mixes the programs' money, and in chain C run 2's export
+  // (2026-09-19) none a page prints did: 0145-PANMC's three links are IDV
+  // PIIDs whose transactions all carry obligation 0.0, so every 0145 figure
+  // is 0145-APN's money, and on 3010 and 3215 every high link is one
+  // member's. The fix-round-1 clause "a figure over all the line's links
+  // would mix their money" was false on /program/0145-APN/ and
+  // /program/0145-PANMC/, so the sentence states the rule and nothing more.
+  it("states the rule on links — and claims no mixing of money", () => {
+    const s = sharedCodeWithheldReason("0145");
+    expect(s).toMatch(
+      /; the index is published only when one program carries every link on the line\.$/,
+    );
+    expect(s).not.toMatch(/\bmix/i);
+    expect(s).not.toMatch(/\bmoney\b/i);
+    expect(s).not.toMatch(/\bfuse/i);
   });
 
   it("does not deny that any company is linked — award records are", () => {
