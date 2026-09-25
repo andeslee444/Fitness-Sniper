@@ -1187,13 +1187,13 @@ export default function MethodologyPage() {
                 </h3>
                 <p>
                   Both bases — high-confidence links alone, and every
-                  published link — are computed from the same crosswalk and
-                  ship in the downloadable warehouse with derived citations,
-                  but a program page publishes only the high-confidence-only
-                  figures, and only over at least three such awards across two
-                  or more contractor families holding positive obligations with
-                  positive net linked dollars; below that floor it states the
-                  absence rather than substituting the wider figure.
+                  published link — share one crosswalk and ship in the
+                  downloadable warehouse with derived citations; a program page
+                  shows only the high-confidence figures, which it and the
+                  warehouse carry only over at least three such awards across
+                  two or more contractor families holding positive obligations
+                  with positive net linked dollars; below that floor it states
+                  the absence rather than substituting the wider figure.
                 </p>
               </div>
             </div>
