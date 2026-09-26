@@ -58,9 +58,10 @@
  *     (fct_program_concentration). Both are real numbers computed by
  *     different, legitimate queries — a single concentrated year sitting
  *     next to a competitive pooled figure is not itself a defect (measured
- *     on the shipped corpus, 70 of 84 cards land in a different DOJ/FTC
- *     band than their destination; requiring literal band equality would
- *     be the wrong tool and would flag nearly the whole event type). What
+ *     on the shipped corpus at the time, 70 of 84 cards landed in a
+ *     different band than their destination; requiring literal band
+ *     equality would be the wrong tool and would flag nearly the whole
+ *     event type). What
  *     IS a defect: a band mismatch with NOTHING on the card telling the
  *     reader the two figures are different measures — that is what reads
  *     as the site contradicting itself the moment someone clicks through.
@@ -72,6 +73,14 @@
  *     requires the card to carry an explicit [data-hhi-scope-note]
  *     disclosure (checked by content, not just presence). See hhi-band.mjs
  *     for the shared band function both card and destination render with.
+ *     Since #132 (decided 2026-09-25) those are the 2023 Merger Guidelines'
+ *     bands, and a card's note must name that vintage and the band of the
+ *     whole number the card itself prints (hhiCardNoteFinding) — a note
+ *     still banding by the retired 1,500/2,500 thresholds, or naming a band
+ *     with no year, fails here. So does the section's own description
+ *     (R-DEC-132b, hhiSectionDescriptionFinding): it names the bands, so it
+ *     names their vintage, all three band words, and that the word below
+ *     1,000 — "unconcentrated" — is this site's label.
  * (n) A RANKED LIST IS RANKED BY SOMETHING THAT MATTERS (tri-persona Wave 3).
  *     /feed/ opened on a $46.7M change at the head of a section holding
  *     changes seventy times larger, because the mart's order was
@@ -112,7 +121,12 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { JSDOM } from "jsdom";
 import { companyLabel } from "../../src/lib/company-name.mjs";
-import { hhiBand } from "../../src/lib/hhi-band.mjs";
+import {
+  hhiBand,
+  HHI_BANDS_VINTAGE,
+  HHI_CONCENTRATED_MIN,
+  HHI_MODERATE_MIN,
+} from "../../src/lib/hhi-band.mjs";
 import {
   FR_NS,
   feedGuid,
@@ -340,6 +354,101 @@ export function destinationHhiBadge(destRoot) {
 }
 
 /**
+ * A card's [data-hhi-scope-note] against the card's OWN printed figure (#132,
+ * decided 2026-09-25). The note names a band (data-hhi-band) in words the
+ * reader takes as the agencies'; it must be the band of the whole number the
+ * card prints — re-banded here with the shared hhiBand, so a note computed
+ * from different thresholds, or from a value that rounds across a boundary,
+ * cannot stand beside it — and its text must name the vintage
+ * (HHI_BANDS_VINTAGE). A card with no note claims no band: nothing to check.
+ *
+ * Exported for scripts/gates/__tests__/feed-hhi-destination.test.mjs.
+ *
+ * @param {{ cardValue: number, noteBand: string | null, noteText: string | null }} args
+ * @returns {string | null} the finding, or null
+ */
+export function hhiCardNoteFinding({ cardValue, noteBand, noteText }) {
+  if (noteBand === null || noteBand === undefined) return null;
+  const printed = hhiBand(cardValue).label;
+  if (noteBand !== printed) {
+    return (
+      `its scope note names "${noteBand}" but its own figure, HHI ${cardValue}, is ` +
+      `"${printed}" under the ${HHI_BANDS_VINTAGE} bands (hhi-band.mjs, #132)`
+    );
+  }
+  if (!String(noteText ?? "").includes(HHI_BANDS_VINTAGE)) {
+    return (
+      `its scope note names "${noteBand}" without the bands' vintage — every surface ` +
+      `that names a band names "${HHI_BANDS_VINTAGE}" with it (#132)`
+    );
+  }
+  return null;
+}
+
+/**
+ * The /feed/ concentration_shift section's description, read off the built
+ * page: the first <p> of the section's heading block (feed/page.tsx renders
+ * `<section id="feed-concentration_shift"><div><h2/><p>{description}</p>`).
+ * null when the section is not on the page. Exported for
+ * scripts/gates/__tests__/feed-hhi-destination.test.mjs.
+ *
+ * @param {import("node-html-parser").HTMLElement} root the parsed /feed/ page
+ * @returns {string | null}
+ */
+export function feedConcentrationDescription(root) {
+  const section = root.querySelector("#feed-concentration_shift");
+  if (!section) return null;
+  const head = section.querySelector("div");
+  const p = head ? head.querySelector("p") : null;
+  return p ? (p.text || "").replace(/\s+/g, " ").trim() : null;
+}
+
+/**
+ * R-DEC-132b (controller, 2026-09-26): the section description names the
+ * bands a card can carry, so it is held to what every other band surface is
+ * held to — the vintage (HHI_BANDS_VINTAGE), each band's own word as the
+ * badge prints it (lower-cased), and, because the 2023 guidelines name no
+ * band below 1,000, a statement that the word there is this site's. The
+ * retired editorial "competitive" fails outright. Until this check nothing
+ * read the sentence, and the stage-1 checker found it still saying "DOJ/FTC
+ * band: competitive, …" after every other surface had moved.
+ *
+ * Exported for scripts/gates/__tests__/feed-hhi-destination.test.mjs.
+ *
+ * @param {string | null} text the description's text
+ * @returns {string | null} the finding, or null
+ */
+export function hhiSectionDescriptionFinding(text) {
+  if (text === null || text === undefined) {
+    return "the concentration_shift section renders no section description to name its bands";
+  }
+  const t = String(text);
+  if (!t.includes(HHI_BANDS_VINTAGE)) {
+    return `the section description names bands without their vintage — "${HHI_BANDS_VINTAGE}" (#132)`;
+  }
+  if (/\bcompetitive\b/i.test(t)) {
+    return (
+      `the section description still says "competitive" — the band below ` +
+      `${HHI_MODERATE_MIN.toLocaleString("en-US")} is "${hhiBand(0).label}" (R-DEC-132b)`
+    );
+  }
+  const lower = t.toLowerCase();
+  for (const v of [0, HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN + 1]) {
+    const word = hhiBand(v).label.toLowerCase();
+    if (!lower.includes(word)) {
+      return `the section description does not name the "${word}" band a card can carry`;
+    }
+  }
+  if (!/this site's label/i.test(t)) {
+    return (
+      `the section description does not say "${hhiBand(0).label.toLowerCase()}" is this site's label — ` +
+      `the ${HHI_BANDS_VINTAGE} bands start at ${HHI_MODERATE_MIN.toLocaleString("en-US")} (R-DEC-132b)`
+    );
+  }
+  return null;
+}
+
+/**
  * leg l — see this file's top doc-comment for the full rationale. Reads
  * ONLY rendered HTML: the card's own figure text (ground truth for "the
  * band implied by the card's claim"), the destination page's own
@@ -466,6 +575,10 @@ function runHhiDestinationLeg(errors, notes, root) {
     return;
   }
 
+  // R-DEC-132b: the section sentence that names the bands.
+  const descriptionFinding = hhiSectionDescriptionFinding(feedConcentrationDescription(root));
+  if (descriptionFinding) errors.push(`feed leg l: ${descriptionFinding}`);
+
   // Destinations that actually rendered a band. Incremented AFTER the
   // destination resolves (fix round 2): a withheld or unresolvable
   // destination is not something this leg checked anything against, and
@@ -492,6 +605,19 @@ function runHhiDestinationLeg(errors, notes, root) {
       continue;
     }
     const cardBand = hhiBand(cardValue).label;
+
+    // #132: the band the card's note names is the band of the figure it
+    // prints, under the vintage it names.
+    const scopeNote = el.querySelector("[data-hhi-scope-note]");
+    const noteFinding = hhiCardNoteFinding({
+      cardValue,
+      noteBand: scopeNote ? scopeNote.getAttribute("data-hhi-band") ?? "" : null,
+      noteText: scopeNote ? scopeNote.text : null,
+    });
+    if (noteFinding) {
+      errors.push(`feed leg l: hhi card (HHI ${cardValue}) — ${noteFinding}`);
+      continue;
+    }
 
     const link = el
       .querySelectorAll("a[href]")

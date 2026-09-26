@@ -1,8 +1,15 @@
 from pathlib import Path
 
 import duckdb
+import pytest
 
-from govbudget.entity_graph import build_entity_xwalk
+from govbudget.entity_graph import (
+    DEFAULT_PARENT_EXCLUSIONS,
+    ParentExclusion,
+    ParentExclusionError,
+    build_entity_xwalk,
+    load_parent_exclusions,
+)
 
 AWARD_COLS = (
     "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name,"
@@ -32,6 +39,7 @@ def test_confidence_tiers(tmp_path):
     out = build_entity_xwalk(
         award_glob=str(lake / "contracts" / "*" / "*.parquet"),
         out_path=tmp_path / "entity_xwalk_conf.parquet",
+        parent_exclusions=(),
     )
     rows = duckdb.sql(f"select * from read_parquet('{out}')").fetchall()
     cols = [d[0] for d in duckdb.sql(f"describe select * from read_parquet('{out}')").fetchall()]
@@ -52,6 +60,7 @@ def test_build_entity_xwalk_merges_families(tmp_path):
     out = build_entity_xwalk(
         award_glob=str(lake / "contracts" / "*" / "*.parquet"),
         out_path=tmp_path / "entity_xwalk.parquet",
+        parent_exclusions=(),
     )
     rows = duckdb.sql(f"select * from read_parquet('{out}')").fetchall()
     cols = [d[0] for d in duckdb.sql(f"describe select * from read_parquet('{out}')").fetchall()]
@@ -103,6 +112,7 @@ def test_parent_pair_is_never_a_chimera(tmp_path):
     out = build_entity_xwalk(
         award_glob=str(lake / "contracts" / "*" / "*.parquet"),
         out_path=tmp_path / "xw_chimera.parquet",
+        parent_exclusions=(),
     )
     by_uei, cols = _read(out)
     row = by_uei["U9"]
@@ -122,6 +132,7 @@ def test_recipient_name_is_the_dominant_one_not_the_last_alphabetically(tmp_path
     out = build_entity_xwalk(
         award_glob=str(lake / "contracts" / "*" / "*.parquet"),
         out_path=tmp_path / "xw_name.parquet",
+        parent_exclusions=(),
     )
     by_uei, cols = _read(out)
     # 'LOCKHEED MARTIN CORPORATION' ($1,000) vs 'LOCKHEED MARTIN CORP' ($10);
@@ -149,9 +160,137 @@ def test_award_globs_union_contracts_and_assistance(tmp_path):
             str(lake / "assistance" / "*" / "*.parquet"),
         ],
         out_path=tmp_path / "xw_union.parquet",
+        parent_exclusions=(),
     )
     by_uei, cols = _read(out)
     tot = cols.index("total_obligation")
     assert by_uei["U1"][tot] == 107.0, "assistance dollars must land on the same UEI"
     assert "U8" in by_uei, "assistance-only recipients must get a family"
     assert by_uei["U8"][cols.index("family_key")] == "GRANTEE UNIVERSITY"
+
+
+# ── ROADMAP #135: a curated parent-pair exclusion ───────────────────────────
+#
+# The shape of the real defect (measured read-only 2026-09-25): SPARTON
+# DELEON SPRINGS, LLC (UEI H7KFX5RH75K3) filed five parent registrations
+# over the decade, and the dollar-dominant one — EGAVSJTA2D81, registered as
+# ROCKWELL COLLINS AUSTRALIA PTY LIMITED, $207.3M in FY2024-FY2025 — put it in
+# that family key, which the curated RTX family merges on name-inferred
+# evidence. The ruling (owner-delegated, 2026-09-25): that merge's evidence
+# covers RC Australia, not Sparton, so the pair is excluded and Sparton's
+# family follows its OTHER registry filings.
+
+
+def make_split_lake(tmp_path: Path) -> Path:
+    out = tmp_path / "contracts" / "fy=2025"
+    out.mkdir(parents=True)
+    duckdb.sql(
+        f"""
+        copy (select * from (values
+          ('US1','SPARTON DELEON SPRINGS, LLC','PRCA','ROCKWELL COLLINS AUSTRALIA PTY LIMITED','300'),
+          ('US1','SPARTON DELEON SPRINGS, LLC','PELB','ELBIT SYSTEMS LTD','200'),
+          ('US1','SPARTON DELEON SPRINGS, LLC','PRTX','RTX CORP','150'),
+          ('UI1','INTERTRADE LIMITED','PRCA','ROCKWELL COLLINS AUSTRALIA PTY LIMITED','50')
+        ) t({AWARD_COLS})) to '{out}/part.parquet' (format parquet)
+        """
+    )
+    return tmp_path
+
+
+def _excl(**kw) -> ParentExclusion:
+    base = dict(
+        recipient_uei="US1",
+        recipient_name="SPARTON DELEON SPRINGS, LLC",
+        excluded_parent_uei="PRCA",
+        excluded_parent_name="ROCKWELL COLLINS AUSTRALIA PTY LIMITED",
+        decided="2026-09-25",
+        roadmap="#135",
+        note="test",
+    )
+    base.update(kw)
+    return ParentExclusion(**base)
+
+
+def _build(tmp_path, exclusions, name="xw.parquet"):
+    lake = make_split_lake(tmp_path)
+    return build_entity_xwalk(
+        award_glob=str(lake / "contracts" / "*" / "*.parquet"),
+        out_path=tmp_path / name,
+        parent_exclusions=exclusions,
+    )
+
+
+def test_without_an_exclusion_the_dollar_dominant_pair_wins(tmp_path):
+    """The control: the unmodified rule puts both recipients in the RC key."""
+    by_uei, cols = _read(_build(tmp_path, ()))
+    fam = cols.index("family_key")
+    assert by_uei["US1"][fam] == "ROCKWELL COLLINS AUSTRALIA"
+    assert by_uei["UI1"][fam] == "ROCKWELL COLLINS AUSTRALIA"
+
+
+def test_an_excluded_pair_hands_the_recipient_to_its_next_registry_parent(tmp_path):
+    by_uei, cols = _read(_build(tmp_path, (_excl(),)))
+    fam, puei, pname = (cols.index(c) for c in ("family_key", "parent_uei", "parent_name"))
+    # Sparton leaves the key; its next registry filing by dollars decides.
+    assert by_uei["US1"][fam] == "ELBIT SYSTEMS"
+    assert (by_uei["US1"][puei], by_uei["US1"][pname]) == ("PELB", "ELBIT SYSTEMS LTD")
+    assert by_uei["US1"][cols.index("method")] == "parent_name"
+    # The key keeps its own members.
+    assert by_uei["UI1"][fam] == "ROCKWELL COLLINS AUSTRALIA"
+    # A UEI's dollars stay whole: the exclusion moves the FAMILY, never money.
+    assert by_uei["US1"][cols.index("total_obligation")] == 650.0
+
+
+def test_the_build_log_names_what_the_exclusion_moved(tmp_path, capsys):
+    _build(tmp_path, (_excl(),))
+    out = capsys.readouterr().out
+    assert "US1" in out and "PRCA" in out
+    assert "ELBIT SYSTEMS" in out          # where it went
+    assert "RTX CORP" in out               # the runner-up, so a near tie is visible
+
+
+def test_an_exclusion_that_matches_nothing_fails_loudly(tmp_path):
+    """A typo or a stale row would leave the defect in place without a word."""
+    with pytest.raises(ParentExclusionError, match="no transaction"):
+        _build(tmp_path, (_excl(excluded_parent_uei="PNOPE"),))
+    with pytest.raises(ParentExclusionError, match="no transaction"):
+        _build(tmp_path / "second", (_excl(recipient_uei="UNOPE"),))
+
+
+def test_an_exclusion_whose_registration_changed_name_fails_loudly(tmp_path):
+    """The curation reviewed ONE registration; a renamed one needs a new look."""
+    with pytest.raises(ParentExclusionError, match="registration"):
+        _build(tmp_path, (_excl(excluded_parent_name="SOMEONE ELSE PTY LIMITED"),))
+
+
+def test_an_exclusion_names_the_recipient_it_was_written_for(tmp_path):
+    with pytest.raises(ParentExclusionError, match="recipient"):
+        _build(tmp_path, (_excl(recipient_name="INTERTRADE LIMITED"),))
+
+
+def test_the_real_seed_is_the_135_split(tmp_path):
+    rows = load_parent_exclusions(DEFAULT_PARENT_EXCLUSIONS)
+    assert [(r.recipient_uei, r.excluded_parent_uei) for r in rows] == [
+        ("H7KFX5RH75K3", "EGAVSJTA2D81")
+    ]
+    assert rows[0].roadmap == "#135" and rows[0].decided == "2026-09-25"
+
+
+def test_a_missing_or_malformed_seed_fails_loudly(tmp_path):
+    with pytest.raises(ParentExclusionError, match="missing"):
+        load_parent_exclusions(tmp_path / "absent.csv")
+    bad = tmp_path / "bad.csv"
+    bad.write_text("recipient_uei,excluded_parent_uei\nUS1,PRCA\n")
+    with pytest.raises(ParentExclusionError, match="columns"):
+        load_parent_exclusions(bad)
+    dup = tmp_path / "dup.csv"
+    header = ("recipient_uei,recipient_name,excluded_parent_uei,excluded_parent_name,"
+              "decided,roadmap,note\n")
+    line = "US1,SPARTON,PRCA,RC AUSTRALIA,2026-09-25,#135,n\n"
+    dup.write_text(header + line + line)
+    with pytest.raises(ParentExclusionError, match="twice"):
+        load_parent_exclusions(dup)
+    date = tmp_path / "date.csv"
+    date.write_text(header + "US1,SPARTON,PRCA,RC AUSTRALIA,25/09/2026,#135,n\n")
+    with pytest.raises(ParentExclusionError, match="decided"):
+        load_parent_exclusions(date)

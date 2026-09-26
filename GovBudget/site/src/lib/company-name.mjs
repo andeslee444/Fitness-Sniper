@@ -202,11 +202,27 @@ const CASED = new Map(
     ELI: "Eli", // Eli Lilly and Company
     OLIN: "Olin",
     ROOT: "Root", // Brown & Root
-    // September 2026 refresh: short initialisms remain exactly as filed.
+    // September 2026 refresh (ROADMAP #137, decided 2026-09-25, owner
+    // delegated to the controller's recommendation): each name cased by the
+    // company's own usage, checked on its own site.
+    //   FCN — fcnit.com writes "FCN, Inc." and never expands it (checked
+    //     2026-09-25): an initialism, kept exactly as filed.
     FCN: "FCN",
-    NAN: "NAN",
-    // Official spellings: mcdean.com and
-    // apmollerfonde.dk/fonden/om-fonden/ (checked 2026-09-24).
+    //   NAN — nanhawaii.com writes "Nan, Inc.": founded in Honolulu in 1990
+    //     by Nan Chul Shin, so a given name, not an initialism (checked
+    //     2026-09-25). The registry's NAN INC is that company: UEI
+    //     J1P1SQSCUYK6, Honolulu HI, work in Hawaii and Guam in the contracts
+    //     lake. Until 2026-09-25 this entry kept "NAN" as filed. The entry is
+    //     token-wide: a registry name using NAN as an initialism (the Army
+    //     Corps' New York District, in "DEWBERRY GF USACE NAN RIVERINE JV
+    //     PARTNERS", not a published name today) would need its own curation
+    //     before it is published.
+    NAN: "Nan",
+    //   DEAN, MØLLER … — official spellings: mcdean.com ("M.C. Dean, Inc.";
+    //     Dean is the family surname — CEO Bill Dean) and
+    //     apmollerfonde.dk/fonden/om-fonden/ ("A.P. Møller og Hustru Chastine
+    //     Mc-Kinney Møllers Fond til almene Formaal") (checked 2026-09-24,
+    //     re-checked 2026-09-25).
     DEAN: "Dean",
     "MØLLER": "Møller",
     "MØLLERS": "Møllers",

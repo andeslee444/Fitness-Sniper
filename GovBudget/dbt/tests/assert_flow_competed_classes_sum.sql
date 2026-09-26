@@ -8,6 +8,12 @@
 -- This also proves the classes partition the total: every source row lands
 -- in exactly one class, so sum-over-classes == river total by construction
 -- of the comparison.
+--
+-- ROADMAP #133 (2026-09-25): "the source contracts lake" means the lake less
+-- the copies the fiscal-year move rule retired — each listed, with its file,
+-- in audit_award_fy_moves, which stg_flow_contracts drops too. The regroup
+-- names that exclusion here rather than inheriting it from the staging model,
+-- so a retired copy leaking into the river still fails this comparison.
 
 with mart as (
     select
@@ -36,7 +42,9 @@ src as (
             else 'not_competed'
         end as competed_class,
         sum(try_cast(federal_action_obligation as double)) as amt
-    from {{ source('lake', 'contracts') }}
+    from {{ source('lake', 'contracts') }} c
+    -- depends_on: {{ ref('audit_award_fy_moves') }}
+    {{ award_fy_move_filter('contract', 'contract_transaction_unique_key', 'c') }}
     group by 1, 2
 )
 

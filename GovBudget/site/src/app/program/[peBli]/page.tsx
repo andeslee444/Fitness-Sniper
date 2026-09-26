@@ -731,9 +731,11 @@ export default async function ProgramPage({
       />
 
       {/* Print-only byline (Phase 5C Task 9) — hidden on screen, revealed by
-          the @media print stylesheet ([data-print-only] → display:block). */}
+          the @media print stylesheet ([data-print-only] → display:block).
+          #134 (2026-09-25): the date is the build's, so it reads "built",
+          not "site export" or "data as of". */}
       <p data-print-only className="hidden text-xs text-muted-foreground mb-4">
-        Printed from {SITE_URL}/program/{peBli}/ — site export{" "}
+        Printed from {SITE_URL}/program/{peBli}/ — built{" "}
         {new Date(getSiteMeta().built_at).toLocaleDateString("en-US", {
           year: "numeric",
           month: "long",

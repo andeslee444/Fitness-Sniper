@@ -64,6 +64,36 @@ narrows WHICH lines run and never widens a line's award window. Every year
 argument must be an integer in 1900-2200 and fy_start may not follow fy_end:
 a reversed window used to match nothing and write nothing, silently, instead
 of stopping.
+
+Ambiguous identities (#170, 2026-09-25). budget_line_awards' unique key
+(pe_bli, exhibit, fiscal_year, award_piid) names neither the account nor the
+organization, so when two accounts -- or two organizations -- file the same
+(pe_bli, exhibit, fiscal_year), the later line's upsert silently replaced the
+earlier line's grade on every award both matched: the last account won.
+find_ambiguous_identities() names every such identity, and plan_crosswalk_org /
+crosswalk_org raise AmbiguousIdentityError on one before any lake scan or
+write; the CLI checks every organization it will run before planning the first.
+The live branch (81929a6b) aborted the same way; the 2026-09-25 merge dropped it.
+
+Scoped detail tokens (#171, 2026-09-25). A line's tokens are its own title's
+plus the project titles of detail rows from ITS OWN book: a document whose
+organization (orgs.workbook_org) is the line's organization, whose edition is
+the line's fiscal_year, and whose detail row names the line's account or no
+account. The merged code added every non-superseded project title filed under
+the code to every line of it, so a line reached account+tokens/high on titles
+from another organization's book, another edition or another account.
+regrade_report() is the dry run's measurement of what the scoping moves.
+
+Update-only re-grade (R-DEC-171, 2026-09-26). The only write path used to be
+crosswalk_org's upsert, which also INSERTS every candidate pair not yet stored
+(226,020 for DARPA FY2026 under --all-years). apply_regrade() rewrites only
+the stored mechanical rows regrade_report() lists in `updates` -- rows the
+unscoped rule still reproduces, that the scoping alone re-grades, and that
+were stored under the run's own window -- each guarded on still reading as
+measured, all in one transaction, never an INSERT. The CLI's --regrade-only
+writes only with --expect-updates equal to the count its dry run printed
+(82 for DARPA FY2026 --all-years on 2026-09-25: 50 unadjudicated
+account+tokens/high -> account/low, 32 adjudicated -> account+subagency/medium).
 """
 import csv
 import re
@@ -75,6 +105,7 @@ import duckdb
 import psycopg
 
 from govbudget import config
+from govbudget.jbooks.orgs import workbook_org
 
 # Sub-agency alias seed: data-seeds/org_subagency_aliases.csv, columns
 # organization,alias. Replaces a hardcoded DARPA-only clause (#75) — every
@@ -348,6 +379,163 @@ def _load_lines(
     return sorted(rows, key=lambda r: (r[3] or "", r[2], r[0] or "", r[1] or ""))
 
 
+# #170: every organization that files one of the run's identities, with the
+# accounts it files it under. `run` is the (pe_bli, exhibit, fiscal_year)
+# identities the given organizations would plan (the same edition selector as
+# CANONICAL_LINE_SQL); the outer query lists every filer of those identities
+# -- the run's own organizations, and any other organization the CLI could
+# run (non-null, non-empty; the '' lines are never run by default). One row
+# per distinct (identity, organization, account): budget_lines.account is NOT
+# NULL (migration 001) and every row has a source document (migration 005), so
+# these are exactly the canonical line keys _load_lines returns.
+AMBIGUITY_SQL = """
+with run as (
+  select distinct pe_bli, exhibit, fiscal_year from budget_lines
+  where organization = any(%(orgs)s)
+    and (%(fy)s::int is null or fiscal_year = %(fy)s)
+)
+select distinct b.pe_bli, b.exhibit, b.fiscal_year, b.organization, b.account
+from budget_lines b
+join run r on r.pe_bli = b.pe_bli and r.exhibit = b.exhibit
+          and r.fiscal_year = b.fiscal_year
+where b.organization = any(%(orgs)s)
+   or (b.organization is not null and b.organization <> '')
+order by 1, 2, 3, 4, 5
+"""
+
+
+#: How an empty organization code prints in a refusal (13 live identities).
+EMPTY_ORG = "''"
+
+
+@dataclass(frozen=True)
+class AmbiguousIdentity:
+    """One (pe_bli, exhibit, fiscal_year) that more than one (organization,
+    account) files -- budget_line_awards' key cannot tell their links apart."""
+
+    pe_bli: str
+    exhibit: str
+    fiscal_year: int
+    filers: tuple[tuple[str, str], ...]   # sorted (organization, account)
+
+    @property
+    def kind(self) -> str:
+        """'organizations' when two or more organizations file it, else
+        'accounts' (one organization, two or more accounts)."""
+        return "organizations" if len({o for o, _ in self.filers}) > 1 else "accounts"
+
+    def describe(self) -> str:
+        who = "; ".join(f"{org or EMPTY_ORG} {account}" for org, account in self.filers)
+        return f"({self.pe_bli}, {self.exhibit}, FY{self.fiscal_year}): {who}"
+
+
+class AmbiguousIdentityError(ValueError):
+    """Raised before any lake scan or write when a run's identities are
+    ambiguous (#170). `identities` lists every one, not just the first."""
+
+    def __init__(self, identities: list[AmbiguousIdentity]):
+        self.identities = identities
+        super().__init__(
+            f"{len(identities)} (pe_bli, exhibit, fiscal_year) identit"
+            f"{'y is' if len(identities) == 1 else 'ies are'} filed under more"
+            " than one account or organization; budget_line_awards' key names"
+            " neither, so the last line written would silently replace the"
+            " others' links. Crosswalk refused: "
+            + " | ".join(a.describe() for a in identities)
+        )
+
+
+def find_ambiguous_identities(
+    dsn: str, organizations, fiscal_year: int | None = None,
+) -> list[AmbiguousIdentity]:
+    """Every identity the given organizations would plan that two or more
+    accounts of one organization, or two or more organizations, file (#170).
+    Read-only. `fiscal_year` is the edition selector, as in _load_lines."""
+    orgs = sorted(set(organizations))
+    with psycopg.connect(dsn) as pg:
+        pg.read_only = True
+        rows = pg.execute(AMBIGUITY_SQL, {"orgs": orgs, "fy": fiscal_year}).fetchall()
+    filers: dict[tuple[str, str, int], set[tuple[str, str]]] = {}
+    for pe_bli, exhibit, fy, org, account in rows:
+        filers.setdefault((pe_bli, exhibit, int(fy)), set()).add((org, account))
+    return [
+        AmbiguousIdentity(pe, ex, fy, tuple(sorted(who)))
+        for (pe, ex, fy), who in sorted(filers.items())
+        if len(who) > 1
+    ]
+
+
+def _refuse_ambiguous(dsn: str, organization: str, fiscal_year: int | None) -> None:
+    found = find_ambiguous_identities(dsn, [organization], fiscal_year)
+    if found:
+        raise AmbiguousIdentityError(found)
+
+
+# #171: the project titles a line's tokens may draw on. Organization and
+# edition come from the detail row's DOCUMENT (jbook_documents.org, mapped to
+# the workbook code by orgs.workbook_org -- PB2017-PB2019 filenames spell the
+# agency out -- and jbook_documents.fiscal_year); account is the detail row's
+# own (NULL for R-1/RDT&E rows, which carry no appropriation). The filter to
+# the run's codes only bounds the read.
+DETAIL_TITLES_SQL = """
+select d.pe_bli, j.org, j.fiscal_year, d.account, d.project_title
+from budget_line_details d
+join jbook_documents j on j.id = d.document_id
+where not d.superseded and d.pe_bli = any(%s)
+order by d.pe_bli, j.org, j.fiscal_year, d.account nulls first, d.project_title
+"""
+
+#: The three legs, in the order the dry run applies them cumulatively to name
+#: the first one that drops a line's overlap below min_overlap.
+SCOPE_LEGS = ("organization", "edition", "account")
+
+
+@dataclass(frozen=True)
+class DetailTitle:
+    workbook_org: str
+    edition: int
+    account: str | None
+    tokens: frozenset[str]
+
+
+def _load_detail_titles(dsn: str, pe_blis) -> dict[str, list[DetailTitle]]:
+    """pe_bli -> the tokenised project titles of its non-superseded detail
+    rows, each with the book (organization, edition) and account it is from."""
+    codes = sorted({p for p in pe_blis if p})
+    if not codes:
+        return {}
+    with psycopg.connect(dsn) as pg:
+        pg.read_only = True
+        rows = pg.execute(DETAIL_TITLES_SQL, (codes,)).fetchall()
+    out: dict[str, list[DetailTitle]] = {}
+    for pe_bli, doc_org, edition, account, title in rows:
+        tokens = _tokens(title)
+        if tokens:
+            out.setdefault(pe_bli, []).append(DetailTitle(
+                workbook_org(doc_org or ""), int(edition), account,
+                frozenset(tokens)))
+    return out
+
+
+def _line_tokens(
+    title: str | None, details: list[DetailTitle], organization: str,
+    fiscal_year: int, account: str | None, legs=SCOPE_LEGS,
+) -> set[str]:
+    """A line's tokens: its own title's, plus the project titles `legs`
+    admits. The default (every leg) is the rule; the dry run passes fewer
+    legs to find which one dropped a line."""
+    tokens = _tokens(title)
+    for d in details:
+        if "organization" in legs and d.workbook_org != organization:
+            continue
+        if "edition" in legs and d.edition != int(fiscal_year):
+            continue
+        if "account" in legs and d.account is not None and d.account != account:
+            continue
+        tokens |= d.tokens
+    return tokens
+
+
 @dataclass(frozen=True)
 class LinePlan:
     """What crosswalk_org would do for ONE budget line: the federal account
@@ -383,6 +571,7 @@ def plan_crosswalk_org(
     `fiscal_year` plans only that PB edition's lines, as crosswalk_org writes.
     """
     _validate_window(fy_start, fy_end, all_years, fiscal_year)
+    _refuse_ambiguous(dsn, organization, fiscal_year)
     lines = _load_lines(dsn, organization, fiscal_year)
     con = duckdb.connect()
     out: list[LinePlan] = []
@@ -478,9 +667,14 @@ def _fetch_candidates(
     return out
 
 
+def _award_tokens(cand: AwardCandidate) -> set[str]:
+    return set().union(*(_tokens(d) for d in cand.descriptions))
+
+
 def _grade(
     pe_tokens: set[str], cand: AwardCandidate, org_aliases: list[str],
     min_overlap: int, fed_account: str,
+    award_tokens: set[str] | None = None,
 ) -> tuple[str, str, int, str]:
     """The tier rule, pure. Returns (confidence, method, score, rationale
     core); the caller appends the window label. Precedence is unchanged:
@@ -491,8 +685,12 @@ def _grade(
     made explicit): an award carries the organization's sub-agency when ANY of
     its transactions in the window was awarded under it -- not the dominant
     one, not the latest one, not whichever one was scanned first.
+
+    `award_tokens`, when given, is _award_tokens(cand) computed once by a
+    caller that grades one award under several token sets (regrade_report).
     """
-    award_tokens: set[str] = set().union(*(_tokens(d) for d in cand.descriptions))
+    if award_tokens is None:
+        award_tokens = _award_tokens(cand)
     hits = pe_tokens & award_tokens
     overlap = len(hits)
     sub_hits = [
@@ -545,17 +743,11 @@ def crosswalk_org(
     plan_crosswalk_org projects.
     """
     _validate_window(fy_start, fy_end, all_years, fiscal_year)
+    # #170: refused before any lake scan or write.
+    _refuse_ambiguous(dsn, organization, fiscal_year)
     lines = _load_lines(dsn, organization, fiscal_year)
-    with psycopg.connect(dsn) as pg:
-        detail_rows = pg.execute(
-            "select pe_bli, project_title from budget_line_details"
-            " where not superseded",
-        ).fetchall()
-
-    title_tokens: dict[str, set[str]] = {}
-    for pe_bli, proj_title in detail_rows:
-        if pe_bli:
-            title_tokens.setdefault(pe_bli, set()).update(_tokens(proj_title))
+    # #171: project titles, each tagged with the book and account it is from.
+    details = _load_detail_titles(dsn, {line[0] for line in lines})
 
     aliases = _load_subagency_aliases()
     org_aliases = aliases.get(organization, [organization.lower()])
@@ -579,8 +771,10 @@ def crosswalk_org(
                     con, award_glob, fed_account, where, where_params,
                 )
                 memo_key = key
-            # Computed ONCE per canonical line (#85): one title per key.
-            pe_tokens = _tokens(line_title) | title_tokens.get(pe_bli, set())
+            # Computed ONCE per canonical line (#85): one title per key, and
+            # only the project titles of the line's own book and account (#171).
+            pe_tokens = _line_tokens(
+                line_title, details.get(pe_bli, []), organization, fy, account)
             window_note = "; " + _window_label(lo, hi)
 
             with psycopg.connect(dsn) as pg:
@@ -621,3 +815,244 @@ def crosswalk_org(
     finally:
         con.close()
     return CrosswalkResult(written=written, skipped=skipped)
+
+
+#: The methods the mechanical crosswalk writes -- the ones its upsert guard
+#: lets it rewrite (the literal list in crosswalk_org's `where` clause).
+MECHANICAL_METHODS = ("account", "account+subagency", "account+tokens")
+
+
+@dataclass(frozen=True)
+class RegradeReport:
+    """What the scoped detail tokens (#171) change on the rows the mechanical
+    crosswalk already stored for one organization's lines. Nothing written.
+
+    stored_mechanical  stored mechanical rows on the run's line keys
+    reproduced         of those, the ones the UNSCOPED rule (the merged
+                       code's) still grades exactly as stored -- only these
+                       are compared, so a change below is the scoping's alone
+    drifted            stored rows the unscoped rule already grades
+                       differently (the lake moved since they were written)
+    not_candidate      stored rows whose award is not a candidate today
+    new_pairs          candidate pairs a real run would insert (not stored)
+    transitions        (stored method, stored confidence, adjudication,
+                       scoped method, scoped confidence) -> rows, for every
+                       reproduced row the scoped rule grades differently;
+                       adjudication is 'unadjudicated' or 'adjudicated <its
+                       adjudicated_confidence>' (award_pe_adjudications)
+    lost_leg           (adjudication, leg) -> rows, for every account+tokens
+                       row that falls below min_overlap: the first leg of
+                       SCOPE_LEGS, applied cumulatively, that drops it
+    updates            the transitions as RegradeUpdate rows apply_regrade
+                       may write (R-DEC-171) -- only rows whose stored
+                       rationale records THIS run's window, since a row
+                       stored under another window was graded against
+                       another candidate set
+    window_mismatch    transition rows left out of `updates` for that reason
+    """
+
+    organization: str
+    stored_mechanical: int
+    reproduced: int
+    drifted: int
+    not_candidate: int
+    new_pairs: int
+    transitions: dict
+    lost_leg: dict
+    updates: tuple = ()
+    window_mismatch: int = 0
+
+
+@dataclass(frozen=True)
+class RegradeUpdate:
+    """One stored mechanical row the scoped detail tokens re-grade (#171).
+    `was_*` is the row as measured; apply_regrade writes only while the row
+    still reads exactly that."""
+
+    key: tuple                  # (pe_bli, exhibit, fiscal_year, award_piid)
+    was_method: str
+    was_confidence: str
+    was_rationale: str
+    bucket: str                 # 'unadjudicated' | 'adjudicated <confidence>'
+    method: str
+    confidence: str
+    score: int
+    rationale: str              # the grade's rationale + the window label
+
+
+def _stored_under(rationale: str | None, window_label: str) -> bool:
+    """True when a stored rationale records `window_label` as its window --
+    crosswalk_org appends '; <label>' to every rationale it writes."""
+    return bool(rationale) and re.search(
+        rf"; {re.escape(window_label)}(;|$)", rationale) is not None
+
+
+def regrade_report(
+    dsn: str, *, organization: str, treasury_agency: str, award_glob: str,
+    min_overlap: int = 2,
+    fy_start: int | None = None,
+    fy_end: int | None = None,
+    all_years: bool = False,
+    fiscal_year: int | None = None,
+) -> RegradeReport:
+    """Grade every stored mechanical row of the organization's lines twice
+    -- under the unscoped detail tokens the merged code used and under the
+    scoped rule crosswalk_org now applies -- and count what moves (#171).
+    Read-only: Postgres through read-only connections, the award lake
+    through the same candidate query crosswalk_org runs."""
+    _validate_window(fy_start, fy_end, all_years, fiscal_year)
+    _refuse_ambiguous(dsn, organization, fiscal_year)
+    lines = _load_lines(dsn, organization, fiscal_year)
+    details = _load_detail_titles(dsn, {line[0] for line in lines})
+    line_keys = {(pe, ex, int(fy)) for pe, ex, fy, _a, _t in lines}
+    codes = sorted({k[0] for k in line_keys})
+    stored: dict[tuple, tuple[str, str]] = {}
+    adjudicated: dict[tuple[str, str], str] = {}
+    if codes:
+        with psycopg.connect(dsn) as pg:
+            pg.read_only = True
+            for pe, ex, fy, piid, method, conf, why in pg.execute(
+                "select pe_bli, exhibit, fiscal_year, award_piid, method,"
+                " confidence, rationale from budget_line_awards"
+                " where pe_bli = any(%s) and method = any(%s)",
+                (codes, list(MECHANICAL_METHODS)),
+            ).fetchall():
+                if (pe, ex, int(fy)) in line_keys:
+                    stored[(pe, ex, int(fy), piid)] = (method, conf, why)
+            for piid, pe, conf in pg.execute(
+                "select award_piid, pe_bli, adjudicated_confidence"
+                " from award_pe_adjudications where pe_bli = any(%s)", (codes,),
+            ).fetchall():
+                adjudicated[(piid, pe)] = conf
+
+    org_aliases = _load_subagency_aliases().get(organization, [organization.lower()])
+    transitions: dict[tuple, int] = {}
+    lost_leg: dict[tuple[str, str], int] = {}
+    updates: list[RegradeUpdate] = []
+    window_mismatch = 0
+    seen: set[tuple] = set()
+    reproduced = drifted = new_pairs = 0
+    con = duckdb.connect()
+    memo_key: tuple[str, int | None, int | None] | None = None
+    memo: list[tuple[AwardCandidate, set[str]]] = []
+    try:
+        for pe_bli, exhibit, fy, account, line_title in lines:
+            fed_account = _fed_account(account, treasury_agency)
+            lo, hi = _line_window(fy, fy_start, fy_end, all_years)
+            if (fed_account, lo, hi) != memo_key:
+                where, where_params = _candidate_where(fed_account, lo, hi)
+                memo = [(c, _award_tokens(c)) for c in _fetch_candidates(
+                    con, award_glob, fed_account, where, where_params)]
+                memo_key = (fed_account, lo, hi)
+            mine = details.get(pe_bli, [])
+            # cumulative scopes: none (the merged code), +organization,
+            # +edition, +account (the rule)
+            scoped = [
+                _line_tokens(line_title, mine, organization, fy, account,
+                             legs=SCOPE_LEGS[:i])
+                for i in range(len(SCOPE_LEGS) + 1)
+            ]
+            for cand, award_tokens in memo:
+                key = (pe_bli, exhibit, int(fy), cand.piid)
+                if key not in stored:
+                    new_pairs += 1
+                    continue
+                seen.add(key)
+                before = _grade(scoped[0], cand, org_aliases, min_overlap,
+                                fed_account, award_tokens)
+                if (before[1], before[0]) != stored[key][:2]:
+                    drifted += 1
+                    continue
+                reproduced += 1
+                after = _grade(scoped[-1], cand, org_aliases, min_overlap,
+                               fed_account, award_tokens)
+                if after[:2] == before[:2]:
+                    continue
+                adj = adjudicated.get((cand.piid, pe_bli))
+                bucket = f"adjudicated {adj}" if adj else "unadjudicated"
+                t = (before[1], before[0], bucket, after[1], after[0])
+                transitions[t] = transitions.get(t, 0) + 1
+                window_label = _window_label(lo, hi)
+                if _stored_under(stored[key][2], window_label):
+                    updates.append(RegradeUpdate(
+                        key=key, was_method=before[1], was_confidence=before[0],
+                        was_rationale=stored[key][2], bucket=bucket,
+                        method=after[1], confidence=after[0], score=after[2],
+                        rationale=f"{after[3]}; {window_label}"))
+                else:
+                    window_mismatch += 1
+                if before[1] == "account+tokens":
+                    for leg, tokens in zip(SCOPE_LEGS, scoped[1:]):
+                        if len(tokens & award_tokens) < min_overlap:
+                            lost_leg[(bucket, leg)] = lost_leg.get((bucket, leg), 0) + 1
+                            break
+    finally:
+        con.close()
+    return RegradeReport(
+        organization=organization,
+        stored_mechanical=len(stored),
+        reproduced=reproduced,
+        drifted=drifted,
+        not_candidate=len(set(stored) - seen),
+        new_pairs=new_pairs,
+        transitions=dict(sorted(transitions.items())),
+        lost_leg=dict(sorted(lost_leg.items())),
+        updates=tuple(sorted(updates, key=lambda u: u.key)),
+        window_mismatch=window_mismatch,
+    )
+
+
+#: R-DEC-171's only write: an UPDATE of one stored mechanical row, guarded on
+#: the row still reading exactly what regrade_report measured. There is no
+#: INSERT anywhere on this path.
+REGRADE_UPDATE_SQL = """
+update budget_line_awards
+   set method = %(method)s, confidence = %(confidence)s, score = %(score)s,
+       rationale = %(rationale)s
+ where pe_bli = %(pe_bli)s and exhibit = %(exhibit)s
+   and fiscal_year = %(fiscal_year)s and award_piid = %(award_piid)s
+   and method = %(was_method)s and confidence = %(was_confidence)s
+   and rationale = %(was_rationale)s
+   and method in ('account', 'account+subagency', 'account+tokens')
+"""
+
+
+class RegradeConflictError(RuntimeError):
+    """A row changed between regrade_report and apply_regrade; nothing was
+    written (the whole re-grade rolls back)."""
+
+
+def apply_regrade(dsn: str, report: RegradeReport, *, today=None) -> int:
+    """Write `report.updates` in place -- UPDATE only, never INSERT
+    (R-DEC-171) -- in one transaction, and return the rows re-graded.
+
+    Each row is rewritten only while it still reads exactly as measured
+    (method, confidence and rationale); any row that does not raises
+    RegradeConflictError and rolls every update back. The new rationale keeps
+    the window label and records the re-grade and the grade it replaced, so
+    the move is auditable in the row itself."""
+    from datetime import date
+
+    stamp = f"{(today or date.today()):%Y-%m-%d}"
+    with psycopg.connect(dsn) as pg:
+        with pg.transaction():
+            for u in report.updates:
+                pe_bli, exhibit, fiscal_year, award_piid = u.key
+                cur = pg.execute(REGRADE_UPDATE_SQL, {
+                    "method": u.method, "confidence": u.confidence,
+                    "score": u.score,
+                    "rationale": (f"{u.rationale}; re-graded {stamp} under the"
+                                  f" line's own book's detail tokens (#171),"
+                                  f" was {u.was_method}/{u.was_confidence}"),
+                    "pe_bli": pe_bli, "exhibit": exhibit,
+                    "fiscal_year": fiscal_year, "award_piid": award_piid,
+                    "was_method": u.was_method,
+                    "was_confidence": u.was_confidence,
+                    "was_rationale": u.was_rationale,
+                })
+                if cur.rowcount != 1:
+                    raise RegradeConflictError(
+                        f"{award_piid}/{pe_bli} ({exhibit}, FY{fiscal_year}) no"
+                        f" longer reads {u.was_method}/{u.was_confidence} as"
+                        " measured; nothing re-graded -- re-run the dry run")
+    return len(report.updates)

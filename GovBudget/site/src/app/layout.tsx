@@ -119,7 +119,13 @@ export default function RootLayout({
                 </nav>
               </div>
               <div className="site-footer-bottom">
-                <span>{builtAt && <>Site export <time dateTime={builtAt}>{new Date(builtAt).toLocaleDateString("en-US", {year:"numeric",month:"long",day:"numeric"})}</time>. </>}Source dates vary by dataset.</span>
+                {/* #134 (decided 2026-09-25, owner delegated to the
+                    controller's recommendation): built_at is the BUILD's
+                    date, not a date the data is current to, so it is
+                    stamped "Built" (it read "Site export" and, before that,
+                    a data date); the dataset clause stays, because source
+                    dates do vary. */}
+                <span>{builtAt && <>Built <time dateTime={builtAt}>{new Date(builtAt).toLocaleDateString("en-US", {year:"numeric",month:"long",day:"numeric"})}</time>. </>}Source dates vary by dataset.</span>
                 <div><Link href="/about/">About</Link><a href="mailto:andes.han.lee@gmail.com">Contact</a><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license noopener noreferrer" target="_blank">Data: CC0 1.0 <ArrowUpRight size="1em" aria-hidden /></a></div>
               </div>
             </div>

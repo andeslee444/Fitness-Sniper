@@ -531,7 +531,7 @@ describe("leg n — check 8(b): a shared-code member publishes no lobbying evide
       const mine = about(errors, slug);
       const row = mine.find((e) => e.includes("publishes 1 lobbying mention row(s)"));
       expect(row, slug).toBeDefined();
-      expect(row).toContain('1 pe_literal (badged "PE code cited directly")');
+      expect(row).toContain('1 pe_literal (badged "PE/BLI code cited directly")');
       expect(row).toContain("whatever basis its sidecar declares");
       expect(mine.some((e) => e.includes('declares mentions_shared_code {"pe_literal":"code"}'))).toBe(true);
     }
@@ -620,7 +620,10 @@ describe("leg n — check 8(b): a shared-code member publishes no lobbying evide
     const table = evidenceBadges();
     expect(table.multi_token.label).toBe("matched 2+ title words");
     expect(table.alias.label).toBe("matched a known alias");
-    expect(table.pe_literal.label).toBe("PE code cited directly");
+    // #176 (fix round 2026-09-26): the badge names both code kinds and the
+    // title the all-digit rule; the reader still extracts both arms.
+    expect(table.pe_literal.label).toBe("PE/BLI code cited directly");
+    expect(table.pe_literal.title).toMatch(/all-digit codes need a budget-line label/);
     for (const kind of ["multi_token", "alias", "pe_literal"]) {
       expect(table[kind].title.length).toBeGreaterThan(20);
     }

@@ -55,6 +55,26 @@ describe("displayCompanyName — the shouted-name transform", () => {
     expect(companyDisplay("TRANSDIGM GROUP INCORPORATED")).toBe("TransDigm Group Incorporated");
   });
 
+  // ROADMAP #137 (decided 2026-09-25, owner delegated to the controller's
+  // recommendation): the four top-200 names the September 2026 refresh
+  // brought in, each cased by the company's own usage — recorded beside its
+  // allowlist entry in company-name.mjs.
+  it("cases the four #137 names the way each company writes its own", () => {
+    // mcdean.com: "M.C. Dean, Inc." — Dean is the family surname.
+    expect(companyDisplay("M. C. DEAN, INC.")).toBe("M. C. Dean, Inc.");
+    // apmollerfonde.dk/fonden/om-fonden/: the foundation's formal name.
+    expect(
+      companyDisplay("A.P. MØLLER OG HUSTRU CHASTINE MC-KINNEY MØLLERS FOND TIL ALMENE FORMAAL"),
+    ).toBe("A.P. Møller og Hustru Chastine Mc-Kinney Møllers Fond til almene Formaal");
+    // nanhawaii.com: "Nan, Inc." — founded by Nan Chul Shin; a name, not an
+    // initialism (UEI J1P1SQSCUYK6, Honolulu HI, in the contracts lake).
+    expect(companyDisplay("NAN INC")).toBe("Nan Inc");
+    // fcnit.com: "FCN, Inc." — the company never expands it; stays as filed.
+    expect(companyDisplay("FCN, INC.")).toBe("FCN, Inc.");
+    // The NAN entry is one token: it must not reach a longer name.
+    expect(companyDisplay("NANA REGIONAL CORPORATION INC")).toBe("NANA Regional Corporation Inc");
+  });
+
   it("keeps initialism legal forms upper and title-cases the word ones", () => {
     expect(companyDisplay("AXIENT LLC")).toBe("Axient LLC");
     expect(companyDisplay("UNITED LAUNCH ALLIANCE, L.L.C")).toBe("United Launch Alliance, L.L.C");

@@ -831,6 +831,8 @@ def cmd_jbooks(args) -> None:
         all_years = bool(getattr(args, "all_years", False))
         dry_run = bool(getattr(args, "dry_run", False))
         yes = bool(getattr(args, "yes", False))
+        regrade_only = bool(getattr(args, "regrade_only", False))
+        expect_updates = getattr(args, "expect_updates", None)
         # The shared jbooks --fiscal-year is crosswalk's EDITION selector: only
         # that PB edition's budget lines are planned and written (it never
         # widens a line's award window). None: every edition.
@@ -850,6 +852,41 @@ def cmd_jbooks(args) -> None:
         except ValueError as exc:
             print(f"crosswalk: {exc}")
             sys.exit(2)
+        if regrade_only and not args.org:
+            print("crosswalk: --regrade-only needs --org (a bounded re-grade of"
+                  " one organization's stored rows, R-DEC-171)")
+            sys.exit(2)
+
+        def print_regrade(org: str, rep) -> None:
+            """The #171 re-grade measurement, as the dry run prints it."""
+            print(
+                f"crosswalk {org} re-grade under the scoped detail tokens"
+                f" (organization, edition, account; #171):"
+                f" {rep.stored_mechanical:,} stored mechanical row(s);"
+                f" the unscoped rule reproduces {rep.reproduced:,}"
+                f" ({rep.drifted:,} drifted since written,"
+                f" {rep.not_candidate:,} no longer a candidate,"
+                f" {rep.new_pairs:,} candidate pair(s) not yet stored)"
+            )
+            if not rep.transitions:
+                print("  no stored row changes grade")
+            for (m0, c0, adj, m1, c1), n in rep.transitions.items():
+                print(f"  {m0}/{c0} [{adj}] -> {m1}/{c1}: {n:,}")
+            by_leg: dict[str, dict[str, int]] = defaultdict(dict)
+            for (adj, leg), n in rep.lost_leg.items():
+                by_leg[leg][adj] = n
+            if by_leg:
+                print(
+                    "  first scope leg that drops the overlap below 2: "
+                    + "; ".join(
+                        f"{leg} {sum(per.values()):,} ("
+                        + ", ".join(f"{a} {n:,}" for a, n in sorted(per.items()))
+                        + ")"
+                        for leg, per in sorted(
+                            by_leg.items(),
+                            key=lambda kv: xw.SCOPE_LEGS.index(kv[0]))
+                    )
+                )
 
         if args.org:
             orgs = [workbook_org(args.org)]
@@ -863,6 +900,36 @@ def cmd_jbooks(args) -> None:
                         (fiscal_year, fiscal_year),
                     )
                 })
+        # #170 (2026-09-25): an identity (pe_bli, exhibit, fiscal_year) that
+        # two accounts or two organizations file cannot be crosswalked —
+        # budget_line_awards' key names neither, so the later line's upsert
+        # would silently replace the earlier line's links. Every organization
+        # this run would plan is checked BEFORE the first plan (a partial run
+        # would already have written the organizations before it), and the
+        # refusal names every identity, --dry-run included.
+        ambiguous = xw.find_ambiguous_identities(config.PG_DSN, orgs, fiscal_year)
+        if ambiguous:
+            n_amb = len(ambiguous)
+            kinds: dict[str, int] = defaultdict(int)
+            for a in ambiguous:
+                kinds[a.kind] += 1
+            print(
+                f"crosswalk: {n_amb} ambiguous (pe_bli, exhibit, fiscal_year)"
+                f" identit{'y' if n_amb == 1 else 'ies'} ("
+                + ", ".join(f"{n} across {k}" for k, n in sorted(kinds.items()))
+                + "): budget_line_awards' key names neither the account nor"
+                " the organization, so the last line written would replace the"
+                " others' links (#170)"
+            )
+            for a in ambiguous:
+                print(f"  {a.describe()}")
+            print(
+                "crosswalk: nothing planned or written. Narrow the run with"
+                " --org / --fiscal-year to organizations and editions without"
+                " them; crosswalking these identities needs a link key that"
+                " names the account and the organization"
+            )
+            sys.exit(2)
         window = xw.run_window_label(fy_start, fy_end, all_years)
         if fiscal_year is not None:
             window += f"; edition FY{fiscal_year} only"
@@ -872,6 +939,42 @@ def cmd_jbooks(args) -> None:
             fy_start=fy_start, fy_end=fy_end, all_years=all_years,
             fiscal_year=fiscal_year,
         )
+
+        # R-DEC-171 (2026-09-26): an UPDATE-ONLY re-grade of the rows the
+        # crosswalk already stored -- never an insert, so no insert plan and
+        # no abort threshold. It writes only with --expect-updates equal to
+        # the count its own dry run printed (the ruling: write only if the
+        # dry run reproduces the measured figure).
+        if regrade_only:
+            org = orgs[0]
+            rep = xw.regrade_report(config.PG_DSN, organization=org, **common)
+            print_regrade(org, rep)
+            print(
+                f"crosswalk {org} --regrade-only: {len(rep.updates):,} stored"
+                f" row(s) to re-grade in place ({rep.window_mismatch:,} stored"
+                f" under another window left alone); never inserts;"
+                f" window={window}"
+            )
+            if dry_run:
+                print("crosswalk --regrade-only dry-run: nothing written")
+                return
+            if expect_updates is None:
+                print(
+                    "crosswalk --regrade-only refuses to write without"
+                    " --expect-updates N (N = the count its dry run printed);"
+                    " nothing written"
+                )
+                sys.exit(2)
+            if expect_updates != len(rep.updates):
+                print(
+                    f"crosswalk --regrade-only: expected {expect_updates:,}, the"
+                    f" re-grade finds {len(rep.updates):,}; nothing written"
+                )
+                sys.exit(2)
+            n = xw.apply_regrade(config.PG_DSN, rep)
+            print(f"crosswalk {org} --regrade-only: re-graded {n:,} row(s) in"
+                  f" place; inserted 0")
+            return
 
         # #78, with the controller's 2026-09-11 ruling: EVERY run is planned
         # first -- the per-line default as well as --all-years -- and refused
@@ -897,6 +1000,21 @@ def cmd_jbooks(args) -> None:
             projected += n
         print(f"crosswalk projected total: {projected:,} pair(s); window={window}")
         if dry_run:
+            # #171 (2026-09-25): what the scoped detail tokens would change on
+            # the rows already stored, measured from the lake and Postgres
+            # (read-only) before any write. Skipped — and said so — above the
+            # abort threshold, where the re-grade is as large as the write.
+            if projected > xw.ALL_YEARS_ABORT_ROWS:
+                print(
+                    f"crosswalk re-grade skipped: the plan projects"
+                    f" {projected:,} pair(s), above the"
+                    f" {xw.ALL_YEARS_ABORT_ROWS:,} threshold; narrow with"
+                    " --org / --fiscal-year to measure it"
+                )
+            else:
+                for org in orgs:
+                    print_regrade(
+                        org, xw.regrade_report(config.PG_DSN, organization=org, **common))
             print("crosswalk dry-run: nothing written")
             return
         if projected > xw.ALL_YEARS_ABORT_ROWS and not yes:
@@ -1575,8 +1693,9 @@ def cmd_sam(args) -> None:
     """
     import json as _json
 
+    from govbudget import sam_entities as _sam
     from govbudget.sam_entities import (
-        SamAuthError, SamRateLimitError, SamShapeError, dominant_parent_ueis,
+        SamAuthError, SamRateLimitError, SamShapeError,
         extract_entities, plan_extract, preflight, reparse, require_api_key,
         require_preflight, write_entities_parquet,
     )
@@ -1585,10 +1704,46 @@ def cmd_sam(args) -> None:
     raw_dir = config.RAW_DIR / "sam"
     report_path = config.RESEARCH_DIR / "sam_entities" / "preflight.json"
     try:
+        if args.sam_action == "preflight" and getattr(args, "dry_run", False):
+            # ROADMAP #10 (decisions wave): what the FIRST live day will do —
+            # preflight's probes, then the extract's share of the same 10/day
+            # quota — from stored state alone. No key, no request, no write.
+            plan = _sam.plan_first_live_run(
+                _sam.dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
+                raw_dir=raw_dir, report_path=report_path,
+                daily_quota=args.daily_quota)
+            print(_json.dumps(plan, indent=2))
+            pre, ex = plan["preflight"], plan["extract"]
+            pre_clause = (
+                f"preflight spends up to {pre['api_requests_max']} of the day's"
+                f" {plan['daily_quota']} API request(s) probing"
+                f" {', '.join(pre['candidates'])} and opens"
+                f" {pre['public_page_probe']} once (no key, not an API request);"
+                if pre["needed"] else
+                "preflight is already recorded for today's template (spends 0);"
+            )
+            print(
+                f"sam preflight --dry-run: first live run — {pre_clause} then"
+                f" `sam extract --max-requests {ex['max_requests']}` fetches"
+                f" {ex['would_fetch']} of the {ex['missing']} missing families"
+                f" ({', '.join(ex['next_families']) or 'none'}), at most"
+                f" {plan['api_requests_max_today']} API request(s) in all;"
+                f" {ex['already_stored']} already stored."
+                f" Commands: {' ; '.join(plan['commands'])}."
+                f" SAM_API_KEY present: {plan['has_key']}."
+                " Nothing was fetched and nothing was written."
+            )
+            return
         if args.sam_action == "preflight":
             print(_json.dumps(preflight(report_path=report_path), indent=2))
             return
         if args.sam_action == "reparse":
+            # reparse writes `public_url` from the template in force NOW, so
+            # once bodies exist it answers to the same stored preflight the
+            # extract does (ROADMAP #10 pre-live seam): a template changed
+            # since preflight would publish links to a page nobody opened.
+            if any(raw_dir.glob("*.json")):
+                require_preflight(report_path)   # stored; spends no quota
             print(f"sam reparse: {reparse(raw_dir=raw_dir, out_dir=out_dir)}")
             return
         if getattr(args, "schema_only", False):
@@ -1601,7 +1756,7 @@ def cmd_sam(args) -> None:
             # default it would ignore; with no report the field comes back as
             # `endpoint_default`.
             plan = plan_extract(
-                dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
+                _sam.dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
                 raw_dir=raw_dir, max_requests=args.max_requests,
                 report_path=report_path)
             print(_json.dumps(plan, indent=2))
@@ -1622,7 +1777,7 @@ def cmd_sam(args) -> None:
         # thing that knows which API version answers, so the extract requests
         # that one rather than the v4 guess baked into SAM_ENTITY_API_URL.
         report = require_preflight(report_path)   # stored; spends no quota
-        families = dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n)
+        families = _sam.dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n)
         print(f"sam extract: {len(families)} published families, cap "
               f"{args.max_requests} request(s) this run, endpoint "
               f"{report['endpoint']} (recorded by preflight)")
@@ -1713,7 +1868,7 @@ def cmd_influence_rematch(args) -> None:
     activities = [{"filing_uuid": r[0], "description": r[1]} for r in rows]
 
     pcon = duckdb.connect(str(config.DUCKDB_PATH), read_only=True)
-    programs = pcon.execute("select pe_bli, title from dim_programs").fetchall()
+    programs = pcon.execute("select pe_bli, title from dim_programs order by pe_bli, title").fetchall()
     pcon.close()
 
     program_terms = build_program_terms(programs)
@@ -2843,6 +2998,15 @@ def main(argv=None) -> None:
                         " crosswalk.ALL_YEARS_ABORT_ROWS. Every run (not just"
                         " --all-years) is planned first and aborts above that"
                         " threshold without this flag")
+    j.add_argument("--regrade-only", action="store_true", dest="regrade_only",
+                   help="crosswalk: re-grade the org's STORED mechanical rows"
+                        " in place under the scoped detail tokens (#171,"
+                        " R-DEC-171) -- UPDATE only, never INSERT; needs --org;"
+                        " writes only with --expect-updates")
+    j.add_argument("--expect-updates", type=int, default=None,
+                   dest="expect_updates",
+                   help="crosswalk --regrade-only: the row count the dry run"
+                        " printed; the write refuses any other count")
     j.set_defaults(func=cmd_jbooks)
 
     rv = sub.add_parser("review", help="reconciliation review queue")
@@ -2949,7 +3113,18 @@ def main(argv=None) -> None:
     sam_pre = sam_sub.add_parser(
         "preflight",
         help="check SAM_API_KEY, which endpoint answers, and whether the "
-             "reader-facing sam.gov entity page exists; spends up to 2 requests")
+             "reader-facing sam.gov entity page exists; spends up to 2 API "
+             "requests by default (one per candidate endpoint)")
+    sam_pre.add_argument("--dry-run", action="store_true", dest="dry_run",
+                         help="print what the first live day would do (preflight"
+                              " + the extract's share of the quota) and stop —"
+                              " no key, no request, no write")
+    sam_pre.add_argument("--top-n", type=int, default=200, dest="top_n",
+                         help="with --dry-run: published families to plan for"
+                              " (default: 200)")
+    sam_pre.add_argument("--daily-quota", type=int, default=10, dest="daily_quota",
+                         help="with --dry-run: API requests the key may spend"
+                              " today (default: 10 = the no-role daily limit)")
     sam_pre.set_defaults(func=cmd_sam)
     sam_ex = sam_sub.add_parser(
         "extract", help="fetch registrations for the published families (resumable)")

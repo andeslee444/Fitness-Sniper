@@ -4,8 +4,10 @@ import { Cite } from "@/components/cite";
 import { ScopeNote } from "@/components/notes";
 import {
   hhiBand,
+  hhiBandVintageLine,
   HHI_MODERATE_MIN,
   HHI_CONCENTRATED_MIN,
+  HHI_BANDS_VINTAGE,
 } from "@/lib/hhi-band.mjs";
 import {
   concentrationHeadline,
@@ -28,13 +30,15 @@ import {
  *
  * Two states, and the gates read both:
  *   PUBLISHED — exactly one [data-hhi-band] stamped data-hhi-basis="high",
+ *     with one visible [data-hhi-band-vintage] line naming the bands'
+ *     vintage (R-DEC-132b),
  *     plus State-A citations on the index and the obligations
  *     (hhi_high_fact_id / program_dollars_high_fact_id, dataset
  *     fct_program_concentration, measures "hhi-high"/"obligations-high" —
  *     distinct tokens so gate 23 leg a2 can never group a high-only figure
  *     with an all-tier one).
  *   WITHHELD — [data-concentration-withheld="below-floor"], one sentence,
- *     and NOTHING else: no band, no [data-amount], no [data-measure], no
+ *     and NOTHING else: no band (so no vintage line), no [data-amount], no [data-measure], no
  *     tier chip, no top contractor, no family count. A reader must not be
  *     able to mistake an absence for a small number.
  *
@@ -53,19 +57,24 @@ interface ProgramConcentrationProps {
  * The Index tooltip's bands, built from the constants hhiBand applies (Task
  * 26: the hand-typed "1500–2500 moderate; >2500 concentrated" called an index
  * of exactly 2,500 moderate while the badge beside it said Highly
- * Concentrated — hhiBand's floor is `>= HHI_CONCENTRATED_MIN`).
+ * Concentrated). Since #132 (decided 2026-09-25) the constants are the 2023
+ * Merger Guidelines': 1,000 through 1,800 moderately concentrated, only an
+ * index ABOVE 1,800 highly concentrated — and the tooltip names that
+ * vintage. The DOJ page names no band below 1,000; "unconcentrated" is this
+ * site's word there (R-DEC-132b; "competitive" until 2026-09-26), and the
+ * sentence says so.
  */
 const fmtBand = (n: number) => n.toLocaleString("en-US");
 const HHI_TOOLTIP =
   "Herfindahl-Hirschman Index: 0–10,000. " +
-  `Under ${fmtBand(HHI_MODERATE_MIN)} competitive; ` +
-  `${fmtBand(HHI_MODERATE_MIN)} to under ${fmtBand(HHI_CONCENTRATED_MIN)} moderate; ` +
-  `${fmtBand(HHI_CONCENTRATED_MIN)} or more concentrated. ` +
+  `${HHI_BANDS_VINTAGE} bands: ${fmtBand(HHI_MODERATE_MIN)} to ${fmtBand(HHI_CONCENTRATED_MIN)} moderately concentrated; ` +
+  `above ${fmtBand(HHI_CONCENTRATED_MIN)} highly concentrated; ` +
+  `below ${fmtBand(HHI_MODERATE_MIN)} this site says unconcentrated. ` +
   "Computed from high-confidence award links only, on positive-only " +
   "contractor shares — click the value for the formula.";
 
 const BAND_COLOR: Record<string, string> = {
-  competitive: "text-green-700",
+  unconcentrated: "text-green-700",
   moderate: "text-yellow-700",
   concentrated: "text-red-700",
 };
@@ -185,6 +194,15 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
               data-hhi-basis={head.basis}
             >
               {label}
+            </div>
+            {/* R-DEC-132b: the bands' vintage as VISIBLE text under the band
+                — the ⓘ title above carries it too, but a hover title cannot
+                reach a reader on a phone. hhiBandVintageLine: "2023 Merger
+                Guidelines bands", or "Below the 2023 Merger Guidelines
+                bands" under Unconcentrated. scripts/gates/coverage.mjs reads
+                it back. */}
+            <div className="text-xs text-muted-foreground" data-hhi-band-vintage="">
+              {hhiBandVintageLine(head.hhi)}
             </div>
           </div>
 

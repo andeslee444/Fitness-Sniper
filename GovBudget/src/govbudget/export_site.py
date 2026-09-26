@@ -36,6 +36,7 @@ import hashlib
 import json
 import re
 import shutil
+from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
@@ -1800,7 +1801,167 @@ _DATASET_SCOPES: dict[str, str] = {
 }
 
 
-def _derived_caveat(name: str, parquet_path: Path) -> str:
+#: ROADMAP #130 (owner-delegated ruling 2026-09-25): the columns
+#: dbt/models/marts/fct_program_concentration.sql adds to label a shared
+#: code's pooled row. tests/test_export_site_datasets_manifest.py pairs these
+#: names with the mart's schema.yml, so a rename fails there, not silently.
+_CONCENTRATION_SCOPE_COLUMN = "scope"
+_CONCENTRATION_CODE_SCOPE = "code"
+_CONCENTRATION_MEMBER_KEYS_COLUMN = "member_keys_with_links"
+_CONCENTRATION_OUTSIDE_KEYS_COLUMN = "links_outside_member_keys"
+
+
+def _concentration_page_resolver(ident, awards_by_pe, member_pages: dict):
+    """pe_bli -> the (slug, title) of the ONE member page a concentration
+    figure keyed on that bare code belongs to, or None — _concentration_page
+    (and so _concentration_owner) over the export's own identity map, links
+    and member pages. The /downloads/ caveat names a single-member code's
+    owner with it (R-DEC-130c), so the card and the program pages cannot
+    disagree about whose figure a row is."""
+    return lambda pe_bli: _concentration_page(ident, awards_by_pe, member_pages, pe_bli)
+
+
+def _join_codes(codes: list[str]) -> str:
+    """'a', 'a and b', 'a, b and c' — the caveat's code lists."""
+    return codes[0] if len(codes) == 1 else f"{', '.join(codes[:-1])} and {codes[-1]}"
+
+
+def _concentration_scope_caveat(parquet_path: Path, concentration_page=None) -> str:
+    """The /downloads/ card's sentence for fct_program_concentration's
+    code-level rows, MEASURED from the shipped file, PER ROW (ROADMAP #130;
+    R-DEC-130c, controller ruling 2026-09-26 under the owner's delegation).
+
+    The mart is keyed on the bare budget-line code, so on a code two or more
+    programs share a figure is computed over every link filed under the
+    code. The downloadable warehouse ships the row and labels it
+    (`scope = 'code'`); this card says what each such row IS:
+
+      · member_keys_with_links > 1 → it "pools every member key with links"
+        and describes no single program (0145, 3010, 3215 on 2026-09-25);
+      · member_keys_with_links = 1 and no link outside the member keys → it
+        is THAT member's figure, named as the program pages name it:
+        `concentration_page(pe_bli)` (the export passes
+        _concentration_page_resolver, i.e. _concentration_owner) gives the
+        member page's slug (2101-WPN, 2292-WPN, 3050-OPN, 4217-OPN on
+        2026-09-25). The stage-1 sentence called all 7 rows "no single
+        program", false for these 4, which the program pages publish as the
+        member's own figure;
+      · otherwise (links under no member's key) → no one member's figure,
+        and the row says why.
+
+    The mart's count and _concentration_owner are two computations of one
+    rule, so a disagreement RAISES ValueError (a single-member row the owner
+    rule hands to no one, or a pooled / unowned row it hands to someone), as
+    does a single-member row with no `concentration_page` to name it by —
+    never a guessed or dropped sentence. "" when the file carries no scope
+    column (a warehouse built before #130) or no code-level row. Any other
+    read failure raises: the file was just written by this export.
+    """
+    src = str(parquet_path).replace("'", "''")
+    with _private_duckdb() as con:
+        cols = {d[0] for d in con.execute(
+            f"select * from read_parquet('{src}') limit 0").description}
+        if _CONCENTRATION_SCOPE_COLUMN not in cols:
+            return ""
+        missing = [c for c in (_CONCENTRATION_MEMBER_KEYS_COLUMN,
+                               _CONCENTRATION_OUTSIDE_KEYS_COLUMN)
+                   if c not in cols]
+        if missing:
+            raise ValueError(
+                "fct_program_concentration carries a scope column but not "
+                + ", ".join(missing)
+                + " — the per-row /downloads/ caveat (R-DEC-130c) needs both;"
+                " rebuild the mart (govbudget build)."
+            )
+        total = con.execute(
+            f"select count(*) from read_parquet('{src}')").fetchone()[0]
+        code_rows = con.execute(
+            f"select pe_bli, coalesce({_CONCENTRATION_MEMBER_KEYS_COLUMN}, 0),"
+            f" coalesce({_CONCENTRATION_OUTSIDE_KEYS_COLUMN}, 0)"
+            f" from read_parquet('{src}')"
+            f" where {_CONCENTRATION_SCOPE_COLUMN} = ?"
+            " order by pe_bli",
+            [_CONCENTRATION_CODE_SCOPE],
+        ).fetchall()
+    if not code_rows:
+        return ""
+
+    pooled: list[str] = []
+    owned: list[tuple[str, str]] = []
+    unowned: list[str] = []
+    for pe_bli, member_keys, outside in code_rows:
+        pe_bli = str(pe_bli)
+        page = concentration_page(pe_bli) if concentration_page else None
+        if int(member_keys) > 1:
+            if page is not None:
+                raise ValueError(
+                    f"fct_program_concentration row {pe_bli!r}: the mart counts"
+                    f" {int(member_keys)} member keys with links, but"
+                    f" _concentration_owner hands the figure to {page[0]!r}."
+                    " The two computations of the link rule disagree; refusing"
+                    " to label the row."
+                )
+            pooled.append(pe_bli)
+        elif int(member_keys) == 1 and int(outside) == 0:
+            if concentration_page is None:
+                raise ValueError(
+                    f"fct_program_concentration row {pe_bli!r} is one member's"
+                    " figure, and no concentration_page resolver was passed to"
+                    " name that member (R-DEC-130c)."
+                )
+            if page is None:
+                raise ValueError(
+                    f"fct_program_concentration row {pe_bli!r}: the mart counts"
+                    " one member key with links and none outside, but"
+                    " _concentration_owner hands the figure to no member. The"
+                    " two computations of the link rule disagree; refusing to"
+                    " label the row."
+                )
+            owned.append((pe_bli, page[0]))
+        else:
+            if page is not None:
+                raise ValueError(
+                    f"fct_program_concentration row {pe_bli!r}: the mart counts"
+                    f" {int(outside)} link(s) under no member's key, but"
+                    f" _concentration_owner hands the figure to {page[0]!r}."
+                    " Refusing to label the row."
+                )
+            unowned.append(pe_bli)
+
+    parts = [
+        f"{len(code_rows):,} of its {int(total):,} rows are code-level"
+        f" ({_CONCENTRATION_SCOPE_COLUMN} = '{_CONCENTRATION_CODE_SCOPE}'):"
+        " a budget-line code two or more programs share."
+    ]
+    if pooled:
+        parts.append(
+            f"On {len(pooled)} of them ({_join_codes(pooled)}) more than one"
+            " member's key carries links, so the row pools every member key"
+            " with links and describes no single program."
+        )
+    if owned:
+        parts.append(
+            f"On {len(owned)} ({_join_codes([c for c, _ in owned])}) one"
+            " member's key carries every link, so the row is that member's"
+            " figure: "
+            + ", ".join(f"{code} is {slug}'s" for code, slug in owned)
+            + "."
+        )
+    if unowned:
+        parts.append(
+            f"On {len(unowned)} ({_join_codes(unowned)}) some links sit under"
+            f" no member's key ({_CONCENTRATION_OUTSIDE_KEYS_COLUMN}), so the"
+            " row describes no single program."
+        )
+    parts.append(
+        f"{_CONCENTRATION_MEMBER_KEYS_COLUMN} counts the member programs whose"
+        " own key carries a published link."
+    )
+    return " ".join(parts)
+
+
+def _derived_caveat(name: str, parquet_path: Path, *,
+                    concentration_page=None) -> str:
     """A limitation sentence MEASURED from the shipped parquet, or "".
 
     Tri-persona review Wave 4, item 2. `/downloads/` described jbook_details
@@ -1824,7 +1985,14 @@ def _derived_caveat(name: str, parquet_path: Path) -> str:
 
     Only jbook_details has a caveat today; the hook exists so the next
     measured limitation is a function, not a literal.
+
+    fct_program_concentration has one too since ROADMAP #130 (see
+    `_concentration_scope_caveat`, which names a single-member code's owner
+    with `concentration_page`).
     """
+    if name == "fct_program_concentration":
+        return _concentration_scope_caveat(
+            parquet_path, concentration_page=concentration_page)
     if name != "jbook_details":
         return ""
     import duckdb as _duckdb_scope
@@ -1861,13 +2029,18 @@ def _derived_caveat(name: str, parquet_path: Path) -> str:
 
 
 def _build_dataset_manifest(
-    data_dir, *, row_counts: dict[str, int], uncited: list[str], built_at: str
+    data_dir, *, row_counts: dict[str, int], uncited: list[str], built_at: str,
+    concentration_page=None,
 ) -> dict:
     """The Explorer dataset manifest — one entry per shipped parquet.
 
     row_counts must be the manifest's `datasets` dict (already recomputed from
     the written parquets), so the manifest and the page can never disagree with
     the file by construction.
+
+    `concentration_page` (the export passes _concentration_page_resolver)
+    names the member a single-member shared code's concentration row belongs
+    to on the /downloads/ card (R-DEC-130c).
 
     Raises ValueError if a shipped parquet has no _DATASET_SCOPES entry.
     """
@@ -1895,7 +2068,7 @@ def _build_dataset_manifest(
             "row_count": int(row_counts.get(name, 0)),
             "scope": _DATASET_SCOPES[name],
         }
-        caveat = _derived_caveat(name, pq)
+        caveat = _derived_caveat(name, pq, concentration_page=concentration_page)
         if caveat:
             entry["caveat"] = caveat
         entries.append(entry)
@@ -1933,6 +2106,48 @@ def _lineage_evidence_fact_ids(duckdb_path) -> set[str]:
     finally:
         con.close()
     return {r[0] for r in rows}
+
+
+@contextmanager
+def _private_duckdb():
+    """A fresh in-memory DuckDB connection, closed on exit (ROADMAP #172).
+
+    Every lake-parquet read in this module goes through one of these, never
+    through `duckdb.sql(...)`. The module-level functions run on DuckDB's ONE
+    process-wide default connection, which any other module can leave aborted
+    (DuckDB 1.5.3: a failed statement while an earlier result is pending →
+    "Current transaction is aborted" for the rest of the process); several of
+    those reads sat in `try/except Exception` and fell back SILENTLY — a
+    written parquet counted as 0 rows, the paymentaccuracy.gov URL dropped
+    from the improper-payment citations, the lobbyist and filing-URL maps
+    left empty. A private connection shares no state with anything, so one
+    broken query elsewhere in the process cannot degrade an export reader.
+    tests/test_export_site_private_duckdb.py holds the structural guard.
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect()
+    try:
+        yield con
+    finally:
+        con.close()
+
+
+def _parquet_row_count(path) -> int:
+    """Row count of one written parquet, on a private connection. Raises on
+    an unreadable file: site_meta.datasets must never record a parquet the
+    export just wrote as 0 rows because a count failed (ROADMAP #172)."""
+    src = str(path).replace("'", "''")
+    with _private_duckdb() as con:
+        return int(con.execute(
+            f"select count(*) from read_parquet('{src}')").fetchone()[0])
+
+
+def _report_dropped(what: str, exc: BaseException) -> None:
+    """A guarded read that falls back still SAYS what it dropped (ROADMAP
+    #172) — one line on the export log, naming the input and the error."""
+    print(f"export-site: WARNING — {what} dropped: "
+          f"{type(exc).__name__}: {' '.join(str(exc).split())[:200]}")
 
 
 def _stage_parquet_path(duckdb_path, stage: str, filename: str):
@@ -2890,16 +3105,13 @@ def export_site(
         kind = row[1]
         cit_by_kind[kind] = cit_by_kind.get(kind, 0) + 1
 
-    # Re-read actual rowcounts from written parquets
-    import duckdb as _duckdb2
+    # Re-read actual rowcounts from written parquets. A count that fails
+    # RAISES (ROADMAP #172): this used to record the file as 0 rows in
+    # site_meta.datasets, which /data/ renders — a parquet this export just
+    # wrote and cannot read back is a broken export, not an empty dataset.
     final_counts: dict[str, int] = {}
     for pq_path in sorted(data_dir.glob("*.parquet")):
-        name = pq_path.stem
-        try:
-            n = _duckdb2.sql(f"select count(*) from read_parquet('{pq_path}')").fetchone()[0]
-            final_counts[name] = n
-        except Exception:
-            final_counts[name] = 0
+        final_counts[pq_path.stem] = _parquet_row_count(pq_path)
 
     # Data-derived ingested-service-org set (single source of truth for the
     # site's rollup-note wording). Computed here where the Postgres dsn is in
@@ -2943,6 +3155,17 @@ def export_site(
     # warehouse with no link mart (fixtures); the tallies then read
     # budget_line_awards.
     published_links = _published_link_rows(duckdb_path)
+    # ROADMAP #107(b) (decided 2026-09-25): the rows dbt demoted OUT of
+    # publication (None before the mart carries `demotion_reason`), so the
+    # demoted tier's measured figure survives under link_precision.withdrawn;
+    # and the mart's published tier per pair, so link_adjudication says which
+    # tier the unpinned links publish at from the mart, not from Postgres.
+    withdrawn_links = _withdrawn_link_rows(duckdb_path)
+    published_tiers = _published_pair_tiers(duckdb_path)
+    # R-DEC-110 (controller 2026-09-26): the links the mart publishes at
+    # medium because a rule demoted them from high, with the reason each
+    # records — link_adjudication.high counts them by reason.
+    demoted_links = _published_demotions(duckdb_path)
     # ONE timestamp for the run: the manifest's `built_at` and the
     # adjudication block's `measured_on` are the same instant by construction,
     # so the census date the page renders can never drift from the build's
@@ -2952,11 +3175,14 @@ def export_site(
     with psycopg.connect(dsn) as pg_precision:
         link_precision = _link_precision_for_export(
             pg_precision, published_link_methods,
-            published_links=published_links)
+            published_links=published_links,
+            withdrawn_links=withdrawn_links)
         link_adjudication = _link_adjudication_block(
             pg_precision,
             high_links=published_high_links,
             measured_on=built_at[:10],
+            published_tiers=published_tiers,
+            demoted_links=demoted_links,
         )
         # ROADMAP findings :118-119: how far the announcement LLM-alias pass
         # got, and the held-out precision of the links its newest wave
@@ -3349,7 +3575,8 @@ _PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
 
 
 def _link_precision_for_export(pg, published_methods: set[str] | None, *,
-                               published_links: list[dict] | None = None) -> dict:
+                               published_links: list[dict] | None = None,
+                               withdrawn_links: list[dict] | None = None) -> dict:
     """`_link_precision_block` AS THE EXPORT CALLS IT — with the pin.
 
     The pin is policy, not a default: `_link_precision_block` takes each
@@ -3368,13 +3595,16 @@ def _link_precision_for_export(pg, published_methods: set[str] | None, *,
 
     `published_links` (the export passes `_published_link_rows(duckdb_path)`)
     tallies over the mart's published population — see the note above
-    `_precision_tally_sql`'s import.
+    `_precision_tally_sql`'s import. `withdrawn_links` (the export passes
+    `_withdrawn_link_rows(duckdb_path)`) feeds the labelled `withdrawn`
+    sub-block — ROADMAP #107(b).
     """
     return _link_precision_block(
         pg,
         published_methods=published_methods,
         pinned_samples=_PINNED_PRECISION_SAMPLES,
         published_links=published_links,
+        withdrawn_links=withdrawn_links,
     )
 
 
@@ -3460,11 +3690,158 @@ def _published_high_links(duckdb_path) -> list[tuple[str, str, str]] | None:
     return [(str(p), str(b), str(m)) for p, b, m in rows]
 
 
+def _relation_columns(con, relation: str) -> set[str]:
+    """A warehouse relation's column names (empty when it does not exist)."""
+    return {
+        c for (c,) in con.execute(
+            "select column_name from information_schema.columns"
+            " where table_name = ?", [relation],
+        ).fetchall()
+    }
+
+
+#: Where the warehouse keeps the links dbt graded OUT of publication, in
+#: preference order. `audit_link_grading` (dbt/models/audit/, 2026-09-25)
+#: grades EVERY crosswalk link and is where an `account_subagency_not_pinned`
+#: row lands (graded 'low'); fct_budget_to_awards publishes only high/medium,
+#: so its own `demotion_reason` names medium demotions only. The mart is kept
+#: as the second source because a warehouse that records demoted-out rows on
+#: the mart itself is the same fact in a different place.
+_GRADING_RELATIONS = ("audit_link_grading", "fct_budget_to_awards")
+
+
+def _withdrawn_link_rows(duckdb_path) -> list[dict] | None:
+    """The links dbt DEMOTED OUT of publication: `(award_piid, pe_bli, method,
+    demotion_reason)` for every graded row carrying a `demotion_reason` and a
+    grade outside high/medium, whose pair the mart publishes on NO row
+    (ROADMAP #107(b), decided 2026-09-25: `account+subagency` becomes an
+    unpublished audit tier; Postgres keeps every row, and audit_link_grading
+    keeps the demoted rows with `demotion_reason =
+    'account_subagency_not_pinned'`).
+
+    A row demoted high -> medium (#75, #110) still publishes, so it is NOT
+    here; a low row nobody demoted was never published, so it is not here
+    either.
+
+    ``None`` when the warehouse has neither grading relation with a
+    `demotion_reason` column (fixtures, a lake built before the decisions
+    wave) — an expected state; the caller then publishes no `withdrawn`
+    sub-block. Any other failure raises (the R-6c-7 rule: only the missing
+    relation may degrade).
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        relation = next(
+            (r for r in _GRADING_RELATIONS
+             if {"demotion_reason", "confidence", "award_piid", "pe_bli",
+                 "method"} <= _relation_columns(con, r)),
+            None,
+        )
+        if relation is None:
+            return None
+        published = (
+            "     select 1 from fct_budget_to_awards p"
+            "     where p.award_piid = d.award_piid and p.pe_bli = d.pe_bli"
+            "       and p.confidence in ('high', 'medium')"
+            if _relation_columns(con, "fct_budget_to_awards") else
+            "     select 1 where false"
+        )
+        rows = con.execute(
+            "select distinct award_piid, pe_bli, method, demotion_reason"
+            f" from {relation} d"
+            " where demotion_reason is not null"
+            "   and coalesce(confidence, '') not in ('high', 'medium')"
+            "   and award_piid is not null and pe_bli is not null"
+            "   and method is not null"
+            f"   and not exists ({published})"
+            " order by award_piid, pe_bli, method, demotion_reason"
+        ).fetchall()
+    finally:
+        con.close()
+    return [
+        {"award_piid": str(p), "pe_bli": str(b), "method": str(m),
+         "demotion_reason": str(r)}
+        for p, b, m, r in rows
+    ]
+
+
+def _published_pair_tiers(duckdb_path) -> dict[tuple[str, str], set[str]] | None:
+    """`{(award_piid, pe_bli): {confidence, …}}` for every pair the MART
+    publishes (high or medium) — the tier a reader meets, after dbt's
+    adjudication overlay and every demotion. ``None`` on a warehouse with no
+    mart; any other failure raises.
+
+    `_link_adjudication_block` reads it to say which tier the UNPINNED links
+    publish at (ROADMAP #107(b)): Postgres's `adjudicated_confidence` stopped
+    being that tier the day dbt started demoting `account+subagency` out of
+    publication regardless of it.
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        rows = con.execute(
+            "select distinct award_piid, pe_bli, confidence"
+            " from fct_budget_to_awards"
+            " where confidence in ('high', 'medium')"
+            "   and award_piid is not null and pe_bli is not null"
+        ).fetchall()
+    except _duckdb.CatalogException:  # a warehouse without the mart
+        return None
+    finally:
+        con.close()
+    tiers: dict[tuple[str, str], set[str]] = {}
+    for piid, pe_bli, conf in rows:
+        tiers.setdefault((str(piid), str(pe_bli)), set()).add(str(conf))
+    return tiers
+
+
+def _published_demotions(duckdb_path) -> list[dict] | None:
+    """The links the MART publishes at medium because a rule DEMOTED them
+    from high: `{award_piid, pe_bli, method, demotion_reason}` for every
+    distinct fct_budget_to_awards row at medium carrying a
+    `demotion_reason` (#75's `account_tokens_unadjudicated`; #110 /
+    R-DEC-110's `announcement_review_*` reasons — the dbt lane names them,
+    this reader never does). `_link_adjudication_block` counts them by
+    reason under `high.demoted_from_high` (R-DEC-110: a demoted link carries
+    a TRUE reason, and /methodology/ states the split).
+
+    ``None`` when the warehouse has no mart, or a mart without a
+    `demotion_reason` column (fixtures, a lake built before the decisions
+    wave); any other failure raises (the R-6c-7 rule).
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        if not {"demotion_reason", "confidence", "award_piid", "pe_bli",
+                "method"} <= _relation_columns(con, "fct_budget_to_awards"):
+            return None
+        rows = con.execute(
+            "select distinct award_piid, pe_bli, method, demotion_reason"
+            " from fct_budget_to_awards"
+            " where confidence = 'medium' and demotion_reason is not null"
+            "   and award_piid is not null and pe_bli is not null"
+            "   and method is not null"
+            " order by award_piid, pe_bli, method, demotion_reason"
+        ).fetchall()
+    finally:
+        con.close()
+    return [
+        {"award_piid": str(p), "pe_bli": str(b), "method": str(m),
+         "demotion_reason": str(r)}
+        for p, b, m, r in rows
+    ]
+
+
 def _link_precision_block(pg, published_methods: set[str] | None = None,
                           sample_id: str | None = None,
                           rubric: str = "attribution",
                           pinned_samples: dict[str, str] | None = None,
-                          published_links: list[dict] | None = None) -> dict:
+                          published_links: list[dict] | None = None,
+                          withdrawn_links: list[dict] | None = None) -> dict:
     """The held-out link-precision study (ROADMAP #72, #79), tallied under the
     tier each sampled link publishes under TODAY, under ONE rubric.
 
@@ -3536,17 +3913,41 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     on one fixture. The pin travels the same way: precision_study imports
     `_PINNED_PRECISION_SAMPLES` as its PINNED_SAMPLES and its `report` prints
     a pinned tier at the pinned run (Task 26 fix wave).
+
+    THE WITHDRAWN FIGURE (ROADMAP #107(b), decided 2026-09-25). A tier dbt
+    demotes OUT of publication loses its published figure by the population
+    rule above — none of its sampled links publishes any more — and, where
+    some of its links still publish (the pinned-here pairs the demotion
+    keeps), it lands in `unmeasured`. The measurement that CAUSED the
+    demotion must not vanish with it, so `withdrawn_links` (the export passes
+    `_withdrawn_link_rows`: the mart's rows carrying a `demotion_reason` that
+    publish nowhere) is tallied by the same shared query, pins included, into
+    a separately labelled sub-block::
+
+        "withdrawn": {method: {"confirmed", "sampled", "sample_id", "judged",
+                               "links": int,               # demoted pairs
+                               "demotion_reasons": [str]}}  # from the mart
+
+    It is NEVER merged into `methods`: gate 24 leg n binds `methods` to the
+    tiers the corpus publishes ("a withdrawn tier keeps its verdicts; it must
+    not keep its figure" as a published tier's precision). The top-level
+    `sample_id` / `sampled_at` stay the published figures' own. Present only
+    when a demoted tier's links carry verdicts under `rubric`, and only
+    beside a non-empty block (a study with no published figure publishes
+    nothing, as before).
     """
     if rubric not in _PRECISION_RUBRICS:
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
-    def _tally(run: str | None) -> dict[str, dict]:
+    def _tally(run: str | None, links: list[dict] | None = published_links,
+               methods_filter: set[str] | None = published_methods,
+               ) -> dict[str, dict]:
         rows = pg.execute(
-            _precision_tally_sql(run, from_mart=published_links is not None),
-            _precision_tally_params(rubric, run, published_links),
+            _precision_tally_sql(run, from_mart=links is not None),
+            _precision_tally_params(rubric, run, links),
         ).fetchall()
         out: dict[str, dict] = {}
         for method, run_id, confirmed, sampled, judged_at in rows:
-            if published_methods is not None and method not in published_methods:
+            if methods_filter is not None and method not in methods_filter:
                 continue
             out[method] = {
                 "confirmed": confirmed,
@@ -3556,27 +3957,47 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
             }
         return out
 
-    tally = _tally(sample_id)
-    # One method at a time, and never a fallback: a pinned method whose run
-    # judged nothing it still publishes leaves the figures entirely (and comes
-    # back in `unmeasured` below), because the alternative is publishing a
-    # different run's number under the pinned run's name.
-    for method, pinned_run in (pinned_samples or {}).items():
-        tally.pop(method, None)
-        pinned = _tally(pinned_run).get(method)
-        if pinned is not None:
-            tally[method] = pinned
+    def _pinned(run: str | None, links: list[dict] | None,
+                methods_filter: set[str] | None) -> dict[str, dict]:
+        tally = _tally(run, links, methods_filter)
+        # One method at a time, and never a fallback: a pinned method whose
+        # run judged nothing it still publishes leaves the figures entirely
+        # (and comes back in `unmeasured` below), because the alternative is
+        # publishing a different run's number under the pinned run's name.
+        for method, pinned_run in (pinned_samples or {}).items():
+            tally.pop(method, None)
+            pinned = _tally(pinned_run, links, methods_filter).get(method)
+            if pinned is not None:
+                tally[method] = pinned
+        return tally
+
+    tally = _pinned(sample_id, published_links, published_methods)
     if not tally:
         return {}
 
     judged_dates = [v["judged"] for v in tally.values() if v["judged"]]
-    return {
+    block = {
         "rubric": rubric,
         "sample_id": max(v["sample_id"] for v in tally.values()),
         "sampled_at": max(judged_dates) if judged_dates else None,
         "methods": dict(sorted(tally.items())),
         "unmeasured": sorted((published_methods or set()) - set(tally)),
     }
+    if withdrawn_links:
+        population = [
+            {"award_piid": r["award_piid"], "pe_bli": r["pe_bli"],
+             "method": r["method"]}
+            for r in withdrawn_links
+        ]
+        withdrawn = _pinned(sample_id, population, None)
+        for method, figure in withdrawn.items():
+            rows = [r for r in withdrawn_links if r["method"] == method]
+            figure["links"] = len({(r["award_piid"], r["pe_bli"]) for r in rows})
+            figure["demotion_reasons"] = sorted(
+                {r["demotion_reason"] for r in rows if r.get("demotion_reason")})
+        if withdrawn:
+            block["withdrawn"] = dict(sorted(withdrawn.items()))
+    return block
 
 
 def _announcement_scope_precision(pg, sample_id: str | None, *,
@@ -3736,6 +4157,8 @@ def _link_adjudication_block(
     pg,
     high_links: list[tuple[str, str, str]] | None = None,
     measured_on: str | None = None,
+    published_tiers: dict[tuple[str, str], set[str]] | None = None,
+    demoted_links: list[dict] | None = None,
 ) -> dict:
     """Per-award hand-adjudication COVERAGE of the budget→award crosswalk
     (ROADMAP #109) — the numbers /methodology/ opens the "Budget-to-contract
@@ -3815,6 +4238,21 @@ def _link_adjudication_block(
     publish at, because the mart takes adjudicated_confidence for an
     adjudicated row. None when they do not agree, and the page then states
     the count without a tier rather than the majority's.
+
+    THE MART DECIDES THAT TIER NOW (ROADMAP #107(b), decided 2026-09-25).
+    "because the mart takes adjudicated_confidence" stopped being true when
+    dbt began demoting `account+subagency` out of publication whatever its
+    adjudication says: measured 2026-09-25 on the pre-demotion lake, 8,389 of
+    the 8,475 unpinned links are `account+subagency`. With `published_tiers`
+    (the export passes `_published_pair_tiers(duckdb_path)`) the block adds
+
+        "unpinned_published":      int,        # unpinned links the mart publishes
+        "unpinned_published_tier": str | None, # the ONE tier those publish at
+
+    and `unpinned_tier` is stated only while EVERY unpinned link publishes at
+    that one tier (the page's "those links publish at …" is about all of
+    them); otherwise it is None and the page states the count alone. Without
+    `published_tiers` (fixture callers) the block keeps its old shape.
     """
     rows = pg.execute(
         """
@@ -3874,13 +4312,44 @@ def _link_adjudication_block(
             m for m, v in by_method.items() if v["adjudicated"] == 0
         ),
     }
-    high = _high_tier_census(pg, high_links)
+    if published_tiers is not None:
+        # The same rows `unpinned` counts, each asked the MART what it
+        # publishes at (see the docstring's #107(b) paragraph).
+        unpinned_pairs = pg.execute(
+            """
+            select b.award_piid, b.pe_bli
+            from budget_line_awards b
+            join award_pe_adjudications a
+              on a.award_piid = b.award_piid and a.pe_bli = b.pe_bli
+            where b.confidence in ('high', 'medium')
+              and a.award_verdict = 'darpa_unpinned'
+            """
+        ).fetchall()
+        mart_tiers: set[str] = set()
+        n_published = 0
+        for piid, pe_bli in unpinned_pairs:
+            got = published_tiers.get((piid, pe_bli))
+            if got:
+                n_published += 1
+                mart_tiers |= got
+        one_tier = next(iter(mart_tiers)) if len(mart_tiers) == 1 else None
+        block["unpinned_published"] = n_published
+        block["unpinned_published_tier"] = one_tier
+        block["unpinned_tier"] = one_tier if n_published == unpinned else None
+    high = _high_tier_census(pg, high_links, demoted_links)
     if high:
         block["high"] = high
     return block
 
 
-def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict:
+#: R-DEC-110: the review record kinds, strongest first. A high link counts
+#: ONCE in `reviewed_by_kind`, under the first kind that upholds it; a kind
+#: outside this list (none today) ranks after them, alphabetically.
+_REVIEW_KIND_ORDER = ("verdict_pair", "survivor_list")
+
+
+def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None,
+                      demoted_links: list[dict] | None = None) -> dict:
     """The `high` sub-block of `_link_adjudication_block` — see its docstring.
 
     `high_links` comes from the MART (_published_high_links); this function
@@ -3888,6 +4357,67 @@ def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict
     decides which links publish at high, because Postgres cannot: dbt demotes
     unadjudicated `account+tokens` high rows on the way through and there is
     no column recording that.
+
+    RECORDED REVIEW COVERAGE (ROADMAP #110, decided 2026-09-25). The
+    announcement path's reviewer + adversarial-reviewer outcomes are now rows
+    (migration 018 `announcement_link_reviews`, exported as dbt source
+    `jbook_announcement_link_reviews`), and dbt publishes an announcement link
+    at high only with one. So the census can say how many links published at
+    high carry a RECORDED review of either kind, which is the figure
+    /methodology/ states instead of "60 of the 768 …". When the table exists
+    the census adds::
+
+        "reviewed_high": int,         # high links with an adjudication OR a
+                                      #   recorded announcement review
+        "review_as_of": "YYYY-MM-DD" | None,   # max(reviewed_at); None while
+                                      #   no review row carries a date (the
+                                      #   wave-4 verdict files carry none)
+        by_path[m]["reviewed"]              # the same union, per path
+        by_path[m]["announcement_reviewed"] # >= 1 announcement review row
+        by_path[m]["announcement_upheld"]   # >= 1 row with reviewer 'link'
+                                            #   AND adversarial 'upheld'
+
+    (the last two only on paths where some high link has a review row).
+    `reviewed_high` is the sum of `by_path[*].reviewed`, so leg o's pathSum
+    check extends to it. On a Postgres without the table (before migration
+    018) every one of these keys is ABSENT, not zero — "no table" is not
+    "no review". The verdict vocabulary is read, never guessed: `upheld`
+    means reviewer_verdict = 'link' and adversarial_verdict = 'upheld',
+    exactly migration 018's `upholds` CHECK.
+
+    THE SPLIT BY RECORD KIND (R-DEC-110, controller 2026-09-26). A wave 1-3
+    `surviving` entry IS a recorded review (the reviewer's "link" verdict and
+    survival of the adversarial refuter, recorded per pair), backfilled as
+    record_kind 'survivor_list'; a wave-4 verdict file records the reviewer's
+    verdict and both adversarial lenses per PROPOSAL ('verdict_pair'). The
+    two differ in granularity, and the ruling says /methodology/ discloses
+    that, so when the table carries `record_kind` the census adds::
+
+        "reviewed_by_kind": {"adjudication": int,   # two-lens hand adjudication
+                             "verdict_pair": int,   # else a verdict pair upholds it
+                             "survivor_list": int,  # else only a survivor list does
+                             "not_upheld": int}     # else records, none upholding
+                                                    #   (key present only when > 0)
+        by_path[m]["reviewed_by_kind"]              # the same, per path
+
+    Each reviewed high link counts ONCE, under its strongest record
+    (_REVIEW_KIND_ORDER after the adjudication), so the values sum to
+    `reviewed_high` (and each path's to its `reviewed`). Without the column
+    (a table from before R-DEC-110) the keys are ABSENT — the kind is read,
+    never inferred from a file name.
+
+    DEMOTED FROM HIGH (R-DEC-110). With `demoted_links` (the export passes
+    `_published_demotions(duckdb_path)`: the mart's medium rows carrying a
+    demotion_reason) the census adds::
+
+        "demoted_from_high": {"links": int,            # distinct pairs
+                              "by_reason": {reason: int},
+                              "by_path": {method: {reason: int}}}
+
+    counted over pairs that publish at high on NO row (a pair demoted on one
+    row and high on another is already in `published_high`). A pair demoted
+    for two reasons on two rows counts under each reason and once in
+    `links` (none on 2026-09-25). Absent when `demoted_links` is None.
     """
     if not high_links:
         return {}
@@ -3928,12 +4458,77 @@ def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict
         ).fetchall()
     }
 
+    # ROADMAP #110: recorded announcement reviews, when the table exists.
+    reviews: dict[tuple[str, str], tuple[int, int]] | None = None
+    # R-DEC-110: the record kinds that UPHOLD each pair, when the table
+    # carries record_kind (None: no column, no split).
+    upheld_kinds: dict[tuple[str, str], set[str]] | None = None
+    review_as_of = None
+    has_review_table = pg.execute(
+        "select to_regclass('announcement_link_reviews') is not null"
+    ).fetchone()[0]
+    if has_review_table:
+        reviews = {}
+        has_kind = pg.execute(
+            """
+            select exists (
+              select 1 from information_schema.columns
+              where table_name = 'announcement_link_reviews'
+                and column_name = 'record_kind'
+                and table_schema = any(current_schemas(false)))
+            """
+        ).fetchone()[0]
+        kind_expr = (
+            "array_agg(distinct coalesce(r.record_kind, '')) filter ("
+            " where r.reviewer_verdict = 'link'"
+            "   and r.adversarial_verdict = 'upheld')"
+            if has_kind else "null::text[]"
+        )
+        upheld_kinds = {} if has_kind else None
+        for p, b, n_rows, n_upheld, last_reviewed, kinds in pg.execute(
+            f"""
+            select t.piid, t.pe, count(*) as reviews,
+                   count(*) filter (
+                     where r.reviewer_verdict = 'link'
+                       and r.adversarial_verdict = 'upheld'
+                   ) as upheld,
+                   max(r.reviewed_at) as last_reviewed,
+                   {kind_expr} as upheld_kinds
+            from unnest(%(piids)s::text[], %(pes)s::text[]) as t(piid, pe)
+            join announcement_link_reviews r
+              on r.award_piid = t.piid and r.pe_bli = t.pe
+            group by t.piid, t.pe
+            """,
+            {"piids": piids, "pes": pes},
+        ).fetchall():
+            reviews[(p, b)] = (n_rows, n_upheld)
+            if upheld_kinds is not None:
+                upheld_kinds[(p, b)] = {k or "unknown" for k in (kinds or [])}
+            if last_reviewed is not None and (
+                review_as_of is None or last_reviewed > review_as_of
+            ):
+                review_as_of = last_reviewed
+
+    def _strongest_kind(key) -> str | None:
+        """The reviewed_by_kind bucket of one reviewed high link."""
+        if key in lenses:
+            return "adjudication"
+        kinds = upheld_kinds.get(key, set())
+        for kind in _REVIEW_KIND_ORDER:
+            if kind in kinds:
+                return kind
+        if kinds:
+            return sorted(kinds)[0]
+        return "not_upheld"
+
     by_path: dict[str, dict] = {}
     for piid, pe_bli, method in high_links:
         path = by_path.setdefault(
             method,
             {"high": 0, "adjudicated": 0, "two_lens": 0,
-             "_sources": 0, "_basis": 0},
+             "_sources": 0, "_basis": 0, "_reviewed": 0,
+             "_ann_rows": 0, "_ann_reviewed": 0, "_ann_upheld": 0,
+             "_by_kind": {}},
         )
         path["high"] += 1
         key = (piid, pe_bli)
@@ -3944,6 +4539,15 @@ def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict
         n_src, n_basis = sources.get(key, (0, 0))
         path["_sources"] += n_src
         path["_basis"] += 1 if n_basis > 0 else 0
+        if reviews is not None:
+            n_rev, n_up = reviews.get(key, (0, 0))
+            path["_ann_rows"] += n_rev
+            path["_ann_reviewed"] += 1 if n_rev > 0 else 0
+            path["_ann_upheld"] += 1 if n_up > 0 else 0
+            path["_reviewed"] += 1 if (key in lenses or n_rev > 0) else 0
+            if upheld_kinds is not None and (key in lenses or n_rev > 0):
+                kind = _strongest_kind(key)
+                path["_by_kind"][kind] = path["_by_kind"].get(kind, 0) + 1
 
     out_paths: dict[str, dict] = {}
     for method in sorted(by_path):
@@ -3955,13 +4559,71 @@ def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None) -> dict
         }
         if path["_sources"] > 0:
             entry["with_match_basis"] = path["_basis"]
+        if reviews is not None:
+            entry["reviewed"] = path["_reviewed"]
+            if path["_ann_rows"] > 0:
+                entry["announcement_reviewed"] = path["_ann_reviewed"]
+                entry["announcement_upheld"] = path["_ann_upheld"]
+            if upheld_kinds is not None:
+                entry["reviewed_by_kind"] = _kind_split(path["_by_kind"])
         out_paths[method] = entry
 
-    return {
+    census = {
         "published_high": sum(v["high"] for v in out_paths.values()),
         "adjudicated_high": sum(v["adjudicated"] for v in out_paths.values()),
         "two_lens_high": sum(v["two_lens"] for v in out_paths.values()),
         "by_path": out_paths,
+    }
+    if reviews is not None:
+        census["reviewed_high"] = sum(v["reviewed"] for v in out_paths.values())
+        census["review_as_of"] = (
+            review_as_of.isoformat() if review_as_of is not None else None
+        )
+        if upheld_kinds is not None:
+            total: dict[str, int] = {}
+            for method in by_path:
+                for kind, n in by_path[method]["_by_kind"].items():
+                    total[kind] = total.get(kind, 0) + n
+            census["reviewed_by_kind"] = _kind_split(total)
+    if demoted_links is not None:
+        census["demoted_from_high"] = _demoted_from_high(
+            demoted_links, {(p, b) for p, b, _m in high_links})
+    return census
+
+
+def _kind_split(counts: dict[str, int]) -> dict[str, int]:
+    """`reviewed_by_kind`'s fixed shape: the adjudication and the two record
+    kinds always present (0 is a measurement), any other bucket only when it
+    holds a link."""
+    out = {"adjudication": counts.get("adjudication", 0)}
+    for kind in _REVIEW_KIND_ORDER:
+        out[kind] = counts.get(kind, 0)
+    for kind in sorted(k for k in counts if k not in out and counts[k] > 0):
+        out[kind] = counts[kind]
+    return out
+
+
+def _demoted_from_high(demoted_links: list[dict],
+                       high_pairs: set[tuple[str, str]]) -> dict:
+    """`high.demoted_from_high` — see _high_tier_census's docstring."""
+    pairs: set[tuple[str, str]] = set()
+    by_reason: dict[str, set] = {}
+    by_path: dict[str, dict[str, set]] = {}
+    for row in demoted_links:
+        key = (row["award_piid"], row["pe_bli"])
+        if key in high_pairs:
+            continue
+        reason = row["demotion_reason"]
+        pairs.add(key)
+        by_reason.setdefault(reason, set()).add(key)
+        by_path.setdefault(row["method"], {}).setdefault(reason, set()).add(key)
+    return {
+        "links": len(pairs),
+        "by_reason": {r: len(v) for r, v in sorted(by_reason.items())},
+        "by_path": {
+            m: {r: len(v) for r, v in sorted(reasons.items())}
+            for m, reasons in sorted(by_path.items())
+        },
     }
 
 
@@ -4991,15 +5653,18 @@ def _build_derived_citation_rows(
         )
         if oversight_pq is not None:
             try:
-                url_rows = _duckdb.sql(
-                    f"select agency_code, source_url from read_parquet('{oversight_pq}')"
-                    " where source_url is not null"
-                ).fetchall()
+                with _private_duckdb() as _pcon:
+                    url_rows = _pcon.execute(
+                        f"select agency_code, source_url from read_parquet('{oversight_pq}')"
+                        " where source_url is not null"
+                    ).fetchall()
                 for ac, su in url_rows:
                     if ac and su:
                         oversight_urls[ac] = su
-            except Exception:
-                pass
+            except Exception as exc:
+                _report_dropped(
+                    f"paymentaccuracy.gov source URLs ({oversight_pq.name}) for"
+                    " the improper-payment derived citations' inputs", exc)
 
         for agency_code, derived_amount, rate in improper_rows:
             if derived_amount is None:
@@ -5272,23 +5937,29 @@ def _build_derived_citation_rows(
         )
         if lda_filings_pq is not None:
             try:
-                # Check if family_key column exists
-                cols_check = _duckdb.sql(
-                    f"select * from read_parquet('{lda_filings_pq}') limit 0"
-                ).columns
-                if "family_key" in cols_check and "filing_year" in cols_check:
-                    url_col = "filing_url" if "filing_url" in cols_check else None
-                    if url_col:
-                        url_rows_lda = _duckdb.sql(
-                            f"select family_key, filing_year, {url_col}"
-                            f" from read_parquet('{lda_filings_pq}')"
-                            f" where {url_col} is not null"
-                        ).fetchall()
-                        for fk, fy, fu in url_rows_lda:
-                            if fk and fy and fu:
-                                lda_urls_index.setdefault((fk, str(fy)), []).append(fu)
-            except Exception:
-                pass
+                with _private_duckdb() as _pcon:
+                    # Check if family_key column exists
+                    cols_check = [
+                        d[0] for d in _pcon.execute(
+                            f"select * from read_parquet('{lda_filings_pq}') limit 0"
+                        ).description
+                    ]
+                    url_rows_lda = []
+                    if "family_key" in cols_check and "filing_year" in cols_check:
+                        url_col = "filing_url" if "filing_url" in cols_check else None
+                        if url_col:
+                            url_rows_lda = _pcon.execute(
+                                f"select family_key, filing_year, {url_col}"
+                                f" from read_parquet('{lda_filings_pq}')"
+                                f" where {url_col} is not null"
+                            ).fetchall()
+                for fk, fy, fu in url_rows_lda:
+                    if fk and fy and fu:
+                        lda_urls_index.setdefault((fk, str(fy)), []).append(fu)
+            except Exception as exc:
+                _report_dropped(
+                    f"LDA filing URLs ({lda_filings_pq.name}) for the lobbying"
+                    " derived citations' inputs", exc)
 
         for family_key, filing_year, income, expense, total in influence_rows:
             key_str = f"{family_key}|{filing_year}"
@@ -5699,22 +6370,24 @@ def _build_decade_citation_rows(
 
     bl_lake_s = str(bl_lake).replace("'", "''")
     doc_lake_s = str(doc_lake).replace("'", "''")
-    src_rows = _duckdb.sql(
-        f"""
-        select b.exhibit, cast(b.fiscal_year as integer) as edition_year,
-               b.account, b.account_title, b.organization,
-               b.budget_activity, b.budget_activity_title, b.pe_bli, b.title,
-               b.amount_type,
-               try_cast(b.amount_thousands as double) as amount_thousands,
-               d.sha256, b.source_sheet, b.source_cells,
-               d.source_url, d.downloaded_at
-        from read_parquet('{bl_lake_s}') b
-        join read_parquet('{doc_lake_s}') d on d.id = b.source_document_id
-        where b.exhibit in ('R-1', 'P-1')
-          and b.pe_bli <> '9999999999'
-          and d.sha256 is not null
-        """
-    ).fetchall()
+    # A private connection (ROADMAP #172), never duckdb.sql's shared default.
+    with _private_duckdb() as _pcon:
+        src_rows = _pcon.execute(
+            f"""
+            select b.exhibit, cast(b.fiscal_year as integer) as edition_year,
+                   b.account, b.account_title, b.organization,
+                   b.budget_activity, b.budget_activity_title, b.pe_bli, b.title,
+                   b.amount_type,
+                   try_cast(b.amount_thousands as double) as amount_thousands,
+                   d.sha256, b.source_sheet, b.source_cells,
+                   d.source_url, d.downloaded_at
+            from read_parquet('{bl_lake_s}') b
+            join read_parquet('{doc_lake_s}') d on d.id = b.source_document_id
+            where b.exhibit in ('R-1', 'P-1')
+              and b.pe_bli <> '9999999999'
+              and d.sha256 is not null
+            """
+        ).fetchall()
 
     src_by_key: dict[tuple, list] = {}
     for r in src_rows:
@@ -8732,8 +9405,6 @@ def _export_dim_lobbyists(*, con, duckdb_path, data_dir: Path) -> list[tuple]:
       (name, covered_position, filings_count, revolving_door,
        disclosing_filing_uuid, disclosing_filing_url, fact_id)
     """
-    import duckdb as _duckdb
-
     try:
         mart_rows = con.execute(
             "select name, covered_position, filings_count, revolving_door"
@@ -8747,29 +9418,38 @@ def _export_dim_lobbyists(*, con, duckdb_path, data_dir: Path) -> list[tuple]:
     by_name: dict[str, list[tuple]] = {}
     if lob_pq is not None:
         try:
-            for fu, name, cp in _duckdb.sql(
-                f"select filing_uuid, name, covered_position"
-                f" from read_parquet('{lob_pq}')"
-                f" where filing_uuid is not null and filing_uuid <> ''"
-                f"   and name is not null and name <> ''"
-            ).fetchall():
+            with _private_duckdb() as _pcon:
+                lob_raw = _pcon.execute(
+                    f"select filing_uuid, name, covered_position"
+                    f" from read_parquet('{lob_pq}')"
+                    f" where filing_uuid is not null and filing_uuid <> ''"
+                    f"   and name is not null and name <> ''"
+                ).fetchall()
+            for fu, name, cp in lob_raw:
                 by_name.setdefault(name, []).append((cp or "", fu))
-        except Exception:
+        except Exception as exc:
             by_name = {}
+            _report_dropped(
+                f"the lobbyist -> disclosing-filing map ({lob_pq.name}); every"
+                " dim_lobbyists row ships with no disclosing filing", exc)
 
     # filing_uuid → API URL from lda_filings
     filing_urls: dict[str, str] = {}
     lda_pq = _stage_parquet_path(duckdb_path, "influence", "lda_filings.parquet")
     if lda_pq is not None:
         try:
-            for fu, url in _duckdb.sql(
-                f"select filing_uuid, url from read_parquet('{lda_pq}')"
-                f" where filing_uuid is not null"
-            ).fetchall():
+            with _private_duckdb() as _pcon:
+                url_raw = _pcon.execute(
+                    f"select filing_uuid, url from read_parquet('{lda_pq}')"
+                    f" where filing_uuid is not null"
+                ).fetchall()
+            for fu, url in url_raw:
                 if fu and url:
                     filing_urls[fu] = url
-        except Exception:
-            pass
+        except Exception as exc:
+            _report_dropped(
+                f"the filing-URL map ({lda_pq.name}) for dim_lobbyists'"
+                " disclosing_filing_url", exc)
 
     export_rows: list[tuple] = []
     for name, covered_position, filings_count, revolving_door in mart_rows:
@@ -10201,12 +10881,13 @@ def _write_all_sidecars(
     _narr_org_refused: list[tuple[str, str, str | None]] = []
     narr_pq = out_dir / "data" / "jbook_narratives.parquet"
     if narr_pq.exists():
-        import duckdb as _duckdb2
-        narr_rows = _duckdb2.sql(
-            "select fact_id, pe_bli, kind, title, body, xml_path, org,"
-            f" document_sha256 from read_parquet('{narr_pq}')"
-            f" where fiscal_year = {DISPLAY_NARRATIVE_FY}"
-        ).fetchall()
+        # A private connection (ROADMAP #172), never duckdb.sql's shared default.
+        with _private_duckdb() as _pcon:
+            narr_rows = _pcon.execute(
+                "select fact_id, pe_bli, kind, title, body, xml_path, org,"
+                f" document_sha256 from read_parquet('{narr_pq}')"
+                f" where fiscal_year = {DISPLAY_NARRATIVE_FY}"
+            ).fetchall()
         for (narr_fid, pe_bli, kind, title, body, xml_path,
              narr_org, narr_sha) in narr_rows:
             _narr_acct = _doc_account.get((narr_sha, pe_bli))
@@ -12534,6 +13215,13 @@ def _write_all_sidecars(
     # parquet. Replaces the hardcoded DATASET_INVENTORY literals that had
     # rotted to 5B-2-era values on /data/ (dim_programs said 326 while the
     # parquet held 1,739). Raises if a shipped parquet is undocumented.
+    # The member page each shared code's pooled figure belongs to — the rule
+    # the program pages and the feed use (_concentration_page) — so the
+    # /downloads/ card names a single-member code's owner exactly as its
+    # program page publishes it (R-DEC-130c).
+    _concentration_member_pages = _member_pages(ident, (
+        (r[0], r[7], r[8], r[1], r[3]) for r in all_prog_rows
+    ))
     _write_json(
         json_dir / "datasets.json",
         _build_dataset_manifest(
@@ -12541,6 +13229,8 @@ def _write_all_sidecars(
             row_counts=manifest.get("datasets", {}),
             uncited=manifest.get("uncited_datasets", []),
             built_at=manifest.get("built_at"),
+            concentration_page=_concentration_page_resolver(
+                ident, awards_by_pe, _concentration_member_pages),
         ),
     )
     n_files += 1
@@ -12612,9 +13302,7 @@ def _write_all_sidecars(
         # publishes or withholds the pooled figure.
         ident=ident,
         awards_by_pe=awards_by_pe,
-        member_pages=_member_pages(ident, (
-            (r[0], r[7], r[8], r[1], r[3]) for r in all_prog_rows
-        )),
+        member_pages=_concentration_member_pages,
     )
     n_files += 1 + n_feed_sections
 
@@ -13177,8 +13865,6 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
     Only emits when the amount is non-null and non-empty (truthy string).
     Covers the 4,258 LDA filings so /filing pages render state A for amounts.
     """
-    import duckdb as _duckdb
-
     rows: list[tuple] = []
 
     # Find the lda_filings parquet (test + live layouts)
@@ -13187,11 +13873,15 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
         return rows
 
     try:
-        lda_filings = _duckdb.sql(
-            f"select filing_uuid, url, income_usd, expenses_usd"
-            f" from read_parquet('{lda_pq}')"
-        ).fetchall()
-    except Exception:
+        with _private_duckdb() as _pcon:
+            lda_filings = _pcon.execute(
+                f"select filing_uuid, url, income_usd, expenses_usd"
+                f" from read_parquet('{lda_pq}')"
+            ).fetchall()
+    except Exception as exc:
+        _report_dropped(
+            f"every lda_filing citation row ({lda_pq.name}); /filing/ amounts"
+            " render uncited", exc)
         return rows
 
     for filing_uuid, url, income_usd, expenses_usd in lda_filings:
@@ -14797,8 +15487,6 @@ def _emit_filing_sidecars(
 
     Returns number of files written (0 when the lda parquets are absent).
     """
-    import duckdb as _duckdb
-
     lda_pq = _stage_parquet_path(duckdb_path, "influence", "lda_filings.parquet")
     if lda_pq is None:
         return 0
@@ -14806,12 +15494,15 @@ def _emit_filing_sidecars(
     lob_pq = _stage_parquet_path(duckdb_path, "influence", "lda_lobbyists.parquet")
 
     try:
-        filing_rows = _duckdb.sql(
-            f"select filing_uuid, url, client_name, registrant_name,"
-            f" filing_year, filing_period, filing_type, income_usd, expenses_usd"
-            f" from read_parquet('{lda_pq}')"
-        ).fetchall()
-    except Exception:
+        with _private_duckdb() as _pcon:
+            filing_rows = _pcon.execute(
+                f"select filing_uuid, url, client_name, registrant_name,"
+                f" filing_year, filing_period, filing_type, income_usd, expenses_usd"
+                f" from read_parquet('{lda_pq}')"
+            ).fetchall()
+    except Exception as exc:
+        _report_dropped(
+            f"every /filing/ sidecar ({lda_pq.name})", exc)
         return 0
 
     # Activities per filing_uuid
@@ -14821,11 +15512,13 @@ def _emit_filing_sidecars(
             # §P1-7: the /filing/ page renders these in payload order — sort
             # them here so the issue list is alphabetical by code rather than
             # whatever order the LDA parquet happens to hold.
-            for fu, issue_code, issue_display, description in _duckdb.sql(
-                f"select filing_uuid, issue_code, issue_display, description"
-                f" from read_parquet('{act_pq}')"
-                f" order by filing_uuid, issue_code, issue_display, description"
-            ).fetchall():
+            with _private_duckdb() as _pcon:
+                act_raw = _pcon.execute(
+                    f"select filing_uuid, issue_code, issue_display, description"
+                    f" from read_parquet('{act_pq}')"
+                    f" order by filing_uuid, issue_code, issue_display, description"
+                ).fetchall()
+            for fu, issue_code, issue_display, description in act_raw:
                 if not fu:
                     continue
                 activities_by_uuid.setdefault(fu, []).append({
@@ -14833,8 +15526,10 @@ def _emit_filing_sidecars(
                     "issue_code": issue_code,
                     "issue_display": issue_display,
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            activities_by_uuid = {}
+            _report_dropped(
+                f"the /filing/ issue activities ({act_pq.name})", exc)
 
     # Lobbyists per filing_uuid (exact-duplicate rows collapsed).
     # §P1-7: name-ordered rather than parquet order — 180 of 221 sampled
@@ -14843,11 +15538,13 @@ def _emit_filing_sidecars(
     if lob_pq is not None:
         try:
             seen_lobbyists: set[tuple] = set()
-            for fu, name, covered_position in _duckdb.sql(
-                f"select filing_uuid, name, covered_position"
-                f" from read_parquet('{lob_pq}')"
-                f" order by filing_uuid, name, covered_position"
-            ).fetchall():
+            with _private_duckdb() as _pcon:
+                lob_raw = _pcon.execute(
+                    f"select filing_uuid, name, covered_position"
+                    f" from read_parquet('{lob_pq}')"
+                    f" order by filing_uuid, name, covered_position"
+                ).fetchall()
+            for fu, name, covered_position in lob_raw:
                 if not fu or not name:
                     continue
                 key = (fu, name, covered_position or "")
@@ -14858,8 +15555,10 @@ def _emit_filing_sidecars(
                     "covered_position": covered_position,
                     "name": name,
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            lobbyists_by_uuid = {}
+            _report_dropped(
+                f"the /filing/ lobbyist lists ({lob_pq.name})", exc)
 
     # Mentions per filing_uuid from the already-fetched fct_program_lobbying rows.
     # lob_rows cols: (filing_uuid, pe_bli, program_title, matched_term,
@@ -15016,8 +15715,6 @@ def _emit_gao_overlays_sidecar(
     fct_improper_exposure with the derived-tier fact_id attached only when it
     resolves in the citation set.
     """
-    import duckdb as _duckdb
-
     # Site orgs → parent agency code
     try:
         orgs = [r[0] for r in con.execute(
@@ -15036,17 +15733,19 @@ def _emit_gao_overlays_sidecar(
         try:
             # mapped is BOOLEAN since backlog #11; cast keeps legacy
             # varchar 'true'/'false' parquets working identically.
+            with _private_duckdb() as _pcon:
+                hr_raw = _pcon.execute(
+                    f"select area_title, area_url, agency_code,"
+                    f" cast(mapped as boolean) as mapped, notes,"
+                    f" source_url from read_parquet('{hr_pq}')"
+                    # §P1-7: the oversight list rendered in parquet-scan order,
+                    # which happened to be the seed CSV's alphabetical order —
+                    # true by luck, not declared. Same wording as the rendered
+                    # list, so a reader can name the order.
+                    f" order by agency_code, area_title"
+                ).fetchall()
             for (area_title, area_url, agency_code, mapped, notes,
-                 source_url) in _duckdb.sql(
-                f"select area_title, area_url, agency_code,"
-                f" cast(mapped as boolean) as mapped, notes,"
-                f" source_url from read_parquet('{hr_pq}')"
-                # §P1-7: the oversight list rendered in parquet-scan order,
-                # which happened to be the seed CSV's alphabetical order —
-                # true by luck, not declared. Same wording as the rendered
-                # list, so a reader can name the order.
-                f" order by agency_code, area_title"
-            ).fetchall():
+                 source_url) in hr_raw:
                 if not mapped or not agency_code:
                     continue
                 areas_by_code.setdefault(agency_code, []).append({
@@ -15055,8 +15754,11 @@ def _emit_gao_overlays_sidecar(
                     "notes": notes,
                     "source_url": source_url,
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            areas_by_code = {}
+            _report_dropped(
+                f"the GAO high-risk areas ({hr_pq.name}) on the oversight"
+                " overlay", exc)
 
     # Improper-payment exposure per agency code
     improper_by_code: dict[str, dict] = {}
@@ -15130,8 +15832,6 @@ def _emit_gao_program_findings_sidecar(
     (``build_gao_program_assessments`` raises below 90 % of the index count),
     so every ``source[]`` entry carries a full edition record.
     """
-    import duckdb as _duckdb
-
     from govbudget.config import ROOT as _REPO_ROOT
     from govbudget.oversight.gao_programs import (
         current_edition,
@@ -15160,10 +15860,14 @@ def _emit_gao_program_findings_sidecar(
         return
 
     try:
-        cur = _duckdb.sql(f"select * from read_parquet('{pq}')")
-        cols = [d[0] for d in cur.description]
-        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-    except Exception:
+        with _private_duckdb() as _pcon:
+            cur = _pcon.execute(f"select * from read_parquet('{pq}')")
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception as exc:
+        _report_dropped(
+            f"every GAO program finding ({pq.name}); gao_program_findings.json"
+            " ships with no source, program or stats", exc)
         _write_json(json_dir / "gao_program_findings.json", payload)
         return
     for needed in ("edition_year", "program_key", "predecessor_product"):

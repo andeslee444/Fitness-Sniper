@@ -50,9 +50,16 @@ EXPORTS: dict[str, str] = {
         # key that names a single program. fct_budget_to_awards joins
         # dim_programs on it so a shared code's two members keep their own
         # awards instead of both showing the union.
+        #
+        # superseded_* (migration 019, ROADMAP #140): the route an
+        # evidence-graded link replaced on its key, recorded by
+        # scripts/load_announcement_links.py at the move — or, for the 60
+        # moves of 2026-09-19, by migration 020 from the evidence it cites in
+        # superseded_evidence. Exported so the move is auditable in the lake.
         "select pe_bli, exhibit, fiscal_year, organization, award_piid,"
         " recipient_name, recipient_uei, matched_obligation, method, confidence,"
-        " score, rationale, account from budget_line_awards"
+        " score, rationale, account, superseded_method, superseded_confidence,"
+        " superseded_at, superseded_evidence from budget_line_awards"
     ),
     "award_adjudications": (
         # hand-adjudication overlay (migration 010) — the mart coalesces
@@ -60,6 +67,25 @@ EXPORTS: dict[str, str] = {
         "select award_piid, pe_bli, adjudicated_confidence, award_verdict,"
         " pair_reason, basis, evidence, refuter_lenses_passed, method,"
         " adjudicated_at from award_pe_adjudications"
+    ),
+    "announcement_link_reviews": (
+        # the announcement path's RECORDED review outcomes (migration 018,
+        # ROADMAP #110, decided 2026-09-25; R-DEC-110 2026-09-26): one row per
+        # (crosswalk link of a reviewed pair, review record) — wave-4 verdict
+        # pairs (reviewer rejections included, adversarial 'not_run'), wave
+        # 1-3 survivor-list entries and wave 1-2 refutation-sample entries —
+        # written by scripts/backfill_announcement_link_reviews.py. The mart
+        # (source jbook_announcement_link_reviews) grades a high announcement
+        # link on them. Every column but the table's own recorded_at (a run
+        # timestamp, which would make the file differ run to run), ordered by
+        # the table's key so the file is byte-stable over the same table.
+        "select award_piid, pe_bli, exhibit, fiscal_year, record_kind,"
+        " reviewer_verdict, adversarial_verdict, adversarial_lenses_passed,"
+        " upholds, article_id, article_source, record_index, entry_index,"
+        " cites_reviewed_article, reason, reviewed_at, source_file"
+        " from announcement_link_reviews"
+        " order by award_piid, pe_bli, exhibit, fiscal_year, source_file,"
+        " record_kind, entry_index"
     ),
     "documents": (
         # rel_path relativizes the machine-specific absolute file_path
@@ -77,7 +103,64 @@ EXPORTS: dict[str, str] = {
 }
 
 
+#: The methods scripts/load_announcement_links.py owns (its OWNED_METHODS,
+#: derive_ap_links.EVIDENCE_GRADED_METHODS): it deletes and re-inserts every
+#: row carrying one of them on each run, so the newest created_at among them
+#: is the loader's last run.
+LOADER_METHODS = ("announcement+lexicon", "subaward+lexicon")
+
+#: The chain order the check below enforces (R-DEC-LOADER, 2026-09-26).
+CHAIN_ORDER = ("migrate -> scripts/load_announcement_links.py ->"
+               " scripts/backfill_announcement_link_reviews.py ->"
+               " jbooks export-facts -> build (dbt)")
+
+
+class ChainOrderError(RuntimeError):
+    """export-facts was reached out of CHAIN_ORDER; nothing was written."""
+
+
+def check_reviews_follow_loader(pg) -> None:
+    """Refuse to export when announcement_link_reviews was not backfilled
+    AFTER the link loader's last run (R-DEC-LOADER).
+
+    The mart grades every announcement link on the review rows (#110): a table
+    written before the loader's last rebuild misses the links that rebuild
+    added and carries cites_reviewed_article against source rows it replaced,
+    and an empty table beside loaded links would publish every announcement
+    link as unreviewed. The loader's last run is the newest created_at among
+    the rows it owns (it deletes and re-inserts them all); the backfill's is
+    its rows' recorded_at (one transaction). With no loader rows there is
+    nothing to grade and nothing to check."""
+    last_load = pg.execute(
+        "select max(created_at) from budget_line_awards where method = any(%s)",
+        (list(LOADER_METHODS),),
+    ).fetchone()[0]
+    if last_load is None:
+        return
+    n_reviews, first_recorded = pg.execute(
+        "select count(*), min(recorded_at) from announcement_link_reviews"
+    ).fetchone()
+    if n_reviews == 0:
+        raise ChainOrderError(
+            f"no announcement_link_reviews row, but the link loader last ran"
+            f" {last_load:%Y-%m-%d %H:%M:%S%z}: run"
+            f" scripts/backfill_announcement_link_reviews.py first — nothing"
+            f" exported (chain order: {CHAIN_ORDER})")
+    if first_recorded < last_load:
+        raise ChainOrderError(
+            f"announcement_link_reviews was recorded"
+            f" {first_recorded:%Y-%m-%d %H:%M:%S%z}, before the link loader's"
+            f" last run ({last_load:%Y-%m-%d %H:%M:%S%z}): re-run"
+            f" scripts/backfill_announcement_link_reviews.py — nothing exported"
+            f" (chain order: {CHAIN_ORDER})")
+
+
 def export_facts(dsn: str, *, parquet_dir: Path) -> list[Path]:
+    # R-DEC-LOADER: checked before the output directory exists, so a refusal
+    # leaves no partial export behind.
+    with psycopg.connect(dsn) as pg:
+        pg.read_only = True
+        check_reviews_follow_loader(pg)
     out_dir = parquet_dir / "jbooks"
     out_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []

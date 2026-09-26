@@ -27,6 +27,12 @@
  * rather than picking one and being wrong about the other context.
  */
 
+import { HHI_BANDS_VINTAGE, HHI_CONCENTRATED_MIN, HHI_MODERATE_MIN } from "@/lib/hhi-band.mjs";
+
+/** The HHI entry's band sentence, built from hhi-band.mjs (#132): never a hand copy of the thresholds.
+ *  Below 1,000 it says "unconcentrated", the badge's word since R-DEC-132b, attributed to this site. */
+const hhiPoints = (n: number) => n.toLocaleString("en-US");
+
 export interface GlossaryEntry {
   /** URL-safe anchor id, e.g. "toa" → /glossary/#toa. */
   id: string;
@@ -164,7 +170,8 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "HHI",
     expansion: "Herfindahl-Hirschman Index",
     definition:
-      "A standard market-concentration measure: the sum of each contractor family's obligation share squared (× 10,000), counting only positive obligations. Fiscal Receipts computes it in two places. The anomaly feed reports one program's HHI for a single fiscal year over high-confidence award links only. Each program page's Contractor Concentration card reports a pooled all-years HHI over high-confidence links alone, and publishes it only where the program has at least three such awards across two or more contractor families holding positive obligations; below that floor the card publishes no index and says so. The figure over every published link, including medium-confidence ones, is computed and ships in the downloadable warehouse — it is never printed in place of a withheld one. Bands follow the DOJ/FTC Horizontal Merger Guidelines: below 1,500 is competitive, 1,500–2,500 is moderately concentrated, and 2,500 or above is highly concentrated.",
+      "A standard market-concentration measure: the sum of each contractor family's obligation share squared (× 10,000), counting only positive obligations. Fiscal Receipts computes it in two places. The anomaly feed reports one program's HHI for a single fiscal year over high-confidence award links only. Each program page's Contractor Concentration card reports a pooled all-years HHI over high-confidence links alone, and publishes it only where the program has at least three such awards across two or more contractor families holding positive obligations; below that floor the card publishes no index and says so. The figure over every published link, including medium-confidence ones, is computed and ships in the downloadable warehouse — it is never printed in place of a withheld one. " +
+      `Bands follow the ${HHI_BANDS_VINTAGE} of the Justice Department and the FTC: an HHI from ${hhiPoints(HHI_MODERATE_MIN)} to ${hhiPoints(HHI_CONCENTRATED_MIN)} is moderately concentrated and one above ${hhiPoints(HHI_CONCENTRATED_MIN)} is highly concentrated. This site calls an HHI below ${hhiPoints(HHI_MODERATE_MIN)} unconcentrated.`,
   },
   {
     id: "obligation",

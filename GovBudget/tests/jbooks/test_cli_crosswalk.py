@@ -38,6 +38,10 @@ def test_crosswalk_cli_prints_written_and_skipped_separately(monkeypatch, capsys
 
     monkeypatch.setattr(crosswalk_module, "plan_crosswalk_org", fake_plan)
     monkeypatch.setattr(crosswalk_module, "crosswalk_org", fake_crosswalk_org)
+    # #170's pre-plan check reads budget_lines; DB-free here like the rest
+    # (its refusal is exercised against Postgres in test_crosswalk.py).
+    monkeypatch.setattr(crosswalk_module, "find_ambiguous_identities",
+                        lambda dsn, orgs, fiscal_year=None: [])
     cli.cmd_jbooks(argparse.Namespace(
         action="crosswalk", org="DARPA", fy_start=None, fy_end=None))
     out = capsys.readouterr().out

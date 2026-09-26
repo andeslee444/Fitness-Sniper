@@ -54,7 +54,8 @@ describe("hhiScopeNote", () => {
   });
 
   // backlog #57: the destination /program/0601101E/ page renders a pooled
-  // all-years HHI of 505.5 ("Competitive") for the same program — a
+  // all-years HHI of 505.5 ("Unconcentrated" since R-DEC-132b; "Competitive"
+  // then) for the same program — a
   // DIFFERENT measure this note exists to disclose, not to match.
   it("names the standard band and the fiscal year, and discloses the pooled figure can differ", () => {
     const note = hhiScopeNote(
@@ -77,7 +78,7 @@ describe("hhiScopeNote", () => {
 
   it("uses the standard vocabulary, not an editorial adjective, below the highly-concentrated floor", () => {
     // The old two-way split called ANYTHING under 2500 "a high supplier-
-    // concentration score" — false for a genuinely competitive value.
+    // concentration score" — false for a genuinely unconcentrated value.
     const note = hhiScopeNote(
       card({
         event_type: "concentration_shift",
@@ -86,9 +87,27 @@ describe("hhiScopeNote", () => {
         fiscal_year: 2022,
       }),
     );
-    expect(note!.band).toBe("Competitive");
+    expect(note!.band).toBe("Unconcentrated");
     expect(note!.text).not.toMatch(/near-monopoly/i);
     expect(note!.text).not.toMatch(/high supplier-concentration/i);
+    expect(note!.text).not.toMatch(/competitive/i);
+  });
+
+  // R-DEC-132b (controller, 2026-09-26): "Unconcentrated" is this site's word
+  // for the range below 1,000 — the 2023 guidelines name no band there — so
+  // the note says the figure sits BELOW their bands instead of implying the
+  // guidelines call it that. Same phrase as the program badge's visible
+  // vintage line (hhiBandVintageLine), still naming the vintage feed leg (l)
+  // requires.
+  it("places an unconcentrated year below the 2023 bands, not inside them", () => {
+    const note = hhiScopeNote(
+      card({ event_type: "concentration_shift", figure_units: "hhi", figure_value: 891.8, fiscal_year: 2020 }),
+    )!;
+    expect(note.text).toContain("Unconcentrated in FY2020 (below the 2023 Merger Guidelines bands)");
+    const high = hhiScopeNote(
+      card({ event_type: "concentration_shift", figure_units: "hhi", figure_value: 4401, fiscal_year: 2020 }),
+    )!;
+    expect(high.text).toContain("Highly Concentrated in FY2020 (2023 Merger Guidelines bands)");
   });
 
   // ROADMAP #80 fix round 2 (2026-09-11), finding 8 — ruling R8. The note
@@ -113,6 +132,38 @@ describe("hhiScopeNote", () => {
     expect(note!.text).toMatch(/not be published/i);
     expect(note!.text.toLowerCase()).toContain("pooled");
     expect(note!.text.toLowerCase()).toContain("differ");
+  });
+
+  // #132 (decided 2026-09-25): the note names the band's vintage, because a
+  // band without a year is exactly what let the site call the 2010 bands
+  // "DOJ/FTC bands" after the agencies had replaced them.
+  it("names the vintage of the bands it applies", () => {
+    const note = hhiScopeNote(
+      card({
+        event_type: "concentration_shift",
+        figure_units: "hhi",
+        figure_value: 8662.294,
+        fiscal_year: 2020,
+      }),
+    );
+    expect(note!.text).toContain("2023 Merger Guidelines");
+    expect(note!.text).not.toMatch(/DOJ\/FTC|Horizontal Merger/);
+  });
+
+  // #132 measured 2026-09-25 on the shipped export: three concentration_shift
+  // cards sit between 1,800 and 2,500 — 0605625A FY2021 (2,000.0) and FY2022
+  // (2,060.3), 0602715E FY2019 (2,148.7). Moderately concentrated under the
+  // retired 2010 bands, highly concentrated under 2023's.
+  it("calls a year above 1,800 highly concentrated, and 1,800 itself moderate", () => {
+    const at = (figure_value: number) =>
+      hhiScopeNote(
+        card({ event_type: "concentration_shift", figure_units: "hhi", figure_value, fiscal_year: 2021 }),
+      )!;
+    expect(at(2000).band).toBe("Highly Concentrated");
+    expect(at(2000).text).toContain("Highly Concentrated in FY2021");
+    expect(at(1800).band).toBe("Moderately Concentrated");
+    expect(at(1000).band).toBe("Moderately Concentrated");
+    expect(at(999).band).toBe("Unconcentrated");
   });
 
   it("falls back to 'that year' when fiscal_year is absent", () => {

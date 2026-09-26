@@ -222,17 +222,34 @@ def test_the_high_census_splits_adjudicated_evidence_from_the_rest(high_tier):
             pg, high_links=FIXTURE_HIGH_LINKS, measured_on="2026-09-11"
         )
 
+    # `reviewed` / `reviewed_high` / `review_as_of` (ROADMAP #110, decided
+    # 2026-09-25) are present because migration 018's announcement_link_reviews
+    # exists and holds no row for these links: the announcement links carry
+    # no RECORDED review, the adjudicated one does. `reviewed_by_kind`
+    # (R-DEC-110, 2026-09-26) is present because the table carries
+    # record_kind: the one reviewed link is the adjudicated one.
     assert block["high"] == {
         "published_high": 3,
         "adjudicated_high": 1,
         "two_lens_high": 1,
+        "reviewed_high": 1,
+        "review_as_of": None,
+        "reviewed_by_kind": {"adjudication": 1, "verdict_pair": 0,
+                             "survivor_list": 0},
         "by_path": {
-            "account+subagency": {"high": 1, "adjudicated": 1, "two_lens": 1},
+            "account+subagency": {"high": 1, "adjudicated": 1, "two_lens": 1,
+                                  "reviewed": 1,
+                                  "reviewed_by_kind": {"adjudication": 1,
+                                                       "verdict_pair": 0,
+                                                       "survivor_list": 0}},
             "announcement+lexicon": {
                 "high": 2,
                 "adjudicated": 0,
                 "two_lens": 0,
                 "with_match_basis": 1,
+                "reviewed": 0,
+                "reviewed_by_kind": {"adjudication": 0, "verdict_pair": 0,
+                                     "survivor_list": 0},
             },
         },
     }

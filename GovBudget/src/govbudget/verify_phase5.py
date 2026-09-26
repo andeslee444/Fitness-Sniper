@@ -41,8 +41,13 @@ Exit codes:
        unblock step
   1  — any gate FAILs
 
-BLOCKED behavior: eval_gate → BLOCKED without key; assembly propagates BLOCKED
-from sub-phases. Nothing is a hard FAIL if the only issue is a missing API key.
+BLOCKED behavior: eval_gate → BLOCKED without key, and BLOCKED (with the
+provider's own error text) when the provider refused enough of the run that its
+verdict was never measured — e.g. every question ERROR at $0.00 on an empty
+credit balance (ROADMAP #139, provider_block_reason); assembly propagates
+BLOCKED from sub-phases. Nothing is a hard FAIL if the only issue is a missing
+API key or a refused one; a run that already failed on the questions it did
+answer is still a FAIL.
 
 All gate functions take explicit paths — no config read at module level.
 """
@@ -663,6 +668,180 @@ def _citation_retry_recompute(
     return _recompute
 
 
+# ROADMAP #139 (code half, decided 2026-09-25): an eval run the PROVIDER
+# refused is BLOCKED, not an accuracy failure. From 2026-09-18 until the
+# owner's top-up the key answered HTTP 400 "credit balance is too low": every
+# question came back ERROR at $0.00 and the gate printed "accuracy 0/48 < 44
+# threshold" with `blocked: false` in the run record — a model failure the
+# model never got to commit. The texts below are the Anthropic API's own
+# credit / authentication / permission refusals (invalid_request_error's
+# credit message, authentication_error, permission_error); a rate limit or a
+# 5xx is NOT one of them — agent.run already retries those, and one that
+# survives four attempts is a transport failure worth a FAIL.
+_PROVIDER_BLOCK_RE = re.compile(
+    r"credit balance is too low|authentication_error|invalid x-api-key"
+    r"|permission_error|billing_error",
+    re.IGNORECASE,
+)
+#: Anything shaped like an Anthropic key, scrubbed from recorded error text.
+_API_KEY_RE = re.compile(r"sk-ant-[A-Za-z0-9_\-]+")
+_ERROR_TEXT_MAX = 300
+
+
+def _recorded_error_text(exc: BaseException) -> str:
+    """The exception's text as the run record keeps it: one line, bounded,
+    and never a key (an SDK error echoing a header must not reach a JSON
+    file under data/research/)."""
+    text = " ".join(str(exc).split()) or type(exc).__name__
+    return _API_KEY_RE.sub("sk-ant-…", text)[:_ERROR_TEXT_MAX]
+
+
+def _refusals_and_other_errors(
+    scores: list[dict],
+) -> tuple[list[dict], list[dict], float]:
+    """Split a run's ERRORED questions into (provider refusals, every other
+    error) and return the run's spend — the one classification
+    provider_block_reason and non_provider_error_clause both read.
+
+    A question is "refused by the provider" when
+      * its recorded `agent_error_text` carries the provider's credit / auth /
+        permission refusal (_PROVIDER_BLOCK_RE) — recorded since 2026-09-25;
+      * OR every question in the run is ERROR, the run spent $0.00 and the
+        record kept NO error text — the shape of every record written
+        2026-09-18..25, before the text was kept: no model call completed,
+        so the run measured nothing. Once text is kept it is the evidence: an
+        all-ERROR $0 run whose recorded errors are something else (a
+        TypeError before the first API call) is the code's failure.
+    Every other errored question is NOT a refusal: a crash with its own text,
+    or (records before 2026-09-25) an error that kept no text in a run that
+    is not the all-ERROR, $0 shape.
+    """
+    errored = [s for s in scores if s.get("agent_error")]
+    spent = sum(
+        float(s.get("cost_usd") or 0.0) + float(s.get("citation_retry_cost_usd") or 0.0)
+        for s in scores
+    )
+    all_error_free = (
+        bool(errored) and len(errored) == len(scores) and spent == 0.0
+        and not any(s.get("agent_error_text") for s in errored)
+    )
+    if all_error_free:
+        return errored, [], spent
+    refused, other = [], []
+    for s in errored:
+        if _PROVIDER_BLOCK_RE.search(s.get("agent_error_text") or ""):
+            refused.append(s)
+        else:
+            other.append(s)
+    return refused, other, spent
+
+
+#: How many non-provider errors non_provider_error_clause names by id.
+_NAMED_ERRORS_MAX = 5
+
+
+def non_provider_error_clause(run: dict) -> str | None:
+    """The sentence naming a run's errors that are NOT provider refusals, or
+    None when it has none (R-DEC-139b, 2026-09-26: "any crash keeps FAIL and
+    is named"). eval_gate appends it to a FAIL's reason and
+    cmd_verify_phase5 prints it, so a run that mixes a code crash with
+    credit refusals says which questions crashed instead of reading as an
+    accuracy score alone.
+
+    Each named question carries its recorded error text, or "no error text
+    recorded" for a record written before 2026-09-25 — such an error is
+    called what the record shows (an error with no provider refusal on
+    record), never a crash or a refusal it does not show.
+    """
+    scores = run.get("scores") or []
+    refused, other, _spent = _refusals_and_other_errors(scores)
+    if not other:
+        return None
+    named = []
+    for s in other[:_NAMED_ERRORS_MAX]:
+        text = " ".join((s.get("agent_error_text") or "").split())
+        named.append(
+            f"{s.get('id', '?')} ({text[:80] if text else 'no error text recorded'})"
+        )
+    more = len(other) - len(named)
+    listing = ", ".join(named) + (f" and {more} more" if more else "")
+    refused_clause = (
+        f"; {len(refused)} other(s) were refused by the provider" if refused
+        else ""
+    )
+    return (
+        f"{len(other)} of {len(scores)} questions errored with no provider"
+        f" refusal on record: {listing}{refused_clause} — an error the"
+        " provider did not cause is the code's failure, so this run is a"
+        " FAIL, not a provider block"
+    )
+
+
+def provider_block_reason(
+    run: dict, *, threshold: int = ACCURACY_THRESHOLD,
+) -> str | None:
+    """Why this eval run is BLOCKED by the provider, or None when it is not.
+
+    Reads the RUN RECORD (the dict eval_gate returns and cmd_verify_phase5
+    writes to data/research/eval-runs/), so it can be applied to a stored
+    record as well as a live one. Which errored questions count as "refused
+    by the provider" is _refusals_and_other_errors' rule (credit / auth /
+    permission text, or the all-ERROR, $0, no-text shape of the records
+    written 2026-09-18..25).
+
+    R-DEC-139b (controller ruling 2026-09-26, under the owner's delegation):
+    BLOCKED only when the provider's refusals ALONE decide the verdict and no
+    other failure occurred —
+      * EVERY question that is not correct is a provider refusal: an error
+        the provider did not cause (a TypeError, or an error whose record
+        kept no text outside the all-ERROR $0 shape) or an answer scored
+        wrong is a failure the run already measured, so the run is a FAIL
+        (non_provider_error_clause names the errors);
+      * `correct + refused >= threshold` — otherwise even every refused
+        question answered correctly could not reach the accuracy bar;
+      * no answered question's citation failed to resolve — the 100%
+        citation bar is already broken.
+    Spend is not part of the rule: a credit balance runs out MID-run, after
+    the questions before it were paid for (2026-09-18: 27 answered, then 20
+    refused). The stage-1 rule (2026-09-25) required only one refusal text
+    and `correct + refused >= threshold`, so a run mixing refusals with code
+    crashes or wrong answers read BLOCKED and hid the crashes; this one
+    cannot.
+    """
+    scores = run.get("scores") or []
+    if not scores:
+        return None
+    refused, other, spent = _refusals_and_other_errors(scores)
+    if not refused or other:
+        return None
+
+    correct = sum(1 for s in scores if s.get("correct"))
+    if len(scores) - correct != len(refused):
+        # A question answered and scored wrong: not the provider's doing.
+        return None
+    if correct + len(refused) < threshold:
+        return None
+    if any(s.get("citation_resolved") is False for s in scores):
+        return None
+
+    cause = next(
+        (s["agent_error_text"] for s in refused if s.get("agent_error_text")),
+        None,
+    )
+    cause_clause = (
+        f"the provider answered: {cause}" if cause
+        else "the run record carries no error text (records written before"
+             " 2026-09-25 did not keep it)"
+    )
+    return (
+        f"eval run BLOCKED by the provider — {len(refused)} of {len(scores)}"
+        f" questions never reached the model (ERROR, run spend ${spent:.2f});"
+        f" {correct} answered correctly, so the {threshold}-question accuracy"
+        f" bar was not measured. {cause_clause}. Fix the key or its credit"
+        " and re-run: uv run python -m govbudget verify-phase5"
+    )
+
+
 def eval_gate(
     *,
     client=None,
@@ -673,7 +852,12 @@ def eval_gate(
 
     Returns:
         ok (bool)
-        blocked (bool)  — True when ANTHROPIC_API_KEY is absent
+        blocked (bool)  — True when ANTHROPIC_API_KEY is absent, when the
+            agent exits mid-run, or when the provider refused enough of the
+            run that its verdict was never measured (provider_block_reason,
+            ROADMAP #139)
+        block_cause (str) — present when blocked: "no_key" | "exit" |
+            "provider"
         scores (list of dicts, one per question) — each also carries
             citation_retried (bool) / citation_retry_attempts (int | None) /
             citation_retry_cost_usd (float): backlog #36's bounded, recorded
@@ -707,6 +891,7 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
         return {
             "ok": False,
             "blocked": True,
+            "block_cause": "no_key",
             "scores": [],
             "accuracy": 0,
             "total": 48,
@@ -746,6 +931,7 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
             return {
                 "ok": False,
                 "blocked": True,
+                "block_cause": "exit",
                 "scores": scores,
                 "accuracy": correct,
                 "total": len(entries),
@@ -772,6 +958,10 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
                 "turns": 0,
                 "cost_usd": 0.0,
                 "touched_tables": set(),
+                # ROADMAP #139: the cause travels into the run record, so a
+                # stored all-ERROR run says WHY (provider_block_reason reads
+                # it) instead of reading as a model that answered nothing.
+                "error_text": _recorded_error_text(exc),
             }
 
         is_correct = _score_answer(result, entry)
@@ -856,10 +1046,32 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
             "citation_retry_cost_usd": retry_cost_usd,
             "turns": result.get("turns", 0),
             "cost_usd": result.get("cost_usd", 0.0),
+            **({"agent_error_text": result["error_text"]}
+               if result.get("error_text") else {}),
         })
 
     accuracy_ok = correct >= ACCURACY_THRESHOLD
     citation_ok_all = citation_total == 0 or citation_ok == citation_total
+
+    # ROADMAP #139: a run the provider refused is BLOCKED with its cause — but
+    # only while the refusals could have changed the verdict (see
+    # provider_block_reason); a run that already failed on what it answered
+    # falls through to the FAIL below unchanged.
+    blocked_reason = provider_block_reason({"scores": scores})
+    if blocked_reason is not None and not (accuracy_ok and citation_ok_all):
+        return {
+            "ok": False,
+            "blocked": True,
+            "block_cause": "provider",
+            "scores": scores,
+            "accuracy": correct,
+            "total": len(entries),
+            "citation_ok": citation_ok,
+            "citation_total": citation_total,
+            "citation_retry_count": citation_retry_count,
+            "citation_retry_total_cost_usd": citation_retry_total_cost_usd,
+            "reason": blocked_reason,
+        }
 
     return {
         "ok": accuracy_ok and citation_ok_all,
@@ -874,10 +1086,15 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
         # 48-question base cost — see cmd_verify_phase5's printed disclosure.
         "citation_retry_count": citation_retry_count,
         "citation_retry_total_cost_usd": citation_retry_total_cost_usd,
-        "reason": None if (accuracy_ok and citation_ok_all) else (
-            f"accuracy {correct}/{len(entries)} < {ACCURACY_THRESHOLD} threshold"
-            if not accuracy_ok
-            else f"citation resolution {citation_ok}/{citation_total} < 100%"
+        "reason": None if (accuracy_ok and citation_ok_all) else "; ".join(
+            part for part in (
+                f"accuracy {correct}/{len(entries)} < {ACCURACY_THRESHOLD} threshold"
+                if not accuracy_ok
+                else f"citation resolution {citation_ok}/{citation_total} < 100%",
+                # R-DEC-139b: a FAIL that carries errors the provider did not
+                # cause names them (None when there are none).
+                non_provider_error_clause({"scores": scores}),
+            ) if part
         ),
     }
 
@@ -965,7 +1182,10 @@ def _compute_exit_code(*, fg_ok: bool, eg: dict, ag: dict) -> int:
       all PASS                              → 0
 
     The critical invariant: exit 2 ONLY when every non-green item is
-    genuinely key-blocked.  If eval ran and failed (ok=False, blocked=False),
+    genuinely key-blocked — no key, or (ROADMAP #139) a key the provider
+    refused, when the refusal left the verdict unmeasured
+    (provider_block_reason decides; a run that failed on what it answered
+    stays blocked=False).  If eval ran and failed (ok=False, blocked=False),
     that is a hard FAIL → exit 1, regardless of assembly state.
     """
     if not fg_ok:
@@ -1019,8 +1239,11 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
     eg = eval_gate(duckdb_path=duckdb_path, citations_parquet=citations_parquet)
 
     # Persist per-question results BEFORE any printing — a live eval run costs
-    # real money and must never be lost to a reporting bug.
-    if not eg["blocked"]:
+    # real money and must never be lost to a reporting bug. A run the provider
+    # blocked is persisted too (ROADMAP #139): it made the calls, and its
+    # record is the evidence of the block. Only a run that never started (no
+    # key: no scores) writes nothing.
+    if eg["scores"]:
         runs_dir = config.RESEARCH_DIR / "eval-runs"
         runs_dir.mkdir(parents=True, exist_ok=True)
         run_path = runs_dir / (
@@ -1052,16 +1275,24 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
         # exists with a None value — use `or ''` for optional fields.
         for s in eg["scores"]:
             if not s["correct"] or (s["citation_resolved"] is False):
+                # R-DEC-139b: an errored question shows its recorded cause.
+                err = (
+                    f" error={(s.get('agent_error_text') or '')[:80]!r}"
+                    if s.get("agent_error") and s.get("agent_error_text") else ""
+                )
                 print(
                     f"  {s['id']}: correct={s['correct']} "
                     f"cite={s.get('citation_resolved')} "
                     f"answer={(s.get('agent_answer') or '')[:60]!r} "
-                    f"({(s.get('citation_reason') or '')[:60]})"
+                    f"({(s.get('citation_reason') or '')[:60]}){err}"
                 )
         print(
             f"gate eval: accuracy {eg['accuracy']}/{eg['total']}, "
             f"citation {eg['citation_ok']}/{eg['citation_total']} → FAIL"
         )
+        crash_clause = non_provider_error_clause(eg)
+        if crash_clause:
+            print(f"gate eval: {crash_clause}")
         all_ok = False
     print()
 
@@ -1105,6 +1336,15 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
 
     if exit_code == 0:
         print("verify-phase5: PASS")
+    elif exit_code == 2 and eg.get("block_cause") == "provider":
+        # The key IS set; the provider refused it (ROADMAP #139). Telling the
+        # operator to export a key would send them after the wrong fix.
+        print(
+            "verify-phase5: BLOCKED — the eval provider refused the run "
+            "(credit, authentication or permission), so accuracy was not "
+            "measured.\n"
+            f"{eg['reason'].splitlines()[0]}"
+        )
     elif exit_code == 2:
         print(
             "verify-phase5: BLOCKED — one or more gates require ANTHROPIC_API_KEY.\n"

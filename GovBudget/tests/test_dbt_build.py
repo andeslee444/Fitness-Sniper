@@ -14,7 +14,11 @@ CONTRACT_COLS = (
     "prime_award_transaction_place_of_performance_cd_current, award_id_piid, "
     "usaspending_permalink, contract_award_unique_key, "
     # Phase 5H flowdown columns (stg_flow_contracts)
-    "awarding_office_name, extent_competed, number_of_offers_received"
+    "awarding_office_name, extent_competed, number_of_offers_received, "
+    # ROADMAP #133 (2026-09-25): every USAspending archive row carries its
+    # source revision time; audit_award_duplicate_copies reads it to decide
+    # which copy of a key present in two fiscal-year archives is the newer.
+    "last_modified_date"
 )
 
 ENTITY_XWALK_COLS = (
@@ -220,8 +224,53 @@ def make_lake(data_dir: Path):
         f"'FPDS account narrowing; shared BLI code resolved to account 1611N','1611N'),"
         f"('3010','P-1','2026','N','N0003917D0006',"
         f"'SERCO','UEI5','1000000','fpds-ap','medium','1',"
-        f"'FPDS account narrowing; shared BLI code resolved to account 1810N','1810N'))"
+        f"'FPDS account narrowing; shared BLI code resolved to account 1810N','1810N'),"
+        # 2026-09-25 (#107(b)): account+subagency leaves the published tiers
+        # unless a two-lens adjudication pinned the pair. HR001125C0010 is
+        # pinned-here with both refuter lenses passed (adjudication row below)
+        # and publishes high; HR001125C0011 is the darpa_unpinned pool shape
+        # and must not publish (audit_link_grading keeps it, graded 'low').
+        f"('0601101E','R-1','2026','DARPA','HR001125C0010',"
+        f"'DELTA LABS','UEI6','400000','account+subagency','medium','2','test subagency, pinned','0400'),"
+        f"('0601101E','R-1','2026','DARPA','HR001125C0011',"
+        f"'EPSILON LLC','UEI7','300000','account+subagency','medium','2','test subagency, pool','0400'),"
+        # 2026-09-25 (#110) + R-DEC-110: an announcement link publishes high
+        # only with a recorded review that upholds it and no recorded
+        # rejection/refutation of the article its card cites
+        # (announcement_link_reviews below): ANN0001 is upheld, ANN0002 was
+        # refuted on its cited article and publishes medium.
+        f"('0601101E','R-1','2026','DARPA','ANN0001',"
+        f"'ZETA CORP','UEI8','200000','announcement+lexicon','high','1','test announcement, reviewed',null),"
+        f"('0601101E','R-1','2026','DARPA','ANN0002',"
+        f"'ETA CORP','UEI9','100000','announcement+lexicon','high','1','test announcement, unreviewed',null))"
         f" t({JBOOK_AWARD_COLS})) to '{jbooks}/budget_line_awards.parquet' (format parquet)"
+    )
+    # ROADMAP #110 record (2026-09-25; R-DEC-110 contract 2026-09-26): the
+    # announcement path's reviews, as `jbooks export-facts` writes them
+    # (all-varchar). REQUIRED by the build — tests/test_dbt_link_grading.py
+    # deletes it and expects the build to stop.
+    duckdb.sql(
+        "copy (select * from (values"
+        # a wave 1-3 survivor-list record upholds ANN0001 (it names no
+        # article; reviewed_at is NULL on every backfilled row) …
+        " ('ANN0001','0601101E','R-1','2026','survivor_list','link','upheld',"
+        "  null::varchar,'True',null::varchar,null::varchar,null::varchar,"
+        "  null::varchar,'data/research/announcements/wave1_result.json'),"
+        # … and a wave-4 reviewer rejected ANN0001 on ANOTHER article (9999):
+        # that record does not bind, so ANN0001 stays high
+        " ('ANN0001','0601101E','R-1','2026','verdict_pair','weak','not_run',"
+        "  null::varchar,'False','9999','3','False',null::varchar,"
+        "  'data/research/announcements/wave4_verdicts/chunk_000_A.json'),"
+        # ANN0002's card cites article 5555, which the adversarial pass
+        # refuted: medium, announcement_review_refuted
+        " ('ANN0002','0601101E','R-1','2026','verdict_pair','link','refuted',"
+        "  '1','False','5555','0','True',null::varchar,"
+        "  'data/research/announcements/wave4_verdicts/chunk_000_A.json'))"
+        " t(award_piid, pe_bli, exhibit, fiscal_year, record_kind,"
+        " reviewer_verdict, adversarial_verdict, adversarial_lenses_passed,"
+        " upholds, article_id, record_index, cites_reviewed_article,"
+        " reviewed_at, source_file))"
+        f" to '{jbooks}/announcement_link_reviews.parquet' (format parquet)"
     )
     # Hand-adjudication overlay (migration 010): the mart coalesces this over
     # the mechanical confidence — the fixture row exercises exactly that path
@@ -234,6 +283,14 @@ def make_lake(data_dir: Path):
         f"'2026-09-01T00:00:00Z'),"
         f"('HR001124C0003','0601101E','reject','contradicted',"
         f"'pinned-elsewhere:other','narrative-grep','fixture evidence','2','hand-adjudication-v1',"
+        f"'2026-09-01T00:00:00Z'),"
+        # #107(b): the two account+subagency links above — one pinned by a
+        # two-lens adjudication (kept, high), one in the unpinned pool.
+        f"('HR001125C0010','0601101E','high','pinned',"
+        f"'pinned-here','narrative-grep','fixture evidence','2','hand-adjudication-v1',"
+        f"'2026-09-01T00:00:00Z'),"
+        f"('HR001125C0011','0601101E','medium','darpa_unpinned',"
+        f"'unpinned-pool','','',null,'hand-adjudication-v1',"
         f"'2026-09-01T00:00:00Z'))"
         f" t(award_piid, pe_bli, adjudicated_confidence, award_verdict, pair_reason,"
         f" basis, evidence, refuter_lenses_passed, method, adjudicated_at))"
@@ -242,7 +299,7 @@ def make_lake(data_dir: Path):
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
-        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3'),"
+        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3','2017-01-16 00:00:00+00'),"
         # K3 is a DEOBLIGATION on the same award, district and fiscal year as
         # K1 (ROADMAP #6 rider, 2026-09-11). Without it the fixture cannot tell
         # the by-year marts' positive_obligation formula apart from a wrong one:
@@ -252,19 +309,19 @@ def make_lake(data_dir: Path):
         # two differ — 1000.5 vs 800.25 — and the fixture pins the right one.
         # Same award_id_piid and recipient, so award_count and recipient_count
         # stay 1 while transaction_count becomes 2.
-        f"('K3','2017-06-30','-200.25','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3'),"
-        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null,'NAVSEA HQ','NOT COMPETED',null)"
+        f"('K3','2017-06-30','-200.25','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3','2017-07-01 00:00:00+00'),"
+        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null,'NAVSEA HQ','NOT COMPETED',null,'2017-03-03 00:00:00+00')"
         f") t({CONTRACT_COLS})",
     )
     write_parquet(
         data_dir / "parquet/assistance/fy=2017",
         "select * from (values "
-        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND','MD-04','https://www.usaspending.gov/award/ASST_NON_A1','ASUK1')"
+        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND','MD-04','https://www.usaspending.gov/award/ASST_NON_A1','ASUK1','2017-02-02 00:00:00+00')"
         ") t(assistance_transaction_unique_key, action_date, federal_action_obligation, "
         "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
         "awarding_agency_name, awarding_sub_agency_name, primary_place_of_performance_state_name, "
         "prime_award_transaction_place_of_performance_cd_current, "
-        "usaspending_permalink, assistance_award_unique_key)",
+        "usaspending_permalink, assistance_award_unique_key, last_modified_date)",
     )
     # entity_xwalk fixture — one row, all 8 columns
     entities = data_dir / "parquet/entities"
@@ -1100,10 +1157,15 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
 
     con = duckdb.connect()
     con.execute("create table tx (award_id_piid varchar, obligation double)")
+    # "b2a", not "links": the model has a CTE of that name, which the #130
+    # scope CTEs (2026-09-25) read the link table beside. account and
+    # organization are the columns those CTEs key a shared code's members on.
     con.execute(
-        "create table links (pe_bli varchar, award_piid varchar,"
-        " confidence varchar, recipient_uei varchar, recipient_name varchar)"
+        "create table b2a (pe_bli varchar, award_piid varchar,"
+        " confidence varchar, recipient_uei varchar, recipient_name varchar,"
+        " account varchar, organization varchar)"
     )
+    con.execute("create table progs (pe_bli varchar, account varchar, org varchar)")
     con.execute("create table xwalk (recipient_uei varchar, family_key varchar)")
     con.execute(
         "insert into xwalk values ('U1','ALPHA'),('U2','BRAVO'),('U3','CHARLIE')"
@@ -1121,7 +1183,8 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
         " ('N1', 100.0), ('N2', 50.0), ('N3', -500.0)"
     )
     con.execute(
-        "insert into links values"
+        "insert into b2a (pe_bli, award_piid, confidence, recipient_uei,"
+        " recipient_name) values"
         " ('CLEAR','A1','high','U1','Alpha'),"
         " ('CLEAR','A2','high','U2','Bravo'),"
         " ('CLEAR','A3','high','U2','Bravo'),"
@@ -1145,8 +1208,9 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
             + _model_sql(
                 "fct_program_concentration",
                 fct_award_transactions="tx",
-                fct_budget_to_awards="links",
+                fct_budget_to_awards="b2a",
                 entity_xwalk="xwalk",
+                dim_programs="progs",
             )
             + ")"
         ).fetchall()

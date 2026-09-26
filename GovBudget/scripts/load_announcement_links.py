@@ -37,6 +37,22 @@ designator-normalized / llm-alias / llm-designator-variant / llm-description
 the announcement did NOT name the program as written, and the card must say
 so instead of collapsing every basis into the strongest sentence.
 
+Superseded routes (2026-09-25, ROADMAP #140, decided under the owner's
+delegation): the upsert still takes a key another route holds (fpds-ap, a
+mechanical account* row) — announcement evidence is the stronger evidence of
+THIS program — but the replaced row's method and confidence are recorded in
+budget_line_awards.superseded_method / superseded_confidence / superseded_at
+(migration 019) and carried across this loader's own rebuild; see write_links.
+The 60 moves the 2026-09-19 run made before that existed are recorded by
+migration 020 from the evidence it cites in superseded_evidence (R-DEC-140),
+and the rebuild carries that column too.
+
+Chain order (R-DEC-LOADER, 2026-09-26): migrate -> THIS ->
+scripts/backfill_announcement_link_reviews.py -> jbooks export-facts -> build.
+The write refuses while any migration file is unapplied (require_migrations):
+020's evidence is the created_at this loader's rebuild erases. export-facts
+refuses a review table recorded before this loader's last run.
+
 Usage: uv run python scripts/load_announcement_links.py <wave_result.json>... [--dry-run]
 
 Pass EVERY wave result file on EVERY run. This loader owns every
@@ -72,6 +88,205 @@ from derive_ap_links import (
 # upsert guard (the deriver refuses to touch exactly what this loader owns);
 # tests/test_derive_ap_links_run_order.py pins the two together (ROADMAP #87).
 OWNED_METHODS = EVIDENCE_GRADED_METHODS
+
+_OWNED_SQL_LIST = ", ".join(f"'{m}'" for m in OWNED_METHODS)
+
+#: The link upsert, hoisted so tests run the REAL statement
+#: (tests/test_load_announcement_links_supersede.py). The insert column list
+#: is the 13-column shape derive_ap_links.UPSERT_SQL shares
+#: (tests/test_derive_ap_links_run_order.py compares the two).
+#:
+#: #140 (decided 2026-09-25 under the owner's delegation): the override is
+#: KEPT — an announcement link that lands on a key another route holds takes
+#: the key — but the replaced row's method and confidence are recorded in
+#: superseded_method / superseded_confidence / superseded_at (migration 019)
+#: instead of vanishing. A conflict with a row this loader itself wrote earlier
+#: in the same run (a pair two waves both produced) is not a move from another
+#: route, so an owned row keeps whatever record it already carries.
+UPSERT_SQL = f"""insert into budget_line_awards
+               (pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,
+                recipient_uei, matched_obligation, method, confidence, score, rationale,
+                account)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               on conflict (pe_bli, exhibit, fiscal_year, award_piid) do update set
+                 confidence=excluded.confidence, method=excluded.method,
+                 score=excluded.score, rationale=excluded.rationale,
+                 matched_obligation=excluded.matched_obligation,
+                 account=excluded.account,
+                 superseded_method=case
+                   when budget_line_awards.method in ({_OWNED_SQL_LIST})
+                   then budget_line_awards.superseded_method
+                   else budget_line_awards.method end,
+                 superseded_confidence=case
+                   when budget_line_awards.method in ({_OWNED_SQL_LIST})
+                   then budget_line_awards.superseded_confidence
+                   else budget_line_awards.confidence end,
+                 superseded_at=case
+                   when budget_line_awards.method in ({_OWNED_SQL_LIST})
+                   then budget_line_awards.superseded_at
+                   else now() end"""
+
+SOURCE_UPSERT_SQL = """insert into award_link_sources
+               (award_piid, pe_bli, source_kind, source_id, source_url,
+                archive_url, archived_at, sha256, match_basis)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               on conflict (award_piid, pe_bli, source_kind, source_id) do update set
+                 source_url=excluded.source_url, archive_url=excluded.archive_url,
+                 archived_at=excluded.archived_at, sha256=excluded.sha256,
+                 match_basis=excluded.match_basis"""
+
+
+def _key(row) -> tuple:
+    """budget_line_awards' unique key of a 13-column loader row."""
+    return (row[0], row[1], int(row[2]), row[4])
+
+
+def other_routes_on_keys(cur, keys) -> dict[tuple, tuple[str, str]]:
+    """key -> (method, confidence) of every row ANOTHER route holds on one of
+    `keys` — the rows an incoming link would replace (#140). Read-only; the
+    dry run prints it before anything is written."""
+    if not keys:
+        return {}
+    ordered = sorted(keys)
+    cur.execute(
+        "select b.pe_bli, b.exhibit, b.fiscal_year, b.award_piid,"
+        "       b.method, b.confidence"
+        "  from budget_line_awards b"
+        "  join unnest(%s::text[], %s::text[], %s::int[], %s::text[])"
+        "       as t(pe, ex, fy, piid)"
+        "    on b.pe_bli = t.pe and b.exhibit = t.ex"
+        "   and b.fiscal_year = t.fy and b.award_piid = t.piid"
+        " where b.method <> all(%s)",
+        ([k[0] for k in ordered], [k[1] for k in ordered],
+         [k[2] for k in ordered], [k[3] for k in ordered],
+         list(OWNED_METHODS)),
+    )
+    return {(pe, ex, int(fy), piid): (m, c)
+            for pe, ex, fy, piid, m, c in cur.fetchall()}
+
+
+def write_links(cur, rows: list[tuple], src_rows: list[tuple]) -> dict:
+    """Replace this loader's partition with `rows` / `src_rows`, recording
+    every route an incoming link replaces (#140). Runs inside the caller's
+    transaction and never commits: a raise anywhere rolls the delete back.
+
+    Order matters and is the point:
+      1. snapshot the supersession records the owned rows already carry —
+         the delete in step 2 would otherwise erase them, and the rows they
+         describe no longer exist to conflict with;
+      2. delete the owned partition (ROADMAP #87);
+      3. the #70 member-attribution guard;
+      4. list the other routes' rows the incoming links will replace, then
+         upsert (UPSERT_SQL records each one);
+      5. put each carried record back on its re-inserted link.
+
+    A carried record whose link is NOT re-inserted is dropped with its row and
+    returned in `superseded_dropped_keys`: the replaced route is not restored
+    by this loader (re-running derive_ap_links re-derives an fpds-ap row).
+    """
+    incoming_keys = {_key(r) for r in rows}
+    cur.execute(
+        "select pe_bli, exhibit, fiscal_year, award_piid, superseded_method,"
+        " superseded_confidence, superseded_at, superseded_evidence"
+        " from budget_line_awards"
+        " where method = any(%s) and superseded_method is not null",
+        (list(OWNED_METHODS),),
+    )
+    # superseded_evidence rides along: a historical record (migration 020,
+    # R-DEC-140) must stay a CITED record, not turn into one that looks
+    # recorded at the move.
+    carried = {(pe, ex, int(fy), piid): (m, c, at, ev)
+               for pe, ex, fy, piid, m, c, at, ev in cur.fetchall()}
+    cur.execute("select count(*) from budget_line_awards where method = any(%s)",
+                (list(OWNED_METHODS),))
+    n_stored = cur.fetchone()[0]
+    cur.execute("delete from budget_line_awards where method = any(%s)",
+                (list(OWNED_METHODS),))
+    # ROADMAP #70 fix round 1: same guard as derive_ap_links — a link the
+    # FPDS route already attributed to one member of a shared code must not
+    # be moved to the other by whichever loader runs last. The raise aborts
+    # this transaction, so the delete above is rolled back with it.
+    raise_on_contradictory_accounts(
+        stored_member_claims(cur),
+        incoming_member_claims(rows),
+        loader="load_announcement_links",
+    )
+    replaced = other_routes_on_keys(cur, incoming_keys)
+    cur.executemany(UPSERT_SQL, rows)
+    n_carried = 0
+    dropped = []
+    for key, (m, c, at, ev) in sorted(carried.items(), key=lambda kv: kv[0]):
+        if key not in incoming_keys:
+            dropped.append((key, m, c))
+            continue
+        cur.execute(
+            "update budget_line_awards set superseded_method=%s,"
+            " superseded_confidence=%s, superseded_at=%s, superseded_evidence=%s"
+            " where pe_bli=%s and exhibit=%s and fiscal_year=%s and award_piid=%s"
+            " and method = any(%s) and superseded_method is null",
+            (m, c, at, ev, *key, list(OWNED_METHODS)),
+        )
+        n_carried += cur.rowcount
+    # Same delete-then-upsert shape as the links above, scoped to the two
+    # kinds this loader owns: a link that stops being published must not
+    # leave its source row behind for the citation tier to mint from.
+    cur.execute("delete from award_link_sources"
+                " where source_kind in ('announcement','subaward')")
+    cur.executemany(SOURCE_UPSERT_SQL, src_rows)
+    by_route: dict[tuple[str, str], int] = {}
+    for m, c in replaced.values():
+        by_route[(m, c)] = by_route.get((m, c), 0) + 1
+    return {
+        "stored": n_stored,
+        "links": len(incoming_keys),
+        "superseded_new": len(replaced),
+        "superseded_new_by_route": dict(sorted(by_route.items())),
+        "superseded_carried": n_carried,
+        "superseded_dropped": len(dropped),
+        "superseded_dropped_keys": dropped,
+    }
+
+
+def supersession_census(cur, incoming_keys, *, owner: str | None = None) -> dict:
+    """What this run's rebuild would do to the supersession records the
+    owned rows carry (#140, R-DEC-140): how many are stored, how many of those
+    are historical (superseded_evidence set — migration 020), and how many the
+    rebuild re-inserts (carried) or drops with their link. Read-only; the dry
+    run prints it. `owner` narrows to one organization (tests)."""
+    sql = ("select pe_bli, exhibit, fiscal_year, award_piid,"
+           " superseded_evidence is not null from budget_line_awards"
+           " where method = any(%s) and superseded_method is not null")
+    args: list = [list(OWNED_METHODS)]
+    if owner is not None:
+        sql += " and organization = %s"
+        args.append(owner)
+    cur.execute(sql, args)
+    stored = {(pe, ex, int(fy), piid): hist for pe, ex, fy, piid, hist in cur.fetchall()}
+    dropped = sorted(k for k in stored if k not in incoming_keys)
+    return {"stored": len(stored), "historical": sum(stored.values()),
+            "carried": len(stored) - len(dropped), "dropped": len(dropped),
+            "dropped_keys": dropped}
+
+
+def require_migrations(cur, migrations_dir: Path | None = None) -> None:
+    """Refuse to write until every migration file is applied (R-DEC-LOADER:
+    migrate -> loader -> backfill -> export-facts -> dbt). Migration 019 adds
+    the columns this loader writes, and 020 records the 60 moves of
+    2026-09-19 from the created_at this loader's rebuild erases — run after
+    the loader, it would find no evidence left."""
+    folder = Path(migrations_dir) if migrations_dir else ROOT / "migrations"
+    cur.execute("select to_regclass('schema_migrations') is not null")
+    applied: set[str] = set()
+    if cur.fetchone()[0]:
+        cur.execute("select name from schema_migrations")
+        applied = {r[0] for r in cur.fetchall()}
+    missing = sorted(p.name for p in folder.glob("*.sql") if p.name not in applied)
+    if missing:
+        raise SystemExit(
+            f"load_announcement_links: {len(missing)} migration(s) not applied:"
+            f" {missing}. Run `python -m govbudget migrate` first (chain order:"
+            " migrate -> load_announcement_links -> backfill_announcement_link_reviews"
+            " -> jbooks export-facts -> build); nothing written")
 
 
 def money_color_ok(award_accounts: set[str], line_accounts: set[str]) -> bool:
@@ -146,6 +361,57 @@ def collision_account_for(
     if not doc:
         return None
     return member_for_document(doc_accounts.get((pe_bli, str(doc)), set()), members)
+
+
+_WAVE_RESULT = re.compile(r"^(wave(\d+))_result")
+
+
+def provenance_packets(ann_dir: Path, result_paths) -> dict[tuple[str, str], dict]:
+    """(piid, pe_bli) → the wave packet a published link's evidence IS.
+
+    A wave<N>_chunks directory holds every packet wave N TRIAGED, not only the
+    ones that survived, so the packet has to come from a wave whose
+    `surviving` list holds the pair — the earliest such wave, in wave-number
+    order, when several do (unchanged from before). Until 2026-09-25 the loader
+    kept the first packet of ANY wave, and a pair wave 1 or 2 triaged and
+    dropped but wave 4 upheld on another announcement published with the
+    dropped packet: its card cited an article the reviewers did not uphold.
+    Measured read-only that day, 10 published links took a dropped packet:
+    9 of the 1,074 high announcement links (7 from wave-2 packets, 2 from
+    wave-1) and 1 subaward+lexicon link built from a wave-3 subaward packet
+    for a pair only wave 4 upheld — on the next load it becomes the
+    announcement link wave 4 upheld.
+
+    A survivor with no packet in its own wave gets none (the rationale then
+    says so and no source row is written, as for any packet-less link) rather
+    than a dropped packet from another wave. Each result file is paired with
+    the wave<N>_chunks directory of the same N; a result file with no such
+    directory is refused.
+    """
+    waves = []
+    for path in result_paths:
+        path = Path(path)
+        m = _WAVE_RESULT.match(path.name)
+        if not m:
+            raise SystemExit(
+                f"{path.name}: not a wave<N>_result*.json file — cannot find"
+                " the packets its surviving pairs were judged on")
+        chunks = Path(ann_dir) / f"{m.group(1)}_chunks"
+        if not chunks.is_dir():
+            raise SystemExit(
+                f"{path.name}: no {chunks.name}/ in {ann_dir} — its surviving"
+                " pairs would publish with no packet")
+        survivors = {(s["piid"], s["pe_bli"])
+                     for s in json.loads(path.read_text())["surviving"]}
+        waves.append((int(m.group(2)), chunks, survivors))
+    prov: dict[tuple[str, str], dict] = {}
+    for _, chunks, survivors in sorted(waves, key=lambda w: w[0]):
+        for f in sorted(chunks.glob("chunk_*.json")):
+            for p in json.loads(f.read_text()):
+                key = (p["piid"], p["pe_bli"])
+                if key in survivors:
+                    prov.setdefault(key, p)
+    return prov
 
 
 def load_snapshot_manifest(path: Path = MANIFEST) -> dict[str, dict]:
@@ -268,12 +534,9 @@ def main() -> int:
     catchall = {pe for pe, t in titles if CATCHALL_TITLE.search(t or "")}
     display -= catchall
 
-    # article provenance per (piid, pe) from the wave packets
-    prov = {}
-    for d in sorted((ROOT / "data/research/announcements").glob("wave*_chunks")):
-        for f in sorted(d.glob("chunk_*.json")):
-            for p in json.load(open(f)):
-                prov.setdefault((p["piid"], p["pe_bli"]), p)
+    # article provenance per (piid, pe): the packet of the wave the pair
+    # SURVIVED in (provenance_packets), never a triaged-and-dropped one
+    prov = provenance_packets(ROOT / "data/research/announcements", paths)
 
     pairs = []
     skipped = {"not_display_or_catchall": 0, "collision": 0, "synthetic": 0,
@@ -417,61 +680,61 @@ def main() -> int:
         for r in [x for x in rows if x[12]][:3]:
             print("  split-key sample:", r[0], r[12], r[4], r[8], r[9])
         for r in src_rows[:3]: print("  source:", r[2], r[3], r[4], "|", (r[7] or "")[:16], "|", r[8])
+        # #140: the keys another route holds that this run's links would take
+        # (recorded in superseded_* on the real run). Keys an earlier run
+        # already took are held by this loader's own rows, so they are not
+        # counted here; the real run carries their records across.
+        would = other_routes_on_keys(pg.cursor(), {_key(r) for r in rows})
+        by_route: dict[tuple[str, str], int] = {}
+        for m, c in would.values():
+            by_route[(m, c)] = by_route.get((m, c), 0) + 1
+        print(f"would replace another route's row on {len(would)} key(s):"
+              f" {dict(sorted(by_route.items()))}")
+        # R-DEC-LOADER / R-DEC-140: the real run refuses until migrate has
+        # run; the dry run says what it would find.
+        try:
+            require_migrations(pg.cursor())
+        except SystemExit as exc:
+            print(f"WARNING (the real run refuses): {exc}")
+            pg.rollback()
+        else:
+            census = supersession_census(pg.cursor(), {_key(r) for r in rows})
+            print(f"supersession records on owned rows: {census['stored']} stored"
+                  f" ({census['historical']} historical, migration 020);"
+                  f" the rebuild carries {census['carried']}, drops"
+                  f" {census['dropped']} {census['dropped_keys'][:10]}")
+        pg.rollback()
         return 0
     with pg:
         cur = pg.cursor()
+        require_migrations(cur)
         # Scoped to the two methods this loader owns — and because this loader
-        # is the ONLY writer of those methods, the delete is effectively a
-        # truncate of that partition (ROADMAP #87): every stored announcement
-        # and subaward link goes, and only the links rebuilt from the wave
-        # files on THIS command line come back. A subset of the wave files
-        # therefore unpublishes the rest with every gate green — export_site's
-        # missing-source check catches an announcement link with no source
-        # row, not a link that simply vanished. The stored and incoming counts
-        # are printed side by side so an operator sees "replacing 821 with
-        # 300" before the transaction commits (--dry-run returns above).
-        n_stored = cur.execute(
-            "select count(*) from budget_line_awards where method = any(%s)",
-            (list(OWNED_METHODS),),
-        ).fetchone()[0]
-        print(f"replacing {n_stored} stored {'/'.join(OWNED_METHODS)} links"
-              f" with {len(rows)} rebuilt from {len(paths)} wave file(s)")
-        cur.execute("delete from budget_line_awards where method = any(%s)",
-                    (list(OWNED_METHODS),))
-        # ROADMAP #70 fix round 1: same guard as derive_ap_links — a link the
-        # FPDS route already attributed to one member of a shared code must
-        # not be moved to the other by whichever loader runs last. The raise
-        # aborts this transaction, so the delete above is rolled back with it.
-        raise_on_contradictory_accounts(
-            stored_member_claims(cur),
-            incoming_member_claims(rows),
-            loader="load_announcement_links",
-        )
-        cur.executemany(
-            """insert into budget_line_awards
-               (pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,
-                recipient_uei, matched_obligation, method, confidence, score, rationale,
-                account)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-               on conflict (pe_bli, exhibit, fiscal_year, award_piid) do update set
-                 confidence=excluded.confidence, method=excluded.method,
-                 score=excluded.score, rationale=excluded.rationale,
-                 matched_obligation=excluded.matched_obligation,
-                 account=excluded.account""", rows)
-        # Same delete-then-upsert shape as the links above, scoped to the two
-        # kinds this loader owns: a link that stops being published must not
-        # leave its source row behind for the citation tier to mint from.
-        cur.execute("delete from award_link_sources"
-                    " where source_kind in ('announcement','subaward')")
-        cur.executemany(
-            """insert into award_link_sources
-               (award_piid, pe_bli, source_kind, source_id, source_url,
-                archive_url, archived_at, sha256, match_basis)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-               on conflict (award_piid, pe_bli, source_kind, source_id) do update set
-                 source_url=excluded.source_url, archive_url=excluded.archive_url,
-                 archived_at=excluded.archived_at, sha256=excluded.sha256,
-                 match_basis=excluded.match_basis""", src_rows)
+        # is the ONLY writer of those methods, the delete inside write_links is
+        # effectively a truncate of that partition (ROADMAP #87): every stored
+        # announcement and subaward link goes, and only the links rebuilt from
+        # the wave files on THIS command line come back. A subset of the wave
+        # files therefore unpublishes the rest with every gate green —
+        # export_site's missing-source check catches an announcement link with
+        # no source row, not a link that simply vanished. The stored and
+        # incoming counts are printed side by side so an operator sees
+        # "replacing 821 with 300" (--dry-run returns above); the transaction
+        # commits when this block exits.
+        stats = write_links(cur, rows, src_rows)
+        print(f"replaced {stats['stored']} stored {'/'.join(OWNED_METHODS)} links"
+              f" with {stats['links']} rebuilt from {len(paths)} wave file(s)")
+        # #140: every key an incoming link took from another route, by the
+        # route it replaced — recorded in budget_line_awards.superseded_*.
+        print(f"links that replaced another route's row on their key:"
+              f" {stats['superseded_new']} new this run"
+              f" {stats['superseded_new_by_route']};"
+              f" {stats['superseded_carried']} earlier record(s) carried across"
+              f" the rebuild")
+        if stats["superseded_dropped"]:
+            print(f"WARNING: {stats['superseded_dropped']} link(s) that had"
+                  f" replaced another route are no longer published; the"
+                  f" replaced route is NOT restored by this loader (re-run"
+                  f" derive_ap_links to re-derive an fpds-ap row):"
+                  f" {stats['superseded_dropped_keys'][:10]}")
     with psycopg.connect(DSN) as pg2:
         print("loaded:", pg2.execute("select method, confidence, count(*) from budget_line_awards"
                                      " where method in ('announcement+lexicon','subaward+lexicon') group by 1,2").fetchall())

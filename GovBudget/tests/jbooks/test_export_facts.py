@@ -5,7 +5,7 @@ import duckdb
 import psycopg
 import pytest
 
-from govbudget.jbooks.export_facts import export_facts
+from govbudget.jbooks.export_facts import ChainOrderError, export_facts
 from govbudget.jbooks.load_details import load_document_details
 from govbudget.jbooks.reconcile import reconcile_document
 from govbudget.jbooks.registry import upsert_documents
@@ -75,6 +75,7 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
     paths = export_facts(pg_dsn, parquet_dir=tmp_path)
     assert [p.name for p in paths] == [
+        "announcement_link_reviews.parquet",
         "award_adjudications.parquet",
         "budget_line_awards.parquet",
         "budget_lines.parquet",
@@ -158,3 +159,128 @@ def test_export_facts_includes_provenance_columns(pg_dsn, tmp_path):
     ).columns)
     assert {"id", "org", "fiscal_year", "title", "source_url", "sha256",
             "downloaded_at", "rel_path"} <= doc_cols
+
+
+def test_export_facts_writes_the_announcement_link_reviews_contract(pg_dsn, tmp_path):
+    """#110 (decided 2026-09-25; R-DEC-110 2026-09-26): the announcement
+    path's recorded reviews reach the mart as
+    data/parquet/jbooks/announcement_link_reviews.parquet (dbt source
+    jbook_announcement_link_reviews), EVERY migration-018 column but the
+    table's own recorded_at. The column names are the contract the mart's
+    high-tier predicate reads; an empty table still exports a typed,
+    zero-row file so the source always resolves."""
+    paths = export_facts(pg_dsn, parquet_dir=tmp_path)
+    out = tmp_path / "jbooks" / "announcement_link_reviews.parquet"
+    assert out in paths
+    cols = duckdb.sql(f"select * from read_parquet('{out}') limit 0").columns
+    assert cols == [
+        "award_piid", "pe_bli", "exhibit", "fiscal_year", "record_kind",
+        "reviewer_verdict", "adversarial_verdict", "adversarial_lenses_passed",
+        "upholds", "article_id", "article_source", "record_index",
+        "entry_index", "cites_reviewed_article", "reason", "reviewed_at",
+        "source_file",
+    ]
+    assert duckdb.sql(f"select count(*) from read_parquet('{out}')").fetchone()[0] == 0
+
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into announcement_link_reviews (award_piid, pe_bli, exhibit,"
+            " fiscal_year, record_kind, reviewer_verdict, adversarial_verdict,"
+            " adversarial_lenses_passed, upholds, article_id, article_source,"
+            " record_index, entry_index, cites_reviewed_article, reason,"
+            " source_file) values"
+            " ('P1','PE1','R-1',2026,'verdict_pair','link','upheld',2,true,'A1',"
+            "  'verdict_file',0,0,true,null,"
+            "  'data/research/announcements/wave4_verdicts/chunk_000_A.json'),"
+            " ('P1','PE1','R-1',2026,'survivor_list','link','upheld',null,true,"
+            "  null,null,null,3,null,'owns it',"
+            "  'data/research/announcements/wave3_result.json')")
+    try:
+        export_facts(pg_dsn, parquet_dir=tmp_path)
+        got = duckdb.sql(
+            f"select record_kind, fiscal_year, upholds, adversarial_lenses_passed,"
+            f" article_id, entry_index, reason, reviewed_at"
+            f" from read_parquet('{out}')").fetchall()
+        # every exported column is varchar (export_facts' one rule): a boolean
+        # is Python's str() of it, 'True'/'False', as details.reconciled has
+        # always been; a NULL stays NULL, never the string 'None'. Ordered by
+        # the table's key (…, source_file, record_kind, entry_index).
+        assert got == [
+            ("survivor_list", "2026", "True", None, None, "3", "owns it", None),
+            ("verdict_pair", "2026", "True", "2", "A1", "0", None, None),
+        ]
+    finally:
+        with psycopg.connect(pg_dsn) as con:
+            con.execute("delete from announcement_link_reviews")
+
+
+def test_export_facts_exports_the_superseded_route(pg_dsn, tmp_path):
+    """#140: the route an evidence-graded link replaced on its key (migration
+    019) reaches the lake beside the link, so the move is auditable
+    downstream and not only in Postgres."""
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+            " organization, award_piid, method, confidence, superseded_method,"
+            " superseded_confidence, superseded_at, superseded_evidence)"
+            " values ('PE1','R-1',2026,'N','P1','fpds-ap','medium',null,null,null,null)")
+    paths = export_facts(pg_dsn, parquet_dir=tmp_path)
+    out = tmp_path / "jbooks" / "budget_line_awards.parquet"
+    assert out in paths
+    cols = duckdb.sql(f"select * from read_parquet('{out}') limit 0").columns
+    assert cols[-4:] == ["superseded_method", "superseded_confidence",
+                         "superseded_at", "superseded_evidence"]
+
+
+# ── R-DEC-LOADER: migrate -> loader -> backfill -> export-facts -> dbt ─────
+
+def _owned_link(con, created_at):
+    con.execute(
+        "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+        " organization, award_piid, method, confidence, created_at)"
+        " values ('PE1','R-1',2026,'N','P1','announcement+lexicon','high',%s)",
+        (created_at,))
+
+
+def _review(con, recorded_at):
+    con.execute(
+        "insert into announcement_link_reviews (award_piid, pe_bli, exhibit,"
+        " fiscal_year, record_kind, reviewer_verdict, adversarial_verdict,"
+        " upholds, entry_index, reason, source_file, recorded_at) values"
+        " ('P1','PE1','R-1',2026,'survivor_list','link','upheld',true,0,'r',"
+        "  'data/research/announcements/wave1_result.json',%s)", (recorded_at,))
+
+
+@pytest.mark.parametrize(("review_at", "message"), [
+    (None, "no announcement_link_reviews row"),
+    ("2026-09-26 09:00:00+00", "before the link loader's last run"),
+])
+def test_export_facts_refuses_reviews_the_loader_has_outrun(
+    pg_dsn, tmp_path, review_at, message,
+):
+    """The mart grades announcement links on the review table; a table the
+    backfill wrote BEFORE the loader's last rebuild (or never wrote) would
+    grade links it never saw — refused before any file is written."""
+    with psycopg.connect(pg_dsn) as con:
+        _owned_link(con, "2026-09-26 10:00:00+00")
+        if review_at:
+            _review(con, review_at)
+    try:
+        with pytest.raises(ChainOrderError, match=message):
+            export_facts(pg_dsn, parquet_dir=tmp_path)
+        assert not (tmp_path / "jbooks").exists()
+    finally:
+        with psycopg.connect(pg_dsn) as con:
+            con.execute("delete from announcement_link_reviews")
+
+
+def test_export_facts_accepts_reviews_backfilled_after_the_loader(pg_dsn, tmp_path):
+    with psycopg.connect(pg_dsn) as con:
+        _owned_link(con, "2026-09-26 10:00:00+00")
+        _review(con, "2026-09-26 10:05:00+00")
+    try:
+        paths = export_facts(pg_dsn, parquet_dir=tmp_path)
+        assert tmp_path / "jbooks" / "announcement_link_reviews.parquet" in paths
+    finally:
+        with psycopg.connect(pg_dsn) as con:
+            con.execute("delete from announcement_link_reviews")

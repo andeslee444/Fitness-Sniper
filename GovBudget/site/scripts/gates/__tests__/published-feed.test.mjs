@@ -54,6 +54,7 @@ const html =
   '<section aria-labelledby="concentration-heading"><div data-concentration-basis="high">' +
   `<span data-amount="true" data-fact-id="${HHI}" data-dataset="fct_program_concentration" data-measure="hhi-high">9048</span>` +
   '<div data-hhi-band="Highly Concentrated" data-hhi-basis="high">Highly Concentrated</div>' +
+  "<div data-hhi-band-vintage=\"\">2023 Merger Guidelines bands</div>" +
   `<span data-amount="true" data-fact-id="${DOLLARS}" data-dataset="fct_program_concentration" data-measure="obligations-high">$588.9M</span>` +
   "</div></section>";
 const withheldHtml =
@@ -117,7 +118,7 @@ test("R-INT-2: a destination displaying the all-link receipts is not canonical",
 test("the published figure is the payload's: band, basis, stamps, display and one band only", () => {
   assert.deepEqual(destination().problems, []);
   assert.equal(destination().state, "published");
-  assert.ok(destination({ html: html.replace('data-hhi-band="Highly Concentrated"', 'data-hhi-band="Competitive"') }).problems.length);
+  assert.ok(destination({ html: html.replace('data-hhi-band="Highly Concentrated"', 'data-hhi-band="Unconcentrated"') }).problems.length);
   assert.ok(destination({ html: html.replace('data-hhi-basis="high"', "") }).problems.length);
   assert.ok(destination({ html: html.replace('data-measure="hhi-high"', 'data-measure="hhi"') }).problems.length);
   assert.ok(destination({ html: html.replace('data-measure="obligations-high"', 'data-measure="obligations"') }).problems.length);
@@ -125,6 +126,38 @@ test("the published figure is the payload's: band, basis, stamps, display and on
   assert.ok(destination({ html: html.replace("</div></section>", '<div data-hhi-band="Highly Concentrated" data-hhi-basis="high"></div></div></section>') }).problems.length);
   assert.ok(destination({ html: html + html }).problems.some((p) => p.includes("sections")));
   assert.ok(destination({ html: html.replace("</div></section>", '<p data-concentration-withheld="below-floor"></p></div></section>') }).problems.length);
+});
+
+// R-DEC-132b (controller, 2026-09-26): the badge's vintage is visible text,
+// read back here against hhiBandVintageLine(hhi_high) — the same function the
+// badge renders with — so a badge that names a band with no year, the wrong
+// phrase for its band, or two lines, fails.
+test("the published band carries its visible vintage line, exactly once", () => {
+  const VINTAGE = '<div data-hhi-band-vintage="">2023 Merger Guidelines bands</div>';
+  assert.ok(html.includes(VINTAGE));
+  assert.ok(destination({ html: html.replace(VINTAGE, "") }).problems.some((p) => p.includes("vintage")));
+  assert.ok(destination({ html: html.replace(VINTAGE, VINTAGE + VINTAGE) }).problems.some((p) => p.includes("vintage")));
+  assert.ok(
+    destination({ html: html.replace(VINTAGE, '<div data-hhi-band-vintage="">Below the 2023 Merger Guidelines bands</div>') })
+      .problems.some((p) => p.includes("vintage")),
+  );
+  // A hover title is not visible text: the line must carry the words itself.
+  assert.ok(
+    destination({ html: html.replace(VINTAGE, '<div data-hhi-band-vintage="" title="2023 Merger Guidelines bands"></div>') })
+      .problems.some((p) => p.includes("vintage")),
+  );
+  // An Unconcentrated payload reads "Below the 2023 Merger Guidelines bands".
+  const low = { ...program, hhi: { ...program.hhi, hhi_high: 389.23 } };
+  const lowCitations = { ...citations, [HHI]: { ...citations[HHI], recorded_value: "389.230" } };
+  const lowHtml = html
+    .replace(/Highly Concentrated/g, "Unconcentrated")
+    .replace(">9048<", ">389<")
+    .replace(VINTAGE, '<div data-hhi-band-vintage="">Below the 2023 Merger Guidelines bands</div>');
+  assert.deepEqual(destination({ program: low, html: lowHtml, loadCitation: (id) => lowCitations[id] ?? null }).problems, []);
+  assert.ok(
+    destination({ program: low, html: lowHtml.replace("Below the 2023 Merger Guidelines bands", "2023 Merger Guidelines bands"), loadCitation: (id) => lowCitations[id] ?? null })
+      .problems.some((p) => p.includes("vintage")),
+  );
 });
 
 test("the published figure's receipts resolve to the payload's values, scoped high-confidence", () => {
@@ -144,7 +177,9 @@ test("a below-floor destination is canonical only when it says so, with the true
   assert.ok(destination({ program: withheldProgram, html: mangled }).problems.some((p) => p.includes("misstates the floor")));
   assert.ok(destination({ program: withheldProgram, html: withheldHtml.replace("below-floor", "shared-code") }).problems.length);
   assert.ok(destination({ program: withheldProgram, html: withheldHtml.replace("</p>", `</p><span data-amount="true" data-fact-id="${ALL_HHI}">10000</span>`) }).problems.length);
-  assert.ok(destination({ program: withheldProgram, html: withheldHtml.replace("</p>", '</p><div data-hhi-band="Competitive" data-hhi-basis="high"></div>') }).problems.length);
+  assert.ok(destination({ program: withheldProgram, html: withheldHtml.replace("</p>", '</p><div data-hhi-band="Unconcentrated" data-hhi-basis="high"></div>') }).problems.length);
+  // R-DEC-132b: a withheld section carries no band, so no vintage line either.
+  assert.ok(destination({ program: withheldProgram, html: withheldHtml.replace("</p>", '</p><div data-hhi-band-vintage="">2023 Merger Guidelines bands</div>') }).problems.some((p) => p.includes("vintage")));
   // The payload and the page must agree on the state, both ways.
   assert.ok(destination({ program: withheldProgram, html }).problems.length);
   assert.ok(destination({ html: withheldHtml }).problems.length);

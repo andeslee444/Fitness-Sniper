@@ -21,7 +21,10 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import {
   destinationHhiBadge,
+  feedConcentrationDescription,
+  hhiCardNoteFinding,
   hhiDestinationCensusVerdict,
+  hhiSectionDescriptionFinding,
   MIN_RECONCILABLE_HHI_DESTINATIONS,
 } from "../feed.mjs";
 
@@ -31,8 +34,8 @@ const page = (inner) => parse(`<html><body><main>${inner}</main></body></html>`,
 
 describe("destinationHhiBadge", () => {
   it("returns the band for one high-basis badge", () => {
-    const r = destinationHhiBadge(page('<div data-hhi-band="Competitive" data-hhi-basis="high">Competitive</div>'));
-    expect(r).toEqual({ band: "Competitive", basis: "high", withheld: null, error: null });
+    const r = destinationHhiBadge(page('<div data-hhi-band="Unconcentrated" data-hhi-basis="high">Unconcentrated</div>'));
+    expect(r).toEqual({ band: "Unconcentrated", basis: "high", withheld: null, error: null });
   });
 
   it("accepts a withheld destination as a legitimate state", () => {
@@ -56,26 +59,26 @@ describe("destinationHhiBadge", () => {
 
   it("fails when two badges are rendered", () => {
     const r = destinationHhiBadge(page(
-      '<div data-hhi-band="Competitive" data-hhi-basis="high"></div><div data-hhi-band="Moderately Concentrated" data-hhi-basis="high"></div>',
+      '<div data-hhi-band="Unconcentrated" data-hhi-basis="high"></div><div data-hhi-band="Moderately Concentrated" data-hhi-basis="high"></div>',
     ));
     expect(r.band).toBeNull();
     expect(r.error).toMatch(/renders 2 \[data-hhi-band\]/);
   });
 
   it("fails when the badge does not declare its basis", () => {
-    const r = destinationHhiBadge(page('<div data-hhi-band="Competitive">Competitive</div>'));
+    const r = destinationHhiBadge(page('<div data-hhi-band="Unconcentrated">Unconcentrated</div>'));
     expect(r.band).toBeNull();
     expect(r.error).toMatch(/data-hhi-basis/);
   });
 
   it("fails on an unknown basis token", () => {
-    const r = destinationHhiBadge(page('<div data-hhi-band="Competitive" data-hhi-basis="medium"></div>'));
+    const r = destinationHhiBadge(page('<div data-hhi-band="Unconcentrated" data-hhi-basis="medium"></div>'));
     expect(r.error).toMatch(/expected "high"/);
   });
 
   it("fails when a page both publishes a band and claims to withhold", () => {
     const r = destinationHhiBadge(page(
-      '<div data-hhi-band="Competitive" data-hhi-basis="high"></div>' +
+      '<div data-hhi-band="Unconcentrated" data-hhi-basis="high"></div>' +
         '<p data-concentration-withheld="below-floor">withheld</p>',
     ));
     expect(r.band).toBeNull();
@@ -163,5 +166,136 @@ describe("hhiDestinationCensusVerdict", () => {
     const note = src.slice(src.lastIndexOf("/**", decl), decl);
     expect(note).toMatch(/NEVER LOWER/i);
     expect(note).toMatch(/\b20\d\d-\d\d-\d\d\b/);
+  });
+});
+
+/**
+ * #132 (decided 2026-09-25): the bands are the 2023 Merger Guidelines', and
+ * every surface that names a band names that vintage. On /feed/ the band a
+ * card names lives in its [data-hhi-scope-note] (data-hhi-band + text); leg
+ * (l) already re-bands the card's PRINTED figure to compare with the
+ * destination, so it now also holds the note to that same band and to the
+ * vintage. hhiCardNoteFinding is that check, pure.
+ */
+describe("hhiCardNoteFinding", () => {
+  const vintageNote = (band) =>
+    `${band} in FY2021 (2023 Merger Guidelines bands) — the program's pooled, all-years HHI can differ, or not be published; see the program page.`;
+
+  it("passes a note naming the printed figure's band, with the vintage", () => {
+    expect(
+      hhiCardNoteFinding({ cardValue: 2000, noteBand: "Highly Concentrated", noteText: vintageNote("Highly Concentrated") }),
+    ).toBeNull();
+    expect(
+      hhiCardNoteFinding({ cardValue: 1800, noteBand: "Moderately Concentrated", noteText: vintageNote("Moderately Concentrated") }),
+    ).toBeNull();
+  });
+
+  it("has nothing to check on a card with no note", () => {
+    expect(hhiCardNoteFinding({ cardValue: 2000, noteBand: null, noteText: null })).toBeNull();
+  });
+
+  it("fails a note still banding by the retired 2010 thresholds", () => {
+    // HHI 2000 was "Moderately Concentrated" under 1,500/2,500.
+    const f = hhiCardNoteFinding({
+      cardValue: 2000,
+      noteBand: "Moderately Concentrated",
+      noteText: vintageNote("Moderately Concentrated"),
+    });
+    expect(f).toMatch(/Moderately Concentrated/);
+    expect(f).toMatch(/Highly Concentrated/);
+    expect(f).toMatch(/HHI 2000/);
+  });
+
+  it("fails a note whose band disagrees with the whole number the card prints", () => {
+    // The card prints HHI 1800 (from 1800.4): the note must not call it high.
+    expect(
+      hhiCardNoteFinding({ cardValue: 1800, noteBand: "Highly Concentrated", noteText: vintageNote("Highly Concentrated") }),
+    ).toMatch(/Moderately Concentrated/);
+  });
+
+  // R-DEC-132b: below 1,000 the band is "Unconcentrated"; a note still
+  // carrying the retired editorial "Competitive" names a band hhiBand no
+  // longer produces, so it disagrees with the card's own figure.
+  it("fails a note still saying Competitive below 1,000", () => {
+    const f = hhiCardNoteFinding({ cardValue: 892, noteBand: "Competitive", noteText: vintageNote("Competitive") });
+    expect(f).toMatch(/Unconcentrated/);
+    expect(
+      hhiCardNoteFinding({
+        cardValue: 892,
+        noteBand: "Unconcentrated",
+        noteText: "Unconcentrated in FY2020 (below the 2023 Merger Guidelines bands) — the program's pooled, all-years HHI can differ, or not be published; see the program page.",
+      }),
+    ).toBeNull();
+  });
+
+  it("fails a note that names a band without its vintage", () => {
+    const f = hhiCardNoteFinding({
+      cardValue: 9844,
+      noteBand: "Highly Concentrated",
+      noteText: "Highly Concentrated in FY2025 — the program's pooled, all-years HHI can differ, or not be published; see the program page.",
+    });
+    expect(f).toMatch(/2023 Merger Guidelines/);
+  });
+});
+
+/**
+ * R-DEC-132b (controller, 2026-09-26): the /feed/ section description names
+ * the bands too ("Each card names its band …"), so it names their vintage,
+ * the badge's own words for all three bands, and says the word below 1,000 is
+ * this site's. The stage-1 checker found it still saying "DOJ/FTC band:
+ * competitive, …" with no year, and no gate reading it. Leg (l) now reads it
+ * off the built page (feedConcentrationDescription) and holds it to
+ * hhiSectionDescriptionFinding.
+ */
+describe("hhiSectionDescriptionFinding", () => {
+  const good =
+    "Programs whose high-confidence award links carry at least $5M … whatever its value. " +
+    "Each card names its band under the 2023 Merger Guidelines: moderately concentrated from 1,000 to 1,800 " +
+    "and highly concentrated above 1,800. Below 1,000 the card says unconcentrated, this site's label for that range. " +
+    "Each card is a one-year snapshot.";
+
+  it("passes a description naming the vintage, every band, and whose word the low band is", () => {
+    expect(hhiSectionDescriptionFinding(good)).toBeNull();
+  });
+
+  it("fails the pre-#132 sentence: no year, and the retired editorial band", () => {
+    const f = hhiSectionDescriptionFinding(
+      "Each card names its DOJ/FTC band: competitive, moderately concentrated or highly concentrated.",
+    );
+    expect(f).toMatch(/2023 Merger Guidelines/);
+  });
+
+  it("fails a description with the vintage that still says competitive", () => {
+    expect(hhiSectionDescriptionFinding(good.replace("unconcentrated,", "competitive,"))).toMatch(/competitive/i);
+  });
+
+  it("fails a description that drops a band", () => {
+    expect(hhiSectionDescriptionFinding(good.replace("and highly concentrated above 1,800", ""))).toMatch(
+      /highly concentrated/,
+    );
+  });
+
+  it("fails a description that does not attribute the low band to the site", () => {
+    expect(hhiSectionDescriptionFinding(good.replace(", this site's label for that range", ""))).toMatch(/site/);
+  });
+
+  it("fails a missing description", () => {
+    expect(hhiSectionDescriptionFinding(null)).toMatch(/no section description/);
+  });
+});
+
+describe("feedConcentrationDescription", () => {
+  it("reads the concentration section's description paragraph off the page", () => {
+    const root = page(
+      '<section id="feed-yoy_swing"><div class="mb-3"><h2>Year-over-Year Swings</h2><p>Programs with FY2025 budget.</p></div></section>' +
+        '<section id="feed-concentration_shift"><div class="mb-3"><h2>Award Concentration Shifts <span>(75 of 1,606)</span></h2>' +
+        "<p>Each card names its band under the 2023 Merger Guidelines.</p><div><a>RSS</a></div></div>" +
+        '<ol><li data-feed-card=""><p data-hhi-scope-note="">x</p></li></ol></section>',
+    );
+    expect(feedConcentrationDescription(root)).toBe("Each card names its band under the 2023 Merger Guidelines.");
+  });
+
+  it("returns null when the section is not on the page", () => {
+    expect(feedConcentrationDescription(page("<section id=\"feed-yoy_swing\"></section>"))).toBeNull();
   });
 });

@@ -1218,3 +1218,464 @@ def test_aliases_csv_is_anchored_to_config_root():
     assert crosswalk_module._ALIASES_CSV == (
         config.ROOT / "data-seeds" / "org_subagency_aliases.csv")
     assert crosswalk_module._ALIASES_CSV.is_file()
+
+
+# --------------------------------------------------------------------------
+# #170 (2026-09-25): an identity (pe_bli, exhibit, fiscal_year) that two
+# accounts — or two organizations — file is refused before anything is
+# planned or written. budget_line_awards' unique key names neither account
+# nor organization, so the later line's upsert silently replaced the earlier
+# one's grade ("the last account wins"). The live branch (81929a6b) aborted;
+# the merge dropped the abort.
+# --------------------------------------------------------------------------
+
+def seed_lines(pg_dsn, lines, *, doc_org=None, doc_fy=2026):
+    """One jbook_documents row, then one budget_lines row per
+    (organization, pe_bli, exhibit, fiscal_year, account, title)."""
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url) values (%s,'procurement',%s,'lines.pdf',"
+            " 'https://example.test/lines/' || %s || '.pdf')",
+            (doc_org or lines[0][0], doc_fy,
+             "-".join(f"{o}_{pe}_{fy}_{a}" for o, pe, _e, fy, a, _t in lines)),
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        for org, pe, exhibit, fy, account, title in lines:
+            con.execute(
+                "insert into budget_lines (exhibit, fiscal_year, account,"
+                " organization, pe_bli, title, amount_type, amount_thousands,"
+                " source_document_id) values (%s,%s,%s,%s,%s,%s,"
+                " 'fy_2026_total',1,%s)",
+                (exhibit, fy, account, org, pe, title, doc_id),
+            )
+
+
+NAVY_TWO_ACCOUNTS = [
+    ("N", "3010", "P-1", 2026, "1611N", "LPD FLIGHT II"),
+    ("N", "3010", "P-1", 2026, "1810N", "SHIPBOARD TACTICAL COMMUNICATIONS"),
+    ("N", "0145", "P-1", 2026, "1506N", "ONE ACCOUNT ONLY"),
+]
+NAVY_AWARDS = [
+    ("NV1", "N0002426C0001", "1", "017-1611;017-1810", "LPD SHIPBOARD WORK",
+     "LPD FLIGHT", "YARD CO", "UEIYARD", "Department of the Navy", "2026-03-01"),
+]
+
+
+def test_ambiguous_accounts_are_named(pg_dsn):
+    seed_lines(pg_dsn, NAVY_TWO_ACCOUNTS)
+    found = crosswalk_module.find_ambiguous_identities(pg_dsn, ["N"])
+    assert [(a.pe_bli, a.exhibit, a.fiscal_year, a.filers) for a in found] == [
+        ("3010", "P-1", 2026, (("N", "1611N"), ("N", "1810N")))]
+    assert "3010" in found[0].describe() and "1611N" in found[0].describe()
+
+
+def test_crosswalk_org_refuses_an_ambiguous_account_set_before_writing(pg_dsn, tmp_path):
+    seed_lines(pg_dsn, NAVY_TWO_ACCOUNTS)
+    glob = make_award_parquet_with_dates(tmp_path, NAVY_AWARDS)
+    with pytest.raises(crosswalk_module.AmbiguousIdentityError, match="1611N.*1810N"):
+        crosswalk_org(pg_dsn, organization="N", treasury_agency="097", award_glob=glob)
+    with pytest.raises(crosswalk_module.AmbiguousIdentityError):
+        plan_crosswalk_org(pg_dsn, organization="N", treasury_agency="097", award_glob=glob)
+    assert _link_count(pg_dsn) == 0
+
+
+def test_two_organizations_filing_one_identity_are_refused(pg_dsn, tmp_path):
+    """Codes 20, 30 and 500 are filed by two or more organizations in
+    FY2024-FY2026: one organization's run would overwrite the other's rows
+    on the shared key, so either run is refused, not only a run of both."""
+    seed_lines(pg_dsn, [
+        ("DCSA", "20", "P-1", 2026, "0300D", "MAJOR EQUIPMENT"),
+        ("DTRA", "20", "P-1", 2026, "0300D", "MAJOR EQUIPMENT"),
+    ])
+    glob = make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
+    found = crosswalk_module.find_ambiguous_identities(pg_dsn, ["DTRA"])
+    assert [a.filers for a in found] == [(("DCSA", "0300D"), ("DTRA", "0300D"))]
+    with pytest.raises(crosswalk_module.AmbiguousIdentityError, match="DCSA"):
+        crosswalk_org(pg_dsn, organization="DTRA", treasury_agency="097", award_glob=glob)
+
+
+def test_an_identity_filed_once_is_not_ambiguous(pg_dsn):
+    seed_lines(pg_dsn, NAVY_TWO_ACCOUNTS[2:])
+    seed_budget(pg_dsn)
+    assert crosswalk_module.find_ambiguous_identities(pg_dsn, ["N", "DARPA"]) == []
+
+
+def test_the_edition_selector_scopes_the_check(pg_dsn):
+    seed_lines(pg_dsn, [
+        ("N", "3010", "P-1", 2025, "1611N", "LPD FLIGHT II"),
+        ("N", "3010", "P-1", 2025, "1810N", "SHIPBOARD TACTICAL COMMUNICATIONS"),
+        ("N", "3010", "P-1", 2026, "1611N", "LPD FLIGHT II"),
+    ])
+    assert crosswalk_module.find_ambiguous_identities(pg_dsn, ["N"], 2026) == []
+    assert len(crosswalk_module.find_ambiguous_identities(pg_dsn, ["N"], 2025)) == 1
+
+
+def test_cli_dry_run_exits_2_naming_every_ambiguous_identity(
+    monkeypatch, pg_dsn, tmp_path, capsys,
+):
+    """The default run plans every organization; one ambiguous identity in
+    any of them stops the whole run before its first plan — --dry-run
+    included, so the operator reads the list before asking for a write."""
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    seed_lines(pg_dsn, NAVY_TWO_ACCOUNTS)
+    seed_lines(pg_dsn, [("DCSA", "20", "P-1", 2026, "0300D", "X"),
+                        ("DTRA", "20", "P-1", 2026, "0300D", "X")])
+    seed_budget(pg_dsn)
+    make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
+    planned: list[str] = []
+    real_plan = crosswalk_module.plan_crosswalk_org
+    monkeypatch.setattr(crosswalk_module, "plan_crosswalk_org",
+                        lambda dsn, **kw: planned.append(kw["organization"])
+                        or real_plan(dsn, **kw))
+    with pytest.raises(SystemExit) as e:
+        cli.main(["jbooks", "crosswalk", "--dry-run"])
+    assert e.value.code == 2
+    out = capsys.readouterr().out
+    assert "crosswalk: 2 ambiguous (pe_bli, exhibit, fiscal_year) identit" in out
+    assert "(3010, P-1, FY2026): N 1611N; N 1810N" in out
+    assert "(20, P-1, FY2026): DCSA 0300D; DTRA 0300D" in out
+    assert "nothing planned or written" in out
+    assert planned == []
+    assert _link_count(pg_dsn) == 0
+
+
+def test_cli_single_unambiguous_org_still_runs(monkeypatch, pg_dsn, tmp_path, capsys):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    seed_lines(pg_dsn, NAVY_TWO_ACCOUNTS)       # N is ambiguous ...
+    seed_budget(pg_dsn)                         # ... DARPA is not
+    make_award_parquet_with_dates(tmp_path, TWO_FY_ROWS)
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA"])
+    assert "crosswalk DARPA: 1 links written" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------------------
+# #171 (2026-09-25): a line's detail tokens come only from project titles in
+# ITS OWN organization's book, ITS OWN edition, and its own account (or a
+# detail row that names no account) — the live branch's scoping (81929a6b),
+# which the merge dropped. Unscoped, a line reached account+tokens/high on
+# project titles from another organization, edition or account.
+# --------------------------------------------------------------------------
+
+def seed_detail(pg_dsn, *, doc_org, doc_fy, pe_bli, title, account=None):
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url) values (%s,'rdte',%s,%s,%s)",
+            (doc_org, doc_fy, f"d_{doc_org}_{doc_fy}_{title[:8]}.pdf",
+             f"https://example.test/{doc_org}/{doc_fy}/{title[:8]}.pdf"),
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into extraction_runs (document_id, tier, tool_versions, status)"
+            " values (%s,1,'{}','success')", (doc_id,))
+        run_id = con.execute("select max(id) from extraction_runs").fetchone()[0]
+        con.execute(
+            "insert into budget_line_details (pe_bli, project_number,"
+            " project_title, scenario, amount_millions, xml_path,"
+            " extraction_run_id, document_id, superseded, account)"
+            " values (%s,'P-01',%s,'PriorYear',1,'ProgramElement[0]',%s,%s,false,%s)",
+            (pe_bli, title, run_id, doc_id, account))
+
+
+# One DARPA FY2026 award whose description overlaps ONLY words that sit in
+# project titles outside the line's own scope.
+SCOPE_AWARD = [
+    ("SC1", "HR001126C0042", "1", "097-0400", "QUANTUM ENTANGLEMENT PHOTONICS",
+     "QUANTUM ENTANGLEMENT PHOTONICS", "QCO", "UEIQ", "Some Other Agency",
+     "2026-03-01"),
+]
+
+
+def _grade_of(pg_dsn, piid="HR001126C0042"):
+    with psycopg.connect(pg_dsn) as con:
+        return con.execute(
+            "select method, confidence from budget_line_awards where award_piid=%s",
+            (piid,)).fetchone()
+
+
+@pytest.mark.parametrize(("doc_org", "doc_fy", "account", "method"), [
+    ("DARPA", 2026, None, "account+tokens"),      # own book, own edition
+    ("DARPA", 2026, "0400", "account+tokens"),    # own account
+    ("DARPA", 2025, None, "account"),             # another edition
+    ("MDA", 2026, None, "account"),               # another organization
+    ("DARPA", 2026, "0401", "account"),           # another account
+], ids=["in-scope", "own-account", "other-edition", "other-org", "other-account"])
+def test_detail_tokens_are_scoped_to_org_edition_and_account(
+    pg_dsn, tmp_path, doc_org, doc_fy, account, method,
+):
+    seed_budget(pg_dsn)          # DARPA 0601101E R-1 FY2026 account 0400
+    seed_detail(pg_dsn, doc_org=doc_org, doc_fy=doc_fy, pe_bli="0601101E",
+                title="QUANTUM ENTANGLEMENT", account=account)
+    glob = make_award_parquet_with_dates(tmp_path, SCOPE_AWARD)
+    crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob)
+    assert _grade_of(pg_dsn)[0] == method
+
+
+def test_a_legacy_long_form_document_org_counts_as_its_workbook_org(pg_dsn, tmp_path):
+    """PB2017-PB2019 filenames spell the agency out; orgs.workbook_org maps
+    them to the display workbook's code, so they are the line's own book."""
+    seed_lines(pg_dsn, [("DTRA", "0602718BR", "R-1", 2026, "0400", "WMD DEFEAT")],
+               doc_org="DTRA")
+    seed_detail(pg_dsn, doc_org="Defense_Threat_Reduction_Agency", doc_fy=2026,
+                pe_bli="0602718BR", title="QUANTUM ENTANGLEMENT")
+    glob = make_award_parquet_with_dates(tmp_path, SCOPE_AWARD)
+    crosswalk_org(pg_dsn, organization="DTRA", treasury_agency="097", award_glob=glob)
+    assert _grade_of(pg_dsn)[0] == "account+tokens"
+
+
+def test_regrade_report_names_what_scoping_moves_and_why(pg_dsn, tmp_path):
+    """The dry run's re-grade: a stored account+tokens row whose overlap came
+    from another edition's project title falls under the scoped rule, split
+    by whether it carries an adjudication, with the first scope leg that
+    dropped it; a row the scoped rule re-grades identically is not listed."""
+    seed_budget(pg_dsn)
+    seed_detail(pg_dsn, doc_org="DARPA", doc_fy=2025, pe_bli="0601101E",
+                title="QUANTUM ENTANGLEMENT")
+    glob = make_award_parquet_with_dates(tmp_path, SCOPE_AWARD + [
+        ("SC2", "HR001126C0043", "1", "097-0400", "QUANTUM ENTANGLEMENT PHOTONICS",
+         "X", "QCO", "UEIQ", DARPA_SUB, "2026-04-01"),
+        ("SC3", "HR001126C0044", "1", "097-0400", "DEFENSE RESEARCH SCIENCES",
+         "UNRELATED", "RCO", "UEIR", "Some Other Agency", "2026-04-01"),
+    ])
+    kw = dict(organization="DARPA", treasury_agency="097", award_glob=glob)
+    with psycopg.connect(pg_dsn) as con:
+        # the rows the UNSCOPED rule wrote before #171
+        for piid, method, conf in (("HR001126C0042", "account+tokens", "high"),
+                                   ("HR001126C0043", "account+tokens", "high"),
+                                   ("HR001126C0044", "account", "low")):
+            con.execute(
+                "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+                " organization, award_piid, method, confidence, rationale)"
+                " values ('0601101E','R-1',2026,'DARPA',%s,%s,%s,'stored')",
+                (piid, method, conf))
+        con.execute(
+            "insert into award_pe_adjudications (award_piid, pe_bli,"
+            " adjudicated_confidence, award_verdict, pair_reason)"
+            " values ('HR001126C0043','0601101E','medium','darpa_unpinned',"
+            " 'unpinned-pool')")
+    try:
+        report = crosswalk_module.regrade_report(pg_dsn, **kw)
+    finally:
+        with psycopg.connect(pg_dsn) as con:
+            con.execute("delete from award_pe_adjudications")
+    assert report.stored_mechanical == 3
+    assert report.reproduced == 3            # the unscoped rule re-grades all 3
+    assert report.not_candidate == 0
+    assert report.transitions == {
+        ("account+tokens", "high", "unadjudicated", "account", "low"): 1,
+        ("account+tokens", "high", "adjudicated medium",
+         "account+subagency", "medium"): 1,
+    }
+    assert report.lost_leg == {("unadjudicated", "edition"): 1,
+                               ("adjudicated medium", "edition"): 1}
+    assert _grade_of(pg_dsn) == ("account+tokens", "high")   # nothing written
+
+
+def test_cli_dry_run_prints_the_regrade(monkeypatch, pg_dsn, tmp_path, capsys):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    seed_budget(pg_dsn)
+    seed_detail(pg_dsn, doc_org="DARPA", doc_fy=2025, pe_bli="0601101E",
+                title="QUANTUM ENTANGLEMENT")
+    make_award_parquet_with_dates(tmp_path, SCOPE_AWARD)
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+            " organization, award_piid, method, confidence, rationale)"
+            " values ('0601101E','R-1',2026,'DARPA','HR001126C0042',"
+            " 'account+tokens','high','stored')")
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--dry-run"])
+    out = capsys.readouterr().out
+    assert ("crosswalk DARPA re-grade under the scoped detail tokens"
+            " (organization, edition, account; #171): 1 stored mechanical"
+            " row(s); the unscoped rule reproduces 1") in out
+    assert ("  account+tokens/high [unadjudicated] -> account/low: 1") in out
+    assert "  first scope leg that drops the overlap below 2: edition 1" in out
+    assert "crosswalk dry-run: nothing written" in out
+    assert _grade_of(pg_dsn) == ("account+tokens", "high")
+
+
+# --------------------------------------------------------------------------
+# R-DEC-171 (stage-1 follow-up ruling, 2026-09-26): an UPDATE-ONLY re-grade.
+# The scoped detail tokens change the grade of rows the crosswalk already
+# stored; the only CLI write path (--yes) would also INSERT every candidate
+# pair not yet stored (226,020 for DARPA FY2026 --all-years). The re-grade
+# touches stored mechanical rows only, only where the scoping alone moves the
+# grade, only when the row was stored under the run's own window, and only
+# when an operator passes the count its dry run printed.
+# --------------------------------------------------------------------------
+
+REGRADE_AWARDS = SCOPE_AWARD + [
+    ("SC2", "HR001126C0043", "1", "097-0400", "QUANTUM ENTANGLEMENT PHOTONICS",
+     "X", "QCO", "UEIQ", DARPA_SUB, "2026-04-01"),
+    ("SC3", "HR001126C0044", "1", "097-0400", "DEFENSE RESEARCH SCIENCES",
+     "UNRELATED", "RCO", "UEIR", "Some Other Agency", "2026-04-01"),
+    ("SC4", "HR001126C0045", "1", "097-0400", "QUANTUM ENTANGLEMENT PHOTONICS",
+     "NOT STORED", "QCO", "UEIQ", "Some Other Agency", "2026-04-01"),
+]
+
+
+def _seed_regrade(pg_dsn, tmp_path, *, window="award FY2026"):
+    """Three rows the UNSCOPED rule stored under `window` (HR001126C0045 is a
+    candidate the crosswalk never stored), one adjudicated."""
+    seed_budget(pg_dsn)
+    seed_detail(pg_dsn, doc_org="DARPA", doc_fy=2025, pe_bli="0601101E",
+                title="QUANTUM ENTANGLEMENT")
+    glob = make_award_parquet_with_dates(tmp_path, REGRADE_AWARDS)
+    with psycopg.connect(pg_dsn) as con:
+        for piid, method, conf in (("HR001126C0042", "account+tokens", "high"),
+                                   ("HR001126C0043", "account+tokens", "high"),
+                                   ("HR001126C0044", "account", "low")):
+            con.execute(
+                "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+                " organization, award_piid, method, confidence, score, rationale)"
+                " values ('0601101E','R-1',2026,'DARPA',%s,%s,%s,2,%s)",
+                (piid, method, conf, f"stored by the unscoped rule; {window}"))
+        con.execute(
+            "insert into award_pe_adjudications (award_piid, pe_bli,"
+            " adjudicated_confidence, award_verdict, pair_reason)"
+            " values ('HR001126C0043','0601101E','medium','darpa_unpinned',"
+            " 'unpinned-pool')")
+    return glob
+
+
+def _grades(pg_dsn):
+    with psycopg.connect(pg_dsn) as con:
+        return con.execute(
+            "select award_piid, method, confidence, rationale"
+            " from budget_line_awards order by award_piid").fetchall()
+
+
+@pytest.fixture()
+def _no_adjudications(pg_dsn):
+    yield
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("delete from award_pe_adjudications")
+
+
+def test_regrade_plans_only_the_rows_the_scoping_moves(pg_dsn, tmp_path, _no_adjudications):
+    glob = _seed_regrade(pg_dsn, tmp_path)
+    report = crosswalk_module.regrade_report(pg_dsn, award_glob=glob, **DARPA_KW)
+    assert [(u.key[3], u.was_method, u.was_confidence, u.bucket, u.method,
+             u.confidence) for u in report.updates] == [
+        ("HR001126C0042", "account+tokens", "high", "unadjudicated", "account", "low"),
+        ("HR001126C0043", "account+tokens", "high", "adjudicated medium",
+         "account+subagency", "medium"),
+    ]
+    assert report.window_mismatch == 0
+    assert report.new_pairs == 1            # HR001126C0045: a candidate, never stored
+
+
+def test_apply_regrade_updates_in_place_and_never_inserts(pg_dsn, tmp_path, _no_adjudications):
+    glob = _seed_regrade(pg_dsn, tmp_path)
+    report = crosswalk_module.regrade_report(pg_dsn, award_glob=glob, **DARPA_KW)
+    before = _link_count(pg_dsn)
+    assert crosswalk_module.apply_regrade(pg_dsn, report) == 2
+    assert _link_count(pg_dsn) == before == 3          # nothing inserted
+    got = {piid: (m, c, why) for piid, m, c, why in _grades(pg_dsn)}
+    assert "HR001126C0045" not in got                   # the unstored candidate
+    assert got["HR001126C0042"][:2] == ("account", "low")
+    assert got["HR001126C0043"][:2] == ("account+subagency", "medium")
+    assert got["HR001126C0044"] == (
+        "account", "low", "stored by the unscoped rule; award FY2026")   # untouched
+    for piid in ("HR001126C0042", "HR001126C0043"):
+        assert "; award FY2026; re-graded " in got[piid][2]
+        assert "(#171), was account+tokens/high" in got[piid][2]
+    assert "insert" not in crosswalk_module.REGRADE_UPDATE_SQL.lower()
+
+
+def test_regrade_leaves_rows_stored_under_another_window_alone(pg_dsn, tmp_path, _no_adjudications):
+    """Every stored DARPA row was written under 'all loaded award years'; a
+    default-window run grades them against a different candidate set, so it
+    is not a re-grade of what was stored and must not rewrite them."""
+    glob = _seed_regrade(pg_dsn, tmp_path, window="all loaded award years")
+    report = crosswalk_module.regrade_report(pg_dsn, award_glob=glob, **DARPA_KW)
+    assert report.updates == ()
+    assert report.window_mismatch == 2
+    report = crosswalk_module.regrade_report(pg_dsn, award_glob=glob,
+                                             all_years=True, **DARPA_KW)
+    assert len(report.updates) == 2 and report.window_mismatch == 0
+
+
+def test_apply_regrade_refuses_a_row_that_changed_since_it_was_measured(
+    pg_dsn, tmp_path, _no_adjudications,
+):
+    glob = _seed_regrade(pg_dsn, tmp_path)
+    report = crosswalk_module.regrade_report(pg_dsn, award_glob=glob, **DARPA_KW)
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("update budget_line_awards set method='announcement+lexicon',"
+                    " confidence='high' where award_piid='HR001126C0043'")
+    before = _grades(pg_dsn)
+    with pytest.raises(crosswalk_module.RegradeConflictError, match="HR001126C0043"):
+        crosswalk_module.apply_regrade(pg_dsn, report)
+    assert _grades(pg_dsn) == before                   # all or nothing
+
+
+def test_cli_regrade_only_dry_run_writes_nothing(
+    monkeypatch, pg_dsn, tmp_path, capsys, _no_adjudications,
+):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    _seed_regrade(pg_dsn, tmp_path)
+    before = _grades(pg_dsn)
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--fiscal-year", "2026",
+              "--regrade-only", "--dry-run"])
+    out = capsys.readouterr().out
+    assert ("crosswalk DARPA --regrade-only: 2 stored row(s) to re-grade in"
+            " place (0 stored under another window left alone); never inserts") in out
+    assert "  account+tokens/high [unadjudicated] -> account/low: 1" in out
+    assert ("  account+tokens/high [adjudicated medium] -> account+subagency/medium: 1"
+            in out)
+    assert "crosswalk --regrade-only dry-run: nothing written" in out
+    assert "projected" not in out                      # no insert plan is made
+    assert _grades(pg_dsn) == before
+
+
+@pytest.mark.parametrize(("extra", "message"), [
+    ([], "refuses to write without --expect-updates"),
+    (["--expect-updates", "3"], "expected 3, the re-grade finds 2"),
+])
+def test_cli_regrade_only_writes_only_the_count_the_operator_expects(
+    monkeypatch, pg_dsn, tmp_path, capsys, _no_adjudications, extra, message,
+):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    _seed_regrade(pg_dsn, tmp_path)
+    before = _grades(pg_dsn)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--regrade-only", *extra])
+    assert exc.value.code == 2
+    assert message in capsys.readouterr().out
+    assert _grades(pg_dsn) == before
+
+
+def test_cli_regrade_only_writes_with_the_matching_count(
+    monkeypatch, pg_dsn, tmp_path, capsys, _no_adjudications,
+):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    _seed_regrade(pg_dsn, tmp_path)
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--regrade-only",
+              "--expect-updates", "2"])
+    out = capsys.readouterr().out
+    assert "crosswalk DARPA --regrade-only: re-graded 2 row(s) in place; inserted 0" in out
+    assert _link_count(pg_dsn) == 3
+
+
+def test_cli_regrade_only_needs_an_org(monkeypatch, pg_dsn, tmp_path, capsys):
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["jbooks", "crosswalk", "--regrade-only", "--dry-run"])
+    assert exc.value.code == 2
+    assert "--regrade-only needs --org" in capsys.readouterr().out

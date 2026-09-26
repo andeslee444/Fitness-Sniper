@@ -91,6 +91,20 @@ export interface SiteMetaAwardFyRange {
   max_partial: boolean;
 }
 
+/**
+ * R-DEC-110's split of recorded High-tier review by record kind
+ * (site_meta.link_adjudication.high.reviewed_by_kind and each by_path entry):
+ * every reviewed link counted once, under its strongest record. The three
+ * named kinds are always present; `not_upheld` and any other kind only when
+ * non-zero. See export_site._kind_split.
+ */
+export type ReviewedByKind = {
+  adjudication: number;
+  verdict_pair: number;
+  survivor_list: number;
+  not_upheld?: number;
+} & Record<string, number>;
+
 export interface SiteMeta {
   /** Current parent-registration near ties, independently checked against the lake. */
   entity_label_review?: { near_ties: number; families: number; threshold_pct: number };
@@ -250,8 +264,18 @@ export interface SiteMeta {
     unpinned?: number;
     /** The one tier every unpinned link publishes at, or null when they
      *  differ — the page states the count without a tier rather than the
-     *  majority's. */
+     *  majority's. Since #107(b) (decided 2026-09-25) it is read from the
+     *  MART and stated only while EVERY unpinned link publishes at that one
+     *  tier; otherwise null, and the page states the count alone. */
     unpinned_tier?: string | null;
+    /** #107(b): how many of the `unpinned` links the MART still publishes —
+     *  dbt demotes `account+subagency` out of publication unless a two-lens
+     *  adjudication pinned the pair, so most unpinned links no longer
+     *  publish. Absent on an export without the mart's published tiers. */
+    unpinned_published?: number;
+    /** #107(b): the ONE tier the `unpinned_published` links publish at, or
+     *  null when they differ. */
+    unpinned_published_tier?: string | null;
     by_method?: Record<string, { published: number; adjudicated: number }>;
     /** Published methods with no adjudication row at all. /methodology/
      *  names them so a path with no per-link review never reads as one that
@@ -278,6 +302,44 @@ export interface SiteMeta {
       /** Of the adjudicated, those at `refuter_lenses_passed = 2` — the only
        *  population "two independent adversarial reviewers" is true of. */
       two_lens_high?: number;
+      /**
+       * #110 (decided 2026-09-25): links published at high that carry a
+       * RECORDED review — a per-award hand adjudication, or at least one
+       * row in migration 018's `announcement_link_reviews`. The sum of
+       * by_path[*].reviewed. ABSENT (not 0) on a Postgres without that
+       * table: "no table" is not "no review".
+       */
+      reviewed_high?: number;
+      /** max(reviewed_at) over those review rows; null while no row carries
+       *  a date (the wave verdict files carry none). Absent with the table. */
+      review_as_of?: string | null;
+      /**
+       * R-DEC-110 (controller, 2026-09-26): `reviewed_high` split by the
+       * STRONGEST record each link carries, each link counted once —
+       * `adjudication` (two-lens hand adjudication), else `verdict_pair` (a
+       * wave-4 verdict file's reviewer + adversarial verdicts upholding
+       * it), else `survivor_list` (a wave 1–3 surviving entry). The three
+       * are always present (0 is a measurement); `not_upheld` (records, none
+       * upholding) and any other kind appear only when non-zero. Values sum
+       * to `reviewed_high`. Absent before the table carries `record_kind`.
+       * /methodology/ discloses the split — the granularity is not hidden.
+       */
+      reviewed_by_kind?: ReviewedByKind;
+      /**
+       * R-DEC-110: the links the mart publishes at MEDIUM because a rule
+       * demoted them from high (fct_budget_to_awards.demotion_reason), over
+       * pairs that publish at high on no row. `links` counts distinct pairs;
+       * `by_reason` and `by_path[method]` count pairs per reason (a pair
+       * demoted for two reasons counts under each). Reasons are dbt's
+       * vocabulary (e.g. `account_tokens_unadjudicated`,
+       * `announcement_review_unrecorded`), read, never renamed here. Absent
+       * on a mart without `demotion_reason`.
+       */
+      demoted_from_high?: {
+        links: number;
+        by_reason: Record<string, number>;
+        by_path: Record<string, Record<string, number>>;
+      };
       by_path?: Record<
         string,
         {
@@ -288,6 +350,18 @@ export interface SiteMeta {
            *  name matched. Absent where the path records no source rows at
            *  all — "not recorded" and "no such evidence" are different. */
           with_match_basis?: number;
+          /** #110: this path's share of `reviewed_high`. Absent without the
+           *  review table. */
+          reviewed?: number;
+          /** #110: this path's high links with >= 1 announcement review
+           *  row. Present only on a path where some high link has one. */
+          announcement_reviewed?: number;
+          /** #110: of those, links with >= 1 row whose reviewer said 'link'
+           *  AND whose adversarial verdict is 'upheld' (migration 018's
+           *  `upholds`). Present with `announcement_reviewed`. */
+          announcement_upheld?: number;
+          /** R-DEC-110: this path's `reviewed_by_kind`; sums to `reviewed`. */
+          reviewed_by_kind?: ReviewedByKind;
         }
       >;
     };
@@ -345,6 +419,26 @@ export interface SiteMeta {
       }
     >;
     unmeasured?: string[];
+    /**
+     * #107(b) (decided 2026-09-25): a tier dbt demoted OUT of publication
+     * loses its published figure (none of its sampled links publishes any
+     * more) but keeps the measurement that caused the demotion — here,
+     * tallied by the same shared query with pins applied, NEVER in
+     * `methods` (gate 24 leg n binds `methods` to the published tiers).
+     * `links` counts the demoted pairs; `demotion_reasons` are the mart's.
+     * Absent when no demoted tier's links carry verdicts under `rubric`.
+     */
+    withdrawn?: Record<
+      string,
+      {
+        confirmed: number;
+        sampled: number;
+        sample_id?: string;
+        judged?: string | null;
+        links: number;
+        demotion_reasons: string[];
+      }
+    >;
   };
   /**
    * ROADMAP findings log :118-119: how far the announcement LLM-alias pass got.
@@ -509,12 +603,12 @@ export function getSiteMeta(): SiteMeta {
   // lake, another session's export can (and did, twice on 2026-09-12) write
   // its own counts into site_meta.json. So the counts are re-derived here at
   // build time by the exporter's own rule (export_site.py build_checks).
-  meta.build_checks = { ...(meta.build_checks ?? {}), ...buildCheckCounts(meta.build_checks) };
+  meta.build_checks = { ...(meta.build_checks ?? {}), ...buildCheckCounts() };
   _siteMeta = meta;
   return _siteMeta;
 }
 
-function buildCheckCounts(fallback: SiteMeta["build_checks"]): Partial<NonNullable<SiteMeta["build_checks"]>> {
+function buildCheckCounts(): Partial<NonNullable<SiteMeta["build_checks"]>> {
   const out: Partial<NonNullable<SiteMeta["build_checks"]>> = {};
   // The site-gate count is ALWAYS this checkout's registry: one
   // gateResults.push({ n: N, … }) per registered gate in scripts/verify.mjs
@@ -530,17 +624,50 @@ function buildCheckCounts(fallback: SiteMeta["build_checks"]): Partial<NonNullab
     throw new Error(`[govbudget/data] ${verifyPath} registers no gateResults.push({ n: … }) — /methodology/ cannot state a site-gate count`);
   }
   out.npm_gates = gates;
-  try {
-    const manifest = join(process.cwd(), "..", "dbt", "target", "manifest.json");
-    if (existsSync(manifest)) {
-      const nodes = JSON.parse(readFileSync(manifest, "utf8")).nodes ?? {};
-      const n = Object.values(nodes as Record<string, { resource_type?: string }>).filter((x) => x.resource_type === "test").length;
-      if (n) out.dbt_assertions = n;
-    }
-  } catch {
-    if (fallback?.dbt_assertions) out.dbt_assertions = fallback.dbt_assertions;
-  }
+  out.dbt_assertions = dbtAssertionCount();
   return out;
+}
+
+/**
+ * The dbt-assertion count /methodology/ §3 prints: the test nodes in THIS
+ * checkout's dbt/target/manifest.json, by the exporter's own rule
+ * (export_site.py build_checks: resource_type == "test").
+ *
+ * ROADMAP #173 (2026-09-25): this used to recount only when the manifest
+ * existed. A missing manifest kept site_meta.json's number through the object
+ * spread in getSiteMeta, and an unreadable one copied it back in a catch —
+ * whatever the last export-site in the shared lake wrote from ITS checkout's
+ * manifest (measured 2026-09-25: the shared site_meta carried 118, the main
+ * checkout's manifest held 100). dbt/target/ is gitignored, so a fresh
+ * checkout or worktree has no manifest until dbt runs. Like the site-gate
+ * count above, a count this checkout cannot derive is an error, never the
+ * lake's number. Gate 24 leg e recounts the same file independently and
+ * fails, not skips, when it is missing.
+ *
+ * Exported for src/__tests__/dbt-assertion-count.test.ts.
+ */
+export function dbtAssertionCount(
+  manifestPath: string = join(process.cwd(), "..", "dbt", "target", "manifest.json"),
+): number {
+  const hint =
+    "run dbt in this checkout first (dbt/target/ is gitignored; `dbt parse` writes the manifest " +
+    "without building anything) — /methodology/ never prints another checkout's dbt-assertion count (#173)";
+  if (!existsSync(manifestPath)) {
+    throw new Error(`[govbudget/data] ${manifestPath} is missing — ${hint}`);
+  }
+  let nodes: Record<string, { resource_type?: string }>;
+  try {
+    nodes = JSON.parse(readFileSync(manifestPath, "utf8")).nodes ?? {};
+  } catch (e) {
+    throw new Error(
+      `[govbudget/data] ${manifestPath} is unreadable (${e instanceof Error ? e.message : String(e)}) — ${hint}`,
+    );
+  }
+  const n = Object.values(nodes).filter((x) => x?.resource_type === "test").length;
+  if (!n) {
+    throw new Error(`[govbudget/data] ${manifestPath} holds no test nodes — ${hint}`);
+  }
+  return n;
 }
 
 // ── datasets.json — Explorer dataset manifest (PM Sprint 2, §P1-5) ───────────

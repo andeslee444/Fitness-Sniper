@@ -1332,3 +1332,47 @@ class TestPullRegressionGuards:
         ).fetchone()[0]
         rcon.close()
         assert after == 1
+
+
+# ===========================================================================
+# ROADMAP #142 — RTX's own LDA client name
+# ===========================================================================
+
+class TestRtxAffiliatesAlias:
+    """RTX files its OWN reports as registrant AND client "RTX CORPORATION AND
+    AFFILIATES" (12 self-filed reports, 2024-2026, in lda_filings.parquet as
+    measured read-only 2026-09-25: 10 quarterly reports plus 2 amendments —
+    1A for 2024 Q1 and 4A for 2025 Q4 — so ruling R-DEC-AMEND counts those two
+    quarters once, from the amendment), and outside firms file for the same
+    client under that name and two variants. None normalizes to the family key
+    RTX, and RTX is three characters, below the 'normalized' tier's
+    single-token guard, so all 85 of those filings sat at match_method 'none'
+    and their 849 program-mention rows (that day's lda_program_mentions
+    parquet, before the #176 rematch) reached no company page. The client
+    strings below are exactly as the filings carry them."""
+
+    FILED = (
+        "RTX CORPORATION AND AFFILIATES",
+        "RTX CORP AND AFFILIATES",
+        "RTX CORPORATION AND AFFILIATES (FKARAYTHEON TECHNOLOGIES CORPORATION)",
+    )
+
+    def test_every_filed_spelling_is_a_curated_alias_of_rtx(self):
+        aliases = _load_aliases()
+        assert "RTX" in aliases
+        for client in self.FILED:
+            assert _match_method(client, "RTX", alias_norms=aliases["RTX"]) == "curated_alias", client
+
+    def test_the_alias_does_not_reach_other_rtx_shaped_names(self):
+        rtx = _load_aliases()["RTX"]
+        # The exact legal name still wins its own, stronger tier.
+        assert _match_method("RTX CORPORATION", "RTX", alias_norms=rtx) == "exact_family"
+        # A different company whose name merely starts with RTX stays unmatched.
+        assert _match_method("RTX SOLUTIONS LLC", "RTX", alias_norms=rtx) == "none"
+        # The alias is keyed to RTX: a filing queried under RAYTHEON keeps the
+        # tier it already had.
+        assert _match_method(
+            "RTX CORPORATION AND AFFILIATES (FKA RAYTHEON TECHNOLOGIES CORP. AND AFFILIATES)",
+            "RAYTHEON",
+            alias_norms=_load_aliases().get("RAYTHEON"),
+        ) == "normalized"

@@ -1,0 +1,78 @@
+version: 2
+models:
+  - name: audit_award_duplicate_copies
+    description: "ROADMAP #133 (owner-delegated ruling 2026-09-25): every copy of every transaction key that appears more than once in ONE award archive (contracts or assistance), with what the fiscal-year move rule does to it. The rule is scripts/reconcile_award_moves.py's acceptance rule applied at build time: exactly two copies, in two different fiscal-year archives, with two different parseable last_modified_dates → the strictly newer copy is kept and the other retired; any other duplicate is 'ambiguous', nothing is retired, and both unique_fct_award_transactions_transaction_key and assert_award_duplicates_unambiguous fail the build. Materialized as a table (one aggregate over the whole award lake per build)."
+    columns:
+      - name: award_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['contract', 'assistance']
+      - name: transaction_key
+        data_tests: [not_null]
+      - name: fiscal_year
+        description: "The fiscal-year archive (hive partition fy=YYYY) this copy sits in."
+      - name: last_modified_date
+        description: "The copy's USAspending source revision time, as the archive carries it (varchar)."
+      - name: modified_at
+        description: "last_modified_date parsed as a timestamp; NULL when it does not parse — which makes the key ambiguous."
+      - name: source_file
+        description: "The parquet part file this copy was read from."
+      - name: resolution
+        description: "'keep' (the newer copy of a proven move), 'retire' (the older copy; dropped by stg_contracts / stg_assistance / stg_flow_contracts) or 'ambiguous' (not a proven move; nothing dropped, the build fails)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['keep', 'retire', 'ambiguous']
+      - name: ambiguity
+        description: "Why an ambiguous key is not a proven move: 'more than two copies', 'both copies sit in one fiscal year', 'a copy has no parseable last_modified_date', 'both copies carry the same last_modified_date'. NULL on keep/retire rows."
+  - name: audit_award_fy_moves
+    description: "ROADMAP #133: one row per transaction the fiscal-year move rule resolved — the kept copy and the retired copy side by side (fiscal-year archive, source revision time, part file). The staging models drop exactly the retired side of these rows. Empty on a lake the manual reconcile already cleaned (the 81 rows of 2026-09-24 are gone from the parquet); warn_award_fy_moves_retired prints the count in every build log where it is not zero, and assert_award_fy_moves_applied fails if a listed move no longer matches the warehouse."
+    columns:
+      - name: transaction_key
+        data_tests: [not_null]
+      - name: kept_fiscal_year
+        data_tests: [not_null]
+      - name: retired_fiscal_year
+        data_tests: [not_null]
+  - name: audit_link_grading
+    description: "Every budget->award crosswalk link (every budget_line_awards row, published or not) with the tier it publishes under and why. fct_budget_to_awards publishes exactly the rows graded high or medium here. confidence = the adjudication overlay (migration 010) over the loader's grade, then three demotions, each recorded in demotion_reason while crosswalk_confidence keeps the loader's grade: account_tokens_unadjudicated (#75, 2026-09-04: an unadjudicated account+tokens link graded high publishes medium); account_subagency_not_pinned (#107(b), owner-delegated 2026-09-25: the tier measured 0/60 on program attribution and leaves the published tiers, graded 'low', unless a two-lens adjudication pinned the pair — award_verdict 'pinned', pair_reason 'pinned-here', both refuter lenses passed); four announcement reasons (#110, owner-delegated 2026-09-25; R-DEC-110, 2026-09-26: an unadjudicated announcement+lexicon link graded high stays high only when a jbook_announcement_link_reviews record of either record_kind upholds it — reviewer 'link' and adversarial 'upheld' — and no record with reviewer 'weak'/'wrong' or adversarial 'refuted' targets the article its card cites; otherwise medium, with the reason its records give: announcement_review_refuted, announcement_reviewer_rejected, announcement_review_incomplete, or announcement_review_unrecorded only when the link has no record at all). Postgres keeps every row."
+    columns:
+      - name: award_piid
+        data_tests: [not_null]
+      - name: confidence
+        description: "The published grade. high and medium publish (fct_budget_to_awards); low and reject do not."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['high', 'medium', 'low', 'reject']
+      - name: crosswalk_confidence
+        description: "The crosswalk loader's grade, never rewritten."
+      - name: confidence_source
+        description: "'adjudicated' when an award_pe_adjudications row reviewed this pair, else 'mechanical'."
+        data_tests:
+          - accepted_values:
+              values: ['adjudicated', 'mechanical']
+      - name: demotion_reason
+        description: "NULL, or the rule that moved this link's grade down: account_tokens_unadjudicated (→ medium), account_subagency_not_pinned (→ low, unpublished), or one of the announcement reasons (→ medium): announcement_review_refuted (a recorded adversarial refutation — of the cited article, or of the pair when no record upholds it), announcement_reviewer_rejected (the same for a recorded reviewer 'weak'/'wrong'), announcement_review_incomplete (records exist but none upholds, refutes or rejects), announcement_review_unrecorded (no record of the link at all). A grade an adjudication set to low or reject carries no demotion_reason — the adjudication is the reason."
+        data_tests:
+          - accepted_values:
+              values: ['account_tokens_unadjudicated', 'account_subagency_not_pinned', 'announcement_review_refuted', 'announcement_reviewer_rejected', 'announcement_review_incomplete', 'announcement_review_unrecorded']
+  - name: audit_lda_filings
+    description: "R-DEC-AMEND (controller ruling 2026-09-26, under the owner's 2026-09-25 delegation): every Senate LDA filing in the lake with whether fct_influence counts its amounts and why. An amendment supersedes the original report for the same registrant, client and quarter (filing_year + filing_period), so an amended quarter is counted once, from one amendment; before the rule fct_influence summed every filing. Read from filing_type, the only amendment field the lake carries (Senate LDA codes: Q1-Q4 report, Q1Y-Q4Y no activity, 1T-4T termination, 1A-4A amendment, 1AY-4AY amendment with no activity, 1@-4@ termination amendment, RR registration, RA registration amendment)."
+    columns:
+      - name: filing_uuid
+        data_tests: [not_null, unique]
+      - name: resolution
+        description: "'registration' (RR/RA — not a quarterly report; counted as before), 'original' (a report in a quarter with no amendment — counted; two original reports for one quarter are not an amendment chain and both count), 'superseded_by_amendment' (a report whose quarter carries an amendment — not counted), 'amendment_counted' (the one amendment the quarter is counted from), 'amendment_superseded' (another amendment of the same quarter — not counted)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['registration', 'original', 'superseded_by_amendment', 'amendment_counted', 'amendment_superseded']
+      - name: counted
+        description: "True when fct_influence sums this filing's income_usd / expenses_usd (resolution registration, original or amendment_counted)."
+        data_tests: [not_null]
+      - name: superseded_by
+        description: "On a superseded filing, the filing_uuid of the amendment its quarter is counted from; NULL otherwise."
+      - name: latest_determinable
+        description: "On a quarter with an amendment: true when every amendment of the quarter reports the same figures (the counted figure is the latest amendment's, whichever that is); false when they disagree — the lake carries no posting date, so the latest cannot be named and the quarter is counted from the amendment reporting the smallest total (never more than the latest amendment reports), and warn_lda_amendment_latest_undetermined prints the count. NULL on registrations and unamended quarters."

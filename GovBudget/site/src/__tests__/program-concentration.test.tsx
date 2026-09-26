@@ -40,7 +40,7 @@ import fs from "fs";
 import path from "path";
 import React from "react";
 import { ProgramConcentration } from "@/components/program-concentration";
-import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
+import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN, HHI_BANDS_VINTAGE } from "@/lib/hhi-band.mjs";
 import {
   concentrationHeadline,
   CONCENTRATION_WITHHELD_REASON,
@@ -49,11 +49,14 @@ import {
 } from "@/lib/concentration-basis";
 import type { ProgramHHI } from "@/lib/data";
 
-// hhi_all 2100.4 → "Moderately Concentrated" (1,500–2,500); hhi_high 9800.2 →
-// "Highly Concentrated". The two bands differ on purpose: if an all-links
-// figure ever leaked back onto the card, the band assertions would catch it.
+// hhi_all 1400.4 → "Moderately Concentrated" (1,000–1,800, the 2023 Merger
+// Guidelines band, #132); hhi_high 9800.2 → "Highly Concentrated". The two
+// bands differ on purpose: if an all-links figure ever leaked back onto the
+// card, the band assertions would catch it. (Until #132 this was 2100.4,
+// moderate under the retired 2010 bands and highly concentrated under 2023's
+// — the fixture would have stopped telling the two bases apart.)
 const A: ProgramHHI = {
-  hhi_all: 2100.4, hhi_all_fact_id: "a".repeat(16),
+  hhi_all: 1400.4, hhi_all_fact_id: "a".repeat(16),
   program_dollars_all: 500_000_000, program_dollars_all_fact_id: "b".repeat(16),
   top_family_all: "LOCKHEED MARTIN", family_count_all: 12, award_count_all: 40,
   hhi_high: 9800.2, hhi_high_fact_id: "c".repeat(16),
@@ -93,7 +96,7 @@ describe("concentrationHeadline", () => {
       if (h.published) throw new Error("unreachable");
       expect(h.withheld).toBe("below-floor");
       // No path out of the withheld state carries an all-links value.
-      expect(JSON.stringify(h)).not.toContain("2100.4");
+      expect(JSON.stringify(h)).not.toContain("1400.4");
       expect(JSON.stringify(h)).not.toContain("LOCKHEED");
     }
   });
@@ -111,19 +114,54 @@ describe("ProgramConcentration card", () => {
    * Task 26 (review minor): the Index tooltip typed the bands by hand as
    * "1500–2500 moderate; >2500 concentrated", so an index of exactly 2,500
    * rendered a "Highly Concentrated" badge under a tooltip calling it
-   * moderate — hhiBand's floor is `>= HHI_CONCENTRATED_MIN`. It is now built
-   * from the two constants, with the boundaries stated the way hhiBand
-   * applies them.
+   * moderate. It is built from the two constants, with the boundaries stated
+   * the way hhiBand applies them — since #132 (2026-09-25) the 2023 Merger
+   * Guidelines': 1,000 through 1,800 moderately concentrated, and only an
+   * index above 1,800 highly concentrated — and it names that vintage.
    */
-  it("the Index tooltip states the bands from the constants, with 2,500 concentrated", () => {
+  it("the Index tooltip states the bands from the constants, with their vintage", () => {
     const { container } = render(<ProgramConcentration hhi={A} />);
     const title = container.querySelector("span[title^='Herfindahl']")!.getAttribute("title")!;
+    const f = (n: number) => n.toLocaleString("en-US");
     expect(title).toContain(
-      `Under ${HHI_MODERATE_MIN.toLocaleString("en-US")} competitive; ` +
-        `${HHI_MODERATE_MIN.toLocaleString("en-US")} to under ${HHI_CONCENTRATED_MIN.toLocaleString("en-US")} moderate; ` +
-        `${HHI_CONCENTRATED_MIN.toLocaleString("en-US")} or more concentrated`,
+      `${HHI_BANDS_VINTAGE} bands: ${f(HHI_MODERATE_MIN)} to ${f(HHI_CONCENTRATED_MIN)} moderately concentrated; ` +
+        `above ${f(HHI_CONCENTRATED_MIN)} highly concentrated; below ${f(HHI_MODERATE_MIN)} this site says unconcentrated.`,
     );
-    expect(title).not.toMatch(/>2500|1500–2500/);
+    expect(title).toContain("2023 Merger Guidelines");
+    expect(title).not.toMatch(/>2500|1500–2500|1,500|2,500/);
+    expect(title).not.toMatch(/1,800 or more/);
+    // R-DEC-132b: the badge's word below 1,000 is "Unconcentrated".
+    expect(title).not.toMatch(/competitive/i);
+  });
+
+  /**
+   * R-DEC-132b (controller, 2026-09-26): the vintage is VISIBLE text on the
+   * badge, not only the tooltip's hover title — this component's own comment
+   * says a hover title cannot reach a reader on a phone. One
+   * [data-hhi-band-vintage] line under the band, read back by
+   * scripts/gates/coverage.mjs against hhiBandVintageLine(hhi_high).
+   */
+  it("shows the bands' vintage as visible text under the band", () => {
+    const { container } = render(<ProgramConcentration hhi={A} />);
+    const lines = container.querySelectorAll("[data-hhi-band-vintage]");
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toBe(`${HHI_BANDS_VINTAGE} bands`);
+    expect(lines[0].getAttribute("title")).toBeNull();
+    // Beside the band it dates, inside the same figure block.
+    const band = container.querySelector("[data-hhi-band]")!;
+    expect(band.parentElement).toBe(lines[0].parentElement);
+    expect(band.nextElementSibling).toBe(lines[0]);
+  });
+
+  it("says an Unconcentrated index sits below the 2023 bands", () => {
+    const low: ProgramHHI = { ...A, hhi_high: 389.23 };
+    const { container } = render(<ProgramConcentration hhi={low} />);
+    expect(container.querySelector("[data-hhi-band]")!.getAttribute("data-hhi-band")).toBe("Unconcentrated");
+    expect(container.querySelector("[data-hhi-band]")!.textContent).toBe("Unconcentrated");
+    expect(container.querySelector("[data-hhi-band-vintage]")!.textContent).toBe(
+      "Below the 2023 Merger Guidelines bands",
+    );
+    expect(container.textContent).not.toMatch(/competitive/i);
   });
 
   it("published: one basis-stamped band, high-only measures, no second line", () => {
@@ -150,12 +188,13 @@ describe("ProgramConcentration card", () => {
       expect(note?.textContent, name).toMatch(/high-confidence/i);
       expect(note?.textContent, name).toMatch(/no concentration (index|figure)/i);
       expect(container.querySelectorAll("[data-hhi-band]").length, name).toBe(0);
+      expect(container.querySelectorAll("[data-hhi-band-vintage]").length, name).toBe(0);
       expect(container.querySelectorAll("[data-amount]").length, name).toBe(0);
       expect(container.querySelectorAll("[data-measure]").length, name).toBe(0);
       expect(container.querySelector("[data-concentration-tier-chip]"), name).toBeNull();
       // The all-links top family and counts must not appear anywhere.
       expect(container.textContent, name).not.toContain("LOCKHEED");
-      expect(container.textContent, name).not.toContain("2100");
+      expect(container.textContent, name).not.toContain("1400");
       expect(container.textContent, name).not.toContain("Moderately Concentrated");
     }
   });

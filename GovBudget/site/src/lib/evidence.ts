@@ -17,6 +17,20 @@
  * Every row in the mart carries which tier qualified it — this module turns
  * that machine value into the label rendered next to the row, so a reader
  * never has to take the site's evidence claim on faith.
+ *
+ * AN ALL-DIGIT CODE NEEDS A BUDGET-LINE LABEL (ROADMAP #176, site mirror
+ * 2026-09-26). The matcher (src/govbudget/influence/mentions.py,
+ * _build_code_re) counts a code with letters (0604122D8Z, MD08) wherever it
+ * stands as a whole word, but an all-digit code ("2025", "14", "0145") only
+ * where a budget-line label names it — "BLI 2025", "PE 0145", "line item 14"
+ * — and never inside a larger figure. Measured 2026-09-25: all 1,631
+ * `pe_literal` rows the old rule produced sat on bare numbers (years, dates,
+ * bill and public-law numbers), none carried such a label, so the tier is
+ * empty on that corpus. The three pe_literal strings below say the rule; the
+ * badge says "PE/BLI" because the tier carries budget-line codes as well as
+ * program elements. scripts/gates/program-skeleton.mjs reads the badge and
+ * title arms out of this file as text (evidenceBadges), so each stays a
+ * single string literal.
  */
 
 export type EvidenceKind = "pe_literal" | "alias" | "multi_token";
@@ -27,7 +41,7 @@ export function evidenceKindLabel(
 ): string {
   switch (kind) {
     case "pe_literal":
-      return "PE code cited directly";
+      return "PE/BLI code cited directly";
     case "alias":
       return "matched a known alias";
     case "multi_token":
@@ -53,7 +67,7 @@ export function evidenceKindTitle(
 ): string {
   switch (kind) {
     case "pe_literal":
-      return "Exact program code found in the filing text.";
+      return "PE/BLI code in the filing; all-digit codes need a budget-line label.";
     case "alias":
       return "A curated, verified alias was found in the filing text.";
     case "multi_token":
@@ -73,7 +87,7 @@ export function evidenceKindLongExplanation(
 ): string {
   switch (kind) {
     case "pe_literal":
-      return "The filing's activity description contains this exact program element / budget line code.";
+      return "The filing's activity description contains this program element or budget line code: a code with letters wherever it stands as a whole word, an all-digit code only where a budget-line label names it (for example, BLI 2025) — a bare number is usually a year, a date or a bill.";
     case "alias":
       return "The filing's activity description contains a curated, human-verified alias for this program.";
     case "multi_token":

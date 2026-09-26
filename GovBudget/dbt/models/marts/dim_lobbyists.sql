@@ -17,7 +17,15 @@ with lobbyists as (
 aggregated as (
     select
         name,
-        -- Most recent/non-empty covered_position wins; empty positions ranked last
+        -- A disclosed covered_position wins over an empty/N/A one, then the
+        -- position disclosed on the most filings, then — the tiebreak —
+        -- the position text itself (NULL last). The order must be TOTAL:
+        -- without the last key two positions tied on the first two came back
+        -- in whatever order the sort emitted them, and chain F2 (2026-09-25)
+        -- measured 14 lobbyist fact ids changing between two rebuilds of one
+        -- lake (the exporter mints the fact id from the filing that discloses
+        -- THIS position, so a /fact/ link could break between deploys).
+        -- tests/test_dbt_lobbyists_tiebreak.py pins it.
         first_value(covered_position) over (
             partition by name
             order by
@@ -25,7 +33,8 @@ aggregated as (
                           and covered_position <> ''
                           and upper(covered_position) <> 'N/A'
                      then 0 else 1 end,
-                filing_appearances desc
+                filing_appearances desc,
+                covered_position asc nulls last
         ) as covered_position,
         sum(filing_appearances) as filings_count
     from lobbyists

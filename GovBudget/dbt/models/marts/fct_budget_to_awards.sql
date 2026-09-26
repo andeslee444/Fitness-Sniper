@@ -1,4 +1,5 @@
--- link table: dollars live at award grain; account-level 'low' links stay in postgres for audit
+-- link table: dollars live at award grain; links graded 'low' or 'reject' stay in
+-- Postgres and in audit_link_grading (every link, with its grade and why) for audit
 --
 -- E1 (Sprint E, ROADMAP #67): dim_programs is no longer unique on pe_bli
 -- alone (a genuine account collision, 10 keys, now publishes two rows). This
@@ -35,54 +36,15 @@ programs_by_account as (
     where account is not null
     group by pe_bli, account
 ),
-adjudications as (
-    select award_piid, pe_bli, adjudicated_confidence, award_verdict,
-           pair_reason, basis as adjudication_basis
-    from {{ source('lake', 'jbook_award_adjudications') }}
-),
--- 2026-09-04 (#75 fix round 1, finding 3): the published confidence is
--- computed ONCE here, in `linked`, and reused by both the select list and
--- the where filter below -- previously the where clause re-derived
--- coalesce(adj.adjudicated_confidence, a.confidence) directly, which
--- mirrors the PRE-demotion value. That happened to be harmless today
--- (demotion only ever moves high->medium, and both tiers pass the filter),
--- but it meant a future demotion target of 'low' could publish a row the
--- filter believed it was excluding. Filtering on the same column the
--- select emits closes that gap structurally, not by convention.
+-- The grading — adjudication overlay, the #75 / #107(b) / #110 demotions and
+-- the reason each records — lives in audit_link_grading (2026-09-25), which
+-- grades EVERY crosswalk link, published or not, so a demoted or unpublished
+-- link stays auditable in the warehouse. This mart publishes the rows it
+-- grades high or medium, and filters on the SAME column it emits (the
+-- 2026-09-04 #75 fix round 1 finding 3 invariant: the where clause must never
+-- re-derive a pre-demotion grade).
 linked as (
-    select
-        a.pe_bli,
-        a.exhibit,
-        cast(a.fiscal_year as integer) as fiscal_year,
-        a.organization,
-        a.award_piid,
-        a.recipient_name,
-        a.recipient_uei,
-        a.method,
-        a.account,
-        -- 2026-09-04 (#75 addendum, ruling 3): demotion, not a drop. A
-        -- mechanical account+tokens/high pair that no human has adjudicated
-        -- must never publish as 'high' -- the crosswalk's token-overlap
-        -- 'high' tier alone is not evidence-graded. Demote the PUBLISHED
-        -- confidence to 'medium'; crosswalk_confidence below keeps the raw
-        -- mechanical tag untouched so the demotion is auditable, not a
-        -- silent loss of information ("publish the smaller true number").
-        case
-            when adj.award_piid is null
-             and a.method = 'account+tokens'
-             and a.confidence = 'high'
-            then 'medium'
-            else coalesce(adj.adjudicated_confidence, a.confidence)
-        end as published_confidence,
-        a.confidence as crosswalk_confidence,
-        case when adj.award_piid is not null then 'adjudicated' else 'mechanical' end
-            as confidence_source,
-        adj.award_verdict,
-        adj.pair_reason,
-        adj.adjudication_basis
-    from {{ source('lake', 'jbook_awards') }} a
-    left join adjudications adj
-      on adj.award_piid = a.award_piid and adj.pe_bli = a.pe_bli
+    select * from {{ ref('audit_link_grading') }}
 )
 select
     l.pe_bli,
@@ -94,16 +56,20 @@ select
     l.recipient_uei,
     l.method,
     l.account,
-    l.published_confidence as confidence,
+    l.confidence,
     l.crosswalk_confidence,
     l.confidence_source,
     l.award_verdict,
     l.pair_reason,
     l.adjudication_basis,
-    coalesce(pa.title, p.title) as program_title
+    coalesce(pa.title, p.title) as program_title,
+    -- appended last (2026-09-25) so every earlier column keeps its position:
+    -- NULL, or the audit_link_grading rule that moved this link down to the
+    -- tier it publishes under (#75 account+tokens, #110 announcement).
+    l.demotion_reason
 from linked l
 left join programs_by_account pa
   on pa.pe_bli = l.pe_bli and pa.account = l.account
 left join programs p
   on p.pe_bli = l.pe_bli
-where l.published_confidence in ('high', 'medium')
+where l.confidence in ('high', 'medium')

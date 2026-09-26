@@ -26,4 +26,14 @@ select
     usaspending_permalink,
     -- award_unique_key: contract_award_unique_key here; assistance_award_unique_key in sibling (SAME position both files)
     contract_award_unique_key as award_unique_key
-from {{ source('lake', 'contracts') }}
+from {{ source('lake', 'contracts') }} src
+-- ROADMAP #133 (2026-09-25): a contract whose key sits in two fiscal-year
+-- archives is kept ONCE — its strictly newer copy — when
+-- audit_award_duplicate_copies proves the move (exactly two copies, two
+-- different fiscal years, two different last_modified_dates); the retired copy
+-- is listed in audit_award_fy_moves and dropped by the clause below (empty
+-- when this build retired none — see macros/award_fy_moves.sql). Every other
+-- duplicate passes through untouched and fails
+-- unique_fct_award_transactions_transaction_key.
+-- depends_on: {{ ref('audit_award_fy_moves') }}
+{{ award_fy_move_filter('contract', 'contract_transaction_unique_key', 'src') }}

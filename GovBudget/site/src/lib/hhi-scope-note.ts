@@ -18,11 +18,12 @@
  * population it can still reconcile. Where both exist, both are real,
  * correctly
  * computed numbers — they are just not the same measure, and a single
- * concentrated year can sit next to a competitive pooled figure (or the
+ * concentrated year can sit next to an unconcentrated pooled figure (or the
  * reverse) with no error anywhere. Without this note, a reader who reads
  * "HHI=8662 (2020)" glossed with a concentration adjective, then clicks
- * through and finds the page calling the SAME program "Competitive," has no
- * way to tell that apart from the site contradicting itself.
+ * through and finds the page calling the SAME program "Unconcentrated"
+ * ("Competitive" until R-DEC-132b), has no way to tell that apart from the
+ * site contradicting itself.
  *
  * AND THE DESTINATION MAY PUBLISH NOTHING (#80 fix round 2, 2026-09-11,
  * finding 8). The note used to promise the pooled figure outright ("see the
@@ -43,7 +44,11 @@
  * client-graph vitest (vitest.client-graph.config.ts) fails on the first one.
  *
  * Returns null for non-hhi cards. Text and band both derive from the SAME
- * shared hhiBand() the destination page's own badge uses (hhi-band.mjs) —
+ * shared hhiBand() the destination page's own badge uses (hhi-band.mjs), and
+ * the text names the bands' vintage (HHI_BANDS_VINTAGE, #132) — in the
+ * badge's own phrase (hhiBandVintageLine, R-DEC-132b): "(2023 Merger
+ * Guidelines bands)", or "(below the 2023 Merger Guidelines bands)" for an
+ * Unconcentrated year, a range the guidelines name no band for —
  * see that file's doc-comment for why it is .mjs, not .ts. Rendered as the
  * [data-hhi-scope-note] <p> that scripts/gates/feed.mjs leg (l) reads — on
  * the /feed/ cards whose figure_units is "hhi" and nowhere else, which is
@@ -51,7 +56,7 @@
  * band to scope.
  */
 
-import { hhiBand } from "@/lib/hhi-band.mjs";
+import { hhiBand, hhiBandVintageLine } from "@/lib/hhi-band.mjs";
 import type { FeedCard } from "@/lib/data";
 
 export function hhiScopeNote(
@@ -60,10 +65,17 @@ export function hhiScopeNote(
   if (card.figure_units !== "hhi" || card.figure_value === null) return null;
   const band = hhiBand(card.figure_value);
   const yearText = card.fiscal_year ? `FY${card.fiscal_year}` : "that year";
+  // The badge's vintage line, mid-sentence: "2023 Merger Guidelines bands" or
+  // "below the 2023 Merger Guidelines bands" (R-DEC-132b).
+  const vintage = hhiBandVintageLine(card.figure_value).replace(/^Below /, "below ");
   return {
     band: band.label,
+    // #132 (decided 2026-09-25): the band names its vintage — the 2023
+    // Merger Guidelines' thresholds (hhi-band.mjs). scripts/gates/feed.mjs
+    // leg (l) fails a rendered note without it.
     text:
-      `${band.label} in ${yearText} — the program's pooled, all-years HHI ` +
-      `can differ, or not be published; see the program page.`,
+      `${band.label} in ${yearText} (${vintage}) — the ` +
+      `program's pooled, all-years HHI can differ, or not be published; see ` +
+      `the program page.`,
   };
 }

@@ -25,6 +25,18 @@ data-seeds/entity_display_aliases.csv, entities_top.json or the built HTML —
 those are the artifacts under test, and reading one here would make the leg
 tautological.
 
+It DOES read data-seeds/entity_parent_exclusions.csv (RULING R-DEC-135b,
+2026-09-26), because that seed is an INPUT to the pick it mirrors, not an
+output under test: a (recipient UEI, parent UEI) pair listed there is never
+the recipient's parent pick in entity_graph (ROADMAP #135), so it is neither
+a winner nor a runner-up here either. Without it this helper ranked a
+registration the build had refused and reported the label, and the margin, of
+a pick nobody published. A missing or malformed seed is an error, exactly as
+it is in entity_graph — never "no exclusions". The parse is repeated here
+rather than imported, for the reason districtyear-recompute.py gives: the
+helper must not depend on the govbudget package; tests/
+test_label_margin_exclusions.py holds the two parses to the same pairs.
+
 Output:
 {
   "families": [
@@ -45,6 +57,7 @@ fix round 1): leg l fails unless `families` covers all `published`, and the
 names make that failure say which family and why.
 """
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -57,9 +70,53 @@ LAKE = [
     "data/parquet/contracts/fy=*/*.parquet",
     "data/parquet/assistance/fy=*/*.parquet",
 ]
+#: entity_graph.DEFAULT_PARENT_EXCLUSIONS — the seed the build applies.
+EXCLUSIONS_SEED = REPO / "data-seeds" / "entity_parent_exclusions.csv"
+#: entity_graph.PARENT_EXCLUSION_COLUMNS, in order.
+EXCLUSION_COLUMNS = (
+    "recipient_uei",
+    "recipient_name",
+    "excluded_parent_uei",
+    "excluded_parent_name",
+    "decided",
+    "roadmap",
+    "note",
+)
 
 #: The published set — the same ordering and limit export_site.py uses.
 PUBLISHED_LIMIT = 200
+
+
+class SeedError(ValueError):
+    """The parent-exclusion seed is missing or malformed."""
+
+
+def load_exclusions(path: Path) -> list[tuple[str, str]]:
+    """(recipient_uei, excluded_parent_uei) pairs, in seed order.
+
+    Refuses what entity_graph.load_parent_exclusions refuses on shape: a
+    missing file, other columns, an empty field. (The build also checks that
+    each row bites on the lake; a row that did not could not change a pick,
+    so it cannot change a margin either.)
+    """
+    path = Path(path)
+    if not path.exists():
+        raise SeedError(f"parent-exclusion seed missing: {path}")
+    with path.open(newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        header = tuple(reader.fieldnames or ())
+        if header != EXCLUSION_COLUMNS:
+            raise SeedError(
+                f"{path.name}: columns {header} != required {EXCLUSION_COLUMNS}"
+            )
+        pairs: list[tuple[str, str]] = []
+        for i, raw in enumerate(reader, start=2):
+            vals = {c: (raw.get(c) or "").strip() for c in EXCLUSION_COLUMNS}
+            for col, value in vals.items():
+                if not value:
+                    raise SeedError(f"{path.name}:{i}: empty {col}")
+            pairs.append((vals["recipient_uei"], vals["excluded_parent_uei"]))
+    return pairs
 
 
 def main() -> int:
@@ -70,8 +127,24 @@ def main() -> int:
     if not any(Path(g).parent.parent.is_dir() for g in globs):
         print(json.dumps({"__error__": "award lake parquet directories missing"}))
         return 1
+    try:
+        exclusions = load_exclusions(EXCLUSIONS_SEED)
+    except SeedError as exc:
+        print(json.dumps({"__error__": str(exc)}))
+        return 1
 
     con = duckdb.connect(str(DUCKDB), read_only=True)
+    print(json.dumps(recompute(con, globs, exclusions), sort_keys=True))
+    return 0
+
+
+def recompute(con, globs, exclusions) -> dict:
+    """The margins, from `con` (dim_entities + entity_xwalk) and the award
+    lake at `globs`, with every excluded (recipient, parent UEI) pair out of
+    the ranking — as entity_graph's parent_pairs leaves it out."""
+    excluded: dict[str, set[str]] = {}
+    for recipient_uei, parent_uei in exclusions:
+        excluded.setdefault(recipient_uei, set()).add(parent_uei)
     lake_literal = "[" + ",".join(f"'{g}'" for g in globs) + "]"
     # nullif('') mirrors _PICK_SQL exactly: an empty string is not a
     # registration, and treating it as one would invent a runner-up.
@@ -126,6 +199,11 @@ def main() -> int:
             """,
             [uei],
         ).fetchall()
+        # R-DEC-135b: the pair the build refused is not a candidate. Filtered
+        # after the ORDER BY, so the survivors keep the build's ranking; a
+        # NULL parent_uei is never excluded (entity_graph's NOT EXISTS
+        # matches on equality, which NULL never satisfies).
+        regs = [r for r in regs if r[3] is None or r[3] not in excluded.get(uei, ())]
         if not regs:
             unmeasured.append(
                 {"family_key": family_key, "reason": "no parent registration"}
@@ -153,18 +231,12 @@ def main() -> int:
             }
         )
 
-    print(
-        json.dumps(
-            {
-                "families": out,
-                "published": len(published),
-                "published_dollars": float(sum(r[2] or 0.0 for r in published)),
-                "unmeasured": unmeasured,
-            },
-            sort_keys=True,
-        )
-    )
-    return 0
+    return {
+        "families": out,
+        "published": len(published),
+        "published_dollars": float(sum(r[2] or 0.0 for r in published)),
+        "unmeasured": unmeasured,
+    }
 
 
 if __name__ == "__main__":

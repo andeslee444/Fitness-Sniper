@@ -18,14 +18,31 @@
 --            NULL only when the program has no high link at all; the three
 --            counts are 0 in that case, never NULL.
 -- The site headlines the high-only figures where they publish and states the
--- absence where they do not; the *_all columns are not rendered (the
--- account+subagency tier that dominates them measured 0/60 for program
--- attribution, ROADMAP #79) but ship in the download and on /methodology/.
+-- absence where they do not; the *_all columns are not rendered (until
+-- 2026-09-25 the account+subagency tier, measured 0/60 for program
+-- attribution (ROADMAP #79), dominated them; #107(b) withdrew its unpinned
+-- links from publication, so *_all now pools the tiers that still publish)
+-- but ship in the download and on /methodology/.
 -- The exporter mints a distinct derived fact_id per basis, with a formula
 -- true of that basis.
 -- Award dollars enter ONCE per award (not per transaction) to avoid double-count.
 -- HHI uses positive-obligation share only to keep HHI ∈ [0, 10000].
 -- positive-only shares: families with net deobligations keep full positive share (documented bias).
+--
+-- SCOPE (ROADMAP #130, owner-delegated ruling 2026-09-25). This mart is keyed
+-- on the bare pe_bli, so on a budget-line code two or more programs share its
+-- figures pool EVERY member's links. Program pages and /feed/ keep withholding
+-- such a figure by the link rule (export_site._concentration_owner,
+-- unchanged); the downloadable warehouse ships the row and LABELS it:
+--   scope                      'program' (the code names one program) or
+--                              'code' (shared; the figures pool every member)
+--   member_programs            dim_programs rows under the code
+--   member_keys_with_links     members whose key carries >= 1 published link
+--                              (high or medium — the page rule's count)
+--   links_outside_member_keys  published links filed under no member's key
+-- A member's key is its ACCOUNT when every member has one and no two share
+-- it, else its ORGANIZATION — govbudget.jbooks.collision_keys' rule. The
+-- label is additive: no figure above it moves.
 with award_dollars as (
     -- sum obligation at award grain across all transactions (positive-only for share)
     select
@@ -144,7 +161,57 @@ per_basis as (
       on pt.basis = h.basis and pt.pe_bli = h.pe_bli
     left join top_family t
       on t.basis = h.basis and t.pe_bli = h.pe_bli
-)
+),
+code_axis as (
+    -- one row per code dim_programs knows: how many programs share it, and
+    -- which axis tells them apart (collision_keys.classify_shared_keys)
+    select
+        pe_bli,
+        count(*) as member_programs,
+        count(account) = count(*) and count(distinct account) = count(*)
+            as by_account
+    from {{ ref('dim_programs') }}
+    group by pe_bli
+),
+member_keys as (
+    -- a code naming one program has one member, whose key every link matches
+    select
+        p.pe_bli,
+        case
+            when ax.member_programs = 1 then ''
+            when ax.by_account then p.account
+            else p.org
+        end as member_key
+    from {{ ref('dim_programs') }} p
+    join code_axis ax on ax.pe_bli = p.pe_bli
+),
+link_keys as (
+    select
+        l.pe_bli,
+        case
+            when ax.member_programs = 1 then ''
+            when ax.by_account then l.account
+            else l.organization
+        end as link_key
+    from {{ ref('fct_budget_to_awards') }} l
+    left join code_axis ax on ax.pe_bli = l.pe_bli
+),
+scope as (
+    select
+        lk.pe_bli,
+        case when max(ax.member_programs) > 1 then 'code' else 'program' end
+            as scope,
+        coalesce(max(ax.member_programs), 0) as member_programs,
+        count(distinct mk.member_key) as member_keys_with_links,
+        count(*) filter (where mk.member_key is null)
+            as links_outside_member_keys
+    from link_keys lk
+    left join code_axis ax on ax.pe_bli = lk.pe_bli
+    left join (select distinct pe_bli, member_key from member_keys) mk
+      on mk.pe_bli = lk.pe_bli and mk.member_key = lk.link_key
+    group by lk.pe_bli
+),
+concentration as (
 select
     pe_bli,
     max(case when basis = 'all' then hhi end)             as hhi_all,
@@ -179,3 +246,12 @@ select
     max(case when basis = 'high' then program_dollars end) as program_dollars_high
 from per_basis
 group by pe_bli
+)
+select
+    c.*,
+    s.scope,
+    s.member_programs,
+    s.member_keys_with_links,
+    s.links_outside_member_keys
+from concentration c
+join scope s on s.pe_bli = c.pe_bli

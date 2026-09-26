@@ -24,6 +24,7 @@ import {
 } from "@/lib/feed-model.mjs";
 import type { FeedCard, FeedSidecar } from "@/lib/data";
 import { formatCount } from "@/lib/format";
+import { HHI_BANDS_VINTAGE, HHI_CONCENTRATED_MIN, HHI_MODERATE_MIN } from "@/lib/hhi-band.mjs";
 import { PageIntro } from "@/components/page-intro";
 
 // Event type metadata: display name, description, methodology anchor.
@@ -59,7 +60,10 @@ const EVENT_META: Record<
     // description states the mart's own universe, the band each card names
     // (hhiScopeNote), and the #70/#82 shared-code rule (_concentration_owner).
     description:
-      "Programs whose high-confidence award links carry at least $5M in matched obligations (positive obligations only) in a fiscal year — one card per year, headlined by that year's Herfindahl-Hirschman Index (HHI) across contractor families, whatever its value. Each card names its DOJ/FTC band: competitive, moderately concentrated or highly concentrated. On a budget line more than one program uses, only a program carrying every crosswalk link on the line, high or medium, gets a card. Each card is a one-year snapshot — it can land in a different band than the program's own pooled, all-years HHI, which that page publishes only where its high-confidence links clear the floor, and otherwise withholds.",
+      "Programs whose high-confidence award links carry at least $5M in matched obligations (positive obligations only) in a fiscal year — one card per year, headlined by that year's Herfindahl-Hirschman Index (HHI) across contractor families, whatever its value. " +
+      // R-DEC-132b: the bands' vintage and thresholds from hhi-band.mjs; the word below 1,000 is this site's. feed.mjs leg (l) reads it.
+      `Each card names its band under the ${HHI_BANDS_VINTAGE}: moderately concentrated from ${formatCount(HHI_MODERATE_MIN)} to ${formatCount(HHI_CONCENTRATED_MIN)} and highly concentrated above ${formatCount(HHI_CONCENTRATED_MIN)}. Below ${formatCount(HHI_MODERATE_MIN)} the card says unconcentrated, this site's label for that range. ` +
+      "On a budget line more than one program uses, only a program carrying every crosswalk link on the line, high or medium, gets a card. Each card is a one-year snapshot — it can land in a different band than the program's own pooled, all-years HHI, which that page publishes only where its high-confidence links clear the floor, and otherwise withholds.",
     anchorId: "feed-concentration_shift",
   },
   request_vs_actuals_gap: {

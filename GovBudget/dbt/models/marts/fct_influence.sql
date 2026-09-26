@@ -8,6 +8,12 @@
 -- These are mutually exclusive per filing (LDA design); summing both gives
 -- total lobbying outlay without double-counting.
 --
+-- R-DEC-AMEND (controller ruling 2026-09-26): an amended quarter is counted
+-- ONCE, from its amendment — audit_lda_filings resolves every filing and this
+-- mart sums only the rows it counts (before the rule every filing was summed,
+-- so a report and its amendment were both counted). filings_count counts the
+-- same filings the sums do.
+--
 -- Neutral language: no column name implies causation between lobbying and awards.
 with filings as (
     select
@@ -16,8 +22,9 @@ with filings as (
         count(*)                                     as filings_count,
         sum(try_cast(nullif(income_usd,  '') as double)) as lobbying_income_usd,
         sum(try_cast(nullif(expenses_usd,'') as double)) as lobbying_expense_usd
-    from {{ source('influence', 'lda_filings') }}
-    where family_key_guess is not null
+    from {{ ref('audit_lda_filings') }}
+    where counted
+      and family_key_guess is not null
       and family_key_guess <> ''
       -- Exclude rows where the family link is not established.
       -- family_key_guess on an unmatched row is only the queried family name,

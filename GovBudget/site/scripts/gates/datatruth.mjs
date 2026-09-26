@@ -307,6 +307,41 @@ function recomputeParquets() {
   return parsed;
 }
 
+/**
+ * Gate 24 leg e's recount of /methodology/'s "{N} dbt data-model
+ * assertions": the test nodes in dbt/target/manifest.json (resource_type
+ * "test", the exporter's own rule), recomputed here independently of
+ * site_meta.json and of getSiteMeta. #173 (2026-09-25): a missing,
+ * unreadable or test-free manifest is an ERROR the leg raises, never a
+ * reason to skip the comparison — dbt/target/ is gitignored, so a fresh
+ * checkout has no manifest until dbt runs, and the skip is what let the
+ * lake's number print unchecked.
+ *
+ * Exported for scripts/gates/__tests__/datatruth-dbt-count.test.mjs.
+ *
+ * @param {string} manifestPath
+ * @returns {{ count: number, error: null } | { count: null, error: string }}
+ */
+export function dbtManifestRecount(manifestPath) {
+  const why =
+    "leg e cannot recount the dbt data-model assertions /methodology/ prints — run dbt in " +
+    "this checkout (dbt parse writes the manifest) before building the site (#173)";
+  if (!fs.existsSync(manifestPath)) {
+    return { count: null, error: `${manifestPath} is missing; ${why}` };
+  }
+  let nodes;
+  try {
+    nodes = JSON.parse(fs.readFileSync(manifestPath, "utf8")).nodes ?? {};
+  } catch (e) {
+    return { count: null, error: `${manifestPath} is unreadable (${e.message}); ${why}` };
+  }
+  const count = Object.values(nodes).filter((n) => n?.resource_type === "test").length;
+  if (!count) {
+    return { count: null, error: `${manifestPath} holds no test nodes; ${why}` };
+  }
+  return { count, error: null };
+}
+
 export async function runDataTruthGate() {
   const errors = [];
   const notes = [];
@@ -620,12 +655,15 @@ export async function runDataTruthGate() {
 
       // Independent recomputes from the defining artifacts.
       const expected = {};
-      const dbtManifest = path.join(repoRoot, "dbt", "target", "manifest.json");
-      if (fs.existsSync(dbtManifest)) {
-        const nodes = JSON.parse(fs.readFileSync(dbtManifest, "utf8")).nodes ?? {};
-        expected.dbt = Object.values(nodes).filter(
-          (n) => n.resource_type === "test",
-        ).length;
+      // #173 (2026-09-25): the dbt recount no longer SKIPS when the manifest
+      // is missing — that skip let a build printing the shared lake's number
+      // (getSiteMeta's old fallback) pass this leg untested. A manifest this
+      // checkout lacks, cannot read, or that holds no tests is a finding.
+      const dbtRecount = dbtManifestRecount(path.join(repoRoot, "dbt", "target", "manifest.json"));
+      if (dbtRecount.error) {
+        errors.push(`leg e (/methodology/): ${dbtRecount.error}`);
+      } else {
+        expected.dbt = dbtRecount.count;
       }
       const verifyMjs = path.join(__dirname, "..", "verify.mjs");
       if (fs.existsSync(verifyMjs)) {

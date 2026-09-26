@@ -86,7 +86,7 @@ models:
         data_tests: [not_null]
         description: "Canonical program title (detail-row title, never an R-1 rollup NULL)."
   - name: fct_program_concentration
-    description: "Vendor-family HHI per pe_bli on two bases (ROADMAP #80): *_all over every published link (high+medium), *_high over high-confidence links only. hhi_high and top_family_high are NULL below the floor — 3 linked awards, 2 families holding POSITIVE dollars (positive_family_count_high), and positive net program_dollars_high. Only the *_high basis is rendered on a program page; *_all ships in this download and is described on /methodology/."
+    description: "Vendor-family HHI per pe_bli on two bases (ROADMAP #80): *_all over every published link (high+medium), *_high over high-confidence links only. hhi_high and top_family_high are NULL below the floor — 3 linked awards, 2 families holding POSITIVE dollars (positive_family_count_high), and positive net program_dollars_high. Only the *_high basis is rendered on a program page; *_all ships in this download and is described on /methodology/. Keyed on the bare pe_bli: on a code two or more programs share, scope = 'code' and the figures pool every member's links (#130)."
     columns:
       - name: pe_bli
         data_tests: [unique, not_null]
@@ -102,6 +102,27 @@ models:
         data_tests: [not_null]
       - name: award_count_high
         data_tests: [not_null]
+      - name: scope
+        description: "ROADMAP #130 (owner-delegated 2026-09-25): 'program' when the code names one program; 'code' when two or more programs share the budget-line code (13 such codes in dim_programs, 10 split by appropriation account and 3 by organization; measured read-only 2026-09-25, the 7 that carry published links have a row here, all account-split) — this mart is keyed on the bare code, so on those rows every figure pools every member's links. Program pages and /feed/ withhold such a figure by the link rule; this download labels it instead of withholding it. The four label columns are asserted together by assert_program_concentration_scope_labelled — one pass over this view instead of five, since every test on it re-evaluates the pooled award join."
+      - name: member_programs
+        description: "dim_programs rows under this code: 1 for scope 'program', 2+ for 'code' (0 only for a code dim_programs does not know)."
+      - name: member_keys_with_links
+        description: "How many of the code's member programs carry at least one published (high or medium) link — the count the page rule asks about (a shared code whose figure a member page may print has exactly one). A member's key is its appropriation account, or its organization on the 3 organization-split codes (govbudget.jbooks.collision_keys)."
+      - name: links_outside_member_keys
+        description: "Published links on this code filed under a key no member program carries (an account-NULL link on an account-split code, an organization no member has). They are in every figure on the row and on no member's page."
+  - name: fct_budget_to_awards
+    description: "One row per published (program element × award) crosswalk link — the rows audit_link_grading grades high or medium. crosswalk_confidence keeps the loader's grade; confidence is the published one. Since 2026-09-25 the account+subagency tier publishes only the pairs a two-lens adjudication pinned (#107(b)) and an announcement+lexicon link publishes at high only when a recorded review upholds it and no recorded reviewer rejection or adversarial refutation targets the article its card cites (#110, R-DEC-110); every link either rule moves stays in audit_link_grading with its demotion_reason."
+    columns:
+      - name: confidence
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['high', 'medium']
+      - name: demotion_reason
+        description: "NULL, or the audit_link_grading rule that moved this published link down to medium: account_tokens_unadjudicated (#75), or for an announcement+lexicon link (#110, R-DEC-110) announcement_review_refuted, announcement_reviewer_rejected, announcement_review_incomplete or announcement_review_unrecorded — the last only when the link has no recorded review at all. (account_subagency_not_pinned links do not publish, so never appear here.)"
+        data_tests:
+          - accepted_values:
+              values: ['account_tokens_unadjudicated', 'announcement_review_refuted', 'announcement_reviewer_rejected', 'announcement_review_incomplete', 'announcement_review_unrecorded']
   - name: fct_agency_concentration
     columns:
       - name: awarding_sub_agency_name
@@ -129,7 +150,7 @@ models:
       - name: amount_usd
         description: "Aggregated expenditure amount in USD for this (jurisdiction, department, category, fiscal_year)"
   - name: fct_influence
-    description: "Lobbying disclosure amounts per (family_key, filing_year) from Senate LDA, joined with total contract obligations from dim_entities. Grain: one row per (family_key, filing_year). Lobbying amounts reflect statutory disclosures only; no causal relationship between lobbying and awards is stated or implied."
+    description: "Lobbying disclosure amounts per (family_key, filing_year) from Senate LDA, joined with total contract obligations from dim_entities. Grain: one row per (family_key, filing_year). Sums only the filings audit_lda_filings counts: since R-DEC-AMEND (2026-09-26) an amendment supersedes the original report for the same registrant, client and quarter, so an amended quarter is counted once, from its amendment. Lobbying amounts reflect statutory disclosures only; no causal relationship between lobbying and awards is stated or implied."
     columns:
       - name: family_key
         data_tests: [not_null]
@@ -137,6 +158,8 @@ models:
       - name: filing_year
         data_tests: [not_null]
         description: "LDA filing year (calendar year of the report)."
+      - name: filings_count
+        description: "How many filings the row's sums count (audit_lda_filings.counted): registrations, unamended reports, and one amendment per amended quarter — a report its amendment superseded is not counted."
       - name: lobbying_income_usd
         description: "Sum of income_usd from filings where an outside lobbying firm reported income from this client. Mutually exclusive with lobbying_expense_usd per filing."
       - name: lobbying_expense_usd
@@ -168,7 +191,7 @@ models:
         data_tests: [not_null, unique]
         description: "Lobbyist full name as disclosed in LDA filing."
       - name: covered_position
-        description: "Most recently disclosed prior government position (statutory disclosure). Empty when not disclosed."
+        description: "The prior government position (statutory disclosure) this lobbyist's filings disclose most often; ties broken by the position text, so the pick is the same on every build (2026-09-25 — the model never read filing dates, so this is not the most recent disclosure). Empty, N/A or NULL only when no filing discloses a position."
       - name: filings_count
         description: "Number of distinct filings in which this lobbyist appears."
       - name: revolving_door

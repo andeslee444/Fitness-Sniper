@@ -71,7 +71,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
-import { hhiBand } from "../../src/lib/hhi-band.mjs";
+import { hhiBand, hhiBandVintageLine } from "../../src/lib/hhi-band.mjs";
 import { readConcentrationFloor, withheldFloorClause } from "./concentration-floor.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -158,7 +158,10 @@ function htmlFor(url) {
 //     payload dictates:
 //       PUBLISHED (hhi_high, program_dollars_high, top_family_high non-null):
 //         exactly one [data-hhi-band], stamped data-hhi-basis="high", naming
-//         hhiBand(hhi_high); the hhi_high_fact_id figure (measure hhi-high,
+//         hhiBand(hhi_high), and exactly one visible [data-hhi-band-vintage]
+//         line reading hhiBandVintageLine(hhi_high) — the bands' vintage as
+//         text, not only a hover title (R-DEC-132b, controller 2026-09-26);
+//         the hhi_high_fact_id figure (measure hhi-high,
 //         dataset fct_program_concentration, the index to 0 dp) and the
 //         program_dollars_high_fact_id figure (measure obligations-high);
 //         both receipts resolve — in the shipped cite shards a reader's
@@ -250,6 +253,7 @@ export function inspectConcentrationDestination({ program, html, loadCitation, f
     }
   }
   const bands = section.querySelectorAll("[data-hhi-band]");
+  const vintages = section.querySelectorAll("[data-hhi-band-vintage]");
   const withheld = section.querySelector("[data-concentration-withheld]");
   const published = hhi.hhi_high != null && hhi.program_dollars_high != null && hhi.top_family_high != null;
 
@@ -265,6 +269,9 @@ export function inspectConcentrationDestination({ program, html, loadCitation, f
     const figures = section.querySelectorAll("[data-fact-id], [data-amount]").length;
     if (bands.length || figures) {
       problems.push(`withholds, yet renders ${bands.length} band(s) and ${figures} figure(s) — an absence must not read as a number`);
+    }
+    if (vintages.length) {
+      problems.push(`withholds, yet renders ${vintages.length} band vintage line(s) — there is no band to date (R-DEC-132b)`);
     }
     return { state: problems.length ? null : "below-floor", problems };
   }
@@ -284,6 +291,14 @@ export function inspectConcentrationDestination({ program, html, loadCitation, f
     if (bands[0].getAttribute("data-hhi-band") !== expectedBand) {
       problems.push(`band says ${JSON.stringify(bands[0].getAttribute("data-hhi-band"))}; hhi_high ${hhi.hhi_high} is ${JSON.stringify(expectedBand)}`);
     }
+  }
+  // R-DEC-132b: the band's vintage as visible text — the line's own text,
+  // not a title attribute a phone cannot reach.
+  const expectedVintage = hhiBandVintageLine(hhi.hhi_high);
+  if (vintages.length !== 1) {
+    problems.push(`renders ${vintages.length} [data-hhi-band-vintage] line(s) (expected exactly 1 reading ${JSON.stringify(expectedVintage)}, R-DEC-132b)`);
+  } else if ((vintages[0].text || "").replace(/\s+/g, " ").trim() !== expectedVintage) {
+    problems.push(`band vintage line says ${JSON.stringify((vintages[0].text || "").trim())}; hhi_high ${hhi.hhi_high} is ${JSON.stringify(expectedVintage)} (R-DEC-132b)`);
   }
   const figure = (id, measure) => {
     const el = section.querySelector(`[data-fact-id="${id}"]`);

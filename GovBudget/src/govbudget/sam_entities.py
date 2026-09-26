@@ -31,8 +31,8 @@ Management API does not accept it — probed 2026-09-05.
 
 SHAPE IS UNVERIFIED AND THE FAILURE IS LOUD. No one on this project has held
 a key, and an unauthenticated probe of /entity-information/v3/entities
-returned an empty 404. So: the endpoint is overridable (SAM_ENTITY_API_URL),
-`preflight` reports which candidate answers and writes the first response's
+returned an empty 404. So: the endpoint is overridable (SAM_ENTITY_API_URL,
+read at call time — see `sam_entity_api_url`), `preflight` reports which candidate answers and writes the first response's
 key names to data/research/sam_entities/preflight.json, and `parse_entity`
 raises SamShapeError naming the missing JSON path instead of writing nulls.
 Raw bodies are kept under data/raw/sam/ so `sam reparse` can fix a field map
@@ -65,18 +65,17 @@ import httpx
 from govbudget.manifest import ManifestRecord, append_record, load_records
 
 #: Neither version is verified. `preflight` decides and records which answers.
-SAM_ENTITY_API_URL = os.environ.get(
-    "SAM_ENTITY_API_URL", "https://api.sam.gov/entity-information/v4/entities"
-)
-_CANDIDATE_URLS = tuple(dict.fromkeys((
-    SAM_ENTITY_API_URL,
+#: These are DEFAULTS only: the environment is read at call time by
+#: `sam_entity_api_url` / `sam_public_entity_url` (ROADMAP #10 pre-live seam).
+DEFAULT_SAM_ENTITY_API_URL = "https://api.sam.gov/entity-information/v4/entities"
+_DOCUMENTED_ENTITY_URLS = (
     "https://api.sam.gov/entity-information/v4/entities",
     "https://api.sam.gov/entity-information/v3/entities",
-)))
-#: The page a READER opens. Verified by `preflight`, never assumed.
-SAM_PUBLIC_ENTITY_URL = os.environ.get(
-    "SAM_PUBLIC_ENTITY_URL", "https://sam.gov/entity/{uei}"
 )
+#: The page a READER opens. Verified by `preflight`, never assumed.
+DEFAULT_SAM_PUBLIC_ENTITY_URL = "https://sam.gov/entity/{uei}"
+#: The UEI `preflight` probes with (Lockheed Martin's parent registration).
+_PROBE_UEI = "ZFN2JJXBLZT3"
 _REQUEST_FLOOR_S = 1.0
 _USER_AGENT = "fiscalreceipts/1.0 (research; contact: andes.lee444@gmail.com)"
 #: Non-federal, no-role daily limit. Overridable; never silently exceeded.
@@ -123,6 +122,41 @@ class SamRateLimitError(RuntimeError):
 
 class SamShapeError(ValueError):
     """The response (or the preflight report) lacked an expected value."""
+
+
+def sam_entity_api_url() -> str:
+    """`SAM_ENTITY_API_URL` as the environment says NOW, else the v4 default.
+
+    READ AT CALL TIME (ROADMAP #10 pre-live seam, closed 2026-09-25). It used
+    to be bound when this module was imported, so a value set afterwards — a
+    wrapper loading .env late, a REPL, a test harness — was silently ignored
+    and the run requested the v4 guess. An empty value counts as unset.
+    """
+    return os.environ.get("SAM_ENTITY_API_URL") or DEFAULT_SAM_ENTITY_API_URL
+
+
+def candidate_urls() -> tuple[str, ...]:
+    """The entity endpoints `preflight` probes, in order, deduplicated: the
+    configured one first, then the two versions the API documentation names.
+    Two by default; three when SAM_ENTITY_API_URL names a third."""
+    return tuple(dict.fromkeys((sam_entity_api_url(), *_DOCUMENTED_ENTITY_URLS)))
+
+
+def sam_public_entity_url() -> str:
+    """The reader-facing page TEMPLATE (`{uei}` slot), read at call time.
+
+    Same seam as `sam_entity_api_url`. A template with no `{uei}` slot is
+    refused: `.format(uei=…)` would hand every family the same page.
+    """
+    template = (os.environ.get("SAM_PUBLIC_ENTITY_URL")
+                or DEFAULT_SAM_PUBLIC_ENTITY_URL)
+    if "{uei}" not in template:
+        raise SamShapeError(
+            f"SAM_PUBLIC_ENTITY_URL={template!r} has no {{uei}} slot — every "
+            "published family would cite the same page. Use a template like "
+            f"{DEFAULT_SAM_PUBLIC_ENTITY_URL!r}."
+        )
+    return template
 
 
 def require_api_key(api_key: str | None = None) -> str:
@@ -203,7 +237,7 @@ def parse_entity(payload: dict, *, source_url: str,
             t.get("businessTypeDesc", "") for t in types if t.get("businessTypeDesc")
         ) or None,
         "primary_naics": _opt(payload, "entityData[0].assertions.goodsAndServices.primaryNaics"),
-        "public_url": SAM_PUBLIC_ENTITY_URL.format(uei=uei),
+        "public_url": sam_public_entity_url().format(uei=uei),
         "source_url": _strip_key(source_url),
         "retrieved_at": retrieved_at or _now_iso(),
         # sha256 of the CANONICALISED body (sorted keys, compact separators),
@@ -242,6 +276,13 @@ def require_preflight(report_path) -> dict:
     Assumption 4: the extract may not publish sam.gov/entity/{uei} as a
     citation link until preflight has seen that URL answer 200. Reading a
     stored report costs no quota, which is why this is not a re-probe.
+
+    THE REPORT VOUCHES ONLY FOR THE TEMPLATE IT OPENED (ROADMAP #10 pre-live
+    seam, closed 2026-09-25). `parse_entity` builds `public_url` from the
+    template in force when it runs; if SAM_PUBLIC_ENTITY_URL changed after
+    preflight, a stored 200 says nothing about the pages the new rows would
+    cite. So the recorded `public_url` must equal today's template — a report
+    that names none, or names another, is refused and preflight re-run.
     """
     report_path = Path(report_path)
     if not report_path.is_file():
@@ -260,10 +301,26 @@ def require_preflight(report_path) -> dict:
             " none, set SAM_ENTITY_API_URL in GovBudget/.env to the version"
             " https://open.gsa.gov/api/entity-api/ documents today."
         )
+    template = sam_public_entity_url()
+    recorded = report.get("public_url")
+    if recorded != template:
+        verified = (
+            f"verified the reader-facing page template {recorded!r}"
+            if recorded else
+            "recorded no public_url template, so it vouches for none"
+        )
+        raise SamShapeError(
+            f"preflight {verified},"
+            f" but SAM_PUBLIC_ENTITY_URL is now {template!r} — the status it"
+            " recorded is not evidence for the pages the new rows would cite."
+            " Re-run `govbudget sam preflight` (it spends up to "
+            f"{len(candidate_urls())} of the day's requests) before extracting"
+            " or reparsing."
+        )
     if report.get("public_url_status") != 200:
         raise SamShapeError(
             "preflight recorded public_url_status="
-            f"{report.get('public_url_status')!r} for {SAM_PUBLIC_ENTITY_URL} "
+            f"{report.get('public_url_status')!r} for {template} "
             "— refusing to publish a citation link to a page nobody has "
             "opened. Fix SAM_PUBLIC_ENTITY_URL and re-run `govbudget sam "
             "preflight`."
@@ -324,24 +381,31 @@ def dominant_parent_ueis(duckdb_path, *, top_n: int = 200) -> list[tuple[str, st
 
 
 def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
-              probe_uei: str = "ZFN2JJXBLZT3", report_path=None) -> dict:
-    """Refuse early, report exactly what the API answered, spend <=2 requests.
+              probe_uei: str = _PROBE_UEI, report_path=None) -> dict:
+    """Refuse early, report exactly what the API answered, spend at most one
+    API request per candidate (`candidate_urls()`: 2 by default, 3 when
+    SAM_ENTITY_API_URL names a third) plus one GET of the reader-facing page,
+    which carries no key and is not an API request.
 
     Returns (and writes) {"endpoint", "status", "public_url",
-    "public_url_status", "entity_keys"}. Raises SamAuthError when there is no
-    key or every candidate rejects it; SamShapeError when every candidate 404s.
+    "public_url_status", "entity_keys"}. `public_url` is the TEMPLATE this
+    probe opened — `require_preflight` refuses the report once the template
+    in force differs. Raises SamAuthError when there is no key or every
+    candidate rejects it; SamShapeError when every candidate 404s.
     """
     key = require_api_key(api_key)
+    template = sam_public_entity_url()
+    candidates = candidate_urls()
     owns_client = client is None
     client = client or httpx.Client(
         headers={"User-Agent": _USER_AGENT}, timeout=60, follow_redirects=True
     )
     report: dict = {"endpoint": None, "status": None,
-                    "public_url": SAM_PUBLIC_ENTITY_URL,
+                    "public_url": template,
                     "public_url_status": None, "entity_keys": []}
     auth_rejected = False
     try:
-        for url in _CANDIDATE_URLS:
+        for url in candidates:
             time.sleep(_REQUEST_FLOOR_S)
             r = client.get(url, params={"api_key": key, "ueiSAM": probe_uei})
             if r.status_code == 404:
@@ -359,7 +423,7 @@ def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
                 report["entity_keys"] = []
             break
         # The reader-facing page, checked because a citation will link to it.
-        pub = SAM_PUBLIC_ENTITY_URL.format(uei=probe_uei)
+        pub = template.format(uei=probe_uei)
         try:
             report["public_url_status"] = client.get(pub).status_code
         except httpx.HTTPError as e:
@@ -376,7 +440,7 @@ def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
             )
         raise SamShapeError(
             "every candidate SAM entity endpoint answered 404: "
-            f"{_CANDIDATE_URLS}. Set SAM_ENTITY_API_URL to the version "
+            f"{candidates}. Set SAM_ENTITY_API_URL to the version "
             "https://open.gsa.gov/api/entity-api/ documents today and re-run."
         )
     if report_path:
@@ -398,7 +462,7 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS,
     the number of days a 10/day key has left to go.
 
     THE ENDPOINT IS REPORTED ONLY WHEN IT IS KNOWN. A real run requests
-    `require_preflight(...)["endpoint"]`, never SAM_ENTITY_API_URL, so
+    `require_preflight(...)["endpoint"]`, never `sam_entity_api_url()`, so
     printing the v4 default under the key `endpoint` described a request the
     run would not make. With a stored preflight report (`report_path`, read
     here and nowhere near the network) the plan carries that recorded URL as
@@ -428,7 +492,54 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS,
         "complete": not missing,
         "raw_dir": str(raw_dir),
         **({"endpoint": recorded} if recorded
-           else {"endpoint_default": SAM_ENTITY_API_URL}),
+           else {"endpoint_default": sam_entity_api_url()}),
+        "has_key": bool(os.environ.get("SAM_API_KEY")),
+    }
+
+
+def plan_first_live_run(families, *, raw_dir, report_path,
+                        daily_quota: int = DEFAULT_MAX_REQUESTS,
+                        probe_uei: str = _PROBE_UEI) -> dict:
+    """What the FIRST live day will do — preflight, then the bounded extract —
+    from stored state alone: no key, no HTTP client, no write.
+
+    The day's quota is shared: preflight spends up to one API request per
+    candidate endpoint before the extract fetches anything, so the extract's
+    cap is `daily_quota - len(candidate_urls())` (10 - 2 = 8 by default; one
+    more is left if the first candidate answers). When a stored report already
+    passes `require_preflight` — endpoint found, reader page 200, recorded
+    template equal to today's — preflight is not needed and the extract gets
+    the whole quota. `reason` says why preflight IS needed when it is.
+    """
+    candidates = list(candidate_urls())
+    template = sam_public_entity_url()
+    reason = None
+    try:
+        require_preflight(report_path)
+    except SamShapeError as e:
+        reason = str(e)
+    needed = reason is not None
+    pre_max = len(candidates) if needed else 0
+    cap = max(int(daily_quota) - pre_max, 0)
+    extract = plan_extract(families, raw_dir=raw_dir, max_requests=cap,
+                           report_path=report_path)
+    commands = ["uv run python -m govbudget sam preflight"] if needed else []
+    commands.append(f"uv run python -m govbudget sam extract --max-requests {cap}")
+    return {
+        "daily_quota": int(daily_quota),
+        "preflight": {
+            "needed": needed,
+            "reason": reason,
+            "candidates": candidates if needed else [],
+            "api_requests_max": pre_max,
+            "probe_uei": probe_uei if needed else None,
+            "public_page_template": template,
+            "public_page_probe": template.format(uei=probe_uei) if needed else None,
+            "report_path": str(report_path),
+        },
+        "extract": extract,
+        "api_requests_max_today": pre_max + extract["would_fetch"],
+        "commands": commands,
         "has_key": bool(os.environ.get("SAM_API_KEY")),
     }
 
@@ -441,7 +552,8 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
     `endpoint` is the URL `preflight` RECORDED as answering — cmd_sam passes
     `require_preflight(...)["endpoint"]`, so a probe that found v3 is not
     followed by 10 requests to the v4 guess. It defaults to
-    SAM_ENTITY_API_URL, and a non-200 raises SamShapeError rather than an
+    `sam_entity_api_url()` (read now, not at import), and a non-200 raises
+    SamShapeError rather than an
     httpx.HTTPStatusError traceback: cmd_sam converts the three Sam* errors
     into a clean BLOCKED line and nothing else. A 4xx names that env var (the
     version may be wrong); a 5xx says SAM is down and to re-run later, because
@@ -461,7 +573,7 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
         return plan_extract(families, raw_dir=raw_dir, max_requests=max_requests)
 
     key = require_api_key(api_key)
-    endpoint = endpoint or SAM_ENTITY_API_URL
+    endpoint = endpoint or sam_entity_api_url()
     out_dir, raw_dir = Path(out_dir), Path(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -592,7 +704,7 @@ def reparse(*, raw_dir, out_dir) -> Path:
         records.append(parse_entity(
             payload,
             source_url=(rec.source_url if rec
-                        else f"{SAM_ENTITY_API_URL}?ueiSAM={p.stem}"),
+                        else f"{sam_entity_api_url()}?ueiSAM={p.stem}"),
             retrieved_at=(rec.downloaded_at if rec else _utc_iso(
                 datetime.fromtimestamp(p.stat().st_mtime, timezone.utc))),
         ))
