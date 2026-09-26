@@ -41,6 +41,12 @@ without spending a day's quota. The READER-facing URL is unverified too, and
 it answer 200 — the LDA lesson (influence/lda.py:197-214: an "official_url"
 nobody checked was an API resource for months).
 
+ZERO RECORDS IS AN ANSWER, NOT A SHAPE ERROR (chain G step 11, 2026-09-26).
+A 200 with exactly `{"entityData": [], "totalRecords": 0}` (`is_no_record`)
+is stored, recorded in the manifest, never re-fetched, and yields no row; the
+extract carries on to the next family and `reparse` rebuilds the parquet from
+every other stored body. It says SAM returned no record for that UEI, not why.
+
 POLITENESS. One request per UEI, >=1s floor between requests, no retry storm:
 a 429 or an OVER_RATE_LIMIT/API_KEY_INVALID body stops the run immediately.
 
@@ -207,12 +213,60 @@ def _opt(payload: dict, path: str):
         return None
 
 
+def _canonical_sha256(payload) -> str:
+    """sha256 of the CANONICALISED body (sorted keys, compact separators),
+    not of the raw bytes: it must be stable across `sam reparse`, which
+    re-reads a pretty-printed copy of the same document."""
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def is_no_record(payload) -> bool:
+    """True for SAM's answer to a UEI it returns no record for, and ONLY that.
+
+    Chain G step 11 (2026-09-26): RTX's dominant registration UEI
+    PPLZG8J3N9D4 came back 200 with exactly `{"entityData": [],
+    "totalRecords": 0}`. That is an ANSWER — the Entity API returns no record
+    for this UEI to this key — not a shape the path map got wrong, and it
+    must neither stop the extract nor block `sam reparse` of every other
+    stored body. What it does NOT establish is why: a registration the
+    default query does not return (an expired one, or one withheld from
+    public view) is indistinguishable here, so nothing may publish it as
+    "this company has no SAM registration".
+
+    Strict on purpose, so a shape surprise stays loud: `entityData` must be
+    an empty LIST and `totalRecords` the INTEGER 0 (not "0", not False).
+    Anything else — a count with no records, records with no count — falls
+    through to `parse_entity`, which raises SamShapeError naming the path.
+    """
+    if not isinstance(payload, dict):
+        return False
+    total = payload.get("totalRecords")
+    # `== []` is True only for an empty list (a {} or () is not equal to it).
+    return payload.get("entityData") == [] and type(total) is int and total == 0
+
+
+def parse_response(payload: dict, *, source_url: str,
+                   retrieved_at: str | None = None) -> dict | None:
+    """The parquet row one stored response yields, or None when SAM returned
+    no record for the UEI (`is_no_record`). The front door `extract_entities`
+    and `reparse` both use; everything that is not the exact zero-record
+    answer goes to `parse_entity` and its SamShapeError."""
+    if is_no_record(payload):
+        return None
+    return parse_entity(payload, source_url=source_url, retrieved_at=retrieved_at)
+
+
 def parse_entity(payload: dict, *, source_url: str,
                  retrieved_at: str | None = None) -> dict:
     """One parquet row from one response body. No network, no key.
 
     `retrieved_at` defaults to now() because the default caller IS the fetch.
     `reparse` always passes the stored fetch time instead — see its docstring.
+    A body with no record raises here like any other missing path: it is not
+    a row. `parse_response` is the caller-facing door that tells the two
+    apart.
     """
     reg = _dig(payload, "entityData[0].entityRegistration")
     uei = reg.get("ueiSAM")
@@ -240,12 +294,7 @@ def parse_entity(payload: dict, *, source_url: str,
         "public_url": sam_public_entity_url().format(uei=uei),
         "source_url": _strip_key(source_url),
         "retrieved_at": retrieved_at or _now_iso(),
-        # sha256 of the CANONICALISED body (sorted keys, compact separators),
-        # not of the raw bytes: it must be stable across `sam reparse`, which
-        # re-reads a pretty-printed copy of the same document.
-        "response_sha256": hashlib.sha256(
-            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest(),
+        "response_sha256": _canonical_sha256(payload),
     }
 
 
@@ -564,7 +613,8 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
     raw_dir) are skipped unless refresh=True — that is the resume, and it is
     what makes a 10/day quota survivable over 20 days. The parquet is rebuilt
     in a finally block, so a rate-limit or auth stop mid-run still keeps every
-    body already paid for.
+    body already paid for. A zero-record answer (`is_no_record`) is stored and
+    recorded like any fetch, yields no row, and does not stop the run.
 
     Returns the parquet Path. With dry_run=True it returns the plan dict from
     `plan_extract` instead, having required no key, made no request and
@@ -652,16 +702,26 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
             raw_path.write_text(
                 json.dumps(payload, indent=2, sort_keys=True).replace(key, "…")
             )
-            rec = parse_entity(payload, source_url=str(r.request.url))
+            rec = parse_response(payload, source_url=str(r.request.url))
+            # A zero-record answer (`is_no_record`) is recorded exactly like a
+            # registration — stored above, so it is never paid for twice, and
+            # given a manifest line — but yields no row, and the run carries on
+            # to the next family instead of stopping on it (chain G step 11).
+            fetched_at = rec["retrieved_at"] if rec else _now_iso()
             append_record(manifest_path, ManifestRecord(
                 dataset="sam_entities",
                 fiscal_year=None,
                 file_name=raw_path.name,
-                source_url=rec["source_url"],
-                sha256=rec["response_sha256"],
+                source_url=(rec["source_url"] if rec
+                            else _strip_key(str(r.request.url))),
+                sha256=rec["response_sha256"] if rec else _canonical_sha256(payload),
                 bytes=len(body_text.encode()),
-                downloaded_at=rec["retrieved_at"],
+                downloaded_at=fetched_at,
             ))
+            if rec is None:
+                print(f"sam extract: {family_key} <- {uei} (SAM returned no "
+                      "record for this UEI: 200, totalRecords 0; stored, no row)")
+                continue
             print(f"sam extract: {family_key} <- {uei} "
                   f"({rec['registration_status']}, expires "
                   f"{rec['registration_expiration_date']})")
@@ -695,22 +755,40 @@ def reparse(*, raw_dir, out_dir) -> Path:
     "N row(s) dated from manifest.jsonl, M from file mtime". M above zero on a
     normal rebuild is the symptom, and `sam extract` prints the same line from
     its finally block on every run.
+
+    A stored zero-record answer (`is_no_record`) contributes no row and is
+    counted in neither figure; a second line names its UEI(s). Every other
+    stored body is still rebuilt — a body that is neither a registration nor
+    the exact zero-record answer still raises SamShapeError, as before.
     """
     raw_dir, out_dir = Path(raw_dir), Path(out_dir)
     fetched = {r.file_name: r for r in load_records(out_dir / "manifest.jsonl")}
     records = []
+    from_mtime = 0
+    no_record: list[str] = []
     for p in sorted(raw_dir.glob("*.json")):
         rec = fetched.get(p.name)
         payload = json.loads(p.read_text())
-        records.append(parse_entity(
+        row = parse_response(
             payload,
             source_url=(rec.source_url if rec
                         else f"{sam_entity_api_url()}?ueiSAM={p.stem}"),
             retrieved_at=(rec.downloaded_at if rec else _utc_iso(
                 datetime.fromtimestamp(p.stat().st_mtime, timezone.utc))),
-        ))
-    from_mtime = sum(1 for p in sorted(raw_dir.glob("*.json"))
-                     if p.name not in fetched)
+        )
+        if row is None:
+            # A stored zero-record answer (`is_no_record`): kept, never
+            # re-fetched, and no row — it must not stop the rebuild of every
+            # other stored body (chain G step 11 wrote no parquet because it
+            # did). Counted per ROW below, so it inflates neither count.
+            no_record.append(p.stem)
+            continue
+        records.append(row)
+        from_mtime += rec is None
     print(f"sam reparse: {len(records) - from_mtime} row(s) dated from "
           f"manifest.jsonl, {from_mtime} from file mtime")
+    if no_record:
+        print(f"sam reparse: {len(no_record)} stored answer(s) where SAM returned"
+              " no record for the UEI (200, totalRecords 0; no row written): "
+              + ", ".join(no_record))
     return write_entities_parquet(records, out_dir)

@@ -1,0 +1,12 @@
+{
+  "endpoint": "https://api.sam.gov/entity-information/v4/entities",
+  "entity_keys": [
+    "assertions",
+    "coreData",
+    "entityRegistration",
+    "pointsOfContact"
+  ],
+  "public_url": "https://sam.gov/entity/{uei}",
+  "public_url_status": 200,
+  "status": 200
+}

@@ -229,9 +229,10 @@
   expected_answer: fpds-ap, medium
   expected_citation_kind: warehouse
   notes: 'Read-only 2026-09-26 on the deployed lake, before the decisions wave: account+subagency
-    at medium is 8,833 of 12,601 rows. Projected under #107(b) + R-DEC-110 (scratch
-    build, 2026-09-26): fpds-ap at medium, 1,865 of 3,768 rows; the chain''s `evals
-    refresh` sets the expected answer (R-DEC-EVALS).'
+    at medium is 8,833 of 12,601 rows. Measured read-only at chain G (2026-09-26),
+    running this answer_sql with its count(*): fpds-ap at medium is 1,865 of 3,685
+    rows, ahead of announcement+lexicon at high (1,047); chain G''s `evals refresh`
+    set the expected answer (R-DEC-EVALS-b).'
 - id: q021
   question: Which DoD sub-agency has the highest Herfindahl-Hirschman Index (HHI)
     in the agency concentration mart, indicating the most concentrated vendor base?

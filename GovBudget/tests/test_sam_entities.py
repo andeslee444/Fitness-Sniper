@@ -14,6 +14,7 @@ so that a shape surprise is loud instead of silent.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import datetime, timezone
@@ -980,3 +981,183 @@ def test_the_missing_report_refusal_counts_the_requests_preflight_would_spend(
     assert len(candidate_urls()) == 3
     assert "spends up to 3 of the day's requests" in str(exc.value)
     assert "up to 2 of" not in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# A 200 with ZERO records is an answer, not a shape error (chain G step 11,
+# 2026-09-26). RTX's dominant registration UEI PPLZG8J3N9D4 came back as
+# {"entityData": [], "totalRecords": 0}; parse_entity raised on it, the
+# extract stopped on the 3rd family, and the finally-block reparse failed on
+# the same stored body — so NO entities.parquet was written, and every later
+# extract/reparse would have stopped on it too. entity_no_record.json is that
+# body, byte for byte (43 bytes, key-free).
+# ---------------------------------------------------------------------------
+
+NO_RECORD = json.loads((FIXTURE_DIR / "entity_no_record.json").read_text())
+_V4 = "https://api.sam.gov/entity-information/v4/entities"
+
+
+def test_a_zero_record_answer_parses_to_no_row():
+    from govbudget.sam_entities import is_no_record, parse_response
+
+    assert NO_RECORD == {"entityData": [], "totalRecords": 0}
+    assert is_no_record(NO_RECORD) is True
+    assert parse_response(NO_RECORD, source_url=f"{_V4}?ueiSAM=PPLZG8J3N9D4") is None
+    # A registration body still parses to its row through the same door.
+    row = parse_response(LOCKHEED, source_url=f"{_V4}?ueiSAM=ZFN2JJXBLZT3")
+    assert row["sam_uei"] == "ZFN2JJXBLZT3"
+    # parse_entity's own contract is unchanged: one ROW per body, so the
+    # zero-record body is still not a row it can build.
+    with pytest.raises(SamShapeError):
+        parse_entity(NO_RECORD, source_url=_V4)
+
+
+@pytest.mark.parametrize("body", [
+    {"entityData": [], "totalRecords": 3},     # SAM says 3, ships none
+    {"entityData": []},                        # no count at all
+    {"totalRecords": 0},                       # no entityData at all
+    {"entityData": [], "totalRecords": "0"},   # a string is not SAM's count
+    {"entityData": [], "totalRecords": False},  # nor is a bool that == 0
+    {"entityData": {}, "totalRecords": 0},     # not a list
+])
+def test_only_the_exact_zero_record_shape_counts_as_no_record(body):
+    """The shape surprise stays loud: anything that is not exactly SAM's
+    zero-record answer still raises SamShapeError naming the path."""
+    from govbudget.sam_entities import is_no_record, parse_response
+
+    assert is_no_record(body) is False
+    with pytest.raises(SamShapeError) as exc:
+        parse_response(body, source_url=_V4)
+    assert "entityData[0]" in str(exc.value)
+
+
+def _by_uei_handler(bodies: dict, seen: list):
+    def handler(request: httpx.Request) -> httpx.Response:
+        uei = dict(request.url.params)["ueiSAM"]
+        seen.append(uei)
+        return httpx.Response(200, json=bodies[uei])
+    return handler
+
+
+def _parquet_ueis(path) -> list[str]:
+    con = duckdb.connect()
+    try:
+        return [r[0] for r in con.execute(
+            f"select sam_uei from read_parquet('{path}') order by sam_uei"
+        ).fetchall()]
+    finally:
+        con.close()
+
+
+def test_extract_records_a_zero_record_answer_and_carries_on(
+    tmp_path, monkeypatch, capsys
+):
+    """The chain-G run, replayed: Lockheed, then RTX's zero-record answer,
+    then Boeing. The zero-record answer is stored and recorded in the manifest,
+    yields no row, and does NOT stop the families after it."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+    fams = [("LOCKHEED MARTIN", "ZFN2JJXBLZT3"), ("RTX", "PPLZG8J3N9D4"),
+            ("BOEING", "NU2UC8MX6NK1")]
+    bodies = {"ZFN2JJXBLZT3": _body_for("ZFN2JJXBLZT3"),
+              "PPLZG8J3N9D4": NO_RECORD,
+              "NU2UC8MX6NK1": _body_for("NU2UC8MX6NK1")}
+    seen: list[str] = []
+    with httpx.Client(transport=httpx.MockTransport(_by_uei_handler(bodies, seen))) as c:
+        out = extract_entities(fams, api_key="k", out_dir=tmp_path / "p",
+                               raw_dir=tmp_path / "r", client=c, max_requests=10,
+                               endpoint=_V4)
+    assert seen == ["ZFN2JJXBLZT3", "PPLZG8J3N9D4", "NU2UC8MX6NK1"]
+    # The parquet is written, and holds the two registrations only.
+    assert out == tmp_path / "p" / "entities.parquet" and out.exists()
+    assert _parquet_ueis(out) == ["NU2UC8MX6NK1", "ZFN2JJXBLZT3"]
+    # The zero-record answer is kept, so it is never paid for twice ...
+    assert json.loads((tmp_path / "r" / "PPLZG8J3N9D4.json").read_text()) == NO_RECORD
+    # ... and recorded, like every other fetch, with a key-free source URL.
+    manifest = [json.loads(line) for line in
+                (tmp_path / "p" / "manifest.jsonl").read_text().splitlines()]
+    assert [m["file_name"] for m in manifest] == [
+        "ZFN2JJXBLZT3.json", "PPLZG8J3N9D4.json", "NU2UC8MX6NK1.json"]
+    rtx = manifest[1]
+    assert rtx["source_url"] == f"{_V4}?ueiSAM=PPLZG8J3N9D4"
+    assert rtx["sha256"] == hashlib.sha256(json.dumps(
+        NO_RECORD, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    assert rtx["dataset"] == "sam_entities"
+    printed = capsys.readouterr().out
+    assert ("sam extract: RTX <- PPLZG8J3N9D4 (SAM returned no record for this"
+            " UEI: 200, totalRecords 0; stored, no row)") in printed
+
+
+def test_a_stored_zero_record_answer_is_never_re_fetched(tmp_path, monkeypatch):
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+    fams = [("RTX", "PPLZG8J3N9D4"), ("BOEING", "NU2UC8MX6NK1")]
+    bodies = {"PPLZG8J3N9D4": NO_RECORD, "NU2UC8MX6NK1": _body_for("NU2UC8MX6NK1")}
+    seen: list[str] = []
+    for _ in range(2):
+        with httpx.Client(transport=httpx.MockTransport(
+                _by_uei_handler(bodies, seen))) as c:
+            extract_entities(fams, api_key="k", out_dir=tmp_path / "p",
+                             raw_dir=tmp_path / "r", client=c, max_requests=10)
+    assert seen == ["PPLZG8J3N9D4", "NU2UC8MX6NK1"], "the second run fetches nothing"
+    plan = plan_extract(fams, raw_dir=tmp_path / "r", max_requests=10)
+    assert plan["missing"] == 0 and plan["complete"] is True
+
+
+def _chain_g_lake(tmp_path):
+    """The lake exactly as chain G left it: three stored bodies, and a
+    manifest with TWO lines — the extract raised on RTX's body after storing
+    it and before recording it."""
+    raw, out = tmp_path / "raw" / "sam", tmp_path / "parquet" / "sam"
+    raw.mkdir(parents=True)
+    out.mkdir(parents=True)
+    days = {"ZFN2JJXBLZT3": "2026-09-26T15:15:53+00:00",
+            "NU2UC8MX6NK1": "2026-09-26T15:15:54+00:00"}
+    for uei, day in days.items():
+        (raw / f"{uei}.json").write_text(json.dumps(_body_for(uei), indent=2))
+        append_record(out / "manifest.jsonl", ManifestRecord(
+            dataset="sam_entities", fiscal_year=None, file_name=f"{uei}.json",
+            source_url=f"{_V4}?ueiSAM={uei}", sha256="x", bytes=1,
+            downloaded_at=day))
+    (raw / "PPLZG8J3N9D4.json").write_bytes(
+        (FIXTURE_DIR / "entity_no_record.json").read_bytes())
+    return raw, out, days
+
+
+def test_reparse_rebuilds_the_parquet_past_a_stored_zero_record_body(
+    tmp_path, capsys
+):
+    raw, out, days = _chain_g_lake(tmp_path)
+    path = reparse(raw_dir=raw, out_dir=out)
+    assert _parquet_ueis(path) == ["NU2UC8MX6NK1", "ZFN2JJXBLZT3"]
+    assert _retrieved_at(path) == days, "both rows keep their fetch day"
+    printed = capsys.readouterr().out
+    # Counted per ROW: the zero-record body has no manifest line, and it is
+    # not a row dated from mtime either.
+    assert "sam reparse: 2 row(s) dated from manifest.jsonl, 0 from file mtime" in printed
+    assert ("sam reparse: 1 stored answer(s) where SAM returned no record for"
+            " the UEI (200, totalRecords 0; no row written): PPLZG8J3N9D4") in printed
+
+
+def test_cli_reparse_rebuilds_two_entities_from_the_chain_g_lake(
+    tmp_path, monkeypatch
+):
+    """`govbudget sam reparse` — no network, no quota — on chain G's state."""
+    from govbudget.cli import main
+
+    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL", raising=False)
+    monkeypatch.setattr("govbudget.config.PARQUET_DIR", tmp_path / "parquet")
+    monkeypatch.setattr("govbudget.config.RAW_DIR", tmp_path / "raw")
+    monkeypatch.setattr("govbudget.config.RESEARCH_DIR", tmp_path / "research")
+
+    def boom(*_a, **_k):  # pragma: no cover
+        raise AssertionError("reparse must not construct an HTTP client")
+
+    monkeypatch.setattr("govbudget.sam_entities.httpx.Client", boom)
+    _chain_g_lake(tmp_path)
+    report = tmp_path / "research" / "sam_entities" / "preflight.json"
+    report.parent.mkdir(parents=True)
+    report.write_text(json.dumps({"endpoint": _V4, "status": 200,
+                                  "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
+                                  "public_url_status": 200}))
+    main(["sam", "reparse"])
+    assert _parquet_ueis(tmp_path / "parquet" / "sam" / "entities.parquet") == [
+        "NU2UC8MX6NK1", "ZFN2JJXBLZT3"]

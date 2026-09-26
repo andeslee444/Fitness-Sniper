@@ -9,6 +9,7 @@ to double count.
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
 
 import pytest
@@ -468,3 +469,41 @@ def test_the_source_date_is_never_before_the_event_it_documents():
             f"{e.from_name}: source dated {e.source_date} predates the "
             f"{e.effective_date} event it is cited for"
         )
+
+
+# ── notes print no dollar amount (gate 2, chain G step 12) ──────────────────
+
+#: Gate 2 (render-static) fails any currency token in a text node outside a
+#: [data-amount] subtree, and /companies/families/ renders every note as plain
+#: text (site/src/app/companies/families/page.tsx), so a dollar figure in a
+#: note is an uncited amount on the page. Chain G's BUILD 1 (2026-09-26) failed
+#: on exactly that: the Rockwell Collins Australia note printed "$2.94M" and
+#: "$190.4M". The pattern is read from the gate, not re-typed, so the two can
+#: never drift apart.
+RENDER_STATIC = ROOT / "site" / "scripts" / "gates" / "render-static.mjs"
+
+
+def _gate_currency_re() -> re.Pattern[str]:
+    src = RENDER_STATIC.read_text(encoding="utf-8")
+    m = re.search(r"^const CURRENCY_RE = /(.+)/g;$", src, re.MULTILINE)
+    assert m, f"CURRENCY_RE not found in {RENDER_STATIC}"
+    return re.compile(m.group(1))
+
+
+def test_the_gate_currency_pattern_is_the_one_this_test_reads():
+    pat = _gate_currency_re()
+    assert pat.search("by $2.94M over") and pat.search("$190.4M")
+    assert not pat.search("USD 4.6B") and not pat.search("74.9%")
+
+
+def test_no_shipped_note_prints_a_dollar_amount():
+    pat = _gate_currency_re()
+    offenders = [
+        (e.family, e.from_name, m.group(0))
+        for e in load_family_events(SEED)
+        for m in pat.finditer(e.note)
+    ]
+    assert offenders == [], (
+        "a note renders as plain text on /companies/families/, outside any "
+        f"[data-amount] — state no dollar figure there: {offenders}"
+    )
