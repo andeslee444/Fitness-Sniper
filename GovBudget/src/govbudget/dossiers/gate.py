@@ -8,6 +8,22 @@ Per the plan's evaluator design (dossier_gate bullet):
 - a dossier file exists for every top-50 pe_bli and is structurally valid.
 - ZERO claims with unresolvable citations: every {"fact_id"} must be a key
   of citations.json; every {"url"} must be the url of a cached snapshot.
+- ZERO published claims that contradict their cited fact (ruling
+  R-DEC-DOSSIERDRIFT, 2026-09-26; check `claims_agree_with_citations`): a
+  stated dollar/HHI figure outside the sentence's own rounding of the
+  fact's CURRENT value — any fact kind: a derived recorded_value, a workbook
+  cell's amount_thousands, a J-book glyph's amount_text (round 2) — a
+  concentration word against the fact's 2023 band, a "top/leading recipient
+  family" naming a family other than the one the cited concentration row
+  records, a recipient list naming a recipient the PAGE's linked awards
+  do not carry (round 2), or a figure given another fiscal year than its
+  cited column's (round 3; the column is read from citations.parquet) — the
+  same
+  govbudget.dossiers.claim_drift.claim_contradictions the exporter withholds
+  on. The family and recipient legs need duckdb_path. With none they report
+  `family_check` / `recipient_check` False and "not run"; with a path that
+  cannot be read the check FAILS with `error` (fail closed, round 2 — an
+  unreadable mart is never an empty one).
 - >= 80% of claims CORPUS-WIDE carry warehouse (fact_id) citations.
 - required sections (what_it_is / why_it_matters / players) are non-empty;
   recent_developments MAY be empty (warehouse-only dossiers are valid).
@@ -18,7 +34,12 @@ Per the plan's evaluator design (dossier_gate bullet):
   failing the evidence standard AND the built page (built_site_dir) actually
   renders the correction note disclosing it. Both conditions are checked
   independently; either one failing still fails the section, exactly as an
-  empty required section always has.
+  empty required section always has. R-DEC-DOSSIERDRIFT round 2
+  (2026-09-26): "disclosing it" means the note's COUNT equals the sidecar's
+  dropped_claims and its text is exactly the sentence program-dossier.tsx
+  renders for the sidecar's dropped_reasons (expected_correction_note —
+  every reason, with its own count), read from the member PAGE
+  (/program/{slug}/); a count alone let a note explain 4 of 8 removals.
   (2) 'players' ONLY (Sprint E #67; page-keyed by chain-B fix 2 round 2,
   2026-09-12): an empty players section is honest when the warehouse carries
   nothing THIS PAGE could cite — no award link at this page's identity, no
@@ -38,6 +59,7 @@ Returns the standard {ok, ...} dict; wired into verify-phase5b3 in Task 9.
 from __future__ import annotations
 
 import csv
+import html as html_lib
 import json
 import re
 from pathlib import Path
@@ -46,6 +68,15 @@ from govbudget.dossiers.batch import (
     ALL_SECTIONS,
     REQUIRED_SECTIONS,
     validate_dossier,
+)
+from govbudget.dossiers.claim_drift import (
+    ClaimDriftIndexError,
+    cited_value,
+    claim_contradictions,
+    concentration_fact_index,
+    fact_column_index,
+    linked_recipient_index,
+    unlinked_recipients,
 )
 
 WAREHOUSE_FLOOR = 0.80
@@ -110,7 +141,43 @@ def pre_batch_check(top50_pe: list[str], dim_programs_pe: set[str]) -> dict:
     return {"ok": not missing, "count": len(pes), "missing": missing}
 
 
-_DROPPED_CLAIMS_ATTR_RE = re.compile(r'data-dossier-dropped-claims="(\d+)"')
+_DROPPED_NOTE_RE = re.compile(
+    r'<p\b[^>]*\bdata-dossier-dropped-claims="(\d+)"[^>]*>(.*?)</p>', re.DOTALL)
+
+#: MIRROR of site/src/components/program-dossier.tsx's Correction note, word
+#: for word (R-DEC-DOSSIERDRIFT round 2): each dropped reason's clause when
+#: its count is 1 and otherwise, after the component's subject — "it"/"they"
+#: when the reason covers every dropped claim, else "one" or the count.
+#: tests/test_dossiers_batch.py::TestCorrectionNoteMirror holds the two
+#: together; the order is the component's.
+CORRECTION_CLAUSES: dict[str, tuple[str, str]] = {
+    # R-DEC-DOSSIERDRIFT round 3: worded for what the exporter checks — the
+    # claim's citation does not resolve (a fact_id not in citations.json, a
+    # url with no cached snapshot, a malformed citation). It used to say
+    # "cited lobbying mentions that did not meet the evidence standard",
+    # false on /program/1000/, /program/ATA000/, /program/B02100/ and
+    # /program/0603467E/, whose unresolvable drops are J-book narrative and
+    # concentration claims.
+    "unresolvable_citation": (
+        "cited a source the site could not resolve",
+        "cited sources the site could not resolve",
+    ),
+    "stale_value": (
+        "stated a figure a later correction changed",
+        "stated figures a later correction changed",
+    ),
+    # R-DEC-DOSSIERDRIFT round 4: "year" added. The fiscal_year sub-reason
+    # (round 3) withholds a claim whose figure AGREES with its cite but is
+    # given another fiscal year (/program/1203154SF/ what_it_is[3]); "stated
+    # a figure or recipient its sources do not support" named neither thing
+    # wrong with it.
+    "contradicts_citation": (
+        "stated a figure, year or recipient its sources do not support",
+        "stated figures, years or recipients their sources do not support",
+    ),
+}
+#: the component's clause for dropped claims no reason above accounts for
+CORRECTION_OTHER_CLAUSE = "did not meet the evidence standard"
 
 
 
@@ -255,22 +322,85 @@ def _has_no_players_evidence(duckdb_path, pe_bli: str, page_slug: str | None = N
         return False
 
 
-def _built_page_discloses_drop(built_site_dir: Path, pe_bli: str) -> bool:
-    """True iff out/program/{pe_bli}/index.html actually renders the
-    dropped-claims correction note (program-dossier.tsx's ScopeNote,
-    data-dossier-dropped-claims > 0) — real HTML, not the sidecar's own
-    claim that one exists. False on any missing file, read error, or a
-    present-but-zero attribute (would mean the sidecar and the page
-    disagree, which is itself something this check must NOT paper over)."""
-    page = Path(built_site_dir) / "program" / pe_bli / "index.html"
+def expected_correction_note(dropped_claims: int, dropped_reasons: dict | None) -> str | None:
+    """The Correction note program-dossier.tsx renders for a sidecar, or
+    None when the sidecar names a reason the component has no words for
+    (such a drop cannot be shown to be disclosed truthfully).
+
+    dropped_reasons None is a sidecar older than the field: the component
+    then states #52's reason for every drop."""
+    reasons = (
+        {"unresolvable_citation": dropped_claims} if dropped_reasons is None
+        else dict(dropped_reasons)
+    )
+    if any(k not in CORRECTION_CLAUSES for k, n in reasons.items() if n):
+        return None
+    pronoun = "it" if dropped_claims == 1 else "they"
+
+    def subject(n: int) -> str:
+        return pronoun if n == dropped_claims else "one" if n == 1 else str(n)
+
+    parts = []
+    for reason, (one, many) in CORRECTION_CLAUSES.items():
+        n = reasons.get(reason) or 0
+        if n > 0:
+            parts.append(f"{subject(n)} {one if n == 1 else many}")
+    other = dropped_claims - sum(reasons.get(r) or 0 for r in CORRECTION_CLAUSES)
+    if other > 0:
+        parts.append(f"{subject(other)} {CORRECTION_OTHER_CLAUSE}")
+    return (
+        f"{dropped_claims} claim{'' if dropped_claims == 1 else 's'} removed:"
+        f" {'; '.join(parts)}."
+    )
+
+
+def _rendered_text(fragment: str) -> str:
+    """An HTML fragment's text as a reader sees it: React's <!-- -->
+    separators and tags removed, entities decoded, whitespace collapsed."""
+    text = re.sub(r"<!--.*?-->", "", fragment, flags=re.DOTALL)
+    text = re.sub(r"<[^>]+>", "", text)
+    return " ".join(html_lib.unescape(text).split())
+
+
+def _built_page_discloses_drop(
+    built_site_dir: Path, page_slug: str, sidecar: dict | None = None,
+) -> tuple[bool, str]:
+    """(True, "") iff out/program/{page_slug}/index.html renders the
+    dropped-claims Correction note (program-dossier.tsx's ScopeNote) and it
+    says what the sidecar records — real HTML, not the sidecar's own claim
+    that one exists.
+
+    Read on the dossier's PAGE (a split code's member slug, e.g. 3010-SCN;
+    the bare /program/3010/ is a stub that never renders a dossier). The
+    note's data-dossier-dropped-claims must EQUAL the sidecar's
+    dropped_claims and its text must be expected_correction_note's sentence
+    for the sidecar's dropped_reasons (R-DEC-DOSSIERDRIFT round 2: a count
+    alone let "8 claims removed: 4 cited lobbying mentions …" pass with four
+    removals unexplained). (False, why) on a missing file, a read error, a
+    present-but-zero or disagreeing count, or any other wording."""
+    sidecar = sidecar or {}
+    page = Path(built_site_dir) / "program" / page_slug / "index.html"
     if not page.exists():
-        return False
+        return False, f"no built page at program/{page_slug}/index.html"
     try:
-        html = page.read_text(encoding="utf-8")
-    except OSError:
-        return False
-    match = _DROPPED_CLAIMS_ATTR_RE.search(html)
-    return bool(match) and int(match.group(1)) > 0
+        page_html = page.read_text(encoding="utf-8")
+    except OSError as exc:
+        return False, f"built page unreadable ({exc})"
+    match = _DROPPED_NOTE_RE.search(page_html)
+    if not match or int(match.group(1)) <= 0:
+        return False, "the built page renders no Correction note"
+    dropped = int(sidecar.get("dropped_claims") or 0)
+    if int(match.group(1)) != dropped:
+        return False, (f"the note counts {match.group(1)} removed claim(s); the"
+                       f" sidecar records {dropped}")
+    expected = expected_correction_note(dropped, sidecar.get("dropped_reasons"))
+    if expected is None:
+        return False, (f"the sidecar's dropped_reasons {sidecar.get('dropped_reasons')}"
+                       " name a reason the page has no words for")
+    rendered = _rendered_text(match.group(2))
+    if rendered != expected:
+        return False, f"the note reads {rendered!r}; the sidecar needs {expected!r}"
+    return True, ""
 
 
 def source_ref_resolvable(ref: str, snapshot_shas: set[str]) -> bool:
@@ -303,8 +433,17 @@ def dossier_gate(
     warehouse_floor: float = WAREHOUSE_FLOOR,
     built_site_dir: str | Path | None = None,
     duckdb_path: str | Path | None = None,
+    citations_parquet: str | Path | None = None,
 ) -> dict:
     """The cited-or-absent dossier gate. Returns {ok, checks, totals}.
+
+    citations_parquet (optional): the export's citations.parquet, whose rows
+    carry each fact's column (scenario / amount_type) that citations.json
+    does not — the fiscal-year leg's input (R-DEC-DOSSIERDRIFT round 3).
+    When omitted, the export's own layout is read: citations/citations.parquet
+    beside the json/ directory citations.json sits in; when neither exists
+    the leg reports `fiscal_year_check` False and "not run". A parquet that
+    exists but cannot be read FAILS the check (fail closed).
 
     built_site_dir (optional, e.g. site/out): when provided, required_sections
     verifies its "empty section, honestly disclosed" exception (see below)
@@ -326,9 +465,31 @@ def dossier_gate(
 
     # -- reference sets -----------------------------------------------------
     citations_path = Path(citations_path)
-    fact_ids: set[str] = (
-        set(_load_json(citations_path).keys()) if citations_path.exists() else set()
+    citation_rows: dict = (
+        _load_json(citations_path) if citations_path.exists() else {}
     )
+    fact_ids: set[str] = set(citation_rows.keys())
+    # R-DEC-DOSSIERDRIFT: the concentration row behind each concentration
+    # fid (family + HHI) and every page's linked-award recipients, read-only
+    # from the mart. With no mart (duckdb_path=None) the family and
+    # recipient legs cannot run and say so; the figure and band legs need
+    # only the citation row and always run. A mart that WAS given but cannot
+    # be read fails the check (round 2: fail closed) — never "not run". The
+    # fiscal-year leg (round 3) reads each fact's column from citations.parquet
+    # (citations.json does not carry it), under the same fail-closed rule.
+    drift_error: str | None = None
+    recipient_index = None
+    if citations_parquet is None:
+        beside = citations_path.parent.parent / "citations" / "citations.parquet"
+        citations_parquet = beside if beside.exists() else None
+    fact_columns: dict = {}
+    try:
+        concentration_facts = concentration_fact_index(duckdb_path)
+        recipient_index = linked_recipient_index(duckdb_path)
+        fact_columns = fact_column_index(citations_parquet)
+    except ClaimDriftIndexError as exc:
+        drift_error = str(exc)
+        concentration_facts = {}
     snapshots_index = Path(snapshots_index)
     snapshot_urls: set[str] = set()
     snapshot_shas: set[str] = set()
@@ -344,7 +505,9 @@ def dossier_gate(
     structure_errors: list[str] = []
     unresolved: list[dict] = []
     empty_required: list[str] = []
+    undisclosed: list[str] = []
     no_evidence_exempt: list[str] = []
+    contradictions: list[dict] = []
     total_claims = 0
     warehouse_claims = 0
 
@@ -396,6 +559,11 @@ def dossier_gate(
             if isinstance(doc, dict)
             else {}
         )
+        # R-DEC-DOSSIERDRIFT round 2: the linked-award recipients of THIS
+        # PAGE (a split code's member, never the bare code — #82).
+        page_recipients = (
+            recipient_index.for_page(page_slug) if recipient_index is not None else None
+        )
         for section in ALL_SECTIONS:
             claims = sections[section]["claims"]
             if section in REQUIRED_SECTIONS and not claims:
@@ -421,11 +589,14 @@ def dossier_gate(
                 # applies. So this check asserts STRICTLY MORE than before,
                 # never less.
                 section_dropped = dropped_by_section.get(section, 0)
-                disclosed = (
-                    section_dropped > 0
-                    and built_site_dir is not None
-                    and _built_page_discloses_drop(built_site_dir, pe_bli)
-                )
+                disclosed = False
+                if section_dropped > 0 and built_site_dir is not None:
+                    disclosed, why_not = _built_page_discloses_drop(
+                        built_site_dir, page_slug,
+                        doc if isinstance(doc, dict) else None,
+                    )
+                    if not disclosed:
+                        undisclosed.append(f"{page_slug}: {section}: {why_not}")
                 # Sprint E (#67), page-keyed by chain-B fix 2 round 2
                 # (2026-09-12): a SECOND legitimate emptiness, distinct from
                 # the dropped-claims one above. 'players' can only cite award,
@@ -486,6 +657,45 @@ def dossier_gate(
                                 "fact_id": citation["fact_id"],
                             }
                         )
+                    else:
+                        # R-DEC-DOSSIERDRIFT: a PUBLISHED claim whose stated
+                        # figure, concentration word or top-family name
+                        # contradicts its cited fact's current value, or
+                        # whose recipient list names a recipient this page's
+                        # linked awards do not carry, fails here — the
+                        # exporter should have withheld it
+                        # (export_site._emit_dossier_sidecars, same
+                        # claim_contradictions). Named by PAGE.
+                        fid = citation["fact_id"]
+                        row = citation_rows.get(fid)
+                        row = row if isinstance(row, dict) else None
+                        if row is not None and fid in fact_columns:
+                            # the column citations.json leaves out (round 3)
+                            row = {**row, **fact_columns[fid]}
+                        why = claim_contradictions(
+                            claim["text"],
+                            row,
+                            concentration_facts.get(fid),
+                            page_recipients,
+                        )
+                        if why:
+                            contradictions.append({
+                                "page": page_slug,
+                                "section": section,
+                                "claim": i,
+                                "fact_id": fid,
+                                "kind": (row or {}).get("kind"),
+                                "cited_value": cited_value(row),
+                                "cited_family": (
+                                    concentration_facts.get(fid) or {}
+                                ).get("family_key"),
+                                "reasons": why,
+                                "unlinked_recipients": (
+                                    unlinked_recipients(claim["text"], page_recipients)
+                                    if "recipient_list" in why else []
+                                ),
+                                "text": claim["text"],
+                            })
                 else:
                     if citation["url"] not in snapshot_urls:
                         unresolved.append(
@@ -510,9 +720,55 @@ def dossier_gate(
         "ok": not unresolved,
         "unresolved": unresolved,
     }
+    legs_ran = duckdb_path is not None and drift_error is None
+    notes: list[str] = []
+    if drift_error:
+        notes.append(
+            f"ERROR — {drift_error}. This check FAILS until the mart reads"
+            " (R-DEC-DOSSIERDRIFT round 2: fail closed)"
+        )
+    elif duckdb_path is None:
+        notes.append(
+            "top-family and recipient-list legs not run: no mart (duckdb_path)")
+    if citations_parquet is None and not drift_error:
+        notes.append(
+            "fiscal-year leg not run: no citations.parquet (the facts'"
+            " scenario / amount_type columns)")
+    if contradictions:
+        notes.append(
+            f"{len(contradictions)} published claim(s) contradict their cited"
+            " fact or their page's linked awards (R-DEC-DOSSIERDRIFT —"
+            " export-site withholds these): "
+            + "; ".join(
+                f"{c['page']} {c['section']}[{c['claim']}] cites {c['fact_id']}"
+                f" ({c['kind'] or 'unknown kind'}) = {c['cited_value']}"
+                + (f", family {c['cited_family']}" if c["cited_family"] else "")
+                + f" ({', '.join(c['reasons'])}"
+                + (f"; unlinked: {', '.join(c['unlinked_recipients'])}"
+                   if c["unlinked_recipients"] else "")
+                + f"): {c['text']!r}"
+                for c in contradictions
+            )
+        )
+    checks["claims_agree_with_citations"] = {
+        "ok": not contradictions and drift_error is None,
+        "contradictions": contradictions,
+        # a supplied mart that could not be read (the check then fails)
+        "error": drift_error,
+        # whether the top-family and recipient-list legs ran (they need the
+        # mart through duckdb_path); the figure and band legs always run
+        "family_check": legs_ran,
+        "recipient_check": legs_ran and recipient_index is not None,
+        # whether the fiscal-year leg ran (it needs citations.parquet)
+        "fiscal_year_check": citations_parquet is not None and drift_error is None,
+        "note": " | ".join(notes),
+    }
     checks["required_sections"] = {
         "ok": not empty_required,
         "empty": empty_required,
+        # R-DEC-DOSSIERDRIFT round 2: why each dropped-empty section's built
+        # page did not disclose the drop (count or wording vs the sidecar)
+        "undisclosed": undisclosed,
         "no_evidence_exempt": no_evidence_exempt,
         "note": (
             "players exempted on "
@@ -587,7 +843,9 @@ def print_gate(result: dict) -> None:
         if check.get("note"):
             print(f"  note: {check['note']}")
         if not check["ok"]:
-            for key in ("missing", "errors", "unresolved", "empty"):
+            if check.get("error"):
+                print(f"  error: {check['error']}")
+            for key in ("missing", "errors", "unresolved", "empty", "undisclosed"):
                 for item in check.get(key, [])[:20]:
                     print(f"  {key[:-1] if key.endswith('s') else key}: {item}")
     print(f"dossier gate: {'PASS' if result['ok'] else 'FAIL'}")

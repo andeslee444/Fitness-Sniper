@@ -3324,6 +3324,13 @@ def export_site(
         fact_id_to_recorded_value = {
             row[0]: row[23] for row in citation_rows if row[23] is not None
         }
+        # R-DEC-DOSSIERDRIFT: every cited fact's current value in its own
+        # units (any kind — derived, workbook, J-book PDF), the concentration
+        # row behind every concentration fid, and every page's linked-award
+        # recipients, read-only from the mart. Fails closed: an unreadable
+        # mart stops the export (_dossier_drift_context).
+        (_citation_facts, _concentration_facts,
+         _linked_recipients) = _dossier_drift_context(citation_rows, duckdb_path)
         # #56: membership for the dossier set is read HERE, by the caller,
         # and passed in — the emitter takes a set, never a path (see its
         # top_set docstring). Unreadable/absent seed → None → emit everything,
@@ -3362,6 +3369,9 @@ def export_site(
             citations_keyset=citations_keyset,
             snapshot_urls=snapshot_urls,
             fact_id_to_recorded_value=fact_id_to_recorded_value,
+            citation_facts=_citation_facts,
+            concentration_facts=_concentration_facts,
+            linked_recipients=_linked_recipients,
             top_set=_dossier_top_set,
             slug_by_pe=_slug_by_pe,
             # chain-B fix 3: the inverse index, so an archive already keyed by
@@ -8119,7 +8129,9 @@ def _load_snapshot_urls(snapshots_index_path: Path) -> set[str]:
 _CLAIM_THOUSANDS_RE = re.compile(r"\$([\d,]+(?:\.\d+)?)\s*thousand\b", re.IGNORECASE)
 
 
-def _claim_value_still_matches(text: str, recorded_value: str | None) -> bool:
+def _claim_value_still_matches(
+    text: str, recorded_value: str | None, units: str | None = None,
+) -> bool:
     """True (keep the claim) unless the check actually applies and fails.
 
     Uses findall, not the first match: a single sentence routinely states
@@ -8134,11 +8146,32 @@ def _claim_value_still_matches(text: str, recorded_value: str | None) -> bool:
 
     True (keep the claim) unless: the claim states at least one parseable
     "$X,XXX thousand" figure AND the citation carries a numeric
-    recorded_value AND NONE of the claim's figures are within 1% of it.
-    Absence of either half is not itself a reason to drop (most claims cite
+    recorded_value AND NONE of the claim's "$X thousand" figures are within
+    1% of it AND no dollar figure it states agrees within its own rounding
+    (round 4, below). Absence of either half is not itself a reason to drop (most claims cite
     non-numeric facts, non-dollar facts, or a source document) — this only
     catches an ACTUAL, now-detectable contradiction: every number the
-    sentence states disagrees with what its own citation currently records."""
+    sentence states disagrees with what its own citation currently records.
+
+    EVERY FIGURE, NOT ONLY THE "$X thousand" ONES (R-DEC-DOSSIERDRIFT round
+    4, 2026-09-26). A "$X thousand" figure still triggers the check, but any
+    dollar figure the sentence states — "$X thousand / million / billion /
+    trillion" or bare "$X" — that agrees with the cited value keeps the
+    claim. "Agrees" is claim_drift's one definition (the stated_figure leg's):
+    within half a unit of the last digit the sentence prints ("about $1.9
+    billion" is $1.85-1.95 billion; "about" and "roughly" do not widen it),
+    "more than / under ..." read as bounds, the sign ignored. The value is
+    read in the fact's `units` (USD thousands x 1e3, USD millions x 1e6,
+    USD x 1); units=None is a legacy caller, and the check's own
+    convention — recorded_value in USD thousands — applies. A fact whose
+    units are not a dollar scale gets no other-scale comparison, and the
+    "$X thousand" verdict above stands. Measured: /program/2122/
+    why_it_matters[6], "about $1.9 billion above the original PB2024
+    request, rising from a $4,483,214 thousand request to $6,366,431
+    thousand in actuals", cites 8169f40c26f22ffd (derived, 1,883,217
+    thousand = the difference). Reading only the two inputs withheld a true
+    claim as stale_value, and the page said "it stated a figure a later
+    correction changed"."""
     if recorded_value is None:
         return True
     matches = _CLAIM_THOUSANDS_RE.findall(text)
@@ -8157,7 +8190,8 @@ def _claim_value_still_matches(text: str, recorded_value: str | None) -> bool:
     if not stated_values:
         return True
     if actual == 0:
-        return any(v == 0 for v in stated_values)
+        if any(v == 0 for v in stated_values):
+            return True
     # _CLAIM_THOUSANDS_RE never captures a sign (dollar figures don't print
     # "-$X thousand" in English prose) — a "decrease of $X thousand" claim
     # states X as a bare magnitude while its citation's own recorded_value
@@ -8165,10 +8199,76 @@ def _claim_value_still_matches(text: str, recorded_value: str | None) -> bool:
     # against BOTH the value and its negation avoids flagging that entirely
     # correct phrasing as a false mismatch (measured: 3 dossiers' genuinely
     # accurate "decrease of $X" claims were wrongly dropped before this).
-    return any(
+    elif any(
         abs(v - actual) / abs(actual) < 0.01 or abs(v - abs(actual)) / abs(actual) < 0.01
         for v in stated_values
+    ):
+        return True
+    # Round 4: no "$X thousand" figure agrees — does any other figure the
+    # sentence states (its headline "$1.9 billion") agree within its own
+    # rounding? Only then is the claim not stale.
+    from govbudget.dossiers.claim_drift import (
+        _agrees,
+        fact_comparison_value,
+        stated_dollar_figures,
     )
+
+    current = fact_comparison_value(
+        {"units": units or "USD thousands", "recorded_value": recorded_value})
+    if current is None or current[0] != "dollars":
+        return False
+    return any(_agrees(v, t, b, current[1]) for v, t, b in stated_dollar_figures(text))
+
+
+def _dossier_drift_context(citation_rows, duckdb_path):
+    """R-DEC-DOSSIERDRIFT's inputs for _emit_dossier_sidecars:
+    (citation_facts, concentration_facts, linked_recipients).
+
+    citation_facts: fact_id -> the citation row's value fields (kind, units,
+    amount_text, amount_thousands, recorded_value — indexes 1, 2, 3, 14 and
+    23 of the 27-element row) for every row that carries a value, so a
+    claim's stated figure is held to ANY fact kind's current value in the
+    row's own units (round 2; round 1 read recorded_value only), and the
+    row's column — scenario (a J-book glyph) and amount_type (a workbook
+    cell), indexes 25 and 26 — for the fiscal-year leg (round 3).
+
+    FAILS CLOSED (round 2): a supplied mart that cannot be read — the
+    concentration mart, or the linked-award marts the recipient-list check
+    reads — is printed and RE-RAISED, stopping the export. An empty index
+    would skip the family and recipient legs without a word, and publish
+    what they alone can catch. duckdb_path=None (no mart at all) runs the
+    figure and band legs only.
+    """
+    from govbudget.dossiers.claim_drift import (
+        ClaimDriftIndexError,
+        concentration_fact_index,
+        linked_recipient_index,
+    )
+
+    citation_facts = {
+        row[0]: {
+            "kind": row[1],
+            "units": row[2],
+            "amount_text": row[3],
+            "amount_thousands": row[14],
+            "recorded_value": row[23],
+            "scenario": row[25],
+            "amount_type": row[26],
+        }
+        for row in citation_rows
+        if row[3] is not None or row[14] is not None or row[23] is not None
+    }
+    try:
+        concentration_facts = concentration_fact_index(duckdb_path)
+        linked_recipients = linked_recipient_index(duckdb_path)
+    except ClaimDriftIndexError as exc:
+        print(
+            "export-site: ERROR — the dossier claim checks (R-DEC-DOSSIERDRIFT)"
+            f" cannot read the mart they need: {exc}. Stopping: a dossier"
+            " claim these checks cannot test is never published untested."
+        )
+        raise
+    return citation_facts, concentration_facts, linked_recipients
 
 
 def _emit_dossier_sidecars(
@@ -8181,6 +8281,9 @@ def _emit_dossier_sidecars(
     top_set: set[str] | None = None,
     slug_by_pe: dict[str, str] | None = None,
     pe_by_slug: dict[str, str] | None = None,
+    citation_facts: dict[str, dict] | None = None,
+    concentration_facts: dict[str, dict] | None = None,
+    linked_recipients=None,
 ) -> dict:
     """Rebuild out_dir/json/dossiers/{page}.json from the committed,
     already-paid LLM batch archives in dossiers_raw_dir. No network call, no
@@ -8226,10 +8329,56 @@ def _emit_dossier_sidecars(
     treatment, same dropped_claims accounting — the reader never sees a
     sentence contradicting the footnote chip right below it.
 
-    Returns {written, total_dropped, dropped_by_pe, skipped}.
+    RULING R-DEC-DOSSIERDRIFT (controller, 2026-09-26), a third check after
+    the two above: a claim whose stated figure, concentration word or
+    top-family name contradicts its cited fact's CURRENT value is WITHHELD —
+    dropped from the published dossier, never rewritten — under reason
+    'contradicts_citation' (govbudget.dossiers.claim_drift, the one
+    definition the dossier gate also applies to what is published). The raw
+    archives record only the cited fact_id, not the value at authoring, so
+    the sentence's own figure is parsed and held to the current value within
+    the rounding the sentence shows. Chain G measured the shape on two DARPA
+    dossiers: /program/0602025E/ "Herfindahl-Hirschman Index of about 389"
+    citing 1,284.683, and "the leading recipient family by dollars is
+    RAYTHEON, measured over roughly $4.68 billion" citing $469,988,662.80
+    whose concentration row records SYSTEM HIGH. Round 2 (same day) holds a
+    figure to ANY fact kind's current value — a workbook cell's
+    amount_thousands and a J-book glyph's amount_text as well as a derived
+    recorded_value (/program/0607210D8Z/ printed "$2,328.370 billion"
+    against an R-1 cell of 897,631 thousand) — and withholds a recipient
+    list naming a recipient the page's linked awards do not carry
+    (/program/0603467E/: 6 of 8 named). Needs `citation_facts` (fact_id ->
+    the citation row's kind, units and value fields; without it no figure
+    is parsed, so a legacy caller withholds nothing new), for the family
+    check and the band of a cited dollars fact `concentration_facts`
+    (claim_drift.concentration_fact_index), and for the recipient check
+    `linked_recipients` (claim_drift.linked_recipient_index, keyed by PAGE)
+    — _dossier_drift_context builds all three and fails closed. Each
+    withheld claim is kept on the sidecar under `withheld_claims` —
+    section, raw claim index, text, fact_id, kind, units, cited value, cited
+    family, reasons (sub-reasons of 'contradicts_citation': stated_figure,
+    fiscal_year (round 3: a figure given another fiscal year than its cited
+    column's — the column is the row's scenario / amount_type, carried in
+    `citation_facts`), concentration_band, top_family, recipient_list) and
+    the unlinked
+    recipients — and printed by name in the export log; the sidecar is SSG input only (data/site/json is not
+    uploaded or copied into site/out), so the withheld sentence renders
+    nowhere. It also counts in dropped_claims / dropped_claims_by_section, so
+    the page's Correction note counts it and the gate's emptied-section
+    exception sees why a required section emptied.
+
+    Returns {written, total_dropped, dropped_by_pe, skipped, retired, pruned,
+    total_withheld, withheld_by_pe, withheld}.
     """
     fact_id_to_recorded_value = fact_id_to_recorded_value or {}
+    citation_facts = citation_facts or {}
+    concentration_facts = concentration_facts or {}
     from govbudget.dossiers.batch import ALL_SECTIONS, _first_text, validate_dossier
+    from govbudget.dossiers.claim_drift import (
+        cited_value,
+        claim_contradictions,
+        unlinked_recipients,
+    )
 
     out_dir = json_dir / "dossiers"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -8237,6 +8386,9 @@ def _emit_dossier_sidecars(
     written = 0
     total_dropped = 0
     dropped_by_pe: dict[str, int] = {}
+    # R-DEC-DOSSIERDRIFT: every withheld claim, by page, for the export log.
+    withheld_by_pe: dict[str, int] = {}
+    withheld_log: list[dict] = []
     skipped: list[str] = []
     retired: list[str] = []
     # Every sidecar this run writes. Anything else in out_dir is stale by
@@ -8351,11 +8503,17 @@ def _emit_dossier_sidecars(
         # drop (nothing to do with lobbying). Tracked separately so the UI
         # can say which one actually happened here.
         dropped_reasons_here: dict[str, int] = {}
+        withheld_here: list[dict] = []
+        # The linked-award recipients of THIS PAGE (a split code's member
+        # page, not the bare code — #82), or None when no mart was read.
+        page_recipients = (
+            linked_recipients.for_page(page) if linked_recipients is not None else None
+        )
         for section in ALL_SECTIONS:
             claims = dossier.get(section, {}).get("claims", [])
             kept = []
             section_dropped = 0
-            for claim in claims:
+            for claim_index, claim in enumerate(claims):
                 citation = claim.get("citation") or {}
                 reason = None
                 if "fact_id" in citation:
@@ -8364,8 +8522,39 @@ def _emit_dossier_sidecars(
                         reason = "unresolvable_citation"
                     elif not _claim_value_still_matches(
                         claim.get("text", ""), fact_id_to_recorded_value.get(fid),
+                        # round 4: the value's units, so a "$1.9 billion"
+                        # headline is read against it (None: legacy caller,
+                        # USD thousands as the check has always assumed)
+                        (citation_facts.get(fid) or {}).get("units"),
                     ):
                         reason = "stale_value"
+                    else:
+                        # R-DEC-DOSSIERDRIFT: figure / band / top family vs
+                        # the cited fact's CURRENT value. Withheld, never
+                        # rewritten.
+                        conc = concentration_facts.get(fid)
+                        fact = citation_facts.get(fid)
+                        text_here = claim.get("text", "")
+                        why = claim_contradictions(
+                            text_here, fact, conc, page_recipients,
+                        )
+                        if why:
+                            reason = "contradicts_citation"
+                            withheld_here.append({
+                                "section": section,
+                                "claim": claim_index,
+                                "text": text_here,
+                                "fact_id": fid,
+                                "kind": (fact or {}).get("kind"),
+                                "units": (fact or {}).get("units"),
+                                "cited_value": cited_value(fact),
+                                "cited_family": (conc or {}).get("family_key"),
+                                "reasons": why,
+                                "unlinked_recipients": (
+                                    unlinked_recipients(text_here, page_recipients)
+                                    if "recipient_list" in why else []
+                                ),
+                            })
                 elif "url" in citation:
                     if citation["url"] not in snapshot_urls:
                         reason = "unresolvable_citation"
@@ -8384,6 +8573,9 @@ def _emit_dossier_sidecars(
         if dropped_here:
             total_dropped += dropped_here
             dropped_by_pe[pe_bli] = dropped_here
+        if withheld_here:
+            withheld_by_pe[pe_bli] = len(withheld_here)
+            withheld_log.extend({"page": page, **w} for w in withheld_here)
 
         model = message.get("model", "unknown") if isinstance(message, dict) else "unknown"
         # Sprint E (#67): keyed by SLUG, not bare pe_bli. E3 gave each
@@ -8427,7 +8619,15 @@ def _emit_dossier_sidecars(
                     # when dropped_claims is 0. program-dossier.tsx reads
                     # this to render an accurate Correction note instead of
                     # a hardcoded #52-only explanation.
+                    # R-DEC-DOSSIERDRIFT adds 'contradicts_citation': the
+                    # claim's stated figure, concentration word or top-family
+                    # name contradicts its cited fact's current value.
                     "dropped_reasons": dropped_reasons_here,
+                    # R-DEC-DOSSIERDRIFT: each 'contradicts_citation' claim,
+                    # by name, with the value it contradicted. [] when none.
+                    # Audit only — the page renders dossier.* claims and the
+                    # counts above, never this list.
+                    "withheld_claims": withheld_here,
                     # Sprint E (#67): the PAGE this dossier belongs to.
                     # pe_bli keeps meaning the program key; slug is the
                     # page identity, and they differ for a split key
@@ -8447,11 +8647,33 @@ def _emit_dossier_sidecars(
     if dropped_by_pe:
         print(
             f"dossiers: {total_dropped} claim(s) dropped across"
-            f" {len(dropped_by_pe)} dossier(s) — unresolvable citation or"
-            " stale prose vs. a corrected fact's current value (#52/#56 fallout):"
+            f" {len(dropped_by_pe)} dossier(s) — unresolvable citation, stale"
+            " prose vs. a corrected fact's current value (#52/#56 fallout), or"
+            " prose contradicting its citation (R-DEC-DOSSIERDRIFT):"
         )
         for pe, n in sorted(dropped_by_pe.items()):
             print(f"  {pe}: {n} dropped")
+    if withheld_log:
+        print(
+            f"dossiers: {len(withheld_log)} claim(s) withheld across"
+            f" {len(withheld_by_pe)} dossier(s) — stated figure, its fiscal"
+            " year, concentration word or top family contradicts the cited"
+            " fact's current value or column, or a named recipient is not among"
+            " the page's linked awards (R-DEC-DOSSIERDRIFT; withheld, not"
+            " rewritten):"
+        )
+        for w in withheld_log:
+            family = f", family {w['cited_family']}" if w["cited_family"] else ""
+            unlinked = (
+                f"; unlinked: {', '.join(w['unlinked_recipients'])}"
+                if w["unlinked_recipients"] else ""
+            )
+            print(
+                f"  {w['page']} {w['section']}[{w['claim']}] cites {w['fact_id']}"
+                f" ({w['kind'] or 'unknown kind'}) = {w['cited_value']}"
+                f" {w['units'] or ''}{family}"
+                f" ({', '.join(w['reasons'])}{unlinked}): {w['text']!r}"
+            )
     if skipped:
         print(f"dossiers: {len(skipped)} raw file(s) skipped:")
         for s in skipped:
@@ -8473,6 +8695,9 @@ def _emit_dossier_sidecars(
         "skipped": skipped,
         "retired": retired,
         "pruned": pruned,
+        "total_withheld": len(withheld_log),
+        "withheld_by_pe": withheld_by_pe,
+        "withheld": withheld_log,
     }
 
 

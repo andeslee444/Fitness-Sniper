@@ -231,8 +231,18 @@ describe("/company/{slug}/ citations come from the cite shards", () => {
     const container = await renderCompany("boeing");
     const ids = renderedIds(container);
     expect(ids.length).toBeGreaterThanOrEqual(3);
+    // Chain G's export (2026-09-26) carries boeing's SAM registration: its
+    // status renders as a prose cite, not an amount — a cited figure all
+    // the same, opened the same way. Bound to the export: the prose cite is
+    // on the page exactly when the family carries a rendered status.
+    const sam = getEntityDetails("boeing").sam;
+    const samId = sam?.registration_status ? sam.fact_id : null;
+    if (samId) expect(ids).toContain(samId);
     for (const id of ids) {
-      const figure = container.querySelector(`[data-amount][data-fact-id="${id}"]`);
+      const figure =
+        id === samId
+          ? container.querySelector(`[data-prose-cite][data-fact-id="${id}"]`)
+          : container.querySelector(`[data-amount][data-fact-id="${id}"]`);
       expect(figure, `${id} is a state-A figure`).not.toBeNull();
       fireEvent.click(figure!);
       await waitFor(() => {
@@ -338,7 +348,11 @@ describe("/company/{slug}/ after R-DEC-LDACITE: every filing list opens, none is
   }, 120_000);
 });
 
-// ── ROADMAP #10: the SAM registration line (no family carries one today) ─────
+// ── ROADMAP #10: the SAM registration line ───────────────────────────────────
+//
+// Each case substitutes its own registration for the family's, so it holds
+// whether or not the export carries one (chain G's does for boeing): the
+// page's other figures are measured with the family's own line removed.
 
 describe("/company/{slug}/ lists the SAM registration's citation exactly when the line renders", () => {
   function withSam(slug: string, sam: EntitySamRegistration | undefined) {
@@ -350,6 +364,20 @@ describe("/company/{slug}/ lists the SAM registration's citation exactly when th
       if (had) details.sam = prior;
       else delete details.sam;
     };
+  }
+
+  /** The ids the page renders with the family's own SAM line removed — the
+   *  rest of the page, which a substituted registration must leave alone. */
+  async function figuresWithoutSam(slug: string): Promise<string[]> {
+    const own = getEntityDetails(slug).sam?.fact_id;
+    const undo = withSam(slug, undefined);
+    try {
+      const ids = renderedIds(await renderCompany(slug));
+      if (own) expect(ids).not.toContain(own);
+      return ids;
+    } finally {
+      undo();
+    }
   }
 
   function samFor(factId: string, status: string | null): EntitySamRegistration {
@@ -370,7 +398,7 @@ describe("/company/{slug}/ lists the SAM registration's citation exactly when th
   it("a rendered status is listed and opens its citation from its shard", async () => {
     const slug = "boeing";
     const all = getCitations();
-    const onPage = renderedIds(await renderCompany(slug));
+    const onPage = await figuresWithoutSam(slug);
     // A real derived citation with no inputs, off this page (an input would
     // be listed too — the one-level rule the other tests pin).
     const samFact = Object.keys(all).find(
@@ -398,7 +426,7 @@ describe("/company/{slug}/ lists the SAM registration's citation exactly when th
   it("no status, no line — and no listed id", async () => {
     const slug = "boeing";
     const all = getCitations();
-    const onPage = renderedIds(await renderCompany(slug));
+    const onPage = await figuresWithoutSam(slug);
     // A real derived citation with no inputs, off this page (an input would
     // be listed too — the one-level rule the other tests pin).
     const samFact = Object.keys(all).find(

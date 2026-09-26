@@ -83,10 +83,50 @@ export interface DossierFile {
    *   - stale_value: the citation still resolves, but the claim's own
    *     hardcoded prose no longer matches its CURRENT value (e.g. a #56
    *     account re-key changed what a stable fact_id now records).
+   *   - contradicts_citation (R-DEC-DOSSIERDRIFT, 2026-09-26): withheld at
+   *     export, never rewritten — the claim's stated figure, concentration
+   *     word, top recipient family, named recipients or fiscal year is not
+   *     what its cited fact (or the page's linked awards) records. Each
+   *     such claim is listed, with its sub-reasons, in `withheld_claims`.
    * Only present keys had >=1 drop for that reason. Optional so a file
-   * written before this addendum parses without it.
+   * written before this addendum parses without it. A reason this type
+   * does not name is still counted by ProgramDossier (its own clause).
    */
-  dropped_reasons?: { unresolvable_citation?: number; stale_value?: number };
+  dropped_reasons?: {
+    unresolvable_citation?: number;
+    stale_value?: number;
+    contradicts_citation?: number;
+  };
+  /**
+   * (R-DEC-DOSSIERDRIFT) The claims counted under contradicts_citation, by
+   * name, with the value they contradicted. Audit only: the page renders
+   * the dossier's claims and the counts above, never this list. Optional —
+   * absent on a file written before the ruling.
+   */
+  withheld_claims?: DossierWithheldClaim[];
+}
+
+/** Why export-site withheld a claim (claim_drift.claim_contradictions). */
+export type DossierWithheldReason =
+  | "stated_figure"
+  | "fiscal_year"
+  | "concentration_band"
+  | "top_family"
+  | "recipient_list";
+
+/** One withheld claim as the exporter records it on the sidecar. */
+export interface DossierWithheldClaim {
+  section: DossierSectionKey;
+  /** The claim's index in the raw archive's section (before any drop). */
+  claim: number;
+  text: string;
+  fact_id: string;
+  kind: string | null;
+  units: string | null;
+  cited_value: string | number | null;
+  cited_family: string | null;
+  reasons: DossierWithheldReason[];
+  unlinked_recipients: string[];
 }
 
 /** Snapshot metadata for url-citation chips (title tooltip + retrieved note). */

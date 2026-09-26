@@ -1,10 +1,14 @@
 /**
  * /methodology/ after the owner-delegated decisions wave (rulings of
  * 2026-09-25/26) — the page renders what gate 24 legs (n) and (o) bind, on
- * BOTH shapes of site_meta it can meet:
+ * BOTH shapes of site_meta it can meet, and on whichever the shared export
+ * is today:
  *
- *   - today's shared export (chain F2, 2026-09-25: no withdrawn tier, no
- *     recorded-review census) — what `npm test` sees before chain G;
+ *   - the pre-chain shape (chain F2, 2026-09-25: no withdrawn tier, no
+ *     recorded-review census) — a FIXTURE derived from today's export by
+ *     removing the decisions wave's keys (`preChain`). Until chain G this
+ *     was the shared export itself; chain G's export (2026-09-26) is the
+ *     post-chain shape, so the pre-chain case can no longer read it live;
  *   - the post-chain shape the decisions wave exports (#107(b): the
  *     account / sub-agency tier withdrawn into link_precision.withdrawn and
  *     `unpinned_published`; #110 / R-DEC-110: `reviewed_high` +
@@ -159,17 +163,77 @@ function postChain(m: SiteMeta): SiteMeta {
   return m;
 }
 
+/** The pre-chain shape (chain F2's export), rebuilt from today's by removing
+ *  what the decisions wave added: the withdrawn tier goes back into
+ *  `methods` and out of `unmeasured`, the unpinned links publish at one tier
+ *  again, and the high tier carries no recorded-review census. */
+function preChain(m: SiteMeta): SiteMeta {
+  const lp = m.link_precision!;
+  const w = lp.withdrawn?.["account+subagency"];
+  if (w) {
+    lp.methods = {
+      ...lp.methods,
+      "account+subagency": {
+        confirmed: w.confirmed,
+        sampled: w.sampled,
+        sample_id: w.sample_id,
+        judged: w.judged,
+      },
+    };
+  }
+  delete lp.withdrawn;
+  lp.unmeasured = (lp.unmeasured ?? []).filter((t) => t !== "account+subagency");
+  const la = m.link_adjudication!;
+  la.unpinned_tier = "medium";
+  delete la.unpinned_published;
+  delete la.unpinned_published_tier;
+  const h = la.high!;
+  delete h.reviewed_high;
+  delete h.review_as_of;
+  delete h.reviewed_by_kind;
+  delete h.demoted_from_high;
+  for (const path of Object.values(h.by_path ?? {})) {
+    delete path.reviewed;
+    delete path.reviewed_by_kind;
+    delete path.announcement_reviewed;
+    delete path.announcement_upheld;
+  }
+  return m;
+}
+
 describe("/methodology/ renders what gate 24 legs n and o bind", () => {
-  it("on today's export (pre-chain shape): no leg n / leg o finding", () => {
+  it("on today's export: no leg n / leg o finding, and each new element renders exactly when its key is present", () => {
     // The identity override hands back (a clone of) exactly what the page read.
     let seen: SiteMeta | null = null;
     const root = renderPage((m) => (seen = m));
+    const meta = seen! as SiteMeta;
+    const { errors } = legs(root, meta);
+    expect(errors).toEqual([]);
+    // Bound to the export, whichever shape it is: an element the page
+    // renders without its site_meta source, or a source it drops, fails.
+    const has = (sel: string) => root.querySelector(sel) !== null;
+    const withdrawn = Object.keys(meta.link_precision?.withdrawn ?? {});
+    expect(has("[data-link-precision-withdrawn]")).toBe(withdrawn.length > 0);
+    expect(has("[data-link-review-high]")).toBe(
+      typeof meta.link_adjudication?.high?.reviewed_high === "number",
+    );
+    expect(has("[data-link-demoted-high]")).toBe(
+      (meta.link_adjudication?.high?.demoted_from_high?.links ?? 0) > 0,
+    );
+  }, 30_000);
+
+  it("on the pre-chain shape: no leg n / leg o finding, and nothing the new keys would render", () => {
+    let seen: SiteMeta | null = null;
+    const root = renderPage((m) => (seen = preChain(m)));
     const { errors } = legs(root, seen!);
     expect(errors).toEqual([]);
     // Nothing the new keys would render appears without them.
-    expect(root.querySelector("[data-link-precision-withdrawn]")).toBeNull();
-    expect(root.querySelector("[data-link-review-high]")).toBeNull();
-    expect(root.querySelector("[data-link-demoted-high]")).toBeNull();
+    expect(root.querySelector("[data-link-precision-withdrawn]") === null).toBe(true);
+    expect(root.querySelector("[data-link-review-high]") === null).toBe(true);
+    expect(root.querySelector("[data-link-demoted-high]") === null).toBe(true);
+    expect(norm(root.querySelector("[data-link-adjudication]")!.text)).toMatch(
+      /program element; those links publish at medium\./,
+    );
   }, 30_000);
 
   it("on the post-chain shape: every new figure renders, and binds", () => {

@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-09-25 (ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -195,6 +195,137 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    *Used by: every phase's final review; 5B-4's NL eval (≥90% + REFUSE handling).*
 
 ## Findings log (what we learned; feeds future phases)
+
+- **2026-09-26: The decisions wave — the owner's calls, delegated and
+  recorded.** On 2026-09-25 the owner wrote "API topped up. will go with your
+  recommendation on all roadmap decisions. please fix duplications." (the
+  duplications are #133's). Every open owner or curation call was then decided
+  by the controller's recommendation — #107, #110, #130, #132–#135, #137,
+  #139, #140 and #141 — and the SAM key the owner pasted let #10's extract
+  start. The rulings, and the R-DEC-* rulings the work raised, are recorded in
+  the branch ledger's `owner-decisions-2026-09-25.md`; each entry's Status
+  line says what shipped. On the branch the wave also closed #142, #170–#174
+  and #176, took #175 part of the way, and filed #178–#187. It ran on
+  `decisions-2026-09-25`, branched from `main` at ddc79e6b (the integration
+  deploy's ledger stamp), and is not deployed yet.
+
+  The rulings in brief. **R-DEC-110**: a wave 1–3 survivor list is a recorded
+  review (the reviewer's "link" verdict plus survival of the adversarial
+  pass), so it upholds a link; unrecorded review is not evidence, and
+  /methodology/ discloses the split between verdict pairs and survivor lists.
+  **R-DEC-171**: the #171 re-grade is update-only (82 / 50 / 32), and the
+  unscoped rule's 226,020 never-stored candidate pairs are not inserted.
+  **R-DEC-110b/c**: the held-out precision study's refutations are recorded
+  refutations that bind to the award→PE pair, and a link demoted by its own
+  sample's verdict stays in the tier it was tallied in, so the precision
+  figure is never flattered. **R-DEC-RECIPIENT**: a link's recipient is the
+  UEI with the largest obligation on the award, then the one its cited
+  announcement names, then the lowest UEI, and the loader records which
+  decided (`recipient_basis`; stored `fpds-ap` rows read `pre_rule` until
+  #185). **R-DEC-176b**: the lobbying rematch is deterministic.
+  **R-DEC-AMEND**: an LDA amendment replaces its original report (same
+  registrant, client and quarter) instead of adding to it; where the lake
+  cannot name the latest amendment, the smallest counts and a dbt warning says
+  so (7 quarters, #178). **R-DEC-SHAREDTITLE / FLOWTITLE / FLOWTOTAL**: a
+  shared code's lobbying title and flow-sidecar header name every member, and
+  the header's FY2026 total is the members' sum, whatever the row order.
+  **R-DEC-DOSSIER**: the dossier gate counts a bare-code lobbying row as
+  players evidence only on a code no two programs share, because R-INT-9
+  withholds it from every member of a shared one.
+
+  Published effects, measured by chain G (2026-09-26) on the lake and the
+  export it built: links published at high 1,133 → 1,106; published links
+  12,601 → 3,685; the `account+subagency` tier withdrawn, 8,865 links at 0 of
+  58 confirmed (60 drawn, none confirmed; the two an adjudication excluded no
+  longer publish and count on neither side, #107); 28 announcement links
+  demoted from high (review_refuted 5, reviewer_rejected 12,
+  precision_sample_refuted 11), so high fell by 27 (28 demoted and 1 dropped
+  out, 2 moved up from `subaward+lexicon`; named below) — `site_meta`'s
+  demoted-from-high census reads 91 because it also counts the 63
+  unadjudicated `account+tokens` links the 2026-09-04 rule (#75) already
+  published at medium; precision `announcement+lexicon` 57/61, `fpds-ap`
+  89/114, `subaward+lexicon` 52/59; the mart's high-only
+  index on 61 programs (63 before; floor 37); 191 districts (189 before);
+  RTX's lobbying $38.95M over 100 filings (was $0.75M over 19; #142); the
+  lobbying corpus $802.7M over 5,108 filings → $757.1M over 5,034, net of
+  RTX's added filings and the amendment rule; 135,737 → 125,349 citations; and
+  630 of 630 lobbying aggregate citations list the filings they count (0
+  before; the lists sum to 5,034, the filings counted). No floor fell, so none
+  was re-dated (#110). One published effect contradicts its own citations:
+  of the 703 claims in the 50 dossiers, 8 cite a fact whose value chain G
+  moved, all in the players sections of two DARPA dossiers, and #107(b)
+  turned their concentration prose false. /program/0602025E/ still reads "a
+  low concentration score (Herfindahl-Hirschman Index of about 389)" over a
+  fact that now reads 1,284.7 (318.3 in the deployed export), and
+  /program/0603467E/ "about 541, indicating a relatively unconcentrated
+  field" over 4,831.5 (352.3), highly concentrated under the 2023 bands;
+  their top-family and dollar claims no longer match either (#188).
+  R-DEC-DOSSIERDRIFT makes export-site withhold them: a read-only replay of
+  the exporter over chain G's export (round 3, 2026-09-26) withholds all 8
+  (the eighth, 0603467E's recipient list, names 6 recipients the page's
+  linked awards do not carry) and 4 claims that never matched their
+  citations, on 0603941D8Z, 0604250D8Z and 0607210D8Z (dollar figures their
+  cited facts do not carry) and 1203154SF (its FY2025 figure stated as
+  FY2026's) — 12 of the 703 claims over 6 dossiers, none of them exported
+  yet (#188).
+
+  Named link moves. 2301/N0001920D0008 dropped out (R-DEC-TOMAHAWK: its award
+  is now funded from a mismatched account). FA880619C0003/1206770SF
+  (R-DEC-PACKET-b) and W912DY22F0191/0603461A, which no ruling named in
+  advance, moved from `subaward+lexicon`/medium to
+  `announcement+lexicon`/high. N0003915D0008 stays with ViaSat (its
+  announcement names ViaSat). The recipient rule changed 12 links' recipients
+  (6 on obligation, 5 on the UEI tie-break, 1 on the announcement's name),
+  among them N0003910D0032, ViaSat → L3 Technologies, and W56JSR19D0014, BAE
+  Systems → Raytheon Company. SRC INC falls to #201, so /company/src/ leaves
+  the published 200 (R-DEC-135b). Two order-dependent label picks showed
+  between chain G's two exports: the flow-sidecar titles of 0145 and 3215, and
+  the display names of two tied, unpublished families (ASTRA SOLUTIONS, SUPPLY
+  CHAIN VISTAS). 0d693bb8 gives both a total order (R-DEC-FLOWTITLE,
+  R-DEC-ENTITYTIE) and makes a shared code's flow-sidecar FY2026 total the
+  sum of its members' (R-DEC-FLOWTOTAL). None of that is a chain-G
+  measurement yet: 0d693bb8 came after BUILD 2, and its figures are its
+  commit message's and its fix reports' (on scratch copies of the lake).
+  Those report 13 tied families made stable, none among the published 200,
+  and R-DEC-ENTITYTIE-b accepts that 9 tied families of at most $1,000 in
+  the downloadable `dim_entities` parquet change their label once, on the
+  next export, to one they then keep (the old labels were arbitrary picks).
+  Chain G's resume 3 measures both.
+
+  The chain's safety. Before its first write, chain G took a full `pg_dump
+  -Fc` of `govbudget` (51,186,936 bytes; the table data of all 17 tables
+  listed) and a copy of the lake's `jbooks`, `entities` and `influence`
+  parquets (21 files, sha256 identical to the source). Migrations 018–020
+  matched their projection (60 superseded-route records), and each Postgres
+  write after them ran a dry run first that matched: the #171 re-grade
+  ("re-graded 82 row(s) in place; inserted 0"), the loader (1,189 → 1,188
+  links) and the review backfill (2,137 rows). dbt passed 204 of 206 with 2
+  warnings and 0 errors. It stopped three times and has resumed twice: at
+  `evals check`, because q019's projection had missed the re-grade, and it
+  resumed on a ruling (R-DEC-EVALS-b refreshed q020 only, a5148814); at BUILD
+  1's gates, on two uncited dollar figures in the RTX family note (gate 2) and
+  a font-mono count of 543 against the frozen 539 (gate 26), and it resumed
+  once 0176fa6e fixed both (the branch ledger records no ruling for that
+  stop); and at verify-phase5's assembly leg, on the dossier gate's "empty:
+  3050-SCN: players", where it stands: 0d693bb8 fixes the gate
+  (R-DEC-DOSSIER), and nothing has run on it yet. BUILD 2 at 0b16c139 passed
+  27/27; verify-phase3 and verify-phase5b1 passed; verify-phase5's eval scored 46/48,
+  citations 43/43. Page weight is tight: /companies/families/ has 222 gzip
+  bytes left, /methodology/ 252 and /company/boeing/ 367, and each SAM line
+  adds about 450 to its company page.
+
+  Still open: chain G's resume 3. 0d693bb8 changes a dbt model
+  (`dim_entities.sql`) and the exporter, so it re-runs from dbt: dbt, `evals
+  check`, `export-site`, BUILD 1, the restamp, BUILD 2 and the 27-gate
+  verify, the Python gates, verify-phase5 and `deploy.sh --dry-run`. BUILD
+  2's 27/27 is at 0b16c139, and the deploy needs the build's `git_head` to
+  equal HEAD. Some exported files move again: the shared codes' flow-sidecar
+  headers (0145, 3010, 3215 and 2292 per 0d693bb8's commit) and 9 labels in
+  the downloadable `dim_entities` parquet. Then the wave's review, deploy and
+  push; regenerating the dossier claims the export withholds for
+  contradicting their facts (#188);
+  #141, planned as its own phase; #178–#188; and the SAM extract's other 197
+  families, the owner's daily run at 10 requests a day (#10).
 
 - **2026-09-25: Integration of the live branch.** Production
   (fiscalreceipts.com) was deployed on 2026-09-24 from
@@ -2005,7 +2136,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   and #85's mechanical crosswalk, and alongside **#110** — the same owner call
   one tier up, for the 708 `announcement+lexicon` links published at high
   whose adversarial pass leaves no record.
-  **Status:** open (owner call, 2026-09-11).
+  **Status (2026-09-11):** open (owner call, 2026-09-11).
   *Re-measured 2026-09-25 (chain C run 4 lake, read-only):* the tier still
   publishes — 8,855 `account+subagency` rows in `fct_budget_to_awards` (8,833
   medium, 22 high) — and `site_meta.link_precision` still carries its 0/60.
@@ -2013,6 +2144,54 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   figures and were not re-derived. Decide alongside **#141** (the
   LORELEI-style re-attribution rule the 0/60 verdicts point at) and **#140**
   (the loader re-attributing links across routes).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — option (b): the `account+subagency` tier leaves the
+  published tiers except the 22 pairs a two-lens hand adjudication pinned (all
+  at high); `audit_link_grading` grades the rest `low` with the demotion
+  reason `account_subagency_not_pinned`, and Postgres keeps every row. #141 is
+  the follow-on that restores coverage with evidence (option (c)). Measured at
+  chain G (2026-09-26; branch `decisions-2026-09-25`, not yet deployed): 8,865
+  links withdrawn; `fct_budget_to_awards` publishes 3,685 links (12,601
+  before), and `account+subagency` publishes 22, all high (8,855 before: 8,833
+  medium, 22 high). `site_meta.link_precision` moves the tier from the
+  measured methods to `withdrawn`: 0 of 58 confirmed on attribution (sample
+  2026-09-05, judged 2026-09-11) over 8,865 links, which /methodology/ states
+  ("its 8,865 links that no two-lens hand adjudication pinned no longer
+  publish") and gate 24 leg n binds. Corrected 2026-09-26: the 58 is not a
+  new measurement. The sample drew 60 and confirmed none; since the export
+  deployed on 2026-09-25 (0587f90f) the figure counts only sampled links the
+  corpus still publishes, and the two an adjudication excluded count on
+  neither side, so the 0/60 the body and its 2026-09-25 addendum quote held
+  for chain C run 4's export and has read 0/58 since. The adjudication
+  census now reads 8,475 unpinned links, 56 of them still published, at
+  medium. The all-links concentration basis moved as option (b) said it
+  would, on the 24 DARPA program elements: each one's `hhi_all` rose once
+  the unpinned links left (with #171's re-grade on six of them; 0601101E
+  339.3 → 3,913.6; 0603286E 624.4 → 4,949.4), and no `hhi_high` among them
+  moved. `hhi-before-after.log` lists 34 programs, but it compares the
+  deployed export's `programs.json` with chain G's mart: 3 of the 34 (0145,
+  3010 and 3215) are listed only because that export withheld those shared
+  codes, so the log has no before value for them, and 7 moved under the
+  wave's other rulings, which option (b) cannot
+  cause (every `account+subagency` link is on a DARPA program element).
+  0208006F, 1203164SF and 2122 each lost a high link to #110's demotions, so
+  their `hhi_high` moved; 0603461A's `hhi_all` moved with the loader's
+  rebuild (W912DY22F0191's move to `announcement+lexicon`, and a recipient
+  chosen under R-DEC-RECIPIENT); and 0305601F, 1206770SF and 4048 changed
+  only their top family's label (the recipient rule, R-DEC-PACKET-b and
+  #135). Eval q020 now answers `fpds-ap`, medium (1,865 of the 3,685
+  published rows; R-DEC-EVALS-b, a5148814). Open: on two top-50 DARPA
+  dossier pages the withdrawal turned the concentration prose false against
+  its own citations. /program/0602025E/ reads "a low concentration score
+  (Herfindahl-Hirschman Index of about 389)" over a fact that now reads
+  1,284.7, moderately concentrated, and /program/0603467E/ "about 541,
+  indicating a relatively unconcentrated field" over 4,831.5, highly
+  concentrated; their top-family and dollar claims no longer match either
+  (#188). Under R-DEC-DOSSIERDRIFT (2026-09-26) export-site withholds such
+  claims and the dossier gate fails any still published; the next export
+  withholds all 8 claims on these two pages (4 on each) and 4 on other pages
+  that never matched their citations (0603941D8Z, 0604250D8Z, 0607210D8Z and
+  1203154SF), and regenerating them is still owed (#188).
 - **#108 `fpds-ap` rubric: the tier was judged partly on its own rule.** The
   FPDS acquisition-program tag IS the `fpds-ap` linking rule, and it leads 40
   of the 60 verdict reasons behind `fpds-ap 94/120`; fewer than ten cite the
@@ -2138,7 +2317,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   are the same question about different evidence: what a tier keeps
   publishing when its per-link attribution measured ZERO (#107) or was never
   recorded at all (#110).
-  **Status:** open (owner call, 2026-09-11).
+  **Status (2026-09-11):** open (owner call, 2026-09-11).
   *Re-measured 2026-09-25 (chain C run 4):* **1,133** links publish at high —
   `announcement+lexicon` 1,074, `account+tokens` 34, `account+subagency` 22,
   `account` 3 (`fct_budget_to_awards`) — and `site_meta.link_adjudication.high`
@@ -2151,6 +2330,51 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (37 `hhi_high` programs, 392 district rows) and are stale: the same marts
   now publish 63 `hhi_high` programs and 611 district rows over 189
   districts. Re-measure before deciding.
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — a hybrid of (b) and (a), refined by rulings R-DEC-110,
+  R-DEC-110b/c, R-DEC-INCOMPLETE, R-DEC-PACKET(-b) and R-DEC-LOADER (the
+  branch ledger's `owner-decisions-2026-09-25.md`). Migration 018 adds
+  `announcement_link_reviews`, and
+  `scripts/backfill_announcement_link_reviews.py` records the review outcomes
+  kept on disk: wave-4 verdict pairs (reviewer rejections included), wave 1–3
+  survivor lists (a survivor entry is a recorded review: the reviewer's "link"
+  verdict plus survival of the adversarial pass), refutation samples, and the
+  held-out precision study's refutations, which bind to the award→PE pair. A
+  high announcement link stays high only while an upholding record exists and
+  no recorded rejection or refutation applies; otherwise it publishes at
+  medium with its demotion reason. Where a pair survived in more than one
+  wave, its card cites the best-evidenced upheld article, never one a review
+  rejected or refuted (R-DEC-PACKET, R-DEC-PACKET-b). The loader's census of
+  that choice counts surviving pairs in the wave files, not published cards:
+  of 1,315 surviving pairs with a packet, 452 cite a wave-4 verdict pair that
+  upheld the article and 845 their only clean survivor packet; 18 have no
+  clean article, keep the earliest surviving packet and are demoted by the
+  grading if they publish. The loader then dropped 6
+  `not_display_or_catchall` pairs, 14 rows with no lake evidence and 108 on
+  `money_color_mismatch`, and loaded 1,188 links, 1,076 of them
+  announcement. Measured at chain G (2026-09-26; branch
+  `decisions-2026-09-25`, not yet deployed): 2,137 review rows (verdict_pair
+  1,208 — 699 upheld, 145 refuted, 3 incomplete, 281 weak, 80 wrong;
+  survivor_list 823; precision_sample 103; refutation_sample 3); links
+  published at high 1,133 → 1,106, every one with a recorded review, counted
+  once under the strongest (hand adjudication 60, verdict pair 417, survivor
+  list 629); `announcement+lexicon` high 1,074 → 1,047 and medium 1 → 29.
+  Demoted from high: 28 announcement links (review_refuted 5,
+  reviewer_rejected 12, precision_sample_refuted 11), beside the 63
+  unadjudicated `account+tokens` links the 2026-09-04 rule (#75) publishes at
+  medium (91 in `site_meta.link_adjudication.high.demoted_from_high`). The
+  precision tally keeps a link demoted by its own sample's verdict in the tier
+  it was tallied in, so the figure is never flattered: `announcement+lexicon`
+  57/61, `fpds-ap` 89/114, `subaward+lexicon` 52/59 (56/60, 89/114 and 53/60
+  before; FA880619C0003's confirmed verdict moved with its link to
+  announcement, R-DEC-PACKET-b), and the export logs the one link counted
+  outside its draw tier (FA880712C0012/1203164SF). No floor fell, so none was
+  re-dated (R-DEC-FLOORS): the mart's high-only index covers 61 programs (63
+  before; floor 37), district rows and districts read 608 and 191 (611 and 189
+  before; floors 480 and 150), concentration cards reach 59 destinations
+  (floor 48) and feed leg l 48 of 75 (floor 21). The program-awards medium
+  caveat was rewritten for the new tiers; gate 21 leg m finds its 7
+  load-bearing phrases on 8 pages (floor 5).
 - **#111 Residual FY2026 J-book absences (from #14).** (a) The DHP book's
   per-section R-1/P-40/R-2 URLs 404 on the comptroller index and the combined
   `00-DHP_Vols_I_and_II_PB26.pdf` that IS served carries no jb-2009 `.zzz`
@@ -2595,7 +2819,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   there; whether shared-code rows in that copy should
   follow `_concentration_owner` or be labelled code-level is part of this
   call (added 2026-09-25, Task 26). Decide with #129 (b).
-  **Status:** open (owner call, 2026-09-25).
+  **Status (2026-09-25):** open (owner call, 2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — pages and cards keep the LINKS rule; the downloadable
+  warehouse labels a shared code's row instead of withholding it:
+  `fct_program_concentration` carries `scope` ('code' on a shared code),
+  `member_programs`, `member_keys_with_links` and `links_outside_member_keys`,
+  and the /downloads/ caveat speaks per row (R-DEC-130c). Chain G's export
+  (2026-09-26; branch `decisions-2026-09-25`, not yet deployed) reads "7 of
+  its 536 rows are code-level": on 0145, 3010 and 3215 more than one member's
+  key carries links, so the row pools them; on 2101, 2292, 3050 and 4217 one
+  member's key carries every link (2101-WPN, 2292-WPN, 3050-OPN and 4217-OPN).
+  The feed still withholds 28 concentration_shift cards on 0145, 3010 and
+  3215; /methodology/ and `docs/methodology.md` §4 state the labelling.
 
 - **#131 A shared code with one member page plus a link key no member page
   reads would print a false sentence.** If a code's links sit on one member
@@ -2619,7 +2855,34 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   concentration_shift cards, 3 sit between 1,800 and 2,500 — moderately
   concentrated under the 2010 bands, highly concentrated under 2023's — and of
   the 63 programs publishing an `hhi_high` band, 4 do. Whichever vintage is
-  kept, label the bands by year. **Status:** open (owner call, 2026-09-25).
+  kept, label the bands by year. **Status (2026-09-25):** open (owner call, 2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — the 2023 bands, per the DOJ Antitrust Division HHI page
+  (updated 2024-01-17) citing Merger Guidelines §2.1 (2023): moderately
+  concentrated 1,000–1,800, highly concentrated above 1,800, banded on the
+  printed whole point (`site/src/lib/hhi-band.mjs`). The vintage is visible
+  text on every surface that renders the bands from `hhi-band.mjs` (the
+  program badge, the /feed/ note and section sentence, the glossary and
+  /methodology/), and below 1,000 the site says "Unconcentrated", attributed
+  to the site (R-DEC-132b); /methodology/ carries the correction row. A
+  dossier's prose names no vintage, but the dossier gate now binds its band
+  words to the 2023 bands: `claims_agree_with_citations` (R-DEC-DOSSIERDRIFT)
+  fails a published dossier claim whose concentration word is not the 2023
+  band of the HHI it cites, through `src/govbudget/hhi_band.py` (the Python
+  mirror of `hhi-band.mjs`, held to it by `tests/test_hhi_band_parity.py`),
+  and export-site withholds such a claim. The resume export therefore
+  withholds /program/0603467E/'s "relatively unconcentrated" claim (HHI
+  4,831.486, highly concentrated) and /program/0602025E/'s "low
+  concentration score" claim (1,284.683, moderately concentrated) (#188).
+  Gate 8 leg q binds the band statements on /methodology/,
+  /glossary/ and /feed/ (`BAND_PROSE_PAGES` in
+  `site/scripts/gates/feed.mjs`) to `hhi-band.mjs`, fail-closed on
+  two-edition statements (R-DEC-LEGQ-b; the paraphrases it still passes are
+  #187); it does not read /program/ pages. On chain G's BUILD 1 (a5148814,
+  2026-09-26): leg q, 91 band claims on /methodology/, /glossary/ and /feed/
+  agree; leg l, 48 of 75 HHI cards reach a band-publishing destination, 0
+  silent contradictions. Eval q022 reads MDA's 2,159 as highly concentrated
+  (R-DEC-EVALS). Branch `decisions-2026-09-25`, not yet deployed.
 
 - **#133 After merge, main alone cannot rebuild the lake this branch deploys
   from (ruling R-C-6).** Chain C ran on a shared lake another checkout
@@ -2637,7 +2900,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   until `3786a6e9`'s script and its test land on main. Merge note, measured
   2026-09-25: `3786a6e9` touches 66 files, 52 of which this branch also
   changed since `5dd7fb04` — ROADMAP.md, migrations 015–017, `export_site.py`,
-  the district marts and their two assertions among them. **Status:** PARTIAL
+  the district marts and their two assertions among them. **Status (2026-09-25):** PARTIAL
   (2026-09-25; was open, owner): the integration merge (f0ed21eb, deployed as
   0587f90f and pushed to main) carries `scripts/reconcile_award_moves.py`,
   `review_award_refresh.py` and their tests onto main, so main now holds the
@@ -2645,6 +2908,26 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   report-first step until the dbt staging rule the owner delegated
   (2026-09-25: keep the strictly newer copy of a key present in exactly two
   fiscal-year archives, fail on anything else) lands in the decisions wave.
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — built on branch `decisions-2026-09-25`, not yet deployed:
+  dbt staging keeps the strictly newer copy of a `transaction_key` found in
+  exactly two fiscal-year archives with different last-modified dates, and
+  ties, same-year copies and more than two copies still fail
+  `unique_fct_award_transactions_transaction_key`. Retired copies land in
+  `audit_award_fy_moves` with a warn test. These readers of the raw award
+  archives go through the same rule (`src/govbudget/award_moves.py`;
+  R-DEC-133b/c): entity-graph, the flowdown, entity-total and family-label
+  recomputes, `crosswalk.py`, `load_announcement_links.py`,
+  `derive_ap_links.py` and `precision_study.py`, so a fresh sync rebuilds
+  without the manual reconcile. Not every reader does: verify-phase1's trace
+  (`src/govbudget/jbooks/trace.py`, a `count(*)` of a program's linked PIIDs
+  in the contracts archive) and `scripts/mine_announcement_residue.py` (a
+  distinct-PIID set) read the contracts archive directly, but neither sums,
+  so a retired copy cannot double-count in either (R-DEC-133c scoped the
+  rule to the archive's summers). On chain G's lake (2026-09-26), already
+  reconciled on 2026-09-24, the rule retired 0 copies: `audit_award_fy_moves`
+  has 0 rows, and entity-graph and the loader each printed "retired 0 contract
+  and 0 assistance copies".
 
 - **#134 OWNER CALL: "Data as of <build date>" reads like a currency
   claim.** Three surfaces stamp the BUILD time as the data's date — the site
@@ -2656,8 +2939,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   2026-09-24 (the provenance sentence in /methodology/ §2 names the least
   recently refreshed dataset correctly). True as a snapshot date; a reader
   can take it as "current to". Wording call — e.g. "Built", or the stalest
-  dataset's date beside it (Task 29 fix round, 2026-09-25). **Status:** open
+  dataset's date beside it (Task 29 fix round, 2026-09-25). **Status (2026-09-25):** open
   (owner call, 2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — the footer (`site/src/app/layout.tsx`), the /methodology/
+  header and the program print byline stamp the build's date as "Built <date>"
+  ("built" in the byline), not "data as of"; /methodology/ §2 still names the
+  least recently refreshed dataset, and `docs/methodology.md` §5 follows
+  (#174). Branch `decisions-2026-09-25`, not yet deployed.
 
 - **#135 OWNER/CURATION CALL: the RTX family's Rockwell Collins Australia key
   is now mostly an Elbit-parented member.** `data-seeds/entity_family_events.csv:5`
@@ -2671,8 +2960,25 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   published in the RTX event note on `/companies/families/`); the display
   alias that relabelled the key was retired the same day (`cfcc9391`).
   Revisit the merge: keep it with a dated scope, split the Sparton member
-  out, or drop the key from the curated family. **Status:** open (owner
+  out, or drop the key from the curated family. **Status (2026-09-25):** open (owner
   call, 2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — split. Sparton DeLeon Springs' registration naming
+  EGAVSJTA2D81 is set aside (`data-seeds/entity_parent_exclusions.csv`), so
+  the name-inferred RC Australia merge keeps only RC Australia's own members,
+  and Sparton's family follows its other registry filings (R-DEC-135b; the
+  label-margin gate scripts apply the same exclusion). Chain G's entity-graph
+  (2026-09-26) moved H7KFX5RH75K3 SPARTON DELEON SPRINGS, LLC ($436.3M) from
+  ROCKWELL COLLINS AUSTRALIA (high) to ELBIT SYSTEMS (medium), through
+  JMMGQ2ME8XG3 ELBIT SYSTEMS LTD ($106.8M, 49 transactions) over the runner-up
+  PPLZG8J3N9D4 RTX CORP ($103.9M, 43), so a later refresh can move it back;
+  exactly 1 `entity_xwalk` row changed. The RC Australia key now holds 11
+  members and $190.4M (high). ELBIT SYSTEMS LTD enters the published 200 at
+  #175 ($2,214.6M, 18 UEIs, medium; #232 before), SRC INC falls from #200 to
+  #201, so /company/src/ is no longer built, and FCN, INC. is #200. The
+  /companies/families/ RTX note states the split without dollar amounts
+  (0176fa6e, after gate 2 caught two uncited ones). Branch
+  `decisions-2026-09-25`, not yet deployed.
 
 - **#136 The display-alias seed carries dated evidence and one boundary
   family to watch.** `data-seeds/entity_display_aliases.csv` holds 17 rows
@@ -2684,6 +2990,12 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   removed by `b5691ca5` (Task 29P), so the next refresh can bring it back as
   an uncurated near-tie that fails leg l. Re-measure the eleven and
   pre-review L3 at the next curation pass. **Status:** open (2026-09-25).
+  *Re-measured 2026-09-26 (chain G's export, branch `decisions-2026-09-25`,
+  not yet deployed; a read-only rank of `data/site/data/dim_entities.parquet`
+  by total obligation):* #135's split took ELBIT SYSTEMS into the published
+  200 at #175, so L3 Technologies now sits 202nd, $9.4M below the #200
+  cutoff (FCN, INC., $1,981.4M; SRC INC is 201st), not 201st and $6.9M
+  below as above. The eleven 2026-09-01 rows are still not re-measured.
 
 - **#137 CURATION CALL: four refreshed top-200 registry names are refused by
   the company-name casing allowlist.** Since the 2026-09-06 refresh reached
@@ -2695,7 +3007,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   passed). A refusal renders the name as filed, never mis-cased, which is why
   no verify gate is red; the vitest is, and stays red until the allowlist is
   extended with evidence per name. Chain C run 4 ran no vitest.
-  **Status:** open (2026-09-25).
+  **Status (2026-09-25):** open (2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — each name is classified with its evidence in
+  `site/src/lib/company-name.mjs`. MØLLER → "Møller" (apmollerfonde.dk) and
+  DEAN → "Dean" (mcdean.com) were already allowlisted at ddc79e6b, where the
+  wave began, with those official spellings (checked 2026-09-24), and FCN
+  was already kept as filed, with no evidence of its own. The decisions wave
+  changed NAN → "Nan" (nanhawaii.com
+  writes "Nan, Inc."; a given name, not an initialism) and added the
+  per-name evidence for FCN (fcnit.com writes "FCN, Inc." and never expands
+  it: an initialism, kept as filed; checked 2026-09-25) and for DEAN (the
+  family surname, CEO Bill Dean; re-checked 2026-09-25). Branch
+  `decisions-2026-09-25`, not yet deployed.
 
 - **#138 The freshness sentence speaks per dataset; the archives are per
   fiscal year.** `/methodology/` §2 names the least recently refreshed dataset
@@ -2721,11 +3045,28 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   sets `blocked` only when no key is present (`:706-709`) or the agent exits
   mid-run (`:744-748`), so an all-ERROR, $0 run reads as a model failure;
   detect it and report BLOCKED.
-  **Status:** PARTIAL (2026-09-25; was open, owner action): the owner topped up
+  **Status (2026-09-25):** PARTIAL (2026-09-25; was open, owner action): the owner topped up
   the credit on 2026-09-25; `verify-phase5` then passed its eval leg (46/48
   accuracy, 43/43 citations before the integration; 45/48, 42/42 at 0587f90f)
   and the deploy went out. The code half (report an all-ERROR, $0 run as
   BLOCKED, not as an accuracy failure) is open, scheduled in the decisions wave.
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — the code half is built (R-DEC-139b/c/d): `verify_phase5`
+  reports an eval run BLOCKED (exit 2) when the provider's refusals alone
+  decide the verdict and no other error occurred, and FAIL (exit 1), naming
+  the errors, whenever anything else went wrong; the stored FAIL record
+  eval-20260918T210926Z is not rewritten. LAUNCH.md Step 9 and §7d say the
+  same. The owner half closed with the 2026-09-25 top-up. Chain G's
+  verify-phase5 (2026-09-26, 0b16c139) ran the eval live: accuracy 46/48,
+  citations 43/43, PASS; freshness 43 answers current, PASS. Its assembly leg
+  failed on verify-phase5b3's dossier gate ("empty: 3050-SCN: players"),
+  because the #176 rematch put one lobbying row on the bare shared code 3050;
+  0d693bb8 fixes the gate under R-DEC-DOSSIER, and nothing has run on it
+  yet. 0d693bb8 also changes a dbt model and the exporter, so chain G's
+  resume 3 re-runs dbt, `export-site`, both builds, the 27-gate verify and
+  the Python gates before verify-phase5 and `deploy.sh --dry-run` (BUILD 2's
+  27/27 is at 0b16c139, and the deploy needs the build's `git_head` to equal
+  HEAD).
 
 - **#140 OWNER CALL: should announcement evidence override an FPDS
   acquisition-program mapping on the same key?**
@@ -2741,7 +3082,21 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   clause predates this branch (2026-09-04). Keep the override (the
   announcement is the stronger evidence of THIS program) or keep the older
   route's mapping and record the announcement as corroboration. Decide with
-  #107 and #110. **Status:** open (owner call, 2026-09-25).
+  #107 and #110. **Status (2026-09-25):** open (owner call, 2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — keep the override, never silently. Migration 019 adds the
+  superseded route (`superseded_method`, `superseded_confidence` and
+  `superseded_at`, all or none, and `superseded_evidence`, which may be set
+  only beside them and is NULL on a record the loader writes at the move),
+  the loader records the route a link replaces and carries every record
+  across rebuilds, and migration 020 records the 60 moves of 2026-09-19 from
+  the best evidence left
+  (R-DEC-140): 58 `fpds-ap` with confidence unknown and 2 unknown/unknown,
+  refusing to run if that evidence was erased. The precision tally keeps
+  counting each link under the tier it publishes under today. Chain G
+  (2026-09-26; branch `decisions-2026-09-25`, not yet deployed): migration 020
+  recorded exactly those 60, and the loader's rebuild replaced no other
+  route's row ("0 new this run") and carried all 60.
 
 - **#141 OWNER CALL: a LORELEI-style attribution rule — send a DARPA award to
   the program element whose own narrative owns the effort its description
@@ -2757,8 +3112,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   effort, so link it to the PE whose narrative or project title names that
   effort — would replace the fan-out with one attributed link; it is the
   evidence-graded half of #107's option (c). Cost: a matcher, its own
-  precision study, and a rebuilt tier. Decide with #107. **Status:** open
+  precision study, and a rebuilt tier. Decide with #107. **Status (2026-09-25):** open
   (owner call, 2026-09-25).
+  **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
+  recommendation) — adopted as the direction and planned as its own phase
+  after the decisions wave: a description-level matcher, its own held-out
+  precision study, and a rebuilt tier that publishes only on that measured
+  precision. Not built. Until then #107(b) keeps the unpinned
+  `account+subagency` links unpublished (8,865 at chain G, 2026-09-26).
 
 - **#142 `/company/rtx/` publishes no lobbying mentions although 849 mention
   rows name its client.** Measured read-only 2026-09-25: `fct_program_lobbying`
@@ -2770,8 +3131,18 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   no row of `dbt/seeds/client_aliases.csv` maps the "… AND AFFILIATES" client
   string to RTX. Found by the 2026-09-10 roadmap audit while checking #55.
   Fix: a curated alias row with its corporate evidence, then `influence
-  rematch` + `dbt build` + export. Effort: hours. **Status:** open
+  rematch` + `dbt build` + export. Effort: hours. **Status (2026-09-25):** open
   (2026-09-25).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — `dbt/seeds/client_aliases.csv` maps three RTX client strings
+  ("RTX CORPORATION AND AFFILIATES", "RTX CORP AND AFFILIATES" and "RTX
+  CORPORATION AND AFFILIATES (FKARAYTHEON TECHNOLOGIES CORPORATION)") to RTX
+  with their evidence, and `influence restamp` applies them (rematch does not
+  read the seed). Chain G (2026-09-26): the restamp moved 85 RTX filings from
+  `none` to `curated_alias` (284 → 369), RTX's lobbying reads $38.95M over 100
+  filings (was $0.75M over 19; 2024 44 / $14.97M, 2025 36 / $14,965,000, 2026
+  20 / $9.01M, each amended quarter counted once under R-DEC-AMEND), and the
+  export's `entity_details/rtx.json` now lists the family's mention rows.
 
 - **#143 Gate 24 leg (p1) and its sidecar floor have no proof-it-can-fail
   test.** `runCrosswalkCountLeg` (`site/scripts/gates/datatruth.mjs`) is
@@ -3273,7 +3644,15 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   it is called directly. Source: `src/govbudget/jbooks/crosswalk.py`, the
   integration's Python report (`integration-report-python.md`, the branch
   ledger) and #78, #85 above. Effort: hours.
-  **Status:** open (2026-09-25; scheduled in the decisions wave).
+  **Status (2026-09-25):** open (2026-09-25; scheduled in the decisions wave).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — the fix as written: `jbooks crosswalk` refuses, before any write,
+  every (pe_bli, exhibit, fiscal_year) identity that two planned lines share
+  across accounts or across organizations, exits non-zero naming each one, and
+  `crosswalk_org` raises `AmbiguousIdentityError` on the same input when
+  called directly. The consequence, that a default run over every organization
+  now writes nothing until the link key names account and organization, is
+  #183, which records the dry run.
 
 - **#171 The crosswalk's detail tokens are no longer scoped to the line's own
   organization, edition and account.** The merge dropped the live branch's
@@ -3310,7 +3689,22 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   the next crosswalk run. Source: `src/govbudget/jbooks/crosswalk.py`,
   `dbt/models/marts/fct_budget_to_awards.sql`, #75 and #85 above. Effort:
   hours.
-  **Status:** open (2026-09-25).
+  **Status (2026-09-25):** open (2026-09-25).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — the detail tokens are scoped to the line's own organization,
+  edition and account, and `jbooks crosswalk --regrade-only` re-grades stored
+  rows in place and never inserts (R-DEC-171: written only if its dry run
+  reproduced 82 / 50 / 32; the 226,020 candidate pairs the unscoped rule never
+  stored stay unwritten). Chain G (2026-09-26): the dry run reproduced it
+  exactly (32 adjudicated medium `account+tokens`/high →
+  `account+subagency`/medium, 50 unadjudicated → `account`/low, all 82 on the
+  edition leg), and the run with `--expect-updates 82` printed "re-graded 82
+  row(s) in place; inserted 0" (Postgres `account+tokens` 527 → 445, `account`
+  114,637 → 114,687, `account+subagency` 9,336 → 9,368; 164,653 rows before
+  and after). Published `account+tokens` links 251 → 169 (34 high, 135 medium,
+  63 of the medium the unadjudicated remainder). The re-grade moved 17 of
+  0602303E's PIIDs out of the published tiers, which is why eval q019 still
+  answers SBIR (SBIR 69 linked PIIDs, 0602303E 63; R-DEC-EVALS-b).
 
 - **#172 `export_site.py` reads through DuckDB's process-wide default
   connection, and several of those reads fall back silently.** 14 call sites
@@ -3335,7 +3729,16 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   guarded reads report what they dropped. Source: the integration's Python
   fixer report (`integration-fix-python.md`, the branch ledger). Effort:
   hours.
-  **Status:** open (2026-09-25).
+  **Status (2026-09-25):** open (2026-09-25).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — every `export_site.py` reader opens its own DuckDB connection
+  (the 14 default-connection call sites are gone, and an AST guard in
+  `tests/test_export_site_private_duckdb.py` fails a new one); a parquet row
+  count that cannot be read raises instead of recording 0, and a guarded read
+  that drops something prints an `export-site: WARNING`. Chain G's exports
+  (2026-09-26) printed exactly one WARNING, the link-precision note on
+  FA880712C0012/1203164SF (#110). The same species outside the exporter is
+  #182.
 
 - **#173 /methodology/'s dbt-assertion count silently falls back to the last
   export's number.** `buildCheckCounts` in `site/src/lib/data.ts` recounts
@@ -3358,7 +3761,13 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   (`data.ts:529`). Fix: treat a missing or unreadable manifest the same way,
   or print "—"; never print the lake's number. Source: `site/src/lib/data.ts`.
   Effort: hours.
-  **Status:** open (2026-09-25).
+  **Status (2026-09-25):** open (2026-09-25).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — `dbtAssertionCount` in `site/src/lib/data.ts` throws on a
+  missing, unreadable or test-free `dbt/target/manifest.json` instead of
+  keeping the lake's number, and gate 24 leg e treats a missing manifest as an
+  error, not a skip. Gate 24 passed on chain G's BUILD 2 (0b16c139,
+  2026-09-26).
 
 - **#174 `docs/methodology.md` §5 says every table shows a "data as of"
   date; the site does not.** Checked read-only 2026-09-25. No component in
@@ -3380,7 +3789,11 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   (the controller's recommendation under the owner's delegation, 2026-09-25:
   "Built <date>"), which the decisions wave implements after the integration
   deploy. Source: `docs/methodology.md`. Effort: hours.
-  **Status:** open (2026-09-25).
+  **Status (2026-09-25):** open (2026-09-25).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — `docs/methodology.md` §5 now says the site stamps the date each
+  build was made ("Built <date>" in the footer and the methodology header,
+  #134), not a date the data is current to, and cites this entry.
 
 - **#175 Gate 27 (copy) ships red in production; the integration exempts
   only production's pre-existing hits (R-INT-7).** Gate 27
@@ -3425,7 +3838,13 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   pointer to /coverage/ lost its em-dash pair when final-review finding #8
   reworded it, and its leg-13 entry was deleted in the same change, leaving
   583 entries.
-  **Status:** open (2026-09-25).
+  **Status (2026-09-25):** open (2026-09-25).
+  **Status:** PARTIAL 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — the burn-down removed both `"*"` entries ("Explore" and "Visual
+  field guide"), and `copy-allowlist.json` holds 11 entries (583 before), each
+  naming one page (/, /coverage/ or /methodology/). Gate 27 passed on chain
+  G's BUILD 2 (0b16c139, 2026-09-26) with those 11. Open: the 11, among them
+  the home page's h1 (#180), and the Title Case cross-references (#181).
 
 - **#176 The lobbying matcher reads a year, a bill number or a quantity as a
   numeric budget-line code and badges the row "PE code cited directly".**
@@ -3458,7 +3877,21 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   the 14,016 and gate 21 leg (j)'s "Who gets it" census. Source:
   `src/govbudget/influence/mentions.py`, `site/src/lib/evidence.ts`, the
   final integration review (finding #10). Effort: days.
-  **Status:** open (2026-09-25; scheduled in the decisions wave).
+  **Status (2026-09-25):** open (2026-09-25; scheduled in the decisions wave).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  deployed — a numeric code now matches only beside a budget-line label, and
+  the tier's badge reads "PE/BLI code cited directly"; the rematch sorts its
+  program rows, and a test requires two runs to be identical (R-DEC-176b).
+  Chain G's rematch (2026-09-26) re-measured `fct_program_lobbying`: 14,016 →
+  12,571 rows (alias 256, multi_token 12,315), 499 → 471 programs, 1,857 →
+  1,340 filings, `pe_literal` 1,631 → 0. With no `pe_literal` row left,
+  R-INT-9 withholds 159 mention rows on 7 shared codes (76 on 6 before) and
+  the lobbying tier from 0 member pages (7 before). The `lda_filing` citations
+  fell by 1,445, and the search index's /filing/ pages from 1,857 to 1,340.
+  Gate 21 leg (j)'s "Who gets it" census on chain G's BUILD 1 (a5148814):
+  2,562 cards, award 59, J-book 4, lobbying 4 and honest absence 2,495,
+  every named company from the `pe_literal` or alias tier. /methodology/ §2
+  states the rule.
 
 - **#177 A deploy overwrites fixed-name `data/*.parquet` on R2 before Vercel
   serves the pages that read them.** `scripts/launch/deploy.sh` runs
@@ -3811,6 +4244,141 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   Effort: hours per shape found.
   **Status:** open (2026-09-26).
 
+- **#188 Two top-50 DARPA dossiers print concentration, top-family and
+  dollar claims their cited facts now contradict.** A dossier claim is prose
+  written once around a fact id (these two on 2026-07-02, by
+  `claude-opus-4-8`); every export recomputes the fact, and nothing rewrites
+  the prose. The four facts behind the players sections of /program/0602025E/
+  and /program/0603467E/ had drifted before the decisions wave, but the words
+  still held: the export deployed on 2026-09-25 carried HHI 318.260 and
+  352.311 against the prose's "about 389" and "about 541", below either
+  edition's moderately concentrated threshold. #107(b) withdrew the unpinned
+  `account+subagency` links those figures were computed over. Measured
+  read-only 2026-09-26 on chain G's second export
+  (`data/site/citations/citations.parquet` against the deployed copy in the
+  branch ledger's `chainG-logs/before/`), 8 of the 703 claims in the 50
+  dossiers cite a fact whose value moved, all in these two players sections,
+  and BUILD 2 (0b16c139) renders every one, so the wave's deploy would
+  publish them.
+  /program/0602025E/ reads "a low concentration score (Herfindahl-Hirschman
+  Index of about 389)" over `b45aa52df18b0f7c`, now 1,284.683 (moderately
+  concentrated under the 2023 bands), and names RAYTHEON the leading family
+  "measured over roughly $4.68 billion" over `5a3b8a1cba0a8bbe`, now
+  $469,988,662.80 ($3,074,752,563.26 before), while the mart's top family is
+  now SYSTEM HIGH; the same fact backs its largest-award claim (INDYNE,
+  FA251718C8000), an award no published link reaches now. /program/0603467E/
+  reads "about 541, indicating a relatively unconcentrated field" and names
+  Raytheon the top family over `4fce527a8e5df484`, now 4,831.486 (highly
+  concentrated; the mart's top family is now GENERAL DYNAMICS), and "about
+  $3.58 billion" over `3b594c81c720df35`, now $74,376,328.83
+  ($2,930,960,147.37 before). No gate compares a claim's words with its
+  fact's current value: the dossier gate checks presence, structure,
+  required sections, categories, that each citation resolves and that it
+  is warehouse-cited, and gate 8 leg q reads band statements only on
+  /methodology/, /glossary/ and /feed/ (#132). Fix: regenerate or withhold
+  the players claims whose facts moved, and add a check that fails a
+  dossier claim whose cited HHI has crossed a band boundary, whose named top
+  family is no longer the mart's, or whose dollar figure no longer matches
+  its fact's current value. Source:
+  `data/site/json/dossiers/0602025E.json`,
+  `data/site/json/dossiers/0603467E.json`, `src/govbudget/dossiers/gate.py`,
+  `chainG-logs/hhi-before-after.log` (the branch ledger). Effort: hours.
+  **Status:** PARTIAL 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  exported or deployed — ruling R-DEC-DOSSIERDRIFT. export-site withholds
+  (drops, never rewrites) a dossier claim that contradicts its citation or
+  its page, under the sidecar reason `contradicts_citation`, with five
+  sub-reasons: a stated dollar or HHI figure outside the sentence's own
+  rounding of the cited fact's current value, for any fact kind (a derived
+  `recorded_value`, a workbook cell's `amount_thousands` in its own units, a
+  J-book glyph's `amount_text` parsed as the receipt exporter parses it); a
+  figure that agrees with the cited value but is given another fiscal year
+  than the cited column's (the column read from a workbook cell's
+  `amount_type`, or from a J-book glyph's scenario as the exporter labels
+  detail columns, CurrentYear = FY2025 under the PB2026 fence); a
+  concentration word that is not the cited HHI's 2023 band; a "top/leading
+  recipient family" that is not the family the cited concentration row
+  records; and a recipient list ("recipients … include", "awards went to",
+  "is a recipient linked to") naming a recipient that is not among the
+  page's linked-award recipient families. It logs each by name and keeps it
+  in the sidecar's `withheld_claims`, counted in `dropped_claims`. The
+  dossier gate's `claims_agree_with_citations` check fails any such claim
+  still published (`src/govbudget/dossiers/claim_drift.py`, one definition
+  for both; the gate reads each fact's column from `citations.parquet`,
+  which `citations.json` lacks), and fails with an error, instead of
+  reporting a leg not run, when the mart or parquet it was given cannot be
+  read; the exporter stops on the same failure. The gate's disclosed-drop
+  exception requires the built page's Correction note to be, word for word,
+  the sentence the sidecar's `dropped_reasons` produce, read on the member
+  page (`expected_correction_note`, mirrored from `program-dossier.tsx`).
+  The raw archives (68, plus `batch_meta.json`) record only the fact id, not
+  its value at authoring, so the sentence's figure is parsed. A read-only
+  replay of the exporter over chain G's export (rounds 3 and 4, 2026-09-26)
+  withholds 12 of the 703 claims over 6 dossiers: 0602025E 4 (players),
+  0603467E 4 (players), 0603941D8Z 1 (why_it_matters), 0604250D8Z 1
+  (why_it_matters), 0607210D8Z 1 (what_it_is) and 1203154SF 1 (what_it_is).
+  By sub-reason (a claim can have more than one): stated figure 9, top
+  family 2, band 2, recipient list 2, fiscal year 1. Four of the 12 never
+  matched their citations rather than drifted: 0603941D8Z's Project
+  091/098/112 figures cited to FY2024 actuals (415,751 thousand),
+  0604250D8Z's PDI sub-totals cited to the program's FY2026 total cell
+  (1,163,452 thousand), 0607210D8Z's "$2,328.370 billion", 1,000 times the
+  line's FY2026 total, cited to its FY2024 cell (897,631 thousand), and
+  1203154SF's "For FY2026, the Auxiliary Payloads project is funded at about
+  $243.3 million (its Current Year amount)", cited to a glyph under the FY
+  2025 column (the row's FY 2026 Total is 1.916). The fiscal-year leg judged
+  119 of the published claims (an agreeing figure the sentence gives a year)
+  and withholds that one. 0603467E's recipient list is withheld because 6 of
+  its 8 names (Booz Allen Hamilton, The Johns Hopkins University Applied
+  Physics Laboratory, Leidos, Lockheed Martin Corporation, SRI
+  International, the Massachusetts Institute of Technology) are not among
+  the page's 17 links. Two players sections empty, 0602025E's and
+  0603467E's: each page renders no "Key players" heading and passes the gate
+  only on the disclosed-drop exception. The note's clause for an
+  unresolvable citation is now worded for that check, not for lobbying — it
+  read "cited lobbying mentions that did not meet the evidence standard",
+  false on /program/1000/, /program/ATA000/ and /program/B02100/ (J-book
+  narrative claims; the deployed pages carry it until the next deploy) and
+  on 0603467E's dropped concentration claim. Round 4 names the year in the
+  withheld claims' clause: it read "stated a figure or recipient its
+  sources do not support", false on 1203154SF, whose figure agrees with its
+  cite and is withheld for its fiscal year alone; it now reads "stated a
+  figure, year or recipient its sources do not support" ("stated figures,
+  years or recipients their sources do not support" for several). Round 4
+  also fixes the #56 stale_value check (`_claim_value_still_matches`),
+  which read only a sentence's "$X thousand" figures: /program/2122/
+  why_it_matters[6], "DDG-51 FY2024 actuals came in about $1.9 billion above
+  the original PB2024 request, rising from a $4,483,214 thousand request to
+  $6,366,431 thousand in actuals — a roughly 42% increase.", cites
+  `8169f40c26f22ffd` (derived, 1,883,217 thousand, the difference), so its
+  headline is true, yet it was dropped as stale_value and the page said "it
+  stated a figure a later correction changed". The check now keeps a claim
+  when any dollar figure it states (thousand, million, billion) agrees with
+  the cited value, read in the fact's units, within the sentence's printed
+  rounding (claim_drift's definition); a claim whose figures all disagree is
+  still dropped. Of the 61 claims the check judges in the 50 dossiers, only
+  2122's verdict changes: stale_value drops go from 1 to 0, all drops from
+  43 over 12 dossiers to 42 over 11, published claims from 691 to 692, and
+  the restored claim passes every contradicts_citation leg. After the
+  re-export and rebuild the notes read: "8 claims removed: 4 cited sources
+  the site could not resolve; 4 stated figures, years or recipients their
+  sources do not support." (0602025E), "5 claims removed: one cited a
+  source the site could not resolve; 4 stated figures, years or recipients
+  their sources do not support." (0603467E), "1 claim removed: it stated a
+  figure, year or recipient its sources do not support." (0603941D8Z and
+  1203154SF), "7 claims removed: 6 cited sources the site could not
+  resolve; one stated a figure, year or recipient its sources do not
+  support." (0604250D8Z), "6 claims removed: 5 cited sources the site could
+  not resolve; one stated a figure, year or recipient its sources do not
+  support." (0607210D8Z), "6 claims removed: they cited sources the site
+  could not resolve." (0604874C), "5 claims removed: they cited sources the
+  site could not resolve." (1000) and "1 claim removed: it cited a source
+  the site could not resolve." (2004, ATA000, B02100); 2122 carries no note.
+  On the round-4 replayed sidecars the gate passes once those notes are
+  rendered (checked read-only on chain G's BUILD 2 pages with only the
+  notes replaced) and fails on BUILD 2 as built, whose notes on 0602025E
+  and 0603467E count 4 and 1. Still owed: regenerating the withheld claims
+  (a paid batch).
+
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
 naming the sprint and/or commit that closed it and when, so an item's state is
@@ -4091,7 +4659,40 @@ docs/superpowers/ROADMAP.md`.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
 
-    **Status: PARTIAL 2026-09-25** — ledger sweep. The spike `1d75c231`
+    **Status:** PARTIAL 2026-09-26 — the SAM half is running. The owner pasted
+    the key on 2026-09-25 (the #10 SAM update in the branch ledger's
+    `owner-decisions-2026-09-25.md`). The decisions wave closed both seams
+    named below (`sam_entities.py` reads `SAM_ENTITY_API_URL` and
+    `SAM_PUBLIC_ENTITY_URL` at call time, and `require_preflight` re-checks
+    the stored `public_url` template) and added `sam preflight --dry-run`.
+    First live run, chain G (2026-09-26): preflight answered 200 on the v4
+    endpoint (1 request), with the public page `https://sam.gov/entity/{uei}`
+    at 200; `sam extract --max-requests 8` fetched LOCKHEED MARTIN
+    (ZFN2JJXBLZT3, Active, expires 2026-11-24, CAGE 02GJ5) and BOEING
+    (NU2UC8MX6NK1, Active, expires 2026-11-13, CAGE 08903), and RTX's dominant
+    registration UEI PPLZG8J3N9D4 answered 200 with `totalRecords: 0`: SAM
+    returned no record for that UEI to this query, which does not say why (a
+    registration the default query does not return, an expired one or one
+    withheld from public view, reads the same; `is_no_record` in
+    `sam_entities.py`). That answer stopped the run
+    (`SamShapeError`); 0176fa6e makes a zero-record answer a stored result
+    that yields no row, is never re-fetched and never blocks the other
+    families, and `sam reparse` then wrote 2 rows. 4 of the day's 10 requests
+    were spent (preflight 1, extract 3), and the key is in none of the 224
+    files scanned. After `govbudget build`, `dim_entities` carries `sam_uei`
+    on those 2 families (RTX's is NULL); the export ships 2 SAM citations
+    (`companies_with_sam` 0 → 2, citations 125,347 → 125,349), rendered as the
+    cited registration line on /company/lockheed-martin/ and /company/boeing/
+    (none on /company/rtx/). The key-free `preflight.json` is committed
+    (0176fa6e). Each line adds about 450 gzip bytes to its page:
+    /company/boeing/ is at 24,633 of its 25,000. Open: the other 197 of the
+    200 published families, which is the owner's daily `uv run python -m
+    govbudget sam extract` at 10 requests a day (no agent-installed
+    scheduler), each run followed by `govbudget build` and `export-site` (the
+    owner step below). Branch `decisions-2026-09-25`, not yet deployed.
+    *(Earlier markers below.)*
+
+    **Status (2026-09-25): PARTIAL 2026-09-25** — ledger sweep. The spike `1d75c231`
     (2026-09-01) inverted the premise; Option A shipped in `a2a9b2f8`
     (2026-09-01: display-alias seed + gate 24 leg l); the Splink half is a
     deliberate non-goal (owner stamp recorded by Task 19a in `d799e794`,
@@ -4117,7 +4718,7 @@ docs/superpowers/ROADMAP.md`.
     stored `public_url` template against the constant.
     *(Earlier markers below.)*
 
-    **Status: the Splink half CLOSED AS A DELIBERATE NON-GOAL + Option A
+    **Status (2026-09-12): the Splink half CLOSED AS A DELIBERATE NON-GOAL + Option A
     (display-label correction) CLOSED — owner stamp 2026-09-10. The
     SAM-extract half is OPEN, blocked on an owner-created key.**
     The 2026-08-24 marker below is stale in BOTH its claims: two commits do
@@ -4276,7 +4877,7 @@ docs/superpowers/ROADMAP.md`.
     lands in one run.
     *(Original marker below.)*
 
-    **Status: OPEN** — swept 2026-08-24. Never scoped; no commit references it.
+    **Status (2026-08-24): OPEN** — swept 2026-08-24. Never scoped; no commit references it.
     Verified at HEAD: `src/govbudget/entities.py:6` still reads that
     probabilistic matching (Splink) is "deliberately deferred until a gate
     fails".

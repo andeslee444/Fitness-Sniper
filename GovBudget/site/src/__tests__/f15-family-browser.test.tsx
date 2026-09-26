@@ -902,7 +902,7 @@ describe("F-15 focused workspace navigation", () => {
       expect(research).toHaveFocus();
       expect(screen.getByRole("button", { name: "Copy all citations" })).toBeVisible();
     }
-  });
+  }, 20_000); // walks all six workspaces (~3.3 s alone); the 5 s default flaked under full-suite load three times on 2026-09-25/26
 
   it("lets modified workspace links keep their browser behavior without changing the current view", async () => {
     await mount("?variant=EX&purpose=buy&record=F015EX#inspect");

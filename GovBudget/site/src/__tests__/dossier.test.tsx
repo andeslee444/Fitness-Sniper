@@ -250,7 +250,7 @@ describe("ProgramDossier", () => {
     expect(note).not.toBeNull();
     expect(note!.textContent).toContain("2 claims removed");
     expect(note!.textContent).toContain(
-      "they cited lobbying mentions that did not meet the evidence standard",
+      "they cited sources the site could not resolve",
     );
     const hook = container.querySelector("[data-dossier-dropped-claims]");
     expect(hook).toHaveAttribute("data-dossier-dropped-claims", "2");
@@ -263,7 +263,9 @@ describe("ProgramDossier", () => {
       <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
     );
     expect(container.textContent).toContain("1 claim removed");
-    expect(container.textContent).toContain("it cited lobbying mentions");
+    expect(container.textContent).toContain(
+      "it cited a source the site could not resolve",
+    );
   });
 
   it("renders no correction note when dropped_claims is 0 or absent", () => {
@@ -365,22 +367,130 @@ describe("ProgramDossier", () => {
     );
     const text = container.textContent!;
     expect(text).toContain("7 claims removed");
-    expect(text).toContain(
-      "6 cited lobbying mentions that did not meet the evidence standard",
-    );
+    expect(text).toContain("6 cited sources the site could not resolve");
     expect(text).toContain("one stated a figure a later correction changed");
   });
 
-  it("still renders the exact #52 wording when dropped_reasons is absent (pre-#56 sidecar)", () => {
+  it("states #52's reason for every drop when dropped_reasons is absent (pre-#56 sidecar)", () => {
     const file = fixtureDossier();
     file.dropped_claims = 3;
     // dropped_reasons intentionally NOT set — a sidecar written before this
-    // field existed must fall back to the original, already-tested wording.
+    // field existed had only #52's reason: the citation did not resolve.
     const { container } = render(
       <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
     );
-    expect(container.textContent).toContain(
-      "they cited lobbying mentions that did not meet the evidence standard",
+    expect(
+      container.querySelector("[data-dossier-dropped-claims]")!.textContent,
+    ).toBe("3 claims removed: they cited sources the site could not resolve.");
+  });
+
+  // R-DEC-DOSSIERDRIFT round 3: the unresolvable_citation clause read "cited
+  // lobbying mentions that did not meet the evidence standard", but the
+  // exporter drops ANY claim whose citation does not resolve — on
+  // /program/1000/ five J-book narrative claims, on /program/ATA000/ and
+  // /program/B02100/ one each, on /program/0603467E/ a concentration claim.
+  // The note is worded for the check, true of every drop it covers.
+  it("never calls an unresolvable drop a lobbying mention (the /program/1000/ shape)", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 5;
+    file.dropped_reasons = { unresolvable_citation: 5 };
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    const note = container.querySelector("[data-dossier-dropped-claims]")!;
+    expect(note.textContent).toBe(
+      "5 claims removed: they cited sources the site could not resolve.",
+    );
+    expect(note.textContent).not.toMatch(/lobbying|evidence standard/);
+  });
+
+  // ── R-DEC-DOSSIERDRIFT round 2: contradicts_citation ─────────────────────
+  //
+  // export-site WITHHOLDS (never rewrites) a claim whose stated figure,
+  // concentration word or top family its cited fact's current value does not
+  // support, or whose named recipients the page's linked awards do not carry.
+  // Before this, the note knew only #52's and #56's reasons: 0602025E would
+  // have read "8 claims removed: 4 cited lobbying mentions …" with four
+  // removals unexplained, and 0603941D8Z "1 claim removed: did not meet the
+  // evidence standard." — no subject. The dossier gate now compares this
+  // exact sentence with the sidecar (gate.expected_correction_note).
+
+  function noteText(file: DossierFile): string {
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    const hook = container.querySelector("[data-dossier-dropped-claims]");
+    expect(hook).not.toBeNull();
+    return hook!.textContent!;
+  }
+
+  function withReasons(
+    dropped: number,
+    reasons: Record<string, number>,
+  ): DossierFile {
+    // Object.assign: some cases carry a reason lib/dossier.ts's type does
+    // not name (the component must still count it).
+    return Object.assign(fixtureDossier(), {
+      dropped_claims: dropped,
+      dropped_reasons: reasons,
+    });
+  }
+
+  it("explains a single contradicts_citation removal in plain words", () => {
+    expect(noteText(withReasons(1, { contradicts_citation: 1 }))).toBe(
+      "1 claim removed: it stated a figure, year or recipient its sources do not support.",
+    );
+  });
+
+  it("names the year: the clause is true of a fiscal-year withhold (1203154SF)", () => {
+    // /program/1203154SF/ what_it_is[3] is withheld for its fiscal year alone
+    // ("For FY2026 … about $243.3 million" on an FY 2025 glyph): its figure
+    // agrees with the cite, so "stated a figure or recipient" named neither
+    // thing wrong with it.
+    const note = noteText(withReasons(1, { contradicts_citation: 1 }));
+    expect(note).toMatch(/\byear\b/);
+    expect(noteText(withReasons(2, { contradicts_citation: 2 }))).toBe(
+      "2 claims removed: they stated figures, years or recipients their sources do not support.",
+    );
+  });
+
+  it("explains every removal on the 0602025E shape, each reason with its own count", () => {
+    expect(
+      noteText(withReasons(8, { contradicts_citation: 4, unresolvable_citation: 4 })),
+    ).toBe(
+      "8 claims removed: 4 cited sources the site could not resolve; 4" +
+        " stated figures, years or recipients their sources do not support.",
+    );
+  });
+
+  it("the 0603467E shape: one unresolvable concentration claim beside four withheld claims", () => {
+    expect(
+      noteText(withReasons(5, { contradicts_citation: 4, unresolvable_citation: 1 })),
+    ).toBe(
+      "5 claims removed: one cited a source the site could not resolve; 4" +
+        " stated figures, years or recipients their sources do not support.",
+    );
+  });
+
+  it("never prints a clause without a subject (the old fallback's grammar break)", () => {
+    expect(noteText(withReasons(1, {}))).toBe(
+      "1 claim removed: it did not meet the evidence standard.",
+    );
+    // a reason this component has no words for is still counted, in its own
+    // clause, never silently dropped from the explanation
+    expect(noteText(withReasons(3, { stale_value: 1, some_new_reason: 2 }))).toBe(
+      "3 claims removed: one stated a figure a later correction changed; 2" +
+        " did not meet the evidence standard.",
+    );
+  });
+
+  it("states #52's reason in its round-3 words and keeps #56's sentence as it was", () => {
+    expect(noteText(withReasons(7, { unresolvable_citation: 6, stale_value: 1 }))).toBe(
+      "7 claims removed: 6 cited sources the site could not resolve; one" +
+        " stated a figure a later correction changed.",
+    );
+    expect(noteText(withReasons(2, { stale_value: 2 }))).toBe(
+      "2 claims removed: they stated figures a later correction changed.",
     );
   });
 });

@@ -18,6 +18,17 @@
  *   - scripts/gates/coverage.mjs                 (the program badge vs. the
  *     shipped hhi_high)
  *
+ * ONE MIRROR outside the site: src/govbudget/hhi_band.py (repo root), the
+ * Python copy the dossier exporter and gate band a dossier claim's cited HHI
+ * with (R-DEC-DOSSIERDRIFT, 2026-09-26 — a claim whose concentration word is
+ * not its cited HHI's band is withheld). tests/test_hhi_band_parity.py binds
+ * the two: it reads HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN and
+ * HHI_BANDS_VINTAGE out of THIS source and runs hhiBand under node over a
+ * boundary sweep against the Python answer. No site gate runs it, so after
+ * changing a threshold or the vintage here run
+ * `PYTHONPATH=src uv run --no-sync python -m pytest -q tests/test_hhi_band_parity.py`
+ * (chain G's runbook step 13 does).
+ *
  * Plain .mjs, not .ts, ON PURPOSE. scripts/gates/*.mjs run under plain Node
  * and cannot import .ts modules — see src/lib/format.ts's COMPACT_RUNGS
  * comment, which hand-mirrors a constant into feed-model.mjs for exactly

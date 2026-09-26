@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 
 from govbudget.dossiers import batch
 from pathlib import Path
@@ -949,16 +950,29 @@ def split_key_duckdb(tmp_path):
     con.execute("insert into dim_programs values (?,?,?,?,?)",
                 [PE2, "1810N", "Other Procurement, Navy", "N", "procurement"])
     con.execute("create table fct_budget_to_awards (pe_bli varchar,"
-                " account varchar, organization varchar, award_piid varchar)")
+                " account varchar, organization varchar, award_piid varchar,"
+                " recipient_name varchar, recipient_uei varchar)")
     for piid in ("N0001", "N0002"):
-        con.execute("insert into fct_budget_to_awards values (?,?,?,?)",
-                    [PE2, "1810N", "N", piid])
+        con.execute("insert into fct_budget_to_awards values (?,?,?,?,?,?)",
+                    [PE2, "1810N", "N", piid, "HUNTINGTON INGALLS INCORPORATED",
+                     "UEI-HII"])
     con.execute("create table fct_program_lobbying (pe_bli varchar,"
                 " family_key varchar, evidence_kind varchar)")
+    # R-DEC-DOSSIERDRIFT (round 2) fails closed on a supplied mart it cannot
+    # read, so the fixture carries every column its two indexes read: the
+    # concentration mart's families and dim_entities (the family leg), and
+    # fct_budget_to_awards' recipients with entity_xwalk (the recipient leg).
     con.execute("create table fct_program_concentration (pe_bli varchar,"
-                " hhi_all double)")
-    con.execute("insert into fct_program_concentration values (?,?)",
-                [PE2, 4373.59])
+                " hhi_all double, top_family_all varchar, hhi_high double,"
+                " top_family_high varchar)")
+    con.execute("insert into fct_program_concentration values (?,?,?,?,?)",
+                [PE2, 4373.59, "HUNTINGTON INGALLS INDUSTRIES", None, None])
+    con.execute("create table dim_entities (family_key varchar, display_name varchar)")
+    con.execute("create table entity_xwalk (recipient_uei varchar,"
+                " recipient_name varchar, parent_name varchar, family_key varchar)")
+    con.execute("insert into entity_xwalk values (?,?,?,?)",
+                ["UEI-HII", "HUNTINGTON INGALLS INCORPORATED",
+                 "HUNTINGTON INGALLS INDUSTRIES INC", "HUNTINGTON INGALLS INDUSTRIES"])
     con.close()
     return db
 
@@ -1135,8 +1149,8 @@ class TestGate:
         (built / "program" / PE2).mkdir(parents=True)
         (built / "program" / PE2 / "index.html").write_text(
             '<html><body><p data-note-kind="scope" data-dossier-dropped-claims="3">'
-            "3 claims removed: they cited lobbying mentions that did not meet"
-            " the evidence standard.</p></body></html>"
+            "3 claims removed: they cited sources the site could not"
+            " resolve.</p></body></html>"
         )
         res = _run_gate(gate_fixture, built_site_dir=built)
         assert res["checks"]["required_sections"]["ok"], res["checks"]["required_sections"]
@@ -1398,8 +1412,8 @@ class TestGate:
             res["checks"]["required_sections"])
 
         con = duckdb.connect(str(split_key_duckdb))
-        con.execute("insert into fct_program_concentration values (?,?)",
-                    [PE, 2500.0])
+        con.execute("insert into fct_program_concentration (pe_bli, hhi_all)"
+                    " values (?,?)", [PE, 2500.0])
         con.close()
         res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
         rs = res["checks"]["required_sections"]
@@ -2122,3 +2136,497 @@ class TestGatePageIdentity:
             [SPLIT_PE],
         )
         assert res["checks"]["dossiers_present"]["ok"], res["checks"]
+
+
+# ---------------------------------------------------------------------------
+# Ruling R-DEC-DOSSIERDRIFT (controller, 2026-09-26): the gate FAILS any
+# PUBLISHED claim that contradicts its cited fact — the same checks the
+# exporter withholds on (govbudget.dossiers.claim_drift). Proof it can fail
+# uses the two chain-G DARPA shapes verbatim: /program/0602025E/'s "about
+# 389" low-concentration claim vs HHI 1,284.683, and /program/0603467E/'s
+# "top recipient family ... is Raytheon" vs the cited row's GENERAL DYNAMICS.
+# ---------------------------------------------------------------------------
+
+_DRIFT_389 = (
+    "Award dollars are spread across 189 recipient families, producing a low"
+    " concentration score (Herfindahl-Hirschman Index of about 389), which"
+    " indicates a relatively diverse contractor base overall."
+)
+_DRIFT_TOP = "The top recipient family across the program's award history is Raytheon."
+_DRIFT_RAYTHEON = (
+    "Across the program's award history, the leading recipient family by dollars"
+    " is RAYTHEON, measured over roughly $4.68 billion in program dollars."
+)
+
+
+class TestGateClaimsAgreeWithCitations:
+    @staticmethod
+    def _cite(fx, rows: dict) -> None:
+        cits = json.loads(fx.citations.read_text())
+        cits.update(rows)
+        fx.citations.write_text(json.dumps(cits))
+
+    @staticmethod
+    def _set_players(fx, pe: str, claims: list[dict]) -> None:
+        path = fx.dossier_dir / f"{pe}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = claims
+        path.write_text(json.dumps(doc))
+
+    @staticmethod
+    def _conc_duckdb(tmp_path, family: str, hhi: float, links=()):
+        """The marts both claim-drift indexes read (round 2 fails closed on
+        a supplied mart missing any of them): PE's concentration row, and
+        PE's linked awards as (recipient_name, uei, family_key)."""
+        db = tmp_path / "conc.duckdb"
+        con = duckdb.connect(str(db))
+        con.execute("create table fct_program_concentration (pe_bli varchar,"
+                    " hhi_all double, top_family_all varchar, hhi_high double,"
+                    " top_family_high varchar)")
+        con.execute("insert into fct_program_concentration values (?,?,?,?,?)",
+                    [PE, hhi, family, None, None])
+        con.execute("create table dim_entities (family_key varchar,"
+                    " display_name varchar)")
+        con.execute("create table dim_programs (pe_bli varchar, account varchar,"
+                    " account_title varchar, org varchar, exhibit_family varchar)")
+        con.execute("insert into dim_programs values (?,?,?,?,?)",
+                    [PE, None, None, "DARPA", "rdte"])
+        con.execute("create table fct_budget_to_awards (pe_bli varchar,"
+                    " account varchar, organization varchar, award_piid varchar,"
+                    " recipient_name varchar, recipient_uei varchar)")
+        con.execute("create table entity_xwalk (recipient_uei varchar,"
+                    " recipient_name varchar, parent_name varchar, family_key varchar)")
+        for i, (name, uei, fam) in enumerate(links):
+            con.execute("insert into fct_budget_to_awards values (?,?,?,?,?,?)",
+                        [PE, None, "DARPA", f"HR{i}", name, uei])
+            con.execute("insert into entity_xwalk values (?,?,?,?)", [uei, name, None, fam])
+        con.close()
+        return db
+
+    def _hhi_fid(self):
+        from govbudget.export_site import fact_id_derived
+        return fact_id_derived("concentration", PE, "hhi")
+
+    def test_a_published_hhi_claim_contradicting_its_fact_fails(self, gate_fixture):
+        fid = self._hhi_fid()
+        self._cite(gate_fixture, {fid: {"kind": "derived", "units": "Herfindahl-Hirschman Index",
+                                        "recorded_value": "1284.683"}})
+        self._set_players(gate_fixture, PE, [
+            {"text": _DRIFT_389, "citation": {"fact_id": fid}}])
+        res = _run_gate(gate_fixture)
+        check = res["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and not res["ok"]
+        [bad] = check["contradictions"]
+        assert bad["page"] == PE and bad["section"] == "players" and bad["claim"] == 0
+        assert bad["fact_id"] == fid and bad["cited_value"] == "1284.683"
+        assert bad["reasons"] == ["stated_figure", "concentration_band"]
+        assert "about 389" in check["note"]
+
+    def test_a_top_family_claim_naming_the_wrong_family_fails(self, gate_fixture, tmp_path):
+        fid = self._hhi_fid()
+        self._cite(gate_fixture, {fid: {"kind": "derived", "units": "Herfindahl-Hirschman Index",
+                                        "recorded_value": "4831.486"}})
+        self._set_players(gate_fixture, PE, [
+            {"text": _DRIFT_TOP, "citation": {"fact_id": fid}}])
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486)
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        check = res["checks"]["claims_agree_with_citations"]
+        assert not check["ok"]
+        assert check["family_check"] is True
+        assert [c["reasons"] for c in check["contradictions"]] == [["top_family"]]
+
+    def test_without_the_mart_the_family_leg_is_reported_not_run(self, gate_fixture):
+        fid = self._hhi_fid()
+        self._cite(gate_fixture, {fid: {"kind": "derived", "units": "Herfindahl-Hirschman Index",
+                                        "recorded_value": "4831.486"}})
+        self._set_players(gate_fixture, PE, [
+            {"text": _DRIFT_TOP, "citation": {"fact_id": fid}}])
+        res = _run_gate(gate_fixture)
+        check = res["checks"]["claims_agree_with_citations"]
+        assert check["family_check"] is False
+        assert check["ok"]
+
+    def test_a_true_claim_passes(self, gate_fixture, tmp_path):
+        fid = self._hhi_fid()
+        self._cite(gate_fixture, {fid: {"kind": "derived", "units": "Herfindahl-Hirschman Index",
+                                        "recorded_value": "1284.683"}})
+        self._set_players(gate_fixture, PE, [{
+            "text": "SYSTEM HIGH is the top recipient family; award dollars are"
+                    " moderately concentrated (HHI of about 1,285).",
+            "citation": {"fact_id": fid}}])
+        db = self._conc_duckdb(tmp_path, "SYSTEM HIGH", 1284.683)
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        assert res["checks"]["claims_agree_with_citations"]["ok"], res["checks"]
+        assert res["ok"]
+
+    def test_the_exporters_output_passes_and_its_emptied_section_needs_disclosure(
+        self, gate_fixture, site_fixture, tmp_path,
+    ):
+        """End to end: the exporter withholds the contradicting claims; the
+        gate then finds nothing published to fail on. The withheld claims
+        were PE's whole players section, so the section is empty — and the
+        emptied-section exception still demands BOTH the sidecar's own drop
+        record AND a built page that discloses it (never granted on the
+        sidecar's say-so)."""
+        from govbudget.export_site import _emit_dossier_sidecars, fact_id_derived
+
+        hhi_fid = self._hhi_fid()
+        dollars_fid = fact_id_derived("concentration", PE, "program_dollars")
+        self._cite(gate_fixture, {
+            hhi_fid: {"kind": "derived", "units": "Herfindahl-Hirschman Index",
+                      "recorded_value": "1284.683"},
+            dollars_fid: {"kind": "derived", "units": "USD",
+                          "recorded_value": "469988662.800"},
+        })
+        raw_dir = tmp_path / "dossiers-raw"
+        raw_dir.mkdir()
+        for pe in (PE, PE2):
+            doc = json.loads((gate_fixture.dossier_dir / f"{pe}.json").read_text())
+            if pe == PE:
+                doc["dossier"]["players"]["claims"] = [
+                    {"text": _DRIFT_RAYTHEON, "citation": {"fact_id": dollars_fid}},
+                    {"text": _DRIFT_389, "citation": {"fact_id": hhi_fid}},
+                ]
+            (raw_dir / f"{pe}.json").write_text(json.dumps({
+                "custom_id": f"dossier-{pe}", "collected_at": "2026-07-02T00:00:00Z",
+                "message": {"model": MODEL, "content": [
+                    {"type": "text", "text": json.dumps(doc["dossier"])}]},
+            }))
+        cits = json.loads(gate_fixture.citations.read_text())
+        db = self._conc_duckdb(tmp_path, "SYSTEM HIGH", 1284.683)
+        from govbudget.dossiers.claim_drift import (
+            concentration_fact_index,
+            linked_recipient_index,
+        )
+        summary = _emit_dossier_sidecars(
+            json_dir=gate_fixture.dossier_dir.parent,
+            dossiers_raw_dir=raw_dir,
+            citations_keyset=set(cits),
+            snapshot_urls={SNAP_URL},
+            fact_id_to_recorded_value={k: v["recorded_value"] for k, v in cits.items()
+                                       if v.get("recorded_value") is not None},
+            citation_facts=cits,
+            concentration_facts=concentration_fact_index(db),
+            linked_recipients=linked_recipient_index(db),
+        )
+        assert summary["withheld_by_pe"] == {PE: 2}
+
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        assert res["checks"]["claims_agree_with_citations"]["ok"]
+        # players emptied by withholding: no built page -> still FAILS
+        assert f"{PE}: players" in res["checks"]["required_sections"]["empty"]
+        assert not res["ok"]
+
+        built = site_fixture.tmp / "out"
+        (built / "program" / PE).mkdir(parents=True)
+        # round 1 wrote a subjectless note here; round 2's disclosure check
+        # reads the note back against the sidecar's dropped_reasons, so a
+        # note that does not say the TRUE reason no longer discloses the drop
+        page = built / "program" / PE / "index.html"
+        page.write_text(
+            '<p data-dossier-dropped-claims="2">2 claims removed: did not meet the'
+            " evidence standard.</p>")
+        res = _run_gate(gate_fixture, duckdb_path=db, built_site_dir=built)
+        assert f"{PE}: players" in res["checks"]["required_sections"]["empty"]
+        page.write_text(
+            '<p class="text-sm" data-dossier-dropped-claims="2">2<!-- --> claim<!-- -->s'
+            "<!-- --> removed:<!-- --> <!-- -->they stated figures, years or recipients their"
+            " sources do not support<!-- -->.</p>")
+        res = _run_gate(gate_fixture, duckdb_path=db, built_site_dir=built)
+        assert res["checks"]["required_sections"]["ok"], res["checks"]["required_sections"]
+        assert res["checks"]["claims_agree_with_citations"]["ok"]
+
+
+# ---------------------------------------------------------------------------
+# R-DEC-DOSSIERDRIFT round 2 (2026-09-26) in the gate: fail closed on a
+# supplied mart it cannot read; recipient lists; and a disclosure check that
+# reads the Correction note's REASONS back against the sidecar, not only its
+# count.
+# ---------------------------------------------------------------------------
+
+_DRIFT_RECIPIENTS = (
+    "Recorded recipients of awards linked to the program include Booz Allen"
+    " Hamilton, The Johns Hopkins University Applied Physics Laboratory, Leidos,"
+    " Raytheon Company, Lockheed Martin Corporation, Northrop Grumman Systems"
+    " Corp, SRI International, and the Massachusetts Institute of Technology."
+)
+
+
+class TestGateDriftRound2:
+    _cite = staticmethod(TestGateClaimsAgreeWithCitations._cite)
+    _set_players = staticmethod(TestGateClaimsAgreeWithCitations._set_players)
+    _conc_duckdb = staticmethod(TestGateClaimsAgreeWithCitations._conc_duckdb)
+
+    def test_an_unreadable_mart_is_an_error_not_a_leg_not_run(self, gate_fixture, tmp_path):
+        """Round 1 turned any read failure into {} and passed with the note
+        "top-family leg not run". A path WAS given: that is a failure."""
+        db = tmp_path / "narrow.duckdb"
+        con = duckdb.connect(str(db))
+        con.execute("create table fct_program_concentration (pe_bli varchar, hhi_all double)")
+        con.close()
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        check = res["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and not res["ok"]
+        assert check["error"] and "fct_program_concentration" in check["error"]
+        assert check["family_check"] is False and check["recipient_check"] is False
+        assert "legs not run: no mart" not in check["note"] and "ERROR" in check["note"]
+
+    def test_a_missing_mart_file_is_an_error(self, gate_fixture, tmp_path):
+        res = _run_gate(gate_fixture, duckdb_path=tmp_path / "absent.duckdb")
+        check = res["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and check["error"]
+
+    def test_no_mart_at_all_still_reports_the_legs_not_run(self, gate_fixture):
+        check = _run_gate(gate_fixture)["checks"]["claims_agree_with_citations"]
+        assert check["ok"] and check["error"] is None
+        assert check["family_check"] is False and check["recipient_check"] is False
+        assert "not run" in check["note"]
+
+    def test_a_recipient_list_naming_unlinked_recipients_fails(self, gate_fixture, tmp_path):
+        from govbudget.export_site import fact_id_derived
+
+        fid = fact_id_derived("concentration", PE, "program_dollars")
+        self._cite(gate_fixture, {fid: {"kind": "derived", "units": "USD",
+                                        "recorded_value": "74376328.830"}})
+        self._set_players(gate_fixture, PE, [
+            {"text": _DRIFT_RECIPIENTS, "citation": {"fact_id": fid}}])
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486, links=[
+            ("RAYTHEON COMPANY", "UEI-RAY", "RAYTHEON"),
+            ("NORTHROP GRUMMAN SYSTEMS CORP", "UEI-NG", "NORTHROP GRUMMAN"),
+            ("APPLIED PHYSICAL SCIENCES CORP", "UEI-APS", "GENERAL DYNAMICS"),
+        ])
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        check = res["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and check["recipient_check"] is True
+        [bad] = check["contradictions"]
+        assert bad["reasons"] == ["recipient_list"]
+        assert bad["unlinked_recipients"] == [
+            "Booz Allen Hamilton", "The Johns Hopkins University Applied Physics Laboratory",
+            "Leidos", "Lockheed Martin Corporation", "SRI International",
+            "the Massachusetts Institute of Technology"]
+        assert "unlinked: Booz Allen Hamilton" in check["note"]
+
+    def test_a_recipient_list_whose_names_are_all_linked_passes(self, gate_fixture, tmp_path):
+        from govbudget.export_site import fact_id_derived
+
+        fid = fact_id_derived("concentration", PE, "program_dollars")
+        self._cite(gate_fixture, {fid: {"kind": "derived", "units": "USD",
+                                        "recorded_value": "74376328.830"}})
+        self._set_players(gate_fixture, PE, [{
+            "text": "Recorded recipients of awards linked to the program include"
+                    " Raytheon Company and Northrop Grumman Systems Corp.",
+            "citation": {"fact_id": fid}}])
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486, links=[
+            ("RAYTHEON COMPANY", "UEI-RAY", "RAYTHEON"),
+            ("NORTHROP GRUMMAN SYSTEMS CORP", "UEI-NG", "NORTHROP GRUMMAN"),
+        ])
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        assert res["checks"]["claims_agree_with_citations"]["ok"], res["checks"]
+
+    def test_a_workbook_claim_contradicting_its_cell_fails(self, gate_fixture):
+        self._cite(gate_fixture, {"wbcell": {
+            "kind": "workbook", "units": "USD thousands", "amount_thousands": 897631.0,
+            "amount_text": None, "recorded_value": None}})
+        self._set_players(gate_fixture, PE, [{
+            "text": "The FY 2026 request includes $273.379 million of discretionary"
+                    " funding and $2,054.991 million of mandatory (reconciliation)"
+                    " funding, for a total of $2,328.370 billion.",
+            "citation": {"fact_id": "wbcell"}}])
+        check = _run_gate(gate_fixture)["checks"]["claims_agree_with_citations"]
+        assert not check["ok"]
+        [bad] = check["contradictions"]
+        assert bad["kind"] == "workbook" and bad["cited_value"] == 897631.0
+        assert bad["reasons"] == ["stated_figure"]
+
+    # -- disclosure: the note's reasons, read back ---------------------------
+
+    @staticmethod
+    def _emptied(gate_fixture, dropped: int, reasons: dict | None, pe=PE2):
+        path = gate_fixture.dossier_dir / f"{pe}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        doc["dropped_claims"] = dropped
+        doc["dropped_claims_by_section"] = {"players": dropped}
+        if reasons is not None:
+            doc["dropped_reasons"] = reasons
+        path.write_text(json.dumps(doc))
+
+    @staticmethod
+    def _page(site_fixture, attr: int, text: str, page=PE2):
+        built = site_fixture.tmp / "out"
+        (built / "program" / page).mkdir(parents=True, exist_ok=True)
+        (built / "program" / page / "index.html").write_text(
+            '<html><body><div data-note-kind="scope"><p class="t-label mb-1">Correction</p>'
+            f'<p class="text-sm leading-relaxed" data-dossier-dropped-claims="{attr}">'
+            f"{text}</p></div></body></html>")
+        return built
+
+    def test_a_note_stating_the_wrong_reason_does_not_disclose(self, gate_fixture, site_fixture):
+        self._emptied(gate_fixture, 2, {"contradicts_citation": 2})
+        built = self._page(site_fixture, 2, "2 claims removed: they cited sources the site"
+                                            " could not resolve.")
+        req = _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]
+        assert not req["ok"] and f"{PE2}: players" in req["empty"]
+        assert any("stated figures, years or recipients their sources do not support" in u
+                   for u in req["undisclosed"])
+
+    def test_a_note_with_the_wrong_count_does_not_disclose(self, gate_fixture, site_fixture):
+        self._emptied(gate_fixture, 2, {"contradicts_citation": 2})
+        built = self._page(site_fixture, 3, "2 claims removed: they stated figures, years or"
+                                            " recipients their sources do not support.")
+        req = _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]
+        assert not req["ok"]
+
+    def test_the_true_note_discloses(self, gate_fixture, site_fixture):
+        self._emptied(gate_fixture, 1, {"contradicts_citation": 1})
+        built = self._page(site_fixture, 1, "1<!-- --> claim<!-- --> removed:<!-- --> <!-- -->"
+                                            "it stated a figure, year or recipient its sources do not"
+                                            " support<!-- -->.")
+        res = _run_gate(gate_fixture, built_site_dir=built)
+        assert res["checks"]["required_sections"]["ok"], res["checks"]["required_sections"]
+
+    def test_every_reason_must_be_stated_with_its_own_count(self, gate_fixture, site_fixture):
+        # the 0602025E shape after round 2: 4 lobbying drops + 4 withheld
+        self._emptied(gate_fixture, 8, {"unresolvable_citation": 4, "contradicts_citation": 4})
+        half = "8 claims removed: 4 cited sources the site could not resolve."
+        built = self._page(site_fixture, 8, half)
+        assert not _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
+        full = ("8 claims removed: 4 cited sources the site could not resolve; 4 stated"
+                " figures, years or recipients their sources do not support.")
+        built = self._page(site_fixture, 8, full)
+        assert _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
+
+    def test_an_unknown_reason_cannot_be_disclosed(self, gate_fixture, site_fixture):
+        self._emptied(gate_fixture, 1, {"some_future_reason": 1})
+        built = self._page(site_fixture, 1, "1 claim removed: it did not meet the evidence"
+                                            " standard.")
+        req = _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]
+        assert not req["ok"]
+
+    def test_the_disclosure_is_read_on_the_member_page_not_the_bare_code(
+        self, gate_fixture, site_fixture,
+    ):
+        """A split code's dossier renders on its member page (/program/3010-SCN/);
+        the bare /program/3010/ is a disambiguation stub that never carries it."""
+        slug = f"{PE2}-SCN"
+        src = gate_fixture.dossier_dir / f"{PE2}.json"
+        (gate_fixture.dossier_dir / f"{slug}.json").write_text(src.read_text())
+        src.unlink()
+        self._emptied(gate_fixture, 1, {"contradicts_citation": 1}, pe=slug)
+        note = "1 claim removed: it stated a figure, year or recipient its sources do not support."
+        built = self._page(site_fixture, 1, note, page=PE2)   # the stub: wrong page
+        assert not _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
+        built = self._page(site_fixture, 1, note, page=slug)
+        assert _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
+
+
+class TestCorrectionNoteMirror:
+    """gate.CORRECTION_CLAUSES mirrors program-dossier.tsx's Correction note
+    word for word — the disclosure check compares the rendered sentence with
+    the one these clauses build, so a wording change on either side must
+    reach the other."""
+
+    TSX = (Path(__file__).resolve().parents[1] / "site" / "src" / "components"
+           / "program-dossier.tsx")
+
+    def test_every_clause_is_in_the_component(self):
+        from govbudget.dossiers.gate import CORRECTION_CLAUSES, CORRECTION_OTHER_CLAUSE
+
+        src = self.TSX.read_text(encoding="utf-8")
+        # the component's CORRECTION_CLAUSES table: reason: [one, many]
+        for reason, (one, many) in CORRECTION_CLAUSES.items():
+            entry = re.search(
+                rf"\b{reason}:\s*\[\s*\"([^\"]+)\",\s*\"([^\"]+)\",?\s*\]", src)
+            assert entry, reason
+            assert (entry.group(1), entry.group(2)) == (one, many), reason
+        assert f'OTHER_CLAUSE = "{CORRECTION_OTHER_CLAUSE}"' in src
+        # and in the same order the gate builds the sentence in
+        order = [src.index(f"{reason}:") for reason in CORRECTION_CLAUSES]
+        assert order == sorted(order)
+
+    @pytest.mark.parametrize("dropped,reasons,expected", [
+        (3, None, "3 claims removed: they cited sources the site could not resolve."),
+        (1, {"contradicts_citation": 1}, "1 claim removed: it stated a figure, year or recipient"
+                                         " its sources do not support."),
+        (4, {"unresolvable_citation": 1, "contradicts_citation": 3},
+         "4 claims removed: one cited a source the site could not resolve; 3 stated"
+         " figures, years or recipients their sources do not support."),
+        (7, {"unresolvable_citation": 6, "stale_value": 1},
+         "7 claims removed: 6 cited sources the site could not resolve; one stated a"
+         " figure a later correction changed."),
+        (2, {}, "2 claims removed: they did not meet the evidence standard."),
+        (1, {"mystery": 1}, None),
+    ])
+    def test_the_expected_sentence(self, dropped, reasons, expected):
+        from govbudget.dossiers.gate import expected_correction_note
+
+        assert expected_correction_note(dropped, reasons) == expected
+
+
+# ---------------------------------------------------------------------------
+# R-DEC-DOSSIERDRIFT round 3 (2026-09-26): fiscal-year label agreement. The
+# gate reads each cited fact's column (scenario for a J-book glyph,
+# amount_type for a workbook cell) from citations.parquet — citations.json
+# does not carry them — and fails a published claim that names a year its
+# cited column is not (/program/1203154SF/ what_it_is[3]: "For FY2026 …
+# about $243.3 million (its Current Year amount)" on an FY 2025 glyph).
+# ---------------------------------------------------------------------------
+
+_FY_1203154SF = (
+    "For FY2026, the Auxiliary Payloads project is funded at about $243.3"
+    " million (its Current Year amount), making it the dominant project within"
+    " the program."
+)
+
+
+class TestGateFiscalYear:
+    _cite = staticmethod(TestGateClaimsAgreeWithCitations._cite)
+    _set_players = staticmethod(TestGateClaimsAgreeWithCitations._set_players)
+
+    @staticmethod
+    def _parquet(path, rows):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        con = duckdb.connect()
+        values = ", ".join(
+            "(" + ", ".join("null" if v is None else f"'{v}'" for v in r) + ")" for r in rows)
+        con.execute(f"copy (select * from (values {values}) t(fact_id, kind, scenario,"
+                    f" amount_type)) to '{path}' (format parquet)")
+        con.close()
+        return path
+
+    def _setup(self, fx, text=_FY_1203154SF):
+        self._cite(fx, {"ef8d1da3e605d4f0": {
+            "kind": "jbook_pdf", "units": "USD millions", "amount_text": "243.282",
+            "amount_thousands": None, "recorded_value": None}})
+        self._set_players(fx, PE, [{"text": text,
+                                    "citation": {"fact_id": "ef8d1da3e605d4f0"}}])
+
+    def test_the_parquet_beside_citations_json_is_read_and_the_claim_fails(self, gate_fixture):
+        self._setup(gate_fixture)
+        # the export's layout: json/citations.json beside citations/citations.parquet
+        self._parquet(gate_fixture.citations.parent.parent / "citations" / "citations.parquet",
+                      [("ef8d1da3e605d4f0", "jbook_pdf", "CurrentYear", None)])
+        check = _run_gate(gate_fixture)["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and check["fiscal_year_check"] is True
+        [bad] = check["contradictions"]
+        assert bad["reasons"] == ["fiscal_year"] and bad["fact_id"] == "ef8d1da3e605d4f0"
+
+    def test_a_correctly_labelled_claim_passes(self, gate_fixture, tmp_path):
+        self._setup(gate_fixture, _FY_1203154SF.replace("FY2026", "FY2025"))
+        pq = self._parquet(tmp_path / "c.parquet",
+                           [("ef8d1da3e605d4f0", "jbook_pdf", "CurrentYear", None)])
+        check = _run_gate(gate_fixture, citations_parquet=pq)["checks"][
+            "claims_agree_with_citations"]
+        assert check["ok"] and check["fiscal_year_check"] is True
+
+    def test_without_the_parquet_the_leg_says_it_did_not_run(self, gate_fixture):
+        self._setup(gate_fixture)
+        check = _run_gate(gate_fixture)["checks"]["claims_agree_with_citations"]
+        assert check["ok"] and check["fiscal_year_check"] is False
+        assert "fiscal-year leg not run" in check["note"]
+
+    def test_an_unreadable_parquet_fails_closed(self, gate_fixture, tmp_path):
+        self._setup(gate_fixture)
+        check = _run_gate(gate_fixture, citations_parquet=tmp_path / "absent.parquet")[
+            "checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and check["error"] and check["fiscal_year_check"] is False

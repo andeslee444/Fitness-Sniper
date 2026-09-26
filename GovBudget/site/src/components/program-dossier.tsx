@@ -26,6 +26,52 @@ import { PeText } from "@/components/pe-text";
  * zero placeholder text. Pages without a dossier never mount this component.
  */
 
+/**
+ * The Correction note's wording: one clause per drop reason, [when that
+ * reason's count is 1, otherwise], each after a subject — "it"/"they" when
+ * the reason covers every dropped claim, else "one" or the count.
+ *
+ * MIRROR: src/govbudget/dossiers/gate.py CORRECTION_CLAUSES and
+ * CORRECTION_OTHER_CLAUSE. The dossier gate rebuilds this sentence from the
+ * sidecar's dropped_reasons and compares it, word for word, with the built
+ * page before an emptied required section may pass (R-DEC-DOSSIERDRIFT
+ * round 2); tests/test_dossiers_batch.py::TestCorrectionNoteMirror reads this
+ * table, so a wording change here fails pytest until the gate matches.
+ */
+const CORRECTION_CLAUSES = {
+  // #52: the citation does not resolve at all — a fact_id not in
+  // citations.json, a url with no cached snapshot, or a malformed citation.
+  // Worded for that check, not for one kind of source (R-DEC-DOSSIERDRIFT
+  // round 3): it used to read "cited lobbying mentions that did not meet the
+  // evidence standard", false wherever the dropped claim was a J-book
+  // narrative or concentration claim (/program/1000/, ATA000, B02100,
+  // 0603467E).
+  unresolvable_citation: [
+    "cited a source the site could not resolve",
+    "cited sources the site could not resolve",
+  ],
+  // #56: the citation resolves, but a later correction changed its value.
+  stale_value: [
+    "stated a figure a later correction changed",
+    "stated figures a later correction changed",
+  ],
+  // R-DEC-DOSSIERDRIFT (2026-09-26): withheld at export, never rewritten —
+  // a stated figure, concentration band or top recipient family its cited
+  // fact's current value does not support, an agreeing figure given another
+  // fiscal year than its cited column's, or a named recipient the page's
+  // linked awards do not carry. "Do not support", not "no longer match":
+  // some of these never matched (a figure cited to the wrong cell). "Year"
+  // since round 4: a fiscal-year withhold (/program/1203154SF/) states a
+  // figure its cite does support, so the clause must name the year.
+  contradicts_citation: [
+    "stated a figure, year or recipient its sources do not support",
+    "stated figures, years or recipients their sources do not support",
+  ],
+} as const;
+/** Removals no reason above accounts for (a reason this component predates). */
+const OTHER_CLAUSE = "did not meet the evidence standard";
+type DroppedReason = keyof typeof CORRECTION_CLAUSES;
+
 interface ProgramDossierProps {
   dossier: DossierFile;
   /** url → snapshot metadata (from getSnapshotMeta()) for url-citation chips. */
@@ -57,30 +103,39 @@ export function ProgramDossier({
   // what the claim's hardcoded prose says — e.g. a program-key re-key
   // changed which single account a stable fact_id now describes). Both can
   // fire on the same dossier. A sidecar this component predates (no
-  // dropped_reasons field at all) falls back to #52's EXACT original
-  // wording — the only reason that existed before this field did, and the
-  // phrasing the existing regression tests pin verbatim.
-  const reasons = dossier.dropped_reasons;
-  const unresolvedN = reasons ? (reasons.unresolvable_citation ?? 0) : droppedCount;
-  const staleN = reasons ? (reasons.stale_value ?? 0) : 0;
+  // dropped_reasons field at all) states #52's reason — the only one that
+  // existed before this field did — for every drop.
+  // (R-DEC-DOSSIERDRIFT) The field is read as a plain count map, so a reason
+  // lib/dossier.ts does not name is still counted, in its own clause below.
+  const reasons: Partial<Record<string, number>> | undefined =
+    dossier.dropped_reasons;
+  const countFor = (reason: DroppedReason): number =>
+    reasons
+      ? (reasons[reason] ?? 0)
+      : reason === "unresolvable_citation"
+        ? droppedCount
+        : 0;
   const pronoun = droppedCount === 1 ? "it" : "they";
   const subjectFor = (n: number) =>
     n === droppedCount ? pronoun : n === 1 ? "one" : `${n}`;
   const correctionParts: string[] = [];
-  if (unresolvedN > 0) {
-    correctionParts.push(
-      `${subjectFor(unresolvedN)} cited lobbying mentions that did not meet the evidence standard`,
-    );
+  let explainedN = 0;
+  for (const reason of Object.keys(CORRECTION_CLAUSES) as DroppedReason[]) {
+    const n = countFor(reason);
+    if (n > 0) {
+      const [one, many] = CORRECTION_CLAUSES[reason];
+      correctionParts.push(`${subjectFor(n)} ${n === 1 ? one : many}`);
+      explainedN += n;
+    }
   }
-  if (staleN > 0) {
-    correctionParts.push(
-      `${subjectFor(staleN)} stated ${staleN === 1 ? "a figure" : "figures"} a later correction changed`,
-    );
+  // Every removal gets a clause with its own subject. The old fallback read
+  // "1 claim removed: did not meet the evidence standard." — no subject —
+  // and a reason it had no words for went unexplained.
+  const otherN = droppedCount - explainedN;
+  if (otherN > 0) {
+    correctionParts.push(`${subjectFor(otherN)} ${OTHER_CLAUSE}`);
   }
-  const correctionText =
-    correctionParts.length > 0
-      ? correctionParts.join("; ")
-      : "did not meet the evidence standard";
+  const correctionText = correctionParts.join("; ");
 
   return (
     <section
