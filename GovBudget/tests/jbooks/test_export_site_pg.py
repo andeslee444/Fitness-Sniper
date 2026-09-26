@@ -123,6 +123,35 @@ def _seed_budget_line(pg_dsn: str, doc_id: int, sha: str) -> None:
         )
 
 
+#: R-DEC-LDACITE (2026-09-26): every lobbying citation lists the filings its
+#: fct_influence row sums, read from audit_lda_filings (the relation the mart
+#: sums under R-DEC-AMEND). The exporter refuses a row it cannot list, so a
+#: fixture with a fct_influence row carries its constituent filings too.
+_LOCKHEED_2025_FILINGS = (
+    ("0b1e0f5a-1c2d-4e3f-8a9b-000000000001", "first_quarter", "400000"),
+    ("0b1e0f5a-1c2d-4e3f-8a9b-000000000002", "second_quarter", "350000"),
+    ("0b1e0f5a-1c2d-4e3f-8a9b-000000000003", "third_quarter", "250000"),
+)
+
+
+def _seed_lda_audit(con) -> None:
+    """audit_lda_filings rows that recount to the fixture's fct_influence
+    row: 3 counted Lockheed filings for 2025, income $1,000,000."""
+    con.execute(
+        "create table audit_lda_filings (filing_uuid varchar, url varchar,"
+        " filing_year varchar, filing_period varchar, income_usd varchar,"
+        " expenses_usd varchar, family_key_guess varchar, match_method varchar,"
+        " counted boolean, latest_determinable boolean)"
+    )
+    for uuid, period, income in _LOCKHEED_2025_FILINGS:
+        con.execute(
+            "insert into audit_lda_filings values (?, ?, '2025', ?, ?, NULL,"
+            " 'lockheed', 'exact_family', true, NULL)",
+            [uuid, f"https://lda.gov/filings/public/filing/{uuid}/print/",
+             period, income],
+        )
+
+
 def _make_test_duckdb(db_path: Path) -> None:
     """Build a minimal DuckDB with every required mart table (1-row each)."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -174,6 +203,7 @@ def _make_test_duckdb(db_path: Path) -> None:
     # 5. fct_influence
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("insert into fct_influence values ('lockheed','Lockheed Martin','2025',3,1000000.0,0.0,1000000.0,50000000.0)")
+    _seed_lda_audit(con)
 
     # 6. fct_program_lobbying — MUST include filing_uuid, pe_bli, matched_term, filing_url
     # Use a proper UUID format so citation_gate5b1's UUID regex check passes.
@@ -1449,6 +1479,7 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     con.execute("insert into dim_entities values ('boeing','The Boeing Company',3,30000000.0,'high')")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("insert into fct_influence values ('lockheed','Lockheed Martin','2025',3,1000000.0,0.0,1000000.0,50000000.0)")
+    _seed_lda_audit(con)
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute(

@@ -480,3 +480,46 @@ def test_the_caveat_names_only_columns_the_mart_documents():
     # description is where schema.yml names them).
     assert (f"'{_CONCENTRATION_CODE_SCOPE}'"
             in cols[_CONCENTRATION_SCOPE_COLUMN].get("description", ""))
+
+
+class TestScopesReadInTheHouseVoice:
+    """ROADMAP #175 (gate 27 allowlist burn-down): /downloads/ renders every
+    scope sentence as card prose, and two of them tripped gate 27 leg 13 (an
+    em-dash pile-up: two dashes inside one sentence,
+    site/scripts/gates/copy.mjs `—[^.!?]*—`). They were allowlisted, not
+    fixed. They are restated here with the same claims, and this test keeps
+    every scope out of the leg's shape, so a new pile-up fails in pytest
+    before it reaches a built page.
+    """
+
+    PILE_UP = re.compile(r"—[^.!?]*—")
+
+    def test_no_scope_sentence_is_an_em_dash_pile_up(self):
+        for name, scope in _DATASET_SCOPES.items():
+            m = self.PILE_UP.search(scope)
+            assert m is None, f"{name}: em-dash pile-up (gate 27 leg 13): {m.group(0)!r}"
+
+    def test_jbook_narratives_still_says_what_a_row_is(self):
+        scope = _DATASET_SCOPES["jbook_narratives"]
+        for claim in (
+            "One row per J-book narrative text block",
+            "mission, description, justification or accomplishment/planned-program",
+            "XML element path and source-PDF SHA-256",
+            "Fenced to the PB2026 edition",
+            "PB2017–PB2025 narratives a program-lineage edge cites",
+            "citation targets only, never a program page's own prose",
+        ):
+            assert claim in scope, claim
+
+    def test_dim_programs_still_says_what_a_row_is_on_both_pages(self):
+        scope = _DATASET_SCOPES["dim_programs"]
+        for claim in (
+            "One row per program element that has full R-2/P-40 J-book detail",
+            "the detail-grade tier, NOT the full page universe",
+            "org, exhibit family, project count and reconciliation status",
+        ):
+            assert claim in scope, claim
+        # /downloads/ renders this sentence too, and it carries no corpus
+        # statement (only /data/ does): "above" was false there.
+        assert "corpus statement above" not in scope
+        assert "corpus statement on /data/" in scope

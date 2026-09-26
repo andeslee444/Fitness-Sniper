@@ -894,14 +894,39 @@ export function checkProgramPagesSplit(text) {
  *     and run 4's, 2026-09-25: 60 of 1,133). It now prints the build's own
  *     census, `high` below (site_meta.link_adjudication.high, read by
  *     bridgeHighCensus), and names no count when the build carries none.
+ *   - R-DEC-COVERAGE (decisions wave fix round 4, 2026-09-26): the blocker
+ *     said "Most published links were hand-adjudicated (September 2026)",
+ *     and this check only required /hand-adjudicated/. Measured on the
+ *     chain-order scratch mart (fix3dbt, fct_budget_to_awards), 603 of the
+ *     3,767 links published carry an adjudication (16%) once #107(b)
+ *     withdraws the account / sub-agency tier, so chain G would have
+ *     shipped a false majority with this leg green. The share is now a
+ *     FIGURE read from site_meta (bindHandAdjudicatedShare below): the High
+ *     census, the one adjudication count site_meta measures over the MART —
+ *     link_adjudication.published / .adjudicated count the crosswalk's own
+ *     grades in budget_line_awards, which keep the withdrawn tier (about
+ *     74% adjudicated after chain G, against the mart's 16%), so they cannot
+ *     speak for "published links". A majority word fails unless the stated
+ *     share is above one half.
  *
- * `high` is { published, adjudicated, measuredOn } (measuredOn may be null)
- * or null.
+ * RESIDUAL GAPS (R-DEC-GATE-LIMIT, fix round 7: documented, not chased — a
+ * regex cannot parse all English; adversarial prose review is the backstop):
+ *   - majority words outside the ruling's list ("predominantly", "overwhelmingly", "in large part", "the preponderance") pass.
+ *   - a share in words, not figures ("Three in four published links were hand-adjudicated.") passes.
+ *   - a universal outside the census clause ("Every published link was hand-adjudicated.", "All published links were …") passes.
+ *
+ * `high` is { published, adjudicated, twoLens, measuredOn } (twoLens and
+ * measuredOn may be null) or null.
  * Returns a list of error strings (empty when the blocker reads true).
+ *
+ * @param {string | null | undefined} blocker
+ * @param {{ published: number, adjudicated: number, twoLens?: number | null, measuredOn?: string | null } | null} [high]
+ * @returns {string[]}
  */
 export function checkCrosswalkBlockerWording(blocker, high = null) {
   const text = String(blocker ?? "").replace(/\s+/g, " ");
   const errors = [];
+  errors.push(...bindHandAdjudicatedShare(text, high));
   if (!/account code/i.test(text) || !/coarse/i.test(text)) {
     errors.push(
       "leg cm[bridge]: the blocker must name account-code coarseness as the reason — that sentence is what makes the gap a methodology limit rather than an excuse",
@@ -935,12 +960,207 @@ export function checkCrosswalkBlockerWording(blocker, high = null) {
   return errors;
 }
 
+/** A majority quantifier, as a word the blocker could say of the share.
+ *  "the most recent" / "at most" are a superlative and a bound, not a
+ *  quantifier — but "for the most part" is one, so it is matched FIRST
+ *  (the lookbehind that spares "the most recent" also spared it).
+ *  R-DEC-COVERAGE-b (fix-round-5 rulings) names the vocabulary: most /
+ *  mostly / largely / majority / more than half / for the most part /
+ *  nearly all / almost all; "over half", "virtually all" and "the bulk" are
+ *  the same claim. Fix round 7 (fix-6 re-check): the "the" / "at"
+ *  lookbehinds spare "most" only — on most(?:ly)? they also spared "the
+ *  mostly hand-adjudicated evidence base", and "mostly" is never a
+ *  superlative or a bound. */
+const MAJORITY_WORD_RE =
+  /\bfor\s+the\s+most\s+part\b|(?<!\bthe\s)(?<!\bat\s)\bmost\b|\bmostly\b|\blargely\b|\bmajority\b|\b(?:more\s+than|over)\s+half\b|\b(?:almost|nearly|virtually)\s+all\b|\bthe bulk\b/i;
+/** A negation, anywhere in the sentence that carries the High census clause
+ *  (R-DEC-COVERAGE-b): "were not hand-adjudicated", "weren't", "never",
+ *  "it is not the case that …", "none but …", "no reviewer found". */
+const NEGATION_RE =
+  /\b(?:not|no|never|none|nor|neither|nothing|nobody|without|cannot|false|untrue)\b|n['’]t\b/i;
+/** A hedge that turns the census figure into a bound ("at least 60 of …"). */
+const CENSUS_HEDGE_RE =
+  /\b(?:at\s+least|at\s+most|more\s+than|fewer\s+than|less\s+than|over|under|nearly|almost|about|around|roughly|approximately|some|up\s+to|as\s+many\s+as)\s*$/i;
+/** Dates the blocker may carry that are not figures: "September 2026",
+ *  "2026-09-25". */
+const BLOCKER_DATE_RE =
+  /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b|\b\d{4}-\d{2}-\d{2}\b/g;
+/** The universal adversarial clause — true only while every adjudicated
+ *  high link carries both lenses. */
+const ADVERSARIAL_UNIVERSAL_RE =
+  /where a per-award adjudication exists it was challenged by two independent adversarial reviewers/i;
+
 /**
- * The high-tier adjudication census leg cm[bridge]'s error message prints,
- * read from site_meta.link_adjudication.high (the block /methodology/'s High
- * census renders from and gate 24 leg o checks). Null unless the block carries two integer
- * counts with adjudicated ≤ published — a malformed block prints no figure
- * rather than a wrong one. Pure; exported for the unit tests.
+ * R-DEC-COVERAGE: bind the blocker's hand-adjudicated share to site_meta.
+ *
+ *   - census present (and anything publishes at high): the blocker states
+ *     it, as `{adjudicated} of the {published} links published at high`,
+ *     every figure in its slot (document order), no stray number, and the
+ *     tier named right after the published count — "60 of the 1,133
+ *     published links" would state the High census as the share of every
+ *     published link, the claim this binding exists to stop;
+ *   - when not every adjudicated high link carries both adversarial lenses
+ *     (two_lens_high < adjudicated_high), the universal "where a per-award
+ *     adjudication exists it was challenged by two independent adversarial
+ *     reviewers" is false, and the bounded form states two_lens_high as a
+ *     third slot;
+ *   - a majority word ("most", "majority", "almost all") fails unless the
+ *     stated share is above one half;
+ *   - no census: the blocker states no figure and no majority word, and the
+ *     error prints no count.
+ * Pure; the dates in BLOCKER_DATE_RE are not figures.
+ */
+function bindHandAdjudicatedShare(text, high) {
+  const errors = [];
+  const census = high && high.published > 0 ? high : null;
+  const undated = text.replace(BLOCKER_DATE_RE, " ");
+  const figures = [...undated.matchAll(/\d[\d,]*/g)];
+  const majority = text.match(MAJORITY_WORD_RE);
+  if (majority) {
+    if (!census) {
+      errors.push(
+        `leg cm[bridge]: the blocker says "${majority[0]}" of the links while this build's site_meta ` +
+          `carries no link_adjudication.high census — a majority word needs a measured share above ` +
+          `one half behind it (R-DEC-COVERAGE)`,
+      );
+    } else if (!(census.adjudicated * 2 > census.published)) {
+      errors.push(
+        `leg cm[bridge]: the blocker says "${majority[0]}" while site_meta.link_adjudication.high ` +
+          `measures ${fmtCount(census.adjudicated)} of the ${fmtCount(census.published)} links published ` +
+          `at high hand-adjudicated — a majority word is true only of a share above one half ` +
+          `(R-DEC-COVERAGE; "Most published links" read 16% on the chain-order mart)`,
+      );
+    }
+  }
+  if (!census) {
+    if (figures.length > 0) {
+      errors.push(
+        `leg cm[bridge]: the blocker states ${figures.map((m) => `"${m[0]}"`).join(", ")} while this ` +
+          `build's site_meta carries no link_adjudication.high census — a hand-adjudicated share is ` +
+          `read from site_meta or not stated at all`,
+      );
+    }
+    return errors;
+  }
+  const bounded = Number.isInteger(census.twoLens) && census.twoLens < census.adjudicated;
+  const slots = [
+    ["adjudicated_high", census.adjudicated],
+    ["published_high", census.published],
+    ...(bounded ? [["two_lens_high", census.twoLens]] : []),
+  ];
+  const want = slots.map(([, v]) => fmtCount(v));
+  const got = figures.map((m) => m[0]);
+  if (got.length === 0) {
+    errors.push(
+      `leg cm[bridge]: the blocker states no hand-adjudicated share — site_meta.link_adjudication.high ` +
+        `measures ${fmtCount(census.adjudicated)} of the ${fmtCount(census.published)} links published ` +
+        `at high, and R-DEC-COVERAGE states it as a figure (never "most")`,
+    );
+    return errors;
+  }
+  for (const g of got) {
+    if (!want.includes(g)) {
+      errors.push(
+        `leg cm[bridge]: the blocker states "${g}", which is not a figure in ` +
+          `site_meta.link_adjudication.high (${want.join(", ")}) — the share is read, never typed`,
+      );
+    }
+  }
+  if (got.length !== want.length || want.some((v, i) => v !== got[i])) {
+    errors.push(
+      `leg cm[bridge]: the blocker states its figures in the order ${got.join(", ")} but ` +
+        `site_meta derives ${want.join(", ")} — ${slots.map(([f]) => f).join(", ")}, in that order`,
+    );
+  } else {
+    errors.push(...bindHighCensusClause(undated, figures[0], census));
+  }
+  if (bounded && ADVERSARIAL_UNIVERSAL_RE.test(text)) {
+    errors.push(
+      `leg cm[bridge]: "where a per-award adjudication exists it was challenged by two independent ` +
+        `adversarial reviewers" is a universal, and site_meta.link_adjudication.high has ` +
+        `two_lens_high ${fmtCount(census.twoLens)} of ${fmtCount(census.adjudicated)} adjudicated — ` +
+        `state the two-lens count instead`,
+    );
+  }
+  return errors;
+}
+
+/**
+ * R-DEC-COVERAGE-b: the EXACT High census clause. The census figures sit in
+ * their slots (checked above); here the words around them are bound too:
+ *
+ *     "{adjudicated} of the {published} links published at high were
+ *      hand-adjudicated"
+ *
+ * verbatim from the adjudicated figure through the predicate, then a clause
+ * boundary. That is what "tier word 'high' alone" means: "at high or
+ * medium", "at high and medium", "at high/medium", "at high or above" each
+ * state the High census as the share of a wider population, and the
+ * fix-5 review got all three through a check that stopped at /high\b/. The
+ * predicate is bound the same way ("were not hand-adjudicated", "were
+ * reviewed", "were hand-adjudicated or reviewed" all fail), the figure may
+ * not be hedged into a bound ("at least 60 of …"), and the sentence that
+ * carries the clause may carry no negation at all ("it is not the case that
+ * …", "— or so no reviewer found"). Pure; `undated` is the blocker text with
+ * its dates blanked (same indices as the figures), `adj` the adjudicated
+ * figure's match.
+ */
+function bindHighCensusClause(undated, adj, census) {
+  const errors = [];
+  const want =
+    `${fmtCount(census.adjudicated)} of the ${fmtCount(census.published)} links published at high ` +
+    `were hand-adjudicated`;
+  const clauseRe = new RegExp(
+    `^${fmtCount(census.adjudicated)} of the ${fmtCount(census.published)} links published at high ` +
+      String.raw`were hand-adjudicated(?=\s*(?:[,;.()]|—|–|$))(?!\s*(?:[,(—–]\s*)?(?:or|and\s*\/\s*or)\b)`,
+  );
+  const from = undated.slice(adj.index);
+  const clause = from.match(clauseRe);
+  const why =
+    `site_meta.link_adjudication.high counts the links published at high that were hand-adjudicated, ` +
+    `so a wider tier ("at high or medium"), another predicate or a negation states a share that never held`;
+  if (!clause) {
+    const said = from.slice(0, want.length + 40).replace(/\s+$/, "");
+    errors.push(
+      `leg cm[bridge]: the blocker's High census clause reads "${said}…" — it must read exactly ` +
+        `"${want}" (R-DEC-COVERAGE-b: the tier word 'high' alone, no 'or' / 'and' widening, no negation); ${why}`,
+    );
+    return errors;
+  }
+  const before = undated.slice(0, adj.index);
+  const hedge = before.match(CENSUS_HEDGE_RE);
+  if (hedge) {
+    errors.push(
+      `leg cm[bridge]: the blocker's High census clause is hedged — "${hedge[0].trim()} ${want}" states a ` +
+        `bound, and site_meta.link_adjudication.high states a count (R-DEC-COVERAGE-b)`,
+    );
+  }
+  // The sentence that carries the clause: from the last sentence end before
+  // the figure to the next one after the clause.
+  const starts = [...before.matchAll(/[.!?](?=\s)/g)];
+  const sStart = starts.length ? starts[starts.length - 1].index + 1 : 0;
+  const rest = undated.slice(adj.index + clause[0].length);
+  const end = rest.search(/[.!?](?=\s|$)/);
+  const sentence = undated.slice(sStart, adj.index + clause[0].length + (end < 0 ? rest.length : end + 1)).trim();
+  const neg = sentence.match(NEGATION_RE);
+  if (neg) {
+    errors.push(
+      `leg cm[bridge]: the sentence carrying the High census clause says "${neg[0]}" — ` +
+        `"${sentence.slice(0, 200)}" — a negation of "${want}" is the census clause read backwards ` +
+        `(R-DEC-COVERAGE-b: no negation); state the census as a count and nothing else in its sentence`,
+    );
+  }
+  return errors;
+}
+
+/**
+ * The high-tier adjudication census leg cm[bridge] binds the blocker's
+ * hand-adjudicated share to and its error messages print, read from
+ * site_meta.link_adjudication.high (the block /methodology/'s High census
+ * renders from and gate 24 leg o checks). Null unless the block carries two
+ * integer counts with adjudicated ≤ published — a malformed block prints no
+ * figure rather than a wrong one. `twoLens` is null unless two_lens_high is
+ * an integer in [0, adjudicated]. Pure; exported for the unit tests.
  */
 export function bridgeHighCensus(meta) {
   const la = meta?.link_adjudication;
@@ -955,9 +1175,11 @@ export function bridgeHighCensus(meta) {
   ) {
     return null;
   }
+  const t = h?.two_lens_high;
   return {
     published,
     adjudicated,
+    twoLens: Number.isInteger(t) && t >= 0 && t <= adjudicated ? t : null,
     measuredOn: typeof la.measured_on === "string" ? la.measured_on : null,
   };
 }

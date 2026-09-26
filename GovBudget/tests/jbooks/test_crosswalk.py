@@ -22,16 +22,26 @@ AWARD_COLS = (
 )
 
 
+# The source revision time every row of these fixtures carries. A real
+# contracts archive row always has one, and the crosswalk reads the lake
+# through the fiscal-year move rule (R-DEC-133c; govbudget.award_moves), which
+# refuses a keyed archive without it. One value for every row: no fixture here
+# duplicates a transaction key, so nothing is a move.
+FIXTURE_REVISION = "'2026-09-01 00:00:00+00' as last_modified_date"
+
+
 # Fixture action_dates sit in federal FY2026 (Oct 2025 - Sep 2026) because
 # every seed_* helper below stamps its budget line at PB edition 2026 and,
 # since #78, the default window is the line's own edition FY. The `fy=2024`
-# directory name in these helpers is not a hive partition and is never read.
+# directory name in these helpers is the hive partition the move rule reads
+# (the fiscal-year archive a copy sits in); it never sets a line's award
+# window, which is action_date's.
 def make_award_parquet(tmp_path: Path) -> Path:
     out = tmp_path / "contracts" / "fy=2024"
     out.mkdir(parents=True)
     duckdb.sql(
         f"""
-        copy (select * from (values
+        copy (select *, {FIXTURE_REVISION} from (values
           ('K1','HR001124C0001','5000000','097-0400','DEFENSE RESEARCH SCIENCES MATHEMATICS PROGRAM',
            'BASIC MATHEMATICS SCIENCES INITIATIVE','ACME RESEARCH LLC','UEIDARPA1',
            'Defense Advanced Research Projects Agency','2026-03-01'),
@@ -60,7 +70,7 @@ def make_award_parquet_with_dates(tmp_path: Path, rows: list[tuple]) -> str:
     )
     duckdb.sql(
         f"""
-        copy (select * from (values {values_sql}) t({AWARD_COLS}))
+        copy (select *, {FIXTURE_REVISION} from (values {values_sql}) t({AWARD_COLS}))
         to '{out}/part.parquet' (format parquet)
         """
     )
@@ -86,7 +96,7 @@ def make_award_parquet_nullable_dates(tmp_path: Path, rows: list[tuple]) -> str:
     )
     duckdb.sql(
         f"""
-        copy (select * from (values {values_sql}) t({AWARD_COLS}))
+        copy (select *, {FIXTURE_REVISION} from (values {values_sql}) t({AWARD_COLS}))
         to '{out}/part.parquet' (format parquet)
         """
     )
@@ -99,7 +109,7 @@ def make_navy_award_parquet(tmp_path: Path) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
         f"""
-        copy (select * from (values
+        copy (select *, {FIXTURE_REVISION} from (values
           ('N1','N0001824C0001','2000000','017-1319','NAVAL RESEARCH SCIENCES PROGRAM',
            'OCEAN RESEARCH INITIATIVE','NAVY LABS LLC','UEINAV1',
            'Department of the Navy','2026-06-01'),
@@ -298,7 +308,7 @@ def test_crosswalk_small_token_not_high_confidence(pg_dsn, tmp_path):
     out.mkdir(parents=True)
     duckdb.sql(
         f"""
-        copy (select * from (values
+        copy (select *, {FIXTURE_REVISION} from (values
           ('SB1','FA860124C0099','999999','097-0400',
            'SMALL DIAMETER BOMB INCREMENT II',
            'SMALL DIAMETER BOMB INCREMENT II','BOMB CO','UEIBOMB',
@@ -415,7 +425,7 @@ def test_subagency_aliases_come_from_seed(pg_dsn, tmp_path):
     out.mkdir(parents=True)
     duckdb.sql(
         f"""
-        copy (select * from (values
+        copy (select *, {FIXTURE_REVISION} from (values
           ('M1','MDA0024C0001','2000000','097-0603870',
            'UNRELATED DESCRIPTION ONE','UNRELATED DESCRIPTION TWO',
            'INTERCEPT SYSTEMS LLC','UEIMDA1',
@@ -1711,3 +1721,67 @@ def test_cli_regrade_only_needs_an_org(monkeypatch, pg_dsn, tmp_path, capsys):
         cli.main(["jbooks", "crosswalk", "--regrade-only", "--dry-run"])
     assert exc.value.code == 2
     assert "--regrade-only needs --org" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------------------
+# R-DEC-133c (fix-round-3 ruling, 2026-09-26): the crosswalk reads the award
+# archive through govbudget.award_moves — the retired copy of a transaction a
+# source correction moved into another fiscal year's archive is not a
+# candidate, exactly as dbt staging drops it. The lake and its figures are
+# tests/test_raw_award_readers_move_rule.py's (one PIID; raw 225, kept 125).
+# --------------------------------------------------------------------------
+
+from test_raw_award_readers_move_rule import (  # noqa: E402  (tests/ on sys.path)
+    PIID as MOVED_PIID,
+    ambiguous_lake,
+    moved_lake,
+    raw_sum,
+)
+
+
+def _matched(pg_dsn):
+    with psycopg.connect(pg_dsn) as con:
+        return con.execute(
+            "select fiscal_year, award_piid, method, matched_obligation"
+            " from budget_line_awards order by fiscal_year, award_piid").fetchall()
+
+
+def test_crosswalk_counts_a_moved_transaction_once(pg_dsn, tmp_path):
+    seed_budget(pg_dsn)
+    glob = moved_lake(tmp_path)
+    assert raw_sum(glob) == 225.0                       # what the raw files sum to
+    n = crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                      award_glob=glob, all_years=True)
+    assert n == CrosswalkResult(written=1, skipped=0)
+    assert _matched(pg_dsn) == [
+        (2026, MOVED_PIID, "account+subagency", Decimal("125.00"))]
+
+
+def test_crosswalk_plan_and_run_never_see_the_retired_copy(pg_dsn, tmp_path):
+    """Under the default window a PB2025 line matches FY2025 awards only. The
+    award's only FY2025 transaction is the retired copy (the correction moved
+    it to FY2026), so neither the plan nor the run may count it — the
+    planner and the write path read the same view (#78's "a plan can never
+    count rows the run would not upsert")."""
+    seed_budget_editions(pg_dsn, [2025])
+    glob = moved_lake(tmp_path)
+    plan = plan_crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                              award_glob=glob)
+    assert [(p.fiscal_year, p.candidates) for p in plan] == [(2025, 0)]
+    n = crosswalk_org(pg_dsn, organization="DARPA", treasury_agency="097",
+                      award_glob=glob)
+    assert n == CrosswalkResult(written=0, skipped=0)
+    assert _matched(pg_dsn) == []
+
+
+def test_crosswalk_refuses_an_ambiguous_duplicate_before_writing(pg_dsn, tmp_path):
+    from govbudget.award_moves import AmbiguousAwardDuplicateError
+
+    seed_budget(pg_dsn)
+    glob = ambiguous_lake(tmp_path)
+    kw = dict(organization="DARPA", treasury_agency="097", award_glob=glob,
+              all_years=True)
+    for run in (plan_crosswalk_org, crosswalk_org, crosswalk_module.regrade_report):
+        with pytest.raises(AmbiguousAwardDuplicateError, match="SAMEFY01"):
+            run(pg_dsn, **kw)
+    assert _matched(pg_dsn) == []

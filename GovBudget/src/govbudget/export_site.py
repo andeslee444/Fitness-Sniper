@@ -1766,10 +1766,13 @@ _DATASET_SCOPES: dict[str, str] = {
         " adds those pairs together."
     ),
     "jbook_narratives": (
-        "One row per J-book narrative text block — mission, description,"
-        " justification, or accomplishment/planned-program — with its XML"
+        # ROADMAP #175: restated without the em-dash pile-up (gate 27 leg
+        # 13) that /downloads/ rendered as card prose; the claims are the
+        # same (tests/test_export_site_datasets_manifest.py pins each one).
+        "One row per J-book narrative text block (mission, description,"
+        " justification or accomplishment/planned-program) with its XML"
         " element path and source-PDF SHA-256. Fenced to the PB2026 edition,"
-        " plus the PB2017–PB2025 narratives a program-lineage edge cites —"
+        " plus the PB2017–PB2025 narratives a program-lineage edge cites:"
         " citation targets only, never a program page's own prose."
     ),
     "fct_budget_trajectory": (
@@ -1778,9 +1781,13 @@ _DATASET_SCOPES: dict[str, str] = {
         " side."
     ),
     "dim_programs": (
-        "One row per program element that has full R-2/P-40 J-book detail —"
-        " the detail-grade tier, NOT the full page universe (see the corpus"
-        " statement above) — with org, exhibit family, project count and"
+        # ROADMAP #175: restated without the em-dash pile-up (gate 27 leg
+        # 13). "see the corpus statement above" was true on /data/ only:
+        # /downloads/ renders this sentence too and carries no corpus
+        # statement, so it names the page that does.
+        "One row per program element that has full R-2/P-40 J-book detail"
+        " (the detail-grade tier, NOT the full page universe; see the corpus"
+        " statement on /data/), with org, exhibit family, project count and"
         " reconciliation status."
     ),
     "dim_entities": (
@@ -3235,8 +3242,10 @@ def export_site(
     # R-DEC-110 (controller 2026-09-26): the links the mart publishes at
     # medium because a rule demoted them from high, with the reason each
     # records — link_adjudication.high counts them by reason, and
-    # link_precision keeps the ones its own sample refuted in its tally
-    # (R-DEC-110b).
+    # link_precision keeps every 'precision_sample_refuted' link (a held-out
+    # precision sample refuted its award->PE pair; R-DEC-110c binds that
+    # verdict to every published method of the pair) in its tally, in the
+    # tier it was tallied in immediately before the demotion (R-DEC-110b/110c).
     demoted_links = _published_demotions(duckdb_path)
     # ONE timestamp for the run: the manifest's `built_at` and the
     # adjudication block's `measured_on` are the same instant by construction,
@@ -3673,8 +3682,11 @@ def _link_precision_for_export(pg, published_methods: set[str] | None, *,
     `_withdrawn_link_rows(duckdb_path)`) feeds the labelled `withdrawn`
     sub-block — ROADMAP #107(b). `demoted_links` (the export passes
     `_published_demotions(duckdb_path)`) lets the block find the links dbt
-    demoted for their OWN precision-sample verdict, which R-DEC-110b keeps in
-    the tally — see `_self_refuted_population`.
+    demoted as 'precision_sample_refuted' — a held-out precision sample
+    refuted the link's (award, PE) pair, a verdict R-DEC-110c binds to every
+    published method of the pair — which stay in the tally in the tier they
+    were tallied in immediately before the demotion (R-DEC-110b/110c) — see
+    `_self_refuted_population`.
     """
     return _link_precision_block(
         pg,
@@ -3881,12 +3893,14 @@ def _published_demotions(duckdb_path) -> list[dict] | None:
     from high: `{award_piid, pe_bli, method, demotion_reason}` for every
     distinct fct_budget_to_awards row at medium carrying a
     `demotion_reason` (#75's `account_tokens_unadjudicated`; #110 /
-    R-DEC-110's `announcement_review_*` reasons; R-DEC-110b's
-    `precision_sample_refuted` — the dbt lane names them, this reader never
-    does). `_link_adjudication_block` counts them by reason under
-    `high.demoted_from_high` (R-DEC-110: a demoted link carries a TRUE
+    R-DEC-110's `announcement_review_*` reasons; R-DEC-110b/110c's
+    `precision_sample_refuted`, on a link of any method whose (award, PE)
+    pair a held-out precision sample refuted — the dbt lane names them, this
+    reader never does). `_link_adjudication_block` counts them by reason
+    under `high.demoted_from_high` (R-DEC-110: a demoted link carries a TRUE
     reason, and /methodology/ states the split), and `_link_precision_block`
-    reads the R-DEC-110b ones back into its tally
+    reads the `precision_sample_refuted` ones back into its tally, each in
+    the tier it was tallied in immediately before its demotion
     (`_self_refuted_population`).
 
     ``None`` when the warehouse has no mart, or a mart without a
@@ -3917,10 +3931,13 @@ def _published_demotions(duckdb_path) -> list[dict] | None:
     ]
 
 
-#: R-DEC-110b (controller, 2026-09-26): the `demotion_reason` dbt records on a
-#: link it demoted because the held-out precision study's OWN verdict on that
-#: link refuted it (link_precision_samples verdict 'refuted', recorded in
-#: announcement_link_reviews as record_kind 'precision_sample').
+#: R-DEC-110b/110c (controller, 2026-09-26): the `demotion_reason` dbt records
+#: on an unadjudicated link it demoted from high because the held-out
+#: precision study refuted the link's award->PE PAIR (link_precision_samples
+#: verdict 'refuted', rubric 'attribution', recorded in
+#: announcement_link_reviews as record_kind 'precision_sample'). R-DEC-110c:
+#: the verdict binds every published method of the pair, not only the method
+#: the sample drew, so the link's own method may differ from its draw tier.
 _PRECISION_SAMPLE_DEMOTION = "precision_sample_refuted"
 
 
@@ -3931,14 +3948,23 @@ def _self_refuted_population(
     demoted_links: list[dict] | None,
     withdrawn_links: list[dict] | None,
 ) -> tuple[list[dict] | None, list[dict] | None]:
-    """R-DEC-110b: the (published, withdrawn) populations `_link_precision_block`
-    tallies, with every link demoted for its OWN precision-sample verdict kept
-    in the tally.
+    """R-DEC-110b/110c: the (published, withdrawn) populations
+    `_link_precision_block` tallies, with every link demoted as
+    'precision_sample_refuted' kept in the tally, in the tier it was tallied
+    in immediately before the demotion.
 
-    THE RULING. "The precision tally keeps every sampled link in the tier it
-    was DRAWN from when its demotion came from its own sample verdict — the
-    measured precision is never flattered by the demotion." Every other link
-    keeps the tier it publishes under today (#140).
+    THE RULINGS. R-DEC-110b (fix round 2) admitted the precision study's
+    refutations as recorded refutations and said the tally keeps a link its
+    own sample verdict demoted "in the tier it was DRAWN from … the measured
+    precision is never flattered by the demotion". R-DEC-110c (fix round 3)
+    amends both halves. (1) A precision-study refutation (rubric attribution)
+    is a verdict on the award->PE PAIR: it binds to every published method
+    of the pair, so dbt demotes an unadjudicated high link of ANY method
+    whose pair a sample refuted, not only the link under the method the
+    sample drew. (2) "A link demoted by its own sample verdict stays in the
+    tier it was tallied in immediately before the demotion (never moved to a
+    tier that would flatter a figure)." Every other link keeps the tier it
+    publishes under today (#140).
 
     THE DEFECT IT PREVENTS. The tally counts only links the corpus publishes
     (see `_link_precision_block`, THE POPULATION). A demotion that took a
@@ -3955,21 +3981,35 @@ def _self_refuted_population(
     leaves the withdrawn population: one refuted link is not a withdrawn
     TIER, so it never mints a `withdrawn` figure.
 
-    DRAWN TIER vs ROW TIER. dbt's demotions change a link's grade, never its
+    THE TIER (R-DEC-110c). dbt's demotions change a link's grade, never its
     method (audit_link_grading passes the loader's method through), so the
-    method its row carries is the tier its verdict counted in before the
-    demotion. That IS the tier it was drawn from
-    (link_precision_samples.method) wherever the two agree — true of the ten
-    high links the announcement+lexicon draws refuted (read 2026-09-26:
-    drawn under it, publishing under it). Where they differ, a #140 override
-    moved the link after its draw: FA880712C0012/1203164SF, refuted by the
-    2026-09-04 fpds-ap+account draw, is graded high under
-    announcement+lexicon (budget_line_awards and a chain-order scratch lake,
-    read 2026-09-26), and its verdict counts in the announcement figure.
-    Moving that verdict to its draw tier AT the demotion would drop a
-    'refuted' from the figure it counts in — the flattering the ruling
-    forbids — so it stays, and the export log names the pair and both tiers
-    (a WARNING line) for a ruling. It is never silently re-tiered.
+    method its row carries IS the tier its verdict was tallied in
+    immediately before the demotion — the tier the ruling keeps it in. The
+    published unit carries one method per pair
+    (`govbudget.link_precision.published_link_rows` raises on a pair
+    published under two), so that tier is unique; a pair carrying the
+    reason under two methods raises here rather than place one verdict in
+    two tiers.
+
+    DRAWN TIER vs ROW TIER. The tier the sample drew the link from
+    (link_precision_samples.method) is the row's tier wherever the two
+    agree — true of the ten high links the announcement+lexicon draws
+    refuted (read 2026-09-26: drawn under it, publishing under it). Where
+    they differ, a #140 override moved the link after its draw, and the
+    tally already counted its verdict where it publishes:
+    FA880712C0012/1203164SF, refuted by the 2026-09-04 fpds-ap+account draw,
+    publishes high under announcement+lexicon in budget_line_awards and the
+    shared mart (read 2026-09-26), and its verdict counts in the
+    announcement figure. R-DEC-110c binds that refutation to the pair, so on
+    the chain-order scratch builds (fix round 4) dbt demotes it to medium
+    under announcement+lexicon, the eleventh 'precision_sample_refuted'
+    link, and it stays in the announcement figure (57 of 61 on those builds
+    with this function and without it, read 2026-09-26: a demotion to medium
+    keeps the link published). Moving it to its draw tier AT the demotion
+    would drop a 'refuted' from the figure it was tallied in — the
+    flattering the ruling forbids. It is never silently re-tiered: the
+    export log names every pair whose draw tier differs, with both tiers (a
+    WARNING line; FA880712C0012/1203164SF is the only one on those builds).
 
     `published_links` None (no mart: fixtures) leaves the published side as
     it is — the tally then reads budget_line_awards, which knows no
@@ -4020,10 +4060,11 @@ def _self_refuted_population(
                 f"export-site: WARNING — link_precision: {key[0]}/{key[1]} was"
                 f" demoted for its own precision-sample verdict"
                 f" ({_PRECISION_SAMPLE_DEMOTION}); drawn under"
-                f" {', '.join(at_draw)}, it counts under {tier} (#140) and"
-                " stays there — moving it at its demotion would drop a"
-                " 'refuted' verdict from that figure (R-DEC-110b). Needs a"
-                " ruling if the draw tier should win.")
+                f" {', '.join(at_draw)}, it counts under {tier} (#140), the"
+                " tier it was tallied in immediately before the demotion, and"
+                " stays there: moving it to its draw tier would drop a"
+                " 'refuted' verdict from that figure (ROADMAP #110). Logged so"
+                " a verdict counted outside its draw tier is never silent.")
     population = [
         r for r in published_links
         if (r["award_piid"], r["pe_bli"]) not in row_tier
@@ -4043,8 +4084,9 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
                           withdrawn_links: list[dict] | None = None,
                           demoted_links: list[dict] | None = None) -> dict:
     """The held-out link-precision study (ROADMAP #72, #79), tallied under the
-    tier each sampled link publishes under TODAY (a link demoted for its own
-    sample verdict: see the last paragraph), under ONE rubric.
+    tier each sampled link publishes under TODAY (a link demoted because a
+    precision sample refuted its pair: see the last paragraph), under ONE
+    rubric.
 
     Returns ``{}`` while no study has adjudicated verdicts under `rubric`, else::
 
@@ -4137,12 +4179,16 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     beside a non-empty block (a study with no published figure publishes
     nothing, as before).
 
-    A LINK THE STUDY ITSELF REFUTED (R-DEC-110b, controller 2026-09-26). dbt
-    demotes a link whose own precision-sample verdict refuted it
-    (`demotion_reason = 'precision_sample_refuted'`). That demotion must not
+    A LINK THE STUDY ITSELF REFUTED (R-DEC-110b/110c, controller
+    2026-09-26). dbt demotes an unadjudicated high link, of any method,
+    whose award->PE pair a held-out precision sample refuted
+    (`demotion_reason = 'precision_sample_refuted'`; R-DEC-110c binds the
+    verdict to every published method of the pair). That demotion must not
     flatter the figure that caught it, so such a link stays in the tally in
-    its drawn tier whether or not it still publishes, and never enters
-    `withdrawn` — `_self_refuted_population` (with `demoted_links`, the
+    the tier it was tallied in immediately before the demotion (the method
+    its row carries, which may differ from the tier the sample drew it
+    from) whether or not it still publishes, and never enters `withdrawn` —
+    `_self_refuted_population` (with `demoted_links`, the
     export's `_published_demotions`) builds both populations before any
     tally runs, so the rule reaches the pins and `withdrawn` alike.
     """
@@ -4632,8 +4678,8 @@ def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None,
     for two reasons on two rows counts under each reason and once in
     `links` (none on 2026-09-25). Absent when `demoted_links` is None.
     Every reason the mart records is counted as it is named, none filtered —
-    R-DEC-110b's `precision_sample_refuted` (a link its own held-out
-    precision-sample verdict refuted) included.
+    `precision_sample_refuted` included (R-DEC-110b/110c: a link, of any
+    method, whose award->PE pair a held-out precision sample refuted).
     """
     if not high_links:
         return {}
@@ -5231,6 +5277,171 @@ def _null_derived_row(fid: str, kind: str, units: str | None,
     )
 
 
+#: The filings one fct_influence row sums: fct_influence.sql's own predicate
+#: on audit_lda_filings (dbt/models/marts/fct_influence.sql). Chronological
+#: within a family-year (quarter, then filing_uuid), so the list is
+#: deterministic. latest_determinable is false only on the amendment a
+#: quarter is counted from when its amendments disagree (R-DEC-AMEND-b).
+_INFLUENCE_CONSTITUENTS_SQL = (
+    "select family_key_guess, filing_year, filing_uuid, url,"
+    " try_cast(nullif(income_usd, '') as double),"
+    " try_cast(nullif(expenses_usd, '') as double),"
+    " coalesce(latest_determinable, true)"
+    " from audit_lda_filings"
+    " where counted"
+    "   and family_key_guess is not null and family_key_guess <> ''"
+    "   and match_method is not null and match_method <> 'none'"
+    " order by family_key_guess, filing_year,"
+    "   case filing_period when 'first_quarter' then 1"
+    "     when 'second_quarter' then 2 when 'third_quarter' then 3"
+    "     when 'fourth_quarter' then 4 else 5 end,"
+    "   filing_uuid"
+)
+
+#: Dollars: fct_influence sums the same text columns as double, so the
+#: recount and the mart agree to the cent unless their filing sets differ.
+_INFLUENCE_RECOUNT_TOLERANCE = 0.005
+
+
+def _influence_citation_rows(con, *, built_at: str) -> list[tuple]:
+    """The three derived citations per fct_influence row (lobbying income,
+    expense and total for one contractor family and filing year). Each one
+    lists its constituent filings (R-DEC-LDACITE, controller ruling
+    2026-09-26, under the owner's 2026-09-25 delegation).
+
+    The constituents are EXACTLY the filings the row sums. They are read from
+    audit_lda_filings, the relation fct_influence sums (R-DEC-AMEND: an
+    amended quarter counts once, from its amendment), through
+    fct_influence.sql's own predicate. Each constituent is its LDA record's
+    URL: the lake's `url`, or the LDA API record when that is empty.
+
+    All three metrics cite the same list, the filings the row's
+    filings_count counts. A filing reports income or expenses, never both
+    (0 of 5,393 lake filings carry both, measured read-only 2026-09-26), so
+    the income and expense sums run over that one list. Each formula names
+    its sum, the count and the amendment rule. A family-year with a quarter
+    whose amendments disagree also says that the smallest is counted there
+    (R-DEC-AMEND-b: the lake carries no posting date).
+
+    Before this, all 630 lobbying citations shipped with inputs '[]' (the
+    old code probed lda_filings.parquet for `family_key` / `filing_url`, and
+    the lake names them `family_key_guess` / `url`). The old code also capped
+    the list at 20 and called the grain "registrant-year".
+
+    RAISES ValueError, and never ships a citation with an empty or wrong
+    list, when:
+      · fct_influence has rows but audit_lda_filings cannot be read (a
+        warehouse from before R-DEC-AMEND: rebuild it);
+      · a row has no counted filing;
+      · a row's filings_count, income, expense or total disagrees with its
+        recount over the listed filings;
+      · a counted filing belongs to a family-year fct_influence has no row
+        for (the two predicates drifted apart).
+    [] when fct_influence is empty, or absent (a stub warehouse, reported).
+    """
+    import duckdb as _duckdb
+    import json as _json
+
+    try:
+        influence_rows = con.execute(
+            "select family_key, filing_year, filings_count,"
+            " lobbying_income_usd, lobbying_expense_usd, lobbying_total_usd"
+            " from fct_influence"
+        ).fetchall()
+    except _duckdb.CatalogException as exc:
+        # No fct_influence at all (a stub warehouse): nothing to cite. A
+        # mart that exists but cannot be read as the real one is raised.
+        _report_dropped("fct_influence for the lobbying derived citations", exc)
+        return []
+    if not influence_rows:
+        return []
+
+    try:
+        constituent_rows = con.execute(_INFLUENCE_CONSTITUENTS_SQL).fetchall()
+    except _duckdb.Error as exc:
+        raise ValueError(
+            f"fct_influence has {len(influence_rows):,} rows, but its"
+            " constituent filings could not be read from audit_lda_filings"
+            f" ({type(exc).__name__}: {' '.join(str(exc).split())[:160]})."
+            " Every lobbying citation lists the filings it sums"
+            " (R-DEC-LDACITE), so the warehouse must carry the R-DEC-AMEND"
+            " audit model; rebuild it (govbudget build)."
+        ) from exc
+
+    constituents: dict[tuple[str, str], list[tuple]] = {}
+    for fk, fy, uuid, url, inc, exp, determinable in constituent_rows:
+        constituents.setdefault((fk, str(fy)), []).append(
+            (url or f"https://lda.senate.gov/api/v1/filings/{uuid}/",
+             inc, exp, bool(determinable)))
+
+    def _off(a, b) -> bool:
+        return abs(float(a or 0) - float(b or 0)) > _INFLUENCE_RECOUNT_TOLERANCE
+
+    rows: list[tuple] = []
+    for family_key, filing_year, filings_count, income, expense, total in influence_rows:
+        key_str = f"{family_key}|{filing_year}"
+        filings = constituents.get((family_key, str(filing_year)))
+        if not filings:
+            raise ValueError(
+                f"lobbying citation {key_str}: fct_influence counts"
+                f" {filings_count} filing(s), but audit_lda_filings has no"
+                " counted filing for this family and year. Refusing to cite a"
+                " lobbying figure with no constituent filing (R-DEC-LDACITE)."
+            )
+        n = len(filings)
+        inc_sum = sum(f[1] or 0 for f in filings)
+        exp_sum = sum(f[2] or 0 for f in filings)
+        if (n != int(filings_count or 0) or _off(inc_sum, income)
+                or _off(exp_sum, expense) or _off(inc_sum + exp_sum, total)):
+            raise ValueError(
+                f"lobbying citation {key_str}: fct_influence says"
+                f" {filings_count} filing(s), income {income}, expense"
+                f" {expense}, total {total}; the {n} counted filing(s) in"
+                f" audit_lda_filings sum to income {inc_sum}, expense"
+                f" {exp_sum}. The inputs would not be the filings the figure"
+                " sums; refusing (R-DEC-LDACITE). Rebuild the warehouse"
+                " (govbudget build) so both read one rule."
+            )
+        inputs_json = _json.dumps([f[0] for f in filings])
+        counted = (f"the {n} LDA filing{'' if n == 1 else 's'} counted for"
+                   " this family and filing year")
+        rule = ("an amended quarter (same registrant, client and quarter) is"
+                " counted once, from its amendment, not from the report it"
+                " amends")
+        if not all(f[3] for f in filings):
+            rule += "; where its amendments disagree, from the smallest"
+        for metric, value, formula_txt in [
+            ("lobbying_income_usd", income,
+             f"sum(income_usd) over {counted}: {rule}"),
+            ("lobbying_expense_usd", expense,
+             f"sum(expenses_usd) over {counted}: {rule}"),
+            ("lobbying_total_usd", total,
+             "lobbying_income_usd + lobbying_expense_usd over the same"
+             f" {n} counted LDA filing{'' if n == 1 else 's'}"),
+        ]:
+            if value is None:
+                continue
+            rows.append(_null_derived_row(
+                fact_id_derived("influence", key_str, metric),
+                "derived", "USD",
+                formula_txt,
+                inputs_json,
+                f"{value:.3f}",
+                built_at,
+            ))
+
+    listed = {(fk, str(fy)) for fk, fy, *_ in influence_rows}
+    stray = sorted(k for k in constituents if k not in listed)
+    if stray:
+        raise ValueError(
+            f"{len(stray)} family-year(s) have counted filings in"
+            " audit_lda_filings but no fct_influence row (e.g."
+            f" {'|'.join(stray[0])}): the exporter's constituent predicate and"
+            " fct_influence.sql's have drifted apart; refusing (R-DEC-LDACITE)."
+        )
+    return rows
+
+
 def _build_derived_citation_rows(
     *,
     duckdb_path,
@@ -5254,9 +5465,11 @@ def _build_derived_citation_rows(
       We use _workbook_org to translate before joining.
     - HHI formula explicitly states the positive-only-shares bias (warehouse query
       filters obligation > 0; negative/recoupment obligations are excluded).
-    - Influence inputs: constituent LDA filing API URLs from lda_filings parquet,
-      joined by family_key + filing_year.  If lda_filings is not available,
-      inputs = [] and the formula is self-describing.
+    - Influence inputs: the URL of every LDA filing the fct_influence row
+      sums, read from audit_lda_filings under the amendment rule
+      (R-DEC-LDACITE; _influence_citation_rows). A row whose filings cannot
+      be listed, or do not recount to its figures, raises; it never ships
+      with inputs = [].
     - Entity total_obligation: inputs = [] (too many UEIs to enumerate; formula
       states the query).  Scoped to top-200 entities only.
     - Per-capita: inputs = [spend_source_url, pop_source_url] already stored in
@@ -6136,67 +6349,9 @@ def _build_derived_citation_rows(
         # ---- Influence dollars ----
         # surface='influence', key='{family_key}|{filing_year}',
         # metrics: lobbying_income_usd / lobbying_expense_usd / lobbying_total_usd
-        # inputs = constituent filing API URLs (lda_filings by family_key+filing_year)
-        try:
-            influence_rows = con.execute(
-                "select family_key, filing_year, lobbying_income_usd,"
-                " lobbying_expense_usd, lobbying_total_usd"
-                " from fct_influence"
-            ).fetchall()
-        except Exception:
-            influence_rows = []
-
-        # Probe lda_filings parquet for filing API URLs grouped by family_key + filing_year
-        lda_urls_index: dict[tuple, list[str]] = {}
-        lda_filings_pq = _stage_parquet_path(
-            duckdb_path, "influence", "lda_filings.parquet"
-        )
-        if lda_filings_pq is not None:
-            try:
-                with _private_duckdb() as _pcon:
-                    # Check if family_key column exists
-                    cols_check = [
-                        d[0] for d in _pcon.execute(
-                            f"select * from read_parquet('{lda_filings_pq}') limit 0"
-                        ).description
-                    ]
-                    url_rows_lda = []
-                    if "family_key" in cols_check and "filing_year" in cols_check:
-                        url_col = "filing_url" if "filing_url" in cols_check else None
-                        if url_col:
-                            url_rows_lda = _pcon.execute(
-                                f"select family_key, filing_year, {url_col}"
-                                f" from read_parquet('{lda_filings_pq}')"
-                                f" where {url_col} is not null"
-                            ).fetchall()
-                for fk, fy, fu in url_rows_lda:
-                    if fk and fy and fu:
-                        lda_urls_index.setdefault((fk, str(fy)), []).append(fu)
-            except Exception as exc:
-                _report_dropped(
-                    f"LDA filing URLs ({lda_filings_pq.name}) for the lobbying"
-                    " derived citations' inputs", exc)
-
-        for family_key, filing_year, income, expense, total in influence_rows:
-            key_str = f"{family_key}|{filing_year}"
-            filing_urls = lda_urls_index.get((family_key, str(filing_year)), [])
-            inputs_json = _json.dumps(filing_urls[:20])  # cap to avoid huge inputs
-
-            for metric, value, formula_txt in [
-                ("lobbying_income_usd",   income,  "sum(income) from LDA filings for this registrant-year"),
-                ("lobbying_expense_usd",  expense, "sum(expenses) from LDA filings for this registrant-year"),
-                ("lobbying_total_usd",    total,   "lobbying_income_usd + lobbying_expense_usd (or max where only one reported)"),
-            ]:
-                if value is None:
-                    continue
-                fid = fact_id_derived("influence", key_str, metric)
-                rows.append(_null_derived_row(
-                    fid, "derived", "USD",
-                    formula_txt,
-                    inputs_json,
-                    f"{value:.3f}",
-                    built_at,
-                ))
+        # inputs = every LDA filing the row sums (R-DEC-LDACITE); see
+        # _influence_citation_rows.
+        rows.extend(_influence_citation_rows(con, built_at=built_at))
 
         # ---- Feed event derived citations ----
         # yoy_swing and zeroed_fy2026 re-use trajectory fact_ids already emitted.

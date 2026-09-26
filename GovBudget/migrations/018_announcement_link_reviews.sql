@@ -4,7 +4,8 @@
 -- recorded review outcomes so they are gateable; stage-1 follow-up ruling
 -- R-DEC-110, 2026-09-26: a wave 1-3 `surviving` entry IS a recorded review;
 -- fix-round-2 ruling R-DEC-110b, 2026-09-26: the held-out precision study's
--- refutations are recorded refutations too).
+-- refutations are recorded refutations too; fix-round-3 ruling R-DEC-110c,
+-- 2026-09-26: each binds every published method of its pair).
 --
 -- THE GAP. /methodology/ says every announcement candidate "is judged by an
 -- agent reviewer and challenged by an independent adversarial reviewer, and
@@ -55,11 +56,16 @@
 --                      sample <sample_id> (rubric attribution), judged
 --                      refuted' — <method> is the tier the sample drew the
 --                      link from — then the adjudicator's reason. It is
---                      attached ONLY to the pair's budget_line_awards rows of
---                      that method (the link the sample drew); a pair whose
---                      drawn link was since replaced by another route gets
---                      none. It is not an announcement-pipeline review: the
---                      grading reads it only as a refutation of the pair.
+--                      attached to EVERY budget_line_awards row of the pair,
+--                      whatever its method (R-DEC-110c, fix-round-3 ruling
+--                      2026-09-26: the refutation is a verdict on the
+--                      award->PE pair and binds every published method of
+--                      it), a pair whose drawn link was since replaced by
+--                      another route included; <method> still names the
+--                      tier the sample drew. It is not an
+--                      announcement-pipeline review: the grading reads it
+--                      only as a refutation of the pair, and it moves only a
+--                      link that would otherwise publish high, of any method.
 --
 -- The granularity differs by kind and is stated, never hidden: a verdict
 -- pair records both reviewers per proposal and per lens; a survivor list
@@ -67,10 +73,10 @@
 --
 -- THE LINK IDENTITY. No wave file names an exhibit or a fiscal year: the link
 -- loader stamps them (budget_line_awards). A record of (award_piid, pe_bli) is
--- attached to EVERY budget_line_awards row of that pair (on 2026-09-26 each
--- reviewed pair held exactly one row; a precision_sample, only to the rows of
--- the method it was drawn from); (award_piid, pe_bli, exhibit,
--- fiscal_year) is budget_line_awards' own unique key, so the join is exact.
+-- attached to EVERY budget_line_awards row of that pair, a precision_sample
+-- too, whatever the row's method (R-DEC-110c); on 2026-09-26 each reviewed
+-- pair held exactly one row. (award_piid, pe_bli, exhibit, fiscal_year) is
+-- budget_line_awards' own unique key, so the join is exact.
 -- `cites_reviewed_article` says whether the pair's award_link_sources rows
 -- cite the article this record read, so a gate can tell "the reviewers
 -- upheld/rejected the evidence the card cites" from "they judged the pair on

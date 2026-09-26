@@ -80,8 +80,10 @@ describe("program page: sentence-case section headings and the evidence-path sen
     for (const old of ["Budget Figures", "Program Lineage", "Lobbying Mentions", "Primary Sources", "Related Awards", "Line Items"]) {
       expect(hs).not.toContain(old);
     }
-    // Contractor Concentration is program-concentration.tsx's (another task's file); every other h2/h3 passes leg 29.
-    expect(hs.filter((h) => TITLE_CASE.test(h) && h !== "Contractor Concentration")).toEqual([]);
+    // Fix round 4 (#175): "Contractor Concentration" was the last Title Case
+    // heading (program-concentration.tsx); it now reads in sentence case, so
+    // every h2/h3 passes leg 29 with no exemption.
+    expect(hs.filter((h) => TITLE_CASE.test(h))).toEqual([]);
   }, 60000);
 
   it("the evidence path names what a cited figure opens to, without a pointer verb or a serial comma", async () => {
@@ -166,7 +168,12 @@ describe("company page: the dossier strings", () => {
     const text = norm(root.textContent);
     expect(text).toContain("Contract evidence, program connections and public lobbying disclosures for this company.");
     expect(text).toContain("The total obligations figure opens to its derived USAspending citation. Confidence reflects entity resolution method");
-    expect(text).toContain("Lobbying dollar aggregates carry derived LDA citations. Each figure opens to its formula and constituent filings.");
+    // Fix round 4: "and constituent filings" renders only when every lobbying
+    // citation on the page lists its filings (R-DEC-LDACITE) — both branches
+    // are held in company-lobbying-note.test.tsx; the pointer-verb-free lead
+    // is held here whichever export is on disk.
+    expect(text).toContain("Lobbying dollar aggregates carry derived LDA citations. Each figure opens to its formula");
+    expect(text).toContain("This table gives each filing year's filings, income and expense;");
     expect(text).toContain("disclosures on an LDA filing: a registrant reports one or the other. The two are not summed here.");
     expect(headings(root)).toEqual(expect.arrayContaining(["Lobbying activity", "Budget program mentions"]));
     for (const old of ["Follow this company", "click the figure", "click a figure", "Lobbying Activity", "Budget Program Mentions", "— a registrant reports"]) {
@@ -203,4 +210,71 @@ describe("district, agency and filing pages", () => {
     expect(text).toContain("Underlined dollar figures cite the filing record on lda.senate.gov and open to that citation.");
     expect(text).not.toContain("click to view");
   }, 60000);
+});
+
+describe("copy-allowlist.json: the concentration heading's leg-29 entries are gone (#175, fix round 4)", () => {
+  it("no entry exempts \"Contractor Concentration\" any more", () => {
+    const allow = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../../scripts/gates/copy-allowlist.json"), "utf8"),
+    ) as { page: string; leg: number; text: string }[];
+    expect(allow.filter((e) => e.text === "Contractor Concentration")).toEqual([]);
+    expect(allow.filter((e) => e.leg === 29)).toEqual([]);
+  });
+});
+
+/**
+ * Fix round 5 (#175, 2026-09-26). The export lane restated the jbook_narratives
+ * and dim_programs scopes without the em-dash pile-up gate 27 leg 13 reads
+ * (export_site._DATASET_SCOPES; decisions-fix4-export.md). /downloads/ renders
+ * the scope the exporter writes, so the two leg-13 entries that exempted the
+ * old sentences match nothing after the next export, and the copy gate fails
+ * a stale entry. Held here against the exporter's SOURCE (the shipped
+ * datasets.json predates the restatement): each old entry is no longer a
+ * substring of the new sentence (the gate's own match is `text.includes`),
+ * the new sentence has no em dash for leg 13 to count, and neither entry is
+ * left in the allowlist.
+ */
+describe("copy-allowlist.json: the /downloads/ leg-13 scope entries are gone (#175, fix round 5)", () => {
+  const OLD = {
+    jbook_narratives:
+      "One row per J-book narrative text block — mission, description, justification, or accomplishment/planned-program — with its XML element path",
+    dim_programs:
+      "One row per program element that has full R-2/P-40 J-book detail — the detail-grade tier, NOT the full page universe (see the corpus stateme",
+  } as const;
+
+  /** The scope literal export_site.py writes for `name` (implicit concatenation). */
+  function exporterScope(name: string): string {
+    const src = fs.readFileSync(path.resolve(__dirname, "../../../src/govbudget/export_site.py"), "utf8");
+    const start = src.indexOf(`    "${name}": (\n`);
+    expect(start, `${name} is a _DATASET_SCOPES key`).toBeGreaterThan(-1);
+    const lines = src.slice(start).split("\n").slice(1);
+    const parts: string[] = [];
+    for (const line of lines) {
+      const t = line.trim();
+      if (t.startsWith("#")) continue;
+      const m = /^"((?:[^"\\]|\\.)*)"$/.exec(t);
+      if (!m) break;
+      parts.push(m[1]);
+    }
+    return parts.join("");
+  }
+
+  it.each(Object.entries(OLD))("%s: the new scope no longer matches the old entry", (name, old) => {
+    const scope = exporterScope(name);
+    // non-vacuity: the whole literal was read, first line to last
+    expect(scope.startsWith("One row per ")).toBe(true);
+    expect(scope.endsWith(".")).toBe(true);
+    expect(scope.includes(old)).toBe(false);
+    expect(scope).not.toContain("—");
+  });
+
+  it("neither entry is left in the allowlist", () => {
+    const allow = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../../scripts/gates/copy-allowlist.json"), "utf8"),
+    ) as { page: string; leg: number; text: string }[];
+    for (const old of Object.values(OLD)) {
+      expect(allow.filter((e) => e.text === old)).toEqual([]);
+    }
+    expect(allow.filter((e) => e.page === "/downloads/" && e.leg === 13)).toEqual([]);
+  });
 });

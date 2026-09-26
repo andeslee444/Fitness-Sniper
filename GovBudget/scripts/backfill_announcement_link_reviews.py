@@ -41,9 +41,9 @@ What each wave recorded per link (inspected 2026-09-25/26), and the row kind:
 
 No wave file names an exhibit or a fiscal year — the loader stamps them — so a
 record of (award_piid, pe_bli) is attached to EVERY budget_line_awards row of
-that pair (on 2026-09-26 each reviewed pair held exactly one row; a
-precision_sample only to the rows of the method it was drawn from — below). A
-record whose pair holds no row is counted and dropped (the table is per link).
+that pair (on 2026-09-26 each reviewed pair held exactly one row), a
+precision_sample included (R-DEC-110c — below). A record whose pair holds no
+row is counted and dropped (the table is per link).
 
 The adversarial verdict of a verdict pair follows the wave-4 rubric
 (scripts/mine_announcement_residue.py): 'upheld' when every lens returned
@@ -64,23 +64,36 @@ published link), adversarial 'refuted', NO article — the study judged the
 (award, PE) pair, so the record binds to the pair — source_file the sample
 id, entry_index the sample row's id, and a reason headed "drawn from the
 <method> tier of held-out precision sample <sample_id> (rubric attribution),
-judged refuted" (PRECISION_REASON; drawn_tier() reads it back). It is
-attached ONLY to the link the sample drew: the pair's budget_line_awards rows
-whose method is the one the sample row records. A pair drawn under a method
-it no longer holds gets no record (counted, never re-aimed at the route that
-replaced it). It is NOT an announcement-pipeline review: the grading reads it
-only as a refutation of the pair, deciding a link the pipeline keeps high
-('precision_sample_refuted'), never making a link "recorded" (classify()).
-Measured read-only 2026-09-26: 108 refuted rows (2026-09-04: 6
-announcement+lexicon, 26 fpds-ap+account, 7 subaward+lexicon; 2026-09-05: 60
-account+subagency; 2026-09-12: 9 announcement+lexicon); 77 records written
-(10 announcement+lexicon, 7 subaward+lexicon, 60 account+subagency links);
-none for the 26 fpds-ap+account draws (the tier was withdrawn on 2026-09-04;
-25 of those keys are held by fpds-ap rows and FA880712C0012/1203164SF by an
-announcement link since 2026-09-19) and none for 5 announcement pairs no
-longer loaded. The 10 announcement+lexicon links all publish high today and
-the rule demotes each as 'precision_sample_refuted'; the grading reads no
-other method's review records.
+judged refuted" (PRECISION_REASON; drawn_tier() reads it back).
+
+WHICH ROWS IT BINDS (R-DEC-110c, fix-round-3 ruling 2026-09-26: "A
+precision-study refutation (rubric attribution) is a verdict on the award->PE
+PAIR: it binds to every published method of the pair"). The record is
+attached to EVERY budget_line_awards row of the pair, whatever its method —
+not only the rows of the method the sample drew (R-DEC-110b's first
+reading, which left FA880712C0012/1203164SF published high). A row reached
+under a method other than the drawn one is counted and named
+(review_rows' bound_beyond_drawn; drawn_route_gone when the pair no longer
+holds the drawn method at all), and the reason keeps the drawn tier, so the
+export can still name it. It is NOT an announcement-pipeline review: the
+grading reads it only as a refutation of the pair ('precision_sample_refuted'),
+never making a link "recorded" (classify()), and it moves only a link that
+would otherwise publish high, of any method: an announcement link the
+pipeline keeps high, or an unadjudicated link of another method graded high
+(R-DEC-110c; dbt/models/audit/audit_link_grading.sql). Measured read-only 2026-09-26 (real Postgres; the
+published mart of the fix-round-3 chain-order scratch lake): 108 refuted rows
+(2026-09-04: 6 announcement+lexicon, 26 fpds-ap+account, 7 subaward+lexicon;
+2026-09-05: 60 account+subagency; 2026-09-12: 9 announcement+lexicon); 103
+records written — 10 announcement+lexicon, 7 subaward+lexicon, 60
+account+subagency links drawn under the method they hold, and the 26
+fpds-ap+account draws bound to the route that replaced the withdrawn tier (25
+fpds-ap rows, published medium, and FA880712C0012/1203164SF, an announcement
+link since 2026-09-19) — none for 5 announcement pairs no longer loaded. 11
+announcement+lexicon links publish high and the rule demotes each as
+'precision_sample_refuted': the 10 drawn under that tier and
+FA880712C0012/1203164SF (drawn fpds-ap+account). The 25 fpds-ap rows carry
+the record too, and the grading would demote any of them it graded high; it
+grades each medium, so they keep their tier.
 
 ORDER (R-DEC-LOADER): migrate -> load_announcement_links -> THIS -> jbooks
 export-facts -> dbt. The loader rebuilds the links and their source rows this
@@ -152,8 +165,9 @@ class ReviewRecord:
     reason: str | None            # a list entry's own reason; None for pairs
     source_file: str              # repo-relative; a precision_sample: sample id
     #: precision_sample only: the method the sample row records — the tier the
-    #: link was DRAWN from. The record attaches only to the pair's rows of
-    #: that method (review_rows); None on every pipeline record.
+    #: link was DRAWN from. The record binds every row of the pair
+    #: (R-DEC-110c); review_rows names the rows it reaches under another
+    #: method. None on every pipeline record.
     drawn_method: str | None = None
 
 
@@ -207,8 +221,10 @@ def precision_records(sample_rows) -> list[ReviewRecord]:
     fix-round-2 ruling 2026-09-26): reviewer 'link' (the study judged a
     published link), adversarial 'refuted' (its two-lens verdict), NO
     article — the study judged the pair, so the record binds to the pair
-    (the mart's _binds) — source_file the sample id, entry_index the sample
-    row's id, drawn_method the tier the sample drew the link from."""
+    (the mart's _binds; every row of it, R-DEC-110c) — source_file the
+    sample id, entry_index the sample row's id, drawn_method the tier the
+    sample drew the link from (kept for the record and its reason; it no
+    longer narrows which rows the record reaches)."""
     return [
         ReviewRecord(piid, str(pe).strip(), "precision_sample", "link",
                      "refuted", None, None, None, None, int(row_id),
@@ -402,19 +418,25 @@ def review_rows(records, links: dict, cited: dict, *,
     cited:   (award_piid, pe_bli) -> {article_id} its announcement
              award_link_sources rows cite
     methods: (award_piid, pe_bli, exhibit, fiscal_year) -> the row's method;
-             required when a record carries a drawn_method
+             required when a record carries a drawn_method (to name every
+             row it reaches under another method)
 
-    A pipeline record attaches to every row of its pair. A precision_sample
-    record (drawn_method set) attaches ONLY to the rows of the method the
-    sample drew — the link it judged. A pair whose rows are all another
-    method (the drawn link since replaced by another route) gets no record:
-    counted in `not_the_drawn_link` (+ _pairs), never re-aimed at the link
-    that replaced it (R-DEC-110b: never invent).
+    Every record — a pipeline record and a precision_sample alike — attaches
+    to every row of its pair. R-DEC-110c (fix-round-3 ruling, 2026-09-26): a
+    precision-study refutation is a verdict on the award->PE PAIR, so it
+    binds to every method the pair publishes under, not only the method the
+    sample drew. The rows it reaches under another method are counted and
+    named in `bound_beyond_drawn` (+ _links: piid, pe_bli, exhibit, fiscal
+    year, drawn method, the row's method), and a record whose pair no longer
+    holds its drawn method at all in `drawn_route_gone` (+ _pairs) — bound
+    to the route that replaced it, never dropped. The reason keeps the drawn
+    tier (drawn_tier()).
     """
     rows: list[tuple] = []
     seen: set[tuple] = set()
-    counts = {"no_link": 0, "duplicate": 0, "not_the_drawn_link": 0,
-              "not_the_drawn_link_pairs": []}
+    counts = {"no_link": 0, "duplicate": 0,
+              "bound_beyond_drawn": 0, "bound_beyond_drawn_links": [],
+              "drawn_route_gone": 0, "drawn_route_gone_pairs": []}
     for r in records:
         idents = links.get((r.piid, r.pe_bli))
         if not idents:
@@ -425,14 +447,19 @@ def review_rows(records, links: dict, cited: dict, *,
                 raise ValueError(
                     f"{r.record_kind} record for {(r.piid, r.pe_bli)} names the"
                     " method it was drawn from; review_rows needs the rows'"
-                    " methods to attach it only to that link")
-            idents = [(ex, fy) for ex, fy in idents
-                      if methods.get((r.piid, r.pe_bli, ex, int(fy))) == r.drawn_method]
-            if not idents:
-                counts["not_the_drawn_link"] += 1
-                counts["not_the_drawn_link_pairs"].append(
+                    " methods to name every row it binds under another method")
+            beyond = sorted(
+                (ex, int(fy), methods.get((r.piid, r.pe_bli, ex, int(fy))))
+                for ex, fy in set(idents)
+                if methods.get((r.piid, r.pe_bli, ex, int(fy))) != r.drawn_method)
+            for ex, fy, m in beyond:
+                counts["bound_beyond_drawn"] += 1
+                counts["bound_beyond_drawn_links"].append(
+                    (r.piid, r.pe_bli, ex, fy, r.drawn_method, m))
+            if len(beyond) == len(set(idents)):
+                counts["drawn_route_gone"] += 1
+                counts["drawn_route_gone_pairs"].append(
                     (r.piid, r.pe_bli, r.drawn_method))
-                continue
         for exhibit, fy in sorted(set(idents)):
             key = (r.piid, r.pe_bli, exhibit, int(fy), r.source_file,
                    r.record_kind, r.entry_index)
@@ -477,7 +504,8 @@ def _is_precision(row) -> bool:
 def sampled_pairs(rows) -> set[tuple[str, str]]:
     """(award_piid, pe_bli) of every pair a precision_sample record refutes —
     the mart's sample_refutations: the study judged the PAIR, so its
-    refutation binds every row of the pair (R-DEC-110b)."""
+    refutation binds every row of the pair, under every method
+    (R-DEC-110b, R-DEC-110c)."""
     return {(r[0], r[1]) for r in rows
             if _is_precision(r) and (r[_C["adversarial_verdict"]] == "refuted"
                                      or r[_C["reviewer_verdict"]] in ("weak", "wrong"))}
@@ -611,8 +639,12 @@ def precision_demotions(rows, published) -> list[tuple]:
     """The published links the rule demotes as 'precision_sample_refuted' —
     the pipeline keeps them high and only their own precision sample moves
     them (R-DEC-110b) — one entry per (link identity, drawn method, sample
-    id) read from the pair's precision_sample rows (drawn_tier). The export
-    lane keeps each in the tier it was drawn from in the precision tally."""
+    id) read from the pair's precision_sample rows (drawn_tier). The drawn
+    method may differ from the method the link publishes under (R-DEC-110c:
+    FA880712C0012/1203164SF, drawn fpds-ap+account, publishing
+    announcement+lexicon); the export tallies the verdict in the tier it
+    counted in immediately before the demotion, never in a tier that would
+    flatter a figure, and names both."""
     by_link = _by_link(rows)
     sampled = sampled_pairs(rows)
     tiers: dict[tuple[str, str], set[tuple[str, str]]] = {}
@@ -712,10 +744,17 @@ def main() -> int:
         records = verdicts + lists + precision
         links, cited, methods = pair_links(pg, {(r.piid, r.pe_bli) for r in records})
         rows, row_counts = review_rows(records, links, cited, methods=methods)
-        not_drawn = row_counts.pop("not_the_drawn_link_pairs")
-        print(f"precision_sample records whose pair is held only by another"
-              f" route (the link the sample drew was replaced; no record"
-              f" written): {len(not_drawn)} {not_drawn[:10]}")
+        beyond = row_counts.pop("bound_beyond_drawn_links")
+        gone = row_counts.pop("drawn_route_gone_pairs")
+        beyond_by: dict[tuple[str, str], int] = {}
+        for *_key, drawn_m, row_m in beyond:
+            beyond_by[(drawn_m, row_m)] = beyond_by.get((drawn_m, row_m), 0) + 1
+        print(f"precision_sample records bound to the whole pair (R-DEC-110c):"
+              f" {len(beyond)} link row(s) under a method other than the one"
+              f" the sample drew, by (drawn, row method)"
+              f" {dict(sorted(beyond_by.items()))}; {len(gone)} record(s) whose"
+              f" pair no longer holds the drawn method at all (bound to the"
+              f" route that replaced it) {gone[:10]}")
         census: dict[tuple, int] = {}
         for r in rows:
             k = (r[_C["record_kind"]], r[_C["reviewer_verdict"]],

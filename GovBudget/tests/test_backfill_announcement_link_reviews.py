@@ -451,6 +451,11 @@ def test_classify_matches_the_mart_on_every_record_shape():
                  lenses=None),
             *bf.precision_records([(10, "2026-09-12", "WEAK_CITED_PRECISION",
                                     "PE1", "announcement+lexicon", "r")])],
+        # R-DEC-110c: drawn under another route, it still binds the pair
+        "UP_PRECISION_OTHER_ROUTE": [
+            _rec("UP_PRECISION_OTHER_ROUTE", **ups),
+            *bf.precision_records([(11, "2026-09-04", "UP_PRECISION_OTHER_ROUTE",
+                                    "PE1", "fpds-ap+account", "account")])],
     }
     records = [r for recs in cases.values() for r in recs]
     links = {(p, "PE1"): [("R-1", 2026)] for p in cases}
@@ -476,6 +481,7 @@ def test_classify_matches_the_mart_on_every_record_shape():
     assert mart["UP_LIST_PRECISION"] == "precision_sample_refuted"
     assert mart["PRECISION_ONLY"] == "announcement_review_unrecorded"
     assert mart["WEAK_CITED_PRECISION"] == "announcement_reviewer_rejected"
+    assert mart["UP_PRECISION_OTHER_ROUTE"] == "precision_sample_refuted"
 
 
 # ── R-DEC-110b: the held-out precision study's refutations ─────────────────
@@ -520,11 +526,18 @@ def test_precision_refutations_become_precision_sample_records():
     assert bf.drawn_tier("owns it") is None
 
 
-def test_a_precision_record_attaches_only_to_the_link_the_sample_drew():
-    """Never invent: the record lands on the pair's rows whose method is the
-    one the sample drew. P2 was drawn as fpds-ap+account and its key is held
-    by another route today — no record (counted); P3's pair is gone. A
-    pipeline record still attaches to every row of its pair."""
+def test_a_precision_record_binds_every_row_of_the_pair():
+    """R-DEC-110c (fix-round-3 ruling, 2026-09-26): a precision-study
+    refutation is a verdict on the award->PE PAIR, so it binds to every
+    method the pair publishes under — every budget_line_awards row of the
+    pair, as a pipeline record does — not only the rows of the method the
+    sample drew (R-DEC-110b's reading, which left FA880712C0012/1203164SF
+    high). P1 was drawn as announcement+lexicon and also holds an fpds-ap
+    row; P2 was drawn as fpds-ap+account and its key is held today by an
+    announcement link (the FA880712C0012/1203164SF shape). Every row the
+    record reaches beyond its drawn method is counted and named, never
+    silent; the reason keeps the drawn tier for the export. P3's pair holds
+    no row."""
     links = {("P1", "PE1"): [("R-1", 2026), ("P-1", 2026)],
              ("P2", "PE2"): [("R-1", 2026)]}
     methods = {("P1", "PE1", "R-1", 2026): "announcement+lexicon",
@@ -533,15 +546,51 @@ def test_a_precision_record_attaches_only_to_the_link_the_sample_drew():
     records = bf.precision_records(_SAMPLE_ROWS) + [_rec("P2", pe="PE2")]
     rows, counts = bf.review_rows(records, links, {}, methods=methods)
     got = [(r[0], r[2], r[4]) for r in rows]
-    assert got == [("P1", "R-1", "precision_sample"),
+    assert got == [("P1", "P-1", "precision_sample"),
+                   ("P1", "R-1", "precision_sample"),
+                   ("P2", "R-1", "precision_sample"),
                    ("P2", "R-1", "verdict_pair")]
-    assert counts["not_the_drawn_link"] == 1        # P2: drawn under another route
-    assert counts["not_the_drawn_link_pairs"] == [("P2", "PE2", "fpds-ap+account")]
-    assert counts["no_link"] == 1                   # P3
-    row = dict(zip(bf.COLUMNS, rows[0]))
+    # rows reached under a method other than the drawn one: named
+    assert counts["bound_beyond_drawn"] == 2
+    assert counts["bound_beyond_drawn_links"] == [
+        ("P1", "PE1", "P-1", 2026, "announcement+lexicon", "fpds-ap"),
+        ("P2", "PE2", "R-1", 2026, "fpds-ap+account", "announcement+lexicon")]
+    # records whose drawn route the pair no longer holds at all: bound anyway
+    assert counts["drawn_route_gone"] == 1
+    assert counts["drawn_route_gone_pairs"] == [("P2", "PE2", "fpds-ap+account")]
+    assert "not_the_drawn_link" not in counts        # nothing is dropped now
+    assert counts["no_link"] == 1                    # P3
+    row = dict(zip(bf.COLUMNS, rows[1]))
     assert (row["article_id"], row["cites_reviewed_article"], row["upholds"],
             row["source_file"], row["entry_index"]) == (
         None, None, False, "2026-09-12", 379)
+    # the drawn tier survives on a row bound under another route
+    p2 = dict(zip(bf.COLUMNS, rows[2]))
+    assert bf.drawn_tier(p2["reason"]) == ("fpds-ap+account", "2026-09-04")
+
+
+def test_a_pair_refuted_under_the_route_it_left_still_demotes_its_high_link():
+    """R-DEC-110c's named case: FA880712C0012/1203164SF was refuted on
+    attribution in the 2026-09-04 draw of the fpds-ap+account tier and has
+    published as announcement+lexicon/high since 2026-09-19 (#140). The
+    refutation is of the pair, so the upheld announcement link leaves high as
+    'precision_sample_refuted', and precision_demotions() still names the
+    tier the sample DREW it from (the export's drawn-tier tally)."""
+    W1 = "data/research/announcements/wave1_result.json"
+    records = [_rec("P2", pe="PE2", kind="survivor_list", lenses=None, src=W1),
+               *bf.precision_records(_SAMPLE_ROWS[1:2])]
+    links = {("P2", "PE2"): [("R-1", 2026)]}
+    methods = {("P2", "PE2", "R-1", 2026): "announcement+lexicon"}
+    rows, counts = bf.review_rows(records, links, {("P2", "PE2"): {"A1"}},
+                                  methods=methods)
+    c = bf.classify(rows)
+    assert c["sample_refuted"] and c["upheld_kinds"] == {"survivor_list"}
+    assert bf.rule_outcome(c) == "precision_sample_refuted"
+    published = [("P2", "PE2", "R-1", 2026)]
+    assert bf.coverage(rows, published)["rule: precision_sample_refuted"] == 1
+    assert bf.precision_demotions(rows, published) == [
+        (("P2", "PE2", "R-1", 2026), "fpds-ap+account", "2026-09-04")]
+    assert counts["drawn_route_gone_pairs"] == [("P2", "PE2", "fpds-ap+account")]
 
 
 def test_a_drawn_method_record_is_refused_without_the_rows_methods():
@@ -577,6 +626,11 @@ def test_a_precision_refutation_demotes_an_upheld_link_on_its_own_reason():
 
 
 def test_read_precision_refutations_reads_refuted_attribution_rows_only(con):
+    # The session DB is shared: tests/test_precision_study.py COMMITS its own
+    # refuted attribution rows, which this read would return when that file
+    # runs first. Cleared inside this test's transaction, which the `con`
+    # fixture rolls back — the other file's rows come back untouched.
+    con.execute("delete from link_precision_samples")
     con.execute(
         "insert into link_precision_samples (sample_id, award_piid, pe_bli,"
         " method, verdict, reason, rubric) values"

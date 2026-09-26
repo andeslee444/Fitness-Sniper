@@ -73,6 +73,27 @@ test("the high tier's claim is about naming the program, not confidence alone", 
   expect(text).toContain("a recorded review did not leave standing");
 });
 
+test("the high tier's claim carries /methodology/ §4's whole rule, not the uphold alone", () => {
+  const { container } = render(
+    <ProgramAwards initialAwards={[row("B", "medium")]} totalCount={1} peBli="0601101E" />,
+  );
+  const text = container
+    .querySelector("[data-awards-tier-note='medium']")!
+    .textContent!.replace(/\s+/g, " ");
+  // Decisions wave fix round 4 (review, 2026-09-26): "Only high rows rest on
+  // the contract naming this program with a recorded review upholding it"
+  // was false — audit_link_grading demotes a link that HAS an upholding
+  // record when a binding rejection or refutation, or its own precision
+  // sample, refutes it (10 precision_sample_refuted medium links in chain
+  // order, each with a pipeline uphold). /methodology/ §4 states the rule:
+  // high "only while a recorded review upholds it and no recorded rejection
+  // or refutation applies". The caveat now says the same.
+  expect(text).toContain(
+    "Only high rows rest on the contract naming this program with a recorded " +
+      "review upholding it and no recorded rejection or refutation applying.",
+  );
+});
+
 test("high-only tables render no caveat", () => {
   const { container } = render(
     <ProgramAwards initialAwards={[row("A", "high")]} totalCount={1} peBli="0601101E" />,

@@ -47,6 +47,14 @@ The 60 moves the 2026-09-19 run made before that existed are recorded by
 migration 020 from the evidence it cites in superseded_evidence (R-DEC-140),
 and the rebuild carries that column too.
 
+Recipient (R-DEC-RECIPIENT, fix-round-5 ruling 2026-09-26): each link names
+the UEI with the largest total obligation on the award; a tie for it goes to
+the UEI the link's cited announcement names, then to the lowest UEI. How it
+was decided is stored in budget_line_awards.recipient_basis (migration 019);
+see lake_evidence and link_recipient. Rows stored before the rule carry
+'pre_rule' (019's backfill, R-DEC-DERIVE) until this loader rewrites them;
+it never writes 'pre_rule' itself (incoming_member_claims refuses it).
+
 Chain order (R-DEC-LOADER, 2026-09-26): migrate -> THIS ->
 scripts/backfill_announcement_link_reviews.py -> jbooks export-facts -> build.
 The write refuses while any migration file is unapplied (require_migrations):
@@ -61,9 +69,11 @@ every 'announcement'/'subaward' row in award_link_sources): it deletes that
 whole partition and rebuilds it from the files on the command line, so a run
 given only wave 3 silently unpublishes waves 1 and 2 (ROADMAP #87).
 """
+import html
 import json
 import re
 import sys
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -71,6 +81,7 @@ import duckdb
 import psycopg
 
 from govbudget import config
+from govbudget.award_moves import AwardMoves, register_award_rows
 from govbudget.jbooks.collision_keys import (
     member_for_document,
     partition_split_keys,
@@ -78,8 +89,11 @@ from govbudget.jbooks.collision_keys import (
 )
 from derive_ap_links import (
     EVIDENCE_GRADED_METHODS,
+    RecipientCandidate,
     fed_accounts_from_codes,
     incoming_member_claims,
+    pick_recipient,
+    recipient_candidates,
     stored_member_claims,
 )
 
@@ -93,7 +107,7 @@ _OWNED_SQL_LIST = ", ".join(f"'{m}'" for m in OWNED_METHODS)
 
 #: The link upsert, hoisted so tests run the REAL statement
 #: (tests/test_load_announcement_links_supersede.py). The insert column list
-#: is the 13-column shape derive_ap_links.UPSERT_SQL shares
+#: is the 14-column shape derive_ap_links.UPSERT_SQL shares
 #: (tests/test_derive_ap_links_run_order.py compares the two).
 #:
 #: #140 (decided 2026-09-25 under the owner's delegation): the override is
@@ -103,16 +117,24 @@ _OWNED_SQL_LIST = ", ".join(f"'{m}'" for m in OWNED_METHODS)
 #: instead of vanishing. A conflict with a row this loader itself wrote earlier
 #: in the same run (a pair two waves both produced) is not a move from another
 #: route, so an owned row keeps whatever record it already carries.
+#:
+#: The recipient fields are part of the update (R-DEC-RECIPIENT, 2026-09-26):
+#: until then a link that took another route's key kept THAT route's recipient
+#: (an fpds-ap row's scan-order pick) under this loader's method, and the rule
+#: below never reached it.
 UPSERT_SQL = f"""insert into budget_line_awards
                (pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,
                 recipient_uei, matched_obligation, method, confidence, score, rationale,
-                account)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                account, recipient_basis)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                on conflict (pe_bli, exhibit, fiscal_year, award_piid) do update set
                  confidence=excluded.confidence, method=excluded.method,
                  score=excluded.score, rationale=excluded.rationale,
                  matched_obligation=excluded.matched_obligation,
                  account=excluded.account,
+                 recipient_name=excluded.recipient_name,
+                 recipient_uei=excluded.recipient_uei,
+                 recipient_basis=excluded.recipient_basis,
                  superseded_method=case
                    when budget_line_awards.method in ({_OWNED_SQL_LIST})
                    then budget_line_awards.superseded_method
@@ -137,7 +159,7 @@ SOURCE_UPSERT_SQL = """insert into award_link_sources
 
 
 def _key(row) -> tuple:
-    """budget_line_awards' unique key of a 13-column loader row."""
+    """budget_line_awards' unique key of a 14-column loader row."""
     return (row[0], row[1], int(row[2]), row[4])
 
 
@@ -325,6 +347,179 @@ DSN = config.PG_DSN
 ANN_URL = "https://www.defense.gov/News/Contracts/Contract/Article/{id}/"
 MANIFEST = ROOT / "data/raw/announcements/manifest.jsonl"
 WAYBACK_URL = "https://web.archive.org/web/{ts}/{url}"
+#: The raw contracts archive, one directory per fiscal year (fy=YYYY).
+CONTRACTS_GLOB = f"{ROOT}/data/parquet/contracts/fy=*/*.parquet"
+
+
+#: One row per PIID: (piid, total obligation, funding accounts, distinct
+#: UEIs) over the `_awards` view and the `want` table lake_evidence fills. The
+#: total a link publishes (matched_obligation) is the same double sum as
+#: before; the recipient is ranked on LAKE_RECIPIENT_ROWS' exact sums.
+LAKE_AWARD_SQL = """
+select award_id_piid as piid,
+       sum(try_cast(federal_action_obligation as double)) as ob,
+       max(federal_accounts_funding_this_award) as accounts,
+       count(distinct nullif(recipient_uei, '')) as n_uei
+from _awards
+where award_id_piid in (select piid from want)
+group by award_id_piid
+order by award_id_piid
+"""
+
+#: The rows each PIID's recipient candidates are summed from
+#: (derive_ap_links.recipient_candidates), the same rows as LAKE_AWARD_SQL.
+#: The ranking uses an exact DECIMAL sum (the archive's obligations carry at
+#: most two decimals: 0 of the 54,599 rows of the loader's 1,224 PIIDs carry
+#: more, 2026-09-26), so two recipients whose float sums differ only by
+#: addition order still tie, and the tie is broken the same way every run.
+LAKE_RECIPIENT_ROWS = """(
+    select award_id_piid as piid,
+           nullif(recipient_uei, '')  as uei,
+           nullif(recipient_name, '') as name,
+           try_cast(federal_action_obligation as decimal(38, 2)) as ob_exact
+    from _awards
+    where award_id_piid in (select piid from want)
+)"""
+
+
+def lake_evidence(piids, contracts_glob: str = CONTRACTS_GLOB, *,
+                  stats: dict | None = None, candidates: dict | None = None
+                  ) -> tuple[dict[str, tuple], AwardMoves]:
+    """The lake's evidence per PIID — (recipient_name, recipient_uei, total
+    obligation, funding accounts) — and the fiscal-year moves applied.
+
+    Read through the fiscal-year move rule (ROADMAP #133; R-DEC-133c,
+    fix-round-3 ruling 2026-09-26: "The four remaining raw-archive summers
+    (crosswalk.py, load_announcement_links.py, derive_ap_links.py,
+    precision_study.py) read through src/govbudget/award_moves.py"): the
+    retired copy of a transaction a source correction moved into another
+    fiscal year's archive is not summed — dbt staging drops it from
+    fct_award_transactions, so the obligation a link carries would otherwise
+    count the moved transaction twice. An ambiguous duplicate key raises
+    AmbiguousAwardDuplicateError before anything is read. With nothing to
+    retire (0 moves on 2026-09-26) the rows are exactly the plain archive
+    read this loader made before.
+
+    THE RECIPIENT (fix round 5, 2026-09-26). One award can carry several
+    recipient UEIs: 33 of the 1,224 PIIDs this loader found in the lake on
+    2026-09-26. Until then the name and the UEI were two independent
+    any_value() picks that DuckDB resolves by scan order; six identical dry
+    runs returned a different recipient for 18 of those PIIDs, and the
+    published HHI moved with the draw.
+
+    The rule is R-DEC-RECIPIENT's (fix-round-5 ruling, 2026-09-26;
+    derive_ap_links.pick_recipient), over the same rows the obligation is
+    summed from (move rule applied), summed exactly (LAKE_RECIPIENT_ROWS):
+      (1) the UEI whose rows carry the largest total obligation on the award.
+          Rows with no UEI count only when the award has no UEI at all, and
+          no UEI is None, never '';
+      (2) in a tie for that total — including all-$0 — the UEI the link's
+          cited announcement names. That is a property of a LINK, not of the
+          award (one PIID's links can cite different articles), so it is
+          link_recipient's step: the (name, uei) returned here has none;
+      (3) only then the lowest UEI.
+    The name comes from the picked UEI's own rows: the name carrying the
+    largest total obligation among them, ties to the lower name. It is never
+    borrowed from another UEI's rows; when the picked UEI's rows name no one
+    the name is None, and main() skips the link and counts it.
+
+    `stats`, when given, is filled with piids (found in the lake), multi_uei
+    and multi_uei_piids (the PIIDs with more than one UEI, sorted) for the
+    dry run's print. `candidates`, when given, is filled with PIID -> its
+    derive_ap_links.RecipientCandidate list, which link_recipient ranks per
+    link.
+    """
+    lake = duckdb.connect()
+    try:
+        moves = register_award_rows(lake, [contracts_glob], view="_awards",
+                                    require_transaction_keys=True)
+        lake.execute("create temp table want(piid varchar)")
+        lake.executemany("insert into want values (?)", [(p,) for p in piids])
+        rows = lake.execute(LAKE_AWARD_SQL).fetchall()
+        cands = recipient_candidates(lake, LAKE_RECIPIENT_ROWS, ("piid",))
+    finally:
+        lake.close()
+    ev = {}
+    for piid, ob, accounts, _n in rows:
+        chosen, _basis = pick_recipient(cands[(piid,)])
+        ev[piid] = (chosen.name, chosen.uei, ob, accounts)
+    if candidates is not None:
+        candidates.update({piid: cands[(piid,)] for piid, *_ in rows})
+    if stats is not None:
+        multi = sorted(r[0] for r in rows if r[3] > 1)
+        stats.update({"piids": len(rows), "multi_uei": len(multi),
+                      "multi_uei_piids": multi})
+    return ev, moves
+
+
+#: Corporate-form words an announcement and a registry spell differently
+#: ("Corp." / "CORPORATION", "Co." / "COMPANY"); dropped from the END of a
+#: name only, so they never merge two different names.
+_CORPORATE_FORMS = frozenset({
+    "INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY", "LLC",
+    "LTD", "LIMITED", "LP", "LLP", "PLC", "PLLC",
+})
+
+
+def recipient_name_key(text) -> str | None:
+    """A recipient name reduced to what an announcement and the award
+    registry both spell the same way — the normalized-name match of
+    R-DEC-RECIPIENT's step (2). None for a blank name, the packets' 'None'
+    string, or a name that is only a corporate form.
+
+    Normalized: HTML entities (the announcement packets carry '&amp;',
+    '&egrave;'), accents, case, a parenthetical ('(NGSC)', '(a wholly owned
+    subsidiary of ...)'), a ' - division' suffix, '&' vs 'and', punctuation
+    and spacing ('L-3' / 'L3', 'L.P.' / 'LP'), a leading or trailing 'The'
+    and trailing corporate-form words. NOT normalized: any other word. A
+    subsidiary, sister company or joint venture is a different recipient
+    ('Raytheon Technical Services Co.' is not 'RAYTHEON COMPANY', 'PD Systems
+    Inc.' is not 'PD POWER SYSTEMS, LLC'), so the key is equality, never a
+    prefix or token overlap.
+    """
+    if text is None or str(text).strip() in ("", "None"):
+        return None
+    # NFKD splits an accented letter into the letter and a combining mark;
+    # the mark is not A-Z0-9, so the token split below drops it ('ARETÈ' ->
+    # 'ARETE')
+    s = unicodedata.normalize("NFKD", html.unescape(str(text))).upper()
+    s = re.sub(r"\([^)]*\)", " ", s)
+    s = re.split(r"\s[-\u2013\u2014]\s", s, maxsplit=1)[0]  # hyphen, en or em dash
+    s = s.replace("&", " AND ")
+    s = re.sub(r"[.'\u2019]", "", s)  # right single quote
+    tokens = re.sub(r"[^A-Z0-9]+", " ", s).split()
+    while tokens and (tokens[-1] in _CORPORATE_FORMS or tokens[-1] == "THE"):
+        tokens.pop()
+    while tokens and tokens[0] == "THE":
+        tokens.pop(0)
+    return "".join(tokens) or None
+
+
+def announcement_named_ueis(cands: list[RecipientCandidate],
+                            contractor: str | None) -> frozenset[str]:
+    """The candidate UEIs an announcement's contractor text names: any name
+    on the UEI's own rows whose recipient_name_key equals the contractor's."""
+    key = recipient_name_key(contractor)
+    if key is None:
+        return frozenset()
+    return frozenset(c.uei for c in cands if c.uei is not None
+                     and any(recipient_name_key(n) == key for n in c.names))
+
+
+def link_recipient(cands: list[RecipientCandidate], packet: dict,
+                   method: str) -> tuple[str | None, str | None, str]:
+    """(recipient_name, recipient_uei, recipient_basis) for ONE link
+    (R-DEC-RECIPIENT). `packet` is the packet the link's card cites
+    (provenance_packets). Only an 'announcement+lexicon' link cites an
+    announcement: its packet's `contractor` is the text step (2) matches. A
+    'subaward+lexicon' link cites an FSRS subaward record, whose packet names
+    no prime contractor (wave 3 carries the string 'None'), so ties there go
+    to the lowest UEI. The published name is the picked UEI's own
+    largest-dollar name, never the announcement's text."""
+    contractor = (_packet_value(packet, "contractor")
+                  if method == "announcement+lexicon" else None)
+    chosen, basis = pick_recipient(cands, announcement_named_ueis(cands, contractor))
+    return chosen.name, chosen.uei, basis
 
 
 def _packet_value(packet: dict, key: str) -> str | None:
@@ -695,18 +890,19 @@ def main() -> int:
         pairs.append((piid, pe, s.get("reason", ""), account))
     print(f"surviving {len(surviving)} -> publishable {len(pairs)}; skipped {skipped}")
 
-    # lake evidence for recipients/obligations/funding accounts
+    # lake evidence for recipients/obligations/funding accounts, read through
+    # the fiscal-year move rule (R-DEC-133c; lake_evidence)
     piids = sorted({p for p, _, _, _ in pairs})
-    lake = duckdb.connect()
-    lake.execute("create temp table want(piid varchar)")
-    lake.executemany("insert into want values (?)", [(p,) for p in piids])
-    ev = {r[0]: r[1:] for r in lake.execute(f"""
-        select award_id_piid, any_value(recipient_name), any_value(recipient_uei),
-               sum(try_cast(federal_action_obligation as double)),
-               max(federal_accounts_funding_this_award)
-        from read_parquet('{ROOT}/data/parquet/contracts/fy=*/*.parquet', union_by_name=true)
-        where award_id_piid in (select piid from want) group by 1""").fetchall()}
-    lake.close()
+    pick: dict = {}
+    cands: dict = {}
+    ev, moves = lake_evidence(piids, stats=pick, candidates=cands)
+    print(f"award lake: {moves.summary()}")
+    print(f"recipient pick (R-DEC-RECIPIENT): {pick['multi_uei']} of"
+          f" {pick['piids']} award(s) in the lake carry more than one recipient"
+          f" UEI; each link takes the UEI with the largest total obligation"
+          f" (a tie: the UEI the link's cited announcement names, then the"
+          f" lowest UEI) and a name from that UEI's own rows"
+          f" {pick['multi_uei_piids'][:10]}")
 
     # Keyed (pe_bli, account) — account is None for every pe_bli that names
     # one program, and the resolved member's own account for a shared BLI
@@ -740,15 +936,27 @@ def main() -> int:
     src_rows = []
     no_source_id = 0
     no_lake_evidence = 0
+    no_recipient_name = 0
     for piid, pe, reason, account in pairs:
-        rname, ruei, ob, accts = ev.get(piid, (None, None, None, None))
-        if rname is None:
+        if piid not in ev:
             # the lake does not hold this PIID (formatting variant or pre-FY17
             # award): a link the site cannot back with transactions is not
             # published — counted below, never inserted with a null recipient
             no_lake_evidence += 1
             continue
+        _award_name, _award_uei, ob, accts = ev[piid]
         p = prov.get((piid, pe), {})
+        subaward = (p.get("match_basis") or "") == "subaward-description-exact"
+        # R-DEC-RECIPIENT: per LINK, because a tie for the largest total is
+        # broken by the recipient the link's CITED announcement names
+        rname, ruei, basis = link_recipient(
+            cands[piid], p,
+            "subaward+lexicon" if subaward else "announcement+lexicon")
+        if rname is None:
+            # the picked UEI's rows name no recipient (a name is never
+            # borrowed from another UEI's rows) — counted below, not inserted
+            no_recipient_name += 1
+            continue
         aid = p.get("article_id")
         rationale = (f"defense.gov contract announcement {aid} ({p.get('date')}): "
                      f"program '{p.get('program_name')}' named for this award "
@@ -765,7 +973,7 @@ def main() -> int:
         # method so the tier states the evidence species. It keeps its
         # existing behavior — no money-color guard (the subaward description
         # is the evidence, not the award's own funding account).
-        if (p.get("match_basis") or "") == "subaward-description-exact":
+        if subaward:
             method, conf = "subaward+lexicon", "medium"
             rationale = rationale.replace("defense.gov contract announcement None (None)",
                                           f"FSRS subaward {p.get('subaward_number')} ({p.get('subawardee')})")
@@ -782,7 +990,7 @@ def main() -> int:
                 continue
             method, conf = "announcement+lexicon", "high"
         rows.append((pe, ex, 2026, org, piid, rname, ruei, ob, method, conf, 2,
-                     rationale, account))
+                     rationale, account, basis))
         # Structural provenance for the citation tier — same packet, same
         # method decision, so a published link and its source row agree.
         sr = source_row(piid, pe, p, method, manifest)
@@ -792,7 +1000,15 @@ def main() -> int:
             src_rows.append(sr)
     print(f"rows to upsert: {len(rows)}; distinct PEs: {len({r[0] for r in rows})}; "
           f"skipped for no lake evidence: {no_lake_evidence}; "
+          f"skipped for no recipient name on the picked UEI's rows:"
+          f" {no_recipient_name}; "
           f"skipped for money_color_mismatch: {skipped['money_color_mismatch']}")
+    # R-DEC-RECIPIENT: how each link's recipient was decided (stored in
+    # budget_line_awards.recipient_basis)
+    basis_rows: dict[str, int] = {}
+    for r in rows:
+        basis_rows[r[13]] = basis_rows.get(r[13], 0) + 1
+    print(f"recipient basis over the rows to upsert: {dict(sorted(basis_rows.items()))}")
     # ROADMAP #70: what the shared BLI codes actually gained this run.
     split_gains = {}
     for r in rows:

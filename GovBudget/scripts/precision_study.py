@@ -52,6 +52,7 @@ from pathlib import Path
 
 import psycopg
 
+from govbudget.award_moves import AwardArchiveError, register_award_rows
 from govbudget.export_site import _PINNED_PRECISION_SAMPLES
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -139,6 +140,19 @@ def enrich_packets(packets: list[dict], dsn: str, contracts_glob: str = CONTRACT
              period of performance, total obligation, fiscal years present.
              When no parquet matches `contracts_glob` the packet says so in
              `award.lake` instead of carrying an empty award silently.
+
+    The award lake is read through the fiscal-year move rule (ROADMAP #133;
+    R-DEC-133c, fix-round-3 ruling 2026-09-26: "The four remaining
+    raw-archive summers (crosswalk.py, load_announcement_links.py,
+    derive_ap_links.py, precision_study.py) read through
+    src/govbudget/award_moves.py"): the retired copy of a transaction a
+    source correction moved into another fiscal year's archive is neither
+    summed into the obligation nor listed among the fiscal years, as dbt
+    staging drops it. An ambiguous duplicate key (AmbiguousAwardDuplicateError)
+    or an archive the rule cannot read (AwardArchiveError) RAISES: it is not
+    "no parquet readable", and a packet must never go to an adjudicator with
+    its award evidence silently missing. With nothing to retire (0 moves on
+    2026-09-26) the rows are exactly the plain archive read made before.
     """
     pes = sorted({p["pe_bli"] for p in packets})
     piids = sorted({p["piid"] for p in packets})
@@ -176,26 +190,32 @@ def enrich_packets(packets: list[dict], dsn: str, contracts_glob: str = CONTRACT
     try:
         import duckdb
         lst = ",".join("'" + p.replace("'", "''") + "'" for p in piids)
-        rows = duckdb.sql(f"""
-            select award_id_piid,
-                   arg_max(coalesce(transaction_description, ''),
-                           length(coalesce(transaction_description, ''))),
-                   arg_max(coalesce(prime_award_base_transaction_description, ''),
-                           length(coalesce(prime_award_base_transaction_description, ''))),
-                   list(distinct awarding_sub_agency_name),
-                   list(distinct awarding_office_name),
-                   list(distinct federal_accounts_funding_this_award),
-                   list(distinct dod_acquisition_program_description),
-                   any_value(naics_description),
-                   any_value(product_or_service_code_description),
-                   min(period_of_performance_start_date),
-                   max(period_of_performance_current_end_date),
-                   sum(try_cast(federal_action_obligation as double)),
-                   list(distinct fy)
-            from read_parquet('{contracts_glob}', union_by_name=true)
-            where award_id_piid in ({lst})
-            group by 1
-        """).fetchall()
+        lake = duckdb.connect()
+        try:
+            register_award_rows(lake, [contracts_glob], view="_awards",
+                                require_transaction_keys=True)
+            rows = lake.execute(f"""
+                select award_id_piid,
+                       arg_max(coalesce(transaction_description, ''),
+                               length(coalesce(transaction_description, ''))),
+                       arg_max(coalesce(prime_award_base_transaction_description, ''),
+                               length(coalesce(prime_award_base_transaction_description, ''))),
+                       list(distinct awarding_sub_agency_name),
+                       list(distinct awarding_office_name),
+                       list(distinct federal_accounts_funding_this_award),
+                       list(distinct dod_acquisition_program_description),
+                       any_value(naics_description),
+                       any_value(product_or_service_code_description),
+                       min(period_of_performance_start_date),
+                       max(period_of_performance_current_end_date),
+                       sum(try_cast(federal_action_obligation as double)),
+                       list(distinct fy)
+                from _awards
+                where award_id_piid in ({lst})
+                group by 1
+            """).fetchall()
+        finally:
+            lake.close()
         for r in rows:
             clean = lambda xs: sorted(x for x in (xs or []) if x)  # noqa: E731
             award[r[0]] = {
@@ -212,6 +232,10 @@ def enrich_packets(packets: list[dict], dsn: str, contracts_glob: str = CONTRACT
                 "obligation": round(r[11], 2) if r[11] is not None else None,
                 "fiscal_years": sorted(int(x) for x in (r[12] or []) if x is not None),
             }
+    except AwardArchiveError:
+        # an ambiguous duplicate, or an archive the move rule cannot read: the
+        # parquet IS readable, so the note below would be false (docstring)
+        raise
     except Exception as e:  # no parquet under the glob (fixture checkout), bad glob
         lake_note = f"no contracts parquet readable at {contracts_glob}: {type(e).__name__}: {e}"
 

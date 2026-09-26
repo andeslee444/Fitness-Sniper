@@ -499,13 +499,13 @@ describe("methodology ↔ docs — the decisions wave's passages", () => {
     "rejection or refutation applies; otherwise medium, with the reason recorded.";
   const MENTION_RULE =
     "the program's PE/BLI code appears (an all-digit one only beside a " +
-    "budget-line label; none of the 1,631 bare-number matches before " +
-    "2026-09-26 had one), a curated alias appears, or at least two " +
+    "budget-line label; none of the 1,631 bare-number matches counted " +
+    "before this rule had one), a curated alias appears, or at least two " +
     "distinct, non-generic words of one program's title co-occur in the same filing";
   const AMENDMENT_RULE =
-    "Since 2026-09-26 an amendment replaces its original instead of adding to " +
-    "it; where a quarter's amendments disagree, the smallest counts (our copy " +
-    "keeps no posting date)";
+    "An amendment replaces its original instead of adding to it (a correction " +
+    "decided 2026-09-26); where a quarter's amendments disagree, the smallest " +
+    "counts (our copy keeps no posting date)";
 
   it("the Medium lead is one sentence on both (#107(b): no ranking of the kinds)", () => {
     expect(page4()).toContain(MEDIUM);
@@ -524,7 +524,7 @@ describe("methodology ↔ docs — the decisions wave's passages", () => {
     }
   });
 
-  it("§2's mention rule (#176) and amendment rule (R-DEC-AMEND) are one sentence on both", () => {
+  it("§2's mention rule (#176) and amendment rule (#178) are one sentence on both", () => {
     for (const t of [page2(), doc2()]) {
       expect(t).toContain(MENTION_RULE);
       expect(t).toContain(AMENDMENT_RULE);
@@ -577,5 +577,89 @@ describe("methodology ↔ docs — the decisions wave's passages", () => {
     for (const [name, t] of [["review census", review], ["demotions", demoted], ["withdrawal", withdrawn]]) {
       expect(unref(t), `docs §4 ${name} passage types a figure`).not.toMatch(/\d/);
     }
+  });
+});
+
+/**
+ * Decisions wave fix round 4 (review findings: the docs cited "ROADMAP
+ * R-DEC-AMEND" and put the duplicate-original LDA reports "on the backlog",
+ * and neither existed in ROADMAP.md; the dates of rulings were written as the
+ * dates the site changed). What a reader of docs/methodology.md is pointed at
+ * must exist where it points:
+ *   - every "ROADMAP #N" names an entry filed in the ROADMAP's backlog;
+ *   - no internal ledger id (R-DEC-*, the controller's ruling ids, which the
+ *     ROADMAP does not define); an R-INT-n only where the ROADMAP defines it;
+ *   - the §2 residuals the docs disclose cite their backlog entries, found in
+ *     the ROADMAP by title, each filed open;
+ *   - no "since / until / before <date>" dating a change of the site.
+ */
+describe("docs/methodology.md points only at what exists", () => {
+  const ROADMAP = path.join(SITE, "..", "docs", "superpowers", "ROADMAP.md");
+  const doc = () => fs.readFileSync(DOC, "utf8");
+  const roadmap = () => fs.readFileSync(ROADMAP, "utf8");
+  /** Backlog entry numbers, in the backlog section only: "- **#N …" (#70 on)
+   *  and the older numbered list's "N. **…" (#1–#69). */
+  const filed = () => {
+    const src = roadmap();
+    const i = src.indexOf("\n## Improvement backlog");
+    expect(i, "ROADMAP lost its backlog section").toBeGreaterThan(-1);
+    const backlog = src.slice(i);
+    return new Set(
+      [...backlog.matchAll(/^- \*\*#(\d+)\b|^(\d+)\. \*\*/gm)].map((m) => Number(m[1] ?? m[2])),
+    );
+  };
+  /** The entry whose bold title matches `re`: its number and its full text. */
+  const entry = (re: RegExp) => {
+    const src = roadmap();
+    const heads = [...src.matchAll(/^- \*\*#(\d+) ([^\n]*(?:\n(?!\n)[^\n]*)*)/gm)];
+    const hit = heads.filter((m) => re.test(m[2].replace(/\s+/g, " ").split("**")[0]));
+    expect(hit.length, `ROADMAP has ${hit.length} entries matching ${re}`).toBe(1);
+    return { n: Number(hit[0][1]), text: hit[0][2].replace(/\s+/g, " ") };
+  };
+
+  it("every ROADMAP #N the docs cite is a filed backlog entry", () => {
+    const have = filed();
+    const cited = new Set<number>();
+    for (const m of doc().matchAll(/ROADMAP((?:[\s,]*(?:and\s+)?#\d+(?:\([a-z]\))?)+)/g)) {
+      for (const n of m[1].matchAll(/#(\d+)/g)) cited.add(Number(n[1]));
+    }
+    expect(cited.size).toBeGreaterThan(10);
+    const missing = [...cited].filter((n) => !have.has(n)).sort((a, b) => a - b);
+    expect(missing, "docs cite ROADMAP numbers with no backlog entry").toEqual([]);
+  });
+
+  it("no internal ledger id the ROADMAP does not define", () => {
+    const d = doc();
+    expect(d).not.toMatch(/\bR-DEC-/);
+    const rm = roadmap();
+    const undefinedInt = [...new Set([...d.matchAll(/\bR-INT-\d+\b/g)].map((m) => m[0]))].filter(
+      (id) => !rm.includes(id),
+    );
+    expect(undefinedInt).toEqual([]);
+    expect(d).not.toMatch(/\bon the backlog\b/);
+  });
+
+  it("the §2 lobbying residuals cite their open backlog entries", () => {
+    const two = between(doc(), "\n## 2.", "\n## 3.").replace(/\s+/g, " ");
+    const posting = entry(/posting date/i);
+    const originals = entry(/duplicate original LDA reports/i);
+    for (const e of [posting, originals]) {
+      expect(two, `docs §2 does not cite ROADMAP #${e.n}`).toContain(`ROADMAP #${e.n}`);
+      expect(e.text).toMatch(/\*\*Status:\*\* open \(2026-09-26\)\.$/);
+    }
+    // the tie-break entry names every piece the fix needs (R-DEC-AMEND-c)
+    for (const piece of ["_trim_filing", "restamp_filings", "dt_posted", "influence pull"]) {
+      expect(posting.text).toContain(piece);
+    }
+    expect(originals.text).toMatch(/22 /);
+  });
+
+  it("no sentence dates when the site changed", () => {
+    const d = doc();
+    // History already deployed stays (the 2026-09-19 announcement correction);
+    // what this bans is the decisions wave's ruling dates written as the
+    // dates the site changed.
+    expect(d).not.toMatch(/\b(?:[Ss]ince|[Uu]ntil|[Bb]efore) 2026-09-2[5-9]\b/);
+    expect(d).not.toMatch(/ROADMAP #176 \(2026-09-26\)/);
   });
 });

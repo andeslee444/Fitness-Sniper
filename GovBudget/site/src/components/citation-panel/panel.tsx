@@ -104,8 +104,9 @@ interface CitationPanelProviderProps {
    * page itself renders, never their bodies. For a listed id hasCitation()
    * answers true, so a derived card's input chip naming it is clickable, and
    * opening it takes the same fetch-on-miss path as any other id missing
-   * from the slice. Omitted (every page but /district/{code}/), hasCitation()
-   * knows the slice plus facts already resolved on this page view, as before.
+   * from the slice. Omitted (every page but /district/{code}/ and, since
+   * decisions fix round 5, /company/{slug}/), hasCitation() knows the slice
+   * plus facts already resolved on this page view, as before.
    */
   shardResolvableIds?: readonly string[];
   /**

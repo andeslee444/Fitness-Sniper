@@ -28,12 +28,14 @@ PE = "RO0601101E"
 ORG = "run-order-test"
 
 
-def _row(piid, method, confidence, *, rationale="fpds-ap derivation", account=None):
-    """One 13-column budget_line_awards tuple in the loader's own order."""
+def _row(piid, method, confidence, *, rationale="fpds-ap derivation", account=None,
+         basis="obligation"):
+    """One 14-column budget_line_awards tuple in the loader's own order (the
+    14th, recipient_basis, is R-DEC-RECIPIENT's — migration 019)."""
     return (
         PE, "R-1", 2026, ORG, piid,
         "RECIPIENT INC", "UEI000000000", 1000.0, method,
-        confidence, 1.0, rationale, account,
+        confidence, 1.0, rationale, account, basis,
     )
 
 
@@ -144,12 +146,12 @@ def test_a_row_of_the_wrong_width_raises_instead_of_reading_the_wrong_column():
     while still looking like it fired (2026-09-04 final review M3)."""
     from derive_ap_links import incoming_member_claims
 
-    short = _row("PIID-1", "fpds-ap", "medium")[:-1]  # 12 columns
-    with pytest.raises(ValueError, match=r"12 column\(s\), expected 13"):
+    short = _row("PIID-1", "fpds-ap", "medium")[:-1]  # 13 columns
+    with pytest.raises(ValueError, match=r"13 column\(s\), expected 14"):
         incoming_member_claims([short])
 
     wide = _row("PIID-1", "fpds-ap", "medium") + ("extra",)
-    with pytest.raises(ValueError, match=r"14 column\(s\), expected 13"):
+    with pytest.raises(ValueError, match=r"15 column\(s\), expected 14"):
         incoming_member_claims([wide])
 
 
@@ -184,6 +186,8 @@ def test_both_loaders_build_a_row_of_that_width():
     assert deriver_cols[2] == "fiscal_year"
     assert deriver_cols[4] == "award_piid"
     assert deriver_cols[12] == "account"
+    # R-DEC-RECIPIENT: how the recipient was decided, last (migration 019)
+    assert deriver_cols[13] == "recipient_basis"
 
 
 def test_the_announcement_loader_owns_exactly_the_methods_the_deriver_refuses():

@@ -39,6 +39,12 @@
  *   over the singleton pages and the heaviest instance of each templated
  *   class — see PAGE_WEIGHT_BUDGET below for why it is per-page and not a
  *   total over out/
+ * - shard-only citations (R-DEC-GATE-SHARDS, 2026-09-26): every built
+ *   /company/{slug}/ and /district/{code}/ page (and /district/) ships an EMPTY
+ *   embedded citations object — in index.html's RSC flight payload and in
+ *   every RSC .txt payload beside it — so the weight fix (Task 28b; decisions
+ *   fix round 5 for company pages) cannot regress silently under the
+ *   ceilings. See shard-only-citations.mjs
  */
 
 import fs from "fs";
@@ -46,6 +52,7 @@ import path from "path";
 import zlib from "zlib";
 import { createHash } from "crypto";
 import { fileURLToPath } from "url";
+import { runShardOnlyCitationsLeg } from "./shard-only-citations.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -1209,6 +1216,12 @@ export async function runBuildGate() {
       notes.push(`company pages: ${builtSlugs.length} ✓`);
     }
   }
+
+  // ── Shard-only citations (R-DEC-GATE-SHARDS) ──────────────────────────────
+  // Company and district pages resolve citation bodies from
+  // /json/cite-shards/, never from an embedded slice. Fails any such page
+  // whose provider payload (HTML or RSC .txt) embeds one.
+  runShardOnlyCitationsLeg({ outDir, errors, notes });
 
   // ── Core pages ────────────────────────────────────────────────────────────
   const corePages = [

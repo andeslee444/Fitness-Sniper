@@ -31,6 +31,16 @@ const MOCK = {
   districts: 107,
   editions: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
   filings: 4321,
+  // R-DEC-COVERAGE: site_meta.link_adjudication, cut to what the crosswalk
+  // blocker reads. Deliberately odd, unequal to every value above, so a
+  // blocker that types its share instead of reading it fails here. Mutable:
+  // the R-DEC-COVERAGE block below swaps it and re-reads the map.
+  linkAdjudication: {
+    measured_on: "2026-09-27",
+    published: 12866,
+    adjudicated: 9538,
+    high: { published_high: 1187, adjudicated_high: 73, two_lens_high: 73 },
+  } as Record<string, unknown>,
 };
 
 vi.mock("@/lib/data", () => ({
@@ -50,6 +60,7 @@ vi.mock("@/lib/data", () => ({
   getDecadeEditions: () => MOCK.editions,
   getFilingsCount: () => MOCK.filings,
   getSiteMeta: () => ({
+    link_adjudication: MOCK.linkAdjudication,
     award_fy_range: {
       fy_min: 2017,
       fy_max: 2026,
@@ -86,6 +97,10 @@ import {
   FILE_C_NOTE,
   MAP_REVIEWED_ON,
 } from "@/lib/coverage-map";
+import {
+  bridgeHighCensus,
+  checkCrosswalkBlockerWording,
+} from "../../../scripts/gates/coverage.mjs";
 
 const rows = getCoverageMap();
 const byId = new Map(rows.map((r) => [r.id, r]));
@@ -455,5 +470,67 @@ describe("coverage map — the lineage target names its own antecedent", () => {
   it("says what would stay in the candidate tier, not 'it'", () => {
     const t = byId.get("lineage")!.target;
     expect(t).toMatch(/Anything such a matcher found would stay in the candidate tier/);
+  });
+});
+
+/**
+ * R-DEC-COVERAGE (controller, 2026-09-26). The crosswalk blocker said "Most
+ * published links were hand-adjudicated (September 2026)" — true of the
+ * crosswalk's own grades today, FALSE of what a reader meets once #107(b)
+ * withdraws the account / sub-agency tier (603 of 3,767 links in the
+ * chain-order scratch mart, 16%). The share is now a figure read from
+ * site_meta: the High census, the one adjudication count site_meta measures
+ * over the published mart. Gate 14 leg cm[bridge] binds it; these tests run
+ * the module's own output through that same check.
+ */
+describe("coverage map — the hand-adjudicated share is read from site_meta (R-DEC-COVERAGE)", () => {
+  const blockerFor = (la: Record<string, unknown>) => {
+    const saved = MOCK.linkAdjudication;
+    MOCK.linkAdjudication = la;
+    try {
+      return getCoverageMap().find((r) => r.id === CROSSWALK_LIMIT_ID)!.blocker;
+    } finally {
+      MOCK.linkAdjudication = saved;
+    }
+  };
+  const gate = (blocker: string, la: Record<string, unknown>) =>
+    checkCrosswalkBlockerWording(blocker, bridgeHighCensus({ link_adjudication: la }));
+
+  it("states the High census as a figure, formatted, and never a majority word", () => {
+    const b = byId.get(CROSSWALK_LIMIT_ID)!.blocker;
+    expect(b).toContain("73 of the 1,187 links published at high were hand-adjudicated");
+    expect(b).not.toMatch(/\bmost\b|majority/i);
+    // The crosswalk-grade counts (budget_line_awards) are not "published links".
+    expect(b).not.toContain("9,538");
+    expect(b).not.toContain("12,866");
+    expect(gate(b, MOCK.linkAdjudication)).toEqual([]);
+  });
+
+  it("keeps the universal adversarial clause only while every adjudicated high link had two lenses", () => {
+    const la = {
+      measured_on: "2026-09-27",
+      high: { published_high: 1187, adjudicated_high: 73, two_lens_high: 71 },
+    };
+    const b = blockerFor(la);
+    expect(b).toContain(
+      "73 of the 1,187 links published at high were hand-adjudicated, and 71 of those " +
+        "per-award adjudications were challenged by two independent adversarial reviewers",
+    );
+    expect(b).not.toMatch(/where a per-award adjudication exists/);
+    expect(gate(b, la)).toEqual([]);
+  });
+
+  it("with no census it states no figure and leaves the count to /methodology/", () => {
+    for (const la of [
+      {},
+      { high: { published_high: 10, adjudicated_high: 11, two_lens_high: 0 } },
+      { high: { published_high: 0, adjudicated_high: 0, two_lens_high: 0 } },
+    ]) {
+      const b = blockerFor(la);
+      expect(b.replace(/September 2026/g, "")).not.toMatch(/\d/);
+      expect(b).toMatch(/\/methodology\/ states how many links were hand-adjudicated/);
+      expect(b).toMatch(/where a per-award adjudication exists it was challenged by two independent adversarial reviewers/);
+      expect(gate(b, la)).toEqual([]);
+    }
   });
 });

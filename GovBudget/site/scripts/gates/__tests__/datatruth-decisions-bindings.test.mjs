@@ -29,7 +29,15 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { runLinkPrecisionLeg, runLinkAdjudicationLeg } from "../datatruth.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  DEMOTION_REASON_WORDS,
+  REVIEW_KIND_EXTRA_WORDS,
+  runLinkPrecisionLeg,
+  runLinkAdjudicationLeg,
+} from "../datatruth.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────
 // leg n — link_precision.withdrawn
@@ -526,5 +534,345 @@ describe("gate 24 leg o — the pre-decisions shape is unaffected", () => {
     expect(
       legOErrors({ siteMeta: meta, passageText: text, reviewText: undefined, demotedText: undefined }),
     ).toEqual([]);
+  });
+});
+
+/**
+ * Decisions wave fix round 4 (review, 2026-09-26). Legs o's slot binding
+ * holds each figure to its POSITION and checks that the kind / reason words
+ * appear somewhere in the passage — it never tied a figure to the words
+ * that name what it counts. The reviewer ran four rewrites through this
+ * leg's injected seam and each scored zero errors:
+ *   (a) the review split with its labels traded: "418 only a survivor-list
+ *       entry and 627 a per-proposal verdict pair";
+ *   (b) the demotions with their reasons traded: "5 rejected by a reviewer,
+ *       12 refuted in review";
+ *   (c) "60 a two-lens hand adjudication" while only 50 carry both lenses;
+ *   (d) "86 of them still publish, at high" while they publish at medium.
+ * Each figure is now bound to the words right after it (up to the next
+ * figure): its kind, its reason, its tier. These are the proofs it fails.
+ */
+describe("gate 24 leg o — each figure is bound to the label that names it (fix round 4)", () => {
+  it("(a) FAILS when two kinds' labels trade places with their figures left in slot order", () => {
+    const swapped = REVIEW.replace(
+      "418 a per-proposal verdict pair and 627 only a survivor-list entry",
+      "418 only a survivor-list entry and 627 a per-proposal verdict pair",
+    );
+    expect(swapped).not.toBe(REVIEW);
+    const errs = legOErrors({ reviewText: swapped });
+    expect(errs.some((e) => /418/.test(e) && /verdict_pair/.test(e) && /survivor-list/.test(e))).toBe(true);
+    expect(errs.some((e) => /627/.test(e) && /survivor_list/.test(e))).toBe(true);
+  });
+
+  it("(a) a kind's figure may not carry a second kind's words beside its own", () => {
+    const both = REVIEW.replace("418 a per-proposal verdict pair", "418 a per-proposal verdict pair or survivor-list entry");
+    expect(legOErrors({ reviewText: both }).some((e) => /418/.test(e) && /survivor-list/.test(e))).toBe(true);
+  });
+
+  it("(b) FAILS when two reasons trade places with their figures left in slot order", () => {
+    const swapped = DEMOTED.replace(
+      "5 refuted in review, 12 rejected by a reviewer",
+      "5 rejected by a reviewer, 12 refuted in review",
+    );
+    expect(swapped).not.toBe(DEMOTED);
+    const errs = legOErrors({ demotedText: swapped });
+    expect(errs.some((e) => /"5"/.test(e) && /announcement_review_refuted/.test(e))).toBe(true);
+    expect(errs.some((e) => /"12"/.test(e) && /announcement_reviewer_rejected/.test(e))).toBe(true);
+  });
+
+  it("(b) an unknown reason is bound to its code, the way the page prints it", () => {
+    const meta = withMeta((b) => {
+      const d = b.high.demoted_from_high;
+      d.links = 92;
+      d.by_reason = { ...d.by_reason, zz_new_rule: 1 };
+      d.by_path["announcement+lexicon"].zz_new_rule = 1;
+    });
+    const ok = DEMOTED.replace("91 more", "92 more").replace(
+      " and 11 refuted by the precision study.",
+      ", 11 refuted by the precision study and 1 demoted as zz_new_rule.",
+    );
+    expect(legOErrors({ siteMeta: meta, demotedText: ok })).toEqual([]);
+    const bad = ok.replace("1 demoted as zz_new_rule", "1 refuted in review");
+    expect(legOErrors({ siteMeta: meta, demotedText: bad }).some((e) => /zz_new_rule/.test(e))).toBe(true);
+  });
+
+  it("(c) FAILS on 'two-lens' over an adjudication count that is not all two-lens", () => {
+    const meta = withMeta((b) => {
+      b.high.two_lens_high = 50;
+      b.high.by_path["account+tokens"].two_lens = 24;
+    });
+    const high = HIGH.replace("all 60 challenged", "50 challenged");
+    const errs = legOErrors({ siteMeta: meta, highText: high });
+    expect(errs.some((e) => /two-lens/.test(e) && /two_lens_high/.test(e))).toBe(true);
+    const honest = REVIEW.replace("60 a two-lens hand adjudication", "60 a per-award hand adjudication");
+    expect(legOErrors({ siteMeta: meta, highText: high, reviewText: honest })).toEqual([]);
+  });
+
+  it("(d) FAILS when the unpinned links' tier word is not the tier they publish at", () => {
+    const errs = legOErrors({
+      passageText: OPENER.replace("86 of them still publish, at medium", "86 of them still publish, at high"),
+    });
+    expect(errs.some((e) => /"high"/.test(e) && /unpinned_published_tier/.test(e) && /medium/.test(e))).toBe(true);
+  });
+
+  it("(d) FAILS on a tier word while the block names no single tier", () => {
+    const meta = withMeta((b) => { b.unpinned_published_tier = null; });
+    const errs = legOErrors({ siteMeta: meta });
+    expect(errs.some((e) => /unpinned_published_tier/.test(e))).toBe(true);
+    const plain = OPENER.replace("86 of them still publish, at medium, and", "86 of them still publish, and");
+    expect(legOErrors({ siteMeta: meta, passageText: plain })).toEqual([]);
+  });
+
+  it("(d) the old clause's tier word is bound to unpinned_tier too", () => {
+    const meta = withMeta((b) => {
+      b.unpinned_published = 8475;
+      b.unpinned_tier = "medium";
+    });
+    const text = OPENER.replace(
+      "; 86 of them still publish, at medium, and the rest no longer publish.",
+      "; those links publish at high.",
+    );
+    expect(legOErrors({ siteMeta: meta, passageText: text }).some((e) => /unpinned_tier/.test(e))).toBe(true);
+  });
+});
+
+describe("gate 24 leg o — the label maps mirror /methodology/'s (fix round 4)", () => {
+  /** A `const NAME: Record<string, string> = { … };` object literal in
+   *  page.tsx, read as data (string keys and values only). */
+  const readPageMap = (name) => {
+    const src = fs.readFileSync(
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../src/app/methodology/page.tsx"),
+      "utf8",
+    );
+    const m = src.match(new RegExp(`const ${name}: Record<string, string> = \\{([\\s\\S]*?)\\};`));
+    expect(m, name).not.toBeNull();
+    return Object.fromEntries(
+      [...m[1].matchAll(/(\w+):\s*"([^"]*)"/g)].map(([, k, v]) => [k, v]),
+    );
+  };
+
+  it("DEMOTION_REASON_WORDS equals page.tsx's DEMOTION_WORDS", () => {
+    expect(DEMOTION_REASON_WORDS).toEqual(readPageMap("DEMOTION_WORDS"));
+  });
+
+  it("REVIEW_KIND_EXTRA_WORDS equals page.tsx's REVIEW_KIND_EXTRA", () => {
+    expect(REVIEW_KIND_EXTRA_WORDS).toEqual(readPageMap("REVIEW_KIND_EXTRA"));
+  });
+});
+
+/**
+ * Decisions wave fix round 6 (fix-5 review, gates lens, 2026-09-26). Fix
+ * round 4's tier binding (case d) matched only the page's exact punctuation,
+ * /still publish(?:es)?,?\s+at\s+([a-z]+)/, so a tier word in any other
+ * phrasing was never compared with unpinned_published_tier. The reviewer ran
+ * three OPENER rewrites through the injected seam, with the block's tier
+ * "medium", and each scored zero leg-o errors:
+ *   "86 of them still publish (at high),"
+ *   "86 of them still publish in the high tier,"
+ *   "86 of them still publish — at high —"
+ * The tier word is now read from the words that FOLLOW the figure (and the
+ * words that follow "still publish" / "those links publish"), to the end of
+ * the sentence, whatever the punctuation between.
+ */
+describe("gate 24 leg o — the unpinned tier word is read from the words after the figure (fix round 6)", () => {
+  const AT = "86 of them still publish, at medium,";
+
+  it("fixture sanity: the shipped phrasing passes", () => {
+    expect(OPENER).toContain(AT);
+    expect(legOErrors({})).toEqual([]);
+  });
+
+  it("RED at fix 5: the reviewer's three phrasings each FAIL", () => {
+    for (const bad of [
+      "86 of them still publish (at high),",
+      "86 of them still publish in the high tier,",
+      "86 of them still publish — at high —",
+    ]) {
+      const text = OPENER.replace(AT, bad);
+      expect(text, bad).not.toBe(OPENER);
+      const errs = legOErrors({ passageText: text });
+      expect(
+        errs.some((e) => /"high"/.test(e) && /unpinned_published_tier/.test(e) && /"medium"/.test(e)),
+        `${bad}\n${errs.join("\n")}`,
+      ).toBe(true);
+    }
+  });
+
+  it("FAILS on a tier word placed anywhere after the figure in its sentence", () => {
+    for (const bad of [
+      "86 of them, at high, still publish,",
+      "86 of them still publish: high,",
+      "86 of them still publish [high],",
+      "86 of them still publish; at High,",
+      "86 of them still publish at the High tier,",
+    ]) {
+      const text = OPENER.replace(AT, bad);
+      expect(text, bad).not.toBe(OPENER);
+      expect(
+        legOErrors({ passageText: text }).some((e) => /unpinned_published_tier/.test(e) && /"medium"/.test(e)),
+        bad,
+      ).toBe(true);
+    }
+  });
+
+  it("the right tier in any phrasing passes", () => {
+    for (const ok of [
+      "86 of them still publish (at medium),",
+      "86 of them still publish in the medium tier,",
+      "86 of them still publish — at medium —",
+      "86 of them still publish, at Medium,",
+    ]) {
+      expect(legOErrors({ passageText: OPENER.replace(AT, ok) }), ok).toEqual([]);
+    }
+  });
+
+  it("with no single tier in the block, a tier word in any phrasing FAILS", () => {
+    const meta = withMeta((b) => { b.unpinned_published_tier = null; });
+    for (const bad of [
+      "86 of them still publish (at medium),",
+      "86 of them still publish in the high tier,",
+    ]) {
+      expect(
+        legOErrors({ siteMeta: meta, passageText: OPENER.replace(AT, bad) }).some((e) =>
+          /unpinned_published_tier/.test(e),
+        ),
+        bad,
+      ).toBe(true);
+    }
+    expect(legOErrors({ siteMeta: meta, passageText: OPENER.replace(AT, "86 of them still publish,") })).toEqual([]);
+  });
+
+  it("zero still publishing: a tier word after 'none of them still publishes' FAILS", () => {
+    const meta = withMeta((b) => { b.unpinned_published = 0; b.unpinned_published_tier = null; });
+    const text = OPENER.replace(
+      "; 86 of them still publish, at medium, and the rest no longer publish",
+      "; none of them still publishes (at high)",
+    );
+    expect(legOErrors({ siteMeta: meta, passageText: text }).some((e) => /unpinned_published_tier/.test(e))).toBe(true);
+  });
+
+  it("the old clause's tier word is read the same way", () => {
+    const meta = withMeta((b) => {
+      b.unpinned_published = 8475;
+      b.unpinned_tier = "medium";
+    });
+    const base = "; 86 of them still publish, at medium, and the rest no longer publish.";
+    expect(
+      legOErrors({ siteMeta: meta, passageText: OPENER.replace(base, "; those links publish (at medium).") }),
+    ).toEqual([]);
+    for (const bad of ["; those links publish (at high).", "; those links publish in the high tier."]) {
+      expect(
+        legOErrors({ siteMeta: meta, passageText: OPENER.replace(base, bad) }).some((e) => /unpinned_tier/.test(e)),
+        bad,
+      ).toBe(true);
+    }
+  });
+
+  it("a tier word in the NEXT sentence is not this clause's", () => {
+    const text = OPENER.replace(
+      "The fpds-ap and subaward+lexicon paths",
+      "Links at high are counted below. The fpds-ap and subaward+lexicon paths",
+    );
+    expect(text).not.toBe(OPENER);
+    expect(legOErrors({ passageText: text })).toEqual([]);
+  });
+});
+
+/**
+ * Decisions wave fix round 7 (fix-6 re-check, R-DEC-LEGO, 2026-09-26). Fix
+ * round 6 read the tier word only AFTER each anchor and only as the literal
+ * high / medium / low, which dropped fix round 4/5's rule that ANY word after
+ * "still publish(es), at" is the tier word. The re-check measured both:
+ *   - "; at high, 86 of them still publish, …"   (tier word BEFORE the anchor)
+ *   - "86 of them still publish, at the top tier,"  "… at the highest tier,"
+ *     "… at the strongest grade,"                 (fix 5 failed; fix 6 passed)
+ * Leg o is now the union of both, read across the whole clause: from the
+ * clause's start (";" or the sentence's start) to its sentence's end, and a
+ * word that qualifies "tier" / "grade" is a tier word too.
+ */
+describe("gate 24 leg o — the union of fix 5's and fix 6's tier checks, across the whole clause (fix round 7)", () => {
+  const AT = "86 of them still publish, at medium,";
+  const TAIL = "; 86 of them still publish, at medium, and the rest no longer publish.";
+  const failsTier = (text, meta = ADJ_META, field = "unpinned_published_tier") =>
+    legOErrors({ siteMeta: meta, passageText: text }).some((e) => new RegExp(field).test(e));
+
+  it("fixture sanity: the shipped phrasing passes", () => {
+    expect(OPENER).toContain(AT);
+    expect(OPENER).toContain(TAIL);
+    expect(legOErrors({})).toEqual([]);
+  });
+
+  it("RED at fix 6: a tier word BEFORE the anchor, in its clause, FAILS", () => {
+    for (const bad of [
+      "; at high, 86 of them still publish, and the rest no longer publish.",
+      "; in the high tier, 86 of them still publish, and the rest no longer publish.",
+      "; High links: 86 of them still publish, and the rest no longer publish.",
+    ]) {
+      const text = OPENER.replace(TAIL, bad);
+      expect(text, bad).not.toBe(OPENER);
+      expect(failsTier(text), bad).toBe(true);
+    }
+  });
+
+  it("RED at fix 6: fix 5's 'still publish, at <word>' binding is back", () => {
+    for (const bad of [
+      "86 of them still publish, at the top tier,",
+      "86 of them still publish at the highest tier,",
+      "86 of them still publish at the strongest grade,",
+      "86 of them still publish at all,",
+    ]) {
+      const text = OPENER.replace(AT, bad);
+      expect(text, bad).not.toBe(OPENER);
+      const errs = legOErrors({ passageText: text });
+      expect(errs.some((e) => /unpinned_published_tier/.test(e) && /"medium"/.test(e)), `${bad}\n${errs.join("\n")}`).toBe(true);
+    }
+  });
+
+  it("RED at fix 6: a word that qualifies 'tier' or 'grade' is a tier word", () => {
+    for (const bad of [
+      "86 of them still publish in the top tier,",
+      "86 of them still publish, in the strongest grade,",
+      "86 of them, top-tier links, still publish,",
+    ]) {
+      const text = OPENER.replace(AT, bad);
+      expect(text, bad).not.toBe(OPENER);
+      expect(failsTier(text), bad).toBe(true);
+    }
+    // "tier" after a determiner names no tier.
+    expect(legOErrors({ passageText: OPENER.replace(AT, "86 of them still publish, at medium, the same tier as before,") })).toEqual([]);
+  });
+
+  it("the right tier before the anchor, or qualifying 'tier', passes", () => {
+    for (const ok of [
+      "; at medium, 86 of them still publish, and the rest no longer publish.",
+      "; 86 medium-tier links among them still publish, and the rest no longer publish.",
+    ]) {
+      expect(legOErrors({ passageText: OPENER.replace(TAIL, ok) }), ok).toEqual([]);
+    }
+  });
+
+  it("with no single tier in the block, a tier word before the anchor FAILS", () => {
+    const meta = withMeta((b) => { b.unpinned_published_tier = null; });
+    expect(failsTier(OPENER.replace(TAIL, "; at medium, 86 of them still publish, and the rest no longer publish."), meta)).toBe(true);
+    expect(legOErrors({ siteMeta: meta, passageText: OPENER.replace(TAIL, "; 86 of them still publish, and the rest no longer publish.") })).toEqual([]);
+  });
+
+  it("the old clause reads before its anchor too", () => {
+    const meta = withMeta((b) => {
+      b.unpinned_published = 8475;
+      b.unpinned_tier = "medium";
+    });
+    expect(legOErrors({ siteMeta: meta, passageText: OPENER.replace(TAIL, "; those links publish at medium.") })).toEqual([]);
+    expect(failsTier(OPENER.replace(TAIL, "; at high, those links publish."), meta, "unpinned_tier")).toBe(true);
+  });
+
+  it("a tier word in an EARLIER clause or sentence is not this clause's", () => {
+    // The opener's first sentence already says "grades high or medium".
+    const earlierClause = OPENER.replace(
+      "8,475 of those found work",
+      "8,475 of those, graded high or medium, found work",
+    );
+    expect(earlierClause).not.toBe(OPENER);
+    expect(legOErrors({ passageText: earlierClause })).toEqual([]);
   });
 });

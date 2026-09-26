@@ -232,7 +232,12 @@ export function DownloadCards({
                 data-dataset-caveat={ds.name}
                 className="text-xs text-muted-foreground leading-5 border-l-2 border-amber-500/50 pl-2"
               >
-                {ds.caveat}
+                {/* Fix round 5 (2026-09-26): the R-DEC-130c concentration
+                    caveat names the mart's columns (member_keys_with_links,
+                    links_outside_member_keys); as plain text gate 27 leg 31
+                    read them as exposed enums. Same treatment as the
+                    description, words unchanged. */}
+                {withIdentifierCode(ds.caveat)}
               </p>
             )}
             <a

@@ -828,7 +828,13 @@ export default function MethodologyPage() {
                       instead of the report it amends; with no posting date on
                       our copies, the smallest amended figure counts where a
                       quarter's amendments disagree (warn test
-                      warn_lda_amendment_latest_undetermined prints how many). */}
+                      warn_lda_amendment_latest_undetermined prints how many;
+                      the posting date is ROADMAP #178, the duplicate
+                      originals still summed #179). Fix round 4: the rules
+                      are dated as DECISIONS ("a correction decided
+                      2026-09-26"), never as the date the site changed —
+                      the live site kept the old count until chain G's
+                      deploy. */}
                   ) contains filings, each with a
                   permanent UUID, registrant, client company, dollar amounts,
                   agencies lobbied, and issue text. We have linked LDA client
@@ -846,7 +852,7 @@ export default function MethodologyPage() {
                   matched program element, qualifying only when the program&rsquo;s
                   PE/BLI code appears (an all-digit one only beside a
                   budget-line label; none of the 1,631 bare-number matches
-                  before 2026-09-26 had one), a
+                  counted before this rule had one), a
                   curated alias appears, or at least two distinct, non-generic words
                   of one program&rsquo;s title co-occur in the same filing — a single
                   common word is never treated as evidence (see the{" "}
@@ -860,10 +866,10 @@ export default function MethodologyPage() {
                   ). Lobbying income and
                   expenditure by year are shown alongside federal obligations
                   received — influence is presented side by side with outcomes,
-                  never as a causal claim. Since 2026-09-26 an amendment
-                  replaces its original instead of adding to it; where a
-                  quarter&rsquo;s amendments disagree, the smallest counts
-                  (our copy keeps no posting date).
+                  never as a causal claim. An amendment replaces its
+                  original instead of adding to it (a correction decided
+                  2026-09-26); where a quarter&rsquo;s amendments disagree,
+                  the smallest counts (our copy keeps no posting date).
                 </p>
               </div>
 
@@ -1226,7 +1232,7 @@ export default function MethodologyPage() {
                         : ""}
                       .
                       {subagencyWithdrawn
-                        ? ` The tier was withdrawn on that figure (2026-09-25): its ${formatCount(subagencyWithdrawn.links)} links ${
+                        ? ` On that figure the tier was withdrawn (decided 2026-09-25): its ${formatCount(subagencyWithdrawn.links)} links ${
                             subagencyWithdrawn.demotion_reasons.length === 1 &&
                             subagencyWithdrawn.demotion_reasons[0] ===
                               "account_subagency_not_pinned"
@@ -2247,8 +2253,9 @@ export default function MethodologyPage() {
                       {`${HHI_BANDS_VINTAGE} (${formatCount(HHI_MODERATE_MIN)} / ${formatCount(HHI_CONCENTRATED_MIN)})`}
                     </td>
                     <td className="py-2">
-                      3 feed cards and 4 badges moved up a band (2026-09-25
-                      export); &ldquo;Competitive&rdquo; became Unconcentrated.
+                      On the 2026-09-25 export these bands put 3 feed cards
+                      and 4 badges one band higher; &ldquo;Competitive&rdquo;
+                      is now Unconcentrated.
                     </td>
                   </tr>
                 </tbody>

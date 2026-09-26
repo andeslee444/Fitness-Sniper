@@ -236,6 +236,65 @@ export interface CoverageMapRow {
  */
 export const MAP_REVIEWED_ON = "2026-09-18";
 
+/**
+ * The crosswalk blocker's tier sentences, with the hand-adjudicated share
+ * stated as a FIGURE read from site_meta.link_adjudication.high (R-DEC-COVERAGE,
+ * controller 2026-09-26) — never "most".
+ *
+ * WHY THE HIGH CENSUS. It is the one adjudication count site_meta measures
+ * over the MART a reader meets (_published_high_links). The block's top-level
+ * `published` / `adjudicated` count the crosswalk's OWN grades in
+ * budget_line_awards, where Postgres keeps every account / sub-agency row
+ * #107(b) withdraws from publication: the stage-2 post-chain fixture has them
+ * at 9,538 of 12,866 (74%), while the chain-order scratch mart (fix3dbt)
+ * publishes 3,767 links, 603 of them adjudicated (16%). Stated as a share of
+ * "published links" they would put the majority back. The High census is the
+ * smaller true number, and it names its tier. (A whole-mart share needs an
+ * export-side census of fct_budget_to_awards; site_meta carries none.)
+ *
+ * The two-lens clause is a universal over the adjudicated high links, so it
+ * renders only while every one of them carries both lenses; otherwise the
+ * two-lens count is stated. Without a census (a malformed block, or nothing
+ * published at high) no figure renders and /methodology/ carries the count.
+ * Gate 14 leg cm[bridge] (coverage.mjs checkCrosswalkBlockerWording) binds
+ * every branch.
+ */
+function crosswalkTierClause(
+  high: { published_high?: number; adjudicated_high?: number; two_lens_high?: number } | undefined,
+): string {
+  const published = high?.published_high;
+  const adjudicated = high?.adjudicated_high;
+  const twoLens = high?.two_lens_high;
+  const highDef = "High means the contract and the program's own J-book pages name the same program";
+  const medium = "Medium means the evidence stops short of proving this line paid. ";
+  const universal =
+    "where a per-award adjudication exists it was challenged by two independent adversarial reviewers";
+  if (
+    !Number.isInteger(published) ||
+    !Number.isInteger(adjudicated) ||
+    (published as number) <= 0 ||
+    (adjudicated as number) < 0 ||
+    (adjudicated as number) > (published as number)
+  ) {
+    return (
+      `${highDef}, and ${universal}. ${medium}` +
+      "/methodology/ states how many links were hand-adjudicated, and which " +
+      "evidence paths carry no per-link adjudication at all. "
+    );
+  }
+  const bounded =
+    Number.isInteger(twoLens) && (twoLens as number) >= 0 && (twoLens as number) < (adjudicated as number);
+  return (
+    `${highDef}; ${formatCount(adjudicated as number)} of the ${formatCount(published as number)} ` +
+    "links published at high were hand-adjudicated, and " +
+    (bounded
+      ? `${formatCount(twoLens as number)} of those per-award adjudications were challenged by two independent adversarial reviewers`
+      : universal) +
+    `. ${medium}` +
+    "/methodology/ states which evidence paths carry no per-link adjudication at all. "
+  );
+}
+
 export function getCoverageMap(): CoverageMapRow[] {
   const programs = getProgramsCount();
   const pages = getProgramPagesCount();
@@ -291,6 +350,7 @@ export function getCoverageMap(): CoverageMapRow[] {
   const highConfidence = crosswalkValue("high-confidence-links");
   const awardWindow = getSiteMeta().award_fy_range;
   const feeds = getFeedInventory();
+  const tierClause = crosswalkTierClause(getSiteMeta().link_adjudication?.high);
 
   const rows: CoverageMapRow[] = [
     {
@@ -526,7 +586,9 @@ export function getCoverageMap(): CoverageMapRow[] {
         // with, in a second place. The count is NOT restated here: /coverage/
         // has no derived figure for it, and a typed one is what this branch
         // keeps removing. "Most" is true of both the crosswalk table (76%) and
-        // the mart a reader meets (76%).
+        // the mart a reader meets (76%). [Superseded 2026-09-26 by
+        // R-DEC-COVERAGE below: after #107(b) the mart's share is about 16%,
+        // and the share is now a site_meta figure.]
         //
         // Fix round 1 (R-6c-4): the tier sentence said "high means … verified
         // by two independent adversarial reviewers", and coverage.mjs's leg
@@ -543,13 +605,16 @@ export function getCoverageMap(): CoverageMapRow[] {
         // (an FPDS tag or a subaward description); it undersold them. What
         // every medium link shares is that the evidence stops short of the
         // line — shorter, and true of all five paths that publish there.
-        "and nothing else on the record narrows it. Most published links were " +
-        "hand-adjudicated (September 2026) — /methodology/ states how many, " +
-        "and which evidence paths carry no per-link adjudication at all: high " +
-        "means the contract and the program's own J-book pages name the same " +
-        "program, and where a per-award adjudication exists it was challenged " +
-        "by two independent adversarial reviewers; medium " +
-        "means the evidence stops short of proving this line paid. " +
+        //
+        // R-DEC-COVERAGE (decisions wave fix round 4, 2026-09-26): "Most
+        // published links were hand-adjudicated (September 2026)" was true
+        // of today's mart (about 76%) and FALSE after #107(b) withdraws the
+        // account / sub-agency tier: 603 of the 3,767 links the chain-order
+        // scratch mart publishes carry an adjudication (16%). The share is
+        // now a figure read from site_meta — see crosswalkTierClause — and
+        // leg cm[bridge] binds it and fails a majority word under one half.
+        "and nothing else on the record narrows it. " +
+        tierClause +
         "Where evidence pinned an award " +
         "to a different organization's program, the link was removed — a " +
         // The File C negative result (spike 2026-09-01), stated where the

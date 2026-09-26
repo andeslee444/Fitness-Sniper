@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { GLOSSARY } from "../glossary";
 
 // URL-safe anchor id: lowercase letters, digits, hyphens only — matches
@@ -39,5 +41,32 @@ describe("GLOSSARY", () => {
     const toa = GLOSSARY.find((e) => e.id === "toa");
     expect(toa).toBeDefined();
     expect(toa?.expansion.toLowerCase()).toContain("total obligational authority");
+  });
+});
+
+// Decisions wave fix round 5 (#175, 2026-09-26). Fix round 4 set the program
+// page's heading in sentence case ("Contractor concentration",
+// program-concentration.tsx) and burned down its leg-29 exemptions; the HHI
+// entry still pointed readers at the "Contractor Concentration card", a name
+// no page renders. The glossary names the card by the heading a reader sees.
+describe("GLOSSARY — the HHI entry names the concentration card as the page does", () => {
+  const heading = (() => {
+    const src = readFileSync(
+      resolve(__dirname, "../../components/program-concentration.tsx"),
+      "utf8",
+    );
+    const m = /id="concentration-heading"[^>]*>\s*([^<{]+?)\s*<\/h2>/.exec(src);
+    return m?.[1].replace(/\s+/g, " ").trim();
+  })();
+
+  it("reads the heading from the component (non-vacuity)", () => {
+    expect(heading).toBe("Contractor concentration");
+  });
+
+  it("calls it the Contractor concentration card, never the Title Case name", () => {
+    const hhi = GLOSSARY.find((e) => e.id === "hhi");
+    expect(hhi).toBeDefined();
+    expect(hhi!.definition).toContain(`Each program page's ${heading} card reports`);
+    expect(hhi!.definition).not.toMatch(/Contractor Concentration/);
   });
 });

@@ -26,8 +26,9 @@ from pathlib import Path
 
 import duckdb
 import pytest
-
 from test_dbt_build import CONTRACT_COLS, ENTITY_XWALK_COLS, make_lake, write_parquet
+
+from govbudget.entity_graph import build_entity_xwalk
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -247,29 +248,46 @@ def _write_entity_totals(data_dir: Path, totals: dict[str, float]):
 
 
 def test_an_entity_total_that_counts_a_retired_copy_fails_the_build(tmp_path):
-    """dbt checker, fix round 2 (2026-09-26): the move rule lives in dbt
-    staging, but `govbudget entity-graph` sums the RAW award archives
-    (entity_graph._TX_SQL over the contracts/assistance globs) and never reads
-    audit_award_fy_moves. After a re-sync that moves a key, unless
-    scripts/reconcile_award_moves.py rewrote the parquet first, entity_xwalk's
-    total for the recipient still counts the copy fct_award_transactions
-    dropped — and dim_entities publishes it beside a citation whose query
-    (sum over fct_award_transactions) no longer reproduces it.
-    assert_entity_totals_exclude_retired_award_copies stops the build there
-    and names the UEI; an entity-graph total that excludes the retired copy
-    passes."""
+    """dbt checker, fix round 2 (2026-09-26), kept after R-DEC-133b: the move
+    rule is applied twice — by dbt staging (fct_award_transactions) and, since
+    R-DEC-133b, by `govbudget entity-graph`, which reads the award archives
+    through govbudget.award_moves (register_award_rows: the same rule,
+    re-implemented in Python because entity-graph runs before `dbt build`).
+    entity_xwalk.total_obligation is published by dim_entities beside a
+    citation whose query sums fct_award_transactions, so the two must agree
+    on every recipient a retired copy belongs to.
+    assert_entity_totals_exclude_retired_award_copies is the build-time
+    cross-check: it stops the build and names the UEI when entity_xwalk still
+    counts a retired copy — an entity-graph regression back to a raw read, the
+    Python and dbt rules disagreeing on which copy is newer, or an
+    entity_xwalk.parquet written before the re-sync that moved the key. The
+    real entity-graph on this lake produces the totals that pass."""
     make_lake(tmp_path)
     _write_the_moves(tmp_path)
 
-    # what entity-graph computes today from the raw globs: both copies
+    # an entity_xwalk that counts both copies of each moved transaction —
+    # what entity-graph computed from the raw globs before R-DEC-133b, and
+    # what a regressed or stale one would carry
     _write_entity_totals(tmp_path, {"UEI9": 1211.0, "UEI8": 1350.0})
     result, _db = _dbt_build(tmp_path)
     out = result.stdout + result.stderr
     assert result.returncode != 0, out
     assert "FAIL 2 assert_entity_totals_exclude_retired_award_copies" in out, out
 
-    # the totals a move-aware entity-graph (or a reconciled lake) produces
-    _write_entity_totals(tmp_path, {"UEI9": 611.0, "UEI8": 650.0})
+    # the totals `govbudget entity-graph` itself computes on this lake (the
+    # globs cmd_entity_graph passes, read through the move rule)
+    xwalk = build_entity_xwalk(
+        award_glob=[str(tmp_path / "parquet/contracts/*/*.parquet"),
+                    str(tmp_path / "parquet/assistance/*/*.parquet")],
+        out_path=tmp_path / "entity_graph_out" / "entity_xwalk.parquet",
+        parent_exclusions=(),
+        require_transaction_keys=True,
+    )
+    computed = dict(duckdb.sql(
+        f"select recipient_uei, total_obligation from read_parquet('{xwalk}')"
+        " where recipient_uei in ('UEI9', 'UEI8')").fetchall())
+    assert computed == pytest.approx({"UEI9": 611.0, "UEI8": 650.0}), computed
+    _write_entity_totals(tmp_path, computed)
     result, _db = _dbt_build(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "PASS assert_entity_totals_exclude_retired_award_copies" in result.stdout, result.stdout

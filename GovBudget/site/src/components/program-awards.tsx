@@ -146,7 +146,13 @@ export function ProgramAwards({
           "Only high rows rest on evidence that names this program" stopped
           being true when an announcement link a recorded review rejected or
           refuted began publishing at medium (its announcement still names the
-          program). The kinds are now named without ranking them. */}
+          program). The kinds are now named without ranking them.
+
+          Fix round 4 (review, 2026-09-26): "…with a recorded review upholding
+          it" was still false of the tiers — a link with an upholding record is
+          demoted when a binding rejection or refutation, or its own precision
+          sample, refutes it. The sentence now states /methodology/ §4's rule
+          whole, and gate 21 leg m binds all of it. */}
       {displayedAwards.some((a) => a.confidence?.toLowerCase() === "medium") && (
         <p className="text-xs text-muted-foreground mb-2" data-awards-tier-note="medium">
           Rows marked <span className="font-medium">medium</span> rest on
@@ -159,7 +165,8 @@ export function ProgramAwards({
           not. An announcement link a recorded review did not leave standing
           is medium too. Only{" "}
           <span className="font-medium">high</span> rows rest on the contract
-          naming this program with a recorded review upholding it.
+          naming this program with a recorded review upholding it and no
+          recorded rejection or refutation applying.
         </p>
       )}
       {hasMore && !expanded && (

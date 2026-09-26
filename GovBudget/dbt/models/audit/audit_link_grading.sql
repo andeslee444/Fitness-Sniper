@@ -27,11 +27,12 @@
 --       (279 — the LORELEI shape #141 is for), 'pin-refuted' (1) or carry no
 --       adjudication at all (164). None of those pins THIS pair.
 --   announcement_review_* / announcement_reviewer_rejected /
---   precision_sample_refuted (#110, owner-delegated 2026-09-25; R-DEC-110 and
---       R-DEC-110b, controller 2026-09-26) an unadjudicated
+--   precision_sample_refuted (#110, owner-delegated 2026-09-25; R-DEC-110,
+--       R-DEC-110b and R-DEC-110c, controller 2026-09-26) an unadjudicated
 --       announcement+lexicon link graded high stays high only when (a), (b)
---       AND (c) hold for its jbook_announcement_link_reviews records (the
---       records of THIS link: award_piid, pe_bli, exhibit, fiscal_year):
+--       AND (c) hold for its jbook_announcement_link_reviews records ((a)
+--       and (b) read the records of THIS link: award_piid, pe_bli, exhibit,
+--       fiscal_year; (c) reads its PAIR):
 --         (a) a record upholds it — reviewer 'link' AND adversarial 'upheld',
 --             of any record_kind: a wave-4 'verdict_pair' or a wave 1-3
 --             'survivor_list' entry (R-DEC-110: a surviving entry records the
@@ -55,21 +56,22 @@
 --       (a) and (b) read the announcement PIPELINE's records only — the
 --       record_kinds above, its own wave 1-4 reviews;
 --         (c) R-DEC-110b (controller, 2026-09-26: "no known-refuted link at
---             high"): no held-out precision-study refutation of the link
---             exists — a 'precision_sample' record (Postgres
+--             high") and R-DEC-110c ("a precision-study refutation (rubric
+--             attribution) is a verdict on the award->PE PAIR: it binds to
+--             every published method of the pair"): no held-out
+--             precision-study refutation of the link's PAIR (award_piid,
+--             pe_bli) exists — a 'precision_sample' record (Postgres
 --             link_precision_samples, verdict 'refuted', rubric
 --             'attribution', backfilled into the same table; source test:
 --             every precision_sample row is a refutation). It binds to the
---             PAIR, not to an article: the study judged whether the award
---             executes the program, so whatever article the record names (the
---             backfill names none) it binds, unlike a pipeline record. WHICH
---             rows of the pair it speaks for is the backfill's call, made
---             once: it attaches the record to the pair's rows under the
---             method the sample drew (the link it judged) and to no other —
---             a pair whose drawn link was since replaced by another route
---             gets no record (R-DEC-110b: never invent). This model reads
---             the record on the rows it is attached to and never re-widens
---             it. A precision_sample record is never an uphold and is not a
+--             pair, not to an article or a row: the study judged whether the
+--             award executes the program, so it binds whatever article the
+--             record names (the backfill names none), on every row of the
+--             pair whichever row(s) the backfill attached it to (the
+--             backfill attaches it to every row of the pair), and whatever
+--             tier its reason says the sample drew the link from — this model
+--             never reads the reason and never filters by method. A
+--             precision_sample record is never an uphold and is not a
 --             pipeline record: it decides nothing in (a)/(b) and never makes
 --             a link "recorded".
 --       Otherwise the link publishes at medium with the reason its records
@@ -82,15 +84,17 @@
 --                                         'wrong'
 --         precision_sample_refuted        (a) and (b) hold — the pipeline's
 --                                         records keep the link high — and
---                                         (c) fails: the link's OWN precision
---                                         sample alone moved it. The export
---                                         keys its drawn-tier precision tally
---                                         on exactly this value (R-DEC-110b:
---                                         a sampled link stays in the tier it
---                                         was drawn from when its own sample
---                                         verdict demoted it, so the measured
---                                         precision is never flattered by the
---                                         demotion); a link the pipeline's
+--                                         (c) fails: the precision sample of
+--                                         the link's pair alone moved it. The
+--                                         export keys its precision-tally rule
+--                                         on exactly this value (R-DEC-110b/
+--                                         110c: a link its own sample verdict
+--                                         demoted stays in the tier it was
+--                                         tallied in immediately before the
+--                                         demotion, so the measured precision
+--                                         is never flattered by it; this
+--                                         model never changes a link's
+--                                         method); a link the pipeline's
 --                                         records demote anyway keeps the
 --                                         pipeline's reason below or above,
 --                                         never this one.
@@ -103,6 +107,17 @@
 --                                         not a pipeline review)
 --       An adjudication row is itself a recorded review, so an adjudicated
 --       link keeps its adjudicated grade and this rule does not apply to it.
+--   precision_sample_refuted, any other method (R-DEC-110c: the refutation
+--       binds "every published method of the pair") an unadjudicated link of
+--       any other method that the rules above leave at high publishes medium
+--       when (c) fails for its pair. No other method publishes high without an
+--       adjudication today (every unadjudicated high link is
+--       announcement+lexicon), so this moves no link now; it keeps a loader
+--       that grades another method high from carrying a refuted pair past the
+--       grading. A rule above that moves the link anyway keeps its reason, and
+--       an adjudicated link keeps its adjudicated grade (a conflict with a
+--       refutation stops the build: assert_no_high_link_refuted_by_its_
+--       precision_sample).
 --
 -- Demotions only ever move a link DOWN (high → medium, or out of the
 -- published tiers); a grade the adjudication overlay already set to low or
@@ -149,16 +164,18 @@ reviews as (
     where not from_precision_sample
     group by 1, 2, 3, 4
 ),
--- R-DEC-110b, rule (c): the links a held-out precision sample refuted, on
--- the rows the backfill attached the record to (the pair's rows under the
--- method the sample drew). `binds` is not read: the refutation is of the
--- pair, never of one article. One row per link, so two studies refuting the
--- same link cannot fan it out.
+-- R-DEC-110b/110c, rule (c): the PAIRS a held-out precision sample refuted.
+-- Read per (award_piid, pe_bli), whichever row(s) of the pair carry the
+-- record, and never by method or by the drawn tier in its reason: the
+-- refutation binds every published method of the pair (R-DEC-110c).
+-- `binds` is not read: the refutation is of the pair, never of one article.
+-- One row per pair, so two studies refuting the same pair, or one record on
+-- several rows of it, cannot fan a link out.
 sample_refutations as (
-    select award_piid, pe_bli, exhibit, cast(fiscal_year as integer) as fiscal_year
+    select award_piid, pe_bli
     from review_records
     where from_precision_sample and (refutes or rejects)
-    group by 1, 2, 3, 4
+    group by 1, 2
 ),
 overlaid as (
     select
@@ -201,8 +218,6 @@ overlaid as (
     left join sample_refutations s
       on s.award_piid = a.award_piid
      and s.pe_bli = a.pe_bli
-     and s.exhibit = a.exhibit
-     and s.fiscal_year = cast(a.fiscal_year as integer)
 ),
 reasoned as (
     select
@@ -233,6 +248,12 @@ reasoned as (
                     when review_recorded then 'announcement_review_incomplete'
                     else 'announcement_review_unrecorded'
                 end
+            -- R-DEC-110c: rule (c) on every other method the pair publishes
+            -- high under (no rule above moved it)
+            when not adjudicated
+             and overlay_confidence = 'high'
+             and sample_refuted
+                then 'precision_sample_refuted'
         end as demotion_reason
     from overlaid
 )

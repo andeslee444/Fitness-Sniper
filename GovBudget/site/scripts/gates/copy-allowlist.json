@@ -36,18 +36,6 @@
     "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
   },
   {
-    "page": "/downloads/",
-    "leg": 13,
-    "text": "One row per J-book narrative text block — mission, description, justification, or accomplishment/planned-program — with its XML element path",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/downloads/",
-    "leg": 13,
-    "text": "One row per program element that has full R-2/P-40 J-book detail — the detail-grade tier, NOT the full page universe (see the corpus stateme",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
     "page": "/methodology/",
     "leg": 13,
     "text": "(⁂): figure is from a dataset for which row-level citation linkage is not yet complete. As of this build every published dataset carries a c",
@@ -75,78 +63,6 @@
     "page": "/methodology/",
     "leg": 13,
     "text": "tier at 34 of 60 and it was withdrawn on 2026-09-04. Tagged awards whose funding is entirely outside the program's J-book accounts (for exam",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/000071/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/000074/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/00099L/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0023A01001/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0050MA0780/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101113F/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101122F/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101127F/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101213F/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101221N/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101224N/",
-    "leg": 29,
-    "text": "Contractor Concentration",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
-  },
-  {
-    "page": "/program/0101226N/",
-    "leg": 29,
-    "text": "Contractor Concentration",
     "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
   }
 ]

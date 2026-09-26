@@ -86,7 +86,7 @@ function ConcentrationSection({ children }: { children: React.ReactNode }) {
         id="concentration-heading"
         className="mb-4 text-foreground"
       >
-        Contractor Concentration
+        Contractor concentration
       </h2>
       {children}
     </section>

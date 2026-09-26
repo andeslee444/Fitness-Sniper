@@ -153,7 +153,7 @@ rule below is a template, a token or a formatter, and the copy gate
 | masthead eyebrow | `{Group} / {Item}` — exactly two segments, ≤ 30 chars | Field guide / Air |
 | plate stamp | `stamp(n, domain)` → `{NN} / {Domain}` | 01 / Sea |
 | callout label | `callout(i) + ' ' + topic.label` | 02 Ground & training support |
-| section title | noun phrase ≤ 5 words, count interpolated | Largest FY25→26 changes |
+| section title | noun phrase ≤ 5 words, count interpolated | Largest FY2025–FY2026 changes |
 | section lede | number-first statement of what is listed and how ordered; what the figures are and which document | 24 agencies, ranked by the number of programs each has in our corpus. The FY2024 column sums each program's R-2/P-40 actuals. |
 | deck | `{count} {things} {scope}[, {rule}]. {Where each figure opens, naming the document}.` | Six aircraft since 1972 and six Air Force P-1 and R-1 lines for development, procurement and modification, not allocated by variant. Each figure opens to the P-1 or R-1 row it was read from. |
 | exhibit title | `{orgShort} {exhibitFamilyPlain}, {peBliLabel}` | Navy procurement, BLI 2013 |

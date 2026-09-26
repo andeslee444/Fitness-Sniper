@@ -1,26 +1,32 @@
 {#
   ROADMAP #133 (owner-delegated ruling 2026-09-25) — dbt checker, decisions
-  fix round 2 (2026-09-26).
+  fix round 2 (2026-09-26); header brought up to date for R-DEC-133b (fix
+  round 3, 2026-09-26).
 
-  The fiscal-year move rule lives in dbt staging: stg_contracts /
-  stg_assistance drop the copy audit_award_fy_moves retires, so
+  The fiscal-year move rule is applied twice. dbt staging (stg_contracts /
+  stg_assistance) drops the copy audit_award_fy_moves retires, so
   fct_award_transactions counts a moved transaction once. `govbudget
-  entity-graph` does NOT read the staging models: entity_graph._TX_SQL sums
-  federal_action_obligation over the RAW contracts/assistance archive globs
-  (cli.py cmd_entity_graph), and nothing there consults audit_award_fy_moves.
-  So after a re-sync that moves a key, unless scripts/reconcile_award_moves.py
-  rewrote the parquet before entity-graph ran, entity_xwalk.total_obligation
-  for the recipient still counts the retired copy — dim_entities publishes
-  that figure, while the citation beside it sums fct_award_transactions,
-  which no longer can reproduce it.
+  entity-graph` does not read the staging models — it runs BEFORE `dbt build`
+  in the chain — so since R-DEC-133b it reads the contracts/assistance archive
+  globs through src/govbudget/award_moves.py (register_award_rows: the same
+  rule, re-implemented in Python; entity_graph._TX_SQL sums its `_awards`
+  view), and an ambiguous duplicate stops it as it stops dbt. dim_entities
+  publishes entity_xwalk.total_obligation beside a citation whose query sums
+  fct_award_transactions, so the two applications must agree on every
+  recipient a retired copy belongs to.
 
-  Returns every recipient UEI a retired copy belongs to whose entity_xwalk
-  total differs from the warehouse's (fct_award_transactions) total by more
-  than a cent — the build stops here, at the first step that can see both,
-  instead of at the site's recompute gates. The fix is upstream of dbt: run
-  the reconcile script (or a move-aware entity-graph), then entity-graph, then
-  build again. A UEI entity_xwalk does not carry has no entity total to be
-  wrong, and is not this test's business.
+  This test is the build-time cross-check that they do. It returns every
+  recipient UEI a retired copy belongs to whose entity_xwalk total differs
+  from the warehouse's (fct_award_transactions) total by more than a cent —
+  the build stops here, at the first step that can see both, instead of at
+  the site's recompute gates. It fails when entity_xwalk still counts a
+  retired copy: entity-graph regressed to a raw read, award_moves.py and
+  audit_award_duplicate_copies.sql disagree on which copy is newer, or
+  entity_xwalk.parquet was written before the re-sync that moved the key. The
+  fix is upstream of dbt: re-run `govbudget entity-graph` on the current lake,
+  then build again; if it still fails, compare audit_award_fy_moves with
+  award_moves.find_moves() on the same archives. A UEI entity_xwalk does not
+  carry has no entity total to be wrong, and is not this test's business.
 
   Same compile-time probe as macros/award_fy_moves.sql: on a lake where this
   build retired nothing (today's, and every lake the manual reconcile

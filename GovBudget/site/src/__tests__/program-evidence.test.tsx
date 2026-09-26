@@ -141,7 +141,8 @@ describe("concentration evidence selection", () => {
     const head = concentrationHeadline(hhi!);
     expect(head.published ? "published" : "withheld").toBe(expected);
     const { container } = render(<ProgramConcentration hhi={hhi} />);
-    expect(screen.getByRole("heading", { name: "Contractor Concentration" })).toBeVisible();
+    // #175 (fix round 4): sentence case, per VOICE.md.
+    expect(screen.getByRole("heading", { name: "Contractor concentration" })).toBeVisible();
     // The all-link figures never reach the card, on either state.
     expect(container.querySelector(`[data-fact-id="${hhi!.hhi_all_fact_id}"]`)).toBeNull();
     expect(container.querySelector(`[data-fact-id="${hhi!.program_dollars_all_fact_id}"]`)).toBeNull();

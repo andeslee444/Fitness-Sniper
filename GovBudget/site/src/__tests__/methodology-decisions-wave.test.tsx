@@ -182,8 +182,8 @@ describe("/methodology/ renders what gate 24 legs n and o bind", () => {
     const withdrawn = norm(root.querySelector('[data-link-precision-withdrawn="account+subagency"]')!.text);
     expect(withdrawn).toBe(
       "A held-out sample of account / sub-agency links, judged on program " +
-        "attribution, confirmed 0 of 58 (2026-09-11). The tier was withdrawn on " +
-        "that figure (2026-09-25): its 8,833 links " +
+        "attribution, confirmed 0 of 58 (2026-09-11). On that figure the tier " +
+        "was withdrawn (decided 2026-09-25): its 8,833 links " +
         "that no two-lens hand adjudication pinned no longer publish.",
     );
     expect(norm(root.querySelector("[data-link-adjudication]")!.text)).toContain(
@@ -259,13 +259,41 @@ describe("/methodology/ prose the decisions wave rewrote", () => {
     expect(t).not.toContain("filings for 2025 and prior years");
     expect(t).toContain(
       "an all-digit one only beside a budget-line label; none of the 1,631 " +
-        "bare-number matches before 2026-09-26 had one",
+        "bare-number matches counted before this rule had one",
     );
     expect(t).not.toContain("qualifying only when the exact PE/BLI code appears");
     expect(t).toContain(
-      "Since 2026-09-26 an amendment replaces its original instead of adding to " +
-        "it; where a quarter’s amendments disagree, the smallest counts (our copy " +
-        "keeps no posting date).",
+      "An amendment replaces its original instead of adding to it (a correction " +
+        "decided 2026-09-26); where a quarter’s amendments disagree, the smallest " +
+        "counts (our copy keeps no posting date).",
+    );
+  }, 30_000);
+
+  /**
+   * Decisions wave fix round 4 (review finding: the page stated the RULING
+   * dates as the dates the changes took effect — "withdrawn … (2026-09-25)",
+   * "Since 2026-09-26", "before 2026-09-26" — while the live site kept doing
+   * the old thing until chain G's deploy, whose date no one knows yet). A
+   * decision is dated as a decision ("decided <date>"), a measurement by its
+   * export, and nothing says when the site changed. Checked on both shapes.
+   */
+  it("no sentence dates when the site changed; decisions are dated as decisions", () => {
+    for (const fn of [null, postChain]) {
+      const t = norm(renderPage(fn).text);
+      expect(t).not.toMatch(/\b(?:[Ss]ince|[Uu]ntil|[Bb]efore|[Aa]fter) \d{4}-\d{2}-\d{2}/);
+      expect(t).not.toMatch(/withdrawn on that figure \(\d{4}-\d{2}-\d{2}\)/);
+      expect(t).not.toMatch(/moved up a band \(\d{4}-\d{2}-\d{2}/);
+      // No internal ledger id reaches a reader (the ROADMAP defines R-INT-1..9
+      // in its findings log, but the page has no reason to print either kind).
+      expect(t).not.toMatch(/\bR-(?:DEC|INT)-/);
+    }
+    const bands = renderPage(null)
+      .querySelectorAll("[data-historical-figures] tbody tr")
+      .map((tr) => tr.querySelectorAll("td").map((td) => norm(td.text)))
+      .find((cells) => cells[0] === "HHI bands");
+    expect(bands?.[3]).toBe(
+      "On the 2026-09-25 export these bands put 3 feed cards and 4 badges one " +
+        "band higher; “Competitive” is now Unconcentrated.",
     );
   }, 30_000);
 

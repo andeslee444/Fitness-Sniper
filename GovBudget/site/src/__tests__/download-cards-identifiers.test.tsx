@@ -72,3 +72,71 @@ describe("DownloadCards description", () => {
     ]);
   });
 });
+
+/**
+ * Decisions wave fix round 5 (2026-09-26). The R-DEC-130c concentration
+ * caveat names the mart's own columns (`member_keys_with_links`, and
+ * `links_outside_member_keys` where a code has links under no member's key —
+ * export_site._concentration_scope_caveat). The card rendered the caveat as
+ * plain text, so gate 27 leg 31 read those names as exposed enums: an
+ * un-allowlisted FAIL on /downloads/ (decisions-fix4-export.md). The caveat
+ * now goes through withIdentifierCode, as the description already did; the
+ * words are the exporter's, byte for byte.
+ */
+const CAVEAT =
+  "7 of its 536 rows are code-level (scope = 'code'): a budget-line code two" +
+  " or more programs share. On 3 of them (0145, 3010 and 3215) more than one" +
+  " member's key carries links, so the row pools every member key with links" +
+  " and describes no single program. On 4 (2101, 2292, 3050 and 4217) one" +
+  " member's key carries every link, so the row is that member's figure:" +
+  " 2101 is 2101-WPN's, 2292 is 2292-WPN's, 3050 is 3050-OPN's, 4217 is" +
+  " 4217-OPN's. On 1 (5555) some links sit under no member's key" +
+  " (links_outside_member_keys), so the row describes no single program." +
+  " member_keys_with_links counts the member programs whose own key carries" +
+  " a published link.";
+
+const JBOOK_CAVEAT =
+  "Page resolution is partial: of 17,900 rows carrying a non-zero amount," +
+  " 3,407 resolve to a unique PDF page and 6,472 to the first page the amount" +
+  " appears on; the remaining 8,021 (45%) resolve to no page and cite their" +
+  " XML path instead.";
+
+describe("DownloadCards caveat (fix round 5)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true } as Response));
+  });
+
+  function caveatOf(name: string, caveat: string): HTMLElement {
+    const { container } = render(
+      <DownloadCards
+        builtAt="2026-09-25T00:00:00Z"
+        inventory={[{ name, row_count: 536, scope: SCOPE, cited: true, caveat }]}
+        uncitedDatasets={[]}
+      />,
+    );
+    const p = container.querySelector<HTMLElement>(`[data-dataset-caveat="${name}"]`);
+    expect(p, "the caveat renders").not.toBeNull();
+    return p!;
+  }
+
+  it("sets the concentration caveat's column names as code, and keeps every word", () => {
+    const p = caveatOf("fct_program_concentration", CAVEAT);
+    expect(p.textContent).toBe(CAVEAT);
+    expect([...p.querySelectorAll("code")].map((c) => c.textContent)).toEqual([
+      "links_outside_member_keys",
+      "member_keys_with_links",
+    ]);
+    // Nothing snake_case is left as bare text for leg 31 to read as an enum.
+    const bare = [...p.childNodes]
+      .filter((n) => n.nodeType === Node.TEXT_NODE)
+      .map((n) => n.textContent ?? "")
+      .join("");
+    expect(bare).not.toMatch(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/);
+  });
+
+  it("leaves a caveat with no identifier exactly as prose", () => {
+    const p = caveatOf("jbook_details", JBOOK_CAVEAT);
+    expect(p.textContent).toBe(JBOOK_CAVEAT);
+    expect(p.querySelectorAll("code")).toHaveLength(0);
+  });
+});

@@ -94,6 +94,20 @@ measured, all in one transaction, never an INSERT. The CLI's --regrade-only
 writes only with --expect-updates equal to the count its dry run printed
 (82 for DARPA FY2026 --all-years on 2026-09-25: 50 unadjudicated
 account+tokens/high -> account/low, 32 adjudicated -> account+subagency/medium).
+
+Fiscal-year moves (ROADMAP #133; R-DEC-133c, fix-round-3 ruling 2026-09-26:
+"The four remaining raw-archive summers (crosswalk.py,
+load_announcement_links.py, derive_ap_links.py, precision_study.py) read
+through src/govbudget/award_moves.py"). Every lake query here -- the planner's
+count, the write path's candidates, the re-grade's -- reads AWARDS_VIEW, the
+award archive with the retired copy of every proven move left out, exactly as
+dbt staging drops it from fct_award_transactions: a transaction a source
+correction moved into another fiscal year's archive is a candidate once, in
+the year it now sits in, and its obligation is summed once. An ambiguous
+duplicate key raises AmbiguousAwardDuplicateError before the first line is
+planned, graded or written; a run with no lines (an edition with none) still
+never reads the lake. With nothing to retire (0 moves on 2026-09-26) the view
+is the plain archive read these queries made before.
 """
 import csv
 import re
@@ -105,6 +119,7 @@ import duckdb
 import psycopg
 
 from govbudget import config
+from govbudget.award_moves import AwardMoves, register_award_rows
 from govbudget.jbooks.orgs import workbook_org
 
 # Sub-agency alias seed: data-seeds/org_subagency_aliases.csv, columns
@@ -308,8 +323,9 @@ def _candidate_where(
     Returns (sql, params). fed_account and the FY bounds are DuckDB `?`
     parameters (#86); they used to be f-string-interpolated, so an account code
     carrying a quote was a ParserException rather than a value that matches
-    nothing. award_glob stays interpolated at the two call sites: it is an
-    operator-supplied path, not data. DuckDB binds `?` in TEXTUAL order, so a
+    nothing. award_glob is not in the predicate: it is an operator-supplied
+    path, not data, read once per connection by _register_awards (R-DEC-133c)
+    and queried as AWARDS_VIEW. DuckDB binds `?` in TEXTUAL order, so a
     caller whose SELECT list carries its own placeholder (the obligation `case`
     in _fetch_candidates) passes that parameter FIRST.
 
@@ -579,6 +595,8 @@ def plan_crosswalk_org(
     memo_key: tuple[str, int | None, int | None] | None = None
     memo_n = 0
     try:
+        if lines:  # a run with no lines never reads the lake
+            _register_awards(con, award_glob)
         for pe_bli, exhibit, fy, account, _title in lines:
             fed_account = _fed_account(account, treasury_agency)
             lo, hi = _line_window(fy, fy_start, fy_end, all_years)
@@ -587,7 +605,7 @@ def plan_crosswalk_org(
                 where, where_params = _candidate_where(fed_account, lo, hi)
                 memo_n = con.execute(
                     "select count(distinct award_id_piid)"
-                    f" from read_parquet('{award_glob}', union_by_name=true)"
+                    f" from {AWARDS_VIEW}"
                     f" where {where}",
                     where_params,
                 ).fetchone()[0]
@@ -623,11 +641,29 @@ class AwardCandidate:
     sub_agencies: tuple[str | None, ...]  # one entry per transaction (DuckDB list keeps NULLs)
 
 
+#: The temp view every lake query in this module reads (R-DEC-133c): the award
+#: archive through the fiscal-year move rule. _register_awards creates it on
+#: the connection the caller opened.
+AWARDS_VIEW = "_xw_awards"
+
+
+def _register_awards(con: duckdb.DuckDBPyConnection, award_glob: str) -> AwardMoves:
+    """Create AWARDS_VIEW on `con`: `award_glob` (the contracts archive)
+    with the retired copy of every proven fiscal-year move left out
+    (govbudget.award_moves, the rule dbt staging applies). Raises
+    AmbiguousAwardDuplicateError on any other duplicate key, and
+    AwardArchiveError on a glob the rule cannot read (no transaction key, no
+    fy= partition or last_modified_date), before anything is counted."""
+    return register_award_rows(con, [award_glob], view=AWARDS_VIEW,
+                               require_transaction_keys=True)
+
+
 def _fetch_candidates(
-    con: duckdb.DuckDBPyConnection, award_glob: str, fed_account: str,
+    con: duckdb.DuckDBPyConnection, fed_account: str,
     where: str, where_params: list,
 ) -> list[AwardCandidate]:
-    """The only lake query in the write path. Every aggregate is
+    """The only lake query in the write path, over AWARDS_VIEW (the caller
+    registers it with _register_awards). Every aggregate is
     order-independent (list / arg_max / decimal sum) -- no any_value() anywhere,
     which is what #85 was. Rows come back ordered by PIID so upsert order, and
     therefore bigserial ids on a fresh table, are fixed too. `where` /
@@ -647,7 +683,7 @@ def _fetch_candidates(
                list(distinct prime_award_base_transaction_description
                     order by prime_award_base_transaction_description),
                list(awarding_sub_agency_name order by awarding_sub_agency_name)
-        from read_parquet('{award_glob}', union_by_name=true)
+        from {AWARDS_VIEW}
         where {where}
         group by award_id_piid
         order by award_id_piid
@@ -761,6 +797,8 @@ def crosswalk_org(
     memo_key: tuple[str, int | None, int | None] | None = None
     memo_rows: list[AwardCandidate] = []
     try:
+        if lines:  # a run with no lines never reads the lake
+            _register_awards(con, award_glob)
         for pe_bli, exhibit, fy, account, line_title in lines:
             fed_account = _fed_account(account, treasury_agency)
             lo, hi = _line_window(fy, fy_start, fy_end, all_years)
@@ -768,7 +806,7 @@ def crosswalk_org(
             if key != memo_key:
                 where, where_params = _candidate_where(fed_account, lo, hi)
                 memo_rows = _fetch_candidates(
-                    con, award_glob, fed_account, where, where_params,
+                    con, fed_account, where, where_params,
                 )
                 memo_key = key
             # Computed ONCE per canonical line (#85): one title per key, and
@@ -953,13 +991,15 @@ def regrade_report(
     memo_key: tuple[str, int | None, int | None] | None = None
     memo: list[tuple[AwardCandidate, set[str]]] = []
     try:
+        if lines:  # a run with no lines never reads the lake
+            _register_awards(con, award_glob)
         for pe_bli, exhibit, fy, account, line_title in lines:
             fed_account = _fed_account(account, treasury_agency)
             lo, hi = _line_window(fy, fy_start, fy_end, all_years)
             if (fed_account, lo, hi) != memo_key:
                 where, where_params = _candidate_where(fed_account, lo, hi)
                 memo = [(c, _award_tokens(c)) for c in _fetch_candidates(
-                    con, award_glob, fed_account, where, where_params)]
+                    con, fed_account, where, where_params)]
                 memo_key = (fed_account, lo, hi)
             mine = details.get(pe_bli, [])
             # cumulative scopes: none (the merged code), +organization,

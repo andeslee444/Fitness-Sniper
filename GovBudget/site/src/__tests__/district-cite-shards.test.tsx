@@ -29,7 +29,8 @@
  * bodies) of the state-A figures it renders; for a listed id hasCitation()
  * answers true and a click fetches the body through the same fetch-on-miss
  * path. The prop is opt-in: /district/ and every other page pass none, and
- * their providers behave as before.
+ * their providers behave as before. (Fix round 5, 2026-09-26: /company/{slug}/
+ * now passes it too — company-cite-shards.test.tsx.)
  *
  * Same seams as district-shared-code-members.test.tsx — @/lib/data's district
  * readers and @/lib/fy-range — plus @/lib/corpus and @/lib/og, which the index
@@ -648,7 +649,7 @@ describe("shardResolvableIds is opt-in — a provider without it is unchanged", 
     expect(plain).toHaveLength(2);
   });
 
-  it("only /district/{code}/ passes the list; every other provider mount passes the props it did", () => {
+  it("only /district/{code}/ and /company/{slug}/ pass the list; every other provider mount passes the props it did", () => {
     // Fix round 1 (B5): the scan matched only the literal JSX attribute
     // `shardResolvableIds=` in .tsx files, so a props object spread into the
     // provider (`{...props}` built as { shardResolvableIds: ids }) or a mount
@@ -660,6 +661,12 @@ describe("shardResolvableIds is opt-in — a provider without it is unchanged", 
     // it. What no static scan can see — a key assembled at runtime — is what
     // the runtime tests above cover: without the prop, hasCitation() is the
     // pre-28b expression, and /district/ keeps its chips plain.
+    //
+    // Decisions wave fix round 5 (2026-09-26): /company/{slug}/ joins it
+    // (R-DEC-LDACITE's filing lists put 12 company pages over gate 1's
+    // ceiling while embedded). Its own contract — empty slice, ids of the
+    // rendered figures and their resolvable fact-id inputs, every figure
+    // opening from its shard — is company-cite-shards.test.tsx.
     const SRC = resolve(__dirname, "..");
     const sources = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -681,6 +688,7 @@ describe("shardResolvableIds is opt-in — a provider without it is unchanged", 
       .map((f) => relative(SRC, f))
       .sort();
     expect(owners).toEqual([
+      "app/company/[slug]/page.tsx",
       "app/district/[district]/page.tsx",
       "components/citation-panel/panel.tsx",
     ]);

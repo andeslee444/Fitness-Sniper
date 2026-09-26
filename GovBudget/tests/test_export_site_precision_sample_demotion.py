@@ -174,7 +174,11 @@ def test_a_self_refuted_link_whose_drawn_tier_differs_is_not_moved_and_is_named(
     lexicon, where #140 counts a moved link). Moving it at its demotion would
     drop a 'refuted' verdict from the announcement figure — 2 of 4 would
     become 2 of 3, the flattering R-DEC-110b forbids — so it stays where it
-    counted, and the export log names the pair and both tiers for a ruling."""
+    counted, and the export log names the pair and both tiers.
+
+    R-DEC-110c settled which tier wins (the one it was tallied in
+    immediately before the demotion), so the line states that rule and asks
+    for no ruling; it cites the ROADMAP entry, not an internal ledger ID."""
     published = BEFORE + [_link("PS-X1", "S0605000F", ANN)]
     before = _precision(sampled, published_links=published)
     capsys.readouterr()
@@ -186,6 +190,16 @@ def test_a_self_refuted_link_whose_drawn_tier_differs_is_not_moved_and_is_named(
     assert "WARNING" in out
     assert "PS-X1/S0605000F" in out
     assert "fpds-ap+account" in out and ANN in out
+    # What the export does, and why — stated, not asked.
+    assert "drawn under fpds-ap+account" in out
+    assert f"counts under {ANN}" in out
+    assert "the tier it was tallied in immediately before the demotion" in out
+    assert "stays there" in out
+    assert "would drop a 'refuted' verdict" in out
+    assert "ROADMAP #110" in out
+    assert "Needs a ruling" not in out
+    assert "should win" not in out
+    assert "R-DEC" not in out
 
 
 def test_the_rule_honours_the_pin(sampled):

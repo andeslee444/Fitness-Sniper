@@ -3308,6 +3308,14 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
 //     High passage used to be a clean pass, so any export-time failure
 //     reading the mart deleted the entire High-tier census with every leg
 //     green.
+//
+// RESIDUAL GAPS (R-DEC-GATE-LIMIT, fix round 7: documented, not chased — a
+// regex cannot parse all English; adversarial prose review is the backstop):
+//   - a tier paraphrase with no tier word and no "<word> tier/grade" ("still publish among the strongest links") passes.
+//   - a tier word in an EARLIER clause of the same sentence, before its ";" ("8,475 of those, all at high, …"), is not read.
+//   - with every unpinned link publishing, a tier claim off the "those links publish" anchor ("they remain live at high") passes.
+//   - a negation in [data-link-review-high] ("All 1,105 carry no recorded review") passes: its figures are bound, not its verb.
+//   - FAIL-CLOSED: fix round 4's word-after-"at" rule fails the true "still publish at the medium tier" (it reads "the").
 /** The three counts the opening passage must state, in the order the page
  *  states them. Keyed by the block field so an error names the field to
  *  re-derive. */
@@ -3336,6 +3344,73 @@ const REVIEW_KIND_WORDS = {
   verdict_pair: /verdict pair/i,
   survivor_list: /survivor-list/i,
 };
+/** The words /methodology/ prints for a review kind beyond the three
+ *  (page.tsx REVIEW_KIND_EXTRA; any other kind prints `rest on a <kind>
+ *  record`). MIRROR — the fix-round-4 mirror test reads page.tsx and holds
+ *  the two maps equal. */
+export const REVIEW_KIND_EXTRA_WORDS = {
+  not_upheld: "carry records none of which upholds them",
+};
+/** The words /methodology/ prints for each demotion reason (page.tsx
+ *  DEMOTION_WORDS; an unknown reason prints `demoted as <reason>`). MIRROR —
+ *  the fix-round-4 mirror test reads page.tsx and holds the two maps equal. */
+export const DEMOTION_REASON_WORDS = {
+  account_tokens_unadjudicated: "unadjudicated keyword matches",
+  announcement_review_refuted: "refuted in review",
+  announcement_reviewer_rejected: "rejected by a reviewer",
+  precision_sample_refuted: "refuted by the precision study",
+  announcement_review_incomplete: "whose review records neither uphold nor refute them",
+  announcement_review_unrecorded: "with no recorded review",
+};
+
+/**
+ * Each figure of a passage with the words that label it: the text from the
+ * figure's end to the next figure (or the passage's end). ISO dates are not
+ * figures. Fix round 4 (review, 2026-09-26): the slot binding held a figure
+ * to its POSITION and the kind / reason words only to the PASSAGE, so a
+ * rewrite that traded two labels and kept the figures in order ("418 only a
+ * survivor-list entry and 627 a per-proposal verdict pair") scored zero
+ * errors. A figure is now held to the words that name what it counts.
+ */
+function figureLabels(body) {
+  const text = String(body ?? "").replace(/\d{4}-\d{2}-\d{2}/g, " ");
+  const found = [...text.matchAll(/\d[\d,]*/g)];
+  return found.map((m, i) => ({
+    figure: m[0],
+    label: text.slice(m.index + m[0].length, i + 1 < found.length ? found[i + 1].index : text.length),
+  }));
+}
+
+/** leg o: every labelled slot's label names its own thing and no other's.
+ *  `slots` are [field, value, ownRe, otherRes] (ownRe/otherRes null to skip);
+ *  checked only when the figures sit in their slots (reportSlots names the
+ *  order otherwise). */
+function reportLabels(errors, label, body, slots) {
+  const got = figureLabels(body);
+  const want = slots.map(([, v]) => v.toLocaleString("en-US"));
+  if (got.length !== want.length || want.some((v, i) => v !== got[i].figure)) return;
+  slots.forEach(([field, , own, others], i) => {
+    if (!own) return;
+    const words = got[i].label.trim();
+    if (!own.test(words)) {
+      errors.push(
+        `leg o (/methodology/): [${label}] states "${got[i].figure}" (${field}) beside ` +
+          `"${words.slice(0, 80)}" — the figure must be labelled with the words that name ` +
+          `what it counts (${own.source}); a label traded with another figure's states a ` +
+          `split that never held`,
+      );
+    }
+    for (const other of others ?? []) {
+      if (other.test(words)) {
+        errors.push(
+          `leg o (/methodology/): [${label}] states "${got[i].figure}" (${field}) beside ` +
+            `"${words.slice(0, 80)}", which also names another count's label ` +
+            `(${other.source}) — each figure carries its own label only`,
+        );
+      }
+    }
+  });
+}
 
 /** leg o's [data-link-review-high] and [data-link-demoted-high] bindings —
  *  see the call site in runLinkAdjudicationLeg. Exported for the unit test
@@ -3440,6 +3515,41 @@ function bindReviewAndDemotions({
       }
       reportStrays("data-link-review-high", reviewText, allowed);
       reportSlots("data-link-review-high", reviewText, slots);
+      // Fix round 4: each kind's figure carries its own kind's words and no
+      // other kind's; an extra kind carries the words the page prints for it.
+      const kindWords = (k) =>
+        REVIEW_KIND_WORDS[k] ??
+        new RegExp(escapeRe(REVIEW_KIND_EXTRA_WORDS[k] ?? `rest on a ${k} record`), "i");
+      const labelled = slots.map(([field, v]) => {
+        if (field === "reviewed_high") return [field, v, null, null];
+        const k = field.slice("reviewed_by_kind.".length);
+        return [
+          field,
+          v,
+          kindWords(k),
+          REVIEW_KINDS.filter((o) => o !== k).map((o) => REVIEW_KIND_WORDS[o]),
+        ];
+      });
+      reportLabels(errors, "data-link-review-high", reviewText, labelled);
+      // "two-lens" labels the adjudication count only while every one of
+      // those links carries both lenses — the page's own condition
+      // (reviewKinds.adjudication === highCensus.twoLens), since the
+      // adjudication kind counts every adjudicated high link.
+      const labels = figureLabels(reviewText);
+      const adjIdx = slots.findIndex(([f]) => f === "reviewed_by_kind.adjudication");
+      if (
+        adjIdx >= 0 &&
+        labels.length === slots.length &&
+        /two-lens/i.test(labels[adjIdx].label) &&
+        kinds.adjudication !== high?.two_lens_high
+      ) {
+        errors.push(
+          `leg o (/methodology/): [data-link-review-high] calls ${fmt(kinds.adjudication)} ` +
+            `a "two-lens" hand adjudication, but site_meta.link_adjudication.high.two_lens_high ` +
+            `is ${typeof high?.two_lens_high === "number" ? fmt(high.two_lens_high) : "absent"} — ` +
+            `only the two-lens links may be called that; the page says "per-award" otherwise`,
+        );
+      }
       for (const k of REVIEW_KINDS) {
         if (!REVIEW_KIND_WORDS[k].test(reviewText)) {
           errors.push(
@@ -3522,6 +3632,21 @@ function bindReviewAndDemotions({
       const allowed = new Set(slots.map(([, v]) => fmt(v)));
       reportStrays("data-link-demoted-high", demotedText, allowed);
       reportSlots("data-link-demoted-high", demotedText, slots);
+      // Fix round 4: each reason's figure carries that reason's words (the
+      // page's DEMOTION_WORDS, or "demoted as <reason>") and no other's.
+      const reasonWords = (r) =>
+        new RegExp(escapeRe(DEMOTION_REASON_WORDS[r] ?? `demoted as ${r}`), "i");
+      const allReasons = [...new Set([...Object.keys(DEMOTION_REASON_WORDS), ...reasons.map(([r]) => r)])];
+      reportLabels(
+        errors,
+        "data-link-demoted-high",
+        demotedText,
+        slots.map(([field, v]) => {
+          if (field === "demoted_from_high.links") return [field, v, null, null];
+          const r = field.slice("demoted_from_high.by_reason.".length);
+          return [field, v, reasonWords(r), allReasons.filter((o) => o !== r).map(reasonWords)];
+        }),
+      );
     }
   } else if (demotedExists) {
     errors.push(
@@ -3730,6 +3855,95 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
       `leg o (/methodology/): site_meta.link_adjudication.unpinned_published is ` +
         `0 but [data-link-adjudication] never says "none of them still publishes"`,
     );
+  }
+  // Fix round 4: the TIER word each unpinned clause names is the block's —
+  // "86 of them still publish, at high" passed while they publish at medium.
+  // Fix round 6 (fix-5 review): that binding matched only the page's own
+  // punctuation (/still publish,? at X/), so "(at high)", "in the high
+  // tier" and "— at high —" each passed. The tier word is now READ from the
+  // words that follow each anchor, to the end of its sentence, whatever sits
+  // between — the way the kind and reason labels are read after their
+  // figures (figureLabels): the unpinned_published figure in its slot,
+  // "still publish(es)", and the old clause's "those links publish". Every
+  // tier word there must be the block's tier; with no single tier in the
+  // block, none may be named. Dates are blanked to equal-length spaces so
+  // their digits are not figures and the indices stay the text's.
+  // Fix round 7 (R-DEC-LEGO, fix-6 re-check): fix round 6 dropped fix round
+  // 4's rule that ANY word after "still publish(es), at" is the tier word
+  // ("at the top tier", "at the highest tier", "at the strongest grade"
+  // passed again), and read nothing BEFORE an anchor ("; at high, 86 of them
+  // still publish" passed). Leg o is now the UNION of the two, read across
+  // the whole clause: (1) fix round 4's word after "still publish(es),? at"
+  // / "those links publish at", whatever it is; (2) every high / medium / low
+  // from the clause's start (the last ";" or sentence end before the anchor)
+  // to its sentence's end; (3) in that same span, the word that qualifies
+  // "tier" / "grade" ("the top tier", "the strongest grade", "top-tier"),
+  // unless it is a determiner ("the same tier"). Every word so read must be
+  // the block's tier; with no single tier in the block, none may be named.
+  const tierText = text.replace(/\d{4}-\d{2}-\d{2}/g, (d) => " ".repeat(d.length));
+  const sentenceEndAfter = (from) => {
+    const end = tierText.slice(from).search(/[.!?](?=\s|$)/);
+    return end < 0 ? tierText.length : from + end;
+  };
+  const clauseStartBefore = (at) => {
+    let start = 0;
+    for (const m of tierText.slice(0, at).matchAll(/;|[.!?](?=\s)/g)) start = m.index + 1;
+    return start;
+  };
+  const TIER_DETERMINERS = new Set([
+    "the", "a", "an", "any", "each", "every", "that", "this", "these", "those", "its", "their",
+    "same", "other", "another", "one", "no", "either", "neither", "which", "whichever", "what", "own",
+  ]);
+  const tierAnchors = [];
+  for (const m of tierText.matchAll(/\bstill publish(?:es)?\b/gi)) {
+    tierAnchors.push(["unpinned_published_tier", m.index, m.index + m[0].length]);
+  }
+  for (const m of tierText.matchAll(/\bthose links publish\b/gi)) {
+    tierAnchors.push(["unpinned_tier", m.index, m.index + m[0].length]);
+  }
+  if (upPartial) {
+    const fig = [...tierText.matchAll(/\d[\d,]*/g)][ADJUDICATION_COUNTS.length];
+    if (fig && fig[0] === up.toLocaleString("en-US")) {
+      tierAnchors.push(["unpinned_published_tier", fig.index, fig.index + fig[0].length]);
+    }
+  }
+  /** [field, index in tierText, the word read as the tier] */
+  const tierWords = [];
+  // (1) fix round 4: the word after "still publish(es),? at" is the tier word.
+  for (const [re, field] of [
+    [/\bstill publish(?:es)?,?\s+at\s+([a-z]+)/gi, "unpinned_published_tier"],
+    [/\bthose links publish at\s+([a-z]+)/gi, "unpinned_tier"],
+  ]) {
+    for (const m of tierText.matchAll(re)) tierWords.push([field, m.index + m[0].length - m[1].length, m[1]]);
+  }
+  // (2) + (3): the whole clause around each anchor.
+  for (const [field, start, end] of tierAnchors) {
+    const from = clauseStartBefore(start);
+    const span = tierText.slice(from, sentenceEndAfter(end));
+    for (const m of span.matchAll(/\b(high|medium|low)\b/gi)) tierWords.push([field, from + m.index, m[1]]);
+    for (const m of span.matchAll(/\b([a-z]+)[-\s]+(?:tiers?|grade)\b/gi)) {
+      if (!TIER_DETERMINERS.has(m[1].toLowerCase())) tierWords.push([field, from + m.index, m[1]]);
+    }
+  }
+  const tierSeen = new Set();
+  for (const [field, at, word] of tierWords) {
+    const key = `${field}@${at}`;
+    if (tierSeen.has(key)) continue;
+    tierSeen.add(key);
+    const tier = block[field];
+    if (typeof tier !== "string") {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] says the unpinned links publish at ` +
+          `"${word}", but site_meta.link_adjudication.${field} is ${JSON.stringify(tier ?? null)} — ` +
+          `no single tier to name; the page states the count alone`,
+      );
+    } else if (word.toLowerCase() !== tier.toLowerCase()) {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] says the unpinned links publish at ` +
+          `"${word}", but site_meta.link_adjudication.${field} is "${tier}" — the tier word is ` +
+          `read across the whole clause around the figure (before and after it), whatever the punctuation`,
+      );
+    }
   }
 
   // No number the block does not hold. ISO dates go first (both dates are

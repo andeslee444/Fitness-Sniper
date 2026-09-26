@@ -184,13 +184,25 @@ function spreadSample(slugs, n) {
 // names this program" no longer separated the tiers. The high claim is now
 // the naming plus the recorded review that upholds it, and the caveat names
 // the demoted-announcement species too.
-const MEDIUM_CAVEAT_PHRASES = [
+//
+// Fix round 4 (review, 2026-09-26): "…with a recorded review upholding it"
+// was still false — audit_link_grading demotes a link that HAS an upholding
+// record when a binding rejection or refutation, or its own precision
+// sample, refutes it (10 precision_sample_refuted medium links in chain
+// order, each with a pipeline uphold). /methodology/ §4 states the rule
+// whole ("only while a recorded review upholds it and no recorded rejection
+// or refutation applies"), and the caveat now does too. The phrase below is
+// the WHOLE qualifier: this leg used to bind only its first half, so a
+// revert to the naming-only sentence passed gate-green. Unit-tested in
+// __tests__/program-skeleton-medium-caveat.test.mjs.
+export const MEDIUM_CAVEAT_PHRASES = [
   "rest on evidence weaker than a program-level match",
   "same appropriation account as this program",
   "not evidence that this program paid for the contract",
   "FPDS acquisition-program tag or a subaward description",
   "which of its budget lines paid is not",
-  "high rows rest on the contract naming this program",
+  "high rows rest on the contract naming this program with a recorded review upholding it " +
+    "and no recorded rejection or refutation applying",
   "a recorded review did not leave standing",
 ];
 
@@ -216,7 +228,7 @@ const MEDIUM_CAVEAT_SAMPLE = 8;
  *  → {checked, ok}: `checked` counts toward the non-vacuity floor (the page
  *  actually renders a medium badge AND a caveat); `ok` is false when the page
  *  broke the contract. */
-function checkMediumCaveat(errors, slug, root) {
+export function checkMediumCaveat(errors, slug, root) {
   const hasMedium =
     root.querySelectorAll('[title="Match confidence: medium"]').length > 0;
   if (!hasMedium) return { checked: false, ok: true };

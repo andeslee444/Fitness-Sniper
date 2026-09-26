@@ -228,8 +228,68 @@ def test_export_facts_exports_the_superseded_route(pg_dsn, tmp_path):
     out = tmp_path / "jbooks" / "budget_line_awards.parquet"
     assert out in paths
     cols = duckdb.sql(f"select * from read_parquet('{out}') limit 0").columns
-    assert cols[-4:] == ["superseded_method", "superseded_confidence",
-                         "superseded_at", "superseded_evidence"]
+    # The whole column list, in order (fix round 7): the four superseded_*
+    # columns keep their places and recipient_basis (R-DEC-RECIPIENT /
+    # R-DEC-DERIVE) is appended after them, so no existing column moved.
+    assert cols == AWARD_EXPORT_COLUMNS
+
+
+#: budget_line_awards.parquet, column for column (all varchar).
+AWARD_EXPORT_COLUMNS = [
+    "pe_bli", "exhibit", "fiscal_year", "organization", "award_piid",
+    "recipient_name", "recipient_uei", "matched_obligation", "method",
+    "confidence", "score", "rationale", "account", "superseded_method",
+    "superseded_confidence", "superseded_at", "superseded_evidence",
+    "recipient_basis",
+]
+
+
+def test_export_facts_exports_the_recipient_basis(pg_dsn, tmp_path):
+    """R-DEC-DERIVE (fix-round-6 ruling, 2026-09-26): "recipient_basis is
+    exported to the lake". How each link's recipient was decided rides with
+    the link into budget_line_awards.parquet: a rule pick's basis, 'pre_rule'
+    on a stored row whose recipient predates R-DEC-RECIPIENT (the fpds-ap rows
+    derive_ap_links wrote before the rule; migration 019's backfill), and NULL
+    — never the string 'None' — on a row no recipient-picking loader wrote."""
+    with psycopg.connect(pg_dsn) as con:
+        for piid, method, conf, basis in (
+            ("A-ANN", "announcement+lexicon", "high", "announcement_named"),
+            ("B-FPDS", "fpds-ap", "medium", "pre_rule"),
+            ("C-FPDS", "fpds-ap", "low", "obligation"),
+            ("D-SUB", "subaward+lexicon", "high", "uei_tiebreak"),
+            ("E-ACCT", "account", "low", None),
+        ):
+            con.execute(
+                "insert into budget_line_awards (pe_bli, exhibit, fiscal_year,"
+                " organization, award_piid, recipient_name, recipient_uei,"
+                " method, confidence, recipient_basis)"
+                " values ('PE1','R-1',2026,'N',%s,'X INC','UEIX',%s,%s,%s)",
+                (piid, method, conf, basis))
+        # the export's chain-order check (R-DEC-LOADER) wants the review
+        # backfill to follow the loader's rows above
+        con.execute(
+            "insert into announcement_link_reviews (award_piid, pe_bli, exhibit,"
+            " fiscal_year, record_kind, reviewer_verdict, adversarial_verdict,"
+            " upholds, entry_index, reason, source_file, recorded_at) values"
+            " ('A-ANN','PE1','R-1',2026,'survivor_list','link','upheld',true,0,"
+            "  'r','data/research/announcements/wave1_result.json',"
+            "  now() + interval '1 minute')")
+    try:
+        export_facts(pg_dsn, parquet_dir=tmp_path)
+        out = tmp_path / "jbooks" / "budget_line_awards.parquet"
+        got = duckdb.sql(
+            f"select award_piid, method, recipient_basis"
+            f" from read_parquet('{out}') order by award_piid").fetchall()
+        assert got == [
+            ("A-ANN", "announcement+lexicon", "announcement_named"),
+            ("B-FPDS", "fpds-ap", "pre_rule"),
+            ("C-FPDS", "fpds-ap", "obligation"),
+            ("D-SUB", "subaward+lexicon", "uei_tiebreak"),
+            ("E-ACCT", "account", None),
+        ]
+    finally:
+        with psycopg.connect(pg_dsn) as con:
+            con.execute("delete from announcement_link_reviews")
 
 
 # ── R-DEC-LOADER: migrate -> loader -> backfill -> export-facts -> dbt ─────

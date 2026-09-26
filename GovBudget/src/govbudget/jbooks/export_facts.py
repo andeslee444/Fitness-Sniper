@@ -56,10 +56,18 @@ EXPORTS: dict[str, str] = {
         # scripts/load_announcement_links.py at the move — or, for the 60
         # moves of 2026-09-19, by migration 020 from the evidence it cites in
         # superseded_evidence. Exported so the move is auditable in the lake.
+        #
+        # recipient_basis (migration 019; R-DEC-RECIPIENT, R-DEC-DERIVE
+        # 2026-09-26): how recipient_name/recipient_uei were decided —
+        # 'obligation' / 'announcement_named' / 'uei_tiebreak' from the two
+        # loaders' pick, 'pre_rule' on a row they wrote before the rule
+        # (019's backfill), NULL on the mechanical crosswalk's account* rows.
+        # Appended last, so no earlier column moved.
         "select pe_bli, exhibit, fiscal_year, organization, award_piid,"
         " recipient_name, recipient_uei, matched_obligation, method, confidence,"
         " score, rationale, account, superseded_method, superseded_confidence,"
-        " superseded_at, superseded_evidence from budget_line_awards"
+        " superseded_at, superseded_evidence, recipient_basis"
+        " from budget_line_awards"
     ),
     "award_adjudications": (
         # hand-adjudication overlay (migration 010) — the mart coalesces

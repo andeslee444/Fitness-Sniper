@@ -27,9 +27,10 @@ PE = "SU0601101E"
 def _row(piid, method="announcement+lexicon", confidence="high", *,
          rationale="defense.gov contract announcement 1 (2020-01-01)",
          account=None, pe=PE):
-    """One 13-column budget_line_awards tuple in the loader's own order."""
+    """One 14-column budget_line_awards tuple in the loader's own order (the
+    14th, recipient_basis, is R-DEC-RECIPIENT's — migration 019)."""
     return (pe, "R-1", 2026, ORG, piid, "RECIPIENT INC", "UEI000000000",
-            1000.0, method, confidence, 2, rationale, account)
+            1000.0, method, confidence, 2, rationale, account, "obligation")
 
 
 @pytest.fixture()

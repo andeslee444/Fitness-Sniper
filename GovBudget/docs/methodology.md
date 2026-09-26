@@ -64,22 +64,22 @@ biennial.
 **Senate lobbying disclosures — lda.senate.gov.** The Senate Lobbying
 Disclosure Act database (`lda.senate.gov/api/v1`) contains filings, each with
 a permanent UUID, registrant, client company, dollar amounts, agencies
-lobbied, and issue text. (This sentence said "filings for 2025 and prior
-years" until 2026-09-26; the corpus carries 2026 filings too.) We link LDA
+lobbied, and issue text. (An earlier revision of this sentence said "filings
+for 2025 and prior years"; the corpus carries 2026 filings too.) We link LDA
 client names to our company-family database — a curated alias row maps a
 client string the registry names differently, such as RTX's own "RTX
 CORPORATION AND AFFILIATES" (ROADMAP #142) — and match each filing's issue
 text against our program titles for keyword co-occurrence — never a claim
 that the filing names the program. A mention qualifies only when the
 program's PE/BLI code appears (an all-digit one only beside a budget-line
-label; none of the 1,631 bare-number matches before 2026-09-26 had one), a
-curated alias appears, or at least two distinct,
+label; none of the 1,631 bare-number matches counted before this rule had
+one), a curated alias appears, or at least two distinct,
 non-generic words of one program's title co-occur in the same filing; each
 row of the `fct_program_lobbying` dataset records which tier it qualified
 under (`evidence_kind`). A budget-line label is BLI, budget line (item),
 line item, P-1/R-1 line, program element or PE, as in "BLI 2025"; a code
 with letters counts as a whole word; the
-digits-alone rule is ROADMAP #176 (2026-09-26): a year, a bill number or a
+digits-alone rule is ROADMAP #176: a year, a bill number or a
 quantity (2025, H.R. 4213, "September 30") had been read as a numeric
 budget-line code and badged as the strongest tier, and none of the 1,631 rows
 it produced carried a budget-line label. On a code two or more programs
@@ -96,18 +96,19 @@ the #176 rule on 2026-09-26 (in memory over the lake's filings, four runs,
 identical), the same filings give 12,571 rows across 471 program elements, 0
 of them on a bare number. Lobbying income and expenditure by year are shown
 alongside federal obligations received — influence is presented side by side
-with outcomes, never as a causal claim. Since 2026-09-26 an amendment
-replaces its original instead of adding to it; where a quarter's amendments
-disagree, the smallest counts (our copy keeps no posting date). An amendment
-supersedes every report of the same registrant, client and quarter; which
-amendment is latest cannot be named without a posting date, so the smallest
-is the one never larger than the truth (ROADMAP R-DEC-AMEND,
-2026-09-26: measured that day, 7 quarters, and the dbt build prints the count
-as a warning). Before that rule an amended quarter was counted twice. What
-the rule does not fix, disclosed rather than hidden: 22 quarters carry more
-than one ORIGINAL report and no amendment (re-filed duplicates, a quarterly
-report beside a termination; 23 once RTX's own filings attach), and both are
-still summed — about $0.6M, measured 2026-09-26, on the backlog.
+with outcomes, never as a causal claim. An amendment replaces its original
+instead of adding to it (a correction decided 2026-09-26); where a quarter's
+amendments disagree, the smallest counts (our copy keeps no posting date). An
+amendment supersedes every report of the same registrant, client and quarter;
+which amendment is latest cannot be named without a posting date, so the
+smallest is the one never larger than the truth (ROADMAP #178: 7 quarters,
+measured 2026-09-26, and the dbt build prints the count as a warning). Before
+that rule an amended quarter was counted at least twice. What the rule does
+not fix, disclosed rather than hidden: 22 quarters carry more than one
+ORIGINAL report and no amendment (re-filed duplicates, a quarterly report
+beside a termination; 23 once #142 attaches the filings for "RTX
+CORPORATION AND AFFILIATES"), and every such
+report is still summed: about $0.6M, measured 2026-09-26 (ROADMAP #179).
 
 **State checkbooks — California and Connecticut (pilot).** California's Open
 Fi$Cal and Connecticut's OpenCheckbook publish transaction-level government
@@ -251,8 +252,8 @@ its verdict: it records that the reviewer proposed the link, with one written
 reason, and that the adversarial pass did not refute it, and names no
 paragraph. The first three review
 waves kept their outcomes only as survivor lists, which is why
-the split is stated rather than folded into one "reviewed" figure (ruling
-R-DEC-110). Every count comes from `site_meta.link_adjudication.high`
+the split is stated rather than folded into one "reviewed" figure (ROADMAP
+#110, a rule set 2026-09-26). Every count comes from `site_meta.link_adjudication.high`
 (`reviewed_high`, `reviewed_by_kind`), and gate 24 leg o binds each to its
 slot; none is typed here.)
 (Re-measured 2026-09-19 (chain C), and unchanged on the 2026-09-25 run-4
@@ -330,7 +331,8 @@ reviewer checked, or, rarely, by the announcement's own description of the
 work. (The reviews became records in the decisions wave —
 `announcement_link_reviews`, migration 018, backfilled from the wave result
 and verdict files and the held-out precision study's refutations — under
-ROADMAP #110 and rulings R-DEC-110, R-DEC-INCOMPLETE and R-DEC-110b. A
+ROADMAP #110, with its rules for survivor lists, incomplete reads and the
+precision study's refutations set 2026-09-26. A
 rejection or refutation of another article the pair was proposed on does not
 bind; an adversarial read that came back incomplete is neither an uphold nor
 a refutation; a refutation from the held-out precision study binds to the
@@ -399,8 +401,8 @@ moved into the `fpds-ap` medium tier, so counting by the drawn method printed a
 figure for a tier no reader can meet. A sampled link the corpus no
 longer publishes counts in neither direction. A link demoted to medium by its
 own sample's refutation still publishes under the same tier, so its "refuted"
-still counts: a demotion never flatters the figure that caused it (ruling
-R-DEC-110b, 2026-09-26). A study run may re-judge one
+still counts: a demotion never flatters the figure that caused it (ROADMAP
+#110, a rule set 2026-09-26). A study run may re-judge one
 stratum only: each tier's figure comes from the latest run that judged that
 tier, a re-measurement replaces the number it corrects and never pools with it,
 and the page states every study date it draws on.
@@ -516,8 +518,8 @@ high-risk is biennial; J-books are annual. The site stamps the date each build
 was made ("Built <date>" in the footer and the methodology header), not a date
 the data is current to, and the live methodology page names the least recently
 refreshed dataset beside the award source. Numbers on the same page may reflect
-different time periods. (Until 2026-09-26 this said every table shows a "data
-as of" date; none does — ROADMAP #174, #134.)
+different time periods. (An earlier revision said every table shows a "data
+as of" date; none does. ROADMAP #174, #134.)
 
 ---
 
