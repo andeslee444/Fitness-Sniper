@@ -3491,6 +3491,326 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   **Status:** open (2026-09-25; the window applies to this integration's
   own deploy).
 
+- **#178 The lake keeps no LDA posting date, so a quarter's latest amendment
+  cannot be named.** The decisions wave's amendment rule (a controller
+  ruling of 2026-09-26 under the owner's 2026-09-25 delegation, R-DEC-AMEND
+  in the branch ledger's `owner-decisions-2026-09-25.md`;
+  `dbt/models/audit/audit_lda_filings.sql`) counts an amended quarter (one
+  registrant, client, `filing_year` and `filing_period`) once, from an
+  amendment, where `fct_influence` had summed the report and every
+  amendment of it. The latest amendment is the one that should count, and
+  the lake cannot say which that is: `_trim_filing` in
+  `src/govbudget/influence/lda.py` keeps none of the API's timestamps,
+  `influence pull` writes the parquets straight from the API responses and
+  keeps no raw copy, and every `filing_uuid` is a random version-4 UUID
+  (the decisions wave's influence lane, 2026-09-26). Where a quarter's
+  amendments report different figures, the rule counts the smallest total,
+  which is never more than the latest amendment reports, and
+  `dbt/tests/warn_lda_amendment_latest_undetermined.sql` warns in every
+  build. Re-measured read-only 2026-09-26 from
+  `data/parquet/influence/lda_filings.parquet`: 7 of the 160 amended
+  quarters, among them Pfizer's own 2024 Q4 (counted at $1.60M; its four
+  amendments run from $1.60M to $2.83M) and United Launch Alliance's own
+  2025 Q1 ($316,089 counted; three of its four amendments report
+  $583,089). /methodology/ §2 and `docs/methodology.md` §2 state the
+  tie-break, and the docs cite this entry. Fix (ruling R-DEC-AMEND-c):
+  keep the API's posting timestamp (`dt_posted` on the LDA API's filing
+  resource; not yet checked against a live response). (1) `_trim_filing`,
+  its emit tuple and the `lda_filings` writer carry it as a nullable
+  column. (2) `restamp_filings` in `lda.py` rewrites the parquet with a
+  fixed column list, so it must carry the column too and still accept a
+  file without it; the chain runs `influence restamp` before dbt, so a
+  column added only to the pull would be dropped silently. (3)
+  `audit_lda_filings` orders a quarter's amendments by it (`dt_posted desc
+  nulls last` ahead of the smallest total) and derives
+  `latest_determinable` from it, keeping the smallest-total fallback for
+  any quarter still undetermined. (4) A fixture test on the 7 quarters
+  shows the warning at 0 once dates exist. Then a live `influence pull`,
+  and restate §2 on both surfaces. Source: the decisions wave's influence
+  and dbt lane reports (2026-09-26, the branch ledger). Effort: hours, plus
+  the pull.
+  **Status:** open (2026-09-26).
+
+- **#179 Duplicate ORIGINAL LDA reports for one quarter are both summed.**
+  The amendment rule (#178) leaves alone a quarter that carries two or more
+  original reports (Q1–Q4, 1T–4T and their no-activity forms) and no
+  amendment: every report in it counts (`audit_lda_filings` resolution
+  `original`). The model calls these out of the ruling's scope, and ruling
+  R-DEC-AMEND-b filed them here unchanged. Measured read-only 2026-09-26
+  from `data/parquet/influence/lda_filings.parquet`, over the filings
+  `fct_influence` counts (a confirmed family match): 22 such quarters,
+  whose reports beyond the largest in each add $602,000 to the lobbying
+  totals; with the "RTX CORPORATION AND AFFILIATES" filings that #142's
+  alias attaches after `influence restamp`, 23 quarters and $632,000. Some
+  are a re-filed report (Bracewell LLP for Valero Energy, 2024 Q2: two Q2
+  reports of $110,000), others a quarterly report beside a termination
+  report (Gephardt Group for Boeing, 2024 Q3: Q3 and 3T, $40,000 each).
+  Whether a pair reports one quarter's activity twice is not established
+  from the lake. /methodology/ does not state the figure;
+  `docs/methodology.md` §2 discloses it and cites this entry. Related, from
+  the decisions wave's dbt lane (2026-09-26): 863 `fct_program_lobbying`
+  mention rows sit on filings the amendment rule supersedes, a list of
+  mentions rather than a sum, left as they are. Fix: a ruling on which
+  report of such a quarter counts, then that rule in `audit_lda_filings`
+  with a test, and restate docs §2. Source:
+  `dbt/models/audit/audit_lda_filings.sql`, the decisions wave's dbt lane
+  report (the branch ledger). Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#180 The home page's display h1 addresses the reader: the last gate 27
+  leg 16 exemption.** `site/src/app/page.tsx` renders "See what your tax
+  dollars build." as the hero h1, and `site/scripts/gates/copy-allowlist.json`
+  exempts it (page `/`, leg 16, "See what your"). VOICE.md's home-h1
+  pattern is `{count} {corpus noun}, each with its source.`, the count from
+  `site_meta.counts` as the `[data-stat]` link (its example: "1,938 defense
+  budget lines, each with its source."). The h1 sits above the receipt
+  moment that gate G4 (`site/scripts/gates/receiptmoment.mjs`) requires
+  fully above the fold at 1440×900 and 390×844, so the swap needs a design
+  pass on the hero's measure and line breaks, not a string edit (the #175
+  copy burn-down left it for that reason, 2026-09-26). Fix: set the h1 from
+  the pattern through `site/src/lib/copy.ts`, re-run G4 at both viewports,
+  and delete the allowlist entry in the same change. Source: the decisions
+  wave's copy report (`decisions-stage2-copy.md`, the branch ledger).
+  Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#181 Two cross-references still name program-page headings in Title
+  Case.** The #175 burn-down set the program page's section headings in
+  sentence case ("Program lineage", "Related awards";
+  `site/src/components/program-wayfinding.tsx`), and two sentences that
+  point at those headings kept the old case: "Where this line's funding
+  went is recorded under Program Lineage below."
+  (`site/src/components/program-figures.tsx`, twice) and "see Related
+  Awards below" (`site/src/lib/concentration-basis.ts`). The first is
+  pinned word for word by gate 21 (`site/scripts/gates/program-skeleton.mjs`),
+  `site/scripts/gates/__tests__/narrative-successor.test.mjs` and
+  `site/src/__tests__/program-figures.test.tsx` (twice); under VOICE.md
+  rule 26 it moves with that gate and those tests in one change. No test
+  pins the second: `site/src/__tests__/program-concentration.test.tsx`
+  checks other clauses of `sharedCodeWithheldReason()`, not this one, so
+  it has no test to move. Source: the decisions wave's copy report
+  (`decisions-stage2-copy.md`). Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#182 Two readers outside `export_site.py` still query through DuckDB's
+  process-wide default connection (#172's species).** #172 (decisions
+  wave) moved the exporter's reads to private connections, and fix round 4
+  gave `scripts/precision_study.py`'s award read its own connection. The
+  same shared-connection call remains in `src/govbudget/verify_phase5b1.py`
+  (`_parquet_count` in `integrity_gate5b1`) and in
+  `src/govbudget/cli.py`'s `cmd_verify_phase4` (the California department
+  count `ca_dept_captured`, inside a `try` whose `except` prints a WARNING
+  and carries on), plus `tests/test_export_site_ledger.py`'s
+  `dim_lobbyists` schema checks. One failed statement while another
+  result is pending leaves that connection aborted for the rest of the
+  process (#172). Listed by the decisions wave's stage-2 report
+  (2026-09-26). Fix: a private `duckdb.connect()` per reader, closed
+  after use. Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#183 The crosswalk's link key names no account or organization, so
+  #170's refusal stops the default run.** #170's fix (decisions wave) makes
+  `jbooks crosswalk` refuse, before any write, every (pe_bli, exhibit,
+  fiscal_year) identity that two accounts or two organizations share. A
+  dry run against Postgres (the decisions wave's Postgres lane,
+  2026-09-26) exits 2 on 41 identities: 31 across accounts (organization N
+  30, F 1) and 10 across organizations (code `FY2024CR`'s P-1 line in
+  FY2025, filed by A, DEFW, F and N; and codes 20, 30 and 500 in
+  FY2024–FY2026, filed by DCSA, DTRA, DMACT, DODEA, OSD, DHRA and DLA).
+  Until the key changes, a run over every organization writes nothing, and
+  those organizations cannot be crosswalked for the editions that carry
+  these identities. No stored row is at risk: all 124,500 mechanical rows
+  are DARPA's, and `--org DARPA` finds none ambiguous. Fix: key
+  `budget_line_awards` on account and organization too (a migration, the
+  upsert in `src/govbudget/jbooks/crosswalk.py` and every reader of the
+  key), then refuse only what the new key cannot separate. Source: #170,
+  the decisions wave's Postgres lane report (the branch ledger). Effort:
+  days.
+  **Status:** open (2026-09-26).
+
+- **#184 The announcement pass's own precision figure would rise if a
+  refuted sample link left publication.** `_announcement_scope_precision`
+  in `src/govbudget/export_site.py` gives /methodology/ the pass's figure
+  (48 of 55 on the 2026-09-25 export, 60 drawn) and counts a sampled link
+  only while the corpus publishes it under `announcement+lexicon`. The
+  decisions wave keeps the tier-wide tally from being flattered by a
+  link's own demotion (a link demoted by its own sample's refutation stays
+  counted in the tier it was tallied in); this figure has no such rule.
+  Today a precision-study refutation demotes a link to medium under the
+  same method, so the figure does not move (the decisions wave's export
+  lane, 2026-09-26). A later rule that took such a link out of publication
+  would drop its "refuted" from the denominator and raise the figure.
+  Fix: apply the tier tally's rule to this figure too, with a test that a
+  refuted link leaving publication leaves the figure unchanged. Source:
+  the decisions wave's export lane report (`decisions-fix3-export.md`).
+  Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#185 The fpds-ap links keep the recipients a scan-order pick gave
+  them: a reviewed re-derive under the recipient rule.** The decisions
+  wave's recipient rule (ruling R-DEC-RECIPIENT, the branch ledger's
+  `owner-decisions-2026-09-25.md`) gives a link the UEI with the largest
+  total obligation on the award, a tie going to the lowest UEI;
+  `scripts/derive_ap_links.py` applies it per (AP code, PIID) group and
+  stores how it decided in `budget_line_awards.recipient_basis` (migration
+  019). The wave does not run the deriver (ruling R-DEC-DERIVE), so the
+  38,964 stored fpds-ap rows (1,865 medium, 37,099 low; read-only
+  2026-09-26) keep the recipients the last run picked with `any_value`, in
+  scan order, and the wave records their basis as `'pre_rule'`. A dry run
+  of the rule against production (the wave's fix-6 Postgres lane,
+  2026-09-26) changes the UEI on 12 published (medium) links over 9 PIIDs,
+  6 of them to another family by the live `entity_xwalk`, every one
+  decided by obligation; at low, 451 by obligation and 16 by the
+  tie-break, 370 of those 467 on PIIDs of four characters or fewer (order
+  numbers without their parent IDV, which pool unrelated awards: 4,311
+  groups, none medium). A re-derive also changes the link set, from lake
+  drift since the stored rows were derived rather than from the rule: 890
+  unpublished keys added, 11 removed, and 17 promoted from low to
+  published medium. The lane counted 25,081 (AP code, PIID) groups, 667
+  with more than one UEI and 27 tied for the largest total (all low); the
+  ruling's "2,694 fpds-ap groups" was not reproduced. Fix: re-run the
+  deriver with `--dry-run` against the lake of the day; review each
+  recipient change (every cross-family move against the award's own
+  records) and each promotion; then run it, `govbudget build` and
+  `export-site`, recording before → after the published fpds-ap count, the
+  family totals and the HHI figures the moved recipients touch. #186 is
+  settled first or in the same change. Source: `decisions-fix6-pg.md` (the
+  branch ledger). Effort: hours, plus the review.
+  **Status:** open (2026-09-26).
+
+- **#186 130 unpublished fpds-ap keys are built by two AP codes, and the
+  last one wins.** `budget_line_awards` is keyed (pe_bli, exhibit,
+  fiscal_year, award_piid), and `scripts/derive_ap_links.py` builds its
+  rows per (AP code, PIID) group, so a PIID filed under two AP codes whose
+  programs share a line builds one key twice. A dry run against production
+  (the decisions wave's fix-6 Postgres lane, 2026-09-26) finds 130 such
+  keys, all low (unpublished): 108 disagree on the recipient and 127 on
+  the matched obligation. Before fix round 6 the upsert kept the recipient
+  of the first insert and took the obligation from the last, in unordered
+  scan order, so a stored row can carry one group's recipient beside the
+  other group's obligation; since fix round 6 both come from the last
+  group in (AP code, PIID) order, which is deterministic and still
+  arbitrary. The stored rows are the scan-order ones until the deriver
+  runs again (#185). None publishes today, but a re-derive promotes low
+  keys to medium (17 in that dry run; whether any of the 130 is among them
+  was not measured). Fix: a rule for a key two groups build (one row from
+  the union of the groups' award rows, or a refusal as #170 refuses an
+  identity two accounts share), with a two-group fixture test, before the
+  re-derive in #185. Source: `decisions-fix6-pg.md` (the branch ledger).
+  Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#187 Gate legs o, q and cm[bridge] still pass some paraphrases of a
+  false claim.** Three legs bind prose to figures with regular
+  expressions: leg o (`site/scripts/gates/datatruth.mjs`) binds the tier
+  the adjudication census says its unpinned links still publish at; leg q
+  (`site/scripts/gates/feed.mjs`) binds HHI band thresholds to the Merger
+  Guidelines edition that states them; cm[bridge]
+  (`site/scripts/gates/coverage.mjs`) binds /coverage/'s crosswalk blocker
+  to the hand-adjudicated share and bans a majority word unless that share
+  is over one half. The decisions wave's fix rounds tightened each leg
+  against the paraphrases its reviews found, and ruling R-DEC-GATE-LIMIT
+  (2026-09-26) stops the chase after round 7: a regular expression cannot
+  parse all English, and an adversarial prose review is the backstop. One
+  change came after it. Ruling R-DEC-LEGQ-b (fix round 8) makes leg q
+  FAIL-CLOSED on two-edition band statements. A sentence that names both
+  the 2010 and the 2023 edition and states a band pair passes only if
+  every occurrence of each pair's numbers goes to that pair's own edition
+  under two readings: the nearest edition name before the number, and the
+  nearest name after it (within the leg's clause and parenthesis scopes).
+  The fix-7 re-check's 512-sentence template fuzz measures it. Fix 8
+  fails all 384 false sentences. Fix 7 had passed 32 of them, and fix 6
+  had failed 26 of those 32. Fix 8 passes 24 of the 128 true sentences
+  and fails the other 104, including 72 that fix 7 passed. A true
+  comparison that fails is rephrased, never answered by loosening the
+  leg. Rephrase it as one edition per sentence, or give each edition its
+  own clause (after ";" or ", and / while / but") or its own
+  parenthetical: "The 2023 Merger Guidelines use 1,000 and 1,800 (the
+  2010 Horizontal Merger Guidelines used 1,500 and 2,500)." Fix round
+  4's mirror check also fails one true shape: a sentence that names 2023
+  and states the retired pair without the current pair, such as "Under
+  the 2023 Merger Guidelines the bands changed; the 2010 Guidelines used
+  1,500 and 2,500." The primary guard is exact binding: every surface
+  that states the thresholds renders text built from `hhi-band.mjs`'s
+  constants. No page compares the editions in one sentence today. The
+  /methodology/ corrections row puts each edition in its own table cell,
+  and the leg reads each cell on its own.
+  Every known shape that still passes, probed on the fix-8 gates
+  (2026-09-26; legs o and cm[bridge] have not changed since fix 7). None
+  of these is in shipped text.
+  Leg q: (q1) "respectively", "The 2010 and 2023 Merger Guidelines put
+  the moderately concentrated floor at 1,000 and 1,500 respectively.";
+  attribution reads where a number sits, not "respectively", and "2010
+  and 2023 Merger Guidelines" names only 2023 to it. (q2) A point claim
+  with no HHI, index or score noun: "Under the 2023 Merger Guidelines,
+  1,900 falls in the moderately concentrated band." (q3) A point claim in
+  the past tense, "In FY2021 the program's HHI of 1,900 was moderately
+  concentrated under the 2023 Merger Guidelines.": the leg reads the past
+  tense as history. (q4) An edition the attribution cannot name, such as
+  "the older guidelines" or "the current guidelines": "Bands follow the
+  2023 Merger Guidelines: 1,500 and 2,500 (the older guidelines used
+  1,000 and 1,800)." and "The current guidelines put the bands at 1,500
+  and 2,500." Telling that swap from a true comparison needs the verb's
+  meaning (the fix-6 site report). (q5) No edition named in the sentence,
+  "The site's bands are 1,500 and 2,500.", even when the sentence before
+  names one ("The site follows the 2023 Merger Guidelines. Its bands are
+  1,500 and 2,500."): the leg reads one sentence at a time. (q6) A
+  present-tense verb other than follows, uses, applies or adopts, with
+  2023 unnamed: "The site keeps the 2010 Horizontal Merger Guidelines'
+  1,500 and 2,500." (q7) A single threshold outside the shaped claims:
+  "Under the 2023 Merger Guidelines the moderately concentrated floor is
+  1,500." (q8) A threshold verb outside the shaped claims: "Under the 2023
+  Merger Guidelines, an HHI over 2,500 counts as highly concentrated." and
+  "…, highly concentrated means above 2,500." (q9) Thresholds written in
+  words: "Under the 2023 Merger Guidelines the bands are fifteen hundred
+  and twenty-five hundred." (q10) The other edition named BETWEEN each
+  edition and its pair, clause by clause, so both readings give each pair
+  to the name beside it: "The 2023 Merger Guidelines, unlike the 2010
+  Horizontal Merger Guidelines, use 1,500 and 2,500; the 2010 Horizontal
+  Merger Guidelines, unlike the 2023 Merger Guidelines, used 1,000 and
+  1,800." passes (false) while its true form fails — likewise "which
+  replaced / successor to / predecessor to" appositives and "— not the … —";
+  a parenthetical "(not the …)" is read correctly (fix round 8 re-check,
+  2026-09-26; fixes 5–7 behave the same, so not a weakening).
+  Leg o: (o1) A tier claim with no tier word and no word qualifying
+  "tier" or "grade", such as "86 of them still publish among the
+  strongest links". Fix round 7 (ruling R-DEC-LEGO) reads three things
+  across the whole clause: the word after "at", the literal tier words,
+  and a word qualifying "tier" or "grade". So it fails "86 of them, in
+  the top tier, still publish", but it does not read a paraphrase with
+  none of them. (o2) A tier word in an earlier clause of the same
+  sentence, before its ";": "8,475 of those, all at high, found work …".
+  (o3) When every unpinned link still publishes, a tier claim that is
+  not attached to the "those links publish" anchor: "; they remain live
+  at high." (o4) A negation in the High review passage
+  (`[data-link-review-high]`), "All 1,105 carry no recorded review": the
+  leg binds that passage's figures, not its verb. Fail-closed: the true
+  "86 of them still publish at the medium tier" fails, because fix round
+  4's word-after-"at" rule reads "the". Not a residual: a passage that
+  drops the tier statement ("86 of them still publish, and the rest no
+  longer publish.") passes, because the leg binds a tier word where one
+  is written and does not require one.
+  cm[bridge]: (c1) A majority word outside the ban list. The list is the
+  ruling's eight words plus "over half", "virtually all" and "the bulk".
+  Words outside it that pass: "mainly", "predominantly",
+  "overwhelmingly", "in large part", "the preponderance" and "the lion's
+  share". (c2) A share written in words: "Three in four published links
+  were hand-adjudicated." (c3) A universal in a sentence outside the
+  census clause, "Every published link was hand-adjudicated." or "All
+  published links were hand-adjudicated.", which is #109's own claim.
+  Banning it would need a universal-quantifier check, and a bare "all"
+  cannot be banned because the shipped blocker says "adjudication at
+  all". Fail-closed: the true "the mostly unadjudicated remainder" fails,
+  because the ban reads "mostly" whatever it qualifies.
+  Fix: none planned in the gates beyond leg q's fail-closed rule. Any
+  change to the prose these legs read gets an adversarial review against
+  `site_meta`. A paraphrase found in shipped text gets a failing test and
+  a leg change in the same commit. Source: `decisions-fix6-site.md`, the
+  fix-6 and fix-7 re-checks, `decisions-fix7-gates.md` and
+  `decisions-fix8.md` (the branch ledger).
+  Effort: hours per shape found.
+  **Status:** open (2026-09-26).
+
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
 naming the sprint and/or commit that closed it and when, so an item's state is

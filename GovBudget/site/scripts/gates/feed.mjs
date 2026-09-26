@@ -747,6 +747,33 @@ function runHhiDestinationLeg(errors, notes, root) {
 // ═══════════════════════════════════════════════════════════════════════════
 // leg (q) — the pages that state the bands in PROSE state hhi-band.mjs's
 // (decisions wave fix round 2, 2026-09-26)
+//
+// RESIDUAL GAPS (R-DEC-GATE-LIMIT, fix rounds 7–8: documented, not chased — a
+// regex cannot parse all English; adversarial prose review is the backstop).
+// Each passes on fix round 8 (probed 2026-09-26):
+//  - "respectively" pairing: "The 2010 and 2023 … put the … floor at 1,000 and 1,500 respectively" passes.
+//  - a point claim with no HHI / index / score noun ("…, 1,900 falls in the moderately concentrated band") passes.
+//  - a point claim in the past tense ("In FY2021 the program's HHI of 1,900 was moderately concentrated under the 2023 …") passes.
+//  - an edition the attribution cannot name ("the older / current guidelines") names none: "2023 …: 1,500 and 2,500
+//    (the older guidelines used 1,000 …)" and "The current guidelines put the bands at 1,500 and 2,500." pass.
+//  - no edition named at all, or named in another sentence ("The site's bands are 1,500 and 2,500.") passes.
+//  - a present-tense verb outside follows/uses/applies/adopts, 2023 unnamed ("The site keeps the 2010 … 1,500 and 2,500") passes.
+//  - one threshold outside the shaped claims ("Under the 2023 … the moderately concentrated floor is 1,500") passes.
+//  - a threshold verb outside the shaped claims ("an HHI over 2,500 counts as highly concentrated", "highly
+//    concentrated means above 2,500") or a threshold in words ("fifteen hundred") passes.
+//  - the other edition named BETWEEN each edition and its pair, clause by clause ("The 2023 …, unlike the 2010 …,
+//    use 1,500 and 2,500; the 2010 …, unlike the 2023 …, used 1,000 and 1,800.") passes (false) and its true form
+//    fails — both readings give each pair to the name beside it (q10; parentheticals "(not the …)" are read right).
+//  (The full list, with legs o and cm[bridge]: ROADMAP #187.)
+// FAIL-CLOSED (R-DEC-LEGQ-b, fix round 8): a sentence naming TWO editions and
+// stating a band pair passes only when the nearest edition name BEFORE each
+// number and the nearest AFTER it both give it to its own edition. A TRUE
+// comparison one reading misreads fails ("Where the 2010 … used 1,500 and
+// 2,500, the 2023 … use 1,000 and 1,800.") and is rephrased: one edition per
+// sentence, or each edition in its own clause (";", ", and / while / but …")
+// or parenthetical ("The 2023 … use 1,000 and 1,800 (the 2010 … used 1,500
+// and 2,500)."). The primary guard is exact binding: every surface that
+// states the thresholds renders text built from hhi-band.mjs's constants.
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -845,6 +872,134 @@ const followsEditionNowRe = (year) =>
     "i",
   );
 
+/** The band a retired edition put a whole point in (2010 HMG § 5.3:
+ *  unconcentrated below 1,500, moderately concentrated 1,500–2,500, highly
+ *  concentrated above 2,500) — hhiBand's keys. */
+const retiredBandKey = (ed, n) => (n < ed.bands[0] ? "unconcentrated" : n <= ed.bands[1] ? "moderate" : "concentrated");
+const BAND_WORD_KEY = { unconcentrated: "unconcentrated", "moderately concentrated": "moderate", "highly concentrated": "concentrated" };
+const KEY_WORD = { unconcentrated: "unconcentrated", moderate: "moderately concentrated", concentrated: "highly concentrated" };
+/** A point claim: "an HHI of 1,900 is moderately concentrated", "the
+ *  program's HHI of 2,159 is highly concentrated", "an index of 1,801 is …"
+ *  (present tense only — "was" is history). Fix round 4, 2026-09-26.
+ *  Fix round 6 (fix-5 review): also the appositive "The program's HHI,
+ *  1,900, is …" and the hedged verb "is considered / deemed / regarded as /
+ *  classed as … <band>" — both passed unread. */
+const POINT_CLAIM_RE = new RegExp(
+  String.raw`\b(?:HHI|Herfindahl(?:[-‐–\s]Hirschman)?(?:\s+Index)?|index|score)(?:\s+(?:of|at)\s+|\s*,\s*|\s+)${NUM}(?:\s+points)?,?\s+` +
+    String.raw`(?:is|reads\s+as|counts\s+as|sits\s+in|falls\s+in|lands\s+in)\s+` +
+    String.raw`(?:(?:considered|deemed|regarded|classed|classified|rated|labell?ed|treated)\s+(?:as\s+)?(?:to\s+be\s+)?)?(?:the\s+)?` +
+    String.raw`(unconcentrated|moderately concentrated|highly concentrated)\b`,
+  "gi",
+);
+
+/**
+ * Fix round 6 (fix-5 review, 2026-09-26): which edition each pair of band
+ * numbers BELONGS to in a sentence. Fix round 4's two directions only asked
+ * whether both pairs appeared anywhere, so "Bands follow the 2023 Merger
+ * Guidelines: 1,500 and 2,500 (the 2010 Horizontal Merger Guidelines used
+ * 1,000 and 1,800)" gave each edition the other's numbers and passed.
+ *
+ * Every whole-point occurrence is attributed to an edition named in its
+ * clause — a clause ends at ";" or at ", and / but / while / whereas / yet".
+ * Parentheses scope it: an occurrence inside a parenthetical that names an
+ * edition belongs to that one; inside a parenthetical that names none
+ * ("bands (1,000 and 1,800) replaced …") it reaches to the enclosing text's
+ * names; outside every parenthetical it looks only at names outside them
+ * first. With no name in its clause it looks at the whole sentence. An
+ * edition OWNS a pair when every number of the pair has an occurrence
+ * attributed to it. With one edition named this is exactly fix round 4's
+ * co-occurrence rule.
+ *
+ * Fix round 7 (R-DEC-LEGQ, 2026-09-26): within each of those scopes the
+ * occurrence belongs to the nearest name that PRECEDES it — the nearest name
+ * after it only when none precedes. Fix round 6 took the nearest name in
+ * either direction, and ", the" is no clause break, so "Where the 2010 …
+ * used 1,500 and 2,500, the 2023 … use 1,000 and 1,800." gave 2,500 to the
+ * 2023 name six characters after it and failed a true comparison. A
+ * sentence says whose numbers they are before it says them.
+ *
+ * Fix round 8 (R-DEC-LEGQ-b, 2026-09-26): `reading` picks the direction.
+ * "before" (the default, fix round 7's rule) takes the nearest name before
+ * the occurrence, the nearest after it only when none precedes; "after" is
+ * the mirror — the nearest name after it, the nearest before only when none
+ * follows. hhiBandClaims reads a sentence naming two editions both ways and
+ * fails it unless both readings give every number to its own edition.
+ *
+ * Returns { mentions, owns(pair, year), ownerOf(pair), ownersAt(n) } over
+ * `text` (the sentence with quotation marks removed — the text NUM positions
+ * are read from); ownersAt(n) is the edition year each occurrence of n is
+ * given, in text order. Pure.
+ */
+function editionAttribution(text, reading = "before") {
+  const mentions = [];
+  const add = (year, re) => {
+    for (const m of text.matchAll(new RegExp(re.source, "gi"))) {
+      mentions.push({ year, start: m.index, end: m.index + m[0].length });
+    }
+  };
+  add(CURRENT_EDITION_YEAR, CURRENT_EDITION_RE);
+  add(CURRENT_EDITION_YEAR, DOJ_PAGE_RE);
+  for (const ed of RETIRED_EDITIONS) {
+    add(ed.year, editionNamedRe(ed.year));
+    if (new RegExp(String.raw`\b${ed.year}\b`).test(text)) add(ed.year, ed.titleRe);
+  }
+  // Parenthetical group of every index (-1 = outside every parenthetical),
+  // and clause of every index.
+  const group = new Array(text.length).fill(-1);
+  const stack = [];
+  let next = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "(") stack.push(next++);
+    group[i] = stack.length ? stack[stack.length - 1] : -1;
+    if (text[i] === ")" && stack.length) stack.pop();
+  }
+  const clause = new Array(text.length).fill(0);
+  let c = 0;
+  const breaks = new Set();
+  for (const m of text.matchAll(/;|,\s+(?:and|but|while|whereas|yet)\s/gi)) breaks.add(m.index);
+  for (let i = 0; i < text.length; i++) {
+    if (breaks.has(i)) c++;
+    clause[i] = c;
+  }
+  for (const m of mentions) {
+    m.group = group[m.start] ?? -1;
+    m.clause = clause[m.start] ?? 0;
+  }
+  const occurrences = (n) =>
+    [...text.matchAll(new RegExp(NUM, "g"))].filter((m) => toNum(m[1]) === n).map((m) => ({ start: m.index, end: m.index + m[0].length }));
+  const gap = (m, o) => (m.end <= o.start ? o.start - m.end : m.start >= o.end ? m.start - o.end : 0);
+  const attribute = (o) => {
+    const g = group[o.start];
+    const cl = clause[o.start];
+    for (const pick of [
+      (m) => m.clause === cl && m.group === g,
+      (m) => m.clause === cl && m.group === -1,
+      (m) => m.clause === cl,
+      () => true,
+    ]) {
+      const cands = mentions.filter(pick);
+      if (cands.length === 0) continue;
+      // reading "before": the nearest name BEFORE the occurrence (fix round
+      // 7, R-DEC-LEGQ), the nearest after it only when no name in this scope
+      // precedes it. reading "after" (fix round 8, R-DEC-LEGQ-b): the mirror.
+      const side =
+        reading === "after" ? cands.filter((m) => m.start >= o.end) : cands.filter((m) => m.end <= o.start);
+      const pool = side.length ? side : cands;
+      pool.sort((a, b) => gap(a, o) - gap(b, o));
+      return pool[0].year;
+    }
+    return null;
+  };
+  const owners = (n) => new Set(occurrences(n).map(attribute).filter(Boolean));
+  const owns = (pair, year) => pair.every((n) => owners(n).has(year));
+  const ownerOf = (pair) => {
+    const years = [...new Set(mentions.map((m) => m.year))];
+    return years.filter((y) => owns(pair, y));
+  };
+  const ownersAt = (n) => occurrences(n).map(attribute);
+  return { mentions, owns, ownerOf, ownersAt };
+}
+
 /**
  * Every claim about the HHI bands that one block of prose makes, each held
  * to hhi-band.mjs — the SAME hhiBand() the badge, the feed card and the
@@ -870,7 +1025,18 @@ const followsEditionNowRe = (year) =>
  *                  "Horizontal Merger Guidelines (2010)") states that
  *                  edition's bands, 1,500 and 2,500 (RETIRED_EDITIONS), and
  *                  does not say in the present tense that the bands follow
- *                  it (fix round 3)
+ *                  it (fix round 3); and the mirror (fix round 4): a
+ *                  sentence naming the current edition (2023) or the DOJ
+ *                  Antitrust Division's HHI page beside a retired edition's
+ *                  pair (1,500 and 2,500) fails unless it also states the
+ *                  current pair (1,000 and 1,800) — a comparison; and
+ *                  (fix round 8, R-DEC-LEGQ-b) a sentence naming both
+ *                  editions fails closed unless reading each number by the
+ *                  nearest name before it AND by the nearest after it both
+ *                  give it to its own pair's edition
+ *   point          "an HHI of N is <band>" (present tense): the band is
+ *                  hhiBand(N)'s, or, in a sentence naming only a retired
+ *                  edition, that edition's (fix round 4)
  *   competitive    an unquoted "competitive" in a sentence about
  *                  concentration (R-DEC-132b retired it; history may quote it)
  *   or-above       "N or above is highly concentrated": N must be the first
@@ -939,19 +1105,60 @@ export function hhiBandClaims(text) {
     // and never says the site follows it today (fix round 3: the re-checker's
     // "Bands follow the 2010 DOJ/FTC Horizontal Merger Guidelines: … 1,000–1,800
     // is moderately concentrated …" carried a year, so "vintage" passed it).
+    // Fix round 6: "states" means the pair is ATTRIBUTED to the edition —
+    // not merely present somewhere in the sentence. Fix round 7
+    // (R-DEC-LEGQ): attributed to the nearest edition name BEFORE it in its
+    // clause (editionAttribution), the one after it only when none precedes.
+    const attribution = editionAttribution(plain);
+    const pairText = (pair) => pair.map(fmtPoints).join(" and ");
+    const ownersText = (pair) => {
+      const ys = attribution.ownerOf(pair);
+      return ys.length
+        ? ys.map((y) => (y === CURRENT_EDITION_YEAR ? `the ${V}` : `the ${y} edition`)).join(" / ")
+        : "no one edition (its numbers are split between names)";
+    };
     for (const ed of RETIRED_EDITIONS) {
       const named =
         editionNamedRe(ed.year).test(s) || (ed.titleRe.test(s) && new RegExp(String.raw`\b${ed.year}\b`).test(s));
       if (!named) continue;
-      const statesOwn = ed.bands.every((b) => nums.includes(b));
+      const present = ed.bands.every((b) => nums.includes(b));
+      const statesOwn = present && attribution.owns(ed.bands, ed.year);
       const followsNow = followsEditionNowRe(ed.year).test(plain);
-      const own = ed.bands.map(fmtPoints).join(" and ");
+      const own = pairText(ed.bands);
       add(
         "edition-bands",
         statesOwn && !followsNow,
-        !statesOwn
+        !present
           ? `names the ${ed.title} without stating that edition's bands, ${own}: "${clip(s)}" — a sentence naming a retired edition states its own numbers; the site's bands are the ${V}' (#132)`
-          : `says in the present tense that the bands follow the ${ed.title}: "${clip(s)}" — since #132 they are the ${V}' (${fmtPoints(MOD)} / ${fmtPoints(HIGH)}); state ${ed.year} as history`,
+          : !statesOwn
+            ? `names the ${ed.title}, but its bands ${own} belong to ${ownersText(ed.bands)}: "${clip(s)}" — ` +
+              `each pair belongs to the nearest edition named BEFORE it in its clause (the one after it only when none precedes, R-DEC-LEGQ); ` +
+              `the ${ed.year} edition's own pair is ${own}, the ${V}' is ${fmtPoints(MOD)} and ${fmtPoints(HIGH)} (#132)`
+            : `says in the present tense that the bands follow the ${ed.title}: "${clip(s)}" — since #132 they are the ${V}' (${fmtPoints(MOD)} / ${fmtPoints(HIGH)}); state ${ed.year} as history`,
+        s,
+      );
+    }
+
+    const namesCurrent = CURRENT_EDITION_RE.test(s) || DOJ_PAGE_RE.test(s);
+    // Fix round 4: a point claim is banded the way the badge bands it —
+    // hhiBand(N) — or, in a sentence naming only a retired edition (and not
+    // the current one), by that edition's own bands.
+    const retiredNamed = RETIRED_EDITIONS.filter(
+      (ed) => editionNamedRe(ed.year).test(s) || (ed.titleRe.test(s) && new RegExp(String.raw`\b${ed.year}\b`).test(s)),
+    );
+    const pointEdition = !namesCurrent && retiredNamed.length === 1 ? retiredNamed[0] : null;
+    for (const m of plain.matchAll(POINT_CLAIM_RE)) {
+      const n = toNum(m[1]);
+      const said = m[2].toLowerCase();
+      const actual = pointEdition ? retiredBandKey(pointEdition, n) : bandKey(n);
+      add(
+        "point",
+        BAND_WORD_KEY[said] === actual,
+        `says an HHI of ${fmtPoints(n)} is ${said}, but ` +
+          (pointEdition
+            ? `under the ${pointEdition.title}' bands (${pointEdition.bands.map(fmtPoints).join(" / ")}) it is ${KEY_WORD[actual]}`
+            : `under the ${V} bands (hhi-band.mjs) ${fmtPoints(n)} is ${hhiBand(n).label.toLowerCase()}`) +
+          `: "${clip(s)}"`,
         s,
       );
     }
@@ -1063,6 +1270,102 @@ export function hhiBandClaims(text) {
         `says ${word} equal-share firms produce ${fmtPoints(n)}; ${word} equal shares give 10,000 / ${k} = ${fmtPoints(want)}`,
         s,
       );
+    }
+
+    // Fix round 4 (review, 2026-09-26): the other direction. "Bands follow
+    // the 2023 Merger Guidelines: 1,500 and 2,500." carried the current
+    // edition's name on the retired numbers and passed. A sentence naming the
+    // current edition (or the DOJ page that states its bands) and printing a
+    // retired pair states the current pair beside it, or it attributes the
+    // retired numbers to the current edition.
+    // A sentence whose retired numbers a shaped claim above already failed
+    // (e.g. "1,500 to 2,500 is moderately concentrated") is reported once.
+    // Fix round 6 ADDED attribution: when the retired pair is attributed to
+    // the current edition's name, the comparison holds only when the current
+    // pair is attributed to that name too — "Bands follow the 2023 Merger
+    // Guidelines: 1,500 and 2,500 (the 2010 … used 1,000 and 1,800)" states
+    // both pairs and gives each edition the other's.
+    // Fix round 7 (R-DEC-LEGQ): fix round 6 also SKIPPED fix round 4's check
+    // whenever the retired pair was attributed to the 2010 name, and that let
+    // "The 2023 Merger Guidelines keep the 2010 Guidelines' bands of 1,500
+    // and 2,500." through (keep / retain / carry over / "as under" are no
+    // follows-now verb). The skip is gone: fix round 4's co-occurrence rule
+    // holds on every sentence, and the attribution rule is added on top.
+    const alreadyFailed = claims.slice(sentenceStart).some((c) => !c.ok);
+    if (namesCurrent && !alreadyFailed) {
+      const currentPair = [MOD, HIGH];
+      const currentPresent = currentPair.every((n) => nums.includes(n));
+      const currentOwned = currentPresent && attribution.owns(currentPair, CURRENT_EDITION_YEAR);
+      for (const ed of RETIRED_EDITIONS) {
+        if (!ed.bands.every((b) => nums.includes(b))) continue;
+        const retiredToCurrent = attribution.owns(ed.bands, CURRENT_EDITION_YEAR);
+        const retired = ed.bands.map(fmtPoints).join(" and ");
+        add(
+          "edition-bands",
+          currentPresent && (!retiredToCurrent || currentOwned),
+          !currentPresent
+            ? `names the ${V} (or the DOJ Antitrust Division's HHI page) beside ${retired}, ` +
+                `the retired ${ed.title}' pair: "${clip(s)}" — the ${CURRENT_EDITION_YEAR} bands are ${fmtPoints(MOD)} / ` +
+                `${fmtPoints(HIGH)} (#132); a sentence carrying that name states the current pair beside the retired one (a comparison) or drops the retired one`
+            : `gives ${retired}, the retired ${ed.title}' pair, to the ${V} (the nearest edition named before it), while ` +
+                `${pairText(currentPair)} belong to ${ownersText(currentPair)}: "${clip(s)}" — the ${CURRENT_EDITION_YEAR} bands are ` +
+                `${fmtPoints(MOD)} / ${fmtPoints(HIGH)} (#132); each pair belongs to the nearest edition named before it (R-DEC-LEGQ)`,
+          s,
+        );
+      }
+    }
+
+    // Fix round 8 (R-DEC-LEGQ-b): a sentence that names TWO editions and
+    // states a band pair is FAIL-CLOSED. Every check above reads the nearest
+    // PRECEDING name, and asks only whether each edition was given its own
+    // pair — never whether it was given ONLY its own — so the fix-7 re-check
+    // found 26 false sentences passing that fix round 6 failed ("The bands
+    // are 1,000 and 1,800 under the 2010 … and 1,500 and 2,500 under the
+    // 2023 …": the 2010 name gets both pairs, and each check was satisfied).
+    // Here every occurrence of each stated pair's numbers is read twice — by
+    // the nearest edition name before it and by the nearest after it — and
+    // both readings must give it to its pair's own edition (which also means
+    // they agree). A true comparison one reading misreads fails too; the
+    // ruling says rephrase it: one edition per sentence, or each edition in
+    // its own clause or parenthetical. A sentence already failed above is
+    // reported once.
+    const editionsNamed = new Set(attribution.mentions.map((m) => m.year));
+    if (editionsNamed.size >= 2 && !claims.slice(sentenceStart).some((c) => !c.ok)) {
+      const statedPairs = [
+        { year: CURRENT_EDITION_YEAR, bands: [MOD, HIGH] },
+        ...RETIRED_EDITIONS.map((ed) => ({ year: ed.year, bands: ed.bands })),
+      ].filter((p) => p.bands.every((b) => nums.includes(b)));
+      if (statedPairs.length > 0) {
+        const after = editionAttribution(plain, "after");
+        const edName = (y) => (y === CURRENT_EDITION_YEAR ? `the ${V}` : `the ${y} edition`);
+        const misread = [];
+        for (const p of statedPairs) {
+          for (const n of p.bands) {
+            const byBefore = attribution.ownersAt(n);
+            const byAfter = after.ownersAt(n);
+            byBefore.forEach((yb, i) => {
+              const ya = byAfter[i];
+              if (yb !== p.year || ya !== p.year) {
+                misread.push(
+                  `${fmtPoints(n)} (a ${p.year} threshold) — the nearest name BEFORE it gives it to ${edName(yb)}, ` +
+                    `the nearest name AFTER it to ${edName(ya)}`,
+                );
+              }
+            });
+          }
+        }
+        add(
+          "edition-bands",
+          misread.length === 0,
+          `names two editions and states their bands, but the sentence does not tie each pair to its own edition both ways: ` +
+            `${[...new Set(misread)].join("; ")}: "${clip(s)}" — a two-edition band statement passes only when the nearest ` +
+            `edition name before each number AND the nearest after it both give it to its own edition (R-DEC-LEGQ-b, ` +
+            `fail-closed); rephrase with one edition per sentence, or each edition in its own clause or parenthetical ` +
+            `(the ${V}: ${fmtPoints(MOD)} and ${fmtPoints(HIGH)}; ` +
+            `${RETIRED_EDITIONS.map((ed) => `the ${ed.title}: ${pairText(ed.bands)}`).join("; ")})`,
+          s,
+        );
+      }
     }
 
     // "vintage", first among the sentence's claims. A sentence naming the
