@@ -14,7 +14,7 @@ export function F15FamilyHeader({ children, recordPage = false }: { children?: R
   return <header className={styles.header} data-f15-family-header="" data-record-page={recordPage || undefined}>
     <div><Link href="/explore/" className={styles.eyebrow}>Field guide · Air · USAF</Link>
       <Heading>F-15 <span>The Eagle family.</span></Heading>
-      {!recordPage && <p>Explore the aircraft. Follow the funding to its source.</p>}
+      {!recordPage && <p>Aircraft variants and the P-1 and R-1 records that fund them.</p>}
     </div>
     {children && <div className={styles.controls}>{children}</div>}
   </header>;

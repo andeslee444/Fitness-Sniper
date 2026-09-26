@@ -109,7 +109,7 @@ export function ProgramEvidencePath() {
         <li><ArrowRight size="1em" aria-hidden className={styles.pathArrow} /><a href="#program-figures">Choose a budget figure</a></li>
         <li><ArrowRight size="1em" aria-hidden className={styles.pathArrow} /><a href="#program-sources">Open its source receipt</a></li>
       </ol>
-      <span>Click a cited figure for its source, fiscal context, and a shareable footnote.</span>
+      <span>A cited figure opens to its source, fiscal context and a shareable footnote.</span>
     </aside>
   );
 }

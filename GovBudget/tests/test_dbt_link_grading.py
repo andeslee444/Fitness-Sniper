@@ -23,9 +23,20 @@ in `demotion_reason` while `crosswalk_confidence` keeps the loader's grade:
     only when no record exists at all — 'announcement_review_unrecorded'.
     An adjudication row is a recorded review too, and its grade wins as
     before.
+  * R-DEC-110b (controller, 2026-09-26) — a held-out precision study's
+    refutation (Postgres link_precision_samples, verdict 'refuted'), backfilled
+    as record_kind 'precision_sample', is a recorded refutation of the PAIR,
+    never of one article: it binds whatever article it names, on the link rows
+    the backfill attaches it to (the pair's rows under the method the sample
+    drew — the backfill decides that once). A high announcement link the pipeline's own
+    records keep high publishes medium when its pair carries one, with
+    'precision_sample_refuted' — the reason the export lane keys its drawn-tier
+    precision tally on, so it is used ONLY when the sample verdict alone moved
+    the link; when the pipeline's records would demote the link anyway, their
+    reason stands. A precision-sample record never upholds a link.
 
-The unit tests run the committed model's SQL against a throwaway DuckDB; the
-last two build the fixture lake with dbt.
+The unit tests run the committed model's SQL (and the R-DEC-110b gate's) against
+a throwaway DuckDB; the build tests build the fixture lake with dbt.
 """
 import os
 import subprocess
@@ -203,7 +214,19 @@ REASONS = {
     "reviewer_rejected": "announcement_reviewer_rejected",
     "incomplete": "announcement_review_incomplete",
     "unrecorded": "announcement_review_unrecorded",
+    # R-DEC-110b; the export lane's drawn-tier tally keys on this exact value
+    "precision_sample": "precision_sample_refuted",
 }
+
+
+def sample(piid, adversarial="refuted", *, article=None, **kw):
+    """R-DEC-110b: a held-out precision-study verdict on the PAIR, backfilled as
+    record_kind 'precision_sample' onto the link row(s) the sample drew (a
+    refutation is reviewer 'link' + adversarial 'refuted'). The backfill names
+    no article: the study judges the pair on attribution, not one
+    announcement."""
+    return rev(piid, "link", adversarial, article=article,
+               kind="precision_sample", **kw)
 
 
 def demoted(reason):
@@ -423,6 +446,169 @@ def test_the_grading_never_fans_a_link_out():
     assert graded == {"L": HIGH}
 
 
+# ── R-DEC-110b: the held-out precision study's refutations ──────────────────
+
+def test_a_precision_sample_refutation_demotes_a_link_its_pipeline_upholds():
+    """R-DEC-110b: 'No known-refuted link at high.' A precision-sample
+    refutation binds to the pair, whatever article it names, so a link the
+    pipeline's records keep high publishes medium, and the reason says the
+    sample moved it. Which rows it speaks for is the backfill's attachment:
+    the grading never re-widens it to a row it was not attached to."""
+    g = _grade(
+        awards=[(p, "0603", ANN, "high") for p in (
+            "PS_SURVIVOR", "PS_VERDICT", "PS_NAMES_OTHER", "PS_NAMES_CITED",
+            "PS_REFUTED_OTHER_TOO", "PS_OTHER_ROW", "PS_TWO_STUDIES",
+            "CONTROL")],
+        reviews=[
+            survivor("PS_SURVIVOR"), sample("PS_SURVIVOR"),
+            rev("PS_VERDICT", "link", "upheld"), sample("PS_VERDICT"),
+            # the study judges the PAIR on attribution: an article it names
+            # does not narrow it (unlike a pipeline record on another article)
+            survivor("PS_NAMES_OTHER"), sample("PS_NAMES_OTHER", article=OTHER),
+            survivor("PS_NAMES_CITED"), sample("PS_NAMES_CITED", article=CITED),
+            # the pipeline keeps it high (a refutation of ANOTHER article does
+            # not bind); the sample alone moves it
+            rev("PS_REFUTED_OTHER_TOO", "link", "upheld"),
+            rev("PS_REFUTED_OTHER_TOO", "link", "refuted", article=OTHER),
+            sample("PS_REFUTED_OTHER_TOO"),
+            # attached to ANOTHER row of the pair only (the backfill attaches
+            # a sample to the rows of the method it drew): not this link
+            survivor("PS_OTHER_ROW"), sample("PS_OTHER_ROW", fy="2025"),
+            # two studies refuted it: one graded row, one reason
+            survivor("PS_TWO_STUDIES"), sample("PS_TWO_STUDIES"),
+            sample("PS_TWO_STUDIES"),
+            survivor("CONTROL"),
+        ],
+    )
+    for piid in ("PS_SURVIVOR", "PS_VERDICT", "PS_NAMES_OTHER", "PS_NAMES_CITED",
+                 "PS_REFUTED_OTHER_TOO", "PS_TWO_STUDIES"):
+        assert g[piid] == demoted("precision_sample"), (piid, g[piid])
+    assert g["PS_OTHER_ROW"] == HIGH
+    assert g["CONTROL"] == HIGH
+
+
+def test_the_pipeline_reason_stands_when_its_records_alone_demote_the_link():
+    """'precision_sample_refuted' means the sample verdict ALONE moved the link
+    (the export keeps such a link in the tier it was drawn from, so the
+    measured precision is never flattered by the demotion). A link the
+    pipeline's own records demote anyway keeps the pipeline's true reason —
+    counting it as sample-demoted would move a link the sample did not move."""
+    g = _grade(
+        awards=[(p, "0603", ANN, "high") for p in (
+            "CITED_REFUTED", "CITED_REJECTED", "ONLY_SAMPLE", "INCOMPLETE",
+            "REFUTED_ELSEWHERE", "REJECTED_ELSEWHERE", "NOTRUN")],
+        reviews=[
+            rev("CITED_REFUTED", "link", "upheld", article=OTHER),
+            rev("CITED_REFUTED", "link", "refuted"), sample("CITED_REFUTED"),
+            survivor("CITED_REJECTED"), rev("CITED_REJECTED", "weak", "not_run"),
+            sample("CITED_REJECTED"),
+            # no pipeline record at all: the pipeline would demote it as
+            # unrecorded; a precision sample is not a pipeline review
+            sample("ONLY_SAMPLE"),
+            rev("INCOMPLETE", "link", "incomplete"), sample("INCOMPLETE"),
+            rev("REFUTED_ELSEWHERE", "link", "refuted", article=OTHER),
+            sample("REFUTED_ELSEWHERE"),
+            rev("REJECTED_ELSEWHERE", "wrong", "not_run", article=OTHER),
+            sample("REJECTED_ELSEWHERE"),
+            rev("NOTRUN", "link", "not_run"), sample("NOTRUN"),
+        ],
+    )
+    assert g["CITED_REFUTED"] == demoted("refuted")
+    assert g["CITED_REJECTED"] == demoted("reviewer_rejected")
+    assert g["ONLY_SAMPLE"] == demoted("unrecorded")
+    assert g["INCOMPLETE"] == demoted("incomplete")
+    assert g["REFUTED_ELSEWHERE"] == demoted("refuted")
+    assert g["REJECTED_ELSEWHERE"] == demoted("reviewer_rejected")
+    assert g["NOTRUN"] == demoted("incomplete")
+
+
+def test_a_precision_sample_record_never_upholds_a_link():
+    """The study measures the published tier; its verdicts are never the
+    uphold a link needs (R-DEC-110b admits its refutations only). Should a
+    non-refuting precision_sample row ever reach the table (the source test
+    refuses it first), the grading still does not read it as an uphold, and
+    it is not a pipeline review record either."""
+    g = _grade(
+        awards=[(p, "0603", ANN, "high") for p in (
+            "CONFIRMED_ONLY", "CONFIRMED_BESIDE_REFUTED", "CONFIRMED_BESIDE_SURVIVOR")],
+        reviews=[
+            sample("CONFIRMED_ONLY", "upheld"),
+            sample("CONFIRMED_BESIDE_REFUTED", "upheld"),
+            rev("CONFIRMED_BESIDE_REFUTED", "link", "refuted", article=OTHER),
+            sample("CONFIRMED_BESIDE_SURVIVOR", "upheld"),
+            survivor("CONFIRMED_BESIDE_SURVIVOR"),
+        ],
+    )
+    assert g["CONFIRMED_ONLY"] == demoted("unrecorded")
+    assert g["CONFIRMED_BESIDE_REFUTED"] == demoted("refuted")
+    assert g["CONFIRMED_BESIDE_SURVIVOR"] == HIGH
+
+
+def test_a_precision_sample_does_not_regrade_other_tiers():
+    """The grading rule is the announcement tier's: an adjudicated link keeps
+    its adjudicated grade (a conflict with a refuting sample is left to
+    assert_no_high_link_refuted_by_its_precision_sample, which stops the
+    build), and medium links / other methods are untouched."""
+    g = _grade(
+        awards=[("ADJ", "0603", ANN, "high"), ("MED", "0603", ANN, "medium"),
+                ("FPDS", "0603", "fpds-ap", "medium"),
+                ("TOKADJ", "0603", "account+tokens", "high")],
+        adjudications=[("ADJ", "0603", "high", "pinned", "pinned-here", "2"),
+                       ("TOKADJ", "0603", "high", "pinned", "pinned-here", "2")],
+        reviews=[sample("ADJ"), sample("MED"), sample("FPDS"), sample("TOKADJ")],
+    )
+    assert g["ADJ"] == ("high", "high", None)
+    assert g["MED"] == ("medium", "medium", None)
+    assert g["FPDS"] == ("medium", "medium", None)
+    assert g["TOKADJ"] == ("high", "high", None)
+
+
+def _gate_sql() -> str:
+    sql = (ROOT / "dbt" / "tests"
+           / "assert_no_high_link_refuted_by_its_precision_sample.sql").read_text()
+    for src, table in {
+        "{{ ref('fct_budget_to_awards') }}": "published",
+        "{{ source('lake', 'jbook_announcement_link_reviews') }}": "reviews",
+    }.items():
+        sql = sql.replace(src, table)
+    assert "{{" not in sql, "unsubstituted macro left in the gate"
+    return sql
+
+
+def test_the_gate_fails_on_any_published_high_link_its_precision_sample_refuted():
+    """The gate that would have caught the 10 known-refuted high links
+    (R-DEC-110b), read against the published mart for EVERY method — a link an
+    adjudication pinned high while its held-out sample refuted it is a
+    conflict for a person to rule on, so the build stops instead of
+    publishing it. It reads the records on the links they are attached to,
+    as the grading does."""
+    con = duckdb.connect()
+    con.execute(
+        "create table published (award_piid varchar, pe_bli varchar,"
+        " exhibit varchar, fiscal_year integer, method varchar,"
+        " confidence varchar, confidence_source varchar, demotion_reason varchar)")
+    con.executemany("insert into published values (?, ?, 'R-1', 2026, ?, ?, ?, ?)", [
+        ("HIGH_REFUTED", "0603", ANN, "high", "mechanical", None),
+        ("ADJ_REFUTED", "0603", "account+tokens", "high", "adjudicated", None),
+        ("DEMOTED", "0603", ANN, "medium", "mechanical", "precision_sample_refuted"),
+        ("HIGH_CONFIRMED", "0603", ANN, "high", "mechanical", None),
+        ("HIGH_PIPELINE_REFUTED_OTHER", "0603", ANN, "high", "mechanical", None),
+        ("HIGH_SAMPLE_ON_OTHER_ROW", "0603", ANN, "high", "mechanical", None),
+    ])
+    defs = ", ".join(f"{c.strip()} varchar" for c in REVIEW_COLS.split(","))
+    con.execute(f"create table reviews ({defs})")
+    for row in (sample("HIGH_REFUTED"), sample("ADJ_REFUTED"),
+                sample("HIGH_SAMPLE_ON_OTHER_ROW", fy="2025"),
+                sample("DEMOTED"), sample("HIGH_CONFIRMED", "upheld"),
+                rev("HIGH_PIPELINE_REFUTED_OTHER", "link", "refuted", article=OTHER)):
+        con.execute("insert into reviews values (?, ?, ?, ?, ?, ?, ?, ?, ?, null,"
+                    " 'link_precision_samples')", list(row))
+    failures = sorted(r[0] for r in con.execute(
+        "select award_piid from (" + _gate_sql() + ")").fetchall())
+    con.close()
+    assert failures == ["ADJ_REFUTED", "HIGH_REFUTED"], failures
+
+
 # ── the fixture lake, built with dbt ────────────────────────────────────────
 
 def _build(data_dir: Path, *select: str):
@@ -483,3 +669,73 @@ def test_a_missing_review_parquet_fails_the_build_instead_of_demoting_silently(t
     out = result.stdout + result.stderr
     assert result.returncode != 0, out
     assert "announcement_link_reviews.parquet" in out, out
+
+
+def _add_review_rows(data_dir: Path, *values_sql: str):
+    """Append rows to the fixture lake's announcement_link_reviews.parquet, in
+    the all-varchar shape export-facts writes (make_lake's column order)."""
+    path = data_dir / "parquet/jbooks/announcement_link_reviews.parquet"
+    con = duckdb.connect()
+    try:
+        con.execute(f"create table t as select * from read_parquet('{path}')")
+        for values in values_sql:
+            con.execute(f"insert into t values {values}")
+        con.execute(f"copy t to '{path}' (format parquet)")
+    finally:
+        con.close()
+
+
+# R-DEC-110b: a precision-study refutation of ANN0001's pair, as the backfill
+# records it — reviewer 'link', adversarial 'refuted', no article (the study
+# judges the pair), no lens count, no paragraph.
+_ANN0001_SAMPLE_REFUTED = (
+    "('ANN0001','0601101E','R-1','2026','precision_sample','link','refuted',"
+    " null,'False',null,null,null,null,"
+    " 'link_precision_samples:2026-09-12')"
+)
+
+
+def test_the_fixture_lake_demotes_a_high_link_its_precision_sample_refuted(tmp_path):
+    """R-DEC-110b end to end: the source contract accepts record_kind
+    'precision_sample', ANN0001 (upheld by its survivor-list record) publishes
+    medium with 'precision_sample_refuted', and the whole build — including
+    assert_no_high_link_refuted_by_its_precision_sample — passes."""
+    make_lake(tmp_path)
+    _add_review_rows(tmp_path, _ANN0001_SAMPLE_REFUTED)
+    result, db = _build(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    con = duckdb.connect(str(db), read_only=True)
+    try:
+        published = dict(con.sql(
+            "select award_piid, confidence || '|' || coalesce(demotion_reason, '')"
+            " from fct_budget_to_awards where award_piid like 'ANN%'"
+        ).fetchall())
+        assert published == {
+            "ANN0001": "medium|precision_sample_refuted",
+            # the pipeline's own refutation of the cited article still names it
+            "ANN0002": "medium|announcement_review_refuted",
+        }, published
+        # crosswalk_confidence keeps the loader's grade
+        assert con.sql(
+            "select crosswalk_confidence from audit_link_grading"
+            " where award_piid = 'ANN0001'").fetchone() == ("high",)
+    finally:
+        con.close()
+
+
+def test_a_precision_sample_row_that_is_not_a_refutation_fails_the_build(tmp_path):
+    """R-DEC-110b admits the study's REFUTATIONS only. A precision_sample row
+    carrying any other adversarial verdict (a confirmation backfilled by
+    mistake) is a contract drift: the source test stops the build instead of
+    the grading silently ignoring it."""
+    make_lake(tmp_path)
+    _add_review_rows(
+        tmp_path,
+        "('ANN0001','0601101E','R-1','2026','precision_sample','link','upheld',"
+        " null,'True',null,null,null,null,'link_precision_samples:2026-09-12')",
+    )
+    result, _db = _build(tmp_path, "source:lake.jbook_announcement_link_reviews")
+    out = result.stdout + result.stderr
+    assert result.returncode != 0, out
+    # failed BY the contract test (not merely mentioned beside another error)
+    assert "Failure in test precision_sample_rows_are_refutations" in out, out

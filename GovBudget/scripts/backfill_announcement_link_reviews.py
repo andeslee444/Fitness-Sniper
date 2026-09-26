@@ -27,6 +27,9 @@ What each wave recorded per link (inspected 2026-09-25/26), and the row kind:
       {piid, pe_bli, refuted: true, reason}: a proposed 'link' the refuter
       refuted. reviewer 'link', adversarial 'refuted'. A 40-entry SAMPLE per
       wave; the rest of waves 1-2's refutations were recorded only as counts.
+  Postgres link_precision_samples (refuted, attribution) -> 'precision_sample'
+      the held-out precision study's refutations (R-DEC-110b; see PRECISION
+      SAMPLES below).
   wave4_result.json
       the collection step's survivors and counters — its per-link record IS
       the verdict files, so it adds no row (no double count).
@@ -38,8 +41,9 @@ What each wave recorded per link (inspected 2026-09-25/26), and the row kind:
 
 No wave file names an exhibit or a fiscal year — the loader stamps them — so a
 record of (award_piid, pe_bli) is attached to EVERY budget_line_awards row of
-that pair (on 2026-09-26 each reviewed pair held exactly one row). A record
-whose pair holds no row is counted and dropped (the table is per link).
+that pair (on 2026-09-26 each reviewed pair held exactly one row; a
+precision_sample only to the rows of the method it was drawn from — below). A
+record whose pair holds no row is counted and dropped (the table is per link).
 
 The adversarial verdict of a verdict pair follows the wave-4 rubric
 (scripts/mine_announcement_residue.py): 'upheld' when every lens returned
@@ -51,17 +55,32 @@ binds as a refutation of a cited article, and alone it demotes as
 'announcement_review_incomplete'). reviewed_at is NULL: no wave file carries a
 review timestamp.
 
-SCOPE (fix round 2, 2026-09-26). The records are the announcement PIPELINE's
-own review records — the wave files above — and nothing else. The held-out
-precision study (Postgres link_precision_samples, judged per sampled link) is
-NOT read, by design: it measures the published tiers, and feeding its
-verdicts back into the grading would bias the precision figure it publishes.
-Measured read-only 2026-09-26: 10 of the 1,056 high announcement links that
-stay high carry a 'refuted' attribution verdict in that study (samples
-2026-09-04: 3, 2026-09-12: 7), each judged on a packet that names the article
-their card cites — so "no high link carries a recorded refutation of its
-cited article" is true of the pipeline's records only, not of every record on
-disk.
+PRECISION SAMPLES (R-DEC-110b, fix-round-2 ruling 2026-09-26: "no
+known-refuted link at high"). The held-out precision study's two-lens
+refutations are recorded refutations too. Every Postgres
+link_precision_samples row judged 'refuted' under the 'attribution' rubric
+becomes a 'precision_sample' record: reviewer 'link' (the study judged a
+published link), adversarial 'refuted', NO article — the study judged the
+(award, PE) pair, so the record binds to the pair — source_file the sample
+id, entry_index the sample row's id, and a reason headed "drawn from the
+<method> tier of held-out precision sample <sample_id> (rubric attribution),
+judged refuted" (PRECISION_REASON; drawn_tier() reads it back). It is
+attached ONLY to the link the sample drew: the pair's budget_line_awards rows
+whose method is the one the sample row records. A pair drawn under a method
+it no longer holds gets no record (counted, never re-aimed at the route that
+replaced it). It is NOT an announcement-pipeline review: the grading reads it
+only as a refutation of the pair, deciding a link the pipeline keeps high
+('precision_sample_refuted'), never making a link "recorded" (classify()).
+Measured read-only 2026-09-26: 108 refuted rows (2026-09-04: 6
+announcement+lexicon, 26 fpds-ap+account, 7 subaward+lexicon; 2026-09-05: 60
+account+subagency; 2026-09-12: 9 announcement+lexicon); 77 records written
+(10 announcement+lexicon, 7 subaward+lexicon, 60 account+subagency links);
+none for the 26 fpds-ap+account draws (the tier was withdrawn on 2026-09-04;
+25 of those keys are held by fpds-ap rows and FA880712C0012/1203164SF by an
+announcement link since 2026-09-19) and none for 5 announcement pairs no
+longer loaded. The 10 announcement+lexicon links all publish high today and
+the rule demotes each as 'precision_sample_refuted'; the grading reads no
+other method's review records.
 
 ORDER (R-DEC-LOADER): migrate -> load_announcement_links -> THIS -> jbooks
 export-facts -> dbt. The loader rebuilds the links and their source rows this
@@ -77,10 +96,12 @@ Usage: uv run python scripts/backfill_announcement_link_reviews.py [--dry-run]
 --dry-run reads Postgres read-only and prints what would be written, the
 coverage of the announcement+lexicon links Postgres holds, and — when the
 DuckDB warehouse can be opened read-only — the coverage of the high
-announcement links fct_budget_to_awards publishes.
+announcement links fct_budget_to_awards publishes and which of them their
+own precision sample alone demotes (with the tier each was drawn from).
 """
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -113,20 +134,88 @@ _C = {name: i for i, name in enumerate(COLUMNS)}
 
 @dataclass(frozen=True)
 class ReviewRecord:
-    """One review of one (award, PE) pair, as a wave file recorded it."""
+    """One review of one (award, PE) pair, as a wave file (or, for a
+    precision_sample, a link_precision_samples row) recorded it."""
 
     piid: str
     pe_bli: str
     record_kind: str              # verdict_pair | survivor_list | refutation_sample
+                                  #   | precision_sample
     reviewer_verdict: str         # link | weak | wrong
     adversarial_verdict: str      # upheld | refuted | incomplete | not_run
     lenses_passed: int | None     # verdict pairs whose lenses ran; else None
     article_id: str | None
     article_source: str | None    # verdict_file | wave_packet | None
     record_index: int | None      # the announcement paragraph (verdict pairs)
-    entry_index: int              # position in the source file's list
+    entry_index: int              # position in the source file's list; a
+                                  #   precision_sample: the sample row's id
     reason: str | None            # a list entry's own reason; None for pairs
-    source_file: str              # repo-relative
+    source_file: str              # repo-relative; a precision_sample: sample id
+    #: precision_sample only: the method the sample row records — the tier the
+    #: link was DRAWN from. The record attaches only to the pair's rows of
+    #: that method (review_rows); None on every pipeline record.
+    drawn_method: str | None = None
+
+
+# ── R-DEC-110b: the held-out precision study's refutations ─────────────────
+
+#: The refutations the held-out precision study recorded: link_precision_samples
+#: rows judged 'refuted' under the ATTRIBUTION rubric (did this award pay for
+#: this program — the question the published tiers are measured on; the
+#: 'rule-fired' rubric asks whether a mechanical rule fired, and records no
+#: refutation of a link). Ordered so the table rebuild is stable.
+PRECISION_SQL = (
+    "select id, sample_id, award_piid, pe_bli, method, reason"
+    " from link_precision_samples"
+    " where verdict = 'refuted' and rubric = 'attribution'"
+    " order by sample_id, id"
+)
+
+#: The reason a precision_sample row carries — its head states the tier the
+#: link was drawn from (the sample row's `method`) and the sample, so the
+#: row says what it is without a join; migration 018 CHECKs the head.
+PRECISION_REASON = ("drawn from the {method} tier of held-out precision sample"
+                    " {sample_id} (rubric attribution), judged refuted")
+_PRECISION_REASON_RE = re.compile(
+    r"^drawn from the (\S+) tier of held-out precision sample (\S+)"
+    r" \(rubric attribution\), judged refuted(?::|$)")
+
+
+def precision_reason(method: str, sample_id: str, reason: str | None) -> str:
+    """PRECISION_REASON, then the adjudicator's own reason verbatim (trimmed)."""
+    head = PRECISION_REASON.format(method=method, sample_id=sample_id)
+    text = (reason or "").strip()
+    return f"{head}: {text}" if text else head
+
+
+def drawn_tier(reason: str | None) -> tuple[str, str] | None:
+    """(drawn method, sample id) from a precision_sample row's reason; None
+    for any other reason. The exact alternative is the join
+    link_precision_samples.id = entry_index (and sample_id = source_file)."""
+    m = _PRECISION_REASON_RE.match(reason or "")
+    return (m.group(1), m.group(2)) if m else None
+
+
+def read_precision_refutations(pg) -> list[tuple]:
+    """PRECISION_SQL's rows: (id, sample_id, award_piid, pe_bli, method,
+    reason). Read-only."""
+    return pg.execute(PRECISION_SQL).fetchall()
+
+
+def precision_records(sample_rows) -> list[ReviewRecord]:
+    """One precision_sample record per refuted sample row (R-DEC-110b,
+    fix-round-2 ruling 2026-09-26): reviewer 'link' (the study judged a
+    published link), adversarial 'refuted' (its two-lens verdict), NO
+    article — the study judged the pair, so the record binds to the pair
+    (the mart's _binds) — source_file the sample id, entry_index the sample
+    row's id, drawn_method the tier the sample drew the link from."""
+    return [
+        ReviewRecord(piid, str(pe).strip(), "precision_sample", "link",
+                     "refuted", None, None, None, None, int(row_id),
+                     precision_reason(method, sample_id, reason),
+                     str(sample_id), drawn_method=method)
+        for row_id, sample_id, piid, pe, method, reason in sample_rows
+    ]
 
 
 def lens_outcome(lens_a, lens_b) -> tuple[str, int] | None:
@@ -303,23 +392,47 @@ def read_result_files(ann: Path = ANN, root: Path = ROOT, waves=LIST_WAVES
     return records, counts
 
 
-def review_rows(records, links: dict, cited: dict) -> tuple[list[tuple], dict]:
+def review_rows(records, links: dict, cited: dict, *,
+                methods: dict | None = None) -> tuple[list[tuple], dict]:
     """announcement_link_reviews rows (COLUMNS order) for every record whose
     pair holds at least one budget_line_awards row.
 
-    links:  (award_piid, pe_bli) -> [(exhibit, fiscal_year), ...] — EVERY
-            budget_line_awards row of the pair, whatever its method
-    cited:  (award_piid, pe_bli) -> {article_id} its announcement
-            award_link_sources rows cite
+    links:   (award_piid, pe_bli) -> [(exhibit, fiscal_year), ...] — EVERY
+             budget_line_awards row of the pair, whatever its method
+    cited:   (award_piid, pe_bli) -> {article_id} its announcement
+             award_link_sources rows cite
+    methods: (award_piid, pe_bli, exhibit, fiscal_year) -> the row's method;
+             required when a record carries a drawn_method
+
+    A pipeline record attaches to every row of its pair. A precision_sample
+    record (drawn_method set) attaches ONLY to the rows of the method the
+    sample drew — the link it judged. A pair whose rows are all another
+    method (the drawn link since replaced by another route) gets no record:
+    counted in `not_the_drawn_link` (+ _pairs), never re-aimed at the link
+    that replaced it (R-DEC-110b: never invent).
     """
     rows: list[tuple] = []
     seen: set[tuple] = set()
-    counts = {"no_link": 0, "duplicate": 0}
+    counts = {"no_link": 0, "duplicate": 0, "not_the_drawn_link": 0,
+              "not_the_drawn_link_pairs": []}
     for r in records:
         idents = links.get((r.piid, r.pe_bli))
         if not idents:
             counts["no_link"] += 1
             continue
+        if r.drawn_method is not None:
+            if methods is None:
+                raise ValueError(
+                    f"{r.record_kind} record for {(r.piid, r.pe_bli)} names the"
+                    " method it was drawn from; review_rows needs the rows'"
+                    " methods to attach it only to that link")
+            idents = [(ex, fy) for ex, fy in idents
+                      if methods.get((r.piid, r.pe_bli, ex, int(fy))) == r.drawn_method]
+            if not idents:
+                counts["not_the_drawn_link"] += 1
+                counts["not_the_drawn_link_pairs"].append(
+                    (r.piid, r.pe_bli, r.drawn_method))
+                continue
         for exhibit, fy in sorted(set(idents)):
             key = (r.piid, r.pe_bli, exhibit, int(fy), r.source_file,
                    r.record_kind, r.entry_index)
@@ -354,7 +467,23 @@ def _binds(row) -> bool:
     return row[_C["cites_reviewed_article"]] is not False
 
 
-def classify(link_rows) -> dict:
+PRECISION_KIND = "precision_sample"
+
+
+def _is_precision(row) -> bool:
+    return row[_C["record_kind"]] == PRECISION_KIND
+
+
+def sampled_pairs(rows) -> set[tuple[str, str]]:
+    """(award_piid, pe_bli) of every pair a precision_sample record refutes —
+    the mart's sample_refutations: the study judged the PAIR, so its
+    refutation binds every row of the pair (R-DEC-110b)."""
+    return {(r[0], r[1]) for r in rows
+            if _is_precision(r) and (r[_C["adversarial_verdict"]] == "refuted"
+                                     or r[_C["reviewer_verdict"]] in ("weak", "wrong"))}
+
+
+def classify(link_rows, *, sample_refuted: bool | None = None) -> dict:
     """What the review rows of ONE link record, in R-DEC-110's terms — the
     mart's predicates, one for one (R-DEC-INCOMPLETE, 2026-09-26: "one rule
     everywhere"; tests/test_backfill_announcement_link_reviews.py runs the
@@ -367,10 +496,22 @@ def classify(link_rows) -> dict:
                article; a 'not_run' decides nothing either
       rejects  reviewer 'weak' / 'wrong'
       binds    see _binds()
+
+    Every predicate above reads the announcement PIPELINE's records only
+    (verdict_pair / survivor_list / refutation_sample). A precision_sample
+    record (R-DEC-110b) is the mart's rule (c): `sample_refuted` — a held-out
+    precision-study refutation of the link's PAIR. It never upholds, never
+    makes a link "recorded", and decides only when the pipeline would keep
+    the link high. Pass `sample_refuted` from sampled_pairs() over ALL rows
+    (it binds the pair, whichever row carries it); left None it is read from
+    `link_rows`.
     """
-    upheld_kinds = {r[_C["record_kind"]] for r in link_rows if r[_C["upholds"]]}
-    refutes = [r for r in link_rows if r[_C["adversarial_verdict"]] == "refuted"]
-    rejects = [r for r in link_rows
+    pipeline = [r for r in link_rows if not _is_precision(r)]
+    if sample_refuted is None:
+        sample_refuted = bool(sampled_pairs(link_rows))
+    upheld_kinds = {r[_C["record_kind"]] for r in pipeline if r[_C["upholds"]]}
+    refutes = [r for r in pipeline if r[_C["adversarial_verdict"]] == "refuted"]
+    rejects = [r for r in pipeline
                if r[_C["reviewer_verdict"]] in ("weak", "wrong")]
     return {
         "upheld_kinds": upheld_kinds,
@@ -382,27 +523,31 @@ def classify(link_rows) -> dict:
             not _names_article(r) for r in refutes + rejects),
         "refuted_any": bool(refutes),
         "rejected_any": bool(rejects),
-        "any": bool(link_rows),
+        "sample_refuted": bool(sample_refuted),
+        "any": bool(pipeline),
     }
 
 
 def rule_outcome(c: dict) -> str:
-    """R-DEC-110 + R-DEC-INCOMPLETE, as the mart applies them: high iff an
-    upholding record exists AND no binding reviewer rejection / adversarial
-    refutation exists (_binds: it names the article the link cites, or names
-    none); otherwise medium with the reason that is TRUE of the link, first
-    match wins — a binding refutation, a binding rejection, then (with no
-    upholding record) any refutation, any rejection, 'review_incomplete' when
-    records exist but none upholds, refutes or rejects (an 'incomplete' read,
-    or a 'link' whose lenses never ran), and 'review_unrecorded' only when
-    the link has no record at all. The mart applies the rule (dbt); this is
-    the backfill's measurement of it."""
+    """R-DEC-110 + R-DEC-INCOMPLETE + R-DEC-110b, as the mart applies them:
+    high iff a pipeline record upholds the link AND no binding pipeline
+    rejection / refutation exists (_binds: it names the article the link
+    cites, or names none) AND no precision sample refuted its pair; otherwise
+    medium with the reason that is TRUE of the link, first match wins — a
+    binding refutation, a binding rejection, then 'precision_sample_refuted'
+    when the pipeline upholds it and only its own precision sample moved it,
+    then (with no upholding record) any refutation, any rejection,
+    'review_incomplete' when pipeline records exist but none upholds,
+    refutes or rejects (an 'incomplete' read, or a 'link' whose lenses never
+    ran), and 'review_unrecorded' only when the link has no pipeline record.
+    The mart applies the rule (dbt); this is the backfill's measurement of
+    it."""
     if c["refuted_binding"]:
         return "review_refuted"
     if c["rejected_binding"]:
         return "reviewer_rejected"
     if c["upheld_kinds"]:
-        return "stays high"
+        return "precision_sample_refuted" if c["sample_refuted"] else "stays high"
     if c["refuted_any"]:
         return "review_refuted"
     if c["rejected_any"]:
@@ -412,27 +557,38 @@ def rule_outcome(c: dict) -> str:
     return "review_unrecorded"
 
 
-def coverage(rows, published) -> dict[str, int]:
-    """Classify every published link identity by the review rows it carries.
-    'refuted/rejected on the cited article' count records whose article IS
-    the card's; 'contrary record naming no article' counts links carrying a
-    refutation or rejection that names none (it binds to the pair — _binds);
-    the 'rule:' counts apply rule_outcome, the mart's rule."""
+def _by_link(rows) -> dict[tuple, list[tuple]]:
     by_link: dict[tuple, list[tuple]] = {}
     for row in rows:
         by_link.setdefault(tuple(row[:4]), []).append(row)
+    return by_link
+
+
+def coverage(rows, published) -> dict[str, int]:
+    """Classify every published link identity by the review rows it carries.
+    'refuted/rejected on the cited article' count pipeline records whose
+    article IS the card's; 'contrary record naming no article' counts links
+    carrying a pipeline refutation or rejection that names none (it binds to
+    the pair — _binds); 'pair refuted by a precision sample' counts links
+    whose pair a precision_sample record refutes (rule (c)); 'no record at
+    all' means no pipeline record; the 'rule:' counts apply rule_outcome, the
+    mart's rule."""
+    by_link = _by_link(rows)
+    sampled = sampled_pairs(rows)
     out = {"total": 0,
            "upheld: verdict_pair only": 0, "upheld: survivor_list only": 0,
            "upheld: both kinds": 0, "no upholding record": 0,
            "refuted on the cited article": 0, "rejected on the cited article": 0,
            "contrary record naming no article": 0,
+           "pair refuted by a precision sample": 0,
            "no record at all": 0,
            "rule: stays high": 0, "rule: review_refuted": 0,
-           "rule: reviewer_rejected": 0, "rule: review_incomplete": 0,
-           "rule: review_unrecorded": 0}
+           "rule: reviewer_rejected": 0, "rule: precision_sample_refuted": 0,
+           "rule: review_incomplete": 0, "rule: review_unrecorded": 0}
     for ident in published:
         out["total"] += 1
-        c = classify(by_link.get((ident[0], ident[1], ident[2], int(ident[3])), []))
+        c = classify(by_link.get((ident[0], ident[1], ident[2], int(ident[3])), []),
+                     sample_refuted=(ident[0], ident[1]) in sampled)
         kinds = c["upheld_kinds"]
         if kinds == {"verdict_pair"}:
             out["upheld: verdict_pair only"] += 1
@@ -445,9 +601,32 @@ def coverage(rows, published) -> dict[str, int]:
         out["refuted on the cited article"] += c["refuted_cited"]
         out["rejected on the cited article"] += c["rejected_cited"]
         out["contrary record naming no article"] += c["contrary_without_article"]
+        out["pair refuted by a precision sample"] += c["sample_refuted"]
         out["no record at all"] += not c["any"]
         out[f"rule: {rule_outcome(c)}"] += 1
     return out
+
+
+def precision_demotions(rows, published) -> list[tuple]:
+    """The published links the rule demotes as 'precision_sample_refuted' —
+    the pipeline keeps them high and only their own precision sample moves
+    them (R-DEC-110b) — one entry per (link identity, drawn method, sample
+    id) read from the pair's precision_sample rows (drawn_tier). The export
+    lane keeps each in the tier it was drawn from in the precision tally."""
+    by_link = _by_link(rows)
+    sampled = sampled_pairs(rows)
+    tiers: dict[tuple[str, str], set[tuple[str, str]]] = {}
+    for r in rows:
+        tier = drawn_tier(r[_C["reason"]]) if _is_precision(r) else None
+        if tier:
+            tiers.setdefault((r[0], r[1]), set()).add(tier)
+    out = []
+    for ident in published:
+        key = (ident[0], ident[1], ident[2], int(ident[3]))
+        c = classify(by_link.get(key, []), sample_refuted=key[:2] in sampled)
+        if rule_outcome(c) == "precision_sample_refuted":
+            out.extend((key, *t) for t in sorted(tiers.get(key[:2], ())))
+    return sorted(out)
 
 
 INSERT_SQL = (
@@ -517,13 +696,26 @@ def main() -> int:
     print(f"{VERDICT_DIR.relative_to(ROOT)}: {vcounts}")
     lists, lcounts = read_result_files(ANN)
     print(f"wave{'/'.join(map(str, LIST_WAVES))}_result.json: {lcounts}")
-    records = verdicts + lists
 
     with psycopg.connect(DSN) as pg:
         if args.dry_run:
             pg.read_only = True
+        # R-DEC-110b: the held-out precision study's refutations
+        precision = precision_records(read_precision_refutations(pg))
+        drawn: dict[tuple[str, str], int] = {}
+        for r in precision:
+            drawn[(r.source_file, r.drawn_method)] = drawn.get(
+                (r.source_file, r.drawn_method), 0) + 1
+        print(f"link_precision_samples (verdict 'refuted', rubric 'attribution'):"
+              f" {len(precision)} record(s) by (sample, drawn tier)"
+              f" {dict(sorted(drawn.items()))}")
+        records = verdicts + lists + precision
         links, cited, methods = pair_links(pg, {(r.piid, r.pe_bli) for r in records})
-        rows, row_counts = review_rows(records, links, cited)
+        rows, row_counts = review_rows(records, links, cited, methods=methods)
+        not_drawn = row_counts.pop("not_the_drawn_link_pairs")
+        print(f"precision_sample records whose pair is held only by another"
+              f" route (the link the sample drew was replaced; no record"
+              f" written): {len(not_drawn)} {not_drawn[:10]}")
         census: dict[tuple, int] = {}
         for r in rows:
             k = (r[_C["record_kind"]], r[_C["reviewer_verdict"]],
@@ -545,9 +737,17 @@ def main() -> int:
         published = _published_high_links()
         if isinstance(published, str):
             print(f"published-mart coverage unavailable ({published})")
+            demoted = precision_demotions(rows, stored)
+            print(f"{METHOD} link(s) Postgres holds that a precision sample alone"
+                  f" demotes (precision_sample_refuted; the grading exempts an"
+                  f" adjudicated link): {len(demoted)} {demoted}")
         else:
             print(f"coverage of the {len(published)} high {METHOD} link(s)"
                   f" fct_budget_to_awards publishes: {coverage(rows, published)}")
+            demoted = precision_demotions(rows, published)
+            print(f"of those, demoted by their own precision sample alone"
+                  f" (precision_sample_refuted — (link, drawn tier, sample)):"
+                  f" {len(demoted)} {demoted}")
         if args.dry_run:
             print("dry-run: nothing written")
             pg.rollback()

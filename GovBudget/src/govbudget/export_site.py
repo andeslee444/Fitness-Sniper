@@ -3234,7 +3234,9 @@ def export_site(
     published_tiers = _published_pair_tiers(duckdb_path)
     # R-DEC-110 (controller 2026-09-26): the links the mart publishes at
     # medium because a rule demoted them from high, with the reason each
-    # records — link_adjudication.high counts them by reason.
+    # records — link_adjudication.high counts them by reason, and
+    # link_precision keeps the ones its own sample refuted in its tally
+    # (R-DEC-110b).
     demoted_links = _published_demotions(duckdb_path)
     # ONE timestamp for the run: the manifest's `built_at` and the
     # adjudication block's `measured_on` are the same instant by construction,
@@ -3246,7 +3248,8 @@ def export_site(
         link_precision = _link_precision_for_export(
             pg_precision, published_link_methods,
             published_links=published_links,
-            withdrawn_links=withdrawn_links)
+            withdrawn_links=withdrawn_links,
+            demoted_links=demoted_links)
         link_adjudication = _link_adjudication_block(
             pg_precision,
             high_links=published_high_links,
@@ -3646,7 +3649,8 @@ _PINNED_PRECISION_SAMPLES = {"announcement+lexicon": "2026-09-04"}
 
 def _link_precision_for_export(pg, published_methods: set[str] | None, *,
                                published_links: list[dict] | None = None,
-                               withdrawn_links: list[dict] | None = None) -> dict:
+                               withdrawn_links: list[dict] | None = None,
+                               demoted_links: list[dict] | None = None) -> dict:
     """`_link_precision_block` AS THE EXPORT CALLS IT — with the pin.
 
     The pin is policy, not a default: `_link_precision_block` takes each
@@ -3667,7 +3671,10 @@ def _link_precision_for_export(pg, published_methods: set[str] | None, *,
     tallies over the mart's published population — see the note above
     `_precision_tally_sql`'s import. `withdrawn_links` (the export passes
     `_withdrawn_link_rows(duckdb_path)`) feeds the labelled `withdrawn`
-    sub-block — ROADMAP #107(b).
+    sub-block — ROADMAP #107(b). `demoted_links` (the export passes
+    `_published_demotions(duckdb_path)`) lets the block find the links dbt
+    demoted for their OWN precision-sample verdict, which R-DEC-110b keeps in
+    the tally — see `_self_refuted_population`.
     """
     return _link_precision_block(
         pg,
@@ -3675,6 +3682,7 @@ def _link_precision_for_export(pg, published_methods: set[str] | None, *,
         pinned_samples=_PINNED_PRECISION_SAMPLES,
         published_links=published_links,
         withdrawn_links=withdrawn_links,
+        demoted_links=demoted_links,
     )
 
 
@@ -3873,10 +3881,13 @@ def _published_demotions(duckdb_path) -> list[dict] | None:
     from high: `{award_piid, pe_bli, method, demotion_reason}` for every
     distinct fct_budget_to_awards row at medium carrying a
     `demotion_reason` (#75's `account_tokens_unadjudicated`; #110 /
-    R-DEC-110's `announcement_review_*` reasons — the dbt lane names them,
-    this reader never does). `_link_adjudication_block` counts them by
-    reason under `high.demoted_from_high` (R-DEC-110: a demoted link carries
-    a TRUE reason, and /methodology/ states the split).
+    R-DEC-110's `announcement_review_*` reasons; R-DEC-110b's
+    `precision_sample_refuted` — the dbt lane names them, this reader never
+    does). `_link_adjudication_block` counts them by reason under
+    `high.demoted_from_high` (R-DEC-110: a demoted link carries a TRUE
+    reason, and /methodology/ states the split), and `_link_precision_block`
+    reads the R-DEC-110b ones back into its tally
+    (`_self_refuted_population`).
 
     ``None`` when the warehouse has no mart, or a mart without a
     `demotion_reason` column (fixtures, a lake built before the decisions
@@ -3906,14 +3917,134 @@ def _published_demotions(duckdb_path) -> list[dict] | None:
     ]
 
 
+#: R-DEC-110b (controller, 2026-09-26): the `demotion_reason` dbt records on a
+#: link it demoted because the held-out precision study's OWN verdict on that
+#: link refuted it (link_precision_samples verdict 'refuted', recorded in
+#: announcement_link_reviews as record_kind 'precision_sample').
+_PRECISION_SAMPLE_DEMOTION = "precision_sample_refuted"
+
+
+def _self_refuted_population(
+    pg,
+    rubric: str,
+    published_links: list[dict] | None,
+    demoted_links: list[dict] | None,
+    withdrawn_links: list[dict] | None,
+) -> tuple[list[dict] | None, list[dict] | None]:
+    """R-DEC-110b: the (published, withdrawn) populations `_link_precision_block`
+    tallies, with every link demoted for its OWN precision-sample verdict kept
+    in the tally.
+
+    THE RULING. "The precision tally keeps every sampled link in the tier it
+    was DRAWN from when its demotion came from its own sample verdict — the
+    measured precision is never flattered by the demotion." Every other link
+    keeps the tier it publishes under today (#140).
+
+    THE DEFECT IT PREVENTS. The tally counts only links the corpus publishes
+    (see `_link_precision_block`, THE POPULATION). A demotion that took a
+    refuted sampled link out of publication would drop its 'refuted' verdict
+    from numerator AND denominator, and its tier's precision would RISE
+    because the study caught an error. A demotion high -> medium keeps the
+    link published under the same method, so the tally already survives that
+    shape; this makes the rule hold for every shape.
+
+    WHAT IT DOES. A link carrying `demotion_reason = 'precision_sample_refuted'`
+    (in `demoted_links`, the mart's medium rows, or in `withdrawn_links`, the
+    rows graded out of publication) enters the published population under
+    the method its row carries — whether or not it still publishes — and
+    leaves the withdrawn population: one refuted link is not a withdrawn
+    TIER, so it never mints a `withdrawn` figure.
+
+    DRAWN TIER vs ROW TIER. dbt's demotions change a link's grade, never its
+    method (audit_link_grading passes the loader's method through), so the
+    method its row carries is the tier its verdict counted in before the
+    demotion. That IS the tier it was drawn from
+    (link_precision_samples.method) wherever the two agree — true of the ten
+    high links the announcement+lexicon draws refuted (read 2026-09-26:
+    drawn under it, publishing under it). Where they differ, a #140 override
+    moved the link after its draw: FA880712C0012/1203164SF, refuted by the
+    2026-09-04 fpds-ap+account draw, is graded high under
+    announcement+lexicon (budget_line_awards and a chain-order scratch lake,
+    read 2026-09-26), and its verdict counts in the announcement figure.
+    Moving that verdict to its draw tier AT the demotion would drop a
+    'refuted' from the figure it counts in — the flattering the ruling
+    forbids — so it stays, and the export log names the pair and both tiers
+    (a WARNING line) for a ruling. It is never silently re-tiered.
+
+    `published_links` None (no mart: fixtures) leaves the published side as
+    it is — the tally then reads budget_line_awards, which knows no
+    demotion. Returns the inputs unchanged when no link carries the reason.
+    """
+    rows = [
+        r for r in (*(demoted_links or ()), *(withdrawn_links or ()))
+        if r.get("demotion_reason") == _PRECISION_SAMPLE_DEMOTION
+    ]
+    if not rows:
+        return published_links, withdrawn_links
+    withdrawn_rest = None if withdrawn_links is None else [
+        r for r in withdrawn_links
+        if r.get("demotion_reason") != _PRECISION_SAMPLE_DEMOTION
+    ]
+    if published_links is None:
+        return None, withdrawn_rest
+
+    row_tier: dict[tuple[str, str], str] = {}
+    for r in rows:
+        key = (r["award_piid"], r["pe_bli"])
+        if row_tier.setdefault(key, r["method"]) != r["method"]:
+            raise ValueError(
+                f"{key[0]}/{key[1]} carries {_PRECISION_SAMPLE_DEMOTION!r} under"
+                f" two methods ({row_tier[key]!r}, {r['method']!r}) — the tally"
+                " cannot place one verdict in two tiers")
+    piids = [p for p, _ in row_tier]
+    pes = [b for _, b in row_tier]
+    drawn: dict[tuple[str, str], list[str]] = {
+        (p, b): list(methods)
+        for p, b, methods in pg.execute(
+            """
+            select s.award_piid, s.pe_bli,
+                   array_agg(distinct s.method order by s.method)
+            from link_precision_samples s
+            join unnest(%(piids)s::text[], %(pes)s::text[]) as t(piid, pe)
+              on s.award_piid = t.piid and s.pe_bli = t.pe
+            where s.rubric = %(rubric)s and s.verdict is not null
+            group by s.award_piid, s.pe_bli
+            """,
+            {"piids": piids, "pes": pes, "rubric": rubric},
+        ).fetchall()
+    }
+    for key, tier in sorted(row_tier.items()):
+        at_draw = drawn.get(key)
+        if at_draw and at_draw != [tier]:
+            print(
+                f"export-site: WARNING — link_precision: {key[0]}/{key[1]} was"
+                f" demoted for its own precision-sample verdict"
+                f" ({_PRECISION_SAMPLE_DEMOTION}); drawn under"
+                f" {', '.join(at_draw)}, it counts under {tier} (#140) and"
+                " stays there — moving it at its demotion would drop a"
+                " 'refuted' verdict from that figure (R-DEC-110b). Needs a"
+                " ruling if the draw tier should win.")
+    population = [
+        r for r in published_links
+        if (r["award_piid"], r["pe_bli"]) not in row_tier
+    ]
+    population += [
+        {"award_piid": p, "pe_bli": b, "method": tier}
+        for (p, b), tier in sorted(row_tier.items())
+    ]
+    return population, withdrawn_rest
+
+
 def _link_precision_block(pg, published_methods: set[str] | None = None,
                           sample_id: str | None = None,
                           rubric: str = "attribution",
                           pinned_samples: dict[str, str] | None = None,
                           published_links: list[dict] | None = None,
-                          withdrawn_links: list[dict] | None = None) -> dict:
+                          withdrawn_links: list[dict] | None = None,
+                          demoted_links: list[dict] | None = None) -> dict:
     """The held-out link-precision study (ROADMAP #72, #79), tallied under the
-    tier each sampled link publishes under TODAY, under ONE rubric.
+    tier each sampled link publishes under TODAY (a link demoted for its own
+    sample verdict: see the last paragraph), under ONE rubric.
 
     Returns ``{}`` while no study has adjudicated verdicts under `rubric`, else::
 
@@ -4005,9 +4136,21 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     when a demoted tier's links carry verdicts under `rubric`, and only
     beside a non-empty block (a study with no published figure publishes
     nothing, as before).
+
+    A LINK THE STUDY ITSELF REFUTED (R-DEC-110b, controller 2026-09-26). dbt
+    demotes a link whose own precision-sample verdict refuted it
+    (`demotion_reason = 'precision_sample_refuted'`). That demotion must not
+    flatter the figure that caught it, so such a link stays in the tally in
+    its drawn tier whether or not it still publishes, and never enters
+    `withdrawn` — `_self_refuted_population` (with `demoted_links`, the
+    export's `_published_demotions`) builds both populations before any
+    tally runs, so the rule reaches the pins and `withdrawn` alike.
     """
     if rubric not in _PRECISION_RUBRICS:
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
+    published_links, withdrawn_links = _self_refuted_population(
+        pg, rubric, published_links, demoted_links, withdrawn_links)
+
     def _tally(run: str | None, links: list[dict] | None = published_links,
                methods_filter: set[str] | None = published_methods,
                ) -> dict[str, dict]:
@@ -4488,6 +4631,9 @@ def _high_tier_census(pg, high_links: list[tuple[str, str, str]] | None,
     row and high on another is already in `published_high`). A pair demoted
     for two reasons on two rows counts under each reason and once in
     `links` (none on 2026-09-25). Absent when `demoted_links` is None.
+    Every reason the mart records is counted as it is named, none filtered —
+    R-DEC-110b's `precision_sample_refuted` (a link its own held-out
+    precision-sample verdict refuted) included.
     """
     if not high_links:
         return {}

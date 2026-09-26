@@ -646,14 +646,14 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
       </div>
 
       <p className="text-xs text-muted-foreground mt-2">
-        Both money columns are stated on ONE basis — P-1/R-1 total obligational
-        authority as the PB2026 books report it, in USD thousands — so the two
+        Both money columns are stated on ONE basis (P-1/R-1 total obligational
+        authority as the PB2026 books report it, in USD thousands), so the two
         can be read across a row and agree with{" "}
         <Link href="/years/" className="underline hover:text-foreground">
           the decade matrix
         </Link>{" "}
         and with each program&rsquo;s own page. Both carry derived workbook
-        citations; click a figure for the formula and its inputs. The P-40/R-2
+        citations that open to the formula and its inputs. The P-40/R-2
         J-book detail figure for FY24 is a different, narrower measurement of
         the same year: where the two disagree, the program page shows them side
         by side with the reconciliation. CSV exports the current view on this

@@ -2,7 +2,9 @@
 -- outcomes, one row per (crosswalk link of a reviewed pair, review record)
 -- (ROADMAP #110, decided 2026-09-25 under the owner's delegation: backfill the
 -- recorded review outcomes so they are gateable; stage-1 follow-up ruling
--- R-DEC-110, 2026-09-26: a wave 1-3 `surviving` entry IS a recorded review).
+-- R-DEC-110, 2026-09-26: a wave 1-3 `surviving` entry IS a recorded review;
+-- fix-round-2 ruling R-DEC-110b, 2026-09-26: the held-out precision study's
+-- refutations are recorded refutations too).
 --
 -- THE GAP. /methodology/ says every announcement candidate "is judged by an
 -- agent reviewer and challenged by an independent adversarial reviewer, and
@@ -12,7 +14,8 @@
 -- path's. The review was recorded only in the wave files on disk.
 --
 -- WHAT A ROW IS. scripts/backfill_announcement_link_reviews.py writes one row
--- per review RECORD a wave file holds, in one of three kinds (record_kind):
+-- per review RECORD a wave file (or the precision study) holds, in one of
+-- four kinds (record_kind):
 --
 --   verdict_pair       a wave-4 proposal (wave4_verdicts/chunk_*.json): the
 --                      agent reviewer's own verdict — 'link', 'weak' or
@@ -39,6 +42,24 @@
 --                      adversarial 'refuted'; article as for survivor_list.
 --                      A SAMPLE (40 per wave): the other refutations of
 --                      waves 1-2 were recorded only as counts.
+--   precision_sample   a held-out precision-study verdict (Postgres
+--                      link_precision_samples) of verdict 'refuted' under the
+--                      'attribution' rubric (R-DEC-110b): reviewer 'link'
+--                      (the study judged a published link), adversarial
+--                      'refuted' (its two-lens verdict). It names NO article:
+--                      the study judged the (award, PE) pair, so the record
+--                      binds to the pair. source_file is the sample_id,
+--                      entry_index the link_precision_samples row's id (the
+--                      exact join back to the verdict), and reason begins
+--                      'drawn from the <method> tier of held-out precision
+--                      sample <sample_id> (rubric attribution), judged
+--                      refuted' — <method> is the tier the sample drew the
+--                      link from — then the adjudicator's reason. It is
+--                      attached ONLY to the pair's budget_line_awards rows of
+--                      that method (the link the sample drew); a pair whose
+--                      drawn link was since replaced by another route gets
+--                      none. It is not an announcement-pipeline review: the
+--                      grading reads it only as a refutation of the pair.
 --
 -- The granularity differs by kind and is stated, never hidden: a verdict
 -- pair records both reviewers per proposal and per lens; a survivor list
@@ -47,7 +68,8 @@
 -- THE LINK IDENTITY. No wave file names an exhibit or a fiscal year: the link
 -- loader stamps them (budget_line_awards). A record of (award_piid, pe_bli) is
 -- attached to EVERY budget_line_awards row of that pair (on 2026-09-26 each
--- reviewed pair held exactly one row); (award_piid, pe_bli, exhibit,
+-- reviewed pair held exactly one row; a precision_sample, only to the rows of
+-- the method it was drawn from); (award_piid, pe_bli, exhibit,
 -- fiscal_year) is budget_line_awards' own unique key, so the join is exact.
 -- `cites_reviewed_article` says whether the pair's award_link_sources rows
 -- cite the article this record read, so a gate can tell "the reviewers
@@ -58,10 +80,12 @@
 -- waves 1-2 had published; some pairs were proposed from more than one
 -- paragraph). A row is keyed by the file it came from, its kind, and its
 -- position in that file's list (entry_index) — one wave-1 result file holds
--- both a surviving list and a refutations sample.
+-- both a surviving list and a refutations sample. A precision_sample is keyed
+-- by its sample_id and its link_precision_samples row id.
 --
 -- VOCABULARY (closed by CHECK):
 --   reviewer_verdict     'link' | 'weak' | 'wrong' — the agent reviewer's
+--                        (always 'link' on the list kinds and precision_sample)
 --   adversarial_verdict  'upheld'     every lens returned refuted=false (a
 --                                     list kind: the refuter did not refute)
 --                        'refuted'    at least one lens returned refuted=true
@@ -73,6 +97,9 @@
 --                                     uphold nor a refutation: it never binds
 --                                     as a refutation of a cited article
 --                                     (R-DEC-INCOMPLETE, 2026-09-26)
+--                                     — a precision_sample is always
+--                                     'refuted' (only refutations are
+--                                     backfilled)
 --                        'not_run'    no lens recorded a verdict: every
 --                                     reviewer rejection, and one wave-4
 --                                     'link' no lens answered
@@ -85,7 +112,8 @@
 --
 -- reviewed_at is NULL on every row the backfill writes: no wave file carries a
 -- review timestamp (commit 1c30122b, 2026-09-19, only bounds the wave-4
--- files). recorded_at is the backfill's own transaction time; `jbooks
+-- files); a precision_sample's adjudicated_at stays on its
+-- link_precision_samples row (join on entry_index). recorded_at is the backfill's own transaction time; `jbooks
 -- export-facts` refuses to export a table recorded before the link loader's
 -- last run (chain order: migrate -> loader -> backfill -> export-facts -> dbt).
 --
@@ -114,7 +142,7 @@ create table if not exists announcement_link_reviews (
                  source_file, record_kind, entry_index),
     constraint announcement_link_reviews_record_kind_check
         check (record_kind in ('verdict_pair', 'survivor_list',
-                               'refutation_sample')),
+                               'refutation_sample', 'precision_sample')),
     constraint announcement_link_reviews_reviewer_verdict_check
         check (reviewer_verdict in ('link', 'weak', 'wrong')),
     constraint announcement_link_reviews_adversarial_verdict_check
@@ -123,12 +151,19 @@ create table if not exists announcement_link_reviews (
     -- a reviewer rejection never reaches the adversarial lenses
     constraint announcement_link_reviews_rejection_not_run_check
         check (reviewer_verdict = 'link' or adversarial_verdict = 'not_run'),
-    -- each list kind records exactly one outcome pair
+    -- each list kind (and a precision sample) records exactly one outcome pair
     constraint announcement_link_reviews_kind_outcome_check
         check ((record_kind <> 'survivor_list'
                 or (reviewer_verdict = 'link' and adversarial_verdict = 'upheld'))
-           and (record_kind <> 'refutation_sample'
+           and (record_kind not in ('refutation_sample', 'precision_sample')
                 or (reviewer_verdict = 'link' and adversarial_verdict = 'refuted'))),
+    -- a precision sample names no article (it binds to the pair) and states
+    -- the tier it was drawn from at the head of its reason (R-DEC-110b)
+    constraint announcement_link_reviews_precision_sample_check
+        check (record_kind <> 'precision_sample'
+            or (article_id is null
+                and reason is not null
+                and reason like 'drawn from the % tier of held-out precision sample % (rubric attribution), judged refuted%')),
     -- a lens count exists exactly on a verdict pair whose lenses ran
     constraint announcement_link_reviews_lenses_check
         check ((adversarial_lenses_passed is null)
@@ -163,6 +198,9 @@ comment on table announcement_link_reviews is
   'The announcement path''s recorded review outcomes (ROADMAP #110, R-DEC-110): '
   'one row per (crosswalk link of a reviewed pair, review record) — wave-4 '
   'verdict pairs (reviewer verdict + both refute lenses, reviewer rejections '
-  'with adversarial not_run), wave 1-3 survivor-list entries (link + upheld) '
-  'and wave 1-2 refutation-sample entries (link + refuted). A link with no '
-  'row has no recorded review.';
+  'with adversarial not_run), wave 1-3 survivor-list entries (link + upheld), '
+  'wave 1-2 refutation-sample entries (link + refuted) and the held-out '
+  'precision study''s refuted attribution verdicts (precision_sample, link + '
+  'refuted, no article: binds to the pair; R-DEC-110b). A link with no '
+  'pipeline row (verdict_pair / survivor_list / refutation_sample) has no '
+  'recorded review.';

@@ -294,3 +294,91 @@ def test_a_missing_or_malformed_seed_fails_loudly(tmp_path):
     date.write_text(header + "US1,SPARTON,PRCA,RC AUSTRALIA,25/09/2026,#135,n\n")
     with pytest.raises(ParentExclusionError, match="decided"):
         load_parent_exclusions(date)
+
+
+# ── ROADMAP #133 / R-DEC-133b: the fiscal-year move rule ────────────────────
+#
+# entity-graph sums the RAW award archives, so it applies the same rule dbt
+# staging applies (govbudget.award_moves): the retired copy of a proven move
+# is not counted, and any other duplicate stops the build before anything is
+# written. The fixtures are test_dbt_award_fy_moves' own shapes.
+
+from test_dbt_award_fy_moves import _write_the_moves  # noqa: E402
+
+from govbudget import award_moves  # noqa: E402
+
+
+def _award_globs(data_dir: Path) -> list[str]:
+    return [
+        str(data_dir / "parquet" / "contracts" / "*" / "*.parquet"),
+        str(data_dir / "parquet" / "assistance" / "*" / "*.parquet"),
+    ]
+
+
+def test_a_moved_transaction_is_counted_once(tmp_path, capsys):
+    """The un-reconciled 2026-09-24 shape. Raw archive sums are UEI9 1,211 and
+    UEI8 1,350; the warehouse keeps 611 and 650, and so must the crosswalk —
+    the totals assert_entity_totals_exclude_retired_award_copies accepts."""
+    _write_the_moves(tmp_path)
+    out = build_entity_xwalk(
+        award_glob=_award_globs(tmp_path),
+        out_path=tmp_path / "xw_moves.parquet",
+        parent_exclusions=(),
+        require_transaction_keys=True,
+    )
+    by_uei, cols = _read(out)
+    tot = cols.index("total_obligation")
+    assert by_uei["UEI9"][tot] == 611.0
+    assert by_uei["UEI8"][tot] == 650.0
+    assert "entity-graph: fiscal-year move rule (ROADMAP #133): retired 2 contract" \
+        " and 1 assistance copies" in capsys.readouterr().out
+
+
+def test_an_ambiguous_duplicate_stops_the_crosswalk_before_it_is_written(tmp_path):
+    from test_award_moves import _write_ambiguous
+
+    _write_ambiguous(tmp_path)
+    out = tmp_path / "xw_ambiguous.parquet"
+    with pytest.raises(award_moves.AmbiguousAwardDuplicateError, match="THREE001"):
+        build_entity_xwalk(
+            award_glob=[_award_globs(tmp_path)[0]],
+            out_path=out,
+            parent_exclusions=(),
+        )
+    assert not out.exists()
+
+
+def test_the_cli_reads_both_archives_through_the_rule(tmp_path, monkeypatch):
+    """cmd_entity_graph is the production caller: both archives, and a glob
+    that carries no transaction key is an error there, never a silent pass."""
+    from govbudget import cli, config
+    from govbudget import entity_graph
+
+    _write_the_moves(tmp_path)
+    monkeypatch.setattr(config, "PARQUET_DIR", tmp_path / "parquet")
+    seen = {}
+    real = entity_graph.build_entity_xwalk
+
+    def spy(**kwargs):
+        seen.update(kwargs)
+        return real(**{**kwargs, "parent_exclusions": ()})
+
+    monkeypatch.setattr(entity_graph, "build_entity_xwalk", spy)
+    cli.cmd_entity_graph(None)
+    assert seen["require_transaction_keys"] is True
+    assert seen["award_glob"] == _award_globs(tmp_path)
+    by_uei, cols = _read(seen["out_path"])
+    assert by_uei["UEI9"][cols.index("total_obligation")] == 611.0
+
+    # A key-less archive is refused on the CLI path.
+    keyless = tmp_path / "keyless" / "parquet"
+    make_lake(keyless)  # contracts/fy=2024 without a transaction key column
+    (keyless / "assistance" / "fy=2024").mkdir(parents=True)
+    duckdb.sql(
+        f"copy (select * from read_parquet('{keyless}/contracts/fy=2024/part.parquet',"
+        f" hive_partitioning=false)) to '{keyless}/assistance/fy=2024/part.parquet'"
+        " (format parquet)"
+    )
+    monkeypatch.setattr(config, "PARQUET_DIR", keyless)
+    with pytest.raises(award_moves.AwardArchiveError, match="no transaction key column"):
+        cli.cmd_entity_graph(None)

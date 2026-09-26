@@ -25,6 +25,13 @@ Both recomputes read the PARQUET LAKE and the SHIPPED crosswalk directly, never
 dim_entities or fct_family_obligations_by_year — those are downstream of the
 artifact under test, and reading them would make the gate tautological.
 
+The lake is read through the fiscal-year move rule `govbudget entity-graph`
+builds the crosswalk with (ROADMAP #133, ruling R-DEC-133b;
+src/govbudget/award_moves.py, loaded by path): the retired copy of a moved
+transaction is not in the per-FY sums, and any other duplicate key stops this
+helper (non-zero exit — the leg fails). Without it, one move after a re-sync
+would put the window fit off by exactly the retired copies.
+
 Output:
 {
   "declared": {"fy_min": 2017, "fy_max": 2026},
@@ -37,6 +44,7 @@ Output:
 }
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -51,6 +59,20 @@ XWALK = LAKE / "entities" / "entity_xwalk.parquet"
 DUCKDB_PATH = REPO / "data" / "duckdb" / "govbudget.duckdb"
 CITATIONS = REPO / "data" / "site" / "citations" / "citations.parquet"
 SITE_META = REPO / "data" / "site" / "json" / "site_meta.json"
+
+
+def _load_award_moves():
+    """src/govbudget/award_moves.py, by path: this helper must not depend on
+    the govbudget package being importable from the gate's cwd."""
+    path = REPO / "src" / "govbudget" / "award_moves.py"
+    spec = importlib.util.spec_from_file_location("_govbudget_award_moves", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+award_moves = _load_award_moves()
 
 # The award families the crosswalk is built over — the same two the
 # fct_award_transactions union covers.  Kept as a literal here on purpose: if
@@ -105,6 +127,25 @@ REL_TOL = 1e-9  # dominates once a fact clears ~$10M
 def _tolerance(value: float) -> float:
     """Largest difference from `value` that still counts as agreement."""
     return max(TOL, abs(value) * REL_TOL)
+
+
+def lake_totals_by_fy(con, globs, xwalk_path) -> list[tuple[int, float]]:
+    """Per-FY lake total over the UEIs the crosswalk actually carries, read
+    through the fiscal-year move rule.  The partition column `fy` is the
+    lake's own fiscal-year key."""
+    award_moves.register_award_rows(
+        con, list(globs), view="_awards", require_transaction_keys=True
+    )
+    return con.execute(
+        f"""
+        select cast(t.fy as integer) as fy,
+               sum(try_cast(t.federal_action_obligation as double)) as obl
+        from _awards t
+        join read_parquet('{Path(xwalk_path).as_posix()}') x
+          on t.recipient_uei = x.recipient_uei
+        group by 1 order by 1
+        """
+    ).fetchall()
 
 
 def _newest_input() -> dict:
@@ -207,24 +248,12 @@ def main() -> int:
     # ---- 2. declared-window truth, computed from the lake ------------------
     lake = duckdb.connect()
     try:
-        globs = ", ".join(f"'{g}'" for g in AWARD_GLOBS)
         xwalk_total = lake.execute(
             f"select sum(total_obligation) from read_parquet('{XWALK.as_posix()}')"
         ).fetchone()[0]
         out["xwalk_total"] = float(xwalk_total or 0.0)
 
-        # Per-FY lake total over the UEIs the crosswalk actually carries.  The
-        # partition column `fy` is the lake's own fiscal-year key.
-        per_fy = lake.execute(
-            f"""
-            select cast(t.fy as integer) as fy,
-                   sum(try_cast(t.federal_action_obligation as double)) as obl
-            from read_parquet([{globs}], union_by_name=true, hive_partitioning=true) t
-            join read_parquet('{XWALK.as_posix()}') x
-              on t.recipient_uei = x.recipient_uei
-            group by 1 order by 1
-            """
-        ).fetchall()
+        per_fy = lake_totals_by_fy(lake, AWARD_GLOBS, XWALK)
         out["lake_fy_min"] = min((r[0] for r in per_fy), default=None)
         out["lake_fy_max"] = max((r[0] for r in per_fy), default=None)
 

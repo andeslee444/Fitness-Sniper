@@ -175,7 +175,7 @@ export default function CompanyFamiliesPage() {
             highlight, because we did not extract them — we read them.
           </p>
           <details className="mt-3">
-            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Matching rules, inference, and limits</summary>
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Matching rules, inference and limits</summary>
             <div className="mt-3">
           <p className="mb-2">
             <strong className="text-foreground">Where a name does not resolve</strong>,
@@ -399,8 +399,8 @@ export default function CompanyFamiliesPage() {
             /companies/
           </Link>
           . The combined figure is a derived citation whose inputs are the
-          member figures it replaced — click it to see the arithmetic and drill
-          into each member. Members are disjoint by construction (award data
+          member figures it replaced. It opens to the arithmetic and to each
+          member. Members are disjoint by construction (award data
           assigns each recipient identifier to exactly one family), so nothing
           is counted twice.
         </p>

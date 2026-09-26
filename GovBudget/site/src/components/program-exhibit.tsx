@@ -118,7 +118,7 @@ export function ProgramExhibit({ config, cards, exhibitFamily, reconciliationKey
 
   return (
     <section id="exhibit" className={styles.exhibit} aria-label={`${config.name} visual exhibit`} data-program-exhibit={config.slug}>
-      <div className={`t-label ${styles.topline}`}><span>{config.eyebrow} / Visual field guide</span><Link href="/explore/">All exhibits <ArrowRight size={14} /></Link></div>
+      <div className={`t-label ${styles.topline}`}><span>{config.eyebrow} / Field guide</span><Link href="/explore/">All exhibits <ArrowRight size={14} /></Link></div>
       <div className={styles.heading}><h2>{config.title}</h2><span className={`t-label ${styles.pilot}`}>Pilot exhibit</span></div>
       {config.related && <nav className={styles.fundingLines} aria-label="F-35 funding line">
         {config.related.map(r => <Link key={r.slug} href={`/program/${r.slug}/#exhibit`} aria-current={r.slug === config.slug ? "page" : undefined}>{r.label}<ArrowRight size={13}/></Link>)}

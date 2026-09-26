@@ -84,9 +84,9 @@ export default function LineagePage() {
             long lede. The one sentence 21d added to the lede — the ribbon
             refusal a reader must meet BEFORE the diagram — rides in the
             masthead with the count line, unchanged. */}
-        <PageIntro eyebrow="Research tools / Trace" title="The names behind the numbers"
-          description={<p>Follow program elements through renames, transfers, and mergers before comparing their budgets. Every stated link opens the sentence that supports it.</p>}
-          actions={<><a href="#identity-map">Explore program families ↓</a><Link href="/years/">Compare funding over time →</Link><Link href="/programs/">Find a program →</Link></>}>
+        <PageIntro eyebrow="Research tools / Trace" title="Program lineage"
+          description={<p>Follow program elements through renames, transfers and mergers before comparing their budgets. Every stated link opens the sentence that supports it.</p>}
+          actions={<><a href="#identity-map">Program families ↓</a><Link href="/years/">Compare funding over time →</Link><Link href="/programs/">Find a program →</Link></>}>
           <p className="text-sm text-muted-foreground">
             {c.stated_edges} cited links across {c.families} families and {c.identities} program identities.{" "}
             {/* The entity below starts its own text run on purpose: a
@@ -142,22 +142,22 @@ export default function LineagePage() {
         </ScopeNote>
 
         <details className="mt-3 border-t border-border pt-3 text-sm">
-          <summary className="cursor-pointer font-medium text-foreground">Overlapping identities, dates, and unresolved references</summary>
+          <summary className="cursor-pointer font-medium text-foreground">Overlapping identities, dates and unresolved references</summary>
         <ScopeNote className="mt-3" label={null}>
           <p className="text-sm leading-7">
             The columns are <strong>lineage steps</strong>, not calendar years.
             That is a deliberate choice against the obvious one: the identities
-            in a family routinely draw money side by side for whole decades —
-            which is exactly why the family funding line on a program page
-            refuses to sum them — so placing a successor to the right of its
+            in a family routinely draw money side by side for whole decades
+            (which is exactly why the family funding line on a program page
+            refuses to sum them), so placing a successor to the right of its
             predecessor on a <em>year</em>{" "}axis would assert a hand-off date
             the record does not contain. Left-to-right here means &ldquo;the
             books say this one came from that one&rdquo;, nothing more.
           </p>
           <p className="mt-2 text-sm leading-7">
             For the same reason, the fiscal year on a link is the{" "}
-            <strong>edition that asserts it</strong> — the J-book the sentence
-            was printed in — and not the year money moved. A FY2026 book
+            <strong>edition that asserts it</strong> (the J-book the sentence
+            was printed in) and not the year money moved. A FY2026 book
             narrating a FY2023 transfer produces a FY2026 link.
           </p>
           <p className="mt-2 text-sm leading-7">
@@ -184,9 +184,9 @@ export default function LineagePage() {
             Stated links are read from the R-2 and P-40
             narrative paragraphs of the ingested justification books, across
             every edition the corpus holds, and each one keeps the fact id of
-            the narrative it came from — click any ribbon, or the{" "}
+            the narrative it came from. Any ribbon, or the{" "}
             <span className="whitespace-nowrap">&ldquo;cited&rdquo;</span>{" "}
-            marker in the links table, to open that sentence with its document
+            marker in the links table, opens that sentence with its document
             and page. An extraction that could not be cited would not ship: the
             exporter refuses to write a stated link whose citation does not
             resolve.

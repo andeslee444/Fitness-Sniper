@@ -1,6 +1,6 @@
 # Methodology
 
-**Last updated:** 2026-09-25
+**Last updated:** 2026-09-26
 
 ---
 
@@ -62,24 +62,52 @@ each area's title and its link in the current GAO report. Update cadence:
 biennial.
 
 **Senate lobbying disclosures — lda.senate.gov.** The Senate Lobbying
-Disclosure Act database (`lda.senate.gov/api/v1`) contains filings
-for 2025 and prior years, each with a permanent UUID, registrant, client
-company, dollar amounts, agencies lobbied, and issue text. We link LDA client
-names to our company-family database and match each filing's issue text
-against our program titles for keyword co-occurrence — never a claim that the
-filing names the program. A mention qualifies only when the exact PE/BLI code
-appears, a curated alias appears, or at least two distinct, non-generic title
-words co-occur in the same filing; each row of the `fct_program_lobbying`
-dataset records which tier it qualified under (`evidence_kind`). The current
+Disclosure Act database (`lda.senate.gov/api/v1`) contains filings, each with
+a permanent UUID, registrant, client company, dollar amounts, agencies
+lobbied, and issue text. (This sentence said "filings for 2025 and prior
+years" until 2026-09-26; the corpus carries 2026 filings too.) We link LDA
+client names to our company-family database — a curated alias row maps a
+client string the registry names differently, such as RTX's own "RTX
+CORPORATION AND AFFILIATES" (ROADMAP #142) — and match each filing's issue
+text against our program titles for keyword co-occurrence — never a claim
+that the filing names the program. A mention qualifies only when the
+program's PE/BLI code appears (an all-digit one only beside a budget-line
+label; none of the 1,631 bare-number matches before 2026-09-26 had one), a
+curated alias appears, or at least two distinct,
+non-generic words of one program's title co-occur in the same filing; each
+row of the `fct_program_lobbying` dataset records which tier it qualified
+under (`evidence_kind`). A budget-line label is BLI, budget line (item),
+line item, P-1/R-1 line, program element or PE, as in "BLI 2025"; a code
+with letters counts as a whole word; the
+digits-alone rule is ROADMAP #176 (2026-09-26): a year, a bill number or a
+quantity (2025, H.R. 4213, "September 30") had been read as a numeric
+budget-line code and badged as the strongest tier, and none of the 1,631 rows
+it produced carried a budget-line label. On a code two or more programs
+share, the two words must come from ONE member's title; the row is the
+code's and names every member. The current
 mention count is derived from that dataset on every build and published on the
 live methodology page rather than restated here as a fixed number: an earlier
 revision of this document said "32,780 program mentions across 245 programs",
 a count produced by a since-withdrawn method that accepted a single shared
 common word as a match (correction 34,538 → 10,560, recorded in the site's
 corrections table). As of the 2026-08-31 build, the mart holds 14,016
-evidence-tiered mention rows across 499 program elements. Lobbying income and
-expenditure by year are shown alongside federal obligations received —
-influence is presented side by side with outcomes, never as a causal claim.
+evidence-tiered mention rows across 499 program elements; re-matched under
+the #176 rule on 2026-09-26 (in memory over the lake's filings, four runs,
+identical), the same filings give 12,571 rows across 471 program elements, 0
+of them on a bare number. Lobbying income and expenditure by year are shown
+alongside federal obligations received — influence is presented side by side
+with outcomes, never as a causal claim. Since 2026-09-26 an amendment
+replaces its original instead of adding to it; where a quarter's amendments
+disagree, the smallest counts (our copy keeps no posting date). An amendment
+supersedes every report of the same registrant, client and quarter; which
+amendment is latest cannot be named without a posting date, so the smallest
+is the one never larger than the truth (ROADMAP R-DEC-AMEND,
+2026-09-26: measured that day, 7 quarters, and the dbt build prints the count
+as a warning). Before that rule an amended quarter was counted twice. What
+the rule does not fix, disclosed rather than hidden: 22 quarters carry more
+than one ORIGINAL report and no amendment (re-filed duplicates, a quarterly
+report beside a termination; 23 once RTX's own filings attach), and both are
+still summed — about $0.6M, measured 2026-09-26, on the backlog.
 
 **State checkbooks — California and Connecticut (pilot).** California's Open
 Fi$Cal and Connecticut's OpenCheckbook publish transaction-level government
@@ -112,6 +140,15 @@ incorrectly flagged as failures.
 extracted detail or an explicit gap record. Silent holes — program elements
 with no record of any kind — are a build failure.
 
+**Duplicate award transactions.** USAspending's archives are per fiscal year,
+and a transaction can reappear in a later year's archive after a
+modification. When a transaction key sits in exactly two fiscal-year archives
+with different last-modified dates, the build keeps the newer copy, retires
+the other and lists it in an audit table whose count the build prints; any
+other duplicate — more than two copies, two in one year, a tie, an unreadable
+date — fails the build (ROADMAP #133, decided 2026-09-25). The same rule is
+applied where entity totals and the flow river read the archives directly.
+
 **Provenance spot-check.** Each build randomly samples 50 served facts and
 mechanically verifies that the cited source document exists on disk, its
 SHA-256 matches the download manifest, and the XML element path resolves to a
@@ -123,8 +160,9 @@ and browser tests, alongside the site verification gates and the dbt data-model
 assertions. The counts of gates, assertions, and evaluation questions are
 derived on every build from the artifacts that define them — dbt's compiled
 manifest, the `verify.mjs` gate registry, and the eval set with the gate's own
-threshold constant — and published in §3 of the live methodology page; this
-document does not pin them (an earlier revision's "197 test functions, 21 dbt
+threshold constant — and published in §3 of the live methodology page (a
+build with no dbt manifest now fails rather than print the last export's
+count, ROADMAP #173); this document does not pin them (an earlier revision's "197 test functions, 21 dbt
 assertions, 45 eval pairs, ≥41 correct" had all drifted). As of the 2026-08-31
 build: 24 site verification gates, 99 dbt data-model assertions, and a
 48-question analyst-agent evaluation set requiring at least 44 correct answers
@@ -176,6 +214,12 @@ The fpds-ap and subaward+lexicon paths carry no per-link adjudication — their
 precision is sampled instead (below). The page renders
 every one of those figures from `site_meta.link_adjudication` and gate 24 leg
 o fails a build whose sentence states a number the block does not hold.
+(Decided 2026-09-25, ROADMAP #107(b): most unpinned links are account /
+sub-agency links, and that tier stopped publishing except the pairs a
+two-lens hand adjudication pinned — see *Medium* below. From the first export
+that applies the rule, the page states how many unpinned links still publish
+and that the rest no longer do, instead of "those links publish at medium";
+leg o binds that count and fails the old clause beside it.)
 (Re-stated 2026-09-25 from the chain C run-4 export, which is what the page
 renders; the 2026-09-11 census read 9,587 of 12,595, 8,474 unpinned. A path
 is named here only when none of its published links carries an adjudication:
@@ -197,6 +241,20 @@ program-level evidence — the contract names a program the budget line's own
 J-book pages also name. 60 of the 1,133 links published at high carry a
 per-award hand adjudication, all 60 challenged by two independent
 adversarial reviewers; the other 1,073 rest on the announcement+lexicon path.
+(From the decisions wave's export on, ROADMAP #110, decided 2026-09-25: every
+link published at high carries a RECORDED review, and the page states how
+many rest on each kind, each link counted once under its strongest record —
+a two-lens hand adjudication; a per-proposal verdict pair (the agent
+reviewer's verdict and both adversarial lenses on the paragraph read); or only
+a survivor-list entry, which records survival of the adversarial pass, not
+its verdict: it records that the reviewer proposed the link, with one written
+reason, and that the adversarial pass did not refute it, and names no
+paragraph. The first three review
+waves kept their outcomes only as survivor lists, which is why
+the split is stated rather than folded into one "reviewed" figure (ruling
+R-DEC-110). Every count comes from `site_meta.link_adjudication.high`
+(`reviewed_high`, `reviewed_by_kind`), and gate 24 leg o binds each to its
+slot; none is typed here.)
 (Re-measured 2026-09-19 (chain C), and unchanged on the 2026-09-25 run-4
 export, from the export's own
 `site_meta.link_adjudication.high`, after the announcement pass's wave 4 added
@@ -212,14 +270,26 @@ counted 881 links against the 768 the site published on 2026-09-11. Of the
 o binds every number the sentence states, plus the rule that each path
 publishing at high with no adjudication is NAMED. This replaced
 "adversarially verified", which was true of 60 of 768.)
-*Medium*: most such links are
-account-based — the award drew from the same appropriation account as the
-program, usually under the same sub-agency — an association, not evidence
-this specific program paid for the contract. A held-out sample of account /
-sub-agency links, judged on program attribution, confirmed 0 of 58
-(2026-09-11). Where the evidence is
-instead an FPDS acquisition-program tag or a subaward description (both below),
-the program is established but which of its budget lines paid is not.
+*Medium*: weaker evidence, of more than one kind. An account-based link,
+where the award drew from the same appropriation account as the program, is
+an association, not evidence that this specific program paid for the
+contract. A held-out sample of account / sub-agency links, judged on program attribution, confirmed 0 of 58 (2026-09-11).
+On that figure the tier was withdrawn from publication (decided 2026-09-25,
+ROADMAP #107(b)): its links that no two-lens hand adjudication pinned to the
+program no longer publish, and the page states how many
+(`site_meta.link_precision.withdrawn`, bound by gate 24 leg n; Postgres keeps
+every row). Where the evidence is instead an FPDS acquisition-program tag or
+a subaward description (both below), the program is established but which of
+its budget lines paid is not. Links a recorded rule moved down from high
+publish at medium too, and the page states how many, by reason: an
+unadjudicated keyword match (an account match plus keyword overlap no one
+adjudicated, #75), or an announcement link refuted in review, rejected by a
+reviewer, refuted by the precision study (the held-out one), or whose review
+records neither uphold nor refute it — each reason read from the
+recorded reviews (`site_meta.link_adjudication.high.demoted_from_high`, bound
+by leg o).
+(Until the withdrawal this sentence read "most such links are account-based
+… usually under the same sub-agency", true while that tier published.)
 *Low*: only the account matches — never published. The earlier
 automated high tier (account match plus keyword overlap) measured 9.1%
 precise under this adjudication (37 of 408 confirmed) and was corrected on
@@ -249,10 +319,29 @@ often by program. Where an announcement's program name is one a program
 element's J-book narrative itself owns (a lexicon entry carrying the verbatim
 narrative quote), the pair is a candidate; every candidate is judged by an
 agent reviewer and challenged by an independent adversarial reviewer, and only
-links surviving both publish — at *high*: the announcement establishes the
-contract, and the program is identified by its name as written, by a
-normalized designator, by an alias an adversarial reviewer checked, or —
-rarely — by the announcement's own description of the work. Where the
+links surviving both publish. One stays at *high* only while a recorded review
+upholds it and no recorded rejection or refutation applies; otherwise medium,
+with the reason recorded. A rejection or refutation applies when it concerns
+the article the link's card cites, or names no article, or comes from the
+held-out precision study, which judges the pair. At high, the
+announcement establishes the contract, and the program is identified by its
+name as written, by a normalized designator, by an alias an adversarial
+reviewer checked, or, rarely, by the announcement's own description of the
+work. (The reviews became records in the decisions wave —
+`announcement_link_reviews`, migration 018, backfilled from the wave result
+and verdict files and the held-out precision study's refutations — under
+ROADMAP #110 and rulings R-DEC-110, R-DEC-INCOMPLETE and R-DEC-110b. A
+rejection or refutation of another article the pair was proposed on does not
+bind; an adversarial read that came back incomplete is neither an uphold nor
+a refutation; a refutation from the held-out precision study binds to the
+pair whatever article it names. Before this, "only links surviving both
+publish — at high" was the rule, and it kept at high survivors of the first
+waves that a later recorded review had rejected on the very article their
+card cites.) Where an announcement link lands on a key another route already
+linked — an FPDS tag, say — the announcement's link replaces it, as the
+stronger evidence of this program, and the loader records the route it
+replaced (ROADMAP #140, decided 2026-09-25); the 60 moves made on 2026-09-19,
+before the record existed, are recorded from the best evidence left. Where the
 adjudication packet recorded which of those applied, the link's citation card
 states it; where it did not, the card says the basis was not recorded rather
 than asserting one. Announcement links
@@ -308,19 +397,26 @@ the tier it carried when it was drawn —
 `fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and its links
 moved into the `fpds-ap` medium tier, so counting by the drawn method printed a
 figure for a tier no reader can meet. A sampled link the corpus no
-longer publishes counts in neither direction. A study run may re-judge one
+longer publishes counts in neither direction. A link demoted to medium by its
+own sample's refutation still publishes under the same tier, so its "refuted"
+still counts: a demotion never flatters the figure that caused it (ruling
+R-DEC-110b, 2026-09-26). A study run may re-judge one
 stratum only: each tier's figure comes from the latest run that judged that
 tier, a re-measurement replaces the number it corrects and never pools with it,
 and the page states every study date it draws on.
 
 Tiers with no published figure are NAMED on the page rather than left silent.
-The page's sentence, mirrored: "No precision figure is published for the
-remaining tiers a reader can meet — account, account+tokens. Those rest on an
-appropriation-account match, narrowed by a hand adjudication of the award or by
-keyword overlap; how often that association names the right program has not
-been independently measured for these tiers." Both halves — the tier list and the
-narrowing each tier adds — are derived from the same `unmeasured` array, so a
-tier that gains a figure stops being described as unmeasured in the same build.
+The page's sentence, mirrored as the decisions wave's export renders it: "No
+precision figure is published for the remaining tiers a reader can meet —
+account, account+subagency, account+tokens. Those rest on an
+appropriation-account match, narrowed by a hand adjudication of the award, by
+sub-agency and a pinning two-lens adjudication, or by keyword
+overlap; how often that association names the right program has not been
+independently measured for these tiers." (Before the withdrawal below, the
+list read "account, account+tokens": account+subagency carried its own
+figure.) Both halves — the tier list and the narrowing each tier adds — are
+derived from the same `unmeasured` array, so a tier that gains a figure stops
+being described as unmeasured in the same build.
 The `account` narrowing says "a hand adjudication of the award", not "that
 pinned the pair" (its earlier wording): measured 2026-09-11, all 442 published
 `account` rows publish because of an adjudication, but 426 of them carry
@@ -337,8 +433,17 @@ each packet) was judged on program attribution by two independent adversarial
 lenses per packet — an attribution judge and a skeptical refuter, arbiter on
 disagreement, default refuted (120 judgements, 0 disagreements) — and
 **none of the 60 was confirmed**. The page prints that result over the sampled
-links the corpus still publishes (the rule above), so its denominator moves
-with the corpus while this study's verdicts do not. Under that rubric a link confirms
+links the corpus still publishes (the rule above) — since the withdrawal, over
+the sampled links among those withdrawn — so its denominator moves with the
+corpus while this study's verdicts do not. On that result the tier was
+withdrawn from publication (decided 2026-09-25, ROADMAP #107(b)): only the
+pairs a two-lens hand adjudication pinned to the program still publish, none
+of which the study sampled, and the figure is kept, labelled, as the withdrawn
+tier's measurement (`link_precision.withdrawn`), never as a published tier's
+precision. ROADMAP #141 is the follow-on that would restore coverage with
+evidence: a matcher that sends an award to the program element whose own
+narrative names its effort, with its own precision study, planned as a
+separate phase. Under that rubric a link confirms
 only when the award's own record names work the program element's narrative or
 project titles own; no sampled link cleared it — several awards name a
 different DARPA effort outright, and what the reviewers found in common
@@ -355,7 +460,9 @@ crosswalk and ship in the downloadable warehouse with derived citations; a
 program page shows only the high-confidence figures, which it and the warehouse
 carry only over at least three such awards across two or more contractor
 families holding positive obligations with positive net linked dollars; below
-that floor it states the absence rather than substituting the wider figure.
+that floor it states the absence rather than substituting the wider figure. In
+the warehouse a shared code is one row, labelled scope = 'code'; /downloads/
+says of each whether it is one program's figure.
 
 *What the downloadable warehouse carries of each basis (measured 2026-09-25,
 on that day's export):* the every-link index (`hhi_all` with
@@ -363,6 +470,17 @@ on that day's export):* the every-link index (`hhi_all` with
 while the high-confidence-only index (`hhi_high` with `top_family_high`) is
 filled only on the 63 rows that clear the floor above and is empty on the
 other 473 — the warehouse table applies the same floor a program page does.
+The decisions wave's grading (the account / sub-agency withdrawal and the
+recorded-review rule for announcement links) changes the high-confidence
+population, so read these counts from the export that applies it. Shared codes (ROADMAP #130, decided
+2026-09-25): a program page and a feed card withhold a shared code's figure
+whenever more than one member's key carries links, while the warehouse keeps
+the row and labels it — `scope`, `member_programs`, `member_keys_with_links`,
+`links_outside_member_keys`. Measured 2026-09-26 on a replay over the
+2026-09-25 lake, 7 of the 536 rows are code-level: on 3 (0145, 3010, 3215)
+more than one member's key carries links and the row pools them; on 4 (2101,
+2292, 3050, 4217) one member's key carries every link, so the row is that
+member's figure.
 
 ---
 
@@ -394,8 +512,12 @@ tables; treat cross-state comparisons as directional.
 public J-books or USAspending. Our figures do not cover classified spending.
 
 **Data-as-of dates vary by source.** USAspending updates monthly; GAO
-high-risk is biennial; J-books are annual. Every table shows a "data as of"
-date. Numbers on the same page may reflect different time periods.
+high-risk is biennial; J-books are annual. The site stamps the date each build
+was made ("Built <date>" in the footer and the methodology header), not a date
+the data is current to, and the live methodology page names the least recently
+refreshed dataset beside the award source. Numbers on the same page may reflect
+different time periods. (Until 2026-09-26 this said every table shows a "data
+as of" date; none does — ROADMAP #174, #134.)
 
 ---
 

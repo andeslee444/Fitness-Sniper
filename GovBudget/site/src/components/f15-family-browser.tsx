@@ -1035,7 +1035,7 @@ export function F15FamilyBrowser({ family, fundingLead }: { family: F15FamilyPay
             <div>
               <h2 id="funding-heading">Budget & receipts.</h2>
             </div>
-            <p>Select the work. Choose a year. Open the original source.</p>
+            <p>Each figure is one record’s TOA (total obligation authority) for one fiscal year, read from that edition’s P-1 or R-1 workbook.</p>
           </div>
           {record ? (
             <div className={styles.fundingGrid}>
@@ -1568,8 +1568,8 @@ export function F15FamilyBrowser({ family, fundingLead }: { family: F15FamilyPay
               </h2>
             </div>
             <p>
-              From the first flight to a new generation. Select a milestone to
-              inspect its aircraft.
+              Milestones run from the first flight to a new generation. A
+              selected milestone opens its aircraft.
             </p>
           </div>
           <div className={styles.history}>
@@ -1602,10 +1602,10 @@ export function F15FamilyBrowser({ family, fundingLead }: { family: F15FamilyPay
           <details className={styles.notes}>
             <summary>How aircraft families relate to program elements</summary>
             <p>
-              A family is a browsing group. Aircraft variants, modifications,
+              A family is a browsing group. Aircraft variants, modifications
               and budget records have a many-to-many relationship. A single PE
               or BLI can support several variants, and one aircraft can receive
-              development, procurement, and upgrade funding from different
+              development, procurement and upgrade funding from different
               records.
             </p>
             <p>
@@ -1712,7 +1712,7 @@ export function F15FamilyBrowser({ family, fundingLead }: { family: F15FamilyPay
                     id="research-heading"
                     style={{ marginTop: 7 }}
                   >
-                    Your research tray
+                    Research tray
                   </h2>
                 </div>
                 <button

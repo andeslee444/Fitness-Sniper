@@ -348,7 +348,7 @@ describe("YearsMatrix — render contract", () => {
   it("renders the honesty-marker legend near the table controls", async () => {
     await renderMatrix();
     const legend = screen.getByTestId("cite-legend");
-    expect(legend.textContent).toContain("cited (click for source)");
+    expect(legend.textContent).toContain("cited (opens to its source)");
     // Round-1 judging: the legend used to read "zero in source XML", but the
     // XML badge also marks NON-zero figures whose page match did not resolve,
     // so a judge found it beside a live amount and read a contradiction. The

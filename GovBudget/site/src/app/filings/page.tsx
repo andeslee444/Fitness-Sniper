@@ -34,8 +34,8 @@ export default function FilingsIndexPage() {
 
       <PageIntro eyebrow="Public disclosure records" title="Read the lobbying record."
         description="Find a client, registrant, or program mention, then inspect the filing and its official source."
-        actions={<><a href="#filing-directory">Search filings</a><Link href="/companies/">Explore contractor families</Link></>}>
-        <h2 className="sr-only">Lobbying Filings</h2>
+        actions={<><a href="#filing-directory">Search filings</a><Link href="/companies/">Contractor families</Link></>}>
+        <h2 className="sr-only">Lobbying filings</h2>
         <p className="text-muted-foreground mb-2">
           {index.total.toLocaleString("en-US")} Senate LDA filings from
           registrants whose clients appear in the tracked-program corpus.{" "}

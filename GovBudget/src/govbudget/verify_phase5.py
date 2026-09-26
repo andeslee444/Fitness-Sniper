@@ -802,8 +802,13 @@ def provider_block_reason(
         answer: it counts against the bar through this inequality and does
         not by itself decide anything (R-DEC-139c, fix round 2: the
         2026-09-18 shape — 27 correct, 20 refused, 1 wrong — is BLOCKED
-        once its refusals are on record; passing runs score 45-46/48, so a
-        real mid-run credit exhaustion almost always follows a wrong answer);
+        once its refusals are on record). A wrong answer does not show a run
+        would have failed: of the 36 stored runs that reached >= 44 correct
+        (the 50 distinct eval-*.json records in data/research/eval-runs/
+        across the repo's checkouts, read 2026-09-26), 26 carry at least one
+        answer scored wrong. Their correct counts: 47/48 in 17 runs, 48/48
+        in 8, 46/48 in 8, 45/48 in 2, 45/45 in 1 (a miss that is not a wrong
+        answer is an ERROR row);
       * no answered question's citation failed to resolve — the 100%
         citation bar is already broken.
     Spend is not part of the rule: a credit balance runs out MID-run, after

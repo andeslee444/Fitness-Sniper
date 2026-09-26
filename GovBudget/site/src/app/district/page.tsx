@@ -91,11 +91,11 @@ export default function DistrictIndexPage() {
             ledger (district-directory.module.css), so the first district row
             is inside the 390x844 fold (gate 16, index-fold leg). Every
             sentence and figure stays where it was. */}
-        <PageIntro eyebrow="Local connections" title="Follow the evidence to your district."
+        <PageIntro eyebrow="Local connections" title="Awards by congressional district"
           className={styles.intro}
-          description="Find the programs connected to a place through documented defense contract awards."
+          description="Programs connected to each district through documented defense contract awards."
           actions={<><a href="#district-directory">Find a district</a><Link href="/coverage/#crosswalk">How programs connect to awards</Link></>}>
-          <h2 className="sr-only">Congressional Districts</h2>
+          <h2 className="sr-only">Congressional districts</h2>
           <p className="text-muted-foreground mb-2">
             {index.total_districts} districts with linkable defense obligations
             — {_flowsCount} of {_programsCount} program elements have a
@@ -297,7 +297,7 @@ export default function DistrictIndexPage() {
         <p className="mt-4 text-xs text-muted-foreground">
           Dollars are from high-confidence USAspending award links only.
           The geography grand total aggregates USAspending award transaction
-          data across all districts — click it for the formula and query.
+          data across all districts and opens to the formula and query.
           See{" "}
           <Link href="/methodology/" className="underline hover:text-foreground">
             methodology

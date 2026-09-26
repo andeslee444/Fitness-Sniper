@@ -5,7 +5,7 @@ import { SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Page Not Found",
-  description: "The page you were looking for could not be found.",
+  description: "This address does not resolve to a page.",
 };
 
 export default function NotFound() {

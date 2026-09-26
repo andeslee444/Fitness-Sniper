@@ -284,3 +284,83 @@ def test_export_facts_accepts_reviews_backfilled_after_the_loader(pg_dsn, tmp_pa
     finally:
         with psycopg.connect(pg_dsn) as con:
             con.execute("delete from announcement_link_reviews")
+
+
+# ── R-DEC-110b: the precision study's refutations are review records ───────
+
+def _refuted_sample(con, adjudicated_at, verdict="refuted", rubric="attribution"):
+    con.execute(
+        "insert into link_precision_samples (sample_id, award_piid, pe_bli,"
+        " method, verdict, reason, adjudicated_at, rubric) values"
+        " ('2026-09-12','P1','PE1','announcement+lexicon',%s,'r',%s,%s)",
+        (verdict, adjudicated_at, rubric))
+
+
+def _cleanup(pg_dsn):
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("delete from announcement_link_reviews")
+        con.execute("delete from link_precision_samples")
+
+
+def test_export_facts_refuses_reviews_older_than_the_last_precision_refutation(
+    pg_dsn, tmp_path,
+):
+    """A refuted attribution verdict loaded AFTER the backfill ran is a
+    recorded refutation the review table does not carry: the mart would keep
+    a known-refuted link at high. Refused before any file is written."""
+    with psycopg.connect(pg_dsn) as con:
+        _owned_link(con, "2026-09-26 10:00:00+00")
+        _review(con, "2026-09-26 10:05:00+00")
+        _refuted_sample(con, "2026-09-26 10:10:00+00")
+    try:
+        with pytest.raises(ChainOrderError, match="precision"):
+            export_facts(pg_dsn, parquet_dir=tmp_path)
+        assert not (tmp_path / "jbooks").exists()
+    finally:
+        _cleanup(pg_dsn)
+
+
+@pytest.mark.parametrize(("adjudicated_at", "verdict", "rubric"), [
+    ("2026-09-26 10:01:00+00", "refuted", "attribution"),   # before the backfill
+    ("2026-09-26 10:10:00+00", "confirmed", "attribution"),  # not a refutation
+    ("2026-09-26 10:10:00+00", "refuted", "rule-fired"),     # another question
+])
+def test_export_facts_accepts_reviews_that_carry_every_precision_refutation(
+    pg_dsn, tmp_path, adjudicated_at, verdict, rubric,
+):
+    with psycopg.connect(pg_dsn) as con:
+        _owned_link(con, "2026-09-26 10:00:00+00")
+        _review(con, "2026-09-26 10:05:00+00")
+        _refuted_sample(con, adjudicated_at, verdict, rubric)
+    try:
+        assert tmp_path / "jbooks" / "announcement_link_reviews.parquet" in (
+            export_facts(pg_dsn, parquet_dir=tmp_path))
+    finally:
+        _cleanup(pg_dsn)
+
+
+def test_export_facts_carries_precision_sample_rows(pg_dsn, tmp_path):
+    """A precision_sample row reaches the lake like any review row: no
+    article (it binds to the pair), the sample id as source_file, the
+    link_precision_samples row id as entry_index, and a reason whose head
+    names the tier the link was drawn from."""
+    reason = ("drawn from the announcement+lexicon tier of held-out precision"
+              " sample 2026-09-12 (rubric attribution), judged refuted: r")
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into announcement_link_reviews (award_piid, pe_bli, exhibit,"
+            " fiscal_year, record_kind, reviewer_verdict, adversarial_verdict,"
+            " upholds, entry_index, reason, source_file) values"
+            " ('P1','PE1','R-1',2026,'precision_sample','link','refuted',false,"
+            "  379,%s,'2026-09-12')", (reason,))
+    try:
+        export_facts(pg_dsn, parquet_dir=tmp_path)
+        out = tmp_path / "jbooks" / "announcement_link_reviews.parquet"
+        got = duckdb.sql(
+            f"select record_kind, adversarial_verdict, upholds, article_id,"
+            f" cites_reviewed_article, entry_index, reason, source_file"
+            f" from read_parquet('{out}')").fetchall()
+        assert got == [("precision_sample", "refuted", "False", None, None,
+                        "379", reason, "2026-09-12")]
+    finally:
+        _cleanup(pg_dsn)

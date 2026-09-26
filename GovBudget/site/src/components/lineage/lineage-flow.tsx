@@ -75,6 +75,18 @@ import {
 
 // ── Small shared pieces ──────────────────────────────────────────────────────
 
+/**
+ * Plain wording for an inference basis code (gate 27 leg 31: no exposed
+ * enum). Each says only what src/govbudget/lineage/infer.py's rule checks —
+ * ba_maturation_same_title is an RDT&E element and its successor one budget
+ * activity up (BA N to N+1), same agency suffix, same normalized title and a
+ * funding hand-off. An unmapped code renders as itself.
+ */
+const INFERENCE_BASIS_LABEL: Record<string, string> = {
+  ba_maturation_same_title: "same title, next budget activity",
+};
+const inferenceBasisLabel = (basis: string) => INFERENCE_BASIS_LABEL[basis] ?? basis;
+
 /** The rail's citation marker, same markup and same attributes. */
 function StatedCiteMarker({ factId }: { factId: string }) {
   const { openPanel } = useContext(CitationPanelContext);
@@ -371,7 +383,7 @@ function IdentityTable({
             <th scope="row" className="px-2 py-1 text-left font-medium text-foreground">
               <code className="font-mono">{node.pe}</code>
               {node.title ? (
-                <span className="block font-normal text-muted-foreground">
+                <span className="block font-normal text-muted-foreground" data-program-name>
                   {node.title}
                 </span>
               ) : null}
@@ -512,7 +524,7 @@ function Legend({ ribbonW }: { ribbonW: number }) {
             className="fill-(--flow-band-budget)"
           />
         </svg>
-        stated in a J-book sentence — cited, click a ribbon for the source
+        stated in a J-book sentence — cited, each ribbon opens its source
       </span>
       <span className="flex items-center gap-1.5">
         <svg width="22" height="10" aria-hidden="true" className="shrink-0">
@@ -598,7 +610,7 @@ export function LineageFlow({
           // pointer that is about to become false gets NAMED, not re-placed
           // — 21d's own /district/ ruling, applied to its own caption.
           `fixed width because no J-book sentence in the corpus states how much money moved. The identities table adds ` +
-          `the one figure that IS stated per identity — its FY${payload.amount_fy} request — and the links table lists every ` +
+          `the one figure that IS stated per identity (its FY${payload.amount_fy} request) and the links table lists every ` +
           `link with the edition that asserts it.` +
           (wideFamilies > 0
             ? ` ${wideFamilies} of the ${payload.counts.families} family diagrams are wider than a phone screen and scroll sideways inside their own box.`
@@ -710,7 +722,7 @@ export function LineageFlow({
                     <LinkTable
                       diagrams={candidates.map((c, i) => ({
                         key: `c${i}`,
-                        label: c.basis ?? "inferred",
+                        label: c.basis ? inferenceBasisLabel(c.basis) : "inferred",
                         d: c,
                       }))}
                       groupLabel="Inference basis"
@@ -745,7 +757,7 @@ export function LineageFlow({
                       </span>
                       {c.basis && (
                         <span className="text-xs text-amber-800/80 dark:text-amber-200/80">
-                          {c.basis}
+                          {inferenceBasisLabel(c.basis)}
                         </span>
                       )}
                     </div>

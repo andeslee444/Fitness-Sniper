@@ -103,6 +103,7 @@ import { ProgramEvidencePath, ProgramWayfinding } from "@/components/program-way
 import programStyles from "@/components/program-wayfinding.module.css";
 import { ProgramSources } from "@/components/program-sources";
 import { programSourceEntries } from "@/lib/source-document";
+import { metaTitle } from "@/lib/copy";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
 
@@ -384,9 +385,13 @@ export async function generateMetadata({
     `Every figure links to the document it is printed in.`;
 
   const canonicalUrl = `${SITE_URL}/program/${peBli}/`;
+  // VOICE rule 28 / gate 27 leg 38 (#175, 2026-09-26): "{title} ({PE|BLI}
+  // {code}) · {orgShort}", ≤ 60 characters before the layout's " | Fiscal
+  // Receipts"; the title is cut at a word boundary, never the lockup.
+  const title = metaTitle(program);
 
   return {
-    title: `${program.title} — FY2026 Budget, Contracts & Lobbying`,
+    title,
     description,
     alternates: {
       canonical: canonicalUrl,
@@ -404,7 +409,7 @@ export async function generateMetadata({
       ? { index: false, follow: true }
       : undefined,
     openGraph: {
-      title: `${program.title} — FY2026 Budget, Contracts & Lobbying`,
+      title,
       description,
       url: canonicalUrl,
       siteName: SITE_NAME,
@@ -835,7 +840,7 @@ export default async function ProgramPage({
         {hasLineage(details) && lineage ? (
           <div className="mb-8">
             <h2 className="mb-3 text-foreground">
-              Program Lineage
+              Program lineage
             </h2>
             <LineageRail
               selfPe={peBli}
@@ -878,7 +883,7 @@ export default async function ProgramPage({
             </p>
           </div>
         ) : (
-          <SectionEmpty title="Program Lineage">
+          <SectionEmpty title="Program lineage">
             {sharesBudgetCode ? (
               <>This code is shared by more than one budget line. No predecessor
                 or successor is assigned to this specific account or organization.</>
@@ -991,14 +996,14 @@ export default async function ProgramPage({
              false here in both halves: fct_budget_trajectory carries no row
              for any element on this tier, and the figures are older-edition
              workbook rows, each cited, rendered in the decade table above. */
-          <SectionEmpty title="Line Items">
+          <SectionEmpty title="Line items">
             No FY2026 line items: the FY2026 R-1/P-1 workbooks carry no row
             for this program element. Its cited figures are the earlier
             President&apos;s Budget editions&apos; own workbook rows, in the
             decade table above.
           </SectionEmpty>
         ) : (
-          <SectionEmpty title="Line Items">
+          <SectionEmpty title="Line items">
             No workbook or J-book line items are linked to this program
             element — its figures appear only in the trajectory mart.
           </SectionEmpty>
@@ -1052,7 +1057,7 @@ export default async function ProgramPage({
             peHrefs={peHrefs}
           />
         ) : (
-          <SectionEmpty title="Lobbying Mentions">
+          <SectionEmpty title="Lobbying mentions">
             {sharesBudgetCode ? (
               <>This code is shared by more than one budget line. No lobbying
                 matches are assigned to this specific account or organization.</>

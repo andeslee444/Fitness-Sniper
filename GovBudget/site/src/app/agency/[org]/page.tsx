@@ -201,8 +201,8 @@ export default async function AgencyPage({
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Aggregate totals are derived sums over this agency&apos;s program
-            figures — click a total to inspect the formula and its cited
-            inputs. Individual program FY24 figures are J-book–cited where
+            figures. Each total opens to its formula and cited inputs.
+            Individual program FY24 figures are J-book–cited where
             underlined. See{" "}
             <Link
               href="/methodology/"
@@ -313,7 +313,7 @@ export default async function AgencyPage({
         {/* Programs list */}
         <section id="agency-programs" className="scroll-mt-24">
           <p className="t-label mb-2">The portfolio</p>
-          <h2 className="mb-2">Program Elements</h2>
+          <h2 className="mb-2">Program elements</h2>
           {/* The list's basis, declared once (gate 23 leg e): a figure whose
               basis is stated nowhere is how the same label came to carry two
               values on two pages. */}
@@ -447,7 +447,7 @@ export default async function AgencyPage({
                     <>
                       {" "}
                       across {gao.overlay.improper.program_count} reported
-                      programs (paymentaccuracy.gov). Click the figure for the
+                      programs (paymentaccuracy.gov). The figure opens to its
                       derivation and source.
                     </>
                   )}

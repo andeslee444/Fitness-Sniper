@@ -63,9 +63,9 @@ describe("F-15 network overview", () => {
   });
 
   it.each([
-    ["Explore countries & variants", "Countries & variants"],
+    ["Open countries & variants", "Countries & variants"],
     ["Examine orders & requests", "Orders & requests"],
-    ["Explore suppliers & systems", "Suppliers & systems"],
+    ["Open suppliers & systems", "Suppliers & systems"],
     ["Related programs & developments", "Programs & developments"],
   ])(
     "opens %s directly and returns to the focused overview",

@@ -128,7 +128,10 @@
  *      requires /methodology/'s [data-link-precision] paragraph to state
  *      every method's exact confirmed/sampled pair — and, symmetrically, to
  *      render NOTHING when site_meta carries no measured methods yet (a
- *      stale or partial paragraph is as much a lie as a rotted literal). See
+ *      stale or partial paragraph is as much a lie as a rotted literal). A
+ *      tier WITHDRAWN on its figure (#107(b), 2026-09-25) keeps it in
+ *      site_meta.link_precision.withdrawn, stated slot for slot in its own
+ *      [data-link-precision-withdrawn] element (R-DEC-GATE24). See
  *      leg n's own block at the bottom.
  *  (o) PER-AWARD HAND-ADJUDICATION COVERAGE (ROADMAP #109, 2026-09-11). Leg
  *      (n) grades the SAMPLED measurement of the link tiers; this one grades
@@ -145,7 +148,11 @@
  *      same blind spot leg h found in feed prose. The sentence is now
  *      rendered from site_meta.link_adjudication and this leg binds it: every
  *      figure stated, NO figure the block does not hold, every unadjudicated
- *      path named, and the passage present iff the block is. See leg o's own
+ *      path named, and the passage present iff the block is. Since the
+ *      decisions wave (R-DEC-GATE24, 2026-09-26) it also binds, the same way,
+ *      `unpinned_published` in that passage, the High tier's recorded-review
+ *      census split by record kind ([data-link-review-high]) and the links
+ *      demoted from high by reason ([data-link-demoted-high]). See leg o's own
  *      block at the bottom.
  *  (p) CROSSWALK-COUNT PROVENANCE (PM-S3 leftover, ROADMAP.md:34). Leg (k)
  *      does this for corpus SIZE. "Crosswalked" is the site's other
@@ -2853,6 +2860,140 @@ const PINNED_PRECISION_SAMPLES = { "announcement+lexicon": "2026-09-04" };
  *  in that order, within one sentence. */
 const RUBRIC_PHRASE = /program attribution[^.]*execute this program element/i;
 
+/** The figures a withdrawn tier's element must state, in the order
+ *  /methodology/ states them: "confirmed {confirmed} of {sampled} … its
+ *  {links} links … no longer publish". */
+const WITHDRAWN_SLOTS = ["confirmed", "sampled", "links"];
+
+/** The figures a passage states, as whole tokens in document order (ISO
+ *  dates removed first) — so "86" is not found inside "12,866". */
+const statedFigures = (text) =>
+  [...String(text ?? "").replace(/\d{4}-\d{2}-\d{2}/g, " ").matchAll(/\d[\d,]*/g)].map((m) => m[0]);
+
+/**
+ * leg n, the WITHDRAWN tiers (ROADMAP #107(b), decided 2026-09-25; ruling
+ * R-DEC-GATE24, controller 2026-09-26).
+ *
+ * THE SHAPE. dbt withdrew the account / sub-agency tier from publication on
+ * its 0-of-58 attribution figure (except the pairs a two-lens adjudication
+ * pinned). The measurement that caused the withdrawal must not vanish with
+ * the tier, and must not stay in `methods` either — `methods` is bound above
+ * to the tiers the corpus publishes. So export_site._link_precision_block
+ * keeps it in `link_precision.withdrawn` ({method: {confirmed, sampled,
+ * sample_id, judged, links, demotion_reasons}}), and /methodology/ states it
+ * in its own [data-link-precision-withdrawn="<method>"] element.
+ *
+ * THE BINDING — every direction a failure, none exempt:
+ *   - a withdrawn tier with no element (the withdrawal goes unexplained);
+ *   - an element with no withdrawn figure behind it (a withdrawal asserted
+ *     over nothing measured);
+ *   - each of confirmed / sampled / links stated, formatted as formatCount
+ *     formats a count, and in that order (slot binding, like leg o's);
+ *   - no other number (ISO dates stripped first: the judged date and the
+ *     decision date are dates, not figures);
+ *   - the judged date stated, and the question named ("program
+ *     attribution") — a withdrawn figure is still an answer to one question;
+ *   - the block against itself: confirmed ≤ sampled, links > 0.
+ *
+ * @param {object} linkPrecision site_meta.link_precision
+ * @param {Record<string, string>} withdrawnTexts element text by method
+ * @returns {string[]}
+ */
+export function withdrawnPrecisionFindings(linkPrecision, withdrawnTexts) {
+  const out = [];
+  const withdrawn = linkPrecision?.withdrawn ?? {};
+  const rendered = withdrawnTexts ?? {};
+  const fmt = (v) => v.toLocaleString("en-US");
+  const undated = (s) => s.replace(/\d{4}-\d{2}-\d{2}/g, " ");
+  for (const method of Object.keys(withdrawn).sort()) {
+    const w = withdrawn[method] ?? {};
+    const label = `[data-link-precision-withdrawn="${method}"]`;
+    const bad = WITHDRAWN_SLOTS.filter((f) => !Number.isInteger(w[f]) || w[f] < 0);
+    for (const f of bad) {
+      out.push(
+        `leg n: site_meta.link_precision.withdrawn["${method}"].${f} is ` +
+          `${JSON.stringify(w[f] ?? null)}, not a count — re-run export-site`,
+      );
+    }
+    if (bad.length > 0) continue;
+    if (w.confirmed > w.sampled) {
+      out.push(
+        `leg n: site_meta.link_precision.withdrawn["${method}"] is inverted ` +
+          `(${w.confirmed} confirmed of ${w.sampled} sampled) — a confirmed ` +
+          `count cannot exceed its sample`,
+      );
+    }
+    if (w.links === 0) {
+      out.push(
+        `leg n: site_meta.link_precision.withdrawn["${method}"] withdraws 0 ` +
+          `links — a tier with nothing withdrawn is not a withdrawn tier; ` +
+          `re-run export-site`,
+      );
+    }
+    const text = rendered[method];
+    if (text == null) {
+      out.push(
+        `leg n (/methodology/): site_meta.link_precision.withdrawn carries ` +
+          `"${method}" (${w.confirmed}/${w.sampled}, ${fmt(w.links)} links ` +
+          `withdrawn) but no ${label} element renders — a ` +
+          `tier withdrawn for its measurement must say so, with the ` +
+          `measurement, or the withdrawal reads as unexplained`,
+      );
+      continue;
+    }
+    const allowed = new Set(WITHDRAWN_SLOTS.map((f) => fmt(w[f])));
+    for (const f of WITHDRAWN_SLOTS) {
+      if (!statedFigures(text).includes(fmt(w[f]))) {
+        out.push(
+          `leg n (/methodology/): ${label} never states ${f} = ${fmt(w[f])} — ` +
+            `every figure it claims comes from site_meta.link_precision.withdrawn`,
+        );
+      }
+    }
+    if (w.judged && !text.includes(w.judged)) {
+      out.push(
+        `leg n (/methodology/): ${label} does not carry the judged date ` +
+          `${w.judged} — an undated withdrawn figure reads as a standing one`,
+      );
+    }
+    if (!/program attribution/i.test(text)) {
+      out.push(
+        `leg n (/methodology/): ${label} never says the figure answers ` +
+          `"program attribution" — a withdrawn figure is still the answer to ` +
+          `one question, and the reader must know which`,
+      );
+    }
+    const got = [...undated(text).matchAll(/\d[\d,]*/g)].map((m) => m[0]);
+    for (const n of got) {
+      if (!allowed.has(n)) {
+        out.push(
+          `leg n (/methodology/): ${label} states "${n}", which is not a ` +
+            `figure in site_meta.link_precision.withdrawn["${method}"] ` +
+            `(${[...allowed].join(", ")}) — no stray number (R-DEC-GATE24)`,
+        );
+      }
+    }
+    const want = WITHDRAWN_SLOTS.map((f) => fmt(w[f]));
+    if (!(got.length === want.length && want.every((v, i) => v === got[i]))) {
+      out.push(
+        `leg n (/methodology/): ${label} states its figures in the order ` +
+          `${got.join(", ") || "(none)"} but the block derives ` +
+          `${want.join(", ")} — ${WITHDRAWN_SLOTS.join(", ")}, in that order`,
+      );
+    }
+  }
+  for (const method of Object.keys(rendered).sort()) {
+    if (!Object.prototype.hasOwnProperty.call(withdrawn, method)) {
+      out.push(
+        `leg n (/methodology/): [data-link-precision-withdrawn="${method}"] ` +
+          `renders while site_meta.link_precision.withdrawn carries no ` +
+          `"${method}" — a withdrawal stated with no measurement behind it`,
+      );
+    }
+  }
+  return out;
+}
+
 /** `injected` is passed only by the leg's unit test
  *  (__tests__/link-precision.test.mjs), which has to hand the leg corpora the
  *  build does not contain — a direction that has never been seen to fail is
@@ -2864,6 +3005,8 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
   let paragraphText = null;
   let paragraphExists = false;
   let methodologyBuilt = true;
+  // R-DEC-GATE24: [data-link-precision-withdrawn="<method>"] text by method.
+  let withdrawnTexts = {};
 
   if (injected) {
     siteMeta = injected.siteMeta ?? {};
@@ -2871,6 +3014,7 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
     paragraphExists = injected.paragraphText != null;
     paragraphText = injected.paragraphText ?? null;
     methodologyBuilt = injected.methodologyBuilt ?? true;
+    withdrawnTexts = injected.withdrawnTexts ?? {};
   } else {
     const siteMetaPath = path.join(jsonDir, "site_meta.json");
     if (!fs.existsSync(siteMetaPath)) {
@@ -2902,6 +3046,9 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
     const el = methodRoot?.querySelector("[data-link-precision]");
     paragraphExists = el != null;
     paragraphText = el ? norm(el.text) : null;
+    for (const w of methodRoot?.querySelectorAll("[data-link-precision-withdrawn]") ?? []) {
+      withdrawnTexts[w.getAttribute("data-link-precision-withdrawn")] = norm(w.text);
+    }
   }
 
   const linkPrecision = siteMeta.link_precision ?? {};
@@ -2923,6 +3070,13 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
   const figures = linkPrecision.methods ?? {};
   const methods = Object.keys(figures).sort();
   const unmeasured = [...(linkPrecision.unmeasured ?? [])].sort();
+  // #107(b) / R-DEC-GATE24: the withdrawn tiers' figures, bound before any
+  // early return — an element can render (or be owed) whatever `methods`
+  // holds.
+  const withdrawnCount = Object.keys(linkPrecision.withdrawn ?? {}).length;
+  if (methodologyBuilt) {
+    errors.push(...withdrawnPrecisionFindings(linkPrecision, withdrawnTexts));
+  }
 
   // A pinned tier publishes its OWN draw's figure or none at all. (A tier the
   // pin left unmeasured is not an error here — `_link_precision_block` reports
@@ -3077,7 +3231,11 @@ export function runLinkPrecisionLeg(errors, notes, injected) {
       `leg n: [data-link-precision] states all ${checked} measured method(s) ` +
         `from site_meta.link_precision (values match, rubric '${rubric}' named) ` +
         `and names all ${unmeasured.length} unmeasured published tier(s); ` +
-        `${published.size} published method(s) in citations.json, all accounted for ✓`,
+        `${published.size} published method(s) in citations.json, all accounted for` +
+        (withdrawnCount > 0
+          ? `; ${withdrawnCount} withdrawn tier(s) stated with their figure in [data-link-precision-withdrawn]`
+          : "") +
+        ` ✓`,
     );
   }
 }
@@ -3168,6 +3326,212 @@ const HIGH_COUNTS = ["adjudicated_high", "published_high", "two_lens_high"];
  *  if the corpus changes; never lower it to fit a red run. */
 const MIN_ADJUDICATION_METHODS = 4;
 
+/** The record kinds `reviewed_by_kind` always carries, in the order
+ *  /methodology/ states them (export_site._kind_split). */
+const REVIEW_KINDS = ["adjudication", "verdict_pair", "survivor_list"];
+/** The words that name each always-present kind on the page — a passage
+ *  that stops naming one hides the granularity R-DEC-110 says to disclose. */
+const REVIEW_KIND_WORDS = {
+  adjudication: /hand adjudication/i,
+  verdict_pair: /verdict pair/i,
+  survivor_list: /survivor-list/i,
+};
+
+/** leg o's [data-link-review-high] and [data-link-demoted-high] bindings —
+ *  see the call site in runLinkAdjudicationLeg. Exported for the unit test
+ *  only through runLinkAdjudicationLeg's injected seam. */
+function bindReviewAndDemotions({
+  errors,
+  high,
+  reviewExists,
+  reviewText,
+  demotedExists,
+  demotedText,
+  reportStrays,
+  reportSlots,
+}) {
+  const fmt = (v) => v.toLocaleString("en-US");
+  const kinds = high?.reviewed_by_kind ?? null;
+  const rh = high?.reviewed_high;
+  const ph = high?.published_high;
+
+  // ── reviewed_high + reviewed_by_kind ──
+  if (typeof rh === "number" && !kinds) {
+    errors.push(
+      `leg o: site_meta.link_adjudication.high carries reviewed_high (${rh}) ` +
+        `but no reviewed_by_kind — R-DEC-110 requires the split by record ` +
+        `kind to be disclosed; re-run export-site against a Postgres whose ` +
+        `announcement_link_reviews carries record_kind`,
+    );
+  }
+  const reviewCensus = kinds && typeof rh === "number";
+  if (reviewCensus) {
+    const extras = Object.entries(kinds).filter(
+      ([k, v]) => !REVIEW_KINDS.includes(k) && typeof v === "number" && v > 0,
+    );
+    const sum = Object.values(kinds).reduce((t, v) => t + (typeof v === "number" ? v : 0), 0);
+    if (REVIEW_KINDS.some((k) => typeof kinds[k] !== "number")) {
+      errors.push(
+        `leg o: site_meta.link_adjudication.high.reviewed_by_kind lacks one of ` +
+          `${REVIEW_KINDS.join(", ")} — the three are always present (0 is a ` +
+          `measurement); re-run export-site`,
+      );
+    } else if (sum !== rh) {
+      errors.push(
+        `leg o: site_meta.link_adjudication.high.reviewed_by_kind sums to ` +
+          `${sum} but reviewed_high is ${rh} — each reviewed link counts once, ` +
+          `under its strongest record; re-run export-site`,
+      );
+    }
+    if (typeof ph === "number" && rh > ph) {
+      errors.push(
+        `leg o: site_meta.link_adjudication.high.reviewed_high (${rh}) exceeds ` +
+          `published_high (${ph}) — a review census cannot exceed its own tier`,
+      );
+    }
+    const byPath = high.by_path ?? {};
+    const pathReviewed = Object.values(byPath).reduce(
+      (t, v) => t + (typeof v?.reviewed === "number" ? v.reviewed : 0),
+      0,
+    );
+    if (Object.values(byPath).some((v) => typeof v?.reviewed === "number") && pathReviewed !== rh) {
+      errors.push(
+        `leg o: site_meta.link_adjudication.high.reviewed_high is ${rh} but ` +
+          `by_path[*].reviewed sums to ${pathReviewed} — re-run export-site`,
+      );
+    }
+    for (const [method, v] of Object.entries(byPath)) {
+      if (!v?.reviewed_by_kind || typeof v.reviewed !== "number") continue;
+      const s = Object.values(v.reviewed_by_kind).reduce((t, n) => t + (typeof n === "number" ? n : 0), 0);
+      if (s !== v.reviewed) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.high.by_path["${method}"].` +
+            `reviewed_by_kind sums to ${s} but its reviewed is ${v.reviewed} — ` +
+            `re-run export-site`,
+        );
+      }
+    }
+    if (!reviewExists) {
+      errors.push(
+        `leg o (/methodology/): site_meta.link_adjudication.high carries a ` +
+          `recorded-review census (${fmt(rh)} of ${typeof ph === "number" ? fmt(ph) : "?"} ` +
+          `links published at high, split by record kind) but no ` +
+          `[data-link-review-high] passage renders — R-DEC-110 says the split ` +
+          `is disclosed, not hidden`,
+      );
+    } else {
+      const slots = [
+        ["reviewed_high", rh],
+        ...REVIEW_KINDS.filter((k) => typeof kinds[k] === "number").map((k) => [
+          `reviewed_by_kind.${k}`,
+          kinds[k],
+        ]),
+        ...extras.map(([k, v]) => [`reviewed_by_kind.${k}`, v]),
+      ];
+      const allowed = new Set(slots.map(([, v]) => fmt(v)));
+      for (const [field, v] of slots) {
+        if (!statedFigures(reviewText).includes(fmt(v))) {
+          errors.push(
+            `leg o (/methodology/): [data-link-review-high] never states ` +
+              `${field} = ${fmt(v)} — every figure in it comes from ` +
+              `site_meta.link_adjudication.high`,
+          );
+        }
+      }
+      reportStrays("data-link-review-high", reviewText, allowed);
+      reportSlots("data-link-review-high", reviewText, slots);
+      for (const k of REVIEW_KINDS) {
+        if (!REVIEW_KIND_WORDS[k].test(reviewText)) {
+          errors.push(
+            `leg o (/methodology/): [data-link-review-high] never names the ` +
+              `record kind "${REVIEW_KIND_WORDS[k].source}" (${k}) — the ` +
+              `granularity of each kind of record is the disclosure R-DEC-110 ` +
+              `requires`,
+          );
+        }
+      }
+      if (typeof ph === "number" && rh < ph && /^\s*All\b/.test(reviewText)) {
+        errors.push(
+          `leg o (/methodology/): [data-link-review-high] opens "All" while ` +
+            `reviewed_high (${fmt(rh)}) is below published_high (${fmt(ph)}) — ` +
+            `a universal over a census that is not one`,
+        );
+      }
+    }
+  } else if (reviewExists) {
+    errors.push(
+      "leg o (/methodology/): [data-link-review-high] renders while " +
+        "site_meta.link_adjudication.high carries no reviewed_high / " +
+        "reviewed_by_kind — a recorded-review claim with no census behind it",
+    );
+  }
+
+  // ── demoted_from_high ──
+  const dem = high?.demoted_from_high ?? null;
+  const demotions = dem && typeof dem.links === "number" && dem.links > 0;
+  if (demotions) {
+    const byReason = dem.by_reason ?? {};
+    const reasons = Object.entries(byReason);
+    const reasonSum = reasons.reduce((t, [, n]) => t + (typeof n === "number" ? n : 0), 0);
+    for (const [reason, n] of reasons) {
+      if (typeof n !== "number" || n <= 0) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.high.demoted_from_high.by_reason` +
+            `["${reason}"] is ${JSON.stringify(n)} — re-run export-site`,
+        );
+      } else if (n > dem.links) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.high.demoted_from_high.by_reason` +
+            `["${reason}"] (${n}) exceeds the ${dem.links} demoted links — a ` +
+            `reason cannot count more pairs than were demoted`,
+        );
+      }
+      const pathSum = Object.values(dem.by_path ?? {}).reduce(
+        (t, per) => t + (typeof per?.[reason] === "number" ? per[reason] : 0),
+        0,
+      );
+      if (pathSum !== n) {
+        errors.push(
+          `leg o: site_meta.link_adjudication.high.demoted_from_high.by_path ` +
+            `sums to ${pathSum} for "${reason}" but by_reason says ${n} — ` +
+            `re-run export-site`,
+        );
+      }
+    }
+    if (reasons.length === 0 || reasonSum < dem.links) {
+      errors.push(
+        `leg o: site_meta.link_adjudication.high.demoted_from_high counts ` +
+          `${dem.links} demoted links but its reasons cover ${reasonSum} — ` +
+          `every demoted link carries a reason (R-DEC-110)`,
+      );
+    }
+    if (!demotedExists) {
+      errors.push(
+        `leg o (/methodology/): site_meta.link_adjudication.high carries ` +
+          `${fmt(dem.links)} links demoted from high but no ` +
+          `[data-link-demoted-high] passage renders — a demotion with its ` +
+          `reason unsaid reads as a tier that never moved`,
+      );
+    } else {
+      const slots = [
+        ["demoted_from_high.links", dem.links],
+        ...reasons
+          .filter(([, n]) => typeof n === "number")
+          .map(([r, n]) => [`demoted_from_high.by_reason.${r}`, n]),
+      ];
+      const allowed = new Set(slots.map(([, v]) => fmt(v)));
+      reportStrays("data-link-demoted-high", demotedText, allowed);
+      reportSlots("data-link-demoted-high", demotedText, slots);
+    }
+  } else if (demotedExists) {
+    errors.push(
+      "leg o (/methodology/): [data-link-demoted-high] renders while " +
+        "site_meta.link_adjudication.high carries no demoted_from_high (or " +
+        "demotes nothing) — a demotion stated with no census behind it",
+    );
+  }
+}
+
 export function runLinkAdjudicationLeg(errors, notes, injected) {
   let siteMeta;
   let passageText = null;
@@ -3175,6 +3539,12 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
   let highText = null;
   let highExists = false;
   let methodologyBuilt = true;
+  // R-DEC-GATE24: the High tier's recorded-review census and the demotions
+  // from high, each in its own element.
+  let reviewText = null;
+  let reviewExists = false;
+  let demotedText = null;
+  let demotedExists = false;
 
   if (injected) {
     siteMeta = injected.siteMeta ?? {};
@@ -3182,6 +3552,10 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     passageText = injected.passageText ?? null;
     highExists = injected.highText != null;
     highText = injected.highText ?? null;
+    reviewExists = injected.reviewText != null;
+    reviewText = injected.reviewText ?? null;
+    demotedExists = injected.demotedText != null;
+    demotedText = injected.demotedText ?? null;
     methodologyBuilt = injected.methodologyBuilt ?? true;
   } else {
     const siteMetaPath = path.join(jsonDir, "site_meta.json");
@@ -3203,11 +3577,17 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     const highEl = methodRoot?.querySelector("[data-link-adjudication-high]");
     highExists = highEl != null;
     highText = highEl ? norm(highEl.text) : null;
+    const reviewEl = methodRoot?.querySelector("[data-link-review-high]");
+    reviewExists = reviewEl != null;
+    reviewText = reviewEl ? norm(reviewEl.text) : null;
+    const demotedEl = methodRoot?.querySelector("[data-link-demoted-high]");
+    demotedExists = demotedEl != null;
+    demotedText = demotedEl ? norm(demotedEl.text) : null;
   }
 
   const block = siteMeta.link_adjudication ?? {};
   if (Object.keys(block).length === 0) {
-    if (passageExists || highExists) {
+    if (passageExists || highExists || reviewExists || demotedExists) {
       errors.push(
         "leg o (/methodology/): [data-link-adjudication] renders while " +
           "site_meta.link_adjudication is empty — the hand-adjudication " +
@@ -3302,6 +3682,56 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     );
   }
 
+  // ── #107(b): how many UNPINNED links still publish (R-DEC-GATE24) ──────
+  // The account / sub-agency withdrawal took most unpinned links out of
+  // publication, so "those links publish at medium" — a claim about ALL of
+  // them — became false. The exporter states `unpinned_published` (the ones
+  // the mart still publishes) and the page states it as the passage's
+  // fourth figure, plus that the rest no longer publish (or, at zero, that
+  // none still publishes). When every unpinned link publishes, the old
+  // clause stands and nothing below applies.
+  const up = block.unpinned_published;
+  const upBelow = typeof up === "number" && typeof block.unpinned === "number" && up < block.unpinned;
+  const upPartial = upBelow && up > 0;
+  if (typeof up === "number" && typeof block.unpinned === "number" && up > block.unpinned) {
+    errors.push(
+      `leg o: site_meta.link_adjudication is inverted (unpinned_published ${up} ` +
+        `of ${block.unpinned} unpinned) — the links that still publish cannot ` +
+        `exceed the unpinned links they are counted from`,
+    );
+  }
+  if (upBelow && /those links publish at/i.test(text)) {
+    errors.push(
+      `leg o (/methodology/): [data-link-adjudication] says "those links ` +
+        `publish at …" — a claim about all ${block.unpinned.toLocaleString("en-US")} ` +
+        `unpinned links — while site_meta.link_adjudication.unpinned_published ` +
+        `is ${up.toLocaleString("en-US")}: the rest no longer publish (#107(b))`,
+    );
+  }
+  if (upPartial) {
+    const rendered = up.toLocaleString("en-US");
+    allowed.add(rendered);
+    if (!statedFigures(text).includes(rendered)) {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] never states ` +
+          `unpinned_published = ${rendered} — the passage must say how many ` +
+          `unpinned links still publish`,
+      );
+    }
+    if (!/no longer publish/i.test(text)) {
+      errors.push(
+        `leg o (/methodology/): [data-link-adjudication] states ${rendered} ` +
+          `unpinned links still publishing but never says the rest no longer ` +
+          `publish — a count with its complement unsaid reads as the whole`,
+      );
+    }
+  } else if (upBelow && !/none of them still publishes/i.test(text)) {
+    errors.push(
+      `leg o (/methodology/): site_meta.link_adjudication.unpinned_published is ` +
+        `0 but [data-link-adjudication] never says "none of them still publishes"`,
+    );
+  }
+
   // No number the block does not hold. ISO dates go first (both dates are
   // checked above and their 2026 / 09 / 11 must not read as stray figures).
   const undated = (s) => s.replace(/\d{4}-\d{2}-\d{2}/g, " ");
@@ -3352,7 +3782,10 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
     reportSlots(
       "data-link-adjudication",
       text,
-      ADJUDICATION_COUNTS.map((f) => [f, block[f]]),
+      [
+        ...ADJUDICATION_COUNTS.map((f) => [f, block[f]]),
+        ...(upPartial ? [["unpinned_published", up]] : []),
+      ],
     );
   }
 
@@ -3578,6 +4011,27 @@ export function runLinkAdjudicationLeg(errors, notes, injected) {
       }
     }
   }
+
+  // ── the recorded-review census and the demotions (R-DEC-GATE24) ─────────
+  // #110 / R-DEC-110 (decided 2026-09-25; controller 2026-09-26): every link
+  // published at high carries a recorded review, split by the STRONGEST
+  // record each carries (`reviewed_by_kind`: adjudication, verdict_pair,
+  // survivor_list, and any other kind only when it holds a link), and the
+  // ruling says that granularity is disclosed. R-DEC-110 / R-DEC-110b: the
+  // links a recorded rule moved down from high publish at medium with their
+  // reason (`demoted_from_high`). Both render in their own element and are
+  // bound like the High passage: presence iff the block, every figure in its
+  // slot, no stray number, and the block against itself.
+  bindReviewAndDemotions({
+    errors,
+    high,
+    reviewExists,
+    reviewText: reviewText ?? "",
+    demotedExists,
+    demotedText: demotedText ?? "",
+    reportStrays,
+    reportSlots,
+  });
 
   if (errors.every((e) => !e.startsWith("leg o"))) {
     notes.push(

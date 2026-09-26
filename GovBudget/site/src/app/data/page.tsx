@@ -56,12 +56,12 @@ assertRegistryMatchesManifest(DATASET_INVENTORY.map((d) => d.name));
 export const metadata: Metadata = {
   title: "Data Explorer",
   description:
-    `Query all ${DATASET_INVENTORY.length} Fiscal Receipts datasets directly in your browser — budget lines, trajectory, lobbying, awards, and more. Powered by DuckDB-WASM; no data leaves your machine.`,
+    `All ${DATASET_INVENTORY.length} Fiscal Receipts datasets, queryable in the browser — budget lines, trajectory, lobbying, awards and more. Powered by DuckDB-WASM; no data leaves the machine.`,
   alternates: { canonical: `${SITE_URL}/data/` },
   openGraph: {
     title: `Data Explorer — ${SITE_NAME}`,
     description:
-      "Explore DoD budget, lobbying, and awards data with SQL — queries run entirely in your browser via DuckDB-WASM.",
+      "DoD budget, lobbying and awards data, queryable with SQL — queries run entirely in the browser via DuckDB-WASM.",
     url: `${SITE_URL}/data/`,
     siteName: SITE_NAME,
     images: coreOgImages("data"),

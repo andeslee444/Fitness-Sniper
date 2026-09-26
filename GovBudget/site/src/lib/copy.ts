@@ -92,9 +92,16 @@ export function pbLabel(edition: number): string {
   return `PB${edition}`;
 }
 
+/**
+ * The older editions' service codes, as a decade-tier sidecar carries them
+ * (program-tier.ts decadeProgramRow: 136 "AF", 100 "ARMY", 57 "NAVY" pages on
+ * 2026-09-26), mapped to the FY2026 code space the short form names.
+ */
+const EDITION_SERVICE_CODE: Record<string, string> = { AF: "F", ARMY: "A", NAVY: "N" };
+
 /** short: "Navy" · "Air Force" · "OSD"; long: the agency's full name. */
 export function orgLabel(org: string, form: "short" | "long"): string {
-  return form === "short" ? serviceOrgName(org) : agencyDisplayName(org);
+  return form === "short" ? serviceOrgName(EDITION_SERVICE_CODE[org] ?? org) : agencyDisplayName(org);
 }
 
 /** The exhibit-family badge — moved here from program-header.tsx so one map serves the site. */

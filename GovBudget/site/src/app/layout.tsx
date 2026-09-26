@@ -113,7 +113,7 @@ export default function RootLayout({
                   <FooterCorpus counts={counts} />
                 </div>
                 <nav aria-label="Footer" className="site-footer-links">
-                  <div><strong className="t-label">Explore</strong><Link href="/explore/">Visual field guide</Link><Link href="/programs/">Programs</Link><Link href="/agency/">Agencies</Link><Link href="/district/">Districts</Link></div>
+                  <div><strong className="t-label">Budget</strong><Link href="/explore/">Field guide</Link><Link href="/programs/">Programs</Link><Link href="/agency/">Agencies</Link><Link href="/district/">Districts</Link></div>
                   <div><strong className="t-label">Investigate</strong><Link href="/feed/">Changes &amp; signals</Link><Link href="/companies/">Companies</Link><Link href="/filings/">Lobbying filings</Link><Link href="/years/">Compare years</Link></div>
                   <div><strong className="t-label">Verify &amp; reuse</strong><Link href="/methodology/">Methodology</Link><Link href="/coverage/">Coverage</Link><Link href="/glossary/">Glossary</Link><Link href="/downloads/">Downloads</Link></div>
                 </nav>

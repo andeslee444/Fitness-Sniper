@@ -120,7 +120,7 @@ export function ProgramAwards({
         id="awards-heading"
         className="mb-1 text-foreground"
       >
-        Related Awards
+        Related awards
       </h2>
       {scopeNote && <div className="mb-2">{scopeNote}</div>}
       {/* ROADMAP #77 / 2026-09-04 final review C3. The first version of this
@@ -137,19 +137,29 @@ export function ProgramAwards({
           so the component cannot name a row's species without an exporter
           change. The sentence is therefore written to be true of EVERY medium
           species. If `method` ever reaches the sidecar, replace this with a
-          per-row note and keep gate 21 leg m in step. */}
+          per-row note and keep gate 21 leg m in step.
+
+          Decisions wave (#107(b) / #110, rulings 2026-09-25/26; text by the
+          stage-2 prose writer): "Most are account-based … usually under the
+          same sub-agency" stopped being true when the account / sub-agency
+          tier was withdrawn (fpds-ap is then the largest medium species), and
+          "Only high rows rest on evidence that names this program" stopped
+          being true when an announcement link a recorded review rejected or
+          refuted began publishing at medium (its announcement still names the
+          program). The kinds are now named without ranking them. */}
       {displayedAwards.some((a) => a.confidence?.toLowerCase() === "medium") && (
         <p className="text-xs text-muted-foreground mb-2" data-awards-tier-note="medium">
           Rows marked <span className="font-medium">medium</span> rest on
-          evidence weaker than a program-level match, and not all on the same
-          kind. Most are account-based — the award drew from the same
-          appropriation account as this program, usually under the same
-          sub-agency — which is an association, not evidence that this program
-          paid for the contract. Where the evidence is instead an FPDS
-          acquisition-program tag or a subaward description, the program is
-          established but which of its budget lines paid is not. Only{" "}
-          <span className="font-medium">high</span> rows rest on evidence that
-          names this program.
+          evidence weaker than a program-level match, and of more than one
+          kind. An account-based row, where the award drew from the same
+          appropriation account as this program, is an association, not
+          evidence that this program paid for the contract. Where the evidence
+          is instead an FPDS acquisition-program tag or a subaward description,
+          the program is established but which of its budget lines paid is
+          not. An announcement link a recorded review did not leave standing
+          is medium too. Only{" "}
+          <span className="font-medium">high</span> rows rest on the contract
+          naming this program with a recorded review upholding it.
         </p>
       )}
       {hasMore && !expanded && (

@@ -26,10 +26,11 @@
 --       whose pin is on another PE and whose pair sits in the unpinned pool
 --       (279 — the LORELEI shape #141 is for), 'pin-refuted' (1) or carry no
 --       adjudication at all (164). None of those pins THIS pair.
---   announcement_review_* / announcement_reviewer_rejected (#110,
---       owner-delegated 2026-09-25; R-DEC-110, controller 2026-09-26) an
---       unadjudicated announcement+lexicon link graded high stays high only
---       when BOTH hold for its jbook_announcement_link_reviews records (the
+--   announcement_review_* / announcement_reviewer_rejected /
+--   precision_sample_refuted (#110, owner-delegated 2026-09-25; R-DEC-110 and
+--       R-DEC-110b, controller 2026-09-26) an unadjudicated
+--       announcement+lexicon link graded high stays high only when (a), (b)
+--       AND (c) hold for its jbook_announcement_link_reviews records (the
 --       records of THIS link: award_piid, pe_bli, exhibit, fiscal_year):
 --         (a) a record upholds it — reviewer 'link' AND adversarial 'upheld',
 --             of any record_kind: a wave-4 'verdict_pair' or a wave 1-3
@@ -41,39 +42,65 @@
 --             cites_reviewed_article = 'True' (the backfill's comparison of the
 --             record's article_id with the link's award_link_sources article),
 --             when that comparison is missing, or when the record names no
---             article_id at all (it then binds to the pair). Measured on the
---             R-DEC-110 backfill shape 2026-09-26, every binding contrary
---             record names the cited article itself (18 links, each a wave 1-2
---             survivor a wave-4 reviewer rejected or refuted on the same
---             article). A contrary record about ANOTHER
---             article of the pair does
---             not bind; an 'incomplete' adversarial read is neither a
---             rejection nor a refutation, so it never binds (R-DEC-INCOMPLETE:
---             it is not an uphold either — alone it demotes with
---             announcement_review_incomplete).
---       "Record" means a jbook_announcement_link_reviews row and nothing
---       else: the announcement pipeline's own wave 1-4 reviews. The held-out
---       precision study (Postgres link_precision_samples) is NOT a grading
---       input — it is the independent measurement of the published tier, and
---       grading on it would bias the precision figure it publishes. So a link
---       can publish high while a precision sample refuted it: measured
---       read-only 2026-09-26, 10 of the 15 announcement links the 2026-09-04
---       and 2026-09-12 samples refuted (rubric 'attribution') publish high,
---       both on the deployed mart and in chain order; the other 5 are no
---       longer budget_line_awards rows. No sentence may say that no high link
---       carries a recorded refutation without naming this scope.
+--             article_id at all (it then binds to the pair). Measured in
+--             chain order 2026-09-26 (loader with R-DEC-PACKET, then the
+--             backfill), every binding contrary record names the cited
+--             article itself: 17 links (12 rejected, 5 refuted), each a wave
+--             1-2 survivor a wave-4 reviewer rejected or refuted on the same
+--             article. A contrary record about ANOTHER article of the
+--             pair does not bind; an 'incomplete' adversarial read is
+--             neither a rejection nor a refutation, so it never binds
+--             (R-DEC-INCOMPLETE: it is not an uphold either — alone it
+--             demotes with announcement_review_incomplete), and
+--       (a) and (b) read the announcement PIPELINE's records only — the
+--       record_kinds above, its own wave 1-4 reviews;
+--         (c) R-DEC-110b (controller, 2026-09-26: "no known-refuted link at
+--             high"): no held-out precision-study refutation of the link
+--             exists — a 'precision_sample' record (Postgres
+--             link_precision_samples, verdict 'refuted', rubric
+--             'attribution', backfilled into the same table; source test:
+--             every precision_sample row is a refutation). It binds to the
+--             PAIR, not to an article: the study judged whether the award
+--             executes the program, so whatever article the record names (the
+--             backfill names none) it binds, unlike a pipeline record. WHICH
+--             rows of the pair it speaks for is the backfill's call, made
+--             once: it attaches the record to the pair's rows under the
+--             method the sample drew (the link it judged) and to no other —
+--             a pair whose drawn link was since replaced by another route
+--             gets no record (R-DEC-110b: never invent). This model reads
+--             the record on the rows it is attached to and never re-widens
+--             it. A precision_sample record is never an uphold and is not a
+--             pipeline record: it decides nothing in (a)/(b) and never makes
+--             a link "recorded".
 --       Otherwise the link publishes at medium with the reason its records
 --       give, first match wins:
---         announcement_review_refuted     a binding record was refuted, or —
---                                         with no upholding record — any
---                                         record of the link was refuted
+--         announcement_review_refuted     a binding pipeline record was
+--                                         refuted, or — with no upholding
+--                                         record — any pipeline record of
+--                                         the link was refuted
 --         announcement_reviewer_rejected  the same, for a reviewer 'weak' /
 --                                         'wrong'
---         announcement_review_incomplete  records exist, none upholds, none
---                                         refutes or rejects (adversarial
---                                         'incomplete', or a 'link' no lens
---                                         answered: 'not_run')
---         announcement_review_unrecorded  no record of the link at all
+--         precision_sample_refuted        (a) and (b) hold — the pipeline's
+--                                         records keep the link high — and
+--                                         (c) fails: the link's OWN precision
+--                                         sample alone moved it. The export
+--                                         keys its drawn-tier precision tally
+--                                         on exactly this value (R-DEC-110b:
+--                                         a sampled link stays in the tier it
+--                                         was drawn from when its own sample
+--                                         verdict demoted it, so the measured
+--                                         precision is never flattered by the
+--                                         demotion); a link the pipeline's
+--                                         records demote anyway keeps the
+--                                         pipeline's reason below or above,
+--                                         never this one.
+--         announcement_review_incomplete  pipeline records exist, none
+--                                         upholds, none refutes or rejects
+--                                         (adversarial 'incomplete', or a
+--                                         'link' no lens answered: 'not_run')
+--         announcement_review_unrecorded  no pipeline record of the link (a
+--                                         precision_sample record alone is
+--                                         not a pipeline review)
 --       An adjudication row is itself a recorded review, so an adjudicated
 --       link keeps its adjudicated grade and this rule does not apply to it.
 --
@@ -92,6 +119,7 @@ with adjudications as (
 review_records as (
     select
         *,
+        record_kind = 'precision_sample' as from_precision_sample,
         reviewer_verdict in ('weak', 'wrong') as rejects,
         adversarial_verdict = 'refuted' as refutes,
         -- does this record speak about the article the link's card cites?
@@ -117,6 +145,19 @@ reviews as (
         bool_or(refutes) as any_refuted,
         bool_or(rejects) as any_rejected
     from review_records
+    -- the pipeline's own records (rule (a)/(b)); precision samples are (c)
+    where not from_precision_sample
+    group by 1, 2, 3, 4
+),
+-- R-DEC-110b, rule (c): the links a held-out precision sample refuted, on
+-- the rows the backfill attached the record to (the pair's rows under the
+-- method the sample drew). `binds` is not read: the refutation is of the
+-- pair, never of one article. One row per link, so two studies refuting the
+-- same link cannot fan it out.
+sample_refutations as (
+    select award_piid, pe_bli, exhibit, cast(fiscal_year as integer) as fiscal_year
+    from review_records
+    where from_precision_sample and (refutes or rejects)
     group by 1, 2, 3, 4
 ),
 overlaid as (
@@ -145,6 +186,7 @@ overlaid as (
         coalesce(r.cited_rejected, false) as review_cited_rejected,
         coalesce(r.any_refuted, false) as review_any_refuted,
         coalesce(r.any_rejected, false) as review_any_rejected,
+        s.award_piid is not null as sample_refuted,
         adj.award_verdict,
         adj.pair_reason,
         adj.adjudication_basis
@@ -156,6 +198,11 @@ overlaid as (
      and r.pe_bli = a.pe_bli
      and r.exhibit = a.exhibit
      and r.fiscal_year = cast(a.fiscal_year as integer)
+    left join sample_refutations s
+      on s.award_piid = a.award_piid
+     and s.pe_bli = a.pe_bli
+     and s.exhibit = a.exhibit
+     and s.fiscal_year = cast(a.fiscal_year as integer)
 ),
 reasoned as (
     select
@@ -173,10 +220,14 @@ reasoned as (
              and overlay_confidence = 'high'
              and (not review_upheld
                   or review_cited_refuted
-                  or review_cited_rejected)
+                  or review_cited_rejected
+                  or sample_refuted)
                 then case
                     when review_cited_refuted then 'announcement_review_refuted'
                     when review_cited_rejected then 'announcement_reviewer_rejected'
+                    -- the pipeline upholds it and nothing binds against it:
+                    -- only rule (c) can have brought it here
+                    when review_upheld then 'precision_sample_refuted'
                     when review_any_refuted then 'announcement_review_refuted'
                     when review_any_rejected then 'announcement_reviewer_rejected'
                     when review_recorded then 'announcement_review_incomplete'
@@ -200,6 +251,7 @@ select
         when 'account_tokens_unadjudicated' then 'medium'
         when 'announcement_review_refuted' then 'medium'
         when 'announcement_reviewer_rejected' then 'medium'
+        when 'precision_sample_refuted' then 'medium'
         when 'announcement_review_incomplete' then 'medium'
         when 'announcement_review_unrecorded' then 'medium'
         else overlay_confidence

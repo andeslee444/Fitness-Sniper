@@ -228,8 +228,8 @@ export default function FeedPage() {
             {formatCount(total)}{" "}automated signals across{" "}
             {formatCount(grouped.size)}{" "}event types.
             Every item states the dollars it is about, not just a percentage.
-            Figures carry citations — click an underlined value to inspect the
-            source. &ldquo;Why flagged?&rdquo; links explain each signal type and its
+            Figures carry citations. An underlined value opens to its source.
+            &ldquo;Why flagged?&rdquo; links explain each signal type and its
             threshold.
           </p>
           <div className="mt-2">

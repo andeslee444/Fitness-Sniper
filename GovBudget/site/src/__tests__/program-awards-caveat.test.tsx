@@ -63,7 +63,14 @@ test("the high tier's claim is about naming the program, not confidence alone", 
   const text = container
     .querySelector("[data-awards-tier-note='medium']")!
     .textContent!.replace(/\s+/g, " ");
-  expect(text).toContain("high rows rest on evidence that names this program");
+  // Decisions wave (#107(b) / #110, rulings 2026-09-25/26): "Only high rows
+  // rest on evidence that names this program" stopped being true once an
+  // announcement link a recorded review rejected or refuted publishes at
+  // medium — its announcement still names the program. The high claim is
+  // now the naming PLUS the recorded review that upholds it.
+  expect(text).toContain("high rows rest on the contract naming this program");
+  // …and the medium caveat names that species (the demoted announcement link).
+  expect(text).toContain("a recorded review did not leave standing");
 });
 
 test("high-only tables render no caveat", () => {

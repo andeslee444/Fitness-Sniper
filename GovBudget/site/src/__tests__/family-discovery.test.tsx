@@ -38,7 +38,7 @@ describe("F-15 family discovery", () => {
 
   it("offers one clear family destination without loading an interactive model", () => {
     const { container } = render(<F15FamilyFeature />);
-    expect(within(container).getByRole("link", { name: "Explore the F-15 family" })).toHaveAttribute("href", expect.stringMatching(/^\/families\/f-15\/?$/));
+    expect(within(container).getByRole("link", { name: "F-15 aircraft family" })).toHaveAttribute("href", expect.stringMatching(/^\/families\/f-15\/?$/));
     expect(within(container).getByText("F-15EX")).toBeVisible();
     expect(within(container).getByText(/Conceptual silhouette/)).toBeVisible();
     expect(container.querySelector("model-viewer, canvas, iframe")).toBeNull();
@@ -46,7 +46,7 @@ describe("F-15 family discovery", () => {
 
   it("makes the family discoverable from Explore alongside the existing program exhibits", () => {
     const { container } = render(<ExplorePage />);
-    expect(within(container).getByRole("link", { name: "Explore the F-15 family" })).toHaveAttribute("href", expect.stringMatching(/^\/families\/f-15\/?$/));
+    expect(within(container).getByRole("link", { name: "F-15 aircraft family" })).toHaveAttribute("href", expect.stringMatching(/^\/families\/f-15\/?$/));
     expect(container.querySelectorAll('a[href$="#exhibit"]')).toHaveLength(3);
     // "More programs to inspect" is a .t-label kicker, not a heading (the
     // label spec is not a heading role — iteration-8 type system).

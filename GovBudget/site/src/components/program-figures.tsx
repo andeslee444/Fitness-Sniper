@@ -510,7 +510,7 @@ export function ProgramFigures({
         id="figures-heading"
         className="mb-4 text-foreground"
       >
-        Budget Figures
+        Budget figures
       </h2>
 
       {/* Key figures grid — the union cards, in slot order */}

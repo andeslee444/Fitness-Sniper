@@ -70,9 +70,9 @@ export default function FlowPage() {
           every other page; the chart was already sized for it. */}
       <div className="spine py-8">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Flow" }]} />
-        <PageIntro eyebrow="Research tools / Map" title="Follow the money"
-          description={<p>Explore what the Pentagon requested and what it committed on contracts. Each view has its own years, units, and source receipts.</p>}
-          actions={<><a href="#money-map">Explore the map ↓</a><a href="#bridge">Inspect the contractor bridge</a><Link href="/years/">Compare budget years →</Link></>}>
+        <PageIntro eyebrow="Research tools / Map" title="Follow the dollar"
+          description={<p>What the Pentagon requested and what it committed on contracts. Each view has its own years, units and source receipts.</p>}
+          actions={<><a href="#money-map">Money map ↓</a><a href="#bridge">Inspect the contractor bridge</a><Link href="/years/">Compare budget years →</Link></>}>
             <span
               data-testid="flow-experimental"
               data-flow-experimental=""
@@ -85,7 +85,7 @@ export default function FlowPage() {
           <p className="my-3 text-sm leading-6 text-foreground">
             The two rivers use different measurement systems. Their totals
             cannot be added together, divided into each other, or reconciled
-            into a single number. Click a block to inspect its source.
+            into a single number. Each block opens to its source.
           </p>
 
           {/* The two systems, side by side. Per-river unit statements are
@@ -144,7 +144,7 @@ export default function FlowPage() {
               <a href="#bridge" className="underline hover:text-foreground">
                 the bridge between them
               </a>{" "}
-              below the chart. Click any block for its citation.
+              below the chart. Each block opens to its citation.
             </p>
           </div>
           </ScopeNote>
@@ -190,7 +190,7 @@ export default function FlowPage() {
             And the lines themselves move
           </h2>
           <p className="text-sm leading-7 text-muted-foreground">
-            Program elements can be renamed, realigned, and merged. Before
+            Program elements can be renamed, realigned and merged. Before
             comparing one across two years, check its identity history.
             The separate lineage map uses equal-width links: a cited
             relationship carries no claim about the amount transferred.{" "}

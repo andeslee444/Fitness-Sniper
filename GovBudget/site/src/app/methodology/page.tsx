@@ -19,7 +19,11 @@ import {
 import { crosswalkValue } from "@/lib/corpus";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
-import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
+import {
+  HHI_MODERATE_MIN,
+  HHI_CONCENTRATED_MIN,
+  HHI_BANDS_VINTAGE,
+} from "@/lib/hhi-band.mjs";
 import {
   labelCensusSentence,
   labelMarginCensus,
@@ -239,9 +243,22 @@ export default function MethodologyPage() {
   // basis — the adjudication explicitly did NOT pin the pair; only 16 are
   // 'pinned'. What is true of every row is that a hand adjudication of the
   // AWARD is why the link publishes at all.
+  // ROADMAP #107(b) (decided 2026-09-25): dbt withdraws the account /
+  // sub-agency tier from publication except the pairs a two-lens
+  // adjudication pinned (award_verdict 'pinned', pair_reason 'pinned-here',
+  // both lenses), and the exporter keeps the measurement that caused it in
+  // link_precision.withdrawn — never in `methods`, which gate 24 leg n binds
+  // to the published tiers. So once `withdrawn` carries the tier, the links
+  // of it that still publish are exactly those pinned pairs, and the
+  // narrowing names the pin; gate 24 leg n binds the withdrawn figure to its
+  // own [data-link-precision-withdrawn] element.
+  const linkPrecisionWithdrawn = linkPrecision?.withdrawn ?? {};
+  const subagencyWithdrawn = linkPrecisionWithdrawn["account+subagency"] ?? null;
   const ACCOUNT_FAMILY_NARROWING: Record<string, string> = {
     account: "by a hand adjudication of the award",
-    "account+subagency": "by sub-agency",
+    "account+subagency": subagencyWithdrawn
+      ? "by sub-agency and a pinning two-lens adjudication"
+      : "by sub-agency",
     "account+tokens": "by keyword overlap",
   };
   const linkPrecisionUnmeasuredAllAccountFamily = linkPrecisionUnmeasuredList.every(
@@ -263,8 +280,17 @@ export default function MethodologyPage() {
   // not four paragraphs later. Derived like every other figure on this page,
   // so a re-measurement moves it and a corpus with no such study prints
   // nothing at all.
+  // #107(b): after the withdrawal the figure lives in `withdrawn` (the
+  // demoted links, same shared tally, pins applied); before it, in
+  // `methods`. Either way it is the one measurement of the tier.
   const linkPrecisionSubagency =
-    linkPrecision?.methods?.["account+subagency"] ?? null;
+    subagencyWithdrawn ?? linkPrecision?.methods?.["account+subagency"] ?? null;
+  // Any OTHER tier a future export withdraws gets its own generic sentence
+  // rather than silence (gate 24 leg n fails a withdrawn figure with no
+  // [data-link-precision-withdrawn] element).
+  const otherWithdrawn = Object.entries(linkPrecisionWithdrawn).filter(
+    ([m]) => m !== "account+subagency",
+  );
   // ROADMAP #79: every published figure answers ONE question — the rubric —
   // and the paragraph names it in the words the packets ask the adjudicator.
   // The exporter publishes only rubric='attribution', so the sentence renders
@@ -296,8 +322,13 @@ export default function MethodologyPage() {
   // stays TRUE if the tier ever returns to the unmeasured list: it describes
   // the FIRST sample's rubric, never "this tier has not been judged on
   // attribution", which the 2026-09-05 run would falsify.
+  // #107(b): once the tier is withdrawn on its 0-of-58 attribution figure,
+  // the history of its FIRST (rule-fired) sample is beside the point, and
+  // printing it next to the withdrawn figure would read as "not yet judged"
+  // — so the sentence also waits on `withdrawn` not carrying the tier.
   const linkPrecisionSubagencyAwaitsAttribution =
-    linkPrecisionUnmeasuredList.includes("account+subagency");
+    linkPrecisionUnmeasuredList.includes("account+subagency") &&
+    !subagencyWithdrawn;
   // ROADMAP findings :118-119. The scope paragraph below used to carry four
   // literals typed on 2026-09-02 (3,840 / "about 88%" / 12,811 / "~12%")
   // describing a residue whose selection code was never committed. Every
@@ -447,6 +478,75 @@ export default function MethodologyPage() {
   const highRemainder = highCensus
     ? highCensus.published - highCensus.adjudicated
     : 0;
+  // #107(b): the unpinned links mostly stopped publishing (the account /
+  // sub-agency withdrawal), so "those links publish at medium" — a claim
+  // about ALL of them — would be false. The exporter now says how many the
+  // mart still publishes (`unpinned_published`), and the clause states that
+  // instead; gate 24 leg o binds the figure as the passage's fourth slot and
+  // fails "those links publish at …" whenever fewer than all publish.
+  const unpinnedPublished = linkAdjudication?.unpinned_published;
+  const unpinnedClause = !linkAdjudication
+    ? ""
+    : typeof unpinnedPublished === "number" &&
+        unpinnedPublished < linkAdjudication.unpinned
+      ? unpinnedPublished === 0
+        ? "; none of them still publishes"
+        : `; ${formatCount(unpinnedPublished)} of them still publish${
+            linkAdjudication.unpinned_published_tier
+              ? `, at ${linkAdjudication.unpinned_published_tier}`
+              : ""
+          }, and the rest no longer publish`
+      : linkAdjudication.unpinned_tier
+        ? `; those links publish at ${linkAdjudication.unpinned_tier}`
+        : "";
+  // ROADMAP #110 / R-DEC-110 (decided 2026-09-25; controller 2026-09-26):
+  // every link published at high now carries a RECORDED review, and the
+  // census splits them by the strongest record each carries — the ruling
+  // says the granularity is disclosed, not hidden, so the sentence states
+  // what each kind of record does and does not record. Every figure is read
+  // from site_meta.link_adjudication.high (reviewed_high, reviewed_by_kind)
+  // and bound, slot by slot, by gate 24 leg o ([data-link-review-high]).
+  const reviewKinds = highBlock?.reviewed_by_kind ?? null;
+  const reviewedHigh =
+    reviewKinds && typeof highBlock?.reviewed_high === "number"
+      ? highBlock.reviewed_high
+      : null;
+  // Kinds beyond the three the exporter always names appear only when they
+  // hold a link (export_site._kind_split); none is expected at high.
+  const REVIEW_KIND_EXTRA: Record<string, string> = {
+    not_upheld: "carry records none of which upholds them",
+  };
+  const reviewExtras = reviewKinds
+    ? Object.entries(reviewKinds).filter(
+        ([k, v]) =>
+          !["adjudication", "verdict_pair", "survivor_list"].includes(k) && v > 0,
+      )
+    : [];
+  // R-DEC-110 / R-DEC-110b: the links a recorded rule moved DOWN from high
+  // publish at medium, each with its reason (fct_budget_to_awards.
+  // demotion_reason, read verbatim by the exporter). Worded per reason; an
+  // unknown reason prints its code rather than disappearing. Bound by gate 24
+  // leg o ([data-link-demoted-high]).
+  const demoted = highBlock?.demoted_from_high ?? null;
+  const DEMOTION_WORDS: Record<string, string> = {
+    account_tokens_unadjudicated: "unadjudicated keyword matches",
+    announcement_review_refuted: "refuted in review",
+    announcement_reviewer_rejected: "rejected by a reviewer",
+    precision_sample_refuted: "refuted by the precision study",
+    announcement_review_incomplete: "whose review records neither uphold nor refute them",
+    announcement_review_unrecorded: "with no recorded review",
+  };
+  const demotedParts =
+    demoted && demoted.links > 0
+      ? Object.entries(demoted.by_reason).map(
+          ([reason, n]) =>
+            `${formatCount(n)} ${DEMOTION_WORDS[reason] ?? `demoted as ${reason}`}`,
+        )
+      : [];
+  const demotedText =
+    demotedParts.length > 1
+      ? `${demotedParts.slice(0, -1).join(", ")} and ${demotedParts[demotedParts.length - 1]}`
+      : demotedParts.join("");
   // Fix round 2, rider (ii): the adversarial clause below renders only while
   // something at high IS adjudicated. On a corpus that published a high tier
   // with nothing adjudicated it would otherwise read "all 0 of them
@@ -500,13 +600,17 @@ export default function MethodologyPage() {
           them; same rule applies to a date nothing derives. What IS derivable
           is the corpus stamp, so that is what it states — and it is the
           build's date ("generated"), not a data date, which is why the
-          redesign retired "data as of". */}
+          redesign retired "data as of".
+          ROADMAP #134 (decided 2026-09-25, owner delegated to the
+          controller's recommendation): "Built <date>", the footer's and the
+          print byline's word — the smaller claim. The date is built_at, the
+          build's; §2 names the least recently refreshed dataset. */}
       <PageIntro
         eyebrow="How the evidence works"
         title="Methodology"
         description={
           <p className="text-sm text-muted-foreground">
-            Describes the corpus in this site export — generated{" "}
+            Built{" "}
             <time dateTime={siteMeta.built_at}>
               {new Date(siteMeta.built_at).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -713,7 +817,19 @@ export default function MethodologyPage() {
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
                     lda.senate.gov/api/v1
                   </code>
-                  ) contains filings for 2025 and prior years, each with a
+                  {/* Decisions wave (2026-09-26): "contains filings for 2025
+                      and prior years" came off — the corpus carries 2026
+                      filings (RTX's own 2026 reports among them), so the year
+                      bound was false. #176 (R-DEC-176b): an all-digit code
+                      counts only where a budget-line label names it (0 of the
+                      1,631 bare-number rows had one), and on a shared code
+                      the two words must come from ONE member's title.
+                      R-DEC-AMEND / -b: fct_influence counts an amendment
+                      instead of the report it amends; with no posting date on
+                      our copies, the smallest amended figure counts where a
+                      quarter's amendments disagree (warn test
+                      warn_lda_amendment_latest_undetermined prints how many). */}
+                  ) contains filings, each with a
                   permanent UUID, registrant, client company, dollar amounts,
                   agencies lobbied, and issue text. We have linked LDA client
                   names to our company-family database and match each filing&rsquo;s
@@ -722,11 +838,17 @@ export default function MethodologyPage() {
                     keyword co-occurrence
                   </strong>{" "}
                   — never a claim that the filing names the program.{" "}
-                  {programLobbyingRows.toLocaleString("en-US")} program mentions
+                  {/* {" "} after the count is load-bearing (#106): the run
+                      below now carries entities, the shape Turbopack drops
+                      the leading space of (gate 2 legs sp / nw). */}
+                  {programLobbyingRows.toLocaleString("en-US")}{" "}program mentions
                   connect filings to budget lines this way: one row per filing ×
-                  matched program element, qualifying only when the exact PE/BLI
-                  code appears, a curated alias appears, or at least two distinct,
-                  non-generic title words co-occur in the same filing — a single
+                  matched program element, qualifying only when the program&rsquo;s
+                  PE/BLI code appears (an all-digit one only beside a
+                  budget-line label; none of the 1,631 bare-number matches
+                  before 2026-09-26 had one), a
+                  curated alias appears, or at least two distinct, non-generic words
+                  of one program&rsquo;s title co-occur in the same filing — a single
                   common word is never treated as evidence (see the{" "}
                   <a href="/data/" className="underline hover:text-foreground">
                     dataset inventory
@@ -738,7 +860,10 @@ export default function MethodologyPage() {
                   ). Lobbying income and
                   expenditure by year are shown alongside federal obligations
                   received — influence is presented side by side with outcomes,
-                  never as a causal claim.
+                  never as a causal claim. Since 2026-09-26 an amendment
+                  replaces its original instead of adding to it; where a
+                  quarter&rsquo;s amendments disagree, the smallest counts
+                  (our copy keeps no posting date).
                 </p>
               </div>
 
@@ -1007,10 +1132,7 @@ export default function MethodologyPage() {
                         record supports.{" "}
                         {formatCount(linkAdjudication.unpinned)}{" "}
                         of those found work that could not be pinned to any one
-                        program element
-                        {linkAdjudication.unpinned_tier
-                          ? `; those links publish at ${linkAdjudication.unpinned_tier}`
-                          : ""}
+                        program element{unpinnedClause}
                         .{" "}
                         {linkAdjudicationPathText ? (
                           <>
@@ -1050,14 +1172,51 @@ export default function MethodologyPage() {
                       </span>{" "}
                     </>
                   ) : null}
-                  <em>Medium</em>: most such links are account-based — the
-                  award drew from the same appropriation account as the
-                  program, usually under the same sub-agency — an association,
+                  {reviewKinds && reviewedHigh !== null && highCensus ? (
+                    <>
+                      <span data-link-review-high="">
+                        {reviewedHigh === highCensus.published
+                          ? `All ${formatCount(reviewedHigh)}`
+                          : `${formatCount(reviewedHigh)} of them`}{" "}
+                        carry a recorded review, counted once under the
+                        strongest:{" "}
+                        {formatCount(reviewKinds.adjudication)}
+                        {reviewKinds.adjudication === highCensus.twoLens
+                          ? " a two-lens hand adjudication, "
+                          : " a per-award hand adjudication, "}
+                        {formatCount(reviewKinds.verdict_pair)} a per-proposal
+                        verdict pair and{" "}
+                        {formatCount(reviewKinds.survivor_list)} only a
+                        survivor-list entry, which records survival of the
+                        adversarial pass, not its verdict{reviewExtras
+                          .map(
+                            ([k, v]) =>
+                              `; ${formatCount(v)} ${REVIEW_KIND_EXTRA[k] ?? `rest on a ${k} record`}`,
+                          )
+                          .join("")}
+                        .
+                      </span>{" "}
+                    </>
+                  ) : null}
+                  {/* #107(b) / #110: "most such links are account-based —
+                      … usually under the same sub-agency" stopped being true
+                      when the account / sub-agency tier was withdrawn (8,833
+                      of the 8,855 rows it published, measured 2026-09-25):
+                      fpds-ap is then the largest medium species. The
+                      sentence now names the kinds without ranking them. */}
+                  <em>Medium</em>: weaker evidence, of more than one kind. An
+                  account-based link, where the award drew from the same
+                  appropriation account as the program, is an association,
                   not evidence that this specific program paid for the
                   contract.
                   {linkPrecisionSubagency ? (
                     <>
                       {" "}
+                      <span
+                        data-link-precision-withdrawn={
+                          subagencyWithdrawn ? "account+subagency" : undefined
+                        }
+                      >
                       A held-out sample of account / sub-agency links,
                       judged on program attribution, confirmed{" "}
                       {formatCount(linkPrecisionSubagency.confirmed)} of{" "}
@@ -1066,12 +1225,36 @@ export default function MethodologyPage() {
                         ? ` (${linkPrecisionSubagency.judged})`
                         : ""}
                       .
+                      {subagencyWithdrawn
+                        ? ` The tier was withdrawn on that figure (2026-09-25): its ${formatCount(subagencyWithdrawn.links)} links ${
+                            subagencyWithdrawn.demotion_reasons.length === 1 &&
+                            subagencyWithdrawn.demotion_reasons[0] ===
+                              "account_subagency_not_pinned"
+                              ? "that no two-lens hand adjudication pinned "
+                              : ""
+                          }no longer publish.`
+                        : ""}
+                      </span>
                     </>
-                  ) : null}{" "}
+                  ) : null}
+                  {otherWithdrawn.map(([m, w]) => (
+                    <span key={m} data-link-precision-withdrawn={m}>
+                      {` A held-out sample of ${m} links, judged on program attribution, confirmed ${formatCount(w.confirmed)} of ${formatCount(w.sampled)}${w.judged ? ` (${w.judged})` : ""}; its ${formatCount(w.links)} links were withdrawn from publication and no longer publish.`}
+                    </span>
+                  ))}{" "}
                   Where the evidence is instead an FPDS
                   acquisition-program tag or a subaward description (both
                   below), the program is established but which of
                   its budget lines paid is not.{" "}
+                  {demotedParts.length > 0 ? (
+                    <>
+                      <span data-link-demoted-high="">
+                        {formatCount(demoted!.links)} more were demoted from
+                        high:{" "}
+                        {demotedText}.
+                      </span>{" "}
+                    </>
+                  ) : null}
                   <em>Low</em>: only the account matches — never published. Our
                   earlier automated high tier (account match plus keyword overlap)
                   measured 9.1% precise under this adjudication (37 of 408 links
@@ -1110,11 +1293,25 @@ export default function MethodologyPage() {
                   announcement&apos;s program name is one that a program element&apos;s
                   J-book narrative itself owns, the pair is a candidate; every candidate
                   is judged by an agent reviewer and challenged by an independent
-                  adversarial reviewer, and only links surviving both publish — at{" "}
-                  <em>high</em>: the announcement establishes the contract, and
+                  adversarial reviewer, and only links surviving both publish.
+                  {/* #110 / R-DEC-110 / R-DEC-INCOMPLETE / R-DEC-110b (decided
+                      2026-09-25, rulings 2026-09-26): the reviews are now
+                      RECORDS (announcement_link_reviews), and a surviving
+                      link publishes at high only while one upholds it, no
+                      rejection or refutation recorded against the article its
+                      card cites (or against the pair, where a record names no
+                      article) stands, and the held-out precision study has
+                      not refuted the pair; otherwise at medium with the
+                      reason (dbt audit_link_grading). "Only links surviving
+                      both publish — at high" was false for the survivors a
+                      later recorded review rejected. */}{" "}
+                  One stays at <em>high</em>{" "}only while a recorded review
+                  upholds it and no recorded rejection or refutation applies;
+                  otherwise medium, with the reason recorded. At high, the
+                  announcement establishes the contract, and
                   the program is identified by its name as written, by a
                   normalized designator, by an alias an adversarial reviewer
-                  checked, or — rarely — by the announcement&apos;s own
+                  checked, or, rarely, by the announcement&apos;s own
                   description of the work. Where the adjudication packet
                   recorded which of those applied, the link&apos;s citation card
                   states it; where it did not, the card says the basis was not
@@ -1231,6 +1428,15 @@ export default function MethodologyPage() {
                 </p>
               </div>
               <div>
+                {/* #130 (decided 2026-09-25; R-DEC-130c): pages keep the LINKS
+                    rule; the warehouse copy is labelled, not withheld —
+                    fct_program_concentration's scope / member_keys_with_links
+                    columns, and the /downloads/ caveat the exporter writes
+                    per code-level row (pools several members' links / one
+                    member's figure / links under no member's key). The
+                    paragraph below is mirrored word for word in
+                    docs/methodology.md (methodology-doc-mirror.test.ts), so
+                    it stays plain text: no JSX expression, no comment. */}
                 <h3 className="font-semibold text-foreground mb-1">
                   Contractor concentration is computed on two bases and
                   published on one
@@ -1243,7 +1449,10 @@ export default function MethodologyPage() {
                   warehouse carry only over at least three such awards across
                   two or more contractor families holding positive obligations
                   with positive net linked dollars; below that floor it states
-                  the absence rather than substituting the wider figure.
+                  the absence rather than substituting the wider figure. In
+                  the warehouse a shared code is one row, labelled scope =
+                  &apos;code&apos;; /downloads/ says of each whether it is one
+                  program&apos;s figure.
                 </p>
               </div>
             </div>
@@ -1775,15 +1984,24 @@ export default function MethodologyPage() {
                   HHI = sum(share² × 10,000) where share = family_obligation /
                   total_obligation; only positive obligations are included.{" "}
                   {
-                    // Plain JS string, not JSX text, so the DOJ/FTC threshold
-                    // numbers can never drift from hhi-band.mjs AND so this
-                    // sentence cannot fall into the JSX multi-line-text
-                    // whitespace trap that silently ate the space after
+                    // Plain JS string, not JSX text, so the threshold numbers
+                    // can never drift from hhi-band.mjs AND so this sentence
+                    // cannot fall into the JSX multi-line-text whitespace trap
+                    // that silently ate the space after
                     // "${HHI_CONCENTRATED_MIN)}" here on the first pass (JSX
                     // strips the LEADING space of a text child that follows an
                     // expression when that child's content wraps to a new
                     // line — verified against the built HTML, not assumed).
-                    `Bands follow the DOJ/FTC Horizontal Merger Guidelines convention: below ${formatCount(HHI_MODERATE_MIN)} is competitive, ${formatCount(HHI_MODERATE_MIN)}–${formatCount(HHI_CONCENTRATED_MIN)} is moderately concentrated, and ${formatCount(HHI_CONCENTRATED_MIN)} or above is highly concentrated (${formatCount(HHI_CONCENTRATED_MIN)} is the "highly concentrated" floor, not a near-monopoly line — four equal-share firms alone produce exactly ${formatCount(HHI_CONCENTRATED_MIN)}).`
+                    // #132 (decided 2026-09-25) / R-DEC-132b: the 2023 Merger
+                    // Guidelines' bands, named by vintage (HHI_BANDS_VINTAGE);
+                    // "above 1,800" (1,800 itself is moderately concentrated,
+                    // "in excess of" on the DOJ page); below 1,000 is the
+                    // site's own word, attributed. The sentence it replaced
+                    // named the 2010 title without its year, said
+                    // "competitive", put the line AT 1,800 and gave four equal
+                    // shares as 1,800 (they give 2,500) — gate 8 leg (q) reads
+                    // every band claim here against hhiBand() itself.
+                    `Bands follow the ${HHI_BANDS_VINTAGE} of the Justice Department and the FTC: an HHI from ${formatCount(HHI_MODERATE_MIN)} to ${formatCount(HHI_CONCENTRATED_MIN)} is moderately concentrated and one above ${formatCount(HHI_CONCENTRATED_MIN)} is highly concentrated. Below ${formatCount(HHI_MODERATE_MIN)} this site says unconcentrated, its own label for a range those bands leave unnamed.`
                   }
                 </p>
                 {/* Chain-D fix round 1 (R-D-1): "— below it, no pooled
@@ -1806,8 +2024,8 @@ export default function MethodologyPage() {
                   A program&rsquo;s own page renders a pooled HHI computed
                   across every award year, on the basis and above the floor
                   section 4 states. The two are legitimately different
-                  measures: a concentrated year can sit next to a competitive
-                  pooled figure. Every card states which fiscal year its HHI
+                  measures: a concentrated year can sit next to an
+                  unconcentrated pooled figure. Every card states which fiscal year its HHI
                   covers and that the pooled figure can differ.
                 </p>
               </div>
@@ -1868,7 +2086,8 @@ export default function MethodologyPage() {
               sentence around it claimed something the source did not support. Four
               of the corrections make a published figure <em>smaller</em>. We publish
               the smaller true number rather than the larger false one. Corrections
-              issued since are appended to the same table, newest last.
+              issued since are appended to the same table, newest last, or
+              stated where the figure is described.
             </p>
             {/* data-historical-figures: this table's job is to record what the
                 site USED TO SAY, so its "Was" column is full of superseded
@@ -2002,16 +2221,34 @@ export default function MethodologyPage() {
                       them; that claim is withdrawn.
                     </td>
                   </tr>
-                  <tr>
+                  {/* Decisions wave (2026-09-26): this row's "Now" said
+                      "DOJ/FTC bands" with no year and its "Why" called 2,500
+                      the "highly concentrated" floor — both false once #132
+                      moved the bands to the 2023 Merger Guidelines (gate 8
+                      leg q). The bands' own correction (#132) follows it,
+                      newest last; the wave's lobbying corrections (#176,
+                      R-DEC-AMEND) are stated where the figure is described
+                      (§2), as the paragraph above now says. */}
+                  <tr className="border-b border-border">
                     <td className="py-2 pr-4">Concentration (HHI) wording</td>
                     <td className="py-2 pr-4">&ldquo;near-monopoly&rdquo;</td>
-                    <td className="py-2 pr-4">DOJ/FTC bands</td>
+                    <td className="py-2 pr-4">{HHI_BANDS_VINTAGE} bands</td>
                     <td className="py-2">
-                      2,500 was labelled a near-monopoly; it is the
-                      &ldquo;highly concentrated&rdquo; floor, and four equal firms
+                      2,500 was labelled a near-monopoly; four equal firms
                       produce exactly 2,500. A single year&apos;s concentration also
                       now says so, because the pooled all-years figure on the page it
                       links to can legitimately differ.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4">HHI bands</td>
+                    <td className="py-2 pr-4">2010 guidelines (1,500 / 2,500)</td>
+                    <td className="py-2 pr-4">
+                      {`${HHI_BANDS_VINTAGE} (${formatCount(HHI_MODERATE_MIN)} / ${formatCount(HHI_CONCENTRATED_MIN)})`}
+                    </td>
+                    <td className="py-2">
+                      3 feed cards and 4 badges moved up a band (2026-09-25
+                      export); &ldquo;Competitive&rdquo; became Unconcentrated.
                     </td>
                   </tr>
                 </tbody>

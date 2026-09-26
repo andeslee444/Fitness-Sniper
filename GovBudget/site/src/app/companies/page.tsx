@@ -108,7 +108,7 @@ export default function CompaniesPage() {
           authority". */}
       <PageIntro
         eyebrow="Contractor directory"
-        title="Who receives defense contracts?"
+        title="Defense contract recipients"
         className={styles.intro}
         description={
           // §P1-6: "FY2017–FY2025" was authored here and was a year short of
@@ -177,7 +177,7 @@ export default function CompaniesPage() {
               hand-curated table of renames and acquisitions
             </Link>{" "}
             with an official source for each. Every merged total is a cited
-            figure whose inputs are the rows it replaced — click it to see them.
+            figure that opens to the rows it replaced.
           </p>
         )}
         {/* §P1-3: the confidence method, stated ONCE for the table — where a
@@ -209,8 +209,8 @@ export default function CompaniesPage() {
             parent UEI where no name is reported, a case none of these 200
             families takes). */}
         <p className="text-sm text-muted-foreground" data-confidence-method>
-          Obligation totals carry derived USAspending citations — click a
-          figure to inspect the derivation. Confidence reflects the
+          Obligation totals carry derived USAspending citations that open to
+          the derivation. Confidence reflects the
           entity-resolution method: <strong>high</strong> = recipients
           grouped under one reported parent name, never two different parent
           UEIs; <strong>medium</strong> = name inference. A merged family is

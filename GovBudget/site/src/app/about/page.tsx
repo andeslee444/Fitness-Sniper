@@ -27,7 +27,7 @@ export default function AboutPage() {
     <div className="spine py-10 reference-page">
       {/* Round-3 judging: the other of the two pages that had no breadcrumb. */}
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
-      <PageIntro eyebrow="A public-interest research project" title="About Fiscal Receipts" description="Understand defense spending. Verify the evidence. Reuse the data." actions={<><a href="mailto:andes.han.lee@gmail.com">Contact &amp; corrections ↗</a><a href="/methodology/">How sources are verified →</a></>}/>
+      <PageIntro eyebrow="A public-interest research project" title="About Fiscal Receipts" description="Defense budget figures, the documents behind them and open data to reuse." actions={<><a href="mailto:andes.han.lee@gmail.com">Contact &amp; corrections ↗</a><a href="/methodology/">How sources are verified →</a></>}/>
 
       <div className="doc-layout">
         <div data-doc-prose>
@@ -123,7 +123,7 @@ export default function AboutPage() {
 
           {/* Corrections policy */}
           <section className="mb-10">
-            <h2 className="mb-3">Corrections Policy</h2>
+            <h2 className="mb-3">Corrections policy</h2>
             <p className="text-muted-foreground leading-7">
               We follow a <strong>supersede-not-delete</strong> policy. If a
               figure is found to be wrong:
@@ -157,7 +157,7 @@ export default function AboutPage() {
 
           {/* Data provenance */}
           <section className="mb-10">
-            <h2 className="mb-3">Data Provenance</h2>
+            <h2 className="mb-3">Data provenance</h2>
             <p className="text-muted-foreground leading-7">
               All data originates from official government sources:
               comptroller.defense.gov, USAspending.gov, lda.senate.gov,
@@ -181,7 +181,7 @@ export default function AboutPage() {
 
           {/* Open data */}
           <section className="mb-10">
-            <h2 className="mb-3">Open Data</h2>
+            <h2 className="mb-3">Open data</h2>
             <p className="text-muted-foreground leading-7">
               All underlying datasets are available as Parquet exports with full
               provenance metadata — see the{" "}

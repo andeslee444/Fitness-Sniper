@@ -31,7 +31,7 @@ export function ProgramSources({ entries, program }: { entries: { factId: string
   const workbooks = entries.filter(entry => entry.citation.kind === "workbook");
   const details = entries.filter(entry => entry.citation.kind !== "workbook");
   return <section ref={root} aria-labelledby="primary-sources-heading" className="mt-8 pt-6 border-t border-border mb-8">
-    <h2 id="primary-sources-heading" className="mb-3 text-foreground">Primary Sources</h2>
+    <h2 id="primary-sources-heading" className="mb-3 text-foreground">Primary sources</h2>
     {entries.length === 0 ? <p className="text-sm text-muted-foreground">No document-tier citations resolve on this page. Open a cited number for its calculation and input sources.</p> : <>
       <p className="mb-4 text-sm text-muted-foreground">Open any budget figure for its exact receipt. Verified line items lead with the highlighted government PDF; original spreadsheets download with their budget edition and exhibit in the filename.</p>
       {workbooks.length > 0 && <div data-testid="program-budget-sources">

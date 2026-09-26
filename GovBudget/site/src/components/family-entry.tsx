@@ -50,7 +50,7 @@ export function ProgramFamilyEntry({ programSlug }: { programSlug: string }) {
       <Layers3 size={23} strokeWidth={1.4} aria-hidden="true" />
       <div>
         <p className={styles.compactTitle}>This record is part of the F-15 family.</p>
-        <p className={styles.compactDescription}>Inspect aircraft variants alongside their development, procurement, and upgrade records.</p>
+        <p className={styles.compactDescription}>Inspect aircraft variants alongside their development, procurement and upgrade records.</p>
       </div>
       <Link href={href} className={styles.compactLink}>Open the family browser <ArrowRight size={17} aria-hidden="true" /></Link>
     </aside>
@@ -83,9 +83,9 @@ export function F15FamilyFeature() {
     <section className={styles.feature} aria-labelledby="f15-family-heading" data-family-feature="f-15">
       <div className={styles.featureCopy}>
         <p className={`t-label ${styles.eyebrow}`}>The family register · Air</p>
-        <h2 id="f15-family-heading">One family. <br />Many chapters.</h2>
-        <p className={styles.description}>Meet the F-15 family. Move between aircraft variants, inspect the model, and follow the separate records for development, procurement, and upgrades.</p>
-        <Link href="/families/f-15/" className={styles.featureLink}>Explore the F-15 family <ArrowRight size={18} aria-hidden="true" /></Link>
+        <h2 id="f15-family-heading">One aircraft family. <br />Many chapters.</h2>
+        <p className={styles.description}>F-15 variants, a 3D model and the separate records for development, procurement and upgrades.</p>
+        <Link href="/families/f-15/" className={styles.featureLink}>F-15 aircraft family <ArrowRight size={18} aria-hidden="true" /></Link>
         <p className={styles.featureNote}>Every linked budget record keeps its own fiscal context and source receipts.</p>
       </div>
       <div className={styles.plate} aria-label="F-15 family preview">

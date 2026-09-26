@@ -211,7 +211,10 @@ describe("methodology §4 ↔ docs §4 — the Task 26 passages", () => {
       published: number;
       adjudicated: number;
       unpinned: number;
-      unpinned_tier: string;
+      unpinned_tier: string | null;
+      /** #107(b): present from the decisions wave's export on. */
+      unpinned_published?: number;
+      unpinned_published_tier?: string | null;
       unadjudicated_methods: string[];
       high: {
         published_high: number;
@@ -252,13 +255,31 @@ describe("methodology §4 ↔ docs §4 — the Task 26 passages", () => {
     if (num(adjudicated) !== c.adjudicated) out.push(`adjudicated ${adjudicated} ≠ ${c.adjudicated}`);
     if (num(published) !== c.published) out.push(`published ${published} ≠ ${c.published}`);
     if (asOf !== c.as_of) out.push(`last adjudication ${asOf} ≠ ${c.as_of}`);
+    // The page's own clause (methodology/page.tsx `unpinnedClause`): once
+    // #107(b) took most unpinned links out of publication, the export states
+    // how many still publish, and "those links publish at …" (a claim about
+    // all of them) gives way to that count. On an export without the key the
+    // old clause stands, so this binds today's export exactly as before.
+    const up = c.unpinned_published;
+    const clause =
+      typeof up === "number" && up < c.unpinned
+        ? up === 0
+          ? "; none of them still publishes"
+          : `; ${n(up)} of them still publish${
+              c.unpinned_published_tier ? `, at ${c.unpinned_published_tier}` : ""
+            }, and the rest no longer publish`
+        : c.unpinned_tier
+          ? `; those links publish at ${c.unpinned_tier}`
+          : "";
     if (
       !doc.includes(
         `${n(c.unpinned)} of those found work that could not be pinned to any one ` +
-          `program element; those links publish at ${c.unpinned_tier}.`,
+          `program element${clause}.`,
       )
     ) {
-      out.push(`the unpinned sentence does not state ${n(c.unpinned)} at ${c.unpinned_tier}`);
+      out.push(
+        `the unpinned sentence does not state ${n(c.unpinned)}${clause ? ` with "${clause.slice(2)}"` : ""}`,
+      );
     }
     if (!doc.includes(`The ${and(c.unadjudicated_methods)} paths carry no per-link adjudication`)) {
       out.push(`the unadjudicated paths are not "${and(c.unadjudicated_methods)}"`);
@@ -329,8 +350,20 @@ describe("methodology §4 ↔ docs §4 — the account / sub-agency precision fi
   type Method = { confirmed: number; sampled: number; judged?: string | null; sample_id?: string };
   const meta = JSON.parse(
     fs.readFileSync(path.join(SITE, "..", "data", "site", "json", "site_meta.json"), "utf8"),
-  ) as { link_precision?: { methods?: Record<string, Method> } };
-  const sub = meta.link_precision?.methods?.["account+subagency"] ?? null;
+  ) as {
+    link_precision?: {
+      methods?: Record<string, Method>;
+      withdrawn?: Record<string, Method & { links: number }>;
+    };
+  };
+  // #107(b), decided 2026-09-25: from the decisions wave's export on, the
+  // tier's figure lives in `withdrawn` (the page reads it there first — the
+  // tier no longer publishes, so `methods`, bound by leg n to the published
+  // tiers, cannot carry it). Before that export, in `methods`.
+  const sub =
+    meta.link_precision?.withdrawn?.["account+subagency"] ??
+    meta.link_precision?.methods?.["account+subagency"] ??
+    null;
   const n = (v: number) => v.toLocaleString("en-US");
   const docSection = () =>
     norm(between(fs.readFileSync(DOC, "utf8"), "\n## 4.", "\n## 5.").replace(/\*\*/g, ""));
@@ -338,7 +371,10 @@ describe("methodology §4 ↔ docs §4 — the account / sub-agency precision fi
     "A held-out sample of account / sub-agency links, judged on program attribution, confirmed";
 
   it("the export carries the figure (non-vacuity)", () => {
-    expect(sub, "site_meta.link_precision.methods['account+subagency'] is missing").not.toBeNull();
+    expect(
+      sub,
+      "site_meta.link_precision has the account+subagency figure in neither withdrawn nor methods",
+    ).not.toBeNull();
   });
 
   it("the page renders that sentence from site_meta, never from a literal", () => {
@@ -419,6 +455,127 @@ describe("methodology §4 ↔ docs §4 ↔ /companies/ — the company-family Hi
     for (const text of [pageSection(), docSection(), companiesPara()]) {
       expect(text).not.toMatch(/share one reported parent UEI/);
       expect(text).not.toMatch(/report the same parent UEI/);
+    }
+  });
+});
+
+/**
+ * The owner-delegated decisions wave (rulings 2026-09-25/26), stage 2: the
+ * passages it rewrote on /methodology/ and in docs/methodology.md.
+ *
+ * Where the page states a figure the decisions wave's export introduces
+ * (link_precision.withdrawn, link_adjudication.high.reviewed_by_kind /
+ * demoted_from_high, unpinned_published), the docs do NOT type it: the
+ * figures are measured at the chain that exports them, gate 24 legs n and o
+ * bind the page's, and a typed copy here is the drift this file exists to
+ * stop. What IS bound: the sentences both surfaces state, word for word, and
+ * that the docs' new passages type no count.
+ */
+describe("methodology ↔ docs — the decisions wave's passages", () => {
+  const quotes = (s: string) => s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+  /** Rendered-ish text of a page slice: JSX comments and {" "} dropped,
+   *  tags stripped, entities decoded, quotes straightened. */
+  const pageSlice = (start: string, end: string) =>
+    quotes(
+      norm(
+        between(fs.readFileSync(PAGE, "utf8"), start, end)
+          .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+          .replace(/\{" "\}/g, " "),
+      ),
+    );
+  const docSlice = (start: string, end: string) =>
+    quotes(norm(between(fs.readFileSync(DOC, "utf8"), start, end).replace(/[*`]/g, "")));
+  const page4 = () => pageSlice("{/* §4", "{/* §5");
+  const doc4 = () => docSlice("\n## 4.", "\n## 5.");
+  const page2 = () => pageSlice("{/* §2", "{/* §3");
+  const doc2 = () => docSlice("\n## 2.", "\n## 3.");
+
+  const MEDIUM =
+    "Medium: weaker evidence, of more than one kind. An account-based link, " +
+    "where the award drew from the same appropriation account as the program, " +
+    "is an association, not evidence that this specific program paid for the contract.";
+  const ANNOUNCEMENT_RULE =
+    "One stays at high only while a recorded review upholds it and no recorded " +
+    "rejection or refutation applies; otherwise medium, with the reason recorded.";
+  const MENTION_RULE =
+    "the program's PE/BLI code appears (an all-digit one only beside a " +
+    "budget-line label; none of the 1,631 bare-number matches before " +
+    "2026-09-26 had one), a curated alias appears, or at least two " +
+    "distinct, non-generic words of one program's title co-occur in the same filing";
+  const AMENDMENT_RULE =
+    "Since 2026-09-26 an amendment replaces its original instead of adding to " +
+    "it; where a quarter's amendments disagree, the smallest counts (our copy " +
+    "keeps no posting date)";
+
+  it("the Medium lead is one sentence on both (#107(b): no ranking of the kinds)", () => {
+    expect(page4()).toContain(MEDIUM);
+    expect(doc4()).toContain(MEDIUM);
+    for (const t of [page4(), doc4()]) {
+      expect(t).not.toMatch(/Medium: most such links are account-based/);
+    }
+  });
+
+  it("the announcement rule is one sentence on both (#110, R-DEC-110, R-DEC-110b)", () => {
+    expect(page4()).toContain(ANNOUNCEMENT_RULE);
+    expect(doc4()).toContain(ANNOUNCEMENT_RULE);
+    // the retired rule as a live sentence (the docs may quote it as history)
+    for (const t of [page4(), doc4()]) {
+      expect(t).not.toMatch(/only links surviving both publish — at high: the announcement/);
+    }
+  });
+
+  it("§2's mention rule (#176) and amendment rule (R-DEC-AMEND) are one sentence on both", () => {
+    for (const t of [page2(), doc2()]) {
+      expect(t).toContain(MENTION_RULE);
+      expect(t).toContain(AMENDMENT_RULE);
+      // a present-tense year bound (the docs may quote the retired wording)
+      expect(t).not.toMatch(/contains filings for 2025 and prior years/);
+    }
+  });
+
+  it("the docs name every record kind and demotion reason the page words", () => {
+    const doc = doc4();
+    // The reasons' words live in the page's DEMOTION_WORDS table, above the
+    // JSX, so the whole source is read here, not §4 alone.
+    const page = quotes(norm(fs.readFileSync(PAGE, "utf8")));
+    for (const phrase of [
+      "two-lens hand adjudication",
+      "verdict pair",
+      "per-proposal verdict pair",
+      "survivor-list entry, which records survival of the adversarial pass, not its verdict",
+      "unadjudicated keyword match",
+      "refuted in review",
+      "rejected by a reviewer",
+      "refuted by the precision study",
+      "neither uphold nor refute",
+    ]) {
+      expect(page, `page lacks "${phrase}"`).toContain(phrase);
+      expect(doc, `docs lack "${phrase}"`).toContain(phrase);
+    }
+  });
+
+  it("the docs type no count the decisions wave's export measures", () => {
+    const doc = doc4();
+    const unref = (t: string) =>
+      t
+        .replace(/#\d+(\(\w\))?/g, " ")
+        .replace(/\d{4}-\d{2}-\d{2}/g, " ")
+        .replace(/R-DEC-[\w-]+/g, " ")
+        .replace(/\bleg [a-z]\b/g, " ")
+        .replace(/gate \d+/g, " ")
+        .replace(/migration \d+/g, " ");
+    const slice = (a: string, b: string) => {
+      const i = doc.indexOf(a);
+      const j = doc.indexOf(b, i);
+      expect(i, `docs §4 lost "${a}"`).toBeGreaterThan(-1);
+      expect(j, `docs §4 lost "${b}"`).toBeGreaterThan(i);
+      return doc.slice(i, j + b.length);
+    };
+    const review = slice("(From the decisions wave's export on", "none is typed here.)");
+    const demoted = slice("Links a recorded rule moved down from high", "bound by leg o).");
+    const withdrawn = slice("On that figure the tier was withdrawn", "Postgres keeps every row).");
+    for (const [name, t] of [["review census", review], ["demotions", demoted], ["withdrawal", withdrawn]]) {
+      expect(unref(t), `docs §4 ${name} passage types a figure`).not.toMatch(/\d/);
     }
   });
 });

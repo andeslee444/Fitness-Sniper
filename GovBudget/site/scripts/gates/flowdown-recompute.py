@@ -6,6 +6,17 @@ recomputed INDEPENDENTLY from the parquet lake — the same dedup / mapping
 rules as the fct_flow_edges mart, duplicated here by design so drift between
 the mart, the exporter and this helper is a real failure.
 
+The contracts archive is read through the fiscal-year move rule (ROADMAP
+#133, ruling R-DEC-133b): the retired copy of a transaction a source
+correction moved into another fiscal year's archive is not counted, as
+stg_flow_contracts drops it, and any other duplicate contract key stops this
+helper (non-zero exit — the gate fails). The rule is
+src/govbudget/award_moves.py, loaded by path: ONE Python implementation shared
+with `govbudget entity-graph`, written separately from dbt's SQL
+(audit_award_duplicate_copies + award_fy_move_filter), so on a lake that
+carries a move, the two implementations disagreeing shows up here as a
+mismatch against the mart.
+
 Request:
 {
   "budget": true,                       → full per-level value dicts from
@@ -22,6 +33,7 @@ Request:
 }
 """
 
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -31,6 +43,20 @@ import duckdb
 REPO = Path(__file__).resolve().parents[3]
 LAKE = REPO / "data" / "parquet"
 SITE = REPO / "data" / "site"
+
+
+def _load_award_moves():
+    """src/govbudget/award_moves.py, by path: this helper must not depend on
+    the govbudget package being importable from the gate's cwd."""
+    path = REPO / "src" / "govbudget" / "award_moves.py"
+    spec = importlib.util.spec_from_file_location("_govbudget_award_moves", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+award_moves = _load_award_moves()
 
 BUDGET_SQL = f"""
 select
@@ -56,7 +82,8 @@ case
 end
 """
 
-SPEND_BASE = f"""
+# `_contracts` is the contracts archive through the move rule (main()).
+SPEND_BASE = """
 select
     coalesce(nullif(c.awarding_sub_agency_name, ''), 'UNKNOWN SUB-AGENCY') as sub,
     coalesce(nullif(c.awarding_sub_agency_name, ''), 'UNKNOWN SUB-AGENCY') || '|' ||
@@ -69,8 +96,8 @@ select
         'UNKNOWN RECIPIENT'
     ) as family,
     try_cast(c.federal_action_obligation as double) as obligation
-from read_parquet('{LAKE}/contracts/*/*.parquet', hive_partitioning=true) c
-left join read_parquet('{LAKE}/entities/entity_xwalk.parquet') x
+from _contracts c
+left join read_parquet('{xwalk}') x
     on x.recipient_uei = nullif(c.recipient_uei, '')
 where c.fy = ?
 """
@@ -124,14 +151,25 @@ def main() -> None:
                     expected & set(pe_vals.keys())
                 )
 
+    if req.get("spend_fys") or req.get("class_totals"):
+        award_moves.register_award_rows(
+            con,
+            [str(Path(LAKE) / "contracts" / "*" / "*.parquet")],
+            view="_contracts",
+            require_transaction_keys=True,
+        )
+
     spend_keys = req.get("spend_keys", {})
     if req.get("spend_fys"):
+        spend_base = SPEND_BASE.format(
+            xwalk=str(Path(LAKE) / "entities" / "entity_xwalk.parquet").replace("'", "''")
+        )
         out["spend"] = {}
         for fy in req["spend_fys"]:
             keys = spend_keys.get(str(fy), {})
             rows = con.execute(
                 f"select sub, office, family, sum(obligation), count(*)"
-                f" from ({SPEND_BASE}) group by 1, 2, 3",
+                f" from ({spend_base}) group by 1, 2, 3",
                 [fy],
             ).fetchall()
             total = 0.0
@@ -158,8 +196,7 @@ def main() -> None:
         rows = con.execute(f"""
             select cast(fy as integer), {CLASS_CASE},
                    sum(try_cast(federal_action_obligation as double))
-            from read_parquet('{LAKE}/contracts/*/*.parquet',
-                              hive_partitioning=true)
+            from _contracts
             group by 1, 2
         """).fetchall()
         ct: dict[str, dict[str, float]] = {}

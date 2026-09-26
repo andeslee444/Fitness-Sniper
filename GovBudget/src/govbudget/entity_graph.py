@@ -26,8 +26,20 @@ Two properties this module exists to hold, both learned the hard way
    narrower universe makes dim_entities.total_obligation unreproducible from
    the query the page publishes beside it.
 
+   The same universe also means the same ROWS: the archives are read through
+   the fiscal-year move rule dbt staging applies (ROADMAP #133, ruling
+   R-DEC-133b, govbudget.award_moves), so a transaction a source correction
+   moved into another fiscal year's archive is counted once here, as it is in
+   fct_award_transactions, and any other duplicate key stops the build.
+
 Both selections are fully ordered (dollars, then transaction count, then the
-strings themselves) so the build is deterministic and reproducible.
+strings themselves), so no pick depends on row order. The dollar sums are
+parallel float additions, though, so total_obligation is NOT byte-identical
+between runs: measured 2026-09-26 on the real lake, two runs of the same code
+differed on 24,999 of 131,040 totals by at most $0.000061, while every
+recipient name, parent pair, family key, method and confidence matched (three
+runs). A pick between two pairs whose dollars tie exactly could in principle
+follow that noise; none did.
 """
 import csv
 import re
@@ -38,6 +50,7 @@ from pathlib import Path
 
 import duckdb
 
+from govbudget.award_moves import register_award_rows
 from govbudget.entities import normalize_name
 
 # ── Curated parent-pair exclusions (ROADMAP #135) ────────────────────────────
@@ -206,8 +219,15 @@ def _report_exclusions(con, exclusions: Sequence[ParentExclusion]) -> None:
         )
 
 # Whole-pair parent selection + dollar-dominant recipient name.  Ranked by
-# obligation dollars, then transaction count, then the strings — a total order,
-# so two runs over the same lake produce byte-identical output.
+# obligation dollars, then transaction count, then the strings — a total order
+# over the computed sums (see the module docstring on float-sum noise).
+#
+# `_awards` is the award archives read through the fiscal-year move rule
+# (ROADMAP #133, ruling R-DEC-133b; govbudget.award_moves): the retired copy
+# of a transaction a source correction moved into another fiscal year's
+# archive is not counted, exactly as dbt staging drops it from
+# fct_award_transactions — the table every entity citation's query sums. Any
+# other duplicate key stops the build before this table exists.
 _TX_SQL = """
 create temp table tx as
     select recipient_uei,
@@ -215,7 +235,7 @@ create temp table tx as
            nullif(recipient_parent_uei, '')  as parent_uei,
            nullif(recipient_parent_name, '') as parent_name,
            try_cast(federal_action_obligation as double) as obligation
-    from read_parquet({globs}, union_by_name=true)
+    from _awards
     where recipient_uei is not null and recipient_uei <> ''
 """
 
@@ -279,8 +299,16 @@ def build_entity_xwalk(
     award_glob: str | Sequence[str],
     out_path: Path,
     parent_exclusions: Path | Sequence[ParentExclusion] = DEFAULT_PARENT_EXCLUSIONS,
+    require_transaction_keys: bool = False,
 ) -> Path:
     """Write the UEI -> family crosswalk.
+
+    ``award_glob`` is one glob per award archive (contracts, assistance); each
+    is read through the fiscal-year move rule (govbudget.award_moves), which
+    raises on an ambiguous duplicate before anything is written.
+    ``require_transaction_keys`` makes a glob with no transaction-key column
+    an error instead of a whole read — `govbudget entity-graph` sets it; only
+    synthetic key-less test lakes leave it off.
 
     ``parent_exclusions`` defaults to the curated seed (ROADMAP #135); a
     synthetic lake that does not contain the seed's recipients passes ``()``.
@@ -293,10 +321,13 @@ def build_entity_xwalk(
         if isinstance(parent_exclusions, (str, Path))
         else list(parent_exclusions)
     )
-    glob_literal = "[" + ", ".join("'" + g.replace("'", "''") + "'" for g in globs) + "]"
     con = duckdb.connect()
     try:
-        con.execute(_TX_SQL.format(globs=glob_literal))
+        moves = register_award_rows(
+            con, globs, view="_awards", require_transaction_keys=require_transaction_keys
+        )
+        print(f"entity-graph: {moves.summary()}")
+        con.execute(_TX_SQL)
         con.execute("create temp table _excl (recipient_uei varchar, parent_uei varchar)")
         if exclusions:
             con.executemany(

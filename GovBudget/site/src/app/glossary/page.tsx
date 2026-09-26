@@ -23,7 +23,7 @@ export default function GlossaryPage() {
   return (
     <div className="spine py-10 reference-page">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Glossary" }]} />
-      <PageIntro eyebrow="The language of the budget" title="Glossary" description="Plain definitions for the identifiers, fiscal measures, and document types you encounter here." actions={<><a href="#pe">Program identity ↓</a><a href="#toa">Budget measures ↓</a><a href="#p-1">Source documents ↓</a></>}/>
+      <PageIntro eyebrow="The language of the budget" title="Glossary" description="Plain definitions for the identifiers, fiscal measures and document types used on this site." actions={<><a href="#pe">Program identity ↓</a><a href="#toa">Budget measures ↓</a><a href="#p-1">Source documents ↓</a></>}/>
       <div className="doc-layout">
         <div data-doc-prose>
           <p className="text-sm text-muted-foreground mb-8">

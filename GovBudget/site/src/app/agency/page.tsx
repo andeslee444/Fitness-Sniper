@@ -76,15 +76,15 @@ export default function AgencyIndexPage() {
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Agencies" }]} />
 
         <PageIntro eyebrow="Agency portfolios" title="The organizations behind the budget."
-          description="Explore a defense agency, follow its programs, and inspect the sources behind its totals."
+          description="Defense agencies, their programs and the sources behind their totals."
           actions={<><a href="#agency-directory">Browse agencies</a><Link href="/coverage/">Understand coverage</Link></>}>
           <h2 className="sr-only">Agencies</h2>
           <p className="text-muted-foreground">
             {formatCount(sorted.length)} defense agencies with program-level
             budget data, sorted by the FY2026 total{" "}
             <strong className="text-foreground">this site has ingested</strong>
-            . Click a total to inspect its derivation and cited inputs, or a
-            name to see every program element for that agency.
+            . Each total opens to its derivation and cited inputs. Each name
+            links to the agency’s program elements.
           </p>
           {/* §P0-6 — THE SORT WAS THE FALSE CLAIM, AND THEN IT WASN'T.
               This page said "sorted by FY2026 total" and put the Air Force
@@ -119,8 +119,8 @@ export default function AgencyIndexPage() {
               <p className="mt-2 text-sm leading-6">
               Every FY2026 justification volume held here is parsed. The
               three services&rsquo; totals are each within a few percent of
-              their workbook figures — the Navy&rsquo;s is the furthest short
-              — and the three rank here in the order the workbook itself puts
+              their workbook figures (the Navy&rsquo;s is the furthest short),
+              and the three rank here in the order the workbook itself puts
               them. Where the remaining gap comes from, line by line, is on{" "}
               <Link href="/coverage/" className="underline hover:text-foreground">
                 what is and is not loaded

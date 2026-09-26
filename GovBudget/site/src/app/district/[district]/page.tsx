@@ -198,8 +198,8 @@ export default async function DistrictDetailPage({ params }: Props) {
             carried: /methodology/ §4 publishes a measured adjudication
             coverage, not a universal. */}
         <PageIntro eyebrow="District dossier" title={heading}
-          description="The documented connections between this place, defense programs, and contract awards."
-          actions={<><a href="#linked-programs">Explore linked programs</a><Link href="/district/">Find another district</Link></>}>
+          description="The documented connections between this place, defense programs and contract awards."
+          actions={<><a href="#linked-programs">Linked programs</a><Link href="/district/">Find another district</Link></>}>
           {isSpecialCode && <p className="t-id mb-3">District code {district}</p>}
           <p className="text-muted-foreground text-sm">
             {detail.program_count} linked program
@@ -311,7 +311,7 @@ export default async function DistrictDetailPage({ params }: Props) {
             </p>
             <p className="mt-2">
               Aggregate totals are derived from USAspending award transaction
-              data — click any figure for the formula and query behind it.
+              data. Each figure opens to its formula and query.
               Recipients and transaction counts are USAspending&rsquo;s own;
               no additional verification applied.
             </p>

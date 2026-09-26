@@ -276,10 +276,12 @@ def test_coverage_splits_the_links_by_upholding_kind_and_cited_rejection():
         "refuted on the cited article": 1,   # P5 (the card cites A5); never P10/P11
         "rejected on the cited article": 2,  # P4, P7
         "contrary record naming no article": 0,
+        "pair refuted by a precision sample": 0,
         "no record at all": 1,               # P9
         "rule: stays high": 4,               # P1, P2, P3, P11 (incomplete never binds)
         "rule: review_refuted": 2,           # P5 (cited), P6 (no uphold, refuted)
         "rule: reviewer_rejected": 2,        # P4 (cited), P7
+        "rule: precision_sample_refuted": 0,
         "rule: review_incomplete": 2,        # P8 (lenses never ran), P10 (incomplete)
         "rule: review_unrecorded": 1,        # P9: no record at all
     }
@@ -429,11 +431,32 @@ def test_classify_matches_the_mart_on_every_record_shape():
             _rec("REFUTED_AND_WEAK_CITED", adv="refuted", lenses=1),
             _rec("REFUTED_AND_WEAK_CITED", reviewer="wrong", adv="not_run",
                  lenses=None, entry=1)],
+        # R-DEC-110b: a held-out precision refutation names no article
+        "UP_PRECISION": [
+            _rec("UP_PRECISION"),
+            *bf.precision_records([(7, "2026-09-12", "UP_PRECISION", "PE1",
+                                    "announcement+lexicon", "sustainment")])],
+        "UP_LIST_PRECISION": [
+            _rec("UP_LIST_PRECISION", **ups),
+            *bf.precision_records([(8, "2026-09-04", "UP_LIST_PRECISION", "PE1",
+                                    "announcement+lexicon", None)])],
+        # a precision record is not a pipeline review: alone it leaves the
+        # link unrecorded, and a pipeline demotion keeps the pipeline's reason
+        "PRECISION_ONLY": [
+            *bf.precision_records([(9, "2026-09-12", "PRECISION_ONLY", "PE1",
+                                    "announcement+lexicon", "r")])],
+        "WEAK_CITED_PRECISION": [
+            _rec("WEAK_CITED_PRECISION", **ups),
+            _rec("WEAK_CITED_PRECISION", reviewer="weak", adv="not_run",
+                 lenses=None),
+            *bf.precision_records([(10, "2026-09-12", "WEAK_CITED_PRECISION",
+                                    "PE1", "announcement+lexicon", "r")])],
     }
     records = [r for recs in cases.values() for r in recs]
     links = {(p, "PE1"): [("R-1", 2026)] for p in cases}
     cited = {(p, "PE1"): {"A1"} for p in cases}
-    rows, _ = bf.review_rows(records, links, cited)
+    methods = {(p, "PE1", "R-1", 2026): "announcement+lexicon" for p in cases}
+    rows, _ = bf.review_rows(records, links, cited, methods=methods)
     mart = _mart_reasons(rows, list(cases))
     by_link: dict = {}
     for row in rows:
@@ -441,12 +464,132 @@ def test_classify_matches_the_mart_on_every_record_shape():
     ours = {}
     for piid in cases:
         outcome = bf.rule_outcome(bf.classify(by_link.get(piid, [])))
-        ours[piid] = None if outcome == "stays high" else f"announcement_{outcome}"
+        ours[piid] = (None if outcome == "stays high"
+                      else outcome if outcome.startswith("precision_")
+                      else f"announcement_{outcome}")
     assert ours == mart
     # the shapes the ruling names, spelled out
     assert mart["UP_INCOMPLETE_CITED"] is None
     assert mart["INCOMPLETE"] == "announcement_review_incomplete"
     assert mart["NONE"] == "announcement_review_unrecorded"
+    assert mart["UP_PRECISION"] == "precision_sample_refuted"
+    assert mart["UP_LIST_PRECISION"] == "precision_sample_refuted"
+    assert mart["PRECISION_ONLY"] == "announcement_review_unrecorded"
+    assert mart["WEAK_CITED_PRECISION"] == "announcement_reviewer_rejected"
+
+
+# ── R-DEC-110b: the held-out precision study's refutations ─────────────────
+
+#: (id, sample_id, award_piid, pe_bli, method, reason) — PRECISION_SQL's shape
+_SAMPLE_ROWS = [
+    (379, "2026-09-12", "P1", "PE1", "announcement+lexicon", "  L1 refuted: sustainment  "),
+    (15, "2026-09-04", "P2", "PE2", "fpds-ap+account", "two mapped GPS lines"),
+    (123, "2026-09-04", "P3", "PE3", "announcement+lexicon", None),
+]
+
+
+def test_precision_refutations_become_precision_sample_records():
+    """R-DEC-110b: a refuted attribution verdict of the held-out precision
+    study is a recorded refutation — reviewer 'link', adversarial 'refuted',
+    NO article (it binds to the pair), source_file the sample id, entry_index
+    the link_precision_samples row id, and the tier it was drawn from kept
+    both on the record and at the head of its reason."""
+    records = bf.precision_records(_SAMPLE_ROWS)
+    got = [(r.piid, r.pe_bli, r.record_kind, r.reviewer_verdict,
+            r.adversarial_verdict, r.lenses_passed, r.article_id,
+            r.article_source, r.record_index, r.entry_index, r.source_file,
+            r.drawn_method) for r in records]
+    assert got == [
+        ("P1", "PE1", "precision_sample", "link", "refuted", None, None, None,
+         None, 379, "2026-09-12", "announcement+lexicon"),
+        ("P2", "PE2", "precision_sample", "link", "refuted", None, None, None,
+         None, 15, "2026-09-04", "fpds-ap+account"),
+        ("P3", "PE3", "precision_sample", "link", "refuted", None, None, None,
+         None, 123, "2026-09-04", "announcement+lexicon"),
+    ]
+    assert records[0].reason == (
+        "drawn from the announcement+lexicon tier of held-out precision sample"
+        " 2026-09-12 (rubric attribution), judged refuted: L1 refuted: sustainment")
+    assert records[2].reason == (
+        "drawn from the announcement+lexicon tier of held-out precision sample"
+        " 2026-09-04 (rubric attribution), judged refuted")
+    # the export lane reads the drawn tier back from the row
+    assert [bf.drawn_tier(r.reason) for r in records] == [
+        ("announcement+lexicon", "2026-09-12"), ("fpds-ap+account", "2026-09-04"),
+        ("announcement+lexicon", "2026-09-04")]
+    assert bf.drawn_tier("owns it") is None
+
+
+def test_a_precision_record_attaches_only_to_the_link_the_sample_drew():
+    """Never invent: the record lands on the pair's rows whose method is the
+    one the sample drew. P2 was drawn as fpds-ap+account and its key is held
+    by another route today — no record (counted); P3's pair is gone. A
+    pipeline record still attaches to every row of its pair."""
+    links = {("P1", "PE1"): [("R-1", 2026), ("P-1", 2026)],
+             ("P2", "PE2"): [("R-1", 2026)]}
+    methods = {("P1", "PE1", "R-1", 2026): "announcement+lexicon",
+               ("P1", "PE1", "P-1", 2026): "fpds-ap",
+               ("P2", "PE2", "R-1", 2026): "announcement+lexicon"}
+    records = bf.precision_records(_SAMPLE_ROWS) + [_rec("P2", pe="PE2")]
+    rows, counts = bf.review_rows(records, links, {}, methods=methods)
+    got = [(r[0], r[2], r[4]) for r in rows]
+    assert got == [("P1", "R-1", "precision_sample"),
+                   ("P2", "R-1", "verdict_pair")]
+    assert counts["not_the_drawn_link"] == 1        # P2: drawn under another route
+    assert counts["not_the_drawn_link_pairs"] == [("P2", "PE2", "fpds-ap+account")]
+    assert counts["no_link"] == 1                   # P3
+    row = dict(zip(bf.COLUMNS, rows[0]))
+    assert (row["article_id"], row["cites_reviewed_article"], row["upholds"],
+            row["source_file"], row["entry_index"]) == (
+        None, None, False, "2026-09-12", 379)
+
+
+def test_a_drawn_method_record_is_refused_without_the_rows_methods():
+    with pytest.raises(ValueError, match="methods"):
+        bf.review_rows(bf.precision_records(_SAMPLE_ROWS[:1]),
+                       {("P1", "PE1"): [("R-1", 2026)]}, {})
+
+
+def test_a_precision_refutation_demotes_an_upheld_link_on_its_own_reason():
+    """The mart's rule (c) (R-DEC-110b): a precision refutation binds to the
+    PAIR and is not a pipeline record — a link its pipeline upheld leaves
+    high as 'precision_sample_refuted' (the reason the export keys the
+    drawn-tier tally on), and precision_demotions() names it with the tier it
+    was drawn from."""
+    W1 = "data/research/announcements/wave1_result.json"
+    records = [_rec("P1", kind="survivor_list", lenses=None, src=W1),
+               *bf.precision_records(_SAMPLE_ROWS[:1]),
+               _rec("P9", pe="PE1")]                               # upheld, no sample
+    links = {("P1", "PE1"): [("R-1", 2026)], ("P9", "PE1"): [("R-1", 2026)]}
+    methods = {("P1", "PE1", "R-1", 2026): "announcement+lexicon",
+               ("P9", "PE1", "R-1", 2026): "announcement+lexicon"}
+    rows, _ = bf.review_rows(records, links, {("P1", "PE1"): {"A1"}},
+                             methods=methods)
+    by_link = [r for r in rows if r[0] == "P1"]
+    c = bf.classify(by_link)
+    assert c["sample_refuted"] and not c["refuted_binding"] and not c["refuted_cited"]
+    assert bf.rule_outcome(c) == "precision_sample_refuted"
+    published = [("P1", "PE1", "R-1", 2026), ("P9", "PE1", "R-1", 2026)]
+    assert bf.coverage(rows, published)["rule: precision_sample_refuted"] == 1
+    assert bf.coverage(rows, published)["pair refuted by a precision sample"] == 1
+    assert bf.precision_demotions(rows, published) == [
+        (("P1", "PE1", "R-1", 2026), "announcement+lexicon", "2026-09-12")]
+
+
+def test_read_precision_refutations_reads_refuted_attribution_rows_only(con):
+    con.execute(
+        "insert into link_precision_samples (sample_id, award_piid, pe_bli,"
+        " method, verdict, reason, rubric) values"
+        " ('2026-09-12','P1','PE1','announcement+lexicon','refuted','r1','attribution'),"
+        " ('2026-09-12','P2','PE2','announcement+lexicon','confirmed','r2','attribution'),"
+        " ('2026-09-04','P3','PE3','account+subagency','refuted','r3','rule-fired'),"
+        " ('2026-09-04','P4','PE4','subaward+lexicon','refuted',null,'attribution'),"
+        " ('2026-09-04','P5','PE5','fpds-ap',null,null,'attribution')")   # not judged
+    got = [r[1:] for r in bf.read_precision_refutations(con)]
+    assert got == [
+        ("2026-09-04", "P4", "PE4", "subaward+lexicon", None),
+        ("2026-09-12", "P1", "PE1", "announcement+lexicon", "r1"),
+    ]
 
 
 # ── the table ───────────────────────────────────────────────────────────────
@@ -470,9 +613,13 @@ def test_write_reviews_rebuilds_the_table(con):
                   _rec(kind="survivor_list", lenses=None, reason="r", src=W1),
                   _rec(kind="refutation_sample", adv="refuted", lenses=None,
                        article=None, reason="O&M", src=W1)])
+    rows += bf.review_rows(bf.precision_records(_SAMPLE_ROWS[:1]),
+                           {("P1", "PE1"): [("R-1", 2026)]}, {},
+                           methods={("P1", "PE1", "R-1", 2026):
+                                    "announcement+lexicon"})[0]
     cur = con.cursor()
-    assert bf.write_reviews(cur, rows) == (0, 5)
-    assert bf.write_reviews(cur, rows[:1]) == (5, 1)       # a re-run replaces
+    assert bf.write_reviews(cur, rows) == (0, 6)
+    assert bf.write_reviews(cur, rows[:1]) == (6, 1)       # a re-run replaces
     got = con.execute(
         f"select {', '.join(bf.COLUMNS)} from announcement_link_reviews").fetchall()
     assert got == [rows[0]]
@@ -491,6 +638,29 @@ def test_write_reviews_rebuilds_the_table(con):
 ])
 def test_the_table_refuses_a_row_that_contradicts_its_own_record(con, change):
     row = dict(zip(bf.COLUMNS, _rows([_rec()])[0]))
+    row.update(change)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with con.transaction():
+            bf.write_reviews(con.cursor(), [tuple(row[c] for c in bf.COLUMNS)])
+
+
+def _precision_row():
+    return dict(zip(bf.COLUMNS, bf.review_rows(
+        bf.precision_records(_SAMPLE_ROWS[:1]), {("P1", "PE1"): [("R-1", 2026)]},
+        {}, methods={("P1", "PE1", "R-1", 2026): "announcement+lexicon"})[0][0]))
+
+
+@pytest.mark.parametrize("change", [
+    {"adversarial_verdict": "upheld", "upholds": True},            # a sample never upholds here
+    {"article_id": "A1", "article_source": "wave_packet",
+     "cites_reviewed_article": True},                               # it binds to the pair
+    {"reason": "L1 refuted: sustainment"},                          # drawn tier not stated
+    {"reason": None},
+])
+def test_the_table_refuses_a_precision_sample_row_off_its_contract(con, change):
+    row = _precision_row()
+    with con.transaction():                                         # the contract row is valid
+        bf.write_reviews(con.cursor(), [tuple(row[c] for c in bf.COLUMNS)])
     row.update(change)
     with pytest.raises(psycopg.errors.CheckViolation):
         with con.transaction():

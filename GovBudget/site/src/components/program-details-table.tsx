@@ -128,7 +128,7 @@ export function ProgramDetailsTable({
       <p className="mb-2 text-xs text-muted-foreground">
         J-book detail basis (R-2/P-40, USD millions) · PB2026 — a different
         accounting basis from the P-1/R-1 workbook TOA above; where the two
-        disagree, the reconciliation strip under Budget Figures shows both.
+        disagree, the reconciliation strip under Budget figures shows both.
       </p>
 
       {/* Round-3 judging: at 390 this table is ~676px inside a ~358px

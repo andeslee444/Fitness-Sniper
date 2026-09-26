@@ -9,7 +9,6 @@ import {
   getFeed,
   getReceiptMomentFact,
   collectCitationsWithInputs,
-  TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -22,6 +21,7 @@ import { ReceiptsIntro } from "@/components/receipts-intro";
 import { Reveal } from "@/components/reveal";
 import { serviceOrgName } from "@/lib/program-tier";
 import { agencyDisplayName, agencyFullName } from "@/lib/agency-names";
+import { COPY } from "@/lib/copy";
 
 export const metadata: Metadata = {
   title: {
@@ -205,11 +205,10 @@ export default function HomePage() {
           points, the label list beside, its caption bar beneath. */}
       <section className={styles.fieldGuide}>
         <div className="spine">
-          <h2 className={styles.sectionTitle}>A different way into the budget.</h2>
+          <h2 className={styles.sectionTitle}>{COPY.home.fieldGuideTitle(EXHIBIT_PILOTS.length)}</h2>
           <p className={styles.guideIntro} data-prose>
-            Explore the systems, research, and support a program funds. Each
-            illustration opens into explanations with receipts.{" "}
-            <Link href="/explore/">Open the visual field guide</Link>{" · "}
+            {COPY.home.fieldGuideLede(EXHIBIT_PILOTS.length)}{" "}
+            <Link href="/explore/">{COPY.home.fieldGuideLink}</Link>{" · "}
             <Link href="/feed/#budget-briefings">Budget comparisons</Link>
           </p>
           {/* The hero already owns the submarine — the gallery holds the
@@ -252,14 +251,17 @@ export default function HomePage() {
       {/* ── Top movers ───────────────────────────────────────────────────── */}
       <section className="py-12 border-b border-border">
         <Reveal className="spine">
-          <h2 className={styles.sectionTitle}>Largest {TRAJECTORY_FY_LABEL} changes</h2>
+          {/* No arrow inside a heading (VOICE rule 6, gate 27 leg 15): the heading
+              spells the pair the lede below names, FY2025 enacted and the
+              FY2026 request; TRAJECTORY_FY_LABEL stays in chips and tables. */}
+          <h2 className={styles.sectionTitle}>Largest FY2025–FY2026 changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 enacted and
             the FY2026 request, ranked by the size of the change in dollars with
             increases and decreases ranked together — when the list is all
             increases, that is the result, not a filter. Dollar deltas carry
-            derived workbook citations — click a figure to inspect the formula
-            and inputs.
+            derived workbook citations. Each figure opens to its formula and
+            inputs.
           </p>
           <div className={styles.ledger}>
             {topMovers.map((p) => {
@@ -437,7 +439,7 @@ export default function HomePage() {
         <Reveal className="spine">
           <h2 className={styles.sectionTitle}>Browse by agency</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            {agencies.length} defense agencies — click to see all program
+            {agencies.length} defense agencies, each linked to its program
             elements.
           </p>
           {/* One register, three columns of DATA — name | programs | FY24 —

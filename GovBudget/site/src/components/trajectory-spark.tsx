@@ -142,9 +142,9 @@ export function TrajectorySpark({ cards, reconKeys, exhibitFamily }: TrajectoryS
         : "ends level with where it starts";
   const chartDescription =
     `The program's ${points.length} summary figures for ${spanLabel}, plotted in ` +
-    `fiscal-year order so the direction of travel is readable at a glance: this ` +
-    `line ${direction}. The points are the summary cards above, not a separate ` +
-    `derivation; the table beside the chart carries each figure with its own citation.`;
+    `fiscal-year order: this line ${direction}. The points are the summary cards ` +
+    `above, not a separate derivation; the table beside the chart carries each ` +
+    `figure with its own citation.`;
 
   return (
     <ChartFigure id="trajectory-spark" description={chartDescription}>

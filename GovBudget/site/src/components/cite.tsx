@@ -243,7 +243,7 @@ export function CiteLegend({
       <span className="underline decoration-dotted decoration-(--cite-decoration) underline-offset-2">
         dotted underline
       </span>
-      {show.size > 1 ? " = cited (click for source) · " : " = cited (click for source)"}
+      {show.size > 1 ? " = cited (opens to its source) · " : " = cited (opens to its source)"}
         </>
       )}
       {show.has("xml") && (

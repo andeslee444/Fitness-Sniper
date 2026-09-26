@@ -1147,12 +1147,17 @@ def cmd_entity_graph(args) -> None:
     # stg_assistance, and every entity citation's query_body sums over it.  A
     # contracts-only crosswalk made dim_entities.total_obligation impossible to
     # reproduce from the query the page publishes next to it (Task 5b).
+    # Both are read through the fiscal-year move rule dbt staging applies
+    # (ROADMAP #133, R-DEC-133b): a moved transaction counts once, an
+    # ambiguous duplicate stops the command, and an archive with no
+    # transaction key column is an error here, never a silent whole read.
     out = build_entity_xwalk(
         award_glob=[
             str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
             str(config.PARQUET_DIR / "assistance" / "*" / "*.parquet"),
         ],
         out_path=config.PARQUET_DIR / "entities" / "entity_xwalk.parquet",
+        require_transaction_keys=True,
     )
     print(f"entity-graph: wrote {out}")
 

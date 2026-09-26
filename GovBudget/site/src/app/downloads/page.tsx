@@ -94,7 +94,7 @@ export default function DownloadsPage() {
         />
         <PageIntro eyebrow="Research tools / Reproduce" title="Data downloads"
           description={<p>Take the underlying files into your own research workflow. Each export includes its schema; the citation index connects recorded facts back to their sources.</p>}
-          actions={<><Link href="/data/">Explore with SQL →</Link><Link href="/data/#dataset-inventory">Read dataset scope →</Link><Link href="/methodology/">Review the methodology →</Link></>}>
+          actions={<><Link href="/data/">Data explorer →</Link><Link href="/data/#dataset-inventory">Read dataset scope →</Link><Link href="/methodology/">Review the methodology →</Link></>}>
           <p className="text-sm text-muted-foreground">
             The snapshot includes {meta.counts.citations.toLocaleString("en-US")} source
             citations and {meta.counts.programs.toLocaleString("en-US")}{" "}

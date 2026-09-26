@@ -68,7 +68,7 @@ export function F15KnowledgeSection(props: {
       <div className={styles.preview}>
         <div className={styles.previewItem}>
           <span className={styles.previewLabel}>Who flies it</span>
-          <h3>One family. Seven countries.</h3>
+          <h3>Seven countries fly the F-15.</h3>
           <p className={styles.countryList}>
             United States · Japan · Israel · Saudi Arabia · Singapore · South
             Korea · Qatar
@@ -82,7 +82,7 @@ export function F15KnowledgeSection(props: {
             Boeing · February 2026 <ArrowUpRight size={12} />
           </a>
           <button onClick={() => open("operators")}>
-            Explore countries & variants <ArrowRight size={16} />
+            Open countries & variants <ArrowRight size={16} />
           </button>
         </div>
         <div className={styles.previewItem}>
@@ -130,7 +130,7 @@ export function F15KnowledgeSection(props: {
             </a>
           </div>
           <button onClick={() => open("suppliers")}>
-            Explore suppliers & systems <ArrowRight size={16} />
+            Open suppliers & systems <ArrowRight size={16} />
           </button>
         </div>
       </div>

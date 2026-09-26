@@ -83,7 +83,7 @@ export default function ProgramsPage() {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Programs" }]}
       />
-      <PageIntro eyebrow="The program index" title="Program Elements" description="Find the program. Understand its purpose. Inspect the budget behind it." actions={<><Link href="/explore/">Explore the visual field guide →</Link><Link href="/years/">Compare across fiscal years →</Link></>}>
+      <PageIntro eyebrow="The program index" title="Program elements" description="The FY2026 program index, with the budget figures behind each line." actions={<><Link href="/explore/">Field guide →</Link><Link href="/years/">Compare across fiscal years →</Link></>}>
         <p className="text-sm text-muted-foreground">{formatCount(programs.length)} program elements in the FY2026 index. Search by title or PE/BLI; underlined figures open their exact source.</p>
       </PageIntro>
       <div className="mb-5 text-sm text-muted-foreground">
@@ -91,7 +91,7 @@ export default function ProgramsPage() {
       </div>
       <section className="research-surface" aria-label="Search and compare program elements"><ProgramsTable programs={sorted} orgs={orgs} /></section>
       <details id="index-coverage" className="research-notes scroll-mt-20">
-        <summary>Coverage, exclusions, and organization details</summary>
+        <summary>Coverage, exclusions and organization details</summary>
       <div className="space-y-4">
 
         {/* §P1-5: the table's own scope, stated as a scope — the corpus
@@ -231,7 +231,8 @@ export default function ProgramsPage() {
               href="/json/programs_excluded.json"
               className="underline hover:text-foreground"
             >
-              programs_excluded.json
+              {/* A file name is an identifier, set as code (gate 27 leg 31). */}
+              <code>programs_excluded.json</code>
             </a>
             .
           </p>

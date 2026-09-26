@@ -65,7 +65,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
         <h3 id="family-history-table-heading">Programs across the years</h3>
         <p>{history.programs.length} program rows · {series.length} fiscal years</p>
       </div>
-      <p className={styles.caption} id="family-history-table-description" data-basis-declared="">P-1/R-1 TOA · Nominal dollars, without inflation adjustment. Click any amount to open its source documents and calculation.</p>
+      <p className={styles.caption} id="family-history-table-description" data-basis-declared="">P-1/R-1 TOA · Nominal dollars, without inflation adjustment. Each amount opens to its source documents and calculation.</p>
       <div className={styles.matrixKey}><span>0 = recorded zero · — = no figure in covered records</span><span>Scroll for all years →</span></div>
       <div ref={tableRef} className={`${styles.tableScroll} ${styles.matrixScroll}`} role="region" aria-label="Program funding matrix, scroll for all fiscal years" tabIndex={0}>
         <table className={`${styles.table} ${styles.matrix}`} id="family-history-receipts" aria-labelledby="family-history-table-heading" aria-describedby="family-history-table-description">

@@ -122,6 +122,125 @@ describe("hhiBandStatementFindings — the other stale sentences on e6bc28bb's /
   });
 });
 
+/**
+ * Fix round 3 (2026-09-26). The re-checker of b7eaf44b found leg (q) passing
+ * a sentence that puts the 2023 thresholds under the 2010 edition's name —
+ * a year was present, and each threshold matched hhiBand(), so every check
+ * above was satisfied. The 2010 Horizontal Merger Guidelines' bands were
+ * 1,500 and 2,500 (§5.3); 1,000 / 1,800 are the 2023 Merger Guidelines'
+ * (§2.1, as the DOJ Antitrust Division's HHI page states them). Two rules
+ * now bind an edition's name to its numbers, per sentence:
+ *   edition-bands  a sentence naming the 2010 edition states that edition's
+ *                  bands, 1,500 and 2,500, or is flagged;
+ *   vintage        a sentence stating the current thresholds (1,000 / 1,800)
+ *                  names 2023 or the DOJ page, or is flagged — naming another
+ *                  edition (2010, 1992) is not naming theirs.
+ */
+const RECHECK_2010_SENTENCE =
+  "Bands follow the 2010 DOJ/FTC Horizontal Merger Guidelines: below 1,000 is unconcentrated (this site's word), " +
+  "1,000–1,800 is moderately concentrated, and above 1,800 is highly concentrated.";
+/** The re-checker's second probe: another edition's year on the current thresholds. */
+const RECHECK_1992_SENTENCE =
+  "Bands follow the 1992 Merger Guidelines: 1,000–1,800 is moderately concentrated and above 1,800 is highly concentrated.";
+
+describe("leg (q) fix round 3 — an edition's name binds that edition's numbers", () => {
+  it("RED at b7eaf44b: the re-checker's 2010 sentence carrying the 2023 thresholds fails both ways", () => {
+    const findings = hhiBandStatementFindings(RECHECK_2010_SENTENCE);
+    expect(kinds(RECHECK_2010_SENTENCE).sort()).toEqual(["edition-bands", "vintage"]);
+    expect(findings.some((f) => /2010/.test(f) && /1,500/.test(f) && /2,500/.test(f))).toBe(true);
+    expect(findings.some((f) => /1,000 \/ 1,800/.test(f) && /2023/.test(f) && /DOJ/.test(f))).toBe(true);
+  });
+
+  it("RED at b7eaf44b: another edition's year (1992) on the current thresholds is not their vintage", () => {
+    expect(kinds(RECHECK_1992_SENTENCE)).toEqual(["vintage"]);
+    expect(hhiBandStatementFindings(RECHECK_1992_SENTENCE)[0]).toMatch(/1992/);
+  });
+
+  it("every way of naming the 2010 edition binds 1,500 and 2,500", () => {
+    for (const s of [
+      "Bands follow the 2010 Merger Guidelines: 1,000–1,800 is moderately concentrated.",
+      "Under the Horizontal Merger Guidelines (2010), an HHI above 1,800 is highly concentrated.",
+      "Under the Horizontal Merger Guidelines of 2010, an HHI above 1,800 is highly concentrated.",
+      "The 2010 DOJ/FTC bands put moderately concentrated at 1,000 to 1,800.",
+    ]) {
+      expect(kinds(s), s).toContain("edition-bands");
+      expect(kinds(s), s).toContain("vintage");
+    }
+    // Naming the edition without its numbers, or with only one of them.
+    expect(kinds("The site's bands follow the 2010 Horizontal Merger Guidelines.")).toEqual(["edition-bands"]);
+    expect(kinds("The 2010 guidelines' bands were replaced.")).toEqual(["edition-bands"]);
+    expect(kinds("Under the 2010 Horizontal Merger Guidelines the highly concentrated line was 2,500.")).toEqual([
+      "edition-bands",
+    ]);
+    expect(kinds("The site cites the 2010 edition of the Merger Guidelines.")).toEqual(["edition-bands"]);
+    expect(kinds("The 2010 revision of the Horizontal Merger Guidelines set bands at 1,500 and 2,500.")).toEqual([]);
+    // With its own numbers, but saying the site's bands follow it TODAY: false since #132.
+    expect(kinds("Bands follow the 2010 Horizontal Merger Guidelines (1,500 and 2,500).")).toEqual(["edition-bands"]);
+    expect(kinds("This site's bands use the 2010 DOJ/FTC thresholds, 1,500 and 2,500.")).toEqual(["edition-bands"]);
+    expect(hhiBandStatementFindings("Bands follow the 2010 Horizontal Merger Guidelines (1,500 and 2,500).")[0]).toMatch(
+      /present tense/,
+    );
+    // History, and a negation, are not that claim.
+    expect(kinds("The site no longer follows the 2010 Horizontal Merger Guidelines' bands (1,500 and 2,500).")).toEqual([]);
+    expect(kinds("Until 2026-09-25 the bands followed the 2010 Horizontal Merger Guidelines (1,500 and 2,500).")).toEqual([]);
+  });
+
+  it("a statement of 1,000 / 1,800 names 2023 or the DOJ page, whatever its shape", () => {
+    expect(kinds("An HHI from 1,000 to 1,800 is moderately concentrated, and one above 1,800 is highly concentrated.")).toEqual([
+      "vintage",
+    ]);
+    expect(kinds("The concentration bands sit at 1,000 and 1,800.")).toEqual(["vintage"]);
+    expect(kinds("An index of 1,801 or above is highly concentrated.")).toEqual(["vintage"]);
+    expect(kinds("The thresholds are 1,000 / 1,800 (2010 Horizontal Merger Guidelines).").sort()).toEqual([
+      "edition-bands",
+      "vintage",
+    ]);
+    // A below-1,000 statement neither naming 2023 nor saying the word is this site's.
+    expect(kinds("An HHI below 1,000 is unconcentrated.")).toEqual(["vintage"]);
+  });
+
+  it("true statements of either edition keep passing", () => {
+    for (const s of [
+      "Per the DOJ Antitrust Division's HHI page, 1,000 to 1,800 is moderately concentrated and above 1,800 is highly concentrated.",
+      "Per the Justice Department's HHI page, 1,000 to 1,800 is moderately concentrated.",
+      "Merger Guidelines § 2.1 (2023): 1,000 to 1,800 is moderately concentrated, and above 1,800 is highly concentrated.",
+      "The 2023 bands: 1,000 to 1,800 is moderately concentrated.",
+      "The 2023 Merger Guidelines' bands (1,000 and 1,800) replaced the 2010 Horizontal Merger Guidelines' (1,500 and 2,500).",
+      "Until 2026-09-25 this site used the 2010 Horizontal Merger Guidelines' bands, 1,500 and 2,500.",
+      "In FY2010 the program's HHI of 2,100 was highly concentrated under the 2023 Merger Guidelines.",
+      "This site calls an HHI below 1,000 unconcentrated.",
+    ]) {
+      expect(hhiBandStatementFindings(s), s).toEqual([]);
+    }
+  });
+
+  it("the 2023 name does not rescue 2010's name on the wrong numbers", () => {
+    const s = "The 2010 Horizontal Merger Guidelines' bands (1,000 and 1,800) were replaced by the 2023 Merger Guidelines.";
+    expect(kinds(s)).toEqual(["edition-bands"]);
+  });
+
+  it("a fiscal year is not the edition: FY2010 and 2010 dollars name no guidelines", () => {
+    expect(hhiBandStatementFindings("FY2010 obligations fell; the 2023 Merger Guidelines bands put 1,913 above 1,800, highly concentrated.")).toEqual([]);
+  });
+
+  it("runBandProseLeg fails /methodology/ carrying the re-checker's sentence, and names the page", () => {
+    const errors = [];
+    const page = `<main><div id="feed-concentration_shift"><p>${RECHECK_2010_SENTENCE}</p></div></main>`;
+    const glossary = `<main><dl><dd>${GLOSSARY.find((e) => e.id === "hhi").definition}</dd></dl></main>`;
+    const feed =
+      '<main><section id="feed-concentration_shift"><p>Each card names its band under the 2023 Merger Guidelines: ' +
+      "moderately concentrated from 1,000 to 1,800 and highly concentrated above 1,800.</p></section></main>";
+    runBandProseLeg(errors, [], (route) =>
+      parse({ "/methodology/": page, "/glossary/": glossary, "/feed/": feed }[route], { comment: false }),
+    );
+    expect(errors.some((e) => /^feed leg q \(\/methodology\/\): /.test(e) && /2010/.test(e) && /1,500/.test(e))).toBe(true);
+    expect(errors.some((e) => /^feed leg q \(\/methodology\/\): /.test(e) && /1,000 \/ 1,800/.test(e))).toBe(true);
+    // The passage also names the 2010 edition instead of the vintage.
+    expect(errors.some((e) => /#feed-concentration_shift/.test(e) && /2023 Merger Guidelines/.test(e))).toBe(true);
+    expect(errors.filter((e) => /\/glossary\/|\/feed\//.test(e))).toEqual([]);
+  });
+});
+
 describe("hhiBandStatementFindings — true statements keep passing", () => {
   it("a true rewrite of the band sentence", () => {
     expect(hhiBandStatementFindings(TRUE_BANDS)).toEqual([]);

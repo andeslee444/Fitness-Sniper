@@ -417,7 +417,7 @@ export default function CoveragePage() {
               the page, beside the figure, with a link to the reasoning. This page
               collects them so the shape of the whole is visible at once. For the
               definitions behind the numbers — confidence tiers, the supersede
-              policy, and the nine named limitations — see the{" "}
+              policy, and the named limitations — see the{" "}
               <Link href="/methodology/" className="underline hover:text-foreground">
                 methodology
               </Link>

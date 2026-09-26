@@ -110,16 +110,18 @@ describe("/methodology/ — the stage-2 binding", () => {
   });
 
   /**
-   * RED UNTIL STAGE 2 FIXES THE PROSE — then change `it.fails` to `it`.
-   * Measured at e6bc28bb, leg (q) reports 13 errors on this page: in
+   * Was `it.fails` until the decisions wave's stage-2 prose (2026-09-26).
+   * Measured at e6bc28bb, leg (q) reported 13 errors on this page: in
    * #feed-concentration_shift, the band sentence (no vintage; the 2010 title
    * without "2010"; "competitive"; "1,800 or above"; "1,800 is the floor";
    * four equal shares = 1,800) and "a competitive pooled figure", plus the
    * passage lacking the vintage, "unconcentrated", its attribution and where
    * unconcentrated ends; in the corrections table, "DOJ/FTC bands" (no year)
-   * and "it is the highly concentrated floor" of 2,500.
+   * and "it is the highly concentrated floor" of 2,500. Stage 2 rewrote each
+   * from hhi-band.mjs's constants (and added the #132 correction row), so
+   * the binding is now a plain `it` — never delete it.
    */
-  it.fails("states the HHI bands the badges use (leg q clean on /methodology/)", () => {
+  it("states the HHI bands the badges use (leg q clean on /methodology/)", () => {
     const { errors } = legQ();
     expect(errors.filter((e) => e.includes("/methodology/"))).toEqual([]);
   });

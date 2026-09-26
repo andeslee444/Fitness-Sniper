@@ -8,14 +8,14 @@ import { EXHIBIT_PILOTS, PROGRAM_EXHIBITS } from "@/lib/program-exhibits";
 import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Explore what the budget builds",
-  description: "Explore the F-15 aircraft family, submarines, and cyber research through interactive models, with funding explanations linked to the original budget documents.",
+  title: "What the budget builds",
+  description: "The F-15 aircraft family, submarines and cyber research as interactive models, with funding explanations linked to the original budget documents.",
   alternates: { canonical: `${SITE_URL}/explore/` },
 };
 
 export default function ExplorePage() {
   return <div className="spine py-10 md:py-16">
-    <PageIntro eyebrow="Visual field guide" title="See what the budget builds." description="Start with something you can see. Explore what its program supports, follow the funding, and open the document behind each explanation." actions={<Link href="/programs/">Browse the complete program index <ArrowRight size="1em" aria-hidden /></Link>}/>
+    <PageIntro eyebrow="Field guide" title="See what the budget builds." description="Drawn programs, what each one funds and the document behind each explanation." actions={<Link href="/programs/">Browse the complete program index <ArrowRight size="1em" aria-hidden /></Link>}/>
     <F15FamilyFeature />
     <p className="t-label">More programs to inspect</p>
     <div className="grid md:grid-cols-3 gap-5 mt-8">
@@ -26,8 +26,8 @@ export default function ExplorePage() {
     </div>
     <div className="border-t border-border mt-12 pt-6 grid md:grid-cols-3 gap-6 text-sm">
       <p><strong className="block mb-2">An illustration, with evidence</strong><span className="text-muted-foreground">Each selected topic opens a cited explanation. Geometry is simplified; model parts do not imply a cost allocation.</span></p>
-      <p><strong className="block mb-2">One family, distinct funding</strong><span className="text-muted-foreground">Aircraft variants and budget records are separate choices. Development, procurement, and upgrade records keep their own accounting context and receipts.</span></p>
-      <p><strong className="block mb-2">Explore at your own pace</strong><span className="text-muted-foreground">Still illustrations load first. Interactive 3D is optional, with keyboard controls and shareable views.</span></p>
+      <p><strong className="block mb-2">One family, distinct funding</strong><span className="text-muted-foreground">Aircraft variants and budget records are separate choices. Development, procurement and upgrade records keep their own accounting context and receipts.</span></p>
+      <p><strong className="block mb-2">Still illustrations first</strong><span className="text-muted-foreground">Still illustrations load first. Interactive 3D is optional, with keyboard controls and shareable views.</span></p>
     </div>
     <p className="mt-10 text-sm"><Link href="/programs/" className="underline underline-offset-4">Browse the complete program catalog <ArrowRight size="1em" aria-hidden /></Link></p>
   </div>;

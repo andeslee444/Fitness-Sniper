@@ -365,28 +365,111 @@ def collision_account_for(
 
 _WAVE_RESULT = re.compile(r"^(wave(\d+))_result")
 
+#: The wave whose per-proposal review records are the verdict files
+#: (wave4_verdicts/chunk_*.json, read with the backfill's own parser so the
+#: loader and the review table agree on what each file says).
+VERDICT_WAVE = 4
+VERDICT_DIR_NAME = "wave4_verdicts"
 
-def provenance_packets(ann_dir: Path, result_paths) -> dict[tuple[str, str], dict]:
+
+def _review_marks(ann_dir: Path, wave_bodies) -> tuple[dict, dict]:
+    """What the recorded reviews say about each (pair, article), for the
+    packet choice (R-DEC-PACKET):
+
+      upheld    (piid, pe_bli) -> {article}: a wave-4 verdict pair with
+                reviewer 'link' AND adversarial 'upheld' (both lenses
+                refuted=false)
+      contrary  (piid, pe_bli) -> {article: {wave}}: a recorded rejection
+                (wave-4 reviewer 'weak'/'wrong') or refutation (a wave-4 lens
+                refuted=true; a wave 1-2 `refutations_sample` entry, whose
+                article is the ONE packet its wave triaged for the pair — the
+                backfill's reading) and the wave that recorded it
+
+    An 'incomplete' read is neither (R-DEC-INCOMPLETE), and a record naming
+    no article cannot rule an article in or out. `wave_bodies` is
+    [(wave, result-file body, packets by pair)] for the files on the command
+    line; the verdict files are wave 4's whether or not wave4_result is
+    among them — they are recorded reviews of every article they name.
+    """
+    import backfill_announcement_link_reviews as bf  # same scripts/ dir
+
+    verdict_dir = Path(ann_dir) / VERDICT_DIR_NAME
+    if not verdict_dir.is_dir():
+        raise SystemExit(
+            f"no {VERDICT_DIR_NAME}/ in {ann_dir} — the packet choice cannot"
+            " see which articles wave 4 upheld, rejected or refuted, and would"
+            " cite a rejected article silently")
+    upheld: dict[tuple[str, str], set[str]] = {}
+    contrary: dict[tuple[str, str], dict[str, set[int]]] = {}
+
+    def _contrary(pair, article, wave):
+        contrary.setdefault(pair, {}).setdefault(article, set()).add(wave)
+
+    for r in bf.read_verdict_files(verdict_dir, Path(ann_dir))[0]:
+        pair = (r.piid, r.pe_bli)
+        if r.reviewer_verdict == "link" and r.adversarial_verdict == "upheld":
+            upheld.setdefault(pair, set()).add(r.article_id)
+        elif (r.reviewer_verdict in ("weak", "wrong")
+              or r.adversarial_verdict == "refuted"):
+            _contrary(pair, r.article_id, VERDICT_WAVE)
+    for wave, body, packets in wave_bodies:
+        for e in body.get("refutations_sample") or []:
+            if not (isinstance(e, dict) and e.get("refuted") is True):
+                continue
+            pair = (e.get("piid"), str(e.get("pe_bli") or "").strip())
+            arts = {_packet_value(p, "article_id") for p in packets.get(pair, [])}
+            if len(arts) == 1 and None not in arts:
+                _contrary(pair, next(iter(arts)), wave)
+    return upheld, contrary
+
+
+def provenance_packets(ann_dir: Path, result_paths, *,
+                       stats: dict | None = None) -> dict[tuple[str, str], dict]:
     """(piid, pe_bli) → the wave packet a published link's evidence IS.
 
     A wave<N>_chunks directory holds every packet wave N TRIAGED, not only the
     ones that survived, so the packet has to come from a wave whose
-    `surviving` list holds the pair — the earliest such wave, in wave-number
-    order, when several do (unchanged from before). Until 2026-09-25 the loader
-    kept the first packet of ANY wave, and a pair wave 1 or 2 triaged and
-    dropped but wave 4 upheld on another announcement published with the
-    dropped packet: its card cited an article the reviewers did not uphold.
-    Measured read-only that day, 10 published links took a dropped packet:
-    9 of the 1,074 high announcement links (7 from wave-2 packets, 2 from
-    wave-1) and 1 subaward+lexicon link built from a wave-3 subaward packet
-    for a pair only wave 4 upheld — on the next load it becomes the
-    announcement link wave 4 upheld.
+    `surviving` list holds the pair. Until 2026-09-25 the loader kept the
+    first packet of ANY wave, and a pair wave 1 or 2 triaged and dropped but
+    wave 4 upheld on another announcement published with the dropped packet:
+    its card cited an article the reviewers did not uphold. Measured
+    read-only that day, 10 published links took a dropped packet: 9 of the
+    1,074 high announcement links (7 from wave-2 packets, 2 from wave-1) and
+    1 subaward+lexicon link built from a wave-3 subaward packet for a pair
+    only wave 4 upheld — on the next load it becomes the announcement link
+    wave 4 upheld.
+
+    WHICH SURVIVING PACKET (R-DEC-PACKET, fix-round-2 ruling 2026-09-26).
+    When the pair survived in several waves, the card cites the
+    best-evidenced article: a packet whose article a wave-4 verdict pair
+    upheld (reviewer 'link', both lenses refuted=false) > a later wave's
+    survivor packet > an earlier one — and never an article a recorded
+    review rejected or refuted in the packet's own wave or a later one
+    (_review_marks: a wave-4 'weak'/'wrong' or refuting lens, a wave 1-2
+    refutations_sample entry). The 2026-09-25 fix took the EARLIEST
+    surviving wave, so N0002416C4202/2122 cited wave 2's 655726, which a
+    wave-4 reviewer later judged 'weak', while wave 4 upheld the pair on
+    1197079. A contrary record from an EARLIER wave than the packet's does
+    not rule it out (the later survival is the later review); none exists on
+    2026-09-26.
+    When no surviving packet is clean, the choice is the pre-ruling one —
+    the earliest surviving wave's packet, never a borrowed or invented one —
+    and the grading demotes the link (the contrary record names the article
+    its card cites, so it binds: announcement_reviewer_rejected /
+    announcement_review_refuted). Within one wave the first packet in chunk
+    order is the wave's packet (one per surviving pair on 2026-09-26).
+
+    `stats`, when given, is filled with how each pair's packet was chosen
+    (the dry run prints it): pairs, multi_wave, verdict_upheld,
+    later_survivor (clean, no verdict-pair uphold), single (one clean
+    candidate), no_clean_article (+ _pairs), changed_from_earliest.
 
     A survivor with no packet in its own wave gets none (the rationale then
     says so and no source row is written, as for any packet-less link) rather
     than a dropped packet from another wave. Each result file is paired with
     the wave<N>_chunks directory of the same N; a result file with no such
-    directory is refused.
+    directory is refused, and so is an announcements dir with no
+    wave4_verdicts/.
     """
     waves = []
     for path in result_paths:
@@ -401,16 +484,58 @@ def provenance_packets(ann_dir: Path, result_paths) -> dict[tuple[str, str], dic
             raise SystemExit(
                 f"{path.name}: no {chunks.name}/ in {ann_dir} — its surviving"
                 " pairs would publish with no packet")
-        survivors = {(s["piid"], s["pe_bli"])
-                     for s in json.loads(path.read_text())["surviving"]}
-        waves.append((int(m.group(2)), chunks, survivors))
-    prov: dict[tuple[str, str], dict] = {}
-    for _, chunks, survivors in sorted(waves, key=lambda w: w[0]):
+        body = json.loads(path.read_text())
+        survivors = {(s["piid"], s["pe_bli"]) for s in body["surviving"]}
+        packets: dict[tuple[str, str], list[dict]] = {}
         for f in sorted(chunks.glob("chunk_*.json")):
             for p in json.loads(f.read_text()):
-                key = (p["piid"], p["pe_bli"])
-                if key in survivors:
-                    prov.setdefault(key, p)
+                packets.setdefault((p["piid"], p["pe_bli"]), []).append(p)
+        waves.append((int(m.group(2)), body, survivors, packets))
+    waves.sort(key=lambda w: w[0])
+    upheld, contrary = _review_marks(
+        ann_dir, [(n, body, packets) for n, body, _, packets in waves])
+
+    # (pair) -> [(wave, the wave's packet)], earliest wave first
+    candidates: dict[tuple[str, str], list[tuple[int, dict]]] = {}
+    for n, _, survivors, packets in waves:
+        for pair in survivors:
+            if packets.get(pair):
+                candidates.setdefault(pair, []).append((n, packets[pair][0]))
+
+    counts = {"pairs": 0, "multi_wave": 0, "verdict_upheld": 0,
+              "later_survivor": 0, "single": 0, "no_clean_article": 0,
+              "no_clean_article_pairs": [], "changed_from_earliest": 0}
+    prov: dict[tuple[str, str], dict] = {}
+    for pair in sorted(candidates):
+        cands = candidates[pair]
+        marks = contrary.get(pair, {})
+
+        def _clean(wave: int, packet: dict) -> bool:
+            art = _packet_value(packet, "article_id")
+            return not any(w >= wave for w in marks.get(art, ()))
+
+        def _upheld(packet: dict) -> bool:
+            return _packet_value(packet, "article_id") in upheld.get(pair, set())
+
+        clean = [(n, p) for n, p in cands if _clean(n, p)]
+        counts["pairs"] += 1
+        counts["multi_wave"] += len(cands) > 1
+        if clean:
+            n, p = max(clean, key=lambda c: (_upheld(c[1]), c[0]))
+            if _upheld(p):
+                counts["verdict_upheld"] += 1
+            elif len(clean) > 1:
+                counts["later_survivor"] += 1
+            else:
+                counts["single"] += 1
+        else:
+            n, p = cands[0]
+            counts["no_clean_article"] += 1
+            counts["no_clean_article_pairs"].append(pair)
+        counts["changed_from_earliest"] += p is not cands[0][1]
+        prov[pair] = p
+    if stats is not None:
+        stats.update(counts)
     return prov
 
 
@@ -534,9 +659,23 @@ def main() -> int:
     catchall = {pe for pe, t in titles if CATCHALL_TITLE.search(t or "")}
     display -= catchall
 
-    # article provenance per (piid, pe): the packet of the wave the pair
-    # SURVIVED in (provenance_packets), never a triaged-and-dropped one
-    prov = provenance_packets(ROOT / "data/research/announcements", paths)
+    # article provenance per (piid, pe): the best-evidenced packet of a wave
+    # the pair SURVIVED in (provenance_packets, R-DEC-PACKET), never a
+    # triaged-and-dropped one
+    choice: dict = {}
+    prov = provenance_packets(ROOT / "data/research/announcements", paths,
+                              stats=choice)
+    print(f"packet choice (R-DEC-PACKET): {choice['pairs']} surviving pair(s) with"
+          f" a packet, {choice['multi_wave']} surviving in more than one wave;"
+          f" cited: wave-4 verdict pair upheld {choice['verdict_upheld']},"
+          f" later clean survivor {choice['later_survivor']}, only clean"
+          f" survivor {choice['single']}, no clean article (earliest surviving"
+          f" packet kept; a review rejected or refuted that article, so the"
+          f" grading demotes the link if it publishes)"
+          f" {choice['no_clean_article']}"
+          f" {choice['no_clean_article_pairs'][:10]};"
+          f" {choice['changed_from_earliest']} differ from the earliest"
+          f" surviving wave's packet")
 
     pairs = []
     skipped = {"not_display_or_catchall": 0, "collision": 0, "synthetic": 0,

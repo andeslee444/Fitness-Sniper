@@ -130,7 +130,16 @@
  *     fails an unquoted "competitive" in a sentence about concentration, and
  *     requires /methodology/'s #feed-concentration_shift passage to state
  *     the vintage, all three band words, whose word "unconcentrated" is,
- *     and each threshold. Exported (hhiBandClaims, runBandProseLeg …) for
+ *     and each threshold. Fix round 3 (2026-09-26) binds an edition's NAME
+ *     to its NUMBERS, per sentence: the re-checker of b7eaf44b passed "Bands
+ *     follow the 2010 DOJ/FTC Horizontal Merger Guidelines: … 1,000–1,800 is
+ *     moderately concentrated, and above 1,800 is highly concentrated" (a
+ *     year was present; each threshold matched hhiBand). Now a sentence that
+ *     names the 2010 edition must state that edition's bands (1,500 and
+ *     2,500) and not say the site follows it today; a sentence that states
+ *     the current thresholds (1,000 / 1,800) must name 2023 or the DOJ
+ *     Antitrust Division's HHI page — another edition's year (2010, 1992)
+ *     does not count. Exported (hhiBandClaims, runBandProseLeg …) for
  *     __tests__/feed-hhi-band-prose.test.mjs.
  */
 
@@ -754,7 +763,10 @@ function runHhiDestinationLeg(errors, notes, root) {
  * (590 segments) were their known stale band sentences, and /programs/
  * (9,715 segments), /coverage/ (82) and /data/ (101) yielded none; on
  * e6bc28bb's rendered pages, 13 on /methodology/ (all stale) and none on
- * /glossary/ or /feed/.
+ * /glossary/ or /feed/. Fix round 3's edition binding (edition-bands, and
+ * "vintage" on stated thresholds), re-measured 2026-09-26 against the
+ * b7eaf44b rule on every page of that integration build (8,403 pages,
+ * 583,693 segments): no finding added or dropped anywhere.
  */
 const BAND_PROSE_PAGES = ["/methodology/", "/glossary/", "/feed/"];
 
@@ -786,6 +798,54 @@ const GUIDELINES_YEARS = [
 const VINTAGE_YEAR_RE = new RegExp(`\\b(?:${GUIDELINES_YEARS.join("|")})\\b`);
 
 /**
+ * An edition NAMED by its year — "2010 Horizontal Merger Guidelines",
+ * "2023 Merger Guidelines", "the 2010 guidelines", "the 2023 bands",
+ * "2010 DOJ/FTC thresholds", "Horizontal Merger Guidelines (2010)",
+ * "Merger Guidelines § 2.1 (2023)", "… Guidelines of 2010", "the 2010
+ * edition of the Merger Guidelines" — never a bare year: "FY2010",
+ * "2026-09-25" or "in 2023" name no guidelines (fix round 3, 2026-09-26).
+ */
+const editionNamedRe = (year) =>
+  new RegExp(
+    String.raw`\b${year}\s+(?:(?:DOJ\s*\/\s*FTC|DOJ-FTC|agencies['’]?|agency)\s+)?(?:(?:Horizontal\s+)?(?:Merger\s+)?Guidelines|bands?|thresholds?)\b` +
+      String.raw`|\b${year}\s+(?:edition|version|revision)\s+of\s+the\s+(?:(?:DOJ\s*\/\s*FTC|agencies['’]?)\s+)?(?:Horizontal\s+)?(?:Merger\s+)?Guidelines\b` +
+      String.raw`|\bGuidelines\b(?:\s*§\s*[\d.]+)?\s*(?:\(\s*|,\s*|\s+of\s+|\s+)${year}\b`,
+    "i",
+  );
+/** The current edition's year, from HHI_BANDS_VINTAGE — never a hand copy. */
+const CURRENT_EDITION_YEAR = (HHI_BANDS_VINTAGE.match(/\d{4}/) ?? [HHI_BANDS_VINTAGE])[0];
+const CURRENT_EDITION_RE = editionNamedRe(CURRENT_EDITION_YEAR);
+/** The page the ruling cites for the current bands (#132): the DOJ Antitrust
+ *  Division's HHI page (hhi-band.mjs HHI_BANDS_SOURCE_URL). Naming it is
+ *  naming the source of 1,000 / 1,800; "DOJ/FTC bands" alone is not. */
+const DOJ_PAGE_RE =
+  /\bAntitrust Division\b|justice\.gov\/atr\b|\b(?:DOJ|Justice Department|Department of Justice)(?:['’]s)?\s+(?:HHI|Herfindahl[-‐–\s]Hirschman(?:\s+Index)?)\s+page\b/i;
+/** "unconcentrated" below 1,000 is this site's word (R-DEC-132b); a sentence
+ *  saying so attributes it, and needs no edition for that threshold. */
+const SITE_ATTRIBUTION_RE = /\bthis site(?:'s|’s|\s+(?:says|calls|labels|uses))/i;
+/** A sentence about the bands — the context in which a bare pair of the
+ *  current thresholds ("the bands sit at 1,000 and 1,800") is their statement. */
+const BAND_CONTEXT_RE = /concentrat|\bbands?\b|\bthresholds?\b|\bHHI\b|\bHerfindahl|\bMerger Guidelines\b/i;
+/**
+ * Retired editions a sentence may still name, each bound to the bands it
+ * HAD. 2010 Horizontal Merger Guidelines § 5.3: unconcentrated below 1,500,
+ * moderately concentrated 1,500–2,500, highly concentrated above 2,500 —
+ * what hhi-band.mjs carried until #132. "Horizontal Merger Guidelines" with
+ * "2010" anywhere in the sentence names it too (retired-title's premise).
+ */
+const RETIRED_EDITIONS = [
+  { year: "2010", title: "2010 Horizontal Merger Guidelines", bands: [1500, 2500], titleRe: /\bHorizontal Merger Guidelines\b/i },
+];
+/** "Bands follow / the site uses / applies the 2010 …" in the PRESENT tense —
+ *  false since #132 whatever numbers follow. History ("followed", "used",
+ *  "until 2026-09-25") and a negation ("no longer follows") are not it. */
+const followsEditionNowRe = (year) =>
+  new RegExp(
+    String.raw`(?<!\bno longer\s)(?<!\bnot\s)(?<!n['’]t\s)\b(?:follows?|uses?|applies|apply|adopts?)\s+(?:the\s+)?(?:(?:DOJ\s*\/\s*FTC|agencies['’]?)\s+)?(?:${year}\b|Horizontal Merger Guidelines\b)`,
+    "i",
+  );
+
+/**
  * Every claim about the HHI bands that one block of prose makes, each held
  * to hhi-band.mjs — the SAME hhiBand() the badge, the feed card and the
  * glossary band with — never to a hand copy of 1,000 / 1,800. A threshold is
@@ -795,9 +855,22 @@ const VINTAGE_YEAR_RE = new RegExp(`\\b(?:${GUIDELINES_YEARS.join("|")})\\b`);
  *   vintage        a sentence naming the agencies' bands (DOJ/FTC, Merger
  *                  Guidelines) with band context carries a year (#132:
  *                  "labelled with the year on every surface that names the
- *                  bands")
+ *                  bands"); and a sentence that STATES the current
+ *                  thresholds — a threshold claim below at 1,000 / 1,800 /
+ *                  1,801, an unattributed "below 1,000 … unconcentrated", or
+ *                  both figures in a sentence about the bands — names their
+ *                  edition (CURRENT_EDITION_YEAR, 2023) or the DOJ Antitrust
+ *                  Division's HHI page; another edition's year is not theirs
+ *                  (fix round 3). "Below 1,000" attributed to this site
+ *                  (R-DEC-132b) needs no edition.
  *   retired-title  "Horizontal Merger Guidelines" is the 2010 title; it
  *                  stands only beside "2010"
+ *   edition-bands  a sentence naming the 2010 edition ("2010 (Horizontal)
+ *                  Merger Guidelines", "the 2010 guidelines/bands",
+ *                  "Horizontal Merger Guidelines (2010)") states that
+ *                  edition's bands, 1,500 and 2,500 (RETIRED_EDITIONS), and
+ *                  does not say in the present tense that the bands follow
+ *                  it (fix round 3)
  *   competitive    an unquoted "competitive" in a sentence about
  *                  concentration (R-DEC-132b retired it; history may quote it)
  *   or-above       "N or above is highly concentrated": N must be the first
@@ -839,21 +912,46 @@ export function hhiBandClaims(text) {
     // MARKS removed: 'above 2,500 is "highly concentrated"' is still a claim.
     const quoted = s.replace(/"[^"]{0,120}"/g, " ");
     const plain = s.replace(/"/g, "");
-
-    if (/\bDOJ\s*\/\s*FTC\b|\bMerger Guidelines\b/i.test(s) && /\bbands?\b|\bthresholds?\b|\bconvention\b|concentrat/i.test(s)) {
-      add(
-        "vintage",
-        VINTAGE_YEAR_RE.test(s),
-        `names the agencies' bands without a vintage: "${clip(s)}" — every surface that names the bands names the year ("${V}", #132)`,
-        s,
-      );
-    }
+    // Where this sentence's claims start: its "vintage" claim is inserted
+    // here once the thresholds it states are known (fix round 3).
+    const sentenceStart = claims.length;
+    // Every whole-point figure the sentence prints, and the current
+    // thresholds (1,000 / 1,800 / the first highly concentrated point) it
+    // STATES as band thresholds — by a threshold claim below, or as a bare
+    // pair in a sentence about the bands.
+    const nums = [...plain.matchAll(new RegExp(NUM, "g"))].map((m) => toNum(m[1]));
+    const currentStated = new Set();
+    const stateIfCurrent = (...ns) => {
+      for (const n of ns) if (isModerateFloor(n) || isModerateCeiling(n) || isHighFloor(n)) currentStated.add(n);
+    };
+    if (BAND_CONTEXT_RE.test(s) && nums.includes(MOD) && nums.includes(HIGH)) stateIfCurrent(MOD, HIGH);
 
     if (/\bHorizontal Merger Guidelines\b/i.test(s)) {
       add(
         "retired-title",
         /\b2010\b/.test(s),
         `names the "Horizontal Merger Guidelines" — the 2010 title the agencies replaced — without "2010": "${clip(s)}"; the site's bands are the ${V}' (#132)`,
+        s,
+      );
+    }
+
+    // A sentence that names a retired edition states THAT edition's bands,
+    // and never says the site follows it today (fix round 3: the re-checker's
+    // "Bands follow the 2010 DOJ/FTC Horizontal Merger Guidelines: … 1,000–1,800
+    // is moderately concentrated …" carried a year, so "vintage" passed it).
+    for (const ed of RETIRED_EDITIONS) {
+      const named =
+        editionNamedRe(ed.year).test(s) || (ed.titleRe.test(s) && new RegExp(String.raw`\b${ed.year}\b`).test(s));
+      if (!named) continue;
+      const statesOwn = ed.bands.every((b) => nums.includes(b));
+      const followsNow = followsEditionNowRe(ed.year).test(plain);
+      const own = ed.bands.map(fmtPoints).join(" and ");
+      add(
+        "edition-bands",
+        statesOwn && !followsNow,
+        !statesOwn
+          ? `names the ${ed.title} without stating that edition's bands, ${own}: "${clip(s)}" — a sentence naming a retired edition states its own numbers; the site's bands are the ${V}' (#132)`
+          : `says in the present tense that the bands follow the ${ed.title}: "${clip(s)}" — since #132 they are the ${V}' (${fmtPoints(MOD)} / ${fmtPoints(HIGH)}); state ${ed.year} as history`,
         s,
       );
     }
@@ -871,6 +969,7 @@ export function hhiBandClaims(text) {
       new RegExp(`${NUM}\\s+(?:points\\s+)?or\\s+(?:above|more|higher|over|greater)\\b[^.;:()]{0,20}?\\bhighly concentrated`, "gi"),
     )) {
       const n = toNum(m[1]);
+      stateIfCurrent(n);
       add(
         "or-above",
         isHighFloor(n),
@@ -882,6 +981,7 @@ export function hhiBandClaims(text) {
     for (const m of plain.matchAll(/\bis\s+(?:the|its)\s+highly concentrated\s+(?:floor|threshold|minimum)\b/gi)) {
       const before = plain.slice(0, m.index).match(/\d{1,3}(?:,\d{3})+|\d+/g);
       const n = before ? toNum(before[before.length - 1]) : null;
+      if (n !== null) stateIfCurrent(n);
       add(
         "floor",
         n !== null && isHighFloor(n),
@@ -899,6 +999,7 @@ export function hhiBandClaims(text) {
     for (const re of highLine) {
       for (const m of plain.matchAll(re)) {
         const n = toNum(m[1]);
+        stateIfCurrent(n);
         add(
           "high-line",
           isHighLine(n),
@@ -916,6 +1017,7 @@ export function hhiBandClaims(text) {
       for (const m of plain.matchAll(re)) {
         const a = toNum(m[1]);
         const b = toNum(m[2]);
+        stateIfCurrent(a, b);
         add(
           "moderate-range",
           isModerateFloor(a) && isModerateCeiling(b),
@@ -932,6 +1034,10 @@ export function hhiBandClaims(text) {
     for (const re of below) {
       for (const m of plain.matchAll(re)) {
         const n = toNum(m[1]);
+        // "below 1,000 … unconcentrated" is this site's word (R-DEC-132b):
+        // attributed to the site, it needs no edition; unattributed, it
+        // states the 2023 moderate floor and must name that edition.
+        if (!SITE_ATTRIBUTION_RE.test(s)) stateIfCurrent(n);
         add(
           "below",
           isModerateFloor(n),
@@ -957,6 +1063,43 @@ export function hhiBandClaims(text) {
         `says ${word} equal-share firms produce ${fmtPoints(n)}; ${word} equal shares give 10,000 / ${k} = ${fmtPoints(want)}`,
         s,
       );
+    }
+
+    // "vintage", first among the sentence's claims. A sentence naming the
+    // agencies' bands carries a guidelines year (#132); and a sentence that
+    // STATES the current thresholds (1,000 / 1,800) names their edition —
+    // CURRENT_EDITION_YEAR — or the DOJ page that states them, never another
+    // edition's year (fix round 3: "the 1992 Merger Guidelines: 1,000–1,800 …"
+    // and the re-checker's 2010 sentence both carried a year).
+    const namesAgencies =
+      /\bDOJ\s*\/\s*FTC\b|\bMerger Guidelines\b/i.test(s) && /\bbands?\b|\bthresholds?\b|\bconvention\b|concentrat/i.test(s);
+    if (namesAgencies || currentStated.size > 0) {
+      const at = sentenceStart;
+      const before = claims.length;
+      if (namesAgencies && !VINTAGE_YEAR_RE.test(s)) {
+        add(
+          "vintage",
+          false,
+          `names the agencies' bands without a vintage: "${clip(s)}" — every surface that names the bands names the year ("${V}", #132)`,
+          s,
+        );
+      } else if (currentStated.size > 0 && !(CURRENT_EDITION_RE.test(s) || DOJ_PAGE_RE.test(s))) {
+        const others = GUIDELINES_YEARS.filter(
+          (y) => y !== CURRENT_EDITION_YEAR && new RegExp(String.raw`\b${y}\b`).test(s),
+        );
+        add(
+          "vintage",
+          false,
+          `states the ${V} thresholds (${fmtPoints(MOD)} / ${fmtPoints(HIGH)}) without naming ${CURRENT_EDITION_YEAR} or the DOJ ` +
+            `Antitrust Division's HHI page: "${clip(s)}" — the site takes these bands from the ${V} (#132)` +
+            (others.length ? `; naming the ${others.join(" / ")} edition instead attributes them there` : ""),
+          s,
+        );
+      } else {
+        add("vintage", true, null, s);
+      }
+      // Move it to the front of this sentence's claims.
+      claims.splice(at, 0, ...claims.splice(before, 1));
     }
   }
   return claims;

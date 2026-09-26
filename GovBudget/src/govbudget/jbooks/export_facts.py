@@ -73,7 +73,11 @@ EXPORTS: dict[str, str] = {
         # ROADMAP #110, decided 2026-09-25; R-DEC-110 2026-09-26): one row per
         # (crosswalk link of a reviewed pair, review record) — wave-4 verdict
         # pairs (reviewer rejections included, adversarial 'not_run'), wave
-        # 1-3 survivor-list entries and wave 1-2 refutation-sample entries —
+        # 1-3 survivor-list entries, wave 1-2 refutation-sample entries and
+        # (R-DEC-110b) the held-out precision study's refuted attribution
+        # verdicts as 'precision_sample' rows (no article; source_file the
+        # sample id, entry_index the link_precision_samples id, reason headed
+        # by the tier the link was drawn from) —
         # written by scripts/backfill_announcement_link_reviews.py. The mart
         # (source jbook_announcement_link_reviews) grades a high announcement
         # link on them. Every column but the table's own recorded_at (a run
@@ -130,7 +134,12 @@ def check_reviews_follow_loader(pg) -> None:
     link as unreviewed. The loader's last run is the newest created_at among
     the rows it owns (it deletes and re-inserts them all); the backfill's is
     its rows' recorded_at (one transaction). With no loader rows there is
-    nothing to grade and nothing to check."""
+    nothing to grade and nothing to check.
+
+    The same holds for the held-out precision study (R-DEC-110b): the
+    backfill copies its refuted attribution verdicts in as precision_sample
+    rows, so a refutation adjudicated after the backfill's run is refused
+    too."""
     last_load = pg.execute(
         "select max(created_at) from budget_line_awards where method = any(%s)",
         (list(LOADER_METHODS),),
@@ -151,6 +160,22 @@ def check_reviews_follow_loader(pg) -> None:
             f"announcement_link_reviews was recorded"
             f" {first_recorded:%Y-%m-%d %H:%M:%S%z}, before the link loader's"
             f" last run ({last_load:%Y-%m-%d %H:%M:%S%z}): re-run"
+            f" scripts/backfill_announcement_link_reviews.py — nothing exported"
+            f" (chain order: {CHAIN_ORDER})")
+    # R-DEC-110b: the held-out precision study's refuted attribution verdicts
+    # are review records too (precision_sample rows). One judged after the
+    # backfill ran is a refutation the table does not carry, and the mart
+    # would keep that known-refuted link at high.
+    last_refutation = pg.execute(
+        "select max(adjudicated_at) from link_precision_samples"
+        " where verdict = 'refuted' and rubric = 'attribution'"
+    ).fetchone()[0]
+    if last_refutation is not None and first_recorded < last_refutation:
+        raise ChainOrderError(
+            f"announcement_link_reviews was recorded"
+            f" {first_recorded:%Y-%m-%d %H:%M:%S%z}, before the precision"
+            f" study's last refuted attribution verdict"
+            f" ({last_refutation:%Y-%m-%d %H:%M:%S%z}): re-run"
             f" scripts/backfill_announcement_link_reviews.py — nothing exported"
             f" (chain order: {CHAIN_ORDER})")
 

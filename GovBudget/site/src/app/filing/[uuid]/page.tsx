@@ -226,13 +226,16 @@ export default async function FilingPage({ params }: Props) {
               className="mt-2 text-xs leading-5 text-muted-foreground"
             >
               Filed as:{" "}
-              <span className="font-mono text-foreground">
+              {/* The registry strings are the filing's own data (gate 27
+                  reads [data-copy-slot="data"] as read-only, like the
+                  registrant name above); the "—" fallback is not data. */}
+              <span className="font-mono text-foreground" data-copy-slot={clientName ? "data" : undefined}>
                 {clientName ? clientName.registry : "—"}
               </span>
               {filedAsPlural ? (
                 <>
                   {" — "}
-                  <span className="font-mono text-foreground">
+                  <span className="font-mono text-foreground" data-copy-slot="data">
                     {registrantName!.registry}
                   </span>
                 </>
@@ -502,9 +505,9 @@ export default async function FilingPage({ params }: Props) {
         </section>
 
         <p className="text-xs text-muted-foreground border-t border-border pt-4">
-          Source: U.S. Senate Lobbying Disclosure Act database. Dollar figures
-          (underlined) cite the filing record on lda.senate.gov — click to view
-          the citation. Amounts shown as “not reported” are absent from the
+          Source: U.S. Senate Lobbying Disclosure Act database. Underlined
+          dollar figures cite the filing record on lda.senate.gov and open to
+          that citation. Amounts shown as “not reported” are absent from the
           filing itself.
         </p>
       </div>

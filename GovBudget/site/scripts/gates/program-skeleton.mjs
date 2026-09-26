@@ -177,13 +177,21 @@ function spreadSample(slugs, n) {
 // sentence excluded. Reword the caveat and this leg fails, which is the
 // contract — MIRROR of src/__tests__/program-awards-caveat.test.tsx, which
 // asserts the same strings against the component.
+//
+// Decisions wave (#107(b) / #110, rulings 2026-09-25/26): an announcement
+// link a recorded review rejected or refuted now publishes at medium, and its
+// announcement still names the program — so "high rows rest on evidence that
+// names this program" no longer separated the tiers. The high claim is now
+// the naming plus the recorded review that upholds it, and the caveat names
+// the demoted-announcement species too.
 const MEDIUM_CAVEAT_PHRASES = [
   "rest on evidence weaker than a program-level match",
   "same appropriation account as this program",
   "not evidence that this program paid for the contract",
   "FPDS acquisition-program tag or a subaward description",
   "which of its budget lines paid is not",
-  "high rows rest on evidence that names this program",
+  "high rows rest on the contract naming this program",
+  "a recorded review did not leave standing",
 ];
 
 /** Non-vacuity floor for leg m (added 2026-09-04 with the C3 fix).

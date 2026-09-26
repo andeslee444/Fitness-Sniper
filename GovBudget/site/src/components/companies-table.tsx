@@ -390,8 +390,8 @@ export function CompaniesTable({
       <p className="mb-2 text-xs text-muted-foreground">
         Lines that fold several registry names together show the curated family
         name; every other line shows the recipient name the award data records,
-        set in ordinary capitalization for reading. Hover a name — or open its
-        page — for the registry string exactly as USAspending stores it.
+        set in ordinary capitalization for reading. Hover a name, or open its
+        page, for the registry string exactly as USAspending stores it.
       </p>
 
       {/* What the money column counts — stated in frame with the figures, not

@@ -158,8 +158,10 @@ function MentionRow({
         </span>
       </div>
 
-      {/* Snippet — PE tokens with pages become internal links (§2a) */}
-      <p className="text-sm text-muted-foreground leading-relaxed">
+      {/* Snippet — PE tokens with pages become internal links (§2a). The
+          text is the filing's own description (gate 27 reads
+          [data-copy-slot="data"] as read-only, like /filing/'s activity text). */}
+      <p className="text-sm text-muted-foreground leading-relaxed" data-copy-slot="data">
         {/* The ellipsis used to be appended blind, so a snippet the exporter
             had already cut mid-word rendered as "…Defe…". tidySnippet cuts
             back to the last whole word first. */}
@@ -250,7 +252,7 @@ export function ProgramMentions({
         id="mentions-heading"
         className="mb-1 text-foreground"
       >
-        Lobbying Mentions
+        Lobbying mentions
       </h2>
       <p className="text-xs text-muted-foreground mb-3">
         {hasMore && !expanded

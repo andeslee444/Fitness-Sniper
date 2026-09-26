@@ -42,7 +42,7 @@ export function ProgramBudgetLines({ budgetLines, reconKeys }: ProgramBudgetLine
         id="budget-lines-heading"
         className="mb-4 text-foreground"
       >
-        Budget Line Items
+        Budget line items
         <span className="ml-2 text-sm font-normal text-muted-foreground">
           (workbook-cited)
         </span>

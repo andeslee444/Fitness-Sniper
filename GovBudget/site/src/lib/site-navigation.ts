@@ -1,20 +1,20 @@
 /** One route vocabulary for the desktop menu, mobile menu, and active state. */
 export const SITE_NAVIGATION = [
-  { label: "Explore", links: [
-    { href: "/explore/", label: "Visual field guide", detail: "See what programs build" },
+  { label: "Budget", links: [
+    { href: "/explore/", label: "Field guide", detail: "See what programs build" },
     { href: "/programs/", label: "Programs", detail: "Browse the budget, line by line" },
     { href: "/years/", label: "Budget over time", detail: "Compare program funding by year" },
   ] },
   { label: "Investigate", links: [
     { href: "/companies/", label: "Companies", detail: "Find contractors and their awards" },
     { href: "/feed/", label: "Signals", detail: "Follow changes worth a closer look" },
-    { href: "/flow/", label: "Follow the money", detail: "Explore budget and contract flows" },
+    { href: "/flow/", label: "Follow the dollar", detail: "Budget and contract flows" },
     { href: "/lineage/", label: "Program lineage", detail: "Trace identities across budget years" },
     { href: "/filings/", label: "Lobbying filings", detail: "Read the reported activity" },
     { href: "/companies/families/", label: "Corporate families", detail: "Understand parent and subsidiary links" },
   ] },
   { label: "Places & agencies", links: [
-    { href: "/district/", label: "Districts", detail: "Explore where the work happens" },
+    { href: "/district/", label: "Districts", detail: "Where the work happens" },
     { href: "/agency/", label: "Agencies", detail: "Browse the organizations behind programs" },
   ] },
   { label: "Data & methods", links: [
@@ -42,7 +42,7 @@ export const SITE_NAVIGATION = [
  * panel and the "More" menu still carry it.
  */
 export const PRIMARY_NAVIGATION = [
-  { href: "/explore/", label: "Explore" },
+  { href: "/explore/", label: "Field guide" },
   { href: "/programs/", label: "Programs" },
   { href: "/companies/", label: "Companies" },
   { href: "/district/", label: "Districts" },

@@ -37,6 +37,14 @@ rather than imported, for the reason districtyear-recompute.py gives: the
 helper must not depend on the govbudget package; tests/
 test_label_margin_exclusions.py holds the two parses to the same pairs.
 
+The award lake is read through the fiscal-year move rule entity_graph reads
+it through (ROADMAP #133, ruling R-DEC-133b): the retired copy of a moved
+transaction is in no registration's dollars, as it is in none of the build's,
+and any other duplicate key stops this helper (non-zero exit — the leg
+fails). That rule is not re-typed here: src/govbudget/award_moves.py is
+self-contained and loaded BY PATH, which keeps this helper independent of the
+package being importable.
+
 Output:
 {
   "families": [
@@ -58,6 +66,7 @@ names make that failure say which family and why.
 """
 
 import csv
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -85,6 +94,19 @@ EXCLUSION_COLUMNS = (
 
 #: The published set — the same ordering and limit export_site.py uses.
 PUBLISHED_LIMIT = 200
+
+
+def _load_award_moves():
+    """src/govbudget/award_moves.py, by path (see the module docstring)."""
+    path = REPO / "src" / "govbudget" / "award_moves.py"
+    spec = importlib.util.spec_from_file_location("_govbudget_award_moves", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+award_moves = _load_award_moves()
 
 
 class SeedError(ValueError):
@@ -134,28 +156,37 @@ def main() -> int:
         return 1
 
     con = duckdb.connect(str(DUCKDB), read_only=True)
-    print(json.dumps(recompute(con, globs, exclusions), sort_keys=True))
+    print(json.dumps(
+        recompute(con, globs, exclusions, require_transaction_keys=True),
+        sort_keys=True,
+    ))
     return 0
 
 
-def recompute(con, globs, exclusions) -> dict:
+def recompute(con, globs, exclusions, *, require_transaction_keys=False) -> dict:
     """The margins, from `con` (dim_entities + entity_xwalk) and the award
     lake at `globs`, with every excluded (recipient, parent UEI) pair out of
-    the ranking — as entity_graph's parent_pairs leaves it out."""
+    the ranking — as entity_graph's parent_pairs leaves it out — and the lake
+    read through the fiscal-year move rule, as entity_graph reads it.
+    main() requires transaction keys (every real-lake row carries one,
+    measured 2026-09-26); a synthetic key-less test lake is read whole."""
     excluded: dict[str, set[str]] = {}
     for recipient_uei, parent_uei in exclusions:
         excluded.setdefault(recipient_uei, set()).add(parent_uei)
-    lake_literal = "[" + ",".join(f"'{g}'" for g in globs) + "]"
+    award_moves.register_award_rows(
+        con, list(globs), view="_awards",
+        require_transaction_keys=require_transaction_keys,
+    )
     # nullif('') mirrors _PICK_SQL exactly: an empty string is not a
     # registration, and treating it as one would invent a runner-up.
     con.execute(
-        f"""
+        """
         create or replace temp view _tx as
         select recipient_uei,
                nullif(recipient_parent_uei, '')  as parent_uei,
                nullif(recipient_parent_name, '') as parent_name,
                try_cast(federal_action_obligation as double) as obligation
-        from read_parquet({lake_literal}, union_by_name=true)
+        from _awards
         where recipient_uei is not null and recipient_uei <> ''
         """
     )

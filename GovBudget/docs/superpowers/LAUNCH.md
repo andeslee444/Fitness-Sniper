@@ -83,14 +83,42 @@ way, the order they run in decides which evidence a shared key ends up
 carrying. **The canonical order is:**
 
 ```
+govbudget migrate                                  # first: the announcement loader refuses to write while any migration is unapplied
 govbudget jbooks crosswalk --org DARPA --dry-run   # plan first: pairs per edition FY, nothing written
 govbudget jbooks crosswalk --org DARPA             # mechanical account* rows; window = each line's own edition FY. Add --yes once the plan is read — DARPA projects 761,029 pairs, above the 500,000 abort threshold
 uv run python scripts/derive_ap_links.py        # FPDS acquisition-program tags
-uv run python scripts/load_announcement_links.py  # defense.gov + FSRS subawards
-govbudget jbooks export-facts        # Postgres -> parquet
+uv run python scripts/load_announcement_links.py data/research/announcements/wave{1,2,3,4}_result.json  # defense.gov + FSRS subawards — EVERY wave file (#87); --dry-run first
+uv run python scripts/backfill_announcement_link_reviews.py  # the recorded reviews the mart grades announcement links on (#110); --dry-run first
+govbudget jbooks export-facts        # Postgres -> parquet; refuses a review table recorded before the loader's last run
 govbudget build                      # dbt: parquet -> the mart
 govbudget export-site                # mart -> data/site/
 ```
+
+**The decisions wave's additions (2026-09-26; ROADMAP #110, #140, #170, #171;
+rulings R-DEC-LOADER, R-DEC-110, R-DEC-140, R-DEC-171).** `migrate` comes
+first because the announcement loader now refuses to write while any
+migration is unapplied: 019 adds the columns in which it records the route an
+announcement link replaced (#140), and 020 records the 60 moves of 2026-09-19
+from the `created_at` the loader's rebuild erases (020 refuses if that
+evidence is already gone — restore `budget_line_awards` from a backup first).
+The review backfill runs after the loader and before `export-facts`:
+`announcement_link_reviews` (migration 018) holds the reviewer and adversarial
+outcomes of the announcement waves plus the held-out precision study's
+refutations, `export-facts` refuses a review table that is empty beside
+loaded links or older than the loader's last run, and `dbt build` fails
+loudly when the parquet is missing, because the mart publishes an
+announcement link at high only when a review record upholds it. The
+crosswalk now refuses, before any write, an organization whose (pe_bli,
+exhibit, fiscal_year) identities carry two or more accounts or are filed by
+two or more organizations, naming every one (#170; the default all-org run
+exits 2 today — `--org DARPA` is unaffected). The detail-token re-grade of
+#171 is update-only: `govbudget jbooks crosswalk --org DARPA --fiscal-year
+2026 --all-years --regrade-only --dry-run` prints the rows it would re-grade,
+and the same command with `--expect-updates N` in place of `--dry-run` writes
+only when N matches; it never inserts. It needs `--all-years` because every
+stored DARPA row records the `all loaded award years` window it was written
+under (124,500 rows on 2026-09-25); under the default window it plans 0 and
+says which window the rows it left alone record.
 
 **Award window (#78, 2026-09-05).** With no flags, `jbooks crosswalk` matches
 each budget line only against awards whose *federal* fiscal year equals that
@@ -183,9 +211,25 @@ pass every wave file on every run: a subset unpublishes the rest, with every
 gate green (ROADMAP #87). The loader prints `replacing N stored … with M`
 before it commits — read that line.
 
-After ANY of these run, `export-facts` → `build` → `export-site` must run too,
-or the mart and Postgres disagree and `export_site` fails loudly on the
-announcement-source check.
+After ANY of these run, the review backfill (after the announcement loader)
+→ `export-facts` → `build` → `export-site` must run too, or the mart and
+Postgres disagree and `export_site` fails loudly on the announcement-source
+check.
+
+**Expected dbt warnings (2026-09-26).** `warn_lda_amendment_latest_undetermined`
+prints the number of lobbying quarters whose amendments disagree and whose
+filings carry no posting date (7 when measured; the smallest amended figure
+counts for them — ruling R-DEC-AMEND-b); `warn_award_fy_moves_retired`
+prints how many award-transaction copies the #133 staging rule retired (0 on
+a reconciled lake); `warn_subaward_amount_exceeds_50b` (3) predates both. Any
+ERROR fails the build, including the ambiguous-duplicate award test.
+
+**Influence re-stamp order (#142, #176).** After a curated LDA client alias
+changes (`dbt/seeds/client_aliases.csv`), run `govbudget entity-graph` first
+if the lake changed, then `govbudget influence restamp` (it re-stamps
+`match_method` from the seed and reads entity_xwalk's names;
+`influence rematch` does not read the seed), then `govbudget influence
+rematch` (rebuilds program mentions), then `build`.
 
 ---
 
@@ -472,7 +516,16 @@ this section explains *why* it does what it does and does not restate the
 commands.  Read the script (or `--help`) for flags.  It runs, in order:
 
 1. **preflight** — `site/out/` present and complete, `vercel.json` present,
-   rclone and the PDF source directory present;
+   rclone and the PDF source directory present, and the provenance guard
+   (enforced under `--dry-run` too): `site/out/.build-meta.json`'s
+   `git_head` equals this checkout's HEAD, no tracked file under the project
+   is modified (except a `site/public/llms.txt` byte-identical to the one the
+   build wrote), and no untracked file sits under the build inputs
+   (`site/src`, `site/scripts`, `site/public`, `src`, `dbt`, `data-seeds`,
+   `migrations`) — so commit a new seed or migration before building.
+   `deploy.sh` does not run the Python gates: the release procedure requires
+   `verify-phase5: PASS` before it, and a `BLOCKED` run (exit 2) is not a
+   pass, whatever refused it (ROADMAP #139);
 2. **`upload_r2.sh --live`** — sync `pdfs/ data/ workbooks/ citations/` to R2;
 3. **`vercel --prod --yes --archive=tgz` from `site/out/`**;
 4. **`verify_live_assets.mjs`** — fetches recently-added `jbook_pdf` assets
@@ -579,7 +632,13 @@ After deployment, verify the following manually:
 ## Step 9 — Unblock the API-key pair
 
 Two commands require `ANTHROPIC_API_KEY` to run live.  Without it both
-commands report `BLOCKED` (not `FAIL`) and exit with code 2.
+commands report `BLOCKED` (not `FAIL`) and exit with code 2.  A key the
+provider refuses (credit, authentication or permission) also makes
+`verify-phase5` report `BLOCKED` and exit 2, but only while those refusals
+alone decide the verdict: a run that also hit any other error, or whose
+answered questions would miss the 44-question bar even if every refused one
+were correct, is a `FAIL` (exit 1) whose reason names the errors (ROADMAP
+#139, rulings R-DEC-139b and R-DEC-139c).
 
 > **Status 2026-09-25.** The dossier batch has run: the paid batch produced
 > all 50 dossiers on 2026-07-02 (`d1581362`); 40 dossiers were authored by
@@ -590,13 +649,20 @@ commands report `BLOCKED` (not `FAIL`) and exit with code 2.
 > programs on 2026-08-31 (`24a06f8b`, $0.55) — and one dossier (3010-SCN)
 > went back through the Batch API on 2026-09-12 (`cc399d74`, about $0.035).
 > Re-run `dossiers submit` only under the owner's cost cap.
-> `verify-phase5`'s eval leg is currently blocked by the key's credit
-> balance: a direct probe on 2026-09-18 returned HTTP 400 "credit balance is
-> too low", and chain C run 4 (2026-09-25) scored 0/48 — every answer
-> `ERROR`, $0.00 spent — while its freshness and assembly legs passed. The
-> deploy waits on the owner's top-up (ROADMAP #139). The run record says
-> `blocked: false` for such a run, so read an all-ERROR, $0.00 eval as a
-> credit block, not an accuracy regression.
+> `verify-phase5`'s eval leg was blocked by the key's credit balance from
+> 2026-09-18 (a direct probe returned HTTP 400 "credit balance is too low",
+> and chain C run 4 on 2026-09-25 scored 0/48 — every answer `ERROR`, $0.00
+> spent — while its freshness and assembly legs passed) until the owner
+> topped it up on 2026-09-25; the eval leg then passed (45/48 at 0587f90f).
+> Since the decisions wave (ROADMAP #139, code half), such a run records
+> `blocked: true` with `block_cause: "provider"` and each refused question's
+> error text, prints `verify-phase5: BLOCKED — the eval provider refused the
+> run…` and exits 2 — also when credit runs out mid-run after some answers,
+> as long as the refusals decide the verdict. Records written before
+> 2026-09-25 kept no error text: an all-`ERROR`, $0.00 one reads as BLOCKED,
+> and eval-20260918T210926Z (a partial run with no text) stays a FAIL
+> (ruling R-DEC-139d). Either way the exit is non-zero, so the release
+> procedure's `verify-phase5: PASS` requirement refuses the deploy.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
