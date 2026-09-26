@@ -23,18 +23,22 @@
  *
  * WHY THE LAST SENTENCE NAMES THE TIE-BREAK. It used to say this was the
  * registration of "the one its registered name is read from". The mart takes
- * the two from different rules — `display_name` from rn = 1 (row_number, ties
- * broken arbitrarily), the registration from
- * `max(coalesce(parent_uei, recipient_uei)) filter (rk = 1)` — so on an exact
- * obligation tie they can be two different members, and the identity would be
- * a sentence the reader cannot check and the data does not support. And it is
- * that REGISTRATION UEI the max() runs over, not the tied member's own
- * recipient UEI: two tied members with different parents can order the two
- * ways round, so the sentence names the UEI it actually sorts on. 46
- * families in the lake tie at the top, none in today's published 200; the
- * smaller true claim is the one that survives the day one does. The tie-break
- * itself is pinned by
- * tests/test_sam_entities.py::test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does.
+ * the two from different rules — `display_name` from rn = 1 (row_number in a
+ * total order since R-DEC-ENTITYTIE: obligation desc, then the registration
+ * UEI coalesce(parent_uei, recipient_uei) ASCENDING, then recipient_uei), the
+ * registration from `max(coalesce(parent_uei, recipient_uei)) filter (rk = 1)`
+ * — so on an exact obligation tie across registrations they are, by rule, two
+ * different members: the name is read from the LOWEST tied registration UEI
+ * and the SAM record from the HIGHEST. The identity would be a sentence the
+ * data contradicts. And it is that REGISTRATION UEI the max() runs over, not
+ * the tied member's own recipient UEI: two tied members with different
+ * parents can order the two ways round, so the sentence names the UEI it
+ * actually sorts on. 47 families in the lake tie at the top (22 of them
+ * across registrations; measured 2026-09-26), none in today's published 200;
+ * the smaller true claim is the one that survives the day one does. The
+ * tie-breaks are pinned by
+ * tests/test_sam_entities.py::test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does
+ * (the registration) and tests/test_dbt_entity_display_tiebreak.py (the name).
  */
 
 import React from "react";

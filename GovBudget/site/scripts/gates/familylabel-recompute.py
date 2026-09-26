@@ -197,14 +197,21 @@ def recompute(con, globs, exclusions, *, require_transaction_keys=False) -> dict
     ).fetchall()
 
     # The family's dominant member — the rn=1 row dim_entities takes its
-    # display_name from.
+    # display_name from, in dim_entities.sql's own TOTAL order (R-DEC-
+    # ENTITYTIE-b, 2026-09-26): obligation desc, then the registration UEI
+    # ascending, then recipient_uei. Stopping at the obligation measured
+    # whichever tied member the sort emitted first, not always the one whose
+    # name the model published. tests/test_entity_rn_order_agreement.py.
     dominant = {
         r[0]: (r[1], r[2])
         for r in con.execute(
             """
             select family_key, recipient_uei, recipient_name from (
               select *, row_number() over (
-                  partition by family_key order by total_obligation desc nulls last
+                  partition by family_key
+                  order by total_obligation desc nulls last,
+                           coalesce(parent_uei, recipient_uei) asc nulls last,
+                           recipient_uei asc nulls last
               ) rn from entity_xwalk
             ) where rn = 1
             """

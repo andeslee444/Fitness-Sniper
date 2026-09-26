@@ -22,8 +22,10 @@ Per the plan's evaluator design (dossier_gate bullet):
   (2) 'players' ONLY (Sprint E #67; page-keyed by chain-B fix 2 round 2,
   2026-09-12): an empty players section is honest when the warehouse carries
   nothing THIS PAGE could cite — no award link at this page's identity, no
-  lobbying mention on its code, and no concentration figure that is this
-  member's under _concentration_for's test (_has_no_players_evidence).
+  lobbying mention the page publishes (a bare-code row on a NON-shared code;
+  on a shared code R-INT-9 withholds it from every member — R-DEC-DOSSIER,
+  2026-09-26), and no concentration figure that is this member's under
+  _concentration_for's test (_has_no_players_evidence).
   Queried live against duckdb_path, never a slug list; with no duckdb_path,
   an unresolvable page identity or a missing mart it is not granted.
 - program_categories.csv covers all top-50 pe_blis with an enum category and
@@ -185,17 +187,24 @@ def _has_no_players_evidence(duckdb_path, pe_bli: str, page_slug: str | None = N
       - fct_program_concentration is keyed by the bare pe_bli, so its figure
         counts as this member's only under _concentration_for's own member
         test (_concentration_is_this_members above).
-      - fct_program_lobbying is keyed by the bare pe_bli, and every mention
-        on the code counts for BOTH members. That is deliberately STRICTER
-        than the page: since ruling R-INT-9 (2026-09-25) a shared-code
-        member's sidecar carries NO lobbying row at all (export_site ships
-        `mentions` [] on every member of a shared code — no row keyed on a
-        bare code can say which member it describes), so a member can be
-        refused the exception over rows its page does not render and its
-        bundle does not offer. That errs toward a loud gate failure, never
-        toward excusing a page for not citing rows it does render; making
-        this count match the page (nothing, on a member) is a separate
-        change.
+      - fct_program_lobbying is keyed by the bare pe_bli. RULING
+        R-DEC-DOSSIER (controller, 2026-09-26): a bare-code row counts as
+        players evidence ONLY for a NON-shared code, where the bare code is
+        the page and the exporter publishes the row there. On a shared
+        (split) code, ruling R-INT-9 (2026-09-25) withholds every such row
+        from every member page — export_site ships `mentions` [] on each
+        member (`own_mentions = [] if is_split else …`), because no row
+        keyed on a bare code can say which member it describes — so the row
+        is not attributable to the member and does not deny the exemption.
+        The split test is the exporter's own (`ident.is_split`, i.e.
+        `pe_bli in ident.split_pe_blis`), never a separate rule. The mart is
+        still queried on every code: a missing lobbying mart is unknown and
+        is never granted, shared code or not. A shared-code member with its
+        own awards or its own concentration figure still needs players — the
+        two checks around this one are unchanged. (Before this ruling every
+        bare-code row counted for BOTH members; chain G's #176 rematch put
+        one RTX row on bare '3050', and 3050-SCN — nothing of its own to
+        cite — was refused the exemption over a row its page cannot show.)
 
     Anything unknown — no duckdb, a page identity that does not resolve, a
     missing mart, a query error — returns False. The exception must be
@@ -226,9 +235,13 @@ def _has_no_players_evidence(duckdb_path, pe_bli: str, page_slug: str | None = N
                 params.append(organization)
             if con.execute(awards_sql, params).fetchone()[0]:
                 return False
-            if con.execute(
+            # Queried on every code (a missing mart raises -> not granted);
+            # the answer binds only a NON-shared code (R-DEC-DOSSIER): on a
+            # shared code R-INT-9 publishes the bare-code row on no member.
+            bare_code_mentions = con.execute(
                 "select count(*) from fct_program_lobbying where pe_bli = ?", [pe_bli]
-            ).fetchone()[0]:
+            ).fetchone()[0]
+            if bare_code_mentions and not ident.is_split(pe_bli):
                 return False
             if _concentration_is_this_members(
                 con, ident, pe_bli, account, organization
@@ -428,7 +441,10 @@ def dossier_gate(
                 # the exception to 3050-SCN — a page that publishes no award,
                 # no lobbying mention and no concentration figure of its own,
                 # and therefore has nothing whatever to cite. That bare-key
-                # /page-key confusion is the #82 class.
+                # /page-key confusion is the #82 class. Lobbying is the one
+                # mart with no member key at all: its bare-code row binds a
+                # NON-shared code only (R-DEC-DOSSIER, 2026-09-26), since
+                # R-INT-9 renders it on no member of a shared code.
                 #
                 # This is NOT a loosening: it grants the exception only when
                 # the warehouse itself is queried and confirms there is
@@ -500,10 +516,12 @@ def dossier_gate(
         "no_evidence_exempt": no_evidence_exempt,
         "note": (
             "players exempted on "
-            f"{len(no_evidence_exempt)} page(s) (rule of 2026-09-12): no "
-            "award link at this page's identity, no lobbying mention on its "
-            "budget-line code, and no concentration figure that is this "
-            "page's — nothing to cite: "
+            f"{len(no_evidence_exempt)} page(s) (rule of 2026-09-12;"
+            " lobbying per R-DEC-DOSSIER, 2026-09-26): no award link at this"
+            " page's identity, no lobbying mention this page publishes (a"
+            " shared code's bare-code rows are withheld from every member,"
+            " R-INT-9), and no concentration figure that is this page's —"
+            " nothing to cite: "
             + ", ".join(no_evidence_exempt)
         ) if no_evidence_exempt else "",
     }

@@ -90,10 +90,11 @@ export function getFlowData(
   const sidecar = name ? getFlow(name) : null;
   if (!sidecar || sidecar.awards.length === 0) return null;
   // A shared code's sidecar header is keyed by the bare code alone, so it
-  // carries whichever member the exporter read last (flows/0145.json: the
-  // sibling's "General Purpose Bombs" and its FY2026 total). A member page
-  // heads its view with its OWN row — the same three fields the exporter's
-  // header equals on every ordinary code.
+  // describes the CODE, not this member: its title names every member
+  // (flows/0145.json: "F/A-18E/F (Fighter) Hornet / General Purpose Bombs",
+  // R-DEC-FLOWTITLE) and its fy2026_total is the members' sum (R-DEC-
+  // FLOWTOTAL). A member page heads its view with its OWN row — the same
+  // three fields the exporter's header equals on every ordinary code.
   const flow: FlowSidecar =
     name === program.slug
       ? sidecar

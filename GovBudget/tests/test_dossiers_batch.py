@@ -1175,8 +1175,9 @@ class TestGate:
     #   1. the member with nothing to cite            -> EXEMPT, named
     #   2. its linked sibling, same warehouse         -> FAILS
     #   3. the unit test of the keying itself, both ways + the bare stub
-    #   4. a lobbying mention on the shared code      -> FAILS on both
-    #      (mentions are bare-keyed and published on BOTH member pages)
+    #   4. a bare-code lobbying row: shared code -> does not deny (R-INT-9
+    #      withholds it from every member); non-shared code -> FAILS
+    #      (R-DEC-DOSSIER, 2026-09-26 — the block below)
     #   5. a non-split program's own concentration row -> FAILS
     #   6. no duckdb_path supplied                    -> cannot be granted
     #   7. the exemption is players-only
@@ -1265,26 +1266,120 @@ class TestGate:
         assert no_ev(db, "20", "20-DCSA") is True
         assert no_ev(db, "20", "20-DTRA") is False
         assert no_ev(db, "20") is False
+        # R-DEC-DOSSIER on this axis too: '20' carried 22 pe_literal rows
+        # (bill numbers, not budget lines) that R-INT-9 withholds from both
+        # members, so they neither deny DCSA nor excuse DTRA.
+        con = duckdb.connect(str(db))
+        con.execute("insert into fct_program_lobbying values (?,?,?)",
+                    ["20", "LOCKHEED", "pe_literal"])
+        con.close()
+        assert no_ev(db, "20", "20-DCSA") is True
+        assert no_ev(db, "20", "20-DTRA") is False
+        assert no_ev(db, "20") is False
 
-    def test_a_lobbying_mention_on_the_shared_code_denies_both_members(
+    # -----------------------------------------------------------------------
+    # R-DEC-DOSSIER (controller ruling, 2026-09-26). fct_program_lobbying is
+    # keyed on the BARE code. On a shared (split) code R-INT-9 withholds every
+    # such row from every member page — no row can say which member it
+    # describes — so the row is not this member's to cite and does NOT deny
+    # the empty-players exemption. On a NON-shared code the bare code IS the
+    # page, the row renders there, and it still denies the exemption.
+    # Production's trigger: chain G step 7 put 1 RTX row on bare '3050'
+    # (filing d32fd6e6-…), and 3050-SCN — 0 awards on its own account, a
+    # concentration figure that is its sibling's — failed 5b3 over it.
+    #   a. the 3050-SCN shape (shared, bare row, nothing of its own) -> EXEMPT
+    #   b. the linked sibling on the same code, same bare row        -> FAILS
+    #   c. a NON-shared code with a bare row and empty players       -> FAILS
+    #   d. the unit test, all identities + the bare stub
+    #   e. a missing lobbying mart is still unknown -> never granted
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def _lobbying_row(db, pe_bli, family_key="RTX", evidence_kind="multi_token"):
+        con = duckdb.connect(str(db))
+        con.execute("insert into fct_program_lobbying values (?,?,?)",
+                    [pe_bli, family_key, evidence_kind])
+        con.close()
+
+    def test_a_bare_code_lobbying_row_on_a_shared_code_does_not_deny_the_unlinked_member(
         self, gate_fixture, split_key_duckdb,
     ):
-        """fct_program_lobbying is keyed by the bare pe_bli, so the gate
-        counts EVERY mention on the code for BOTH members, whatever its tier.
-        Since ruling R-INT-9 (2026-09-25) neither member's sidecar carries the
-        row (export_site ships `mentions` [] on every member of a shared
-        code), so this is stricter than the page on every tier: the member is
-        refused the exception over a row its page does not render (see
-        _has_no_players_evidence) — a loud failure, never an excuse."""
-        con = duckdb.connect(str(split_key_duckdb))
-        con.execute("insert into fct_program_lobbying values (?,?,?)",
-                    [PE2, "RAYTHEON", "pe_literal"])
-        con.close()
+        """(a) The 3050-SCN shape exactly: shared code, one bare-code
+        lobbying row, no award link on this member's account, a concentration
+        figure that describes only the sibling's links. The row is withheld
+        from this page (R-INT-9) and is not attributable to it, so the page
+        still has nothing to cite: exempt, and named."""
+        self._lobbying_row(split_key_duckdb, PE2)
         self._slug_dossier_with_empty_section(gate_fixture, f"{PE2}-SCN")
         res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
         rs = res["checks"]["required_sections"]
+        assert rs["ok"], rs
+        assert rs["no_evidence_exempt"] == [f"{PE2}-SCN"]
+
+    def test_a_bare_code_lobbying_row_does_not_excuse_the_linked_sibling(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """(b) A shared-code member with awards of its own still needs
+        players: ignoring a withheld row never excuses a page that DOES have
+        something to cite."""
+        self._lobbying_row(split_key_duckdb, PE2)
+        self._slug_dossier_with_empty_section(gate_fixture, f"{PE2}-OPN")
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
         assert not rs["ok"]
-        assert f"{PE2}-SCN: players" in rs["empty"]
+        assert f"{PE2}-OPN: players" in rs["empty"]
+        assert rs["no_evidence_exempt"] == []
+
+    def test_a_bare_code_lobbying_row_on_a_non_shared_code_denies_the_exception(
+        self, gate_fixture, split_key_duckdb,
+    ):
+        """(c) THE PROOF IT CAN STILL FAIL on the lobbying axis. PE names one
+        program: no awards, no concentration row — exempt on its own — but a
+        bare-code row on a NON-shared code is this page's row (the exporter
+        publishes it there), so empty players fails. The pair proves the row
+        is what decides."""
+        path = gate_fixture.dossier_dir / f"{PE}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        path.write_text(json.dumps(doc))
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert rs["ok"], rs
+        assert rs["no_evidence_exempt"] == [PE]
+
+        self._lobbying_row(split_key_duckdb, PE, "RAYTHEON", "pe_literal")
+        res = _run_gate(gate_fixture, duckdb_path=split_key_duckdb)
+        rs = res["checks"]["required_sections"]
+        assert not rs["ok"]
+        assert f"{PE}: players" in rs["empty"]
+        assert rs["no_evidence_exempt"] == []
+
+    def test_the_lobbying_axis_at_the_unit_is_shared_code_aware(
+        self, split_key_duckdb,
+    ):
+        """(d) Same row set, every identity: the shared code's unlinked
+        member stays exempt, its linked sibling and the bare disambiguation
+        stub never are, and the ordinary program is denied by its own row."""
+        self._lobbying_row(split_key_duckdb, PE2)
+        self._lobbying_row(split_key_duckdb, PE, "RAYTHEON", "pe_literal")
+        no_ev = gate_module._has_no_players_evidence
+        assert no_ev(split_key_duckdb, PE2, f"{PE2}-SCN") is True
+        assert no_ev(split_key_duckdb, PE2, f"{PE2}-OPN") is False
+        assert no_ev(split_key_duckdb, PE2) is False
+        assert no_ev(split_key_duckdb, PE) is False
+
+    def test_a_missing_lobbying_mart_is_never_granted_even_on_a_shared_code(
+        self, split_key_duckdb,
+    ):
+        """(e) The ruling decides what a PRESENT row means; it does not make
+        the mart optional. With fct_program_lobbying absent the answer is
+        unknown, and unknown is never granted — on any member."""
+        con = duckdb.connect(str(split_key_duckdb))
+        con.execute("drop table fct_program_lobbying")
+        con.close()
+        no_ev = gate_module._has_no_players_evidence
+        assert no_ev(split_key_duckdb, PE2, f"{PE2}-SCN") is False
+        assert no_ev(split_key_duckdb, PE) is False
 
     def test_a_non_split_programs_own_concentration_row_denies_the_exception(
         self, gate_fixture, split_key_duckdb,

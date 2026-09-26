@@ -25,15 +25,27 @@
 -- which substitutes a typed zero-row relation when the extract has never run —
 -- see that macro for why an absent parquet would otherwise kill the mart.
 --
--- rk (rank, ties kept) vs rn (row_number, ties broken arbitrarily): the SAM
--- join key is taken over the TIED top set with max(), so it does not depend on
--- which tied member a query plan happens to number 1 — sam_entities.
--- dominant_parent_ueis() re-derives it identically and verify-phase2 leg e4
--- compares the two. display_name keeps rn, unchanged: no published family's
--- label moves.
+-- rk (rank, ties kept) vs rn (row_number, one member): the SAM join key is
+-- taken over the TIED top set with max(), so it does not depend on which tied
+-- member rn numbers 1 — sam_entities.dominant_parent_ueis() re-derives it
+-- identically and verify-phase2 leg e4 compares the two. rn's order is TOTAL
+-- (R-DEC-ENTITYTIE, 2026-09-26): obligation desc, then the registration UEI
+-- ASCENDING, then recipient_uei (unique and not null in entity_xwalk). Until
+-- then it stopped at the obligation, and 13 tied families' display_name
+-- changed between reads of one unchanged warehouse (none published).
+-- On a tie across registrations the name is therefore read from the LOWEST
+-- registration and the SAM record from the HIGHEST: there the two differ by
+-- rule, and (header, first paragraph) nothing rendered may say they are one
+-- member.
+-- tests/test_dbt_entity_display_tiebreak.py holds the order.
 with ranked as (
     select *,
-           row_number() over (partition by family_key order by total_obligation desc nulls last) as rn,
+           row_number() over (
+               partition by family_key
+               order by total_obligation desc nulls last,
+                        coalesce(parent_uei, recipient_uei) asc nulls last,
+                        recipient_uei asc nulls last
+           ) as rn,
            rank() over (partition by family_key order by total_obligation desc nulls last) as rk
     from {{ ref('entity_xwalk') }}
 ),

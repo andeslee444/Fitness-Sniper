@@ -17472,6 +17472,58 @@ def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
     return result
 
 
+def _shared_code_fy26_totals(con) -> dict[str, float | None]:
+    """R-DEC-FLOWTOTAL: bare pe_bli -> the FY2026 total of a code several
+    dim_programs rows share (the flows sidecar header's figure), for those
+    codes only.
+
+    A member's figure is the fct_budget_trajectory row at the member's own
+    (pe_bli, org, account) — the row the sidecar's account-blind
+    (pe_bli, org) join fanned out over. The code's total is their sum,
+    math.fsum so no member order can move a bit of it. If any member has no
+    figure (no trajectory row, a NULL fy2026_total, or — on a lake without
+    the account column, where members are told apart by org alone — more
+    than one row), the code's total is None: a partial sum printed beside a
+    label naming every member would state the code's figure falsely. Live
+    (chain G): '1350' and '2101' each have one member with no trajectory row;
+    neither carries a flows sidecar.
+
+    A lake predating the account column (an older test fixture) joins on
+    (pe_bli, org): no code is account-split there. Returns {} if the tables
+    are absent.
+    """
+    import math
+    from collections import defaultdict
+
+    rows = _query_with_account_fallback(
+        con,
+        "select p.pe_bli, p.org, p.account, t.fy2026_total"
+        " from dim_programs p"
+        " left join fct_budget_trajectory t"
+        "   on t.pe_bli = p.pe_bli and t.organization = p.org"
+        "  and t.account is not distinct from p.account"
+        " where p.pe_bli in (select pe_bli from dim_programs"
+        "                    group by pe_bli having count(*) > 1)",
+        "select p.pe_bli, p.org, t.fy2026_total"
+        " from dim_programs p"
+        " left join fct_budget_trajectory t"
+        "   on t.pe_bli = p.pe_bli and t.organization = p.org"
+        " where p.pe_bli in (select pe_bli from dim_programs"
+        "                    group by pe_bli having count(*) > 1)",
+        account_index=2,
+    )
+    members: dict[str, dict[tuple, list]] = defaultdict(lambda: defaultdict(list))
+    for pe_bli, org, account, fy2026 in rows:
+        members[pe_bli][(org, account)].append(fy2026)
+    totals: dict[str, float | None] = {}
+    for pe_bli, by_member in members.items():
+        figures = [vals[0] if len(vals) == 1 else None for vals in by_member.values()]
+        totals[pe_bli] = (
+            None if any(f is None for f in figures) else math.fsum(figures)
+        )
+    return totals
+
+
 def _emit_flows_sidecars(*, flows_dir, con) -> int:
     """Emit flows/{pe_bli}.json for the 17 crosswalked programs.
 
@@ -17480,26 +17532,70 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
 
     Only confidence='high' awards, only rows with non-null pop_district.
     family_slug is derived with the lower/hyphen slugify rule.
+    header.title on a code several programs share names every member
+    (R-DEC-FLOWTITLE; see shared_code_program_label), and header.fy2026_total
+    there is the sum of the members' FY2026 totals, or None when a member has
+    none (R-DEC-FLOWTOTAL; see _shared_code_fy26_totals).
     """
+    from collections import defaultdict
     from pathlib import Path as _Path
     import json as _json
 
     flows_dir = _Path(flows_dir)
     n_written = 0
 
-    # Get program metadata
+    # Get program metadata.
+    #
+    # R-DEC-FLOWTITLE (2026-09-26): this was a dict over
+    # `select pe_bli, title, org from dim_programs` with no ORDER BY, so on a
+    # code two programs share the member row the engine returned LAST won the
+    # title. Chain G's two exports read the same dim_programs (identical as a
+    # multiset) in a different row order after a dbt rebuild, and
+    # flows/0145.json flipped "General Purpose Bombs" → "F/A-18E/F (Fighter)
+    # Hornet", flows/3215.json "MK-54 Torpedo Mods" → "Satellite
+    # Communications Systems". The sidecar is keyed on the BARE code, so a
+    # shared code's title now names every member, " / "-joined in the
+    # export's member order (_DIM_PROGRAMS_MEMBER_ORDER) after each member's
+    # own #39 correction — the label prog_titles gives the /program/{pe_bli}/
+    # disambiguation stub. A code one program owns keeps its own title byte
+    # for byte. `org` is read from the same ordered rows (every member of
+    # the four shared codes with a sidecar today files under 'N').
     try:
         _title_overrides = load_title_overrides()
-        prog_meta = {
-            r[0]: {"title": apply_title_override(r[0], r[1], _title_overrides), "org": r[2]}
-            for r in con.execute(
+        try:
+            _meta_rows = con.execute(
                 "select pe_bli, title, org from dim_programs"
+                + _DIM_PROGRAMS_MEMBER_ORDER
             ).fetchall()
-        }
+        except Exception:
+            # A dim_programs predating the account column (an older test
+            # fixture): no code is account-split there, so the member order
+            # reduces to (org, title).
+            _meta_rows = con.execute(
+                "select pe_bli, title, org from dim_programs"
+                " order by pe_bli, org asc nulls last, title asc nulls last"
+            ).fetchall()
+        _member_titles: dict[str, list[str | None]] = defaultdict(list)
+        prog_meta = {}
+        for _pe, _title, _org in _meta_rows:
+            _member_titles[_pe].append(
+                apply_title_override(_pe, _title, _title_overrides)
+            )
+            prog_meta[_pe] = {"org": _org}
+        for _pe, _titles in _member_titles.items():
+            prog_meta[_pe]["title"] = (
+                _titles[0] if len(_titles) == 1
+                else shared_code_program_label(_titles)
+            )
     except Exception:
         prog_meta = {}
 
-    # Get fy2026_total per pe_bli from trajectory
+    # Get fy2026_total per pe_bli from trajectory. On a code ONE program owns
+    # the (pe_bli, org) join below returns at most one row (measured on the
+    # chain-G lake: one row for 1,880 of the 1,909 such codes, none for the
+    # rest) and that row is the figure, byte for byte — it must stay
+    # account-blind, since 169 of those codes' dim_programs rows carry a NULL
+    # account beside a trajectory row that names one (chain-G lake, 2026-09-26).
     try:
         traj_fy26 = {}
         for r in con.execute(
@@ -17510,6 +17606,13 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
             traj_fy26[r[0]] = r[1]
     except Exception:
         traj_fy26 = {}
+    # R-DEC-FLOWTOTAL (2026-09-26): on a code several programs share, that
+    # join fans out (two trajectory rows x two member rows, one org) and the
+    # LAST row won — the same lake shipped flows/0145.json 50607 (APN) and
+    # emitted 30915 (PANMC) in a scratch run. The header's title names every
+    # member (R-DEC-FLOWTITLE), so its figure is the code's: the sum of the
+    # members' own figures (_shared_code_fy26_totals).
+    traj_fy26.update(_shared_code_fy26_totals(con))
 
     # Get distinct programs in fct_district_programs (the 17 crosswalked programs)
     try:

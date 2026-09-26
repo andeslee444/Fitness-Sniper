@@ -28,7 +28,8 @@ def build_entity_label_review(
     """
     required = {
         "dim_entities": {"family_key", "total_obligation"},
-        "entity_xwalk": {"family_key", "recipient_uei", "total_obligation"},
+        # parent_uei: the dominant CTE's registration tiebreak reads it.
+        "entity_xwalk": {"family_key", "recipient_uei", "parent_uei", "total_obligation"},
         "fct_award_transactions": {
             "recipient_uei", "recipient_parent_uei", "recipient_parent_name", "obligation",
         },
@@ -61,10 +62,16 @@ def build_entity_label_review(
             select family_key from dim_entities
             order by total_obligation desc limit 200
         ), dominant as (
+            -- dim_entities.sql's rn=1 member, in its TOTAL order
+            -- (R-DEC-ENTITYTIE-b): on a tie the census ranks the member
+            -- whose name the model published, never a sibling.
             select x.family_key, x.recipient_uei
             from entity_xwalk x join published p using (family_key)
             qualify row_number() over (
-                partition by family_key order by total_obligation desc nulls last
+                partition by family_key
+                order by x.total_obligation desc nulls last,
+                         coalesce(x.parent_uei, x.recipient_uei) asc nulls last,
+                         x.recipient_uei asc nulls last
             ) = 1
         ), registrations as (
             select d.family_key,

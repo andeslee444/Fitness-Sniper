@@ -7,10 +7,11 @@ from govbudget.entity_label_review import build_entity_label_review
 def test_counts_parent_pair_margin_for_dominant_member_only():
     with duckdb.connect() as con:
         con.execute("create table dim_entities(family_key varchar, total_obligation double)")
-        con.execute("create table entity_xwalk(family_key varchar, recipient_uei varchar, total_obligation double)")
+        # parent_uei: the dominant pick's registration tiebreak (R-DEC-ENTITYTIE-b).
+        con.execute("create table entity_xwalk(family_key varchar, recipient_uei varchar, parent_uei varchar, total_obligation double)")
         con.execute("create table fct_award_transactions(recipient_uei varchar, recipient_parent_uei varchar, recipient_parent_name varchar, obligation double)")
         con.execute("insert into dim_entities values ('A', 300), ('B', 190), ('C', 50)")
-        con.execute("insert into entity_xwalk values ('A', 'a1', 190), ('A', 'a2', 110), ('B', 'b1', 190), ('C', 'c1', 50)")
+        con.execute("insert into entity_xwalk values ('A', 'a1', 'p1', 190), ('A', 'a2', 'p3', 110), ('B', 'b1', 'p4', 190), ('C', 'c1', 'p6', 50)")
         con.execute("""insert into fct_award_transactions values
             ('a1', 'p1', 'Parent', 100), ('a1', 'p2', 'Parent', 90),
             ('a2', 'p3', 'Unrelated candidate', 110),
