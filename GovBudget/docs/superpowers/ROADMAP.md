@@ -304,6 +304,23 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (2026-09-24), which says "the other session must re-run its own `govbudget
   build` and export before it trusts its lake": that session's work now
   lives on this branch.
+  **Deployed 2026-09-25 (~20:30 EDT)** from `integration-2026-09-25` at
+  0587f90f with the integration worktree's `scripts/launch/deploy.sh` (its
+  new provenance guard passed: git_head == HEAD, no tracked changes, no
+  untracked build inputs): R2 copy (225 PDFs checked, 13 data files), Vercel
+  production, and all 50 live-asset assertions (the 21 receipt books and 21
+  workbooks included). Pre-deploy chain F2 at 0587f90f: dbt PASS=159 ERROR=0,
+  27/27 site gates, verify-phase3 / verify-phase5b1 / evals check PASS,
+  verify-phase5 PASS (freshness; eval 45/48, citations 42/42; assembly 8/8).
+  Live checks: /.build-meta.json git_head 0587f90f; /program/30-OSD/ shows the
+  withheld-lobbying empty state with no lobbying WHO tier; a below-floor
+  program page reads "at least 3 awards across 2 contractor families" (the
+  minifier's "32" appears nowhere) and "19 linked award records are listed
+  below."; /families/f-15/, /explore/, the receipt shards and the F-15
+  history serve. Monorepo `main` fast-forwarded 5dd7fb04 → 0587f90f and
+  pushed to origin; fiscalreceipts `main` 05345029 → bea6c8ab (subtree split
+  7b5170e1 plus a merge recording the other session's publish lineage, whose
+  tree equals the split of 81929a6b).
 
 - **2026-09-22: Jev tested; supporting editorial pilot prioritized behind core product work.**
   Direct `jev-1.13.0` calls evaluated 155 distinct baseline cases, then repeated
@@ -2620,8 +2637,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   until `3786a6e9`'s script and its test land on main. Merge note, measured
   2026-09-25: `3786a6e9` touches 66 files, 52 of which this branch also
   changed since `5dd7fb04` — ROADMAP.md, migrations 015–017, `export_site.py`,
-  the district marts and their two assertions among them. **Status:** open
-  (owner, 2026-09-25).
+  the district marts and their two assertions among them. **Status:** PARTIAL
+  (2026-09-25; was open, owner): the integration merge (f0ed21eb, deployed as
+  0587f90f and pushed to main) carries `scripts/reconcile_award_moves.py`,
+  `review_award_refresh.py` and their tests onto main, so main now holds the
+  tool that retired the 81 rows; a fresh sync still needs that manual,
+  report-first step until the dbt staging rule the owner delegated
+  (2026-09-25: keep the strictly newer copy of a key present in exactly two
+  fiscal-year archives, fail on anything else) lands in the decisions wave.
 
 - **#134 OWNER CALL: "Data as of <build date>" reads like a currency
   claim.** Three surfaces stamp the BUILD time as the data's date — the site
@@ -2698,7 +2721,11 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   sets `blocked` only when no key is present (`:706-709`) or the agent exits
   mid-run (`:744-748`), so an all-ERROR, $0 run reads as a model failure;
   detect it and report BLOCKED.
-  **Status:** open (owner action, 2026-09-25).
+  **Status:** PARTIAL (2026-09-25; was open, owner action): the owner topped up
+  the credit on 2026-09-25; `verify-phase5` then passed its eval leg (46/48
+  accuracy, 43/43 citations before the integration; 45/48, 42/42 at 0587f90f)
+  and the deploy went out. The code half (report an all-ERROR, $0 run as
+  BLOCKED, not as an accuracy failure) is open, scheduled in the decisions wave.
 
 - **#140 OWNER CALL: should announcement evidence override an FPDS
   acquisition-program mapping on the same key?**
