@@ -329,7 +329,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // weigh()): 227,973 / 27,082 -> 202,880 / 27,290. CEILINGS UNCHANGED;
   // 36,820 raw / 610 gzip left. The gate-fix wave moved this table's per-row
   // utility classes into a page-local CSS module (families.module.css).
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "202,880 / 27,290" },
+  // RE-MEASURED 2026-09-26 (decisions chain G, BUILD 1 of 0176fa6e, built
+  // 2026-09-26T16:51:29Z; gate 1's own weigh()): 202,880 / 27,290 ->
+  // 203,889 / 27,678. CEILINGS UNCHANGED; 35,811 raw / 222 gzip left. The
+  // drift leg fired at 2.7x (+388 gzip over the integration stamp, on chain
+  // G's lake and export). Any further growth here needs a trim, not a raise.
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "203,889 / 27,678" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 93,911 / 13,340 -> 94,741 / 13,619, and the gate's own run on the
   // pre-fix build read 13,657 against a 13,500 ceiling — over by 157, with 259
@@ -627,7 +632,13 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 153,570 / 42,935 -> 156,560 / 43,901. CEILINGS UNCHANGED; 5,440
   // raw / 1,499 gzip left.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "156,560 / 43,901" },
+  // RE-MEASURED 2026-09-26 (decisions chain G, BUILD 1 of 0176fa6e, built
+  // 2026-09-26T16:51:29Z; gate 1's own weigh()): 156,560 / 43,901 ->
+  // 160,836 / 45,147. CEILINGS UNCHANGED; 1,164 raw / 253 gzip left. The
+  // drift leg fired at 5.9x (+1,246 gzip over the integration stamp, on the
+  // decisions branch with chain G's lake and export). The next paragraph
+  // here needs a trim first, not a raise.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "160,836 / 45,147" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
