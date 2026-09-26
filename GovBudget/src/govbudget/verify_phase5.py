@@ -792,21 +792,28 @@ def provider_block_reason(
     R-DEC-139b (controller ruling 2026-09-26, under the owner's delegation):
     BLOCKED only when the provider's refusals ALONE decide the verdict and no
     other failure occurred —
-      * EVERY question that is not correct is a provider refusal: an error
-        the provider did not cause (a TypeError, or an error whose record
-        kept no text outside the all-ERROR $0 shape) or an answer scored
-        wrong is a failure the run already measured, so the run is a FAIL
-        (non_provider_error_clause names the errors);
-      * `correct + refused >= threshold` — otherwise even every refused
-        question answered correctly could not reach the accuracy bar;
+      * no errored question is anything but a provider refusal: an error the
+        provider did not cause (a TypeError, or an error whose record kept no
+        text outside the all-ERROR $0 shape) is the code's failure, so the
+        run is a FAIL (non_provider_error_clause names the errors);
+      * `correct < threshold <= correct + refused` — the answered questions
+        have not reached the bar on their own, and the refused ones could
+        still carry the run there. An answer scored WRONG is a measured
+        answer: it counts against the bar through this inequality and does
+        not by itself decide anything (R-DEC-139c, fix round 2: the
+        2026-09-18 shape — 27 correct, 20 refused, 1 wrong — is BLOCKED
+        once its refusals are on record; passing runs score 45-46/48, so a
+        real mid-run credit exhaustion almost always follows a wrong answer);
       * no answered question's citation failed to resolve — the 100%
         citation bar is already broken.
     Spend is not part of the rule: a credit balance runs out MID-run, after
     the questions before it were paid for (2026-09-18: 27 answered, then 20
     refused). The stage-1 rule (2026-09-25) required only one refusal text
     and `correct + refused >= threshold`, so a run mixing refusals with code
-    crashes or wrong answers read BLOCKED and hid the crashes; this one
-    cannot.
+    crashes read BLOCKED and hid the crashes; this one cannot. Fix round 1
+    also refused BLOCKED to any run with a wrong answer, which printed an
+    accuracy FAIL for runs whose accuracy was never measured; that clause is
+    gone (fix round 2).
     """
     scores = run.get("scores") or []
     if not scores:
@@ -816,14 +823,18 @@ def provider_block_reason(
         return None
 
     correct = sum(1 for s in scores if s.get("correct"))
-    if len(scores) - correct != len(refused):
-        # A question answered and scored wrong: not the provider's doing.
+    if correct >= threshold:
+        # The answered questions reach the bar on their own: the refusals
+        # decide nothing (eval_gate passes such a run on its citations).
         return None
     if correct + len(refused) < threshold:
+        # Even every refused question answered correctly could not reach it:
+        # the answered questions already decided the FAIL.
         return None
     if any(s.get("citation_resolved") is False for s in scores):
         return None
 
+    wrong = len(scores) - correct - len(refused)
     cause = next(
         (s["agent_error_text"] for s in refused if s.get("agent_error_text")),
         None,
@@ -836,10 +847,79 @@ def provider_block_reason(
     return (
         f"eval run BLOCKED by the provider — {len(refused)} of {len(scores)}"
         f" questions never reached the model (ERROR, run spend ${spent:.2f});"
-        f" {correct} answered correctly, so the {threshold}-question accuracy"
-        f" bar was not measured. {cause_clause}. Fix the key or its credit"
-        " and re-run: uv run python -m govbudget verify-phase5"
+        f" {correct} answered correctly"
+        + (f" and {wrong} wrong" if wrong else "")
+        + f", so the {threshold}-question accuracy bar was not measured (the"
+        f" run reaches it only if at least {threshold - correct} of the"
+        f" {len(refused)} refused questions are answered correctly)."
+        f" {cause_clause}. Fix the key or its credit and re-run:"
+        " uv run python -m govbudget verify-phase5"
     )
+
+
+def _refusal_phrase(refused: list[dict]) -> str:
+    """The provider's own words for a refusal (the _PROVIDER_BLOCK_RE match
+    in the first refused question that kept text), or "no error text
+    recorded"."""
+    for s in refused:
+        m = _PROVIDER_BLOCK_RE.search(s.get("agent_error_text") or "")
+        if m:
+            return m.group(0)
+    return "no error text recorded"
+
+
+def provider_refusal_clause(
+    run: dict, *, threshold: int = ACCURACY_THRESHOLD,
+) -> str | None:
+    """The sentence a FAIL carries when the provider refused some of its
+    questions but the refusals do not decide the verdict (fix round 2).
+
+    Without it such a run printed "accuracy 30/48 < 44 threshold" and nothing
+    else, hiding that the provider had refused part of it. None when the run
+    has no refusal, when it is a provider block (provider_block_reason is
+    then the sentence), when a non-provider error occurred
+    (non_provider_error_clause already counts the refusals beside it), or
+    when the answered questions reach the bar on their own (no FAIL for
+    this sentence to explain).
+    """
+    scores = run.get("scores") or []
+    refused, other, _spent = _refusals_and_other_errors(scores)
+    if not refused or other:
+        return None
+    if provider_block_reason(run, threshold=threshold) is not None:
+        return None
+    correct = sum(1 for s in scores if s.get("correct"))
+    n = len(refused)
+    if any(s.get("citation_resolved") is False for s in scores):
+        why = ("an answered question's citation failed to resolve, so the"
+               " 100% citation bar is already broken")
+    elif correct + n < threshold:
+        why = (f"even answered correctly they could not reach the"
+               f" {threshold}-question bar ({correct} + {n} < {threshold})")
+    else:
+        return None
+    return (
+        f"{n} of {len(scores)} questions were refused by the provider"
+        f" ({_refusal_phrase(refused)}); they do not decide this FAIL: {why}"
+    )
+
+
+#: Width of the per-question `error=` field cmd_verify_phase5 prints.
+_ERROR_EXCERPT_WIDTH = 80
+
+
+def _error_excerpt(text: str, width: int = _ERROR_EXCERPT_WIDTH) -> str:
+    """A recorded error text as one console field: its first `width`
+    characters — or, for a provider refusal the head would cut off, the
+    window that starts at the refusal. The SDK's message front-loads
+    "Error code: 400 - {'type': 'error', 'error': {'type':
+    'invalid_request_error', '", so an 80-character head clip ended before
+    "credit balance" (fix round 2)."""
+    text = " ".join(text.split())
+    m = _PROVIDER_BLOCK_RE.search(text)
+    if m and m.end() > width:
+        return "…" + text[m.start():m.start() + width]
+    return text[:width]
 
 
 def eval_gate(
@@ -1094,6 +1174,10 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
                 # R-DEC-139b: a FAIL that carries errors the provider did not
                 # cause names them (None when there are none).
                 non_provider_error_clause({"scores": scores}),
+                # Fix round 2: a FAIL beside provider refusals that do not
+                # decide it says so (None when there are none, and on the
+                # mixed case the clause above already counts them).
+                provider_refusal_clause({"scores": scores}),
             ) if part
         ),
     }
@@ -1275,9 +1359,10 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
         # exists with a None value — use `or ''` for optional fields.
         for s in eg["scores"]:
             if not s["correct"] or (s["citation_resolved"] is False):
-                # R-DEC-139b: an errored question shows its recorded cause.
+                # R-DEC-139b: an errored question shows its recorded cause
+                # (a provider refusal from the refusal itself, fix round 2).
                 err = (
-                    f" error={(s.get('agent_error_text') or '')[:80]!r}"
+                    f" error={_error_excerpt(s.get('agent_error_text') or '')!r}"
                     if s.get("agent_error") and s.get("agent_error_text") else ""
                 )
                 print(
@@ -1293,6 +1378,9 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
         crash_clause = non_provider_error_clause(eg)
         if crash_clause:
             print(f"gate eval: {crash_clause}")
+        refusal_clause = provider_refusal_clause(eg)
+        if refusal_clause:
+            print(f"gate eval: {refusal_clause}")
         all_ok = False
     print()
 

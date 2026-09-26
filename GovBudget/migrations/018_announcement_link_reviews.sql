@@ -67,8 +67,12 @@
 --                        'refuted'    at least one lens returned refuted=true
 --                        'incomplete' no lens refuted, but at least one lens
 --                                     is missing or not a JSON boolean — the
---                                     wave-4 rubric counts it as REFUTED
---                                     (scripts/mine_announcement_residue.py)
+--                                     wave-4 collector kept it out of its
+--                                     survivors (scripts/mine_announcement_residue.py),
+--                                     but the GRADING reads it as neither an
+--                                     uphold nor a refutation: it never binds
+--                                     as a refutation of a cited article
+--                                     (R-DEC-INCOMPLETE, 2026-09-26)
 --                        'not_run'    no lens recorded a verdict: every
 --                                     reviewer rejection, and one wave-4
 --                                     'link' no lens answered

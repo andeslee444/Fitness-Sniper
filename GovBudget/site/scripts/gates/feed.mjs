@@ -113,6 +113,25 @@
  *     links exactly that page, or none. One finding per disagreement.
  *     Exported for __tests__/feed-program-key.test.mjs, which also holds
  *     both languages to one table (__tests__/fixtures/feed-program-key.json).
+ * (q) THE PAGES THAT STATE THE BANDS IN PROSE STATE THE BADGE'S (decisions
+ *     wave fix round 2, 2026-09-26). Leg (l) reads /feed/'s words and
+ *     coverage.mjs the program badge; /methodology/ and /glossary/ state the
+ *     bands in sentences nothing read, and nothing held /feed/'s numbers.
+ *     At e6bc28bb /methodology/ interpolated the
+ *     2023 thresholds into the 2010 sentence and rendered "1,800 or above is
+ *     highly concentrated (1,800 is the "highly concentrated" floor … four
+ *     equal-share firms alone produce exactly 1,800)" under "DOJ/FTC
+ *     Horizontal Merger Guidelines" with "below 1,000 is competitive" —
+ *     wrong four ways, and every gate passed. This leg holds each band claim
+ *     on those pages (the "or above" floor, "above N", the moderate range,
+ *     where "unconcentrated" ends, a "highly concentrated floor", k equal
+ *     shares = 10,000 / k) to hhiBand() itself, requires a year beside every
+ *     naming of the agencies' bands and "2010" beside the retired title,
+ *     fails an unquoted "competitive" in a sentence about concentration, and
+ *     requires /methodology/'s #feed-concentration_shift passage to state
+ *     the vintage, all three band words, whose word "unconcentrated" is,
+ *     and each threshold. Exported (hhiBandClaims, runBandProseLeg …) for
+ *     __tests__/feed-hhi-band-prose.test.mjs.
  */
 
 import fs from "fs";
@@ -248,6 +267,9 @@ export async function runFeedGate() {
 
   // ── (l) a concentration claim must not contradict its destination ─────────
   runHhiDestinationLeg(errors, notes, root);
+
+  // ── (q) the pages that state the bands in prose state hhi-band.mjs's ─────
+  runBandProseLeg(errors, notes, (route) => (route === "/feed/" ? root : readBuiltRoot(route)));
 
   // ── (n) the reader meets the biggest signal first ─────────────────────────
   runMagnitudeOrderLeg(errors, notes, sections);
@@ -711,6 +733,392 @@ function runHhiDestinationLeg(errors, notes, root) {
   } else if (errors.every((e) => !e.startsWith("feed leg l"))) {
     notes.push(verdict.note);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg (q) — the pages that state the bands in PROSE state hhi-band.mjs's
+// (decisions wave fix round 2, 2026-09-26)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Pages whose prose states the HHI bands. /methodology/ and /glossary/ had no
+ * reader until this leg: at e6bc28bb /methodology/ interpolated the new
+ * thresholds into the old sentence and rendered "1,800 or above is highly
+ * concentrated … four equal-share firms alone produce exactly 1,800", and
+ * nothing failed. /feed/'s section sentence is also leg (l)'s
+ * (hhiSectionDescriptionFinding: vintage, band words, attribution); here its
+ * THRESHOLDS are held too, and each card's scope note with it. The program
+ * badge (a vintage line and a hover title, not prose) is coverage.mjs's.
+ * Measured 2026-09-26 for false positives: on the integration build
+ * (pre-#132 text) the only findings on /methodology/, /glossary/ and /feed/
+ * (590 segments) were their known stale band sentences, and /programs/
+ * (9,715 segments), /coverage/ (82) and /data/ (101) yielded none; on
+ * e6bc28bb's rendered pages, 13 on /methodology/ (all stale) and none on
+ * /glossary/ or /feed/.
+ */
+const BAND_PROSE_PAGES = ["/methodology/", "/glossary/", "/feed/"];
+
+const fmtPoints = (n) => n.toLocaleString("en-US");
+/** A whole-point figure as the site prints it ("1,800", "250"), never a
+ *  fragment of one: no digit or thousands comma may sit on either side. */
+const NUM = String.raw`(?<![\d,.])(\d{1,3}(?:,\d{3})+|\d+)(?!\d|,\d)`;
+const toNum = (s) => Number(String(s).replace(/,/g, ""));
+const COUNT_WORDS = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+
+const bandKey = (v) => hhiBand(v).key;
+/** The first whole point that is highly concentrated. */
+const isHighFloor = (n) => bandKey(n) === "concentrated" && bandKey(n - 1) !== "concentrated";
+/** The last whole point that is NOT highly concentrated — "above N". */
+const isHighLine = (n) => bandKey(n) !== "concentrated" && bandKey(n + 1) === "concentrated";
+const isModerateFloor = (n) => bandKey(n) === "moderate" && bandKey(n - 1) === "unconcentrated";
+const isModerateCeiling = (n) => bandKey(n) === "moderate" && bandKey(n + 1) === "concentrated";
+
+const clip = (s) => (s.length > 140 ? `${s.slice(0, 137)}…` : s);
+
+/** A vintage is a guidelines edition's year — the current one
+ *  (HHI_BANDS_VINTAGE's) or a retired one a history sentence names — never
+ *  just any year: "DOJ/FTC bands, as applied on 2026-09-25" names none.
+ *  DOJ/FTC merger guidelines editions: 1968, 1982, 1984, 1992, 1997
+ *  (revision), 2010, 2023. */
+const GUIDELINES_YEARS = [
+  ...new Set([...(HHI_BANDS_VINTAGE.match(/\d{4}/g) ?? []), "2010", "1997", "1992", "1984", "1982", "1968"]),
+];
+const VINTAGE_YEAR_RE = new RegExp(`\\b(?:${GUIDELINES_YEARS.join("|")})\\b`);
+
+/**
+ * Every claim about the HHI bands that one block of prose makes, each held
+ * to hhi-band.mjs — the SAME hhiBand() the badge, the feed card and the
+ * glossary band with — never to a hand copy of 1,000 / 1,800. A threshold is
+ * checked by where hhiBand actually changes band, so a claim is true iff the
+ * badge would agree with it. Kinds:
+ *
+ *   vintage        a sentence naming the agencies' bands (DOJ/FTC, Merger
+ *                  Guidelines) with band context carries a year (#132:
+ *                  "labelled with the year on every surface that names the
+ *                  bands")
+ *   retired-title  "Horizontal Merger Guidelines" is the 2010 title; it
+ *                  stands only beside "2010"
+ *   competitive    an unquoted "competitive" in a sentence about
+ *                  concentration (R-DEC-132b retired it; history may quote it)
+ *   or-above       "N or above is highly concentrated": N must be the first
+ *                  highly-concentrated whole point
+ *   floor          "… is the "highly concentrated" floor" (present tense):
+ *                  the nearest number before it must be that first point
+ *   high-line      "above N … highly concentrated" / "highly concentrated
+ *                  above N": N must be the last point below the band
+ *   moderate-range "A–B … moderately concentrated" / "moderately
+ *                  concentrated from A to B": the band's own ends
+ *   below          "below N … unconcentrated": N must be where the badge
+ *                  stops saying Unconcentrated
+ *   equal-shares   "k equal(-share) firms produce N": N = 10,000 / k
+ *
+ * Past tense ("was the floor", "was labelled “competitive”") is history and
+ * is not a claim here. Exported for __tests__/feed-hhi-band-prose.test.mjs.
+ *
+ * @param {string | null} text
+ * @returns {{ kind: string, ok: boolean, finding: string | null, sentence: string }[]}
+ */
+export function hhiBandClaims(text) {
+  const claims = [];
+  if (text === null || text === undefined) return claims;
+  const norm = String(text)
+    .replace(/\s+/g, " ")
+    .replace(/[“”„″]/g, '"')
+    .trim();
+  if (!norm) return claims;
+  const sentences = norm.split(/(?<=[.!?])\s+(?=["'(]?[A-Z0-9])/);
+  const V = HHI_BANDS_VINTAGE;
+  const HIGH = HHI_CONCENTRATED_MIN;
+  const MOD = HHI_MODERATE_MIN;
+  const add = (kind, ok, finding, sentence) =>
+    claims.push({ kind, ok, finding: ok ? null : finding, sentence });
+
+  for (const s of sentences) {
+    // History may QUOTE the retired word, so "competitive" is read with
+    // quoted spans removed. Thresholds are read with only the quotation
+    // MARKS removed: 'above 2,500 is "highly concentrated"' is still a claim.
+    const quoted = s.replace(/"[^"]{0,120}"/g, " ");
+    const plain = s.replace(/"/g, "");
+
+    if (/\bDOJ\s*\/\s*FTC\b|\bMerger Guidelines\b/i.test(s) && /\bbands?\b|\bthresholds?\b|\bconvention\b|concentrat/i.test(s)) {
+      add(
+        "vintage",
+        VINTAGE_YEAR_RE.test(s),
+        `names the agencies' bands without a vintage: "${clip(s)}" — every surface that names the bands names the year ("${V}", #132)`,
+        s,
+      );
+    }
+
+    if (/\bHorizontal Merger Guidelines\b/i.test(s)) {
+      add(
+        "retired-title",
+        /\b2010\b/.test(s),
+        `names the "Horizontal Merger Guidelines" — the 2010 title the agencies replaced — without "2010": "${clip(s)}"; the site's bands are the ${V}' (#132)`,
+        s,
+      );
+    }
+
+    if (/\bcompetitive\b/i.test(quoted) && /concentrat|\bHHI\b|\bHerfindahl|\bbands?\b/i.test(s)) {
+      add(
+        "competitive",
+        false,
+        `says "competitive" in a sentence about concentration: "${clip(s)}" — the band below ${fmtPoints(MOD)} is "${hhiBand(0).label}", this site's word for it (R-DEC-132b)`,
+        s,
+      );
+    }
+
+    for (const m of plain.matchAll(
+      new RegExp(`${NUM}\\s+(?:points\\s+)?or\\s+(?:above|more|higher|over|greater)\\b[^.;:()]{0,20}?\\bhighly concentrated`, "gi"),
+    )) {
+      const n = toNum(m[1]);
+      add(
+        "or-above",
+        isHighFloor(n),
+        `says "${fmtPoints(n)} or above" is highly concentrated, but the ${V} bands (hhi-band.mjs) start that band above ${fmtPoints(HIGH)} — ${fmtPoints(HIGH)} itself is ${hhiBand(HIGH).label}`,
+        s,
+      );
+    }
+
+    for (const m of plain.matchAll(/\bis\s+(?:the|its)\s+highly concentrated\s+(?:floor|threshold|minimum)\b/gi)) {
+      const before = plain.slice(0, m.index).match(/\d{1,3}(?:,\d{3})+|\d+/g);
+      const n = before ? toNum(before[before.length - 1]) : null;
+      add(
+        "floor",
+        n !== null && isHighFloor(n),
+        n === null
+          ? `calls something the "highly concentrated" floor with no figure to hold to hhi-band.mjs: "${clip(s)}"`
+          : `says ${fmtPoints(n)} is the "highly concentrated" floor, but under the ${V} bands (hhi-band.mjs) an index is highly concentrated only above ${fmtPoints(HIGH)}`,
+        s,
+      );
+    }
+
+    const highLine = [
+      new RegExp(`\\b(?:above|over|in excess of|exceeding|more than|greater than)\\s+${NUM}(?:\\s+points)?,?\\s+(?:is\\s+|are\\s+|as\\s+)?highly concentrated`, "gi"),
+      new RegExp(`\\bhighly concentrated\\s+(?:above|over|in excess of|beyond)\\s+${NUM}`, "gi"),
+    ];
+    for (const re of highLine) {
+      for (const m of plain.matchAll(re)) {
+        const n = toNum(m[1]);
+        add(
+          "high-line",
+          isHighLine(n),
+          `puts "highly concentrated" above ${fmtPoints(n)}; the ${V} bands (hhi-band.mjs) put it above ${fmtPoints(HIGH)}`,
+          s,
+        );
+      }
+    }
+
+    const moderate = [
+      new RegExp(`${NUM}\\s*(?:–|—|-|to|and)\\s*${NUM}(?:\\s+points)?,?\\s+(?:is\\s+|are\\s+|as\\s+)?moderately concentrated`, "gi"),
+      new RegExp(`\\bmoderately concentrated\\s+(?:from\\s+|between\\s+)?${NUM}\\s*(?:–|—|-|to|and)\\s*${NUM}`, "gi"),
+    ];
+    for (const re of moderate) {
+      for (const m of plain.matchAll(re)) {
+        const a = toNum(m[1]);
+        const b = toNum(m[2]);
+        add(
+          "moderate-range",
+          isModerateFloor(a) && isModerateCeiling(b),
+          `puts "moderately concentrated" at ${fmtPoints(a)}–${fmtPoints(b)}; the ${V} bands (hhi-band.mjs) put it at ${fmtPoints(MOD)}–${fmtPoints(HIGH)}`,
+          s,
+        );
+      }
+    }
+
+    const below = [
+      new RegExp(`\\b(?:below|under|less than)\\s+${NUM}[^.;:]{0,60}?\\bunconcentrated\\b`, "gi"),
+      new RegExp(`\\bunconcentrated\\b[^.;:]{0,40}?\\b(?:below|under|less than)\\s+${NUM}`, "gi"),
+    ];
+    for (const re of below) {
+      for (const m of plain.matchAll(re)) {
+        const n = toNum(m[1]);
+        add(
+          "below",
+          isModerateFloor(n),
+          `puts "unconcentrated" below ${fmtPoints(n)}; the badge (hhi-band.mjs) says ${hhiBand(0).label} only below ${fmtPoints(MOD)}`,
+          s,
+        );
+      }
+    }
+
+    for (const m of plain.matchAll(
+      new RegExp(
+        `\\b(two|three|four|five|six|seven|eight|nine|ten|\\d+)\\s+equal(?:[- ]share)?\\s+(?:firms|families|contractors|companies|competitors|suppliers|shares)\\b[^.;]{0,60}?\\b(?:exactly|produces?|gives?|yields?|equals?)\\s+(?:exactly\\s+)?${NUM}`,
+        "gi",
+      ),
+    )) {
+      const word = m[1].toLowerCase();
+      const k = COUNT_WORDS[word] ?? Number(word);
+      const n = toNum(m[2]);
+      const want = Math.round(10000 / k);
+      add(
+        "equal-shares",
+        k > 0 && n === want,
+        `says ${word} equal-share firms produce ${fmtPoints(n)}; ${word} equal shares give 10,000 / ${k} = ${fmtPoints(want)}`,
+        s,
+      );
+    }
+  }
+  return claims;
+}
+
+/**
+ * The findings among hhiBandClaims(text). Exported for
+ * __tests__/feed-hhi-band-prose.test.mjs.
+ *
+ * @param {string | null} text
+ * @returns {string[]}
+ */
+export function hhiBandStatementFindings(text) {
+  return hhiBandClaims(text)
+    .filter((c) => !c.ok)
+    .map((c) => c.finding);
+}
+
+/**
+ * /methodology/'s #feed-concentration_shift passage states the bands a
+ * concentration card can carry, so it is held to what /feed/'s own section
+ * sentence is held to (hhiSectionDescriptionFinding) — the vintage, each
+ * band's word as the badge prints it, and that "unconcentrated" is this
+ * site's word (R-DEC-132b) — and, because this is the page that documents
+ * the formula, it must STATE each band's threshold, so hhiBandClaims has
+ * something to hold to hhi-band.mjs. The attribution may take any of the
+ * site's phrasings ("this site's label", "this site says", "this site
+ * calls"). Exported for __tests__/feed-hhi-band-prose.test.mjs.
+ *
+ * @param {string | null} text the passage's text
+ * @returns {string[]}
+ */
+export function methodologyBandsBlockFindings(text) {
+  if (text === null || text === undefined) {
+    return ["no concentration_shift passage to state the bands a concentration card carries"];
+  }
+  const t = String(text).replace(/\s+/g, " ");
+  const out = [];
+  if (!t.includes(HHI_BANDS_VINTAGE)) {
+    out.push(`the passage states the bands without their vintage — "${HHI_BANDS_VINTAGE}" (#132)`);
+  }
+  const lower = t.toLowerCase();
+  for (const v of [0, HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN + 1]) {
+    const word = hhiBand(v).label.toLowerCase();
+    if (!lower.includes(word)) out.push(`the passage does not name the "${word}" band a card can carry`);
+  }
+  if (!/\bthis site(?:'s|’s|\s+(?:says|calls|labels|uses))/i.test(t)) {
+    out.push(
+      `the passage does not say "${hhiBand(0).label.toLowerCase()}" is this site's word — the ${HHI_BANDS_VINTAGE} ` +
+        `bands start at ${fmtPoints(HHI_MODERATE_MIN)} (R-DEC-132b)`,
+    );
+  }
+  const stated = new Set(hhiBandClaims(t).map((c) => c.kind));
+  if (!stated.has("moderate-range")) {
+    out.push(
+      `the passage states no moderately concentrated range (${fmtPoints(HHI_MODERATE_MIN)} to ` +
+        `${fmtPoints(HHI_CONCENTRATED_MIN)}) for this leg to hold to hhi-band.mjs`,
+    );
+  }
+  if (!stated.has("high-line") && !stated.has("or-above")) {
+    out.push(
+      `the passage states no highly concentrated line (above ${fmtPoints(HHI_CONCENTRATED_MIN)}) for this leg to hold to hhi-band.mjs`,
+    );
+  }
+  if (!stated.has("below")) {
+    out.push(
+      `the passage does not say where "unconcentrated" ends (below ${fmtPoints(HHI_MODERATE_MIN)}) for this leg to hold to hhi-band.mjs`,
+    );
+  }
+  return out;
+}
+
+const PROSE_BLOCKS = new Set([
+  "P", "LI", "TD", "TH", "DD", "DT", "H1", "H2", "H3", "H4", "H5", "H6",
+  "FIGCAPTION", "BLOCKQUOTE", "CAPTION", "SUMMARY",
+]);
+
+/**
+ * The text of every OUTERMOST prose block on a parsed page, in document
+ * order — a list item holding a paragraph is one segment, never two.
+ * Exported for __tests__/feed-hhi-band-prose.test.mjs.
+ *
+ * @param {import("node-html-parser").HTMLElement} root
+ * @returns {string[]}
+ */
+export function bandProseSegments(root) {
+  const out = [];
+  for (const el of root.querySelectorAll("p, li, td, th, dd, dt, h1, h2, h3, h4, h5, h6, figcaption, blockquote, caption, summary")) {
+    let nested = false;
+    for (let a = el.parentNode; a && a.tagName; a = a.parentNode) {
+      if (PROSE_BLOCKS.has(String(a.tagName).toUpperCase())) {
+        nested = true;
+        break;
+      }
+    }
+    if (nested) continue;
+    const text = (el.text || "").replace(/\s+/g, " ").trim();
+    if (text) out.push(text);
+  }
+  return out;
+}
+
+/**
+ * leg (q). Every band claim on each BAND_PROSE_PAGES page must agree with
+ * hhi-band.mjs (hhiBandClaims), each page must make at least one (a page
+ * that stops stating the bands makes this leg vacuous — an error, never a
+ * skip), and /methodology/'s #feed-concentration_shift passage must state
+ * them whole (methodologyBandsBlockFindings). A page that is not built is an
+ * error: runFeedGate only gets here once out/feed/ exists, so a build is
+ * present. Exported for __tests__/feed-hhi-band-prose.test.mjs.
+ *
+ * @param {string[]} errors
+ * @param {string[]} notes
+ * @param {(route: string) => import("node-html-parser").HTMLElement | null} readRoot
+ */
+export function runBandProseLeg(errors, notes, readRoot) {
+  const before = errors.length;
+  let claims = 0;
+  for (const route of BAND_PROSE_PAGES) {
+    let root;
+    try {
+      root = readRoot(route);
+    } catch (e) {
+      errors.push(`feed leg q: built ${route} would not read or parse — ${e.message}`);
+      continue;
+    }
+    if (!root) {
+      errors.push(`feed leg q: built ${route} missing — it states the HHI bands in prose`);
+      continue;
+    }
+    let pageClaims = 0;
+    for (const seg of bandProseSegments(root)) {
+      for (const c of hhiBandClaims(seg)) {
+        pageClaims++;
+        if (!c.ok) errors.push(`feed leg q (${route}): ${c.finding}`);
+      }
+    }
+    if (pageClaims === 0) {
+      errors.push(
+        `feed leg q (${route}): vacuous — no statement of the HHI bands found; the page states them, so the leg lost its reader`,
+      );
+    }
+    claims += pageClaims;
+    if (route === "/methodology/") {
+      const block = root.querySelector("#feed-concentration_shift");
+      const findings = methodologyBandsBlockFindings(block ? block.text : null);
+      for (const f of findings) errors.push(`feed leg q (/methodology/ #feed-concentration_shift): ${f}`);
+    }
+  }
+  if (errors.length === before) {
+    notes.push(
+      `leg q: ${claims} band claim(s) on ${BAND_PROSE_PAGES.join(", ")} agree with hhi-band.mjs (${HHI_BANDS_VINTAGE}) ✓`,
+    );
+  }
+}
+
+/** A built page's parsed root, or null when out/ has no such page. A page
+ *  that exists but will not read or parse throws — runBandProseLeg names it. */
+function readBuiltRoot(route) {
+  const p = path.join(outDir, ...route.split("/").filter(Boolean), "index.html");
+  if (!fs.existsSync(p)) return null;
+  return parse(fs.readFileSync(p, "utf8"), { comment: false });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

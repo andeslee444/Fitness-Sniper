@@ -97,7 +97,7 @@ account+tokens/high -> account/low, 32 adjudicated -> account+subagency/medium).
 """
 import csv
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -849,6 +849,9 @@ class RegradeReport:
                        stored under another window was graded against
                        another candidate set
     window_mismatch    transition rows left out of `updates` for that reason
+    mismatch_windows   the window each of those rows' stored rationale
+                       records -> rows ('unrecorded' when none parses), so
+                       the operator is told which window re-grades them
     """
 
     organization: str
@@ -861,6 +864,7 @@ class RegradeReport:
     lost_leg: dict
     updates: tuple = ()
     window_mismatch: int = 0
+    mismatch_windows: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -878,6 +882,18 @@ class RegradeUpdate:
     confidence: str
     score: int
     rationale: str              # the grade's rationale + the window label
+
+
+#: The labels _window_label writes, as they end a stored rationale segment.
+_STORED_WINDOW = re.compile(
+    r"; (all loaded award years|award FY\d{4}(?:-\d{4})?)(?=;|$)")
+
+
+def _stored_window(rationale: str | None) -> str:
+    """The window a stored rationale records (its last window label), or
+    'unrecorded' when none parses."""
+    found = _STORED_WINDOW.findall(rationale or "")
+    return found[-1] if found else "unrecorded"
 
 
 def _stored_under(rationale: str | None, window_label: str) -> bool:
@@ -930,6 +946,7 @@ def regrade_report(
     lost_leg: dict[tuple[str, str], int] = {}
     updates: list[RegradeUpdate] = []
     window_mismatch = 0
+    mismatch_windows: dict[str, int] = {}
     seen: set[tuple] = set()
     reproduced = drifted = new_pairs = 0
     con = duckdb.connect()
@@ -981,6 +998,9 @@ def regrade_report(
                         rationale=f"{after[3]}; {window_label}"))
                 else:
                     window_mismatch += 1
+                    stored_window = _stored_window(stored[key][2])
+                    mismatch_windows[stored_window] = (
+                        mismatch_windows.get(stored_window, 0) + 1)
                 if before[1] == "account+tokens":
                     for leg, tokens in zip(SCOPE_LEGS, scoped[1:]):
                         if len(tokens & award_tokens) < min_overlap:
@@ -999,6 +1019,7 @@ def regrade_report(
         lost_leg=dict(sorted(lost_leg.items())),
         updates=tuple(sorted(updates, key=lambda u: u.key)),
         window_mismatch=window_mismatch,
+        mismatch_windows=dict(sorted(mismatch_windows.items())),
     )
 
 

@@ -48,7 +48,20 @@
 --             article). A contrary record about ANOTHER
 --             article of the pair does
 --             not bind; an 'incomplete' adversarial read is neither a
---             rejection nor a refutation, so it never binds.
+--             rejection nor a refutation, so it never binds (R-DEC-INCOMPLETE:
+--             it is not an uphold either — alone it demotes with
+--             announcement_review_incomplete).
+--       "Record" means a jbook_announcement_link_reviews row and nothing
+--       else: the announcement pipeline's own wave 1-4 reviews. The held-out
+--       precision study (Postgres link_precision_samples) is NOT a grading
+--       input — it is the independent measurement of the published tier, and
+--       grading on it would bias the precision figure it publishes. So a link
+--       can publish high while a precision sample refuted it: measured
+--       read-only 2026-09-26, 10 of the 15 announcement links the 2026-09-04
+--       and 2026-09-12 samples refuted (rubric 'attribution') publish high,
+--       both on the deployed mart and in chain order; the other 5 are no
+--       longer budget_line_awards rows. No sentence may say that no high link
+--       carries a recorded refutation without naming this scope.
 --       Otherwise the link publishes at medium with the reason its records
 --       give, first match wins:
 --         announcement_review_refuted     a binding record was refuted, or —

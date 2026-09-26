@@ -955,6 +955,19 @@ def cmd_jbooks(args) -> None:
                 f" under another window left alone); never inserts;"
                 f" window={window}"
             )
+            if rep.window_mismatch:
+                # a row stored under another window was graded against another
+                # candidate set, so it is left alone -- say which window it
+                # records and the flag that selects it, instead of a bare 0
+                # (fix round 2: the runbook's literal command lacked it)
+                recorded = ", ".join(
+                    f"'{w}' ({n:,})" for w, n in rep.mismatch_windows.items())
+                print(
+                    f"crosswalk --regrade-only: the {rep.window_mismatch:,}"
+                    f" row(s) left alone record window {recorded}, not this"
+                    f" run's; re-run with the window they record to re-grade"
+                    f" them ('all loaded award years' = --all-years)"
+                )
             if dry_run:
                 print("crosswalk --regrade-only dry-run: nothing written")
                 return

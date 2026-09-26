@@ -100,6 +100,76 @@ def test_a_key_whose_created_at_moved_is_not_recorded_and_the_migration_refuses(
             con.execute(SQL)
 
 
+def test_an_unguarded_rebuild_that_erased_every_created_at_is_refused(con):
+    """Fix round 2 (pg checker, 2026-09-26): a loader run WITHOUT
+    require_migrations (the pre-wave loader in the main checkout) deletes and
+    re-inserts every row it owns, so no row carries the 2026-09-19 load's
+    transaction time any more and not one of the 60 keys still carries the
+    created_at its evidence rests on. That database must not pass as a fresh
+    one: migrate tracks by file name, so a silent no-op would mark 020 applied
+    with none of the 60 moves recorded (R-DEC-140: never lose provenance
+    silently)."""
+    rebuilt = dt.datetime(2026, 9, 27, tzinfo=dt.timezone.utc)
+    for k in _keys():
+        _seed(con, k, created=rebuilt)
+    with pytest.raises(psycopg.errors.RaiseException,
+                       match=r"60 of the 60 moved key\(s\)"):
+        with con.transaction():
+            con.execute(SQL)
+    assert con.execute(
+        "select count(*) from budget_line_awards where superseded_method"
+        " is not null").fetchone()[0] == 0
+
+
+def test_one_erased_key_is_refused_even_after_the_0919_load_is_gone(con):
+    """The same, for a single key: no 2026-09-19 row is left (so the 60-count
+    leg cannot fire), but one moved key is held by a loader-owned row whose
+    created_at no longer matches and which carries no record."""
+    keys = _keys()
+    for k in keys[1:]:
+        _seed(con, k, created=dt.datetime(2026, 9, 20, tzinfo=dt.timezone.utc))
+        con.execute(
+            "update budget_line_awards set superseded_method='fpds-ap',"
+            " superseded_confidence='unknown', superseded_at=%s,"
+            " superseded_evidence='carried' where award_piid=%s and pe_bli=%s",
+            (LOAD_0919, k["piid"], k["pe"]))
+    _seed(con, keys[0], created=dt.datetime(2026, 9, 20, tzinfo=dt.timezone.utc))
+    with pytest.raises(psycopg.errors.RaiseException,
+                       match=r"1 of the 60 moved key\(s\)"):
+        with con.transaction():
+            con.execute(SQL)
+
+
+def test_rows_the_guarded_loader_rebuilt_with_their_records_pass(con):
+    """After 020 and the guarded loader (which carries every record across its
+    rebuild), the 60 keys carry new created_at values AND their records: that
+    is not lost evidence, and re-executing 020 changes nothing."""
+    rebuilt = dt.datetime(2026, 9, 27, tzinfo=dt.timezone.utc)
+    for k in _keys():
+        _seed(con, k, created=rebuilt)
+    con.execute(
+        "update budget_line_awards set superseded_method='fpds-ap',"
+        " superseded_confidence='unknown', superseded_at=%s,"
+        " superseded_evidence='carried' where organization='r140-test'",
+        (LOAD_0919,))
+    con.execute(SQL)
+    assert con.execute(
+        "select count(*) from budget_line_awards where organization='r140-test'"
+        " and superseded_evidence = 'carried'").fetchone()[0] == 60
+
+
+def test_a_key_another_route_holds_again_is_not_lost_evidence(con):
+    """A moved key now held by a non-announcement route (the key moved back)
+    has no announcement row to carry a record: nothing to refuse."""
+    for k in _keys():
+        _seed(con, k, created=dt.datetime(2026, 9, 27, tzinfo=dt.timezone.utc),
+              method="fpds-ap")
+    con.execute(SQL)
+    assert con.execute(
+        "select count(*) from budget_line_awards where superseded_method"
+        " is not null").fetchone()[0] == 0
+
+
 def test_on_a_database_without_the_0919_load_the_migration_is_a_no_op(con):
     con.execute(SQL)          # the fixture DB: nothing to match, nothing refused
     assert con.execute(

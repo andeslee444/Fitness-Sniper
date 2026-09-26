@@ -44,8 +44,24 @@ whose pair holds no row is counted and dropped (the table is per link).
 The adversarial verdict of a verdict pair follows the wave-4 rubric
 (scripts/mine_announcement_residue.py): 'upheld' when every lens returned
 refuted=false, 'refuted' when any lens returned refuted=true, 'incomplete' when
-none refuted but a lens is missing or not a JSON boolean (the rubric counts it
-as refuted). reviewed_at is NULL: no wave file carries a review timestamp.
+none refuted but a lens is missing or not a JSON boolean. The wave-4 collector
+kept an 'incomplete' pair out of its survivors; the GRADING rule reads it as
+neither an uphold nor a refutation (R-DEC-INCOMPLETE, 2026-09-26: it never
+binds as a refutation of a cited article, and alone it demotes as
+'announcement_review_incomplete'). reviewed_at is NULL: no wave file carries a
+review timestamp.
+
+SCOPE (fix round 2, 2026-09-26). The records are the announcement PIPELINE's
+own review records — the wave files above — and nothing else. The held-out
+precision study (Postgres link_precision_samples, judged per sampled link) is
+NOT read, by design: it measures the published tiers, and feeding its
+verdicts back into the grading would bias the precision figure it publishes.
+Measured read-only 2026-09-26: 10 of the 1,056 high announcement links that
+stay high carry a 'refuted' attribution verdict in that study (samples
+2026-09-04: 3, 2026-09-12: 7), each judged on a packet that names the article
+their card cites — so "no high link carries a recorded refutation of its
+cited article" is true of the pipeline's records only, not of every record on
+disk.
 
 ORDER (R-DEC-LOADER): migrate -> load_announcement_links -> THIS -> jbooks
 export-facts -> dbt. The loader rebuilds the links and their source rows this
@@ -120,7 +136,8 @@ def lens_outcome(lens_a, lens_b) -> tuple[str, int] | None:
     A lens "recorded a verdict" when it is a dict carrying a `refuted` key.
     Only a JSON boolean false clears a lens; a true refutes; anything else
     (missing lens, non-boolean) leaves the outcome 'incomplete' unless another
-    lens refuted — the wave-4 rubric's fail-closed reading.
+    lens refuted. 'incomplete' is not a refutation (R-DEC-INCOMPLETE): the
+    grading reads it as neither an uphold nor a refutation (classify()).
     """
     lenses = [x for x in (lens_a, lens_b)
               if isinstance(x, dict) and "refuted" in x]
@@ -321,33 +338,68 @@ def review_rows(records, links: dict, cited: dict) -> tuple[list[tuple], dict]:
     return rows, counts
 
 
+def _names_article(row) -> bool:
+    """The mart's test: article_id neither NULL nor blank."""
+    return row[_C["article_id"]] is not None and bool(str(row[_C["article_id"]]).strip())
+
+
+def _binds(row) -> bool:
+    """Does this record speak about the article the link's card cites? The
+    mart's rule (dbt/models/audit/audit_link_grading.sql, review_records):
+    a record naming no article binds to the pair, and so does one whose
+    article match is unknown (cites_reviewed_article NULL) — read against the
+    card, never wider."""
+    if not _names_article(row):
+        return True
+    return row[_C["cites_reviewed_article"]] is not False
+
+
 def classify(link_rows) -> dict:
-    """What the review rows of ONE link record, in R-DEC-110's terms."""
+    """What the review rows of ONE link record, in R-DEC-110's terms — the
+    mart's predicates, one for one (R-DEC-INCOMPLETE, 2026-09-26: "one rule
+    everywhere"; tests/test_backfill_announcement_link_reviews.py runs the
+    committed model against this function):
+
+      upholds  reviewer 'link' AND adversarial 'upheld'
+      refutes  adversarial 'refuted' — ONLY that: an 'incomplete' read (a lens
+               missing or not a JSON boolean) is neither an uphold nor a
+               refutation, and never binds as a refutation of the cited
+               article; a 'not_run' decides nothing either
+      rejects  reviewer 'weak' / 'wrong'
+      binds    see _binds()
+    """
     upheld_kinds = {r[_C["record_kind"]] for r in link_rows if r[_C["upholds"]]}
-    refuted = [r for r in link_rows
-               if r[_C["adversarial_verdict"]] in ("refuted", "incomplete")]
-    rejected = [r for r in link_rows if r[_C["reviewer_verdict"]] != "link"]
+    refutes = [r for r in link_rows if r[_C["adversarial_verdict"]] == "refuted"]
+    rejects = [r for r in link_rows
+               if r[_C["reviewer_verdict"]] in ("weak", "wrong")]
     return {
         "upheld_kinds": upheld_kinds,
-        "refuted_cited": any(r[_C["cites_reviewed_article"]] is True for r in refuted),
-        "rejected_cited": any(r[_C["cites_reviewed_article"]] is True for r in rejected),
-        "refuted_any": bool(refuted),
-        "rejected_any": bool(rejected),
+        "refuted_cited": any(r[_C["cites_reviewed_article"]] is True for r in refutes),
+        "rejected_cited": any(r[_C["cites_reviewed_article"]] is True for r in rejects),
+        "refuted_binding": any(_binds(r) for r in refutes),
+        "rejected_binding": any(_binds(r) for r in rejects),
+        "contrary_without_article": any(
+            not _names_article(r) for r in refutes + rejects),
+        "refuted_any": bool(refutes),
+        "rejected_any": bool(rejects),
         "any": bool(link_rows),
     }
 
 
 def rule_outcome(c: dict) -> str:
-    """R-DEC-110: high iff an upholding record exists AND no recorded reviewer
-    rejection / adversarial refutation targets the article the link cites;
-    otherwise medium with the reason that is TRUE of the link. A link with no
-    upholding record at all takes the reason its records DO state (a
-    refutation, else a rejection), and 'review_unrecorded' only when none
-    decides (no row, or a 'link' whose lenses never ran). The mart applies the
-    rule (dbt); this is the backfill's measurement of it."""
-    if c["refuted_cited"]:
+    """R-DEC-110 + R-DEC-INCOMPLETE, as the mart applies them: high iff an
+    upholding record exists AND no binding reviewer rejection / adversarial
+    refutation exists (_binds: it names the article the link cites, or names
+    none); otherwise medium with the reason that is TRUE of the link, first
+    match wins — a binding refutation, a binding rejection, then (with no
+    upholding record) any refutation, any rejection, 'review_incomplete' when
+    records exist but none upholds, refutes or rejects (an 'incomplete' read,
+    or a 'link' whose lenses never ran), and 'review_unrecorded' only when
+    the link has no record at all. The mart applies the rule (dbt); this is
+    the backfill's measurement of it."""
+    if c["refuted_binding"]:
         return "review_refuted"
-    if c["rejected_cited"]:
+    if c["rejected_binding"]:
         return "reviewer_rejected"
     if c["upheld_kinds"]:
         return "stays high"
@@ -355,11 +407,17 @@ def rule_outcome(c: dict) -> str:
         return "review_refuted"
     if c["rejected_any"]:
         return "reviewer_rejected"
+    if c["any"]:
+        return "review_incomplete"
     return "review_unrecorded"
 
 
 def coverage(rows, published) -> dict[str, int]:
-    """Classify every published link identity by the review rows it carries."""
+    """Classify every published link identity by the review rows it carries.
+    'refuted/rejected on the cited article' count records whose article IS
+    the card's; 'contrary record naming no article' counts links carrying a
+    refutation or rejection that names none (it binds to the pair — _binds);
+    the 'rule:' counts apply rule_outcome, the mart's rule."""
     by_link: dict[tuple, list[tuple]] = {}
     for row in rows:
         by_link.setdefault(tuple(row[:4]), []).append(row)
@@ -367,9 +425,11 @@ def coverage(rows, published) -> dict[str, int]:
            "upheld: verdict_pair only": 0, "upheld: survivor_list only": 0,
            "upheld: both kinds": 0, "no upholding record": 0,
            "refuted on the cited article": 0, "rejected on the cited article": 0,
+           "contrary record naming no article": 0,
            "no record at all": 0,
            "rule: stays high": 0, "rule: review_refuted": 0,
-           "rule: reviewer_rejected": 0, "rule: review_unrecorded": 0}
+           "rule: reviewer_rejected": 0, "rule: review_incomplete": 0,
+           "rule: review_unrecorded": 0}
     for ident in published:
         out["total"] += 1
         c = classify(by_link.get((ident[0], ident[1], ident[2], int(ident[3])), []))
@@ -384,6 +444,7 @@ def coverage(rows, published) -> dict[str, int]:
             out["no upholding record"] += 1
         out["refuted on the cited article"] += c["refuted_cited"]
         out["rejected on the cited article"] += c["rejected_cited"]
+        out["contrary record naming no article"] += c["contrary_without_article"]
         out["no record at all"] += not c["any"]
         out[f"rule: {rule_outcome(c)}"] += 1
     return out

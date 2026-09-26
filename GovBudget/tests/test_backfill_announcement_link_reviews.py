@@ -62,7 +62,7 @@ def _wave(tmp_path, n, *, surviving, packets, refutations=None):
     (True, False, ("refuted", 1)),
     (False, True, ("refuted", 1)),
     (True, True, ("refuted", 0)),
-    (False, None, ("incomplete", 1)),   # rubric: a missing lens counts as refuted
+    (False, None, ("incomplete", 1)),   # neither an uphold nor a refutation (R-DEC-INCOMPLETE)
     (None, True, ("refuted", 0)),
     ("false", False, ("incomplete", 1)),  # not a JSON boolean: cleared nothing
 ])
@@ -258,27 +258,195 @@ def test_coverage_splits_the_links_by_upholding_kind_and_cited_rejection():
         _rec("P6", adv="refuted", lenses=0, article="A9"),           # refuted elsewhere
         _rec("P7", reviewer="wrong", adv="not_run", lenses=None),    # rejected, cited
         _rec("P8", adv="not_run", lenses=None),                      # link, no lens
+        _rec("P10", adv="incomplete", lenses=1),                     # incomplete, cited
+        _rec("P11"), _rec("P11", adv="incomplete", lenses=1, entry=1),  # upheld + incomplete
     ]
-    ids = [f"P{i}" for i in range(1, 10)]
+    ids = [f"P{i}" for i in range(1, 12)]
     links = {(p, "PE1"): [("R-1", 2026)] for p in ids}
     cited = {(p, "PE1"): {"A1"} for p in ids}
     cited[("P5", "PE1")] = {"A5"}
     rows, _ = bf.review_rows(records, links, cited)
     published = [(p, "PE1", "R-1", 2026) for p in ids]
     assert bf.coverage(rows, published) == {
-        "total": 9,
-        "upheld: verdict_pair only": 3,      # P1, P4, P5
+        "total": 11,
+        "upheld: verdict_pair only": 4,      # P1, P4, P5, P11
         "upheld: survivor_list only": 1,     # P2
         "upheld: both kinds": 1,             # P3
-        "no upholding record": 4,            # P6, P7, P8, P9
-        "refuted on the cited article": 1,   # P5 (the card cites A5)
+        "no upholding record": 5,            # P6, P7, P8, P9, P10
+        "refuted on the cited article": 1,   # P5 (the card cites A5); never P10/P11
         "rejected on the cited article": 2,  # P4, P7
+        "contrary record naming no article": 0,
         "no record at all": 1,               # P9
-        "rule: stays high": 3,               # P1, P2, P3
+        "rule: stays high": 4,               # P1, P2, P3, P11 (incomplete never binds)
         "rule: review_refuted": 2,           # P5 (cited), P6 (no uphold, refuted)
         "rule: reviewer_rejected": 2,        # P4 (cited), P7
-        "rule: review_unrecorded": 2,        # P8 (lenses never ran), P9
+        "rule: review_incomplete": 2,        # P8 (lenses never ran), P10 (incomplete)
+        "rule: review_unrecorded": 1,        # P9: no record at all
     }
+
+
+# ── R-DEC-INCOMPLETE: one rule, the mart's ─────────────────────────────────
+
+def _outcome(records, cited=frozenset({"A1"})):
+    rows, _ = bf.review_rows(records, {("P1", "PE1"): [("R-1", 2026)]},
+                             {("P1", "PE1"): set(cited)})
+    return bf.rule_outcome(bf.classify(rows))
+
+
+@pytest.mark.parametrize(("records", "expected"), [
+    # an 'incomplete' read of the CITED article never binds as a refutation
+    ([_rec(), _rec(adv="incomplete", lenses=1, entry=1)], "stays high"),
+    ([_rec(kind="survivor_list", lenses=None,
+           src="data/research/announcements/wave1_result.json"),
+      _rec(adv="incomplete", lenses=0, entry=1)], "stays high"),
+    # alone it demotes, with its own reason — never 'refuted'
+    ([_rec(adv="incomplete", lenses=1)], "review_incomplete"),
+    ([_rec(adv="incomplete", lenses=1), _rec(adv="not_run", lenses=None,
+                                             entry=1)], "review_incomplete"),
+    # a 'link' no lens answered decides nothing either
+    ([_rec(adv="not_run", lenses=None)], "review_incomplete"),
+    # no record at all is the only 'unrecorded'
+    ([], "review_unrecorded"),
+    # with no uphold, a real refutation / rejection anywhere still decides
+    ([_rec(adv="incomplete", lenses=1),
+      _rec(adv="refuted", lenses=0, article="A9", entry=1)], "review_refuted"),
+    ([_rec(adv="incomplete", lenses=1),
+      _rec(reviewer="weak", adv="not_run", lenses=None, article="A9",
+           entry=1)], "reviewer_rejected"),
+    # and an upheld link with a real refutation of its cited article demotes
+    ([_rec(), _rec(adv="incomplete", lenses=1, entry=1),
+      _rec(adv="refuted", lenses=1, entry=2)], "review_refuted"),
+])
+def test_incomplete_is_neither_an_uphold_nor_a_refutation(records, expected):
+    """R-DEC-INCOMPLETE (fix-round ruling, 2026-09-26): an 'incomplete'
+    adversarial record is neither an uphold nor a refutation; alone it demotes
+    with 'announcement_review_incomplete'; it never binds as a refutation of a
+    cited article. classify() follows the mart (audit_link_grading)."""
+    assert _outcome(records) == expected
+
+
+def test_a_contrary_record_naming_no_article_binds_to_the_pair():
+    """The mart binds a rejection / refutation that names no article to the
+    pair ('read against the card, never wider'); classify() does the same."""
+    W1 = "data/research/announcements/wave1_result.json"
+    records = [_rec(), _rec(kind="refutation_sample", adv="refuted", lenses=None,
+                            article=None, reason="O&M", entry=1, src=W1)]
+    assert _outcome(records) == "review_refuted"
+    rows, _ = bf.review_rows(records, {("P1", "PE1"): [("R-1", 2026)]},
+                             {("P1", "PE1"): {"A1"}})
+    got = bf.coverage(rows, [("P1", "PE1", "R-1", 2026)])
+    assert got["refuted on the cited article"] == 0
+    assert got["contrary record naming no article"] == 1
+    assert got["rule: review_refuted"] == 1
+
+
+_MODEL = (bf.ROOT / "dbt" / "models" / "audit" / "audit_link_grading.sql")
+
+
+def _mart_reasons(rows, piids):
+    """Run the COMMITTED audit_link_grading.sql over `rows` exactly as
+    `jbooks export-facts` exports them (every column varchar; None -> NULL,
+    else str()) and return piid -> demotion_reason for unadjudicated
+    announcement+lexicon/high links (R-1, FY2026, PE1)."""
+    duckdb = pytest.importorskip("duckdb")
+    sql = _MODEL.read_text()
+    for src, table in {
+        "{{ source('lake', 'jbook_awards') }}": "awards",
+        "{{ source('lake', 'jbook_award_adjudications') }}": "adjudications",
+        "{{ source('lake', 'jbook_announcement_link_reviews') }}": "reviews",
+    }.items():
+        sql = sql.replace(src, table)
+    assert "{{" not in sql
+    con = duckdb.connect()
+    try:
+        con.execute(
+            "create table awards (pe_bli varchar, exhibit varchar,"
+            " fiscal_year varchar, organization varchar, award_piid varchar,"
+            " recipient_name varchar, recipient_uei varchar, method varchar,"
+            " account varchar, confidence varchar)")
+        con.execute(
+            "create table adjudications (award_piid varchar, pe_bli varchar,"
+            " adjudicated_confidence varchar, award_verdict varchar,"
+            " pair_reason varchar, basis varchar, refuter_lenses_passed varchar)")
+        con.execute("create table reviews ("
+                    + ", ".join(f"{c} varchar" for c in bf.COLUMNS) + ")")
+        for piid in piids:
+            con.execute(
+                "insert into awards values ('PE1', 'R-1', '2026', 'N', ?, 'X',"
+                " 'U', 'announcement+lexicon', '1810', 'high')", [piid])
+        for row in rows:
+            con.execute(
+                f"insert into reviews values ({', '.join(['?'] * len(bf.COLUMNS))})",
+                [None if v is None else str(v) for v in row])
+        got = dict(con.execute(
+            f"select award_piid, demotion_reason from ({sql})").fetchall())
+    finally:
+        con.close()
+    assert set(got) == set(piids)
+    return got
+
+
+def test_classify_matches_the_mart_on_every_record_shape():
+    """Parity (R-DEC-INCOMPLETE: "one rule, stated once"): for every shape a
+    link's records can take, the backfill's measurement and the committed
+    mart give the same outcome and the same reason."""
+    W1 = "data/research/announcements/wave1_result.json"
+    ups = dict(kind="survivor_list", lenses=None, src=W1)
+    cases = {
+        "UP_PAIR": [_rec("UP_PAIR")],
+        "UP_LIST": [_rec("UP_LIST", **ups)],
+        "UP_INCOMPLETE_CITED": [_rec("UP_INCOMPLETE_CITED"),
+                                _rec("UP_INCOMPLETE_CITED", adv="incomplete",
+                                     lenses=1, entry=1)],
+        "INCOMPLETE": [_rec("INCOMPLETE", adv="incomplete", lenses=0)],
+        "NOT_RUN": [_rec("NOT_RUN", adv="not_run", lenses=None)],
+        "NONE": [],
+        "UP_REFUTED_CITED": [_rec("UP_REFUTED_CITED"),
+                             _rec("UP_REFUTED_CITED", adv="refuted", lenses=1,
+                                  entry=1)],
+        "UP_WEAK_CITED": [_rec("UP_WEAK_CITED", **ups),
+                          _rec("UP_WEAK_CITED", reviewer="weak", adv="not_run",
+                               lenses=None)],
+        "UP_REFUTED_OTHER": [_rec("UP_REFUTED_OTHER"),
+                             _rec("UP_REFUTED_OTHER", adv="refuted", lenses=0,
+                                  article="A9", entry=1)],
+        "UP_WRONG_OTHER": [_rec("UP_WRONG_OTHER"),
+                           _rec("UP_WRONG_OTHER", reviewer="wrong",
+                                adv="not_run", lenses=None, article="A9",
+                                entry=1)],
+        "REFUTED_OTHER": [_rec("REFUTED_OTHER", adv="refuted", lenses=1,
+                               article="A9")],
+        "WEAK_OTHER_INCOMPLETE": [
+            _rec("WEAK_OTHER_INCOMPLETE", reviewer="weak", adv="not_run",
+                 lenses=None, article="A9"),
+            _rec("WEAK_OTHER_INCOMPLETE", adv="incomplete", lenses=1, entry=1)],
+        "UP_SAMPLE_NO_ARTICLE": [
+            _rec("UP_SAMPLE_NO_ARTICLE"),
+            _rec("UP_SAMPLE_NO_ARTICLE", kind="refutation_sample", adv="refuted",
+                 lenses=None, article=None, entry=1, src=W1)],
+        "UP_LIST_NO_ARTICLE": [_rec("UP_LIST_NO_ARTICLE", article=None, **ups)],
+        "REFUTED_AND_WEAK_CITED": [
+            _rec("REFUTED_AND_WEAK_CITED", adv="refuted", lenses=1),
+            _rec("REFUTED_AND_WEAK_CITED", reviewer="wrong", adv="not_run",
+                 lenses=None, entry=1)],
+    }
+    records = [r for recs in cases.values() for r in recs]
+    links = {(p, "PE1"): [("R-1", 2026)] for p in cases}
+    cited = {(p, "PE1"): {"A1"} for p in cases}
+    rows, _ = bf.review_rows(records, links, cited)
+    mart = _mart_reasons(rows, list(cases))
+    by_link: dict = {}
+    for row in rows:
+        by_link.setdefault(row[0], []).append(row)
+    ours = {}
+    for piid in cases:
+        outcome = bf.rule_outcome(bf.classify(by_link.get(piid, [])))
+        ours[piid] = None if outcome == "stays high" else f"announcement_{outcome}"
+    assert ours == mart
+    # the shapes the ruling names, spelled out
+    assert mart["UP_INCOMPLETE_CITED"] is None
+    assert mart["INCOMPLETE"] == "announcement_review_incomplete"
+    assert mart["NONE"] == "announcement_review_unrecorded"
 
 
 # ── the table ───────────────────────────────────────────────────────────────

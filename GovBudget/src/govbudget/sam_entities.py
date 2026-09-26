@@ -288,7 +288,8 @@ def require_preflight(report_path) -> dict:
     if not report_path.is_file():
         raise SamShapeError(
             f"no preflight report at {report_path}. Run `govbudget sam "
-            "preflight` once (it spends up to 2 of the day's requests) before "
+            "preflight` once (it spends up to "
+            f"{len(candidate_urls())} of the day's requests) before "
             "the first extract: it records which API version answers and "
             "whether the reader-facing sam.gov entity page exists."
         )

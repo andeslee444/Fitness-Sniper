@@ -32,6 +32,7 @@ from govbudget.verify_phase5 import (
     _compute_exit_code,
     non_provider_error_clause,
     provider_block_reason,
+    provider_refusal_clause,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "eval_runs"
@@ -126,16 +127,95 @@ def test_provider_credit_text_blocks_a_partial_run_that_could_still_pass():
     assert "credit balance is too low" in reason
 
 
-def test_a_wrong_answer_beside_the_refusals_is_a_fail():
-    """R-DEC-139b: BLOCKED only when EVERY question that is not correct is a
-    provider refusal. 27 correct + 20 refused + 1 answered WRONG: the wrong
-    answer is the model's, not the provider's, so this is a FAIL (the stage-1
-    rule called it BLOCKED because 27 + 20 >= 44)."""
+def test_a_wrong_answer_beside_refusals_that_decide_the_verdict_is_blocked():
+    """R-DEC-139b/139c (fix round 2): BLOCKED when the refusals ALONE decide
+    the verdict and no non-provider error occurred. A wrong answer is a
+    measured answer — it counts against the bar — but it does not decide
+    this run: 27 correct + 1 wrong + 20 credit refusals passes iff at least
+    17 of the 20 would be answered correctly. This is the 2026-09-18 shape
+    (27 correct, 20 ERROR, 1 wrong) with the refusal text on record; R-DEC-139c
+    names that shape BLOCKED. (The fix-round-1 rule required every
+    non-correct question to be a refusal, so a real mid-run credit exhaustion,
+    which almost always follows a wrong answer, printed an accuracy FAIL for
+    a run whose accuracy was never measured.)"""
     scores = ([_score(i, correct=True) for i in range(27)]
               + [_score(27 + i, error=True, text=CREDIT_TEXT) for i in range(20)]
               + [_score(47)])
     assert 27 + 20 >= ACCURACY_THRESHOLD
+    reason = provider_block_reason(_run(scores))
+    assert reason is not None
+    assert "20 of 48" in reason
+    assert "27 answered correctly and 1 wrong" in reason
+    assert "at least 17 of the 20 refused questions" in reason
+    assert "credit balance is too low" in reason
+    assert non_provider_error_clause(_run(scores)) is None
+
+
+def test_wrong_answers_decide_the_verdict_once_the_refusals_cannot():
+    """The margin, both ways: 39 correct + 4 wrong + 5 refused can still
+    reach 44 (BLOCKED); 38 correct + 5 wrong + 5 refused cannot (FAIL — the
+    answered questions already decided it)."""
+    at_margin = ([_score(i, correct=True) for i in range(39)]
+                 + [_score(39 + i) for i in range(4)]
+                 + [_score(43 + i, error=True, text=CREDIT_TEXT) for i in range(5)])
+    assert 39 + 5 == ACCURACY_THRESHOLD
+    assert provider_block_reason(_run(at_margin)) is not None
+
+    below = ([_score(i, correct=True) for i in range(38)]
+             + [_score(38 + i) for i in range(5)]
+             + [_score(43 + i, error=True, text=CREDIT_TEXT) for i in range(5)])
+    assert 38 + 5 < ACCURACY_THRESHOLD
+    assert provider_block_reason(_run(below)) is None
+
+
+def test_a_run_whose_answers_already_reach_the_bar_is_not_blocked():
+    """45 correct + 3 refused: the answered questions reach 44 on their own,
+    so the refusals decide nothing (eval_gate calls this run a PASS). The
+    rule answers the same when read against a stored record."""
+    scores = ([_score(i, correct=True) for i in range(45)]
+              + [_score(45 + i, error=True, text=CREDIT_TEXT) for i in range(3)])
     assert provider_block_reason(_run(scores)) is None
+
+
+# ---------------------------------------------------------------------------
+# A FAIL that carries refusals says so (fix round 2)
+# ---------------------------------------------------------------------------
+
+
+def test_a_fail_with_refusals_that_cannot_decide_it_names_them():
+    """30 correct + 5 refused + 13 wrong: FAIL, and the reason says the
+    provider refused 5 and why they do not decide it — the reason used to
+    read "accuracy 30/48 < 44 threshold" alone."""
+    scores = ([_score(i, correct=True) for i in range(30)]
+              + [_score(30 + i, error=True, text=CREDIT_TEXT) for i in range(5)]
+              + [_score(35 + i) for i in range(13)])
+    clause = provider_refusal_clause(_run(scores))
+    assert clause is not None
+    assert clause.startswith("5 of 48 questions were refused by the provider")
+    assert "credit balance is too low" in clause
+    assert "30 + 5 < 44" in clause
+
+
+def test_a_fail_on_a_citation_with_refusals_names_the_citation():
+    scores = ([_score(i, correct=True) for i in range(40)]
+              + [_score(40, correct=True, cite=False)]
+              + [_score(41 + i, error=True, text=CREDIT_TEXT) for i in range(7)])
+    clause = provider_refusal_clause(_run(scores))
+    assert clause is not None
+    assert clause.startswith("7 of 48 questions were refused by the provider")
+    assert "citation" in clause
+
+
+def test_the_refusal_clause_is_none_where_another_sentence_already_says_it():
+    # No refusal at all.
+    assert provider_refusal_clause(_run([_score(i, correct=i < 40) for i in range(48)])) is None
+    # A block: its reason is the sentence.
+    assert provider_refusal_clause(_load("eval-20260925T062947Z.json")) is None
+    # Refusals beside a code crash: non_provider_error_clause counts them.
+    mixed = ([_score(i, correct=True) for i in range(42)]
+             + [_score(42 + i, error=True, text=CREDIT_TEXT) for i in range(2)]
+             + [_score(44 + i, error=True, text="TypeError: x") for i in range(4)])
+    assert provider_refusal_clause(_run(mixed)) is None
 
 
 def test_checker_case_1_credit_ran_out_mid_run_is_blocked_under_the_rule():
@@ -319,6 +399,106 @@ def test_eval_gate_fails_a_run_mixing_refusals_and_crashes_and_names_them(
     assert "47 other(s) were refused by the provider" in result["reason"]
     ag = {"ok": True, "blocked": False, "all_blocked_phases": [], "results": []}
     assert _compute_exit_code(fg_ok=True, eg=result, ag=ag) == 1
+
+
+def _agent_answering(plan: list[str], *, cost=0.015):
+    """agent.run for a scripted run: plan[i] is "right", "wrong" or "credit"
+    for the i-th question (right answers "X", the entries' expected answer)."""
+    calls = {"n": 0}
+
+    def _run(question, **_kw):
+        kind = plan[calls["n"]]
+        calls["n"] += 1
+        if kind == "credit":
+            raise RuntimeError(CREDIT_TEXT)
+        return {
+            "answer": "X" if kind == "right" else "Y", "error": False,
+            "refuse": False, "refuse_reason_class": None, "sql": "select 1",
+            "citation_kind": "warehouse", "citation": None, "turns": 4,
+            "cost_usd": cost, "touched_tables": {"fct_awards"},
+        }
+    return _run
+
+
+def test_eval_gate_blocks_the_checkers_mid_run_credit_exhaustion(
+    tmp_path, monkeypatch
+):
+    """The fix-round-2 checker's probe: 39 correct, 1 wrong, then 8 raising
+    the SDK's credit error, $0.60 spent, no crash. Under R-DEC-139b/139c the
+    refusals alone decide it (39 + 8 >= 44), so it is BLOCKED (exit 2), not
+    "accuracy 39/48 < 44 threshold" (exit 1)."""
+    import govbudget.verify_phase5 as vp5
+
+    plan = ["right"] * 39 + ["wrong"] + ["credit"] * 8
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake")
+    monkeypatch.setattr(vp5, "EVAL_PATH", _one_question_yaml(tmp_path, 48))
+    monkeypatch.setattr("govbudget.analyst.agent.run", _agent_answering(plan))
+    monkeypatch.setattr(vp5, "_resolve_citation",
+                        lambda *a, **k: {"ok": True, "reason": "stub"})
+    result = vp5.eval_gate(client=object(), duckdb_path=tmp_path / "none.duckdb")
+    assert result["accuracy"] == 39
+    assert result["blocked"] is True and result["block_cause"] == "provider"
+    assert "8 of 48" in result["reason"] and "$0.60" in result["reason"]
+    assert "39 answered correctly and 1 wrong" in result["reason"]
+    assert "credit balance is too low" in result["reason"]
+    ag = {"ok": True, "blocked": False, "all_blocked_phases": [], "results": []}
+    assert _compute_exit_code(fg_ok=True, eg=result, ag=ag) == 2
+
+
+def test_eval_gate_fail_with_refusals_names_them_in_the_reason(
+    tmp_path, monkeypatch
+):
+    """30 correct, 10 wrong, 8 credit refusals: 30 + 8 < 44, a FAIL (exit 1)
+    the answered questions decided — and the reason says the provider refused
+    8, instead of reading as an accuracy score alone."""
+    import govbudget.verify_phase5 as vp5
+
+    plan = ["right"] * 30 + ["wrong"] * 10 + ["credit"] * 8
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake")
+    monkeypatch.setattr(vp5, "EVAL_PATH", _one_question_yaml(tmp_path, 48))
+    monkeypatch.setattr("govbudget.analyst.agent.run", _agent_answering(plan))
+    monkeypatch.setattr(vp5, "_resolve_citation",
+                        lambda *a, **k: {"ok": True, "reason": "stub"})
+    result = vp5.eval_gate(client=object(), duckdb_path=tmp_path / "none.duckdb")
+    assert result["blocked"] is False and result["ok"] is False
+    assert result["reason"].startswith("accuracy 30/48 < 44 threshold; ")
+    assert "8 of 48 questions were refused by the provider" in result["reason"]
+    assert "credit balance is too low" in result["reason"]
+    ag = {"ok": True, "blocked": False, "all_blocked_phases": [], "results": []}
+    assert _compute_exit_code(fg_ok=True, eg=result, ag=ag) == 1
+
+
+def test_cmd_prints_the_refusal_on_a_fail_not_a_clipped_sdk_prefix(
+    tmp_path, monkeypatch, capsys
+):
+    """The per-question `error=` field clipped the SDK message to its first
+    80 characters, which end at "...{'type': 'invalid_request_error', '" —
+    before "credit balance". A refusal now shows from the refusal itself, and
+    the FAIL prints the refusal clause."""
+    import govbudget.verify_phase5 as vp5
+
+    scores = ([_score(i, correct=True) for i in range(30)]
+              + [_score(30 + i, error=True, text=CREDIT_TEXT) for i in range(5)]
+              + [_score(35 + i) for i in range(13)])
+    failed = {"ok": False, "blocked": False, "scores": scores,
+              "accuracy": 30, "total": 48, "citation_ok": 43,
+              "citation_total": 43, "citation_retry_count": 0,
+              "citation_retry_total_cost_usd": 0.0,
+              "reason": "accuracy 30/48 < 44 threshold; "
+                        + provider_refusal_clause(_run(scores))}
+    monkeypatch.setattr(vp5, "freshness_gate",
+                        lambda **_: {"ok": True, "ok_ids": [], "stale": [], "errors": []})
+    monkeypatch.setattr(vp5, "eval_gate", lambda **_: copy.deepcopy(failed))
+    monkeypatch.setattr(vp5, "assembly_gate", lambda **_: {
+        "ok": True, "blocked": False, "all_blocked_phases": [], "results": []})
+    monkeypatch.setattr(vp5.config, "RESEARCH_DIR", tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        vp5.cmd_verify_phase5(SimpleNamespace())
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    q030 = next(line for line in out.splitlines() if line.startswith("  q030:"))
+    assert "error='…credit balance is too low" in q030
+    assert "gate eval: 5 of 48 questions were refused by the provider" in out
 
 
 def test_cmd_prints_the_crash_clause_on_a_fail(tmp_path, monkeypatch, capsys):

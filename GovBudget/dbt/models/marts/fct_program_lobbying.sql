@@ -61,14 +61,43 @@ filings as (
 ),
 programs as (
     -- E1 (Sprint E, ROADMAP #67): dim_programs is no longer unique on
-    -- pe_bli alone (a genuine account collision, 8 keys, now publishes two
-    -- rows). Deduped to (at most) one row per pe_bli here so the join below
-    -- can't fan a filing's mention row out into two — per-account lobbying
-    -- attribution is a separate, not-yet-built feature (E3/owner call).
+    -- pe_bli alone (13 codes carry two or three member rows — 10 split by
+    -- appropriation account, 3 by organization). One row per pe_bli here so
+    -- the join below can't fan a filing's mention row out into two —
+    -- per-member lobbying attribution is a separate, not-yet-built feature
+    -- (E3/owner call).
+    --
+    -- R-DEC-SHAREDTITLE (controller ruling 2026-09-26, under the owner's
+    -- 2026-09-25 delegation): that one row's label names EVERY member. It was
+    -- min(title), so a mention on a shared code published one member's name
+    -- as the program the filing matched (/company/{slug}/ and the /data/
+    -- parquet copy this column) — '1350' read "Infantry Weapons Ammunition"
+    -- whatever the matched words were. The label is the members' distinct
+    -- non-empty titles, in (account, organization) order, joined " / " —
+    -- export_site.shared_code_program_label's rule, which /filing/ already
+    -- renders: "Missile Industrial Facilities / Infantry Weapons Ammunition".
+    -- A code that names one program keeps its title byte for byte; two
+    -- members with one name ('2101', '2292') give that name once.
+    -- Guarded by assert_program_lobbying_shared_title_names_every_member.
     select
         pe_bli,
-        min(title) as program_title
-    from {{ ref('dim_programs') }}
+        string_agg(title, ' / ' order by first_rank) as program_title
+    from (
+        select pe_bli, title, min(member_rank) as first_rank
+        from (
+            select
+                pe_bli,
+                title,
+                row_number() over (
+                    partition by pe_bli
+                    order by account asc nulls last, org asc nulls last,
+                             title asc nulls last
+                ) as member_rank
+            from {{ ref('dim_programs') }}
+        ) ordered_members
+        where coalesce(title, '') <> ''
+        group by pe_bli, title
+    ) distinct_titles
     group by pe_bli
 )
 select

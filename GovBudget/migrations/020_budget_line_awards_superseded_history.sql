@@ -39,10 +39,18 @@
 -- export-facts -> dbt), and the loader refuses to write while any migration
 -- is unapplied (load_announcement_links.require_migrations). A key is
 -- recorded only if its row still carries the created_at the evidence rests on
--- and has no record yet; and while the 2026-09-19 load is still the table's
--- latest (rows carrying its transaction time exist), the migration refuses to
--- finish unless all 60 keys carry a record. On a database without that load
--- (a fresh or test database) it matches nothing and does nothing.
+-- and has no record yet. The migration then REFUSES to finish when:
+--   (a) any of the 60 keys is held by an announcement+lexicon /
+--       subaward+lexicon row that carries no record and whose created_at no
+--       longer matches the evidence — a loader run WITHOUT the migration
+--       guard (the pre-wave loader) rebuilt it and erased the evidence; this
+--       leg does not depend on (b), so a rebuild that erased every
+--       2026-09-19 transaction time is refused too (fix round 2, 2026-09-26);
+--   (b) the 2026-09-19 load is still the table's latest (rows carrying its
+--       transaction time exist) and fewer than all 60 keys carry a record.
+-- On a database where none of the 60 keys is held by those two methods (a
+-- fresh or test database, or a key another route holds again) it matches
+-- nothing and does nothing.
 drop table if exists pg_temp.r140_moves;
 create temp table r140_moves (
     pe_bli      text not null,
@@ -169,20 +177,37 @@ do $$
 declare
     n_load integer;
     n_recorded integer;
+    n_erased integer;
 begin
+    -- (b) the 2026-09-19 load still in place: all 60 must carry a record.
     select count(*) into n_load from budget_line_awards
      where created_at = timestamptz '2026-09-19 04:10:37.770102-04'
        and method in ('announcement+lexicon', 'subaward+lexicon');
-    if n_load = 0 then
-        return;   -- no 2026-09-19 load here: nothing to record
+    if n_load > 0 then
+        select count(*) into n_recorded
+          from budget_line_awards b
+          join r140_moves v
+            on b.pe_bli = v.pe_bli and b.exhibit = v.exhibit
+           and b.fiscal_year = v.fiscal_year and b.award_piid = v.award_piid
+         where b.superseded_method is not null;
+        if n_recorded <> 60 then
+            raise exception '020 (R-DEC-140): the 2026-09-19 load is still in place (% row(s) carry its transaction time) but % of the 60 moves it made carry a record: a key whose created_at no longer matches has lost its evidence. Nothing recorded; investigate before the loader runs.', n_load, n_recorded;
+        end if;
     end if;
-    select count(*) into n_recorded
+    -- (a) evidence erased before this migration ran: a loader-owned row of a
+    -- moved key with no record and another created_at. Checked WHATEVER
+    -- n_load is — an unguarded rebuild leaves no 2026-09-19 row behind, and
+    -- a database like that must not pass as a fresh one (migrate tracks by
+    -- file name: a silent no-op would mark 020 applied for good).
+    select count(*) into n_erased
       from budget_line_awards b
       join r140_moves v
         on b.pe_bli = v.pe_bli and b.exhibit = v.exhibit
        and b.fiscal_year = v.fiscal_year and b.award_piid = v.award_piid
-     where b.superseded_method is not null;
-    if n_recorded <> 60 then
-        raise exception '020 (R-DEC-140): the 2026-09-19 load is still in place (% row(s) carry its transaction time) but % of the 60 moves it made carry a record: a key whose created_at no longer matches has lost its evidence. Nothing recorded; investigate before the loader runs.', n_load, n_recorded;
+     where b.method in ('announcement+lexicon', 'subaward+lexicon')
+       and b.superseded_method is null
+       and b.created_at <> v.created_at;
+    if n_erased > 0 then
+        raise exception '020 (R-DEC-140): % of the 60 moved key(s) are held by an announcement/subaward row that carries no record and whose created_at no longer matches the evidence: a loader run without the migration guard rebuilt them and erased the evidence this migration records from. Nothing recorded; restore budget_line_awards from the pre-chain backup before migrating.', n_erased;
     end if;
 end $$;

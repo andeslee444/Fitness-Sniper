@@ -954,3 +954,29 @@ def test_cli_reparse_refuses_bodies_under_an_unverified_template(
     monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL")
     main(["sam", "reparse"])
     assert (tmp_path / "parquet" / "sam" / "entities.parquet").exists()
+
+
+def test_the_missing_report_refusal_counts_the_requests_preflight_would_spend(
+    tmp_path, monkeypatch
+):
+    """Decisions fix round 2: the missing-report refusal said preflight
+    "spends up to 2 of the day's requests" as a literal. With
+    SAM_ENTITY_API_URL naming a third endpoint preflight probes 3 (one per
+    candidate_urls() entry), so the operator console must count them the way
+    the template-mismatch refusal below it already does."""
+    from govbudget.sam_entities import candidate_urls
+
+    report = tmp_path / "preflight.json"
+    monkeypatch.delenv("SAM_ENTITY_API_URL", raising=False)
+    with pytest.raises(SamShapeError) as exc:
+        require_preflight(report)
+    assert len(candidate_urls()) == 2
+    assert "spends up to 2 of the day's requests" in str(exc.value)
+
+    monkeypatch.setenv(
+        "SAM_ENTITY_API_URL", "https://api.sam.gov/entity-information/v9/entities")
+    with pytest.raises(SamShapeError) as exc:
+        require_preflight(report)
+    assert len(candidate_urls()) == 3
+    assert "spends up to 3 of the day's requests" in str(exc.value)
+    assert "up to 2 of" not in str(exc.value)

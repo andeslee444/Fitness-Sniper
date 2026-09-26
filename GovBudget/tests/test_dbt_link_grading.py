@@ -311,6 +311,43 @@ def test_a_contrary_record_on_the_cited_article_outweighs_an_uphold():
     assert g["SURVIVOR_REJECTED_OTHER"] == HIGH
 
 
+def test_an_incomplete_record_is_neither_an_uphold_nor_a_refutation():
+    """R-DEC-INCOMPLETE (controller ruling 2026-09-26): one rule everywhere —
+    an 'incomplete' adversarial record (a lens missing or malformed, none
+    refuting) neither upholds nor refutes. Alone it demotes with
+    'announcement_review_incomplete'; it never binds as a refutation of the
+    article the card cites, whichever article it names — so it can neither
+    demote an upheld link nor be reported as a refutation."""
+    g = _grade(
+        awards=[(p, "0603", ANN, "high") for p in (
+            "INC_CITED", "INC_UNNAMED", "INC_MANY", "INC_SAME_ARTICLE_AS_UPHOLD",
+            "INC_UNNAMED_BESIDE_SURVIVOR", "INC_CITED_REFUTED_OTHER")],
+        reviews=[
+            rev("INC_CITED", "link", "incomplete"),
+            rev("INC_UNNAMED", "link", "incomplete", article=None),
+            rev("INC_MANY", "link", "incomplete"),
+            rev("INC_MANY", "link", "incomplete", article=OTHER),
+            rev("INC_MANY", "link", "incomplete", article=None),
+            # upheld and incomplete on the very article the card cites
+            rev("INC_SAME_ARTICLE_AS_UPHOLD", "link", "upheld"),
+            rev("INC_SAME_ARTICLE_AS_UPHOLD", "link", "incomplete"),
+            # an incomplete read naming no article binds to the pair — and
+            # still is not a refutation
+            survivor("INC_UNNAMED_BESIDE_SURVIVOR"),
+            rev("INC_UNNAMED_BESIDE_SURVIVOR", "link", "incomplete", article=None),
+            # no uphold: the reason is the refutation the records hold (on
+            # another article), never the incomplete read on the cited one
+            rev("INC_CITED_REFUTED_OTHER", "link", "incomplete"),
+            rev("INC_CITED_REFUTED_OTHER", "link", "refuted", article=OTHER),
+        ],
+    )
+    for piid in ("INC_CITED", "INC_UNNAMED", "INC_MANY"):
+        assert g[piid] == demoted("incomplete"), (piid, g[piid])
+    assert g["INC_SAME_ARTICLE_AS_UPHOLD"] == HIGH
+    assert g["INC_UNNAMED_BESIDE_SURVIVOR"] == HIGH
+    assert g["INC_CITED_REFUTED_OTHER"] == demoted("refuted")
+
+
 def test_a_refutation_sample_entry_is_read_like_any_refutation():
     # migration 018's third kind: a wave 1-2 refutations_sample entry (link +
     # refuted), its article the wave's packet — binding only on the cited one

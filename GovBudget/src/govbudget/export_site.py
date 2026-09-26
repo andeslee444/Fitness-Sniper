@@ -439,6 +439,76 @@ class _ProgramIdentity:
         return any(hd for _a, _t, o, hd in rows if o == organization)
 
 
+#: dim_programs' row order for the export (see _fetch_dim_programs_rows): a
+#: shared code's members in fct_program_lobbying.sql's (account, org, title)
+#: order. DuckDB's default null order is NULLS LAST; it is spelled out so the
+#: pairing with the mart does not rest on a setting.
+_DIM_PROGRAMS_MEMBER_ORDER = (
+    " order by pe_bli, account asc nulls last, org asc nulls last,"
+    " title asc nulls last"
+)
+
+
+def _fetch_dim_programs_rows(con) -> list[tuple]:
+    """dim_programs as the export reads it: (pe_bli, org, exhibit_family,
+    title, project_count, fy2024_actual_millions, fully_reconciled, account,
+    account_title, reconciled_in_scope), one tuple per row, in the order every
+    positional consumer relies on.
+
+    MEMBER ORDER (R-DEC-SHAREDTITLE, decisions fix round 2): the rows of one
+    pe_bli come back in (account, org, title) order — the order
+    dbt/models/marts/fct_program_lobbying.sql joins a shared code's member
+    titles in, so prog_titles' label (/filing/ mentions, a company's
+    linked-program chips) and the mart's program_title (/company/ sidecar
+    mentions, the /data/ parquet) are the same string. It was
+    `order by pe_bli, account`, which left the members of the three
+    organization-split codes ('20', '30', '500': one account, several
+    organizations) in whatever order DuckDB returned — three consecutive
+    reads of the lake on 2026-09-26 gave three different labels. The two
+    added keys only break ties, so no row that was ordered before moves.
+    Paired with the mart by tests/test_export_site_shared_title_order.py.
+
+    Tri-persona review Wave 2: reconciled_in_scope is APPENDED (index 9) —
+    every by-index consumer (r[7]/r[8]) keeps its meaning. The fallback tiers
+    pad None at the end, which the badge renders as "no in-scope detail"
+    rather than silently reverting to the fully_reconciled predicate this
+    column exists to replace.
+    """
+    try:
+        return con.execute(
+            "select pe_bli, org, exhibit_family, title, project_count,"
+            " fy2024_actual_millions, fully_reconciled, account, account_title,"
+            " reconciled_in_scope"
+            " from dim_programs" + _DIM_PROGRAMS_MEMBER_ORDER
+        ).fetchall()
+    except Exception:
+        pass
+    try:
+        return [
+            (*r, None)
+            for r in con.execute(
+                "select pe_bli, org, exhibit_family, title, project_count,"
+                " fy2024_actual_millions, fully_reconciled, account,"
+                " account_title from dim_programs" + _DIM_PROGRAMS_MEMBER_ORDER
+            ).fetchall()
+        ]
+    except Exception:
+        pass
+    # Task E3: a dim_programs table predating E1's account/account_title
+    # columns (an older test fixture) — fall back to the pre-E3 7-column
+    # query and pad (None, None, None); the program identity (computed from
+    # the SAME table) is then the empty identity, so every is_split check is
+    # False regardless.
+    return [
+        (*r, None, None, None)
+        for r in con.execute(
+            "select pe_bli, org, exhibit_family, title, project_count,"
+            " fy2024_actual_millions, fully_reconciled from dim_programs"
+            " order by pe_bli"
+        ).fetchall()
+    ]
+
+
 def shared_code_program_label(titles: list[str | None]) -> str | None:
     """The label for a consumer keyed on the BARE pe_bli (ROADMAP #70 fix
     round 1).
@@ -10418,43 +10488,9 @@ def _write_all_sidecars(
     # pe_bli with >1 dim_programs row is a genuine appropriation-account
     # collision (see _ProgramIdentity above), and every consumer below that
     # used to treat "one row per pe_bli" as an invariant must be re-checked.
-    # Tri-persona review Wave 2: reconciled_in_scope is APPENDED (index 9) —
-    # every by-index consumer below (r[7]/r[8]) keeps its meaning, and only
-    # the three positional 9-unpacks widen. The fallback tiers pad None at
-    # the end, which the badge renders as "no in-scope detail" rather than
-    # silently reverting to the fully_reconciled predicate this column exists
-    # to replace.
-    try:
-        prog_rows = con.execute(
-            "select pe_bli, org, exhibit_family, title, project_count,"
-            " fy2024_actual_millions, fully_reconciled, account, account_title,"
-            " reconciled_in_scope"
-            " from dim_programs order by pe_bli, account"
-        ).fetchall()
-    except Exception:
-        try:
-            prog_rows = [
-                (*r, None)
-                for r in con.execute(
-                    "select pe_bli, org, exhibit_family, title, project_count,"
-                    " fy2024_actual_millions, fully_reconciled, account,"
-                    " account_title from dim_programs order by pe_bli, account"
-                ).fetchall()
-            ]
-        except Exception:
-            # Task E3: a dim_programs table predating E1's account/account_title
-            # columns (an older test fixture) — fall back to the pre-E3 7-column
-            # query and pad (None, None); ident (computed above from the SAME
-            # table) will already be the empty identity in this case, so every
-            # is_split check below is False regardless.
-            prog_rows = [
-                (*r, None, None, None)
-                for r in con.execute(
-                    "select pe_bli, org, exhibit_family, title, project_count,"
-                    " fy2024_actual_millions, fully_reconciled from dim_programs"
-                    " order by pe_bli"
-                ).fetchall()
-            ]
+    # Column layout, fallback tiers and the members' (account, org, title)
+    # order (R-DEC-SHAREDTITLE): _fetch_dim_programs_rows.
+    prog_rows = _fetch_dim_programs_rows(con)
     # (ident is computed once, at the top of this function.)
 
     # Trajectory-only feed programs (backlog #17): feed events reference

@@ -13,7 +13,8 @@
  *     constants for §4's concentration passage)
  *   - scripts/gates/feed.mjs                     (leg l: claim vs. the
  *     destination page it links to, and each card's note vs. its own
- *     printed figure)
+ *     printed figure; leg q: every band claim in the prose of /methodology/,
+ *     /glossary/ and /feed/ vs. hhiBand itself)
  *   - scripts/gates/coverage.mjs                 (the program badge vs. the
  *     shipped hhi_high)
  *
@@ -32,7 +33,10 @@
  * program-page tooltip (program-concentration.tsx) both build their text
  * from these constants and HHI_BANDS_VINTAGE (hhi-band.test.ts and
  * program-concentration.test.tsx hold them to it). /methodology/ §4 also
- * interpolates the two thresholds into its own sentence.
+ * interpolates the two thresholds into its own sentence — which, at
+ * e6bc28bb, still read "1,800 or above is highly concentrated" around them;
+ * feed.mjs leg (q) and src/__tests__/methodology-hhi-band-prose.test.tsx now
+ * read that prose back.
  *
  * BANDS (#132, decided 2026-09-25, owner delegated to the controller's
  * recommendation). The agencies' CURRENT thresholds, as the DOJ Antitrust

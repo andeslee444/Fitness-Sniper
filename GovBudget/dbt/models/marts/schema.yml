@@ -111,7 +111,7 @@ models:
       - name: links_outside_member_keys
         description: "Published links on this code filed under a key no member program carries (an account-NULL link on an account-split code, an organization no member has). They are in every figure on the row and on no member's page."
   - name: fct_budget_to_awards
-    description: "One row per published (program element × award) crosswalk link — the rows audit_link_grading grades high or medium. crosswalk_confidence keeps the loader's grade; confidence is the published one. Since 2026-09-25 the account+subagency tier publishes only the pairs a two-lens adjudication pinned (#107(b)) and an announcement+lexicon link publishes at high only when a recorded review upholds it and no recorded reviewer rejection or adversarial refutation targets the article its card cites (#110, R-DEC-110); every link either rule moves stays in audit_link_grading with its demotion_reason."
+    description: "One row per published (program element × award) crosswalk link — the rows audit_link_grading grades high or medium. crosswalk_confidence keeps the loader's grade; confidence is the published one. Since 2026-09-25 the account+subagency tier publishes only the pairs a two-lens adjudication pinned (#107(b)) and an announcement+lexicon link publishes at high only when a review record of the announcement pipeline (jbook_announcement_link_reviews: its wave 1-4 reviews) upholds it and no such record's reviewer rejection or adversarial refutation targets the article its card cites (#110, R-DEC-110); every link either rule moves stays in audit_link_grading with its demotion_reason. The held-out precision study (Postgres link_precision_samples) is not a grading input: 10 links that publish high carry a precision-sample 'refuted' attribution verdict (measured 2026-09-26)."
     columns:
       - name: confidence
         data_tests:
@@ -177,6 +177,8 @@ models:
       - name: pe_bli
         data_tests: [not_null]
         description: "Program element or budget line identifier matched from dim_programs."
+      - name: program_title
+        description: "The program title dim_programs files under pe_bli. On a budget-line code two or more programs share (13 codes in PB2026), every member's distinct title in (account, organization) order, joined ' / ' — e.g. 'Missile Industrial Facilities / Infantry Weapons Ammunition' for '1350' — because a mention is keyed on the bare code, not on one member (R-DEC-SHAREDTITLE, 2026-09-26; it was one member's title, min(title), before). Guarded by assert_program_lobbying_shared_title_names_every_member."
       - name: matched_term
         description: "The evidence found in the filing description: the exact PE code, a curated alias, or the qualifying title tokens joined by '|' (multi_token). Preserved for transparency and audit — see evidence_kind for which tier applies."
       - name: evidence_kind

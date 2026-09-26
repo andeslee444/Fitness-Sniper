@@ -27,7 +27,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from test_dbt_build import CONTRACT_COLS, make_lake, write_parquet
+from test_dbt_build import CONTRACT_COLS, ENTITY_XWALK_COLS, make_lake, write_parquet
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -90,6 +90,34 @@ def _dbt_build(data_dir: Path) -> tuple[subprocess.CompletedProcess, Path]:
     return result, db
 
 
+def _write_the_moves(data_dir: Path):
+    """The 2026-09-24 shape, un-reconciled: two contract moves (MOVED001
+    FY2025 -> FY2026, MOVED002 FY2024 -> FY2026, recipient UEI9) and one
+    assistance move (AMOVED01 FY2024 -> FY2025, recipient UEI8), each
+    source-corrected (newer last_modified_date, new obligation), beside
+    transactions that did not move. Raw archive sums: UEI9 1,211 (the
+    warehouse keeps 611), UEI8 1,350 (the warehouse keeps 650)."""
+    _write_contracts(data_dir, 2024, [
+        _contract("MOVED002", "2024-06-01", "500", "2025-01-01 00:00:00+00"),
+        _contract("STAYS024", "2024-06-02", "11", "2025-01-01 00:00:00+00"),
+    ])
+    _write_contracts(data_dir, 2025, [
+        _contract("MOVED001", "2025-03-01", "100", "2025-04-01 09:00:00+00"),
+        _contract("STAYS025", "2025-03-02", "13", "2025-04-01 00:00:00+00"),
+    ])
+    _write_contracts(data_dir, 2026, [
+        _contract("MOVED001", "2025-10-02", "120", "2026-08-02 00:00:00+00"),
+        _contract("MOVED002", "2025-10-03", "450", "2026-08-02 00:00:00+00"),
+        _contract("STAYS026", "2025-10-04", "17", "2026-08-02 00:00:00+00"),
+    ])
+    _write_assistance(data_dir, 2024, [
+        _assistance("AMOVED01", "2024-02-01", "700", "2024-03-01 00:00:00+00"),
+    ])
+    _write_assistance(data_dir, 2025, [
+        _assistance("AMOVED01", "2024-10-05", "650", "2026-08-01 12:00:00.5+00"),
+    ])
+
+
 def test_a_fresh_unreconciled_lake_builds_and_retires_exactly_the_moved_copies(tmp_path):
     """The 2026-09-24 shape, before anyone ran the reconcile script: a
     refreshed FY2026 contracts archive carries MOVED001 and MOVED002 again,
@@ -99,25 +127,7 @@ def test_a_fresh_unreconciled_lake_builds_and_retires_exactly_the_moved_copies(t
     keep only the refreshed copies, and list every retired copy in
     audit_award_fy_moves — and nothing else."""
     make_lake(tmp_path)
-    _write_contracts(tmp_path, 2024, [
-        _contract("MOVED002", "2024-06-01", "500", "2025-01-01 00:00:00+00"),
-        _contract("STAYS024", "2024-06-02", "11", "2025-01-01 00:00:00+00"),
-    ])
-    _write_contracts(tmp_path, 2025, [
-        _contract("MOVED001", "2025-03-01", "100", "2025-04-01 09:00:00+00"),
-        _contract("STAYS025", "2025-03-02", "13", "2025-04-01 00:00:00+00"),
-    ])
-    _write_contracts(tmp_path, 2026, [
-        _contract("MOVED001", "2025-10-02", "120", "2026-08-02 00:00:00+00"),
-        _contract("MOVED002", "2025-10-03", "450", "2026-08-02 00:00:00+00"),
-        _contract("STAYS026", "2025-10-04", "17", "2026-08-02 00:00:00+00"),
-    ])
-    _write_assistance(tmp_path, 2024, [
-        _assistance("AMOVED01", "2024-02-01", "700", "2024-03-01 00:00:00+00"),
-    ])
-    _write_assistance(tmp_path, 2025, [
-        _assistance("AMOVED01", "2024-10-05", "650", "2026-08-01 12:00:00.5+00"),
-    ])
+    _write_the_moves(tmp_path)
 
     result, db = _dbt_build(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -220,6 +230,49 @@ def test_an_ambiguous_duplicate_fails_the_build_loudly(tmp_path):
         ], reasons
     finally:
         con.close()
+
+
+def _write_entity_totals(data_dir: Path, totals: dict[str, float]):
+    """entity_xwalk.parquet as `govbudget entity-graph` writes it, one row per
+    recipient UEI: the fixture's UEI1 row plus the given UEI totals."""
+    rows = ["('UEI1','ACME','PUEI1','ACME PARENT INC','ACME PARENT','parent_name','high',6000.5)"]
+    rows += [
+        f"('{uei}','R {uei}','P{uei}','PARENT {uei}','PARENT {uei}','parent_name','high',{total})"
+        for uei, total in totals.items()
+    ]
+    duckdb.sql(
+        f"copy (select * from (values {', '.join(rows)}) t({ENTITY_XWALK_COLS}))"
+        f" to '{data_dir}/parquet/entities/entity_xwalk.parquet' (format parquet)"
+    )
+
+
+def test_an_entity_total_that_counts_a_retired_copy_fails_the_build(tmp_path):
+    """dbt checker, fix round 2 (2026-09-26): the move rule lives in dbt
+    staging, but `govbudget entity-graph` sums the RAW award archives
+    (entity_graph._TX_SQL over the contracts/assistance globs) and never reads
+    audit_award_fy_moves. After a re-sync that moves a key, unless
+    scripts/reconcile_award_moves.py rewrote the parquet first, entity_xwalk's
+    total for the recipient still counts the copy fct_award_transactions
+    dropped — and dim_entities publishes it beside a citation whose query
+    (sum over fct_award_transactions) no longer reproduces it.
+    assert_entity_totals_exclude_retired_award_copies stops the build there
+    and names the UEI; an entity-graph total that excludes the retired copy
+    passes."""
+    make_lake(tmp_path)
+    _write_the_moves(tmp_path)
+
+    # what entity-graph computes today from the raw globs: both copies
+    _write_entity_totals(tmp_path, {"UEI9": 1211.0, "UEI8": 1350.0})
+    result, _db = _dbt_build(tmp_path)
+    out = result.stdout + result.stderr
+    assert result.returncode != 0, out
+    assert "FAIL 2 assert_entity_totals_exclude_retired_award_copies" in out, out
+
+    # the totals a move-aware entity-graph (or a reconciled lake) produces
+    _write_entity_totals(tmp_path, {"UEI9": 611.0, "UEI8": 650.0})
+    result, _db = _dbt_build(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS assert_entity_totals_exclude_retired_award_copies" in result.stdout, result.stdout
 
 
 # ── the committed audit model's own SQL, one shape at a time ─────────────────

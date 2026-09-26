@@ -1638,6 +1638,38 @@ def test_cli_regrade_only_dry_run_writes_nothing(
     assert _grades(pg_dsn) == before
 
 
+def test_cli_regrade_only_names_the_window_the_rows_left_alone_record(
+    monkeypatch, pg_dsn, tmp_path, capsys, _no_adjudications,
+):
+    """Fix round 2 (pg checker, 2026-09-26): the chain-G runbook's literal
+    command omitted --all-years, and the dry run printed '0 stored row(s) to
+    re-grade' with nothing saying why. Every stored DARPA row records
+    'all loaded award years'; a run under another window must say which
+    window the rows it left alone record, and which flag selects it."""
+    from govbudget import cli
+
+    _wire_crosswalk_cli(monkeypatch, pg_dsn, tmp_path)
+    glob = _seed_regrade(pg_dsn, tmp_path, window="all loaded award years")
+    report = crosswalk_module.regrade_report(pg_dsn, award_glob=glob, **DARPA_KW)
+    assert report.mismatch_windows == {"all loaded award years": 2}
+    before = _grades(pg_dsn)
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--fiscal-year", "2026",
+              "--regrade-only", "--dry-run"])
+    out = capsys.readouterr().out
+    assert ("crosswalk DARPA --regrade-only: 0 stored row(s) to re-grade in"
+            " place (2 stored under another window left alone)") in out
+    assert ("crosswalk --regrade-only: the 2 row(s) left alone record window"
+            " 'all loaded award years' (2), not this run's; re-run with the"
+            " window they record to re-grade them ('all loaded award years'"
+            " = --all-years)") in out
+    assert _grades(pg_dsn) == before
+    cli.main(["jbooks", "crosswalk", "--org", "DARPA", "--fiscal-year", "2026",
+              "--all-years", "--regrade-only", "--dry-run"])
+    out = capsys.readouterr().out
+    assert "2 stored row(s) to re-grade in place (0 stored under another" in out
+    assert "left alone record window" not in out
+
+
 @pytest.mark.parametrize(("extra", "message"), [
     ([], "refuses to write without --expect-updates"),
     (["--expect-updates", "3"], "expected 3, the re-grade finds 2"),
