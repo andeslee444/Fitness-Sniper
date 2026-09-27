@@ -363,7 +363,13 @@ export const PAGE_WEIGHT_BUDGET = [
   // weigh()): 96,652 / 14,278 -> 101,038 / 15,314. CEILINGS UNCHANGED; 3,962
   // raw / 286 gzip left. 286 gzip bytes left: the next sentence added here
   // needs a trim of its own, not a raise.
-  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "101,038 / 15,314" },
+  // RE-MEASURED 2026-09-26 (decisions chain G final re-run, BUILD 1 of
+  // 93a4a061, built 2026-09-27T02:37:28Z; gate 1's own weigh()): 101,038 /
+  // 15,314 -> 101,707 / 15,559. CEILINGS UNCHANGED; 3,293 raw / 41 gzip left.
+  // The drift leg fired at 7.0x (+245 gzip: the final review's fct_influence
+  // and dim_geography descriptions, R-DEC-LDATOTAL). 41 gzip bytes left: any
+  // further text here needs a trim first, never a raise.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "101,707 / 15,559" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
