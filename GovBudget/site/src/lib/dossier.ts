@@ -106,13 +106,19 @@ export interface DossierFile {
   withheld_claims?: DossierWithheldClaim[];
 }
 
-/** Why export-site withheld a claim (claim_drift.claim_contradictions). */
+/**
+ * Why export-site withheld a claim (claim_drift.claim_contradictions).
+ * "lobbying_mention" since R-DEC-DOSSIERLDA (2026-09-27): the claim names a
+ * lobbying filer the page's own mentions do not list.
+ * dossier-withheld-reasons-mirror.test.ts holds this union to the Python.
+ */
 export type DossierWithheldReason =
   | "stated_figure"
   | "fiscal_year"
   | "concentration_band"
   | "top_family"
-  | "recipient_list";
+  | "recipient_list"
+  | "lobbying_mention";
 
 /** One withheld claim as the exporter records it on the sidecar. */
 export interface DossierWithheldClaim {
@@ -126,7 +132,13 @@ export interface DossierWithheldClaim {
   cited_value: string | number | null;
   cited_family: string | null;
   reasons: DossierWithheldReason[];
+  /** The recipients a "recipient_list" claim names that the page does not link. */
   unlinked_recipients: string[];
+  /**
+   * The filers a "lobbying_mention" claim names that the page does not list
+   * (R-DEC-DOSSIERLDA). Optional: absent on a sidecar written before it.
+   */
+  unlisted_lobbying_filers?: string[];
 }
 
 /** Snapshot metadata for url-citation chips (title tooltip + retrieved note). */

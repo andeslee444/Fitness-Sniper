@@ -1807,10 +1807,30 @@ _DATASET_SCOPES: dict[str, str] = {
         # states.
         " it has not."
     ),
+    # Final-review finding #10 (2026-09-27): it said income and expense are
+    # "non-additive, never summed" without naming the column that sums them:
+    # the parquet ships lobbying_total_usd = income + expense
+    # (dbt/models/marts/fct_influence.sql). family_obligations_usd is the
+    # family's all-years total, repeated on every year row (the model's
+    # NON-ADDITIVE note).
+    # R-DEC-LDATOTAL (final-review rulings, 2026-09-27): the first fix round
+    # replaced the caution with "no filing reports both" — true of filings (0
+    # of 5,393 in audit_lda_filings, measured 2026-09-27) but not a reason the
+    # family-year sum is clean: 147 of the 210 shipped rows carry both, and a
+    # self-filer's reported expense can include what it paid the outside
+    # firms whose income is also reported. The caution is back (the company
+    # page renders no Total column on its strength), and the card calls
+    # lobbying_total_usd what it is: a plain sum, not de-duplicated.
+    # Kept short on purpose: /data/ renders each scope three times under an
+    # R-INT-1 gzip ceiling of 15,600. Substituted into the chain-G build with
+    # dim_geography's text (node zlib level 9, the gate-1 weigh()): 15,562,
+    # i.e. 38 bytes of headroom (the round-1 text left 79).
     "fct_influence": (
         "One row per (contractor family × filing year) of Senate LDA lobbying"
-        " totals, alongside that family's DoD obligations. Income and expense"
-        " are alternative disclosures — non-additive, never summed."
+        " totals, beside the family's DoD obligations (repeated on each year"
+        " row). Income and expense are non-additive: a self-filer's expense can"
+        " include its outside firms' income, so lobbying_total_usd, a plain"
+        " sum, can double-count."
     ),
     "fct_program_lobbying": (
         "One row per (LDA filing × matched program element) mention — a filing"
@@ -1825,10 +1845,20 @@ _DATASET_SCOPES: dict[str, str] = {
         " each carrying its match method and confidence tier. A link is an"
         " inference, not a reported fact."
     ),
+    # Final-review finding #10 (2026-09-27): it said "aggregated from the
+    # award crosswalk", but dbt/models/marts/dim_geography.sql groups every
+    # fct_award_transactions row with a pop_state (DoD contracts and
+    # assistance; 39,663,687 transactions, $3.87T, unchanged when published
+    # links fell 12,601 -> 3,685). pop_state is the raw field — contracts
+    # carry the two-letter code, assistance the state name — so "(state ×
+    # congressional district)" read as one row per state; CA and CALIFORNIA
+    # are two rows.
     "dim_geography": (
-        "One row per (state × congressional district) place of performance,"
-        " with transaction count and total obligation aggregated from the"
-        " award crosswalk."
+        "One row per (pop_state × pop_district) place of performance, with"
+        " transaction count and total obligation over every DoD award"
+        " transaction the site loads that records a pop_state, not only"
+        " crosswalk-linked awards. pop_state is not normalized (contracts:"
+        " two-letter code; assistance: state name)."
     ),
     "fct_district_totals": (
         "One row per (state × congressional district), with obligation"
@@ -2154,6 +2184,93 @@ def _build_dataset_manifest(
         "datasets": entries,
         "schema_version": 1,
     }
+
+
+#: Final-review finding #10 (2026-09-27): the /downloads/ citations card said
+#: "(jbook_pdf + workbook + lda_filing)", and citations.parquet held 10 kinds
+#: (workbook 42,153, derived 38,993, lda_filing 18,853, jbook_narrative
+#: 11,717, jbook_pdf 9,879, usaspending 2,560, announcement 1,076, subaward
+#: 112, state_file 3, state_soql 3 — measured 2026-09-27). One gloss per kind
+#: the exporter mints, each true of every row of that kind (measured the same
+#: day: every derived row carries a formula and a recorded value, every
+#: workbook row a sheet, every jbook_narrative row an xml_path, every
+#: usaspending row a query_body; 9,875 of 9,879 jbook_pdf rows carry a page
+#: number, so that gloss names the document, not the page). A kind with no
+#: gloss fails the export (_citations_index_entry), as an undocumented
+#: parquet does.
+#: "derived" said "a computed figure with its formula and inputs" until the
+#: final integration pass (2026-09-27): 2,499 of the chain-G file's 38,993
+#: derived rows record no figure (2,497 crosswalk-link citations record the
+#: link's tier, 2 SAM.gov citations a registration status) and 9,218 carry
+#: no inputs. tests/test_citation_kind_glosses_true.py holds every gloss to
+#: the shipped file.
+#: "jbook_pdf" said "a figure printed in a J-book PDF" until the same pass: 4
+#: of the chain-G file's 9,879 rows are resolution 'unresolved' with no
+#: amount_text and no page_number (e.g. 90fab19bdc91648a, 0208088F) — the
+#: document receipt alone, kept when the matched numeral's units cannot be
+#: proven (section 4a below). Every row carries the PDF's SHA-256 and hosted
+#: copy; every other row carries the printed figure and its page.
+_CITATION_KIND_GLOSSES: dict[str, str] = {
+    "workbook": "a President's Budget workbook cell",
+    "derived": "a recorded value with its formula",
+    "lda_filing": "a Senate LDA filing",
+    "jbook_narrative": "a J-book narrative passage",
+    "jbook_pdf": "a figure printed in a J-book PDF, or the PDF alone where that figure is unresolved",
+    "usaspending": "a USAspending API query",
+    "announcement": "a DoD contract announcement",
+    "subaward": "a subaward on a USAspending prime award",
+    "state_file": "a state spending source file",
+    "state_soql": "a state open-data query",
+}
+
+
+def _citations_index_entry(citations_parquet) -> dict:
+    """The citation index's datasets.json entry, read from the shipped file:
+    its row count and every kind it holds (largest first, then by name), each
+    glossed, in one scope sentence the /downloads/ citations card can render
+    (#10). Raises ValueError on a kind with no _CITATION_KIND_GLOSSES entry —
+    a new kind cannot ship undescribed."""
+    import duckdb as _duckdb_ci
+
+    con = _duckdb_ci.connect()
+    try:
+        rows = con.execute(
+            "select kind, count(*) from read_parquet(?) group by kind"
+            " order by count(*) desc, kind",
+            [str(citations_parquet)],
+        ).fetchall()
+    finally:
+        con.close()
+    unknown = [k for k, _n in rows if k not in _CITATION_KIND_GLOSSES]
+    if unknown:
+        raise ValueError(
+            "export-site: citation kind(s) with no _CITATION_KIND_GLOSSES entry: "
+            + ", ".join(str(k) for k in unknown)
+            + " — add an accurate gloss in export_site.py (the /downloads/"
+            " citations card lists every kind the index holds)"
+        )
+    items = [f"{k} ({_CITATION_KIND_GLOSSES[k]})" for k, _n in rows]
+    listed = items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+    return {
+        "file": Path(citations_parquet).name,
+        "row_count": int(sum(n for _k, n in rows)),
+        "kinds": [{"kind": k, "row_count": int(n)} for k, n in rows],
+        "scope": (
+            f"One row per source citation, keyed by fact_id, in {len(rows)}"
+            f" kind{'' if len(rows) == 1 else 's'}: {listed}."
+        ),
+    }
+
+
+def _add_citations_index_to_manifest(manifest_path, citations_parquet) -> None:
+    """Add the citation index's entry (_citations_index_entry) to an
+    already-written datasets.json under "citations", beside the parquet
+    inventory it is not part of (citations.parquet is not written to data/).
+    Run on the FINAL citations.parquet — after the family-history additions —
+    so its counts are the shipped file's."""
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    manifest["citations"] = _citations_index_entry(citations_parquet)
+    _write_json(Path(manifest_path), manifest)
 
 
 def _lineage_evidence_fact_ids(duckdb_path) -> set[str]:
@@ -3327,10 +3444,11 @@ def export_site(
         # R-DEC-DOSSIERDRIFT: every cited fact's current value in its own
         # units (any kind — derived, workbook, J-book PDF), the concentration
         # row behind every concentration fid, and every page's linked-award
-        # recipients, read-only from the mart. Fails closed: an unreadable
-        # mart stops the export (_dossier_drift_context).
-        (_citation_facts, _concentration_facts,
-         _linked_recipients) = _dossier_drift_context(citation_rows, duckdb_path)
+        # recipients, and every page's lobbying mentions over the universe of
+        # LDA filer names (R-DEC-DOSSIERLDA), read-only from the mart. Fails
+        # closed: an unreadable mart stops the export (_dossier_drift_context).
+        (_citation_facts, _concentration_facts, _linked_recipients,
+         _lobbying_mentions) = _dossier_drift_context(citation_rows, duckdb_path)
         # #56: membership for the dossier set is read HERE, by the caller,
         # and passed in — the emitter takes a set, never a path (see its
         # top_set docstring). Unreadable/absent seed → None → emit everything,
@@ -3372,6 +3490,7 @@ def export_site(
             citation_facts=_citation_facts,
             concentration_facts=_concentration_facts,
             linked_recipients=_linked_recipients,
+            lobbying_mentions=_lobbying_mentions,
             top_set=_dossier_top_set,
             slug_by_pe=_slug_by_pe,
             # chain-B fix 3: the inverse index, so an archive already keyed by
@@ -3468,6 +3587,14 @@ def export_site(
     family_history = export_f15_funding_history(
         duckdb_path=duckdb_path, out_dir=out_dir,
     )
+
+    # The /downloads/ citations card's entry (final-review finding #10): every
+    # kind the FINAL citations.parquet holds — read after the family-history
+    # additions above, so the counts are the shipped file's — added to
+    # datasets.json beside the parquet inventory. Raises on an unglossed kind.
+    _datasets_json = out_dir / "json" / "datasets.json"
+    if _datasets_json.exists():
+        _add_citations_index_to_manifest(_datasets_json, cit_dir / "citations.parquet")
 
     return {
         "datasets": len(final_counts),
@@ -5452,6 +5579,29 @@ def _influence_citation_rows(con, *, built_at: str) -> list[tuple]:
     return rows
 
 
+#: R-DEC-SAMTEXT (final review, 2026-09-27): whose SAM.gov registration a
+#: company page shows, said exactly. dim_entities joins SAM on
+#: max(coalesce(parent_uei, recipient_uei)) filter (rk = 1), and entity_graph
+#: picks each member's (parent UEI, parent name) pair by the obligation
+#: dollars behind it — so the record is the registration of the parent UEI
+#: the largest member reports, not that member's own. Chain G's export said
+#: "the registration of the member holding the most obligations", false on
+#: both pages it shipped: Boeing's largest member is JJM4FRDZJDX1 ($68.49B),
+#: the record shown is its parent NU2UC8MX6NK1 (itself a member at -$0.8M);
+#: Lockheed's is G4KDGE4JFFK7, the record shown ZFN2JJXBLZT3 ($224.0M).
+#: Recomputed read-only 2026-09-26 from fct_award_transactions, this wording
+#: names dim_entities.dominant_registration_uei for all 116,442 families in
+#: the lake (0 mismatches). The ONE string: site/src/components/
+#: sam-registration.tsx, /methodology/ §4 and docs/methodology.md §4 state it
+#: verbatim, and site/src/__tests__/sam-registration.test.tsx reads this
+#: assignment (keep it string literals only) and reds if any of them drifts.
+_SAM_REGISTRATION_RULE = (
+    "the parent UEI that the family's largest member by obligations reports on"
+    " its awards (the parent on the most of its dollars; the member's own UEI"
+    " where that parent has none; on a member tie, the highest such UEI)"
+)
+
+
 def _build_derived_citation_rows(
     *,
     duckdb_path,
@@ -6255,17 +6405,24 @@ def _build_derived_citation_rows(
             ))
 
         # ---- SAM.gov registration facts (ROADMAP #10) ----
-        # The formula says "ties broken by the highest registration UEI"
-        # rather than "the one this family's registered name is read from",
-        # which is what it said until the Group C polish: dim_entities takes
-        # display_name from rn = 1 and this registration from max(uei) filter
-        # (rk = 1), so on an exact obligation tie they are two different
-        # members. REGISTRATION UEI, said out loud, because the max() runs over
-        # coalesce(parent_uei, recipient_uei) and not over the tied member's
-        # own recipient_uei — two tied members with different parents can order
-        # the two ways round. Same correction as
-        # site/src/components/sam-registration.tsx's last sentence and the
-        # /methodology/ §4 clause — the three are twins and move together.
+        # The formula states _SAM_REGISTRATION_RULE (R-DEC-SAMTEXT): the
+        # registration of the parent UEI the largest member reports, not "the
+        # member holding the most obligations" (false on both pages chain G
+        # shipped — see the constant). It keeps the tie-break the Group C
+        # polish added — dim_entities takes display_name from rn = 1 and this
+        # registration from max(...) filter (rk = 1), so on an exact
+        # obligation tie they are two different members — and names the UEI
+        # the max() sorts on, coalesce(parent_uei, recipient_uei), not the tied
+        # member's own recipient_uei. Same string as
+        # site/src/components/sam-registration.tsx's last sentence, the
+        # /methodology/ §4 clause and docs/methodology.md §4.
+        #
+        # ONE reader-facing input, the public sam.gov entity page. The
+        # key-stripped api.sam.gov request URL (sam_source_url) answers a
+        # keyless reader with an empty 404, and the citation panel renders
+        # every URL input as a clickable "Source inputs" link, so it is not an
+        # input (R-DEC-SAMTEXT). It stays recorded where nothing renders it as
+        # a link: dim_entities.sam_source_url, shipped in the /data/ parquet.
         #
         # kind='derived' with URL inputs, deliberately NOT a new citation kind:
         # _verify_derived rule 5 shape-checks URL-input rows and accepts a
@@ -6285,7 +6442,7 @@ def _build_derived_citation_rows(
                 "select family_key, sam_uei, sam_legal_business_name, sam_cage_code,"
                 " sam_registration_status, sam_registration_expiration_date,"
                 " sam_primary_naics, sam_business_types, sam_public_url,"
-                " sam_source_url, sam_retrieved_at from dim_entities"
+                " sam_retrieved_at from dim_entities"
                 " where sam_uei is not null and sam_uei <> ''"
             ).fetchall()
         except _duckdb.Error:
@@ -6295,24 +6452,23 @@ def _build_derived_citation_rows(
             # swallow a genuine query defect into a silent "no SAM facts".
             sam_rows = []
         for (fk, uei, legal, cage, status, expires, naics, btypes,
-             public_url, src_url, retrieved) in sam_rows:
+             public_url, retrieved) in sam_rows:
             if fk not in entity_totals or not status:
                 continue
             rows.append(_null_derived_row(
                 fact_id_derived("entity_sam", fk, "registration"),
                 "derived", None,
                 (
-                    f"SAM.gov Entity Management registration for UEI {uei} — the"
-                    f" registration of the member holding the most obligations in"
-                    f" family {fk}, ties broken by the highest registration"
-                    f" UEI as"
-                    f" dim_entities does. {legal}; CAGE {cage or 'not recorded'}; status"
+                    f"SAM.gov Entity Management registration for UEI {uei},"
+                    f" family {fk}: the registration of {_SAM_REGISTRATION_RULE},"
+                    f" as dim_entities takes it. {legal}; CAGE"
+                    f" {cage or 'not recorded'}; status"
                     f" {status}; expires {expires or 'not recorded'}; primary"
                     f" NAICS {naics or 'not recorded'}; business types"
                     f" {btypes or 'not recorded'}. Registry enrichment only: it"
                     f" does not regrade this family's resolution confidence."
                 ),
-                _json.dumps([u for u in (public_url, src_url) if u]),
+                _json.dumps([public_url] if public_url else []),
                 status,
                 retrieved,
             ))
@@ -8222,7 +8378,8 @@ def _claim_value_still_matches(
 
 def _dossier_drift_context(citation_rows, duckdb_path):
     """R-DEC-DOSSIERDRIFT's inputs for _emit_dossier_sidecars:
-    (citation_facts, concentration_facts, linked_recipients).
+    (citation_facts, concentration_facts, linked_recipients,
+    lobbying_mentions).
 
     citation_facts: fact_id -> the citation row's value fields (kind, units,
     amount_text, amount_thousands, recorded_value — indexes 1, 2, 3, 14 and
@@ -8230,19 +8387,28 @@ def _dossier_drift_context(citation_rows, duckdb_path):
     claim's stated figure is held to ANY fact kind's current value in the
     row's own units (round 2; round 1 read recorded_value only), and the
     row's column — scenario (a J-book glyph) and amount_type (a workbook
-    cell), indexes 25 and 26 — for the fiscal-year leg (round 3).
+    cell), indexes 25 and 26 — for the fiscal-year leg (round 3). Every
+    lda_filing row is carried too, value or not (R-DEC-DOSSIERLDA): its KIND
+    is what makes a claim citing it a lobbying claim — /program/2004/
+    players[1], "Additional FedEx Corporation filings in 2024 referenced …",
+    cites a mention row with no value and says no "lobby…" word of its own.
+
+    lobbying_mentions (R-DEC-DOSSIERLDA): claim_drift.lobbying_mention_index —
+    every page's lobbying mentions over the universe of LDA filer names.
 
     FAILS CLOSED (round 2): a supplied mart that cannot be read — the
-    concentration mart, or the linked-award marts the recipient-list check
-    reads — is printed and RE-RAISED, stopping the export. An empty index
-    would skip the family and recipient legs without a word, and publish
-    what they alone can catch. duckdb_path=None (no mart at all) runs the
-    figure and band legs only.
+    concentration mart, the linked-award marts the recipient-list check
+    reads, or the lobbying relations the lobbying-mention check reads — is
+    printed and RE-RAISED, stopping the export. An empty index would skip
+    the family, recipient and lobbying legs without a word, and publish what
+    they alone can catch. duckdb_path=None (no mart at all) runs the figure
+    and band legs only.
     """
     from govbudget.dossiers.claim_drift import (
         ClaimDriftIndexError,
         concentration_fact_index,
         linked_recipient_index,
+        lobbying_mention_index,
     )
 
     citation_facts = {
@@ -8257,10 +8423,12 @@ def _dossier_drift_context(citation_rows, duckdb_path):
         }
         for row in citation_rows
         if row[3] is not None or row[14] is not None or row[23] is not None
+        or row[1] == "lda_filing"
     }
     try:
         concentration_facts = concentration_fact_index(duckdb_path)
         linked_recipients = linked_recipient_index(duckdb_path)
+        lobbying_mentions = lobbying_mention_index(duckdb_path)
     except ClaimDriftIndexError as exc:
         print(
             "export-site: ERROR — the dossier claim checks (R-DEC-DOSSIERDRIFT)"
@@ -8268,7 +8436,7 @@ def _dossier_drift_context(citation_rows, duckdb_path):
             " claim these checks cannot test is never published untested."
         )
         raise
-    return citation_facts, concentration_facts, linked_recipients
+    return citation_facts, concentration_facts, linked_recipients, lobbying_mentions
 
 
 def _emit_dossier_sidecars(
@@ -8284,6 +8452,7 @@ def _emit_dossier_sidecars(
     citation_facts: dict[str, dict] | None = None,
     concentration_facts: dict[str, dict] | None = None,
     linked_recipients=None,
+    lobbying_mentions=None,
 ) -> dict:
     """Rebuild out_dir/json/dossiers/{page}.json from the committed,
     already-paid LLM batch archives in dossiers_raw_dir. No network call, no
@@ -8353,15 +8522,20 @@ def _emit_dossier_sidecars(
     check and the band of a cited dollars fact `concentration_facts`
     (claim_drift.concentration_fact_index), and for the recipient check
     `linked_recipients` (claim_drift.linked_recipient_index, keyed by PAGE)
-    — _dossier_drift_context builds all three and fails closed. Each
+    and for the lobbying check `lobbying_mentions`
+    (claim_drift.lobbying_mention_index, keyed by PAGE; R-DEC-DOSSIERLDA,
+    2026-09-27: a lobbying claim naming an LDA filer the page's lobbying
+    mentions do not list — /program/2004/'s and /program/1045/'s FedEx
+    claims after the #176 rematch) — _dossier_drift_context builds all four
+    and fails closed. Each
     withheld claim is kept on the sidecar under `withheld_claims` —
     section, raw claim index, text, fact_id, kind, units, cited value, cited
     family, reasons (sub-reasons of 'contradicts_citation': stated_figure,
     fiscal_year (round 3: a figure given another fiscal year than its cited
     column's — the column is the row's scenario / amount_type, carried in
-    `citation_facts`), concentration_band, top_family, recipient_list) and
-    the unlinked
-    recipients — and printed by name in the export log; the sidecar is SSG input only (data/site/json is not
+    `citation_facts`), concentration_band, top_family, recipient_list,
+    lobbying_mention), the unlinked recipients and the unlisted lobbying
+    filers — and printed by name in the export log; the sidecar is SSG input only (data/site/json is not
     uploaded or copied into site/out), so the withheld sentence renders
     nowhere. It also counts in dropped_claims / dropped_claims_by_section, so
     the page's Correction note counts it and the gate's emptied-section
@@ -8378,6 +8552,7 @@ def _emit_dossier_sidecars(
         cited_value,
         claim_contradictions,
         unlinked_recipients,
+        unlisted_lobbying_filers,
     )
 
     out_dir = json_dir / "dossiers"
@@ -8509,6 +8684,11 @@ def _emit_dossier_sidecars(
         page_recipients = (
             linked_recipients.for_page(page) if linked_recipients is not None else None
         )
+        # R-DEC-DOSSIERLDA: the lobbying mentions THIS PAGE publishes (none on
+        # a shared code's member page, R-INT-9), or None when no mart was read.
+        page_lobbying = (
+            lobbying_mentions.for_page(page) if lobbying_mentions is not None else None
+        )
         for section in ALL_SECTIONS:
             claims = dossier.get(section, {}).get("claims", [])
             kept = []
@@ -8530,13 +8710,14 @@ def _emit_dossier_sidecars(
                         reason = "stale_value"
                     else:
                         # R-DEC-DOSSIERDRIFT: figure / band / top family vs
-                        # the cited fact's CURRENT value. Withheld, never
-                        # rewritten.
+                        # the cited fact's CURRENT value, recipients and
+                        # lobbying filers vs the page's own lists. Withheld,
+                        # never rewritten.
                         conc = concentration_facts.get(fid)
                         fact = citation_facts.get(fid)
                         text_here = claim.get("text", "")
                         why = claim_contradictions(
-                            text_here, fact, conc, page_recipients,
+                            text_here, fact, conc, page_recipients, page_lobbying,
                         )
                         if why:
                             reason = "contradicts_citation"
@@ -8553,6 +8734,11 @@ def _emit_dossier_sidecars(
                                 "unlinked_recipients": (
                                     unlinked_recipients(text_here, page_recipients)
                                     if "recipient_list" in why else []
+                                ),
+                                "unlisted_lobbying_filers": (
+                                    unlisted_lobbying_filers(
+                                        text_here, fact, page_lobbying)
+                                    if "lobbying_mention" in why else []
                                 ),
                             })
                 elif "url" in citation:
@@ -8658,9 +8844,10 @@ def _emit_dossier_sidecars(
             f"dossiers: {len(withheld_log)} claim(s) withheld across"
             f" {len(withheld_by_pe)} dossier(s) — stated figure, its fiscal"
             " year, concentration word or top family contradicts the cited"
-            " fact's current value or column, or a named recipient is not among"
-            " the page's linked awards (R-DEC-DOSSIERDRIFT; withheld, not"
-            " rewritten):"
+            " fact's current value or column, a named recipient is not among"
+            " the page's linked awards, or a named lobbying filer is not among"
+            " the page's lobbying mentions (R-DEC-DOSSIERDRIFT /"
+            " R-DEC-DOSSIERLDA; withheld, not rewritten):"
         )
         for w in withheld_log:
             family = f", family {w['cited_family']}" if w["cited_family"] else ""
@@ -8668,11 +8855,16 @@ def _emit_dossier_sidecars(
                 f"; unlinked: {', '.join(w['unlinked_recipients'])}"
                 if w["unlinked_recipients"] else ""
             )
+            unlisted = (
+                "; unlisted lobbying filers:"
+                f" {', '.join(w['unlisted_lobbying_filers'])}"
+                if w["unlisted_lobbying_filers"] else ""
+            )
             print(
                 f"  {w['page']} {w['section']}[{w['claim']}] cites {w['fact_id']}"
                 f" ({w['kind'] or 'unknown kind'}) = {w['cited_value']}"
                 f" {w['units'] or ''}{family}"
-                f" ({', '.join(w['reasons'])}{unlinked}): {w['text']!r}"
+                f" ({', '.join(w['reasons'])}{unlinked}{unlisted}): {w['text']!r}"
             )
     if skipped:
         print(f"dossiers: {len(skipped)} raw file(s) skipped:")

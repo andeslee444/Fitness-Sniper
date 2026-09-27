@@ -47,10 +47,34 @@
  *      the only set guaranteed to contain them is the whole set — and each
  *      probe is a 1 KB ranged GET.
  *   3. citations/citations.parquet is reachable (the Explorer + citation
- *      lookups read it) — proves the data/ and citations/ syncs landed too.
+ *      lookups read it). Reachability only: the previous deploy's object
+ *      answers 200 too, so this alone never showed that a sync landed —
+ *      assertion 5 compares the content.
  *   4. The site host's /fact/ rewrite resolves — this comes from
  *      site/out/vercel.json and silently dies if the wrong directory was
- *      deployed.
+ *      deployed. Any deployment that carries the rewrite passes it (every
+ *      /fact/<id> returns the /fact/ shell), so it does not tell this deploy
+ *      from the one before it — assertion 6 does.
+ *   5. THE R2 SYNC LANDED (R-DEC-DEPLOYSAFE, final-review finding #14).
+ *      Every fixed-name object upload_r2.sh copies — each file under
+ *      data/site/data/ and data/site/citations/ — is served by the asset
+ *      host with the local file's sha256 and size (a full GET of each; they
+ *      total about 13 MB on 2026-09-26). These keys are overwritten in place
+ *      (`rclone copy --checksum`), so a 200 proves nothing: the old object
+ *      answers 200 too, and an upload sent to another bucket (an R2_BUCKET
+ *      override) left the old checks green. After a successful sync every
+ *      one of them equals the local file, whether or not this deploy changed
+ *      it, so all of them are compared rather than a guessed subset. A
+ *      mismatch means the sync did not land here, or a cache in front of
+ *      the bucket still serves the old copy — readers get that copy too.
+ *   6. THE VERCEL STEP LANDED (R-DEC-DEPLOYSAFE). The site host's
+ *      /.build-meta.json (write-build-meta.mjs writes it into site/out/)
+ *      reports git_head == the checkout's HEAD (`git rev-parse HEAD` in the
+ *      checkout this script lives in, as deploy.sh's preflight reads it; or
+ *      --expect-head), and the same build stamp (built_at) as the local
+ *      site/out/.build-meta.json. The stamp matters for a data-only refresh,
+ *      which rebuilds at the same commit: git_head alone cannot tell that
+ *      deployment from the previous one. Skipped with --skip-site.
  *
  * USAGE
  *   node scripts/launch/verify_live_assets.mjs
@@ -59,21 +83,31 @@
  *   node scripts/launch/verify_live_assets.mjs --sha=<sha256>   # check exactly this asset
  *                                                               # (no receipt probes)
  *   node scripts/launch/verify_live_assets.mjs --skip-site      # asset host only
+ *   node scripts/launch/verify_live_assets.mjs --expect-head=<40-hex sha>
+ *                                   # the commit the live site must report, in
+ *                                   # place of this checkout's HEAD (an audit of
+ *                                   # a build made elsewhere)
  *
- * --count applies to assertion 1 only; the receipt probes (assertion 2) are
- * never sampled.
+ * --count applies to assertion 1 only; the receipt probes (assertion 2) and
+ * the fixed-name objects (assertion 5) are never sampled.
  *
  * The asset host defaults to site/public/config.json's `assetBaseUrl`, so the
  * check follows the same host the built pages were told to use.
  *
  * EXIT CODES
  *   0  every assertion passed
- *   1  an assertion failed (missing asset, bad status, empty or non-PDF body)
+ *   1  an assertion failed (missing asset, bad status, empty or non-PDF body,
+ *      a fixed-name object whose content differs from the local file, a live
+ *      /.build-meta.json that is unreadable or names another build)
  *   2  could not even set up (no citations.json, no PDFs, no receipt shards,
- *      a receipt part whose hosted_pdf_url is not /pdfs/<sha256>.pdf, bad
- *      arguments)
+ *      a receipt part whose hosted_pdf_url is not /pdfs/<sha256>.pdf, no
+ *      files under data/site/data/, no readable HEAD to compare with, a
+ *      site/out/.build-meta.json that is not a build of that HEAD, bad
+ *      arguments). Nothing is requested before these are settled.
  */
 
+import { execFileSync } from "child_process";
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -83,6 +117,17 @@ const repoRoot = path.resolve(__dirname, "..", "..");
 const pdfDir = path.join(repoRoot, "data", "site", "pdfs");
 const citationsPath = path.join(repoRoot, "data", "site", "json", "citations.json");
 const configPath = path.join(repoRoot, "site", "public", "config.json");
+const siteOutMetaPath = path.join(repoRoot, "site", "out", ".build-meta.json");
+/**
+ * The fixed-name prefixes upload_r2.sh copies (assertion 5). pdfs/ and
+ * workbooks/ are content-addressed (<sha256>.<ext>), so a key never changes
+ * content; these two are not, and a sync overwrites them in place. data/ is
+ * required: without it there is nothing to compare the live objects with.
+ */
+const fixedNameDirs = [
+  { dir: path.join(repoRoot, "data", "site", "data"), prefix: "data", required: true },
+  { dir: path.join(repoRoot, "data", "site", "citations"), prefix: "citations", required: false },
+];
 /**
  * Receipt shard directories, export first. prepare-assets.mjs copies the
  * export into site/out/ at build time; both are read so a book cited by
@@ -121,6 +166,9 @@ function parseArgs(argv) {
       case "--skip-site":
         opts.skipSite = true;
         break;
+      case "--expect-head":
+        opts.expectHead = v.trim();
+        break;
       case "--help":
       case "-h":
         opts.help = true;
@@ -145,6 +193,13 @@ if (opts.bad) {
 }
 if (!Number.isInteger(opts.count) || opts.count < 1) {
   console.error(`ERROR: --count must be a positive integer`);
+  process.exit(2);
+}
+if (opts.expectHead !== undefined && !/^[0-9a-f]{40}$/.test(opts.expectHead)) {
+  console.error(
+    `ERROR: --expect-head must be a full 40-hex commit sha (lowercase), as ` +
+      `/.build-meta.json records it; got ${JSON.stringify(opts.expectHead)}`,
+  );
   process.exit(2);
 }
 
@@ -331,6 +386,118 @@ function receiptTargets() {
   };
 }
 
+const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
+
+/**
+ * Every fixed-name object upload_r2.sh copies (assertion 5), with the local
+ * file's sha256 and size. The walk mirrors `rclone copy` without -L: regular
+ * files at any depth, symlinked entries skipped (rclone skips them too).
+ */
+function fixedNameTargets() {
+  const out = [];
+  for (const { dir, prefix, required } of fixedNameDirs) {
+    const rel = path.relative(repoRoot, dir);
+    if (!fs.existsSync(dir)) {
+      if (!required) continue;
+      console.error(
+        `ERROR: ${rel}/ not found — nothing to compare the live ${prefix}/ objects with. ` +
+          `Run \`govbudget export-site\` first.`,
+      );
+      process.exit(2);
+    }
+    const files = [];
+    const walk = (d) => {
+      for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, ent.name);
+        if (ent.isDirectory()) walk(p);
+        else if (ent.isFile()) files.push(p);
+      }
+    };
+    walk(dir);
+    if (files.length === 0) {
+      if (!required) continue;
+      console.error(
+        `ERROR: ${rel}/ holds no files — nothing to compare the live ${prefix}/ objects with. ` +
+          `Run \`govbudget export-site\` first.`,
+      );
+      process.exit(2);
+    }
+    for (const f of files.sort()) {
+      const buf = fs.readFileSync(f);
+      out.push({
+        key: `${prefix}/${path.relative(dir, f).split(path.sep).join("/")}`,
+        size: buf.length,
+        sha256: sha256(buf),
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * The commit the live site must report (assertion 6): --expect-head, else
+ * `git rev-parse HEAD` in the checkout this script lives in — the same
+ * command deploy.sh's preflight compares site/out/ against.
+ */
+function expectedHead() {
+  if (opts.expectHead) return { sha: opts.expectHead, source: "--expect-head" };
+  try {
+    const sha = execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (/^[0-9a-f]{40}$/.test(sha)) return { sha, source: "git rev-parse HEAD" };
+  } catch {
+    /* fall through */
+  }
+  console.error(
+    `ERROR: cannot read the checkout's HEAD (git -C ${repoRoot} rev-parse HEAD), so the ` +
+      `live /.build-meta.json has nothing to be compared with. Pass --expect-head=<sha>, ` +
+      `or --skip-site to check the asset host only.`,
+  );
+  process.exit(2);
+}
+
+/**
+ * The local build the live stamp is compared with (assertion 6). When HEAD
+ * comes from git (the deploy.sh path), site/out/.build-meta.json must exist
+ * and be a build of that HEAD — deploy.sh refuses anything else, and a stamp
+ * of another commit's build proves nothing. Under --expect-head (an audit of
+ * a build made elsewhere) a local build of another commit, or none, is
+ * reported as not compared; git_head is still enforced.
+ */
+function localBuild(head) {
+  const rel = path.relative(repoRoot, siteOutMetaPath);
+  const strict = head.source !== "--expect-head";
+  const refuse = (why) => {
+    console.error(`ERROR: ${rel} ${why}`);
+    process.exit(2);
+  };
+  if (!fs.existsSync(siteOutMetaPath)) {
+    if (strict) refuse(`not found — no local build to compare the live build stamp with. Build site/out/ at HEAD first.`);
+    return { meta: null, note: `${rel} not found` };
+  }
+  let meta;
+  try {
+    meta = JSON.parse(fs.readFileSync(siteOutMetaPath, "utf8"));
+  } catch (e) {
+    refuse(`is not readable JSON (${e.message}) — rebuild site/out/.`);
+  }
+  if (meta?.git_head !== head.sha) {
+    if (strict) {
+      refuse(
+        `is a build of ${JSON.stringify(meta?.git_head)}, not of HEAD ${head.sha} — the live build ` +
+          `stamp cannot be compared with it. Rebuild site/out/ at HEAD (deploy.sh refuses this too).`,
+      );
+    }
+    return { meta: null, note: `${rel} is a build of ${JSON.stringify(meta?.git_head)}, not of ${head.sha}` };
+  }
+  if (typeof meta.built_at !== "string" || meta.built_at === "") {
+    refuse(`has no built_at stamp — rebuild site/out/.`);
+  }
+  return { meta, note: null };
+}
+
 // ── Assertions ───────────────────────────────────────────────────────────────
 
 const results = [];
@@ -453,6 +620,103 @@ async function checkUrl(label, url, { expectBody = true } = {}) {
   record(true, label, `HTTP 200, ${len} bytes`);
 }
 
+/** Assertion 5 probe: the live object's sha256 and size equal the local file's. */
+async function checkFixedName(t) {
+  const url = `${assetBase}/${t.key.split("/").map(encodeURIComponent).join("/")}`;
+  let res;
+  try {
+    res = await fetchWithTimeout(url, { headers: { "Cache-Control": "no-cache" } });
+  } catch (e) {
+    record(false, t.key, `request failed: ${e.message} (${url})`);
+    return;
+  }
+  if (res.status !== 200) {
+    record(
+      false,
+      t.key,
+      `HTTP ${res.status} from ${url} — the object is not on the asset host. ` +
+        `Run scripts/launch/upload_r2.sh --live.`,
+    );
+    return;
+  }
+  const body = Buffer.from(await res.arrayBuffer());
+  const got = sha256(body);
+  const etag = res.headers.get("etag");
+  if (got !== t.sha256 || body.length !== t.size) {
+    record(
+      false,
+      t.key,
+      `live sha256 ${got.slice(0, 12)}… (${body.length} bytes) != local sha256 ` +
+        `${t.sha256.slice(0, 12)}… (${t.size} bytes) — the R2 sync did not replace it here ` +
+        `(did upload_r2.sh --live run, into this bucket?), or a cache in front of the ` +
+        `bucket still serves the old copy (${url})`,
+    );
+    return;
+  }
+  record(
+    true,
+    t.key,
+    `sha256 ${got.slice(0, 12)}… matches the local file (${body.length} bytes${etag ? `, ETag ${etag}` : ""})`,
+  );
+}
+
+/** Assertion 6 probe: the live /.build-meta.json names this HEAD and this build. */
+async function checkBuildMeta(head, local) {
+  const label = "/.build-meta.json git_head";
+  // A throwaway query string: static hosts ignore it, and no cache between
+  // here and the deployment can answer with a copy from before the deploy.
+  const url = `${siteBase}/.build-meta.json?verify=${Date.now()}`;
+  let res;
+  try {
+    res = await fetchWithTimeout(url, { headers: { "Cache-Control": "no-cache" } });
+  } catch (e) {
+    record(false, label, `request failed: ${e.message} (${url}) — cannot tell which build is live`);
+    return;
+  }
+  if (res.status !== 200) {
+    record(false, label, `HTTP ${res.status} from ${url} — cannot tell which build is live`);
+    return;
+  }
+  let live;
+  try {
+    live = JSON.parse(await res.text());
+  } catch {
+    record(false, label, `the body of ${url} is not JSON — cannot tell which build is live`);
+    return;
+  }
+  if (typeof live?.git_head !== "string" || live.git_head === "") {
+    record(false, label, `${url} carries no git_head — cannot tell which build is live`);
+    return;
+  }
+  if (live.git_head !== head.sha) {
+    record(
+      false,
+      label,
+      `live ${live.git_head} != HEAD ${head.sha} (${head.source}) — the site host serves ` +
+        `another build: the Vercel step did not land`,
+    );
+    return;
+  }
+  record(true, label, `${live.git_head} == HEAD (${head.source})`);
+
+  const buildLabel = "/.build-meta.json build";
+  if (!local.meta) {
+    console.log(`  NOTE: ${buildLabel} not compared — ${local.note}`);
+    return;
+  }
+  const sameMs = local.meta.built_at_ms === undefined || live.built_at_ms === local.meta.built_at_ms;
+  if (live.built_at !== local.meta.built_at || !sameMs) {
+    record(
+      false,
+      buildLabel,
+      `live built_at ${live.built_at} != site/out/.build-meta.json built_at ${local.meta.built_at} — ` +
+        `the same commit, but not this build: the rebuild was not deployed`,
+    );
+    return;
+  }
+  record(true, buildLabel, `built_at ${live.built_at} == site/out/.build-meta.json`);
+}
+
 // ── Run ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -467,12 +731,23 @@ async function main() {
   // Read the receipt set BEFORE any request, so a setup error (exit 2) never
   // follows a half-finished run.  --sha means "exactly this asset".
   const receipts = opts.shas.length > 0 ? null : receiptTargets();
+  // Likewise the fixed-name set, the HEAD and the local build (assertions
+  // 5 and 6): every setup error exits 2 before the first request.
+  const fixedNames = fixedNameTargets();
+  const head = opts.skipSite ? null : expectedHead();
+  const local = head ? localBuild(head) : null;
   if (receipts) {
     for (const s of receipts.scanned) {
       console.log(`  receipts:   ${s.rel} — ${s.shards} shards, ${s.parts.toLocaleString("en-US")} parts`);
     }
-    console.log("");
   }
+  console.log(
+    `  fixed-name: ${fixedNames.length} object(s) under ${fixedNameDirs
+      .map((d) => `${path.relative(repoRoot, d.dir)}/`)
+      .join(", ")}`,
+  );
+  if (head) console.log(`  expect:     git_head ${head.sha} (${head.source})`);
+  console.log("");
   console.log(
     `── ${targets.length} recently-added jbook_pdf asset(s) [${targets[0].source}] ──`,
   );
@@ -484,12 +759,19 @@ async function main() {
   }
 
   console.log("");
-  console.log("── R2 data assets ──");
+  console.log("── R2 data assets (reachable) ──");
   await checkUrl("citations/citations.parquet", `${assetBase}/citations/citations.parquet`);
+
+  console.log("");
+  console.log(
+    `── ${fixedNames.length} fixed-name R2 object(s) [the sync landed: live sha256 == local file] ──`,
+  );
+  for (const t of fixedNames) await checkFixedName(t);
 
   if (!opts.skipSite) {
     console.log("");
-    console.log("── site host (proves site/out/ was the deployed directory) ──");
+    console.log("── site host (which build is live; the /fact/ rewrite) ──");
+    await checkBuildMeta(head, local);
     await checkUrl(`/fact/${FACT_PROBE}`, `${siteBase}/fact/${FACT_PROBE}`);
     await checkUrl("/json/years_matrix.json", `${siteBase}/json/years_matrix.json`);
   }
@@ -503,6 +785,11 @@ async function main() {
     console.log(
       `Assets missing from the CDN mean citation panels fall back to "open ` +
         `official source" for every reader. Re-run: scripts/launch/upload_r2.sh --live`,
+    );
+    console.log(
+      `A fixed-name object that differs from data/site/ means the R2 sync did not ` +
+        `land (or landed in another bucket); a /.build-meta.json that names another ` +
+        `build means the site host is not serving this one (re-run the Vercel step).`,
     );
     process.exit(1);
   }

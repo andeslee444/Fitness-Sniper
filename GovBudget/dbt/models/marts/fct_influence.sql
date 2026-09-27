@@ -5,8 +5,13 @@
 --   outside lobbying firm (income is set; expenses null).
 -- lobbying_expense_usd: sum of expenses_usd from filings where registrant IS
 --   the client/in-house filer (expenses set; income null).
--- These are mutually exclusive per filing (LDA design); summing both gives
--- total lobbying outlay without double-counting.
+-- These are mutually exclusive per filing (LDA design), but not per row: one
+-- (family_key, filing_year) row can sum outside firms' income AND the
+-- self-filer's own expense, and a self-filer's reported expense can include
+-- what it paid those firms. So lobbying_total_usd below is a plain sum that
+-- can double-count, never a de-duplicated outlay (R-DEC-LDATOTAL, final-review
+-- rulings 2026-09-27). Company pages show income and expense apart, with no
+-- total.
 --
 -- R-DEC-AMEND (controller ruling 2026-09-26): an amended quarter is counted
 -- ONCE, from its amendment — audit_lda_filings resolves every filing and this

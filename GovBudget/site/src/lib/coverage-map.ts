@@ -96,7 +96,8 @@ export const CROSSWALK_LIMIT_ID: CoverageMapId = "bridge";
  * policy paragraph: "…or the limit of the sources behind the gap"): the
  * award records' account-code coarseness (bridge, flows, company-awards —
  * called a methodology limit in their own target text, because no method
- * over those records can close it) and the publishers' own coverage
+ * over those records can close it; company-awards also names its exact-name
+ * join as this site's own rule, R-DEC-PRIMES) and the publishers' own coverage
  * (program-pages, awards-window).
  *
  * 2026-09-18. All seven used to end "pending a roadmap decision". Nothing was
@@ -233,8 +234,16 @@ export interface CoverageMapRow {
  * two rows trimmed to fund that round's additions under R-22a-1's net-zero
  * budget. It did not re-read every row on the page — a row outside that list
  * can still be stale under this date.
+ *
+ * 2026-09-27 (decisions wave, final-review check on R-DEC-PRIMES): the
+ * company-awards blocker and target were rewritten that day (the exact-name
+ * rule and both reasons a profile shows none) while this still read
+ * 2026-09-18 — the 2026-08-27 defect again. The bridge row's High-census
+ * clause had been rewritten the day before (R-DEC-COVERAGE / -b, 2026-09-26),
+ * so the date is the later of the two. As on 2026-09-18, the other rows were
+ * not re-read; a row outside those two can still be stale under this date.
  */
-export const MAP_REVIEWED_ON = "2026-09-18";
+export const MAP_REVIEWED_ON = "2026-09-27";
 
 /**
  * The crosswalk blocker's tier sentences, with the hand-adjudicated share
@@ -658,18 +667,33 @@ export function getCoverageMap(): CoverageMapRow[] {
         "one award linked to a named budget line.",
       derivation:
         "entity_details sidecars carrying a non-empty awards array, over entities_top.json rows.",
+      // R-DEC-PRIMES (final review #4, 2026-09-27). The blocker put the whole
+      // gap on the crosswalk. On the chain-G lake 49 of the 168 profiles
+      // without awards HAVE published links — recorded under a member's own
+      // name (Northrop Grumman Systems Corporation, Bath Iron Works), which
+      // the exporter's exact-name join (entity_details: recipient_name ==
+      // display_name) never lists; 119 have none. The two sentences after
+      // the first are the company page's and /methodology/'s, word for word
+      // (company-award-linkage-prose.test.tsx, coverage-map.test.ts).
       blocker:
-        "The same crosswalk limit, seen from the company side. Each profiled " +
-        "company's obligations total is complete over the award window; what is " +
-        "partial is the link from those obligations to a named budget line.",
+        "The same crosswalk limit, seen from the company side, plus a naming " +
+        "rule; each profile's obligations total is complete over the award " +
+        "window. A profile lists a budget→award crosswalk link only when the " +
+        "award's recipient name is exactly the family's registered name in " +
+        "the award data. A profile shows none when no member's award is " +
+        "linked to a budget line, or when the links carry a member's own, " +
+        "different name.",
       targetKind: "none",
       target:
         // Fix round 1 (funds Important #1 and Minors #2/#3 under R-22a-1):
         // "rather than per program element" restated the bridge row's own
         // framing, one row up on this same page. Kept "counted per company"
         // — that half is not said anywhere else.
-        "No dated target — this is the crosswalk limit above, counted per " +
-        "company.",
+        // R-DEC-PRIMES: the naming half is this site's join, not a limit of
+        // the sources, and no ROADMAP entry schedules a change to it — so the
+        // target names it as a rule and claims no plan either way.
+        "No dated target — the crosswalk limit above, counted per company, " +
+        "and the naming rule, which is this site's own.",
     },
     {
       id: "awards-window",

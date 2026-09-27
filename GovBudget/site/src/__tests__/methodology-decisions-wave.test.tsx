@@ -326,11 +326,22 @@ describe("/methodology/ prose the decisions wave rewrote", () => {
         "bare-number matches counted before this rule had one",
     );
     expect(t).not.toContain("qualifying only when the exact PE/BLI code appears");
+    // Final review finding #5: the rule is R-DEC-AMEND's, which is scoped to
+    // fct_influence — the yearly DOLLARS. fct_program_lobbying has no
+    // `counted` filter, so the mention count in this same paragraph still
+    // counts an amended quarter's original AND its amendment (801 of the
+    // 12,571 rows came from 68 uncounted filings on the chain-G lake). An
+    // unscoped "An amendment replaces its original" sat in that paragraph and
+    // read as a rule for the mentions too.
     expect(t).toContain(
-      "An amendment replaces its original instead of adding to it (a correction " +
-        "decided 2026-09-26); where a quarter’s amendments disagree, the smallest " +
-        "counts (our copy keeps no posting date).",
+      "In those yearly figures an amendment replaces its original instead of " +
+        "adding to it (a correction decided 2026-09-26); where a quarter’s " +
+        "amendments disagree, the smallest counts (our copy keeps no posting date).",
     );
+    expect(t).toContain(
+      "(our copy keeps no posting date). Program mentions still count superseded reports.",
+    );
+    expect(t).not.toMatch(/(?:^|[.;] )An amendment replaces its original/);
   }, 30_000);
 
   /**

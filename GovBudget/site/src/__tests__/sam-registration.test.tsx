@@ -39,6 +39,23 @@ function renderNote(value: EntitySamRegistration | undefined, openPanel = vi.fn(
   return openPanel;
 }
 
+/**
+ * R-DEC-SAMTEXT: the rule, as ONE string. Every surface that says whose
+ * SAM.gov registration a company page shows states exactly this (quotes and
+ * whitespace normalized; the page source spells the apostrophe \u2019, the
+ * component &rsquo;, the markdown and the Python formula ').
+ */
+const SAM_RULE =
+  "the parent UEI that the family's largest member by obligations reports on its awards" +
+  " (the parent on the most of its dollars; the member's own UEI where that parent has none;" +
+  " on a member tie, the highest such UEI)";
+
+function norm(s: string): string {
+  return s
+    .replace(/\\u2019|\u2019|&rsquo;/g, "'")
+    .replace(/\s+/g, " ");
+}
+
 describe("SamRegistrationNote (ROADMAP #10)", () => {
   it("renders nothing when the extract has not reached this family", () => {
     renderNote(undefined);
@@ -68,25 +85,28 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     expect(note.textContent).toMatch(/does not change how this family was resolved/i);
   });
 
-  it("claims the dominant member with the mart's own tie-break, not the heading", () => {
-    // dim_entities takes display_name from rn = 1 and the registration from
-    // max(uei) filter (rk = 1): on an exact obligation tie those are two
-    // different members, so the note may not say this registration is the one
-    // the family's displayed name was read from (46 families tie in the lake,
-    // 0 published today — the sentence has to be true before that changes).
+  it("says exactly whose registration it is: the parent UEI the largest member reports (R-DEC-SAMTEXT)", () => {
+    // dim_entities joins SAM on max(coalesce(parent_uei, recipient_uei))
+    // filter (rk = 1): the parent UEI the family's largest member REPORTS on
+    // its awards, not that member's own registration. On the two pages the
+    // chain-G export shipped it was never the largest member's own: Boeing's
+    // largest member is JJM4FRDZJDX1 and the registration shown is its parent
+    // NU2UC8MX6NK1 (itself a member at -$0.8M); Lockheed's is G4KDGE4JFFK7 and
+    // the registration shown is ZFN2JJXBLZT3 ($224.0M). The note used to call
+    // it "the registration of the family's largest member by obligations".
     renderNote(sam);
-    const text = document.querySelector("[data-sam-registration]")!.textContent!;
-    expect(text).toContain("largest member by obligations");
-    // WHICH UEI breaks the tie is not a detail: the mart takes
-    // max(coalesce(parent_uei, recipient_uei)) over the tied set, so it is the
-    // REGISTRATION UEI, and the tied member whose own recipient_uei sorts
-    // highest can be a different row (the fixture that shows the two readings
-    // disagree is tests/test_sam_entities.py::
+    const text = norm(document.querySelector("[data-sam-registration]")!.textContent!);
+    expect(text).toContain(`This is the registration of ${SAM_RULE}`);
+    expect(text).not.toMatch(/registration of the family's largest member/);
+    // The tie-break still names WHICH UEI the max() sorts on: the tied
+    // members' registration UEIs, not their own recipient UEIs (the fixture
+    // that shows the two readings disagree is tests/test_sam_entities.py::
     // test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does).
-    expect(text).toMatch(
-      /where members tie, the one whose registration UEI sorts highest/,
-    );
+    expect(text).toContain("on a member tie, the highest such UEI");
     expect(text).not.toMatch(/registered name is read from/);
+    // Still true after the rewording: SAM is joined below worst_confidence in
+    // dim_entities and entity_xwalk reads no SAM column.
+    expect(text).toMatch(/does not change how this family was resolved/i);
   });
 
   it("omits the fields SAM did not answer rather than inventing them", () => {
@@ -102,23 +122,39 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     expect(note.textContent).not.toMatch(/CAGE|NAICS|Business types|expires/);
   });
 
-  it("the pick rule is stated identically on /company/ and /methodology/", () => {
+  it("the pick rule is one sentence on /company/, /methodology/, docs/methodology.md and the citation formula", () => {
     // The withdrawn identity had a THIRD home: /methodology/ §4 said the
     // published families "carry the SAM.gov registration that name is read
-    // from", where "that name" is the family label (rn = 1). Both surfaces
-    // are gated on an extract that has not run, so nothing renders either
-    // sentence today and no build can catch a reprise — this reads the page
-    // source, the way methodology-doc-mirror.test.ts does, so the trio (this
-    // component, the citation formula in export_site.py, and the page) moves
-    // together or reds here.
-    const page = fs.readFileSync(
-      path.join(__dirname, "..", "app", "methodology", "page.tsx"),
-      "utf8",
+    // from", where "that name" is the family label (rn = 1). The page's
+    // clause renders only while companies_with_sam > 0, and the formula is
+    // Python, so this reads each source — the way
+    // methodology-doc-mirror.test.ts does — and the four move together or red
+    // here (R-DEC-SAMTEXT, final review 2026-09-27).
+    const root = path.join(__dirname, "..", "..", "..");
+    const page = norm(
+      fs.readFileSync(
+        path.join(__dirname, "..", "app", "methodology", "page.tsx"),
+        "utf8",
+      ),
     );
-    expect(page).not.toMatch(/registration that name is read from/);
-    expect(page).not.toMatch(/registered name is read from/);
-    expect(page).toMatch(/largest member by obligations/);
-    expect(page).toMatch(/registration UEI sorts highest/);
+    const doc = norm(fs.readFileSync(path.join(root, "docs", "methodology.md"), "utf8"));
+    const py = fs.readFileSync(path.join(root, "src", "govbudget", "export_site.py"), "utf8");
+    const block = py.match(/^_SAM_REGISTRATION_RULE = \(\n([\s\S]*?)\n\)/m);
+    expect(block, "export_site.py must define _SAM_REGISTRATION_RULE").not.toBeNull();
+    const formulaRule = norm(
+      [...block![1].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]).join(""),
+    );
+    expect(formulaRule).toBe(SAM_RULE);
+    for (const [where, text] of [["methodology page", page], ["docs/methodology.md", doc]]) {
+      expect(text, where).toContain(`the registration of ${SAM_RULE}`);
+      expect(text, where).not.toMatch(/registration that name is read from/);
+      expect(text, where).not.toMatch(/registered name is read from/);
+      expect(text, where).not.toMatch(/registration of the family's largest member/);
+    }
+    // The label and the registration are not always one member's: on a
+    // tie the label is read from the LOWEST registration UEI, and a curated
+    // alias is no registration at all.
+    expect(page).toContain(`${SAM_RULE}, not always the one the label came from`);
   });
 
   it("cites the status through a prose cite, never a data-amount", () => {

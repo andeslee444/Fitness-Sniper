@@ -199,9 +199,21 @@ def test_the_dry_run_counts_the_awards_with_more_than_one_uei(tmp_path):
 # names "ViaSat Inc.", and every pre-fix production run carried ViaSat. 'FRJQ'
 # sorts first, so the alphabet published L3 Technologies.
 #
-# Every test in this block failed on the fix-round-5 code except
-# test_lake_evidence_keeps_the_announcement_free_pick, which pins what did not
-# change (lake_evidence's own per-award pick).
+# R-DEC-RECIPIENT-b (final-review ruling, 2026-09-27): step (2) reads the
+# cited announcement's TEXT — "the tied recipient whose normalized name
+# appears in the clause that names THIS PIID wins (multi-award paragraphs
+# name several contractors; the packet's `contractor` field holds only the
+# first). Only then the lowest UEI. N0003910D0032 → ViaSat." The fix-round-5
+# code matched the packet's `contractor` field, so N0003910D0032 (article
+# 605988: "Data Link Solutions, LLC, Cedar Rapids, Iowa (N00039-10-D-0031)
+# and ViaSat, Inc., Carlsbad, California (N00039-10-D-0032)") matched
+# neither tied UEI and fell to the alphabet (L3). The test that pinned that
+# outcome rested on a misreading of the article and is replaced below by the
+# ruling's expectation.
+#
+# Every test here gives link_recipient the cited article as the archive holds
+# it (<raw_dir>/<article_id>.html, one <p> per paragraph) and, where the
+# packet still carries a `contractor`, a value the clause rule must ignore.
 
 ANN = "announcement+lexicon"
 SUB = "subaward+lexicon"
@@ -218,6 +230,50 @@ N0003915D0008 = [
 VIASAT_PACKET = {"piid": "N0003915D0008", "pe_bli": "0604280N",
                  "article_id": "1275111", "date": "2017-08-10",
                  "contractor": "ViaSat Inc.", "match_basis": "exact-name"}
+#: article 1275111's paragraph for it (trimmed)
+VIASAT_1275111 = (
+    "ViaSat Inc., Carlsbad, California (N00039-15-D-0008), is being awarded a"
+    " $123,448,640 ceiling increase modification to its current"
+    " indefinite-delivery/indefinite quantity contract. The contract covers the"
+    " production, development and sustainment of the Multifunctional"
+    " Information Distribution System (MIDS) Joint Tactical Radio Systems"
+    " (JTRS) terminals . &nbsp; Work will be performed in Carlsbad, California."
+    " &nbsp; Space and Naval Warfare System Command, San Diego, California, is"
+    " the contracting activity. &nbsp;")
+#: article 605988's paragraph (2014-07-30, trimmed): one multi-award
+#: paragraph, two contractors, each followed by its own "(PIID)"
+MIDS_605988 = (
+    "Data Link Solutions, LLC, Cedar Rapids, Iowa (N00039-10-D-0031) and"
+    " ViaSat, Inc., Carlsbad, California (N00039-10-D-0032), are being awarded"
+    " a combined $116,750,000 modification to a previously awarded multiple"
+    " award contract to exercise options for systems engineering and"
+    " integration for the Multifunctional Information Distribution System"
+    " (MIDS) Low Volume Terminal (LVT) and the MIDS Joint Tactical Radio"
+    " Systems (JTRS) terminal. For Data Link Solutions, LLC, work will be"
+    " performed in Wayne, New Jersey (50 percent) and Cedar Rapids, Iowa (50"
+    " percent). For ViaSat, Inc., work will be performed in Carlsbad,"
+    " California. The Space and Naval Warfare Systems Command, San Diego,"
+    " California, is the contracting activity.")
+#: N0003910D0032's packet (wave2_chunks/chunk_055.json, trimmed): its
+#: `contractor` is the paragraph's FIRST contractor, not this PIID's
+MIDS_PACKET = {"piid": "N0003910D0032", "pe_bli": "0604280N",
+               "article_id": "605988", "date": "2014-07-30",
+               "contractor": "Data Link Solutions", "match_basis": "exact-name"}
+
+
+def on(piid, rows):
+    """The same rows, moved onto another PIID."""
+    return [r[:1] + (piid,) + r[2:] for r in rows]
+
+
+def article(raw_dir, article_id, *paragraphs):
+    """Archive a cited announcement as <raw_dir>/<article_id>.html, one <p>
+    per paragraph (the shape data/raw/announcements holds)."""
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    body = "\n".join(f'<p style="text-align: justify;">{p}</p>' for p in paragraphs)
+    (raw_dir / f"{article_id}.html").write_text(
+        f"<html><body><h1>Contracts For July 30, 2014</h1>\n{body}\n</body></html>")
+    return raw_dir
 
 
 def candidates(piids, glob):
@@ -228,21 +284,27 @@ def candidates(piids, glob):
     return cands
 
 
-def pick(piid, rows, packet, method=ANN, *, tmp_path):
+def pick(piid, rows, packet, method=ANN, *, tmp_path, paragraphs=()):
+    """link_recipient for one link, its cited article archived under
+    tmp_path/raw when `paragraphs` are given (and NOT archived otherwise, so
+    a pick that should never read the article fails if it tries)."""
     from load_announcement_links import link_recipient
 
+    raw = tmp_path / "raw"
+    if paragraphs:
+        article(raw, packet["article_id"], *paragraphs)
     return link_recipient(candidates([piid], write(tmp_path, 2026, rows))[piid],
-                          packet, method)
+                          packet, method, piid=piid, raw_dir=raw)
 
 
 def test_n0003915d0008_takes_the_recipient_its_cited_announcement_names(tmp_path):
     assert pick("N0003915D0008", N0003915D0008, VIASAT_PACKET,
-                tmp_path=tmp_path) == ("VIASAT INC", "L9Z1ASN3B8E7",
-                                       "announcement_named")
+                tmp_path=tmp_path, paragraphs=[VIASAT_1275111]) == (
+        "VIASAT INC", "L9Z1ASN3B8E7", "announcement_named")
 
 
 def test_the_real_packet_n0003915d0008_cites_names_viasat():
-    """The evidence the tie-break reads is the packet the card cites — the
+    """The article the tie-break reads is the one the card cites — the
     packet choice (R-DEC-PACKET) over the real wave files, not any packet."""
     from load_announcement_links import ROOT, provenance_packets, recipient_name_key
 
@@ -253,14 +315,81 @@ def test_the_real_packet_n0003915d0008_cites_names_viasat():
     assert recipient_name_key(packet["contractor"]) == recipient_name_key("VIASAT INC")
 
 
-def test_an_all_zero_tie_no_announcement_names_goes_to_the_lowest_uei(tmp_path):
-    # N0003910D0032's shape: its article (605988) names "Data Link
-    # Solutions", which is neither recipient on the award
-    rows = [r[:1] + ("N0003910D0032",) + r[2:] for r in N0003915D0008]
-    packet = dict(VIASAT_PACKET, piid="N0003910D0032", article_id="605988",
-                  contractor="Data Link Solutions")
-    assert pick("N0003910D0032", rows, packet, tmp_path=tmp_path) == (
+def test_n0003910d0032_takes_the_contractor_its_own_clause_names(tmp_path):
+    # R-DEC-RECIPIENT-b: the clause naming N00039-10-D-0032 names ViaSat;
+    # the packet's `contractor` ("Data Link Solutions") is the paragraph's
+    # first contractor and names neither tied UEI
+    assert pick("N0003910D0032", on("N0003910D0032", N0003915D0008),
+                MIDS_PACKET, tmp_path=tmp_path, paragraphs=[MIDS_605988]) == (
+        "VIASAT INC", "L9Z1ASN3B8E7", "announcement_named")
+
+
+def test_the_packets_contractor_field_does_not_decide(tmp_path):
+    # the same paragraph shape with the contractors swapped: the packet's
+    # `contractor` names ViaSat (the paragraph's first contractor), the
+    # clause naming THIS PIID names L3 — L3 is named, not merely the
+    # lowest UEI
+    text = ("ViaSat, Inc., Carlsbad, California (N00039-10-D-0031); and L3"
+            " Technologies, Inc., Salt Lake City, Utah (N00039-10-D-0032), are"
+            " being awarded a combined $116,750,000 modification. The Space and"
+            " Naval Warfare Systems Command, San Diego, California, is the"
+            " contracting activity.")
+    packet = dict(MIDS_PACKET, contractor="ViaSat, Inc.")
+    assert pick("N0003910D0032", on("N0003910D0032", N0003915D0008), packet,
+                tmp_path=tmp_path, paragraphs=[text]) == (
+        "L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3", "announcement_named")
+
+
+def test_a_clause_naming_neither_tied_recipient_goes_to_the_lowest_uei(tmp_path):
+    # N00039-10-D-0031's clause names Data Link Solutions; ViaSat is named in
+    # the same paragraph, but in the clause of ANOTHER PIID, so neither tied
+    # UEI is named for this link and the alphabet decides
+    packet = dict(MIDS_PACKET, piid="N0003910D0031", contractor="ViaSat Inc.")
+    assert pick("N0003910D0031", on("N0003910D0031", N0003915D0008), packet,
+                tmp_path=tmp_path, paragraphs=[MIDS_605988]) == (
         "L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3", "uei_tiebreak")
+
+
+def test_a_single_award_announcement_names_its_lead_contractor(tmp_path):
+    # unchanged by R-DEC-RECIPIENT-b: in a single-award paragraph the clause
+    # naming the PIID is the award itself, whose contractor leads it — even
+    # when an earlier parenthesis names another contract (its first task
+    # order) and the PIID sits in the contracting-activity parenthesis
+    text = ("ViaSat Inc., Carlsbad, California, has been awarded a $98,000,000"
+            " indefinite-delivery/indefinite-quantity contract for MIDS"
+            " terminals. Fiscal 2015 research and development funds in the"
+            " amount of $5,000,000 are being obligated at the time of award for"
+            " the first task order (N00039-15-F-0001). Space and Naval Warfare"
+            " Systems Command, San Diego, California, is the contracting"
+            " activity (N00039-15-D-0008).")
+    assert pick("N0003915D0008", N0003915D0008, VIASAT_PACKET,
+                tmp_path=tmp_path, paragraphs=[text]) == (
+        "VIASAT INC", "L9Z1ASN3B8E7", "announcement_named")
+
+
+def test_each_award_in_one_paragraph_names_its_own_contractor(tmp_path):
+    # some digests archive several awards in ONE <p>; each award ends at its
+    # "is the contracting activity (PIID)." and the next contractor leads the
+    # next one (article 1037167's shape, where the packet's contractor is
+    # the first award's)
+    text = ("General Atomics Aeronautical Systems Inc. (GA-ASI), Poway,"
+            " California, has been awarded a $17,000,000 contract for Reaper"
+            " support. Air Force Life Cycle Management Center, Wright-Patterson"
+            " Air Force Base, Ohio, is the contracting activity"
+            " (FA8620-17-C-0001). Lockheed Martin Aeronautics Co., Marietta,"
+            " Georgia, has been awarded an $81,147,573 cost-plus-incentive-fee"
+            " contract for the C-5M. Air Force Life Cycle Management Center,"
+            " Wright-Patterson Air Force Base, Ohio, is the contracting activity"
+            " (FA8625-17-C-6589).")
+    rows = [
+        row("C1", "FA862517C6589", "AAAAGENATOM1", "GENERAL ATOMICS AERONAUTICAL SYSTEMS, INC.", "0"),
+        row("C2", "FA862517C6589", "ZZZZLOCKMAR9", "LOCKHEED MARTIN AERONAUTICS COMPANY", "0"),
+    ]
+    packet = {"piid": "FA862517C6589", "article_id": "1037167",
+              "contractor": "General Atomics Aeronautical Systems Inc. (GA-ASI)"}
+    assert pick("FA862517C6589", rows, packet, tmp_path=tmp_path,
+                paragraphs=[text]) == (
+        "LOCKHEED MARTIN AERONAUTICS COMPANY", "ZZZZLOCKMAR9", "announcement_named")
 
 
 def test_a_name_match_beats_uei_order(tmp_path):
@@ -270,14 +399,21 @@ def test_a_name_match_beats_uei_order(tmp_path):
         row("P1", "W909MY17D0002", "GRRQGPH7QS29", "PD POWER SYSTEMS, LLC", "75.50"),
         row("P2", "W909MY17D0002", "MBF6MBLZLMC3", "PD SYSTEMS INC.", "75.50"),
     ]
+    text = ("PD Systems Inc.,* Alexandria, Virginia, was awarded a $30,134,374"
+            " fixed-price-incentive contract for the recapitalization of the"
+            " deployable power generation and distribution systems prime power"
+            " unit. U.S. Army Contracting Command, Fort Belvoir, Virginia, is the"
+            " contracting activity (W909MY-17-D-0002).")
     packet = {"article_id": "1161148", "contractor": "PD Systems Inc."}
-    assert pick("W909MY17D0002", rows, packet, tmp_path=tmp_path) == (
+    assert pick("W909MY17D0002", rows, packet, tmp_path=tmp_path,
+                paragraphs=[text]) == (
         "PD SYSTEMS INC.", "MBF6MBLZLMC3", "announcement_named")
 
 
 def test_the_largest_obligation_comes_before_the_announcement(tmp_path):
     # M6785415F4444's shape: the announcement names iGov, whose rows net
-    # negative; MA Federal carries the largest total, so dollars decide
+    # negative; MA Federal carries the largest total, so dollars decide —
+    # and the article is never read (none is archived here)
     rows = [
         row("G1", "M6785415F4444", "JKJ7JTLJJHR6", "IGOV TECHNOLOGIES, INC.", "-317545.70"),
         row("G2", "M6785415F4444", "L7MZK1KZZ162", "MA FEDERAL, INC.", "1359425.60"),
@@ -304,12 +440,15 @@ def test_two_named_tied_ueis_go_to_the_lower_of_those_two(tmp_path):
     # overall (unnamed) is not a candidate any more, and the UEI order decides
     # between the two it names
     rows = [
-        row("A1", "THREE", "UEIAAAAAAAA1", "NORTHROP GRUMMAN SYSTEMS CORP", "0"),
-        row("A2", "THREE", "UEICCCCCCCC3", "ALLIANT TECHSYSTEMS OPERATIONS LLC", "0"),
-        row("A3", "THREE", "UEIBBBBBBBB2", "ALLIANT TECHSYSTEMS OPERATIONS LLC", "0"),
+        row("A1", "N0001917D0003", "UEIAAAAAAAA1", "NORTHROP GRUMMAN SYSTEMS CORP", "0"),
+        row("A2", "N0001917D0003", "UEICCCCCCCC3", "ALLIANT TECHSYSTEMS OPERATIONS LLC", "0"),
+        row("A3", "N0001917D0003", "UEIBBBBBBBB2", "ALLIANT TECHSYSTEMS OPERATIONS LLC", "0"),
     ]
+    text = ("Alliant Techsystems Operations LLC, Northridge, California, is"
+            " being awarded a $10,000,000 contract (N00019-17-D-0003).")
     packet = {"article_id": "1", "contractor": "Alliant Techsystems Operations LLC"}
-    assert pick("THREE", rows, packet, tmp_path=tmp_path) == (
+    assert pick("N0001917D0003", rows, packet, tmp_path=tmp_path,
+                paragraphs=[text]) == (
         "ALLIANT TECHSYSTEMS OPERATIONS LLC", "UEIBBBBBBBB2", "uei_tiebreak")
 
 
@@ -318,11 +457,14 @@ def test_a_related_company_is_not_named_by_the_announcement(tmp_path):
     # article names "Raytheon Technical Services Co.", a different recipient
     # from RAYTHEON COMPANY, so neither tied UEI is named and the lower wins
     rows = [
-        row("R1", "RTSC", "UEIZZZZZZZZ9", "RAYTHEON COMPANY", "0"),
-        row("R2", "RTSC", "UEIAAAAAAAA1", "VERTEX MODERNIZATION AND SUSTAINMENT LLC", "0"),
+        row("R1", "N0003917D0004", "UEIZZZZZZZZ9", "RAYTHEON COMPANY", "0"),
+        row("R2", "N0003917D0004", "UEIAAAAAAAA1", "VERTEX MODERNIZATION AND SUSTAINMENT LLC", "0"),
     ]
+    text = ("Raytheon Technical Services Co., Indianapolis, Indiana, is being"
+            " awarded a $20,000,000 contract (N00039-17-D-0004).")
     packet = {"article_id": "1", "contractor": "Raytheon Technical Services Co."}
-    assert pick("RTSC", rows, packet, tmp_path=tmp_path) == (
+    assert pick("N0003917D0004", rows, packet, tmp_path=tmp_path,
+                paragraphs=[text]) == (
         "VERTEX MODERNIZATION AND SUSTAINMENT LLC", "UEIAAAAAAAA1", "uei_tiebreak")
 
 
@@ -331,12 +473,15 @@ def test_any_name_on_a_ueis_own_rows_can_be_the_named_one(tmp_path):
     # carries fewer dollars, and the published name is still the UEI's
     # largest-dollar spelling (never the announcement's text)
     rows = [
-        row("S1", "SPELL", "UEIAAAAAAAA1", "ALPHA CORP", "0"),
-        row("S2", "SPELL", "UEIZZZZZZZZ9", "ZULU HOLDINGS INC", "5"),
-        row("S3", "SPELL", "UEIZZZZZZZZ9", "ZULU SYSTEMS INC", "-5"),
+        row("S1", "FA862517C0005", "UEIAAAAAAAA1", "ALPHA CORP", "0"),
+        row("S2", "FA862517C0005", "UEIZZZZZZZZ9", "ZULU HOLDINGS INC", "5"),
+        row("S3", "FA862517C0005", "UEIZZZZZZZZ9", "ZULU SYSTEMS INC", "-5"),
     ]
+    text = ("Zulu Systems Inc., Dayton, Ohio, has been awarded a $1,000,000"
+            " contract (FA8625-17-C-0005).")
     packet = {"article_id": "1", "contractor": "Zulu Systems Inc."}
-    assert pick("SPELL", rows, packet, tmp_path=tmp_path) == (
+    assert pick("FA862517C0005", rows, packet, tmp_path=tmp_path,
+                paragraphs=[text]) == (
         "ZULU HOLDINGS INC", "UEIZZZZZZZZ9", "announcement_named")
 
 
@@ -352,12 +497,32 @@ def test_a_subaward_link_cites_no_announcement_to_name_anyone(tmp_path):
     none_packet = dict(packet, contractor="None")
     assert pick("N0003915D0008", N0003915D0008, none_packet, SUB,
                 tmp_path=tmp_path / "b")[2] == "uei_tiebreak"
+    # a subaward link never reads an article, even one that names ViaSat
+    real_article = dict(packet, article_id="1275111")
+    assert pick("N0003915D0008", N0003915D0008, real_article, SUB,
+                tmp_path=tmp_path / "c", paragraphs=[VIASAT_1275111])[2] == (
+        "uei_tiebreak")
 
 
-def test_a_packet_naming_no_contractor_falls_to_the_uei(tmp_path):
-    assert pick("N0003915D0008", N0003915D0008, {"article_id": "1"},
+def test_a_packet_citing_no_article_falls_to_the_uei(tmp_path):
+    assert pick("N0003915D0008", N0003915D0008, {"contractor": "ViaSat Inc."},
                 tmp_path=tmp_path) == ("L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3",
                                        "uei_tiebreak")
+
+
+def test_an_article_that_does_not_name_the_piid_names_no_one(tmp_path):
+    other = ("ViaSat Inc., Carlsbad, California (N00039-15-D-0009), is being"
+             " awarded a $1,000 modification.")
+    assert pick("N0003915D0008", N0003915D0008, VIASAT_PACKET,
+                tmp_path=tmp_path, paragraphs=[other]) == (
+        "L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3", "uei_tiebreak")
+
+
+def test_a_tie_whose_cited_article_is_not_archived_is_refused(tmp_path):
+    # the tie cannot be broken by evidence the loader cannot read, and the
+    # alphabet must not stand in for it silently
+    with pytest.raises(SystemExit, match=r"1275111"):
+        pick("N0003915D0008", N0003915D0008, VIASAT_PACKET, tmp_path=tmp_path)
 
 
 def test_one_recipient_is_decided_by_obligation(tmp_path):
@@ -367,9 +532,12 @@ def test_one_recipient_is_decided_by_obligation(tmp_path):
     from load_announcement_links import link_recipient
 
     cands = candidates(["ONE", "NONE"], glob)
-    assert link_recipient(cands["ONE"], {"contractor": "Someone Else"}, ANN) == (
+    raw = tmp_path / "no-archive"
+    assert link_recipient(cands["ONE"], {"article_id": "7", "contractor": "Someone Else"},
+                          ANN, piid="ONE", raw_dir=raw) == (
         "OSCAR LLC", "UEIOOOOOOOO1", "obligation")
-    assert link_recipient(cands["NONE"], {}, ANN) == ("NOBODY LLC", None, "obligation")
+    assert link_recipient(cands["NONE"], {}, ANN, piid="NONE", raw_dir=raw) == (
+        "NOBODY LLC", None, "obligation")
 
 
 def test_lake_evidence_keeps_the_announcement_free_pick(tmp_path):
@@ -380,6 +548,80 @@ def test_lake_evidence_keeps_the_announcement_free_pick(tmp_path):
     glob = write(tmp_path, 2026, N0003915D0008)
     ev, _ = lake_evidence(["N0003915D0008"], contracts_glob=glob)
     assert ev["N0003915D0008"][:2] == ("L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3")
+
+
+# ── the clause that names a PIID (R-DEC-RECIPIENT-b) ────────────────────────
+
+AMMO_879353 = (
+    "Pyrotechnic Specialties Inc.,* Byron, Georgia (FA8213-16-D-0005); Amtec"
+    " Corp., doing business as Tech Ord, Clear Lake, South Dakota"
+    " (FA8213-16-D-0006); and CAPCO LLC, Grand Junction, Colorado"
+    " (FA8213-16-D-0008), have each been awarded an"
+    " indefinite-delivery/indefinite-quantity, firm fixed price contract with a"
+    " combined contractual ceiling of $37,000,000.&nbsp; Fiscal 2016"
+    " Ammunition Procurement funds in the amount of $3,475,590 will be"
+    " obligated on FA8213-16-F-0021.&nbsp; Air Force Life Cycle Management"
+    " Center, Hill Air Force Base, Utah, is the contracting activity.")
+BOA_1184500 = (
+    "Lockheed Martin Corp., Lockheed Martin &ndash; Rotary and Mission"
+    " Systems, King of Prussia, Pennsylvania, is being awarded an $8,501,430"
+    " cost-plus-fixed-fee delivery order (N0001917F1024) against a previously"
+    " issued basic ordering agreement (N00019-15-G-0057).&nbsp; Naval Air"
+    " Systems Command, Patuxent River, Maryland, is the contracting activity.")
+
+
+@pytest.mark.parametrize("paragraph, piid, names", [
+    # a multi-award paragraph: each contractor precedes its own "(PIID)"
+    (MIDS_605988, "N0003910D0032", ["ViaSat"]),
+    (MIDS_605988, "N0003910D0031", ["Data Link Solutions"]),
+    # list separators: ';', '; and', ', and', 'and'
+    (AMMO_879353, "FA821316D0005", ["Pyrotechnic Specialties Inc."]),
+    (AMMO_879353, "FA821316D0006", ["Amtec Corp."]),
+    (AMMO_879353, "FA821316D0008", ["CAPCO LLC"]),
+    # a PIID outside any parenthesis is no list item: the award's lead names it
+    (AMMO_879353, "FA821316F0021", ["Pyrotechnic Specialties Inc."]),
+    # an order and its ordering agreement, both the lead contractor's
+    (BOA_1184500, "N0001915G0057", ["Lockheed Martin Corp."]),
+    (BOA_1184500, "N0001917F1024", ["Lockheed Martin Corp."]),
+    # not named at all
+    (MIDS_605988, "N0003910D0033", []),
+])
+def test_the_clause_naming_a_piid_names_its_contractor(paragraph, piid, names):
+    from load_announcement_links import announcement_paragraphs, piid_clause_names
+
+    html_text = f"<html><body><p>{paragraph}</p></body></html>"
+    assert piid_clause_names(announcement_paragraphs(html_text), piid) == names
+
+
+def test_every_paragraph_naming_the_piid_is_read(tmp_path):
+    # a digest can name one PIID twice (an award and a later modification);
+    # each clause's contractor is named, once
+    from load_announcement_links import announcement_paragraphs, piid_clause_names
+
+    html_text = ("<p>ViaSat Inc., Carlsbad, California (N00039-15-D-0008), is"
+                 " awarded $1.</p><p>L3 Technologies Inc., Salt Lake City, Utah,"
+                 " is awarded $2 under contract N00039-15-D-0008.</p>"
+                 "<p>ViaSat, Inc., Carlsbad, California, is awarded $3"
+                 " (N00039-15-D-0008).</p>")
+    assert piid_clause_names(announcement_paragraphs(html_text), "N0003915D0008") == [
+        "ViaSat Inc.", "L3 Technologies Inc.", "ViaSat"]
+
+
+_RAW = Path(__file__).resolve().parents[1] / "data/raw/announcements"
+
+
+@pytest.mark.skipif(not (_RAW / "605988.html").exists(),
+                    reason="the archived announcements are not on this machine")
+@pytest.mark.parametrize("article_id, piid, names", [
+    ("605988", "N0003910D0032", ["ViaSat"]),
+    ("605988", "N0003910D0031", ["Data Link Solutions"]),
+    ("1275111", "N0003915D0008", ["ViaSat Inc."]),
+])
+def test_the_real_archived_articles_name_these_contractors(article_id, piid, names):
+    from load_announcement_links import announcement_paragraphs, piid_clause_names
+
+    html_text = (_RAW / f"{article_id}.html").read_text(errors="replace")
+    assert piid_clause_names(announcement_paragraphs(html_text), piid) == names
 
 
 @pytest.mark.parametrize("announced, recorded", [
@@ -467,11 +709,11 @@ def test_the_loader_stores_the_basis_with_the_recipient(con):
 
     lal.write_links(con.cursor(), [
         _link("N0003915D0008", "VIASAT INC", "L9Z1ASN3B8E7", "announcement_named"),
-        _link("N0003910D0032", "L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3", "uei_tiebreak"),
+        _link("N0003910D0031", "L3 TECHNOLOGIES, INC.", "FRJQGQHDX4J3", "uei_tiebreak"),
     ], [])
     assert _stored(con, "N0003915D0008") == (
         ANN, "VIASAT INC", "L9Z1ASN3B8E7", "announcement_named")
-    assert _stored(con, "N0003910D0032")[3] == "uei_tiebreak"
+    assert _stored(con, "N0003910D0031")[3] == "uei_tiebreak"
 
 
 def test_a_link_that_takes_another_routes_key_takes_its_own_recipient(con):

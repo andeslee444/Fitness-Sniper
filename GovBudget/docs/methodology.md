@@ -96,9 +96,10 @@ the #176 rule on 2026-09-26 (in memory over the lake's filings, four runs,
 identical), the same filings give 12,571 rows across 471 program elements, 0
 of them on a bare number. Lobbying income and expenditure by year are shown
 alongside federal obligations received — influence is presented side by side
-with outcomes, never as a causal claim. An amendment replaces its original
-instead of adding to it (a correction decided 2026-09-26); where a quarter's
-amendments disagree, the smallest counts (our copy keeps no posting date). An
+with outcomes, never as a causal claim. In those yearly figures an amendment
+replaces its original instead of adding to it (a correction decided
+2026-09-26); where a quarter's amendments disagree, the smallest counts (our
+copy keeps no posting date). Program mentions still count superseded reports. An
 amendment supersedes every report of the same registrant, client and quarter;
 which amendment is latest cannot be named without a posting date, so the
 smallest is the one never larger than the truth (ROADMAP #178: 7 quarters,
@@ -199,10 +200,15 @@ beneath the heading, because that is the string USAspending answers to.
 
 **What a SAM.gov extract can and cannot do.** The registered parent name a
 confidence tier reads is *itself* the SAM.gov registration, so fetching it back
-from SAM returns the same string and upgrades nothing. Where a build has fetched
-a family's SAM record — status, CAGE code, legal business name, business types,
-primary NAICS and expiry — that company's page shows it with its own citation;
-where it has not, the page shows no line rather than a guess. (ROADMAP #10.)
+from SAM returns the same string and upgrades nothing. The record a company
+page can show is the registration of the parent UEI that the family's largest
+member by obligations reports on its awards (the parent on the most of its
+dollars; the member's own UEI where that parent has none; on a member tie, the
+highest such UEI), not always the one the label came from. Where a build has
+fetched it — status, CAGE code, legal business name, business types, primary
+NAICS and expiry — the page shows it with its own citation, whose source link
+is the public sam.gov entity page; where it has not, the page shows no line
+rather than a guess. (ROADMAP #10.)
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of
@@ -503,6 +509,16 @@ show offer counts and competition type; we do not name losing bidders.
 renamed subsidiaries may be grouped incorrectly. Method and confidence are
 always exposed. Corrections create superseding records; the original is
 retained, not deleted.
+
+**Company pages match award links by exact name.** A profile lists a
+budget→award crosswalk link only when the award's recipient name is exactly
+the family's registered name in the award data. A profile shows none when no
+member's award is linked to a budget line, or when the links carry a member's
+own, different name. The live methodology page states how many profiled
+families show linked awards. (An earlier revision explained the gap as the
+crosswalk holding research performers rather than prime contractors. That was
+withdrawn: the published crosswalk's largest recipients are prime
+contractors.)
 
 **Improper-payment dollar figures are derived.** They are computed from
 OMB-published rates times published outlays and carry the same uncertainty as

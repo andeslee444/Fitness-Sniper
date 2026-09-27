@@ -1640,22 +1640,38 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     cits = json.loads((site / "json" / "citations.json").read_text())
     row = cits[fid]
     assert row["kind"] == "derived"
-    # The panel reads the STATUS, not a dollar figure, and the inputs are the
-    # two URLs (reader page + key-stripped API URL) — rule 5 shape-check.
+    # The panel reads the STATUS, not a dollar figure — rule 5 shape-check.
     assert row["recorded_value"] == "Active"
-    assert json.loads(row["inputs"]) == [
-        "https://sam.gov/entity/ZFN2JJXBLZT3",
-        "https://api.sam.gov/entity-information/v4/entities?ueiSAM=ZFN2JJXBLZT3",
-    ]
+    # R-DEC-SAMTEXT (final review, 2026-09-27): the ONE reader-facing source
+    # link is the public sam.gov entity page. The key-stripped api.sam.gov
+    # request URL answers every keyless reader with an empty 404, and the
+    # citation panel renders every URL input as a clickable "Source inputs"
+    # link, so it may not appear anywhere in the citation row. It is still
+    # recorded — dim_entities.sam_source_url, in the /data/ parquet — as
+    # provenance nothing renders as a link.
+    assert json.loads(row["inputs"]) == ["https://sam.gov/entity/ZFN2JJXBLZT3"]
+    assert "api.sam.gov" not in json.dumps(row)
     assert "does not regrade this family's resolution confidence" in row["formula"]
-    # The tie-break, not an identity the mart does not hold to: display_name
-    # comes from rn = 1 and this UEI from max(uei) filter (rk = 1), so on an
-    # exact obligation tie they name different members. Twin of the last
-    # sentence in site/src/components/sam-registration.tsx — and it names WHICH
-    # UEI the max() sorts on, because a tied member's own recipient_uei can
-    # order the other way (tests/test_sam_entities.py::
+    # R-DEC-SAMTEXT: say exactly what is shown. The mart joins SAM on
+    # max(coalesce(parent_uei, recipient_uei)) filter (rk = 1) — the parent
+    # UEI the largest member REPORTS, not that member's own registration
+    # (Boeing: largest member JJM4FRDZJDX1, registration shown NU2UC8MX6NK1,
+    # a separate member at -$0.8M). The formula said "the registration of the
+    # member holding the most obligations", which was false on both published
+    # pages. The rule sentence is the same string on the company line,
+    # /methodology/ §4 and docs/methodology.md
+    # (site/src/__tests__/sam-registration.test.tsx reads all four), and it
+    # still names the tie-break and WHICH UEI it sorts on
+    # (tests/test_sam_entities.py::
     # test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does).
-    assert "ties broken by the highest registration UEI" in row["formula"]
+    assert (
+        "the registration of the parent UEI that the family's largest member"
+        " by obligations reports on its awards (the parent on the most of its"
+        " dollars; the member's own UEI where that parent has none; on a"
+        " member tie, the highest such UEI)"
+    ) in row["formula"]
+    assert "family lockheed" in row["formula"]
+    assert "member holding the most obligations" not in row["formula"]
     assert "registered name is read from" not in row["formula"]
     assert "api_key" not in row["formula"] and "api_key" not in row["inputs"]
 

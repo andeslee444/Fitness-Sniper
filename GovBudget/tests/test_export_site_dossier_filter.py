@@ -466,6 +466,7 @@ def test_contradicting_claims_are_withheld_and_logged_by_name(tmp_path, capsys):
         "fact_id": _DOLLARS_FID, "kind": "derived", "units": "USD",
         "cited_value": "469988662.800", "cited_family": "SYSTEM HIGH",
         "reasons": ["stated_figure", "top_family"], "unlinked_recipients": [],
+        "unlisted_lobbying_filers": [],
     }
     assert withheld[1]["reasons"] == ["stated_figure", "concentration_band"]
     assert withheld[1]["cited_value"] == "1284.683"
@@ -655,18 +656,23 @@ def test_the_drift_context_reads_every_value_kind(tmp_path):
             fid, kind, units, amount_text, amount_thousands, recorded)
         return tuple(r)
 
-    facts, conc, recipients = _dossier_drift_context(
+    facts, conc, recipients, lobbying = _dossier_drift_context(
         [row("w", "workbook", "USD thousands", amount_thousands=897631.0),
          row("p", "jbook_pdf", "USD millions", amount_text="7,712.804"),
          row("d", "derived", "USD", recorded="1.0"),
-         row("n", "jbook_narrative", None)],
+         row("n", "jbook_narrative", None),
+         row("l", "lda_filing", None)],
         None,
     )
     assert facts["w"]["amount_thousands"] == 897631.0 and facts["w"]["kind"] == "workbook"
     assert facts["p"]["amount_text"] == "7,712.804" and facts["p"]["units"] == "USD millions"
     assert facts["d"]["recorded_value"] == "1.0"
     assert "n" not in facts  # no value to compare
-    assert conc == {} and recipients is None
+    # R-DEC-DOSSIERLDA: an LDA mention row carries no value, but its KIND
+    # makes a claim citing it a lobbying claim ("Additional FedEx Corporation
+    # filings in 2024 referenced …" says no "lobby…" word of its own)
+    assert facts["l"]["kind"] == "lda_filing"
+    assert conc == {} and recipients is None and lobbying is None
 
 
 def test_the_drift_context_fails_closed_on_an_unreadable_mart(tmp_path, capsys):
@@ -705,7 +711,7 @@ def test_the_drift_context_carries_each_facts_column(tmp_path):
             fid, kind, units, amount_text, amount_thousands, scenario, amount_type)
         return tuple(r)
 
-    facts, _conc, _rec = _dossier_drift_context(
+    facts, _conc, _rec, _lob = _dossier_drift_context(
         [row("p", "jbook_pdf", "USD millions", amount_text="243.282", scenario="CurrentYear"),
          row("w", "workbook", "USD thousands", amount_thousands=1.0,
              amount_type="fy_2025_enacted")],
@@ -801,8 +807,123 @@ def test_a_fiscal_year_withhold_is_named_in_the_correction_note(tmp_path):
     out = json.loads((json_dir / "dossiers" / "1203154SF.json").read_text())
     assert [w["reasons"] for w in out["withheld_claims"]] == [["fiscal_year"]]
     assert expected_correction_note(out["dropped_claims"], out["dropped_reasons"]) == (
-        "1 claim removed: it stated a figure, year or recipient its sources do not"
-        " support.")
+        "1 claim removed: it stated a figure, year, recipient or lobbying filer its"
+        " sources do not support.")
+
+
+# ---------------------------------------------------------------------------
+# R-DEC-DOSSIERLDA (final-review ruling, 2026-09-27): a claim naming a
+# lobbying filer the page's lobbying mentions do not list is withheld under
+# contradicts_citation, sub-reason lobbying_mention, and the Correction note's
+# clause names what was wrong with it ("lobbying filer" — FedEx is no
+# recipient of the page's awards).
+# ---------------------------------------------------------------------------
+
+_LDA_FEDEX_821800 = "0823104dbb624904"   # a FedEx mention of 821800
+_LDA_FEDEX_0208085JCY = "019440805ba04bc0"   # a FedEx mention of 0208085JCY
+_LDA_GD_FILING = "2e0033079e665cda"   # a General Dynamics filing's amount
+_C_2004_FEDEX = (
+    "Additional FedEx Corporation filings in 2024 referenced legislative"
+    " monitoring of Open Skies Agreements and general trade issues including"
+    " customs modernization."
+)
+_C_1045_FEDEX = (
+    "A FedEx Corporation filing matched the term '1045' while describing lobbying"
+    " on aviation security and safety issues — a coincidental keyword match"
+    " unrelated to the submarine program (2026 filing)."
+)
+_C_1045_GD = (
+    "Lobbying filings from General Dynamics Corporation reported lobbying for full"
+    " funding of the Virginia Class and Columbia Class submarine programs and"
+    " funding for the submarine industrial base (2026 filing)."
+)
+_LDA_FACTS = {
+    _LDA_FEDEX_821800: {"kind": "lda_filing", "units": None},
+    _LDA_FEDEX_0208085JCY: {"kind": "lda_filing", "units": None},
+    _LDA_GD_FILING: {"kind": "lda_filing", "units": "USD", "recorded_value": "37500"},
+}
+
+
+def _lobbying_index():
+    from govbudget.dossiers.claim_drift import FilerUniverse, LobbyingIndex
+
+    universe = FilerUniverse.from_filings([
+        ("FEDEX CORPORATION", "FEDEX CORPORATION", "FEDEX"),
+        ("GENERAL DYNAMICS CORPORATION", "MELTSNER STRATEGIES, LLC", "GENERAL DYNAMICS"),
+        ("HUNTINGTON INGALLS INDUSTRIES INCORPORATED",
+         "HUNTINGTON INGALLS INDUSTRIES INCORPORATED", "HUNTINGTON INGALLS INDUSTRIES"),
+    ])
+    return LobbyingIndex({
+        # 2004 lists no mention after the #176 rematch
+        "1045": [("GENERAL DYNAMICS CORPORATION", "GENERAL DYNAMICS",
+                  "MELTSNER STRATEGIES, LLC"),
+                 ("HUNTINGTON INGALLS INDUSTRIES INCORPORATED",
+                  "HUNTINGTON INGALLS INDUSTRIES",
+                  "HUNTINGTON INGALLS INDUSTRIES INCORPORATED")],
+    }, universe)
+
+
+def _lda_export(tmp_path, pe, players):
+    raw_dir = tmp_path / "dossiers-raw"
+    _write_raw(raw_dir, pe, _sections(
+        what_it_is=[_claim("An aircraft carrier.", fact_id=GOOD_FACT)],
+        why_it_matters=[_claim("It matters.", fact_id=GOOD_FACT)],
+        players=players))
+    json_dir = tmp_path / "json"
+    result = _emit_dossier_sidecars(
+        json_dir=json_dir, dossiers_raw_dir=raw_dir,
+        citations_keyset={GOOD_FACT, *_LDA_FACTS}, snapshot_urls=set(),
+        fact_id_to_recorded_value={_LDA_GD_FILING: "37500"},
+        citation_facts=_LDA_FACTS, lobbying_mentions=_lobbying_index())
+    return result, json.loads((json_dir / "dossiers" / f"{pe}.json").read_text())
+
+
+def test_2004_fedex_key_player_claim_is_withheld_and_logged(tmp_path, capsys):
+    from govbudget.dossiers.gate import expected_correction_note
+
+    navy = _claim("The program is managed by the Navy (organization code N).",
+                  fact_id=GOOD_FACT)
+    result, out = _lda_export(tmp_path, "2004", [
+        navy, _claim(_C_2004_FEDEX, fact_id=_LDA_FEDEX_821800)])
+    assert out["dossier"]["players"]["claims"] == [navy]
+    assert out["dropped_reasons"] == {"contradicts_citation": 1}
+    [w] = out["withheld_claims"]
+    assert w["reasons"] == ["lobbying_mention"] and w["kind"] == "lda_filing"
+    assert w["unlisted_lobbying_filers"] == ["FedEx Corporation"]
+    assert w["unlinked_recipients"] == []
+    assert result["withheld_by_pe"] == {"2004": 1}
+    log = capsys.readouterr().out
+    assert "2004 players[1]" in log
+    assert "unlisted lobbying filers: FedEx Corporation" in log
+    assert expected_correction_note(out["dropped_claims"], out["dropped_reasons"]) == (
+        "1 claim removed: it stated a figure, year, recipient or lobbying filer its"
+        " sources do not support.")
+
+
+def test_1045_fedex_claim_is_withheld_and_a_listed_filers_claim_kept(tmp_path):
+    gd = _claim(_C_1045_GD, fact_id=_LDA_GD_FILING)
+    _result, out = _lda_export(tmp_path, "1045", [
+        gd, _claim(_C_1045_FEDEX, fact_id=_LDA_FEDEX_0208085JCY)])
+    assert out["dossier"]["players"]["claims"] == [gd]
+    assert [w["unlisted_lobbying_filers"] for w in out["withheld_claims"]] == [
+        ["FedEx Corporation"]]
+
+
+def test_without_a_lobbying_index_no_lobbying_claim_is_withheld(tmp_path):
+    """A legacy caller (no lobbying_mentions) runs no lobbying leg."""
+    raw_dir = tmp_path / "dossiers-raw"
+    fedex = _claim(_C_2004_FEDEX, fact_id=_LDA_FEDEX_821800)
+    _write_raw(raw_dir, "2004", _sections(
+        what_it_is=[_claim("A carrier.", fact_id=GOOD_FACT)],
+        why_it_matters=[_claim("It matters.", fact_id=GOOD_FACT)],
+        players=[fedex]))
+    json_dir = tmp_path / "json"
+    _emit_dossier_sidecars(
+        json_dir=json_dir, dossiers_raw_dir=raw_dir,
+        citations_keyset={GOOD_FACT, _LDA_FEDEX_821800}, snapshot_urls=set(),
+        citation_facts=_LDA_FACTS)
+    out = json.loads((json_dir / "dossiers" / "2004.json").read_text())
+    assert out["dossier"]["players"]["claims"] == [fedex]
 
 
 # ---------------------------------------------------------------------------
@@ -902,3 +1023,43 @@ def test_the_2122_claim_is_published_and_a_stale_one_still_withheld(tmp_path):
     out = json.loads((json_dir / "dossiers" / "2122.json").read_text())
     assert out["dossier"]["why_it_matters"]["claims"] == [true_claim]
     assert out["dropped_reasons"] == {"stale_value": 1}
+
+
+def test_the_drift_context_reads_the_lobbying_index_and_fails_closed(tmp_path, capsys):
+    """_dossier_drift_context builds the lobbying index from the same mart as
+    the other legs, and a mart without the lobbying relations STOPS the
+    export (never an empty index, which would publish every FedEx claim)."""
+    import duckdb
+    import pytest
+
+    from govbudget.dossiers.claim_drift import ClaimDriftIndexError, LobbyingIndex
+    from govbudget.export_site import _dossier_drift_context
+
+    db = tmp_path / "m.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute("create table fct_program_concentration (pe_bli varchar, hhi_all double,"
+                " top_family_all varchar, hhi_high double, top_family_high varchar)")
+    con.execute("create table dim_entities (family_key varchar, display_name varchar)")
+    con.execute("create table dim_programs (pe_bli varchar, account varchar,"
+                " account_title varchar, org varchar, exhibit_family varchar)")
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, account varchar,"
+                " organization varchar, award_piid varchar, recipient_name varchar,"
+                " recipient_uei varchar)")
+    con.execute("create table entity_xwalk (recipient_uei varchar, recipient_name varchar,"
+                " parent_name varchar, family_key varchar)")
+    con.close()
+    with pytest.raises(ClaimDriftIndexError, match="audit_lda_filings"):
+        _dossier_drift_context([], db)
+    assert "export-site: ERROR" in capsys.readouterr().out
+
+    con = duckdb.connect(str(db))
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar,"
+                " client_name varchar, family_key varchar)")
+    con.execute("create table audit_lda_filings (filing_uuid varchar, client_name varchar,"
+                " registrant_name varchar, family_key_guess varchar, match_method varchar)")
+    con.execute("insert into audit_lda_filings values ('f', 'FEDEX CORPORATION',"
+                " 'FEDEX CORPORATION', 'FEDEX', 'exact_family')")
+    con.close()
+    _facts, _conc, _rec, lobbying = _dossier_drift_context([], db)
+    assert isinstance(lobbying, LobbyingIndex)
+    assert lobbying.for_page("2004").names == frozenset()

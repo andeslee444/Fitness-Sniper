@@ -169,10 +169,17 @@ export function ProgramAwards({
           recorded rejection or refutation applying.
         </p>
       )}
+      {/* R-DEC-PRIMES-b (final-review rulings, 2026-09-27; final review #4).
+          The label read "(R&D performer crosswalk — see methodology)" on every
+          truncated table — 33 program pages on the chain-G build, most of
+          them procurement lines whose links name primes. It now says what
+          the rows are: this program's own fct_budget_to_awards links
+          (export_site.py _awards_for), which hold high and medium only.
+          company-award-linkage-prose.test.tsx pins it. */}
       {hasMore && !expanded && (
         <p className="text-xs text-muted-foreground mb-3">
           Showing {formatCount(initialAwards.length)} of {formatCount(totalCount)}{" "}award records
-          (R&amp;D performer crosswalk — see{" "}
+          (this program&apos;s published budget→award crosswalk links — see{" "}
           <a href="/methodology/" className="underline hover:text-foreground">
             methodology
           </a>

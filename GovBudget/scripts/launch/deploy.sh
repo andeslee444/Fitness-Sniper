@@ -18,10 +18,33 @@
 # so syncing early is safe; deploying pages before their assets exist opens a
 # window in which live pages cite binaries that are not there yet.
 #
+# THE ROLLBACK COPY COMES FIRST (ROADMAP #177; rulings R-DEC-DEPLOYSAFE and
+# R-DEC-DEPLOYSAFE-b).  "Never deletes" is not "never overwrites": the
+# fixed-name objects under data/ and citations/ are replaced in place, so the
+# previous deploy's copies are gone the moment the sync runs, and a Vercel
+# rollback would pair the old pages with the new data.  So step 1 runs
+#   backup_r2_data.sh --live --tag=<tag>
+# BEFORE upload_r2.sh: it copies the live data/ and citations/ server-side to
+# rollback/<tag>/ in the same bucket, checks each copy, and prints the restore
+# commands.  If it fails or refuses, this script stops with nothing uploaded
+# and nothing deployed.  The tag (UTC time, e.g. 2026-09-27T011500Z) is
+# printed in the preflight summary and after the copy; record it in the
+# deploy's ledger entry.  If a later step fails, the tag is printed again: a
+# re-run makes a NEW copy of whatever R2 serves then, which after this run's
+# R2 step is this run's upload, so the first run's tag is the one that holds
+# the previous production's objects.  Every run that makes the copy leaves
+# one rollback/<tag>/ in the bucket (--skip-r2 makes none); nothing prunes them.
+#
 # USAGE
-#   ./scripts/launch/deploy.sh                # sync R2, deploy prod, verify live
-#   ./scripts/launch/deploy.sh --dry-run      # print every step, change nothing
-#   ./scripts/launch/deploy.sh --skip-r2      # pages-only redeploy (no new assets)
+#   ./scripts/launch/deploy.sh                # copy live R2 data aside, sync R2,
+#                                             # deploy prod, verify live
+#   ./scripts/launch/deploy.sh --dry-run      # print every step, change nothing;
+#                                             # runs backup_r2_data.sh's own dry
+#                                             # run (reads the bucket's listings,
+#                                             # copies nothing)
+#   ./scripts/launch/deploy.sh --skip-r2      # pages-only redeploy (no new assets;
+#                                             # no rollback copy: nothing in R2
+#                                             # is overwritten)
 #   ./scripts/launch/deploy.sh --no-verify    # skip the post-deploy check (discouraged)
 #
 # WHICH CHECKOUT IT DEPLOYS.  The one it lives in.  REPO_ROOT and SITE_OUT are
@@ -62,18 +85,23 @@
 #       cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build
 #     Vercel does NOT build this site.  See the note on --archive/cwd below.
 #   - rclone configured with an `r2` remote (see upload_r2.sh --help)
+#   - scripts/launch/backup_r2_data.sh present (unless --skip-r2)
 #   - `vercel` CLI logged in
 #
 # ENVIRONMENT
 #   VERCEL_PROJECT_ID / VERCEL_ORG_ID  defaulted below; `site/out/` carries no
 #                                      `.vercel/` link (each build wipes it),
 #                                      so the IDs go in as env vars.
-#   R2_BUCKET                          passed through to upload_r2.sh
+#   R2_BUCKET / RCLONE_REMOTE          passed through to backup_r2_data.sh and
+#                                      upload_r2.sh (same defaults, govbudget-assets
+#                                      and r2), so the copy is of the bucket the
+#                                      upload writes
 #   ASSET_BASE_URL / SITE_URL          passed through to verify_live_assets.mjs
 #
 # EXIT CODES
 #   0  deployed and verified
-#   1  a step failed (nothing further runs)
+#   1  a step failed (nothing further runs); a failed or refused rollback
+#      copy stops the run before anything is uploaded or deployed
 #   2  preflight failed — nothing was uploaded or deployed
 
 set -euo pipefail
@@ -87,6 +115,15 @@ SITE_OUT="${REPO_ROOT}/site/out"
 # they are already recorded in LAUNCH.md; override via env for another project.
 VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID:-prj_oen0seknELM3lK6UcZPS5252D7QD}"
 VERCEL_ORG_ID="${VERCEL_ORG_ID:-team_b94lNMYEXzNevW7VmSNvdeYZ}"
+
+# The rollback copy (step 1a).  backup_r2_data.sh reads RCLONE_REMOTE and
+# R2_BUCKET with these same defaults (as does upload_r2.sh); they are
+# resolved here only to PRINT where the copy goes.  The tag is fixed once per
+# run, so the line printed in preflight names the copy the step makes.
+BACKUP_SH="${REPO_ROOT}/scripts/launch/backup_r2_data.sh"
+ROLLBACK_TAG="$(date -u +%Y-%m-%dT%H%M%SZ)"
+ROLLBACK_DEST="${RCLONE_REMOTE:-r2}:${R2_BUCKET:-govbudget-assets}/rollback/${ROLLBACK_TAG}"
+BACKUP_DONE=0
 
 DRY_RUN=0
 SKIP_R2=0
@@ -119,6 +156,25 @@ run() {
     "$@"
   fi
 }
+
+# A step that fails AFTER the rollback copy names the copy again: a re-run
+# copies whatever R2 serves then — this run's upload, if its R2 step ran — so
+# this run's tag is the one that holds the previous production's objects.
+on_exit() {
+  local rc=$?
+  if [[ "$rc" -ne 0 && "$BACKUP_DONE" -eq 1 ]]; then
+    {
+      echo ""
+      echo "NOTE: the deploy stopped (exit ${rc}) after its rollback copy was made."
+      echo "  ${ROLLBACK_DEST}/ holds what R2 served before this run (data/, citations/)."
+      echo "  Record the rollback tag ${ROLLBACK_TAG}.  A re-run copies what R2 serves"
+      echo "  THEN under a new tag; once this run's R2 step has run, that is this run's"
+      echo "  upload, not the previous production.  Restore commands: printed above by"
+      echo "  backup_r2_data.sh (rclone copy --checksum ${ROLLBACK_DEST}/<prefix>/ …)."
+    } >&2
+  fi
+}
+trap on_exit EXIT
 
 # ── Preflight ────────────────────────────────────────────────────────────────
 step "0/3  preflight"
@@ -237,6 +293,11 @@ if [[ "$SKIP_R2" -eq 0 ]]; then
      certain no asset changed since the last deploy."
   [[ -d "${REPO_ROOT}/data/site/pdfs" ]] || fail_preflight \
     "data/site/pdfs/ not found — run \`govbudget export-site\` first."
+  # R-DEC-DEPLOYSAFE-b: the rollback copy cannot be skipped silently.
+  [[ -f "$BACKUP_SH" ]] || fail_preflight \
+    "scripts/launch/backup_r2_data.sh not found — without it the live data/ and
+     citations/ objects would be overwritten with no rollback copy (ROADMAP #177).
+     Restore the script; --skip-r2 is the only deploy that needs no copy."
 fi
 
 FILE_COUNT="$(find "$SITE_OUT" -type f | wc -l | tr -d ' ')"
@@ -244,23 +305,60 @@ echo "  site/out/:       ${FILE_COUNT} files"
 echo "  vercel project:  ${VERCEL_PROJECT_ID}"
 if [[ "$SKIP_R2" -eq 1 ]]; then
   echo "  R2 sync:         SKIPPED (--skip-r2)"
+  echo "  rollback copy:   SKIPPED (--skip-r2: no R2 object is overwritten)"
 else
   PDF_COUNT="$(find "${REPO_ROOT}/data/site/pdfs" -name '*.pdf' | wc -l | tr -d ' ')"
   echo "  R2 pdfs:         ${PDF_COUNT} binaries to sync"
+  echo "  rollback tag:    ${ROLLBACK_TAG}   (live data/ and citations/ → ${ROLLBACK_DEST}/)"
 fi
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo ""
-  echo "  DRY RUN — the steps below are printed, not executed."
+  echo "  DRY RUN — the steps below are printed, not executed, except"
+  echo "  backup_r2_data.sh's own dry run (it lists the bucket and copies nothing)."
 fi
 
-# ── 1. R2 sync ───────────────────────────────────────────────────────────────
-# Assets before pages: upload_r2.sh never deletes, so an early sync is safe,
-# while deploying first would publish pages citing binaries that do not exist.
+# ── 1. R2: (a) rollback copy, then (b) sync ──────────────────────────────────
+# (a) R-DEC-DEPLOYSAFE-b.  The fixed-name objects under data/ and citations/
+# are overwritten in place by (b), so the live ones are copied aside FIRST, and
+# a failed or refused copy stops the deploy before anything is uploaded.  A
+# dry run runs the backup's own dry run (no --live): it lists the live
+# prefixes and the destination and runs `rclone copy --dry-run`, so it shows
+# what would be copied and stops wherever a real run would, writing nothing.
+# (b) Assets before pages: upload_r2.sh never deletes, so an early sync is
+# safe, while deploying first would publish pages citing binaries that do not
+# exist.
 if [[ "$SKIP_R2" -eq 0 ]]; then
-  step "1/3  sync assets to R2 (pdfs, data, workbooks, citations)"
+  step "1/3  R2: (a) copy the live data/ + citations/ aside, (b) sync assets"
+  echo "  (a) rollback copy → ${ROLLBACK_DEST}/"
+  BACKUP_ARGS=("--tag=${ROLLBACK_TAG}")
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    BACKUP_ARGS=(--live "${BACKUP_ARGS[@]}")
+    echo "+ ${BACKUP_SH} ${BACKUP_ARGS[*]}"
+  else
+    echo "+ ${BACKUP_SH} ${BACKUP_ARGS[*]}   (its dry run; a real deploy runs backup_r2_data.sh --live --tag=<its own tag>)"
+  fi
+  if ! bash "$BACKUP_SH" "${BACKUP_ARGS[@]}"; then
+    DRY_NOTE=""
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      DRY_NOTE="
+   (--dry-run ran the backup's own dry run: a real deploy would stop here.)"
+    fi
+    echo "ERROR: REFUSING TO CONTINUE: the rollback copy of the live data/ and citations/
+   (${ROLLBACK_DEST}/, tag ${ROLLBACK_TAG}) failed or was refused — see
+   backup_r2_data.sh's message above.  Without it the upload would overwrite
+   those objects with no copy (ROADMAP #177).  Nothing was uploaded or deployed.
+   Fix the cause and re-run (a re-run picks a new tag).${DRY_NOTE}" >&2
+    exit 1
+  fi
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    BACKUP_DONE=1
+    echo "  Rollback copy made and checked: ${ROLLBACK_DEST}/"
+    echo "  Record the rollback tag ${ROLLBACK_TAG} in the deploy's ledger entry."
+  fi
+  echo "  (b) sync pdfs, data, workbooks, citations"
   run "${REPO_ROOT}/scripts/launch/upload_r2.sh" --live
 else
-  step "1/3  R2 sync SKIPPED (--skip-r2)"
+  step "1/3  R2 sync SKIPPED (--skip-r2); rollback copy SKIPPED (--skip-r2: nothing is overwritten)"
 fi
 
 # ── 2. Vercel ────────────────────────────────────────────────────────────────
@@ -302,7 +400,17 @@ fi
 
 echo ""
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "Dry run complete — nothing was uploaded or deployed."
+  echo "Dry run complete — nothing was copied, uploaded or deployed."
 else
-  echo "Deploy complete: assets synced, site/out/ live, live assets verified."
+  if [[ "$SKIP_R2" -eq 0 ]]; then
+    DONE_R2="live data/ + citations/ copied to ${ROLLBACK_DEST}/ (rollback tag ${ROLLBACK_TAG}), assets synced"
+  else
+    DONE_R2="R2 sync and rollback copy skipped (--skip-r2)"
+  fi
+  if [[ "$VERIFY" -eq 1 ]]; then
+    DONE_CHECK="live assets verified"
+  else
+    DONE_CHECK="live check SKIPPED (--no-verify)"
+  fi
+  echo "Deploy complete: ${DONE_R2}, site/out/ live, ${DONE_CHECK}."
 fi

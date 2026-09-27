@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDatasetManifest, getSiteMeta } from "@/lib/data";
+import { citationsIndexOf, getDatasetManifest, getSiteMeta } from "@/lib/data";
+import type { CitationsIndexEntry } from "@/lib/data";
 import { getAssetBase } from "@/lib/asset-base";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
  */
 function buildDatasets(
   inventory: { name: string; scope: string; row_count: number }[],
-  citationCount: number,
+  citations: CitationsIndexEntry,
   assetBase: string,
 ) {
   const nodes = inventory.map((ds) => ({
@@ -48,9 +49,13 @@ function buildDatasets(
     contentUrl: `${assetBase}/data/${ds.name}.parquet`,
     encodingFormat: "application/vnd.apache.parquet",
   }));
+  // Final review #10(c) (2026-09-27): this node's hand-written description
+  // named J-book PDF pages, workbook cells and LDA filings, 3 of the 10
+  // kinds citations.parquet holds. The node now carries the exporter's own entry
+  // (datasets.json "citations"), shaped like every dataset node above.
   nodes.push({
     name: "citations",
-    description: `${citationCount.toLocaleString("en-US")}-row citation index mapping fact_ids to source documents — J-book PDF pages, workbook cells, or LDA filings.`,
+    description: `${citations.row_count.toLocaleString("en-US")} rows. ${citations.scope}`,
     url: "/downloads/",
     contentUrl: `${assetBase}/citations/citations.parquet`,
     encodingFormat: "application/vnd.apache.parquet",
@@ -66,10 +71,13 @@ export default function DownloadsPage() {
   // claim 326 dim_programs rows against a 1,739-row parquet.
   // Wave 4 item 2: it is now the single source for the card LIST too.
   const manifest = getDatasetManifest();
+  // The citation index's own entry; the build fails without it (no
+  // hand-written list of kinds to fall back to).
+  const citations = citationsIndexOf(manifest);
   const assetBase = getAssetBase();
   const datasets = buildDatasets(
     manifest.datasets,
-    meta.counts.citations,
+    citations,
     assetBase,
   );
   const datasetsLd = datasets.map((d) =>
@@ -129,7 +137,7 @@ export default function DownloadsPage() {
           <DownloadCards
             builtAt={meta.built_at}
             inventory={manifest.datasets}
-            datasets={meta.datasets ?? {}}
+            citationsIndex={citations}
             pdfCount={meta.pdf_count}
             workbookCount={meta.workbook_count}
             uncitedDatasets={meta.uncited_datasets ?? []}

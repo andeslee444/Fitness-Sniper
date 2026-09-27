@@ -694,10 +694,46 @@ export interface DatasetManifestEntry {
   caveat?: string;
 }
 
+/**
+ * The citation index's own entry (export_site._citations_index_entry, final
+ * review #10(c), 2026-09-27): read from the FINAL citations.parquet, beside
+ * the parquet inventory it is not part of (citations.parquet ships under
+ * citations/, not data/). The /downloads/ card and JSON-LD render its scope;
+ * no page authors a list of citation kinds.
+ */
+export interface CitationsIndexEntry {
+  /** "citations.parquet" */
+  file: string;
+  /** Rows in the shipped citations.parquet. */
+  row_count: number;
+  /** Every kind the file holds, largest first, then by name. */
+  kinds: { kind: string; row_count: number }[];
+  /** One sentence: what a row is, and a gloss for every kind it holds. */
+  scope: string;
+}
+
 export interface DatasetManifest {
   built_at: string;
   datasets: DatasetManifestEntry[];
   schema_version: number;
+  /** Absent only on a datasets.json written before the entry existed. */
+  citations?: CitationsIndexEntry;
+}
+
+/**
+ * The citation index's entry, or a build failure. There is no fallback: the
+ * hand-written "(jbook_pdf + workbook + lda_filing)" it replaced named 3 of
+ * the index's 10 kinds (final review #10(c)).
+ */
+export function citationsIndexOf(manifest: DatasetManifest): CitationsIndexEntry {
+  const entry = manifest.citations;
+  if (!entry || typeof entry.scope !== "string" || entry.scope === "" || !(entry.row_count > 0)) {
+    throw new Error(
+      "[govbudget/data] datasets.json has no citations entry (the citation index's scope and row count). " +
+        `Re-run "uv run python -m govbudget export-site" to regenerate sidecars.`,
+    );
+  }
+  return entry;
 }
 
 let _datasetManifest: DatasetManifest | null = null;

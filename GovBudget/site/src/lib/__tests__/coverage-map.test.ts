@@ -218,6 +218,29 @@ describe("coverage map — every number is read, never authored", () => {
     expect(r.covered).toContain("21 of 199");
   });
 
+  it("company award linkage names both reasons a profile shows none (R-DEC-PRIMES)", () => {
+    // Final review finding #4. The blocker put the whole gap on the
+    // crosswalk; on the chain-G lake 49 of the 168 profiles without awards
+    // have published links, recorded under a member's own name, which the
+    // exact-name join (export_site.py, awards_by_display) never lists.
+    const r = byId.get("company-awards")!;
+    expect(r.blocker).toContain(
+      "A profile lists a budget→award crosswalk link only when the award's " +
+        "recipient name is exactly the family's registered name in the award data.",
+    );
+    expect(r.blocker).toContain(
+      "A profile shows none when no member's award is linked to a budget line, " +
+        "or when the links carry a member's own, different name.",
+    );
+    expect(`${r.blocker} ${r.target}`).not.toMatch(/R&D performers?|not primes|on the roadmap/);
+    // The crosswalk half is still the methodology limit; the naming half is
+    // named as this site's rule, and no schedule is claimed for it.
+    expect(r.targetKind).toBe("none");
+    expect(r.target.toLowerCase()).toContain("no dated target");
+    expect(r.target).toMatch(/crosswalk limit above, counted per company/);
+    expect(r.target).toMatch(/naming rule/);
+  });
+
   it("districts are measured against all 435 seats", () => {
     const r = byId.get("districts")!;
     expect(r.numerator).toBe(MOCK.districts);
@@ -374,7 +397,10 @@ describe("coverage map — a promise says whether it is scheduled", () => {
     // coverage-map.ts — this constant read 2026-08-05 while a blocker was
     // being rewritten once already (2026-08-27). It is the date the map's
     // prose was actually re-read, never a date copied from a plan.
-    expect(MAP_REVIEWED_ON).toBe("2026-09-18");
+    // 2026-09-27 (final-review check, R-DEC-PRIMES): the company-awards
+    // blocker and target were rewritten that day while this still read
+    // 2026-09-18 — the 2026-08-27 defect again. The pin moves with the prose.
+    expect(MAP_REVIEWED_ON).toBe("2026-09-27");
   });
 });
 

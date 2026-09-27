@@ -16,14 +16,15 @@ Per the plan's evaluator design (dossier_gate bullet):
   concentration word against the fact's 2023 band, a "top/leading recipient
   family" naming a family other than the one the cited concentration row
   records, a recipient list naming a recipient the PAGE's linked awards
-  do not carry (round 2), or a figure given another fiscal year than its
-  cited column's (round 3; the column is read from citations.parquet) — the
-  same
+  do not carry (round 2), a figure given another fiscal year than its
+  cited column's (round 3; the column is read from citations.parquet), or a
+  lobbying claim naming an LDA filer the PAGE's lobbying mentions do not
+  list (R-DEC-DOSSIERLDA, 2026-09-27) — the same
   govbudget.dossiers.claim_drift.claim_contradictions the exporter withholds
-  on. The family and recipient legs need duckdb_path. With none they report
-  `family_check` / `recipient_check` False and "not run"; with a path that
-  cannot be read the check FAILS with `error` (fail closed, round 2 — an
-  unreadable mart is never an empty one).
+  on. The family, recipient and lobbying legs need duckdb_path. With none
+  they report `family_check` / `recipient_check` / `lobbying_check` False
+  and "not run"; with a path that cannot be read the check FAILS with
+  `error` (fail closed, round 2 — an unreadable mart is never an empty one).
 - >= 80% of claims CORPUS-WIDE carry warehouse (fact_id) citations.
 - required sections (what_it_is / why_it_matters / players) are non-empty;
   recent_developments MAY be empty (warehouse-only dossiers are valid).
@@ -76,7 +77,9 @@ from govbudget.dossiers.claim_drift import (
     concentration_fact_index,
     fact_column_index,
     linked_recipient_index,
+    lobbying_mention_index,
     unlinked_recipients,
+    unlisted_lobbying_filers,
 )
 
 WAREHOUSE_FLOOR = 0.80
@@ -170,10 +173,15 @@ CORRECTION_CLAUSES: dict[str, tuple[str, str]] = {
     # (round 3) withholds a claim whose figure AGREES with its cite but is
     # given another fiscal year (/program/1203154SF/ what_it_is[3]); "stated
     # a figure or recipient its sources do not support" named neither thing
-    # wrong with it.
+    # wrong with it. R-DEC-DOSSIERLDA (2026-09-27): "lobbying filer" added.
+    # The lobbying_mention sub-reason withholds a claim naming an LDA client
+    # or registrant the page's lobbying mentions do not list (/program/2004/
+    # and /program/1045/: FedEx after the #176 rematch) — FedEx is no
+    # recipient of either page's awards, so "figure, year or recipient" named
+    # nothing actually wrong with those claims.
     "contradicts_citation": (
-        "stated a figure, year or recipient its sources do not support",
-        "stated figures, years or recipients their sources do not support",
+        "stated a figure, year, recipient or lobbying filer its sources do not support",
+        "stated figures, years, recipients or lobbying filers their sources do not support",
     ),
 }
 #: the component's clause for dropped claims no reason above accounts for
@@ -476,9 +484,12 @@ def dossier_gate(
     # only the citation row and always run. A mart that WAS given but cannot
     # be read fails the check (round 2: fail closed) — never "not run". The
     # fiscal-year leg (round 3) reads each fact's column from citations.parquet
-    # (citations.json does not carry it), under the same fail-closed rule.
+    # (citations.json does not carry it), under the same fail-closed rule. The
+    # lobbying leg (R-DEC-DOSSIERLDA) reads every page's lobbying mentions and
+    # the universe of LDA filer names from the mart, under the same rule.
     drift_error: str | None = None
     recipient_index = None
+    lobbying_index = None
     if citations_parquet is None:
         beside = citations_path.parent.parent / "citations" / "citations.parquet"
         citations_parquet = beside if beside.exists() else None
@@ -486,6 +497,7 @@ def dossier_gate(
     try:
         concentration_facts = concentration_fact_index(duckdb_path)
         recipient_index = linked_recipient_index(duckdb_path)
+        lobbying_index = lobbying_mention_index(duckdb_path)
         fact_columns = fact_column_index(citations_parquet)
     except ClaimDriftIndexError as exc:
         drift_error = str(exc)
@@ -563,6 +575,11 @@ def dossier_gate(
         # PAGE (a split code's member, never the bare code — #82).
         page_recipients = (
             recipient_index.for_page(page_slug) if recipient_index is not None else None
+        )
+        # R-DEC-DOSSIERLDA: the lobbying mentions THIS PAGE publishes (none on
+        # a shared code's member page, R-INT-9).
+        page_lobbying = (
+            lobbying_index.for_page(page_slug) if lobbying_index is not None else None
         )
         for section in ALL_SECTIONS:
             claims = sections[section]["claims"]
@@ -662,7 +679,9 @@ def dossier_gate(
                         # figure, concentration word or top-family name
                         # contradicts its cited fact's current value, or
                         # whose recipient list names a recipient this page's
-                        # linked awards do not carry, fails here — the
+                        # linked awards do not carry, or whose lobbying claim
+                        # names a filer this page's lobbying mentions do not
+                        # list (R-DEC-DOSSIERLDA), fails here — the
                         # exporter should have withheld it
                         # (export_site._emit_dossier_sidecars, same
                         # claim_contradictions). Named by PAGE.
@@ -677,6 +696,7 @@ def dossier_gate(
                             row,
                             concentration_facts.get(fid),
                             page_recipients,
+                            page_lobbying,
                         )
                         if why:
                             contradictions.append({
@@ -693,6 +713,11 @@ def dossier_gate(
                                 "unlinked_recipients": (
                                     unlinked_recipients(claim["text"], page_recipients)
                                     if "recipient_list" in why else []
+                                ),
+                                "unlisted_lobbying_filers": (
+                                    unlisted_lobbying_filers(
+                                        claim["text"], row, page_lobbying)
+                                    if "lobbying_mention" in why else []
                                 ),
                                 "text": claim["text"],
                             })
@@ -729,7 +754,8 @@ def dossier_gate(
         )
     elif duckdb_path is None:
         notes.append(
-            "top-family and recipient-list legs not run: no mart (duckdb_path)")
+            "top-family, recipient-list and lobbying-mention legs not run: no"
+            " mart (duckdb_path)")
     if citations_parquet is None and not drift_error:
         notes.append(
             "fiscal-year leg not run: no citations.parquet (the facts'"
@@ -737,8 +763,9 @@ def dossier_gate(
     if contradictions:
         notes.append(
             f"{len(contradictions)} published claim(s) contradict their cited"
-            " fact or their page's linked awards (R-DEC-DOSSIERDRIFT —"
-            " export-site withholds these): "
+            " fact, their page's linked awards or their page's lobbying"
+            " mentions (R-DEC-DOSSIERDRIFT / R-DEC-DOSSIERLDA — export-site"
+            " withholds these): "
             + "; ".join(
                 f"{c['page']} {c['section']}[{c['claim']}] cites {c['fact_id']}"
                 f" ({c['kind'] or 'unknown kind'}) = {c['cited_value']}"
@@ -746,6 +773,9 @@ def dossier_gate(
                 + f" ({', '.join(c['reasons'])}"
                 + (f"; unlinked: {', '.join(c['unlinked_recipients'])}"
                    if c["unlinked_recipients"] else "")
+                + ("; unlisted lobbying filers:"
+                   f" {', '.join(c['unlisted_lobbying_filers'])}"
+                   if c["unlisted_lobbying_filers"] else "")
                 + f"): {c['text']!r}"
                 for c in contradictions
             )
@@ -755,10 +785,12 @@ def dossier_gate(
         "contradictions": contradictions,
         # a supplied mart that could not be read (the check then fails)
         "error": drift_error,
-        # whether the top-family and recipient-list legs ran (they need the
-        # mart through duckdb_path); the figure and band legs always run
+        # whether the top-family, recipient-list and lobbying-mention legs ran
+        # (they need the mart through duckdb_path); the figure and band legs
+        # always run
         "family_check": legs_ran,
         "recipient_check": legs_ran and recipient_index is not None,
+        "lobbying_check": legs_ran and lobbying_index is not None,
         # whether the fiscal-year leg ran (it needs citations.parquet)
         "fiscal_year_check": citations_parquet is not None and drift_error is None,
         "note": " | ".join(notes),

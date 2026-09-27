@@ -75,10 +75,16 @@ export function withIdentifierCode(text: string): React.ReactNode[] {
     .filter((part) => part !== "");
 }
 
+/** The datasets.json "citations" entry fields the citation index card needs. */
+export interface DownloadCitationsIndex {
+  row_count: number;
+  scope: string;
+}
+
 function buildDatasets(
   inventory: DownloadDataset[],
   uncited: Set<string>,
-  citationsRowCount: number,
+  citationsIndex: DownloadCitationsIndex,
 ): DatasetCard[] {
   const cards: DatasetCard[] = inventory.map((ds) => ({
     name: ds.name,
@@ -88,15 +94,16 @@ function buildDatasets(
     parquetPath: `/data/${ds.name}.parquet`,
     isCited: ds.cited && !uncited.has(ds.name),
   }));
-  // citations.parquet is the citation INDEX, not a mart — it has no manifest
-  // entry (it is not written to data/site/data/) and is listed last.
-  const citLabel =
-    citationsRowCount > 0
-      ? `${citationsRowCount.toLocaleString("en-US")} source citations`
-      : "Source citations";
+  // citations.parquet is the citation INDEX, not a mart — it is not in the
+  // manifest's datasets list (it is not written to data/site/data/) and is
+  // listed last. Its description and count are the exporter's own
+  // datasets.json "citations" entry (final review #10(c), 2026-09-27): the
+  // hand-written list of kinds this card used to print named 3 of the 10
+  // kinds the file holds.
   cards.push({
     name: "citations",
-    description: `All ${citLabel} (jbook_pdf + workbook + lda_filing), keyed by fact_id.`,
+    description: citationsIndex.scope,
+    rowCount: citationsIndex.row_count,
     parquetPath: "/citations/citations.parquet",
     isCited: true,
   });
@@ -106,7 +113,7 @@ function buildDatasets(
 export function DownloadCards({
   builtAt,
   inventory,
-  datasets = {},
+  citationsIndex,
   workbookCount,
   uncitedDatasets = [],
 }: {
@@ -116,7 +123,15 @@ export function DownloadCards({
    * through from the server page. THE card list — see the file header.
    */
   inventory: DownloadDataset[];
-  /** site_meta.datasets row counts — used for the citations index only. */
+  /**
+   * datasets.json's "citations" entry (lib/data citationsIndexOf): the
+   * citation index card's description and row count.
+   */
+  citationsIndex: DownloadCitationsIndex;
+  /**
+   * site_meta.datasets row counts — accepted and NOT read since the citation
+   * index card reads its own entry (final review #10(c)).
+   */
   datasets?: Record<string, number>;
   /**
    * site_meta.pdf_count — accepted and NOT rendered (fix-wave round 2): it
@@ -139,7 +154,7 @@ export function DownloadCards({
   const DATASETS = buildDatasets(
     inventory,
     new Set(uncitedDatasets),
-    datasets["citations"] ?? 0,
+    citationsIndex,
   );
 
   // Asset-bundle reachability: null = probing, true = reachable, false = not.

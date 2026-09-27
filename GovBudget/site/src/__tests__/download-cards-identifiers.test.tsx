@@ -23,6 +23,18 @@ const SCOPE =
   " holding positive dollars (positive_family_count_high), positive" +
   " program_dollars_high (ROADMAP #80).";
 
+/**
+ * datasets.json's "citations" entry in the exporter's shape
+ * (export_site._citations_index_entry); the citation index card renders its
+ * scope (final review #10(c), 2026-09-27).
+ */
+const CITATIONS_INDEX = {
+  row_count: 5,
+  scope:
+    "One row per source citation, keyed by fact_id, in 2 kinds: jbook_pdf (a" +
+    " figure printed in a J-book PDF) and lda_filing (a Senate LDA filing).",
+};
+
 describe("withIdentifierCode", () => {
   it("wraps exactly the identifier runs and keeps every word", () => {
     const { container } = render(<p>{withIdentifierCode(SCOPE)}</p>);
@@ -55,20 +67,23 @@ describe("DownloadCards description", () => {
       <DownloadCards
         builtAt="2026-09-25T00:00:00Z"
         inventory={[{ name: "fct_program_concentration", row_count: 536, scope: SCOPE, cited: true }]}
+        citationsIndex={CITATIONS_INDEX}
         uncitedDatasets={[]}
       />,
     );
     const p = [...container.querySelectorAll("p")].find((el) => el.textContent === SCOPE);
     expect(p, "the description paragraph carries the scope verbatim").toBeTruthy();
     expect(p!.querySelectorAll("code")).toHaveLength(6);
-    // The citations card's own description: its three identifiers are code too.
+    // The citations card's own description (the manifest's citations scope,
+    // final review #10(c)): verbatim, and its three identifiers are code too.
     const cit = [...container.querySelectorAll("p")].find((el) =>
       el.textContent?.includes("keyed by fact_id"),
     );
+    expect(cit!.textContent).toBe(CITATIONS_INDEX.scope);
     expect([...cit!.querySelectorAll("code")].map((c) => c.textContent)).toEqual([
+      "fact_id",
       "jbook_pdf",
       "lda_filing",
-      "fact_id",
     ]);
   });
 });
@@ -111,6 +126,7 @@ describe("DownloadCards caveat (fix round 5)", () => {
       <DownloadCards
         builtAt="2026-09-25T00:00:00Z"
         inventory={[{ name, row_count: 536, scope: SCOPE, cited: true, caveat }]}
+        citationsIndex={CITATIONS_INDEX}
         uncitedDatasets={[]}
       />,
     );

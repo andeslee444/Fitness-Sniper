@@ -21,7 +21,7 @@ ONE function, `claim_contradictions`, is used by BOTH the exporter
 (dossiers/gate.py — fails anything still published), so the two cannot
 disagree about what a contradiction is.
 
-THE FIVE CHECKS
+THE SIX CHECKS
   stated_figure — on any fact whose citation row carries a current numeric
     value (`fact_current_value`, round 2 — round 1 read recorded_value
     only): a derived fact's `recorded_value`; else a workbook cell's
@@ -83,9 +83,27 @@ THE FIVE CHECKS
     subsidiary named by its own registration). This check reads the page,
     not the cited fact: the claim's citation cannot vouch for names the
     page's award records do not carry.
+  lobbying_mention (R-DEC-DOSSIERLDA, final-review ruling 2026-09-27) — a
+    LOBBYING claim (it cites an lda_filing fact, or its text says "lobby…" /
+    "LDA") must name only lobbying filers THE PAGE's lobbying mentions list.
+    A filer is any Senate LDA client, registrant or verified family name in
+    audit_lda_filings — the whole filing universe (`FilerUniverse`), so a
+    filer whose every mention of this program the #176 rematch removed is
+    still recognised — read as a capitalized run of the sentence (the longest
+    name wins; a one-word name shorter than three letters, all digits or as
+    generic as "Aerospace" never counts). The page lists a filer when its
+    fct_program_lobbying rows (the program_details `mentions` rows: client,
+    family and, through audit_lda_filings, registrant) carry that name, one
+    extending it or extended by it, or the filer's verified family
+    (`PageLobbying`); a shared code's member page lists none (R-INT-9).
+    Measured on /program/2004/ players[1] ("Additional FedEx Corporation
+    filings in 2024 …", CVN-81, which lists no mention after the rematch) and
+    /program/1045/ players[5] ("A FedEx Corporation filing matched the term
+    '1045' …", a page listing General Dynamics and Huntington Ingalls only).
 
-FAIL CLOSED (round 2). `concentration_fact_index` and
-`linked_recipient_index` RAISE ClaimDriftIndexError when a duckdb_path was
+FAIL CLOSED (round 2). `concentration_fact_index`,
+`linked_recipient_index` and `lobbying_mention_index` RAISE
+ClaimDriftIndexError when a duckdb_path was
 supplied and the read fails; only duckdb_path=None means "no mart, leg not
 run". An empty index silently skipped the family leg, and one chain-G
 contradiction (0603467E "The top recipient family ... is Raytheon") is
@@ -103,8 +121,11 @@ is not checked for its year; a recipient list is read only in the three shapes
 above, and a list item is everything between commas (or "and") up to the
 end of the sentence — a clause trailing the last name ("... and Leidos for
 engineering support") is read as part of that name, which then fails to
-match: the direction that withholds. Adversarial prose review remains the
-backstop.
+match: the direction that withholds. The lobbying leg reads a filer only by
+a name the LDA data records (a nickname such as "GD" is not read), only in a
+sentence that cites an LDA filing or says "lobby…" / "LDA", and a filer name
+that is also an award recipient's is held to the lobbying list only there.
+Adversarial prose review remains the backstop.
 """
 from __future__ import annotations
 
@@ -818,23 +839,216 @@ def unlinked_recipients(text: str, page: PageRecipients) -> list[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Lobbying mentions (R-DEC-DOSSIERLDA)
+# ---------------------------------------------------------------------------
+
+#: the words that make a sentence a lobbying claim when it cites no LDA filing
+_LOBBYING_WORDS_RE = re.compile(
+    r"\blobb(?:y|ied|ies|ying|yists?)\b|\bLDA\b", re.IGNORECASE)
+#: a one-word filer name this generic is never read as a name in prose
+#: ("Aerospace lobbying rose ..."); the recipient leg's list plus the LDA
+#: universe's own generic one-word client
+_FILER_GENERIC_TOKENS = _GENERIC_TOKENS | frozenset({"AEROSPACE"})
+_WORD_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.'’]*[A-Za-z0-9])?|&")
+_POSSESSIVE_RE = re.compile(r"['’]s$", re.IGNORECASE)
+#: legal-form words right after a matched name are printed with it
+#: ("FedEx Corporation"); they are not part of the normalized name
+_LEGAL_TAIL_RE = re.compile(
+    r"(?:,?\s+(?:" + "|".join(sorted(_LEGAL_FORMS)) + r")\b)+", re.IGNORECASE)
+
+
+def _word_tokens(text) -> tuple[list[tuple[str, int, int]], str]:
+    """([(token, start, end)] per word, the unescaped text the offsets are
+    in): each word normalized as `_name_tokens` normalizes a name (upper
+    case, periods and apostrophes removed, "the" / "and" / "&" and legal
+    forms dropped), and a possessive "'s" dropped ("FedEx's" -> FEDEX)."""
+    s = html.unescape(str(text or ""))
+    out: list[tuple[str, int, int]] = []
+    for m in _WORD_RE.finditer(s):
+        word = _POSSESSIVE_RE.sub("", m.group(0))
+        tok = re.sub(r"[.'’]", "", word).upper()
+        if not tok or tok == "&" or tok in _LEGAL_FORMS or tok in _NAME_FILLER:
+            continue
+        out.append((tok, m.start(), m.end()))
+    return out, s
+
+
+def _filer_tokens(name) -> tuple[str, ...]:
+    """A filer name, normalized for comparison (see _word_tokens)."""
+    return tuple(t for t, _s, _e in _word_tokens(name)[0])
+
+
+def _nameable(toks: tuple[str, ...]) -> bool:
+    """False for a one-word name too short, numeric or generic to be read as
+    a name in prose, and for any name made of digits alone."""
+    if not toks or all(t.isdigit() for t in toks):
+        return False
+    if len(toks) == 1:
+        t = toks[0]
+        return len(t) >= 3 and t not in _FILER_GENERIC_TOKENS
+    return True
+
+
+@dataclass(frozen=True)
+class FilerUniverse:
+    """Every Senate LDA filer name the lake records — each filing's client,
+    registrant and verified family — normalized, with the verified families
+    each name belongs to (empty for an outside registrant, which files for
+    many clients and belongs to none of them)."""
+
+    families: Mapping[tuple[str, ...], frozenset[str]]
+    max_len: int = 0
+
+    @classmethod
+    def from_filings(
+        cls, filings: Iterable[tuple[str | None, str | None, str | None]],
+    ) -> FilerUniverse:
+        """filings: (client_name, registrant_name, verified family_key or
+        None) per filing. A registrant takes the client's family only when it
+        IS the client (a self-filer: FEDEX CORPORATION for itself)."""
+        fams: dict[tuple[str, ...], set[str]] = {}
+        for client, registrant, family in filings:
+            ct, rt, ft = _filer_tokens(client), _filer_tokens(registrant), _filer_tokens(family)
+            for toks, of_family in ((ct, True), (rt, rt == ct), (ft, True)):
+                if not toks:
+                    continue
+                entry = fams.setdefault(toks, set())
+                if family and of_family:
+                    entry.add(family)
+        return cls({k: frozenset(v) for k, v in fams.items()},
+                   max((len(k) for k in fams), default=0))
+
+
+def named_lobbying_filers(text: str, universe: FilerUniverse) -> list[str]:
+    """The LDA filers the sentence names, as printed: each longest run of
+    words that is a filer name in `universe` and starts with a capital or a
+    digit (a name, not a common word), with any legal form printed after it
+    ("General Dynamics Corporation"). Non-overlapping, in sentence order."""
+    toks, s = _word_tokens(text)
+    out: list[str] = []
+    i = 0
+    while i < len(toks):
+        hit = 0
+        for k in range(min(universe.max_len, len(toks) - i), 0, -1):
+            cand = tuple(t for t, _s, _e in toks[i:i + k])
+            if cand in universe.families and _nameable(cand):
+                hit = k
+                break
+        first = s[toks[i][1]] if hit else ""
+        if hit and (first.isupper() or first.isdigit()):
+            start, end = toks[i][1], toks[i + hit - 1][2]
+            tail = _LEGAL_TAIL_RE.match(s, end)
+            out.append(s[start:tail.end() if tail else end])
+            i += hit
+        else:
+            i += 1
+    return out
+
+
+@dataclass(frozen=True)
+class PageLobbying:
+    """The lobbying filers one program page lists: its mention rows' client
+    names, family keys and registrant names, and their families."""
+
+    names: frozenset[tuple[str, ...]]
+    families: frozenset[str]
+    universe: FilerUniverse
+
+    @classmethod
+    def from_mentions(
+        cls,
+        mentions: Iterable[tuple[str | None, str | None, str | None]],
+        universe: FilerUniverse,
+    ) -> PageLobbying:
+        """mentions: (client_name, family_key, registrant_name) per row."""
+        names: set[tuple[str, ...]] = set()
+        families: set[str] = set()
+        for client, family, registrant in mentions:
+            for n in (client, family, registrant):
+                toks = _filer_tokens(n)
+                if toks:
+                    names.add(toks)
+            if family:
+                families.add(family)
+        return cls(frozenset(names), frozenset(families), universe)
+
+    def lists(self, name: str) -> bool:
+        """True when a mention row on the page carries `name`: the same
+        normalized name, one extending it or extended by it, or a row of the
+        name's verified family."""
+        toks = _filer_tokens(name)
+        if not toks or toks in self.names:
+            return True
+        if any(_extends(toks, n) or _extends(n, toks) for n in self.names):
+            return True
+        return bool(self.universe.families.get(toks, frozenset()) & self.families)
+
+
+class LobbyingIndex:
+    """Page slug -> PageLobbying over one shared FilerUniverse. A page with no
+    mention lists no filer (an empty, still-checking PageLobbying)."""
+
+    def __init__(
+        self,
+        mentions_by_page: Mapping[str, list[tuple[str | None, str | None, str | None]]],
+        universe: FilerUniverse,
+    ):
+        self._mentions = mentions_by_page
+        self.universe = universe
+        self._pages: dict[str, PageLobbying] = {}
+
+    def for_page(self, page: str) -> PageLobbying:
+        if page not in self._pages:
+            self._pages[page] = PageLobbying.from_mentions(
+                self._mentions.get(page, []), self.universe)
+        return self._pages[page]
+
+
+def is_lobbying_claim(text: str, fact: Mapping | None) -> bool:
+    """A claim about lobbying: it cites an lda_filing fact, or it says so."""
+    return (fact or {}).get("kind") == "lda_filing" or bool(_LOBBYING_WORDS_RE.search(text))
+
+
+def unlisted_lobbying_filers(
+    text: str, fact: Mapping | None, page: PageLobbying | None,
+) -> list[str]:
+    """Every LDA filer a lobbying claim names that the page's lobbying
+    mentions do not list; [] for a claim that is not about lobbying or when
+    no index was read."""
+    if page is None or not is_lobbying_claim(text, fact):
+        return []
+    out: list[str] = []
+    seen: set[tuple[str, ...]] = set()
+    for name in named_lobbying_filers(text, page.universe):
+        toks = _filer_tokens(name)
+        if toks not in seen and not page.lists(name):
+            seen.add(toks)
+            out.append(name)
+    return out
+
+
 def claim_contradictions(
     text: str,
     fact: Mapping | None,
     concentration: Mapping | None = None,
     recipients: PageRecipients | None = None,
+    lobbying: PageLobbying | None = None,
 ) -> list[str]:
     """Why `text` contradicts its cited fact, in check order; [] when it does not.
 
     fact: the cited citation row ({"kind", "units", "recorded_value",
         "amount_thousands", "amount_text", "scenario", "amount_type", ...})
         or None. scenario / amount_type (the column) feed the fiscal-year
-        leg; a row without them is not checked for its year.
+        leg; a row without them is not checked for its year. kind
+        "lda_filing" makes the claim a lobbying claim.
     concentration: {"family_key", "display_name", "hhi"} of the
         fct_program_concentration row that minted the cited fact
         (concentration_fact_index), or None when the fact is not one.
     recipients: the page's linked-award recipients (RecipientIndex.for_page),
         or None when no mart was read (the recipient leg does not run).
+    lobbying: the page's lobbying mentions (LobbyingIndex.for_page), or None
+        when no mart was read (the lobbying leg does not run).
     """
     reasons: list[str] = []
     fact = fact or {}
@@ -873,6 +1087,10 @@ def claim_contradictions(
     # recipient_list
     if recipients is not None and unlinked_recipients(text, recipients):
         reasons.append("recipient_list")
+
+    # lobbying_mention (R-DEC-DOSSIERLDA)
+    if unlisted_lobbying_filers(text, fact, lobbying):
+        reasons.append("lobbying_mention")
 
     return reasons
 
@@ -1036,3 +1254,75 @@ def linked_recipient_index(duckdb_path: str | Path | None) -> RecipientIndex | N
                 family_by_name.setdefault(" ".join(toks), set()).add(family_key)
     return RecipientIndex(
         links_by_page, {k: frozenset(v) for k, v in family_by_name.items()})
+
+
+#: Each program-mention row with its filing's registrant: the program page's
+#: `mentions` rows (export_site reads client_name / family_key from the same
+#: fct_program_lobbying rows) and the registrant audit_lda_filings records for
+#: the filing.
+_LOBBYING_MENTIONS_SQL = """
+select m.pe_bli, m.client_name, m.family_key, f.registrant_name
+from fct_program_lobbying m
+left join audit_lda_filings f on f.filing_uuid = m.filing_uuid
+"""
+#: The filer universe: every filing in the lake (audit_lda_filings is EVERY
+#: Senate LDA filing, counted or not) with its family when the match is
+#: verified — fct_program_lobbying's own gate (match_method set and not
+#: 'none'; an unverified guess is only the queried family name) — plus the
+#: mart's client / family pairs.
+_LOBBYING_UNIVERSE_SQL = """
+select client_name, registrant_name,
+       case when match_method is not null and match_method <> 'none'
+            then family_key_guess end as family_key
+from audit_lda_filings
+union all
+select client_name, null, family_key from fct_program_lobbying
+"""
+
+
+def lobbying_mention_index(duckdb_path: str | Path | None) -> LobbyingIndex | None:
+    """Every program page's lobbying mentions, read-only, keyed by PAGE, over
+    the universe of every LDA filer name (R-DEC-DOSSIERLDA).
+
+    A mention row is filed on its bare code's page, exactly as the exporter
+    publishes the program page's `mentions`: an ordinary program's page is
+    its pe_bli, and a shared (split) code's rows are on NO member page —
+    R-INT-9 withholds them from every member, since nothing in a filing says
+    which member it describes.
+
+    duckdb_path=None -> None (the lobbying leg does not run). A supplied path
+    that cannot be read RAISES ClaimDriftIndexError (fail closed).
+    """
+    if duckdb_path is None:
+        return None
+    import duckdb
+
+    from govbudget.export_site import _fetch_program_identity
+
+    try:
+        con = duckdb.connect(str(duckdb_path), read_only=True)
+    except Exception as exc:
+        raise _read_error("the lobbying marts", duckdb_path, exc) from exc
+    try:
+        try:
+            ident = _fetch_program_identity(con)
+        except Exception as exc:
+            raise _read_error("dim_programs", duckdb_path, exc) from exc
+        try:
+            mention_rows = con.execute(_LOBBYING_MENTIONS_SQL).fetchall()
+            universe_rows = con.execute(_LOBBYING_UNIVERSE_SQL).fetchall()
+        except Exception as exc:
+            raise _read_error(
+                "fct_program_lobbying / audit_lda_filings (the pages' lobbying"
+                " mentions, their registrants and every LDA filer name)",
+                duckdb_path, exc) from exc
+    finally:
+        con.close()
+
+    mentions_by_page: dict[str, list[tuple]] = {}
+    for pe_bli, client_name, family_key, registrant_name in mention_rows:
+        if not pe_bli or ident.is_split(pe_bli):
+            continue  # R-INT-9: a shared code's rows are on no member page
+        mentions_by_page.setdefault(pe_bli, []).append(
+            (client_name, family_key, registrant_name))
+    return LobbyingIndex(mentions_by_page, FilerUniverse.from_filings(universe_rows))

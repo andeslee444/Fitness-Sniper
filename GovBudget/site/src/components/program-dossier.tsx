@@ -58,14 +58,19 @@ const CORRECTION_CLAUSES = {
   // R-DEC-DOSSIERDRIFT (2026-09-26): withheld at export, never rewritten —
   // a stated figure, concentration band or top recipient family its cited
   // fact's current value does not support, an agreeing figure given another
-  // fiscal year than its cited column's, or a named recipient the page's
-  // linked awards do not carry. "Do not support", not "no longer match":
+  // fiscal year than its cited column's, a named recipient the page's
+  // linked awards do not carry, or a named lobbying filer the page's
+  // lobbying mentions do not list. "Do not support", not "no longer match":
   // some of these never matched (a figure cited to the wrong cell). "Year"
   // since round 4: a fiscal-year withhold (/program/1203154SF/) states a
   // figure its cite does support, so the clause must name the year.
+  // "Lobbying filer" since R-DEC-DOSSIERLDA (2026-09-27): a claim naming an
+  // LDA client or registrant the page's lobbying mentions do not list is
+  // withheld too (/program/2004/ and /program/1045/: FedEx after the #176
+  // rematch), and FedEx is no recipient of either page's awards.
   contradicts_citation: [
-    "stated a figure, year or recipient its sources do not support",
-    "stated figures, years or recipients their sources do not support",
+    "stated a figure, year, recipient or lobbying filer its sources do not support",
+    "stated figures, years, recipients or lobbying filers their sources do not support",
   ],
 } as const;
 /** Removals no reason above accounts for (a reason this component predates). */

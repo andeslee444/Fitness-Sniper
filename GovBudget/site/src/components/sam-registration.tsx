@@ -21,6 +21,18 @@
  * data-amount, and this is not a currency figure. render-static leg (a1)
  * checks every [data-prose-cite] fact_id resolves in citations.json.
  *
+ * WHOSE REGISTRATION (R-DEC-SAMTEXT, final review). Until then the last
+ * sentence called this "the registration of the family's largest member by
+ * obligations". The mart joins SAM on max(coalesce(parent_uei,
+ * recipient_uei)) filter (rk = 1): the parent UEI the largest member REPORTS
+ * on its awards (entity_graph picks each member's parent pair by the dollars
+ * behind it), and on both pages chain G shipped that was never the largest
+ * member's own registration — Boeing's largest member is JJM4FRDZJDX1, the
+ * record shown its parent NU2UC8MX6NK1, itself a member at -$0.8M. The
+ * sentence now states the rule export_site._SAM_REGISTRATION_RULE states,
+ * verbatim, as do /methodology/ §4 and docs/methodology.md §4
+ * (sam-registration.test.tsx reads all four).
+ *
  * WHY THE LAST SENTENCE NAMES THE TIE-BREAK. It used to say this was the
  * registration of "the one its registered name is read from". The mart takes
  * the two from different rules — `display_name` from rn = 1 (row_number in a
@@ -71,10 +83,11 @@ export function SamRegistrationNote({ sam }: { sam?: EntitySamRegistration }) {
       <ProseCite factId={sam.fact_id}>{sam.registration_status}</ProseCite>
       {bits.length > 0 ? `, ${bits.join(", ")}` : ""}.
       {sam.business_types ? ` Business types: ${sam.business_types}.` : ""}{" "}
-      This is the registration of the family&rsquo;s largest member by
-      obligations &mdash; where members tie, the one whose registration UEI
-      sorts highest &mdash; and it does not change how this family was
-      resolved.
+      This is the registration of the parent UEI that the family&rsquo;s
+      largest member by obligations reports on its awards (the parent on the
+      most of its dollars; the member&rsquo;s own UEI where that parent has
+      none; on a member tie, the highest such UEI), and it does not change how
+      this family was resolved.
     </p>
   );
 }

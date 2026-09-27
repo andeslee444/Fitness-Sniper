@@ -48,7 +48,9 @@ type CannedQuery = {
   sql: string;
 };
 
-function cannedQueriesFor(name: DatasetName): CannedQuery[] {
+/** Exported for explorer-influence-preset.test.ts and
+ *  tests/test_explorer_influence_preset.py, which run a preset's SQL. */
+export function cannedQueriesFor(name: DatasetName): CannedQuery[] {
   const t = (sql: string): string => sql.trim();
 
   switch (name) {
@@ -161,16 +163,33 @@ ORDER BY pb_edition
       ];
 
     case "fct_influence":
+      // R-DEC-EXPLORER (final review #9, 2026-09-27). This was COUNT(*) AS
+      // filing_count over a mart that is one row per (family, filing year) —
+      // 1 on every row, beside a real filings_count of 59 / 65 / 33 for
+      // Lockheed Martin — and SUM(family_obligations_usd), the family's
+      // all-years obligation total repeated on each year, under a title that
+      // promises lobbying totals. Now: the mart's own filing count and its
+      // income and expense.
+      // No total column, and income and expense are never added together:
+      // R-DEC-LDATOTAL (final-review rulings, 2026-09-27) keeps lobbying
+      // income and expense NON-ADDITIVE on the site, because a self-filer's
+      // reported expense can include what it paid the outside firms whose
+      // income is also reported, so a sum can double-count. It is the
+      // company page's reviewed decision (no Total column there either), and
+      // the ruling keeps this preset without a total, as built. The mart's
+      // lobbying_total_usd is a plain sum of the two, not a de-duplicated
+      // total, so it is not selected here.
       return [
         {
           label: "Lobbying totals by family + year",
           sql: t(`
 SELECT family_key, filing_year,
-       SUM(family_obligations_usd) AS total_obligations_usd,
-       COUNT(*) AS filing_count
+       SUM(filings_count) AS filings,
+       SUM(lobbying_income_usd) AS income_usd,
+       SUM(lobbying_expense_usd) AS expense_usd
 FROM 'fct_influence.parquet'
 GROUP BY family_key, filing_year
-ORDER BY total_obligations_usd DESC
+ORDER BY filings DESC, family_key, filing_year DESC
 LIMIT 50
           `),
         },

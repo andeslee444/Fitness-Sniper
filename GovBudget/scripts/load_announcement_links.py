@@ -51,7 +51,11 @@ Recipient (R-DEC-RECIPIENT, fix-round-5 ruling 2026-09-26): each link names
 the UEI with the largest total obligation on the award; a tie for it goes to
 the UEI the link's cited announcement names, then to the lowest UEI. How it
 was decided is stored in budget_line_awards.recipient_basis (migration 019);
-see lake_evidence and link_recipient. Rows stored before the rule carry
+see lake_evidence and link_recipient. "Names" is read in the announcement's
+TEXT, in the clause that names the link's own PIID (R-DEC-RECIPIENT-b,
+final-review ruling 2026-09-27; piid_clause_names), never in the packet's
+`contractor` field, which holds a multi-award paragraph's first contractor;
+a tie needs the cited article archived under data/raw/announcements. Rows stored before the rule carry
 'pre_rule' (019's backfill, R-DEC-DERIVE) until this loader rewrites them;
 it never writes 'pre_rule' itself (incoming_member_claims refuses it).
 
@@ -96,6 +100,10 @@ from derive_ap_links import (
     recipient_candidates,
     stored_member_claims,
 )
+# The parse the waves read the announcements through: the same paragraph
+# split and contract-number pattern find the clause naming a link's PIID
+# (R-DEC-RECIPIENT-b, piid_clause_names).
+from parse_contract_announcements import CN, TAG, WS, norm_piid
 
 # The methods this loader OWNS — every row carrying one of them is deleted
 # and rewritten on each run. It is the same tuple derive_ap_links uses as its
@@ -496,29 +504,201 @@ def recipient_name_key(text) -> str | None:
 
 
 def announcement_named_ueis(cands: list[RecipientCandidate],
-                            contractor: str | None) -> frozenset[str]:
-    """The candidate UEIs an announcement's contractor text names: any name
-    on the UEI's own rows whose recipient_name_key equals the contractor's."""
-    key = recipient_name_key(contractor)
-    if key is None:
+                            names) -> frozenset[str]:
+    """The candidate UEIs the announcement's contractor names name: any name
+    on the UEI's own rows whose recipient_name_key equals one of theirs.
+    `names` is the list piid_clause_names returns (a single string is one
+    name)."""
+    if names is None or isinstance(names, str):
+        names = [names]
+    keys = {k for k in (recipient_name_key(n) for n in names) if k is not None}
+    if not keys:
         return frozenset()
     return frozenset(c.uei for c in cands if c.uei is not None
-                     and any(recipient_name_key(n) == key for n in c.names))
+                     and any(recipient_name_key(n) in keys for n in c.names))
+
+
+# ---------------------------------------------------------------------------
+# Step (2)'s evidence: the clause of the cited announcement that names THIS
+# PIID (R-DEC-RECIPIENT-b, final-review ruling 2026-09-27: "Step (2) reads
+# the cited announcement's TEXT: the tied recipient whose normalized name
+# appears in the clause that names THIS PIID wins (multi-award paragraphs
+# name several contractors; the packet's `contractor` field holds only the
+# first). Only then the lowest UEI. N0003910D0032 → ViaSat.")
+#
+# Until then step (2) matched the packet's `contractor` field, which
+# parse_contract_announcements takes from the FIRST words of the paragraph.
+# Article 605988 reads "Data Link Solutions, LLC, Cedar Rapids, Iowa
+# (N00039-10-D-0031) and ViaSat, Inc., Carlsbad, California
+# (N00039-10-D-0032), are being awarded ...": the packet for -0032 says
+# 'Data Link Solutions', which is neither UEI tied on that award (ViaSat,
+# L3), and the alphabet published L3 against a citation naming ViaSat.
+# ---------------------------------------------------------------------------
+
+#: The archived copies of the cited articles, one <article_id>.html each —
+#: the corpus parse_contract_announcements parsed for the waves.
+ANNOUNCEMENTS_RAW = ROOT / "data/raw/announcements"
+
+_PARAGRAPH = re.compile(r"<p[^>]*>(.*?)</p>", re.S)  # parse_contract_announcements'
+#: A parenthesis with none inside it: "(N00039-10-D-0032)", "(MIDS)".
+_PAREN = re.compile(r"\([^()]*\)")
+#: The words that end one award in a digest ("... is the contracting activity
+#: (FA8625-17-C-6589)."). Some archived pages hold several awards in ONE
+#: <p>; each award is read on its own, split after these words.
+_AWARD_END = re.compile(r"contracting activit(?:y|ies)\s*\([^()]*\)\s*\.?", re.I)
+#: What joins one contractor of a multi-award list to the next, after the
+#: previous contractor's "(PIID)": ';', '; and', ',', ', and', 'and'.
+_LIST_JOIN = re.compile(r"\s*(?:[,;]\s*(?:and\s+)?|and\s+)")
+#: A verb. A list entry reads "Name, City, State"; text after another
+#: contract's parenthesis that carries a verb (", Army Contracting Command,
+#: Redstone Arsenal, Alabama, is the contracting activity (...)") is an
+#: award's own sentence going on, not another contractor's entry. (Text
+#: that does not start with a list join — "(N0001917F1024) against a
+#: previously issued basic ordering agreement (N00019-15-G-0057)", or a new
+#: sentence after a period — is no entry either.)
+_VERB = re.compile(r"\b(?:is|are|was|were|has|have|had|will|being|been)\b")
+
+
+def announcement_paragraphs(html_text: str) -> list[str]:
+    """An archived announcement page's paragraphs as text: the <p> elements
+    parse_contract_announcements reads, tags dropped, HTML entities decoded
+    and whitespace collapsed; empty ones dropped."""
+    out = []
+    for p in _PARAGRAPH.findall(html_text):
+        s = WS.sub(" ", html.unescape(TAG.sub(" ", p))).strip()
+        if s:
+            out.append(s)
+    return out
+
+
+def _award_units(paragraph: str) -> list[str]:
+    """One paragraph split into its awards (after each "contracting activity
+    (...)"); a paragraph holding one award is one unit."""
+    units, start = [], 0
+    for m in _AWARD_END.finditer(paragraph):
+        units.append(paragraph[start:m.end()])
+        start = m.end()
+    units.append(paragraph[start:])
+    return [u for u in units if u.strip()]
+
+
+def _lead_name(text: str) -> str | None:
+    """The name a clause starts with: its text before the first comma, as
+    parse_contract_announcements reads a paragraph's contractor."""
+    name = text.strip().lstrip(".").split(",")[0].strip(" *")
+    return name or None
+
+
+def _list_entry(unit: str, paren: re.Match, piid: str) -> str | None:
+    """The contractor of a multi-award list entry that ends in `paren` (the
+    parenthesis naming `piid`), or None when `paren` ends no list entry.
+
+    A list entry follows the previous contractor's contract parenthesis
+    (one naming another PIID), a list join (';', ',', 'and'), and reads
+    "Name, City, State": it starts with a capital or digit, has a comma
+    and carries no verb."""
+    before = [g for g in _PAREN.finditer(unit) if g.end() <= paren.start()
+              and any(norm_piid(m.group(1)) != piid
+                      for m in CN.finditer(g.group(0)))]
+    if not before:
+        return None
+    between = unit[before[-1].end():paren.start()]
+    join = _LIST_JOIN.match(between)
+    if join is None:
+        return None
+    entry = between[join.end():]
+    if not (entry[:1].isupper() or entry[:1].isdigit()) or "," not in entry:
+        return None
+    if _VERB.search(entry):
+        return None
+    return _lead_name(entry)
+
+
+def piid_clause_names(paragraphs, piid: str) -> list[str]:
+    """The contractor names the clauses naming `piid` start with, in order,
+    each once — step (2)'s evidence (R-DEC-RECIPIENT-b).
+
+    Each paragraph is read award by award (_award_units). In an award whose
+    text names `piid` (parse_contract_announcements' contract-number pattern,
+    hyphens and spaces dropped):
+      - when a parenthesis naming `piid` ends a multi-award list entry
+        ("Data Link Solutions, LLC, Cedar Rapids, Iowa (N00039-10-D-0031) and
+        ViaSat, Inc., Carlsbad, California (N00039-10-D-0032)"), that entry
+        names it: 'ViaSat' for -0032, and 'Data Link Solutions' for -0031,
+        whose entry leads the award;
+      - otherwise the award's own contractor, the name it starts with,
+        names it — the name the packet's `contractor` field records for a
+        paragraph holding one award, so a single-award announcement reads as
+        it did before the ruling.
+    A name is text, not a recipient: announcement_named_ueis matches it
+    against each tied UEI's own names (recipient_name_key, equality only)."""
+    names: list[str] = []
+    for paragraph in paragraphs:
+        for unit in _award_units(paragraph):
+            mine = [m for m in CN.finditer(unit) if norm_piid(m.group(1)) == piid]
+            if not mine:
+                continue
+            parens = list(_PAREN.finditer(unit))
+            entries = []
+            for m in mine:
+                paren = next((g for g in parens
+                              if g.start() < m.start() and m.end() <= g.end()), None)
+                entry = _list_entry(unit, paren, piid) if paren else None
+                if entry:
+                    entries.append(entry)
+            for name in entries or [_lead_name(unit)]:
+                if name and name not in names:
+                    names.append(name)
+    return names
+
+
+def cited_clause_names(packet: dict, piid: str | None,
+                       raw_dir: Path = ANNOUNCEMENTS_RAW) -> list[str]:
+    """piid_clause_names over the article the link's card cites (the packet's
+    article_id, archived at <raw_dir>/<article_id>.html). A packet citing no
+    article names no one. A cited article that is not archived stops the
+    run: the tie it would break cannot be broken by evidence the loader
+    cannot read, and the alphabet must not stand in for it unseen."""
+    aid = _packet_value(packet, "article_id")
+    if aid is None:
+        return []
+    if piid is None:
+        raise ValueError("cited_clause_names: no PIID to find in article " + aid)
+    path = Path(raw_dir) / f"{aid}.html"
+    if not path.is_file():
+        raise SystemExit(
+            f"load_announcement_links: announcement {aid}, cited by the link"
+            f" for {piid}, is not archived at {path}; its recipient tie can"
+            " only be broken by the clause naming the PIID (R-DEC-RECIPIENT-b)."
+            " Restore data/raw/announcements from its backup"
+            " (scripts/launch/backup_raw_announcements.sh); nothing written")
+    return piid_clause_names(
+        announcement_paragraphs(path.read_text(errors="replace")), piid)
 
 
 def link_recipient(cands: list[RecipientCandidate], packet: dict,
-                   method: str) -> tuple[str | None, str | None, str]:
+                   method: str, *, piid: str | None = None,
+                   raw_dir: Path = ANNOUNCEMENTS_RAW
+                   ) -> tuple[str | None, str | None, str]:
     """(recipient_name, recipient_uei, recipient_basis) for ONE link
-    (R-DEC-RECIPIENT). `packet` is the packet the link's card cites
-    (provenance_packets). Only an 'announcement+lexicon' link cites an
-    announcement: its packet's `contractor` is the text step (2) matches. A
-    'subaward+lexicon' link cites an FSRS subaward record, whose packet names
-    no prime contractor (wave 3 carries the string 'None'), so ties there go
-    to the lowest UEI. The published name is the picked UEI's own
-    largest-dollar name, never the announcement's text."""
-    contractor = (_packet_value(packet, "contractor")
-                  if method == "announcement+lexicon" else None)
-    chosen, basis = pick_recipient(cands, announcement_named_ueis(cands, contractor))
+    (R-DEC-RECIPIENT; step (2) per R-DEC-RECIPIENT-b). `packet` is the packet
+    the link's card cites (provenance_packets); `piid` the link's award
+    (default: the packet's).
+
+    Step (2) is read only for a tie, and only for an 'announcement+lexicon'
+    link: the contractor names of the clauses naming `piid` in the article
+    the card cites (cited_clause_names) — never the packet's `contractor`
+    field, which holds a multi-award paragraph's FIRST contractor. A
+    'subaward+lexicon' link cites an FSRS subaward record, not an
+    announcement, so ties there go to the lowest UEI. The published name is
+    the picked UEI's own largest-dollar name, never the announcement's
+    text."""
+    chosen, basis = pick_recipient(cands)
+    if basis == "obligation" or method != "announcement+lexicon":
+        return chosen.name, chosen.uei, basis
+    names = cited_clause_names(packet, piid or _packet_value(packet, "piid"),
+                               raw_dir)
+    chosen, basis = pick_recipient(cands, announcement_named_ueis(cands, names))
     return chosen.name, chosen.uei, basis
 
 
@@ -948,10 +1128,12 @@ def main() -> int:
         p = prov.get((piid, pe), {})
         subaward = (p.get("match_basis") or "") == "subaward-description-exact"
         # R-DEC-RECIPIENT: per LINK, because a tie for the largest total is
-        # broken by the recipient the link's CITED announcement names
+        # broken by the recipient the link's CITED announcement names — in
+        # the clause naming THIS PIID (R-DEC-RECIPIENT-b)
         rname, ruei, basis = link_recipient(
             cands[piid], p,
-            "subaward+lexicon" if subaward else "announcement+lexicon")
+            "subaward+lexicon" if subaward else "announcement+lexicon",
+            piid=piid)
         if rname is None:
             # the picked UEI's rows name no recipient (a name is never
             # borrowed from another UEI's rows) — counted below, not inserted
@@ -1009,6 +1191,10 @@ def main() -> int:
     for r in rows:
         basis_rows[r[13]] = basis_rows.get(r[13], 0) + 1
     print(f"recipient basis over the rows to upsert: {dict(sorted(basis_rows.items()))}")
+    # R-DEC-RECIPIENT-b: every tie, and how it was broken, for the operator
+    # to read against the articles
+    print("recipient ties (pe_bli, PIID, recipient, basis):", sorted(
+        (r[0], r[4], r[5], r[13]) for r in rows if r[13] != "obligation"))
     # ROADMAP #70: what the shared BLI codes actually gained this run.
     split_gains = {}
     for r in rows:

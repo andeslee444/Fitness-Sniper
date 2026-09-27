@@ -866,10 +866,18 @@ export default function MethodologyPage() {
                   ). Lobbying income and
                   expenditure by year are shown alongside federal obligations
                   received — influence is presented side by side with outcomes,
-                  never as a causal claim. An amendment replaces its
-                  original instead of adding to it (a correction decided
-                  2026-09-26); where a quarter&rsquo;s amendments disagree,
-                  the smallest counts (our copy keeps no posting date).
+                  never as a causal claim. In those yearly figures an
+                  amendment replaces its original instead of adding to it (a
+                  correction decided 2026-09-26); where a quarter&rsquo;s
+                  amendments disagree, the smallest counts (our copy keeps no
+                  posting date). Program mentions still count superseded reports.
+                  {/* Final review #5 (2026-09-27): the rule is R-DEC-AMEND's,
+                      scoped to fct_influence — the yearly dollars (and the
+                      filing counts beside them). fct_program_lobbying has no
+                      `counted` filter, so the mention count this paragraph
+                      opens with keeps an amended quarter's original AND its
+                      amendment: 801 of the 12,571 rows came from 68 uncounted
+                      filings on the chain-G lake (RTX 130 of its 839). */}
                 </p>
               </div>
 
@@ -1082,9 +1090,17 @@ export default function MethodologyPage() {
                       registration at all. It now states the same rule as
                       components/sam-registration.tsx and the citation formula
                       in export_site.py; sam-registration.test.tsx reds if any
-                      of the three drifts. */}
+                      of the three drifts.
+                      R-DEC-SAMTEXT (final review): calling it the largest
+                      member's own registration was false on both families
+                      chain G shipped; the mart joins SAM on
+                      the PARENT UEI the largest member reports (Boeing:
+                      member JJM4FRDZJDX1, registration NU2UC8MX6NK1). The
+                      clause now states export_site._SAM_REGISTRATION_RULE
+                      verbatim, as the company line and docs/methodology.md
+                      section 4 do. */}
                   {samRegistrations > 0
-                    ? ` ${formatCount(samRegistrations)} of the published families also carry a cited SAM.gov registration on the company page \u2014 the registration of the family\u2019s largest member by obligations, where members tie the one whose registration UEI sorts highest, which need not be the member the label came from.`
+                    ? ` ${formatCount(samRegistrations)} of the published families also carry a cited SAM.gov registration on the company page \u2014 the registration of the parent UEI that the family\u2019s largest member by obligations reports on its awards (the parent on the most of its dollars; the member\u2019s own UEI where that parent has none; on a member tie, the highest such UEI), not always the one the label came from.`
                     : " No SAM.gov registration record ships yet; that extract needs an account holder\u2019s credential."}
                 </p>
               </div>
@@ -1604,15 +1620,33 @@ export default function MethodologyPage() {
                   Company award linkage — {formatCount(companyAwards.numerator ?? 0)} of{" "}
                   {formatCount(companyAwards.denominator ?? 0)} profiled companies
                 </h3>
+                {/* R-DEC-PRIMES (final review #4, 2026-09-27). This said the
+                    crosswalk "currently contains R&D performers rather than
+                    primes — so only N of M profiled companies show linked
+                    awards", then "a family-level awards mart is on the
+                    roadmap". After #107(b) the published mart is mostly
+                    procurement-line links led by the largest primes; no
+                    ROADMAP entry backs the mart; and the reason was never the
+                    mart's contents but the exporter's exact-name join
+                    (entity_details: recipient_name == display_name). Chain-G
+                    lake, 2026-09-27: 49 of the 168 empty profiles have
+                    published links under a member's own name, 119 have none.
+                    "Still carry … lobbying activity" came off too (71
+                    families have fct_influence rows, not every profile), and
+                    /methodology/ is at its page-weight headroom. The RULE and
+                    REASONS sentences are the company page's and /coverage/'s,
+                    word for word, and docs/methodology.md §5 mirrors them
+                    (company-award-linkage-prose.test.tsx). */}
                 <p>
                   Company profiles cover the top {formatCount(companyAwards.denominator ?? 0)}{" "}
-                  contractor families by DoD obligations. Award rows on those
-                  profiles come from the budget→award crosswalk, which currently
-                  contains R&amp;D performers rather than primes — so only{" "}
+                  contractor families by DoD obligations, and{" "}
                   {formatCount(companyAwards.numerator ?? 0)} of {formatCount(companyAwards.denominator ?? 0)}{" "}
-                  profiled companies show linked awards. The remaining profiles
-                  still carry obligation totals and lobbying activity; a
-                  family-level awards mart is on the roadmap.
+                  show linked awards. A profile lists a budget→award crosswalk
+                  link only when the award&rsquo;s recipient name is exactly the
+                  family&rsquo;s registered name in the award data. A profile
+                  shows none when no member&rsquo;s award is linked to a budget
+                  line, or when the links carry a member&rsquo;s own, different
+                  name.
                 </p>
               </section>
 

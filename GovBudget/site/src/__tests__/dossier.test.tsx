@@ -438,7 +438,23 @@ describe("ProgramDossier", () => {
 
   it("explains a single contradicts_citation removal in plain words", () => {
     expect(noteText(withReasons(1, { contradicts_citation: 1 }))).toBe(
-      "1 claim removed: it stated a figure, year or recipient its sources do not support.",
+      "1 claim removed: it stated a figure, year, recipient or lobbying filer its sources do not support.",
+    );
+  });
+
+  it("names the lobbying filer: the clause is true of a lobbying withhold (2004, 1045)", () => {
+    // R-DEC-DOSSIERLDA: /program/2004/ players[1] ("Additional FedEx
+    // Corporation filings in 2024 …") and /program/1045/ players[5] name FedEx,
+    // which neither page's lobbying mentions list after the #176 rematch —
+    // and FedEx is no recipient of either page's awards.
+    expect(noteText(withReasons(1, { contradicts_citation: 1 }))).toMatch(
+      /\blobbying filer\b/,
+    );
+    expect(
+      noteText(withReasons(2, { contradicts_citation: 1, unresolvable_citation: 1 })),
+    ).toBe(
+      "2 claims removed: one cited a source the site could not resolve; one" +
+        " stated a figure, year, recipient or lobbying filer its sources do not support.",
     );
   });
 
@@ -450,7 +466,7 @@ describe("ProgramDossier", () => {
     const note = noteText(withReasons(1, { contradicts_citation: 1 }));
     expect(note).toMatch(/\byear\b/);
     expect(noteText(withReasons(2, { contradicts_citation: 2 }))).toBe(
-      "2 claims removed: they stated figures, years or recipients their sources do not support.",
+      "2 claims removed: they stated figures, years, recipients or lobbying filers their sources do not support.",
     );
   });
 
@@ -459,7 +475,7 @@ describe("ProgramDossier", () => {
       noteText(withReasons(8, { contradicts_citation: 4, unresolvable_citation: 4 })),
     ).toBe(
       "8 claims removed: 4 cited sources the site could not resolve; 4" +
-        " stated figures, years or recipients their sources do not support.",
+        " stated figures, years, recipients or lobbying filers their sources do not support.",
     );
   });
 
@@ -468,7 +484,7 @@ describe("ProgramDossier", () => {
       noteText(withReasons(5, { contradicts_citation: 4, unresolvable_citation: 1 })),
     ).toBe(
       "5 claims removed: one cited a source the site could not resolve; 4" +
-        " stated figures, years or recipients their sources do not support.",
+        " stated figures, years, recipients or lobbying filers their sources do not support.",
     );
   });
 

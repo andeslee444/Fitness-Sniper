@@ -165,7 +165,7 @@ models:
       - name: lobbying_expense_usd
         description: "Sum of expenses_usd from in-house/self-filer filings. Mutually exclusive with lobbying_income_usd per filing."
       - name: lobbying_total_usd
-        description: "Sum of lobbying_income_usd and lobbying_expense_usd; total lobbying outlay without double-counting (income and expenses are mutually exclusive per LDA filing)."
+        description: "A plain sum of lobbying_income_usd and lobbying_expense_usd, not de-duplicated. NON-ADDITIVE (R-DEC-LDATOTAL, 2026-09-27): income and expenses are mutually exclusive per LDA filing, but one (family_key, filing_year) row can sum outside firms' income AND the self-filer's own expense, and a self-filer's reported expense can include what it paid those firms, so this sum can double-count. Company pages show income and expense apart, with no total."
       - name: family_obligations_usd
         description: "Total federal contract obligations for this family from dim_entities (all years in the award lake). NON-ADDITIVE: this is a family-level constant repeated on every (family_key, filing_year) row — do NOT SUM across rows; use MAX or join dim_entities directly. Shown alongside lobbying for context; no directional relationship implied."
   - name: fct_program_lobbying

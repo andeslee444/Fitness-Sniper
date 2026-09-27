@@ -39,6 +39,12 @@ const INVENTORY: DownloadDataset[] = [
   cited: true,
 }));
 
+/** datasets.json's "citations" entry (final review #10(c)): the citation index card reads it. */
+const CITATIONS_INDEX = {
+  row_count: 9,
+  scope: "One row per source citation, keyed by fact_id, in 1 kind: workbook (a President's Budget workbook cell).",
+};
+
 function districtRow(overrides: Partial<DistrictIndexRow> = {}): DistrictIndexRow {
   return {
     pop_district: "VA-08",
@@ -131,6 +137,7 @@ describe("DownloadCards — manifest-driven cited badges", () => {
       <DownloadCards
         builtAt="2026-07-01T00:00:00Z"
         inventory={INVENTORY}
+        citationsIndex={CITATIONS_INDEX}
         uncitedDatasets={[]}
       />,
     );
@@ -145,6 +152,7 @@ describe("DownloadCards — manifest-driven cited badges", () => {
       <DownloadCards
         builtAt="2026-07-01T00:00:00Z"
         inventory={INVENTORY}
+        citationsIndex={CITATIONS_INDEX}
         uncitedDatasets={["dim_geography", "dim_lobbyists", "fct_budget_to_awards"]}
       />,
     );
@@ -167,6 +175,7 @@ describe("DownloadCards — manifest-driven cited badges", () => {
       <DownloadCards
         builtAt="2026-07-01T00:00:00Z"
         inventory={INVENTORY}
+        citationsIndex={CITATIONS_INDEX}
         pdfCount={204}
         workbookCount={30}
       />,

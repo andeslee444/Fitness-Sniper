@@ -25,12 +25,18 @@ import pytest
 
 from govbudget.dossiers.claim_drift import (
     ClaimDriftIndexError,
+    FilerUniverse,
+    LobbyingIndex,
+    PageLobbying,
     PageRecipients,
     claim_contradictions,
     concentration_fact_index,
     linked_recipient_index,
+    lobbying_mention_index,
+    named_lobbying_filers,
     named_recipients,
     unlinked_recipients,
+    unlisted_lobbying_filers,
 )
 
 HHI_UNITS = "Herfindahl-Hirschman Index"
@@ -800,3 +806,284 @@ def test_fact_column_index_fails_closed(tmp_path):
     con.close()
     with pytest.raises(ClaimDriftIndexError, match="scenario"):
         fact_column_index(narrow)
+
+
+# ---------------------------------------------------------------------------
+# R-DEC-DOSSIERLDA (final-review ruling, controller 2026-09-27): a dossier
+# claim naming a lobbying registrant or client the PAGE's lobbying mentions do
+# not list (after the #176 rematch removed every pe_literal row) is withheld,
+# sub-reason `lobbying_mention`. Same principle as the recipient-list leg: the
+# claim's own citation cannot vouch for a tie the page's records do not carry.
+#
+# What the leg reads:
+#   - a LOBBYING claim: one citing an lda_filing fact, or one whose text uses
+#     lobbying vocabulary ("lobby…", "LDA");
+#   - the filers it NAMES: every Senate LDA client, registrant or (verified)
+#     family name in audit_lda_filings — the whole filing universe, not only
+#     fct_program_lobbying, so a filer whose every mention the rematch removed
+#     is still recognised — found as a proper-noun run of the sentence;
+#   - the filers the page LISTS: its fct_program_lobbying rows' client, family
+#     and (through audit_lda_filings) registrant — the program_details
+#     `mentions` rows; a shared code's member page lists none (R-INT-9).
+# ---------------------------------------------------------------------------
+
+#: (client_name, registrant_name, family_key) — the audit_lda_filings rows the
+#: live claims touch, measured read-only 2026-09-27.
+FILINGS = [
+    ("FEDEX CORPORATION", "FEDEX CORPORATION", "FEDEX"),
+    ("GENERAL DYNAMICS CORP", "GENERAL DYNAMICS CORP", "GENERAL DYNAMICS"),
+    ("GENERAL DYNAMICS CORPORATION", "MELTSNER STRATEGIES, LLC", "GENERAL DYNAMICS"),
+    ("HUNTINGTON INGALLS INDUSTRIES INCORPORATED",
+     "HUNTINGTON INGALLS INDUSTRIES INCORPORATED", "HUNTINGTON INGALLS INDUSTRIES"),
+    ("LOCKHEED MARTIN CORPORATION", "ETHERTON AND ASSOCIATES, INC.", "LOCKHEED MARTIN"),
+    ("BOEING COMPANY", "BOEING COMPANY", "BOEING"),
+    ("RTX CORPORATION AND AFFILIATES", "RTX CORPORATION AND AFFILIATES", "RTX"),
+    ("GENERAL DYNAMICS INFORMATION TECHNOLOGY", "GDIT", "GENERAL DYNAMICS"),
+    ("AEROSPACE", "AEROSPACE", None),
+]
+UNIVERSE = FilerUniverse.from_filings(FILINGS)
+
+#: each page's fct_program_lobbying rows as (client_name, family_key,
+#: registrant_name), read-only 2026-09-27 (program_details mentions)
+MENTIONS_1045 = [
+    ("GENERAL DYNAMICS CORP", "GENERAL DYNAMICS", "GENERAL DYNAMICS CORP"),
+    ("GENERAL DYNAMICS CORPORATION", "GENERAL DYNAMICS", "MELTSNER STRATEGIES, LLC"),
+    ("HUNTINGTON INGALLS INDUSTRIES INCORPORATED", "HUNTINGTON INGALLS INDUSTRIES",
+     "HUNTINGTON INGALLS INDUSTRIES INCORPORATED"),
+]
+MENTIONS_0605 = [("FEDEX CORPORATION", "FEDEX", "FEDEX CORPORATION")]
+MENTIONS_0607210D8Z = [
+    ("BOEING COMPANY", "BOEING", "BOEING COMPANY"),
+    ("RTX CORPORATION AND AFFILIATES", "RTX", "RTX CORPORATION AND AFFILIATES"),
+    ("SCIENCE APPLICATIONS INTERNATIONAL CORPORATION", "SCIENCE APPLICATIONS INTERNATIONAL",
+     "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION"),
+]
+MENTIONS_2001 = [MENTIONS_1045[2]]
+
+#: an lda_filing citation row (citations.json shape: no value, no units)
+LDA_FACT = {"kind": "lda_filing", "units": None, "recorded_value": None}
+#: a filing-level lda_filing row (the filing's reported amount)
+LDA_AMOUNT_FACT = {"kind": "lda_filing", "units": "USD", "recorded_value": "37500"}
+
+#: /program/2004/ (CVN-81) players[1], verbatim; cites 0823104dbb624904 (a
+#: FedEx mention of 821800). The #176 rematch left 2004 no mention at all.
+C_2004_FEDEX = (
+    "Additional FedEx Corporation filings in 2024 referenced legislative"
+    " monitoring of Open Skies Agreements and general trade issues including"
+    " customs modernization."
+)
+#: /program/1045/ players[5], verbatim; cites 019440805ba04bc0 (a FedEx
+#: mention of 0208085JCY). 1045 lists General Dynamics and Huntington Ingalls.
+C_1045_FEDEX = (
+    "A FedEx Corporation filing matched the term '1045' while describing lobbying"
+    " on aviation security and safety issues — a coincidental keyword match"
+    " unrelated to the submarine program (2026 filing)."
+)
+#: /program/1045/ players[0] and players[2], verbatim — filers 1045 lists.
+C_1045_GD = (
+    "Lobbying filings from General Dynamics Corporation reported lobbying for full"
+    " funding of the Virginia Class and Columbia Class submarine programs and"
+    " funding for the submarine industrial base (2026 filing)."
+)
+C_1045_HII = (
+    "Huntington Ingalls Industries Incorporated filings referenced the COLUMBIA"
+    " Class submarine among a list of Navy shipbuilding programs (2026 filing)."
+)
+#: /program/0605/ players[0], verbatim — FedEx IS on 0605's mention list.
+C_0605_FEDEX = (
+    "Lobbying filings referenced this program: FedEx Corporation reported lobbying"
+    " activity in a 2026 filing that mentioned repair and parts legislation,"
+    " including the REPAIR Act."
+)
+#: /program/0607210D8Z/ players[0], verbatim; cites 0010cfea95c30893, a
+#: Lockheed Martin filing (57a5f526…) that mentions no program at all. The
+#: page lists Boeing, RTX and SAIC — never Lockheed Martin, before or after
+#: the rematch. The rule is the page's list, not the rematch's history.
+C_0607210D8Z_LOCKHEED = (
+    "A 2025 Lockheed Martin filing referenced the FY26 National Defense"
+    " Authorization Act and issues relating to acquisition and the industrial base."
+)
+
+
+def _page(mentions):
+    return PageLobbying.from_mentions(mentions, UNIVERSE)
+
+
+class TestLobbyingMention:
+    def test_2004_fedex_key_player_claim_is_withheld(self):
+        page = _page([])  # 2004: no mention after the rematch
+        assert claim_contradictions(C_2004_FEDEX, LDA_FACT, None, None, page) == [
+            "lobbying_mention"]
+        assert unlisted_lobbying_filers(C_2004_FEDEX, LDA_FACT, page) == ["FedEx Corporation"]
+
+    def test_1045_fedex_matched_term_claim_is_withheld(self):
+        page = _page(MENTIONS_1045)
+        assert claim_contradictions(C_1045_FEDEX, LDA_FACT, None, None, page) == [
+            "lobbying_mention"]
+        assert unlisted_lobbying_filers(C_1045_FEDEX, LDA_FACT, page) == ["FedEx Corporation"]
+
+    def test_a_claim_whose_named_filer_still_has_mentions_stays(self):
+        assert claim_contradictions(
+            C_1045_GD, LDA_AMOUNT_FACT, None, None, _page(MENTIONS_1045)) == []
+        assert claim_contradictions(
+            C_1045_HII, LDA_FACT, None, None, _page(MENTIONS_1045)) == []
+        assert claim_contradictions(
+            C_0605_FEDEX, LDA_FACT, None, None, _page(MENTIONS_0605)) == []
+
+    def test_the_same_claim_is_held_to_its_own_page(self):
+        # FedEx is listed on 0605 and not on 1045 or 2004
+        assert claim_contradictions(C_0605_FEDEX, LDA_FACT, None, None,
+                                    _page(MENTIONS_1045)) == ["lobbying_mention"]
+        assert claim_contradictions(C_1045_HII, LDA_FACT, None, None,
+                                    _page(MENTIONS_0605)) == ["lobbying_mention"]
+
+    def test_0607210D8Z_lockheed_claim_names_a_filer_the_page_never_lists(self):
+        page = _page(MENTIONS_0607210D8Z)
+        fact = {"kind": "lda_filing", "units": "USD", "recorded_value": "30000"}
+        assert claim_contradictions(C_0607210D8Z_LOCKHEED, fact, None, None, page) == [
+            "lobbying_mention"]
+        assert unlisted_lobbying_filers(C_0607210D8Z_LOCKHEED, fact, page) == [
+            "Lockheed Martin"]
+
+    def test_the_named_filers_are_read_as_the_sentence_prints_them(self):
+        assert named_lobbying_filers(C_1045_GD, UNIVERSE) == [
+            "General Dynamics Corporation"]
+        assert named_lobbying_filers(C_1045_HII, UNIVERSE) == [
+            "Huntington Ingalls Industries Incorporated"]
+        assert named_lobbying_filers(C_2004_FEDEX, UNIVERSE) == ["FedEx Corporation"]
+        # the longest filer name wins over a name it contains
+        assert named_lobbying_filers(
+            "General Dynamics Information Technology lobbied on it.", UNIVERSE) == [
+            "General Dynamics Information Technology"]
+        # a possessive is the name's
+        assert named_lobbying_filers("FedEx's 2024 lobbying filings.", UNIVERSE) == [
+            "FedEx's"]
+
+    def test_a_registrant_is_listed_through_the_pages_own_filings(self):
+        text = "Meltsner Strategies lobbied on the program for its client."
+        assert claim_contradictions(text, None, None, None, _page(MENTIONS_1045)) == []
+        assert claim_contradictions(text, None, None, None, _page(MENTIONS_2001)) == [
+            "lobbying_mention"]
+
+    def test_names_match_at_the_family_level(self):
+        # GDIT is a GENERAL DYNAMICS client name; 1045 lists that family
+        text = "General Dynamics Information Technology lobbied on the program."
+        assert claim_contradictions(text, None, None, None, _page(MENTIONS_1045)) == []
+        assert claim_contradictions(text, None, None, None, _page(MENTIONS_0605)) == [
+            "lobbying_mention"]
+
+    def test_lobbying_vocabulary_without_an_lda_citation_is_checked(self):
+        text = "Lockheed Martin lobbied on the program in 2025."
+        assert claim_contradictions(text, None, None, None, _page(MENTIONS_1045)) == [
+            "lobbying_mention"]
+
+    def test_a_claim_that_is_not_about_lobbying_is_not_this_legs(self):
+        page = _page([])
+        for text, fact in (
+            ("Lockheed Martin Corporation is a recipient linked to this budget line.",
+             {"kind": "derived", "units": "USD", "recorded_value": "1.0"}),
+            ("The EMD contract was awarded to Boeing on 24 February 2011.", None),
+        ):
+            assert claim_contradictions(text, fact, None, None, page) == [], text
+
+    def test_a_common_word_is_not_a_filer_name(self):
+        page = _page([])
+        for text in (
+            "Lobbying filings addressed the aerospace industrial base.",
+            "Aerospace lobbying rose in 2025 across the industrial base.",
+            "LDA filings referenced the program 12 times.",
+        ):
+            assert named_lobbying_filers(text, UNIVERSE) == [], text
+            assert claim_contradictions(text, LDA_FACT, None, None, page) == [], text
+
+    def test_a_lobbying_claim_naming_no_filer_is_not_checked(self):
+        text = ("Lobbying mentions show only that a filing referenced program-related"
+                " terms, not that any spending decision resulted.")
+        assert claim_contradictions(text, LDA_FACT, None, None, _page([])) == []
+
+    def test_without_a_lobbying_index_the_leg_does_not_run(self):
+        assert claim_contradictions(C_2004_FEDEX, LDA_FACT, None, None, None) == []
+        assert claim_contradictions(C_2004_FEDEX, LDA_FACT) == []
+
+
+def _lobbying_mart(db):
+    """dim_programs + the two relations the lobbying index reads: an ordinary
+    program with mentions, one whose mentions the rematch removed, and a
+    shared code (3010, split by ACCOUNT) whose bare-code rows R-INT-9 withholds
+    from both member pages."""
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, account varchar,"
+                " account_title varchar, org varchar, exhibit_family varchar)")
+    con.executemany("insert into dim_programs values (?,?,?,?,?)", [
+        ("1045", None, None, "N", "procurement"),
+        ("2004", None, None, "N", "procurement"),
+        ("3010", "1611N", "Shipbuilding and Conversion, Navy", "N", "procurement"),
+        ("3010", "1810N", "Other Procurement, Navy", "N", "procurement"),
+    ])
+    con.execute("create table audit_lda_filings (filing_uuid varchar, client_name varchar,"
+                " registrant_name varchar, family_key_guess varchar, match_method varchar)")
+    con.executemany("insert into audit_lda_filings values (?,?,?,?,?)", [
+        ("f-gd", "GENERAL DYNAMICS CORPORATION", "MELTSNER STRATEGIES, LLC",
+         "GENERAL DYNAMICS", "exact_family"),
+        ("f-fedex", "FEDEX CORPORATION", "FEDEX CORPORATION", "FEDEX", "exact_family"),
+        ("f-hii", "HUNTINGTON INGALLS INDUSTRIES INCORPORATED",
+         "HUNTINGTON INGALLS INDUSTRIES INCORPORATED", "HUNTINGTON INGALLS INDUSTRIES",
+         "exact_family"),
+        # an unverified guess is no family link (fct_program_lobbying's rule)
+        ("f-x", "ACME WIDGETS LLC", "ACME WIDGETS LLC", "LOCKHEED MARTIN", "none"),
+    ])
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar,"
+                " client_name varchar, family_key varchar)")
+    con.executemany("insert into fct_program_lobbying values (?,?,?,?)", [
+        ("f-gd", "1045", "GENERAL DYNAMICS CORPORATION", "GENERAL DYNAMICS"),
+        ("f-fedex", "0605", "FEDEX CORPORATION", "FEDEX"),
+        ("f-hii", "3010", "HUNTINGTON INGALLS INDUSTRIES INCORPORATED",
+         "HUNTINGTON INGALLS INDUSTRIES"),
+    ])
+    con.close()
+
+
+def test_lobbying_mention_index_is_page_keyed(tmp_path):
+    db = tmp_path / "l.duckdb"
+    _lobbying_mart(db)
+    index = lobbying_mention_index(db)
+    assert isinstance(index, LobbyingIndex)
+
+    gd = "General Dynamics Corporation lobbied for submarine funding."
+    fedex = "A FedEx Corporation filing matched the term '1045' in its lobbying."
+    assert claim_contradictions(gd, None, None, None, index.for_page("1045")) == []
+    # the registrant of the page's own filing
+    assert unlisted_lobbying_filers(
+        "Meltsner Strategies lobbied on it.", None, index.for_page("1045")) == []
+    # FedEx: in the filing universe, listed on 0605 only
+    assert unlisted_lobbying_filers(fedex, None, index.for_page("1045")) == [
+        "FedEx Corporation"]
+    assert unlisted_lobbying_filers(fedex, None, index.for_page("2004")) == [
+        "FedEx Corporation"]
+    assert unlisted_lobbying_filers(fedex, None, index.for_page("0605")) == []
+    # R-INT-9: a shared code's bare-code rows are on no member page
+    hii = "Huntington Ingalls Industries lobbied on the program."
+    for member in ("3010-SCN", "3010-OPN", "3010"):
+        assert unlisted_lobbying_filers(hii, None, index.for_page(member)) == [
+            "Huntington Ingalls Industries"], member
+    # a 'none' match is no family link: ACME is a filer, LOCKHEED MARTIN not
+    # made one by an unverified guess
+    assert named_lobbying_filers("Acme Widgets lobbied.", index.universe) == [
+        "Acme Widgets"]
+    assert named_lobbying_filers("Lockheed Martin lobbied.", index.universe) == []
+
+
+def test_lobbying_mention_index_unknown_is_none():
+    assert lobbying_mention_index(None) is None
+
+
+def test_lobbying_mention_index_raises_on_an_unreadable_mart(tmp_path):
+    db = tmp_path / "l.duckdb"
+    _lobbying_mart(db)
+    con = duckdb.connect(str(db))
+    con.execute("drop table audit_lda_filings")
+    con.close()
+    with pytest.raises(ClaimDriftIndexError, match="audit_lda_filings"):
+        lobbying_mention_index(db)
+    with pytest.raises(ClaimDriftIndexError):
+        lobbying_mention_index(tmp_path / "absent.duckdb")

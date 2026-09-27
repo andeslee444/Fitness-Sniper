@@ -523,3 +523,175 @@ class TestScopesReadInTheHouseVoice:
         # statement (only /data/ does): "above" was false there.
         assert "corpus statement above" not in scope
         assert "corpus statement on /data/" in scope
+
+
+# ---------------------------------------------------------------------------
+# Final-review finding #10 (2026-09-27): three /downloads/ descriptions did
+# not match the shipped parquet. Each sentence is now pinned to the dbt model
+# (or the shipped file) it describes, so the model and the sentence move
+# together.
+# ---------------------------------------------------------------------------
+
+_MARTS = Path(__file__).resolve().parents[1] / "dbt" / "models" / "marts"
+#: gate 27 leg 23 (site/scripts/gates/copy.mjs): /downloads/ renders every
+#: scope as card prose, and the house style has no serial comma
+_SERIAL_COMMA = re.compile(r"\b\w+, \w+(?: \w+)?, and \w+\b")
+
+
+class TestDescriptionsMatchTheShippedParquet:
+    def test_dim_geography_aggregates_every_award_transaction(self):
+        """dim_geography.sql groups fct_award_transactions (every DoD
+        contract and assistance transaction in the lake) — no crosswalk join.
+        It said "aggregated from the award crosswalk": its totals ($3.87T over
+        39,663,687 transactions, measured 2026-09-27) did not move when
+        published links fell 12,601 -> 3,685."""
+        sql = (_MARTS / "dim_geography.sql").read_text()
+        assert "ref('fct_award_transactions')" in sql
+        assert "fct_budget_to_awards" not in sql and "crosswalk" not in sql
+        scope = _DATASET_SCOPES["dim_geography"]
+        assert "aggregated from the award crosswalk" not in scope
+        assert "every DoD award transaction the site loads that records a pop_state" in scope
+        assert "not only crosswalk-linked awards" in scope
+
+    def test_dim_geography_says_the_state_field_is_not_normalized(self):
+        """pop_state is the raw field: contracts carry the two-letter code
+        (stg_contracts: primary_place_of_performance_state_code), assistance
+        the state NAME (stg_assistance: ..._state_name) — CA and CALIFORNIA
+        are two rows, so "one row per (state × district)" misled a summer."""
+        assert "primary_place_of_performance_state_code as pop_state" in (
+            _MARTS.parent / "staging" / "stg_contracts.sql").read_text()
+        assert "primary_place_of_performance_state_name as pop_state" in (
+            _MARTS.parent / "staging" / "stg_assistance.sql").read_text()
+        scope = _DATASET_SCOPES["dim_geography"]
+        assert "pop_state is not normalized" in scope
+        assert "contracts: two-letter code; assistance: state name" in scope
+
+    def test_fct_influence_says_lobbying_total_usd_is_a_plain_sum(self):
+        """fct_influence.sql ships lobbying_total_usd = income + expense: a
+        plain sum of the two columns, with nothing subtracted or de-duplicated.
+        R-DEC-LDATOTAL (final-review rulings, 2026-09-27): the card says so."""
+        sql = (_MARTS / "fct_influence.sql").read_text()
+        assert re.search(
+            r"coalesce\(f\.lobbying_income_usd, 0\)\s*\+\s*coalesce\(f\.lobbying_expense_usd,"
+            r" 0\)\s+as lobbying_total_usd", sql)
+        scope = _DATASET_SCOPES["fct_influence"]
+        assert "lobbying_total_usd, a plain sum, can double-count" in scope
+
+    def test_fct_influence_keeps_the_non_additivity_caution(self):
+        """R-DEC-LDATOTAL: lobbying income and expense stay NON-ADDITIVE (the
+        company page's reviewed decision: it renders no Total column, on the
+        strength of this card), because a self-filer's reported expense can
+        include what it paid the outside firms whose income is also reported.
+
+        The first final-fix round dropped the caution for "no filing reports
+        both" and a comment that "the sum double-counts nothing". The first half
+        is true of filings (0 of 5,393 in audit_lda_filings report both,
+        measured 2026-09-27) and says nothing about a family-year row, which
+        sums the firms' filings AND the self-filer's own: 147 of the 210 shipped
+        rows carry both income and expense."""
+        scope = _DATASET_SCOPES["fct_influence"]
+        assert "Income and expense are non-additive" in scope
+        assert "a self-filer's expense can include its outside firms' income" in scope
+        # the withdrawn reading: per-filing exclusivity presented as a clean total
+        for withdrawn in ("no filing reports both", "double-counts nothing",
+                          "without double-counting", "lobbying_total_usd is lobbying_income_usd"):
+            assert withdrawn not in scope, withdrawn
+
+    def test_fct_influence_plain_sum_holds_on_the_shipped_parquet(self):
+        """The card's "a plain sum" is checked against the shipped file, every
+        row. Skipped on a fresh checkout (no export)."""
+        pq = (Path(__file__).resolve().parents[1] / "data" / "site" / "data"
+              / "fct_influence.parquet")
+        if not pq.exists():
+            pytest.skip(f"{pq} not present (run export-site)")
+        import duckdb
+
+        con = duckdb.connect()
+        try:
+            n, off = con.execute(
+                "select count(*), count(*) filter (where abs(lobbying_total_usd"
+                " - (coalesce(lobbying_income_usd, 0) + coalesce(lobbying_expense_usd, 0)))"
+                " > 0.005) from read_parquet(?)", [str(pq)]).fetchone()
+        finally:
+            con.close()
+        assert n > 0 and off == 0, (n, off)
+
+    def test_fct_influence_says_the_obligations_column_repeats(self):
+        """family_obligations_usd is the family's all-years total, repeated on
+        every year row (fct_influence.sql: NON-ADDITIVE)."""
+        sql = (_MARTS / "fct_influence.sql").read_text()
+        assert "NON-ADDITIVE: family_obligations_usd" in sql
+        scope = _DATASET_SCOPES["fct_influence"]
+        assert "the family's DoD obligations (repeated on each year row)" in scope
+
+    def test_no_scope_sentence_has_a_serial_comma(self):
+        for name, scope in _DATASET_SCOPES.items():
+            m = _SERIAL_COMMA.search(scope)
+            assert m is None, f"{name}: serial comma (gate 27 leg 23): {m.group(0)!r}"
+
+
+def _citations_parquet(path, kinds):
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        values = ", ".join(f"('f{i}', '{k}')" for i, k in enumerate(kinds))
+        con.execute(f"copy (select * from (values {values}) t(fact_id, kind))"
+                    f" to '{path}' (format parquet)")
+    finally:
+        con.close()
+    return path
+
+
+class TestCitationsIndexEntry:
+    """The citations card said "(jbook_pdf + workbook + lda_filing)"; the file
+    holds 10 kinds (measured 2026-09-27: workbook 42,153, derived 38,993,
+    lda_filing 18,853, jbook_narrative 11,717, jbook_pdf 9,879, usaspending
+    2,560, announcement 1,076, subaward 112, state_file 3, state_soql 3). The
+    exporter now writes the index's own entry into datasets.json, read from
+    the FINAL citations.parquet."""
+
+    def test_every_kind_the_exporter_mints_is_glossed(self):
+        from govbudget.export_site import _CITATION_KIND_GLOSSES
+
+        assert set(_CITATION_KIND_GLOSSES) == {
+            "workbook", "derived", "lda_filing", "jbook_narrative", "jbook_pdf",
+            "usaspending", "announcement", "subaward", "state_file", "state_soql"}
+
+    def test_the_entry_lists_every_kind_the_file_holds_largest_first(self, tmp_path):
+        from govbudget.export_site import _CITATION_KIND_GLOSSES, _citations_index_entry
+
+        pq = _citations_parquet(tmp_path / "citations.parquet",
+                                ["workbook"] * 3 + ["lda_filing"] * 2 + ["announcement"])
+        entry = _citations_index_entry(pq)
+        assert entry["file"] == "citations.parquet" and entry["row_count"] == 6
+        assert entry["kinds"] == [{"kind": "workbook", "row_count": 3},
+                                  {"kind": "lda_filing", "row_count": 2},
+                                  {"kind": "announcement", "row_count": 1}]
+        assert entry["scope"] == (
+            "One row per source citation, keyed by fact_id, in 3 kinds: workbook ("
+            + _CITATION_KIND_GLOSSES["workbook"] + "), lda_filing ("
+            + _CITATION_KIND_GLOSSES["lda_filing"] + ") and announcement ("
+            + _CITATION_KIND_GLOSSES["announcement"] + ").")
+        assert not _SERIAL_COMMA.search(entry["scope"])
+        assert not TestScopesReadInTheHouseVoice.PILE_UP.search(entry["scope"])
+
+    def test_a_kind_with_no_gloss_fails_the_export(self, tmp_path):
+        from govbudget.export_site import _citations_index_entry
+
+        pq = _citations_parquet(tmp_path / "citations.parquet", ["workbook", "mystery"])
+        with pytest.raises(ValueError, match="mystery"):
+            _citations_index_entry(pq)
+
+    def test_the_entry_is_added_to_datasets_json_beside_the_inventory(self, tmp_path):
+        from govbudget.export_site import _add_citations_index_to_manifest
+
+        manifest = tmp_path / "datasets.json"
+        manifest.write_text(json.dumps({"built_at": "t", "datasets": [{"name": "x"}],
+                                        "schema_version": 1}))
+        pq = _citations_parquet(tmp_path / "citations.parquet", ["derived", "derived"])
+        _add_citations_index_to_manifest(manifest, pq)
+        m = json.loads(manifest.read_text())
+        assert m["datasets"] == [{"name": "x"}] and m["schema_version"] == 1
+        assert m["citations"]["row_count"] == 2
+        assert m["citations"]["kinds"] == [{"kind": "derived", "row_count": 2}]

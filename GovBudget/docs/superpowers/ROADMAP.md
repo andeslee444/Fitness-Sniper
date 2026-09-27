@@ -220,7 +220,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   sample's verdict stays in the tier it was tallied in, so the precision
   figure is never flattered. **R-DEC-RECIPIENT**: a link's recipient is the
   UEI with the largest obligation on the award, then the one its cited
-  announcement names, then the lowest UEI, and the loader records which
+  announcement names (read from the announcement's text, in the clause that
+  names the link's own PIID: R-DEC-RECIPIENT-b, the final review's
+  correction, below), then the lowest UEI, and the loader records which
   decided (`recipient_basis`; stored `fpds-ap` rows read `pre_rule` until
   #185). **R-DEC-176b**: the lobbying rematch is deterministic.
   **R-DEC-AMEND**: an LDA amendment replaces its original report (same
@@ -274,23 +276,65 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (R-DEC-PACKET-b) and W912DY22F0191/0603461A, which no ruling named in
   advance, moved from `subaward+lexicon`/medium to
   `announcement+lexicon`/high. N0003915D0008 stays with ViaSat (its
-  announcement names ViaSat). The recipient rule changed 12 links' recipients
-  (6 on obligation, 5 on the UEI tie-break, 1 on the announcement's name),
-  among them N0003910D0032, ViaSat → L3 Technologies, and W56JSR19D0014, BAE
-  Systems → Raytheon Company. SRC INC falls to #201, so /company/src/ leaves
-  the published 200 (R-DEC-135b). Two order-dependent label picks showed
-  between chain G's two exports: the flow-sidecar titles of 0145 and 3215, and
+  announcement names ViaSat). In chain G the recipient rule changed 12
+  links' recipients (6 on obligation, 5 on the UEI tie-break, 1 on the
+  announcement's name), among them W56JSR19D0014, BAE Systems → Raytheon
+  Company. One of the 12 was wrong. Chain G moved N0003910D0032 (0604280N)
+  from ViaSat to L3 Technologies on the UEI tie-break of an all-$0 tie,
+  because the loader compared the tied recipients against the announcement
+  packet's `contractor` field and matched neither. For a multi-award
+  paragraph that field holds only the first awardee, here
+  "Data Link Solutions". The cited announcement (article 605988) names
+  "ViaSat, Inc., Carlsbad, California (N00039-10-D-0032)". The final
+  whole-wave review caught it (finding #1). Ruling R-DEC-RECIPIENT-b makes
+  step (2) read the announcement's text, the clause that names the link's
+  own PIID, so N0003910D0032 returns to ViaSat after the loader re-run
+  (loader, backfill, export-facts, dbt, evals, export, build; the branch
+  ledger's chain-G runbook). The corrected loader's dry run, diffed
+  read-only on 2026-09-26: against the Postgres chain G left, 1 link
+  changes recipient (N0003910D0032, L3 → ViaSat, on the announcement's
+  name); against production's Postgres (chain G's pre-write dump), 11 do (6 on
+  obligation, 4 on the UEI tie-break, 1 on the announcement's name) —
+  chain G's 12 less N0003910D0032, which production already gives to
+  ViaSat. SRC INC falls to #201, so
+  /company/src/ leaves the published 200 (R-DEC-135b). Two order-dependent
+  label picks showed between chain G's two exports: the flow-sidecar titles
+  of 0145 and 3215, and
   the display names of two tied, unpublished families (ASTRA SOLUTIONS, SUPPLY
   CHAIN VISTAS). 0d693bb8 gives both a total order (R-DEC-FLOWTITLE,
   R-DEC-ENTITYTIE) and makes a shared code's flow-sidecar FY2026 total the
-  sum of its members' (R-DEC-FLOWTOTAL). None of that is a chain-G
-  measurement yet: 0d693bb8 came after BUILD 2, and its figures are its
-  commit message's and its fix reports' (on scratch copies of the lake).
+  sum of its members' (R-DEC-FLOWTOTAL). 0d693bb8 came after BUILD 2, so
+  its own figures are its commit message's and its fix reports' (on scratch
+  copies of the lake).
   Those report 13 tied families made stable, none among the published 200,
   and R-DEC-ENTITYTIE-b accepts that 9 tied families of at most $1,000 in
   the downloadable `dim_entities` parquet change their label once, on the
   next export, to one they then keep (the old labels were arbitrary picks).
-  Chain G's resume 3 measures both.
+  Chain G's resume 3 measured both (the chain-G report's final pass): the
+  four flow-sidecar headers match, and `dim_entities` has 9 label moves,
+  all near $0 and none in the top 200.
+
+  The final whole-wave review's other rulings (the branch ledger's
+  final-review rulings). **R-DEC-SAMTEXT**: the SAM line, its citation
+  formula and /methodology/ say whose registration they show, the parent
+  UEI the family's largest member reports on its awards, and no page links
+  the keyless api.sam.gov URL (#160). **R-DEC-PRIMES / PRIMES-b**: "the
+  crosswalk contains R&D performers rather than primes" is withdrawn
+  wherever it rendered (/methodology/, the company pages' empty state and
+  the program pages' award-list label; /coverage/'s company-linkage row is
+  re-worded too); the published crosswalk's largest
+  recipients are prime contractors. **R-DEC-EXPLORER / LDATOTAL**: the
+  /data/ preset "Lobbying totals by family + year" sums the real filing
+  counts and shows income and expense with no total, because lobbying
+  income and expense stay non-additive (a self-filer's expense can include
+  what it paid the outside firms whose income is also reported); the
+  `fct_influence` description on /downloads/ and /data/ keeps that caution
+  and calls `lobbying_total_usd` a plain sum of the two, not a
+  de-duplicated total. **R-DEC-DOSSIERLDA / -b**: a dossier claim naming a
+  lobbying filer its page does not list is withheld (`lobbying_mention`):
+  FedEx on 2004 and 1045, Lockheed Martin on 0607210D8Z, whose Key players
+  section is now empty behind its Correction note; the export then
+  withholds 15 of the 703 claims over 8 dossiers (#188).
 
   The chain's safety. Before its first write, chain G took a full `pg_dump
   -Fc` of `govbudget` (51,186,936 bytes; the table data of all 17 tables
@@ -300,31 +344,34 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   write after them ran a dry run first that matched: the #171 re-grade
   ("re-graded 82 row(s) in place; inserted 0"), the loader (1,189 → 1,188
   links) and the review backfill (2,137 rows). dbt passed 204 of 206 with 2
-  warnings and 0 errors. It stopped three times and has resumed twice: at
+  warnings and 0 errors. It stopped three times and resumed each time: at
   `evals check`, because q019's projection had missed the re-grade, and it
   resumed on a ruling (R-DEC-EVALS-b refreshed q020 only, a5148814); at BUILD
   1's gates, on two uncited dollar figures in the RTX family note (gate 2) and
   a font-mono count of 543 against the frozen 539 (gate 26), and it resumed
   once 0176fa6e fixed both (the branch ledger records no ruling for that
   stop); and at verify-phase5's assembly leg, on the dossier gate's "empty:
-  3050-SCN: players", where it stands: 0d693bb8 fixes the gate
-  (R-DEC-DOSSIER), and nothing has run on it yet. BUILD 2 at 0b16c139 passed
+  3050-SCN: players", which 0d693bb8 fixes (R-DEC-DOSSIER). BUILD 2 at 0b16c139 passed
   27/27; verify-phase3 and verify-phase5b1 passed; verify-phase5's eval scored 46/48,
   citations 43/43. Page weight is tight: /companies/families/ has 222 gzip
   bytes left, /methodology/ 252 and /company/boeing/ 367, and each SAM line
   adds about 450 to its company page.
 
-  Still open: chain G's resume 3. 0d693bb8 changes a dbt model
-  (`dim_entities.sql`) and the exporter, so it re-runs from dbt: dbt, `evals
-  check`, `export-site`, BUILD 1, the restamp, BUILD 2 and the 27-gate
-  verify, the Python gates, verify-phase5 and `deploy.sh --dry-run`. BUILD
-  2's 27/27 is at 0b16c139, and the deploy needs the build's `git_head` to
-  equal HEAD. Some exported files move again: the shared codes' flow-sidecar
-  headers (0145, 3010, 3215 and 2292 per 0d693bb8's commit) and 9 labels in
-  the downloadable `dim_entities` parquet. Then the wave's review, deploy and
+  Chain G's resume 3 re-ran from dbt at f70a6af5 and passed (the branch
+  ledger's chain-G report, final pass): dbt 0 errors, `evals check` 43 ok,
+  12 claims withheld over 6 dossiers as projected, BUILD 1 and BUILD 2
+  27/27, the Python gates, verify-phase5 (eval 47/48, citations 43/43) and
+  `deploy.sh --dry-run` (provenance OK); no real deploy ran. The final
+  whole-wave review then found the defects its rulings above fix. Still
+  open: their re-run, in the chain-G runbook's order — loader, backfill,
+  export-facts, dbt, `evals check`, export, BUILD 1 / restamp / BUILD 2
+  with the 27-gate verify, the Python gates, verify-phase5 and `deploy.sh
+  --dry-run` (entity-graph and the influence restamp and rematch are not
+  re-run: nothing they read changed); then the wave's deploy, whose first
+  step now copies the live R2 `data/` and `citations/` aside (#177), and
   push; regenerating the dossier claims the export withholds for
   contradicting their facts (#188);
-  #141, planned as its own phase; #178–#188; and the SAM extract's other 197
+  #141, planned as its own phase; #178–#190; and the SAM extract's other 197
   families, the owner's daily run at 10 requests a day (#10).
 
 - **2026-09-25: Integration of the live branch.** Production
@@ -3361,8 +3408,27 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   parent it is the parent's. Renders on 0 pages (`companies_with_sam` = 0 on
   run 4). The three twins are bound by `site/src/__tests__/sam-registration.test.tsx`
   and must change in one commit across B's and A's files. Source: Task 26
-  final review (minor 12), deferred by B. Effort: hours. **Status:** open
+  final review (minor 12), deferred by B. Effort: hours. **Status (2026-09-25):** open
   (2026-09-25).
+  **Status:** CLOSED 2026-09-26 on branch `decisions-2026-09-25`, not yet
+  exported or deployed — ruling R-DEC-SAMTEXT (the final whole-wave
+  review). The clause rendered by then: chain G's build (not deployed)
+  showed the SAM line on /company/boeing/ and /company/lockheed-martin/,
+  whose records (NU2UC8MX6NK1, ZFN2JJXBLZT3) are the parent UEIs the
+  largest members (JJM4FRDZJDX1, G4KDGE4JFFK7) report, not those members'
+  own registrations. The line, /methodology/, `docs/methodology.md` §4 and
+  the SAM citation formula now state the rule the join implements
+  (`dim_entities.dominant_registration_uei`,
+  `dbt/models/marts/dim_entities.sql`), from one string,
+  `_SAM_REGISTRATION_RULE` in `src/govbudget/export_site.py`: "the parent
+  UEI that the family's largest member by obligations reports on its awards
+  (the parent on the most of its dollars; the member's own UEI where that
+  parent has none; on a member tie, the highest such UEI)". Recomputed
+  read-only from the award lake, that rule equals the column for all
+  116,442 families. `site/src/__tests__/sam-registration.test.tsx` binds
+  the four copies to the constant, and a SAM citation's inputs are the
+  public sam.gov entity page only (the keyless api.sam.gov URL returned 404
+  to a reader and no longer renders as a link).
 
 - **#161 "No contract award is linked to this line" can be false on a
   shared code.** The lobbying tier's sentence
@@ -3921,8 +3987,57 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   data when a schema changes, or ship a temporary alias column. Source:
   `scripts/launch/deploy.sh`, `scripts/launch/upload_r2.sh`, the final
   integration review (finding #17). Effort: hours.
-  **Status:** open (2026-09-25; the window applies to this integration's
+
+  **Status (2026-09-25):** open (2026-09-25; the window applies to this integration's
   own deploy).
+  **The decisions deploy (final whole-wave review, findings #12, #14 and
+  #15; ruling R-DEC-DEPLOYSAFE, the branch ledger's final-review rulings).**
+  This deploy removes and retypes no column. The review downloaded each
+  live R2 object read-only (their ETags matched the live objects) and
+  compared it with chain G's export at f70a6af5. Of the 17 fixed-name
+  objects (the 16 `data/*.parquet` and `citations/citations.parquet`), 3
+  are unchanged (`budget_lines`, `jbook_details`, `jbook_narratives`) and
+  14 are replaced. Only two gain columns: `fct_budget_to_awards` gains
+  `demotion_reason` (12,601 → 3,685 rows), and `fct_program_concentration`
+  gains `scope`, `member_programs`,
+  `member_keys_with_links` and `links_outside_member_keys` (536 rows
+  before and after). Re-checked read-only 2026-09-26 on the review's
+  copies of the live objects: no file loses or retypes a column. The review
+  also ran all 16 of production's Explorer presets (0587f90f) against both
+  the live and the new files without an error, so the Binder-error window
+  does not recur. What remains is
+  a mismatch window. From the R2 step until Vercel serves the new pages,
+  production's /downloads/ describes the old files ("12,601 rows", "The
+  snapshot includes 135,737 source citations"). After a Vercel rollback
+  that does not restore R2, that mismatch lasts indefinitely. The
+  final-review rulings re-export `data/site/` before the deploy
+  (R-DEC-RECIPIENT-b re-runs the loader chain), so the comparison is
+  repeated on that export. Copy the live prefixes aside first:
+  `deploy.sh` runs `scripts/launch/backup_r2_data.sh --live --tag=<tag>`
+  before its R2 upload, stops with nothing uploaded or deployed if the copy
+  fails or refuses, and prints the tag (R-DEC-DEPLOYSAFE-b: the review's
+  check round found that the copy, a manual step until then, could be
+  skipped with every check green). Without `--live` the script is a dry
+  run, and `deploy.sh --dry-run` runs that dry run. It copies `data/`
+  and `citations/` server-side to `rollback/<tag>/` in the bucket and
+  refuses a destination that already holds objects. It then checks each
+  copy with `rclone check --one-way` and prints the restore commands.
+  Written 2026-09-26; tested only against an `rclone` stub
+  (`tests/test_launch_deploy_landing.py`,
+  `tests/test_launch_deploy_backup.py`), never yet run against the live
+  bucket. `scripts/launch/verify_live_assets.mjs`,
+  `deploy.sh`'s last step, passed 50/50 against the previous production
+  (finding #14). It now fails unless every fixed-name object under `data/`
+  and `citations/` is served with the local file's sha256, and the site's
+  `/.build-meta.json` names HEAD and site/out's build stamp. That makes the
+  last step tell whether the R2 sync and the Vercel step landed. The
+  window's own fix (versioned keys, pages before data on a schema change,
+  or an alias column) is not built.
+  **Status:** open (2026-09-26: for the decisions deploy no column is removed
+  or retyped; `deploy.sh` runs `backup_r2_data.sh --live` before its R2
+  step and stops if the copy fails (not yet run against the live bucket);
+  `verify_live_assets.mjs` detects whether the deploy landed; the window's
+  own fix is not built).
 
 - **#178 The lake keeps no LDA posting date, so a quarter's latest amendment
   cannot be named.** The decisions wave's amendment rule (a controller
@@ -4286,7 +4401,7 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   **Status:** PARTIAL 2026-09-26 on branch `decisions-2026-09-25`, not yet
   exported or deployed — ruling R-DEC-DOSSIERDRIFT. export-site withholds
   (drops, never rewrites) a dossier claim that contradicts its citation or
-  its page, under the sidecar reason `contradicts_citation`, with five
+  its page, under the sidecar reason `contradicts_citation`, with six
   sub-reasons: a stated dollar or HHI figure outside the sentence's own
   rounding of the cited fact's current value, for any fact kind (a derived
   `recorded_value`, a workbook cell's `amount_thousands` in its own units, a
@@ -4299,7 +4414,12 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   recipient family" that is not the family the cited concentration row
   records; and a recipient list ("recipients … include", "awards went to",
   "is a recipient linked to") naming a recipient that is not among the
-  page's linked-award recipient families. It logs each by name and keeps it
+  page's linked-award recipient families; and (R-DEC-DOSSIERLDA, the final
+  whole-wave review) a lobbying claim, one that cites an `lda_filing` fact
+  or says "lobby…" or "LDA", naming a Senate LDA client, registrant or
+  family that the page's own lobbying mentions do not list
+  (`lobbying_mention`; the sidecar names each in
+  `unlisted_lobbying_filers`). It logs each by name and keeps it
   in the sidecar's `withheld_claims`, counted in `dropped_claims`. The
   dossier gate's `claims_agree_with_citations` check fails any such claim
   still published (`src/govbudget/dossiers/claim_drift.py`, one definition
@@ -4317,7 +4437,16 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   0603467E 4 (players), 0603941D8Z 1 (why_it_matters), 0604250D8Z 1
   (why_it_matters), 0607210D8Z 1 (what_it_is) and 1203154SF 1 (what_it_is).
   By sub-reason (a claim can have more than one): stated figure 9, top
-  family 2, band 2, recipient list 2, fiscal year 1. Four of the 12 never
+  family 2, band 2, recipient list 2, fiscal year 1. The final fix's
+  lobbying leg, measured read-only over all 50 sidecars (21 lobbying claims
+  among the 692 published, every one citing a fact), withholds 3 more:
+  2004's and 1045's FedEx Corporation claims (the #176 rematch removed
+  FedEx's mentions of both programs) and 0607210D8Z's "A 2025 Lockheed
+  Martin filing referenced the FY26 National Defense Authorization Act…",
+  whose page lists only Boeing, RTX and SAIC, before and after the rematch,
+  and whose cited filing (57a5f526) mentions no program (accepted under
+  R-DEC-DOSSIERLDA-b). That makes 15 of the 703 claims over 8 dossiers,
+  lobbying filer 3. Four of the 12 never
   matched their citations rather than drifted: 0603941D8Z's Project
   091/098/112 figures cited to FY2024 actuals (415,751 thousand),
   0604250D8Z's PDI sub-totals cited to the program's FY2026 total cell
@@ -4331,9 +4460,10 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   its 8 names (Booz Allen Hamilton, The Johns Hopkins University Applied
   Physics Laboratory, Leidos, Lockheed Martin Corporation, SRI
   International, the Massachusetts Institute of Technology) are not among
-  the page's 17 links. Two players sections empty, 0602025E's and
-  0603467E's: each page renders no "Key players" heading and passes the gate
-  only on the disclosed-drop exception. The note's clause for an
+  the page's 17 links. Three players sections are empty, 0602025E's,
+  0603467E's and (R-DEC-DOSSIERLDA-b) 0607210D8Z's: each page renders no
+  "Key players" heading and passes the gate only on the disclosed-drop
+  exception. The note's clause for an
   unresolvable citation is now worded for that check, not for lobbying — it
   read "cited lobbying mentions that did not meet the evidence standard",
   false on /program/1000/, /program/ATA000/ and /program/B02100/ (J-book
@@ -4341,9 +4471,15 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   on 0603467E's dropped concentration claim. Round 4 names the year in the
   withheld claims' clause: it read "stated a figure or recipient its
   sources do not support", false on 1203154SF, whose figure agrees with its
-  cite and is withheld for its fiscal year alone; it now reads "stated a
+  cite and is withheld for its fiscal year alone; round 4 made it "stated a
   figure, year or recipient its sources do not support" ("stated figures,
-  years or recipients their sources do not support" for several). Round 4
+  years or recipients their sources do not support" for several). The final
+  fix adds the lobbying filer, because FedEx is not a recipient of either
+  page's awards: "stated a figure, year, recipient or lobbying filer its
+  sources do not support" ("stated figures, years, recipients or lobbying
+  filers their sources do not support" for several), in
+  `site/src/components/program-dossier.tsx` and `gate.py`'s
+  `CORRECTION_CLAUSES`. Round 4
   also fixes the #56 stale_value check (`_claim_value_still_matches`),
   which read only a sentence's "$X thousand" figures: /program/2122/
   why_it_matters[6], "DDG-51 FY2024 actuals came in about $1.9 billion above
@@ -4359,25 +4495,94 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   2122's verdict changes: stale_value drops go from 1 to 0, all drops from
   43 over 12 dossiers to 42 over 11, published claims from 691 to 692, and
   the restored claim passes every contradicts_citation leg. After the
-  re-export and rebuild the notes read: "8 claims removed: 4 cited sources
-  the site could not resolve; 4 stated figures, years or recipients their
-  sources do not support." (0602025E), "5 claims removed: one cited a
-  source the site could not resolve; 4 stated figures, years or recipients
-  their sources do not support." (0603467E), "1 claim removed: it stated a
-  figure, year or recipient its sources do not support." (0603941D8Z and
-  1203154SF), "7 claims removed: 6 cited sources the site could not
-  resolve; one stated a figure, year or recipient its sources do not
-  support." (0604250D8Z), "6 claims removed: 5 cited sources the site could
-  not resolve; one stated a figure, year or recipient its sources do not
-  support." (0607210D8Z), "6 claims removed: they cited sources the site
-  could not resolve." (0604874C), "5 claims removed: they cited sources the
-  site could not resolve." (1000) and "1 claim removed: it cited a source
-  the site could not resolve." (2004, ATA000, B02100); 2122 carries no note.
-  On the round-4 replayed sidecars the gate passes once those notes are
-  rendered (checked read-only on chain G's BUILD 2 pages with only the
-  notes replaced) and fails on BUILD 2 as built, whose notes on 0602025E
-  and 0603467E count 4 and 1. Still owed: regenerating the withheld claims
+  re-export and rebuild with the final fix, the notes read (counts from its
+  read-only simulation of the exporter): "8 claims removed: 4 cited sources
+  the site could not resolve; 4 stated figures, years, recipients or
+  lobbying filers their sources do not support." (0602025E), "5 claims
+  removed: one cited a source the site could not resolve; 4 stated figures,
+  years, recipients or lobbying filers their sources do not support."
+  (0603467E), "1 claim removed: it stated a figure, year, recipient or
+  lobbying filer its sources do not support." (0603941D8Z, 1203154SF and,
+  new, 1045), "7 claims removed: 6 cited sources the site could not
+  resolve; one stated a figure, year, recipient or lobbying filer its
+  sources do not support." (0604250D8Z), "7 claims removed: 5 cited sources
+  the site could not resolve; 2 stated figures, years, recipients or
+  lobbying filers their sources do not support." (0607210D8Z; 6 before the
+  lobbying leg), "2 claims removed: one cited a source the site could not
+  resolve; one stated a figure, year, recipient or lobbying filer its
+  sources do not support." (2004; 1 before), "6 claims removed: they cited
+  sources the site could not resolve." (0604874C), "5 claims removed: they
+  cited sources the site could not resolve." (1000) and "1 claim removed:
+  it cited a source the site could not resolve." (ATA000, B02100); 2122
+  carries no note. On the round-4 replayed sidecars the gate passed once
+  those round's notes were rendered (checked read-only on chain G's BUILD 2
+  pages with only the notes replaced) and failed on BUILD 2 as built, whose
+  notes on 0602025E and 0603467E count 4 and 1. The final fix's simulation
+  reproduces chain G's 50 sidecars exactly without the lobbying leg; with
+  it, the gate's `claims_agree_with_citations` passes, and run against
+  chain G's sidecars it fails on exactly the 3 lobbying claims. The notes
+  are checked on the rebuild. Still owed: regenerating the withheld claims
   (a paid batch).
+
+- **#189 The /flow/ bridge counts a shared code's members that have no
+  links as crosswalked.** `src/govbudget/flow_chart.py` keys the budget
+  river's bridge by the bare budget-line code. `xwalk_conf` groups
+  `fct_budget_to_awards` by `pe_bli` alone, `_build_budget_river` adds
+  every leaf of a code into one value, and every leaf of a code with any
+  link flows to "Crosswalked to contractors", whatever its account. So on a
+  code two programs share, the member with no links counts as crosswalked.
+  Measured read-only 2026-09-26 on the lake and chain G's export
+  (`data/site/json/flow_chart.json`), in thousands of dollars:
+  - 3050: all 50 links are on account 1810N (3050-OPN, Ship Communications
+    Automation, 162,075), yet the bridge lists 3050 at 2,126,016, which
+    includes Medium Landing Ship (1611N, 1,963,941), a member with no link.
+  - 2292: its one link is on 1507N (35,297); 1109N's 164,641 has none.
+  - 4217: its one link is on 1810N (4,484); 1507N's Gun Mount Mods (83,969)
+    has none.
+
+  That puts 2,212,551 (about $2.21B) of request with no link inside the
+  crosswalked total of 157,729,620. /flow/ reads "59.1% of the FY2026
+  request is not yet crosswalked"; without the unlinked members it would
+  read 59.6%. The export's `families` list for 3050 also names the linked
+  member's contractors against the whole code, though /flow/ does not
+  render that list. The defect predates the decisions wave and is identical
+  in production (the final whole-wave review, finding #11). #130's ruling
+  keeps the LINKS rule on pages and cards, and /downloads/ already says
+  "3050 is 3050-OPN's, 4217 is 4217-OPN's"; /flow/ has no such label. Fix:
+  key the bridge by account and code (the member key the links carry) in
+  `flow_chart.py`. Make the same change in gate 22's recompute
+  (`site/scripts/gates/flowdown.mjs`), whose bridge leg sums the same bare
+  codes and so passes. Then re-export: /flow/'s sentence follows the
+  bridge totals, and `site/scripts/gates/coverage.mjs` binds that sentence
+  to them. Source: `src/govbudget/flow_chart.py`,
+  `data/site/json/flow_chart.json`, the final whole-wave review (finding
+  #11). Effort: hours.
+  **Status:** open (2026-09-26).
+
+- **#190 /methodology/ and /companies/families/ have almost no page-weight
+  headroom left, so their next growth needs a trim.** Gate 1
+  (`site/scripts/gates/build.mjs`, `PAGE_WEIGHT_BUDGET`) holds each page
+  under a reviewed raw and gzip ceiling, and R-INT-1 forbids raising one.
+  The decisions wave kept every ceiling but used most of the headroom on
+  two pages. Measured read-only 2026-09-26 on chain G's final build (the
+  site/out of f70a6af5) with the gate's own method (zlib level 9):
+  - /methodology/: 160,836 raw / 45,149 gzip against 162,000 / 45,400,
+    which leaves 1,164 raw and 251 gzip bytes. The final whole-wave review
+    measured production (0587f90f) at 5,348 and 1,588 left.
+  - /companies/families/: 203,889 / 27,676 against 239,700 / 27,900, which
+    leaves 224 gzip bytes. Production had 612.
+
+  Both build.mjs entries already say the next growth needs a trim, not a
+  raise. The final-review rulings change /methodology/'s text
+  (R-DEC-SAMTEXT, R-DEC-PRIMES), so its next build is the first test. One
+  more paragraph there, or the families table's next data-driven growth,
+  fails gate 1. Fix: trim before adding to either page, never raise a
+  ceiling (R-INT-1). On /methodology/ that means cutting or splitting prose
+  into section pages; on /companies/families/, slimmer per-row markup.
+  Source: `site/scripts/gates/build.mjs` (the /methodology/ and
+  /companies/families/ entries), the final whole-wave review (finding
+  #13). Effort: hours.
+  **Status:** open (2026-09-26).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

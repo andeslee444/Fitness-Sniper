@@ -2174,10 +2174,14 @@ class TestGateClaimsAgreeWithCitations:
         path.write_text(json.dumps(doc))
 
     @staticmethod
-    def _conc_duckdb(tmp_path, family: str, hhi: float, links=()):
-        """The marts both claim-drift indexes read (round 2 fails closed on
-        a supplied mart missing any of them): PE's concentration row, and
-        PE's linked awards as (recipient_name, uei, family_key)."""
+    def _conc_duckdb(tmp_path, family: str, hhi: float, links=(), filings=(),
+                     mentions=()):
+        """The marts the claim-drift indexes read (round 2 fails closed on a
+        supplied mart missing any of them): PE's concentration row, PE's
+        linked awards as (recipient_name, uei, family_key), and — for the
+        lobbying index (R-DEC-DOSSIERLDA) — every LDA filing as (filing_uuid,
+        client_name, registrant_name, family_key) and PE's mention rows as
+        filing_uuids."""
         db = tmp_path / "conc.duckdb"
         con = duckdb.connect(str(db))
         con.execute("create table fct_program_concentration (pe_bli varchar,"
@@ -2200,6 +2204,20 @@ class TestGateClaimsAgreeWithCitations:
             con.execute("insert into fct_budget_to_awards values (?,?,?,?,?,?)",
                         [PE, None, "DARPA", f"HR{i}", name, uei])
             con.execute("insert into entity_xwalk values (?,?,?,?)", [uei, name, None, fam])
+        con.execute("create table audit_lda_filings (filing_uuid varchar,"
+                    " client_name varchar, registrant_name varchar,"
+                    " family_key_guess varchar, match_method varchar)")
+        con.execute("create table fct_program_lobbying (filing_uuid varchar,"
+                    " pe_bli varchar, client_name varchar, family_key varchar)")
+        by_uuid = {}
+        for uuid, client, registrant, fam in filings:
+            by_uuid[uuid] = (client, fam)
+            con.execute("insert into audit_lda_filings values (?,?,?,?,?)",
+                        [uuid, client, registrant, fam, "exact_family"])
+        for uuid in mentions:
+            client, fam = by_uuid[uuid]
+            con.execute("insert into fct_program_lobbying values (?,?,?,?)",
+                        [uuid, PE, client, fam])
         con.close()
         return db
 
@@ -2297,6 +2315,7 @@ class TestGateClaimsAgreeWithCitations:
         from govbudget.dossiers.claim_drift import (
             concentration_fact_index,
             linked_recipient_index,
+            lobbying_mention_index,
         )
         summary = _emit_dossier_sidecars(
             json_dir=gate_fixture.dossier_dir.parent,
@@ -2308,6 +2327,7 @@ class TestGateClaimsAgreeWithCitations:
             citation_facts=cits,
             concentration_facts=concentration_fact_index(db),
             linked_recipients=linked_recipient_index(db),
+            lobbying_mentions=lobbying_mention_index(db),
         )
         assert summary["withheld_by_pe"] == {PE: 2}
 
@@ -2330,8 +2350,8 @@ class TestGateClaimsAgreeWithCitations:
         assert f"{PE}: players" in res["checks"]["required_sections"]["empty"]
         page.write_text(
             '<p class="text-sm" data-dossier-dropped-claims="2">2<!-- --> claim<!-- -->s'
-            "<!-- --> removed:<!-- --> <!-- -->they stated figures, years or recipients their"
-            " sources do not support<!-- -->.</p>")
+            "<!-- --> removed:<!-- --> <!-- -->they stated figures, years, recipients or"
+            " lobbying filers their sources do not support<!-- -->.</p>")
         res = _run_gate(gate_fixture, duckdb_path=db, built_site_dir=built)
         assert res["checks"]["required_sections"]["ok"], res["checks"]["required_sections"]
         assert res["checks"]["claims_agree_with_citations"]["ok"]
@@ -2467,20 +2487,22 @@ class TestGateDriftRound2:
                                             " could not resolve.")
         req = _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]
         assert not req["ok"] and f"{PE2}: players" in req["empty"]
-        assert any("stated figures, years or recipients their sources do not support" in u
+        assert any("stated figures, years, recipients or lobbying filers their sources do"
+                   " not support" in u
                    for u in req["undisclosed"])
 
     def test_a_note_with_the_wrong_count_does_not_disclose(self, gate_fixture, site_fixture):
         self._emptied(gate_fixture, 2, {"contradicts_citation": 2})
-        built = self._page(site_fixture, 3, "2 claims removed: they stated figures, years or"
-                                            " recipients their sources do not support.")
+        built = self._page(site_fixture, 3, "2 claims removed: they stated figures, years,"
+                                            " recipients or lobbying filers their sources"
+                                            " do not support.")
         req = _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]
         assert not req["ok"]
 
     def test_the_true_note_discloses(self, gate_fixture, site_fixture):
         self._emptied(gate_fixture, 1, {"contradicts_citation": 1})
         built = self._page(site_fixture, 1, "1<!-- --> claim<!-- --> removed:<!-- --> <!-- -->"
-                                            "it stated a figure, year or recipient its sources do not"
+                                            "it stated a figure, year, recipient or lobbying filer its sources do not"
                                             " support<!-- -->.")
         res = _run_gate(gate_fixture, built_site_dir=built)
         assert res["checks"]["required_sections"]["ok"], res["checks"]["required_sections"]
@@ -2492,7 +2514,7 @@ class TestGateDriftRound2:
         built = self._page(site_fixture, 8, half)
         assert not _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
         full = ("8 claims removed: 4 cited sources the site could not resolve; 4 stated"
-                " figures, years or recipients their sources do not support.")
+                " figures, years, recipients or lobbying filers their sources do not support.")
         built = self._page(site_fixture, 8, full)
         assert _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
 
@@ -2513,11 +2535,93 @@ class TestGateDriftRound2:
         (gate_fixture.dossier_dir / f"{slug}.json").write_text(src.read_text())
         src.unlink()
         self._emptied(gate_fixture, 1, {"contradicts_citation": 1}, pe=slug)
-        note = "1 claim removed: it stated a figure, year or recipient its sources do not support."
+        note = ("1 claim removed: it stated a figure, year, recipient or lobbying filer its"
+                " sources do not support.")
         built = self._page(site_fixture, 1, note, page=PE2)   # the stub: wrong page
         assert not _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
         built = self._page(site_fixture, 1, note, page=slug)
         assert _run_gate(gate_fixture, built_site_dir=built)["checks"]["required_sections"]["ok"]
+
+
+# ---------------------------------------------------------------------------
+# R-DEC-DOSSIERLDA (final-review ruling, 2026-09-27) in the gate: a published
+# lobbying claim naming an LDA filer the page's lobbying mentions do not list
+# fails claims_agree_with_citations — the same claim_drift leg the exporter
+# withholds on (/program/2004/'s and /program/1045/'s FedEx claims after the
+# #176 rematch). The lobbying index reads fct_program_lobbying and
+# audit_lda_filings from the mart and fails closed without them.
+# ---------------------------------------------------------------------------
+
+_LDA_1045_FEDEX = (
+    "A FedEx Corporation filing matched the term '1045' while describing lobbying"
+    " on aviation security and safety issues — a coincidental keyword match"
+    " unrelated to the submarine program (2026 filing)."
+)
+_LDA_FILINGS = [
+    ("f-fedex", "FEDEX CORPORATION", "FEDEX CORPORATION", "FEDEX"),
+    ("f-gd", "GENERAL DYNAMICS CORPORATION", "MELTSNER STRATEGIES, LLC",
+     "GENERAL DYNAMICS"),
+]
+
+
+class TestGateLobbyingMention:
+    _cite = staticmethod(TestGateClaimsAgreeWithCitations._cite)
+    _set_players = staticmethod(TestGateClaimsAgreeWithCitations._set_players)
+    _conc_duckdb = staticmethod(TestGateClaimsAgreeWithCitations._conc_duckdb)
+
+    def _lobbying_claim(self, fx, text):
+        self._cite(fx, {"ldafact": {"kind": "lda_filing", "units": None,
+                                    "recorded_value": None}})
+        self._set_players(fx, PE, [{"text": text, "citation": {"fact_id": "ldafact"}}])
+
+    def test_a_claim_naming_a_filer_the_page_does_not_list_fails(self, gate_fixture, tmp_path):
+        self._lobbying_claim(gate_fixture, _LDA_1045_FEDEX)
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486,
+                               filings=_LDA_FILINGS, mentions=["f-gd"])
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        check = res["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and not res["ok"]
+        assert check["lobbying_check"] is True
+        [bad] = check["contradictions"]
+        assert bad["reasons"] == ["lobbying_mention"] and bad["kind"] == "lda_filing"
+        assert bad["unlisted_lobbying_filers"] == ["FedEx Corporation"]
+        assert "unlisted lobbying filers: FedEx Corporation" in check["note"]
+
+    def test_a_page_with_no_mention_left_fails_every_named_filer(self, gate_fixture, tmp_path):
+        """/program/2004/ after the #176 rematch: no mention at all."""
+        self._lobbying_claim(
+            gate_fixture,
+            "Additional FedEx Corporation filings in 2024 referenced legislative"
+            " monitoring of Open Skies Agreements and general trade issues including"
+            " customs modernization.")
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486, filings=_LDA_FILINGS)
+        check = _run_gate(gate_fixture, duckdb_path=db)["checks"]["claims_agree_with_citations"]
+        assert [c["reasons"] for c in check["contradictions"]] == [["lobbying_mention"]]
+
+    def test_a_claim_whose_filer_the_page_lists_passes(self, gate_fixture, tmp_path):
+        self._lobbying_claim(
+            gate_fixture,
+            "Lobbying filings from General Dynamics Corporation reported lobbying for"
+            " full funding of the Virginia Class and Columbia Class submarine programs.")
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486,
+                               filings=_LDA_FILINGS, mentions=["f-gd"])
+        res = _run_gate(gate_fixture, duckdb_path=db)
+        assert res["checks"]["claims_agree_with_citations"]["ok"], res["checks"]
+
+    def test_a_mart_without_the_lobbying_relations_is_an_error(self, gate_fixture, tmp_path):
+        db = self._conc_duckdb(tmp_path, "GENERAL DYNAMICS", 4831.486)
+        con = duckdb.connect(str(db))
+        con.execute("drop table audit_lda_filings")
+        con.close()
+        check = _run_gate(gate_fixture, duckdb_path=db)["checks"]["claims_agree_with_citations"]
+        assert not check["ok"] and "audit_lda_filings" in check["error"]
+        assert check["lobbying_check"] is False
+
+    def test_without_the_mart_the_lobbying_leg_is_reported_not_run(self, gate_fixture):
+        self._lobbying_claim(gate_fixture, _LDA_1045_FEDEX)
+        check = _run_gate(gate_fixture)["checks"]["claims_agree_with_citations"]
+        assert check["ok"] and check["lobbying_check"] is False
+        assert "lobbying-mention" in check["note"] and "not run" in check["note"]
 
 
 class TestCorrectionNoteMirror:
@@ -2546,11 +2650,12 @@ class TestCorrectionNoteMirror:
 
     @pytest.mark.parametrize("dropped,reasons,expected", [
         (3, None, "3 claims removed: they cited sources the site could not resolve."),
-        (1, {"contradicts_citation": 1}, "1 claim removed: it stated a figure, year or recipient"
-                                         " its sources do not support."),
+        (1, {"contradicts_citation": 1}, "1 claim removed: it stated a figure, year, recipient"
+                                         " or lobbying filer its sources do not"
+                                         " support."),
         (4, {"unresolvable_citation": 1, "contradicts_citation": 3},
          "4 claims removed: one cited a source the site could not resolve; 3 stated"
-         " figures, years or recipients their sources do not support."),
+         " figures, years, recipients or lobbying filers their sources do not support."),
         (7, {"unresolvable_citation": 6, "stale_value": 1},
          "7 claims removed: 6 cited sources the site could not resolve; one stated a"
          " figure a later correction changed."),

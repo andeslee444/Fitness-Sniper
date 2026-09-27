@@ -502,10 +502,14 @@ describe("methodology ↔ docs — the decisions wave's passages", () => {
     "budget-line label; none of the 1,631 bare-number matches counted " +
     "before this rule had one), a curated alias appears, or at least two " +
     "distinct, non-generic words of one program's title co-occur in the same filing";
+  // Final review finding #5: scoped to the yearly dollars (R-DEC-AMEND is
+  // fct_influence's rule), and the mention count's own behaviour stated.
   const AMENDMENT_RULE =
-    "An amendment replaces its original instead of adding to it (a correction " +
-    "decided 2026-09-26); where a quarter's amendments disagree, the smallest " +
-    "counts (our copy keeps no posting date)";
+    "In those yearly figures an amendment replaces its original instead of " +
+    "adding to it (a correction decided 2026-09-26); where a quarter's " +
+    "amendments disagree, the smallest counts (our copy keeps no posting date).";
+  const AMENDMENT_MENTIONS =
+    "(our copy keeps no posting date). Program mentions still count superseded reports.";
 
   it("the Medium lead is one sentence on both (#107(b): no ranking of the kinds)", () => {
     expect(page4()).toContain(MEDIUM);
@@ -528,6 +532,9 @@ describe("methodology ↔ docs — the decisions wave's passages", () => {
     for (const t of [page2(), doc2()]) {
       expect(t).toContain(MENTION_RULE);
       expect(t).toContain(AMENDMENT_RULE);
+      expect(t).toContain(AMENDMENT_MENTIONS);
+      // the unscoped form, as a sentence of its own (finding #5)
+      expect(t).not.toMatch(/(?:^|[.;] )An amendment replaces its original/);
       // a present-tense year bound (the docs may quote the retired wording)
       expect(t).not.toMatch(/contains filings for 2025 and prior years/);
     }

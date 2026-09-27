@@ -7,8 +7,11 @@ LDA filings distinguish two dollar fields:
 - expenses: what the *registrant* spent on behalf of the client
   (in-house/self-filer model where the registrant IS the client).
 Exactly one of {income, expenses} is non-null per filing; the other is null.
-To compute a family's total lobbying outlay for a given year, sum both fields
-(never double-count: they are mutually exclusive within a filing).
+Summing both fields over a family's filings for a year gives a plain sum, not a
+de-duplicated outlay: a self-filer's reported expenses can include what it paid
+the outside firms whose income for the same client is also reported, so the sum
+can double-count (R-DEC-LDATOTAL, final-review rulings 2026-09-27). Company
+pages show income and expense apart, with no total.
 
 Politeness: ≤ 14 requests/min (one client, 5 s floor between calls), exponential
 backoff on 429 (first wait 65 s, doubling up to 600 s).

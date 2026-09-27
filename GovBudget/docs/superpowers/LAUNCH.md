@@ -516,7 +516,8 @@ this section explains *why* it does what it does and does not restate the
 commands.  Read the script (or `--help`) for flags.  It runs, in order:
 
 1. **preflight** — `site/out/` present and complete, `vercel.json` present,
-   rclone and the PDF source directory present, and the provenance guard
+   rclone, the PDF source directory and `backup_r2_data.sh` present (unless
+   `--skip-r2`), and the provenance guard
    (enforced under `--dry-run` too): `site/out/.build-meta.json`'s
    `git_head` equals this checkout's HEAD, no tracked file under the project
    is modified (except a `site/public/llms.txt` byte-identical to the one the
@@ -526,10 +527,21 @@ commands.  Read the script (or `--help`) for flags.  It runs, in order:
    `deploy.sh` does not run the Python gates: the release procedure requires
    `verify-phase5: PASS` before it, and a `BLOCKED` run (exit 2) is not a
    pass, whatever refused it (ROADMAP #139);
-2. **`upload_r2.sh --live`** — sync `pdfs/ data/ workbooks/ citations/` to R2;
+2. **`backup_r2_data.sh --live --tag=<tag>`, then `upload_r2.sh --live`** —
+   first copy the live `data/` and `citations/` objects aside, server-side,
+   to `rollback/<tag>/` in the same bucket and check each copy (see
+   Backups below); if the copy fails or refuses, the deploy stops with
+   nothing uploaded and nothing deployed.  The tag (the UTC time) is printed
+   in the preflight summary and after the copy; record it in the deploy's
+   ledger entry.  Then sync `pdfs/ data/ workbooks/ citations/` to R2.
+   `--skip-r2` skips both (nothing in R2 is overwritten); `--dry-run` runs
+   the backup's own dry run, which lists the bucket and copies nothing;
 3. **`vercel --prod --yes --archive=tgz` from `site/out/`**;
-4. **`verify_live_assets.mjs`** — fetches recently-added `jbook_pdf` assets
-   from the CDN and fails the deploy if they are not there.
+4. **`verify_live_assets.mjs`** — fails the deploy unless the cited PDFs and
+   workbooks are on the asset host, every fixed-name object under `data/`
+   and `citations/` is served with the local file's sha256 (the R2 sync
+   landed), and the site's `/.build-meta.json` names this checkout's HEAD
+   and `site/out/`'s build stamp (the Vercel step landed).
 
 > **Why steps 2 and 4 exist (ROADMAP backlog #27).**  The R2 sync used to be a
 > separate thing someone had to remember after every ingestion phase.  Nobody
@@ -541,6 +553,15 @@ commands.  Read the script (or `--help`) for flags.  It runs, in order:
 > is the fix; step 4 is the alarm.  Assets go up **before** pages, so no live
 > page ever cites a binary that is not there yet (`upload_r2.sh` never deletes,
 > so an early sync is always safe).
+>
+> **Why step 2 starts with a copy (ROADMAP #177; rulings R-DEC-DEPLOYSAFE and
+> R-DEC-DEPLOYSAFE-b).**  "Never deletes" is not "never overwrites": the
+> sync replaces the fixed-name `data/*.parquet` and
+> `citations/citations.parquet` in place, so the previous deploy's objects
+> were gone the moment it ran, and a Vercel rollback would have paired the
+> old pages with the new data for good.  The copy was a manual step until
+> 2026-09-26; `deploy.sh` now makes it itself, so it cannot be skipped
+> silently.
 
 **Both the directory and the flag in step 3 are load-bearing.  Do not simplify
 this to `vercel --prod` from `site/`.**
@@ -576,11 +597,26 @@ Do **not** try to shrink `site/out/` by excluding `json/`, `json-lite/`,
 
 - the N most recently added `jbook_pdf` assets return 200/206 from
   `assets.fiscalreceipts.com` with a non-zero body starting `%PDF-`;
-- `citations/citations.parquet` is reachable (proves the `data/` + `citations/`
-  syncs landed);
+- every budget book behind the verified PDF receipts, and every workbook
+  those receipts offer, is on the asset host (the same test; the zip magic
+  for `.xlsx`);
+- `citations/citations.parquet` is reachable — reachability only: the
+  previous deploy's object answers 200 too, so this alone never showed that
+  a sync landed;
 - `https://fiscalreceipts.com/fact/<id>` resolves — the `/fact/` rewrite comes
   from `site/out/vercel.json` and silently dies if the wrong directory was
-  deployed.
+  deployed.  Any deployment that carries the rewrite passes it, so it does
+  not tell this deploy from the one before;
+- **the R2 sync landed** (R-DEC-DEPLOYSAFE): every fixed-name object
+  `upload_r2.sh` copies — each file under `data/site/data/` and
+  `data/site/citations/` — is served with the local file's sha256 and size.
+  A mismatch means the sync did not land in the bucket the site reads, or a
+  cache in front of it still serves the old copy;
+- **the Vercel step landed**: the site's `/.build-meta.json` reports
+  `git_head` equal to this checkout's HEAD (or `--expect-head`) and the same
+  `built_at` as `site/out/.build-meta.json`; the build stamp tells a
+  data-only refresh, rebuilt at the same commit, from the deployment before
+  it.  `--skip-site` skips this one only.
 
 It exits non-zero on any failure and can be run on its own at any time to audit
 what is live:
@@ -589,7 +625,14 @@ what is live:
 node scripts/launch/verify_live_assets.mjs            # newest 5 cited PDFs
 node scripts/launch/verify_live_assets.mjs --count=20
 node scripts/launch/verify_live_assets.mjs --sha=<sha256>   # one specific asset
+node scripts/launch/verify_live_assets.mjs --expect-head=<40-hex sha>
+                                        # audit a build made elsewhere
 ```
+
+Because the fixed-name objects are compared with the local export,
+`deploy.sh --skip-r2` now fails its live check whenever the local
+`data/site/` differs from R2: the pages would describe files that are not
+live.
 
 It is deliberately **not** a gate in `npm run verify`: that suite is hermetic
 and offline, and CDN state cannot be asserted before the upload that creates
@@ -1036,6 +1079,42 @@ MTWRFSU 02:55:00`, or accept that a sleeping machine runs the job at next wake).
 
 Backs up the git-ignored `data/raw/announcements/` corpus (2,786 HTML + 2 auxiliary files, ~307 MB) to R2 under `research/announcements-raw/` with manifest presence verification.
 
+### Live R2 `data/` and `citations/` (the rollback copy)
+
+`deploy.sh` makes this copy itself, before its R2 upload (§7d, step 2), and
+stops the deploy if it fails.  By hand, outside a deploy:
+
+```bash
+./scripts/launch/backup_r2_data.sh           # dry run: lists what would be copied
+./scripts/launch/backup_r2_data.sh --live    # copy, then check
+```
+
+It copies the live fixed-name prefixes server-side to
+`rollback/<tag>/data/` and `rollback/<tag>/citations/` in the same bucket
+(`RCLONE_REMOTE` / `R2_BUCKET`, the same defaults as `upload_r2.sh`), then
+checks each copy with `rclone check --one-way --checksum`.  It refuses an
+empty live prefix (a wrong bucket would leave a copy that restores nothing)
+and a destination that already holds objects, and copies with `--immutable`,
+so a rollback copy is never overwritten.  `pdfs/` and `workbooks/` are not
+copied: their keys are content hashes, so no upload replaces one.  The
+script header lists every command it runs.  Every run that makes the copy
+leaves one `rollback/<tag>/`; nothing prunes them.  The bucket is public through its
+asset domain, so a copy is readable at `/rollback/<tag>/…`; it holds only
+what was already public.
+
+To roll back, roll Vercel back to the deployment that read those objects,
+then restore them (the script prints these with the tag filled in):
+
+```bash
+rclone copy --checksum r2:govbudget-assets/rollback/<tag>/data/ r2:govbudget-assets/data/
+rclone copy --checksum r2:govbudget-assets/rollback/<tag>/citations/ r2:govbudget-assets/citations/
+```
+
+Use the tag of the first run that made the copy.  If a deploy stops after
+its R2 step and is re-run, the re-run copies what R2 then serves (the first
+run's upload) under a new tag; `deploy.sh` prints a run's tag again when it
+stops after the copy.
+
 ---
 
 ## Quick reference — all commands
@@ -1077,7 +1156,9 @@ R2_HOST=https://assets.fiscalreceipts.com \
 SITE_URL=https://fiscalreceipts.com \
   ./scripts/launch/cors_live_test.sh
 
-# 7. Deploy — the ONLY deploy path (R2 assets, then Vercel, then live check).
+# 7. Deploy — the ONLY deploy path (a rollback copy of the live R2 data/ and
+#    citations/, R2 assets, then Vercel, then live check; record the printed
+#    rollback tag).
 #    Run it from GovBudget/, or by absolute path: it deploys the site/out of
 #    the checkout it lives in.
 ./scripts/launch/deploy.sh
