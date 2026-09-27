@@ -30,7 +30,9 @@ from govbudget.sam_entities import (
     DEFAULT_SAM_PUBLIC_ENTITY_URL,
     SamAuthError,
     SamRateLimitError,
+    SamOfflineError,
     SamShapeError,
+    SamUnavailableError,
     extract_entities,
     parse_entity,
     plan_extract,
@@ -475,6 +477,23 @@ def test_preflight_records_the_first_candidate_that_answers(tmp_path, monkeypatc
     assert on_disk == report
     assert secret not in report_path.read_text(), "the report never holds the key"
     assert len([u for u in seen if "api.sam.gov" in u]) == 1, "one candidate, one request"
+    assert report["api_requests"] == 1
+    assert datetime.fromisoformat(report["probed_at"]).tzinfo is not None
+
+
+def test_preflight_charges_every_probe_to_the_shared_ledger_even_when_it_fails(
+    tmp_path, monkeypatch
+):
+    """`sam daily` counts these lines against the day's quota — including
+    the probes of a preflight that raised, which writes no report."""
+    ledger = tmp_path / "lake" / "preflight_probes.jsonl"
+    client, _ = _preflight_client(monkeypatch, lambda url: 404)
+    with client, pytest.raises(SamShapeError):
+        preflight(api_key="k", client=client, probes_path=ledger,
+                  report_path=tmp_path / "preflight.json")
+    lines = [json.loads(x) for x in ledger.read_text().splitlines()]
+    assert len(lines) == 2 and all("api_key" not in x["url"] for x in lines)
+    assert all(datetime.fromisoformat(x["at"]).tzinfo for x in lines)
 
 
 def test_preflight_skips_a_404_candidate_and_records_the_one_that_answers(
@@ -588,6 +607,61 @@ def test_a_5xx_is_diagnosed_as_sam_being_down_not_as_a_wrong_endpoint(
         "a 5xx says nothing about which endpoint version is right"
     )
     assert "kept" in msg, "stored bodies survive; the resume is the point"
+    assert isinstance(exc.value, SamUnavailableError)
+
+
+def test_a_timeout_is_sam_unavailable_keeps_what_was_stored_and_hides_the_key(
+    tmp_path, monkeypatch
+):
+    """2026-09-27, live: GENERAL DYNAMICS stored, then the next request hit
+    httpx's 60 s ReadTimeout, which escaped `extract_entities` as a traceback.
+    It must be the same clean, retryable failure a 5xx is — naming the
+    exception class, never its text (httpx's, which could carry the URL and
+    so the key) — with the parquet still rebuilt from what was paid for."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if len(calls) == 2:
+            raise httpx.ReadTimeout(f"timed out: {request.url}", request=request)
+        return httpx.Response(200, json=LOCKHEED)
+
+    fams = [("F1", "ZFN2JJXBLZT3"), ("F2", "AAAAAAAAAAAA")]
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(SamUnavailableError) as exc:
+            extract_entities(fams, api_key="sekret-k", out_dir=tmp_path / "p",
+                             raw_dir=tmp_path / "r", client=client,
+                             max_requests=10)
+    msg = str(exc.value)
+    assert "ReadTimeout" in msg and "after 2 request(s)" in msg
+    assert exc.value.uei == "AAAAAAAAAAAA"
+    assert "sekret-k" not in msg and "api_key" not in msg
+    assert isinstance(exc.value, SamShapeError)   # cmd_sam's BLOCKED line
+    assert (tmp_path / "r" / "ZFN2JJXBLZT3.json").exists()
+    assert (tmp_path / "p" / "entities.parquet").exists()
+
+
+def test_a_connection_failure_is_offline_and_names_the_uei_it_never_asked_for(
+    tmp_path, monkeypatch
+):
+    """No connection means no request reached SAM: `sam_daily` spends nothing
+    on it and retries within the hour, so the error must say so and carry
+    the UEI (as SamUnavailableError does for a timeout it may count)."""
+    monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError(f"no route: {request.url}", request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(SamOfflineError) as exc:
+            extract_entities([("F1", "ZFN2JJXBLZT3")], api_key="sekret-k",
+                             out_dir=tmp_path / "p", raw_dir=tmp_path / "r",
+                             client=client, max_requests=1)
+    msg = str(exc.value)
+    assert exc.value.uei == "ZFN2JJXBLZT3" and "never sent" in msg
+    assert "after 0 request(s)" in msg and "sekret-k" not in msg
+    assert isinstance(exc.value, SamUnavailableError)
 
 
 def test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does(

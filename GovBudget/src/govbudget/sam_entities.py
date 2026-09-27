@@ -86,6 +86,10 @@ _REQUEST_FLOOR_S = 1.0
 _USER_AGENT = "fiscalreceipts/1.0 (research; contact: andes.lee444@gmail.com)"
 #: Non-federal, no-role daily limit. Overridable; never silently exceeded.
 DEFAULT_MAX_REQUESTS = 10
+#: Beside manifest.jsonl in the extract's out_dir: one line per `preflight`
+#: API request, so `sam_daily` can charge the probes to the day's quota from
+#: the shared lake (the report itself is per checkout and tracked in git).
+PREFLIGHT_PROBES = "preflight_probes.jsonl"
 
 _PARQUET_COLUMNS = (
     "sam_uei", "legal_business_name", "cage_code", "registration_status",
@@ -128,6 +132,26 @@ class SamRateLimitError(RuntimeError):
 
 class SamShapeError(ValueError):
     """The response (or the preflight report) lacked an expected value."""
+
+
+class SamUnavailableError(SamShapeError):
+    """SAM gave no answer: a timeout, a dropped connection or a 5xx.
+
+    Says nothing about the endpoint version or the response shape — re-run
+    later. A SamShapeError subclass so every existing `except SamShapeError`
+    (cmd_sam's BLOCKED line among them) still catches it; `sam_daily` catches
+    it before SamShapeError and retries it within the day. `uei` names the
+    registration the failed request asked for.
+    """
+
+    def __init__(self, message: str, *, uei: str | None = None):
+        super().__init__(message)
+        self.uei = uei
+
+
+class SamOfflineError(SamUnavailableError):
+    """The request never left this machine (DNS or connection failure), so
+    it spent none of the day's quota."""
 
 
 def sam_entity_api_url() -> str:
@@ -431,16 +455,20 @@ def dominant_parent_ueis(duckdb_path, *, top_n: int = 200) -> list[tuple[str, st
 
 
 def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
-              probe_uei: str = _PROBE_UEI, report_path=None) -> dict:
+              probe_uei: str = _PROBE_UEI, report_path=None,
+              probes_path=None) -> dict:
     """Refuse early, report exactly what the API answered, spend at most one
     API request per candidate (`candidate_urls()`: 2 by default, 3 when
     SAM_ENTITY_API_URL names a third) plus one GET of the reader-facing page,
     which carries no key and is not an API request.
 
     Returns (and writes) {"endpoint", "status", "public_url",
-    "public_url_status", "entity_keys"}. `public_url` is the TEMPLATE this
-    probe opened — `require_preflight` refuses the report once the template
-    in force differs. Raises SamAuthError when there is no key or every
+    "public_url_status", "entity_keys", "probed_at", "api_requests"}.
+    `public_url` is the TEMPLATE this probe opened — `require_preflight`
+    refuses the report once the template in force differs. `probed_at` (when
+    the last probe had its answer) and `api_requests` are the evidence; the
+    quota ledger is `probes_path`, which gets one line per API request as
+    each is answered or fails — a failed preflight included. Raises SamAuthError when there is no key or every
     candidate rejects it; SamShapeError when every candidate 404s.
     """
     key = require_api_key(api_key)
@@ -452,12 +480,26 @@ def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
     )
     report: dict = {"endpoint": None, "status": None,
                     "public_url": template,
-                    "public_url_status": None, "entity_keys": []}
+                    "public_url_status": None, "entity_keys": [],
+                    "probed_at": None, "api_requests": 0}
     auth_rejected = False
+
+    def charge(url: str) -> None:
+        # Stamped after the request, never before: a quota must err high.
+        report["api_requests"] += 1
+        report["probed_at"] = _now_iso()
+        if probes_path is not None:
+            ledger = Path(probes_path)
+            ledger.parent.mkdir(parents=True, exist_ok=True)
+            with open(ledger, "a") as f:
+                f.write(json.dumps({"at": report["probed_at"], "url": url}) + "\n")
     try:
         for url in candidates:
             time.sleep(_REQUEST_FLOOR_S)
-            r = client.get(url, params={"api_key": key, "ueiSAM": probe_uei})
+            try:
+                r = client.get(url, params={"api_key": key, "ueiSAM": probe_uei})
+            finally:
+                charge(url)
             if r.status_code == 404:
                 continue
             if r.status_code in (401, 403) or "API_KEY_INVALID" in r.text:
@@ -494,9 +536,13 @@ def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
             "https://open.gsa.gov/api/entity-api/ documents today and re-run."
         )
     if report_path:
+        # Atomic: `sam daily` reads this file every hour and must never see
+        # it half-written.
         report_path = Path(report_path)
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps(report, indent=2, sort_keys=True))
+        tmp = report_path.with_name(report_path.name + ".tmp")
+        tmp.write_text(json.dumps(report, indent=2, sort_keys=True))
+        os.replace(tmp, report_path)
     return report
 
 
@@ -651,7 +697,28 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
                 )
                 break
             time.sleep(_REQUEST_FLOOR_S)
-            r = client.get(endpoint, params={"api_key": key, "ueiSAM": uei})
+            try:
+                r = client.get(endpoint, params={"api_key": key, "ueiSAM": uei})
+            except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+                # No connection, so no request reached SAM. Only the
+                # exception's CLASS is named, here and below: its text is
+                # httpx's, and nothing vouches that it never carries the
+                # request URL, which holds the key.
+                raise SamOfflineError(
+                    f"could not connect to SAM for {uei} at {endpoint} "
+                    f"({type(e).__name__}) after {spent} request(s) this run; "
+                    "that request was never sent. Re-run the same command "
+                    "once online.", uei=uei,
+                ) from None
+            except httpx.TransportError as e:
+                # 2026-09-27: one fetch, then a 60 s ReadTimeout escaped as a
+                # traceback.
+                raise SamUnavailableError(
+                    f"SAM did not answer for {uei} at {endpoint} "
+                    f"({type(e).__name__}) after {spent + 1} request(s) this "
+                    "run. Re-run the same command later; bodies already "
+                    "stored are kept and never re-fetched.", uei=uei,
+                ) from None
             spent += 1
             body_text = r.text
             if r.status_code == 429 or "OVER_RATE_LIMIT" in body_text:
@@ -671,12 +738,12 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
                 # version is right, and the advice below would send the
                 # operator to spend 2 of a 10/day quota on a preflight that
                 # confirms the URL it already had.
-                raise SamShapeError(
+                raise SamUnavailableError(
                     f"SAM answered {r.status_code} for {uei} at {endpoint} "
                     f"after {spent} request(s) this run: SAM is down, and this "
                     "is not an endpoint-version problem. Re-run the same "
                     "command later; bodies already stored are kept and never "
-                    "re-fetched."
+                    "re-fetched.", uei=uei,
                 )
             if r.status_code != 200:
                 raise SamShapeError(

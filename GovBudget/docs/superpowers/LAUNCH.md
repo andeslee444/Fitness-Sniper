@@ -1069,6 +1069,81 @@ MTWRFSU 02:55:00`, or accept that a sleeping machine runs the job at next wake).
 
 ---
 
+## Step 11b — SAM daily extract (ROADMAP #10)
+
+The SAM.gov key allows 10 requests a day, and 196 of the 200 published
+families still need theirs (2026-09-27), so the extract takes about 20 days.
+`govbudget sam daily` is one unattended tick of it, and launchd runs it every
+hour at :17. A tick that has nothing to do reads `.env`, the preflight report,
+the SAM manifest and its state file, then exits without opening the DuckDB
+lake. A tick runs the extract only when these allow it:
+
+- **The quota.** At most 10 requests in any trailing 24 hours, counted from
+  `data/parquet/sam/manifest.jsonl` (every stored answer),
+  `data/parquet/sam/preflight_probes.jsonl` (every `sam preflight` request)
+  and `data/parquet/sam/daily/state.json` (every request that stored
+  nothing).
+  SAM does not publish when its day resets. A rolling cap also holds every
+  UTC day, and every Eastern day but the 25-hour one in November, to 10. Each
+  day's batch starts once the previous one has rolled off.
+- **Retries.** A timeout or 5xx mid-batch spends the rest of that batch's
+  24 hours 2 hours later, with the registration that failed moved behind the
+  rest. Registrations are tried fewest-failed-batches first, so one SAM
+  always fails on holds up nothing. Once only registrations that have failed
+  in 3 daily batches are left, the tick reports `stuck`. A connection that
+  never opened spends nothing and is retried on the next tick. A 429 ends the
+  batch. A refused key or an answer that will not parse needs the owner
+  (exit 1) and waits 24 hours.
+- **The lake.** A dbt build's write lock makes the tick wait for the next
+  hour. An `export-site` does not: it reads, and so does the tick.
+
+It never builds, exports or deploys. `dim_entities` reads
+`data/parquet/sam/entities.parquet` live, so stored registrations reach the
+site at the next `export-site` and deploy, with no build needed. A batch that
+lands while an `export-site` is running can leave that export's SAM citations
+and its `dim_entities.parquet` disagreeing; if a tick logged `fetched` during
+an export, run the export again.
+
+```bash
+# What would a tick do right now? Reads the lake; no lock, no request, no write.
+uv run python -m govbudget sam daily --check
+```
+
+To install it, run this once from the GovBudget root. Like Step 11, nothing in
+this repo loads a scheduler; this step is the owner's.
+
+```bash
+cd /path/to/GovBudget
+mkdir -p ~/Library/LaunchAgents "$PWD/logs"
+sed "s|__REPO_ROOT__|$PWD|g" \
+  scripts/launch/com.fiscalreceipts.sam-daily.plist.template \
+  > "$HOME/Library/LaunchAgents/com.fiscalreceipts.sam-daily.plist"
+plutil -lint "$HOME/Library/LaunchAgents/com.fiscalreceipts.sam-daily.plist"
+launchctl bootstrap "gui/$(id -u)" \
+  "$HOME/Library/LaunchAgents/com.fiscalreceipts.sam-daily.plist"
+```
+
+`RunAtLoad` makes the first tick fire at once, so `tail -3
+logs/sam-daily.out.log` right after the install shows whether it started. Each
+tick prints one `sam daily <time>: <status> — <message>` line. A macOS
+notification reports each batch, completion and any failure, and each failure
+at most once a day. A busy lake or a lost network connection says nothing
+until it has lasted 6 hours. `launchctl list | grep sam-daily` shows the last
+exit status, which is non-zero only when the owner must act (`blocked`,
+`sam_refused`, `shape_error`, `stuck`, `corrupt_state`) or on an unexpected
+`error`. To stop it:
+
+```bash
+launchctl bootout "gui/$(id -u)/com.fiscalreceipts.sam-daily"
+rm "$HOME/Library/LaunchAgents/com.fiscalreceipts.sam-daily.plist"
+```
+
+A sleeping Mac runs one missed tick when it wakes, and a Mac that is shut down
+runs none until it is back on. Either way the day's batch is delayed, not
+lost.
+
+---
+
 ## Backups
 
 ### Raw announcements corpus
@@ -1172,4 +1247,8 @@ govbudget verify-phase5
 # 10. Scheduled refresh (ROADMAP #8)
 uv run python -m govbudget refresh --dry-run --yes    # plan only
 uv run python -m govbudget refresh --quarterly        # full quarterly run
+
+# 11. SAM daily extract (ROADMAP #10; Step 11b installs the hourly tick)
+uv run python -m govbudget sam daily --check          # what a tick would do
+tail -5 logs/sam-daily.out.log                        # what the ticks did
 ```

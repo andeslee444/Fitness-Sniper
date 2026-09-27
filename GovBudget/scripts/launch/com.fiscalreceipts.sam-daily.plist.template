@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TEMPLATE — not a loaded job. Substitute __REPO_ROOT__ and copy into
+  ~/Library/LaunchAgents/ yourself; see docs/superpowers/LAUNCH.md Step 11b.
+  Every hour at :17 (a calendar interval, so a tick missed while the Mac slept
+  runs once on wake). The hour is not the schedule: `govbudget sam daily`
+  spends at most 10 requests in any trailing 24 hours, one batch a day, and
+  otherwise exits without opening the lake. RunAtLoad makes the first tick
+  the moment it is loaded, which is the install's own check that it starts.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fiscalreceipts.sam-daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__REPO_ROOT__/scripts/launch/sam_daily.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO_ROOT__</string>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Minute</key><integer>17</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__REPO_ROOT__/logs/sam-daily.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO_ROOT__/logs/sam-daily.err.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

@@ -1721,6 +1721,19 @@ def cmd_sam(args) -> None:
     out_dir = config.PARQUET_DIR / "sam"
     raw_dir = config.RAW_DIR / "sam"
     report_path = config.RESEARCH_DIR / "sam_entities" / "preflight.json"
+    if args.sam_action == "daily":
+        # The unattended driver (scripts/launch/sam_daily.sh, hourly). It
+        # classifies every failure itself — the BLOCKED wrapper below is for
+        # the hand-run commands.
+        from govbudget.sam_daily import notify_macos, run_daily
+
+        outcome = run_daily(top_n=args.top_n, check=args.check,
+                            notify=notify_macos if args.notify else None)
+        print(f"sam daily {outcome.at}: {outcome.status} — {outcome.message}")
+        if outcome.note:
+            posted = "posted" if outcome.notified else "not posted"
+            print(f"sam daily: notice ({posted}): {outcome.note}")
+        raise SystemExit(outcome.exit_code)
     try:
         if args.sam_action == "preflight" and getattr(args, "dry_run", False):
             # ROADMAP #10 (decisions wave): what the FIRST live day will do —
@@ -1753,7 +1766,9 @@ def cmd_sam(args) -> None:
             )
             return
         if args.sam_action == "preflight":
-            print(_json.dumps(preflight(report_path=report_path), indent=2))
+            print(_json.dumps(preflight(
+                report_path=report_path,
+                probes_path=out_dir / _sam.PREFLIGHT_PROBES), indent=2))
             return
         if args.sam_action == "reparse":
             # reparse writes `public_url` from the template in force NOW, so
@@ -3161,6 +3176,19 @@ def main(argv=None) -> None:
     sam_rp = sam_sub.add_parser(
         "reparse", help="rebuild the parquet from data/raw/sam/ (no network, no quota)")
     sam_rp.set_defaults(func=cmd_sam)
+    sam_dy = sam_sub.add_parser(
+        "daily",
+        help="one tick of the unattended extract (launchd runs it hourly): "
+             "fetches only when the trailing 24 h leave the day's quota free")
+    sam_dy.add_argument("--check", action="store_true",
+                        help="run every check and read the lake, then say what a"
+                             " real tick would do — no lock, no request, no write")
+    sam_dy.add_argument("--notify", action="store_true",
+                        help="post a macOS notification when an outcome needs"
+                             " one (scripts/launch/sam_daily.sh passes it)")
+    sam_dy.add_argument("--top-n", type=int, default=200, dest="top_n",
+                        help="published families to cover (default: 200)")
+    sam_dy.set_defaults(func=cmd_sam)
 
     inf = sub.add_parser("influence", help="phase 5A lobbying data pipeline")
     inf_sub = inf.add_subparsers(dest="influence_action", required=True)

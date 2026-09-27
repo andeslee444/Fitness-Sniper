@@ -4885,7 +4885,42 @@ docs/superpowers/ROADMAP.md`.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
 
-    **Status:** PARTIAL 2026-09-26 — the SAM half is running. The owner pasted
+    **Status:** PARTIAL 2026-09-27 — the SAM half can now run unattended; the
+    owner loads it. `govbudget sam daily` (`src/govbudget/sam_daily.py`) is one
+    tick of the extract. `scripts/launch/sam_daily.sh` and
+    `scripts/launch/com.fiscalreceipts.sam-daily.plist.template` run it every
+    hour (docs/superpowers/LAUNCH.md Step 11b), and loading the plist stays the
+    owner's action. A tick spends the key's quota only when at most 10 requests
+    fall in the trailing 24 hours. It counts them from the SAM manifest, a
+    ledger of `sam preflight` requests and the driver's own record of requests
+    that stored nothing, because open.gsa.gov does not say when SAM's day
+    resets. After a timeout or 5xx it spends what is left of that batch's 24
+    hours two hours later, and it tries registrations fewest-failed-batches
+    first. An adversarial review of the first draft (four lenses, each finding
+    re-tested by a skeptic) confirmed 21 defects, and its completeness pass 3
+    more. A second pass re-ran every reproduction against the fixes: 2 were half
+    fixed, and the rework had 7 new defects. All were fixed before commit, each
+    code defect with a test and each false sentence by correcting it. The review
+    also found that all 20 view paths in the lake pointed into the
+    `decisions-2026-09-25` worktree, because `govbudget build` bakes the
+    building checkout's unresolved data path into them. Removing that worktree
+    would have broken every lake query, so the lake was rebuilt from the main
+    checkout on 2026-09-27 (dbt PASS=204 WARN=2 ERROR=0; 22 paths, all under the
+    main checkout). The second live day (2026-09-27, a hand run of `sam
+    extract`) stored GENERAL DYNAMICS (VF58HFRNGEL8, Active, expires
+    2027-01-05). Then SAM's 60 s read timeout escaped `extract_entities` as a
+    traceback; a timeout or dropped connection now raises `SamUnavailableError`,
+    as a 5xx does. 196 of the 200 families are open. `dim_entities` reads the
+    SAM parquet live, so stored answers reach the site at the next `export-site`
+    and deploy, with no build needed. No new line puts a company page over its
+    25,000 gzip ceiling: /company/boeing/ (24,622) and /company/lockheed-martin/
+    (24,539) already carry theirs, and the next heaviest,
+    /company/science-applications-international/, is at 22,794 (measured on the
+    af96700b build).
+    *(Earlier markers below.)*
+
+    **Status (2026-09-26): PARTIAL 2026-09-26** — the SAM half is running.
+    The owner pasted
     the key on 2026-09-25 (the #10 SAM update in the branch ledger's
     `owner-decisions-2026-09-25.md`). The decisions wave closed both seams
     named below (`sam_entities.py` reads `SAM_ENTITY_API_URL` and
