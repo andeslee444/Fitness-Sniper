@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -373,6 +373,27 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   contradicting their facts (#188);
   #141, planned as its own phase; #178–#190; and the SAM extract's other 197
   families, the owner's daily run at 10 requests a day (#10).
+  **Deployed 2026-09-27 03:35 UTC (2026-09-26 ~23:35 EDT)** from `decisions-2026-09-25`
+  at af96700b with its `scripts/launch/deploy.sh`, which supersedes the
+  "Still open" re-run, deploy and push above. The re-run passed in the
+  runbook's order (F0–F10): backups first (`pg_dump`, a lake copy, a
+  `data/site` clone); the loader moved exactly one recipient, N0003910D0032
+  L3 → ViaSat (`announcement_named`, R-DEC-RECIPIENT-b); the backfill
+  rewrote the same 2,137 review rows; dbt PASS=204 with 0 errors and all 23
+  lake-snapshot figures unchanged; `evals check` 43 ok; the export withheld
+  15 of 703 dossier claims over 8 dossiers (#188); BUILD 2 at af96700b passed
+  27/27 after one restamp (/data/ 15,559 gzip, ceiling unchanged);
+  verify-phase3, verify-phase5b1 and verify-phase5 passed (eval 46/48,
+  citations 43/43). The deploy's first step copied the live R2 `data/` (16
+  objects) and `citations/` (1) to rollback tag 2026-09-27T033124Z and
+  checked them (0 differences) before uploading (#177); then R2 sync, Vercel
+  production, and all 69 live-asset assertions passed. Live checks:
+  /.build-meta.json git_head af96700b; /program/0604280N/ lists VIASAT INC on
+  N0003910D0032. Monorepo `main` fast-forwarded ddc79e6b → af96700b and pushed
+  to origin; fiscalreceipts `main` f32ddac3 → 6e518f2b (subtree split
+  543ed0a1 plus a merge onto the previous publish, tree equal to
+  `main:GovBudget`). Still open: #141 as its own phase, #178–#190, the dossier
+  regeneration (#188) and the SAM daily runs (#10).
 
 - **2026-09-25: Integration of the live branch.** Production
   (fiscalreceipts.com) was deployed on 2026-09-24 from
@@ -2197,7 +2218,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   at high); `audit_link_grading` grades the rest `low` with the demotion
   reason `account_subagency_not_pinned`, and Postgres keeps every row. #141 is
   the follow-on that restores coverage with evidence (option (c)). Measured at
-  chain G (2026-09-26; branch `decisions-2026-09-25`, not yet deployed): 8,865
+  chain G (2026-09-26; branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b)): 8,865
   links withdrawn; `fct_budget_to_awards` publishes 3,685 links (12,601
   before), and `account+subagency` publishes 22, all high (8,855 before: 8,833
   medium, 22 high). `site_meta.link_precision` moves the tier from the
@@ -2400,7 +2421,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   `not_display_or_catchall` pairs, 14 rows with no lake evidence and 108 on
   `money_color_mismatch`, and loaded 1,188 links, 1,076 of them
   announcement. Measured at chain G (2026-09-26; branch
-  `decisions-2026-09-25`, not yet deployed): 2,137 review rows (verdict_pair
+  `decisions-2026-09-25`, deployed 2026-09-27 (af96700b)): 2,137 review rows (verdict_pair
   1,208 — 699 upheld, 145 refuted, 3 incomplete, 281 weak, 80 wrong;
   survivor_list 823; precision_sample 103; refutation_sample 3); links
   published at high 1,133 → 1,106, every one with a recorded review, counted
@@ -2873,7 +2894,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   `fct_program_concentration` carries `scope` ('code' on a shared code),
   `member_programs`, `member_keys_with_links` and `links_outside_member_keys`,
   and the /downloads/ caveat speaks per row (R-DEC-130c). Chain G's export
-  (2026-09-26; branch `decisions-2026-09-25`, not yet deployed) reads "7 of
+  (2026-09-26; branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b)) reads "7 of
   its 536 rows are code-level": on 0145, 3010 and 3215 more than one member's
   key carries links, so the row pools them; on 2101, 2292, 3050 and 4217 one
   member's key carries every link (2101-WPN, 2292-WPN, 3050-OPN and 4217-OPN).
@@ -2929,7 +2950,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   2026-09-26): leg q, 91 band claims on /methodology/, /glossary/ and /feed/
   agree; leg l, 48 of 75 HHI cards reach a band-publishing destination, 0
   silent contradictions. Eval q022 reads MDA's 2,159 as highly concentrated
-  (R-DEC-EVALS). Branch `decisions-2026-09-25`, not yet deployed.
+  (R-DEC-EVALS). Branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b).
 
 - **#133 After merge, main alone cannot rebuild the lake this branch deploys
   from (ruling R-C-6).** Chain C ran on a shared lake another checkout
@@ -2956,7 +2977,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (2026-09-25: keep the strictly newer copy of a key present in exactly two
   fiscal-year archives, fail on anything else) lands in the decisions wave.
   **Status:** DECIDED 2026-09-25 (owner delegated to the controller's
-  recommendation) — built on branch `decisions-2026-09-25`, not yet deployed:
+  recommendation) — built on branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b):
   dbt staging keeps the strictly newer copy of a `transaction_key` found in
   exactly two fiscal-year archives with different last-modified dates, and
   ties, same-year copies and more than two copies still fail
@@ -2993,7 +3014,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   header and the program print byline stamp the build's date as "Built <date>"
   ("built" in the byline), not "data as of"; /methodology/ §2 still names the
   least recently refreshed dataset, and `docs/methodology.md` §5 follows
-  (#174). Branch `decisions-2026-09-25`, not yet deployed.
+  (#174). Branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b).
 
 - **#135 OWNER/CURATION CALL: the RTX family's Rockwell Collins Australia key
   is now mostly an Elbit-parented member.** `data-seeds/entity_family_events.csv:5`
@@ -3025,7 +3046,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   #201, so /company/src/ is no longer built, and FCN, INC. is #200. The
   /companies/families/ RTX note states the split without dollar amounts
   (0176fa6e, after gate 2 caught two uncited ones). Branch
-  `decisions-2026-09-25`, not yet deployed.
+  `decisions-2026-09-25`, deployed 2026-09-27 (af96700b).
 
 - **#136 The display-alias seed carries dated evidence and one boundary
   family to watch.** `data-seeds/entity_display_aliases.csv` holds 17 rows
@@ -3038,7 +3059,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   an uncurated near-tie that fails leg l. Re-measure the eleven and
   pre-review L3 at the next curation pass. **Status:** open (2026-09-25).
   *Re-measured 2026-09-26 (chain G's export, branch `decisions-2026-09-25`,
-  not yet deployed; a read-only rank of `data/site/data/dim_entities.parquet`
+  deployed 2026-09-27 (af96700b); a read-only rank of `data/site/data/dim_entities.parquet`
   by total obligation):* #135's split took ELBIT SYSTEMS into the published
   200 at #175, so L3 Technologies now sits 202nd, $9.4M below the #200
   cutoff (FCN, INC., $1,981.4M; SRC INC is 201st), not 201st and $6.9M
@@ -3066,7 +3087,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   per-name evidence for FCN (fcnit.com writes "FCN, Inc." and never expands
   it: an initialism, kept as filed; checked 2026-09-25) and for DEAN (the
   family surname, CEO Bill Dean; re-checked 2026-09-25). Branch
-  `decisions-2026-09-25`, not yet deployed.
+  `decisions-2026-09-25`, deployed 2026-09-27 (af96700b).
 
 - **#138 The freshness sentence speaks per dataset; the archives are per
   fiscal year.** `/methodology/` §2 names the least recently refreshed dataset
@@ -3141,7 +3162,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (R-DEC-140): 58 `fpds-ap` with confidence unknown and 2 unknown/unknown,
   refusing to run if that evidence was erased. The precision tally keeps
   counting each link under the tier it publishes under today. Chain G
-  (2026-09-26; branch `decisions-2026-09-25`, not yet deployed): migration 020
+  (2026-09-26; branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b)): migration 020
   recorded exactly those 60, and the loader's rebuild replaced no other
   route's row ("0 new this run") and carried all 60.
 
@@ -4894,7 +4915,7 @@ docs/superpowers/ROADMAP.md`.
     200 published families, which is the owner's daily `uv run python -m
     govbudget sam extract` at 10 requests a day (no agent-installed
     scheduler), each run followed by `govbudget build` and `export-site` (the
-    owner step below). Branch `decisions-2026-09-25`, not yet deployed.
+    owner step below). Branch `decisions-2026-09-25`, deployed 2026-09-27 (af96700b).
     *(Earlier markers below.)*
 
     **Status (2026-09-25): PARTIAL 2026-09-25** — ledger sweep. The spike `1d75c231`
