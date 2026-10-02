@@ -1,7 +1,7 @@
 # Procurement History Before FY2024 — Families Piece 1
 
 **Date:** 2026-10-02 (revised the same day after an independent review against the code)
-**Status:** Draft for owner review. Approving this spec also approves the three class
+**Status:** Approved by the owner (2026-10-02: "approved"), including the three class
 rulings in §5.2 (R-DEC-ERA-SAME, R-DEC-ERA-EXCLUDE, R-DEC-ERA-HISTORY).
 **Parent:** [2026-10-02-platform-families-overview.md](2026-10-02-platform-families-overview.md)
 (owner decisions R-DEC-FAM-UNIT, -NAME, -REVIEW, -ERAONLY).

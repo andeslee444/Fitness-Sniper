@@ -19,8 +19,12 @@ era-map decision and counted member with evidence, the owner approves in batches
 with stated successor codes recorded. Eleven pieces, each with its own spec, plan,
 gate and deploy: [overview](specs/2026-10-02-platform-families-overview.md). Piece 1,
 procurement history before FY2024 (about 880 procurement pages gain PB2017–23
-points; three class rulings R-DEC-ERA-SAME / -EXCLUDE / -HISTORY):
-[spec](specs/2026-10-02-era-procurement-history-design.md). The other session's
+points): [spec](specs/2026-10-02-era-procurement-history-design.md), approved by the
+owner 2026-10-02 together with its three class rulings: **R-DEC-ERA-SAME** (a chain
+whose every era key prints a code and title found in PB2024–26 is the same program),
+**R-DEC-ERA-EXCLUDE** (continuing-resolution placeholders and the route-unsafe `0390D`
+`O&M`/`RDT&E` lines are excluded) and **R-DEC-ERA-HISTORY** (era-only codes with no
+title drift are history only, no page). The other session's
 12-family attempt is preserved, unmerged, on local branch
 `wip/other-session-families-layout-2026-09-29`.
 
