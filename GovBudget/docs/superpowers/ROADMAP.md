@@ -4625,10 +4625,47 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `src/govbudget/sam_entities.py` (`DEFAULT_SAM_PUBLIC_ENTITY_URL`,
   `require_preflight`), `src/govbudget/export_site.py` (the `entity_sam`
   rows), `site/src/components/sam-registration.tsx`. Effort: days.
-  **Status:** open (2026-09-27). Until the fix, `export_site` withholds any
+  **Status:** CLOSED 2026-10-01 on branch `sam-links-2026-10-01`, not yet
+  deployed (production b3ab7350 still cites sam.gov/entity/ on the Lockheed
+  and Boeing pages). Each SAM
+  registration fact now cites `https://fiscalreceipts.com/json/sam/<UEI>.json`,
+  a receipt `export_site` writes for every SAM UEI with a status: the cited
+  fields, the key-free API request, its retrieval time, the families it
+  belongs to, and a note that SAM.gov shows registrations only to signed-in
+  users. `/data/dim_entities.
+  parquet` ships the same URL in `sam_public_url` instead of the 404 route.
+  `sam_entities.SAM_RECEIPT_URL` replaces the sam.gov template; `sam
+  preflight` no longer probes a reader page, and `require_preflight` vouches
+  for the API endpoint alone, so the report the hourly job reads still
+  passes. The company line and the citation formula take their tense from
+  SAM's answer date on the US Eastern calendar ("Active as of <date>",
+  "expired <date>" for a date already past). Gates: gate 13 leg (k) reads
+  every citation row the site serves and fails on a `sam.gov/entity/` input,
+  a same-origin input with no built file, or a SAM fact that does not cite
+  its own receipt (scripts/gates/__tests__/citation-inputs.test.mjs);
+  `verify_live_assets.mjs` assertion 7 fetches every receipt from production
+  and compares sha256. Leg (k) opens no cross-origin link; one it would have
+  failed is #192.
+  *(Earlier marker below.)*
+  **Status (2026-09-27):** open. Until the fix, `export_site` withholds any
   `entity_sam` citation whose only input is this route
   (`_SAM_BROKEN_ROUTE`; tests/jbooks/test_export_site_pg.py pins both
   sides), so the next deploy ships no SAM line and drops the two live ones.
+
+- **#192 946 derived citations link a POST-only USAspending endpoint, which
+  answers a reader's click with HTTP 405.** The district-sum rows (e.g.
+  0096d407db47e49d, CA-14) carry the single input
+  `https://api.usaspending.gov/api/v2/references/filter/`; the citation
+  panel renders it as a "Source inputs" link, and a GET returns 405
+  `{"detail":"Method \"GET\" not allowed."}` (found by the #191 review,
+  2026-10-01, on production b3ab7350). No gate opens cross-origin inputs —
+  gates run offline, and gate 13 leg (k) checks same-origin links only. Fix:
+  cite a page a reader can open (the USAspending search or advanced-search
+  URL for the same filter, or the exported district file), and add an
+  offline leg that refuses known API-only endpoints as inputs. Source:
+  `src/govbudget/export_site.py` (the district-sum derived rows),
+  `site/scripts/gates/linkgraph.mjs` (leg k). Effort: hours.
+  **Status:** open (2026-10-01).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

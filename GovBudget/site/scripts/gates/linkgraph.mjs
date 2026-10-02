@@ -70,6 +70,17 @@
  *     mounted header builds its mobile panel from, and first proves that the
  *     header is mounted and that the panel is built from that list. See
  *     mobileNavGlossaryFindings.
+ * (k) SAME-ORIGIN CITATION SOURCE LINKS RESOLVE, AND NO CITATION LINKS
+ *     SAM.GOV'S DEAD ENTITY ROUTE (ROADMAP #191). A citation's inputs render
+ *     as "Source inputs" links, and nothing checked them: both SAM
+ *     registration facts linked to https://sam.gov/entity/<UEI>, SAM.gov's
+ *     404 page. The leg reads every row of out/json/cite-shards/ (the rows
+ *     the panel loads) and fails on a sam.gov/entity/ input, on a
+ *     same-origin .json/.xml input with no built file, on a SAM
+ *     registration fact that does not cite exactly its own receipt
+ *     (/json/sam/<UEI>.json), and on receipt count drift. It does NOT open
+ *     cross-origin inputs (lda.gov, api.usaspending.gov, census.gov…):
+ *     gates run offline. See citationInputFindings.
  */
 import fs from "fs";
 import path from "path";
@@ -465,6 +476,9 @@ export async function runLinkgraphGate() {
 
   // ── (i) every same-origin .json/.xml href resolves to a built file ──
   runJsonXmlHrefLeg(errors, notes);
+
+  // ── (k) every citation source link this site serves resolves (#191) ──
+  runCitationInputLeg(errors, notes);
 
   // ── (j) the glossary is in the HEADER nav, not only the footer ─────────
   // Tri-persona Wave 3, the layman review: /glossary/ was linked twice per
@@ -1175,5 +1189,98 @@ export function runJsonXmlHrefLeg(
         `${fetchDirs.size} directory-templated target(s) (floor ` +
         `${MIN_TEMPLATED_FETCH_DIRS}) — all resolve to a built file ✓`,
     );
+  }
+}
+
+
+/**
+ * Leg (k) — same-origin citation source links resolve; none is SAM.gov's
+ * dead entity route (#191). Cross-origin inputs are counted, not opened.
+ *
+ * Pure, for scripts/gates/__tests__/citation-inputs.test.mjs:
+ *   shardRows    — every citation row in out/json/cite-shards ({fact_id → row})
+ *   builtPaths   — every .json/.xml path under out/ ("/json/sam/X.json", …)
+ *   receiptUeis  — the UEIs with a file in out/json/sam/
+ * A SAM registration fact is a derived row whose formula opens "SAM.gov
+ * Entity Management registration for UEI <UEI>" (export_site's wording).
+ */
+const SAM_DEAD_ROUTE = /^https:\/\/sam\.gov\/entity\//i;
+const SAM_FACT_RE = /^SAM\.gov Entity Management registration for UEI ([A-Z0-9]{12})\b/;
+
+export function citationInputFindings({ shardRows, builtPaths, receiptUeis }) {
+  const errors = [];
+  let urlInputs = 0;
+  let testedInputs = 0;   // same-origin or the sam.gov route: what is checked
+  let samFacts = 0;
+  const citedReceipts = new Set();
+  for (const [fid, row] of Object.entries(shardRows)) {
+    let inputs = [];
+    try {
+      inputs = row && row.inputs ? JSON.parse(row.inputs) : [];
+    } catch {
+      continue;                       // not a JSON list: rule 5's business
+    }
+    if (!Array.isArray(inputs)) continue;
+    for (const input of inputs) {
+      if (typeof input !== "string" || !/^https?:\/\//i.test(input)) continue;
+      urlInputs += 1;
+      if (SAM_DEAD_ROUTE.test(input)) {
+        testedInputs += 1;
+        errors.push(`(k) ${fid} cites ${input} — SAM.gov's 404 page (ROADMAP #191)`);
+      }
+      const target = sameOriginJsonXmlTarget(input);
+      if (target) testedInputs += 1;
+      if (target && !builtPaths.has(target)) {
+        errors.push(`(k) ${fid} cites ${input}, but out${target} was not built`);
+      }
+    }
+    const m = SAM_FACT_RE.exec(String(row?.formula || ""));
+    if (m) {
+      samFacts += 1;
+      const want = `/json/sam/${m[1]}.json`;
+      const targets = inputs.map((i) => sameOriginJsonXmlTarget(String(i)));
+      if (targets.length !== 1 || targets[0] !== want) {
+        errors.push(`(k) SAM fact ${fid} (UEI ${m[1]}) must cite exactly its receipt ${want}; cites ${JSON.stringify(inputs)}`);
+      } else {
+        citedReceipts.add(m[1]);
+      }
+    }
+  }
+  for (const uei of citedReceipts) {
+    if (!receiptUeis.has(uei)) errors.push(`(k) receipt /json/sam/${uei}.json is cited but missing`);
+  }
+  // Receipts are written for every SAM row with a status, cited or not, so
+  // receipts >= cited facts; fewer receipts than facts is drift.
+  if (receiptUeis.size < citedReceipts.size) {
+    errors.push(`(k) ${receiptUeis.size} SAM receipt(s) built for ${citedReceipts.size} cited SAM fact(s)`);
+  }
+  return { errors, urlInputs, testedInputs, samFacts, receipts: receiptUeis.size };
+}
+
+function runCitationInputLeg(errors, notes) {
+  const shardDir = path.join(outDir, "json", "cite-shards");
+  if (!fs.existsSync(shardDir)) {
+    errors.push("(k) out/json/cite-shards missing — build incomplete");
+    return;
+  }
+  const shardRows = {};
+  for (const f of fs.readdirSync(shardDir)) {
+    if (!f.endsWith(".json")) continue;
+    Object.assign(shardRows, JSON.parse(fs.readFileSync(path.join(shardDir, f), "utf8")));
+  }
+  const samDir = path.join(outDir, "json", "sam");
+  if (!fs.existsSync(samDir)) {
+    errors.push("(k) out/json/sam missing — prepare-assets did not copy the SAM receipts");
+    return;
+  }
+  const receiptUeis = new Set(fs.readdirSync(samDir)
+    .filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)));
+  const r = citationInputFindings({ shardRows, builtPaths: jsonXmlPathsUnderOut(), receiptUeis });
+  errors.push(...r.errors);
+  if (r.errors.length === 0) {
+    notes.push(`leg k: ${r.testedInputs} same-origin citation link(s) resolve and none is `
+      + `sam.gov/entity/ (${r.urlInputs - r.testedInputs} cross-origin link(s) not opened); `
+      + `${r.samFacts} SAM registration fact(s) each cite their own receipt `
+      + `(${r.receipts} receipt file(s)) ✓`);
   }
 }

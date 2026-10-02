@@ -1,11 +1,11 @@
 /**
  * ROADMAP #10 — the /company/ SAM.gov registration line, in BOTH of its states.
  *
- * The state that ships today is "nothing": no machine holds the SAM.gov key
- * that fills the extract, so every family's `sam` is undefined. These cases
- * pin the absence as hard as the presence, because a line that renders a UEI
- * with no citation, or a heading with no registration, is exactly the
- * cited-or-absent failure this project exists to avoid.
+ * A family the extract has not reached (or found no public registration
+ * for) has no `sam`. These cases pin the absence as hard as the presence,
+ * because a line that renders a UEI with no citation, or a heading with no
+ * registration, is exactly the cited-or-absent failure this project exists
+ * to avoid.
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -26,7 +26,6 @@ const sam: EntitySamRegistration = {
   primary_naics: "336411",
   business_types: "For Profit Organization; Manufacturer of Goods",
   retrieved_at: "2026-09-12T14:03:00+00:00",
-  public_url: "https://sam.gov/entity/ZFN2JJXBLZT3",
   fact_id: "abcdef0123456789",
 };
 
@@ -79,7 +78,11 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     expect(note.textContent).toContain("LOCKHEED MARTIN CORPORATION");
     expect(note.textContent).toContain("CAGE 98897");
     expect(note.textContent).toContain("336411");
-    expect(note.textContent).toContain("expires 2026-05-14");
+    // 2026-05-14 had passed when SAM answered (2026-09-12): "expired", and
+    // the status is pinned to that day (ROADMAP #191).
+    expect(note.textContent).toContain("Registration Active as of 2026-09-12");
+    expect(note.textContent).toContain("expired 2026-05-14");
+    expect(note.textContent).not.toContain("expires 2026-05-14");
     // The spike's finding, said on the page: SAM is the ORIGIN of the
     // registered name, not an upgrade to how the family was resolved.
     expect(note.textContent).toMatch(/does not change how this family was resolved/i);
@@ -107,6 +110,24 @@ describe("SamRegistrationNote (ROADMAP #10)", () => {
     // Still true after the rewording: SAM is joined below worst_confidence in
     // dim_entities and entity_xwalk reads no SAM column.
     expect(text).toMatch(/does not change how this family was resolved/i);
+  });
+
+  it("dates SAM's answer on the US Eastern calendar, like export_site does", () => {
+    // Batches land just after 00:00 UTC: 2026-10-02T00:17Z is the evening of
+    // 2026-10-01 in Washington, and a registration expiring that day had not
+    // yet expired when SAM answered.
+    renderNote({ ...sam, retrieved_at: "2026-10-02T00:17:58+00:00",
+                 registration_expiration_date: "2026-10-01" });
+    const note = document.querySelector("[data-sam-registration]")!;
+    expect(note.textContent).toContain("Registration Active as of 2026-10-01");
+    expect(note.textContent).toContain("expires 2026-10-01");
+  });
+
+  it("says \"expires\" only for a date still ahead when SAM answered", () => {
+    renderNote({ ...sam, registration_expiration_date: "2027-01-05" });
+    const note = document.querySelector("[data-sam-registration]")!;
+    expect(note.textContent).toContain("expires 2027-01-05");
+    expect(note.textContent).not.toContain("expired");
   });
 
   it("omits the fields SAM did not answer rather than inventing them", () => {

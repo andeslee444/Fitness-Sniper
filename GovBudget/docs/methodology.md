@@ -206,9 +206,13 @@ member by obligations reports on its awards (the parent on the most of its
 dollars; the member's own UEI where that parent has none; on a member tie, the
 highest such UEI), not always the one the label came from. Where a build has
 fetched it — status, CAGE code, legal business name, business types, primary
-NAICS and expiry — the page shows it with its own citation, whose source link
-is the public sam.gov entity page; where it has not, the page shows no line
-rather than a guess. (ROADMAP #10.)
+NAICS and expiry, as of the day SAM answered — the page shows it with its own
+citation. SAM.gov shows entity registrations only to signed-in users, so there
+is no public SAM.gov page to link: the citation's source link is a receipt
+this site publishes of the fields read from SAM.gov's public Entity
+Management API answer, with the request and its retrieval date. Where a build
+has not fetched it, or SAM returned no public registration, the page shows no
+line rather than a guess. (ROADMAP #10, #191.)
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. As of

@@ -1621,24 +1621,11 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     con.close()
     export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
 
-    # ROADMAP #191 (2026-09-27): sam.gov/entity/<UEI> renders SAM.gov's 404
-    # page, so a row whose only reader-facing link is that route is withheld —
-    # no citation, no sidecar, counted as none — however many rows the
-    # extract has stored.
-    lm = json.loads((detail_dir / "lockheed.json").read_text())
-    assert "sam" not in lm
-    assert fid not in json.loads((site / "json" / "citations.json").read_text())
-    assert json.loads((site / "json" / "site_meta.json").read_text())[
-        "counts"]["companies_with_sam"] == 0
-
-    # With a link that is not the broken route, the row publishes as before.
-    ARCHIVE = "https://fiscalreceipts.example/sam/ZFN2JJXBLZT3.json"
-    con = duckdb.connect(str(db))
-    con.execute(f"update dim_entities set sam_public_url='{ARCHIVE}'"
-                " where family_key='lockheed'")
-    con.close()
-    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
-
+    # ROADMAP #191 (fixed 2026-10-01): SAM.gov has no public entity page
+    # (sam.gov/entity/<UEI> is its 404), so the link is Fiscal Receipts' own
+    # receipt of SAM's answer — whatever the lake's sam_public_url still says
+    # (the old writer stored the 404 route; this fixture does too).
+    RECEIPT = "https://fiscalreceipts.com/json/sam/ZFN2JJXBLZT3.json"
     lm = json.loads((detail_dir / "lockheed.json").read_text())
     assert lm["sam"] == {
         "uei": "ZFN2JJXBLZT3",
@@ -1649,39 +1636,44 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
         "primary_naics": "336411",
         "business_types": "For Profit Organization; Manufacturer of Goods",
         "retrieved_at": "2026-09-12T00:00:00+00:00",
-        "public_url": ARCHIVE,
         "fact_id": fid,
     }
     boeing = json.loads((detail_dir / "boeing.json").read_text())
     assert "sam" not in boeing, "a partial extract publishes only what it has"
+
+    receipt = json.loads((site / "json" / "sam" / "ZFN2JJXBLZT3.json").read_text())
+    assert receipt["uei"] == "ZFN2JJXBLZT3"
+    assert receipt["fiscal_receipts"] == {"family_keys": ["lockheed"]}
+    assert receipt["registration_status"] == "Active"
+    assert receipt["source"]["request"] == (
+        "https://api.sam.gov/entity-information/v4/entities?ueiSAM=ZFN2JJXBLZT3")
+    assert receipt["source"]["retrieved_at"] == "2026-09-12T00:00:00+00:00"
+    assert "signed-in users" in receipt["note"]
+    assert sorted(p.name for p in (site / "json" / "sam").iterdir()) == ["ZFN2JJXBLZT3.json"]
 
     cits = json.loads((site / "json" / "citations.json").read_text())
     row = cits[fid]
     assert row["kind"] == "derived"
     # The panel reads the STATUS, not a dollar figure — rule 5 shape-check.
     assert row["recorded_value"] == "Active"
-    # R-DEC-SAMTEXT (final review, 2026-09-27): the ONE reader-facing source
-    # link is the public sam.gov entity page. The key-stripped api.sam.gov
-    # request URL answers every keyless reader with an empty 404, and the
-    # citation panel renders every URL input as a clickable "Source inputs"
-    # link, so it may not appear anywhere in the citation row. It is still
-    # recorded — dim_entities.sam_source_url, in the /data/ parquet — as
-    # provenance nothing renders as a link.
-    assert json.loads(row["inputs"]) == [ARCHIVE]
+    # The ONE reader-facing input is the receipt. The key-stripped api.sam.gov
+    # request answers a keyless reader with an error, so it lives in the
+    # receipt (and the /data/ parquet's sam_source_url), never as an input.
+    assert json.loads(row["inputs"]) == [RECEIPT]
     assert "api.sam.gov" not in json.dumps(row)
     assert "does not regrade this family's resolution confidence" in row["formula"]
+    # Tense from SAM's answer date, on the US Eastern calendar: 00:00 UTC on
+    # 2026-09-12 is the evening of 2026-09-11 in Washington; 2026-05-14 had
+    # passed by then.
+    assert ("Active when SAM answered on 2026-09-11 (US Eastern); expired"
+            " 2026-05-14") in row["formula"]
+    assert "only to signed-in users" in row["formula"]
     # R-DEC-SAMTEXT: say exactly what is shown. The mart joins SAM on
     # max(coalesce(parent_uei, recipient_uei)) filter (rk = 1) — the parent
-    # UEI the largest member REPORTS, not that member's own registration
-    # (Boeing: largest member JJM4FRDZJDX1, registration shown NU2UC8MX6NK1,
-    # a separate member at -$0.8M). The formula said "the registration of the
-    # member holding the most obligations", which was false on both published
-    # pages. The rule sentence is the same string on the company line,
+    # UEI the largest member REPORTS, not that member's own registration.
+    # The rule sentence is the same string on the company line,
     # /methodology/ §4 and docs/methodology.md
-    # (site/src/__tests__/sam-registration.test.tsx reads all four), and it
-    # still names the tie-break and WHICH UEI it sorts on
-    # (tests/test_sam_entities.py::
-    # test_dominant_parent_ueis_breaks_an_obligation_tie_the_way_the_mart_does).
+    # (site/src/__tests__/sam-registration.test.tsx reads all four).
     assert (
         "the registration of the parent UEI that the family's largest member"
         " by obligations reports on its awards (the parent on the most of its"
@@ -1693,8 +1685,40 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     assert "registered name is read from" not in row["formula"]
     assert "api_key" not in row["formula"] and "api_key" not in row["inputs"]
 
+    # /data/dim_entities.parquet ships the receipt URL, never the 404 route.
+    dl = duckdb.sql(
+        f"select family_key, sam_public_url from '{site}/data/dim_entities.parquet'"
+        " where family_key in ('lockheed', 'boeing') order by 1").fetchall()
+    assert dl == [("boeing", None), ("lockheed", RECEIPT)]
+    for blob in (site / "json" / "citations.json", detail_dir / "lockheed.json",
+                 site / "json" / "sam" / "ZFN2JJXBLZT3.json"):
+        assert "https://sam.gov/entity" not in blob.read_text()
+
     meta = json.loads((site / "json" / "site_meta.json").read_text())
     assert meta["counts"]["companies_with_sam"] == 1
+
+    # Two families sharing one registration UEI share ONE receipt, keyed by
+    # the UEI and naming both — never whichever family wrote last.
+    con = duckdb.connect(str(db))
+    con.execute("update dim_entities set sam_uei='ZFN2JJXBLZT3',"
+                " sam_registration_status='Active' where family_key='boeing'")
+    con.close()
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+    shared = json.loads((site / "json" / "sam" / "ZFN2JJXBLZT3.json").read_text())
+    assert shared["fiscal_receipts"] == {"family_keys": ["boeing", "lockheed"]}
+    con = duckdb.connect(str(db))
+    con.execute("update dim_entities set sam_uei=null, sam_registration_status=null"
+                " where family_key='boeing'")
+    con.close()
+
+    # The receipts are a function of the current rows: a family whose SAM
+    # row goes away loses its receipt.
+    con = duckdb.connect(str(db))
+    con.execute("update dim_entities set sam_uei=null, sam_registration_status=null"
+                " where family_key='lockheed'")
+    con.close()
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+    assert list((site / "json" / "sam").iterdir()) == []
 
 
 def test_agencies_json_schema(pg_dsn, tmp_path):

@@ -75,6 +75,13 @@
  *      site/out/.build-meta.json. The stamp matters for a data-only refresh,
  *      which rebuilds at the same commit: git_head alone cannot tell that
  *      deployment from the previous one. Skipped with --skip-site.
+ *   7. EVERY SAM REGISTRATION RECEIPT IS LIVE (ROADMAP #191). Each SAM
+ *      registration fact cites https://fiscalreceipts.com/json/sam/<UEI>.json
+ *      (SAM.gov has no public entity page). Every file under
+ *      site/out/json/sam/ — the copy this deploy uploaded — is fetched in
+ *      full from the site host and must equal the local file's sha256: a
+ *      cited receipt that 404s, or still serves an older answer, is the
+ *      broken source link #191 was. Skipped with --skip-site.
  *
  * USAGE
  *   node scripts/launch/verify_live_assets.mjs
@@ -660,6 +667,35 @@ async function checkFixedName(t) {
   );
 }
 
+/** Assertion 7: every SAM receipt this build ships is served, byte for byte. */
+async function checkSamReceipts() {
+  const dir = path.join(repoRoot, "site", "out", "json", "sam");
+  const files = fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")).sort()
+    : [];
+  console.log("");
+  console.log(`── ${files.length} SAM registration receipt(s) [cited source links, ROADMAP #191] ──`);
+  for (const f of files) {
+    const local = fs.readFileSync(path.join(dir, f));
+    const url = `${siteBase}/json/sam/${encodeURIComponent(f)}?verify=${Date.now()}`;
+    let res;
+    try {
+      res = await fetchWithTimeout(url, { headers: { "Cache-Control": "no-cache" } });
+    } catch (e) {
+      record(false, `/json/sam/${f}`, `request failed: ${e.message} (${url})`);
+      continue;
+    }
+    const body = Buffer.from(await res.arrayBuffer());
+    if (res.status !== 200 || sha256(body) !== sha256(local)) {
+      record(false, `/json/sam/${f}`,
+        `HTTP ${res.status}, ${body.length} bytes; the cited receipt is not this build's ` +
+          `(${local.length} bytes locally) — re-run the Vercel step (${url})`);
+      continue;
+    }
+    record(true, `/json/sam/${f}`, `sha256 ${sha256(body).slice(0, 12)}… matches`);
+  }
+}
+
 /** Assertion 6 probe: the live /.build-meta.json names this HEAD and this build. */
 async function checkBuildMeta(head, local) {
   const label = "/.build-meta.json git_head";
@@ -774,6 +810,7 @@ async function main() {
     await checkBuildMeta(head, local);
     await checkUrl(`/fact/${FACT_PROBE}`, `${siteBase}/fact/${FACT_PROBE}`);
     await checkUrl("/json/years_matrix.json", `${siteBase}/json/years_matrix.json`);
+    await checkSamReceipts();
   }
 
   const failed = results.filter((r) => !r.ok);

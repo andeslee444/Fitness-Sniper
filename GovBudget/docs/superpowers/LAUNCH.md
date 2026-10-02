@@ -540,8 +540,11 @@ commands.  Read the script (or `--help`) for flags.  It runs, in order:
 4. **`verify_live_assets.mjs`** — fails the deploy unless the cited PDFs and
    workbooks are on the asset host, every fixed-name object under `data/`
    and `citations/` is served with the local file's sha256 (the R2 sync
-   landed), and the site's `/.build-meta.json` names this checkout's HEAD
-   and `site/out/`'s build stamp (the Vercel step landed).
+   landed), the site's `/.build-meta.json` names this checkout's HEAD
+   and `site/out/`'s build stamp (the Vercel step landed), and every SAM
+   registration receipt under `site/out/json/sam/` is served by the site
+   with the local file's sha256 (the source links SAM citations cite,
+   ROADMAP #191).
 
 > **Why steps 2 and 4 exist (ROADMAP backlog #27).**  The R2 sync used to be a
 > separate thing someone had to remember after every ingestion phase.  Nobody
@@ -616,7 +619,13 @@ Do **not** try to shrink `site/out/` by excluding `json/`, `json-lite/`,
   `git_head` equal to this checkout's HEAD (or `--expect-head`) and the same
   `built_at` as `site/out/.build-meta.json`; the build stamp tells a
   data-only refresh, rebuilt at the same commit, from the deployment before
-  it.  `--skip-site` skips this one only.
+  it;
+- **every cited SAM receipt is live** (ROADMAP #191): each file under
+  `site/out/json/sam/` is fetched in full from the site host and must equal
+  the local file's sha256 — a SAM registration citation links nowhere else.
+
+  `--skip-site` skips every site-host check: the build stamp, the `/fact/`
+  rewrite and `/json/years_matrix.json` probes, and the SAM receipts.
 
 It exits non-zero on any failure and can be run on its own at any time to audit
 what is live:
@@ -1118,11 +1127,14 @@ A tick runs only when these allow it:
 
 It never builds, exports or deploys. `dim_entities` reads
 `data/parquet/sam/entities.parquet` live, so stored registrations reach the
-site at the next `export-site` and deploy, with no build needed — except
-that, until ROADMAP #191 is fixed, `export-site` withholds every SAM citation
-whose only link is the `sam.gov/entity/<UEI>` route, which is a SAM.gov 404,
-and prints how many it withheld. So a deploy before #191 ships no SAM line
-(and drops the two live ones). A batch that
+site at the next `export-site` and deploy, with no build needed. Each one's
+citation links to a receipt the export writes to
+`data/site/json/sam/<UEI>.json` (served at
+`https://fiscalreceipts.com/json/sam/<UEI>.json`), because SAM.gov shows
+registrations only to signed-in users (ROADMAP #191). Gate 13 leg (k)
+fails a build whose citations link to a receipt that was not built, or to
+`sam.gov/entity/`, and `verify_live_assets.mjs` assertion 7 fetches every
+receipt from production after the deploy. A batch that
 lands while an `export-site` is running can leave that export's SAM citations
 and its `dim_entities.parquet` disagreeing; if a tick logged `fetched` during
 an export, run the export again.

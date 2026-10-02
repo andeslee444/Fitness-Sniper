@@ -27,7 +27,7 @@ import pytest
 from govbudget.manifest import ManifestRecord, append_record
 from govbudget.sam_entities import (
     DEFAULT_SAM_ENTITY_API_URL,
-    DEFAULT_SAM_PUBLIC_ENTITY_URL,
+    SAM_RECEIPT_URL,
     SamAuthError,
     SamRateLimitError,
     SamOfflineError,
@@ -68,7 +68,7 @@ def test_parse_entity_reads_every_published_field():
     assert rec["primary_naics"] == "336411"
     # business types render as one reader-legible varchar, order preserved.
     assert rec["business_types"] == "For Profit Organization; Manufacturer of Goods"
-    assert rec["public_url"] == "https://sam.gov/entity/ZFN2JJXBLZT3"
+    assert rec["public_url"] == "https://fiscalreceipts.com/json/sam/ZFN2JJXBLZT3.json"
 
 
 def test_parse_entity_raises_naming_the_missing_path_rather_than_nulling():
@@ -98,21 +98,27 @@ def test_parse_entity_tolerates_a_public_key_view_missing_assertions():
     assert rec["registration_status"] == "Active"
 
 
-def test_require_preflight_refuses_an_unverified_reader_url(tmp_path):
-    """Assumption 4: no citation links to a page nobody has opened."""
+def test_require_preflight_vouches_for_the_endpoint_alone(tmp_path):
+    """#191: no public SAM.gov entity page exists, so the report vouches only
+    for the API endpoint. Its old reader-page fields are ignored either way —
+    a recorded 404 included — because nothing publishes a sam.gov link."""
     report = tmp_path / "preflight.json"
     with pytest.raises(SamShapeError):
         require_preflight(report)
+    report.write_text(json.dumps({"endpoint": "https://x", "status": 200}))
+    assert require_preflight(report)["endpoint"] == "https://x"
     report.write_text(json.dumps({"endpoint": "https://x", "status": 200,
-                                  "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
+                                  "public_url": "https://sam.gov/entity/{uei}",
                                   "public_url_status": 404}))
-    with pytest.raises(SamShapeError) as exc:
-        require_preflight(report)
-    assert "public_url_status" in str(exc.value)
-    report.write_text(json.dumps({"endpoint": "https://x", "status": 200,
-                                  "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
-                                  "public_url_status": 200}))
-    assert require_preflight(report)["public_url_status"] == 200
+    assert require_preflight(report)["endpoint"] == "https://x"
+
+
+def test_the_committed_preflight_report_keeps_the_hourly_job_running():
+    """`sam daily` reads data/research/sam_entities/preflight.json every
+    tick; it was written by the old preflight and must still pass."""
+    committed = (Path(__file__).resolve().parents[1] / "data" / "research"
+                 / "sam_entities" / "preflight.json")
+    assert require_preflight(committed)["endpoint"].startswith("https://api.sam.gov/")
 
 
 def test_extract_stops_dead_on_a_rate_limit_body(tmp_path, monkeypatch):
@@ -444,8 +450,9 @@ def test_dry_run_spends_no_request_and_writes_nothing(tmp_path, monkeypatch):
 
 
 def _preflight_client(monkeypatch, status_for):
-    """A MockTransport client that answers `status_for(url)` per candidate and
-    200 for the reader-facing sam.gov page."""
+    """A MockTransport client that answers `status_for(url)` per candidate.
+    (A sam.gov page would answer 200 — as SAM.gov's app shell does for every
+    path — so a test can tell if preflight ever opens one again.)"""
     monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
     seen: list[str] = []
 
@@ -470,7 +477,8 @@ def test_preflight_records_the_first_candidate_that_answers(tmp_path, monkeypatc
         report = preflight(api_key=secret, client=client, report_path=report_path)
     assert report["endpoint"] == "https://api.sam.gov/entity-information/v4/entities"
     assert report["status"] == 200
-    assert report["public_url_status"] == 200
+    assert "public_url" not in report and "public_url_status" not in report
+    assert not any(u.startswith("https://sam.gov/") for u in seen), "no reader page (#191)"
     # Key NAMES only — never the body, never the credential.
     assert "entityRegistration" in report["entity_keys"]
     on_disk = json.loads(report_path.read_text())
@@ -843,69 +851,13 @@ def test_extract_with_no_recorded_endpoint_requests_the_call_time_url(
     assert seen == [custom]
 
 
-def test_the_public_url_template_is_read_at_call_time(monkeypatch):
+def test_the_reader_link_is_the_receipt_whatever_the_environment_says(monkeypatch):
+    """#191: SAM_PUBLIC_ENTITY_URL no longer exists as a seam; the link is
+    the receipt the site publishes, for every row."""
     monkeypatch.setenv("SAM_PUBLIC_ENTITY_URL", "https://sam.gov/entity/{uei}/coreData")
     rec = parse_entity(LOCKHEED, source_url="https://api.sam.gov/x")
-    assert rec["public_url"] == "https://sam.gov/entity/ZFN2JJXBLZT3/coreData"
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL")
-    rec = parse_entity(LOCKHEED, source_url="https://api.sam.gov/x")
-    assert rec["public_url"] == "https://sam.gov/entity/ZFN2JJXBLZT3"
-
-
-def test_a_public_url_template_without_the_uei_slot_is_refused(monkeypatch):
-    """Every family would cite the same page."""
-    from govbudget.sam_entities import sam_public_entity_url
-
-    monkeypatch.setenv("SAM_PUBLIC_ENTITY_URL", "https://sam.gov/search")
-    with pytest.raises(SamShapeError) as exc:
-        sam_public_entity_url()
-    assert "{uei}" in str(exc.value)
-
-
-def test_preflight_records_the_call_time_public_template(tmp_path, monkeypatch):
-    template = "https://sam.gov/entity/{uei}/coreData"
-    monkeypatch.setenv("SAM_PUBLIC_ENTITY_URL", template)
-    client, seen = _preflight_client(monkeypatch, lambda url: 200)
-    with client:
-        report = preflight(api_key="k", client=client,
-                           report_path=tmp_path / "preflight.json")
-    assert report["public_url"] == template
-    assert "https://sam.gov/entity/ZFN2JJXBLZT3/coreData" in seen
-
-
-def test_require_preflight_refuses_a_report_for_a_different_public_template(
-    tmp_path, monkeypatch
-):
-    """The 200 preflight recorded was for the template it OPENED. If
-    SAM_PUBLIC_ENTITY_URL changed since, every published citation link would
-    point at a page nobody has opened — the exact thing the preflight
-    requirement exists to prevent."""
-    report = tmp_path / "preflight.json"
-    report.write_text(json.dumps({
-        "endpoint": "https://api.sam.gov/entity-information/v4/entities",
-        "status": 200, "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
-        "public_url_status": 200,
-    }))
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL", raising=False)
-    assert require_preflight(report)["public_url_status"] == 200
-
-    monkeypatch.setenv("SAM_PUBLIC_ENTITY_URL", "https://sam.gov/entity/{uei}/coreData")
-    with pytest.raises(SamShapeError) as exc:
-        require_preflight(report)
-    msg = str(exc.value)
-    assert DEFAULT_SAM_PUBLIC_ENTITY_URL in msg
-    assert "https://sam.gov/entity/{uei}/coreData" in msg
-    assert "sam preflight" in msg
-
-
-def test_require_preflight_refuses_a_report_that_names_no_template(tmp_path):
-    """A report with no `public_url` cannot vouch for any template."""
-    report = tmp_path / "preflight.json"
-    report.write_text(json.dumps({"endpoint": "https://x", "status": 200,
-                                  "public_url_status": 200}))
-    with pytest.raises(SamShapeError) as exc:
-        require_preflight(report)
-    assert "public_url" in str(exc.value)
+    assert rec["public_url"] == SAM_RECEIPT_URL.format(uei="ZFN2JJXBLZT3")
+    assert SAM_RECEIPT_URL.startswith("https://") and SAM_RECEIPT_URL.endswith("{uei}.json")
 
 
 def test_first_live_run_plan_spends_nothing_and_budgets_preflight_first(
@@ -918,7 +870,6 @@ def test_first_live_run_plan_spends_nothing_and_budgets_preflight_first(
 
     monkeypatch.delenv("SAM_API_KEY", raising=False)
     monkeypatch.delenv("SAM_ENTITY_API_URL", raising=False)
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL", raising=False)
 
     def boom(*_a, **_k):  # pragma: no cover
         raise AssertionError("a plan must not construct an HTTP client")
@@ -935,7 +886,7 @@ def test_first_live_run_plan_spends_nothing_and_budgets_preflight_first(
         "https://api.sam.gov/entity-information/v4/entities",
         "https://api.sam.gov/entity-information/v3/entities",
     ]
-    assert pre["public_page_probe"] == "https://sam.gov/entity/ZFN2JJXBLZT3"
+    assert "public_page_probe" not in pre
     ex = plan["extract"]
     assert ex["max_requests"] == 8, "10/day minus preflight's worst case"
     assert ex["would_fetch"] == 8
@@ -954,24 +905,14 @@ def test_first_live_run_plan_skips_preflight_when_a_valid_report_exists(
 ):
     from govbudget.sam_entities import plan_first_live_run
 
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL", raising=False)
     report = tmp_path / "preflight.json"
     v3 = "https://api.sam.gov/entity-information/v3/entities"
-    report.write_text(json.dumps({"endpoint": v3, "status": 200,
-                                  "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
-                                  "public_url_status": 200}))
+    report.write_text(json.dumps({"endpoint": v3, "status": 200}))
     plan = plan_first_live_run([("F1", "UEI000000001")], raw_dir=tmp_path / "r",
                                report_path=report)
     assert plan["preflight"]["needed"] is False
     assert plan["extract"]["max_requests"] == 10
     assert plan["extract"]["endpoint"] == v3
-
-    # A report for another template does NOT count as a preflight.
-    monkeypatch.setenv("SAM_PUBLIC_ENTITY_URL", "https://sam.gov/entity/{uei}/x")
-    plan = plan_first_live_run([("F1", "UEI000000001")], raw_dir=tmp_path / "r",
-                               report_path=report)
-    assert plan["preflight"]["needed"] is True
-    assert "https://sam.gov/entity/{uei}/x" in plan["preflight"]["reason"]
 
 
 def test_cli_preflight_dry_run_needs_no_key_and_touches_no_network(
@@ -1002,11 +943,9 @@ def test_cli_preflight_dry_run_needs_no_key_and_touches_no_network(
     assert not (tmp_path / "raw").exists()
 
 
-def test_cli_reparse_refuses_bodies_under_an_unverified_template(
-    tmp_path, monkeypatch
-):
-    """`sam reparse` writes `public_url` from the CURRENT template, so once
-    bodies exist it answers to the same preflight the extract does."""
+def test_cli_reparse_is_offline_and_needs_no_preflight_report(tmp_path, monkeypatch):
+    """The link reparse writes is the fixed receipt URL (#191), so it no
+    longer answers to a stored preflight."""
     from govbudget.cli import main
 
     monkeypatch.setattr("govbudget.config.PARQUET_DIR", tmp_path / "parquet")
@@ -1015,20 +954,10 @@ def test_cli_reparse_refuses_bodies_under_an_unverified_template(
     raw = tmp_path / "raw" / "sam"
     raw.mkdir(parents=True)
     (raw / "ZFN2JJXBLZT3.json").write_text(json.dumps(LOCKHEED))
-    report = tmp_path / "research" / "sam_entities" / "preflight.json"
-    report.parent.mkdir(parents=True)
-    report.write_text(json.dumps({"endpoint": "https://x", "status": 200,
-                                  "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
-                                  "public_url_status": 200}))
-    monkeypatch.setenv("SAM_PUBLIC_ENTITY_URL", "https://sam.gov/entity/{uei}/x")
-    with pytest.raises(SystemExit) as exc:
-        main(["sam", "reparse"])
-    assert "BLOCKED" in str(exc.value)
-    assert not (tmp_path / "parquet" / "sam" / "entities.parquet").exists()
-
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL")
     main(["sam", "reparse"])
-    assert (tmp_path / "parquet" / "sam" / "entities.parquet").exists()
+    out = tmp_path / "parquet" / "sam" / "entities.parquet"
+    assert duckdb.sql(f"select public_url from '{out}'").fetchall() == [
+        ("https://fiscalreceipts.com/json/sam/ZFN2JJXBLZT3.json",)]
 
 
 def test_the_missing_report_refusal_counts_the_requests_preflight_would_spend(
@@ -1217,7 +1146,6 @@ def test_cli_reparse_rebuilds_two_entities_from_the_chain_g_lake(
     """`govbudget sam reparse` — no network, no quota — on chain G's state."""
     from govbudget.cli import main
 
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL", raising=False)
     monkeypatch.setattr("govbudget.config.PARQUET_DIR", tmp_path / "parquet")
     monkeypatch.setattr("govbudget.config.RAW_DIR", tmp_path / "raw")
     monkeypatch.setattr("govbudget.config.RESEARCH_DIR", tmp_path / "research")
@@ -1229,9 +1157,7 @@ def test_cli_reparse_rebuilds_two_entities_from_the_chain_g_lake(
     _chain_g_lake(tmp_path)
     report = tmp_path / "research" / "sam_entities" / "preflight.json"
     report.parent.mkdir(parents=True)
-    report.write_text(json.dumps({"endpoint": _V4, "status": 200,
-                                  "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL,
-                                  "public_url_status": 200}))
+    report.write_text(json.dumps({"endpoint": _V4, "status": 200}))
     main(["sam", "reparse"])
     assert _parquet_ueis(tmp_path / "parquet" / "sam" / "entities.parquet") == [
         "NU2UC8MX6NK1", "ZFN2JJXBLZT3"]

@@ -2571,8 +2571,11 @@ def export_site(
                 continue
             dest = data_dir / f"{name}.parquet"
             dest_str = str(dest).replace("'", "''")
+            select = f"select * from {name}"
+            if name == "dim_entities":
+                select = _dim_entities_download_select(con)
             con.execute(
-                f"COPY (select * from {name}) TO '{dest_str}'"
+                f"COPY ({select}) TO '{dest_str}'"
                 " (format parquet, compression zstd)"
             )
             count = con.execute(f"select count(*) from '{dest_str}'").fetchone()[0]
@@ -5596,13 +5599,108 @@ def _influence_citation_rows(con, *, built_at: str) -> list[tuple]:
 #: verbatim, and site/src/__tests__/sam-registration.test.tsx reads this
 #: assignment (keep it string literals only) and reds if any of them drifts.
 #: ROADMAP #191. The SAM.gov entity route every SAM citation linked to until
-#: 2026-09-27: opened that day for Lockheed Martin, it renders SAM.gov's 404
-#: page (the app shell answers 200 for every path, which is what preflight
-#: saw), and SAM.gov shows registrations only to signed-in users. A citation
-#: whose one reader-facing input is this route is WITHHELD, not published
-#: with a link that fails — the smaller true claim. #191's fix replaces the
-#: link; until then no SAM line ships, however many rows the extract stores.
+#: #191's fix shipped: it renders SAM.gov's 404 page (the app shell answers
+#: 200 for every path, which is what preflight saw), and SAM.gov shows
+#: registrations only to signed-in users. The link is now Fiscal Receipts'
+#: own receipt of SAM's answer (`_sam_receipt`); this route must never be
+#: published again.
 _SAM_BROKEN_ROUTE = re.compile(r"^https://sam\.gov/entity/[A-Z0-9]{12}/?$")
+
+
+def _sam_receipt_url(uei: str) -> str:
+    """The reader link of a SAM registration fact: the receipt this export
+    writes to json/sam/<UEI>.json, served by the site. Absolute, because the
+    citation panel and copied footnotes link only http(s) inputs."""
+    from govbudget.sam_entities import SAM_RECEIPT_URL
+    url = SAM_RECEIPT_URL.format(uei=uei)
+    if _SAM_BROKEN_ROUTE.match(url):        # never again (#191)
+        raise ValueError(f"SAM receipt URL {url} is the sam.gov route that 404s")
+    return url
+
+
+def _sam_answer_date(retrieved) -> str:
+    """The US Eastern calendar date SAM answered on — the calendar SAM's own
+    dates (expiration, registration) are written in, and the one a US
+    reader's citation card shows. Batches land just after 00:00 UTC, so the
+    UTC date would read a day ahead. "" when unknown."""
+    if not retrieved:
+        return ""
+    from zoneinfo import ZoneInfo
+    try:
+        when = datetime.datetime.fromisoformat(str(retrieved).replace("Z", "+00:00"))
+    except ValueError:
+        return str(retrieved)[:10]
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=datetime.timezone.utc)
+    return when.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+
+
+def _sam_expiry_phrase(expires, retrieved) -> str:
+    """Tense from SAM's own answer date, never the reader's clock: a date
+    already past when SAM answered is "expired", anything else "expires"."""
+    if not expires:
+        return "expiration not recorded"
+    answered = _sam_answer_date(retrieved)
+    return f"{'expired' if answered and str(expires) < answered else 'expires'} {expires}"
+
+
+#: Every receipt states what it is, once, in the same words.
+_SAM_RECEIPT_NOTE = (
+    "SAM.gov shows entity registrations only to signed-in users, so no public"
+    " SAM.gov page exists for this record. The fields above are the ones Fiscal"
+    " Receipts read from SAM.gov's public Entity Management API answer to the"
+    " request in `source`, as it stood when SAM answered. That request needs a"
+    " SAM.gov API key, which is removed here, and can ask about several"
+    " entities at once (this site asks about up to 10); this receipt shows only"
+    " this UEI's fields. `fiscal_receipts` is this site's grouping, not a SAM"
+    " field."
+)
+
+
+def _dim_entities_download_select(con) -> str:
+    """dim_entities as /data/ ships it: `sam_public_url` is the receipt URL
+    for every row with a SAM status — exactly the rows _write_all_sidecars
+    writes receipts for — and NULL otherwise. The mart's own column holds
+    whatever `sam_entities` wrote, which until #191 was the sam.gov route
+    that 404s. A fixture mart with no sam_* columns ships as it is."""
+    cols = {r[0] for r in con.execute("describe dim_entities").fetchall()}
+    if not {"sam_public_url", "sam_uei", "sam_registration_status"} <= cols:
+        return "select * from dim_entities"
+    from govbudget.sam_entities import SAM_RECEIPT_URL
+    head, _, tail = SAM_RECEIPT_URL.partition("{uei}")
+    head, tail = head.replace("'", "''"), tail.replace("'", "''")
+    return (
+        "select * replace (case when sam_uei is not null and sam_uei <> ''"
+        " and sam_registration_status is not null"
+        " and sam_registration_status <> ''"
+        f" then '{head}' || sam_uei || '{tail}' end as sam_public_url)"
+        " from dim_entities"
+    )
+
+
+def _sam_receipt(row: dict, family_keys: list[str]) -> dict:
+    """The receipt published at _sam_receipt_url(row["uei"]). Keyed by UEI:
+    `family_keys` lists every published family whose registration this is
+    (the mart's join is many-to-one, so two families can share one)."""
+    return {
+        "receipt": "SAM.gov entity registration",
+        "uei": row["uei"],
+        "fiscal_receipts": {"family_keys": sorted(family_keys)},
+        "legal_business_name": row["legal_business_name"],
+        "cage_code": row["cage_code"],
+        "registration_status": row["registration_status"],
+        "registration_expiration_date": row["registration_expiration_date"],
+        "primary_naics": row["primary_naics"],
+        "business_types": row["business_types"],
+        "source": {
+            "publisher": "U.S. General Services Administration — SAM.gov"
+                         " Entity Management API",
+            "request": row["source_url"],
+            "retrieved_at": row["retrieved_at"],
+            "documentation": "https://open.gsa.gov/api/entity-api/",
+        },
+        "note": _SAM_RECEIPT_NOTE,
+    }
 
 _SAM_REGISTRATION_RULE = (
     "the parent UEI that the family's largest member by obligations reports on"
@@ -6426,12 +6524,13 @@ def _build_derived_citation_rows(
         # site/src/components/sam-registration.tsx's last sentence, the
         # /methodology/ §4 clause and docs/methodology.md §4.
         #
-        # ONE reader-facing input, the public sam.gov entity page. The
+        # ONE reader-facing input: the receipt at json/sam/<UEI>.json
+        # (_sam_receipt_url; SAM.gov has no public entity page, #191). The
         # key-stripped api.sam.gov request URL (sam_source_url) answers a
-        # keyless reader with an empty 404, and the citation panel renders
-        # every URL input as a clickable "Source inputs" link, so it is not an
-        # input (R-DEC-SAMTEXT). It stays recorded where nothing renders it as
-        # a link: dim_entities.sam_source_url, shipped in the /data/ parquet.
+        # keyless reader with an error, and the citation panel renders every
+        # URL input as a clickable "Source inputs" link, so it is not an input
+        # (R-DEC-SAMTEXT). It is recorded in the receipt's `source` and in
+        # dim_entities.sam_source_url, shipped in the /data/ parquet.
         #
         # kind='derived' with URL inputs, deliberately NOT a new citation kind:
         # _verify_derived rule 5 shape-checks URL-input rows and accepts a
@@ -6450,7 +6549,7 @@ def _build_derived_citation_rows(
             sam_rows = con.execute(
                 "select family_key, sam_uei, sam_legal_business_name, sam_cage_code,"
                 " sam_registration_status, sam_registration_expiration_date,"
-                " sam_primary_naics, sam_business_types, sam_public_url,"
+                " sam_primary_naics, sam_business_types,"
                 " sam_retrieved_at from dim_entities"
                 " where sam_uei is not null and sam_uei <> ''"
             ).fetchall()
@@ -6460,13 +6559,9 @@ def _build_derived_citation_rows(
             # which is a BinderException. A bare `except Exception` would
             # swallow a genuine query defect into a silent "no SAM facts".
             sam_rows = []
-        sam_withheld = 0
         for (fk, uei, legal, cage, status, expires, naics, btypes,
-             public_url, retrieved) in sam_rows:
+             retrieved) in sam_rows:
             if fk not in entity_totals or not status:
-                continue
-            if public_url and _SAM_BROKEN_ROUTE.match(public_url):
-                sam_withheld += 1       # ROADMAP #191: no citation to a 404
                 continue
             rows.append(_null_derived_row(
                 fact_id_derived("entity_sam", fk, "registration"),
@@ -6476,20 +6571,23 @@ def _build_derived_citation_rows(
                     f" family {fk}: the registration of {_SAM_REGISTRATION_RULE},"
                     f" as dim_entities takes it. {legal}; CAGE"
                     f" {cage or 'not recorded'}; status"
-                    f" {status}; expires {expires or 'not recorded'}; primary"
+                    f" {status} when SAM answered on"
+                    f" {_sam_answer_date(retrieved) or 'an unrecorded date'}"
+                    f" (US Eastern);"
+                    f" {_sam_expiry_phrase(expires, retrieved)}; primary"
                     f" NAICS {naics or 'not recorded'}; business types"
-                    f" {btypes or 'not recorded'}. Registry enrichment only: it"
-                    f" does not regrade this family's resolution confidence."
+                    f" {btypes or 'not recorded'}. SAM.gov shows registrations"
+                    f" only to signed-in users, so the source is Fiscal"
+                    f" Receipts' receipt of SAM's public API answer."
+                    f" Registry enrichment only: it does not regrade this"
+                    f" family's resolution confidence."
                 ),
-                _json.dumps([public_url] if public_url else []),
+                # ROADMAP #191: the receipt export writes in section 5 of
+                # _write_all_sidecars, for every row with a status.
+                _json.dumps([_sam_receipt_url(uei)]),
                 status,
                 retrieved,
             ))
-
-        if sam_withheld:
-            print(f"export-site: withheld {sam_withheld} SAM registration "
-                  "citation(s) whose only link is the sam.gov/entity/ route, "
-                  "which 404s (ROADMAP #191)")
 
         # ---- Curated corporate-family combined obligations (§P1-3) ----
         # surface='entity_family', key=slug, metric='combined_obligation'
@@ -13319,12 +13417,12 @@ def _write_all_sidecars(
             r[0]: dict(zip(
                 ("uei", "legal_business_name", "cage_code", "registration_status",
                  "registration_expiration_date", "primary_naics", "business_types",
-                 "retrieved_at", "public_url"), r[1:]))
+                 "retrieved_at", "source_url"), r[1:]))
             for r in con.execute(
                 "select family_key, sam_uei, sam_legal_business_name, sam_cage_code,"
                 " sam_registration_status, sam_registration_expiration_date,"
                 " sam_primary_naics, sam_business_types, sam_retrieved_at,"
-                " sam_public_url from dim_entities where sam_uei is not null"
+                " sam_source_url from dim_entities where sam_uei is not null"
                 " and sam_uei <> ''"
             ).fetchall()
         }
@@ -13333,6 +13431,30 @@ def _write_all_sidecars(
         # missing-column case is tolerable here.
         sam_by_key = {}
     sam_sidecars = 0
+
+    # ROADMAP #191: json/sam/<UEI>.json — the receipt each SAM fact links to
+    # (SAM.gov has no public entity page). One per row WITH a status: every
+    # cited fact's input, and every URL /data/dim_entities.parquet publishes,
+    # resolves. A function of the current rows, pruned like entity_details;
+    # always created, because prepare-assets refuses a missing source dir.
+    sam_dir = json_dir / "sam"
+    sam_dir.mkdir(exist_ok=True)
+    families_by_uei: dict[str, list[str]] = {}
+    rows_by_uei: dict[str, dict] = {}
+    for fk, sam_row in sorted(sam_by_key.items()):
+        if not sam_row["registration_status"]:
+            continue
+        families_by_uei.setdefault(sam_row["uei"], []).append(fk)
+        rows_by_uei[sam_row["uei"]] = sam_row   # the SAM fields are the UEI's
+    sam_receipts: set[str] = set()
+    for uei, sam_row in sorted(rows_by_uei.items()):
+        _write_json(sam_dir / f"{uei}.json",
+                    _sam_receipt(sam_row, families_by_uei[uei]))
+        sam_receipts.add(uei)
+        n_files += 1
+    for stale in sorted(sam_dir.glob("*.json")):
+        if stale.stem not in sam_receipts:
+            stale.unlink()
 
     ent_dir = json_dir / "entity_details"
     ent_dir.mkdir(exist_ok=True)
@@ -13374,7 +13496,13 @@ def _write_all_sidecars(
         if _sam:
             _sam_fid = fact_id_derived("entity_sam", family_key, "registration")
             if _sam_fid in _cited_fact_ids:
-                obj["sam"] = {**_sam, "fact_id": _sam_fid}
+                if _sam["uei"] not in sam_receipts:
+                    raise ValueError(
+                        f"SAM fact {_sam_fid} is cited but no receipt was "
+                        f"written for {_sam['uei']} (ROADMAP #191)")
+                # source_url lives in the receipt, not on the page payload.
+                obj["sam"] = {**{k: v for k, v in _sam.items() if k != "source_url"},
+                              "fact_id": _sam_fid}
                 sam_sidecars += 1
         _write_json(ent_dir / f"{slug}.json", obj)
         written_entity_slugs.add(slug)

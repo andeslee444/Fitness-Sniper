@@ -1748,10 +1748,9 @@ def cmd_sam(args) -> None:
             pre_clause = (
                 f"preflight spends up to {pre['api_requests_max']} of the day's"
                 f" {plan['daily_quota']} API request(s) probing"
-                f" {', '.join(pre['candidates'])} and opens"
-                f" {pre['public_page_probe']} once (no key, not an API request);"
+                f" {', '.join(pre['candidates'])};"
                 if pre["needed"] else
-                "preflight is already recorded for today's template (spends 0);"
+                "preflight is already recorded (spends 0);"
             )
             print(
                 f"sam preflight --dry-run: first live run — {pre_clause} then"
@@ -1771,13 +1770,9 @@ def cmd_sam(args) -> None:
                 probes_path=out_dir / _sam.PREFLIGHT_PROBES), indent=2))
             return
         if args.sam_action == "reparse":
-            # reparse writes `public_url` from the template in force NOW, so
-            # once bodies exist it answers to the same stored preflight the
-            # extract does (ROADMAP #10 pre-live seam): a template changed
-            # since preflight would publish links to a page nobody opened.
-            if (any(raw_dir.glob("*.json"))
-                    or any((raw_dir / "batches").glob("*.json"))):
-                require_preflight(report_path)   # stored; spends no quota
+            # Offline and free. It once demanded a stored preflight because
+            # `public_url` came from a configurable sam.gov page template;
+            # the link is now the fixed receipt URL (ROADMAP #191).
             print(f"sam reparse: {reparse(raw_dir=raw_dir, out_dir=out_dir)}")
             return
         if getattr(args, "schema_only", False):
@@ -3146,9 +3141,9 @@ def main(argv=None) -> None:
     sam_sub = sam.add_subparsers(dest="sam_action", required=True)
     sam_pre = sam_sub.add_parser(
         "preflight",
-        help="check SAM_API_KEY, which endpoint answers, and whether the "
-             "reader-facing sam.gov entity page exists; spends up to 2 API "
-             "requests by default (one per candidate endpoint)")
+        help="check SAM_API_KEY and which entity API endpoint answers; spends "
+             "up to 2 API requests by default (one per candidate endpoint). "
+             "No SAM.gov reader page is probed: there is none (ROADMAP #191)")
     sam_pre.add_argument("--dry-run", action="store_true", dest="dry_run",
                          help="print what the first live day would do (preflight"
                               " + the extract's share of the quota) and stop —"

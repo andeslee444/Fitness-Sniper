@@ -283,19 +283,19 @@ def test_the_dry_run_plans_count_what_batches_already_answered(tmp_path):
     assert first["extract"]["missing"] == 2
 
 
-def test_reparse_guards_its_template_when_only_batch_bodies_exist(tmp_path, monkeypatch):
-    """`sam reparse` writes public_url from today's template, so it must
-    require the stored preflight whenever ANY body exists — batch-only too."""
+def test_reparse_is_offline_and_needs_no_preflight(tmp_path, monkeypatch, capsys):
+    """The link `sam reparse` writes is the fixed receipt URL (#191), so a
+    rebuild from stored bodies needs no preflight report at all."""
     from govbudget import cli, config
     with httpx.Client(transport=httpx.MockTransport(FakeSam())) as client:
         fetch_batch(client, api_key=KEY, endpoint=EP, ueis=U[:2],
                     stage="registered", mode="batch+integrity",
-                    raw_dir=tmp_path / "raw" / "sam",       # what cmd_sam reads
+                    raw_dir=tmp_path / "raw" / "sam",
                     out_dir=tmp_path / "parquet" / "sam", clock=lambda: T)
-    assert not list((tmp_path / "raw" / "sam").glob("*.json"))  # batch bodies only
     monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
     monkeypatch.setattr(config, "PARQUET_DIR", tmp_path / "parquet")
-    monkeypatch.setattr(config, "RESEARCH_DIR", tmp_path / "research")
-    with pytest.raises(SystemExit) as e:
-        cli.main(["sam", "reparse"])
-    assert "preflight" in str(e.value)
+    monkeypatch.setattr(config, "RESEARCH_DIR", tmp_path / "research")  # no report
+    cli.main(["sam", "reparse"])
+    urls = {r[0] for r in duckdb.sql(f"select public_url from "
+                                     f"'{tmp_path}/parquet/sam/entities.parquet'").fetchall()}
+    assert urls == {f"https://fiscalreceipts.com/json/sam/{u}.json" for u in U[:2]}

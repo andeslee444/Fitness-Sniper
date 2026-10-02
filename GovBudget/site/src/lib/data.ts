@@ -2217,9 +2217,11 @@ export interface EntitySamRegistration {
   registration_expiration_date: string | null;
   primary_naics: string | null;
   business_types: string | null;
+  /** When SAM answered; the line's tense ("expired"/"expires", "as of") reads from it. */
   retrieved_at: string | null;
-  public_url: string | null;
-  /** Derived citation fact_id; null means do not render the line. */
+  /** Derived citation fact_id; null means do not render the line. The
+   *  citation's source input is the receipt at /json/sam/<uei>.json
+   *  (ROADMAP #191: SAM.gov has no public entity page). */
   fact_id: string | null;
 }
 

@@ -13,9 +13,16 @@
  * last sentence of this note says so in the reader's words.
  *
  * CITED OR ABSENT. No `sam` payload, no fact_id, or no registration status →
- * the component renders NOTHING. That is the state every company page is in
- * today (the extract is blocked on an owner-minted key) and the state ~190 of
- * them stay in while a 10-requests/day key works through the published 200.
+ * the component renders NOTHING — every family the extract has not reached,
+ * or reached and found no public registration for.
+ *
+ * TENSE FROM SAM'S ANSWER, NEVER THE READER'S CLOCK. The status is what SAM
+ * said on the day it answered ("as of" that date), and an expiration date
+ * already past on that day reads "expired", any other "expires". Printing
+ * "expires" for a date SAM's own answer had passed was false (ROADMAP #191).
+ * "That day" is the US Eastern date (export_site._sam_answer_date, the same
+ * rule): SAM's own dates are Eastern calendar dates, and batches land just
+ * after 00:00 UTC, so the UTC date would read a day ahead.
  *
  * The status token is a <ProseCite>, not a <Cite>: <Cite> marks its text as
  * data-amount, and this is not a currency figure. render-static leg (a1)
@@ -57,12 +64,27 @@ import React from "react";
 import type { EntitySamRegistration } from "@/lib/data";
 import { ProseCite } from "@/components/prose-cite";
 
+/** The US Eastern calendar date of SAM's answer (YYYY-MM-DD), or null. */
+export function samAnswerDate(retrievedAt: string | null): string | null {
+  if (!retrievedAt) return null;
+  const when = new Date(retrievedAt);
+  if (Number.isNaN(when.getTime())) return retrievedAt.slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(when);
+}
+
 export function SamRegistrationNote({ sam }: { sam?: EntitySamRegistration }) {
   if (!sam || !sam.fact_id || !sam.registration_status) return null;
   const bits: string[] = [];
   if (sam.cage_code) bits.push(`CAGE ${sam.cage_code}`);
-  if (sam.registration_expiration_date)
-    bits.push(`expires ${sam.registration_expiration_date}`);
+  const answered = samAnswerDate(sam.retrieved_at);
+  const expires = sam.registration_expiration_date;
+  if (expires)
+    bits.push(`${answered && expires < answered ? "expired" : "expires"} ${expires}`);
   if (sam.primary_naics) bits.push(`primary NAICS ${sam.primary_naics}`);
   return (
     <p
@@ -81,6 +103,7 @@ export function SamRegistrationNote({ sam }: { sam?: EntitySamRegistration }) {
       ) : null}
       {". Registration "}
       <ProseCite factId={sam.fact_id}>{sam.registration_status}</ProseCite>
+      {answered ? ` as of ${answered}` : ""}
       {bits.length > 0 ? `, ${bits.join(", ")}` : ""}.
       {sam.business_types ? ` Business types: ${sam.business_types}.` : ""}{" "}
       This is the registration of the parent UEI that the family&rsquo;s

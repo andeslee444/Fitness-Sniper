@@ -24,10 +24,7 @@ import pytest
 from govbudget import cli, sam_batch, sam_daily
 from govbudget.manifest import ManifestRecord, append_record
 from govbudget.sam_daily import Outcome, run_daily
-from govbudget.sam_entities import (
-    DEFAULT_SAM_ENTITY_API_URL,
-    DEFAULT_SAM_PUBLIC_ENTITY_URL,
-)
+from govbudget.sam_entities import DEFAULT_SAM_ENTITY_API_URL
 from sam_fake import FakeSam
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,14 +43,11 @@ def fams(n, start=0):
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SAM_API_KEY", KEY)
-    monkeypatch.delenv("SAM_PUBLIC_ENTITY_URL", raising=False)
     monkeypatch.delenv("SAM_ENTITY_API_URL", raising=False)
     monkeypatch.setattr("govbudget.sam_entities._REQUEST_FLOOR_S", 0)
     report = tmp_path / "preflight.json"
-    report.write_text(json.dumps({
-        "endpoint": DEFAULT_SAM_ENTITY_API_URL, "status": 200,
-        "public_url": DEFAULT_SAM_PUBLIC_ENTITY_URL, "public_url_status": 200,
-    }))
+    report.write_text(json.dumps({"endpoint": DEFAULT_SAM_ENTITY_API_URL,
+                                  "status": 200}))
     return SimpleNamespace(state_dir=tmp_path / "state", raw=tmp_path / "raw",
                            out=tmp_path / "out", report=report, slept=[])
 

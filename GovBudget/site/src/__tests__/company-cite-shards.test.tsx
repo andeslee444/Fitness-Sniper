@@ -390,7 +390,6 @@ describe("/company/{slug}/ lists the SAM registration's citation exactly when th
       primary_naics: null,
       business_types: null,
       retrieved_at: null,
-      public_url: null,
       fact_id: factId,
     };
   }

@@ -226,6 +226,15 @@ if (fs.existsSync(budgetPdfSrc)) {
   fs.rmSync(path.join(jsonDestDir, "budget-pdf-receipts"), { recursive: true, force: true });
 }
 
+// ── 5d3. Copy the SAM.gov registration receipts (ROADMAP #191) ───────────────
+// json/sam/<UEI>.json — the receipt each SAM registration fact's citation
+// links to (https://fiscalreceipts.com/json/sam/<UEI>.json): SAM.gov shows
+// registrations only to signed-in users, so the record SAM's public API
+// returned is published here instead. export-site always writes the folder
+// (empty until the extract has run), so a missing one is fatal.
+copyDir(path.join(jsonDir, "sam"), path.join(jsonDestDir, "sam"));
+console.log("✓  sam/ (SAM registration receipts) → public/json/sam/");
+
 // ── 5e. Copy the flowdown payload (Phase 5H — /flow/ two-river sankey) ───────
 copyFile(
   path.join(jsonDir, "flow_chart.json"),
