@@ -547,7 +547,7 @@ def preflight(*, api_key: str | None = None, client: httpx.Client | None = None,
 
 
 def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS,
-                 report_path=None) -> dict:
+                 report_path=None, out_dir=None) -> dict:
     """What the next `sam extract` WOULD do, from stored state alone.
 
     No key, no network, no write — this is the dry run, and it is the only
@@ -572,8 +572,16 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS,
             recorded = json.loads(Path(report_path).read_text()).get("endpoint")
         except (OSError, ValueError):
             recorded = None
+    answered: set[str] = set()
+    if out_dir is not None:
+        # What `extract_entities` itself skips: any UEI a stored body
+        # (single or batched, raw/sam/batches/) already answers.
+        from govbudget import sam_batch   # imports this module; import late
+        answered = {u for u, a in sam_batch.resolve_answers(
+            raw_dir, Path(out_dir), integrity=False).items()
+            if sam_batch.question_settled(a)}
     missing = [(fk, uei) for fk, uei in families
-               if not (raw_dir / f"{uei}.json").exists()]
+               if not (raw_dir / f"{uei}.json").exists() and uei not in answered]
     cap = max(int(max_requests), 0)
     would = min(len(missing), cap)
     return {
@@ -595,7 +603,7 @@ def plan_extract(families, *, raw_dir, max_requests=DEFAULT_MAX_REQUESTS,
 
 def plan_first_live_run(families, *, raw_dir, report_path,
                         daily_quota: int = DEFAULT_MAX_REQUESTS,
-                        probe_uei: str = _PROBE_UEI) -> dict:
+                        probe_uei: str = _PROBE_UEI, out_dir=None) -> dict:
     """What the FIRST live day will do — preflight, then the bounded extract —
     from stored state alone: no key, no HTTP client, no write.
 
@@ -618,6 +626,7 @@ def plan_first_live_run(families, *, raw_dir, report_path,
     pre_max = len(candidates) if needed else 0
     cap = max(int(daily_quota) - pre_max, 0)
     extract = plan_extract(families, raw_dir=raw_dir, max_requests=cap,
+                           out_dir=out_dir,
                            report_path=report_path)
     commands = ["uv run python -m govbudget sam preflight"] if needed else []
     commands.append(f"uv run python -m govbudget sam extract --max-requests {cap}")
@@ -667,7 +676,8 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
     written nothing — not even a directory.
     """
     if dry_run:
-        return plan_extract(families, raw_dir=raw_dir, max_requests=max_requests)
+        return plan_extract(families, raw_dir=raw_dir, max_requests=max_requests,
+                            out_dir=out_dir)
 
     key = require_api_key(api_key)
     endpoint = endpoint or sam_entity_api_url()
@@ -682,10 +692,14 @@ def extract_entities(families, *, api_key, out_dir, raw_dir,
     )
     spent = 0
     result_path: Path | None = None
+    from govbudget import sam_batch   # imports this module; import late
+    answered = {u for u, a in sam_batch.resolve_answers(
+        raw_dir, out_dir, integrity=False).items()
+        if sam_batch.question_settled(a)}
     try:
         for family_key, uei in families:
             raw_path = raw_dir / f"{uei}.json"
-            if raw_path.exists() and not refresh:
+            if (raw_path.exists() or uei in answered) and not refresh:
                 continue
             if spent >= max_requests:
                 missing = sum(
@@ -827,35 +841,10 @@ def reparse(*, raw_dir, out_dir) -> Path:
     counted in neither figure; a second line names its UEI(s). Every other
     stored body is still rebuilt — a body that is neither a registration nor
     the exact zero-record answer still raises SamShapeError, as before.
+
+    A stored batch body (raw/sam/batches/, what `sam daily` fetches) counts
+    the same way: `sam_batch.rebuild` reads both kinds, so a hand run's
+    rebuild never drops what the daily driver stored (and vice versa).
     """
-    raw_dir, out_dir = Path(raw_dir), Path(out_dir)
-    fetched = {r.file_name: r for r in load_records(out_dir / "manifest.jsonl")}
-    records = []
-    from_mtime = 0
-    no_record: list[str] = []
-    for p in sorted(raw_dir.glob("*.json")):
-        rec = fetched.get(p.name)
-        payload = json.loads(p.read_text())
-        row = parse_response(
-            payload,
-            source_url=(rec.source_url if rec
-                        else f"{sam_entity_api_url()}?ueiSAM={p.stem}"),
-            retrieved_at=(rec.downloaded_at if rec else _utc_iso(
-                datetime.fromtimestamp(p.stat().st_mtime, timezone.utc))),
-        )
-        if row is None:
-            # A stored zero-record answer (`is_no_record`): kept, never
-            # re-fetched, and no row — it must not stop the rebuild of every
-            # other stored body (chain G step 11 wrote no parquet because it
-            # did). Counted per ROW below, so it inflates neither count.
-            no_record.append(p.stem)
-            continue
-        records.append(row)
-        from_mtime += rec is None
-    print(f"sam reparse: {len(records) - from_mtime} row(s) dated from "
-          f"manifest.jsonl, {from_mtime} from file mtime")
-    if no_record:
-        print(f"sam reparse: {len(no_record)} stored answer(s) where SAM returned"
-              " no record for the UEI (200, totalRecords 0; no row written): "
-              + ", ".join(no_record))
-    return write_entities_parquet(records, out_dir)
+    from govbudget import sam_batch   # imports this module; import late
+    return sam_batch.rebuild(Path(raw_dir), Path(out_dir))

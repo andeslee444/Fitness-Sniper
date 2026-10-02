@@ -1,11 +1,14 @@
 """The unattended driver for the SAM.gov extract — what launchd runs hourly.
 
-ROADMAP #10, SAM-extract half. `sam extract` fetches up to 10 registrations
-and stops; this module decides WHEN to call it, so a scheduled job neither
-exceeds the key's quota nor loses a day to one transient failure (the
-2026-09-27 run stored one registration, then SAM's 60 s read timeout ended
-it). `govbudget sam daily` is the command; scripts/launch/sam_daily.sh is the
-launchd entry point; docs/superpowers/LAUNCH.md Step 11b installs it.
+ROADMAP #10, SAM-extract half. This module decides WHEN to ask SAM and how
+much, so a scheduled job neither exceeds the key's quota nor loses a day to
+one transient failure (the 2026-09-27 run stored one registration, then SAM's
+60 s read timeout ended it). WHAT it asks — batched requests, three queries
+per UEI, a ladder of request shapes proven by a control UEI — is
+`sam_batch`'s; each tick loops over `sam_batch.fetch_batch` until the
+budget is spent or nothing is owed. `govbudget sam daily` is the command;
+scripts/launch/sam_daily.sh is the launchd entry point;
+docs/superpowers/LAUNCH.md Step 11b installs it.
 
 THE QUOTA RULE. https://open.gsa.gov/api/entity-api/ publishes 10 requests a
 day for a key with no SAM.gov role and does not say when the day resets (read
@@ -22,14 +25,16 @@ began). None of them sees a failed request of a hand-run `sam extract`;
 SAM's 429 is the backstop for that, and it stops a run without losing a
 stored body.
 
-ONE BATCH A DAY. A run starts only when the full quota is free (or the
-families still missing fit in what is free), so each day's requests go out
+ONE BATCH A DAY. A run starts only when the requests the families still owed
+need are free (all 10 until the last day), so each day's requests go out
 together. The exception is a retry: after SAM fails mid-batch, what is left of
-that batch's 24 hours is spent two hours later rather than abandoned, with the
-registration that failed moved behind the rest. Registrations are tried in
-order of how many batches they have failed in (fewest first, then published
-order); one that has failed in DEFER_AFTER batches is `stuck` once nothing
-else is left.
+that batch's 24 hours is spent two hours later rather than abandoned. A batch
+that timed out is asked again at half its size, down to one UEI a request;
+families are tried in order of how often they have failed (fewest first,
+then published order), and one that has failed alone in DEFER_AFTER daily
+batches is `stuck` once nothing else is owed. A proof of an unproven request
+shape never carries a family that has timed out, and two unanswered proofs
+in a row step the shape down.
 
 HOURLY TICKS. launchd runs this every hour. A tick that decides to wait
 exits without opening the DuckDB lake — unless the wait ends within
@@ -52,7 +57,10 @@ from typing import Callable
 
 import duckdb
 
+import httpx
+
 from govbudget import config
+from govbudget import sam_batch
 from govbudget import sam_entities as sam
 from govbudget.manifest import load_records
 
@@ -62,7 +70,9 @@ WINDOW = timedelta(hours=24)
 #: here retries on the next tick.
 BACKOFF = {
     "sam_unavailable": timedelta(hours=2),
-    "rate_limited": timedelta(hours=6),
+    # SAM counted more than the ledgers did (a failed preflight, a hand
+    # run's failed request): only a full window is sure to clear what it saw.
+    "rate_limited": timedelta(hours=24),
     "error": timedelta(hours=6),
     "sam_refused": timedelta(hours=24),
     "shape_error": timedelta(hours=24),
@@ -103,6 +113,10 @@ class Outcome:
     retry: bool = False
     #: When a `waiting` outcome could next go.
     wake_at: datetime | None = None
+    #: Days of quota the families still owed need, at the mode's pace.
+    days_left: int | None = None
+    #: Requests this tick sent to SAM (answered or not).
+    sent: int = 0
     at: str = ""
     note: str | None = None
     notified: bool = False
@@ -209,16 +223,13 @@ def _acquire_lock(lock_path: Path):
     return handle
 
 
-def _missing(families, raw_dir: Path) -> list[tuple[str, str]]:
-    return [f for f in families if not (raw_dir / f"{f[1]}.json").exists()]
-
-
 def _parquet_stale(out_dir: Path, raw_dir: Path) -> bool:
     """True when a stored answer is newer than the parquet built from them —
     the rebuild failed (`extract_entities` prints why and returns None; `sam
     reparse` raises it). The fix is the owner's, and nothing is lost: the
     bodies are kept."""
-    bodies = list(raw_dir.glob("*.json"))
+    bodies = (list(raw_dir.glob("*.json"))
+              + list((raw_dir / sam_batch.BATCH_DIR).glob("*.json")))
     if not bodies:
         return False
     parquet = out_dir / "entities.parquet"
@@ -244,9 +255,8 @@ def notification_for(outcome: Outcome, state: dict, now: datetime) -> str | None
     if s in ("waiting", "already_running", "check"):
         return None
     if s == "fetched":
-        days = -(-outcome.missing // DAILY_QUOTA) if outcome.missing else 0
         return (f"Stored {outcome.fetched} SAM answer(s); {outcome.missing} "
-                f"families left (~{days} more batch(es), one a day).")
+                f"families left (~{outcome.days_left or 1} more day(s)).")
     if s == "complete":
         if state.get("complete_notified"):
             return None
@@ -304,7 +314,8 @@ def run_daily(*, now: datetime | None = None, state_dir: Path | None = None,
               report_path: Path | None = None, duckdb_path: Path | None = None,
               top_n: int = 200, check: bool = False,
               families_fn: Callable | None = None,
-              extract_fn: Callable | None = None,
+              fetch_fn: Callable | None = None,
+              client=None,
               notify: Callable[[str], bool] | None = None,
               clock: Callable[[], datetime] | None = None,
               sleep: Callable[[float], None] = time.sleep) -> Outcome:
@@ -332,7 +343,8 @@ def run_daily(*, now: datetime | None = None, state_dir: Path | None = None,
                  duckdb_path=duckdb_path or config.DUCKDB_PATH,
                  manifest_path=out_dir / "manifest.jsonl", top_n=top_n,
                  families_fn=families_fn or sam.dominant_parent_ueis,
-                 extract_fn=extract_fn or sam.extract_entities, clock=clock)
+                 fetch_fn=fetch_fn or sam_batch.fetch_batch, client=client,
+                 clock=clock)
     state_path = state_dir / "state.json"
 
     lock = None
@@ -391,7 +403,7 @@ def run_daily(*, now: datetime | None = None, state_dir: Path | None = None,
 
 def _tick(now, state, *, check, persist, raw_dir, out_dir, report_path,
           probes_path, duckdb_path, manifest_path, top_n, families_fn,
-          extract_fn, clock):
+          fetch_fn, client, clock):
     """The decision and, when it says go, the run. Returns (Outcome, key)."""
     # 0. A run killed mid-request (launchd's SIGTERM at logout or shutdown)
     #    left its marker: charge the request that was in flight.
@@ -418,7 +430,10 @@ def _tick(now, state, *, check, persist, raw_dir, out_dir, report_path,
     used = requests_in_window(now, manifest_path, state, probes_path)
     budget = max(DAILY_QUOTA - len(used), 0)
     known_missing = state.get("missing")
-    need = min(DAILY_QUOTA, known_missing) if known_missing else DAILY_QUOTA
+    per_request = (sam_batch.BATCH_SIZE if (state.get("mode") or
+                   sam_batch.MODES[0]).startswith("batch") else 1)
+    need = (min(DAILY_QUOTA, -(-known_missing // per_request))
+            if known_missing else DAILY_QUOTA)
     retry_until = _parse_or_none(state.get("retry_until"))
     retrying = bool(state.get("retry_pending")) and bool(
         retry_until and now < retry_until)
@@ -464,15 +479,25 @@ def _tick(now, state, *, check, persist, raw_dir, out_dir, report_path,
     if not families:
         return Outcome("error", "the lake returned no published families — "
                        "refusing to call that complete", budget=budget), key
-    missing = _missing(families, raw_dir)
+    mode = state.get("mode") or sam_batch.MODES[0]
+    answers = sam_batch.resolve_answers(
+        raw_dir, out_dir, integrity=mode.endswith("+integrity"))
+    missing = sam_batch.pending(families, answers)
     if check:
         verdict = (f"a real tick would wait: {wait}" if wait else
-                   f"a real tick would fetch {min(budget, len(missing))} now")
+                   f"a real tick would ask about {len(missing)} "
+                   f"famil(ies) with up to {budget} request(s) now")
         return Outcome("check", f"{len(missing)} of {len(families)} published "
-                       f"families missing; {budget} of {DAILY_QUOTA} "
-                       f"request(s) free; {verdict}; endpoint "
-                       f"{report['endpoint']}", missing=len(missing),
-                       budget=budget), key
+                       f"families owed an answer; {budget} of {DAILY_QUOTA} "
+                       f"request(s) free; mode {mode}"
+                       f"{'' if state.get('mode_verified') else ' (unproven)'}; "
+                       f"{verdict}; endpoint {report['endpoint']}",
+                       missing=len(missing), budget=budget), key
+    if not missing and _unreadable(families, answers):
+        return Outcome("shape_error", "stored answer(s) do not read: "
+                       f"{'; '.join(_unreadable(families, answers)[:3])} — fix "
+                       "the reader, then `uv run python -m govbudget sam "
+                       "reparse`", missing=0, budget=budget), key
     if not missing:
         if _parquet_stale(out_dir, raw_dir):
             return Outcome("shape_error", "every answer is stored but "
@@ -483,76 +508,242 @@ def _tick(now, state, *, check, persist, raw_dir, out_dir, report_path,
                        "have a stored SAM answer", missing=0,
                        budget=budget), key
 
-    # 4. The run. Registrations are tried fewest-failed-batches first, so one
-    #    SAM always fails on can starve nothing behind it (a registration
-    #    that failed earlier in THIS batch counts as one more). The marker is
-    #    saved first so a run killed mid-request is still charged for it.
-    batch = (state.get("retry_until") if retrying
-             else _iso(now + WINDOW))       # what _record will stamp
+    # 4. The run: batched requests, one query stage at a time, until the
+    #    budget is spent or nothing is owed. Registrations are tried
+    #    fewest-failed-batches first, so one SAM always fails on can starve
+    #    nothing behind it. A marker is saved before EACH request so a run
+    #    killed mid-request is still charged for it.
+    batch_id = (state.get("retry_until") if retrying
+                else _iso(now + WINDOW))       # what _record will stamp
     failures = state.setdefault("uei_failures", {})
+    timeouts = state.setdefault("batch_timeouts", {})
 
     def score(f) -> int:
         rec = failures.get(f[1]) or {}
-        return rec.get("batches", 0) + (rec.get("last_batch") == batch)
+        return (rec.get("batches", 0) + (rec.get("last_batch") == batch_id)
+                + timeouts.get(f[1], 0))
     ordered = sorted(families, key=score)   # stable: published order within
-    before = len(missing)
-    state["inflight"] = _iso(now)
-    persist()
-    status, message, failed = "fetched", "", 0
-    failed_uei = None
+    before = _settled(families, answers)
+    spent = failed = 0
+    ueis, control = [], None
+    notes: list[str] = []
+    status, message, failed_uei = "fetched", "", None
+    client = client or httpx.Client(
+        headers={"User-Agent": sam._USER_AGENT}, timeout=60,
+        follow_redirects=True)
     try:
-        extract_fn(ordered, api_key=key, out_dir=out_dir, raw_dir=raw_dir,
-                   max_requests=budget, endpoint=report["endpoint"])
+        while spent < budget:
+            mode = state.get("mode") or sam_batch.MODES[0]
+            verified = bool(state.get("mode_verified")) or mode == "single"
+            answers = sam_batch.resolve_answers(
+                raw_dir, out_dir, integrity=mode.endswith("+integrity"))
+            owed = sam_batch.pending(ordered, answers)
+            if not owed:
+                break
+            ueis, stage, control = _next_request(
+                owed, answers, mode=mode, verified=verified, timeouts=timeouts)
+            state["inflight"] = _iso(max(clock(), now))
+            persist()
+            try:
+                result = fetch_fn(client, api_key=key, endpoint=report["endpoint"],
+                                  ueis=ueis, stage=stage, mode=mode,
+                                  raw_dir=raw_dir, out_dir=out_dir,
+                                  control=control, clock=clock)
+            except sam_batch.SamQueryRejectedError as e:
+                if verified:
+                    raise                       # a real shape_error, below
+                spent += 1                      # a probe SAM refused: next rung
+                failed += 1
+                _stamp_failed(state, clock, now)
+                notes.append(_advance_mode(state, mode, f"SAM refused it: {e}"))
+                continue
+            except sam_batch.SamStoredBodyError as e:
+                # Paid for, stored and on the ledger (its manifest line), so
+                # never stamped again; its UEIs are `unreadable`, not re-asked.
+                # The other families carry on; the status says so at the end.
+                spent += 1
+                notes.append(f"unreadable answer {e.file}")
+                continue
+            finally:
+                state.pop("inflight", None)
+            spent += 1
+            for u in result.found:
+                timeouts.pop(u, None)
+            if control is None and not verified:
+                state["mode"], state["mode_verified"] = mode, True  # a 200 proves a single mode
+                notes.append(f"mode {mode} proven")
+            elif control is not None:
+                if result.honoured:
+                    state["mode"], state["mode_verified"] = mode, True
+                    state.pop("proof_failures", None)
+                    notes.append(f"mode {mode} proven: SAM answered the "
+                                 "bracketed request")
+                elif result.honoured is False:
+                    notes.append(_advance_mode(
+                        state, mode, "a complete page held none of the UEIs "
+                        "asked, so SAM did not honour the batch"))
+                else:
+                    notes.append(f"mode {mode} not yet proven (a full page)")
     except sam.SamRateLimitError as e:
-        status, message, failed = "rate_limited", str(e), 1
+        status, message, failed, spent = "rate_limited", str(e), failed + 1, spent + 1
     except sam.SamOfflineError as e:
         status, message = "offline", str(e)          # nothing was sent
     except sam.SamUnavailableError as e:
-        status, message, failed = "sam_unavailable", str(e), 1
-        failed_uei = e.uei
+        status, message, failed, spent = "sam_unavailable", str(e), failed + 1, spent + 1
+        if control is not None:
+            # A proof SAM did not answer: twice in a row and the shape itself
+            # is suspect (SAM may 5xx what it will not honour), so step down.
+            state["proof_failures"] = state.get("proof_failures", 0) + 1
+            if state["proof_failures"] >= 2:
+                state.pop("proof_failures", None)
+                notes.append(_advance_mode(
+                    state, state.get("mode") or sam_batch.MODES[0],
+                    "SAM did not answer its proof twice"))
+        if e.uei and control is None:
+            failed_uei = e.uei                   # a single request: that UEI
+        for u in ueis:                           # a batch: halve its size next time
+            if u != control and len(ueis) > 1:
+                timeouts[u] = timeouts.get(u, 0) + 1
     except sam.SamAuthError as e:
-        status, message, failed = "sam_refused", str(e), 1
+        status, message, failed, spent = "sam_refused", str(e), failed + 1, spent + 1
     except sam.SamShapeError as e:
-        status, message, failed = "shape_error", str(e), 1
+        status, message, failed, spent = "shape_error", str(e), failed + 1, spent + 1
     except Exception as e:  # recorded and reported, never swallowed
         print(_scrub(traceback.format_exc(), key), file=sys.stderr)
-        status, message, failed = "error", f"{type(e).__name__}: {e}", 1
+        status, message, failed, spent = ("error", f"{type(e).__name__}: {e}",
+                                          failed + 1, spent + 1)
     finally:
         state.pop("inflight", None)
-    if failed:
-        # Stamped at the END of the run: never earlier than the request.
-        state.setdefault("failed_requests", []).append(_iso(max(clock(), now)))
-    still = _missing(families, raw_dir)
-    fetched = before - len(still)
-    stored = {u for _, u in families} - {u for _, u in still}
-    for uei in [u for u in failures if u in stored]:
+    if status not in ("fetched", "offline"):
+        # The request that raised: stamped at the END of the run, never
+        # earlier than the request. (A 400 during mode probing was stamped
+        # where it happened.)
+        _stamp_failed(state, clock, now)
+    try:
+        sam_batch.rebuild(raw_dir, out_dir, integrity=(
+            state.get("mode") or sam_batch.MODES[0]).endswith("+integrity"))
+    except Exception as e:  # the answers are stored; only the parquet is late
+        print(_scrub(traceback.format_exc(), key), file=sys.stderr)
+        if status == "fetched":
+            status = "shape_error"
+            message = (f"the answers are stored but the parquet rebuild "
+                       f"failed ({type(e).__name__}: {e}); run `uv run python "
+                       "-m govbudget sam reparse` to see why")
+    mode = state.get("mode") or sam_batch.MODES[0]
+    answers = sam_batch.resolve_answers(raw_dir, out_dir,
+                                        integrity=mode.endswith("+integrity"))
+    still = sam_batch.pending(families, answers)
+    fetched = _settled(families, answers) - before
+    answered = {u for _, u in families} - {u for _, u in still}
+    for uei in [u for u in failures if u in answered]:
         del failures[uei]
+    for uei in [u for u in timeouts if u in answered]:
+        del timeouts[uei]
     if failed_uei:
         rec = failures.setdefault(failed_uei, {"batches": 0, "last_batch": None})
-        if rec["last_batch"] != batch:      # one count per batch, not per retry
+        if rec["last_batch"] != batch_id:   # one count per batch, not per retry
             rec["batches"] += 1
-            rec["last_batch"] = batch
-        if all((failures.get(u) or {}).get("batches", 0) >= DEFER_AFTER
-               for _, u in still):
+            rec["last_batch"] = batch_id
+        if still and all((failures.get(u) or {}).get("batches", 0) >= DEFER_AFTER
+                         for _, u in still):
             status = "stuck"
-            message = (f"every family still missing "
+            message = (f"every family still owed an answer "
                        f"({', '.join(u for _, u in still)}) has failed in "
                        f"{DEFER_AFTER}+ daily batches; SAM did not answer for "
                        f"{failed_uei} this time. The driver keeps trying them, "
-                       f"fewest failures first, once a day; check each on "
-                       f"https://sam.gov/entity/<UEI>. {message}")
+                       f"fewest failures first, once a day. {message}")
+    unreadable = _unreadable(families, answers)
     if status == "fetched" and _parquet_stale(out_dir, raw_dir):
         status, message = "shape_error", (
             "entities.parquet was not rebuilt after this run's answers were "
             "stored: run `uv run python -m govbudget sam reparse` to see why")
+    elif status == "fetched" and unreadable:
+        status, message = "shape_error", (
+            f"{len(unreadable)} stored answer(s) do not read — fix the reader, "
+            f"then `uv run python -m govbudget sam reparse`: "
+            f"{'; '.join(unreadable[:3])}")
     elif status == "fetched":
         if not still:
             status = "complete"
-        message = (f"stored {fetched} answer(s) with {budget} request(s) free; "
-                   f"{len(still)} of {len(families)} families still missing")
+        kinds = _kind_counts(answers, families)
+        message = (f"answered {fetched} famil(ies) in {spent} request(s) "
+                   f"({kinds}); {len(still)} of {len(families)} still owed")
+    if notes:
+        message = f"{message} [{'; '.join(notes)}]"
+    per_day = DAILY_QUOTA * (sam_batch.BATCH_SIZE if mode.startswith("batch")
+                             else 1)
     return Outcome(status, message, fetched=fetched, failed=failed,
-                   missing=len(still), budget=budget, ran=True,
-                   retry=retrying), key
+                   missing=len(still), budget=budget, ran=True, sent=spent,
+                   retry=retrying, days_left=-(-len(still) // per_day)), key
+
+
+def _next_request(owed, answers, *, mode, verified, timeouts):
+    """(ueis, stage, control) for the next request: the earliest query stage
+    anything is owed, its families in order, as many as the mode, the
+    control's slot and each family's timeout history allow. A family a page
+    left unresolved, or one that timed out 3+ times in batches, goes alone."""
+    batch = mode.startswith("batch")
+    control = sam_batch.CONTROL_UEI if (batch and not verified) else None
+    stages = ("registered",) if control else sam_batch.STAGES
+    for stage in stages:
+        todo = [u for _, u in owed if sam_batch.next_stage(u, answers) == stage
+                and u != control
+                # a proof never carries a family that has timed out: if the
+                # proof fails, it must be the shape, not that family
+                and not (control and timeouts.get(u))]
+        if todo:
+            break
+    else:
+        # Unproven batch mode and no family fit to prove it with: prove it
+        # with the control and CONTROL_PAIR (fetch_batch adds the pair), a
+        # real bracketed request, before anything else rides on it.
+        return [], "registered", control
+
+    def cap(u) -> int:
+        if not batch or (answers.get(u) or {}).get("unresolved"):
+            return 1
+        return max(1, sam_batch.BATCH_SIZE >> timeouts.get(u, 0))
+    slot = 1 if control else 0                  # the control rides along
+    chosen: list[str] = []
+    for u in todo:
+        if len(chosen) + 1 + slot > max(min(cap(x) for x in chosen + [u]), 1 + slot):
+            break
+        chosen.append(u)
+    return chosen, stage, control
+
+
+_SETTLED = frozenset({"registered", "id_assigned", "opted_out", "not_public"})
+
+
+def _settled(families, answers) -> int:
+    """Families with an answer that reads (not pending, not unreadable)."""
+    return sum(1 for _, u in families
+               if (answers.get(u) or {}).get("kind") in _SETTLED)
+
+
+def _unreadable(families, answers) -> list[str]:
+    return [(answers.get(u) or {}).get("why", u) for _, u in families
+            if (answers.get(u) or {}).get("kind") == "unreadable"]
+
+
+def _advance_mode(state: dict, mode: str, why: str) -> str:
+    modes = sam_batch.MODES
+    nxt = modes[min(modes.index(mode) + 1, len(modes) - 1)]
+    state["mode"], state["mode_verified"] = nxt, nxt == "single"
+    return f"mode {mode} dropped ({why}); now {nxt}"
+
+
+def _stamp_failed(state: dict, clock, now: datetime) -> None:
+    state.setdefault("failed_requests", []).append(_iso(max(clock(), now)))
+
+
+def _kind_counts(answers: dict, families) -> str:
+    counts: dict[str, int] = {}
+    for _, u in families:
+        k = (answers.get(u) or {}).get("kind", "pending")
+        if k != "pending":
+            counts[k] = counts.get(k, 0) + 1
+    return ", ".join(f"{k} {n}" for k, n in sorted(counts.items())) or "none yet"
 
 
 def _record(state: dict, outcome: Outcome, now: datetime) -> None:
@@ -578,7 +769,7 @@ def _record(state: dict, outcome: Outcome, now: datetime) -> None:
         # 24 hours; a clean batch, a completed extract or a refusal ends it.
         # An `offline` run that stored nothing sent nothing: it starts no
         # batch, so it neither opens a retry window nor closes one.
-        started = not (s == "offline" and outcome.fetched == 0)
+        started = not (s == "offline" and outcome.sent == 0)
         if started and not outcome.retry:
             state["retry_until"] = _iso(now + WINDOW)
         if started or outcome.retry:

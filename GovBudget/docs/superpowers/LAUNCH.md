@@ -1071,12 +1071,31 @@ MTWRFSU 02:55:00`, or accept that a sleeping machine runs the job at next wake).
 
 ## Step 11b — SAM daily extract (ROADMAP #10)
 
-The SAM.gov key allows 10 requests a day, and 196 of the 200 published
-families still need theirs (2026-09-27), so the extract takes about 20 days.
-`govbudget sam daily` is one unattended tick of it, and launchd runs it every
-hour at :17. A tick that has nothing to do reads `.env`, the preflight report,
-the SAM manifest and its state file, then exits without opening the DuckDB
-lake. A tick runs the extract only when these allow it:
+The SAM.gov key allows 10 requests a day, and 195 of the 200 published
+families are still owed an answer (2026-09-27). `govbudget sam daily` is one
+unattended tick of the extract, and launchd runs it every hour at :17. A tick
+that has nothing to do reads `.env`, the preflight report, the SAM manifest
+and its state file, then exits without opening the DuckDB lake.
+
+**What a request asks** (`src/govbudget/sam_batch.py`). Up to 10 UEIs per
+request (`ueiSAM=[A~B~…]`; SAM pages 10 records), so a day covers about 100
+families and the extract about 2 days. Each UEI is asked three ways until one
+finds it: the default query with `integrityInformation` (a registration, or
+the masked record of an entity that opted out of public display),
+`samRegistered=No` (a UEI with no registration) and `registrationStatus=E`
+(an expired registration). A UEI no query finds is `not_public`: no record a
+Personal key can see. Only registrations become rows of
+`data/parquet/sam/entities.parquet`; `answers.parquet` beside it keeps every
+answer's kind. Every 200 answer's whole body (JSON or not) is kept under
+`data/raw/sam/batches/` with one manifest line; an answer that does not read
+is named in a `shape_error` and its UEIs are not asked again until the
+reader is fixed and `sam reparse` rerun. The batch syntax and
+`integrityInformation` are undocumented for a Personal key, so the first
+batch carries a control UEI (Lockheed Martin); if SAM answers without it, or
+refuses the request, the driver steps down a ladder (`batch+integrity`,
+`batch`, `single+integrity`, `single`) and says so in its log line.
+
+A tick runs only when these allow it:
 
 - **The quota.** At most 10 requests in any trailing 24 hours, counted from
   `data/parquet/sam/manifest.jsonl` (every stored answer),
@@ -1087,19 +1106,23 @@ lake. A tick runs the extract only when these allow it:
   UTC day, and every Eastern day but the 25-hour one in November, to 10. Each
   day's batch starts once the previous one has rolled off.
 - **Retries.** A timeout or 5xx mid-batch spends the rest of that batch's
-  24 hours 2 hours later, with the registration that failed moved behind the
-  rest. Registrations are tried fewest-failed-batches first, so one SAM
-  always fails on holds up nothing. Once only registrations that have failed
-  in 3 daily batches are left, the tick reports `stuck`. A connection that
-  never opened spends nothing and is retried on the next tick. A 429 ends the
-  batch. A refused key or an answer that will not parse needs the owner
+  24 hours 2 hours later; a batch that timed out is retried at half its size,
+  and a UEI SAM keeps failing on alone is tried after the rest. Once only UEIs
+  that have failed in 3 daily batches are left, the tick reports `stuck`. A
+  connection that never opened spends nothing and is retried on the next
+  tick. A 429 ends the batch and waits 24 hours: SAM counted more than the
+  ledgers did. A refused key or an answer that will not parse needs the owner
   (exit 1) and waits 24 hours.
 - **The lake.** A dbt build's write lock makes the tick wait for the next
   hour. An `export-site` does not: it reads, and so does the tick.
 
 It never builds, exports or deploys. `dim_entities` reads
 `data/parquet/sam/entities.parquet` live, so stored registrations reach the
-site at the next `export-site` and deploy, with no build needed. A batch that
+site at the next `export-site` and deploy, with no build needed — except
+that, until ROADMAP #191 is fixed, `export-site` withholds every SAM citation
+whose only link is the `sam.gov/entity/<UEI>` route, which is a SAM.gov 404,
+and prints how many it withheld. So a deploy before #191 ships no SAM line
+(and drops the two live ones). A batch that
 lands while an `export-site` is running can leave that export's SAM citations
 and its `dim_entities.parquet` disagreeing; if a tick logged `fetched` during
 an export, run the export again.

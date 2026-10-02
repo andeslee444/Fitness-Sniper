@@ -5595,6 +5595,15 @@ def _influence_citation_rows(con, *, built_at: str) -> list[tuple]:
 #: sam-registration.tsx, /methodology/ §4 and docs/methodology.md §4 state it
 #: verbatim, and site/src/__tests__/sam-registration.test.tsx reads this
 #: assignment (keep it string literals only) and reds if any of them drifts.
+#: ROADMAP #191. The SAM.gov entity route every SAM citation linked to until
+#: 2026-09-27: opened that day for Lockheed Martin, it renders SAM.gov's 404
+#: page (the app shell answers 200 for every path, which is what preflight
+#: saw), and SAM.gov shows registrations only to signed-in users. A citation
+#: whose one reader-facing input is this route is WITHHELD, not published
+#: with a link that fails — the smaller true claim. #191's fix replaces the
+#: link; until then no SAM line ships, however many rows the extract stores.
+_SAM_BROKEN_ROUTE = re.compile(r"^https://sam\.gov/entity/[A-Z0-9]{12}/?$")
+
 _SAM_REGISTRATION_RULE = (
     "the parent UEI that the family's largest member by obligations reports on"
     " its awards (the parent on the most of its dollars; the member's own UEI"
@@ -6451,9 +6460,13 @@ def _build_derived_citation_rows(
             # which is a BinderException. A bare `except Exception` would
             # swallow a genuine query defect into a silent "no SAM facts".
             sam_rows = []
+        sam_withheld = 0
         for (fk, uei, legal, cage, status, expires, naics, btypes,
              public_url, retrieved) in sam_rows:
             if fk not in entity_totals or not status:
+                continue
+            if public_url and _SAM_BROKEN_ROUTE.match(public_url):
+                sam_withheld += 1       # ROADMAP #191: no citation to a 404
                 continue
             rows.append(_null_derived_row(
                 fact_id_derived("entity_sam", fk, "registration"),
@@ -6472,6 +6485,11 @@ def _build_derived_citation_rows(
                 status,
                 retrieved,
             ))
+
+        if sam_withheld:
+            print(f"export-site: withheld {sam_withheld} SAM registration "
+                  "citation(s) whose only link is the sam.gov/entity/ route, "
+                  "which 404s (ROADMAP #191)")
 
         # ---- Curated corporate-family combined obligations (§P1-3) ----
         # surface='entity_family', key=slug, metric='combined_obligation'

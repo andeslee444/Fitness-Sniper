@@ -1742,7 +1742,7 @@ def cmd_sam(args) -> None:
             plan = _sam.plan_first_live_run(
                 _sam.dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
                 raw_dir=raw_dir, report_path=report_path,
-                daily_quota=args.daily_quota)
+                daily_quota=args.daily_quota, out_dir=out_dir)
             print(_json.dumps(plan, indent=2))
             pre, ex = plan["preflight"], plan["extract"]
             pre_clause = (
@@ -1775,7 +1775,8 @@ def cmd_sam(args) -> None:
             # once bodies exist it answers to the same stored preflight the
             # extract does (ROADMAP #10 pre-live seam): a template changed
             # since preflight would publish links to a page nobody opened.
-            if any(raw_dir.glob("*.json")):
+            if (any(raw_dir.glob("*.json"))
+                    or any((raw_dir / "batches").glob("*.json"))):
                 require_preflight(report_path)   # stored; spends no quota
             print(f"sam reparse: {reparse(raw_dir=raw_dir, out_dir=out_dir)}")
             return
@@ -1791,7 +1792,7 @@ def cmd_sam(args) -> None:
             plan = plan_extract(
                 _sam.dominant_parent_ueis(config.DUCKDB_PATH, top_n=args.top_n),
                 raw_dir=raw_dir, max_requests=args.max_requests,
-                report_path=report_path)
+                report_path=report_path, out_dir=out_dir)
             print(_json.dumps(plan, indent=2))
             print(
                 f"sam extract --dry-run: {plan['families']} published families,"

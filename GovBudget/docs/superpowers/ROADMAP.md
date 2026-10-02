@@ -4605,6 +4605,31 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   #13). Effort: hours.
   **Status:** open (2026-09-26).
 
+- **#191 Every published SAM citation links to a SAM.gov 404, and SAM.gov
+  has no public entity page to link instead.** The one reader-facing input
+  of each `entity_sam` citation is `https://sam.gov/entity/<UEI>`
+  (`sam_entities.DEFAULT_SAM_PUBLIC_ENTITY_URL`). Opened 2026-09-27 for
+  Lockheed Martin (ZFN2JJXBLZT3), it renders "404 Page Not Found"; the live
+  /company/lockheed-martin/ and /company/boeing/ carry it. `sam preflight`
+  recorded `public_url_status` 200 because the URL answers with SAM.gov's
+  app shell, which returns 200 for every path. The route SAM.gov's own
+  search builds, `/entities/view/<UEI>`, redirects to "401 You must be
+  signed in", as does every entity search for a signed-out reader (a
+  zero-quota sweep of five UEIs, 2026-09-27). Fix before the next deploy
+  that ships a SAM citation: cite an archived copy of the key-scrubbed API
+  response the row was read from (the request URL alone answers a keyless
+  reader with an error), say that SAM.gov shows registrations only to
+  signed-in users, make preflight check page content rather than a status
+  code, and print "expired <date>" for a registration whose date has passed
+  (the component prints "expires"). Source:
+  `src/govbudget/sam_entities.py` (`DEFAULT_SAM_PUBLIC_ENTITY_URL`,
+  `require_preflight`), `src/govbudget/export_site.py` (the `entity_sam`
+  rows), `site/src/components/sam-registration.tsx`. Effort: days.
+  **Status:** open (2026-09-27). Until the fix, `export_site` withholds any
+  `entity_sam` citation whose only input is this route
+  (`_SAM_BROKEN_ROUTE`; tests/jbooks/test_export_site_pg.py pins both
+  sides), so the next deploy ships no SAM line and drops the two live ones.
+
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
 naming the sprint and/or commit that closed it and when, so an item's state is
@@ -4885,7 +4910,37 @@ docs/superpowers/ROADMAP.md`.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
 
-    **Status:** PARTIAL 2026-09-27 — the SAM half can now run unattended; the
+    **Status:** PARTIAL 2026-09-27 (evening) — the daily driver now asks in
+    batches and settles every kind of answer. The owner loaded the plist on
+    2026-09-27; its first tick (13:28Z) stored HUNTINGTON INGALLS
+    (F9SDJAZFTLG6) and L3HARRIS (SJULQDJ8NZU7), and SAM returned no record
+    for HUMANA (ETS5JZPPGZX4) or BAE SYSTEMS (E5K9VR2A1MW9). That made 3 empty
+    answers of 8, and a zero-quota review of open.gsa.gov found why a plain
+    `?ueiSAM=` query can come back empty: it returns only registered entities
+    by default, and a Personal key reads only publicly displayed ones. The
+    owner paused the job, and `src/govbudget/sam_batch.py` changes what it
+    asks. A request carries 10 UEIs (`ueiSAM=[A~B]`, documented for up to
+    100; a page holds 10 records). Each UEI is asked three ways until one
+    finds it: the default query with integrityInformation (an opted-out
+    entity comes back masked), `samRegistered=No` (a UEI with no
+    registration) and `registrationStatus=E`. A UEI absent from all three is
+    `not_public`. Only registrations become `entities.parquet` rows;
+    `answers.parquet` keeps every kind. Neither the batch syntax nor
+    integrityInformation is documented for a Personal key, so the driver
+    proves the request shape with a control UEI (Lockheed Martin) in the
+    first batch and steps down a ladder of modes to the single request the
+    first day proved if SAM does not honour it. At 10 UEIs a request, the 195
+    families still owed need about 2 days, not 20. An adversarial review of
+    the batched driver (three lenses, each finding reproduced by a skeptic,
+    then a completeness critic) confirmed 19 defects and 4 more; all are
+    fixed, each code defect with a test (tests/test_sam_batch.py,
+    tests/test_sam_daily.py). Every published SAM citation link is a
+    SAM.gov 404 (#191); until that is fixed, `export_site` withholds those
+    citations.
+    *(Earlier markers below.)*
+
+    **Status (2026-09-27, morning): PARTIAL 2026-09-27** — the SAM half can now
+    run unattended; the
     owner loads it. `govbudget sam daily` (`src/govbudget/sam_daily.py`) is one
     tick of the extract. `scripts/launch/sam_daily.sh` and
     `scripts/launch/com.fiscalreceipts.sam-daily.plist.template` run it every

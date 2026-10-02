@@ -1621,6 +1621,24 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     con.close()
     export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
 
+    # ROADMAP #191 (2026-09-27): sam.gov/entity/<UEI> renders SAM.gov's 404
+    # page, so a row whose only reader-facing link is that route is withheld —
+    # no citation, no sidecar, counted as none — however many rows the
+    # extract has stored.
+    lm = json.loads((detail_dir / "lockheed.json").read_text())
+    assert "sam" not in lm
+    assert fid not in json.loads((site / "json" / "citations.json").read_text())
+    assert json.loads((site / "json" / "site_meta.json").read_text())[
+        "counts"]["companies_with_sam"] == 0
+
+    # With a link that is not the broken route, the row publishes as before.
+    ARCHIVE = "https://fiscalreceipts.example/sam/ZFN2JJXBLZT3.json"
+    con = duckdb.connect(str(db))
+    con.execute(f"update dim_entities set sam_public_url='{ARCHIVE}'"
+                " where family_key='lockheed'")
+    con.close()
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
     lm = json.loads((detail_dir / "lockheed.json").read_text())
     assert lm["sam"] == {
         "uei": "ZFN2JJXBLZT3",
@@ -1631,7 +1649,7 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
         "primary_naics": "336411",
         "business_types": "For Profit Organization; Manufacturer of Goods",
         "retrieved_at": "2026-09-12T00:00:00+00:00",
-        "public_url": "https://sam.gov/entity/ZFN2JJXBLZT3",
+        "public_url": ARCHIVE,
         "fact_id": fid,
     }
     boeing = json.loads((detail_dir / "boeing.json").read_text())
@@ -1649,7 +1667,7 @@ def test_sam_registration_sidecar_is_cited_or_absent(pg_dsn, tmp_path):
     # link, so it may not appear anywhere in the citation row. It is still
     # recorded — dim_entities.sam_source_url, in the /data/ parquet — as
     # provenance nothing renders as a link.
-    assert json.loads(row["inputs"]) == ["https://sam.gov/entity/ZFN2JJXBLZT3"]
+    assert json.loads(row["inputs"]) == [ARCHIVE]
     assert "api.sam.gov" not in json.dumps(row)
     assert "does not regrade this family's resolution confidence" in row["formula"]
     # R-DEC-SAMTEXT: say exactly what is shown. The mart joins SAM on
