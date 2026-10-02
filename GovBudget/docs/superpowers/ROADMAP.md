@@ -1,9 +1,28 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
+
+**Platform families (2026-10-02):** the owner wants every program grouped the way
+the F-15 family groups its lines — weapon-system families first, then broader
+program areas so that every program belongs to one group, with every figure linked
+to its workbook cell or PDF. Approach: Claude proposes members with budget-book
+evidence, the owner approves, one page template. Owner decisions:
+**R-DEC-FAM-UNIT** a family is a platform family (F-15 = F-15EX + EPAWSS + F-15E
+upgrades), members tagged by acquisition program; **R-DEC-FAM-NAME** readers see
+"family" at `/families/<id>/` (internal name `platform_family`; the lineage
+"Branching family" label is renamed); **R-DEC-FAM-REVIEW** Claude pre-fills every
+era-map decision and counted member with evidence, the owner approves in batches;
+**R-DEC-FAM-ERAONLY** the 279 discontinued procurement code chains stay data only,
+with stated successor codes recorded. Eleven pieces, each with its own spec, plan,
+gate and deploy: [overview](specs/2026-10-02-platform-families-overview.md). Piece 1,
+procurement history before FY2024 (about 800 procurement pages gain PB2017–23
+points; three class rulings R-DEC-ERA-SAME / -EXCLUDE / -HISTORY):
+[spec](specs/2026-10-02-era-procurement-history-design.md). The other session's
+12-family attempt is preserved, unmerged, on local branch
+`wip/other-session-families-layout-2026-09-29`.
 
 **F-15 family funding correction (2026-09-24):** replace the largest single
 program's request with a cited history of the identified F-15 development and
