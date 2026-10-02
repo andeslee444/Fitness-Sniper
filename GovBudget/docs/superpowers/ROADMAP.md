@@ -24,7 +24,14 @@ owner 2026-10-02 together with its three class rulings: **R-DEC-ERA-SAME** (a ch
 whose every era key prints a code and title found in PB2024–26 is the same program),
 **R-DEC-ERA-EXCLUDE** (continuing-resolution placeholders and the route-unsafe `0390D`
 `O&M`/`RDT&E` lines are excluded) and **R-DEC-ERA-HISTORY** (era-only codes with no
-title drift are history only, no page). The other session's
+title drift are history only, no page).
+Owner decisions at plan review (2026-10-02): the per-edition era table renders on
+`/downloads/`, counts only (it fits neither `/coverage/` nor `/data/` without a
+raised ceiling, and its per-decision dollars have no citation, so they stay in
+`json/era_map_summary.json`); `p1_era_line_map` shows the "tier pending" badge on
+`/data/`, with the matching `/methodology/` clause rewritten at equal length; and
+R-DEC-ERA-EXCLUDE stays, with its corrected figure: the two `0390D` Chem Demil
+lines carry $5.83B of era actuals and have no page in any edition (#194). The other session's
 12-family attempt is preserved, unmerged, on local branch
 `wip/other-session-families-layout-2026-09-29`.
 

@@ -199,6 +199,13 @@ program pages: 99.2% (a) or derived only from (a); about 0.8% (b) only; zero (c)
 41,772 with complete PDF receipts. 2,437 of 2,562 pages fully PDF-highlighted. All 30
 workbooks and 225 PDFs serve from assets.fiscalreceipts.com.
 
+*Note (2026-10-02, piece-1 plan).* The figures above count appearances: the same
+fact ID shown twice on a page counts twice. The committed `govbudget link-coverage`
+tool scores distinct fact IDs across seven sidecar sections: 45,151 distinct budget
+figures (44,747 (a), 404 (b), 0 (c)/(d)), 100.00% source-linked, 99.11%
+PDF-highlighted, 2,437 of 2,562 pages fully highlighted. It also reproduces the
+55,749 appearance count. Later pieces quote the distinct-figure numbers.
+
 **What is missing is mostly what is not published yet:**
 
 | Gap | Size | Piece |
