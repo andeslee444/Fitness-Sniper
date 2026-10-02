@@ -25,7 +25,7 @@ the ones the re-check corrected carry the corrected value.
 | R-DEC-FAM-UNIT | A family is a **platform family**, like the F-15: one family per platform, each member tagged with its acquisition program so per-program totals stay visible. GPS = satellites + ground control + receivers; Abrams = tank + upgrades. | GAO's per-program unit (F-15EX and EPAWSS separately) becomes a tag inside a family, not the family. Identity-only machine grouping (MDAP codes) under-groups by design: F-15 comes out as 3 components. |
 | R-DEC-FAM-NAME | Reader-facing name **"family"**, route **`/families/<id>/`** for every family. F-15 stays at `/families/f-15/`. | The lineage label "Branching family" on program pages is renamed so "family" means one thing on the site (piece 4). Internal identifiers use `platform_family` to stay distinct from contractor families (`entity_families.py`, `/companies/families/`) and lineage `program_family`. |
 | R-DEC-FAM-REVIEW | **Claude pre-fills, the owner approves.** Every era-map decision and every counted family member is proposed with its evidence, sorted by dollars, and approved by the owner in batches. Nothing publishes without the owner's yes. | Seeds record `decided_by=owner` plus a ruling id. Class rulings (one ruling covering many rows) are allowed and are listed in the spec that uses them. |
-| R-DEC-FAM-ERAONLY | **Discontinued procurement lines stay data only.** The 279 era-only code chains ($48.3B, e.g. JLTV's pre-FY2021 code, older EELV launch lines) get no program pages. Families may count them as predecessors later. Where a budget book states that a line continues under a new code, that link is recorded now. | Piece 1 records `successor_code` with its citation, e.g. PB2026 R-2: "This budget line D15610 is a continuation of an existing effort where prior year funds through FY 2020 are reflected under the previous budget line D15603." |
+| R-DEC-FAM-ERAONLY | **Discontinued procurement lines stay data only.** The 279 era-only code chains ($48.3B, e.g. JLTV's pre-FY2021 code, older EELV launch lines) get no program pages. Families may count them as predecessors later. Where a budget book states that a line continues under a new code, that link is recorded now. | Piece 1 records `successor_code` with its citation, e.g. JLTV `5600D15603` → `5731D15610`, from the PB2026 Army Other Procurement BA1 P-40 (p.100): "This budget line D15610 is a continuation of an existing effort where prior year funds through FY 2020 are reflected under the previous budget line D15603." |
 
 Standing decisions that bind every piece: **publish the smaller true number**
 (2026-08-07), and **every figure traces to a citation**.
@@ -55,19 +55,19 @@ pass/fail check. A piece may not lower link coverage (§7).
 
 | # | Piece | Scope | Depends on | What readers see | Pass/fail check |
 |---|---|---|---|---|---|
-| 1 | **Procurement history before FY2024** | Keep the printed code at load; review every era code chain once; program-grain decade table; old points on program pages; classified era rows loaded (never shown under a program); F015E0 relabel and F-15 classified/MILCON note; link-coverage baseline | — | About 800 of 891 procurement program pages gain the PB2017–23 editions (FY2015–21 actuals), each point linked to its workbook cell and, where the matcher can, its PDF | Fresh A/B export equals the expected-difference list; every existing fact ID unchanged; F-15 history JSON unchanged except the approved relabel; era-map verify CLI in the release assembly |
+| 1 | **Procurement history before FY2024** | Keep the printed code at load; review every era code chain once; program-grain decade table; old points on program pages; classified era rows loaded (never shown under a program); F015E0 relabel and F-15 classified/MILCON note; link-coverage tool and baseline | — | About 880 procurement program pages (about 800 with PB2026 lines, about 80 history-only) gain the PB2017–23 editions (FY2015–21 actuals), each point linked to its workbook cell and, where the matcher can, its PDF | Fresh A/B export on a pinned snapshot equals the expected-difference list; every existing fact ID unchanged; F-15 history JSON unchanged except the approved S5 changes (relabel, note, two coverage notes); `verify-era-map` in the release assembly |
 | 2 | **Family list, F-15 as entry #1** | `platform_families.json` + members CSV; one loader that fails loudly; one generic history builder inside `export_site`; registry-driven receipt formulas and audits; `json/families/index.json`; F-15 rebuilt on it | 1 | Nothing (F-15 output byte-identical) | Golden pin; fresh A/B export against a pinned lake snapshot; 17 existing F-15 tests unchanged |
 | 3 | **Member-evidence engine** | Extract MDAP codes, Code B PEs, Other Program Funding, related PEs, P-18 spares allocations, the adjudicated contract-program map, era continuity and approved aliases into one evidence table; group by identity edges, propose one hop beyond; per-family proposal files | 1, 2 | Nothing (research outputs) | Calibrated on F-15: recovers its 8 counted lines and marks shared spares lines as context; byte-identical reruns |
 | 4 | **Family page template + F-35** | Standard sections that render only when data exists; per-family editorial slots; member → family backlinks; rename the lineage "Branching family" label; F-35 (10 lines, 4 accounts) as the first new family | 2, 3 (and 1 for F-35's pre-FY2022 procurement, pooled today in `3010F-AF-L1`) | First new family page | Independent recompute of every family total from seeds and lake (not from the builder); page weight; accessibility |
 | 5 | **F-15 gaps** | All 30 budget snapshots with request/enacted/actual; GAO, lobbying and contract panels from member data; PDF pages for the 18 narrative passages without one; archived copies of the 62 web sources; the 36 related programs moved in as `context` members | 4 | Yes | Deliberate re-stamp of the F-15 pin, owner sign-off |
 | 6 | **Pilots, then about 108 families** | Columbia (rename + account move + shipbuilding receipts), Sentinel (rename + Army radar name clash), GPS (Space Force account moves), Abrams (project slice 330), then batches by budget area starting where coverage is highest | 3, 4 | Yes | Per family: evidence resolves, ratified members only, recompute matches |
 | 7 | **Contracts per family** | Review candidate contracts (F-15: $35.7B of FPDS descriptions mentioning F-15, FY2017–26, unreviewed); key by (code, source system); count each contract once across members | 2 | Yes | Sampled precision published; no double counting |
-| 8 | **Quantities and unit cost** | Load P-1 quantity columns (row grain); P-40 quantities; unit cost only where weapon-system cost and advance procurement are separable | — | Yes (via the template) | Recompute from workbook cells |
+| 8 | **Quantities and unit cost** | Load P-1 quantity columns (row grain); P-40 quantities; unit cost only where weapon-system cost and advance procurement are separable | 2 (readers see it through 4) | Yes (via the template) | Recompute from workbook cells |
 | 9 | **PB2027** | Ingest the PB2027 edition (posted 2026-04-03; brings FY2025 actuals); re-check members, renames and `expected_from` editions; remove FY2026 hardcodes | Scheduled between pieces, never in the middle of a piece that pins F-15 | Yes | Re-pin with sign-off |
 | 10 | **Program areas** | Partition every program page into exactly one area or family; taxonomy from budget sub-activity titles, lineage families and categories; homes for shared lines and classified | 6 | Yes | Gate: every program page belongs to exactly one group |
 | 11 | **Source backfills** | Service J-books before PB2026 (#89); narrative PDF pages (#90); O-1/C-1 exhibits; PB2012–16; era book diffs; the dead v1 receipt files | various | Varies | Link coverage rises |
 
-Order: 1 → 2 → (3 ∥ 4) → (5 ∥ 6). Pieces 7, 8 and 11 run alongside once 2 is done.
+Order: 1 → 2 → 3 → 4 → (5 ∥ 6). Pieces 7, 8 and 11 run alongside once 2 is done.
 Piece 9 lands between pieces. Piece 10 follows 6.
 
 ---
@@ -80,7 +80,7 @@ complete PDF receipt; 207/207 leaf figures have a workbook cell.
 
 | # | Gap | Evidence | Piece |
 |---|---|---|---|
-| 1 | **Mislabeled line.** The matrix calls F015E0 "F-15e (legacy line)". | PB2026 AF Aircraft Procurement Vol I P-40 (F-15EX narrative): Lot 1 aircraft "were purchased with procurement funds (F015E0, Line #3)". F015E0 is the FY2020 F-15EX Lot 1 line ($1,050,000K requested, $621,100K enacted). | 1 |
+| 1 | **Mislabeled line.** The matrix calls F015E0 "F-15e (legacy line)". | PB2026 AF Aircraft Procurement Vol I, F015EX P-40, p.71: of the eight Lot 1 aircraft funded outside that exhibit in FY2020, two test aircraft were bought with RDT&E funds (PE 0207134F), and "four operationally representative test aircraft and two operational aircraft were purchased with procurement funds (F015E0, Line #3)". F015E0 is an FY2020 line ($1,050,000K requested, $621,100K enacted). | 1 |
 | 2 | **No classified-funding or construction note.** | No coverage note mentions classified funding or MILCON. (The nominal-dollar note already exists, `COVERAGE_NOTES[4]`.) | 1 |
 | 3 | Who got the money | 6 contracts linked to F-15 lines, none to F015EX. $35.7B of F-15-mentioning FPDS candidates (10,317 transactions; $14.6B FMS-funded), unreviewed. Largest unlinked: FA863418C2701 (F-15QA, $6.99B), FA863423F0048 (EX Lot 5 advance procurement, $3.93B). Subawards $6.46B under 10 primes. | 7 |
 | 4 | Quantities and unit cost | F015EX: 24 aircraft FY2024 actual, 18 FY2025 enacted, 21 FY2026 request — in every P-1 workbook, dropped by the loader. | 8 |
@@ -121,8 +121,9 @@ complete PDF receipt; 207/207 leaf figures have a workbook cell.
    per-system amount (Air Force Initial Spares 000999 names 11 systems). Transitive
    grouping over every signal collapses hundreds of lines into one component, so
    grouping stays one hop from an identity core and hub lines never join two families.
-6. **Identity is code + account (+ organization).** 13 codes are reused across
-   accounts (0145 is F/A-18 in one account and General Purpose Bombs in another).
+6. **Identity is code + account (+ organization).** 10 codes are reused across
+   accounts (0145 is F/A-18 in one account and General Purpose Bombs in another) and
+   3 across organizations within 0300D (`20`, `30`, `500`).
    In PB2026, P-40 evidence must also carry the P-1 line number or budget activity,
    or Code B edges land on the wrong line (F01500 mixes modifications with
    post-production).

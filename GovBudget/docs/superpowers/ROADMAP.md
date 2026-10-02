@@ -18,7 +18,7 @@ era-map decision and counted member with evidence, the owner approves in batches
 **R-DEC-FAM-ERAONLY** the 279 discontinued procurement code chains stay data only,
 with stated successor codes recorded. Eleven pieces, each with its own spec, plan,
 gate and deploy: [overview](specs/2026-10-02-platform-families-overview.md). Piece 1,
-procurement history before FY2024 (about 800 procurement pages gain PB2017–23
+procurement history before FY2024 (about 880 procurement pages gain PB2017–23
 points; three class rulings R-DEC-ERA-SAME / -EXCLUDE / -HISTORY):
 [spec](specs/2026-10-02-era-procurement-history-design.md). The other session's
 12-family attempt is preserved, unmerged, on local branch
