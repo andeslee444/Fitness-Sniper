@@ -4625,9 +4625,23 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `src/govbudget/sam_entities.py` (`DEFAULT_SAM_PUBLIC_ENTITY_URL`,
   `require_preflight`), `src/govbudget/export_site.py` (the `entity_sam`
   rows), `site/src/components/sam-registration.tsx`. Effort: days.
-  **Status:** CLOSED 2026-10-01 on branch `sam-links-2026-10-01`, not yet
-  deployed (production b3ab7350 still cites sam.gov/entity/ on the Lockheed
-  and Boeing pages). Each SAM
+  **Status:** DEPLOYED 2026-10-02 (02:39 UTC) at aa714d7f (fix 81b3c76b),
+  rollback tag 2026-10-02T023934Z (live `data/` 16 objects and `citations/`
+  1, copied and checked, 0 differences). The deploy replaced production
+  b3ab7350 — the reading-layout release another session shipped from
+  `codex/site-layout-release` on 2026-09-29, which the owner dropped on
+  2026-10-01 (not merged; the branch is untouched). All 131 live-asset
+  assertions passed, the 62 receipts (assertion 7) among them. Live checks:
+  /.build-meta.json aa714d7f; /json/sam/ZFN2JJXBLZT3.json 200 JSON; no
+  company page carries `https://sam.gov/entity`; /company/lockheed-martin/
+  reads "Registration Active as of 2026-10-01", /company/highmark/ "Inactive
+  as of 2026-10-01, CAGE 3LSY4, expired 2022-01-25"; Lockheed's SAM fact cites
+  its receipt. Gates: 27/27 + leg k (62 same-origin links, 62 SAM facts),
+  verify-phase3, verify-phase5b1, evals check, verify-phase5 (eval 47/48,
+  citations 43/43). The export's other changes were checked file by file
+  against a clone of the 2026-09-27 export: only row order, sub-cent float
+  sums and derived rows' export stamps moved, from the 2026-09-27 lake
+  rebuild. Each SAM
   registration fact now cites `https://fiscalreceipts.com/json/sam/<UEI>.json`,
   a receipt `export_site` writes for every SAM UEI with a status: the cited
   fields, the key-free API request, its retrieval time, the families it
@@ -4947,7 +4961,18 @@ docs/superpowers/ROADMAP.md`.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
 
-    **Status:** PARTIAL 2026-09-27 (evening) — the daily driver now asks in
+    **Status:** PARTIAL 2026-10-02 — 62 registrations are live, each citing
+    its receipt (#191, deployed aa714d7f). The batched driver (c72f7643; owner
+    reloaded the plist 2026-10-01) proved `batch+integrity` on its first
+    request (2026-10-02 00:17Z) and settled 63 families in 10 requests: 62
+    registrations and 6 entities that opted out of public display, RTX CORP
+    (PPLZG8J3N9D4) among them, which is why its plain query came back empty.
+    Humana and BAE were absent from the registered query and go on to
+    `samRegistered=No` and `registrationStatus=E`. 132 of 200 families are
+    still owed; about 2 more days of batches.
+    *(Earlier markers below.)*
+
+    **Status (2026-09-27, evening): PARTIAL 2026-09-27** — the daily driver now asks in
     batches and settles every kind of answer. The owner loaded the plist on
     2026-09-27; its first tick (13:28Z) stored HUNTINGTON INGALLS
     (F9SDJAZFTLG6) and L3HARRIS (SJULQDJ8NZU7), and SAM returned no record
