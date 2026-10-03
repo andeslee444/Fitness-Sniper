@@ -730,6 +730,76 @@ def test_assembly_gate_passes_with_lineage_green(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Tests: assembly era-map leg (families piece 1, spec 2026-10-02 V4/V10).
+# verify-era-map is invoked exactly like verify-lineage: subprocess with no
+# arguments, verdict parsed from its one final line.
+# ---------------------------------------------------------------------------
+
+
+def test_assembly_phases_end_with_verify_era_map():
+    from govbudget.verify_phase5 import _ASSEMBLY_PHASES
+
+    assert "verify-era-map" in _ASSEMBLY_PHASES
+    assert _ASSEMBLY_PHASES[-1] == "verify-era-map"
+    assert _ASSEMBLY_PHASES.index("verify-lineage") < _ASSEMBLY_PHASES.index("verify-era-map")
+
+
+def test_verdict_regex_parses_verify_era_map_pass():
+    m = _VERDICT_RE.search(
+        "leg f f15 history pin: pinned=9f70c770 actual=9f70c770 → PASS\nverify-era-map: PASS\n")
+    assert m is not None
+    assert m.group(1).upper() == "PASS"
+
+
+def test_verdict_regex_parses_verify_era_map_fail():
+    """PROOF-IT-CAN-FAIL (regex arm): a verify-era-map FAIL verdict is parsed,
+    not missed (a miss would fall back to returncode inference)."""
+    m = _VERDICT_RE.search(
+        "leg e published map: p1_era_line_map.parquet missing → FAIL\n"
+        "  FAIL missing data/site/data/p1_era_line_map.parquet\nverify-era-map: FAIL\n")
+    assert m is not None
+    assert m.group(1).upper() == "FAIL"
+
+
+def test_assembly_invokes_verify_era_map_with_no_arguments(monkeypatch):
+    import govbudget.verify_phase5 as vp5
+
+    seen = []
+
+    def _run(cmd, **kwargs):  # noqa: ANN001
+        seen.append(cmd)
+        return SimpleNamespace(stdout=f"{cmd[-1]}: PASS\n", stderr="", returncode=0)
+
+    monkeypatch.setattr(vp5.subprocess, "run", _run)
+    assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert ["uv", "run", "python", "-m", "govbudget", "verify-era-map"] in seen
+
+
+def test_assembly_gate_fails_when_era_map_fails(monkeypatch):
+    """PROOF-IT-CAN-FAIL (assembly arm): every other phase PASSes but
+    verify-era-map FAILs → the assembly is a hard FAIL."""
+    import govbudget.verify_phase5 as vp5
+
+    monkeypatch.setattr(vp5.subprocess, "run", _fake_run_factory({"verify-era-map"}))
+    result = assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert result["ok"] is False
+    assert result["blocked"] is False
+    rows = [r for r in result["results"] if r["phase"] == "verify-era-map"]
+    assert len(rows) == 1
+    assert rows[0]["verdict"] == "FAIL"
+
+
+def test_assembly_gate_passes_with_era_map_green(monkeypatch):
+    import govbudget.verify_phase5 as vp5
+
+    monkeypatch.setattr(vp5.subprocess, "run", _fake_run_factory(set()))
+    result = assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert result["ok"] is True
+    row = next(r for r in result["results"] if r["phase"] == "verify-era-map")
+    assert row["verdict"] == "PASS"
+
+
+# ---------------------------------------------------------------------------
 # Tests: eval_gate BLOCKED without key
 # ---------------------------------------------------------------------------
 

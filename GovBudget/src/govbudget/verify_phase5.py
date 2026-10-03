@@ -32,7 +32,12 @@ Gates (CLI: verify-phase5):
      5b2 — 5b3 runs the same npm suite) PLUS verify-lineage (the program-
      lineage honesty legs a–e; its leg d audits the built export, so a
      missing built artifact FAILs the leg — same treatment as the other
-     build-dependent phase gates). Parses each full output with the verdict
+     build-dependent phase gates) PLUS verify-era-map (families piece 1,
+     legs a–f: the era P-1 workbooks re-read against the map, no undecided
+     or stale decision, F-15's era rows, every budget_lines_decade fact ID
+     recomputed from its own row, the published map equal to the
+     warehouse's, the F-15 history sha pinned; legs d–f audit the export,
+     so a missing artifact FAILs). Parses each full output with the verdict
      regex; BLOCKED propagates. Prints a result table.
 
 Exit codes:
@@ -127,6 +132,9 @@ _URL_COLUMN_MAP: dict[str, str] = {
 # (d) audits the BUILT export artifact, so a missing/stale build FAILs the
 # leg (and thus this assembly) — consistent with how the other build-dependent
 # phase gates already behave (they FAIL on missing artifacts, never skip).
+# verify-era-map (families piece 1, spec 2026-10-02 V4/V10) joins on the same
+# terms: invoked with no arguments (its CLI defaults to config.SITE_DIR, the
+# warehouse and the repo seed), one final "verify-era-map: PASS|FAIL" line.
 _ASSEMBLY_PHASES = [
     "verify-phase1",
     "verify-phase2",
@@ -136,13 +144,15 @@ _ASSEMBLY_PHASES = [
     "verify-phase5b1",
     "verify-phase5b3",
     "verify-lineage",
+    "verify-era-map",
 ]
 
-# Verdict token regex: parse full output for verdict line. Matches both the
-# verify-phaseN family and verify-lineage (whose CLI prints
-# "verify-lineage: PASS|FAIL" in the same verdict-line format).
+# Verdict token regex: parse full output for verdict line. Matches the
+# verify-phaseN family, verify-lineage and verify-era-map (whose CLIs print
+# "verify-lineage: PASS|FAIL" / "verify-era-map: PASS|FAIL" in the same
+# verdict-line format).
 _VERDICT_RE = re.compile(
-    r"verify-(?:phase\w+|lineage):\s*(PASS|FAIL|BLOCKED)", re.IGNORECASE
+    r"verify-(?:phase\w+|lineage|era-map):\s*(PASS|FAIL|BLOCKED)", re.IGNORECASE
 )
 
 
