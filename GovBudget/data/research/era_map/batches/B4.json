@@ -1,0 +1,8 @@
+{
+  "batch": "B4",
+  "decided_on": "2026-10-03",
+  "owner_reply": "approved, except 17: history_only",
+  "rows": {
+    "50|0300D|": {"decision": "history_only", "note": "owner B4 row 17: history_only"}
+  }
+}
