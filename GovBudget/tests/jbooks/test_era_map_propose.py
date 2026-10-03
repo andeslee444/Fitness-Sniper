@@ -171,18 +171,32 @@ def test_successor_prefers_the_chains_own_account(tmp_path):
 def test_propose_counts(tmp_path):
     counts, out, _seed = run(tmp_path)
     assert counts["era_keys"] == 15 and counts["chains"] == 11
+    # Fix round 1: "50" is R1 (it has a PB2026 page), not H — it moves out
+    # of h_drifting (now empty, so absent from the dict) into r_containing.
     assert counts["chain_groups"] == {
-        "a1_only": 4, "cr": 1, "h_drift_free": 2, "h_drifting": 1,
-        "r_containing": 2, "unsafe": 1}
+        "a1_only": 4, "cr": 1, "h_drift_free": 2,
+        "r_containing": 3, "unsafe": 1}
     assert counts["key_classes"] == {"CR": 1, "UNSAFE": 1, "R3": 0, "A1": 5,
-                                     "A2": 0, "R1": 0, "R2": 2, "H": 6}
+                                     "A2": 0, "R1": 2, "R2": 2, "H": 4}
     assert counts["rulings"] == {"R-DEC-ERA-SAME": 3, "R-DEC-ERA-EXCLUDE": 2,
                                  "R-DEC-ERA-HISTORY": 2}
     assert counts["review_rows"] == 4 and counts["left_ruling"] == 1
     assert counts["successors"] == {"5600D15603|2035A|": "5731D15610"}
-    assert counts["era_actuals_k"] == "6462"
+    # "50" carries no era-side amounts (spec §5.3 example), so era_actuals_k
+    # drops by the $7K it used to wrongly contribute as an H chain.
+    assert counts["era_actuals_k"] == "6455"
     assert counts["collision_codes"] == ["20", "3010"]
     assert counts["org_split_codes"] == ["20"]
+    # Successor-search coverage (Fix round 1, "ALSO" ruling): the two H
+    # chains (JLTV $4,000K, F015E0 $620K) are both searchable (neither code
+    # is digits-only); only JLTV's continuation sentence was found, so
+    # "searched" ($4,620K) exceeds "successors_found" ($4,000K) — the $620K
+    # gap is F015E0, searched but blank, distinguishable from "not searched".
+    assert counts["successor_coverage"] == {
+        "era_only_chains": 2, "era_only_actuals_k": "4620",
+        "searched_chains": 2, "searched_actuals_k": "4620",
+        "not_searchable_chains": 0, "not_searchable_actuals_k": "0",
+        "successors_found": 1, "successors_found_actuals_k": "4000"}
     assert json.loads((out / "counts.json").read_text()) == counts
 
 
@@ -214,19 +228,29 @@ def test_propose_review_rows_sorted_by_dollars(tmp_path):
     _counts, out, _seed = run(tmp_path)
     review = rows(out / "review.csv")
     assert tuple(review[0]) == era_map.REVIEW_COLUMNS
+    # "50" now carries $0 era-side (Fix round 1), so it sorts last, after DHRA's $5K.
     assert [r["chain_id"] for r in review] == [
-        "1045|1612N|", "20|0300D|DSS", "50|0300D|", "20|0300D|DHRA"]
-    ohio, dss, fifty, dhra = review
+        "1045|1612N|", "20|0300D|DSS", "20|0300D|DHRA", "50|0300D|"]
+    ohio, dss, dhra, fifty = review
     assert (ohio["proposed_decision"], ohio["program_account"]) == ("same_program", "")
     assert ohio["accounts"] == "era=1612N; modern=1611N"
     assert (dss["proposed_decision"], dss["program_account"], dss["program_org"]) == (
         "same_program", "0300D", "DCSA")
-    assert fifty["proposed_decision"] == "history_only"
     # A1 on a collision code with no PB2026 page: data only, pinned to its line
     assert (dhra["proposed_decision"], dhra["program_account"], dhra["program_org"]) == (
         "history_only", "0300D", "DHRA")
+    # Fix round 1 (binding ruling): "50" is R1 with zero era-anchored
+    # continuity checks (no era-side amounts at all) — the pre-fill must not
+    # guess same_program from an absence of evidence. Blank decision, and a
+    # reason naming the exact gap instead of a false "continuity holds".
+    assert (fifty["proposed_decision"], fifty["program_account"],
+            fifty["program_org"]) == ("", "", "")
+    assert fifty["reason"] == (
+        "R1: no era-side continuity evidence (title Jaccard 0.00); possible"
+        " reused code — decide same_program, a range split, or"
+        " exclude_reused_code")
     assert fifty["titles_by_edition"] == (
-        "2022: Indian Financing Act; 2023: DTRA Cyber Activities")
+        "2022: Indian Financing Act; 2023: Indian Incentive Program")
     assert {r["decision"] for r in review} == {""}
     assert all(len(r["keys_sha256"]) == 64 for r in review)
 

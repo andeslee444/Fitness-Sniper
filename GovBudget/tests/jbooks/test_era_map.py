@@ -204,8 +204,37 @@ def test_a2_fails_continuity_becomes_r1():
     assert set(classes(era, modern).values()) == {"R1"}
 
 
-def test_a2_with_no_overlapping_checks_passes():
+def test_a2_with_no_overlapping_checks_is_r1_not_a2():
+    # Fix round 1 (Task 11 review, binding ruling): zero continuity checks is
+    # NOT evidence of continuity. A high-jaccard rename with no checks at all
+    # used to pass vacuously (total == 0 counted as "holds"); it must now
+    # fall through to R1, same as any other unverified rename.
     era, modern = _renamed({2023: (None, None)}, {2026: (None, None)})
+    assert set(classes(era, modern).values()) == {"R1"}
+
+
+def test_modern_only_continuity_checks_do_not_count_toward_a2():
+    # Fix round 1: a check between two PB2024-26 editions (y = 2024 or 2025)
+    # compares the modern program against itself and is not era-side
+    # evidence. Era-anchored check (2021 enacted 5000 vs 2022 actuals 5100)
+    # is the only one that used to matter; old code also counted two
+    # modern-only checks (2024 enacted 5000 vs 2025 actuals 5000, pass; 2025
+    # enacted 4000 vs 2026 actuals 4100, pass), diluting 0/1 real failures
+    # into a vacuous-looking 2/3 pass. New code must drop both and classify
+    # on the one real check alone.
+    era, modern = _renamed(
+        {2021: (1, 6000)},
+        {2022: (2000, None), 2024: (None, 5000), 2025: (5000, 4000), 2026: (4100, None)})
+    assert set(classes(era, modern).values()) == {"R1"}       # 0/1 era-anchored
+
+
+def test_a2_with_genuine_era_side_continuity_still_classifies_a2():
+    # Fix round 1 regression guard: real era-anchored checks (y = 2017..2023)
+    # are unaffected by the fix. 2021 enacted 5000 vs 2022 actuals 5100
+    # (pass), 2023 enacted 7000 vs 2024 actuals 7000 (pass) -> 2/2 real
+    # evidence -> A2, same as before the fix.
+    era, modern = _renamed({2021: (1, 5000), 2023: (2000, 7000)},
+                           {2022: (5100, None), 2024: (7000, None)})
     assert set(classes(era, modern).values()) == {"A2"}
 
 

@@ -15,7 +15,11 @@ The world (editions 2022–2023 era, 2026 modern):
   O&M|0390D|         UNSAFE                    → EXCLUDE route-unsafe
   5600D15603|2035A|  H, drift-free             → HISTORY + successor 5731D15610
   F015E0|3010F|      H, drift-free             → HISTORY, no successor
-  50|0300D|          H, titles drift           → review
+  50|0300D|          R1, no era-side amounts    → review, blank reused-code
+                        (Fix round 1: title drifts and the code also prints
+                        a PB2026 page, so it is R1 not H; it has no
+                        era-anchored continuity check at all, so the
+                        pre-fill must not guess same_program)
   1045|1612N|        R2 (code under 1611N)     → review
 
 make_lake(..., org_clash=True) adds two organizations printing one code in
@@ -55,8 +59,8 @@ ERA = [
     (2023, "2035A", "ARMY", "7", "5600D15603", "JOINT LIGHT TACTICAL VEHICLE", "1000", None),
     (2022, "3010F", "AF", "3", "F015E0", "F-15e", "600", None),
     (2023, "3010F", "AF", "4", "F015E0", "F-15e", "20", None),
-    (2022, "0300D", "DTRA", "50", "50", "Indian Financing Act", "7", None),
-    (2023, "0300D", "DTRA", "50", "50", "DTRA Cyber Activities", None, None),
+    (2022, "0300D", "WHS", "50", "50", "Indian Financing Act", None, None),
+    (2023, "0300D", "WHS", "50", "50", "Indian Incentive Program", None, None),
     (2022, "1612N", "NAVY", "3", "1045", "OHIO Replacement Submarine", "500", None),
 ]
 # (code, account, org, title, actuals_k, has a PB2026 page in dim_programs)
@@ -69,6 +73,7 @@ MODERN = [
     ("20", "0300D", "DHRA", "Personnel Administration", "6", False),
     ("5731D15610", "2035A", "A", "Joint Light Tactical Vehicle (JLTV)", "900", True),
     ("1045", "1611N", "N", "Columbia Class Submarine", "2000", True),
+    ("50", "0300D", "DTRA", "DTRA Cyber Activities", "12", True),
 ]
 # make_lake(org_clash=True) only
 ERA_ORG_CLASH = [

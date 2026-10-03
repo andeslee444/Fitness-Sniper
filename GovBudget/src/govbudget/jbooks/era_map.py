@@ -290,7 +290,14 @@ class _Context:
 
     def continuity(self, ident: tuple[str, str, str]) -> tuple[int, int]:
         """(passed, total) checks: edition y's FY(y-1) enacted vs edition y+1's
-        FY(y-1) actuals, y = 2017..2025, on the ident's era sum + modern grain.
+        FY(y-1) actuals, y = 2017..2023 (ERA_EDITIONS only — y anchors every
+        check to an era edition, so a check always has an era-side amount on
+        at least one of its two legs), on the ident's era sum + modern grain.
+        A check with y = 2024 or 2025 would compare two PB2024-26 editions
+        against each other with no era-side value at all; that is not
+        evidence the era line continues into the modern program, so those
+        checks are excluded from both passed and total (spec §5.3: a chain
+        with zero checks here has NO continuity evidence, not vacuous proof).
         A check passes when both are under $1M, or they share a sign and the
         smaller is at least half the larger (within 2x)."""
         if ident in self._continuity:
@@ -304,7 +311,7 @@ class _Context:
         if mi is not None:
             series.update(mi.amounts)
         passed = total = 0
-        for y in range(ERA_EDITIONS[0], MODERN_EDITIONS[-1]):
+        for y in range(ERA_EDITIONS[0], ERA_EDITIONS[-1] + 1):
             enacted, actuals = series.get((y, "enacted")), series.get((y + 1, "actuals"))
             if enacted is None or actuals is None:
                 continue
@@ -338,7 +345,7 @@ class _Context:
                 return "A1"
             passed, total = self.continuity(self.ident(k))
             if (self.best_jaccard(k) or 0.0) >= JACCARD_MIN and (
-                    total == 0 or passed * 3 >= total * 2):
+                    total > 0 and passed * 3 >= total * 2):
                 return "A2"
             return "R1"
         if code in self.modern_codes:
@@ -358,9 +365,12 @@ def classify_keys(
             inside this era edition, and it is not a PB2026 collision code;
     A1      (code, account[, org]) exists in PB2024–26 and the normalized
             title equals one of its normalized modern titles;
-    A2      it exists, best title Jaccard ≥ 0.5, and at least 2/3 of the
-            continuity checks pass (no checks counts as passing);
-    R1      it exists (title drift beyond A2);
+    A2      it exists, best title Jaccard ≥ 0.5, and it has at least one
+            era-anchored continuity check (y = 2017..2023) of which ≥2/3
+            pass — zero checks is NOT evidence of continuity, so it does not
+            qualify;
+    R1      it exists (title drift beyond A2, or A2's jaccard/continuity bar
+            not met at all);
     R2      the code exists in PB2024–26 only under another account/org;
     H       the code is absent from PB2024–26.
 
@@ -555,6 +565,17 @@ def code_forms(code: str) -> list[tuple[str, str]]:
     if short != code and len(short) >= 5:
         forms.append((short, "short"))
     return forms
+
+
+def is_successor_searchable(code: str) -> bool:
+    """True when at least one of code_forms(code) is a token _CODE_TOKEN_RE
+    could ever match in prose (a letter, a digit, 5+ chars) — i.e. the code
+    is a candidate search_successors could in principle find. False for a
+    digits-only code ('1045'): indistinguishable from years, quantities and
+    line numbers, so search_successors never looks for it. Distinguishes a
+    chain that was searched-but-not-found from one that was never a search
+    target at all."""
+    return any(_CODE_TOKEN_RE.fullmatch(tok) for tok, _form in code_forms(code))
 
 
 def successor_xml_files(raw_docs_dir: Path) -> list[Path]:
@@ -930,7 +951,8 @@ def _chain_context(ch: Chain, keys: Sequence[EraKey], ctx: _Context) -> dict:
         "modern_title": modern_title,
         "title_jaccard": f"{min(jac):.2f}" if jac else "",
         "continuity": f"{passed}/{total}",
-        "continuity_ok": total == 0 or passed * 3 >= total * 2,
+        "continuity_total": total,
+        "continuity_ok": total > 0 and passed * 3 >= total * 2,
         "modern_accounts": sorted(ctx.modern_accounts.get(ch.line_item_code, ())),
     }
 
@@ -1055,6 +1077,15 @@ def _prefill(ch: Chain, keys: Sequence[EraKey], ctx: _Context, info: dict,
                 f"{rule}: account/organization move (modern accounts"
                 f" {', '.join(info['modern_accounts']) or 'none'})", pa, po)
     if "R1" in ch.classes:
+        if info["continuity_total"] == 0:
+            # no era-edition-anchored check exists at all: the code could be
+            # a genuine rename or an unrelated program reusing the number.
+            # Never pre-fill a decision from zero evidence (spec §5.3).
+            return ("",
+                    f"{rule}: no era-side continuity evidence (title Jaccard"
+                    f" {info['title_jaccard'] or 'n/a'}); possible reused"
+                    " code — decide same_program, a range split, or"
+                    " exclude_reused_code", pa, po)
         if info["continuity_ok"]:
             return ("same_program",
                     f"{rule}: renamed, continuity {info['continuity']} holds"
@@ -1229,6 +1260,21 @@ def propose(
     by_edition: dict[str, int] = defaultdict(int)
     for k in inputs.era:
         by_edition[str(k.edition)] += 1
+    era_only = [c for c in chains if c.classes == frozenset({"H"})]
+    searched = [c for c in era_only if is_successor_searchable(c.line_item_code)]
+    not_searchable = [c for c in era_only if not is_successor_searchable(c.line_item_code)]
+    successor_coverage = {
+        "era_only_chains": len(era_only),
+        "era_only_actuals_k": _fmt_k(sum((c.actuals_k for c in era_only), Decimal(0))),
+        "searched_chains": len(searched),
+        "searched_actuals_k": _fmt_k(sum((c.actuals_k for c in searched), Decimal(0))),
+        "not_searchable_chains": len(not_searchable),
+        "not_searchable_actuals_k": _fmt_k(
+            sum((c.actuals_k for c in not_searchable), Decimal(0))),
+        "successors_found": len(successors),
+        "successors_found_actuals_k": _fmt_k(sum(
+            (by_id[cid].actuals_k for cid in successors), Decimal(0))),
+    }
     counts = {
         "era_keys": len(inputs.era),
         "era_keys_by_edition": dict(sorted(by_edition.items())),
@@ -1249,6 +1295,7 @@ def propose(
         "org_split_codes": sorted(split),
         "collision_codes": sorted(inputs.collision_codes),
         "successors": {cid: s["successor_code"] for cid, s in sorted(successors.items())},
+        "successor_coverage": successor_coverage,
     }
     (out_dir / "counts.json").write_text(json.dumps(counts, indent=1, sort_keys=True) + "\n")
     return counts
