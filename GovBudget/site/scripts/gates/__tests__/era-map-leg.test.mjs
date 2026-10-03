@@ -99,6 +99,15 @@ describe("gate 24 leg (s)", () => {
     ]);
   });
 
+  it("fails when only the codes disagree with the shipped map", () => {
+    const s = summary();
+    const recount = recountOf(s);
+    recount.editions["2019"].by_decision.same_program.codes = 1;
+    expect(run({ summary: s, recount }).errors).toEqual([
+      "leg s: PB2019 same_program summary says 3 chains / 2 codes / 3 lines, the shipped map holds 3 / 1 / 3",
+    ]);
+  });
+
   it("fails when receipts disagree with the audit", () => {
     const s = summary();
     const audit = auditOf(s);
@@ -149,6 +158,24 @@ describe("gate 24 leg (s)", () => {
       "leg s (/downloads/): the built page carries era_map_summary.json's actuals_thousands " +
         "(uncited dollar sums) — pass the client component a rendered table, never the summary",
     ]);
+  });
+
+  it("fails when the built page carries a summary dollar sum under another name", () => {
+    const s = summary();
+    s.totals = { same_program: { chains: 0, codes: 0, lines: 0, actuals_thousands: 651579549 } };
+    s.by_ruling = [{ ruling: "R-DEC-ERA-SAME", decision: "same_program", chains: 0, codes: 0, lines: 0, actuals_thousands: 1234567.5 }];
+    const raw = run({ summary: s, html: htmlOf(s, { payload: 'self.__next_f.push([1,"{\\"v\\":651579549}"])' }) }).errors;
+    expect(raw).toEqual([
+      "leg s (/downloads/): the built page carries 1 of era_map_summary.json's uncited actuals sums (e.g. 651579549) — counts only",
+    ]);
+    const grouped = run({ summary: s, html: htmlOf(s, { payload: "1,234,567.5" }) }).errors;
+    expect(grouped).toEqual([
+      "leg s (/downloads/): the built page carries 1 of era_map_summary.json's uncited actuals sums (e.g. 1234567.5) — counts only",
+    ]);
+    // sums under seven digits are not scanned: small numbers collide with counts
+    s.totals.same_program.actuals_thousands = 1200;
+    s.by_ruling = [];
+    expect(run({ summary: s }).errors).toEqual([]);
   });
 
   it("fails when the table is not directly under the p1_era_line_map card", () => {

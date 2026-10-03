@@ -5829,6 +5829,25 @@ export function runEraMapLeg(errors, notes, injected) {
         "(uncited dollar sums) — pass the client component a rendered table, never the summary",
     );
   }
+  // ...nor its values under another name: every sum of seven or more digits
+  // (USD thousands, so $1B and up; the page prints no count that large), raw
+  // or en-US grouped (Task 19 fix round 2).
+  const sums = [
+    ...editions.flatMap((e) => Object.values(e.by_decision ?? {})),
+    ...(summary.by_ruling ?? []),
+    ...Object.values(summary.totals ?? {}),
+  ]
+    .map((t) => Number(t?.actuals_thousands))
+    .filter((v) => Number.isFinite(v) && Math.abs(v) >= 1e6);
+  const leaked = [...new Set(sums)].filter(
+    (v) => html.includes(String(v)) || html.includes(v.toLocaleString("en-US")),
+  );
+  if (leaked.length) {
+    errors.push(
+      `leg s (${ERA_PAGE}): the built page carries ${leaked.length} of era_map_summary.json's ` +
+        `uncited actuals sums (e.g. ${leaked[0]}) — counts only`,
+    );
+  }
   const root = parse(html, { comment: false });
   for (const el of root.querySelectorAll("script, style, noscript, template")) el.remove();
   const tables = root.querySelectorAll("[data-era-map]");

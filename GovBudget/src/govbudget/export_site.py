@@ -1761,18 +1761,24 @@ _DATASET_SCOPES: dict[str, str] = {
     # _CITED_DATASETS. It names both meanings of pe_bli §6.1 keeps apart: the
     # era key budget_lines_decade rows carry, and the printed code an era
     # citation carries. /data/ renders it three times under a 15,600 gzip
-    # ceiling that data.module.css made room for (Task 19). Task 19 fix
-    # round 1: only a same_program line whose code has a program page gets
-    # decade rows and era citations (the decade tier mints no others), so the
-    # sentence says so rather than imply every line has both.
+    # ceiling that data.module.css made room for (Task 19).
+    # Task 19 fix rounds 1-2: era rows in budget_lines_decade, and their
+    # citations, have exactly two minters. The decade tier mints them for a
+    # same_program line whose code has a program page, and its citations
+    # carry that printed code as pe_bli. The F-15 family-history builder
+    # (f15_funding_history.export_f15_funding_history) appends rows and mints
+    # citations for every reviewed F-15 member line not already minted,
+    # history_only ones included (F0150P and F015E0 have no page), and its
+    # citations carry no pe_bli. The sentence names both and claims the
+    # printed-code pe_bli only for same_program lines.
     "p1_era_line_map": (
         "One row per PB2017–PB2023 P-1 display line: era_key (its pe_bli in"
         " budget_lines_decade), line_item_code (the budget line code printed"
-        " on it, the pe_bli its era citations carry) and the dated owner"
-        " decision that joins it to a program page or to history only, or"
-        " excludes it. Only a same_program line whose code has a program page"
-        " has those rows and citations. Every row is a decision; none carries"
-        " an amount."
+        " on it, the pe_bli a same_program line's era citations carry) and the"
+        " dated owner decision that joins it to a program page or to history"
+        " only, or excludes it. Only a same_program line whose code has a"
+        " program page, or an F-15 family-history line, has those rows and"
+        " citations. Every row is a decision; none carries an amount."
     ),
     "jbook_details": (
         "One row per (program element × project × budget scenario) cost figure"

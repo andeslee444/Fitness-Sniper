@@ -59,17 +59,61 @@ def test_scope_names_both_meanings_of_pe_bli_and_carries_no_money():
     scope = _DATASET_SCOPES["p1_era_line_map"]
     assert scope.startswith("One row per PB2017–PB2023 P-1 display line")
     assert "era_key (its pe_bli in budget_lines_decade)" in scope
-    assert "line_item_code (the budget line code printed on it, the pe_bli its era citations carry)" in scope
+    assert ("line_item_code (the budget line code printed on it, the pe_bli a same_program"
+            " line's era citations carry)") in scope
     assert scope.endswith("Every row is a decision; none carries an amount.")
 
 
-def test_scope_says_only_page_joined_same_program_lines_have_rows_and_citations():
-    """Task 19 fix round 1: the decade tier mints rows and era citations only
-    for same_program lines whose code has a program page, so the scope must
-    not read as if every line's pe_bli appears in either."""
+def test_scope_names_both_minters_of_era_rows_and_citations():
+    """Task 19 fix rounds 1-2: era rows in budget_lines_decade and their
+    citations come from the decade tier (same_program lines whose code has a
+    program page) and from the F-15 family-history builder, so the scope must
+    not read as if every line has both, nor as if only the first does."""
     scope = _DATASET_SCOPES["p1_era_line_map"]
-    assert ("Only a same_program line whose code has a program page has those"
-            " rows and citations.") in scope
+    assert ("Only a same_program line whose code has a program page, or an F-15"
+            " family-history line, has those rows and citations.") in scope
+
+
+def test_the_f15_history_mints_era_rows_the_decade_tier_never_would():
+    """Task 19 fix round 2: what made the round-1 "only" false. The F-15
+    family-history builder appends a budget_lines_decade row (its leaves) and
+    a workbook citation for every reviewed member line the decade tier has not
+    minted: here PB2017 line 69, printed F0150P, a code with no program page,
+    decided history_only. Its citation carries no pe_bli, so the scope claims
+    the printed-code pe_bli only for same_program lines, and that holds only
+    while every F-15 code decided same_program has a page."""
+    import csv
+    from pathlib import Path
+
+    from govbudget.f15_funding_history import ERA_PROGRAM_CODES, MODERN_MEMBERS, build_history
+
+    row = dict(pe_bli="3010F-AF-L69", edition=2017, exhibit="P-1", account="3010F",
+               account_title="Aircraft Procurement, Air Force", organization="AF",
+               budget_activity="07", budget_activity_title="Other Production Charges",
+               title="F-15", amount_type="fy_2015_actuals", amount_thousands=10,
+               sha256="a" * 64, sheet="Exhibit P-1", cells="J70",
+               official_url="https://comptroller.war.gov/p1.xlsx", retrieved_at="2026-10-03")
+    point = dict(pe_bli=row["pe_bli"], edition=2017, fy=2015, kind="actuals",
+                 amount_type=row["amount_type"], n_source_rows=1, amount=10)
+    _, citations, leaves, _ = build_history([row], [point], retrieved_at="2026-10-03")
+    (fid,) = leaves
+    assert leaves[fid]["pe_bli"] == "3010F-AF-L69"              # a decade row under the era key
+    assert citations[fid]["kind"] == "workbook"
+    assert citations[fid]["pe_bli"] is None                    # no printed code on it
+
+    f15_codes = {code for codes in ERA_PROGRAM_CODES.values() for code in codes.values()}
+    seed = Path(__file__).resolve().parents[1] / "dbt" / "seeds" / "p1_era_code_decisions.csv"
+    with seed.open(encoding="utf-8") as fh:
+        decided = {(r["line_item_code"], r["decision"]) for r in csv.DictReader(fh)
+                   if r["line_item_code"] in f15_codes}
+    off_the_decade_tier = {c for c, d in decided if d != "same_program" or c not in MODERN_MEMBERS}
+    assert "F0150P" in off_the_decade_tier
+    scope = _DATASET_SCOPES["p1_era_line_map"]
+    if off_the_decade_tier:
+        assert "or an F-15 family-history line, has those rows and citations" in scope
+    # a same_program F-15 code without a page would get the builder's
+    # pe_bli-less citations, and the line_item_code clause would be false
+    assert all(c in MODERN_MEMBERS for c, d in decided if d == "same_program")
 
 
 def test_the_map_stays_on_the_uncited_ledger():
