@@ -2485,6 +2485,51 @@ def cmd_export_budget_pdf_receipts(args) -> None:
     _export_budget_pdf_evidence(site_dir=args.site_dir, manifest=args.manifest, cache_dir=args.cache_dir)
 
 
+def cmd_link_coverage(args) -> None:
+    """Overview §7 / spec V9: link class of every budget figure on the program pages."""
+    import json
+
+    from govbudget.link_coverage import (
+        absolute_violations,
+        baseline_from_report,
+        compare_to_baseline,
+        compute_link_coverage,
+    )
+
+    def pct(share):
+        return "n/a" if share is None else f"{100 * share:.2f}%"
+
+    report = compute_link_coverage(args.site_dir)
+    site = report["site"]
+    print(
+        f"link-coverage: {site['figures']:,} budget figures on {site['pages']:,} program pages:"
+        f" a {site['a']:,} · b {site['b']:,} · c {site['c']:,} · d {site['d']:,};"
+        f" source-linked {pct(site['source_linked'])},"
+        f" PDF-highlighted {pct(site['pdf_highlighted'])};"
+        f" {site['pages_fully_pdf_highlighted']:,} of {site['pages']:,} pages fully PDF-highlighted"
+    )
+    if args.write_baseline is not None:
+        args.write_baseline.parent.mkdir(parents=True, exist_ok=True)
+        text = json.dumps(baseline_from_report(report), indent=0, sort_keys=True) + "\n"
+        args.write_baseline.write_text(text)
+        print(f"link-coverage: baseline -> {args.write_baseline} ({len(text.encode()):,} bytes)")
+    if args.baseline is not None:
+        baseline = json.loads(args.baseline.read_text())
+        violations = compare_to_baseline(report, baseline)
+        print(f"link-coverage: compared against {args.baseline} ({len(baseline['figures']['a']):,} baseline (a) figures)")
+    else:
+        violations = absolute_violations(report)
+    for line in violations[:50]:
+        print(f"  - {line}")
+    if len(violations) > 50:
+        print(f"  ... and {len(violations) - 50:,} more")
+    print(f"link-coverage: {len(violations):,} violation(s)")
+    if violations:
+        print("link-coverage: FAIL")
+        sys.exit(1)
+    print("link-coverage: PASS")
+
+
 def cmd_verify_phase5b2(args) -> None:
     """Run the phase 5B-2 gate suite via `npm --prefix site run verify`."""
     site_dir = config.ROOT / "site"
@@ -3124,6 +3169,19 @@ def main(argv=None) -> None:
                     help="reviewed government PDF source registry with pinned SHA-256 values")
     ep.add_argument("--cache-dir", type=Path, default=config.ROOT / "tmp" / "pdfs")
     ep.set_defaults(func=cmd_export_budget_pdf_receipts)
+
+    lc = sub.add_parser(
+        "link-coverage",
+        help="overview §7 / spec V9: classify every program-page budget figure"
+             " (a PDF-highlighted, b workbook cell, c URL only, d nothing)",
+    )
+    lc.add_argument("--site-dir", type=Path, required=True, dest="site_dir",
+                    help="an exported site dir (data/site or a snapshot's copy)")
+    lc.add_argument("--baseline", type=Path, default=None,
+                    help="committed baseline JSON; fail if any (a) figure lost (a)")
+    lc.add_argument("--write-baseline", type=Path, default=None, dest="write_baseline",
+                    help="write this site's report as a baseline JSON to FILE")
+    lc.set_defaults(func=cmd_link_coverage)
 
     v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
     v5b1.set_defaults(func=cmd_verify_phase5b1)
