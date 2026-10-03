@@ -499,7 +499,7 @@ models:
         data_tests: [not_null]
         description: "Number of budget_lines rows summed (for an era grain, the number of era keys: every era key is one row per slug)."
       - name: source_fact_id
-        description: "fact_id_workbook of the single source row when n_source_rows = 1 — for an era grain, hashed from that row's own era key, account and organization, so it is the fact ID the era row already has; NULL for multi-row grains (the exporter mints a decade_era_map sum)."
+        description: "fact_id_workbook of the single source row when n_source_rows = 1 — for an era grain, hashed from that row's own era key, account and organization, so it is the fact ID the era row already has. NULL on every multi-row grain: a native multi-row grain keeps fct_decade_series' existing derived-sum fact ID unchanged; the exporter mints a new decade_era_map sum only for a multi-row era_line_map grain (what a program's page reads); a multi-row era_history_only grain mints nothing — it is data, no page."
       - name: map_basis
         description: "Part of the grain. native (no era row; equals fct_decade_series), era_line_map (same_program era keys only: what the code's page reads), era_history_only (history_only era keys only: data, no page). Era rows of different bases never sum together: a history_only chain printing the same code in the same edition as a same_program chain is its own era_history_only row, and the era_line_map row sums only the same_program keys."
         data_tests:

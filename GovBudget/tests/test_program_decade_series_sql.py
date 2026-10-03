@@ -14,8 +14,12 @@ Fixture (one slug per edition keeps the arithmetic visible):
   3010F-AF-L25      2019  F01500        100   same_program
   3010F-AF-L79      2019  F01500         50   same_program   (two BAs, one code)
   3010F-AF-L25      2020  F01500        120   same_program   (single-source grain)
-  0300D-DSS-L21     2019  20              7   same_program, program_org DCSA
+  0300D-DSS-L21     2019  20              7   same_program, program_org DCSA (+
+                                               a garbage program_account pin,
+                                               dropped: '20' collides on org only)
   1810N-NAVY-L72    2019  3010           45   same_program, program_account 1810N
+                                               (+ a garbage program_org pin,
+                                               dropped: '3010' collides on acct only)
   3010F-AF-L80      2019  F0150P         30   history_only
   2035A-ARMY-L5     2019  5600D15603    900   undecided
   2035A-ARMY-L9     2019  FY2019CR       12   exclude_placeholder
@@ -58,8 +62,12 @@ MAP = [
     (2019, "3010F-AF-L25", "F01500", "F01500", None, None, "same_program"),
     (2019, "3010F-AF-L79", "F01500", "F01500", None, None, "same_program"),
     (2020, "3010F-AF-L25", "F01500", "F01500", None, None, "same_program"),
-    (2019, "0300D-DSS-L21", "20", "20", None, "DCSA", "same_program"),
-    (2019, "1810N-NAVY-L72", "3010", "3010", "1810N", None, "same_program"),
+    # Both pins set (fix round 1): '20' collides on organization only in the
+    # PB2026 fixture, so its garbage program_account ("ZZZZ") must be dropped;
+    # '3010' collides on account only, so its garbage program_org ("ZZZZ")
+    # must be dropped. See test_collision_codes_take_the_pinned_side_never_the_era_rows_own.
+    (2019, "0300D-DSS-L21", "20", "20", "ZZZZ", "DCSA", "same_program"),
+    (2019, "1810N-NAVY-L72", "3010", "3010", "1810N", "ZZZZ", "same_program"),
     (2019, "3010F-AF-L80", "F0150P", "F0150P", None, None, "history_only"),
     (2019, "2035A-ARMY-L5", "5600D15603", None, None, None, "undecided"),
     (2019, "2035A-ARMY-L9", "FY2019CR", None, None, None, "exclude_placeholder"),
@@ -185,11 +193,37 @@ def test_a_single_era_key_keeps_the_fact_id_it_already_has():
 
 
 def test_collision_codes_take_the_pinned_side_never_the_era_rows_own():
+    # MAP sets BOTH program_account and program_org for '20' and '3010' (fix
+    # round 1), with a garbage sentinel ("ZZZZ") on the axis each code does
+    # NOT actually collide on in the PB2026 fixture. Asserting None on that
+    # axis proves the model discards it — not merely that it was never set.
     con = _lake()
     [org_side] = _rows(con, "program_key = '20' and edition_year = 2019")
     assert (org_side["account"], org_side["organization"], org_side["amount"]) == (None, "DCSA", 7.0)
     [acct_side] = _rows(con, "program_key = '3010' and edition_year = 2019")
     assert (acct_side["account"], acct_side["organization"], acct_side["amount"]) == ("1810N", None, 45.0)
+
+
+def test_a_mapped_key_with_null_program_key_surfaces_as_null_not_as_the_era_key():
+    # Fix round 1: a map row whose program_key is wrongly NULL (data bug —
+    # program_key is non-NULL for every same_program/history_only decision in
+    # practice) must publish program_key = NULL, never silently fall back to
+    # the era key. coalesce(m.program_key, b.pe_bli) used to do exactly that
+    # fallback and pass every test; `case when m.era_key is not null then
+    # m.program_key else b.pe_bli end` does not.
+    bad_map = MAP + [(2019, "0300D-DSS-L99", "UNSET", None, None, None, "same_program")]
+    bad_lake = LAKE + [
+        ("P-1", 2019, "0300D", "DSS", "01", "0300D-DSS-L99", "Bad row", "fy_2019_total", 5.0, "271"),
+    ]
+    con = _lake(lake=bad_lake, era_map=bad_map)
+    rows = con.execute(
+        "select program_key from fct_program_decade_series where source_keys = '0300D-DSS-L99'"
+    ).fetchall()
+    assert rows and all(r[0] is None for r in rows), (
+        "a mapped key with NULL program_key must publish program_key = NULL so"
+        " not_null_fct_program_decade_series_program_key catches it, never the era key")
+    keys = {r[0] for r in con.execute("select program_key from fct_program_decade_series").fetchall()}
+    assert "0300D-DSS-L99" not in keys
 
 
 def test_history_only_is_carried_and_labelled():
@@ -276,7 +310,8 @@ def test_conservation_fails_when_an_era_grain_is_lost():
     con = _lake()
     con.execute("delete from fct_program_decade_series where program_key = 'F0150P'")
     assert _failures(con, "assert_program_decade_conservation") == [
-        (2019, "request", "fy_2019_total", 232.0, 202.0, 5, 4)]
+        ("era grain does not conserve the fct_decade_series era grains it carries",
+         2019, "request", "fy_2019_total", 232.0, 202.0, 5, 4)]
 
 
 def test_conservation_fails_when_an_excluded_key_leaks_in():
@@ -285,8 +320,31 @@ def test_conservation_fails_when_an_excluded_key_leaks_in():
         "insert into fct_program_decade_series select 'FY2019CR', 2019, 2019, 'request', 12.0, 12.0,"
         " 'BudgetYearOne', 'fy_2019_total', null, null, 1, null, 'era_line_map', '2035A-ARMY-L9'"
     )
+    # The bogus grain also disagrees on basis (2035A-ARMY-L9 is decided
+    # exclude_placeholder, not same_program), so both legs fire.
+    assert sorted(_failures(con, "assert_program_decade_conservation")) == sorted([
+        ("era grain does not conserve the fct_decade_series era grains it carries",
+         2019, "request", "fy_2019_total", 232.0, 244.0, 5, 6),
+        ("grain map_basis disagrees with the decision of a summed source key",
+         2019, "era_line_map", "2035A-ARMY-L9", None, None, None, None),
+    ])
+
+
+def test_conservation_fails_when_a_grain_basis_is_relabelled():
+    # Fix round 1: relabelling F0150P's grain from era_history_only to
+    # era_line_map leaves the combined dollar/row-count leg untouched (the
+    # key's amount is still counted somewhere under map_basis in
+    # ('era_line_map', 'era_history_only')) — only the new basis-fidelity leg
+    # catches it, since the key's own decision (history_only) no longer
+    # matches the map_basis it now carries (era_line_map).
+    con = _lake()
+    con.execute(
+        "update fct_program_decade_series set map_basis = 'era_line_map'"
+        " where program_key = 'F0150P'"
+    )
     assert _failures(con, "assert_program_decade_conservation") == [
-        (2019, "request", "fy_2019_total", 232.0, 244.0, 5, 6)]
+        ("grain map_basis disagrees with the decision of a summed source key",
+         2019, "era_line_map", "3010F-AF-L80", None, None, None, None)]
 
 
 def test_grain_unique_fails_on_a_duplicate_grain():

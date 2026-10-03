@@ -72,7 +72,7 @@ with era_map as (
 lake as (
     select
         b.exhibit,
-        coalesce(m.program_key, b.pe_bli) as pe_bli,
+        case when m.era_key is not null then m.program_key else b.pe_bli end as pe_bli,
         b.fiscal_year as edition_year,
         b.amount_type,
         b.amount_thousands,
@@ -92,7 +92,7 @@ lake as (
 
 detail as (
     select
-        coalesce(m.program_key, b.pe_bli) as pe_bli,
+        case when m.era_key is not null then m.program_key else b.pe_bli end as pe_bli,
         b.fiscal_year as edition_year,
         b.amount_type,
         case when m.era_key is not null then m.program_account else b.account end as account,
@@ -316,7 +316,13 @@ from chosen ch
 where exists (
     select 1
     from lake_sums ls
-    where ls.pe_bli = ch.pe_bli
+    -- pe_bli compares `is not distinct from`, not `=`: a mapped era row whose
+    -- p1_era_line_map.program_key is wrongly NULL (data bug, decision should
+    -- never allow it) produces pe_bli = NULL here and in lake_sums alike.
+    -- Plain `=` treats NULL = NULL as unknown and would silently drop that
+    -- grain instead of publishing it with program_key NULL, where
+    -- not_null_fct_program_decade_series_program_key catches it (fix round 1).
+    where ls.pe_bli is not distinct from ch.pe_bli
       and ls.edition_year = ch.edition_year
       and ls.scenario = ch.scenario
       and ls.account is not distinct from ch.account
