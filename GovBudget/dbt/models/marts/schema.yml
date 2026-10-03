@@ -462,3 +462,49 @@ models:
       - name: source_cells
         data_tests: [not_null]
         description: "The column-I cells (the printed code) of every workbook row summed into the key, in row order, comma-separated (e.g. 'I35,I36' for a two-cost-type key) — the rows of the lake's recorded amount cells."
+
+  - name: fct_program_decade_series
+    description: "Families piece 1 (spec §4.5): fct_decade_series at PROGRAM grain — the same CTEs (collision anchors and candidate patterns copied verbatim, the slug pick copied with map_basis added to its partition; tests/test_program_decade_series_sql.py guards the copies) plus one step: a PB2017–PB2023 P-1 era row whose p1_era_line_map decision is same_program or history_only is carried to its bare printed code (program_key), with the map's pinned program_account / program_org on the 13 PB2026 collision codes. Era lines sharing a code and a map_basis in an edition sum exactly as modern lines sharing a code do; a same_program and a history_only chain of one code and edition stay two rows. Excluded and undecided era rows produce no grain. Grain: (program_key, account, organization, fy, edition_year, map_basis), and (program_key, account, organization, fy, edition_year) is unique among the native and era_line_map rows pages read — assert_program_decade_grain_unique.sql. Every map_basis='native' row equals its fct_decade_series row in every edition (assert_program_decade_native_equals_line.sql); era grains conserve the mapped fct_decade_series era grains per edition and slug (assert_program_decade_conservation.sql). fct_decade_series itself is unchanged and keeps feeding F-15's builder, verify-phase5e and fct_book_diff."
+    columns:
+      - name: program_key
+        data_tests: [not_null]
+        description: "The bare printed budget line code (P-1) or program element (R-1). For native rows it is fct_decade_series.pe_bli; for era rows it is p1_era_line_map.program_key. Never an era key, never suffixed."
+      - name: fy
+        data_tests: [not_null]
+        description: "Fiscal year the amount describes (edition_year - 2/1/0 for actuals/enacted/request)."
+      - name: edition_year
+        data_tests: [not_null]
+        description: "PB edition that reports this amount. Part of the grain — editions are never merged."
+      - name: amount_type_kind
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['actuals', 'enacted', 'request']
+      - name: amount
+        data_tests: [not_null]
+        description: "USD thousands: the sum of the grain's detail rows under amount_type (for an era grain, the sum of the era keys in source_keys)."
+      - name: amount_thousands
+        data_tests: [not_null]
+        description: "Alias of amount."
+      - name: scenario
+        data_tests: [not_null]
+      - name: amount_type
+        data_tests: [not_null]
+        description: "The picked source workbook column slug, as in fct_decade_series."
+      - name: account
+        description: "As fct_decade_series.account: non-NULL only for the 10 PB2026 account-collision codes. For an era grain on one of them it is the map's pinned program_account, never the era row's own account."
+      - name: organization
+        description: "As fct_decade_series.organization: non-NULL only for '20', '30', '500'. For an era grain it is the map's pinned program_org."
+      - name: n_source_rows
+        data_tests: [not_null]
+        description: "Number of budget_lines rows summed (for an era grain, the number of era keys: every era key is one row per slug)."
+      - name: source_fact_id
+        description: "fact_id_workbook of the single source row when n_source_rows = 1 — for an era grain, hashed from that row's own era key, account and organization, so it is the fact ID the era row already has; NULL for multi-row grains (the exporter mints a decade_era_map sum)."
+      - name: map_basis
+        description: "Part of the grain. native (no era row; equals fct_decade_series), era_line_map (same_program era keys only: what the code's page reads), era_history_only (history_only era keys only: data, no page). Era rows of different bases never sum together: a history_only chain printing the same code in the same edition as a same_program chain is its own era_history_only row, and the era_line_map row sums only the same_program keys."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['native', 'era_line_map', 'era_history_only']
+      - name: source_keys
+        description: "The era keys summed into an era grain, sorted, comma-separated (e.g. '3010F-AF-L25,3010F-AF-L79'); NULL for native grains."
