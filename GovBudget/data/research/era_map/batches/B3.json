@@ -1,0 +1,8 @@
+{
+  "batch": "B3",
+  "decided_on": "2026-10-03",
+  "owner_reply": "approved, except 24: history_only",
+  "rows": {
+    "1000|1508N|": {"decision": "history_only", "note": "owner B3 row 24: history_only"}
+  }
+}
