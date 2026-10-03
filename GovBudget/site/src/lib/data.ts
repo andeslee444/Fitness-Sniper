@@ -28,6 +28,7 @@ import {
 } from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
+import type { EraMapSummary } from "./era-map";
 import { parseGaoRatifications, selectPublishedGaoFindings } from "./program-evidence";
 import { normalizeProgramHHI, filterSupportedConcentrationCards } from "./concentration-evidence.mjs";
 
@@ -761,6 +762,26 @@ export function getDatasetManifest(): DatasetManifest {
   }
   _datasetManifest = m;
   return _datasetManifest;
+}
+
+// ── era_map_summary.json (families piece 1, spec 2026-10-02 §6.4) ────────────
+
+/**
+ * The era-map decision counts /downloads/ renders under the p1_era_line_map
+ * card. Null when the export shipped no map (an export from before families
+ * piece 1): the page then renders no table, and gate 24 leg (s) fails,
+ * because the map dataset and this summary ship together.
+ */
+export function getEraMapSummary(): EraMapSummary | null {
+  if (!existsSync(join(jsonDir(), "era_map_summary.json"))) return null;
+  const s = readJson<EraMapSummary>("era_map_summary.json");
+  if (s.schema_version !== 1) {
+    throw new Error(
+      `[govbudget/data] era_map_summary.json has schema_version=${s.schema_version}, expected 1. ` +
+        `Re-run "uv run python -m govbudget export-site" to regenerate sidecars.`,
+    );
+  }
+  return s;
 }
 
 // ── Trajectory fiscal-year label (re-exported for server components) ─────────

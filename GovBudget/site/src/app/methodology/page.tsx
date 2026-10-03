@@ -1022,10 +1022,10 @@ export default function MethodologyPage() {
                   corresponding citation row — the XML element path is displayed.{" "}
                   <strong>Citation tier pending</strong> (⁂): figure is from a
                   dataset for which row-level citation linkage is not yet
-                  complete. As of this build every published dataset carries a
-                  citation tier (the pending ledger is empty); the state remains
-                  defined — and gate-enforced — for future datasets that ship
-                  before their citations do.
+                  complete. As of this build only p1_era_line_map is on the
+                  pending ledger, as it holds no amounts to cite; the state
+                  remains defined — and gate-enforced — for future datasets that
+                  ship before their citations do.
                 </p>
               </div>
               <div id="company-families" className="scroll-mt-16">

@@ -211,6 +211,17 @@
  *      any sampled cell has no rows in the lake. (The brief called this leg
  *      (o); that letter was taken by the hand-adjudication leg above and
  *      (p)/(q) are reserved, so the by-year leg is (r).)
+ *  (s) ERA-MAP DECISIONS (families piece 1, spec 2026-10-02 §6.4). /downloads/
+ *      renders, directly under the p1_era_line_map card (the card's next
+ *      element in the card grid), one row per PB2017–PB2023
+ *      edition: its P-1 lines, the chains ("codes") each decision covers and
+ *      how many cited era cells carry a complete PDF receipt. This leg
+ *      requires the rendered cells to equal json/era_map_summary.json, the
+ *      summary's lines and chains to equal an independent recount of the
+ *      shipped parquet (eramap-recompute.py), and its receipt figures to
+ *      equal the receipts audit's P-1 book for that edition. The map shipping
+ *      without the summary, or not shipping at all, is a stale export and
+ *      fails. See leg s's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -775,6 +786,9 @@ export async function runDataTruthGate() {
 
   // ── leg r: district by-year cells vs the lake (ROADMAP #6) ────────────────
   runDistrictYearLeg(errors, notes);
+
+  // ── leg s: era-map decisions on /downloads/ (families piece 1) ────────────
+  runEraMapLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -5653,4 +5667,189 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
         : "") +
       ` ✓`,
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg s — era-map decisions on /downloads/ (families piece 1, spec §6.4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** The P-1 editions the era map covers (spec 2026-10-02 §4.4). */
+const ERA_EDITIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023];
+/** The decisions the rendered "Excluded" column sums (spec §4.3). */
+const ERA_EXCLUDED = ["exclude_placeholder", "exclude_route_unsafe", "exclude_reused_code"];
+/** Where the table renders: /coverage/ and /data/ had no room under their ceilings. */
+const ERA_PAGE = "/downloads/";
+
+function readJsonOrNull(p) {
+  if (!fs.existsSync(p)) return null;
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+/** Independent recount of the shipped map (eramap-recompute.py, DuckDB). */
+function recomputeEraMap() {
+  const script = path.join(__dirname, "eramap-recompute.py");
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    throw new Error(
+      `eramap-recompute.py failed (status ${res.status}): ${(res.stderr || "").slice(-800)}`,
+    );
+  }
+  return JSON.parse(res.stdout);
+}
+
+/** This leg's own rendering of one edition's cells, written apart from
+ *  src/lib/era-map.ts on purpose: a change there has to agree with this. */
+function eraExpectedCells(e) {
+  const g = (n) => Number(n).toLocaleString("en-US");
+  const codes = (n) => `${g(n)} ${n === 1 ? "code" : "codes"}`;
+  const chains = (d) => e.by_decision?.[d]?.chains ?? 0;
+  return {
+    lines: g(e.lines),
+    same_program: codes(chains("same_program")),
+    history_only: codes(chains("history_only")),
+    excluded: codes(ERA_EXCLUDED.reduce((s, d) => s + chains(d), 0)),
+    receipts: `${g(e.receipts?.complete ?? 0)} of ${g(e.receipts?.facts ?? 0)}`,
+  };
+}
+
+/**
+ * Leg (s). Injectable like legs m/n/o: `injected` = {recount, summary, audit,
+ * html} replaces the recount subprocess, the two JSON files and the built
+ * page (scripts/gates/__tests__/era-map-leg.test.mjs,
+ * src/__tests__/era-map-table.test.tsx).
+ */
+export function runEraMapLeg(errors, notes, injected) {
+  const before = errors.length;
+  let recount;
+  try {
+    recount = injected ? injected.recount : recomputeEraMap();
+  } catch (e) {
+    errors.push(`leg s: ${e.message}`);
+    return;
+  }
+  const summary = injected
+    ? injected.summary
+    : readJsonOrNull(path.join(jsonDir, "era_map_summary.json"));
+  const audit = injected
+    ? injected.audit
+    : readJsonOrNull(path.join(jsonDir, "budget_pdf_receipts_audit.json"));
+  const htmlPath = htmlFor(ERA_PAGE);
+  const html = injected
+    ? injected.html
+    : fs.existsSync(htmlPath)
+      ? fs.readFileSync(htmlPath, "utf8")
+      : null;
+
+  if (!recount?.present) {
+    errors.push(
+      "leg s: data/site/data/p1_era_line_map.parquet is not shipped — families piece 1 " +
+        "publishes the era map with every export, so this is a stale export",
+    );
+    return;
+  }
+  if (!summary) {
+    errors.push(
+      "leg s: data/site/json/era_map_summary.json is missing while p1_era_line_map.parquet " +
+        "ships — the export's receipts step writes it (cli._export_budget_pdf_evidence)",
+    );
+    return;
+  }
+  const editions = summary.editions ?? [];
+  const eds = editions.map((e) => e.edition);
+  if (JSON.stringify(eds) !== JSON.stringify(ERA_EDITIONS)) {
+    errors.push(
+      `leg s: era_map_summary.json covers editions ${JSON.stringify(eds)}, expected ${JSON.stringify(ERA_EDITIONS)}`,
+    );
+  }
+
+  // (s1) the summary agrees with the shipped map, recounted from the parquet
+  for (const e of editions) {
+    const t = recount.editions?.[String(e.edition)] ?? { lines: 0, by_decision: {} };
+    if (t.lines !== e.lines) {
+      errors.push(`leg s: PB${e.edition} summary says ${e.lines} lines, the shipped map holds ${t.lines}`);
+    }
+    const decisions = new Set([...Object.keys(t.by_decision ?? {}), ...Object.keys(e.by_decision ?? {})]);
+    for (const d of decisions) {
+      const want = t.by_decision?.[d] ?? { chains: 0, lines: 0 };
+      const got = e.by_decision?.[d] ?? { chains: 0, lines: 0 };
+      if (want.chains !== got.chains || want.lines !== got.lines) {
+        errors.push(
+          `leg s: PB${e.edition} ${d} summary says ${got.chains} chains / ${got.lines} lines, ` +
+            `the shipped map holds ${want.chains} / ${want.lines}`,
+        );
+      }
+    }
+  }
+
+  // (s2) receipt completeness agrees with the receipts audit's P-1 books
+  if (!audit) {
+    errors.push("leg s: data/site/json/budget_pdf_receipts_audit.json is missing — receipt completeness is unverifiable");
+  }
+  const books = new Map(
+    (audit?.books ?? []).filter((b) => b.exhibit === "P-1").map((b) => [b.edition, b]),
+  );
+  for (const e of editions) {
+    const b = books.get(e.edition) ?? { facts: 0, complete: 0 };
+    if (e.receipts?.facts !== b.facts || e.receipts?.complete !== b.complete) {
+      errors.push(
+        `leg s: PB${e.edition} receipts say ${e.receipts?.complete} of ${e.receipts?.facts}, ` +
+          `the receipts audit has ${b.complete} of ${b.facts}`,
+      );
+    }
+  }
+
+  // (s3) the page renders exactly the summary
+  if (!html) {
+    errors.push(`leg s: ${ERA_PAGE} not built — run npm run build`);
+    return;
+  }
+  const root = parse(html, { comment: false });
+  for (const el of root.querySelectorAll("script, style, noscript, template")) el.remove();
+  const tables = root.querySelectorAll("[data-era-map]");
+  if (tables.length !== 1) {
+    errors.push(`leg s (${ERA_PAGE}): ${tables.length} [data-era-map] tables rendered, expected exactly 1`);
+    return;
+  }
+  // (s4) where it renders: directly under the p1_era_line_map download card
+  // (spec §6.4 owner decision), i.e. the card's next element is the table's
+  // section, a full-width item of the same card grid.
+  const card = root.querySelector('[data-dataset-card="p1_era_line_map"]');
+  const next = card ? card.nextElementSibling : null;
+  if (!card) {
+    errors.push(`leg s (${ERA_PAGE}): no p1_era_line_map download card ([data-dataset-card="p1_era_line_map"])`);
+  } else if (next?.getAttribute("id") !== "era-map" || next.querySelectorAll("[data-era-map]").length !== 1) {
+    errors.push(`leg s (${ERA_PAGE}): the era table is not the element directly after the p1_era_line_map card`);
+  }
+  const rows = tables[0].querySelectorAll("tr[data-era-edition]");
+  const rendered = rows.map((r) => Number(r.getAttribute("data-era-edition")));
+  if (JSON.stringify(rendered) !== JSON.stringify(eds)) {
+    errors.push(
+      `leg s (${ERA_PAGE}): renders rows for ${JSON.stringify(rendered)}, era_map_summary.json has ${JSON.stringify(eds)}`,
+    );
+  }
+  for (const e of editions) {
+    const row = rows.find((r) => r.getAttribute("data-era-edition") === String(e.edition));
+    if (!row) continue;
+    for (const [cell, want] of Object.entries(eraExpectedCells(e))) {
+      const el = row.querySelector(`[data-era-cell="${cell}"] [data-era-value]`);
+      const got = el ? norm(el.text) : null;
+      if (got !== want) {
+        errors.push(
+          `leg s (${ERA_PAGE}): PB${e.edition} ${cell} renders ${JSON.stringify(got)}, ` +
+            `era_map_summary.json says ${JSON.stringify(want)}`,
+        );
+      }
+    }
+  }
+  if (errors.length === before) {
+    notes.push(
+      `leg s: ${ERA_PAGE} renders all ${rows.length} era editions exactly as era_map_summary.json, ` +
+        "which agrees with the shipped p1_era_line_map and the receipts audit ✓",
+    );
+  }
 }

@@ -32,6 +32,7 @@ export const DATASET_NAMES = [
   "fct_state_per_capita",
   "jbook_details",
   "jbook_narratives",
+  "p1_era_line_map",
 ] as const;
 
 export type DatasetName = (typeof DATASET_NAMES)[number];

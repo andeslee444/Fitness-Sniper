@@ -116,12 +116,16 @@ describe("resultToCsv", () => {
 // ── DATASET_NAMES ─────────────────────────────────────────────────────────────
 
 describe("DATASET_NAMES", () => {
-  it("contains exactly 16 datasets", () => {
-    expect(DATASET_NAMES).toHaveLength(16);
+  it("contains exactly 17 datasets", () => {
+    expect(DATASET_NAMES).toHaveLength(17);
   });
 
   it("registers budget_lines_decade — shipped since 5E, unqueryable until §P1-5", () => {
     expect(DATASET_NAMES).toContain("budget_lines_decade");
+  });
+
+  it("registers p1_era_line_map — the era code decisions (families piece 1)", () => {
+    expect(DATASET_NAMES).toContain("p1_era_line_map");
   });
 
   it("includes all expected dataset names", () => {
@@ -142,6 +146,7 @@ describe("DATASET_NAMES", () => {
       "fct_state_per_capita",
       "jbook_details",
       "jbook_narratives",
+      "p1_era_line_map",
     ];
     for (const name of expected) {
       expect(DATASET_NAMES).toContain(name);

@@ -162,6 +162,37 @@ ORDER BY pb_edition
         },
       ];
 
+    case "p1_era_line_map":
+      // Families piece 1 (spec 2026-10-02 §4.4). One row per PB2017–PB2023
+      // P-1 display line and the dated decision that joins it to a program,
+      // keeps it as history, or excludes it. No amounts: the figures live in
+      // budget_lines_decade under the same era_key. A chain is one decision
+      // (decision_id); owner review batches carry ruling R-DEC-ERA-B<n>.
+      return [
+        {
+          label: "Decisions by edition",
+          sql: t(`
+SELECT edition, decision,
+       COUNT(DISTINCT decision_id) AS chains,
+       COUNT(*) AS lines
+FROM 'p1_era_line_map.parquet'
+GROUP BY edition, decision
+ORDER BY edition, decision
+          `),
+        },
+        {
+          label: "Lines decided in owner review batches",
+          sql: t(`
+SELECT edition, era_key, line_item_code, filed_title,
+       program_key, decision, ruling
+FROM 'p1_era_line_map.parquet'
+WHERE ruling LIKE 'R-DEC-ERA-B%'
+ORDER BY line_item_code, edition, era_key
+LIMIT 50
+          `),
+        },
+      ];
+
     case "fct_influence":
       // R-DEC-EXPLORER (final review #9, 2026-09-27). This was COUNT(*) AS
       // filing_count over a mart that is one row per (family, filing year) —

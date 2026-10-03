@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { citationsIndexOf, getDatasetManifest, getSiteMeta } from "@/lib/data";
+import { citationsIndexOf, getDatasetManifest, getEraMapSummary, getSiteMeta } from "@/lib/data";
 import type { CitationsIndexEntry } from "@/lib/data";
 import { getAssetBase } from "@/lib/asset-base";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -71,6 +71,10 @@ export default function DownloadsPage() {
   // claim 326 dim_programs rows against a 1,739-row parquet.
   // Wave 4 item 2: it is now the single source for the card LIST too.
   const manifest = getDatasetManifest();
+  // Families piece 1: the era-map decision table renders in the card grid,
+  // directly after the p1_era_line_map card (owner decision, spec §6.4
+  // correction: /coverage/ and /data/ had no room).
+  const eraMap = getEraMapSummary();
   // The citation index's own entry; the build fails without it (no
   // hand-written list of kinds to fall back to).
   const citations = citationsIndexOf(manifest);
@@ -141,6 +145,7 @@ export default function DownloadsPage() {
             pdfCount={meta.pdf_count}
             workbookCount={meta.workbook_count}
             uncitedDatasets={meta.uncited_datasets ?? []}
+            eraMap={eraMap}
           />
         </AssetConfigProvider>
       </div>

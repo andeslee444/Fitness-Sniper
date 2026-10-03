@@ -33,6 +33,11 @@
 
 import React from "react";
 import { useAssetUrl, useAssetConfigResolved } from "@/components/asset-config";
+import { EraMapTable } from "@/components/era-map-table";
+import type { EraMapSummary } from "@/lib/era-map";
+
+/** The dataset whose card the era-map table follows (families piece 1). */
+const ERA_MAP_DATASET = "p1_era_line_map";
 
 /** The manifest fields a card needs — mirrors lib/data DatasetManifestEntry. */
 export interface DownloadDataset {
@@ -116,6 +121,7 @@ export function DownloadCards({
   citationsIndex,
   workbookCount,
   uncitedDatasets = [],
+  eraMap = null,
 }: {
   builtAt: string;
   /**
@@ -148,6 +154,12 @@ export function DownloadCards({
    * badge flips automatically when a dataset gains a citation tier.
    */
   uncitedDatasets?: string[];
+  /**
+   * json/era_map_summary.json (lib/data getEraMapSummary; families piece 1).
+   * When present, the era-map table renders as the full-width grid item
+   * directly after the p1_era_line_map card (spec §6.4 owner decision).
+   */
+  eraMap?: EraMapSummary | null;
 }) {
   const assetUrl = useAssetUrl();
   const assetConfigResolved = useAssetConfigResolved();
@@ -214,8 +226,9 @@ export function DownloadCards({
 
       <div className="grid gap-4 sm:grid-cols-2">
         {DATASETS.map((ds) => (
+          <React.Fragment key={ds.name}>
           <div
-            key={ds.name}
+            data-dataset-card={ds.name}
             {...(degraded ? { "aria-disabled": true } : {})}
             className={[
               "rounded-lg border border-border bg-card p-4 flex flex-col gap-2",
@@ -281,6 +294,8 @@ export function DownloadCards({
               {ds.name}.parquet
             </a>
           </div>
+          {ds.name === ERA_MAP_DATASET && eraMap && <EraMapTable summary={eraMap} />}
+          </React.Fragment>
         ))}
       </div>
 
