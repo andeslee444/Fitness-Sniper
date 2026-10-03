@@ -350,6 +350,23 @@ FILE_PATH_WRITERS = {
     ("jbooks/acquire.py", "acquire_pending"),
     ("jbooks/service_fetch.py", "register_local_documents"),
     ("jbooks/service_fetch.py", "download_registered_playwright"),
+    # Not an acquisition writer and deliberately does NOT route through
+    # lake_path (families piece 1, Task 3 fix round 2): `proof.snapshot`'s
+    # `_pg_snapshot` repoints an ALREADY-canonical file_path — copied
+    # verbatim from a pg_dump of the live, shared database — at a snapshot's
+    # own raw_docs clone. Its paths are resolved by proof.snapshot()'s own
+    # Path.resolve() calls before _pg_snapshot ever sees them (a second
+    # resolution through lake_path would be a no-op, not a fix), and the
+    # write lands ONLY in a throwaway database named govbudget_proof_<name>
+    # — proof._assert_current_database asserts current_database() equals
+    # that scratch name immediately before the update runs, so it can never
+    # reach the live database the other four writers protect. Its covering
+    # test lives in tests/test_proof.py::test_snapshot_pins_lake_and_postgres
+    # (not here): it asserts the SOURCE database's row is unchanged and the
+    # SCRATCH database's row resolves under the snapshot root, which needs
+    # the snapshot/pg_dump+pg_restore machinery that module already sets up,
+    # not a worktree symlink fixture.
+    ("proof.py", "_pg_snapshot"),
 }
 
 
@@ -406,13 +423,17 @@ def _file_path_writer_census(src_root: Path | None = None) -> set[tuple[str, str
     return found
 
 
-def test_file_path_writer_census_matches_the_four_tested_writers():
-    """A fifth writer is a red test here, not a dead citation later."""
+def test_file_path_writer_census_matches_the_five_tested_writers():
+    """A sixth writer is a red test here, not a dead citation later."""
     assert _file_path_writer_census() == FILE_PATH_WRITERS, (
-        "the set of source sites that write file_path changed. Every writer must"
-        " route its path through jbooks.acquire.lake_path and gain a symlink"
-        " regression test in this module; then add it to FILE_PATH_WRITERS and"
-        " to the command table in docs/superpowers/LAUNCH.md"
+        "the set of source sites that write file_path changed. Route the new"
+        " writer's path through jbooks.acquire.lake_path and gain a symlink"
+        " regression test in this module — or, if lake_path's resolve-a-worktree"
+        " -symlink semantics genuinely do not apply (e.g. a scratch-database-only"
+        " write whose paths are already canonical by construction), register it"
+        " in FILE_PATH_WRITERS with a comment saying exactly why and point this"
+        " census at an existing covering test instead. Either way, add it to the"
+        " command table in docs/superpowers/LAUNCH.md"
     )
 
 

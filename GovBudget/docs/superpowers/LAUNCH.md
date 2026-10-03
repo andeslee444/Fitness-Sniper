@@ -27,10 +27,18 @@ row whose file is missing, so one bad path hard-fails the export for everyone. A
 — a path that vanishes when the worktree is removed. This happened to doc 459 (FY2026 DHP
 volume) on 2026-09-12 and was repaired with a one-row `update`.
 
-**All four** commands that write `file_path` now record `Path.resolve()` (see
+**All four** acquisition commands that write `file_path` record `Path.resolve()` (see
 `jbooks.acquire.lake_path`), and `config._lake_path` resolves the lake constants they build
 from (`RAW_DOCS_DIR`, `RAW_DIR`, `PARQUET_DIR`, `DUCKDB_PATH`, `SITE_DIR`), so the fix holds at
-the root as well as at each writer:
+the root as well as at each writer. A fifth site writes `file_path` too —
+`govbudget proof snapshot`'s scratch-database rewrite (families piece 1, Task 3, 2026-10) — but
+it is a different kind of write: it never touches the live, shared database. It repoints an
+ALREADY-canonical `file_path` (copied verbatim from a `pg_dump` of the live database) at a
+snapshot's own `raw_docs` clone, inside a throwaway database named `govbudget_proof_<name>`
+that `proof._assert_current_database` confirms is the connection's `current_database()`
+immediately before the `update` runs. It does not route through `lake_path` — its paths are
+already resolved by `proof.snapshot()`'s own `Path.resolve()` calls before `_pg_snapshot` ever
+sees them, so a second resolution there would be a no-op, not a fix:
 
 | command | writer |
 |---|---|
@@ -38,15 +46,20 @@ the root as well as at each writer:
 | `jbooks ingest-local` | `jbooks/service_fetch.py` `register_local_documents` (the operator DROP DIR, not `raw_docs`) |
 | `jbooks backfill --service navy` | `jbooks/service_fetch.py` `download_registered_playwright` |
 | `jbooks backfill --service {army\|af\|spaceforce} --source archive` | `cli.py` `_service_archive_download` |
+| `govbudget proof snapshot` | `proof.py` `_pg_snapshot` (database `govbudget_proof_<name>` only — never the live database) |
 
 The archive route was missed by the first fix and caught on re-review; it is the prescribed
 route for the WAF-blocked services (ROADMAP #111), and 31 rows already carry
 `acquisition='archive'` — 17 of them `status='downloaded'` (Army 10, Air Force 7), the rest
-superseded (measured 2026-09-12). Each writer has its own symlink regression test in
-`tests/jbooks/test_acquire.py`, and — since 2026-09-12 — that module's
-`test_file_path_writer_census_matches_the_four_tested_writers` parses `src/govbudget/**/*.py`
-for SQL that writes `file_path` and fails unless the writer set is exactly these four, so a
-**fifth** writer is a red test, not a dead citation. (Before that census the four cases pinned
+superseded (measured 2026-09-12). Each of the first four writers has its own symlink
+regression test in `tests/jbooks/test_acquire.py`; the fifth (`proof.py`'s scratch-only
+rewrite) is instead covered by `tests/test_proof.py::test_snapshot_pins_lake_and_postgres`,
+which asserts the source database's row is unchanged and the scratch database's row resolves
+under the snapshot root — proving it needs the snapshot/`pg_dump`+`pg_restore` machinery that
+module already sets up, not a worktree symlink fixture. Since 2026-09-12, that module's
+`test_file_path_writer_census_matches_the_five_tested_writers` parses `src/govbudget/**/*.py`
+for SQL that writes `file_path` and fails unless the writer set is exactly these five, so a
+**sixth** writer is a red test, not a dead citation. (Before that census the four cases pinned
 the four writers that existed and were blind to a new one — which is how the archive route
 stayed missing until a human re-grepped.) A new `DATA_DIR / "…"` lake constant that skips
 `_lake_path` is caught by `tests/test_config.py::test_lake_dirs_are_symlink_resolved` (the five
