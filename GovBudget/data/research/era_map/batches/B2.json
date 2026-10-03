@@ -1,0 +1,8 @@
+{
+  "batch": "B2",
+  "decided_on": "2026-10-03",
+  "owner_reply": "approved, except 18: same_program",
+  "rows": {
+    "014005|0350D|": {"decision": "same_program", "note": "owner B2 row 18: same_program"}
+  }
+}

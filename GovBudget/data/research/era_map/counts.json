@@ -63,8 +63,8 @@
   "30",
   "500"
  ],
- "owner_batch_chains": 25,
- "review_rows": 100,
+ "owner_batch_chains": 50,
+ "review_rows": 75,
  "ruled_actuals_k": {
   "R-DEC-ERA-EXCLUDE": "5832017",
   "R-DEC-ERA-HISTORY": "46875952",
