@@ -644,7 +644,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // drift leg fired at 5.9x (+1,246 gzip over the integration stamp, on the
   // decisions branch with chain G's lake and export). The next paragraph
   // here needs a trim first, not a raise.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "160,836 / 45,147" },
+  // RE-MEASURED 2026-10-03 (families piece 1 S0, build of 53d8c5ae, built
+  // 2026-10-03T07:35:36Z, on the 2026-10-02T01:30:21Z export of 125,409
+  // citations; gate 1's own weigh()): 160,836 / 45,147 -> 161,166 / 45,270.
+  // CEILINGS UNCHANGED; 834 raw / 130 gzip left (the old stamp claimed 253).
+  // Production served 161,166 / 45,270 the same day. Piece 1 replaces one
+  // sentence here at equal length and adds a link (spec §6.4); its era table
+  // renders wherever it fits without a ceiling raise, decided in Task 19.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,166 / 45,270" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -776,7 +783,15 @@ export const PAGE_WEIGHT_BUDGET = [
   // weigh()): 99,824 / 20,450 -> 85,710 / 20,288. CEILINGS UNCHANGED; 17,290
   // raw / 462 gzip left. The gate-fix wave moved this table's per-row utility
   // classes into a page-local CSS module (coverage.module.css).
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_000, maxGzip: 20_750, measured: "85,710 / 20,288" },
+  // RE-MEASURED 2026-10-03 (families piece 1 S0, build of 53d8c5ae, built
+  // 2026-10-03T07:35:36Z, on the 2026-10-02T01:30:21Z export of 125,409
+  // citations; gate 1's own weigh()): 85,710 / 20,288 -> 86,203 / 20,455.
+  // CEILINGS UNCHANGED; 16,797 raw / 295 gzip left (the old stamp claimed
+  // 462). Production served 86,203 / 20,458 the same day (3 gzip bytes of
+  // normal per-build drift from Next's build ID). Piece 1's per-edition era
+  // table (spec §6.4) renders on whichever page fits it without a ceiling
+  // raise; Task 19 measures the candidate pages and decides.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_000, maxGzip: 20_750, measured: "86,203 / 20,455" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
