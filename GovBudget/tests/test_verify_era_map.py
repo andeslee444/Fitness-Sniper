@@ -234,6 +234,19 @@ def test_leg_a_fails_when_a_workbook_is_missing(corpus):
     assert any(f.startswith("2023: workbook missing: ") for f in _failures(corpus.leg_a()))
 
 
+def test_leg_a_fails_on_a_duplicated_map_row(corpus):
+    # Task 20 review carry-over: by_edition keys rows by (edition, era_key),
+    # so a duplicated row would otherwise pass leg a silently (collapsed to
+    # its last copy) — the dbt grain/no_overlap tests catch it, but the
+    # release gate should name the duplicate too.
+    corpus.map_rows.append(dict(corpus.row(2019, "3010F-AF-L30")))
+    corpus.save()
+    result = corpus.leg_a()
+    assert not result["ok"]
+    assert ("p1_era_line_map has 33 rows but only 32 distinct (edition, era_key) pairs"
+            " — e.g. 2019/3010F-AF-L30 appears 2 times") in _failures(result)
+
+
 # --- leg b -----------------------------------------------------------------
 
 def test_leg_b_passes_on_a_consistent_corpus(corpus):
@@ -346,14 +359,6 @@ def test_a_missing_map_table_fails_every_leg(pinned, tmp_path):
         "c": "p1_era_line_map unreadable"}
 
 
-def test_legs_d_to_f_fail_until_task_20(pinned):
-    out = run_verify_era_map(site_dir=pinned.site_dir, duckdb_path=pinned.duckdb_path,
-                             seed_path=pinned.seed_path)
-    assert list(out["legs"]) == ["a", "b", "c", "d", "e", "f"]
-    assert [leg for leg, r in out["legs"].items() if not r["ok"]] == ["d", "e", "f"]
-    assert out["verdict"] == "FAIL"
-
-
 def test_cli_passes_with_one_final_verdict_line(pinned, capsys):
     with pytest.raises(SystemExit) as exit_:
         cli.main(["verify-era-map", "--legs", "abc"])
@@ -374,12 +379,61 @@ def test_cli_fails_with_exit_1(pinned, capsys):
     assert out[-1] == "verify-era-map: FAIL"
 
 
-def test_cli_zero_arguments_runs_every_leg(pinned, capsys):
+LEG_LINES = ["leg a workbooks", "leg b decisions", "leg c f15",
+             "leg d fact ids", "leg e published map", "leg f f15 history pin"]
+
+
+def _publish_export(corpus: Corpus, monkeypatch) -> None:
+    """The three artifacts legs d–f read, consistent with the corpus: one era
+    P-1 row of budget_lines_decade (its fact id from fact_id_workbook), the
+    warehouse map exported as data/p1_era_line_map.parquet, and an F-15
+    history file with its pin."""
+    from govbudget.export_site import fact_id_workbook
+
+    k = corpus.row(2019, "3010F-AF-L30")
+    ident = (k["source_document_sha256"], "P-1", 2019, k["account"], k["organization"],
+             k["budget_activity"], k["era_key"], "fy_2017_base_oco")
+    data = corpus.site_dir / "data"
+    data.mkdir(exist_ok=True)
+    con = duckdb.connect()
+    con.execute("create table bld (fact_id varchar, document_sha256 varchar, exhibit varchar,"
+                " fiscal_year integer, account varchar, organization varchar,"
+                " budget_activity varchar, pe_bli varchar, amount_type varchar)")
+    con.execute("insert into bld values (?,?,?,?,?,?,?,?,?)", [fact_id_workbook(*ident), *ident])
+    con.execute(f"copy bld to '{data / 'budget_lines_decade.parquet'}' (format parquet)")
+    con.execute(f"attach '{corpus.duckdb_path}' as wh (read_only)")
+    con.execute("copy (select * from wh.p1_era_line_map)"
+                f" to '{data / 'p1_era_line_map.parquet'}' (format parquet)")
+    con.close()
+    history = b'{"points": []}\n'
+    (corpus.site_dir / "json").mkdir(exist_ok=True)
+    (corpus.site_dir / "json" / "f15_funding_history.json").write_bytes(history)
+    pin = corpus.site_dir.parent / "history.sha256"
+    pin.write_text(hashlib.sha256(history).hexdigest() + "  data/site/json/f15_funding_history.json\n")
+    monkeypatch.setattr(verify_era_map, "F15_HISTORY_PIN", pin)
+
+
+def test_cli_zero_arguments_runs_every_leg(pinned, capsys, monkeypatch):
+    _publish_export(pinned, monkeypatch)
     with pytest.raises(SystemExit) as exit_:
         cli.main(["verify-era-map"])
     out = capsys.readouterr().out.splitlines()
+    legs = [line for line in out if line.startswith("leg ")]
+    assert [line.split(":")[0] for line in legs] == LEG_LINES
+    assert all(line.endswith("→ PASS") for line in legs), out
+    assert exit_.value.code == 0
+    assert out[-1] == "verify-era-map: PASS"
+
+
+def test_cli_zero_arguments_fails_without_the_export(pinned, capsys):
+    with pytest.raises(SystemExit) as exit_:
+        cli.main(["verify-era-map"])
+    out = capsys.readouterr().out.splitlines()
+    legs = {line.split(":")[0]: line for line in out if line.startswith("leg ")}
+    assert list(legs) == LEG_LINES
+    assert all(legs[name].endswith("→ PASS") for name in LEG_LINES[:3])
+    assert legs["leg d fact ids"].endswith(": budget_lines_decade.parquet missing → FAIL")
+    assert legs["leg e published map"].endswith(": p1_era_line_map.parquet missing → FAIL")
+    assert legs["leg f f15 history pin"].endswith(": f15_funding_history.json missing → FAIL")
     assert exit_.value.code == 1
-    assert [line.split(":")[0] for line in out if line.startswith("leg ")] == [
-        "leg a workbooks", "leg b decisions", "leg c f15",
-        "leg d fact ids", "leg e published map", "leg f f15 history pin"]
     assert out[-1] == "verify-era-map: FAIL"

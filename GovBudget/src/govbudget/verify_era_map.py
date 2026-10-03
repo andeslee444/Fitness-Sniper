@@ -33,16 +33,28 @@ is a FAIL, never a skip.
     filed title, printed code), and each carries its printed code as
     program_key.
 
-  Legs (d)–(f) are added by Task 20 (fact-ID recompute, published parquet vs
-  dbt map, F-15 history sha pin). Until then they report FAIL, so the
-  zero-argument run cannot pass vacuously.
+  Leg (d) — fact ids. Every row of the exported budget_lines_decade.parquet
+    recomputes its fact_id with export_site.fact_id_workbook from its own
+    columns, no fact_id repeats, and every PB2017–PB2023 P-1 row keeps its
+    era key as pe_bli (spec §6.1: the lake identity is never re-keyed). At
+    least one such row must exist, so the check cannot pass vacuously.
+
+  Leg (e) — published map. The exported data/p1_era_line_map.parquet equals
+    the warehouse's p1_era_line_map: the same column names in the same order,
+    the same row multiset, and not empty. A warehouse whose map moved after
+    the export fails here until the site is re-exported.
+
+  Leg (f) — F-15 history pin. data/site/json/f15_funding_history.json hashes
+    to the sha256 committed at S0 in tests/fixtures/f15/history.sha256 (its
+    first token, so `shasum -a 256` output reads); only the S5 correction
+    re-pins it.
 """
 from __future__ import annotations
 
 import csv
 import hashlib
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -168,6 +180,17 @@ def leg_a_workbooks(
     from govbudget.jbooks.p1_loader import parse_p1_rollup
 
     failures: list[str] = []
+    # Task 20 review carry-over (Task 14 fix round): by_edition below keys
+    # map_rows by (edition, era_key), so a duplicated row silently collapses
+    # — the dbt grain/no_overlap tests catch this, but the release gate
+    # should too, rather than quietly checking only the last copy.
+    pair_counts = Counter((r["edition"], r["era_key"]) for r in map_rows)
+    if len(map_rows) > len(pair_counts):
+        edition, era_key = min(pair for pair, n in pair_counts.items() if n > 1)
+        failures.append(
+            f"p1_era_line_map has {len(map_rows)} rows but only {len(pair_counts)} distinct"
+            f" (edition, era_key) pairs — e.g. {edition}/{era_key} appears"
+            f" {pair_counts[(edition, era_key)]} times")
     by_edition: dict[int, dict[str, dict]] = defaultdict(dict)
     for r in map_rows:
         by_edition[r["edition"]][r["era_key"]] = r
@@ -338,6 +361,126 @@ def leg_c_f15(*, map_rows: list[dict]) -> dict:
                 failures)
 
 
+# --- Legs d–f (Task 20): the published export against its own inputs -------
+
+#: The F-15 history pin committed at S0 (Task 4). Its first whitespace-
+#: separated token is the sha256 hex digest of
+#: data/site/json/f15_funding_history.json (`shasum -a 256` output reads).
+#: Resolved from this file, not config.ROOT, so a test can swap it.
+F15_HISTORY_PIN = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "f15" / "history.sha256"
+
+#: The last edition whose P-1 rows carry era keys as pe_bli (spec §3).
+_ERA_P1_LAST_EDITION = 2023
+
+
+def leg_d_fact_ids(*, site_dir: Path) -> dict:
+    """Leg (d): budget_lines_decade's fact ids recompute; era rows keep era keys."""
+    import duckdb
+
+    from govbudget.export_site import fact_id_workbook
+    from govbudget.jbooks.era_keys import is_era_procurement_key
+
+    pq = Path(site_dir) / "data" / "budget_lines_decade.parquet"
+    if not pq.is_file():
+        return _leg(False, "budget_lines_decade.parquet missing", [f"missing {pq}"])
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            "select fact_id, document_sha256, exhibit, fiscal_year, account,"
+            " organization, budget_activity, pe_bli, amount_type"
+            " from read_parquet(?)", [str(pq)]).fetchall()
+    finally:
+        con.close()
+    failures: list[str] = []
+    mismatched = 0
+    for fid, sha, exhibit, fy, account, org, ba, pe_bli, amount_type in rows:
+        if fact_id_workbook(sha, exhibit, fy, account, org, ba, pe_bli, amount_type) != fid:
+            mismatched += 1
+            failures.append(f"{fid}: does not recompute with fact_id_workbook from its own row"
+                            f" ({exhibit} FY{fy} {pe_bli} {amount_type})")
+    counts = Counter(r[0] for r in rows)
+    for fid, n in sorted(counts.items()):
+        if n > 1:
+            failures.append(f"{fid}: fact_id repeats on {n} rows")
+    era = [r for r in rows
+           if r[2] == "P-1" and r[3] is not None and int(r[3]) <= _ERA_P1_LAST_EDITION]
+    re_keyed = [r for r in era if not is_era_procurement_key(r[7])]
+    for r in re_keyed:
+        failures.append(f"{r[0]}: P-1 FY{r[3]} row has pe_bli {r[7]!r}, not an era key"
+                        " (spec §6.1: the lake identity is never re-keyed)")
+    if not era:
+        failures.append("no PB2017–PB2023 P-1 row: the era-key check would pass vacuously")
+    return _leg(not failures,
+                f"rows={len(rows)} era_p1_rows={len(era)} mismatched={mismatched}"
+                f" duplicate_fact_ids={len(rows) - len(counts)}"
+                f" era_rows_without_era_key={len(re_keyed)}", failures)
+
+
+def leg_e_published_map(*, site_dir: Path, duckdb_path: Path) -> dict:
+    """Leg (e): the published p1_era_line_map.parquet is the warehouse's map."""
+    import duckdb
+
+    pq = Path(site_dir) / "data" / "p1_era_line_map.parquet"
+    if not pq.is_file():
+        return _leg(False, "p1_era_line_map.parquet missing", [f"missing {pq}"])
+    src = str(pq)
+    try:
+        con = duckdb.connect(str(duckdb_path), read_only=True)
+    except duckdb.Error as e:
+        return _leg(False, "warehouse unreadable", [f"cannot open {duckdb_path}: {e}"])
+    try:
+        try:
+            mart_cols = [d[0] for d in con.execute(
+                "select * from p1_era_line_map limit 0").description]
+        except duckdb.CatalogException:
+            return _leg(False, "p1_era_line_map missing from the warehouse",
+                        [f"{duckdb_path}: no table p1_era_line_map"])
+        pub_cols = [d[0] for d in con.execute(
+            "select * from read_parquet(?) limit 0", [src]).description]
+        if pub_cols != mart_cols:
+            return _leg(False, "columns differ",
+                        [f"published columns {pub_cols} != warehouse columns {mart_cols}"])
+        mart_rows = con.execute("select count(*) from p1_era_line_map").fetchone()[0]
+        pub_rows = con.execute("select count(*) from read_parquet(?)", [src]).fetchone()[0]
+        only_mart = con.execute(
+            "select count(*) from (select * from p1_era_line_map"
+            " except all select * from read_parquet(?))", [src]).fetchone()[0]
+        only_pub = con.execute(
+            "select count(*) from (select * from read_parquet(?)"
+            " except all select * from p1_era_line_map)", [src]).fetchone()[0]
+    finally:
+        con.close()
+    failures: list[str] = []
+    if mart_rows == 0:
+        failures.append("the warehouse p1_era_line_map is empty")
+    if only_mart:
+        failures.append(f"{only_mart} warehouse row(s) are not in the published parquet: re-export")
+    if only_pub:
+        failures.append(f"{only_pub} published row(s) are not in the warehouse map: re-export")
+    return _leg(not failures,
+                f"mart_rows={mart_rows} published_rows={pub_rows}"
+                f" only_in_mart={only_mart} only_published={only_pub}", failures)
+
+
+def leg_f_history_pin(*, site_dir: Path) -> dict:
+    """Leg (f): f15_funding_history.json is byte-identical to the S0 pin."""
+    history = Path(site_dir) / "json" / "f15_funding_history.json"
+    if not history.is_file():
+        return _leg(False, "f15_funding_history.json missing", [f"missing {history}"])
+    if not F15_HISTORY_PIN.is_file():
+        return _leg(False, "pin missing", [f"missing pin {F15_HISTORY_PIN}"])
+    tokens = F15_HISTORY_PIN.read_text().split()
+    pin = tokens[0].lower() if tokens else ""
+    if not re.fullmatch(r"[0-9a-f]{64}", pin):
+        return _leg(False, "pin unreadable",
+                    [f"{F15_HISTORY_PIN} does not start with a sha256 hex digest"])
+    actual = _sha256_file(history)
+    failures = [] if actual == pin else [
+        f"{history.name} hashes to {actual}, the S0 pin says {pin}"
+        " (only the S5 correction re-pins it)"]
+    return _leg(not failures, f"pinned={pin} actual={actual}", failures)
+
+
 def run_verify_era_map(
     *, site_dir: Path, duckdb_path: Path, seed_path: Path, legs: str = "abcdef",
 ) -> dict:
@@ -363,9 +506,13 @@ def run_verify_era_map(
             results[leg] = leg_b_decisions(map_rows=map_rows, seed_path=Path(seed_path))
         elif leg == "c":
             results[leg] = leg_c_f15(map_rows=map_rows)
-        else:
-            results[leg] = _leg(False, "not implemented",
-                                [f"leg {leg} is added by families piece 1 Task 20"])
+        elif leg == "d":
+            results[leg] = leg_d_fact_ids(site_dir=Path(site_dir))
+        elif leg == "e":
+            results[leg] = leg_e_published_map(site_dir=Path(site_dir),
+                                               duckdb_path=Path(duckdb_path))
+        else:  # f
+            results[leg] = leg_f_history_pin(site_dir=Path(site_dir))
     verdict = "PASS" if all(r["ok"] for r in results.values()) else "FAIL"
     return {"legs": results, "verdict": verdict}
 
