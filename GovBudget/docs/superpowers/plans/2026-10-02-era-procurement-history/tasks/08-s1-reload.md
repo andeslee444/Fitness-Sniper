@@ -758,7 +758,7 @@ ls $PROOFS/s0/snapshot.json $PROOFS/s0/env.sh
 Expected: exit 0; both files listed. `govbudget_proof_s0` now holds a restore of the live
 database (schema_migrations 001–020, no `line_item_code`).
 
-- [ ] **Step 8: Export Z — S0 as production sees it (no rebuild) — and the control Z2**
+- [x] **Step 8: Export Z — S0 as production sees it (no rebuild) — and the control Z2 (done 2026-10-03)**
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
@@ -775,26 +775,31 @@ the S0 lake in its heap order through the S0 warehouse (built 2026-09-27 02:45 b
 dbt code: no `dbt/` commit since 2026-09-26 21:56).
 
 Then the control (pre-flight ruling 2026-10-03): a second clone of the same S0 snapshot,
-exported through the same CLI before Step 9 touches the shared scratch database, and diffed
-against Z. Parallel double sums in the marts (`dim_geography`, `fct_district_totals`,
-`fct_program_concentration`) differ in the last bits between two identical queries, so this
-pair fixes the noise floor the Z/A/B judgement in Step 11 is read against:
+exported through the same CLI before Step 9 touches the shared scratch database, then diffed
+against Z with `--control --write-noise`, which trusts every pure-permutation (reorder) class
+this pair finds and, only on an EQUAL verdict, records those classes to a file — the noise
+floor every judged diff from Step 11 on (`--noise-from`) is read against. Parallel double sums
+in the marts (`dim_geography`, `fct_district_totals`, `fct_program_concentration`) differ in
+the last bits between two identical queries, and several JSON arrays export in nondeterministic
+order — which is why a plain no-flag diff of two exports of the SAME snapshot cannot be
+expected to print `EQUAL` (a first run without `--control` read `DIFFERENT`, logged at
+`$LOGS/03c-diff-Z-Z2.log`); only `--control` can tell that noise apart from a real difference:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 cp -c -R $PROOFS/s0 $PROOFS/s0-Z2
 ( source $PROOFS/s0/env.sh $PROOFS/s0-Z2 && uv run --project . python -m govbudget export-site ) 2>&1 | tee $LOGS/03b-export-Z2.log
-uv run --project . python -m govbudget proof diff $PROOFS/s0-Z/site $PROOFS/s0-Z2/site 2>&1 | tee $LOGS/03c-diff-Z-Z2.log
+uv run --project . python -m govbudget proof diff $PROOFS/s0-Z/site $PROOFS/s0-Z2/site --control --write-noise $LOGS/noise-s0.json 2>&1 | tee $LOGS/03c-diff-Z-Z2.log
 ```
 
-Expected: the Z2 export ends with the same three lines as Z (`-> $PROOFS/s0-Z2/site`); the
-diff's counts line ends `changed 0 · only in A 0 · only in B 0`, its
-`equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits` line
-may show non-zero counts (for example `data/dim_geography.parquet` and the other two marts'
-parquets; `equivalent` counts those files too), and the log ends `proof diff: EQUAL`. If it
-says `DIFFERENT`: stop. The export is not deterministic above the float-noise floor (the
-report names the files), so Steps 9–19 cannot be judged; take the report to the owner.
+Already run 2026-10-03 — **the executor resumes at Step 9.** Result: the Z2 export ended with
+the same three lines as Z (`-> $PROOFS/s0-Z2/site`); the control read EQUAL: identical 35,036 ·
+equivalent 369 · 163 reordered files / 230 classes · float noise 3,635 values · derived hash
+2 files · changed 0; `--write-noise` wrote `$LOGS/noise-s0.json` (verdict EQUAL, both tree
+paths, 230 reorder classes, a `classes_sha256`). Had it read DIFFERENT (any difference outside
+a pure reorder): stop — `--write-noise` writes nothing, and Steps 9–19 cannot be judged; take
+the report to the owner.
 
 - [ ] **Step 9: Export A — S0 plus migration 021, re-exported and rebuilt under this branch**
 
@@ -875,21 +880,27 @@ export-site lines as in Step 9.
 
 - [ ] **Step 11: Site diffs — Z = A (order and rebuild are inert), A = B (S1 is inert)**
 
-Read these only after Step 8's control `proof diff Z Z2` read `EQUAL`.
+Read these only after Step 8's control read EQUAL and wrote `$LOGS/noise-s0.json` (already true
+as of 2026-10-03).
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 grep -qx 'proof diff: EQUAL' $LOGS/03c-diff-Z-Z2.log || { echo "STOP: the Step 8 control (Z vs Z2) did not read EQUAL"; exit 1; }
-uv run --project . python -m govbudget proof diff $PROOFS/s0-Z/site $PROOFS/s0-A/site 2>&1 | tee $LOGS/06-diff-Z-A.log
-uv run --project . python -m govbudget proof diff $PROOFS/s0-A/site $PROOFS/s0-B/site 2>&1 | tee $LOGS/07-diff-A-B.log
+uv run --project . python -m govbudget proof diff $PROOFS/s0-Z/site $PROOFS/s0-A/site --noise-from $LOGS/noise-s0.json 2>&1 | tee $LOGS/06-diff-Z-A.log
+uv run --project . python -m govbudget proof diff $PROOFS/s0-A/site $PROOFS/s0-B/site --noise-from $LOGS/noise-s0.json 2>&1 | tee $LOGS/07-diff-A-B.log
 ```
 
-Expected: both logs end `proof diff: EQUAL` (zero changed, zero only-in-A, zero
-only-in-B; build stamps masked; float-noise equivalents allowed — each log's
-`equivalent (float noise)` line reports them apart, on the same marts as the control). If either says `DIFFERENT`: stop. Do not run Steps 13–19;
-the report names the files that moved — a consumer depends on lake row order (Z ≠ A) or on
-`line_item_code` (A ≠ B), which the spec says cannot happen; take it back to the owner.
+Expected: both logs end `proof diff: EQUAL` — identical, equivalent (build stamps, row order,
+JSON formatting, float/numeric-text noise or a derived hash) and reordered (one of the classes
+`noise-s0.json` vouches for) cover everything; zero changed, zero only-in-A, zero only-in-B.
+Each log's `equivalent (float noise)` and `reordered (control class)` lines report those apart,
+on the same files the control found them on. A reorder OUTSIDE `noise-s0.json`'s classes reads
+`changed`, not `reordered` — fail closed, exactly like any other real difference — and must be
+investigated, never silently added to the noise file. If either log ends `proof diff: DIFFERENT`:
+stop. Do not run Steps 13–19; the report names the files that moved — a consumer depends on
+lake row order (Z ≠ A), on `line_item_code` (A ≠ B), or a reorder class the control never saw,
+which the spec says cannot happen; take it back to the owner.
 
 - [ ] **Step 12: Lake check — only the column changed**
 

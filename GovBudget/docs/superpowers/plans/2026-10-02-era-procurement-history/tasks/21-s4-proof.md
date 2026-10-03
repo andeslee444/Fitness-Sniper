@@ -13,8 +13,8 @@
 Edits here cite line numbers as hints (anchor on the quoted text; line numbers are approximate). Shell state does not persist between blocks: `A_SHA` is written to `.proofs/s4-logs/a_sha.txt` in Step 9 and read back where it is used.
 
 **Interfaces:**
-Consumes: Task 3's `govbudget proof snapshot --out DIR --scratch-db NAME` (writes `DIR/{duckdb/govbudget.duckdb, parquet/, site/, raw_docs/, manifest.jsonl, pg/<db>.dump, snapshot.json, env.sh}`, repoints the copy's views and document paths at the copy, restores Postgres into the scratch database; refuses at :15–:20) and `govbudget proof diff A B [--expect RULES.json] [--report FILE]` (rules: a JSON list of `{path, why, status?, pointer?, change?, required?}`; last line `proof diff: PASS|FAIL`); the run-dir convention `cp -c -R <snap> <run>` + `source <snap>/env.sh <run>`; `scripts/era/env.sh` (Task 1); Task 4's `tests/test_f15_era_identity.py`, `site/scripts/f15-page-snapshot.mjs <index.html> --check FILE`, `tests/fixtures/f15/page_snapshot.json`; `govbudget verify-era-map` (Tasks 14/20), `verify-phase5e`, `verify-lineage`; `govbudget export-site`; `dbt test`, `dbt parse`; Task 17's commit (CONTRACT ISSUE 6); Task 19's `/data/` stamp (G6 CONTRACT ISSUE 6 handoff).
-Produces: `scripts/era/fact_stability.py` — `RUN_STAMPED_KINDS`, `F15_A1_CODES`, `F15_A1_LEAVES = 72`, `f15_a1_leaves(history) -> dict[str, str]`, `compare_citations(a, b, f15_leaves, *, expected_f15=72) -> dict`, `compare_decade_rows(a_parquet, b_parquet) -> dict`, `run(a_site, b_site, *, expected_f15=72) -> dict`, `main(argv=None) -> int` (CLI `--a --b [--expected-f15] [--report]`, last line `fact-stability: PASS|FAIL`); `scripts/era/s4_report.py` — `ERA_EDITIONS`, `page_class(sidecar) -> tuple[str, str]`, `compare_sidecar(slug, a, b) -> tuple[list[str], list[dict]]`, `sidecar_report(a_site, b_site) -> dict`, `receipt_report(a_site, b_site) -> dict`, `main(argv=None) -> int` (CLI `--a --b [--report]`, last line `s4-report: PASS|FAIL`); the expected-diff rule list; kept proof state `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/{s4,s4-A,s4-B,s4-logs}` (Task 22 clones `s4-B` and sources `s4/env.sh`; Task 23 reads `s4-logs/s4-report.json`), scratch database `govbudget_proof_s4`; the `/data/` re-stamp commit.
+Consumes: Task 3's `govbudget proof snapshot --out DIR --scratch-db NAME` (writes `DIR/{duckdb/govbudget.duckdb, parquet/, site/, raw_docs/, manifest.jsonl, pg/<db>.dump, snapshot.json, env.sh}`, repoints the copy's views and document paths at the copy, restores Postgres into the scratch database; refuses at :15–:20) and `govbudget proof diff A B [--control --write-noise FILE | --noise-from FILE] [--expect RULES.json] [--report FILE]` (`--control --write-noise` on two exports of ONE snapshot trusts every pure-reorder class it finds and, on an EQUAL verdict, records them to FILE; `--noise-from` trusts only the classes a prior control run wrote; without either, a reorder reads `changed`; rules: a JSON list of `{path, why, status?, pointer?, change?, required?}`; last line `proof diff: PASS|FAIL` with `--expect`, else `EQUAL|DIFFERENT`); the run-dir convention `cp -c -R <snap> <run>` + `source <snap>/env.sh <run>`; `scripts/era/env.sh` (Task 1); Task 4's `tests/test_f15_era_identity.py`, `site/scripts/f15-page-snapshot.mjs <index.html> --check FILE`, `tests/fixtures/f15/page_snapshot.json`; `govbudget verify-era-map` (Tasks 14/20), `verify-phase5e`, `verify-lineage`; `govbudget export-site`; `dbt test`, `dbt parse`; Task 17's commit (CONTRACT ISSUE 6); Task 19's `/data/` stamp (G6 CONTRACT ISSUE 6 handoff).
+Produces: `scripts/era/fact_stability.py` — `RUN_STAMPED_KINDS`, `F15_A1_CODES`, `F15_A1_LEAVES = 72`, `f15_a1_leaves(history) -> dict[str, str]`, `compare_citations(a, b, f15_leaves, *, expected_f15=72) -> dict`, `compare_decade_rows(a_parquet, b_parquet) -> dict`, `run(a_site, b_site, *, expected_f15=72) -> dict`, `main(argv=None) -> int` (CLI `--a --b [--expected-f15] [--report]`, last line `fact-stability: PASS|FAIL`); `scripts/era/s4_report.py` — `ERA_EDITIONS`, `page_class(sidecar) -> tuple[str, str]`, `compare_sidecar(slug, a, b) -> tuple[list[str], list[dict]]`, `sidecar_report(a_site, b_site) -> dict`, `receipt_report(a_site, b_site) -> dict`, `main(argv=None) -> int` (CLI `--a --b [--report]`, last line `s4-report: PASS|FAIL`); the expected-diff rule list; kept proof state `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/{s4,s4-A,s4-B,s4-B2,s4-logs}` (Task 22 clones `s4-B` and sources `s4/env.sh`; Task 23 reads `s4-logs/s4-report.json`; `s4-logs/noise-s4.json` is the Step 15 control's reorder-class file that Step 16's and Task 22's `--noise-from` read), scratch database `govbudget_proof_s4`; the `/data/` re-stamp commit.
 
 Measured now (read-only, `data/site` of the 2026-10-02 export): 125,409 citations; 93 F-15 era workbook leaves, all `pe_bli: null` with space-form `retrieved_at` (F01500 39, F015EX 18, F15EWS 15, F0150P 12, F015E0 9; 72 on A1 codes; seven edition timestamps); derived citations carry 22 distinct run-time `retrieved_at` stamps; `budget_lines_decade.parquet` 38,855 rows; 2,562 program sidecars: 892 PB2026 procurement and 89 decade-only procurement pages, none with a point from PB2017–PB2023 (953 PB2026 and 460 decade-only R&D pages have them); one PB2026 procurement sidecar has no `decade_series` key at all (`9999999999`); receipts audit `default_cells 67 / default_complete 67`, era P-1 books PB2017–PB2023 at 6/9/12/15/18/18/15 facts (all complete); every shard set is full already (`cite-shards` 256, `workbook-cells` 256, `budget-pdf-receipts/v2` 4,096), so new entries land in existing shards; live sitemap 4,349 URLs. Both scripts, run read-only on that export against itself, behave as designed: `fact_stability` finds exactly the 72 A1 leaves (and fails them as not restamped), `s4_report` counts 892/89 procurement pages and fails only the "more era receipts than A" rule. The Step 7 rule list loads with Task 3's `load_expectations` (prototype) and, on two synthetic trees, accepts the §10 changes while rejecting a changed `f15_funding_history.json`, a sidecar gaining a whole `decade_series` key, and a changed sidecar `lineage`.
 
@@ -804,19 +804,58 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 ```
 Expected: `exit=0`; lines `budget PDF receipts: <c>/<n> complete, 21 government documents; audit -> …/.proofs/s4-A/site/json/budget_pdf_receipts_audit.json` and `export-site: <d> datasets, <N_A> citations, … -> …/.proofs/s4-A/site`. The export reads only the pinned clone (and the scratch database), so the :15–:20 rule does not apply to it.
 
-- [ ] **Step 15: Export B (S4 code)**
+- [ ] **Step 15: Export B (S4 code) — and the control B2**
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && (source "$P/s4/env.sh" "$P/s4-B" && uv run --project . python -m govbudget export-site) > "$P/s4-logs/export-B.log" 2>&1; echo "exit=$?"; tail -3 "$P/s4-logs/export-B.log"
 ```
 Expected: `exit=0`; the same two lines for `s4-B`, with `<N_B>` citations above `<N_A>` (spec §11.4 estimates 16–21k new leaf citations plus `decade_era_map` sums).
 
-- [ ] **Step 16: Diff A against B with the expected-diff rules**
+Then the control (pre-flight ruling 2026-10-03; same approach as Tasks 8/9's Z2/A2): a third
+clone of the same post-S3 snapshot, exported through the same S4 code before Step 16's A vs B
+judgement, then diffed against B with `--control --write-noise`, which trusts every
+pure-permutation (reorder) class this pair finds and, only on an EQUAL verdict, records those
+classes to `$P/s4-logs/noise-s4.json` — the noise floor Step 16's A vs B diff (`--noise-from`)
+is read against. It fixes the float-noise floor too (parallel double sums in `dim_geography`,
+`fct_district_totals`, `fct_program_concentration`). The B2 export reads only the pinned
+snapshot clone (and the scratch database), so the :15–:20 SAM-window rule does not apply to it
+— same as A and B:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python -m govbudget proof diff "$P/s4-A/site" "$P/s4-B/site" --expect docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json --report "$P/s4-logs/diff-report.json" > "$P/s4-logs/diff.txt" 2>&1; echo "exit=$?"; tail -45 "$P/s4-logs/diff.txt"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && cp -c -R "$P/s4" "$P/s4-B2" && (source "$P/s4/env.sh" "$P/s4-B2" && uv run --project . python -m govbudget export-site) > "$P/s4-logs/export-B2.log" 2>&1; echo "exit=$?"; tail -3 "$P/s4-logs/export-B2.log"
+uv run --project . python -m govbudget proof diff "$P/s4-B/site" "$P/s4-B2/site" --control --write-noise "$P/s4-logs/noise-s4.json" > "$P/s4-logs/diff-B-B2.txt" 2>&1; echo "exit=$?"; tail -20 "$P/s4-logs/diff-B-B2.txt"
 ```
-Expected: `exit=0`; the counts line, then `  equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits` (may be non-zero: the marts' parallel double sums, e.g. `data/dim_geography.parquet`; these files count as `equivalent`, never as differences); one `rule <i> [<path>] matched <count>: <why>` line per rule — the four `/{fid}/pe_bli` and `/{fid}/retrieved_at` rules (citations.json and the cite shards) each match exactly 72 — no `UNEXPECTED differences` and no `UNMET required rule` line, last line `proof diff: PASS`. A FAIL names each unexpected path/pattern or unmet rule: stop and explain it before going on; never widen the rule list to make it pass without the owner.
+Expected: the B2 export prints the same two lines as B, with B2's citation count equal to
+`<N_B>`; the control reads EQUAL — identical, equivalent (build stamps, row order, JSON
+formatting, float/numeric-text noise or a derived hash) and reordered (control class) cover
+everything: `changed 0 · only in A 0 · only in B 0`; its `equivalent (float noise)` line may be
+non-zero (the marts' parallel double sums); `--write-noise` writes `$P/s4-logs/noise-s4.json`
+(verdict EQUAL, both tree paths, its reorder classes, a `classes_sha256`); last line
+`proof diff: EQUAL`. If it reads `DIFFERENT` (any difference that is not a pure reorder): stop
+and report — `--write-noise` writes nothing, and the A vs B diff in Step 16 cannot be judged.
+
+- [ ] **Step 16: Diff A against B with the expected-diff rules**
+
+Read this only after Step 15's control read EQUAL and wrote `$P/s4-logs/noise-s4.json`.
+
+```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python -m govbudget proof diff "$P/s4-A/site" "$P/s4-B/site" --noise-from "$P/s4-logs/noise-s4.json" --expect docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json --report "$P/s4-logs/diff-report.json" > "$P/s4-logs/diff.txt" 2>&1; echo "exit=$?"; tail -45 "$P/s4-logs/diff.txt"
+```
+Expected: `exit=0`; the counts line (identical, equivalent, reordered — one of the classes
+`noise-s4.json` vouches for — changed, only in A, only in B), then
+`  equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits` (may be
+non-zero: the marts' parallel double sums, e.g. `data/dim_geography.parquet`; these files count
+as `equivalent`, never as differences) and, if any reorders were trusted,
+`  reordered (control class): <n> file(s) across <k> class(es)`; one `rule <i> [<path>] matched
+<count>: <why>` line per rule — the four `/{fid}/pe_bli` and `/{fid}/retrieved_at` rules
+(citations.json and the cite shards) each match exactly 72 — no `UNEXPECTED differences` and no
+`UNMET required rule` line, last line `proof diff: PASS`. A reorder OUTSIDE `noise-s4.json`'s
+classes reads `changed`, not `reordered` — fail closed, exactly like any other real difference
+— and, since no `--expect` rule covers a bare reorder, it surfaces as an `UNEXPECTED
+differences` entry rather than passing silently; it must be investigated, never added to the
+rule list or the noise file to make it pass. A FAIL names each unexpected path/pattern or unmet
+rule: stop and explain it before going on; never widen the rule list to make it pass without
+the owner.
 
 - [ ] **Step 17: V6 — fact stability**
 
@@ -964,6 +1003,10 @@ Insert as the first entry under `## Findings log (what we learned; feeds future 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/docs/superpowers/ROADMAP.md && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "docs(roadmap): families piece 1 S4 proof — A/B diff passes the spec §10 rules; measured page gain" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git worktree remove --force /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a && git worktree list | grep -c families-proof-a
 ```
-Expected: the commit, then `0`. Keep `.proofs/s4`, `.proofs/s4-A`, `.proofs/s4-B`, `.proofs/s4-logs` and the `govbudget_proof_s4` database: Task 22 clones `s4-B` and sources `s4/env.sh`; Task 23 reads `s4-logs/s4-report.json` and asks the owner before removing any of them.
+Expected: the commit, then `0`. Keep `.proofs/s4`, `.proofs/s4-A`, `.proofs/s4-B`, `.proofs/s4-B2`,
+`.proofs/s4-logs` and the `govbudget_proof_s4` database: Task 22 clones `s4-B` and sources
+`s4/env.sh`; Task 23 reads `s4-logs/s4-report.json` and asks the owner before removing any of
+them. `s4-B2` (Step 15's control export) is safe to remove once `noise-s4.json` is captured —
+kept here only for the same audit trail as `s4-A`.
 
 ---

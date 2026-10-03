@@ -460,9 +460,14 @@ the counts grow if Task 13 has already added its tests); the `budget PDF receipt
 
 Then the control (pre-flight ruling 2026-10-03; Task 8's Z2, applied to A): a second clone
 of the same snapshot run through the same chain, before Step 11's apply writes the shared
-scratch database, and diffed against A. It fixes the float-noise floor (parallel double
-sums in `dim_geography`, `fct_district_totals`, `fct_program_concentration`) that Step 12
-reads A vs B against:
+scratch database, then diffed against A with `--control --write-noise`, which trusts every
+pure-permutation (reorder) class this pair finds and, only on an EQUAL verdict, records those
+classes to `$LOGS/noise-s1.json` — the noise floor Step 12's A vs B diff (`--noise-from`) is
+read against. It fixes the float-noise floor too (parallel double sums in `dim_geography`,
+`fct_district_totals`, `fct_program_concentration`). A plain no-flag diff of two exports of the
+SAME snapshot cannot be expected to print `EQUAL` (Task 8 measured this: two exports of its S0
+snapshot read `DIFFERENT` without `--control`, on reorders alone) — only `--control` can tell
+that noise apart from a real difference:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
@@ -472,14 +477,17 @@ cp -c -R $PROOFS/s1 $PROOFS/s1-A2
   && uv run --project . python -m govbudget jbooks export-facts \
   && uv run --project . python -m govbudget build \
   && uv run --project . python -m govbudget export-site ) 2>&1 | tee $LOGS/03b-A2.log
-uv run --project . python -m govbudget proof diff $PROOFS/s1-A/site $PROOFS/s1-A2/site 2>&1 | tee $LOGS/03c-diff-A-A2.log
+uv run --project . python -m govbudget proof diff $PROOFS/s1-A/site $PROOFS/s1-A2/site --control --write-noise $LOGS/noise-s1.json 2>&1 | tee $LOGS/03c-diff-A-A2.log
 ```
 
-Expected: the A2 chain prints what A printed; the diff's counts line ends
-`changed 0 · only in A 0 · only in B 0`, its `equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits`
-line may show non-zero counts, and the log ends `proof diff: EQUAL`. If it says `DIFFERENT`:
-stop — the export is not deterministic above the float-noise floor, so A vs B cannot be
-judged; take the report to the owner.
+Expected: the A2 chain prints what A printed; the control reads EQUAL — identical, equivalent
+(build stamps, row order, JSON formatting, float/numeric-text noise or a derived hash) and
+reordered (control class) cover everything: `changed 0 · only in A 0 · only in B 0`; its
+`equivalent (float noise)` line may show non-zero counts; `--write-noise` writes
+`$LOGS/noise-s1.json` (verdict EQUAL, both tree paths, its reorder classes, a `classes_sha256`);
+the log ends `proof diff: EQUAL`. If it says `DIFFERENT` (any difference that is not a pure
+reorder): stop — `--write-noise` writes nothing, and A vs B in Step 12 cannot be judged; take
+the report to the owner.
 
 - [ ] **Step 11: Export B — A plus the S1b insert**
 
@@ -516,19 +524,23 @@ then the export-facts, dbt and export-site lines.
 
 - [ ] **Step 12: Site diff — A = B**
 
-Read this only after Step 10's control `proof diff A A2` read `EQUAL`.
+Read this only after Step 10's control read EQUAL and wrote `$LOGS/noise-s1.json`.
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1b-logs
 grep -qx 'proof diff: EQUAL' $LOGS/03c-diff-A-A2.log || { echo "STOP: the Step 10 control (A vs A2) did not read EQUAL"; exit 1; }
-uv run --project . python -m govbudget proof diff $PROOFS/s1-A/site $PROOFS/s1-B/site 2>&1 | tee $LOGS/05-diff-A-B.log
+uv run --project . python -m govbudget proof diff $PROOFS/s1-A/site $PROOFS/s1-B/site --noise-from $LOGS/noise-s1.json 2>&1 | tee $LOGS/05-diff-A-B.log
 ```
 
-Expected: the log ends `proof diff: EQUAL` (float-noise equivalents allowed; its
-`equivalent (float noise)` line reports them apart, on the same marts as the control). If `DIFFERENT`: stop, do not run Steps 13–17,
-and file the changed files as a consumer the audit above missed (spec: "export diff
-empty").
+Expected: the log ends `proof diff: EQUAL` — identical, equivalent (build stamps, row order,
+JSON formatting, float/numeric-text noise or a derived hash) and reordered (a class
+`noise-s1.json` vouches for) cover everything; `changed 0`. Its `equivalent (float noise)` and
+`reordered (control class)` lines report those apart, on the same files the control found them
+on. A reorder outside `noise-s1.json`'s classes reads `changed`, not `reordered` — fail closed
+— and must be investigated, never added to the noise file. If `DIFFERENT`: stop, do not run
+Steps 13–17, and file the changed files as a consumer the audit above missed (spec: "export
+diff empty").
 
 - [ ] **Step 13: Lake check — exactly the predicted rows were added**
 
