@@ -74,10 +74,12 @@ always compare exactly.
 
 Fix round 3 (2026-10, driven by two real exports of one snapshot differing):
   - Numeric-text equivalence: when BOTH sides of a string leaf (a JSON value
-    or a parquet VARCHAR cell) match a strict decimal/exponent numeral, they
-    compare as numbers under the SAME 12-significant-digit rule and, if
-    equal, count as float noise too — not their own class. A string that
-    does not look like a bare number always compares exactly.
+    or a parquet VARCHAR cell) are numeric text — a rendering of a finite
+    float: a decimal point, or an exponent with an explicit sign (Fix round
+    4; see _NUMERIC_TEXT_RE) — they compare as numbers under the SAME float
+    rule and, if equal, count as float noise too — not their own class.
+    Any other string, including a bare integer or an unsigned-exponent
+    identity code ("0050E89600", "133783872e323816"), compares exactly.
   - JSON-in-string equivalence: when BOTH sides of a string leaf parse as a
     JSON array or object (citations.parquet's `inputs`/`query_body`/
     `recorded_value` VARCHAR columns; citations.json's matching fields), the
@@ -85,8 +87,10 @@ Fix round 3 (2026-10, driven by two real exports of one snapshot differing):
     verdict (noise, a trusted reorder, or a real change) is reported at the
     OUTER string leaf's pointer, never a pointer inside the decoded value.
   - Derived-hash equivalence (ruling 3): a content hash or byte count is
-    equivalent when the file it describes compared equivalent, reordered, or
-    identical in the SAME diff. DERIVED_HASH_CARRIERS names the two known
+    equivalent when the file it describes is present in BOTH trees and
+    compared equivalent or reordered in the SAME diff — never when that
+    file is missing or byte-identical (Fix round 4: neither can explain a
+    different hash or size of it). DERIVED_HASH_CARRIERS names the two known
     cases (json/datasets.json's per-entry `bytes`, pointed at
     `data/<file>`; json/budget_pdf_receipts_audit.json's `/citation_sha256`,
     pointed at json/citations.json) — an explicit, small mapping, not a
@@ -106,6 +110,19 @@ Fix round 3b (2026-10, controller ruling after Fix round 3's real-check run
 left one difference): _FLOAT_ABS_TOL — see its own comment — closes the one
 case the relative-only rule could not: a near-zero float residual compared
 against an exact 0.0.
+
+Fix round 4 (2026-10, review findings):
+  - Numeric text is a finite float rendering only (above); identity codes
+    never compare as numbers, and non-finite values never compare at all.
+  - Derived hashes need a present, equivalent-but-not-identical referent.
+  - Pairing of noisy rows/elements (_pair_noise) walks a TOTAL order, so it
+    depends only on the two multisets, never on DuckDB's fetch order; a
+    rejected trial pairing (or a JSON-in-string value that differs for
+    real) records no reorder class (_Mode.fork/absorb).
+  - `--write-noise` writes only for an EQUAL control: the file records the
+    verdict, both source trees and a content hash of the classes, nothing
+    time-dependent (noise_file); `--noise-from` refuses any other file
+    (load_noise_classes). format_report never truncates a list silently.
 """
 from __future__ import annotations
 
@@ -147,30 +164,39 @@ SCRATCH_DB_PREFIX = "govbudget_proof_"
 #: its own small resolver (_resolve_datasets_derived_hash /
 #: _resolve_audit_derived_hash) rather than a generic detector.
 DERIVED_HASH_CARRIERS = ("json/datasets.json", "json/budget_pdf_receipts_audit.json")
+#: the referent statuses that can excuse a derived-hash difference (Fix
+#: round 4): present in both trees, equivalent but NOT byte-identical.
+_REFERENT_EXCUSES = frozenset({"equivalent", "reordered"})
 
 _UTC_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00")
 _UTC_FRACTION_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{1,6}\+00:00")
 _FID_RE = re.compile(r"[0-9a-f]{16}")
 _SCRATCH_DB_RE = re.compile(r"[a-z][a-z0-9_]{0,62}")
-#: ruling 1 (Fix round 3): a strict decimal/exponent numeral, the WHOLE
-#: string — "1e9x" or "" do not match. A BARE INTEGER ("4248") does not
-#: match either, deliberately: this pattern also decides which parquet
-#: VARCHAR columns are "lenient" for row-pairing purposes (_group_cell), and
-#: a bare-digit code column is common in this domain (pe_bli values like
-#: "4248", "1600", even "0152" — which float() reads as 152.0, a second,
-#: independent reason a bare integer must never match) and is an IDENTITY
-#: key, not a value that can be noisy; treating it leniently merges rows
-#: that are not the same row (caught empirically: fct_program_concentration
-#: .parquet's pe_bli column, pre-flight 2026-10-03 — real two-export-of-one-
-#: snapshot evidence). Requiring a decimal point or exponent — true "decimal
-#: /exponent" notation — excludes every such code while still matching every
-#: real case (a serialized float always carries one, e.g. str(1234.0) ==
-#: "1234.0"). Two strings that both match are compared as numbers with the
-#: same 12-significant-digit rule as a native float; the result is float
-#: noise, never its own class.
+#: ruling 1 (Fix round 3, tightened in Fix round 4): numeric text is a
+#: string — the WHOLE string, ASCII digits only — that is how a program
+#: writes a FLOAT, and nothing else:
+#:   - a decimal point, optionally followed by an exponent whose sign is
+#:     EXPLICIT: "1234.0", "-0.25", ".5", "1.", "1.5e+300", "2.5e-3";
+#:   - or digits with an exponent whose sign is EXPLICIT and no point:
+#:     "1e-07", "1e+16" (how Python's repr() and JavaScript write a float
+#:     with an exponent — always signed).
+#: A bare integer ("4248", "0152") never matches, and neither does an
+#: exponent without a sign ("1e5"): this domain's IDENTITY codes look
+#: exactly like that — pe_bli values "4248", "0152" (float() reads it as
+#: 152.0), "0050E89600", "2420E61000"; hex fact_ids "133783872e323816" —
+#: and float() turns most E-form codes into inf, so two DIFFERENT codes
+#: once compared "equal" (Fix round 4's Critical finding). An identity
+#: code is never noisy; reading it as a number merges rows that are not
+#: the same row (fct_program_concentration.parquet's pe_bli column, Fix
+#: round 3) or hides a real change outright. A string that matches but
+#: whose value is not finite ("1e+400") is not numeric text either
+#: (_numeric_text). Two strings that both qualify compare as numbers with
+#: the same rule as a native float (_float_close); a match is float noise,
+#: never its own class. This pattern and _numeric_text also decide which
+#: VARCHAR cells collapse together for row pairing (_group_cell).
 _NUMERIC_TEXT_RE = re.compile(
-    r"[+-]?(?:\d+\.\d*|\.\d+)(?:[eE][+-]?\d+)?"  # has a decimal point
-    r"|[+-]?\d+[eE][+-]?\d+"                      # or a bare mantissa with an exponent
+    r"[+-]?(?:[0-9]+\.[0-9]*|\.[0-9]+)(?:[eE][+-][0-9]+)?"  # a decimal point
+    r"|[+-]?[0-9]+[eE][+-][0-9]+"                            # or a SIGNED exponent
 )
 _WINDOW_LOOKBACK = datetime.timedelta(hours=3)
 _WINDOW_LOOKAHEAD = datetime.timedelta(hours=1)
@@ -227,6 +253,17 @@ class _Mode:
             self.observed[(group, pointer)] += 1
             return True
         return False
+
+    def fork(self) -> "_Mode":
+        """A probe for one TRIAL comparison (Fix round 4): same trust, an
+        empty tally. A trial that fails — a pairing candidate rejected, or a
+        JSON-in-string value that differs for real — must not vouch for any
+        reorder it saw on the way; only absorb() a probe whose trial
+        succeeded."""
+        return _Mode(control=self.control, trusted=self.trusted)
+
+    def absorb(self, probe: "_Mode") -> None:
+        self.observed.update(probe.observed)
 
 
 def _now() -> datetime.datetime:
@@ -406,15 +443,16 @@ def _floats(value) -> list:
 
 
 def _numeric_text(s) -> float | None:
-    """float(s) if s is a strict decimal/exponent numeral — the WHOLE
-    string (ruling 1, Fix round 3); None for "", "1e9x", "nan", a sha256
-    that happens to be all digits but isn't meant as a number, etc."""
+    """float(s) if s is numeric text (see _NUMERIC_TEXT_RE) with a FINITE
+    value; None for "", "1e9x", "nan", "inf", "1e+400", a bare integer, an
+    unsigned-exponent code like "0050E89600" or "133783872e323816", etc."""
     if not isinstance(s, str) or not _NUMERIC_TEXT_RE.fullmatch(s):
         return None
     try:
-        return float(s)
+        value = float(s)
     except ValueError:
         return None
+    return value if math.isfinite(value) else None
 
 
 def _multiset_canon(value):
@@ -454,9 +492,14 @@ def _leaf_equiv(a, b, pointer: str, group: str | None, mode: "_Mode | None") -> 
         return None
     sub_out: list = []
     sub_noise: list = []
-    _json_changes(pa, pb, pointer, sub_out, sub_noise, group=group, mode=mode,
+    probe = mode.fork() if mode is not None else None
+    _json_changes(pa, pb, pointer, sub_out, sub_noise, group=group, mode=probe,
                   key_pointer=pointer)
-    return sum(sub_noise) if not sub_out else None
+    if sub_out:
+        return None          # a real change: any reorder seen inside is not vouched for
+    if mode is not None:
+        mode.absorb(probe)
+    return sum(sub_noise)
 
 
 def _json_noise(a, b, *, group: str | None = None, mode: "_Mode | None" = None,
@@ -521,13 +564,20 @@ def _row_noise(ra: tuple, rb: tuple, lenient: list[tuple[int, str, str]],
     return n
 
 
-def _pair_noise(xs: list, ys: list, *, group_key, order_key, measure) -> tuple[list, list, int]:
-    """Pair items of xs and ys that differ only by float noise.
+def _pair_noise(xs: list, ys: list, *, group_key, order_key, measure,
+                mode: "_Mode | None" = None) -> tuple[list, list, int]:
+    """Pair items of xs and ys that differ only by noise.
 
-    Items pair only inside one group_key (everything except the floats, which
-    must be equal exactly); inside a group both sides are walked in order_key
-    order and paired when measure() is not None. Returns (unpaired xs,
-    unpaired ys, number of float values that differed)."""
+    Items pair only inside one group_key (everything noise cannot change);
+    inside a group both sides are walked in order_key order and paired when
+    measure(x, y, probe) is not None. order_key must be a TOTAL order on
+    distinct items (Fix round 4: callers end it with the item's full
+    canonical form), so the pairing — and every count it feeds — depends
+    only on the two multisets, never on the order xs and ys arrived in
+    (DuckDB's `except all` fetch order is undefined). Each trial runs
+    against a fork of `mode` that is absorbed only when the pair is kept:
+    a rejected trial records no reorder class. Returns (unpaired xs,
+    unpaired ys, number of noise values that differed)."""
     gx: dict = defaultdict(list)
     gy: dict = defaultdict(list)
     for x in xs:
@@ -536,23 +586,26 @@ def _pair_noise(xs: list, ys: list, *, group_key, order_key, measure) -> tuple[l
         gy[group_key(y)].append(y)
     left_x, left_y, values = [], [], 0
     for key in sorted(set(gx) | set(gy)):
-        la = sorted(gx.get(key, []), key=order_key)
-        lb = sorted(gy.get(key, []), key=order_key)
+        la = sorted(((order_key(x), x) for x in gx.get(key, [])), key=lambda kx: kx[0])
+        lb = sorted(((order_key(y), y) for y in gy.get(key, [])), key=lambda ky: ky[0])
         i = j = 0
         while i < len(la) and j < len(lb):
-            n = measure(la[i], lb[j])
+            probe = mode.fork() if mode is not None else None
+            n = measure(la[i][1], lb[j][1], probe)
             if n is not None:
+                if mode is not None:
+                    mode.absorb(probe)
                 values += n
                 i += 1
                 j += 1
-            elif order_key(la[i]) < order_key(lb[j]):
-                left_x.append(la[i])
+            elif la[i][0] < lb[j][0]:
+                left_x.append(la[i][1])
                 i += 1
             else:
-                left_y.append(lb[j])
+                left_y.append(lb[j][1])
                 j += 1
-        left_x.extend(la[i:])
-        left_y.extend(lb[j:])
+        left_x.extend(x for _, x in la[i:])
+        left_y.extend(y for _, y in lb[j:])
     return left_x, left_y, values
 
 
@@ -610,8 +663,9 @@ def _json_changes(a, b, pointer: str, out: list, noise: list | None = None, *,
         only_a, only_b, n_noise = _pair_noise(
             only_a, only_b,
             group_key=lambda x: _canon(_strip_floats(x)),
-            order_key=lambda x: tuple(_float_order(f) for f in _floats(x)),
-            measure=lambda x, y: _json_noise(x, y, group=group, mode=mode, key_pointer=rk),
+            order_key=lambda x: (tuple(_float_order(f) for f in _floats(x)), _canon(x)),
+            measure=lambda x, y, m: _json_noise(x, y, group=group, mode=m, key_pointer=rk),
+            mode=mode,
         )
         noise.append(n_noise)
         if not only_a and not only_b:
@@ -737,7 +791,7 @@ def _group_cell(value):
     non-lenient columns (e.g. fact_id) still disambiguate what this alone
     cannot."""
     if isinstance(value, str):
-        if _NUMERIC_TEXT_RE.fullmatch(value):
+        if _numeric_text(value) is not None:
             return "\x00num"
         try:
             parsed = json.loads(value)
@@ -746,6 +800,74 @@ def _group_cell(value):
         if isinstance(parsed, (list, dict)):
             return _canon(_multiset_canon(parsed))
     return value
+
+
+def _noise_canon(value):
+    """value with every float rounded to FLOAT_SIGNIFICANT_DIGITS
+    significant digits and every list sorted into canonical order, at any
+    depth: a deterministic SORT key that keeps a cell's noisy twins
+    (float noise, a reordered list) next to each other. Ordering only —
+    equality is always decided by `measure`."""
+    if type(value) is float:
+        return float(f"{value:.{FLOAT_SIGNIFICANT_DIGITS}g}")
+    if isinstance(value, dict):
+        return {k: _noise_canon(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return sorted((_noise_canon(v) for v in value), key=_canon)
+    return value
+
+
+def _text_order(value) -> tuple:
+    """Sort key for a VARCHAR-lenient cell (Fix round 4): numeric text by
+    its value (like a float column), JSON-in-string by its noise-canonical
+    form, anything else by itself; the raw text breaks every tie."""
+    if value is None:
+        return (0,)
+    number = _numeric_text(value)
+    if number is not None:
+        return (1, _float_order(number), value)
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        parsed = None
+    if isinstance(parsed, (list, dict)):
+        return (2, _canon(_noise_canon(parsed)), value)
+    return (3, value)
+
+
+def _pair_rows(rows_a: list, rows_b: list, schema: list, group: str | None,
+               mode: "_Mode | None") -> tuple[list, list, int]:
+    """Pair parquet rows (each side's `except all` residue) that differ only
+    by noise: DOUBLE/FLOAT columns by float noise, VARCHAR cells by
+    numeric-text/JSON-in-string equivalence (rulings 1-2); every other
+    column must match exactly (it is part of the group key). The order key
+    covers every lenient cell — floats by value, VARCHAR by _text_order —
+    and ends with the whole row's repr, a total order, so the result does
+    not depend on DuckDB's fetch order (Fix round 4)."""
+    cols = [name for name, _ in schema]
+    types = [typ for _, typ in schema]
+    floats = [i for i, typ in enumerate(types) if typ in FLOAT_TYPES]
+    varchars = [i for i, typ in enumerate(types) if typ == "VARCHAR"]
+    lenient = sorted(
+        [(i, "DOUBLE", f"/{cols[i]}") for i in floats]
+        + [(i, "VARCHAR", f"/{cols[i]}") for i in varchars]
+    )
+    exact = [i for i in range(len(cols)) if i not in floats and i not in varchars]
+
+    def order_key(r) -> tuple:
+        return (
+            tuple(_float_order(r[i]) if typ in FLOAT_TYPES else _text_order(r[i])
+                  for i, typ, _ in lenient),
+            repr(r),
+        )
+
+    return _pair_noise(
+        rows_a, rows_b,
+        group_key=lambda r: repr([r[i] for i in exact] + [_group_cell(r[i]) for i in varchars]),
+        order_key=order_key,
+        measure=lambda ra, rb, m: _row_noise(ra, rb, lenient, group, m),
+        mode=mode,
+    )
 
 
 def _parquet_detail(pa: Path, pb: Path, wa, wb, group: str | None = None,
@@ -775,22 +897,12 @@ def _parquet_detail(pa: Path, pb: Path, wa, wb, group: str | None = None,
         if only_a == 0 and only_b == 0:
             return None, 0
         cols = [name for name, _ in schema_a]
-        floats = [i for i, (_, typ) in enumerate(schema_a) if typ in FLOAT_TYPES]
-        varchars = [i for i, (_, typ) in enumerate(schema_a) if typ == "VARCHAR"]
-        lenient = sorted(
-            [(i, "DOUBLE", f"/{cols[i]}") for i in floats]
-            + [(i, "VARCHAR", f"/{cols[i]}") for i in varchars]
-        )
+        lenient = any(typ in FLOAT_TYPES or typ == "VARCHAR" for _, typ in schema_a)
         if lenient and only_a + only_b <= _NOISE_MAX_ROWS:
-            exact = [i for i in range(len(cols)) if i not in floats and i not in varchars]
-            left_a, left_b, noise = _pair_noise(
+            left_a, left_b, noise = _pair_rows(
                 con.execute(f"select * from ({sel_a} except all {sel_b})").fetchall(),
                 con.execute(f"select * from ({sel_b} except all {sel_a})").fetchall(),
-                group_key=lambda r: repr(
-                    [r[i] for i in exact] + [_group_cell(r[i]) for i in varchars]
-                ),
-                order_key=lambda r: tuple(_float_order(r[i]) for i in floats),
-                measure=lambda ra, rb: _row_noise(ra, rb, lenient, group, mode),
+                schema_a, group, mode,
             )
             if not left_a and not left_b:
                 return None, noise
@@ -838,12 +950,26 @@ def _dataset_entries(doc) -> dict:
     }
 
 
+def _referent_excuses(file_status: dict[str, str], rel: str) -> bool:
+    """Whether the file a derived hash/byte count describes can explain a
+    difference in it (ruling 3, tightened in Fix round 4): only when the
+    file exists in BOTH trees and compared equivalent-but-not-identical
+    ("equivalent" — build stamps, float/numeric-text noise, JSON-in-string,
+    JSON formatting — or "reordered"). A referent missing from either tree
+    (no status, "only_a", "only_b") explains nothing, and a byte-IDENTICAL
+    one cannot explain a different hash or size of itself — both stay
+    "changed", as does a "changed" referent."""
+    return file_status.get(rel) in _REFERENT_EXCUSES
+
+
 def _resolve_datasets_derived_hash(raw: list, pa_doc, pb_doc,
                                    file_status: dict[str, str]) -> tuple[list, int]:
     """Drop json/datasets.json's /datasets/[] added/removed pairs whose
     entries differ ONLY in `bytes` (a derived file size) when the parquet
-    they describe (data/<file>) compared equivalent or identical in this
-    SAME diff (ruling 3). Returns (filtered raw, values resolved)."""
+    they describe (data/<file>) is present in both trees and compared
+    equivalent or reordered — never identical, never missing — in this SAME
+    diff (ruling 3; _referent_excuses). Returns (filtered raw, values
+    resolved)."""
     da, db = _dataset_entries(pa_doc), _dataset_entries(pb_doc)
     resolved_files: set[str] = set()
     for name in sorted(set(da) & set(db)):
@@ -852,7 +978,7 @@ def _resolve_datasets_derived_hash(raw: list, pa_doc, pb_doc,
             continue
         diff_keys = {k for k in set(old) | set(new) if old.get(k) != new.get(k)}
         if diff_keys and diff_keys <= {"bytes"}:
-            if file_status.get(f"data/{name}", "identical") in ("identical", "equivalent", "reordered"):
+            if _referent_excuses(file_status, f"data/{name}"):
                 resolved_files.add(name)
     if not resolved_files:
         return raw, 0
@@ -869,9 +995,10 @@ def _resolve_datasets_derived_hash(raw: list, pa_doc, pb_doc,
 
 def _resolve_audit_derived_hash(raw: list, file_status: dict[str, str]) -> tuple[list, int]:
     """Drop json/budget_pdf_receipts_audit.json's /citation_sha256 change
-    when json/citations.json compared equivalent or identical in this SAME
-    diff (ruling 3)."""
-    if file_status.get("json/citations.json", "identical") not in ("identical", "equivalent", "reordered"):
+    when json/citations.json is present in both trees and compared
+    equivalent or reordered — never identical, never missing — in this SAME
+    diff (ruling 3; _referent_excuses)."""
+    if not _referent_excuses(file_status, "json/citations.json"):
         return raw, 0
     filtered = [item for item in raw
                if not (item[1] == "/citation_sha256" and item[0] == "changed")]
@@ -998,6 +1125,7 @@ def diff_trees(a: Path, b: Path, *, control: bool = False,
     return {
         "a": str(a),
         "b": str(b),
+        "mode": "control" if control else ("noise-from" if trusted is not None else "plain"),
         "build_window": {
             side: (None if w is None else [w.lo.isoformat(), w.hi.isoformat()])
             for side, w in (("a", wa), ("b", wb))
@@ -1060,21 +1188,78 @@ def load_expectations(path: Path) -> list[dict]:
     return rules
 
 
+NOISE_FILE_SCHEMA = 1
+
+
+def _classes_sha256(classes: list) -> str:
+    """sha256 of the classes' canonical JSON (sorted keys, no whitespace,
+    UTF-8): the noise file's timestamp-free content hash (Fix round 4)."""
+    return hashlib.sha256(_canon(classes).encode("utf-8")).hexdigest()
+
+
+def noise_file(report: dict) -> dict:
+    """The --write-noise document for a `--control` report (Fix round 4).
+
+    Refuses (ValueError) unless the report comes from a control run whose
+    verdict is EQUAL: a control that found any non-noise difference — or
+    a run that trusted nothing — vouches for no reorder class at all. The
+    document records the verdict, both source trees (resolved) and a
+    content hash of the classes, and nothing time-dependent, so the same
+    control on the same trees writes a byte-identical file."""
+    if report.get("mode") != "control":
+        raise ValueError("proof diff --write-noise: only a --control report can vouch for"
+                         " reorder classes")
+    if not is_equal(report):
+        raise ValueError("proof diff --write-noise: the control is DIFFERENT — it vouches for"
+                         " no reorder class; noise file not written")
+    classes = report["reorder_classes"]
+    return {
+        "schema_version": NOISE_FILE_SCHEMA,
+        "verdict": "EQUAL",
+        "a": str(Path(report["a"]).resolve()),
+        "b": str(Path(report["b"]).resolve()),
+        "classes_sha256": _classes_sha256(classes),
+        "classes": classes,
+    }
+
+
+def write_noise_file(path: Path, report: dict) -> None:
+    """Write noise_file(report) to path; raises (and writes nothing) when
+    noise_file refuses."""
+    doc = noise_file(report)
+    Path(path).write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def load_noise_classes(path: Path) -> list[dict]:
-    """Read a --write-noise file back for --noise-from (ruling 4, Fix round
-    3): a JSON list of {"path", "pointer", "count"} reorder classes a prior
-    `--control` run vouched for. `count` is provenance only — matching is
-    by (path, pointer) alone."""
+    """Read a --write-noise file back for --noise-from (ruling 4; Fix round
+    4 format): the {"path", "pointer", "count"} reorder classes a prior
+    `--control` run vouched for. Refuses a file that does not record a
+    control verdict of EQUAL (including Fix round 3's bare-list format,
+    which recorded no verdict at all), that does not name both source
+    trees, or whose classes no longer match their recorded classes_sha256.
+    `count` is provenance only — matching is by (path, pointer) alone."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(data, list):
-        raise ValueError("proof diff --noise-from: the file must hold a JSON list of classes")
-    for i, c in enumerate(data):
+    if not isinstance(data, dict) or data.get("verdict") != "EQUAL":
+        raise ValueError(
+            f"proof diff --noise-from: {path} does not record a control verdict of EQUAL —"
+            f" only a passing `--control --write-noise` run vouches for reorder classes"
+        )
+    if not isinstance(data.get("a"), str) or not isinstance(data.get("b"), str):
+        raise ValueError(f"proof diff --noise-from: {path} does not name both source trees"
+                         f" ('a', 'b') of its control run")
+    classes = data.get("classes")
+    if not isinstance(classes, list):
+        raise ValueError("proof diff --noise-from: 'classes' must be a JSON list of classes")
+    for i, c in enumerate(classes):
         if not isinstance(c, dict) or not isinstance(c.get("path"), str) \
                 or not isinstance(c.get("pointer"), str):
             raise ValueError(
                 f"proof diff --noise-from: class {i} needs a string 'path' and 'pointer'"
             )
-    return data
+    if data.get("classes_sha256") != _classes_sha256(classes):
+        raise ValueError(f"proof diff --noise-from: {path}'s classes do not match its"
+                         f" classes_sha256 — edited after the control run?")
+    return classes
 
 
 def _diff_items(report: dict) -> list[dict]:
@@ -1128,6 +1313,15 @@ def check_expectations(report: dict, rules: list[dict]) -> dict:
     }
 
 
+_REPORT_LINES = 10
+_REPORT_UNEXPECTED_LINES = 50
+
+
+def _more_line(total: int, shown: int = _REPORT_LINES) -> list[str]:
+    """Never truncate a list silently (Fix round 4): say how many more."""
+    return [f"    +{total - shown:,} more (see --report)"] if total > shown else []
+
+
 def format_report(report: dict, verdict: dict | None = None) -> list[str]:
     """Human-readable lines; the last line is the verdict."""
     c, fn, dh = report["counts"], report["float_noise"], report["derived_hash"]
@@ -1147,8 +1341,9 @@ def format_report(report: dict, verdict: dict | None = None) -> list[str]:
     if report["reorder_classes"]:
         lines.append(f"  reordered (control class): {c['reordered']:,} file(s) across"
                      f" {len(report['reorder_classes']):,} class(es)")
-        for rc in report["reorder_classes"][:10]:
+        for rc in report["reorder_classes"][:_REPORT_LINES]:
             lines.append(f"    [{rc['path']}] {rc['pointer']} ×{rc['count']:,}")
+        lines.extend(_more_line(len(report["reorder_classes"])))
     for group, gc in report["groups"].items():
         if not (gc["changed"] or gc["only_a"] or gc["only_b"] or gc["reordered"]):
             continue
@@ -1167,8 +1362,9 @@ def format_report(report: dict, verdict: dict | None = None) -> list[str]:
                        f", only in B {d['only_b']}", "parquet")] += 1
             else:
                 tally[("bytes differ", "bytes")] += 1
-        for (pattern, change), n in tally.most_common(10):
+        for (pattern, change), n in tally.most_common(_REPORT_LINES):
             lines.append(f"    {change} {pattern} ×{n:,}")
+        lines.extend(_more_line(len(tally)))
     if verdict is None:
         lines.append("proof diff: EQUAL" if is_equal(report) else "proof diff: DIFFERENT")
         return lines
@@ -1176,9 +1372,10 @@ def format_report(report: dict, verdict: dict | None = None) -> list[str]:
         lines.append(f"  rule {m['rule']} [{m['path']}] matched {m['count']:,}: {m['why']}")
     if verdict["unexpected"]:
         lines.append(f"  UNEXPECTED differences: {len(verdict['unexpected']):,}")
-        for item in verdict["unexpected"][:50]:
+        for item in verdict["unexpected"][:_REPORT_UNEXPECTED_LINES]:
             lines.append(f"    {item['path']} {item['status']}"
                          f" {item['change'] or ''} {item['pattern'] or ''} ×{item['count']:,}".rstrip())
+        lines.extend(_more_line(len(verdict["unexpected"]), _REPORT_UNEXPECTED_LINES))
     for u in verdict["unmet"]:
         lines.append(f"  UNMET required rule {u['rule']} [{u['path']}]: {u['why']}")
     lines.append("proof diff: PASS" if verdict["ok"] else "proof diff: FAIL")

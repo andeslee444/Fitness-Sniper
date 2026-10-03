@@ -3005,13 +3005,21 @@ def cmd_proof(args) -> None:
     if args.write_noise is not None and not args.control:
         print("proof diff: --write-noise requires --control", file=sys.stderr)
         sys.exit(2)
-    noise_classes = proof.load_noise_classes(args.noise_from) if args.noise_from is not None else None
+    noise_classes = None
+    if args.noise_from is not None:
+        try:
+            noise_classes = proof.load_noise_classes(args.noise_from)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            sys.exit(2)
     report = proof.diff_trees(args.a, args.b, control=args.control, noise_classes=noise_classes)
     if args.write_noise is not None:
-        args.write_noise.write_text(
-            _json.dumps(report["reorder_classes"], indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        # Only an EQUAL control vouches for its reorder classes (Fix round 4);
+        # a DIFFERENT one writes nothing and fails below as usual.
+        try:
+            proof.write_noise_file(args.write_noise, report)
+        except ValueError as e:
+            print(e, file=sys.stderr)
     verdict = None
     if args.expect is not None:
         verdict = proof.check_expectations(report, proof.load_expectations(args.expect))
@@ -3472,8 +3480,9 @@ def main(argv=None) -> None:
                              help="trust only the (path, pointer) reorder classes a prior"
                                   " --control run wrote to this file")
     prf_diff.add_argument("--write-noise", type=Path, default=None, dest="write_noise",
-                          help="with --control: write the observed reorder classes"
-                               " (JSON, sorted, with counts) here")
+                          help="with --control: when the control is EQUAL, write its verdict,"
+                               " source trees and reorder classes (JSON, sorted, with counts"
+                               " and a content hash) here; a DIFFERENT control writes nothing")
     prf_diff.set_defaults(func=cmd_proof)
 
     args = p.parse_args(argv)

@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import hashlib
+import itertools
 import json
 import os
 import shutil
@@ -850,10 +852,13 @@ def test_control_and_noise_from_are_mutually_exclusive(tmp_path):
 
 def test_load_noise_classes_validates_shape(tmp_path):
     path = tmp_path / "noise.json"
-    path.write_text(json.dumps([{"path": "x"}]))
+    classes = [{"path": "x"}]
+    path.write_text(json.dumps({"verdict": "EQUAL", "a": "A", "b": "B", "classes": classes,
+                                "classes_sha256": proof._classes_sha256(classes)}))
     with pytest.raises(ValueError, match="needs a string"):
         proof.load_noise_classes(path)
-    path.write_text(json.dumps({"not": "a list"}))
+    path.write_text(json.dumps({"verdict": "EQUAL", "a": "A", "b": "B",
+                                "classes": {"not": "a list"}, "classes_sha256": ""}))
     with pytest.raises(ValueError, match="JSON list"):
         proof.load_noise_classes(path)
 
@@ -868,7 +873,7 @@ def test_cli_control_write_noise_and_noise_from_round_trip(tmp_path, capsys):
         cli.main(["proof", "diff", str(a), str(b), "--control", "--write-noise", str(noise_file)])
     assert exc.value.code == 0
     assert capsys.readouterr().out.splitlines()[-1] == "proof diff: EQUAL"
-    assert json.loads(noise_file.read_text()) == [
+    assert json.loads(noise_file.read_text())["classes"] == [
         {"path": "p.json", "pointer": "/rows", "count": 1}
     ]
 
@@ -945,3 +950,304 @@ def test_absolute_floor_does_not_affect_integers_decimals_or_strings(tmp_path, t
     _parquet(tmp_path / "b" / "data" / "t.parquet", cols, [("NY", vb)])
     pq = proof.diff_trees(tmp_path / "a", tmp_path / "b")["files"]["data/t.parquet"]
     assert (pq["status"], pq["detail"]["only_a"], pq["detail"]["only_b"]) == ("changed", 1, 1)
+
+
+# ---------------------------------------------------------------------------
+# Fix round 4: numeric text is a real number rendering only; derived hashes
+# need a present, equivalent-but-not-identical referent; row pairing is
+# fetch-order independent; the noise file records an EQUAL control
+# ---------------------------------------------------------------------------
+
+E_CODE_A, E_CODE_B = "0050E89600", "0050E89601"          # pe_bli shape
+HEX_FID_A, HEX_FID_B = "133783872e323816", "133783872e323817"  # fact_id shape
+
+
+def _three_modes(rel: str, pointer: str) -> list[dict]:
+    """default, --control, and --noise-from with a class registered at the
+    very path/pointer under test — the most permissive noise file there is."""
+    return [{}, {"control": True},
+            {"noise_classes": [{"path": rel, "pointer": pointer, "count": 1}]}]
+
+
+@pytest.mark.parametrize("va, vb", [
+    (E_CODE_A, E_CODE_B),
+    (HEX_FID_A, HEX_FID_B),
+    ("0050E89600", "2420E61000"),       # float() reads both as inf
+    ("1e+400", "2e+400"),               # signed, but non-finite: still not a number
+])
+def test_identity_codes_in_a_json_leaf_are_changed_in_every_mode(tmp_path, va, vb):
+    _json(tmp_path / "a" / "p.json", {"pe_bli": va, "amount": 5})
+    _json(tmp_path / "b" / "p.json", {"pe_bli": vb, "amount": 5})
+    for kw in _three_modes("p.json", "/pe_bli"):
+        report = proof.diff_trees(tmp_path / "a", tmp_path / "b", **kw)
+        assert report["files"]["p.json"]["status"] == "changed", kw
+        assert _changes(report, "p.json") == [("/pe_bli", "changed", 1)], kw
+        assert report["float_noise"] == {"files": 0, "values": 0}, kw
+        assert not proof.is_equal(report), kw
+
+
+@pytest.mark.parametrize("va, vb", [
+    (E_CODE_A, E_CODE_B),
+    (HEX_FID_A, HEX_FID_B),
+    ("0050E89600", "2420E61000"),
+    ("1e+400", "2e+400"),
+])
+def test_identity_codes_in_a_parquet_varchar_cell_are_changed_in_every_mode(tmp_path, va, vb):
+    cols = [("pe_bli", "varchar"), ("name", "varchar"), ("total", "double")]
+    _parquet(tmp_path / "a" / "data" / "t.parquet", cols, [(va, "x", CLEAN)])
+    _parquet(tmp_path / "b" / "data" / "t.parquet", cols, [(vb, "x", NOISY)])
+    for kw in _three_modes("data/t.parquet", "/pe_bli"):
+        report = proof.diff_trees(tmp_path / "a", tmp_path / "b", **kw)
+        pq = report["files"]["data/t.parquet"]
+        assert (pq["status"], pq["detail"]["only_a"], pq["detail"]["only_b"]) == ("changed", 1, 1), kw
+        assert report["reorder_classes"] == [], kw
+        assert not proof.is_equal(report), kw
+
+
+@pytest.mark.parametrize("va, vb", [
+    ("3872766113006.809", "3872766113006.811"),   # the real Z/Z2 numeric-text pair
+    ("1e-07", "1.0000000000001e-07"),             # Python's exponent-only rendering
+    ("1e+16", "1.0000000000001e+16"),
+])
+def test_genuine_number_renderings_stay_float_noise(tmp_path, va, vb):
+    _json(tmp_path / "a" / "p.json", {"recorded_value": va})
+    _json(tmp_path / "b" / "p.json", {"recorded_value": vb})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["p.json"]["status"] == "equivalent"
+    assert report["float_noise"] == {"files": 1, "values": 1}
+
+    cols = [("fact_id", "varchar"), ("recorded_value", "varchar")]
+    _parquet(tmp_path / "c" / "data" / "t.parquet", cols, [("f1", va)])
+    _parquet(tmp_path / "d" / "data" / "t.parquet", cols, [("f1", vb)])
+    report = proof.diff_trees(tmp_path / "c", tmp_path / "d")
+    assert report["files"]["data/t.parquet"]["status"] == "equivalent"
+    assert report["float_noise"] == {"files": 1, "values": 1}
+
+
+@pytest.mark.parametrize("text", [
+    "inf", "-inf", "Infinity", "-Infinity", "nan", "NaN",
+    "1e+400", "-1.5e+999",                          # signed, but non-finite
+    pytest.param("9" * 400 + ".0", id="400-digit-decimal"),   # dotted, but non-finite
+    E_CODE_A, HEX_FID_A, "1e5", "2E3",              # an exponent with no sign: a code
+    "4248", "0152", "", ".", "+", "1.5x", " 1.5", "1_000.5",
+    "١.٥",                                # Arabic-Indic digits float() accepts
+])
+def test_numeric_text_rejects_codes_and_non_finite_values(text):
+    assert proof._numeric_text(text) is None
+    assert proof._group_cell(text) != proof._group_cell("1.5")
+
+
+@pytest.mark.parametrize("text, value", [
+    ("1.5", 1.5), ("-0.25", -0.25), ("+.5", 0.5), ("1.", 1.0),
+    ("1e-07", 1e-07), ("1e+16", 1e16), ("1.5E+300", 1.5e300), ("2.5e-3", 0.0025),
+    ("3872766113006.809", 3872766113006.809),
+])
+def test_numeric_text_accepts_genuine_number_renderings(text, value):
+    assert proof._numeric_text(text) == value
+
+
+def _datasets_pair(tmp_path: Path, bytes_a: int, bytes_b: int) -> tuple[Path, Path]:
+    entry = {"file": "fct_x.parquet", "name": "fct_x", "row_count": 1, "scope": "s"}
+    _json(tmp_path / "a" / "json" / "datasets.json", {"datasets": [{**entry, "bytes": bytes_a}]})
+    _json(tmp_path / "b" / "json" / "datasets.json", {"datasets": [{**entry, "bytes": bytes_b}]})
+    return tmp_path / "a", tmp_path / "b"
+
+
+def test_derived_hash_with_a_missing_referent_is_changed(tmp_path):
+    cols = [("x", "integer"), ("total", "double")]
+    a, b = _datasets_pair(tmp_path, 100, 142)
+    # data/fct_x.parquet is in neither tree.
+    report = proof.diff_trees(a, b)
+    assert report["files"]["json/datasets.json"]["status"] == "changed"
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+    # ... or in only one of them.
+    _parquet(a / "data" / "fct_x.parquet", cols, [(1, CLEAN)])
+    report = proof.diff_trees(a, b)
+    assert report["files"]["data/fct_x.parquet"]["status"] == "only_a"
+    assert report["files"]["json/datasets.json"]["status"] == "changed"
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+
+
+def test_derived_hash_with_a_byte_identical_referent_is_changed(tmp_path):
+    cols = [("x", "integer"), ("total", "double")]
+    a, b = _datasets_pair(tmp_path, 100, 142)
+    _parquet(a / "data" / "fct_x.parquet", cols, [(1, CLEAN)])
+    (b / "data").mkdir()
+    shutil.copyfile(a / "data" / "fct_x.parquet", b / "data" / "fct_x.parquet")
+    report = proof.diff_trees(a, b)
+    assert "data/fct_x.parquet" not in report["files"]          # identical
+    assert report["files"]["json/datasets.json"]["status"] == "changed"
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+    assert not proof.is_equal(report)
+
+
+def test_audit_citation_sha_needs_a_present_equivalent_citations_json(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    _json(a / "json" / "budget_pdf_receipts_audit.json", {"citation_sha256": "aaa...old"})
+    _json(b / "json" / "budget_pdf_receipts_audit.json", {"citation_sha256": "bbb...new"})
+    # json/citations.json missing from both trees.
+    report = proof.diff_trees(a, b)
+    assert _changes(report, "json/budget_pdf_receipts_audit.json") == [
+        ("/citation_sha256", "changed", 1)
+    ]
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+    # byte-identical citations.json cannot explain a different hash of it.
+    _json(a / "json" / "citations.json", {"fid1": {"kind": "derived", "v": CLEAN}})
+    _json(b / "json" / "citations.json", {"fid1": {"kind": "derived", "v": CLEAN}})
+    report = proof.diff_trees(a, b)
+    assert "json/citations.json" not in report["files"]
+    assert report["files"]["json/budget_pdf_receipts_audit.json"]["status"] == "changed"
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+
+
+_PAIR_SCHEMA = [["k", "VARCHAR"], ["d", "DOUBLE"], ["v", "VARCHAR"]]
+
+
+@pytest.mark.parametrize("rows_a, rows_b, expected", [
+    # The reviewer's tie-walk: every exact column equal, only numeric text noisy.
+    ([("x", 1.0, "1.5"), ("x", 1.0, "2.5000000000001")],
+     [("x", 1.0, "2.5"), ("x", 1.0, "1.5000000000001")],
+     ([], [], 2)),
+    # The same, plus one genuinely changed row on each side.
+    ([("x", 1.0, "1.5"), ("x", 1.0, "2.5000000000001"), ("x", 1.0, "7.0")],
+     [("x", 1.0, "2.5"), ("x", 1.0, "1.5000000000001"), ("x", 1.0, "9.0")],
+     ([("x", 1.0, "7.0")], [("x", 1.0, "9.0")], 2)),
+    # Float noise in a DOUBLE column alongside a JSON-in-string cell.
+    ([("x", CLEAN, '[1, 2]'), ("x", 7.0, '[3]')],
+     [("x", 7.0, '[3]'), ("x", NOISY, '[1, 2]')],
+     ([], [], 1)),
+])
+def test_parquet_row_pairing_does_not_depend_on_fetch_order(rows_a, rows_b, expected):
+    seen = set()
+    for pa in itertools.permutations(rows_a):
+        for pb in itertools.permutations(rows_b):
+            left_a, left_b, n = proof._pair_rows(list(pa), list(pb), _PAIR_SCHEMA, "g", None)
+            seen.add((tuple(left_a), tuple(left_b), n))
+    assert seen == {(tuple(expected[0]), tuple(expected[1]), expected[2])}
+
+
+def test_parquet_files_written_in_either_row_order_pair_the_same(tmp_path):
+    cols = [("k", "varchar"), ("v", "varchar")]
+    rows_a = [("x", "1.5"), ("x", "2.5000000000001")]
+    rows_b = [("x", "2.5"), ("x", "1.5000000000001")]
+    for i, (ra, rb) in enumerate(itertools.product(itertools.permutations(rows_a),
+                                                   itertools.permutations(rows_b))):
+        _parquet(tmp_path / f"a{i}" / "data" / "t.parquet", cols, list(ra))
+        _parquet(tmp_path / f"b{i}" / "data" / "t.parquet", cols, list(rb))
+        report = proof.diff_trees(tmp_path / f"a{i}", tmp_path / f"b{i}")
+        assert report["files"]["data/t.parquet"]["status"] == "equivalent"
+        assert report["float_noise"] == {"files": 1, "values": 2}
+
+
+def test_a_rejected_parquet_pairing_attempt_records_no_reorder_class(tmp_path):
+    # One candidate pair: /ids is a pure reorder, /v genuinely differs. The
+    # attempt fails, so its /ids reorder must not be vouched for.
+    cols = [("k", "varchar"), ("ids", "varchar"), ("v", "varchar")]
+    _parquet(tmp_path / "a" / "data" / "c.parquet", cols, [("k", '["a", "b"]', "1.5")])
+    _parquet(tmp_path / "b" / "data" / "c.parquet", cols, [("k", '["b", "a"]', "9.5")])
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert report["files"]["data/c.parquet"]["status"] == "changed"
+    assert report["reorder_classes"] == []
+
+
+def test_a_rejected_json_in_string_comparison_records_no_reorder_class(tmp_path):
+    _json(tmp_path / "a" / "p.json", {"q": json.dumps({"ids": ["a", "b"], "v": 1})})
+    _json(tmp_path / "b" / "p.json", {"q": json.dumps({"ids": ["b", "a"], "v": 2})})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert _changes(report, "p.json") == [("/q", "changed", 1)]
+    assert report["reorder_classes"] == []
+
+
+def _different_control(tmp_path: Path) -> tuple[Path, Path]:
+    a, b = tmp_path / "a", tmp_path / "b"
+    _json(a / "p.json", {"v": 1, "rows": [1, 2, 3]})
+    _json(b / "p.json", {"v": 2, "rows": [3, 2, 1]})
+    return a, b
+
+
+def test_write_noise_is_not_written_when_the_control_is_different(tmp_path, capsys):
+    a, b = _different_control(tmp_path)
+    noise_file = tmp_path / "noise.json"
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--control", "--write-noise", str(noise_file)])
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.out.splitlines()[-1] == "proof diff: DIFFERENT"
+    assert "not written" in captured.err
+    assert not noise_file.exists()
+    with pytest.raises(ValueError, match="DIFFERENT"):
+        proof.noise_file(proof.diff_trees(a, b, control=True))
+
+
+def test_noise_file_records_verdict_trees_and_a_content_hash(tmp_path, capsys):
+    a, b = tmp_path / "a", tmp_path / "b"
+    _json(a / "p.json", {"rows": [1, 2, 3], "other": [4, 5]})
+    _json(b / "p.json", {"rows": [3, 2, 1], "other": [5, 4]})
+    outs = []
+    for name in ("n1.json", "n2.json"):
+        with pytest.raises(SystemExit) as exc:
+            cli.main(["proof", "diff", str(a), str(b), "--control",
+                      "--write-noise", str(tmp_path / name)])
+        assert exc.value.code == 0
+        capsys.readouterr()
+        outs.append((tmp_path / name).read_bytes())
+    assert outs[0] == outs[1]                      # no timestamp: byte-identical reruns
+    doc = json.loads(outs[0])
+    classes = [{"count": 1, "path": "p.json", "pointer": "/other"},
+               {"count": 1, "path": "p.json", "pointer": "/rows"}]
+    assert doc == {
+        "schema_version": 1,
+        "verdict": "EQUAL",
+        "a": str(a.resolve()),
+        "b": str(b.resolve()),
+        "classes_sha256": hashlib.sha256(
+            json.dumps(classes, sort_keys=True, ensure_ascii=False,
+                       separators=(",", ":")).encode("utf-8")).hexdigest(),
+        "classes": classes,
+    }
+    assert proof.load_noise_classes(tmp_path / "n1.json") == classes
+    with pytest.raises(ValueError, match="control"):
+        proof.noise_file(proof.diff_trees(a, b))      # not a --control report
+
+
+_ROWS_CLASS = [{"path": "p.json", "pointer": "/rows", "count": 1}]
+
+
+@pytest.mark.parametrize("doc, message", [
+    (_ROWS_CLASS, "verdict"),                                   # Fix round 3's bare list
+    ({"a": "A", "b": "B", "classes": _ROWS_CLASS, "classes_sha256": "ok"}, "verdict"),
+    ({"verdict": "DIFFERENT", "a": "A", "b": "B", "classes": _ROWS_CLASS,
+      "classes_sha256": "ok"}, "verdict"),
+    ({"verdict": "EQUAL", "classes": _ROWS_CLASS, "classes_sha256": "ok"}, "source tree"),
+    ({"verdict": "EQUAL", "a": "A", "b": "B", "classes": _ROWS_CLASS,
+      "classes_sha256": "0" * 64}, "classes_sha256"),          # edited after the control
+])
+def test_noise_from_refuses_a_file_without_an_equal_verdict(tmp_path, capsys, doc, message):
+    if isinstance(doc, dict) and doc.get("classes_sha256") == "ok":
+        doc = {**doc, "classes_sha256": hashlib.sha256(json.dumps(
+            doc["classes"], sort_keys=True, ensure_ascii=False,
+            separators=(",", ":")).encode("utf-8")).hexdigest()}
+    path = tmp_path / "noise.json"
+    path.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match=message):
+        proof.load_noise_classes(path)
+    a, b = tmp_path / "a", tmp_path / "b"
+    _json(a / "p.json", {"rows": [1, 2, 3]})
+    _json(b / "p.json", {"rows": [3, 2, 1]})
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--noise-from", str(path)])
+    assert exc.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("n_lists, shown, more", [(3, 3, None), (10, 10, None), (12, 10, 2)])
+def test_format_report_lists_every_class_or_says_how_many_more(tmp_path, n_lists, shown, more):
+    keys = [f"l{i:02d}" for i in range(n_lists)]
+    _json(tmp_path / "a" / "p.json", {k: [1, 2] for k in keys})
+    _json(tmp_path / "b" / "p.json", {k: [2, 1] for k in keys})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    lines = proof.format_report(report)
+    class_lines = [ln for ln in lines if ln.startswith("    [p.json] /l")]
+    assert len(class_lines) == shown
+    more_lines = [ln for ln in lines if "more (see --report)" in ln]
+    assert more_lines == ([] if more is None else [f"    +{more} more (see --report)"])
