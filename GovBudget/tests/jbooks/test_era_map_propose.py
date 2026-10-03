@@ -10,7 +10,7 @@ from decimal import Decimal
 import pytest
 
 from govbudget.jbooks import era_map
-from govbudget.jbooks.era_map import Chain, ModernLine, search_successors
+from govbudget.jbooks.era_map import Chain, EraKey, ModernLine, search_successors
 from govbudget.jbooks.p1_loader import EraKeyConflict
 from jbooks.era_map_fixtures import (
     JLTV_SENTENCE,
@@ -106,6 +106,183 @@ def chain(code, account, classes=("H",)):
 def modern(*codes):
     return [ModernLine(edition=2026, code=c, account=a, organization="A", title="t")
             for c, a in codes]
+
+
+# ---------------------------------------------------------------------------
+# _prefill (Fix round 3): hand-built era/modern, no lake — mirrors
+# test_era_map.py's ek()/ml() pattern, scoped to this file per the fix's
+# instructions.
+# ---------------------------------------------------------------------------
+
+def ek(edition, account, org, line, code, title, *, ba="01", act=None,
+       enacted=None, request=None):
+    return EraKey(
+        edition=edition, account=account, organization=org, budget_activity=ba,
+        era_key=f"{account}-{org}-L{line}", line_item_code=code,
+        filed_title=title, actuals_k=None if act is None else Decimal(act),
+        source_document_sha256="ab" * 32, source_cells=(f"O{line}",),
+        enacted_k=None if enacted is None else Decimal(enacted),
+        request_k=None if request is None else Decimal(request),
+    )
+
+
+def ml(edition, code, account, org, title, *, act=None, enacted=None):
+    return ModernLine(edition=edition, code=code, account=account,
+                      organization=org, title=title,
+                      actuals_k=None if act is None else Decimal(act),
+                      enacted_k=None if enacted is None else Decimal(enacted))
+
+
+def _prefill_for(era, modern_lines, *, chain_id=None, collision_codes=frozenset(),
+                  modern_pages=frozenset()):
+    """Build a _Context from era/modern_lines, classify, pick one chain (by
+    chain_id, or the sole chain when there is exactly one), and return
+    _prefill's result for it."""
+    ctx = era_map._Context(era, modern_lines)
+    classes = {(k.edition, k.era_key): ctx.classify(k, collision_codes) for k in ctx.era}
+    chains = era_map.build_chains(era, classes)
+    if chain_id is None:
+        assert len(chains) == 1, [c.chain_id for c in chains]
+        ch = chains[0]
+    else:
+        ch = next(c for c in chains if c.chain_id == chain_id)
+    keys = era_map.group_keys(era)[ch.chain_id]
+    info = era_map._chain_context(ch, keys, ctx)
+    org_editions = era_map._org_editions(era, ctx.split)
+    return era_map._prefill(ch, keys, ctx, info, collision_codes, modern_pages, org_editions)
+
+
+def test_prefill_own_account_r3_checks_every_pb2024_26_title(monkeypatch):
+    # Fix round 3 (review finding, live shape 1045|1611N|): the destination
+    # is the chain's OWN account — the code stayed, it did not move — but
+    # PB2024 and PB2026 print DIFFERENT titles there ("OHIO Replacement
+    # Submarine" then "Columbia Class Submarine"). Checking only the
+    # latest title wrongly blanked a chain PB2024 itself confirms. A
+    # sibling era account (1612N) makes the code span two era accounts in
+    # one edition (R3) and gives the code a SECOND PB2024-26 destination
+    # (1612N: Other Shipbuilding), so this chain's own-account match is
+    # resolved via the >1-destination (own_hits) branch, not the
+    # single-destination shortcut.
+    monkeypatch.setattr(era_map, "ORG_SPLIT_CODES", frozenset())
+    era = [ek(2022, "1611N", "NAVY", 9, "OHSHIP", "OHIO Replacement Submarine"),
+           ek(2022, "1612N", "NAVY", 3, "OHSHIP", "OHIO Replacement Submarine")]
+    modern = [ml(2024, "OHSHIP", "1611N", "N", "OHIO Replacement Submarine"),
+              ml(2026, "OHSHIP", "1611N", "N", "Columbia Class Submarine"),
+              ml(2026, "OHSHIP", "1612N", "N", "Other Shipbuilding")]
+    decision, reason, pa, po = _prefill_for(era, modern, chain_id="OHSHIP|1611N|")
+    assert decision == "same_program"
+    assert reason == (
+        "R3: the code's own account (1611N); also printed by 1612N")
+    assert (pa, po) == ("", "")
+
+
+def test_prefill_own_account_r3_mismatch_names_its_own_recorded_title(monkeypatch):
+    # The sibling chain from the same world: 1612N is ALSO its own account
+    # (R3, mi not None there), but its own account's recorded PB2024-26
+    # title ("Other Shipbuilding") does not match this line's title at
+    # all. The reason must not claim an account/organization "move" — the
+    # account never changed.
+    monkeypatch.setattr(era_map, "ORG_SPLIT_CODES", frozenset())
+    era = [ek(2022, "1611N", "NAVY", 9, "OHSHIP", "OHIO Replacement Submarine"),
+           ek(2022, "1612N", "NAVY", 3, "OHSHIP", "OHIO Replacement Submarine")]
+    modern = [ml(2024, "OHSHIP", "1611N", "N", "OHIO Replacement Submarine"),
+              ml(2026, "OHSHIP", "1611N", "N", "Columbia Class Submarine"),
+              ml(2026, "OHSHIP", "1612N", "N", "Other Shipbuilding")]
+    decision, reason, pa, po = _prefill_for(era, modern, chain_id="OHSHIP|1612N|")
+    assert decision == ""
+    assert reason == (
+        "R3: the code's own account (1612N) prints 'Other Shipbuilding',"
+        " not this line's title; also printed by 1611N — confirm"
+        " same_program by hand")
+    assert (pa, po) == ("", "")
+
+
+def test_prefill_r1_no_request_reason_differs_from_range_split():
+    # Fix round 3 (owner-facing finding, live shape: the four 0350D
+    # National Guard/Reserve "Miscellaneous Equipment" rows): with no
+    # non-zero request in any edition (a Congress-added line, confirmed on
+    # the live lake — see the report), the "range split" advice is wrong:
+    # there is no year-to-year request/actuals pair to confirm either way.
+    # Amounts are well above the $1M continuity floor so the check fails
+    # on its ratio, not passes trivially on the floor rule.
+    era = [ek(2021, "0350D", "ARMY", 5, "MISCEQ", "Miscellaneous Equipment",
+              act=1, enacted=200000, request=0),
+           ek(2022, "0350D", "ARMY", 5, "MISCEQ", "Miscellaneous Equipment",
+              act=10000, enacted=50, request=0)]
+    modern = [ml(2026, "MISCEQ", "0350D", "A", "Misc Equipment - Army National Guard")]
+    decision, reason, pa, po = _prefill_for(era, modern)
+    assert decision == ""
+    assert reason == (
+        "R1: renamed 'Miscellaneous Equipment' →"
+        " 'Misc Equipment - Army National Guard'; no request in any"
+        " edition (a Congress-added line), so the year-to-year continuity"
+        " check cannot confirm it — decide same_program if the modern"
+        " line is the same program")
+    assert (pa, po) == ("", "")
+
+
+def test_prefill_r1_continuity_fails_keeps_range_split_when_a_request_exists():
+    # Regression: the same shape, but one edition DID carry a non-zero
+    # request — the existing "range split" wording is still right, since
+    # there IS year-to-year evidence and it failed.
+    era = [ek(2021, "0350D", "ARMY", 5, "MISCEQ", "Miscellaneous Equipment",
+              act=1, enacted=200000, request=5),
+           ek(2022, "0350D", "ARMY", 5, "MISCEQ", "Miscellaneous Equipment",
+              act=10000, enacted=50, request=0)]
+    modern = [ml(2026, "MISCEQ", "0350D", "A", "Misc Equipment - Army National Guard")]
+    decision, reason, pa, po = _prefill_for(era, modern)
+    assert decision == ""
+    assert reason == (
+        "R1: renamed and continuity 0/1 fails — consider a range split"
+        " (earlier range exclude_reused_code)")
+
+
+def test_prefill_r2_ambiguous_destinations_names_each():
+    # the ambiguous-destination branch: >1 destination, no collision pin,
+    # and the chain's own account is not one of them.
+    era = [ek(2022, "AAAA", "ORG", 1, "AMBIG", "Old Program Title")]
+    modern = [ml(2026, "AMBIG", "BBBB", "B", "First Program"),
+              ml(2026, "AMBIG", "CCCC", "C", "Second Program")]
+    decision, reason, pa, po = _prefill_for(era, modern)
+    assert decision == ""
+    assert reason == (
+        "R2: account/organization move to several possible destinations"
+        " (BBBB: First Program; CCCC: Second Program) — decide which, if"
+        " any, this line moved to")
+    assert (pa, po) == ("", "")
+
+
+def test_prefill_r2_zero_destinations_names_the_gap():
+    # Fix round 3: a code that exists in modern but has no title on
+    # record anywhere must not be told it has "several possible
+    # destinations" — there are none.
+    era = [ek(2022, "AAAA", "ORG", 1, "NOTITLE", "Old Program Title")]
+    modern = [ModernLine(edition=2026, code="NOTITLE", account="BBBB",
+                         organization="B", title=None)]
+    decision, reason, pa, po = _prefill_for(era, modern)
+    assert decision == ""
+    assert reason == (
+        "R2: account/organization move, but no PB2024-26 line for this"
+        " code has a title on record — decide which program this line"
+        " belongs to")
+
+
+def test_prefill_r2_collision_pin_missing_from_destinations_names_the_pin():
+    # Fix round 3: a defensive case ("neither occurs live" per the review
+    # finding) — a collision page is on record for the chain's own
+    # account, but no P-1 line backs it, while the code genuinely exists
+    # elsewhere in modern. The message must name the actual gap (the pin),
+    # not the unrelated destination that does have a title.
+    era = [ek(2022, "AAAA", "ORG", 1, "PINCODE", "Old Title")]
+    modern = [ml(2026, "PINCODE", "ZZZZ", "Z", "Unrelated Program")]
+    modern_pages = frozenset({("PINCODE", "AAAA", "B")})
+    decision, reason, pa, po = _prefill_for(
+        era, modern, collision_codes=frozenset({"PINCODE"}), modern_pages=modern_pages)
+    assert decision == ""
+    assert reason == (
+        "R2: the collision pin AAAA has no PB2024-26 title on record —"
+        " decide which program this line belongs to")
+    assert (pa, po) == ("AAAA", "B")
 
 
 def test_jltv_short_form_successor_with_pdf_page(tmp_path):

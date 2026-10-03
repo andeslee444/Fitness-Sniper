@@ -125,6 +125,7 @@ class EraKey:
     source_document_sha256: str
     source_cells: tuple[str, ...]
     enacted_k: Decimal | None = None   # fct_decade_series FY(N-1) enacted
+    request_k: Decimal | None = None   # fct_decade_series FY(N) request (BudgetYearOne)
 
 
 @dataclass(frozen=True)
@@ -788,7 +789,7 @@ def load_era_keys(duckdb_path: Path, *, with_amounts: bool = True) -> list[EraKe
             for pe, ed, kind, amt in con.execute(
                 "select pe_bli, edition_year, amount_type_kind, amount"
                 " from fct_decade_series where edition_year <= 2023"
-                " and amount_type_kind in ('actuals', 'enacted')"
+                " and amount_type_kind in ('actuals', 'enacted', 'request')"
             ).fetchall():
                 amounts[(pe, int(ed), kind)] = _dec(amt)
     finally:
@@ -831,6 +832,7 @@ def load_era_keys(duckdb_path: Path, *, with_amounts: bool = True) -> list[EraKe
             source_document_sha256=docs[doc],
             source_cells=tuple(sorted(a["cells"], key=_cell_sort_key)),
             enacted_k=amounts.get((pe, ed, "enacted")),
+            request_k=amounts.get((pe, ed, "request")),
         ))
     return era
 
@@ -964,6 +966,12 @@ def _chain_context(ch: Chain, keys: Sequence[EraKey], ctx: _Context) -> dict:
         "continuity_ok": total > 0 and passed * 3 >= total * 2,
         "modern_accounts": sorted(ctx.modern_accounts.get(ch.line_item_code, ())),
         "modern_destinations": destinations,
+        # Fix round 3: a chain with no non-zero request in any edition is
+        # typical of a Congress-added line (the President never asked for
+        # it) — the year-to-year continuity check has no request-side
+        # anchor for such a line, so a failing ratio is not evidence either
+        # way, just an artifact of the amount being absent.
+        "has_request": any((k.request_k or Decimal(0)) != 0 for k in keys),
     }
 
 
@@ -1123,17 +1131,55 @@ def _prefill(ch: Chain, keys: Sequence[EraKey], ctx: _Context, info: dict,
             own_hits = [d for d in destinations if (d[0], d[1]) == own]
             target = own_hits[0] if len(own_hits) == 1 else None
         if target is None:
-            listed = _format_destinations(destinations) or "no PB2024-26 title found"
+            # Fix round 3: name what's actually wrong — a pin with no title,
+            # or no destination at all — instead of always claiming there
+            # are "several possible destinations" (neither happens live,
+            # but the wording must not lie if the data ever produces one).
+            if pin is not None:
+                return ("",
+                        f"{rule}: the collision pin {pin[0]}"
+                        f"{'/' + pin[1] if pin[1] else ''} has no PB2024-26"
+                        " title on record — decide which program this line"
+                        " belongs to", pa, po)
+            if not destinations:
+                return ("",
+                        f"{rule}: account/organization move, but no"
+                        " PB2024-26 line for this code has a title on"
+                        " record — decide which program this line belongs"
+                        " to", pa, po)
+            listed = _format_destinations(destinations)
             return ("",
                     f"{rule}: account/organization move to several possible"
                     f" destinations ({listed}) — decide which, if any, this"
                     " line moved to", pa, po)
         dest_account, dest_org, dest_title = target
         dest_label = f"{dest_account}{'/' + dest_org if dest_org else ''}"
-        if title_jaccard(keys[-1].filed_title, dest_title) >= JACCARD_MIN:
+        is_own = (dest_account, dest_org) == own
+        # Fix round 3: the destination may print several titles across
+        # PB2024-26 (e.g. PB2024 "OHIO Replacement Submarine", PB2026
+        # "Columbia Class Submarine" at the SAME account) — a match on any
+        # one of them is a match; checking only the latest title missed
+        # earlier-edition confirmations like this one.
+        dest_mi = ctx.idx.get((ch.line_item_code, dest_account, dest_org))
+        jac = (max((title_jaccard(keys[-1].filed_title, t) for t in dest_mi.titles),
+                   default=0.0) if dest_mi is not None else 0.0)
+        if jac >= JACCARD_MIN:
+            if is_own:
+                others = sorted({a for a, o, _t in destinations if (a, o) != own})
+                return ("same_program",
+                        f"{rule}: the code's own account ({dest_label}); also"
+                        f" printed by {', '.join(others) or 'no other account'}",
+                        pa, po)
             return ("same_program",
                     f"{rule}: account/organization move (modern accounts"
                     f" {', '.join(info['modern_accounts']) or 'none'})", pa, po)
+        if is_own:
+            others = sorted({a for a, o, _t in destinations if (a, o) != own})
+            return ("",
+                    f"{rule}: the code's own account ({dest_label}) prints"
+                    f" '{dest_title}', not this line's title; also printed"
+                    f" by {', '.join(others) or 'no other account'} — confirm"
+                    " same_program by hand", pa, po)
         return ("",
                 f"{rule}: account/organization move, but the code is"
                 f" '{dest_title}' in {dest_label}; decide same_program only"
@@ -1152,6 +1198,20 @@ def _prefill(ch: Chain, keys: Sequence[EraKey], ctx: _Context, info: dict,
             return ("same_program",
                     f"{rule}: renamed, continuity {info['continuity']} holds"
                     f" (title Jaccard {info['title_jaccard'] or 'n/a'})", pa, po)
+        if not info["has_request"]:
+            # Fix round 3 (owner-facing finding): a "range split" is the
+            # wrong advice when the continuity check failed only because
+            # the line never carried a request amount at all (a Congress-
+            # added line, e.g. the 0350D National Guard/Reserve
+            # "Miscellaneous Equipment" rows) — there is no year-to-year
+            # request/actuals pair for the check to confirm either way.
+            return ("",
+                    f"{rule}: renamed '{keys[-1].filed_title}' →"
+                    f" '{info['modern_title'] or 'n/a'}'; no request in any"
+                    " edition (a Congress-added line), so the year-to-year"
+                    " continuity check cannot confirm it — decide"
+                    " same_program if the modern line is the same program",
+                    pa, po)
         return ("",
                 f"{rule}: renamed and continuity {info['continuity']} fails —"
                 " consider a range split (earlier range exclude_reused_code)", pa, po)
