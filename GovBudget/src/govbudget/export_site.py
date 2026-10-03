@@ -3053,7 +3053,7 @@ def export_site(
         f" {decade_only_census.get('no_positive_grain', 0)} with no positive grain"
     )
     (decade_bl_rows, decade_cit_rows, decade_grains,
-     decade_side_meta) = _build_decade_citation_rows(
+     decade_side_meta, era_grain_fids) = _build_decade_citation_rows(
         duckdb_path=duckdb_path,
         existing_fids={r[0] for r in citation_rows},
         scope_pes={r[8] for r in bl_rows} | set(decade_only_pes),
@@ -6907,11 +6907,22 @@ def _build_decade_citation_rows(
     duckdb_path,
     existing_fids: set,
     scope_pes: set,
-) -> tuple[list, list, list, dict]:
-    """Build the Phase 5E decade fact space from fct_decade_series +
-    fct_book_diff (Task 5 marts) and the jbooks parquet lake.
+) -> tuple[list, list, list, dict, frozenset]:
+    """Build the Phase 5E decade fact space from fct_program_decade_series +
+    fct_book_diff (marts), p1_era_line_map (the reviewed era map) and the
+    jbooks parquet lake.
 
-    Returns (decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta):
+    Families piece 1 (spec 2026-10-02 §6.1). The grain table is
+    fct_program_decade_series. Its map_basis='native' rows equal
+    fct_decade_series row for row and take exactly the pre-piece path below,
+    so native output is byte-identical. Its map_basis='era_line_map' rows are
+    PB2017-PB2023 P-1 lines summed under their bare printed code through
+    same_program decisions; 'era_history_only' rows are data only and never
+    become points (R-DEC-FAM-ERAONLY). fct_decade_series present while the
+    program table is missing RAISES: there is no silent fallback.
+
+    Returns (decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta,
+    era_grain_fids):
       decade_bl_rows   — budget_lines_decade.parquet rows (16-tuple, same
                          shape as bl_rows; fiscal_year == edition_year); ALL
                          source rows behind in-scope grains, every edition.
@@ -6938,6 +6949,16 @@ def _build_decade_citation_rows(
                          — the two are never both non-NULL on the same row.
       decade_side_meta — fid → (label, pe_bli) for _emit_breakdowns
                          difference-row labels ('PB2024 FY2022 actuals').
+                         Era grains AND their leaves carry the PAGE slug the
+                         points join (the bare code, or '{code}-{ORG}' /
+                         '{code}-{ACCOUNT_CODE}' on a split key): an era
+                         leaf's own pe_bli is its era key, which has no page,
+                         and _emit_breakdowns links every row to /program/.
+      era_grain_fids   — frozenset of the fids of the decade_grains added
+                         through the map. Never serialized: decade_grains and
+                         the sidecar decade_series keep their exact shape;
+                         the lineage and /years/ emitters skip these fids
+                         (spec §6.2 fences).
 
     Scope (stated Task 6 decision): grains/diffs are minted for PEs in
     scope_pes (the PB2026 page universe — every PE with a program page of
@@ -6957,34 +6978,97 @@ def _build_decade_citation_rows(
     import duckdb as _duckdb
     import json as _json
 
-    empty: tuple[list, list, list, dict] = ([], [], [], {})
+    empty: tuple[list, list, list, dict, frozenset] = ([], [], [], {}, frozenset())
 
     con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
-        try:
-            series = con.execute(
-                "select pe_bli, fy, edition_year, amount_type_kind, amount,"
-                " amount_type, n_source_rows, source_fact_id, account,"
-                " organization"
-                " from fct_decade_series"
-            ).fetchall()
-        except _duckdb.CatalogException:
-            print("decade: fct_decade_series not in warehouse — decade tier skipped")
+        def _has_table(name: str) -> bool:
+            try:
+                con.execute(f"select 1 from {name} limit 0")
+            except _duckdb.CatalogException:
+                return False
+            return True
+
+        has_program, has_line = (
+            _has_table("fct_program_decade_series"),
+            _has_table("fct_decade_series"),
+        )
+        if not has_program and not has_line:
+            print("decade: fct_program_decade_series not in warehouse — decade tier skipped")
             return empty
-        except _duckdb.BinderException:
-            # ROADMAP #45: the table exists but predates the `organization`
-            # column (an older test fixture) — fall back and pad None, the
-            # same "schema without the column cannot carry real split-key
-            # data" contract _query_with_account_fallback already uses for
-            # `account`.
-            series = [
-                (*r, None)
-                for r in con.execute(
-                    "select pe_bli, fy, edition_year, amount_type_kind,"
-                    " amount, amount_type, n_source_rows, source_fact_id,"
-                    " account from fct_decade_series"
+        if not has_program:
+            raise RuntimeError(
+                "decade: fct_decade_series exists but fct_program_decade_series"
+                " does not. The decade tier reads the program table (spec"
+                " 2026-10-02 §6.1) and never falls back to the line table;"
+                " run `govbudget build` so dbt adds it."
+            )
+        if not has_line:
+            raise RuntimeError(
+                "decade: fct_program_decade_series exists without"
+                " fct_decade_series — native grains are emitted in the line"
+                " table's row order, and its parity contract needs it"
+            )
+        # program_key is the PAGE key: exactly fct_decade_series.pe_bli on
+        # native rows, the bare printed code on era rows. account /
+        # organization follow fct_decade_series' convention (non-NULL only
+        # on the 13 PB2026 collision codes; on an era row they are the
+        # PINNED program_account / program_org).
+        #
+        # ORDER: native grains come back in fct_decade_series' own row order
+        # (rowid — what the pre-piece unordered read returned), so the
+        # native rows of budget_lines_decade.parquet and citations.parquet
+        # keep their positions byte for byte; era grains follow, in a fixed
+        # key order. The program table's native rows equal the line table's
+        # row for row on this key (assert_program_decade_native_equals_line).
+        series = con.execute(
+            "select p.program_key, p.fy, p.edition_year, p.amount_type_kind,"
+            " p.amount, p.amount_type, p.n_source_rows, p.source_fact_id,"
+            " p.account, p.organization, p.map_basis"
+            " from fct_program_decade_series p"
+            " left join (select l.pe_bli, l.account, l.organization, l.fy,"
+            "                   l.edition_year, l.rowid as line_pos"
+            "            from fct_decade_series l) d"
+            "   on p.map_basis = 'native'"
+            "  and d.pe_bli = p.program_key"
+            "  and d.account is not distinct from p.account"
+            "  and d.organization is not distinct from p.organization"
+            "  and d.fy = p.fy and d.edition_year = p.edition_year"
+            " order by d.line_pos nulls last, p.program_key,"
+            "          p.account nulls first, p.organization nulls first,"
+            "          p.edition_year, p.fy, p.amount_type_kind"
+        ).fetchall()
+        # The reviewed era map: (edition, account, organization,
+        # budget_activity, era_key) → (program_key, pinned account, pinned
+        # organization), same_program decisions only. history_only rows
+        # never become points, so their keys are not needed here.
+        era_map: dict[tuple, tuple] = {}
+        if any(r[10] == "era_line_map" for r in series):
+            try:
+                map_rows = con.execute(
+                    "select cast(edition as integer), account, organization,"
+                    " budget_activity, era_key, line_item_code, program_key,"
+                    " program_account, program_org"
+                    " from p1_era_line_map where decision = 'same_program'"
                 ).fetchall()
-            ]
+            except _duckdb.CatalogException:
+                raise RuntimeError(
+                    "decade: fct_program_decade_series carries era_line_map"
+                    " rows but p1_era_line_map is missing; era source rows are"
+                    " matched only through the reviewed map"
+                ) from None
+            for (m_ed, m_acct, m_org, m_ba, m_key, m_code, m_prog,
+                 m_pin_acct, m_pin_org) in map_rows:
+                if m_code != m_prog:
+                    raise ValueError(
+                        f"decade: p1_era_line_map row PB{m_ed} {m_key} prints"
+                        f" {m_code!r} but names program_key {m_prog!r}; the"
+                        " program key is always the bare printed code (spec"
+                        " §4.5), and era citations publish that code as pe_bli"
+                    )
+                era_map[(m_ed, m_acct, m_org, m_ba, m_key)] = (
+                    m_prog, m_pin_acct or None, m_pin_org or None,
+                )
         try:
             diffs = con.execute(
                 "select pe_bli, from_edition, to_edition, diff_kind,"
@@ -7046,6 +7130,24 @@ def _build_decade_citation_rows(
     for r in src_rows:
         src_by_key.setdefault((r[7], r[1], r[9]), []).append(r)
 
+    # Era P-1 rows → the program key their reviewed decision names (spec
+    # §6.1), keyed (program_key, edition, amount_type) and carrying the
+    # PINNED program_account / program_org. A grain matches through the pin,
+    # never through the row's own account/organization, so a chain filed
+    # under DSS and pinned to the DCSA page neither trips the source-count
+    # guard below nor drops silently. Entries: (row, pin account, pin org).
+    era_src_by_key: dict[tuple, list] = {}
+    for r in src_rows:
+        if r[0] != "P-1":
+            continue
+        hit = era_map.get((r[1], r[2], r[4], r[5], r[7]))
+        if hit is None:
+            continue
+        program_key, pin_account, pin_org = hit
+        era_src_by_key.setdefault((program_key, r[1], r[9]), []).append(
+            (r, pin_account, pin_org)
+        )
+
     # ---- scope: page universe + top-N global request-vs-actuals PEs --------
     rva = sorted(
         (d for d in diffs if d[3] == "request_vs_actuals" and d[8] is not None),
@@ -7053,6 +7155,9 @@ def _build_decade_citation_rows(
     )
     top_rva_pes = {d[0] for d in rva[:_DECADE_TOP_RVA]}
     pes = set(scope_pes) | top_rva_pes
+    # Era points go only to today's PAGE universe (PB2026 lines plus the
+    # decade-only pages), never to a top-rva PE that has no page.
+    era_scope = set(scope_pes)
 
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
     decade_bl_rows: list[tuple] = []
@@ -7073,11 +7178,40 @@ def _build_decade_citation_rows(
     n_wb_new = 0
     n_wb_dedup = 0
     n_derived_sum = 0
+    n_era_sum = 0
+    # (grain 9-tuple, its leaf fids) for every grain added through the map
+    era_grains: list[tuple[tuple, list[str]]] = []
 
-    for pe_bli, fy, edition, kind, amount, at, n_src, src_fid, account, series_org in series:
-        if pe_bli not in pes:
+    for (pe_bli, fy, edition, kind, amount, at, n_src, src_fid, account,
+         series_org, map_basis) in series:
+        # pe_bli is the program table's program_key (see the read above).
+        if map_basis == "era_history_only":
+            # R-DEC-FAM-ERAONLY: a history-only chain stays in the program
+            # table and the map; it never becomes a page point.
             continue
-        candidate_rows = src_by_key.get((pe_bli, edition, at), [])
+        if map_basis not in ("native", "era_line_map"):
+            raise ValueError(
+                f"decade: unknown map_basis {map_basis!r} on grain"
+                f" ({pe_bli}, PB{edition}, {at})"
+            )
+        is_era = map_basis == "era_line_map"
+        if pe_bli not in (era_scope if is_era else pes):
+            continue
+        if is_era:
+            if account is not None and series_org is not None:
+                raise ValueError(
+                    f"decade: era grain ({pe_bli}, PB{edition}, {at}) pins"
+                    f" both account={account!r} and organization="
+                    f"{series_org!r}; a collision code splits on ONE axis"
+                )
+            era_cands = era_src_by_key.get((pe_bli, edition, at), [])
+            if account is not None:
+                era_cands = [c for c in era_cands if c[1] == account]
+            if series_org is not None:
+                era_cands = [c for c in era_cands if c[2] == series_org]
+            candidate_rows = [c[0] for c in era_cands]
+        else:
+            candidate_rows = src_by_key.get((pe_bli, edition, at), [])
         # E2: a genuine collision's row is scoped to its OWN real account —
         # src_by_key is keyed (pe_bli, edition, amount_type) only (unchanged
         # from pre-E2), so the account filter is applied here rather than
@@ -7094,9 +7228,9 @@ def _build_decade_citation_rows(
         # for the same series row (verified mutually exclusive), so applying
         # both filters unconditionally is a pure AND, never over-constrains.
         key_rows = candidate_rows
-        if account is not None:
+        if account is not None and not is_era:
             key_rows = [r for r in key_rows if r[2] == account]
-        if series_org is not None:
+        if series_org is not None and not is_era:
             key_rows = [r for r in key_rows if r[4] == series_org]
         if len(key_rows) != n_src:
             raise ValueError(
@@ -7119,10 +7253,17 @@ def _build_decade_citation_rows(
             # (caught 2026-08-21: book-diff lookups for ordinary pe_bli
             # started missing because `account` had been overwritten from
             # None to a real value by this inner loop).
+            #
+            # row_pe_bli is the source row's OWN pe_bli: equal to pe_bli on a
+            # native grain, the era key ('{account}-{org}-L{line}') on an era
+            # grain. The workbook fact id and the budget_lines_decade row use
+            # it, so every era fact id F-15 already published is reproduced,
+            # never re-minted; the citation's pe_bli below is the grain's
+            # program key, i.e. the code printed at the cited cell (column I).
             (exhibit, ed_year, row_account, account_title, organization,
-             budget_activity, ba_title, _pe, title, _at, amount_thousands,
-             sha256, source_sheet, source_cells, source_url,
-             downloaded_at) = r
+             budget_activity, ba_title, row_pe_bli, title, _at,
+             amount_thousands, sha256, source_sheet, source_cells,
+             source_url, downloaded_at) = r
             if amount_thousands is None:
                 raise ValueError(
                     f"decade: NULL amount_thousands source row for grain"
@@ -7130,12 +7271,12 @@ def _build_decade_citation_rows(
                 )
             w_fid = fact_id_workbook(
                 sha256, exhibit, ed_year, row_account, organization,
-                budget_activity, pe_bli, at,
+                budget_activity, row_pe_bli, at,
             )
             input_fids.append(w_fid)
             decade_bl_rows.append((
                 w_fid, exhibit, int(ed_year), row_account, account_title,
-                organization, budget_activity, ba_title, pe_bli, title, at,
+                organization, budget_activity, ba_title, row_pe_bli, title, at,
                 float(amount_thousands), "USD thousands", sha256,
                 source_sheet, source_cells,
             ))
@@ -7178,6 +7319,36 @@ def _build_decade_citation_rows(
                     " fact_id_workbook disagree (STOP: fix the derivation,"
                     " never ship mismatched identities)"
                 )
+        elif is_era:
+            # Several era lines summed under one program key (advance-
+            # procurement pairs, lines in several budget activities). A new
+            # surface, NOT 'decade': F-15's matrix reuses only the formulas
+            # on its allow-list, so its 27 legacy multi-input cells keep
+            # their own receipts. Inputs sorted by fact id: byte-stable.
+            leaf_total = sum(r[10] for r in key_rows)
+            if abs(leaf_total - amount) > 0.0005:
+                raise ValueError(
+                    f"decade: era grain ({pe_bli}, PB{edition}, {at}) amount"
+                    f" {amount} != the sum of its {len(key_rows)} lake rows"
+                    f" ({leaf_total}) — mart/lake drift; refusing to mint"
+                )
+            grain_fid = fact_id_derived(
+                "decade_era_map",
+                f"{pe_bli}|{account or ''}|{series_org or ''}|{edition}",
+                at,
+            )
+            if grain_fid not in minted_fids:
+                minted_fids.add(grain_fid)
+                n_era_sum += 1
+                decade_cit_rows.append(_null_derived_row(
+                    grain_fid, "derived", "USD thousands",
+                    _decade_era_map_formula(
+                        pe_bli, account, series_org, at, edition,
+                    ),
+                    _json.dumps(sorted(input_fids)),
+                    f"{amount:.3f}",
+                    built_at,
+                ))
         else:
             grain_fid = fact_id_derived("decade", f"{pe_bli}|{edition}", at)
             if grain_fid not in minted_fids:
@@ -7192,21 +7363,26 @@ def _build_decade_citation_rows(
                     built_at,
                 ))
 
-        # E2/#45: account/organization are part of the lookup key —
-        # grain_fid_by_key must resolve to THIS account's (or organization's)
-        # own fid, not whichever row happened to be processed last for this
-        # (pe_bli, edition, at).
-        grain_fid_by_key[(pe_bli, account, series_org, edition, at)] = grain_fid
         # 9-tuple (+account/organization internally): the trailing
         # amount_type is the grain's CHOSEN slug — consumers derive the
         # point's `measure` from it (slug-accurate: a CurrentYear grain
         # built from fy_2025_total is measure 'total', matching the P-1
         # table row it must agree with; one built from fy_2025_enacted is
         # 'enacted').
-        decade_grains_full.append(
-            (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid,
-             at, account, series_org)
-        )
+        grain = (pe_bli, int(fy), int(edition), kind, float(amount),
+                 grain_fid, at, account, series_org)
+        if is_era:
+            # Never a book-diff side: era book diffs are a non-goal and
+            # fct_book_diff reads fct_decade_series, which has no era
+            # program keys — a diff naming one fails the join loudly below.
+            era_grains.append((grain, input_fids))
+        else:
+            # E2/#45: account/organization are part of the lookup key —
+            # grain_fid_by_key must resolve to THIS account's (or
+            # organization's) own fid, not whichever row happened to be
+            # processed last for this (pe_bli, edition, at).
+            grain_fid_by_key[(pe_bli, account, series_org, edition, at)] = grain_fid
+        decade_grains_full.append(grain)
         decade_side_meta[grain_fid] = (f"PB{edition} FY{fy} {kind}", pe_bli)
 
     # ---- book-diff derived facts -------------------------------------------
@@ -7324,13 +7500,75 @@ def _build_decade_citation_rows(
 
     decade_grains = [g for g in decade_grains_full if _decade_grain_has_page(g)]
 
+    def _era_page_slug(g: tuple) -> str:
+        """The page an era grain's points join: the slug decade_series_by_pe
+        files them under (_write_all_sidecars), the bare code otherwise."""
+        pe, g_account, g_org = g[0], g[7], g[8]
+        if pe not in _decade_ident.split_pe_blis or not _decade_grain_has_page(g):
+            return pe
+        title = next(
+            (t for a, t, _o, _hd in _decade_ident.accounts(pe) if a == g_account),
+            None,
+        )
+        return _decade_ident.slug(pe, g_account, title, g_org)
+
+    # Breakdown rows link to /program/{pe_bli}/ (_emit_breakdowns reads
+    # decade_side_meta): an era leaf names its page, never its era key.
+    for g, leaf_fids in era_grains:
+        side = (f"PB{g[2]} FY{g[1]} {g[3]}", _era_page_slug(g))
+        decade_side_meta[g[5]] = side
+        for leaf in leaf_fids:
+            decade_side_meta[leaf] = side
+    _era_fids = {g[5] for g, _leaves in era_grains}
+    era_grain_fids = frozenset(g[5] for g in decade_grains if g[5] in _era_fids)
+
     print(
         f"decade: {len(decade_grains)} grains for {len(pes & {g[0] for g in decade_grains})}"
         f" in-scope PEs → {len(decade_bl_rows)} source rows"
         f" ({n_wb_new} new workbook citations, {n_wb_dedup} deduped),"
-        f" {n_derived_sum} derived decade sums, {n_diffs} book-diff facts"
+        f" {n_derived_sum} derived decade sums, {n_diffs} book-diff facts;"
+        f" era map: {len(era_grain_fids)} grains with a page,"
+        f" {n_era_sum} decade_era_map sums"
     )
-    return decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta
+    return (decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta,
+            era_grain_fids)
+
+
+def _decade_era_map_formula(
+    program_key: str,
+    account: str | None,
+    organization: str | None,
+    amount_type: str,
+    edition: int,
+) -> str:
+    """The recompute formula of a decade_era_map sum (spec §6.1).
+
+    It must pass program_pdf_receipts.additive_budget_formula, whose
+    predicates are `name='quoted'` or `name=bare` with bare values limited
+    to [a-z0-9_]: codes, accounts and organizations carry capitals, so they
+    are quoted; the slug and the edition are bare. A value the grammar cannot carry raises rather than
+    shipping a receipt the PDF pipeline would silently skip.
+    """
+    for name, value in (("program_key", program_key), ("account", account),
+                        ("organization", organization)):
+        if value is not None and ("'" in value or "\n" in value):
+            raise ValueError(
+                f"decade_era_map formula: {name}={value!r} cannot be quoted"
+            )
+    if not re.fullmatch(r"[a-z0-9_]+", amount_type):
+        raise ValueError(
+            f"decade_era_map formula: amount_type {amount_type!r} is not a slug"
+        )
+    predicates = [f"era_line_map='{program_key}'"]
+    if account is not None:
+        predicates.append(f"account='{account}'")
+    if organization is not None:
+        predicates.append(f"organization='{organization}'")
+    predicates += [f"amount_type={amount_type}", f"edition={int(edition)}"]
+    return (
+        "sum(budget_lines.amount_thousands where "
+        + " and ".join(predicates) + ")"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -17700,8 +17938,14 @@ def _emit_breakdowns(
     for r in bl_rows:
         bl_by_fid[r[0]] = (r[11], apply_title_override(r[8], r[9], _title_overrides), r[8])
     for r in (decade_bl_rows or []):
+        # The row's link target. A native decade row's pe_bli IS its page; an
+        # era leaf's is its era key ('{account}-{org}-L{line}'), which has no
+        # page, so the decade tier records the page slug the leaf joins in
+        # decade_side_meta (spec 2026-10-02 §6.1). For a native row that
+        # entry, when present, names r[8] itself — byte-identical.
+        page = (decade_side_meta or {}).get(r[0], (None, r[8]))[1]
         bl_by_fid.setdefault(
-            r[0], (r[11], apply_title_override(r[8], r[9], _title_overrides), r[8])
+            r[0], (r[11], apply_title_override(r[8], r[9], _title_overrides), page)
         )
 
     # dim_pe_titles (single deterministic title mart)

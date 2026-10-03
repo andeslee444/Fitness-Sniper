@@ -584,3 +584,81 @@ class TestBookDiffBreakdown:
                       decade_side_meta=_decade_side_meta())
         # + DEC_SUM, DIFF, and the modeled derived request side (1 input → no file)
         assert n_dec == 7
+
+
+# ---------------------------------------------------------------------------
+# Families piece 1 (spec 2026-10-02 §6.1): decade_era_map sums link to pages
+# ---------------------------------------------------------------------------
+
+EW1 = "f111000000000031"  # PB2019 era leaf 3010F-AF-L5 (300.0 thousands)
+EW2 = "f211000000000032"  # PB2019 era leaf 3010F-AF-L6 (200.0 thousands)
+ERA_SUM = fact_id_derived("decade_era_map", "XB0100|||2019", "fy_2017_actuals")
+ERA_SIDE = ("PB2019 FY2017 actuals", "XB0100")
+
+
+def _era_bl_rows() -> list[tuple]:
+    """budget_lines_decade rows of two era leaves: pe_bli is the era key."""
+    return [
+        (EW1, "P-1", 2019, "3010F", "Aircraft Procurement, Air Force", "AF",
+         "01", "Combat Aircraft", "3010F-AF-L5", "XB Aircraft",
+         "fy_2017_actuals", 300.0, "USD thousands", "sha_pb2019",
+         "Exhibit P-1", "Q9"),
+        (EW2, "P-1", 2019, "3010F", "Aircraft Procurement, Air Force", "AF",
+         "05", "Modification of Aircraft", "3010F-AF-L6", "XB Aircraft Mods",
+         "fy_2017_actuals", 200.0, "USD thousands", "sha_pb2019",
+         "Exhibit P-1", "Q10"),
+    ]
+
+
+def _era_leaf_row(fid, amount, cells):
+    """27-tuple era workbook citation: pe_bli is the printed code."""
+    return (
+        fid, "workbook", "USD thousands",
+        None, None, None, None, None, None, None, None,
+        None, "Exhibit P-1", cells, amount,
+        "sha_pb2019", None, "https://example.mil/fy2019/p1.xlsx", None,
+        "2026-07-01T00:00:00",
+        None, None, None, None,
+        "XB0100", None, "fy_2017_actuals",
+    )
+
+
+def _era_citation_rows() -> list[tuple]:
+    return _citation_rows() + [
+        _era_leaf_row(EW1, 300.0, "Q9"),
+        _era_leaf_row(EW2, 200.0, "Q10"),
+        _null_derived_row(
+            ERA_SUM, "derived", "USD thousands",
+            "sum(budget_lines.amount_thousands where era_line_map='XB0100'"
+            " and amount_type=fy_2017_actuals and edition=2019)",
+            json.dumps(sorted([EW1, EW2])), "500.000",
+            "2026-10-02T00:00:00+00:00",
+        ),
+    ]
+
+
+class TestEraMapBreakdown:
+    def test_rows_link_to_the_page_not_the_era_key(self, tmp_path):
+        """breakdown-table.tsx links every row's pe_bli to /program/; an era
+        key ('3010F-AF-L5') has no page. The decade tier names the page in
+        decade_side_meta and the row carries it; the label stays the filed
+        title of the cited workbook row."""
+        _emit(tmp_path, citation_rows=_era_citation_rows(),
+              decade_bl_rows=_era_bl_rows(),
+              decade_side_meta={EW1: ERA_SIDE, EW2: ERA_SIDE, ERA_SUM: ERA_SIDE})
+        obj = _load(tmp_path, ERA_SUM)
+        assert obj["op"] == "sum"
+        assert obj["recorded_value"] == "500.000"
+        assert [(r["fid"], r["pe_bli"], r["label"], r["v"]) for r in obj["rows"]] == [
+            (EW1, "XB0100", "XB Aircraft", 300.0),
+            (EW2, "XB0100", "XB Aircraft Mods", 200.0),
+        ]
+
+    def test_a_row_without_a_side_entry_keeps_its_own_pe_bli(self, tmp_path):
+        """Native decade rows have no side entry of their own unless they are
+        a single-source grain, whose entry names the same pe_bli — so the
+        lookup is byte-identical for every native row."""
+        _emit(tmp_path, citation_rows=_era_citation_rows(),
+              decade_bl_rows=_era_bl_rows(), decade_side_meta={})
+        obj = _load(tmp_path, ERA_SUM)
+        assert [r["pe_bli"] for r in obj["rows"]] == ["3010F-AF-L5", "3010F-AF-L6"]

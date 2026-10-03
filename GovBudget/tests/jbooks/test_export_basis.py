@@ -267,6 +267,20 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
             "insert into fct_decade_series values (?,?,?,?,?,?,?,?,?,?,?)",
             (PE, fy, 2026, kind, amt, amt, scenario, at, 1, _wb_fid(sha, at), None),
         )
+    # Families piece 1 (spec 2026-10-02 §6.1): the decade tier reads the
+    # program table and raises when only fct_decade_series exists, and it
+    # orders native grains by the line table's rows, joining on its
+    # `organization` (ROADMAP #45 column, present on the live mart). Every
+    # row here is native: the program table equals the line table row for row.
+    con.execute("alter table fct_decade_series add column organization varchar")
+    con.execute(
+        "create table fct_program_decade_series as select"
+        " pe_bli as program_key, fy, edition_year, amount_type_kind, amount,"
+        " amount_thousands, scenario, amount_type, account,"
+        " cast(null as varchar) as organization, n_source_rows,"
+        " source_fact_id, 'native' as map_basis"
+        " from fct_decade_series"
+    )
 
     # Feed mart: one yoy_swing card (basis threading assertion).
     con.execute(

@@ -1961,6 +1961,20 @@ def _seed_decade_fixture(db_path: Path) -> dict:
         f"('0601101E', 2024, 2024, 'request', 200000.0, 200000.0,"
         f" 'BudgetYearOne', 'fy_2024_total', 2, NULL, NULL)"
     )
+    # Families piece 1 (spec 2026-10-02 §6.1): the decade tier reads the
+    # program table and raises when only fct_decade_series exists, and it
+    # orders native grains by the line table's rows, joining on its
+    # `organization` (ROADMAP #45 column, present on the live mart). Every
+    # row here is native: the program table equals the line table row for row.
+    con.execute("alter table fct_decade_series add column organization varchar")
+    con.execute(
+        "create table fct_program_decade_series as select"
+        " pe_bli as program_key, fy, edition_year, amount_type_kind, amount,"
+        " amount_thousands, scenario, amount_type, account,"
+        " cast(null as varchar) as organization, n_source_rows,"
+        " source_fact_id, 'native' as map_basis"
+        " from fct_decade_series"
+    )
     con.execute(
         "create table fct_book_diff ("
         " pe_bli varchar, from_edition integer, to_edition integer,"
