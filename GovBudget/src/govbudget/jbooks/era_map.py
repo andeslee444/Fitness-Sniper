@@ -1299,3 +1299,243 @@ def propose(
     }
     (out_dir / "counts.json").write_text(json.dumps(counts, indent=1, sort_keys=True) + "\n")
     return counts
+
+
+# ---------------------------------------------------------------------------
+# ratify / check (§5.3, §7)
+# ---------------------------------------------------------------------------
+
+
+def default_seed_path() -> Path:
+    from govbudget import config
+
+    return config.ROOT / "dbt" / "seeds" / "p1_era_code_decisions.csv"
+
+
+def default_out_dir() -> Path:
+    from govbudget import config
+
+    return config.RESEARCH_DIR / "era_map"
+
+
+def _page_grain(row: Mapping[str, str],
+                collision_codes: frozenset[str]) -> tuple[str, str, str]:
+    """The fct_program_decade_series page grain a same_program row's keys
+    join (spec §4.5): the bare code, plus the pins on a PB2026 collision
+    code."""
+    code = row["line_item_code"]
+    if code in collision_codes:
+        return (code, row["program_account"], row["program_org"])
+    return (code, "", "")
+
+
+def _row_editions(row: Mapping[str, str],
+                  keys_by_chain: Mapping[str, Sequence[EraKey]]) -> set[int]:
+    """The editions inside the row's range in which its chain holds keys."""
+    cid = chain_id(row["line_item_code"], row["account"], row["organization"])
+    first, last = int(row["first_edition"]), int(row["last_edition"])
+    return {k.edition for k in keys_by_chain.get(cid, ()) if first <= k.edition <= last}
+
+
+def ratify(
+    *, review_csv: Path, seed_path: Path, batch: str, decided_on: date,
+    duckdb_path: Path,
+) -> int:
+    """Merge the owner-decided rows of review_csv (non-blank `decision`) into
+    the seed as ruling R-DEC-ERA-<batch>, decided_by owner. Validates, and
+    writes nothing unless every row passes:
+
+      * batch matches B<n> and has not been ratified before;
+      * decision is in DECISIONS;
+      * the chain still exists and its keys_sha256 equals the review-time
+        value (otherwise the chain changed after review: re-run propose);
+      * first_edition..last_edition lies inside the chain and holds keys;
+      * collision code + same_program/history_only: program_account and
+        program_org both set, naming a PB2026 page (same_program), or a
+        PB2024–26 P-1 line identity or the chain's own account/organization
+        (history_only); every other row leaves them blank;
+      * successor_code only on history_only, and only the book-stated
+        successor propose recorded in chains.csv beside review_csv;
+      * no range overlaps an existing seed row or another row of the batch;
+      * one organization per page grain and edition: an org-split chain's
+        same_program row may not share a page grain (_page_grain) and an
+        edition holding keys with another organization's same_program row,
+        already in the seed or in this batch (codes '10' and '15' are not
+        PB2026 collision codes, so two organizations' same_program keys
+        would sum into one page);
+      * every chain the batch touches is decided in full: its seed rows and
+        batch rows together cover every edition in which it holds keys.
+        propose re-proposes only chains with no owner row, so a part-decided
+        chain would never return to review.csv; split the whole chain into
+        ranges, or leave its decision blank (defer it) until it is.
+    Returns the number of rows added."""
+    if not BATCH_RE.match(batch):
+        raise ValueError(f"batch {batch!r} is not B<n> (e.g. B1)")
+    ruling = f"R-DEC-ERA-{batch}"
+    review_csv = Path(review_csv)
+    rows = read_csv(review_csv)
+    missing = set(REVIEW_COLUMNS) - set(rows[0].keys() if rows else REVIEW_COLUMNS)
+    if missing:
+        raise ValueError(f"{review_csv}: missing columns {sorted(missing)}")
+    decided = [r for r in rows if (r.get("decision") or "").strip()]
+    if not decided:
+        raise ValueError(f"{review_csv}: no row has a decision — nothing to ratify")
+    existing = read_seed(Path(seed_path))
+    if any(r["ruling"] == ruling for r in existing):
+        raise ValueError(f"{ruling} is already in {seed_path}; use a new batch number")
+    stated = {r["chain_id"]: r for r in read_csv(review_csv.parent / "chains.csv")}
+
+    inputs = load_inputs(Path(duckdb_path))
+    ctx = _Context(inputs.era, inputs.modern)
+    classes = {(k.edition, k.era_key): ctx.classify(k, inputs.collision_codes)
+               for k in ctx.era}
+    by_id = {c.chain_id: c for c in build_chains(inputs.era, classes)}
+    keys_by_chain = group_keys(inputs.era)
+    line_idents = {(m.code, m.account, m.organization) for m in inputs.modern}
+
+    errors: list[str] = []
+    new: list[dict] = []
+    for r in decided:
+        cid = r["chain_id"]
+        decision = r["decision"].strip()
+        ch = by_id.get(cid)
+        if ch is None:
+            errors.append(f"{cid}: no such chain in the lake")
+            continue
+        if r["keys_sha256"] != ch.keys_sha256:
+            errors.append(f"{cid}: keys_sha256 changed since review"
+                          f" ({r['keys_sha256'][:12]} -> {ch.keys_sha256[:12]});"
+                          " re-run propose and re-review")
+            continue
+        if decision not in DECISIONS:
+            errors.append(f"{cid}: decision {decision!r} not in {DECISIONS}")
+            continue
+        try:
+            first, last = int(r["first_edition"]), int(r["last_edition"])
+        except ValueError:
+            errors.append(f"{cid}: first/last edition must be integers")
+            continue
+        if not (ch.first_edition <= first <= last <= ch.last_edition):
+            errors.append(f"{cid}: range {first}-{last} outside the chain"
+                          f" ({ch.first_edition}-{ch.last_edition})")
+            continue
+        n_keys, sha = range_sha(keys_by_chain[cid], first, last)
+        if n_keys == 0:
+            errors.append(f"{cid}: range {first}-{last} holds no era key")
+            continue
+        pa, po = r["program_account"].strip(), r["program_org"].strip()
+        pinned = (ch.line_item_code in inputs.collision_codes
+                  and decision in ("same_program", "history_only"))
+        if pinned:
+            ident = (ch.line_item_code, pa, po)
+            if not pa or not po:
+                errors.append(f"{cid}: collision code — program_account and"
+                              " program_org are required")
+                continue
+            if decision == "same_program" and ident not in inputs.modern_pages:
+                errors.append(f"{cid}: {ident} is not a PB2026 page")
+                continue
+            own = {(k.account, _modern_org(k.organization))
+                   for k in keys_by_chain[cid]}
+            if (decision == "history_only" and ident not in line_idents
+                    and (pa, po) not in own):
+                errors.append(f"{cid}: {ident} is not a PB2024-26 P-1 line or"
+                              f" the chain's own identity {sorted(own)}")
+                continue
+        elif pa or po:
+            errors.append(f"{cid}: program_account/program_org are only set for"
+                          " collision-code same_program/history_only rows")
+            continue
+        successor: dict[str, str] = {}
+        succ = r["successor_code"].strip()
+        if succ:
+            book = stated.get(cid, {})
+            if decision != "history_only":
+                errors.append(f"{cid}: successor_code only on history_only rows")
+                continue
+            if book.get("successor_code") != succ:
+                errors.append(f"{cid}: successor {succ!r} is not the book-stated"
+                              f" successor {book.get('successor_code') or '(none)'!r}")
+                continue
+            successor = {f: book[f] for f in
+                         ("successor_code", "successor_account", "successor_evidence")}
+        new.append(seed_row(
+            ch, first=first, last=last, n_keys=n_keys, keys_sha=sha,
+            decision=decision, ruling=ruling, decided_on=decided_on,
+            program_account=pa, program_org=po, successor=successor,
+            modern_title=r["modern_title"],
+            evidence=(f"continuity={r['continuity']}; actuals_k={r['actuals_k']};"
+                      f" proposed={r['proposed_decision'] or '(none)'}:"
+                      f" {r['reason']}"),
+            note=r["note"],
+        ))
+    cc = inputs.collision_codes
+    for i, a in enumerate(new):
+        for b in existing + new[:i]:
+            if _ranges_overlap(a, b):
+                errors.append(f"{a['decision_id']} overlaps {b['decision_id']}")
+            if (a["decision"] == b["decision"] == "same_program"
+                    and a["organization"] and b["organization"]
+                    and a["organization"] != b["organization"]
+                    and _page_grain(a, cc) == _page_grain(b, cc)):
+                shared = sorted(_row_editions(a, keys_by_chain)
+                                & _row_editions(b, keys_by_chain))
+                if shared:
+                    code, pin_a, pin_o = _page_grain(a, cc)
+                    page = f"{code} ({pin_a}/{pin_o})" if pin_o else code
+                    errors.append(
+                        f"{a['decision_id']}: same_program collides with"
+                        f" {b['decision_id']} — page {page} would"
+                        f" sum {a['organization']} and {b['organization']} in"
+                        f" {', '.join(f'PB{e}' for e in shared)}; decide"
+                        " history_only for the organization whose page it is not")
+    touched = sorted({chain_id(a["line_item_code"], a["account"], a["organization"])
+                      for a in new})
+    for cid in touched:
+        covered: set[int] = set()
+        for r in existing + new:
+            if chain_id(r["line_item_code"], r["account"], r["organization"]) == cid:
+                covered.update(range(int(r["first_edition"]),
+                                     int(r["last_edition"]) + 1))
+        open_eds = sorted({k.edition for k in keys_by_chain[cid]} - covered)
+        if open_eds:
+            errors.append(f"{cid}: editions {', '.join(map(str, open_eds))} left"
+                          " undecided — split the whole chain or defer it")
+    if errors:
+        raise ValueError("era-map ratify refused; nothing written:\n  "
+                         + "\n  ".join(errors))
+    write_seed(Path(seed_path), existing + new)
+    return len(new)
+
+
+def check(*, duckdb_path: Path, seed_path: Path) -> dict:
+    """{"undecided": [{"chain_id", "editions", "n_keys"}],
+        "stale": [{"decision_id", "seed_n_keys", "lake_n_keys",
+                   "seed_sha256", "lake_sha256"}]}
+
+    undecided: era keys no seed row covers (chain + edition range).
+    stale: seed rows whose keys in the current lake no longer hash to the
+    reviewed keys_sha256 (or whose chain is gone)."""
+    era = load_era_keys(Path(duckdb_path), with_amounts=False)
+    keys_by_chain = group_keys(era)
+    seed = read_seed(Path(seed_path))
+    stale, covered = [], set()
+    for r in seed:
+        cid = chain_id(r["line_item_code"], r["account"], r["organization"])
+        first, last = int(r["first_edition"]), int(r["last_edition"])
+        keys = keys_by_chain.get(cid, [])
+        n_keys, sha = range_sha(keys, first, last)
+        if sha != r["keys_sha256"] or n_keys != int(r["n_keys"]):
+            stale.append({"decision_id": r["decision_id"],
+                          "seed_n_keys": int(r["n_keys"]), "lake_n_keys": n_keys,
+                          "seed_sha256": r["keys_sha256"], "lake_sha256": sha})
+        covered.update((cid, k.edition, k.era_key) for k in keys
+                       if first <= k.edition <= last)
+    undecided = []
+    for cid, keys in sorted(keys_by_chain.items()):
+        open_keys = [k for k in keys if (cid, k.edition, k.era_key) not in covered]
+        if open_keys:
+            undecided.append({"chain_id": cid,
+                              "editions": sorted({k.edition for k in open_keys}),
+                              "n_keys": len(open_keys)})
+    return {"undecided": undecided, "stale": stale}

@@ -22,3 +22,27 @@ seeds:
         alias: varchar
         pe_bli: varchar
         notes: varchar
+    p1_era_code_decisions:
+      +column_types:
+        decision_id: varchar
+        line_item_code: varchar
+        account: varchar
+        organization: varchar
+        first_edition: varchar
+        last_edition: varchar
+        decision: varchar
+        program_account: varchar
+        program_org: varchar
+        successor_code: varchar
+        successor_account: varchar
+        successor_evidence: varchar
+        n_keys: varchar
+        keys_sha256: varchar
+        titles_seen: varchar
+        modern_title: varchar
+        proposed_rule: varchar
+        evidence: varchar
+        decided_on: varchar
+        decided_by: varchar
+        ruling: varchar
+        note: varchar

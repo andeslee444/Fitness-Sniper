@@ -2963,6 +2963,60 @@ def cmd_evals(args) -> None:
         sys.exit(2)
 
 
+def cmd_era_map(args) -> None:
+    """Families piece 1 (spec §5): era P-1 line → program decisions.
+
+    propose  classify + chain + class rulings + successor search; writes
+             data/research/era_map/ and the class-ruled seed rows.
+    ratify   merge one owner-approved review batch into the seed.
+    check    list undecided era keys and stale decisions (exit 1 on stale;
+             --strict also exits 1 on undecided)."""
+    from datetime import date
+
+    from govbudget.jbooks import era_map
+
+    seed_path = era_map.default_seed_path()
+    out_dir = era_map.default_out_dir()
+    if args.era_map_action == "propose":
+        counts = era_map.propose(
+            duckdb_path=config.DUCKDB_PATH, raw_docs_dir=config.RAW_DOCS_DIR,
+            out_dir=out_dir, seed_path=seed_path,
+            decided_on=date.fromisoformat(args.decided_on),
+        )
+        print(f"era-map propose: {counts['era_keys']} era keys,"
+              f" {counts['chains']} chains; rulings"
+              f" SAME={counts['rulings'][era_map.RULING_SAME]}"
+              f" EXCLUDE={counts['rulings'][era_map.RULING_EXCLUDE]}"
+              f" HISTORY={counts['rulings'][era_map.RULING_HISTORY]};"
+              f" {counts['review_rows']} chain(s) for review -> {out_dir}")
+    elif args.era_map_action == "ratify":
+        try:
+            n = era_map.ratify(
+                review_csv=Path(args.review) if args.review else out_dir / "review.csv",
+                seed_path=seed_path, batch=args.batch,
+                decided_on=date.fromisoformat(args.decided_on),
+                duckdb_path=config.DUCKDB_PATH,
+            )
+        except (ValueError, FileNotFoundError, RuntimeError) as e:
+            print(f"era-map ratify: REFUSED — {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"era-map ratify: {n} decision row(s) added as R-DEC-ERA-{args.batch}"
+              f" -> {seed_path}")
+    elif args.era_map_action == "check":
+        res = era_map.check(duckdb_path=config.DUCKDB_PATH, seed_path=seed_path)
+        for u in res["undecided"]:
+            print(f"  undecided {u['chain_id']} editions"
+                  f" {','.join(map(str, u['editions']))} ({u['n_keys']} key(s))")
+        for s in res["stale"]:
+            print(f"  stale {s['decision_id']}: {s['seed_n_keys']} key(s)"
+                  f" {s['seed_sha256'][:12]} reviewed, lake has {s['lake_n_keys']}"
+                  f" {s['lake_sha256'][:12]}")
+        print(f"era-map check: {len(res['undecided'])} undecided chain(s),"
+              f" {len(res['stale'])} stale decision(s)")
+        if res["stale"] or (args.strict and res["undecided"]):
+            sys.exit(1)
+
+
 def cmd_refresh(args) -> None:
     """ROADMAP #8 — unattended end-to-end refresh."""
     from govbudget import refresh as _refresh
@@ -3365,6 +3419,34 @@ def main(argv=None) -> None:
     ev_sub.add_parser("refresh", help="re-run answer_sql, update expected_answer in-place")
     ev_sub.add_parser("check", help="check expected_answer freshness; exit 1 if stale")
     ev.set_defaults(func=cmd_evals)
+
+    em = sub.add_parser(
+        "era-map",
+        help="families piece 1: era P-1 line -> program decisions (propose/ratify/check)",
+    )
+    em_sub = em.add_subparsers(dest="era_map_action", required=True)
+    em_prop = em_sub.add_parser(
+        "propose",
+        help="classify era keys, apply the class rulings, search successors;"
+             " writes data/research/era_map/ and the class-ruled seed rows",
+    )
+    em_prop.add_argument(
+        "--decided-on", dest="decided_on", default="2026-10-02",
+        help="decided_on for class-ruled rows (default: the rulings' approval"
+             " date, 2026-10-02)",
+    )
+    em_rat = em_sub.add_parser(
+        "ratify", help="merge one owner-approved review batch into the seed")
+    em_rat.add_argument("--batch", required=True, help="batch label, e.g. B1")
+    em_rat.add_argument("--decided-on", dest="decided_on", required=True,
+                        help="ISO date the owner approved the batch")
+    em_rat.add_argument("--review", default=None,
+                        help="review CSV (default data/research/era_map/review.csv)")
+    em_chk = em_sub.add_parser(
+        "check", help="list undecided era keys and stale decisions; exit 1 on stale")
+    em_chk.add_argument("--strict", action="store_true",
+                        help="also exit 1 when any era key is undecided")
+    em.set_defaults(func=cmd_era_map)
 
     dos = sub.add_parser("dossiers", help="phase 5B-3 dossier research pipeline")
     dos_sub = dos.add_subparsers(dest="dossiers_action", required=True)
