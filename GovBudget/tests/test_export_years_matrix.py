@@ -213,10 +213,18 @@ def _cited_fact_ids() -> set[str]:
     }
 
 
-def _emit(tmp_path: Path, decade_grains: list | None = None) -> dict:
+def _emit(
+    tmp_path: Path,
+    decade_grains: list | None = None,
+    *,
+    era_grain_fids: frozenset[str] = frozenset(),
+    extra_cited: frozenset[str] = frozenset(),
+) -> dict:
     db_path = _make_duckdb_with_trajectory(tmp_path)
     json_dir = tmp_path / "json"
     json_dir.mkdir(exist_ok=True)
+    # Passed only when set, so every other test drives the emitter's default.
+    fence = {"era_grain_fids": era_grain_fids} if era_grain_fids else {}
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         payload = _emit_years_matrix(
@@ -225,8 +233,9 @@ def _emit(tmp_path: Path, decade_grains: list | None = None) -> dict:
             all_prog_rows=_all_prog_rows(),
             detail_rows=_detail_rows(),
             bl_rows=_bl_rows(),
-            cited_fact_ids=_cited_fact_ids(),
+            cited_fact_ids=_cited_fact_ids() | set(extra_cited),
             decade_grains=decade_grains,
+            **fence,
         )
     finally:
         con.close()
@@ -741,3 +750,55 @@ class TestFamilyOverlay:
         for org in payload["orgs"]:
             for p in org["programs"]:
                 assert "family_id" not in p
+
+
+# ---------------------------------------------------------------------------
+# Families piece 1 (spec 2026-10-02 §6.2): era grains are fenced out of /years/
+# ---------------------------------------------------------------------------
+
+ERA_17A = "f311000000000041"  # PB2019 FY2017 actuals added through the era map
+ERA_19R = "f411000000000042"  # PB2019 FY2019 request added through the era map
+ERA_FIDS = frozenset({ERA_17A, ERA_19R})
+
+
+def _era_grains() -> list[tuple]:
+    """Era grains look exactly like native ones (no era field): only the
+    out-of-band era_grain_fids set marks them. fy2017a and fy2019r are
+    columns the native fixture grains do not have."""
+    return [
+        ("0601101E", 2017, 2019, "actuals", 777.0, ERA_17A,
+         "fy_2017_actuals", None, None),
+        ("0602303A", 2019, 2019, "request", 888.0, ERA_19R,
+         "fy_2019_total", None, None),
+    ]
+
+
+class TestEraFence:
+    def test_era_cells_would_render_without_the_fence(self, tmp_path):
+        """Non-vacuity: unmarked, these cited grains DO become cells and
+        columns, so the byte-identity below is the fence's doing."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains() + _era_grains(),
+                        extra_cited=ERA_FIDS)
+        assert _program(payload, "0601101E")["cells"]["fy2017a"] == {
+            "v": 777.0, "fid": ERA_17A,
+        }
+        assert "fy2019r" in {c["key"] for c in payload["decade_columns"]}
+
+    def test_era_grains_leave_years_matrix_byte_identical(self, tmp_path):
+        base_dir = tmp_path / "base"
+        era_dir = tmp_path / "era"
+        base_dir.mkdir()
+        era_dir.mkdir()
+        base = _emit(base_dir, decade_grains=_decade_grains())
+        fenced = _emit(era_dir, decade_grains=_decade_grains() + _era_grains(),
+                       era_grain_fids=ERA_FIDS, extra_cited=ERA_FIDS)
+        assert fenced == base
+        assert (era_dir / "json" / "years_matrix.json").read_bytes() == (
+            base_dir / "json" / "years_matrix.json"
+        ).read_bytes()
+
+    def test_era_only_grains_add_no_decade_header(self, tmp_path):
+        payload = _emit(tmp_path, decade_grains=_era_grains(),
+                        era_grain_fids=ERA_FIDS, extra_cited=ERA_FIDS)
+        assert "decade_columns" not in payload
+        assert "decade_default_columns" not in payload

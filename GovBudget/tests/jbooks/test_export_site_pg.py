@@ -2132,3 +2132,31 @@ def test_decade_integrity_gate_set_equality(pg_dsn, tmp_path):
     result = integrity_gate5b1(site)
     assert result["checks"]["workbook_set_equality"] is True, result["failures"]
     assert result["checks"]["citation_distinctness"] is True, result["failures"]
+
+
+def test_era_grain_fids_reach_the_fenced_emitters(pg_dsn, tmp_path, monkeypatch):
+    """Families piece 1 (spec 2026-10-02 §6.2): export_site hands the decade
+    tier's out-of-band era marker to the lineage and /years/ emitters, the
+    only two readers of it. A sentinel set stands in for the tier's own."""
+    import govbudget.export_site as es
+
+    sentinel = frozenset({"e0a0000000000001"})
+    real_tier = es._build_decade_citation_rows
+    seen: dict[str, frozenset | None] = {}
+
+    def tier(**kwargs):
+        bl, cit, grains, side, _era = real_tier(**kwargs)
+        return bl, cit, grains, side, sentinel
+
+    def spy(name, real):
+        def wrapper(**kwargs):
+            seen[name] = kwargs.get("era_grain_fids")
+            return real(**kwargs)
+        return wrapper
+
+    monkeypatch.setattr(es, "_build_decade_citation_rows", tier)
+    monkeypatch.setattr(es, "_emit_lineage", spy("lineage", es._emit_lineage))
+    monkeypatch.setattr(
+        es, "_emit_years_matrix", spy("years_matrix", es._emit_years_matrix))
+    _run_decade_export(pg_dsn, tmp_path)
+    assert seen == {"lineage": sentinel, "years_matrix": sentinel}

@@ -81,7 +81,21 @@ function isToaCard(card: SummaryCard): card is SummaryCard & { fid: string; valu
   return card.basis === "toa" && card.units === "USD thousands" && card.fid != null && card.value != null;
 }
 
-function loadRecord(slug: string): FamilyFundingRecord {
+/**
+ * First P-1 edition whose decade points this page shows (spec 2026-10-02
+ * §6.2). The decade tier now gives P-1 program pages their PB2017–PB2023
+ * points through the reviewed era map; this page keeps exactly the editions
+ * it showed before (every R-1 edition, P-1 from PB2024 on). The era points
+ * would add about 45 facts and break its page-weight ceiling, and F-15's
+ * own reviewed era history is f15_funding_history.json.
+ */
+export const F15_FIRST_P1_DECADE_EDITION = 2024;
+
+export function isF15ShownDecadePoint(exhibit: string, point: { edition: number }): boolean {
+  return exhibit !== "P-1" || point.edition >= F15_FIRST_P1_DECADE_EDITION;
+}
+
+export function loadRecord(slug: string): FamilyFundingRecord {
   const config = RECORD_CONFIG[slug];
   const program = getPrograms().find((row) => row.slug === slug);
   if (!program) throw new Error(`[f15-family] Missing canonical program ${slug}`);
@@ -107,6 +121,7 @@ function loadRecord(slug: string): FamilyFundingRecord {
   for (const points of Object.values(details.decade_series ?? {})) {
     for (const point of points) {
       if (point.basis !== "toa") continue;
+      if (!isF15ShownDecadePoint(exhibit, point)) continue;
       add(fundingFact(slug, exhibit, { ...point, value: point.v, dataset: "fct_decade_series" }));
     }
   }

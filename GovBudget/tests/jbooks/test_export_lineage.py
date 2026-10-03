@@ -275,3 +275,40 @@ def test_cyclic_family_falls_back_to_lexicographically_smallest_root():
                   titles={"M": "M", "N": "N"}, series={}, cited={"fMN", "fNM"})
     # chain starts at the lexicographically smallest member under a cycle.
     assert by_pe["M"]["family"]["chain"][0] == "M"
+
+
+def test_funding_line_skips_era_grains():
+    """Families piece 1 (spec 2026-10-02 §6.2): an era point on a chain
+    member's request series (837170's FY2018-20 requests, once era
+    procurement history exists) stays off the funding line — the line is
+    byte-identical to the one built without it. The marker is out of band
+    (era_grain_fids); the point itself carries no era field."""
+    edges = _chain_edges()
+    families = {"PRED": 7, "MID": 7, "SUCC": 7, "DANGLE": 7}
+    universe = {"PRED", "MID", "SUCC"}
+    titles = {"PRED": "Predecessor", "MID": "Middle", "SUCC": "Successor"}
+    native = {
+        "PRED": _series((2023, 100.0, "fidPRED2023"), (2024, 50.0, "fidPRED2024")),
+        "MID": _series((2024, 40.0, "fidMID2024")),
+    }
+    with_era = {
+        "PRED": _series((2019, 70.0, "fidPREDera19"), (2023, 100.0, "fidPRED2023"),
+                        (2024, 50.0, "fidPRED2024")),
+        "MID": _series((2024, 40.0, "fidMID2024")),
+    }
+    cited = {"factPRED", "factMID", "factSUCC", "fidPRED2023", "fidPRED2024",
+             "fidMID2024", "fidPREDera19"}
+
+    def build(series, era):
+        return _emit_lineage(
+            edges=edges, families=families, all_pe_blis=universe,
+            rollup_pes=set(), titles_by_pe=titles, decade_series_by_pe=series,
+            cited_fact_ids=cited, era_grain_fids=frozenset(era),
+        )
+
+    unfenced = build(with_era, set())
+    assert (2019, "PRED", 70.0, "fidPREDera19") in [
+        (p["fy"], p["pe"], p["v"], p["fid"])
+        for p in unfenced["PRED"]["family"]["funding_line"]
+    ]
+    assert build(with_era, {"fidPREDera19"}) == build(native, set())

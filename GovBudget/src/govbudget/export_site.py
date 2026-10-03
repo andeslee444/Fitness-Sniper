@@ -3519,6 +3519,7 @@ def export_site(
         decade_side_meta=decade_side_meta,
         summary_by_pe=summary_by_pe,
         fy26_split_by_pe=fy26_split_by_pe,
+        era_grain_fids=era_grain_fids,
     )
 
     # Write citations.parquet — AFTER _emit_json_sidecars(), not before
@@ -10920,8 +10921,15 @@ def _emit_lineage(
     titles_by_pe: dict[str, str],
     decade_series_by_pe: dict[str, dict],
     cited_fact_ids: set[str],
+    era_grain_fids: frozenset[str] = frozenset(),
 ) -> dict[str, dict]:
     """Build the per-program ``lineage`` sidecar block (program-lineage Task 6).
+
+    era_grain_fids (families piece 1, spec 2026-10-02 §6.2): the decade
+    grains the tier added through the reviewed era map. They are SKIPPED in
+    every funding line: an era point's citation names the printed code while
+    its row identity is an era key, which verify-lineage leg d would reject,
+    and this piece changes no funding line. Funding lines stay byte-identical.
 
     Pure function (no DB) so it is unit-testable in isolation. Returns
     ``{pe_bli: lineage_block}`` for every PE that has ≥1 edge OR is in a family.
@@ -11060,6 +11068,8 @@ def _emit_lineage(
                 fid = pt.get("fid")
                 if fid is None or fid not in cited_fact_ids:
                     continue  # only resolving fids (they already are — belt & braces)
+                if fid in era_grain_fids:
+                    continue  # spec §6.2 fence: era points stay off funding lines
                 funding_entries.append(
                     {"fy": pt["fy"], "pe": member, "v": pt["v"], "fid": fid}
                 )
@@ -11189,6 +11199,7 @@ def _emit_json_sidecars(
     decade_side_meta: dict | None = None,
     summary_by_pe: dict | None = None,
     fy26_split_by_pe: dict | None = None,
+    era_grain_fids: frozenset[str] = frozenset(),
 ) -> int:
     """Emit all JSON sidecars to out_dir/json/.
 
@@ -11221,6 +11232,7 @@ def _emit_json_sidecars(
             decade_side_meta=decade_side_meta,
             summary_by_pe=summary_by_pe,
             fy26_split_by_pe=fy26_split_by_pe,
+            era_grain_fids=era_grain_fids,
         )
     finally:
         con.close()
@@ -11242,8 +11254,13 @@ def _write_all_sidecars(
     decade_side_meta: dict | None = None,
     summary_by_pe: dict | None = None,
     fy26_split_by_pe: dict | None = None,
+    era_grain_fids: frozenset[str] = frozenset(),
 ) -> int:
-    """Core sidecar writer; called from _emit_json_sidecars."""
+    """Core sidecar writer; called from _emit_json_sidecars.
+
+    era_grain_fids: the decade tier's out-of-band era marker (spec 2026-10-02
+    §6.1). Never serialized; only the lineage and /years/ emitters read it,
+    to keep era points off the surfaces this piece fences (§6.2)."""
 
     n_files = 0
     summary_by_pe = summary_by_pe or {}
@@ -13183,6 +13200,7 @@ def _write_all_sidecars(
         titles_by_pe=titles_by_pe,
         decade_series_by_pe=decade_series_by_pe,
         cited_fact_ids=_cited_fact_ids,
+        era_grain_fids=era_grain_fids,
     )
 
     # ROADMAP #29(c) — the /lineage/ identity diagram payload. Built from the
@@ -14601,6 +14619,7 @@ def _write_all_sidecars(
         bl_rows=bl_rows,
         cited_fact_ids=_cited_fact_ids,
         decade_grains=decade_grains,
+        era_grain_fids=era_grain_fids,
         # program-lineage Task 8: sparse pe_bli→family_id map (from
         # _load_lineage_for_export above). Drives the /years/ family-thread
         # badge — a UI-only overlay, NOT a column / cell value / CSV field.
@@ -17440,8 +17459,17 @@ def _emit_years_matrix(
     cited_fact_ids: set,
     decade_grains: list | None = None,
     families: dict[str, int] | None = None,
+    era_grain_fids: frozenset[str] = frozenset(),
 ) -> dict:
     """Emit json/years_matrix.json — the /years/ CapIQ-style grid payload.
+
+    era_grain_fids (families piece 1, spec 2026-10-02 §6.2): decade grains
+    added through the reviewed era map are dropped BEFORE anything reads
+    decade_grains, so the payload (cells, decade_columns, the header's
+    edition map, decade_default_columns) is byte-identical to an export
+    without them. Era procurement would add about 0.75 MB against the
+    4 MiB cap and fail years-matrix leg g; carrying it needs the matrix
+    sharded first (filed follow-up, spec §11).
 
     Nesting: orgs → programs → projects; every dollar cell is {"v", "fid"}.
 
@@ -17487,6 +17515,11 @@ def _emit_years_matrix(
     the serialized payload exceeds _YEARS_MATRIX_MAX_BYTES.
     """
     from collections import defaultdict
+
+    # spec §6.2 fence: the matrix is built as if era grains did not exist.
+    decade_grains = [
+        g for g in (decade_grains or []) if g[5] not in era_grain_fids
+    ]
 
     # program-lineage Task 8: sparse pe_bli→family_id overlay (UI-only badge).
     fam_map: dict[str, int] = families or {}
