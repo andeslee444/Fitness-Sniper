@@ -75,6 +75,16 @@
   "R-DEC-ERA-HISTORY": 271,
   "R-DEC-ERA-SAME": 810
  },
+ "successor_coverage": {
+  "era_only_actuals_k": "48272642",
+  "era_only_chains": 279,
+  "not_searchable_actuals_k": "20293971",
+  "not_searchable_chains": 133,
+  "searched_actuals_k": "27978671",
+  "searched_chains": 146,
+  "successors_found": 1,
+  "successors_found_actuals_k": "4088324"
+ },
  "successors": {
   "5600D15603|2035A|": "5731D15610"
  }
