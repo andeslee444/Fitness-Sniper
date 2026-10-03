@@ -414,3 +414,51 @@ models:
         description: "Workbook fact_id of the from side when it aggregates a single source row; NULL otherwise (exporter mints a derived sum fact)."
       - name: to_source_fact_id
         description: "Workbook fact_id of the to side when single-source; NULL otherwise."
+  - name: p1_era_line_map
+    description: "Families piece 1 (spec §4.4): one row per PB2017–PB2023 P-1 era key — 6,927 keys (969 / 1,029 / 989 / 975 / 1,005 / 993 / 967) — carrying the budget line code its workbook rows print (column I, 'Line Item') and the owner's reviewed decision on that code's chain (dbt/seeds/p1_era_code_decisions.csv). Grain: (edition, era_key), which implies the spec key (edition, account, organization, budget_activity, era_key) — assert_p1_era_map_grain_unique.sql. Rows are decisions, not money (the published dataset goes on the uncited ledger). era_key stays the lake and fact identity forever; fct_program_decade_series reads program_key / program_account / program_org from here. A seed row covers the keys printing its line_item_code under its account in editions first_edition..last_edition, narrowed to its organization when one is set (only for codes spanning organizations within an edition: '10', '15', '20', '30', '500'). On '10' and '15', which are not PB2026 collision codes, at most one organization per edition is same_program, since the program grain keeps no organization there (assert_p1_era_map_org_split.sql). A key no decision covers is 'undecided', carries no program_key and never reaches the program table (warn_p1_era_map_undecided.sql while S2 review batches are open)."
+    columns:
+      - name: edition
+        data_tests: [not_null]
+        description: "PB edition (2017–2023) whose P-1 display workbook prints the key."
+      - name: account
+        data_tests: [not_null]
+        description: "Appropriation account of the key's workbook rows (e.g. '3010F')."
+      - name: organization
+        data_tests: [not_null]
+        description: "Workbook organization code of the key's rows (era spelling, e.g. 'AF', 'DSS')."
+      - name: budget_activity
+        description: "The one budget activity the key's rows print (assert_p1_era_map_one_code.sql)."
+      - name: era_key
+        data_tests: [not_null]
+        description: "'{account}-{org}-L{line}' — budget_lines.pe_bli of the key's rows (era_keys.era_procurement_key). A within-edition identity only: line numbers are reused across editions for other programs."
+      - name: line_item_code
+        data_tests: [not_null]
+        description: "The budget line code printed in column I ('Line Item') of every workbook row summed into the key — budget_lines.line_item_code (migration 021), source-stated, never mapped. One per key (assert_p1_era_map_one_code.sql)."
+      - name: filed_title
+        description: "The key's 'Line Item Title' exactly as filed (the title the owner reviewed; part of keys_sha256)."
+      - name: program_key
+        description: "The bare printed code (= line_item_code) when decision is same_program or history_only; NULL for every exclusion and for undecided keys. Never suffixed: a collision code's page split comes only from program_account / program_org."
+      - name: program_account
+        description: "Seed pin for a chain on one of the 10 PB2026 account-collision codes: the PB2026 account whose page the points join (assert_p1_era_map_collision_pinned.sql). NULL for every other code."
+      - name: program_org
+        description: "Seed pin for a chain on one of the 3 PB2026 organization-collision codes ('20', '30', '500'): the PB2026 organization whose page the points join (e.g. '20' DSS -> 'DCSA'). NULL for every other code."
+      - name: decision
+        description: "same_program (points join the code's page) · history_only (era-only code: data, no page — R-DEC-FAM-ERAONLY) · exclude_placeholder (FY2017CR/FY2018CR continuing-resolution lines) · exclude_route_unsafe (0390D O&M / RDT&E) · exclude_reused_code (the code meant a different program in this range) · undecided (no seed row covers the key)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['same_program', 'history_only', 'exclude_placeholder', 'exclude_route_unsafe', 'exclude_reused_code', 'undecided']
+      - name: decision_id
+        description: "'{code}|{account}|{org}|{first}-{last}' of the seed row covering the key; NULL when undecided."
+      - name: ruling
+        description: "The owner ruling the decision was recorded under: R-DEC-ERA-SAME / R-DEC-ERA-EXCLUDE / R-DEC-ERA-HISTORY (the approved class rulings) or R-DEC-ERA-B<n> (review batch n). NULL when undecided."
+      - name: keys_sha_ok
+        description: "Drift guard: true when the sha256 of the sorted 'edition|era_key|budget_activity|filed_title' lines (NULL parts as '', joined by newline) of the keys this decision covers today equals the seed's keys_sha256 — what the owner reviewed (govbudget.jbooks.era_map.keys_sha256; tests/test_p1_era_line_map_sql.py proves the SQL and Python agree). false means the keys or titles changed after review (stale: `era-map check` and verify-era-map leg b fail). NULL when undecided."
+      - name: successor_code
+        description: "The P-1 code (as printed in PB2024–PB2026) under which a budget book states this era-only line continues (spec §5.4; e.g. JLTV 5600D15603 -> 5731D15610). Recorded, not displayed, in piece 1 (assert_p1_era_map_successor_resolves.sql). NULL otherwise."
+      - name: source_document_sha256
+        data_tests: [not_null]
+        description: "sha256 of the edition's P-1 display workbook (jbook_documents.sha256; the file data/site/workbooks/<sha>.xlsx that verify-era-map leg a re-reads)."
+      - name: source_cells
+        data_tests: [not_null]
+        description: "The column-I cells (the printed code) of every workbook row summed into the key, in row order, comma-separated (e.g. 'I35,I36' for a two-cost-type key) — the rows of the lake's recorded amount cells."

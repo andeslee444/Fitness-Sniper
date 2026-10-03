@@ -32,6 +32,33 @@ def write_parquet(dir_path: Path, sql: str):
     duckdb.sql(f"copy ({sql}) to '{dir_path}/part.parquet' (format parquet)")
 
 
+def ensure_lake_columns(path: Path, columns: tuple[str, ...]) -> None:
+    """Add each missing column to a fixture lake parquet as NULL varchar.
+
+    `jbooks export-facts` always writes budget_lines.source_sheet and
+    source_cells, and line_item_code since migration 021; the dbt models read
+    them by name (stg_budget_lines passes line_item_code through,
+    p1_era_line_map reads source_cells). NULL here: no fixture row is an era
+    P-1 key. Idempotent — a column the fixture already writes is left alone.
+    """
+    con = duckdb.connect()
+    try:
+        have = {r[0] for r in con.execute(
+            f"describe select * from read_parquet('{path}')").fetchall()}
+        missing = [c for c in columns if c not in have]
+        if not missing:
+            return
+        tmp = path.with_name(path.stem + ".tmp.parquet")
+        extra = ", ".join(f"null::varchar as {c}" for c in missing)
+        con.execute(
+            f"copy (select *, {extra} from read_parquet('{path}'))"
+            f" to '{tmp}' (format parquet)"
+        )
+    finally:
+        con.close()
+    tmp.replace(path)
+
+
 JBOOK_BUDGET_LINE_COLS = (
     "exhibit, fiscal_year, account, account_title, organization,"
     " budget_activity, budget_activity_title, pe_bli, title, amount_type, amount_thousands,"
@@ -127,6 +154,11 @@ def make_lake(data_dir: Path):
         f"('P-1','2026','1810N','Other Procurement, Navy','N','01','Ship Propulsion',"
         f"'3010','Shipboard Tactical Communications','fy_2026_total','50000','401'))"
         f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
+    )
+    # jbooks export-facts always writes these three (line_item_code since
+    # migration 021); stg_budget_lines and p1_era_line_map read them by name.
+    ensure_lake_columns(
+        jbooks / "budget_lines.parquet", ("line_item_code", "source_sheet", "source_cells"),
     )
     duckdb.sql(
         f"copy (select * from (values ('1','DARPA','rdte','2026','vol1.pdf',"
