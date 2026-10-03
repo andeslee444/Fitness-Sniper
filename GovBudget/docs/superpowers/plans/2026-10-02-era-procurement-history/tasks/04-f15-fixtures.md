@@ -14,6 +14,8 @@
 - Read only (no change): `src/govbudget/f15_funding_history.py:120-199` (`build_history`), `:202-302` (`build_program_matrix`; reuse allow-list `:271-278`, candidate choice `:279-296`), `:305-454` (`export_f15_funding_history`: series query `:321`, source query `:337-344`, previews `:354`, staging/writes `:395-451`); call site `src/govbudget/export_site.py:3589-3592`; `site/src/components/family-funding-history.tsx:29-108` (matrix markup); `site/src/lib/f15-family-data.ts:84-137` (`loadRecord`)
 - Environment only (never committed): symlink `data/site` in the worktree
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:**
 Consumes: Task 1's environment (`uv sync` in `GovBudget/`, real `node_modules` from `npm ci` in `GovBudget/site/`). Existing code, unchanged: `govbudget.f15_funding_history.{build_history, build_program_matrix, member_row, _json_bytes}`, `govbudget.export_site.{fact_id_derived, _stage_parquet_path}`, `govbudget.workbook_cells.build_workbook_previews`, `govbudget.config.{SITE_DIR, DUCKDB_PATH}`, site devDependencies `node-html-parser` 7.1.0 and `vitest` 3. Spec §6.1's `decade_era_map` key and formula (minted later by Task 17).
 Produces:
@@ -226,7 +228,7 @@ def test_allowed_formula_competitor_changes_exactly_one_cell():
 Run (from `GovBudget/` in the worktree):
 
 ```bash
-uv run --project . pytest tests/test_f15_era_identity.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_era_identity.py -q
 ```
 
 Expected: `4 failed`. Each failure body reads `F-15 identity fixture missing: tests/fixtures/f15/<file> (capture it with scripts/era/capture_f15_fixtures.py; spec §9 S0)` — `history.json` for three tests, `builder_inputs.json.gz` for the golden test. They fail; none skips.
@@ -421,9 +423,11 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Capture the fixtures (reads the live lake and export; writes only `tests/fixtures/f15/`)**
 
-Run (from `GovBudget/` in the worktree):
+Run (from `GovBudget/` in the worktree). The capture opens the live DuckDB read-only and reads the live jbooks parquets, so the block starts with the SAM guard (README): if it prints `WAIT: SAM window …`, wait until :23 and re-run the block (the capture takes about 3 s).
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data \
   uv run --project . python scripts/era/capture_f15_fixtures.py \
   --expect-sha256 9f70c770eb7c91e33919fd66e6f316a1461035cdfcfa446a725f063d593c8800
@@ -440,7 +444,7 @@ The script writes nothing if any proof fails; it then exits with one of its `cap
 Then check the pin:
 
 ```bash
-shasum -a 256 tests/fixtures/f15/history.json && cat tests/fixtures/f15/history.sha256 && wc -c < tests/fixtures/f15/history.json && ls -l tests/fixtures/f15/
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && shasum -a 256 tests/fixtures/f15/history.json && cat tests/fixtures/f15/history.sha256 && wc -c < tests/fixtures/f15/history.json && ls -l tests/fixtures/f15/
 ```
 
 Expected: `9f70c770eb7c91e33919fd66e6f316a1461035cdfcfa446a725f063d593c8800  tests/fixtures/f15/history.json`, then the same 64 hex characters alone, then `138486`; `builder_inputs.json.gz` is about 146 KB (146,360 bytes when measured).
@@ -469,8 +473,9 @@ with no lake and no `data/site`, and fails (never skips) when a file is missing.
 ## Re-pin (S5 only, after the owner approves the exact F-15 changes)
 
 S5 does not write the live `data/site`. The S5 history is produced on a proof
-clone of the S4 export, `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s5/data`
-(`site/`, `duckdb/`, `parquet/`; plan Task 22 Step 12). The live export changes
+clone of the S4 export, `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s5`
+(its `site/`, `duckdb/govbudget.duckdb` and `parquet/`, the `govbudget proof
+snapshot` layout; plan Task 22 Step 12). The live export changes
 only at the release (plan Task 23). Re-pin from the clone, never from the main lake.
 
 History, sha pin and builder inputs, from `GovBudget/`, once the S5 history diff
@@ -478,9 +483,9 @@ check has passed (plan Task 22 Step 14). The `<S5 sha>` is the digest the
 first command prints:
 
     P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs
-    shasum -a 256 $P/s5/data/site/json/f15_funding_history.json
+    shasum -a 256 $P/s5/site/json/f15_funding_history.json
     uv run --project . python scripts/era/capture_f15_fixtures.py \
-      --site-dir $P/s5/data/site --duckdb $P/s5/data/duckdb/govbudget.duckdb \
+      --site-dir $P/s5/site --duckdb $P/s5/duckdb/govbudget.duckdb \
       --out-dir tests/fixtures/f15 --expect-sha256 <S5 sha>
 
 Page snapshot, from a fresh build against the same clone. From `GovBudget/`,
@@ -488,7 +493,7 @@ point the worktree's lake links at the clone, build, snapshot, then put the
 links and the regenerated `llms.txt` back:
 
     P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs
-    for d in site duckdb parquet; do ln -sfn $P/s5/data/$d data/$d; done
+    for d in site duckdb parquet; do ln -sfn $P/s5/$d data/$d; done
     (cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build \
       && node scripts/f15-page-snapshot.mjs out/families/f-15/index.html \
            --out ../tests/fixtures/f15/page_snapshot.json)
@@ -503,7 +508,7 @@ the pre-release export until the release. Never capture from the main checkout's
 - [ ] **Step 6: Run the identity tests and the existing F-15 tests**
 
 ```bash
-uv run --project . pytest tests/test_f15_era_identity.py tests/test_f15_funding_history.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_era_identity.py tests/test_f15_funding_history.py -q
 ```
 
 Expected: `34 passed` (4 new, 30 existing).
@@ -513,7 +518,7 @@ Expected: `34 passed` (4 new, 30 existing).
 Confirm the builder is clean first:
 
 ```bash
-git diff --quiet -- src/govbudget/f15_funding_history.py && echo clean
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && git diff --quiet -- src/govbudget/f15_funding_history.py && echo clean
 ```
 
 Expected: `clean`.
@@ -540,7 +545,7 @@ After (one line added):
 Run:
 
 ```bash
-uv run --project . pytest tests/test_f15_era_identity.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_era_identity.py -q
 ```
 
 Expected: `1 failed, 3 passed`; the failure is `test_fresh_state_with_decade_era_map_receipts_keeps_every_byte` with an `AssertionError` on the byte comparison (measured: first difference at byte 11226).
@@ -548,7 +553,7 @@ Expected: `1 failed, 3 passed`; the failure is `test_fresh_state_with_decade_era
 Revert and confirm:
 
 ```bash
-git checkout -- src/govbudget/f15_funding_history.py && git diff --quiet -- src/govbudget/f15_funding_history.py && echo clean && uv run --project . pytest tests/test_f15_era_identity.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && git checkout -- src/govbudget/f15_funding_history.py && git diff --quiet -- src/govbudget/f15_funding_history.py && echo clean && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_era_identity.py -q
 ```
 
 Expected: `clean`, then `4 passed`.
@@ -700,7 +705,7 @@ describe("committed S0 baseline (tests/fixtures/f15/page_snapshot.json)", () => 
 Run (from `GovBudget/site`):
 
 ```bash
-npx vitest run scripts/gates/__tests__/f15-page-snapshot.test.mjs
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run scripts/gates/__tests__/f15-page-snapshot.test.mjs
 ```
 
 Expected: `Test Files  1 failed (1)` with `Error: Cannot find module '../../f15-page-snapshot.mjs' imported from '.../scripts/gates/__tests__/f15-page-snapshot.test.mjs'`.
@@ -854,7 +859,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 Run (from `GovBudget/site`):
 
 ```bash
-npx vitest run scripts/gates/__tests__/f15-page-snapshot.test.mjs
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run scripts/gates/__tests__/f15-page-snapshot.test.mjs
 ```
 
 Expected: `Tests  1 failed | 4 passed (5)`; the failure is `committed S0 baseline (tests/fixtures/f15/page_snapshot.json) > is present and well-formed` with `missing .../tests/fixtures/f15/page_snapshot.json: capture it from a fresh build (Task 4): expected false to be true`.
@@ -864,6 +869,7 @@ Expected: `Tests  1 failed | 4 passed (5)`; the failure is `committed S0 baselin
 The build reads `site/../data/site` (CONTRACT ISSUE 1). Run (from `GovBudget/` in the worktree):
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 [ -e data/site ] || ln -s /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site data/site
 git check-ignore -q data/site || echo 'GovBudget/data/site' >> "$(git rev-parse --path-format=absolute --git-common-dir)/info/exclude"
 ls -ld data/site && git check-ignore -v data/site && git status --short -- data/ && git diff --stat 10fb4585 HEAD -- site/
@@ -874,7 +880,7 @@ Expected: `data/site -> /Users/andeslee/Documents/Cursor-Projects/GovBudget/data
 Then confirm the export is the one the Python fixtures were captured from:
 
 ```bash
-uv run --project . python -c "import gzip,hashlib,json; d=json.load(gzip.open('tests/fixtures/f15/builder_inputs.json.gz','rt')); c=hashlib.sha256(open('data/site/json/citations.json','rb').read()).hexdigest(); h=hashlib.sha256(open('data/site/json/f15_funding_history.json','rb').read()).hexdigest(); print(c == d['captured_from']['citations_json_sha256'], h == open('tests/fixtures/f15/history.sha256').read().strip(), json.load(open('data/site/json/site_meta.json'))['built_at'])"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python -c "import gzip,hashlib,json; d=json.load(gzip.open('tests/fixtures/f15/builder_inputs.json.gz','rt')); c=hashlib.sha256(open('data/site/json/citations.json','rb').read()).hexdigest(); h=hashlib.sha256(open('data/site/json/f15_funding_history.json','rb').read()).hexdigest(); print(c == d['captured_from']['citations_json_sha256'], h == open('tests/fixtures/f15/history.sha256').read().strip(), json.load(open('data/site/json/site_meta.json'))['built_at'])"
 ```
 
 Expected: `True True 2026-10-02T01:30:21.066005+00:00`. Anything else means the export moved after Step 4: re-run Step 4 (the F-15 sha must still be `9f70c770…`, or the capture refuses) and Step 6, commit the re-captured `builder_inputs.json.gz` with the Step 8 command and message `test(f15): re-capture F-15 builder inputs from the current export`, then repeat this check before building.
@@ -884,7 +890,7 @@ Expected: `True True 2026-10-02T01:30:21.066005+00:00`. Anything else means the 
 Run (from `GovBudget/site`; a full production build takes tens of minutes):
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build && node -e "const m=require('./out/.build-meta.json'); console.log(m.git_head)" && git rev-parse HEAD && ls -l out/families/f-15/index.html
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build && node -e "const m=require('./out/.build-meta.json'); console.log(m.git_head)" && git rev-parse HEAD && ls -l out/families/f-15/index.html
 ```
 
 Expected: exit 0 (prebuild prints `✓  site_meta.json OK (schema_version=1, built_at=2026-10-02T01:30:21.066005+00:00)` and `✓  f15_funding_history.json → public/json/`; postbuild runs pagefind), the two SHA lines are identical, and `out/families/f-15/index.html` exists (the live page it should match is 701,363 bytes).
@@ -892,7 +898,7 @@ Expected: exit 0 (prebuild prints `✓  site_meta.json OK (schema_version=1, bui
 Then re-run the Step 13 export check command (from `GovBudget/`); expected again `True True 2026-10-02T01:30:21.066005+00:00` (the export did not move during the build). And, from `GovBudget/site`:
 
 ```bash
-git status --short -- .
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && git status --short -- .
 ```
 
 Expected exactly the two files this task has not committed yet:
@@ -909,7 +915,7 @@ In particular `public/llms.txt` is not modified: it regenerates to the committed
 Run (from `GovBudget/site`):
 
 ```bash
-node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --out ../tests/fixtures/f15/page_snapshot.json
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --out ../tests/fixtures/f15/page_snapshot.json
 ```
 
 Expected: `f15-page-snapshot: wrote ../tests/fixtures/f15/page_snapshot.json (107 data-fact-id elements, 223 distinct page fact ids, 8 matrix rows)`.
@@ -917,7 +923,7 @@ Expected: `f15-page-snapshot: wrote ../tests/fixtures/f15/page_snapshot.json (10
 Sanity check against the live page (one command, so the temp path survives):
 
 ```bash
-LIVE="$(mktemp -d)/live-f15.html" && curl -sfL https://fiscalreceipts.com/families/f-15/ -o "$LIVE" && node scripts/f15-page-snapshot.mjs "$LIVE" --check ../tests/fixtures/f15/page_snapshot.json
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && LIVE="$(mktemp -d)/live-f15.html" && curl -sfL https://fiscalreceipts.com/families/f-15/ -o "$LIVE" && node scripts/f15-page-snapshot.mjs "$LIVE" --check ../tests/fixtures/f15/page_snapshot.json
 ```
 
 Expected: `f15-page-snapshot: PASS — equal to ../tests/fixtures/f15/page_snapshot.json`. A FAIL means the fresh build and production disagree about the F-15 page (a redeploy or re-export since 2026-10-02); do not commit — report the printed path and stop.
@@ -927,7 +933,7 @@ Expected: `f15-page-snapshot: PASS — equal to ../tests/fixtures/f15/page_snaps
 Run (from `GovBudget/site`):
 
 ```bash
-npx vitest run scripts/gates/__tests__/f15-page-snapshot.test.mjs && npx eslint scripts/f15-page-snapshot.mjs scripts/gates/__tests__/f15-page-snapshot.test.mjs
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run scripts/gates/__tests__/f15-page-snapshot.test.mjs && npx eslint scripts/f15-page-snapshot.mjs scripts/gates/__tests__/f15-page-snapshot.test.mjs
 ```
 
 Expected: `Tests  5 passed (5)`, then eslint exits 0 with no errors.

@@ -8,7 +8,9 @@
 - Test: `tests/test_roadmap_backlog.py` (append after line 232, the end of the file)
 - Modify: `docs/superpowers/ROADMAP.md` (insert after line 4705, the end of #192; insert after line 5676, the end of #28)
 - Modify: `src/govbudget/jbooks/era_keys.py:118-120` (the `is_era_procurement_key` docstring; Step 6 shows lines 115-121)
-- Modify: `docs/superpowers/specs/2026-10-02-era-procurement-history-design.md:193`, `:207` (CLI name); insert after `:198` (end of §4.6), after `:249` (end of §5.2), after `:362` (end of §6.4's per-edition-table bullet). Line numbers are those of the file before Step 8; Step 8 anchors every edit on text.
+- Check only (not modified): `docs/superpowers/specs/2026-10-02-era-procurement-history-design.md` — the plan commit already holds every spec amendment; Step 8 greps for them.
+
+Line numbers in this task are hints (anchor on the quoted text; line numbers are approximate): the plan commit added 7 lines near the top of the ROADMAP, so #192's tail sits at about 4710-4714 and #28's at about 5681-5684.
 
 **Interfaces:**
 Consumes: Task 1's environment (`source scripts/era/env.sh`; `GOVBUDGET_PG_DSN` for the read-only `tests/jbooks/test_era_keys.py`).
@@ -58,7 +60,7 @@ def test_the_families_piece_1_follow_ups_are_filed_once_and_open(subject):
 - [ ] **Step 2: Run it — it fails**
 
 ```bash
-uv run --project . pytest tests/test_roadmap_backlog.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_roadmap_backlog.py -q
 ```
 
 Expected: `5 failed, 25 passed`, each failure `AssertionError: '<subject>' filed 0 times, want 1` (e.g. `'/years/ needs sharding' filed 0 times, want 1`).
@@ -111,7 +113,9 @@ After:
   87,404 + 1,002,560 = 1,089,964 thousand (about $1.09B); PB2025 drops
   1,059,818 of FY2023 actuals and PB2024 1,093,252 of FY2022 actuals the
   same way. None of it reaches `budget_lines`, a page or a total. The era
-  editions print the same pair; families piece 1 excludes those chains as
+  editions print the same pair (loaded under era keys `0390D-ARMY-L1`/`-L2`:
+  14 keys, $5,832,017 thousand of FY(N−2) actuals; spec §5.2 correction);
+  families piece 1 excludes those chains as
   `exclude_route_unsafe` (R-DEC-ERA-EXCLUDE,
   `docs/superpowers/specs/2026-10-02-era-procurement-history-design.md`
   §2, §5.1). Fix: load the two lines under a route-safe key with the
@@ -227,7 +231,7 @@ After:
 - [ ] **Step 5: Run the ledger tests — they pass**
 
 ```bash
-uv run --project . pytest tests/test_roadmap_backlog.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_roadmap_backlog.py -q
 ```
 
 Expected: `30 passed`.
@@ -267,8 +271,9 @@ After:
 - [ ] **Step 7: Check the module still imports and its tests pass**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 uv run --project . python -c "from govbudget.jbooks.era_keys import is_era_procurement_key as f; print(f('3010F-AF-L1'), 'rollup' in f.__doc__, 'B02100' in f.__doc__)"
-uv run --project . pytest tests/jbooks/test_era_keys.py -q
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_keys.py -q
 ```
 
 Expected: `True False True`; `8 passed` (its live-warehouse guard only SELECTs from `GOVBUDGET_PG_DSN`).
@@ -282,7 +287,7 @@ reworded).*` notes (§4.5, §4.6, §5.2, §6.4, §7, §9, §10, §11) and two `*
 the `/data/` hoist). This task does not edit the spec. Check:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 grep -n "jbooks era-map" docs/superpowers/specs/2026-10-02-era-procurement-history-design.md || echo none
 grep -c '^\*Correction (2026-10-02, implementation plan review; nothing above reworded)\.\*$' docs/superpowers/specs/2026-10-02-era-procurement-history-design.md
 grep -c '^\*Owner decision (2026-10-02, implementation plan review; nothing above reworded)\.\*$' docs/superpowers/specs/2026-10-02-era-procurement-history-design.md

@@ -9,6 +9,8 @@
 - Create: `site/src/__tests__/f15-family-era-fence.test.ts`
 - Modify (test): `tests/jbooks/test_export_lineage.py` (append after line 277), `tests/test_export_years_matrix.py:216-230` and append after line 743, `tests/jbooks/test_export_site_pg.py` (append at the end of the file)
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: `era_grain_fids: frozenset[str]` from `_build_decade_citation_rows` (Task 17); the sidecar `decade_series` point shape `{fy, v, fid, edition, basis, measure}` (unchanged). / Produces: `_emit_lineage(..., era_grain_fids: frozenset[str] = frozenset())`, `_emit_years_matrix(..., era_grain_fids: frozenset[str] = frozenset())`, `_emit_json_sidecars(..., era_grain_fids: frozenset[str] = frozenset())`, `_write_all_sidecars(..., era_grain_fids: frozenset[str] = frozenset())`; TS `export const F15_FIRST_P1_DECADE_EDITION = 2024`, `export function isF15ShownDecadePoint(exhibit: string, point: { edition: number }): boolean`, and `loadRecord(slug: string): FamilyFundingRecord` becomes exported.
 
 Fence design: the marker is out of band. `era_grain_fids` travels
@@ -66,7 +68,7 @@ def test_funding_line_skips_era_grains():
 - [ ] **Step 2: Run it and watch it fail**
 
 ```bash
-uv run --project . pytest tests/jbooks/test_export_lineage.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_lineage.py -q
 ```
 
 Expected: `1 failed, 12 passed`, the failure being
@@ -184,10 +186,10 @@ class TestEraFence:
 - [ ] **Step 4: Run them and watch the two fence tests fail**
 
 ```bash
-uv run --project . pytest tests/test_export_years_matrix.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_years_matrix.py -q
 ```
 
-Expected: `2 failed, 37 passed, 4 skipped`; both failures
+Expected: `2 failed, 37 passed, 4 skipped`, or `2 failed, 41 passed` once Task 1's `data/site` link exists in the worktree (the 4 `years_matrix.json` live-file checks then run and pass instead of skipping; either form is correct, 0 other failures); both failures
 (`test_era_grains_leave_years_matrix_byte_identical`,
 `test_era_only_grains_add_no_decade_header`) are
 `TypeError: _emit_years_matrix() got an unexpected keyword argument 'era_grain_fids'`.
@@ -232,7 +234,7 @@ def test_era_grain_fids_reach_the_fenced_emitters(pg_dsn, tmp_path, monkeypatch)
 Run (Task 1's cluster):
 
 ```bash
-GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_site_pg.py -q -k era_grain_fids
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_site_pg.py -q -k era_grain_fids
 ```
 
 Expected: `1 failed, 43 deselected` with
@@ -356,7 +358,7 @@ with:
     to keep era points off the surfaces this piece fences (§6.2)."""
 ```
 
-**Edit 18.6 `_write_all_sidecars` → `_emit_lineage` call** — `src/govbudget/export_site.py:13102-13106` after Task 17 (base `10fb4585`: 12864-12868). Replace this exact text:
+**Edit 18.6 `_write_all_sidecars` → `_emit_lineage` call** — `src/govbudget/export_site.py:13102-13106` after Task 17 (base `10fb4585`: 12864-12868). Replace this exact text (a partial-line match: both the old and the new string end mid-line at `…diagram payload.` with no trailing newline; in the file that line continues ` Built from the …`, which stays as it is):
 
 ```python
         titles_by_pe=titles_by_pe,
@@ -364,7 +366,8 @@ with:
         cited_fact_ids=_cited_fact_ids,
     )
 
-    # ROADMAP #29(c) — the /lineage/ identity diagram payload.```
+    # ROADMAP #29(c) — the /lineage/ identity diagram payload.
+```
 
 with:
 
@@ -375,7 +378,8 @@ with:
         era_grain_fids=era_grain_fids,
     )
 
-    # ROADMAP #29(c) — the /lineage/ identity diagram payload.```
+    # ROADMAP #29(c) — the /lineage/ identity diagram payload.
+```
 
 **Edit 18.7 `_write_all_sidecars` → `_emit_years_matrix` call** — `src/govbudget/export_site.py:14521-14523` after Task 17 (base `10fb4585`: 14283-14285). Replace this exact text:
 
@@ -444,7 +448,7 @@ with:
     fam_map: dict[str, int] = families or {}
 ```
 
-**Edit 18.10 `export_site` → `_emit_json_sidecars` call** — `src/govbudget/export_site.py:3518-3523` after Task 17 (base `10fb4585`: 3518-3523). Replace this exact text:
+**Edit 18.10 `export_site` → `_emit_json_sidecars` call** — `src/govbudget/export_site.py:3518-3523` after Task 17 (base `10fb4585`: 3518-3523). Replace this exact text (both the old and the new string end at `…not before` with no trailing newline: match up to there, partial-line style, and leave the file's newline and the next comment line as they are):
 
 ```python
         decade_grains=decade_grains,
@@ -453,7 +457,8 @@ with:
         fy26_split_by_pe=fy26_split_by_pe,
     )
 
-    # Write citations.parquet — AFTER _emit_json_sidecars(), not before```
+    # Write citations.parquet — AFTER _emit_json_sidecars(), not before
+```
 
 with:
 
@@ -465,20 +470,23 @@ with:
         era_grain_fids=era_grain_fids,
     )
 
-    # Write citations.parquet — AFTER _emit_json_sidecars(), not before```
+    # Write citations.parquet — AFTER _emit_json_sidecars(), not before
+```
 
 
 - [ ] **Step 7: Run the Python fence tests**
 
 ```bash
-uv run --project . pytest tests/jbooks/test_export_lineage.py tests/test_export_years_matrix.py tests/test_export_decade_era_map.py tests/test_export_breakdowns.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_lineage.py tests/test_export_years_matrix.py tests/test_export_decade_era_map.py tests/test_export_breakdowns.py -q
 ```
 
 Expected: `90 passed, 4 skipped` (13 + 39 + 16 + 22; the skips are the
-`live export not present` checks).
+`live export not present` checks), or `94 passed` with 0 skipped once Task 1's `data/site`
+link exists (those 4 live `years_matrix.json` checks then run and pass; measured in the
+pre-flight scratch run). Either form passes; the criterion is 0 failed.
 
 ```bash
-GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_basis.py tests/jbooks/test_export_site_pg.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_basis.py tests/jbooks/test_export_site_pg.py -q
 ```
 
 Expected: `61 passed` (17 + 44).
@@ -581,7 +589,7 @@ export function loadRecord(slug: string): FamilyFundingRecord {
 Run (from `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site`):
 
 ```bash
-npx vitest run src/__tests__/f15-family-era-fence.test.ts
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/f15-family-era-fence.test.ts
 ```
 
 Expected: `Tests  2 failed | 1 passed (3)`:
@@ -645,6 +653,7 @@ with:
 - [ ] **Step 11: Run the TS test, lint and typecheck**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site || exit 1
 npx vitest run src/__tests__/f15-family-era-fence.test.ts
 npx eslint src/lib/f15-family-data.ts src/__tests__/f15-family-era-fence.test.ts
 npx tsc --noEmit -p tsconfig.json

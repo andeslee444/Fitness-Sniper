@@ -7,8 +7,10 @@
 - Create: `scripts/era/fact_stability.py`, `tests/test_era_fact_stability.py`
 - Create: `scripts/era/s4_report.py`, `tests/test_era_s4_report.py`
 - Create: `docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json`
-- Modify: `site/scripts/gates/build.mjs` — the `/data/` `PAGE_WEIGHT_BUDGET` entry as Task 19 Step 11 left it (`:372` before Task 19): its `measured` stamp and the last lines of its comment (G6's handoff)
+- Modify: `site/scripts/gates/build.mjs` — the `/data/` `PAGE_WEIGHT_BUDGET` entry as Task 19 Step 11 left it (`:372` before Task 19), and the `/methodology/` entry if its weight moved: Task 19's comment lines stay verbatim, a `RE-MEASURED <date> (Task 21, …)` comment is appended above the entry and only `measured` changes
 - Modify: `docs/superpowers/ROADMAP.md` — new first entry under `## Findings log (what we learned; feeds future phases)` (line 220 today)
+
+Edits here cite line numbers as hints (anchor on the quoted text; line numbers are approximate). Shell state does not persist between blocks: `A_SHA` is written to `.proofs/s4-logs/a_sha.txt` in Step 9 and read back where it is used.
 
 **Interfaces:**
 Consumes: Task 3's `govbudget proof snapshot --out DIR --scratch-db NAME` (writes `DIR/{duckdb/govbudget.duckdb, parquet/, site/, raw_docs/, manifest.jsonl, pg/<db>.dump, snapshot.json, env.sh}`, repoints the copy's views and document paths at the copy, restores Postgres into the scratch database; refuses at :15–:20) and `govbudget proof diff A B [--expect RULES.json] [--report FILE]` (rules: a JSON list of `{path, why, status?, pointer?, change?, required?}`; last line `proof diff: PASS|FAIL`); the run-dir convention `cp -c -R <snap> <run>` + `source <snap>/env.sh <run>`; `scripts/era/env.sh` (Task 1); Task 4's `tests/test_f15_era_identity.py`, `site/scripts/f15-page-snapshot.mjs <index.html> --check FILE`, `tests/fixtures/f15/page_snapshot.json`; `govbudget verify-era-map` (Tasks 14/20), `verify-phase5e`, `verify-lineage`; `govbudget export-site`; `dbt test`, `dbt parse`; Task 17's commit (CONTRACT ISSUE 6); Task 19's `/data/` stamp (G6 CONTRACT ISSUE 6 handoff).
@@ -275,7 +277,7 @@ def test_cli_passes_and_fails(tmp_path):
 
 - [ ] **Step 3: Run both test files to verify they fail**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_era_fact_stability.py tests/test_era_s4_report.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_era_fact_stability.py tests/test_era_s4_report.py -q`
 Expected: two collection errors, `ModuleNotFoundError: No module named 'era.fact_stability'` and `ModuleNotFoundError: No module named 'era.s4_report'`.
 
 - [ ] **Step 4: Implement `scripts/era/fact_stability.py`**
@@ -597,12 +599,12 @@ if __name__ == "__main__":
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_era_fact_stability.py tests/test_era_s4_report.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_era_fact_stability.py tests/test_era_s4_report.py -q`
 Expected: `20 passed`.
 
 - [ ] **Step 7: Write the expected-diff rule list (spec §10)**
 
-Task 3's `proof diff --expect` takes a JSON list of rules (`load_expectations`): every difference between the A and B site trees must match a rule, and every `required` rule must match at least one. `path` and `pointer` are globs where only `*` is special (it also crosses `/`); a JSON pointer pattern collapses 16-hex fact IDs to `{fid}` and writes list elements as `/[]`; lists compare as multisets, so a list entry whose value changed is one `removed` plus one `added`. Build stamps (`built_at`, run-time `retrieved_at` inside each tree's own build window, `measured_on`) are masked before comparing, so the derived citations' run stamps never appear.
+Task 3's `proof diff --expect` takes a JSON list of rules (`load_expectations`): every difference between the A and B site trees must match a rule, and every `required` rule must match at least one. `path` and `pointer` are globs where only `*` is special (it also crosses `/`); a JSON pointer pattern collapses 16-hex fact IDs to `{fid}` and writes list elements as `/[]`; lists compare as multisets, so a list entry whose value changed is one `removed` plus one `added`. Build stamps (`built_at`, run-time `retrieved_at` inside each tree's own build window, `measured_on`) are masked before comparing, so the derived citations' run stamps never appear. Float noise (DOUBLE/FLOAT parquet values and JSON floats equal to 12 significant digits, Task 3) is `equivalent`, never a difference a rule must cover; the report counts it on its own `equivalent (float noise)` line.
 
 Create `docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json`:
 
@@ -670,7 +672,7 @@ Create `docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.
   {"path": "manifest.json", "status": ["changed"], "pointer": "/uncited_datasets/[]", "change": ["added"], "required": true,
    "why": "§4.4: p1_era_line_map goes on the uncited ledger (rows are decisions, not money)"},
   {"path": "manifest.json", "status": ["changed"], "pointer": "/json_sidecars", "change": ["changed"], "required": true,
-   "why": "§10: the manifest's sidecar count (new breakdowns, era_map_summary.json)"},
+   "why": "§10: the manifest's sidecar count: B's new breakdowns, plus json/era_map_summary.json (Task 19's receipts step recounts after writing it)"},
   {"path": "json/site_meta.json", "status": ["changed"], "pointer": "/counts/citations", "change": ["changed"], "required": true,
    "why": "§10: site_meta counts.citations"},
   {"path": "json/site_meta.json", "status": ["changed"], "pointer": "/datasets/budget_lines_decade", "change": ["changed"], "required": true,
@@ -699,21 +701,29 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 - [ ] **Step 9: Identify the A commit and check the preconditions**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git status --porcelain -- GovBudget | grep -v '^??' ; FIRST=$(git log --reverse --format=%H main..HEAD -- GovBudget/src/govbudget/export_site.py | head -1) && A_SHA=$(git rev-parse "${FIRST}^") && echo "A_SHA=${A_SHA}" && git log -1 --format='first S4 export commit: %h %s' "${FIRST}" && git log -1 --format='A: %h %s' "${A_SHA}" && git diff --quiet "${A_SHA}" HEAD -- GovBudget/dbt && echo "dbt unchanged since A" && git rev-parse HEAD
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd .. && git status --porcelain -- GovBudget | grep -v '^??' ; FIRST=$(git log --reverse --format=%H main..HEAD -- GovBudget/src/govbudget/export_site.py | head -1) && A_SHA=$(git rev-parse "${FIRST}^") && echo "A_SHA=${A_SHA}" && git log -1 --format='first S4 export commit: %h %s' "${FIRST}" && git log -1 --format='A: %h %s' "${A_SHA}" && git diff --quiet "${A_SHA}" HEAD -- GovBudget/dbt && echo "dbt unchanged since A" && git rev-parse HEAD && mkdir -p "${GOVBUDGET_PROOFS:?}/s4-logs" && echo "${A_SHA}" > "$GOVBUDGET_PROOFS/s4-logs/a_sha.txt" && echo "A_SHA recorded in .proofs/s4-logs/a_sha.txt"
 ```
-Expected: no tracked change listed; `first S4 export commit:` shows Task 17's subject (`feat(export): decade tier reads fct_program_decade_series; era P-1 points through the reviewed map …`); `dbt unchanged since A`; HEAD printed. Record `A_SHA` and HEAD (`B_SHA`). If the first subject is not Task 17's, set `A_SHA` to the parent of Task 17's commit from `git log --oneline main..HEAD` and re-run the dbt check. If dbt changed after A, stop (CONTRACT ISSUE 6).
+Expected: no tracked change listed; `first S4 export commit:` shows Task 17's subject (`feat(export): decade tier reads fct_program_decade_series; era P-1 points through the reviewed map …`); `dbt unchanged since A`; HEAD printed; `A_SHA recorded …`. Record `A_SHA` and HEAD (`B_SHA`) for the proof note. If the first subject is not Task 17's, write the parent of Task 17's commit (from `git log --oneline main..HEAD`) to `.proofs/s4-logs/a_sha.txt` instead and re-run the dbt check against it. If dbt changed after A, stop (CONTRACT ISSUE 6).
 
 Also confirm S2/S3 are closed on the live lake (read-only):
 
+This reads the live warehouse, so the block starts with the SAM guard (on `WAIT`, wait until :23 and re-run it):
+
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python -c "import duckdb,os; c=duckdb.connect(os.environ['GOVBUDGET_DUCKDB'], read_only=True); print(c.execute(\"select count(*) filter (where decision = 'undecided' or keys_sha_ok = false), count(*) from p1_era_line_map\").fetchone(), c.execute('select count(*) from fct_program_decade_series').fetchone())"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+uv run --project . python -c "import duckdb,os; c=duckdb.connect(os.environ['GOVBUDGET_DUCKDB'], read_only=True); print(c.execute(\"select count(*) filter (where decision = 'undecided' or keys_sha_ok = false), count(*) from p1_era_line_map\").fetchone(), c.execute('select count(*) from fct_program_decade_series').fetchone())"
 ```
 Expected: `(0, 6927) (<n>,)` with `<n>` > 0 (one map row per era key, spec §4.4; Task 16 built the program table).
 
 - [ ] **Step 10: Take the post-S3 snapshot (shared Postgres: creates the scratch database only)**
 
+The guard line refuses :12–:22 (the README margin; the tool itself refuses :15–:20). On `WAIT`, wait until :23 and re-run the block.
+
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && mkdir -p "$GOVBUDGET_PROOFS/s4-logs" && date +%H:%M && uv run --project . python -m govbudget proof snapshot --out "$GOVBUDGET_PROOFS/s4" --scratch-db govbudget_proof_s4 > "$GOVBUDGET_PROOFS/s4-logs/snapshot.log" 2>&1; echo "exit=$?"; cat "$GOVBUDGET_PROOFS/s4-logs/snapshot.log"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+mkdir -p "$GOVBUDGET_PROOFS/s4-logs" && date +%H:%M && uv run --project . python -m govbudget proof snapshot --out "$GOVBUDGET_PROOFS/s4" --scratch-db govbudget_proof_s4 > "$GOVBUDGET_PROOFS/s4-logs/snapshot.log" 2>&1; echo "exit=$?"; cat "$GOVBUDGET_PROOFS/s4-logs/snapshot.log"
 ```
 Expected (counts drift with the lake; shas vary):
 ```
@@ -724,7 +734,7 @@ proof snapshot: /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4
   postgres govbudget -> govbudget_proof_s4 (18 tables, dump sha256 <64 hex>)
   source /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4/env.sh [RUN_DIR]
 ```
-The command refuses by itself at :15–:20 (`proof snapshot: refusing at HH:MM …`): wait and re-run. If it refused "after the copy", `rm -rf "$GOVBUDGET_PROOFS/s4"` first (the scratch database is created only after that check). A DuckDB writer holding the lake also makes it refuse before writing anything.
+The command refuses by itself at :15–:20 (`proof snapshot: refusing at HH:MM …`): wait and re-run. If it refused "after the copy", `rm -rf "${GOVBUDGET_PROOFS:?}/s4"` first (in a block that sources `scripts/era/env.sh`) (the scratch database is created only after that check). A DuckDB writer holding the lake also makes it refuse before writing anything.
 
 Record the snapshot's shas for the proof note:
 
@@ -775,7 +785,7 @@ Never write `.proofs/s4` again: both clones' DuckDB views read `.proofs/s4/parqu
 `export-site` reads the code checkout's `dbt/target/manifest.json` for `site_meta.build_checks.dbt_assertions` (`export_site.py:1386-1395`); a fresh worktree has none, so A would omit the field and B would not. `dbt parse` writes the manifest from A's own `dbt/` without opening a warehouse (Task 1 Step 7's method; ROADMAP #173: never another checkout's manifest), and Step 9 proved A's `dbt/` equals HEAD's, so the test-node counts must agree:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git worktree add --detach /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a "${A_SHA}" && cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a/GovBudget && uv sync --frozen && source scripts/era/env.sh && GOVBUDGET_DUCKDB="$GOVBUDGET_PROOFS/dbt-parse-a.duckdb" uv run --project . dbt parse --project-dir dbt --profiles-dir dbt > "$GOVBUDGET_PROOFS/s4-logs/dbt-parse-a.log" 2>&1; echo "parse exit=$?"; test ! -e "$GOVBUDGET_PROOFS/dbt-parse-a.duckdb" && echo no-warehouse-opened; uv run --project . python - /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/dbt/target/manifest.json dbt/target/manifest.json <<'PY'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && A_SHA=$(cat "$GOVBUDGET_PROOFS/s4-logs/a_sha.txt") && : "${A_SHA:?run Step 9 first}" && cd .. && git worktree add --detach /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a "${A_SHA}" && cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a/GovBudget && uv sync --frozen && source scripts/era/env.sh && GOVBUDGET_DUCKDB="$GOVBUDGET_PROOFS/dbt-parse-a.duckdb" uv run --project . dbt parse --project-dir dbt --profiles-dir dbt > "$GOVBUDGET_PROOFS/s4-logs/dbt-parse-a.log" 2>&1; echo "parse exit=$?"; test ! -e "$GOVBUDGET_PROOFS/dbt-parse-a.duckdb" && echo no-warehouse-opened; uv run --project . python - /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/dbt/target/manifest.json dbt/target/manifest.json <<'PY'
 import json, sys
 counts = [sum(1 for n in json.load(open(p))["nodes"].values() if n.get("resource_type") == "test") for p in sys.argv[1:]]
 print(f"dbt test nodes: B {counts[0]}, A {counts[1]}")
@@ -783,54 +793,54 @@ sys.exit(0 if counts[0] == counts[1] else 1)
 PY
 echo "count check exit=$?"; git log -1 --format='%h %s'
 ```
-(`A_SHA` from Step 9; re-export it in this shell.) Expected: `Preparing worktree (detached HEAD …)`, uv installs the locked environment into this worktree's own `.venv`, `parse exit=0`, `no-warehouse-opened`, `dbt test nodes: B <n>, A <n>` with the same `<n>` (above 163, the live count: Tasks 13, 15 and 16 added tests), `count check exit=0`, and A's subject. No stash is used anywhere.
+(`A_SHA` is read back from `.proofs/s4-logs/a_sha.txt`, written in Step 9.) Expected: `Preparing worktree (detached HEAD …)`, uv installs the locked environment into this worktree's own `.venv`, `parse exit=0`, `no-warehouse-opened`, `dbt test nodes: B <n>, A <n>` with the same `<n>` (above 163, the live count: Tasks 13, 15 and 16 added tests), `count check exit=0`, and A's subject. No stash is used anywhere.
 
 Optional speed-up for both exports (the receipt step otherwise rescans 21 PDFs): `for d in /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a/GovBudget /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget; do mkdir -p ${d}/tmp/pdfs && cp -c /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/decisions/GovBudget/tmp/pdfs/*-program-pages-v1.json ${d}/tmp/pdfs/ 2>/dev/null; done; true` (the cache is keyed by PDF sha256).
 
 - [ ] **Step 14: Export A (pre-S4 code)**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && (source "$P/s4/env.sh" "$P/s4-A" && uv run --project . python -m govbudget export-site) > "$P/s4-logs/export-A.log" 2>&1; echo "exit=$?"; tail -3 "$P/s4-logs/export-A.log"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-proof-a/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && (source "$P/s4/env.sh" "$P/s4-A" && uv run --project . python -m govbudget export-site) > "$P/s4-logs/export-A.log" 2>&1; echo "exit=$?"; tail -3 "$P/s4-logs/export-A.log"
 ```
 Expected: `exit=0`; lines `budget PDF receipts: <c>/<n> complete, 21 government documents; audit -> …/.proofs/s4-A/site/json/budget_pdf_receipts_audit.json` and `export-site: <d> datasets, <N_A> citations, … -> …/.proofs/s4-A/site`. The export reads only the pinned clone (and the scratch database), so the :15–:20 rule does not apply to it.
 
 - [ ] **Step 15: Export B (S4 code)**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && (source "$P/s4/env.sh" "$P/s4-B" && uv run --project . python -m govbudget export-site) > "$P/s4-logs/export-B.log" 2>&1; echo "exit=$?"; tail -3 "$P/s4-logs/export-B.log"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && (source "$P/s4/env.sh" "$P/s4-B" && uv run --project . python -m govbudget export-site) > "$P/s4-logs/export-B.log" 2>&1; echo "exit=$?"; tail -3 "$P/s4-logs/export-B.log"
 ```
 Expected: `exit=0`; the same two lines for `s4-B`, with `<N_B>` citations above `<N_A>` (spec §11.4 estimates 16–21k new leaf citations plus `decade_era_map` sums).
 
 - [ ] **Step 16: Diff A against B with the expected-diff rules**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python -m govbudget proof diff "$P/s4-A/site" "$P/s4-B/site" --expect docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json --report "$P/s4-logs/diff-report.json" > "$P/s4-logs/diff.txt" 2>&1; echo "exit=$?"; tail -45 "$P/s4-logs/diff.txt"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python -m govbudget proof diff "$P/s4-A/site" "$P/s4-B/site" --expect docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json --report "$P/s4-logs/diff-report.json" > "$P/s4-logs/diff.txt" 2>&1; echo "exit=$?"; tail -45 "$P/s4-logs/diff.txt"
 ```
-Expected: `exit=0`; one `rule <i> [<path>] matched <count>: <why>` line per rule — the four `/{fid}/pe_bli` and `/{fid}/retrieved_at` rules (citations.json and the cite shards) each match exactly 72 — no `UNEXPECTED differences` and no `UNMET required rule` line, last line `proof diff: PASS`. A FAIL names each unexpected path/pattern or unmet rule: stop and explain it before going on; never widen the rule list to make it pass without the owner.
+Expected: `exit=0`; the counts line, then `  equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits` (may be non-zero: the marts' parallel double sums, e.g. `data/dim_geography.parquet`; these files count as `equivalent`, never as differences); one `rule <i> [<path>] matched <count>: <why>` line per rule — the four `/{fid}/pe_bli` and `/{fid}/retrieved_at` rules (citations.json and the cite shards) each match exactly 72 — no `UNEXPECTED differences` and no `UNMET required rule` line, last line `proof diff: PASS`. A FAIL names each unexpected path/pattern or unmet rule: stop and explain it before going on; never widen the rule list to make it pass without the owner.
 
 - [ ] **Step 17: V6 — fact stability**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python scripts/era/fact_stability.py --a "$P/s4-A/site" --b "$P/s4-B/site" --report "$P/s4-logs/s4-fact-stability.json"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python scripts/era/fact_stability.py --a "$P/s4-A/site" --b "$P/s4-B/site" --report "$P/s4-logs/s4-fact-stability.json"
 ```
 Expected: `citations: A <N_A>, B <N_B>, new in B <N_B−N_A>, missing 0, changed 0, F-15 era leaves restamped 72/72 (expected 72)`, `budget_lines_decade: A <a> rows, B <b> rows, A rows not in B 0, schema equal`, last line `fact-stability: PASS`.
 
 - [ ] **Step 18: V7 + page gain — sidecars and receipts**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python scripts/era/s4_report.py --a "$P/s4-A/site" --b "$P/s4-B/site" --report "$P/s4-logs/s4-report.json"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python scripts/era/s4_report.py --a "$P/s4-A/site" --b "$P/s4-B/site" --report "$P/s4-logs/s4-report.json"
 ```
 Expected: last line `s4-report: PASS`; `sidecars.procurement_pages` `{"decade_only": 89, "pb2026": 892}` (measured today; the A export is post-S3 but S1–S3 add no page); `sidecars.gained.pb2026` about 800 and `gained.decade_only` about 80 (spec §1), `all_seven_editions.pb2026` about 581; `receipts.lost_complete 0`, `f15_default "67/67"`, `era_p1_by_edition` filled for 2017–2023 with facts above A's 6/9/12/15/18/18/15. Keep `s4-report.json`: Task 23's live checks use its `samples`.
 
 - [ ] **Step 19: V5 — F-15 identity on hermetic fixtures**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_f15_era_identity.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_era_identity.py -q`
 Expected: all tests pass, none skipped.
 
 - [ ] **Step 20: verify-phase5e, verify-era-map, verify-lineage on B**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && for gate in verify-phase5e verify-era-map verify-lineage; do (source "$P/s4/env.sh" "$P/s4-B" && uv run --project . python -m govbudget ${gate}) > "$P/s4-logs/${gate}.log" 2>&1; echo "${gate} exit=$?"; tail -1 "$P/s4-logs/${gate}.log"; done
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && for gate in verify-phase5e verify-era-map verify-lineage; do (source "$P/s4/env.sh" "$P/s4-B" && uv run --project . python -m govbudget ${gate}) > "$P/s4-logs/${gate}.log" 2>&1; echo "${gate} exit=$?"; tail -1 "$P/s4-logs/${gate}.log"; done
 ```
 Expected: `verify-phase5e exit=0` / `verify-phase5e: PASS`, `verify-era-map exit=0` / `verify-era-map: PASS` (all six legs; leg f still matches the S0 F-15 pin because S4 leaves `f15_funding_history.json` unchanged), `verify-lineage exit=0` / `verify-lineage: PASS`.
 
@@ -839,53 +849,78 @@ Expected: `verify-phase5e exit=0` / `verify-phase5e: PASS`, `verify-era-map exit
 The site reads the repo-relative `data/site` and `data/duckdb` (CONTRACT ISSUE 8). Point them at B (refusing if any is a real directory), build, verify, compare the F-15 page with the S0 baseline, compare the sitemap, re-stamp `/data/`, then point the links back at the main lake:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && BAD=0; for d in site duckdb parquet; do if [ -e "data/$d" ] && [ ! -L "data/$d" ]; then echo "STOP: data/$d is a real directory"; BAD=1; fi; done; [ "$BAD" = 0 ] && for d in site duckdb parquet; do ln -sfn "$P/s4-B/$d" "data/$d"; done; ls -l data | grep -- '->'; ls dbt/target/manifest.json
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && BAD=0; for d in site duckdb parquet; do if [ -e "data/$d" ] && [ ! -L "data/$d" ]; then echo "STOP: data/$d is a real directory"; BAD=1; fi; done; [ "$BAD" = 0 ] && for d in site duckdb parquet; do ln -sfn "$P/s4-B/$d" "data/$d"; done; ls -l data | grep -- '->'; ls dbt/target/manifest.json
 ```
 Expected: three symlinks `data/{site,duckdb,parquet} -> /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-B/{site,duckdb,parquet}` (excluded by the shared `info/exclude`), and the dbt manifest path (Step 11 wrote it). Then:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build > "$P/s4-logs/site-build.log" 2>&1; echo "build exit=$?"; NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify > "$P/s4-logs/site-verify.log" 2>&1; echo "verify exit=$?"; grep -E "^gate |^  gate |^overall:" "$P/s4-logs/site-verify.log" | tail -40
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build > "$P/s4-logs/site-build.log" 2>&1; echo "build exit=$?"; NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify > "$P/s4-logs/site-verify.log" 2>&1; echo "verify exit=$?"; grep -E "^gate |^  gate |^overall:" "$P/s4-logs/site-verify.log" | tail -40
 ```
-Expected: `build exit=0`, `verify exit=0`, every gate line `→ PASS` (program-skeleton incl. leg k's `decade_absent` recompute and leg p, linkgraph, datatruth incl. the map dataset card, Explorer entry and era summary table, years-matrix, page weight with `/families/f-15/` and `/methodology/` inside their unchanged ceilings), last line `overall: PASS`. Port 4173 must be free (no other session running verify). This is the first build of Task 19 Part C (the `/data/` page throws on an export that does not ship `p1_era_line_map`).
+Expected: `build exit=0`, `verify exit=0`, every gate line `→ PASS` (program-skeleton incl. leg k's `decade_absent` recompute and leg p, linkgraph, datatruth incl. the map dataset card, Explorer entry and era summary table, years-matrix, page weight with `/families/f-15/` and `/methodology/` inside their unchanged ceilings), last line `overall: PASS`. Port 4173 must be free (no other session running verify). This is the first build of Task 19 Part C (the `/data/` page throws on an export that does not ship `p1_era_line_map`). If verify fails only with a `/data/` or `/methodology/` stamp-drift message from gate 1 (recorded headroom more than twice the real one; no ceiling error), run the weigh and re-stamp blocks below first, then re-run verify; any ceiling error is a stop (never raise a ceiling).
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --check ../tests/fixtures/f15/page_snapshot.json; echo "exit=$?"; grep -o '<loc>[^<]*</loc>' out/sitemap.xml | sort > "$P/s4-logs/sitemap-b.txt" && curl -s https://fiscalreceipts.com/sitemap.xml | grep -o '<loc>[^<]*</loc>' | sort > "$P/s4-logs/sitemap-live.txt" && diff -q "$P/s4-logs/sitemap-live.txt" "$P/s4-logs/sitemap-b.txt" && wc -l < "$P/s4-logs/sitemap-b.txt"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --check ../tests/fixtures/f15/page_snapshot.json; echo "exit=$?"; grep -o '<loc>[^<]*</loc>' out/sitemap.xml | sort > "$P/s4-logs/sitemap-b.txt" && curl -s https://fiscalreceipts.com/sitemap.xml | grep -o '<loc>[^<]*</loc>' | sort > "$P/s4-logs/sitemap-live.txt" && diff -q "$P/s4-logs/sitemap-live.txt" "$P/s4-logs/sitemap-b.txt" && wc -l < "$P/s4-logs/sitemap-b.txt"
 ```
 Expected: `f15-page-snapshot: PASS — equal to ../tests/fixtures/f15/page_snapshot.json`, `exit=0`; no `diff` output; `4349` (the live sitemap measured 2026-10-02 at aa714d7f; if production has been redeployed since, compare against the URL list of that deploy instead). A FAIL names the first differing path of the normalized F-15 page: stop (the F-15 fence leaked).
 
-Re-measure `/data/` now that the `p1_era_line_map` inventory row ships (Task 19 stamped it before the map shipped; G6 estimated +400 to +650 gzip). The computation is gate 1's `weigh()` (`site/scripts/gates/build.mjs:889-892`, not exported):
+Re-measure `/data/` now that the `p1_era_line_map` inventory row ships (Task 19 stamped it before the map shipped; Task 19's `/data/` comment estimates +381 to +605 gzip), and `/methodology/` (Task 19 Step 22 handed its re-measure to this build: the pending-ledger clause and the S4 dbt-assertion count both land on it). The computation is gate 1's `weigh()` (`function weigh(absPath)` in `site/scripts/gates/build.mjs`, not exported):
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && node -e 'const fs=require("fs"),z=require("zlib");const b=fs.readFileSync("out/data/index.html");console.log(b.length.toLocaleString("en-US")+" / "+z.gzipSync(b,{level:9}).length.toLocaleString("en-US"))'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && node -e 'const fs=require("fs"),z=require("zlib");for(const f of ["data","methodology"]){const b=fs.readFileSync(`out/${f}/index.html`);console.log(f+" "+b.length.toLocaleString("en-US")+" / "+z.gzipSync(b,{level:9}).length.toLocaleString("en-US"))}'
 ```
-Expected: `<raw> / <gzip>` within `105,000 / 15,600` (verify already passed, so it is). In `site/scripts/gates/build.mjs`, the `/data/` entry as Task 19 Step 11 left it (`<D>`, `<R>`, `<G>` are Task 19's date and numbers) ends:
+Expected: `data <raw> / <gzip>` within `105,000 / 15,600` and `methodology <raw> / <gzip>` within `162,000 / 45,400`. A number over its ceiling is a stop: take it to the owner; never raise a ceiling.
+
+In `site/scripts/gates/build.mjs`, Task 19 Step 11 left the `/data/` entry ending (`81,748 / 13,517` are Task 19's numbers; if its Step 10 printed others, its lines carry those, match them as they stand in the file):
 
 ```js
-  // issue 1). CEILINGS UNCHANGED. RE-MEASURED <D> (Task 19 build, before the
-  // map ships; gate 1's weigh()): <R> / <G>. Task 21 re-measures with the row.
-  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "<R> / <G>" },
+  // Part A build, before the map ships; gate 1's own weigh()): 81,748 /
+  // 13,517; 23,252 raw / 2,083 gzip left.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "81,748 / 13,517" },
 ```
-Replace those three lines with (filling today's date, B's short sha from Step 9 and the printed numbers; the headroom is the ceiling minus the measurement):
+Replace those three lines with Task 19's two comment lines unchanged, four new comment lines and the new `measured` string (filling today's date, B's short sha from Step 9 and the printed numbers; the headroom is the ceiling minus the measurement):
 
 ```js
-  // issue 1). CEILINGS UNCHANGED. RE-MEASURED <D> (Task 19 build, before the
-  // map ships; gate 1's weigh()): <R> / <G>. RE-MEASURED <YYYY-MM-DD> (Task 21,
-  // the S4 proof build of <B short sha> on the S4 export, with the
-  // p1_era_line_map row; gate 1's weigh(), zlib level 9): <R> / <G> ->
-  // <raw> / <gzip>. CEILINGS UNCHANGED; <105,000 − raw> raw / <15,600 − gzip> gzip left.
+  // Part A build, before the map ships; gate 1's own weigh()): 81,748 /
+  // 13,517; 23,252 raw / 2,083 gzip left.
+  // RE-MEASURED <YYYY-MM-DD> (Task 21, the S4 proof build of <B short sha> on
+  // the S4 export, with the p1_era_line_map row; gate 1's weigh(), zlib level
+  // 9): 81,748 / 13,517 -> <raw> / <gzip>. CEILINGS UNCHANGED; <105,000 − raw>
+  // raw / <15,600 − gzip> gzip left.
   { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "<raw> / <gzip>" },
 ```
-Then check the entry and commit it:
+Every other line of the `/data/` comment (Task 19's twelve lines above these two, and the older ones) stays verbatim.
+
+If `/methodology/` printed anything other than its stamp `161,354 / 45,330`, re-stamp it the same way. Task 19 Step 11 left it ending:
+
+```js
+  // 2026-10-02 (production-origin build; gate 1's own weigh()): 161,166 /
+  // 45,269 -> 161,354 / 45,330 (+188 raw / +61 gzip). CEILINGS UNCHANGED;
+  // 646 raw / 70 gzip left. The era table does not render here.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,354 / 45,330" },
+```
+Replace those four lines with the same three comment lines, four new ones and the new `measured` string:
+
+```js
+  // 2026-10-02 (production-origin build; gate 1's own weigh()): 161,166 /
+  // 45,269 -> 161,354 / 45,330 (+188 raw / +61 gzip). CEILINGS UNCHANGED;
+  // 646 raw / 70 gzip left. The era table does not render here.
+  // RE-MEASURED <YYYY-MM-DD> (Task 21, the S4 proof build of <B short sha> on
+  // the S4 export: the pending-ledger clause and the S4 dbt-assertion count;
+  // gate 1's weigh(), zlib level 9): 161,354 / 45,330 -> <raw> / <gzip>.
+  // CEILINGS UNCHANGED; <162,000 − raw> raw / <45,400 − gzip> gzip left.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "<raw> / <gzip>" },
+```
+(If `/methodology/` printed exactly `161,354 / 45,330`, leave its entry alone.) Then check both entries and commit:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && node --input-type=module -e 'import("./scripts/gates/build.mjs").then(({checkPageWeight})=>{const r=checkPageWeight();console.log(r.errors.filter(e=>/\/data\//.test(e)).length)})' && cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/site/scripts/gates/build.mjs && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "chore(site): re-measure /data/ with the p1_era_line_map inventory row (S4 proof build; ceilings unchanged)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && node --input-type=module -e 'import("./scripts/gates/build.mjs").then(({checkPageWeight})=>{const r=checkPageWeight();console.log(r.errors.filter(e=>/\/(data|methodology)\//.test(e)).length)})' && cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/site/scripts/gates/build.mjs && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "chore(site): re-measure /data/ (with the p1_era_line_map inventory row) and /methodology/ on the S4 proof build; ceilings unchanged" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
-Expected: `0` (no ceiling or stamp-drift error for `/data/`), then the commit (`1 file changed`).
+Expected: `0` (no ceiling or stamp-drift error for either page), then the commit (`1 file changed`).
 
 Restore the worktree and the data links:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && git checkout -- site/public/llms.txt && for d in site duckdb parquet; do ln -sfn "/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/$d" "data/$d"; done && git -C .. status --porcelain -- GovBudget | grep -v '^??' ; echo "clean check done"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && git checkout -- site/public/llms.txt && for d in site duckdb parquet; do ln -sfn "/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/$d" "data/$d"; done && git -C .. status --porcelain -- GovBudget | grep -v '^??' ; echo "clean check done"
 ```
 Expected: no tracked change listed (the build's `llms.txt` rewrite is discarded — the release commits its own in Task 23).
 
@@ -920,7 +955,8 @@ Insert as the first entry under `## Findings log (what we learned; feeds future 
   V5, V8 (`npm run verify`: overall PASS), verify-phase5e, verify-era-map and
   verify-lineage pass on B; the normalized F-15 page equals the S0 snapshot and
   `f15_funding_history.json` is unchanged; the sitemap keeps 4,349 URLs; `/data/`
-  re-measured with the map row at <raw> / <gzip> (ceilings unchanged).
+  re-measured with the map row at <raw> / <gzip> and `/methodology/` at <raw> / <gzip>
+  (ceilings unchanged).
 ```
 
 - [ ] **Step 23: Commit the proof note and drop the A worktree**

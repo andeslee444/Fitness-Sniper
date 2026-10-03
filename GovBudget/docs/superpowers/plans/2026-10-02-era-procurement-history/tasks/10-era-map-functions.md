@@ -433,7 +433,7 @@ def test_mixed_and_review_classes_are_left():
 
 - [ ] **Step 2: Run the tests and watch them fail**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map.py -q`
 
 Expected: collection error, ending
 ```
@@ -981,7 +981,7 @@ def apply_class_rulings(
 
 - [ ] **Step 4: Run the tests and watch them pass**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map.py -q`
 
 Expected: `49 passed`.
 

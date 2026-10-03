@@ -6,8 +6,9 @@
 (copy: methodology sentence at equal length, per-edition table, datatruth leg, `corpus.ts` comment); §7 (an undecided
 era key is never exported); V7 (era completeness reported per edition); V8 (datatruth: map dataset card, Explorer
 entry, era summary table; page weight, no ceiling raised); S4. The owner decision and contract issues 2, 4 and 6 above
-apply: the table's page and its counts-only content depart from §4.4/§6.4/§10 and need the owner's explicit yes (Step
-19) and dated spec corrections (Step 20) before Part C.
+apply: the table's page and its counts-only content depart from §4.4/§6.4/§10; the owner approved both at plan review
+(Step 19) and the plan commit already holds the dated spec corrections and the ROADMAP sentence (Step 20 only checks).
+This task edits neither the spec nor the ROADMAP.
 
 **Files:**
 - Create: `site/scripts/computed-style-snapshot.mjs`
@@ -21,27 +22,29 @@ apply: the table's page and its counts-only content depart from §4.4/§6.4/§10
 - Modify: `src/govbudget/export_site.py:1753-1758` (scope), after `:2186` (new constants and two functions), `:2584-2590` (wiring)
 - Modify: `src/govbudget/cli.py:2471-2480` (`_export_budget_pdf_evidence`)
 - Test: `tests/test_export_era_line_map.py`, `tests/test_era_map_summary.py`, `tests/test_budget_pdf_export_workflow.py` (append), `tests/jbooks/test_export_site_pg.py` (append)
-- Modify: `site/src/lib/dataset-names.ts:18-35`, `site/src/components/explorer.tsx:163-165`, `site/src/lib/data.ts:29-30` and after `:764`, `site/src/app/downloads/page.tsx:1-12`, `:73`, `:145-146`
+- Modify: `site/src/lib/dataset-names.ts:18-35`, `site/src/components/explorer.tsx:163-165`, `site/src/lib/data.ts:29-30` and after `:764`, `site/src/app/downloads/page.tsx:3`, `:73`, `:143-144`, `site/src/components/download-cards.tsx` (imports, props, the card grid: the era table renders inside it)
 - Create: `site/src/lib/era-map.ts`, `site/src/components/era-map-table.tsx`, `site/scripts/gates/eramap-recompute.py`
 - Modify: `site/scripts/gates/datatruth.mjs:213-214` (header), `:776-779` (wiring), end of file (leg s)
-- Modify: `docs/superpowers/specs/2026-10-02-era-procurement-history-design.md` (a dated correction note at the end of §6.4, above `### 6.5`, and at the end of §10, above `## 11.`), `docs/superpowers/ROADMAP.md` (one sentence at the end of the "Platform families (2026-10-02)" paragraph, lines 8-29 today)
 - Test: `site/src/__tests__/methodology-pending-ledger.test.ts`, `site/src/__tests__/duckdb-helpers.test.ts:119-149`, `site/src/__tests__/explorer-era-map-preset.test.ts`, `tests/test_explorer_era_map_preset.py`, `site/src/__tests__/era-map-table.test.tsx`, `site/scripts/gates/__tests__/era-map-leg.test.mjs`
+
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
 
 **Interfaces:**
 Consumes: Task 1 (worktree `uv sync`, `site/node_modules` via `npm ci`, Playwright chromium, the `data/site` link of
 contract issue 6, `GOVBUDGET_TEST_PG_DSN` cluster); Task 5 (`/methodology/` stamp re-measured at S0); Task 10
 (`govbudget.jbooks.era_map.DECISIONS`); Task 13 (`p1_era_line_map` in the warehouse); Task 15 (no undecided row, for
 Step 17's real-data check); Task 17 (era leaves cited with `pe_bli = line_item_code`, which the scope sentence states).
-Produces: the owner's decision on the era table (page and counts-only), recorded as dated correction notes in spec §6.4
-and §10 and in the ROADMAP "Platform families" paragraph; `_DATASET_SCOPES["p1_era_line_map"]`; `ERA_MAP_DATASET = "p1_era_line_map"`,
+Produces: `_DATASET_SCOPES["p1_era_line_map"]`; `ERA_MAP_DATASET = "p1_era_line_map"`,
 `ERA_MAP_SUMMARY_FILE = "era_map_summary.json"`, `ERA_MAP_EDITIONS = tuple(range(2017, 2024))`;
 `_export_p1_era_line_map(con, data_dir: Path) -> int | None`; `write_era_map_summary(*, site_dir: Path, duckdb_path:
 Path) -> dict | None` (all in `export_site.py`); `data/p1_era_line_map.parquet` and `json/era_map_summary.json`
 (schema below) in every `export-site` CLI run; `DATASET_NAMES` gains `"p1_era_line_map"`; `cannedQueriesFor
 ("p1_era_line_map")`; `site/src/lib/era-map.ts` (`ERA_DECISIONS`, `ERA_EXCLUDED`, `ERA_MAP_COLUMNS`, `eraMapCells`,
 types `EraMapSummary`, `EraMapEdition`, `EraMapTally`); `getEraMapSummary(): EraMapSummary | null` in
-`site/src/lib/data.ts`; `<EraMapTable summary>` mounted on `/downloads/` (`#era-map`, `[data-era-map]`,
-`tr[data-era-edition]`, `[data-era-cell] [data-era-value]`); gate 24 leg (s) `runEraMapLeg(errors, notes, injected?)`
+`site/src/lib/data.ts`; `<EraMapTable summary>` rendered on `/downloads/` by `<DownloadCards eraMap>` as the
+`sm:col-span-2` grid item directly after the `[data-dataset-card="p1_era_line_map"]` card (`section#era-map`,
+`[data-era-map]`, `tr[data-era-edition]`, `[data-era-cell] [data-era-value]`; spec §6.4 owner decision: "directly under
+the `p1_era_line_map` download card"); every download card carries `data-dataset-card="<name>"`; gate 24 leg (s) `runEraMapLeg(errors, notes, injected?)`
 exported from `site/scripts/gates/datatruth.mjs`; `site/scripts/gates/eramap-recompute.py`;
 `site/scripts/computed-style-snapshot.mjs` (`--route/--selector/--out/--port`, `--diff A B`). Handoff to Task 21 in
 contract issue 6.
@@ -63,6 +66,7 @@ pre-S4 export.
 
 Run (from the worktree `GovBudget/`):
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 test -f data/site/json/datasets.json && test -f dbt/target/manifest.json && test -f data-seeds/gao_program_xwalk.csv && test ! -L site/node_modules && test -d site/node_modules/next && test -d site/node_modules/playwright && echo ready
 python3 -c "import json;print(len(json.load(open('data/site/json/datasets.json'))['datasets']))"
 ```
@@ -213,6 +217,7 @@ if (process.argv.includes("--diff")) {
 
 Run:
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 mkdir -p /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/t19-data-hoist
 cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build
 node scripts/computed-style-snapshot.mjs --route /data/ --selector "#dataset-inventory table" \
@@ -372,7 +377,7 @@ describe("/methodology/ era procurement sentence", () => {
 
 Run:
 ```bash
-cd site && npx vitest run src/__tests__/data-inventory-hoist.test.ts src/__tests__/methodology-era-sentence.test.ts
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/data-inventory-hoist.test.ts src/__tests__/methodology-era-sentence.test.ts
 ```
 Expected: FAIL, `Tests  13 failed | 1 passed (14)`. The hoist file fails all 9 cases (the six `page.tsx no longer
 carries …`, the module class, `t-id` alone on the name cell, and the CSS case with `ENOENT: no such file or directory …
@@ -714,7 +719,7 @@ After:
 
 Run:
 ```bash
-cd site && npx vitest run src/__tests__/data-inventory-hoist.test.ts src/__tests__/methodology-era-sentence.test.ts
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/data-inventory-hoist.test.ts src/__tests__/methodology-era-sentence.test.ts
 ```
 Expected: `Test Files  2 passed (2)`, `Tests  14 passed (14)`.
 
@@ -722,7 +727,7 @@ Expected: `Test Files  2 passed (2)`, `Tests  14 passed (14)`.
 
 Run:
 ```bash
-cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npx next build && node scripts/write-build-meta.mjs
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npx next build && node scripts/write-build-meta.mjs
 node scripts/computed-style-snapshot.mjs --route /data/ --selector "#dataset-inventory table" \
   --out /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/t19-data-hoist/after.json --port 4191
 node scripts/computed-style-snapshot.mjs --diff \
@@ -811,7 +816,7 @@ After (Task 5's seven comment lines unchanged, six new comment lines, the new `m
 ```
 Run:
 ```bash
-cd site && node --input-type=module -e 'import("./scripts/gates/build.mjs").then(({checkPageWeight})=>{const r=checkPageWeight();console.log(r.errors.filter(e=>/\/(data|methodology)\//.test(e)).length)})'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && node --input-type=module -e 'import("./scripts/gates/build.mjs").then(({checkPageWeight})=>{const r=checkPageWeight();console.log(r.errors.filter(e=>/\/(data|methodology)\//.test(e)).length)})'
 ```
 Expected: `0` (no ceiling or stamp-drift error for either page). Verified on the production-origin scratch build
 (Task 5's stamps applied first): with both pages re-stamped it prints `0`; with the pre-Task-5 `/methodology/` stamp
@@ -1109,6 +1114,43 @@ def test_evidence_only_refresh_rewrites_the_era_summary(monkeypatch, tmp_path, c
     cli.main(["export-budget-pdf-receipts"])
     assert events == ["pdf-evidence", "era-summary"]
     assert "era map summary: 7 editions" in capsys.readouterr().out
+
+
+def test_the_era_summary_recounts_the_manifest_json_sidecars(monkeypatch, tmp_path):
+    """The F-15 builder sets manifest.json json_sidecars (its rglob count of
+    json/**/*.json) before the receipts step writes json/era_map_summary.json,
+    so the receipts step recounts after the summary (Task 19, pre-flight)."""
+    configure_paths(monkeypatch, tmp_path)
+    json_dir = tmp_path / "site" / "json"
+    json_dir.mkdir(parents=True)
+    (json_dir / "citations.json").write_text("{}")
+    manifest = tmp_path / "site" / "manifest.json"
+    manifest.write_text('{"built_at":"b","json_sidecars":1}\n')
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", lambda **k: RECEIPT_SUMMARY)
+
+    def summary(**kwargs):
+        (kwargs["site_dir"] / "json" / "era_map_summary.json").write_text("{}")
+        return {"editions": [{}] * 7}
+
+    monkeypatch.setattr(site_export, "write_era_map_summary", summary)
+    cli.main(["export-budget-pdf-receipts"])
+    assert manifest.read_text() == '{"built_at":"b","json_sidecars":2}\n'
+    cli.main(["export-budget-pdf-receipts"])          # already right: bytes untouched
+    assert manifest.read_text() == '{"built_at":"b","json_sidecars":2}\n'
+
+
+def test_no_era_summary_leaves_the_manifest_alone(monkeypatch, tmp_path):
+    configure_paths(monkeypatch, tmp_path)
+    json_dir = tmp_path / "site" / "json"
+    json_dir.mkdir(parents=True)
+    (json_dir / "a.json").write_text("{}")
+    (json_dir / "b.json").write_text("{}")
+    manifest = tmp_path / "site" / "manifest.json"
+    manifest.write_text('{\n  "json_sidecars": 1\n}')
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", lambda **k: RECEIPT_SUMMARY)
+    monkeypatch.setattr(site_export, "write_era_map_summary", lambda **k: None)
+    cli.main(["export-budget-pdf-receipts"])
+    assert manifest.read_text() == '{\n  "json_sidecars": 1\n}'
 ```
 
 Append to `tests/jbooks/test_export_site_pg.py`:
@@ -1183,14 +1225,15 @@ def test_export_site_refuses_an_undecided_era_line(pg_dsn, tmp_path):
 
 Run (one file per invocation: a collection error stops the whole session):
 ```bash
-uv run --project . pytest tests/test_export_era_line_map.py -q
-uv run --project . pytest tests/test_era_map_summary.py -q
-uv run --project . pytest tests/test_budget_pdf_export_workflow.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_era_line_map.py -q
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_era_map_summary.py -q
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_budget_pdf_export_workflow.py -q
 GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_site_pg.py -q -k "era_line"
 ```
 Expected: FAIL. The first errors at collection: `ImportError: cannot import name 'ERA_MAP_DATASET' from
 'govbudget.export_site'`; the second: `ImportError: cannot import name 'write_era_map_summary' from
-'govbudget.export_site'`; the third: `2 failed, 6 passed`, both new tests with `AttributeError: <module
+'govbudget.export_site'`; the third: `4 failed, 6 passed`, all four new tests with `AttributeError: <module
 'govbudget.export_site' …> has no attribute 'write_era_map_summary'`; the PG pair: `2 failed` (`assert pq.exists()`,
 and `Failed: DID NOT RAISE <class 'RuntimeError'>`).
 
@@ -1463,24 +1506,60 @@ def _export_budget_pdf_evidence(*, site_dir: Path, manifest: Path, cache_dir: Pa
     if era is not None:
         print(f"era map summary: {len(era['editions'])} editions"
               f" -> {site_dir / 'json' / 'era_map_summary.json'}")
+        # The F-15 family-history builder counted json/**/*.json for
+        # manifest.json's json_sidecars before this file existed.
+        _refresh_json_sidecars(site_dir)
     return report
+
+
+def _refresh_json_sidecars(site_dir: Path) -> int | None:
+    """Recount manifest.json's json_sidecars after a late JSON sidecar.
+
+    export_site's F-15 family-history builder sets json_sidecars to the number
+    of json/**/*.json files (f15_funding_history.py, `json_dir.rglob("*.json")`)
+    before the receipts step runs, so json/era_map_summary.json, written above
+    on an export's first run, would be left out. Same count and the same
+    serialization as that builder (sorted keys, compact, trailing newline); the
+    file is rewritten only when the number changed. Returns the count, or None
+    when the site has no manifest.json.
+    """
+    import json
+
+    path = site_dir / "manifest.json"
+    if not path.is_file():
+        return None
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    count = len(list((site_dir / "json").rglob("*.json")))
+    if manifest.get("json_sidecars") != count:
+        manifest["json_sidecars"] = count
+        path.write_bytes((json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode())
+    return count
 ```
+
+`--site-dir` must belong to the same `GOVBUDGET_DATA`/`GOVBUDGET_DUCKDB` environment as the
+warehouse `config.DUCKDB_PATH` names (source the snapshot's `env.sh` first when the site is
+a proof clone): the summary takes its actuals from that warehouse.
 
 - [ ] **Step 16: Run the exporter tests and their neighbours**
 
 Run:
 ```bash
-uv run --project . pytest tests/test_export_era_line_map.py tests/test_era_map_summary.py tests/test_budget_pdf_export_workflow.py tests/test_export_site_datasets_manifest.py tests/test_export_site_private_duckdb.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_era_line_map.py tests/test_era_map_summary.py tests/test_budget_pdf_export_workflow.py tests/test_export_site_datasets_manifest.py tests/test_export_site_private_duckdb.py -q
 GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_site_pg.py -q
 ```
 Expected: all pass, including the 8 new tests in `test_export_era_line_map.py`, the 6 in `test_era_map_summary.py`, the
-2 new workflow tests and the 2 new PG tests; the manifest file's grain-sentence, em-dash and serial-comma checks now
+4 new workflow tests (two for the summary's order, two for the `json_sidecars` recount) and the 2 new PG tests; the manifest file's grain-sentence, em-dash and serial-comma checks now
 also cover the new scope.
 
 - [ ] **Step 17: Real-data check, read-only (needs Tasks 13 and 15 in the shared warehouse)**
 
 Run (writes only under `.proofs/`; the warehouse is opened read-only):
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/t19-era-summary
 rm -rf "$P" && mkdir -p "$P/site/data" "$P/site/json"
 ln -s /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site/json/citations.json "$P/site/json/citations.json"
@@ -1524,7 +1603,8 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 
 Part C departs from the approved spec three times (the table's page; counts instead of dollars; a second
 `/methodology/` clause, because the uncited `p1_era_line_map` makes "the pending ledger is empty" false). Steps 19–20
-get the owner's explicit decision and record it before any site code is written.
+confirm that the owner decided all three at plan review and that the plan commit recorded it; nothing is written to the
+spec or the ROADMAP here.
 
 - [ ] **Step 19: Owner decision — already made (2026-10-02)**
 
@@ -1539,7 +1619,7 @@ with the dollars in `json/era_map_summary.json`; `/data/` shows the "tier pendin
 The spec notes (§6.4, §10) and the ROADMAP sentence were written in the plan commit. Check they are present:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 grep -c "renders on\|\`/downloads/\`, directly under the" docs/superpowers/specs/2026-10-02-era-procurement-history-design.md
 grep -c "Owner decisions at plan review (2026-10-02)" docs/superpowers/ROADMAP.md
 ```
@@ -1717,15 +1797,19 @@ Create `site/src/__tests__/era-map-table.test.tsx`:
  * The /downloads/ era-map table (families piece 1, spec 2026-10-02 §6.4,
  * Task 19). It renders counts from json/era_map_summary.json: lines, chains
  * ("codes") per decision, and receipt completeness, never a dollar figure (a
- * rendered $ needs a Cite state these sums do not have). The last two cases
- * bind the component to gate 24 leg (s): what it renders, the leg accepts,
- * and a summary the page disagrees with, the leg rejects.
+ * rendered $ needs a Cite state these sums do not have). DownloadCards renders
+ * it inside the card grid as the full-width item directly after the
+ * p1_era_line_map card (spec §6.4 owner decision), so these cases render the
+ * cards. The last two bind the rendered cards to gate 24 leg (s): what they
+ * render, the leg accepts, and a summary the page disagrees with, the leg
+ * rejects.
  */
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parse } from "node-html-parser";
 import { EraMapTable } from "@/components/era-map-table";
+import { DownloadCards, type DownloadDataset } from "@/components/download-cards";
 import { ERA_DECISIONS, type EraMapEdition, type EraMapSummary } from "@/lib/era-map";
 import { runEraMapLeg } from "../../scripts/gates/datatruth.mjs";
 
@@ -1777,7 +1861,23 @@ const auditOf = (summary: EraMapSummary) => ({
   books: summary.editions.map((e) => ({ edition: e.edition, exhibit: "P-1", facts: e.receipts.facts, complete: e.receipts.complete })),
 });
 
-const html = renderToStaticMarkup(<EraMapTable summary={SUMMARY} />);
+const INVENTORY: DownloadDataset[] = [
+  { name: "budget_lines", row_count: 159903, scope: "One row per budget line.", cited: true },
+  { name: "p1_era_line_map", row_count: 6927, scope: "One row per PB2017–PB2023 P-1 display line.", cited: false },
+  { name: "dim_programs", row_count: 1936, scope: "One row per program.", cited: true },
+];
+const cards = (eraMap: EraMapSummary | null) =>
+  renderToStaticMarkup(
+    <DownloadCards
+      builtAt="2026-10-02T01:30:21.066005+00:00"
+      inventory={INVENTORY}
+      citationsIndex={{ row_count: 125409, scope: "The citation index." }}
+      uncitedDatasets={["p1_era_line_map"]}
+      eraMap={eraMap}
+    />,
+  );
+
+const html = cards(SUMMARY);
 const root = parse(html);
 const cell = (ed: number, key: string) =>
   root.querySelector(`tr[data-era-edition="${ed}"] [data-era-cell="${key}"] [data-era-value]`)?.text;
@@ -1797,11 +1897,27 @@ describe("EraMapTable", () => {
     expect(cell(2017, "excluded")).toBe("49 codes");
     expect(cell(2017, "receipts")).toBe("2,107 of 2,214");
     expect(cell(2018, "lines")).toBe("1,032");
-    expect(html).not.toContain("$");
+    expect(root.querySelector("#era-map")!.toString()).not.toContain("$");
   });
 
   it("says code, not codes, for one", () => {
     expect(cell(2021, "excluded")).toBe("1 code");
+  });
+
+  it("renders directly after the p1_era_line_map card, full width in the card grid", () => {
+    const card = root.querySelector('[data-dataset-card="p1_era_line_map"]');
+    const next = card?.nextElementSibling;
+    expect(next?.getAttribute("id")).toBe("era-map");
+    expect(next?.classList.contains("sm:col-span-2")).toBe(true);
+    expect(next?.parentNode).toBe(card?.parentNode);
+    const alone = parse(renderToStaticMarkup(<EraMapTable summary={SUMMARY} />));
+    expect(alone.querySelector("#era-map")?.classList.contains("sm:col-span-2")).toBe(true);
+  });
+
+  it("renders no table when the export shipped no summary", () => {
+    const bare = parse(cards(null));
+    expect(bare.querySelectorAll("[data-era-map]")).toHaveLength(0);
+    expect(bare.querySelectorAll("[data-dataset-card]")).toHaveLength(4);
   });
 
   it("is what gate 24 leg (s) accepts", () => {
@@ -1828,11 +1944,12 @@ Create `site/scripts/gates/__tests__/era-map-leg.test.mjs`:
 ```js
 /**
  * Gate 24 leg (s) — the era-map table on /downloads/ (families piece 1,
- * Task 19). The page must render exactly json/era_map_summary.json, and the
- * summary must agree with the shipped p1_era_line_map (recounted from the
- * parquet) and with the receipts audit. Every input is injected, so nothing
- * here needs a build or the lake. src/__tests__/era-map-table.test.tsx binds
- * the real component to the same leg.
+ * Task 19). The page must render exactly json/era_map_summary.json, directly
+ * after the p1_era_line_map download card, and the summary must agree with
+ * the shipped p1_era_line_map (recounted from the parquet) and with the
+ * receipts audit. Every input is injected, so nothing here needs a build or
+ * the lake. src/__tests__/era-map-table.test.tsx binds the real components to
+ * the same leg.
  */
 import { describe, it, expect } from "vitest";
 import { runEraMapLeg } from "../datatruth.mjs";
@@ -1855,14 +1972,19 @@ const recountOf = (s) => ({
 });
 const auditOf = (s) => ({ books: s.editions.map((e) => ({ edition: e.edition, exhibit: "P-1", facts: e.receipts.facts, complete: e.receipts.complete })) });
 
-/** The markup the component renders, by hand. */
-function htmlOf(s, { drop } = {}) {
+/** The markup DownloadCards renders, by hand: the card grid with the era
+ *  table's section directly after the p1_era_line_map card (with `misplaced`,
+ *  after the grid instead). */
+function htmlOf(s, { drop, misplaced } = {}) {
   const rows = s.editions.filter((e) => e.edition !== drop).map((e) =>
     `<tr data-era-edition="${e.edition}"><th scope="row">PB${e.edition}</th>` +
     [["lines", "4"], ["same_program", "2 codes"], ["history_only", "1 code"], ["excluded", "1 code"], ["receipts", "1,200 of 1,234"]]
       .map(([k, v]) => `<td data-era-cell="${k}"><span class="t-label">x</span><span data-era-value>${v}</span></td>`).join("") +
     "</tr>").join("");
-  return `<main><section id="era-map"><table data-era-map><tbody>${rows}</tbody></table></section></main>`;
+  const table = `<section id="era-map" class="sm:col-span-2"><table data-era-map><tbody>${rows}</tbody></table></section>`;
+  const card = (name) => `<div data-dataset-card="${name}"><span>${name}</span></div>`;
+  return `<main><div class="grid gap-4 sm:grid-cols-2">${card("budget_lines")}${card("p1_era_line_map")}` +
+    `${misplaced ? "" : table}${card("citations")}</div>${misplaced ? table : ""}</main>`;
 }
 
 function run(over = {}) {
@@ -1936,6 +2058,13 @@ describe("gate 24 leg (s)", () => {
     expect(errors).toContain('leg s (/downloads/): PB2023 same_program renders "2 codes", era_map_summary.json says "3 codes"');
     expect(errors).toContain('leg s (/downloads/): PB2023 lines renders "4", era_map_summary.json says "5"');
   });
+
+  it("fails when the table is not directly under the p1_era_line_map card", () => {
+    const s = summary();
+    expect(run({ summary: s, html: htmlOf(s, { misplaced: true }) }).errors).toEqual([
+      "leg s (/downloads/): the era table is not the element directly after the p1_era_line_map card",
+    ]);
+  });
 });
 ```
 
@@ -1985,14 +2114,14 @@ describe("/methodology/ pending-ledger clause", () => {
 
 Run:
 ```bash
-cd site && npx vitest run src/__tests__/duckdb-helpers.test.ts src/__tests__/explorer-era-map-preset.test.ts src/__tests__/era-map-table.test.tsx scripts/gates/__tests__/era-map-leg.test.mjs src/__tests__/methodology-pending-ledger.test.ts
-cd .. && uv run --project . pytest tests/test_explorer_era_map_preset.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/duckdb-helpers.test.ts src/__tests__/explorer-era-map-preset.test.ts src/__tests__/era-map-table.test.tsx scripts/gates/__tests__/era-map-leg.test.mjs src/__tests__/methodology-pending-ledger.test.ts
+cd .. && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_explorer_era_map_preset.py -q
 ```
 Expected: FAIL. `duckdb-helpers`: 3 failures (`expected [ 'budget_lines', …(15) ] to have a length of 17 but got 16`,
 and twice `… to include 'p1_era_line_map'`); the preset test: 3 failures, the first `expected [ 'Preview (first 50
 rows)' ] to deeply equal [ 'Decisions by edition', …(1) ]` (the default branch answers); `era-map-table.test.tsx`:
 `Error: Failed to resolve import "@/components/era-map-table" from "src/__tests__/era-map-table.test.tsx". Does the
-file exist?`; `era-map-leg.test.mjs`: all 9 cases with `TypeError: (0 , runEraMapLeg) is not a function`;
+file exist?`; `era-map-leg.test.mjs`: all 10 cases with `TypeError: (0 , runEraMapLeg) is not a function`;
 `methodology-pending-ledger.test.ts`: `2 failed | 1 passed` ("names p1_era_line_map …" and "no longer says the ledger
 is empty"; the length case passes, both clauses are 77 bytes); pytest:
 `ValueError: substring not found` from `src.index(CASE)`.
@@ -2210,12 +2339,17 @@ export function getEraMapSummary(): EraMapSummary | null {
 ```tsx
 /**
  * The era-map decision table on /downloads/ (families piece 1, spec
- * 2026-10-02 §6.4), directly under the p1_era_line_map download card.
+ * 2026-10-02 §6.4), directly under the p1_era_line_map download card:
+ * DownloadCards renders it inside its card grid as the item right after that
+ * card, spanning both columns from `sm` up (`sm:col-span-2`); gate 24 leg (s)
+ * checks that position.
  *
  * Placed here by the owner's decision (spec §6.4 correction): as built it
  * weighed +2,393 gzip on /coverage/ (292 left) and +3,647 on /data/ (2,083
  * left after the inventory hoist), and no ceiling is raised; /downloads/
- * carries no page-weight ceiling (+2,354 gzip here). Counts only: dollars stay in
+ * carries no page-weight ceiling (+2,354 gzip here, measured with the table
+ * below the card grid; gate 1 has no /downloads/ entry, so no step re-weighs
+ * it). Counts only: dollars stay in
  * json/era_map_summary.json (see lib/era-map). Below `sm` each row becomes a
  * card (the /data/ treatment) with its field labels; the gate hooks
  * ([data-era-edition], [data-era-cell], [data-era-value]) are what gate 24
@@ -2225,7 +2359,7 @@ import { ERA_MAP_COLUMNS, eraMapCells, type EraMapSummary } from "@/lib/era-map"
 
 export function EraMapTable({ summary }: { summary: EraMapSummary }) {
   return (
-    <section id="era-map" aria-labelledby="era-map-heading" className="mt-10">
+    <section id="era-map" aria-labelledby="era-map-heading" className="sm:col-span-2">
       <h2 id="era-map-heading" className="mb-3">
         Procurement lines before PB2024
       </h2>
@@ -2284,22 +2418,92 @@ export function EraMapTable({ summary }: { summary: EraMapSummary }) {
 }
 ```
 
-- [ ] **Step 27: Mount it on `/downloads/`**
+- [ ] **Step 27: Render it in the download-card grid, directly after the `p1_era_line_map` card**
 
-In `site/src/app/downloads/page.tsx`, imports before (`:10-12`):
+Spec §6.4's owner decision puts the table "directly under the `p1_era_line_map` download card", so it renders inside
+`DownloadCards`' grid as the full-width item that follows that card (pre-flight ruling 2026-10-03), not below the
+whole grid. `EraMapTable` is pure (no hooks, no server-only import), so the client component can render it; the page
+passes the summary in.
+
+In `site/src/components/download-cards.tsx`, imports, before:
 ```tsx
-import { DownloadCards } from "@/components/download-cards";
-import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
-import { PageIntro } from "@/components/page-intro";
+import React from "react";
+import { useAssetUrl, useAssetConfigResolved } from "@/components/asset-config";
 ```
 After:
 ```tsx
-import { DownloadCards } from "@/components/download-cards";
+import React from "react";
+import { useAssetUrl, useAssetConfigResolved } from "@/components/asset-config";
 import { EraMapTable } from "@/components/era-map-table";
-import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
-import { PageIntro } from "@/components/page-intro";
+import type { EraMapSummary } from "@/lib/era-map";
+
+/** The dataset whose card the era-map table follows (families piece 1). */
+const ERA_MAP_DATASET = "p1_era_line_map";
 ```
-and `:3`, before:
+Props, before:
+```tsx
+  workbookCount,
+  uncitedDatasets = [],
+}: {
+```
+After:
+```tsx
+  workbookCount,
+  uncitedDatasets = [],
+  eraMap = null,
+}: {
+```
+Before:
+```tsx
+  uncitedDatasets?: string[];
+}) {
+```
+After:
+```tsx
+  uncitedDatasets?: string[];
+  /**
+   * json/era_map_summary.json (lib/data getEraMapSummary; families piece 1).
+   * When present, the era-map table renders as the full-width grid item
+   * directly after the p1_era_line_map card (spec §6.4 owner decision).
+   */
+  eraMap?: EraMapSummary | null;
+}) {
+```
+The card grid, before:
+```tsx
+        {DATASETS.map((ds) => (
+          <div
+            key={ds.name}
+            {...(degraded ? { "aria-disabled": true } : {})}
+```
+After:
+```tsx
+        {DATASETS.map((ds) => (
+          <React.Fragment key={ds.name}>
+          <div
+            data-dataset-card={ds.name}
+            {...(degraded ? { "aria-disabled": true } : {})}
+```
+Before:
+```tsx
+              {ds.name}.parquet
+            </a>
+          </div>
+        ))}
+      </div>
+```
+After:
+```tsx
+              {ds.name}.parquet
+            </a>
+          </div>
+          {ds.name === ERA_MAP_DATASET && eraMap && <EraMapTable summary={eraMap} />}
+          </React.Fragment>
+        ))}
+      </div>
+```
+
+In `site/src/app/downloads/page.tsx` (the component import stays out of the page), `:3`, before:
 ```tsx
 import { citationsIndexOf, getDatasetManifest, getSiteMeta } from "@/lib/data";
 ```
@@ -2314,21 +2518,21 @@ Before (`:73`):
 After:
 ```tsx
   const manifest = getDatasetManifest();
-  // Families piece 1: the era-map decision table renders under the
-  // p1_era_line_map card (owner decision, spec §6.4 correction: /coverage/
-  // and /data/ had no room).
+  // Families piece 1: the era-map decision table renders in the card grid,
+  // directly after the p1_era_line_map card (owner decision, spec §6.4
+  // correction: /coverage/ and /data/ had no room).
   const eraMap = getEraMapSummary();
 ```
-Before (`:145-146`):
+Before (`:143-144`):
 ```tsx
-        </AssetConfigProvider>
-      </div>
+            uncitedDatasets={meta.uncited_datasets ?? []}
+          />
 ```
 After:
 ```tsx
-        </AssetConfigProvider>
-        {eraMap && <EraMapTable summary={eraMap} />}
-      </div>
+            uncitedDatasets={meta.uncited_datasets ?? []}
+            eraMap={eraMap}
+          />
 ```
 
 - [ ] **Step 28: Create the gate's independent recount, `site/scripts/gates/eramap-recompute.py`**
@@ -2399,7 +2603,8 @@ After:
  *      (o); that letter was taken by the hand-adjudication leg above and
  *      (p)/(q) are reserved, so the by-year leg is (r).)
  *  (s) ERA-MAP DECISIONS (families piece 1, spec 2026-10-02 §6.4). /downloads/
- *      renders, under the p1_era_line_map card, one row per PB2017–PB2023
+ *      renders, directly under the p1_era_line_map card (the card's next
+ *      element in the card grid), one row per PB2017–PB2023
  *      edition: its P-1 lines, the chains ("codes") each decision covers and
  *      how many cited era cells carry a complete PDF receipt. This leg
  *      requires the rendered cells to equal json/era_map_summary.json, the
@@ -2576,6 +2781,16 @@ export function runEraMapLeg(errors, notes, injected) {
     errors.push(`leg s (${ERA_PAGE}): ${tables.length} [data-era-map] tables rendered, expected exactly 1`);
     return;
   }
+  // (s4) where it renders: directly under the p1_era_line_map download card
+  // (spec §6.4 owner decision), i.e. the card's next element is the table's
+  // section, a full-width item of the same card grid.
+  const card = root.querySelector('[data-dataset-card="p1_era_line_map"]');
+  const next = card ? card.nextElementSibling : null;
+  if (!card) {
+    errors.push(`leg s (${ERA_PAGE}): no p1_era_line_map download card ([data-dataset-card="p1_era_line_map"])`);
+  } else if (next?.getAttribute("id") !== "era-map" || next.querySelectorAll("[data-era-map]").length !== 1) {
+    errors.push(`leg s (${ERA_PAGE}): the era table is not the element directly after the p1_era_line_map card`);
+  }
   const rows = tables[0].querySelectorAll("tr[data-era-edition]");
   const rendered = rows.map((r) => Number(r.getAttribute("data-era-edition")));
   if (JSON.stringify(rendered) !== JSON.stringify(eds)) {
@@ -2610,13 +2825,13 @@ export function runEraMapLeg(errors, notes, injected) {
 
 Run:
 ```bash
-cd site && npx vitest run src/__tests__/duckdb-helpers.test.ts src/__tests__/explorer-era-map-preset.test.ts src/__tests__/era-map-table.test.tsx scripts/gates/__tests__/era-map-leg.test.mjs scripts/gates/__tests__/source-cadence.test.mjs src/__tests__/explorer-influence-preset.test.ts src/__tests__/methodology-pending-ledger.test.ts src/__tests__/methodology-era-sentence.test.ts
-npx eslint src/lib/era-map.ts src/components/era-map-table.tsx src/app/downloads/page.tsx src/app/data/page.tsx src/app/methodology/page.tsx src/lib/data.ts src/lib/dataset-names.ts src/components/explorer.tsx scripts/gates/datatruth.mjs scripts/computed-style-snapshot.mjs
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/duckdb-helpers.test.ts src/__tests__/explorer-era-map-preset.test.ts src/__tests__/era-map-table.test.tsx scripts/gates/__tests__/era-map-leg.test.mjs scripts/gates/__tests__/source-cadence.test.mjs src/__tests__/explorer-influence-preset.test.ts src/__tests__/methodology-pending-ledger.test.ts src/__tests__/methodology-era-sentence.test.ts
+npx eslint src/lib/era-map.ts src/components/era-map-table.tsx src/components/download-cards.tsx src/app/downloads/page.tsx src/app/data/page.tsx src/app/methodology/page.tsx src/lib/data.ts src/lib/dataset-names.ts src/components/explorer.tsx scripts/gates/datatruth.mjs scripts/computed-style-snapshot.mjs
 npx tsc --noEmit -p .
-cd .. && uv run --project . pytest tests/test_explorer_era_map_preset.py tests/test_explorer_influence_preset.py -q
+cd .. && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_explorer_era_map_preset.py tests/test_explorer_influence_preset.py -q
 ```
-Expected: vitest `Test Files  8 passed (8)`, `Tests  72 passed (72)` (duckdb-helpers 23, explorer-era-map-preset 4,
-era-map-table 5, era-map-leg 9, source-cadence 17, explorer-influence-preset 6, methodology-pending-ledger 3, and Part
+Expected: vitest `Test Files  8 passed (8)`, `Tests  75 passed (75)` (duckdb-helpers 23, explorer-era-map-preset 4,
+era-map-table 7, era-map-leg 10, source-cadence 17, explorer-influence-preset 6, methodology-pending-ledger 3, and Part
 A's methodology-era-sentence 5, which must still pass beside the second clause); eslint prints nothing (exit 0);
 `tsc` exits 0; pytest `3 passed` for the new file (the influence preset file passes or skips as before, it needs the
 shipped `fct_influence.parquet`). The site is not rebuilt here: against today's export the `/data/` registry check
@@ -2626,7 +2841,7 @@ issue 6).
 - [ ] **Step 31: Commit Part C**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/site/src/lib/dataset-names.ts GovBudget/site/src/components/explorer.tsx GovBudget/site/src/lib/era-map.ts GovBudget/site/src/lib/data.ts GovBudget/site/src/components/era-map-table.tsx GovBudget/site/src/app/downloads/page.tsx GovBudget/site/src/app/methodology/page.tsx GovBudget/site/src/__tests__/methodology-pending-ledger.test.ts GovBudget/site/scripts/gates/eramap-recompute.py GovBudget/site/scripts/gates/datatruth.mjs GovBudget/site/src/__tests__/duckdb-helpers.test.ts GovBudget/site/src/__tests__/explorer-era-map-preset.test.ts GovBudget/site/src/__tests__/era-map-table.test.tsx GovBudget/site/scripts/gates/__tests__/era-map-leg.test.mjs GovBudget/tests/test_explorer_era_map_preset.py && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "feat(site): register p1_era_line_map (named on the pending ledger in /methodology/), Explorer presets, /downloads/ era table and gate 24 leg (s) (families piece 1, Task 19c)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/site/src/lib/dataset-names.ts GovBudget/site/src/components/explorer.tsx GovBudget/site/src/lib/era-map.ts GovBudget/site/src/lib/data.ts GovBudget/site/src/components/era-map-table.tsx GovBudget/site/src/components/download-cards.tsx GovBudget/site/src/app/downloads/page.tsx GovBudget/site/src/app/methodology/page.tsx GovBudget/site/src/__tests__/methodology-pending-ledger.test.ts GovBudget/site/scripts/gates/eramap-recompute.py GovBudget/site/scripts/gates/datatruth.mjs GovBudget/site/src/__tests__/duckdb-helpers.test.ts GovBudget/site/src/__tests__/explorer-era-map-preset.test.ts GovBudget/site/src/__tests__/era-map-table.test.tsx GovBudget/site/scripts/gates/__tests__/era-map-leg.test.mjs GovBudget/tests/test_explorer_era_map_preset.py && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "feat(site): register p1_era_line_map (named on the pending ledger in /methodology/), Explorer presets, /downloads/ era table and gate 24 leg (s) (families piece 1, Task 19c)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---

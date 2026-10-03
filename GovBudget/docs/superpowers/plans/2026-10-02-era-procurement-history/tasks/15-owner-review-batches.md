@@ -12,15 +12,17 @@
 - Create: `dbt/tests/assert_p1_era_map_no_undecided.sql`
 - Modify: `tests/test_p1_era_line_map_sql.py` — Task 13's `test_warn_test_lists_undecided_and_stale_keys` (the function directly after `test_singular_test_passes_on_the_clean_fixture`)
 - Modify: `dbt/models/marts/schema.yml` — the last clause of Task 13 Step 10's `p1_era_line_map` description
-- Modify: `docs/superpowers/ROADMAP.md` — the "Platform families (2026-10-02)" paragraph under "## Current priorities" (lines 8–30 today; anchor: it ends with `` `wip/other-session-families-layout-2026-09-29`. ``)
+- Modify: `docs/superpowers/ROADMAP.md` — the "Platform families (2026-10-02)" paragraph under "## Current priorities" (anchor: it ends with `` `wip/other-session-families-layout-2026-09-29`. ``)
+
+Line numbers cited below are hints (anchor on the quoted text; line numbers are approximate). The steps that run `era-map check`/`ratify`/`propose` or read the warehouse (Steps 6, 12, 13, 14, 18, 19) open the live lake and start with the SAM guard: on `WAIT: SAM window …`, wait until :23 and re-run the block.
 
 **Interfaces:**
 Consumes: `govbudget.jbooks.era_map.{DECISIONS, REVIEW_COLUMNS, CHAIN_COLUMNS, SEED_COLUMNS, ORG_SPLIT_CODES, chain_id, parse_chain_id, read_csv, read_seed, write_csv, propose, ratify, check}` (Tasks 10–12); CLI `govbudget era-map propose [--decided-on]`, `govbudget era-map ratify --batch B<n> --decided-on DATE`, `govbudget era-map check [--strict]` (Task 12); `data/research/era_map/{review.csv,chains.csv}` (Task 11); test helpers `jbooks.era_map_fixtures.{make_lake,make_raw_docs}` (Task 11); `scripts/era/env.sh` (Task 1); dbt `p1_era_line_map`, `dbt/tests/warn_p1_era_map_undecided.sql`, `tests/test_p1_era_line_map_sql.py` (`_lake`, `_failures`, `ALL_TESTS`), the `p1_era_line_map` entry of `dbt/models/marts/schema.yml` (Task 13).
-Produces: `scripts/era/review_batch_page.py` with `BATCH_SIZE = 25`, `ANSWER_FIELDS`, `CHAIN_FIELDS`, `ANSWERS_KEYS`, `ReviewError(ValueError)`, `read_review(path) -> list[dict]`, `read_chains(path) -> dict[str, dict]`, `seed_chain_ids(seed_path) -> set[str]`, `label(row) -> str`, `next_batch(rows, decided, size=25) -> tuple[list[dict], int]`, `fmt_usd_k(Decimal) -> str`, `render_page(batch, rows, remaining, chains) -> str`, `apply_answers(rows, shown, answers) -> tuple[list[dict], dict]`, `main(argv=None) -> int`; CLI `python scripts/era/review_batch_page.py render --batch N [--review F] [--chains F] [--seed F] [--out-dir D]` and `answer --batch N --answers F [--review F] [--out-dir D]`; seed rows ruled `R-DEC-ERA-B1…B<k>`; `dbt/tests/assert_p1_era_map_no_undecided.sql` (default, error severity; same predicate as the warn test); the live `p1_era_code_decisions` and `p1_era_line_map` rebuilt with every decision.
+Produces: `scripts/era/review_batch_page.py` with `BATCH_SIZE = 25`, `ANSWER_FIELDS`, `CHAIN_FIELDS`, `ANSWERS_KEYS`, `ReviewError(ValueError)`, `read_review(path) -> list[dict]`, `read_chains(path) -> dict[str, dict]`, `seed_chain_ids(seed_path) -> set[str]`, `label(row) -> str`, `next_batch(rows, decided, size=25) -> tuple[list[dict], int]`, `fmt_usd_k(Decimal) -> str`, `collision_pins_missing(row, collision_codes) -> list[str]`, `read_collision_codes(path) -> frozenset[str]`, `render_page(batch, rows, remaining, chains, collision_codes=frozenset()) -> str`, `apply_answers(rows, shown, answers) -> tuple[list[dict], dict]`, `main(argv=None) -> int`; CLI `python scripts/era/review_batch_page.py render --batch N [--review F] [--chains F] [--counts F] [--seed F] [--out-dir D]` (reads the PB2026 collision codes from `counts.json` beside review.csv) and `answer --batch N --answers F [--review F] [--out-dir D]`; seed rows ruled `R-DEC-ERA-B1…B<k>`; `dbt/tests/assert_p1_era_map_no_undecided.sql` (default, error severity; same predicate as the warn test); the live `p1_era_code_decisions` and `p1_era_line_map` rebuilt with every decision.
 
 review.csv is Task 11's file and Task 12's ratify input, exactly `era_map.REVIEW_COLUMNS` (`chain_id, first_edition, last_edition, titles_by_edition, modern_title, accounts, continuity, actuals_k, proposed_decision, reason, program_account, program_org, successor_code, keys_sha256, decision, note`), one row per chain. This tool never adds a column. A range split is two or more copies of a chain's row that differ only in `first_edition`/`last_edition` (and the answers), each keeping the chain's `keys_sha256` — ratify compares that with the whole chain in the lake, then hashes each range itself (Task 12 `test_ratify_merges_a_batch_with_a_range_split`). The page reads `n_keys`, `classes`, `successor_account` and `successor_evidence` from chains.csv beside review.csv.
 
-Measured (read-only, on G3's research-pass `propose` output — a scratch copy of the lake carrying the column-I codes S1 loads): review.csv holds 125 chains (111 proposed `same_program`, 9 `history_only`, 5 with no proposal; 6 carry pre-filled collision pins; none carries a successor). Batch B1 is 25 chains with $63.25B of era actuals, 4 of them without a proposal, and leaves 100 undecided. The test file below passes (38 tests) against G3's Task 10–12 `era_map` in a scratch tree, including the end-to-end test that runs `ratify` on what `answer` writes.
+Measured (read-only, on G3's research-pass `propose` output — a scratch copy of the lake carrying the column-I codes S1 loads — after Task 11 Step 9's org-clash pre-fill): review.csv holds 125 chains (108 proposed `same_program`, 12 `history_only`, 5 with no proposal; none carries a successor). One proposal is not ratifiable as it stands: `20|0300D|DCAA` (PB2017–21) is proposed `same_program` with blank pins on a PB2026 collision code (the PB2026 `20` pages are DCSA and DTRA), and ratify requires both `program_account` and `program_org` there, so `render_page` marks it **needs your decision** and says which pins are missing (pre-flight ruling 2026-10-03). Batch B1 is 25 chains with $63.25B of era actuals, 4 of them without a proposal, and leaves 100 undecided. The test file below passes (41 tests) against G3's Task 10–12 `era_map` in a scratch tree, including the end-to-end test that runs `ratify` on what `answer` writes.
 
 - [ ] **Step 1: Write the failing renderer/answer tests**
 
@@ -43,6 +45,7 @@ from era.review_batch_page import (  # scripts/ is on sys.path via conftest
     fmt_usd_k,
     main,
     next_batch,
+    read_collision_codes,
     render_page,
 )
 from govbudget.jbooks import era_map
@@ -131,6 +134,35 @@ def test_page_flags_a_chain_with_no_proposal_and_shows_pins_and_the_stated_succe
 def test_page_needs_every_chain_in_chains_csv():
     with pytest.raises(ReviewError, match="chains.csv has no row"):
         render_page("B1", [row(1)], 0, {})
+
+
+def test_page_flags_a_collision_code_proposal_without_both_pins():
+    # Task 12 ratify refuses same_program/history_only on a PB2026 collision
+    # code unless program_account AND program_org are set (e.g. the live
+    # 20|0300D|DCAA, proposed same_program with blank pins): the page says so.
+    rows = [row(1, chain_id="20|0300D|DCAA", proposed_decision="same_program"),
+            row(2, chain_id="500|0300D|DCMA", proposed_decision="history_only",
+                program_account="0300D", program_org="DCMA"),
+            row(3, chain_id="3010|1611N|", proposed_decision="history_only", program_account="1611N"),
+            row(4, chain_id="C004|3010F|", proposed_decision="same_program")]
+    page = render_page("B1", rows, 0, chains_for(rows), collision_codes=frozenset({"20", "500", "3010"}))
+    items = page.split('<li class="chain"')[1:]
+    assert '<span class="chip chip-other">needs your decision</span>' in items[0]
+    assert ("PB2026 collision code 20: same_program needs program_account and program_org" in items[0])
+    assert "needs your decision" not in items[1] and "joins account 0300D · joins org DCMA" in items[1]
+    assert "PB2026 collision code 3010: history_only needs program_org" in items[2]
+    assert "needs your decision" not in items[3] and "chip-same" in items[3]
+
+
+def test_collision_codes_come_from_counts_json(tmp_path):
+    counts = tmp_path / "counts.json"
+    counts.write_text(json.dumps({"collision_codes": ["20", "3010"], "chain_groups": {}}))
+    assert read_collision_codes(counts) == frozenset({"20", "3010"})
+    counts.write_text(json.dumps({"chain_groups": {}}))
+    with pytest.raises(ReviewError, match="no collision_codes list"):
+        read_collision_codes(counts)
+    with pytest.raises(ReviewError, match="is missing"):
+        read_collision_codes(tmp_path / "absent.json")
 
 
 SHOWN = [cid(1), cid(2), cid(3)]
@@ -236,11 +268,12 @@ def test_a_split_must_cover_the_chain_in_contiguous_decided_ranges(ranges, messa
         apply_answers(three(), SHOWN, {"rows": {cid(1): {"split": ranges}}})
 
 
-def write_world(tmp_path, rows):
+def write_world(tmp_path, rows, collision_codes=()):
     review = tmp_path / "research" / "review.csv"
     write_csv(review, REVIEW_COLUMNS, rows)
     write_csv(review.with_name("chains.csv"), CHAIN_COLUMNS,
               [{"chain_id": r["chain_id"], "n_keys": "7", "classes": "A1+R1"} for r in rows])
+    review.with_name("counts.json").write_text(json.dumps({"collision_codes": sorted(collision_codes)}))
     return review
 
 
@@ -301,6 +334,14 @@ def test_the_cli_refuses_a_review_file_with_another_header(tmp_path, capsys):
     assert "is not era_map.REVIEW_COLUMNS" in capsys.readouterr().err
 
 
+def test_render_reads_the_collision_codes_beside_review_csv(tmp_path):
+    review = write_world(tmp_path, [row(1, chain_id="20|0300D|DCAA")], collision_codes={"20"})
+    assert main(["render", "--batch", "1", "--review", str(review),
+                 "--seed", str(tmp_path / "absent.csv"), "--out-dir", str(tmp_path / "out")]) == 0
+    assert "PB2026 collision code 20: same_program needs program_account and program_org" in (
+        (tmp_path / "out" / "B1.html").read_text())
+
+
 def test_render_skips_chains_the_seed_already_covers(tmp_path, capsys):
     review = write_world(tmp_path, [row(1), row(2)])
     seed = tmp_path / "seed.csv"
@@ -349,12 +390,12 @@ def test_what_this_tool_writes_is_what_ratify_accepts(tmp_path, monkeypatch):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_era_review_batch_page.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_era_review_batch_page.py -q`
 Expected: collection error `ModuleNotFoundError: No module named 'era.review_batch_page'`.
 
 - [ ] **Step 3: Implement the renderer and the answer writer**
 
-Create `scripts/era/review_batch_page.py` (`scripts/era/` exists since Task 4; no `__init__.py`):
+Create `scripts/era/review_batch_page.py` (`scripts/era/` holds Task 1's `env.sh`; no `__init__.py`):
 
 ```python
 #!/usr/bin/env python3
@@ -530,7 +571,30 @@ def _editions(row: dict) -> str:
     return f"PB{first}" if first == last else f"PB{first}–PB{last}"
 
 
-def _row_html(n: int, row: dict, chain: dict) -> str:
+def read_collision_codes(path: Path) -> frozenset[str]:
+    """counts.json (beside review.csv): the PB2026 collision codes `propose` found."""
+    path = Path(path)
+    if not path.is_file():
+        raise ReviewError(f"{path} is missing (era-map propose writes it beside review.csv)")
+    codes = json.loads(path.read_text(encoding="utf-8")).get("collision_codes")
+    if not isinstance(codes, list):
+        raise ReviewError(f"{path} has no collision_codes list")
+    return frozenset(str(c) for c in codes)
+
+
+def collision_pins_missing(row: dict, collision_codes: frozenset[str]) -> list[str]:
+    """The pins ratify requires that this row's proposal leaves blank.
+
+    On a PB2026 collision code, same_program and history_only need BOTH
+    program_account and program_org (Task 12 ratify refuses either blank), so
+    approving such a proposal as it stands could not be ratified."""
+    code, _account, _org = parse_chain_id(row["chain_id"])
+    if code not in collision_codes or row["proposed_decision"] not in ("same_program", "history_only"):
+        return []
+    return [f for f in ("program_account", "program_org") if not row[f].strip()]
+
+
+def _row_html(n: int, row: dict, chain: dict, collision_codes: frozenset[str] = frozenset()) -> str:
     code, account, org = parse_chain_id(row["chain_id"])
     org_html = f'<span class="org">org {_e(org)}</span>' if org else ""
     pins = [f"{text} {_e(row[field])}" for field, text in
@@ -540,7 +604,15 @@ def _row_html(n: int, row: dict, chain: dict) -> str:
     if row["successor_code"]:
         successor = (f'<div><dt>Stated successor</dt><dd><code>{_e(row["successor_code"])}</code> '
                      f'{_e(chain["successor_account"])}<span class="pre">{_e(chain["successor_evidence"])}</span></dd></div>\n')
-    proposed = row["proposed_decision"] or "needs your decision"
+    missing = collision_pins_missing(row, collision_codes)
+    usable = row["proposed_decision"] and not missing
+    proposed = row["proposed_decision"] if usable else "needs your decision"
+    tone = _tone(row["proposed_decision"]) if usable else "other"
+    need_html = ""
+    if missing:
+        need_html = (f'<span class="pins">PB2026 collision code {_e(code)}: {_e(row["proposed_decision"])} '
+                     f'needs {" and ".join(missing)} (ratify refuses it without them); answer the '
+                     f"pin(s) or another decision</span>")
     titles = _EDITION_BREAK.sub("\n", row["titles_by_edition"])
     return (
         f'<li class="chain" id="row-{n}">\n'
@@ -556,19 +628,25 @@ def _row_html(n: int, row: dict, chain: dict) -> str:
         f'<div><dt>Continuity</dt><dd>{_e(row["continuity"]) or "—"}</dd></div>\n'
         f"{successor}</dl>\n"
         f'<p class="proposal"><span class="label">Proposed</span>'
-        f'<span class="chip chip-{_tone(row["proposed_decision"])}">{_e(proposed)}</span>{pin_html}'
+        f'<span class="chip chip-{tone}">{_e(proposed)}</span>{pin_html}{need_html}'
         f'<span class="reason">{_e(row["reason"])}</span></p>\n'
         f"</li>"
     )
 
 
-def render_page(batch: str, rows: list[dict], remaining: int, chains: dict[str, dict]) -> str:
-    """One Artifact page fragment (the publish skeleton adds <html>/<head>/<body>)."""
+def render_page(batch: str, rows: list[dict], remaining: int, chains: dict[str, dict],
+                collision_codes: frozenset[str] = frozenset()) -> str:
+    """One Artifact page fragment (the publish skeleton adds <html>/<head>/<body>).
+
+    A row is marked "needs your decision" when it has no proposal, or when its
+    proposal is same_program/history_only on a PB2026 collision code with a
+    blank pin (collision_pins_missing): the page names the missing pin(s)."""
     for row in rows:
         if row["chain_id"] not in chains:
             raise ReviewError(f"chains.csv has no row for {row['chain_id']}")
     total = sum((actuals_k(r) for r in rows), Decimal(0))
-    items = "\n".join(_row_html(n, row, chains[row["chain_id"]]) for n, row in enumerate(rows, 1))
+    items = "\n".join(_row_html(n, row, chains[row["chain_id"]], collision_codes)
+                      for n, row in enumerate(rows, 1))
     plural = "" if remaining == 1 else "s"
     return (
         f"<title>Era map review {_e(batch)}</title>\n"
@@ -583,8 +661,8 @@ def render_page(batch: str, rows: list[dict], remaining: int, chains: dict[str, 
         f'<p class="how">Reply in chat with <b>approved</b> to accept every proposal, or give a row '
         f"number and its change, for example “7: history_only”, “12: split at PB2020, earlier "
         f"range exclude_reused_code” or “3: defer”. A row marked <b>needs your decision</b> has no "
-        f"proposal and needs an explicit answer. {remaining} undecided chain{plural} will remain "
-        f"after this batch.</p>\n"
+        f"usable proposal (none, or a collision-code proposal missing a pin) and needs an explicit "
+        f"answer. {remaining} undecided chain{plural} will remain after this batch.</p>\n"
         f'<dl class="legend">\n'
         f'<div><dt><span class="chip chip-same">same_program</span></dt><dd>The era code is the program on '
         f"today’s page; its PB2017–PB2023 points join that page.</dd></div>\n"
@@ -725,6 +803,8 @@ def main(argv=None) -> int:
         s.add_argument("--out-dir", type=Path, default=Path("tmp/era-review"))
     sub.choices["render"].add_argument("--chains", type=Path, default=None,
                                        help="default: chains.csv beside --review")
+    sub.choices["render"].add_argument("--counts", type=Path, default=None,
+                                       help="default: counts.json beside --review (PB2026 collision codes)")
     sub.choices["render"].add_argument("--seed", type=Path, default=Path("dbt/seeds/p1_era_code_decisions.csv"))
     sub.choices["answer"].add_argument("--answers", type=Path, required=True)
     args = p.parse_args(argv)
@@ -734,13 +814,15 @@ def main(argv=None) -> int:
         rows = read_review(args.review)
         if args.cmd == "render":
             chains = read_chains(args.chains or args.review.with_name("chains.csv"))
+            collision_codes = read_collision_codes(args.counts or args.review.with_name("counts.json"))
             shown, open_count = next_batch(rows, seed_chain_ids(args.seed))
             if not shown:
                 print("no undecided chain left")
                 return 0
             args.out_dir.mkdir(parents=True, exist_ok=True)
             page = args.out_dir / f"{batch}.html"
-            page.write_text(render_page(batch, shown, open_count - len(shown), chains), encoding="utf-8")
+            page.write_text(render_page(batch, shown, open_count - len(shown), chains, collision_codes),
+                            encoding="utf-8")
             total = sum((actuals_k(r) for r in shown), Decimal(0))
             manifest_path.write_text(json.dumps({
                 "batch": batch, "chain_ids": [r["chain_id"] for r in shown],
@@ -772,8 +854,8 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_era_review_batch_page.py -q`
-Expected: `38 passed`.
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_era_review_batch_page.py -q`
+Expected: `41 passed` (38 + the collision-pin page test, the counts.json reader test and the render-CLI collision test).
 
 - [ ] **Step 5: Commit the tool**
 
@@ -784,7 +866,9 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 - [ ] **Step 6: Record the starting point of the review (read-only)**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && ls data/research/era_map/review.csv data/research/era_map/chains.csv dbt/seeds/p1_era_code_decisions.csv dbt/tests/warn_p1_era_map_undecided.sql && uv run --project . python -c "from pathlib import Path; from govbudget.jbooks.era_map import read_csv; print('review rows', len(read_csv(Path('data/research/era_map/review.csv'))))" && mkdir -p tmp/era-review && uv run --project . python -m govbudget era-map check > tmp/era-review/check.log; echo "exit=$?"; tail -1 tmp/era-review/check.log
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+ls data/research/era_map/review.csv data/research/era_map/chains.csv dbt/seeds/p1_era_code_decisions.csv dbt/tests/warn_p1_era_map_undecided.sql && uv run --project . python -c "from pathlib import Path; from govbudget.jbooks.era_map import read_csv; print('review rows', len(read_csv(Path('data/research/era_map/review.csv'))))" && mkdir -p tmp/era-review && uv run --project . python -m govbudget era-map check > tmp/era-review/check.log; echo "exit=$?"; tail -1 tmp/era-review/check.log
 ```
 Expected: the four paths; `review rows 125`; `exit=0`; `era-map check: 125 undecided chain(s), 0 stale decision(s)` (Task 12 Step 10's numbers). Write the numbers down: the closing ROADMAP note quotes them. A non-zero stale count (exit 1) means the lake moved after Task 11: stop, re-run `era-map propose` (Task 12 Step 10) and repeat this step before any batch.
 
@@ -803,7 +887,7 @@ Call the Artifact tool: `action: "publish"`, `file_path: "/Users/andeslee/Docume
 
 - [ ] **Step 9: Ask the owner and wait**
 
-Send the owner the artifact link with: "Era-map batch B<n> (<count> chains, <$total>). Reply 'approved' to accept every proposal, or amend by row number (e.g. '7: history_only', '12: split at PB2020, earlier range exclude_reused_code', '3: defer'). Rows marked 'needs your decision' have no proposal and need an explicit answer." Then stop until the owner replies in chat. Only the owner's own chat reply counts; if it is ambiguous for any row (or leaves a 'needs your decision' row unanswered), ask about that row before Step 10.
+Send the owner the artifact link with: "Era-map batch B<n> (<count> chains, <$total>). Reply 'approved' to accept every proposal, or amend by row number (e.g. '7: history_only', '12: split at PB2020, earlier range exclude_reused_code', '3: defer'). Rows marked 'needs your decision' have no usable proposal and need an explicit answer; for a PB2026 collision code the page names the missing pin." Then stop until the owner replies in chat. For each 'needs your decision' row on a collision code, ask the owner for the pin explicitly, naming the choices: e.g. `20|0300D|DCAA` → `same_program` joined to the PB2026 `20` page of DCSA or of DTRA (`program_account` 0300D, `program_org` DCSA/DTRA), or `history_only` pinned to its own identity (0300D/DCAA). Only the owner's own chat reply counts; if it is ambiguous for any row (or leaves a 'needs your decision' row unanswered), ask about that row before Step 10.
 
 - [ ] **Step 10: Write the owner's answers file**
 
@@ -842,7 +926,9 @@ Expected: `B1: <d> decided, <s> split into <r> ranges, <f> deferred -> data/rese
 - [ ] **Step 12: Ratify the batch**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && D=$(uv run --project . python -c "import json; print(json.load(open('data/research/era_map/batches/B1.json'))['decided_on'])") && uv run --project . python -m govbudget era-map ratify --batch B1 --decided-on "$D"; echo "exit=$?"; uv run --project . python - <<'PY'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+D=$(uv run --project . python -c "import json; print(json.load(open('data/research/era_map/batches/B1.json'))['decided_on'])") && uv run --project . python -m govbudget era-map ratify --batch B1 --decided-on "$D"; echo "exit=$?"; uv run --project . python - <<'PY'
 import csv
 rows = [r for r in csv.DictReader(open("dbt/seeds/p1_era_code_decisions.csv", newline="")) if r["ruling"] == "R-DEC-ERA-B1"]
 print(f"B1 seed rows={len(rows)} decided_by={sorted({r['decided_by'] for r in rows})} decided_on={sorted({r['decided_on'] for r in rows})}")
@@ -853,7 +939,9 @@ Expected: `era-map ratify: <d+r> decision row(s) added as R-DEC-ERA-B1 -> /Users
 - [ ] **Step 13: Check the drift guard and the undecided count**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python -m govbudget era-map check > tmp/era-review/check.log; echo "exit=$?"; tail -1 tmp/era-review/check.log
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+uv run --project . python -m govbudget era-map check > tmp/era-review/check.log; echo "exit=$?"; tail -1 tmp/era-review/check.log
 ```
 Expected: `exit=0`, then `era-map check: <u> undecided chain(s), 0 stale decision(s)`, where `<u>` = the previous count minus `d + s` from Step 11 (deferred chains stay; for B1 with no deferral, 100). A stale decision exits 1: stop and compare that seed row with `era-map check`'s `stale` line.
 
@@ -862,7 +950,9 @@ Expected: `exit=0`, then `era-map check: <u> undecided chain(s), 0 stale decisio
 ratify refuses any review.csv row that overlaps a seed row (Task 12 `test_ratify_refuses_bad_batch_labels_and_reuse`), so the next batch needs review.csv without this batch's rows. `propose` keeps every owner-ruled seed row verbatim, re-derives the class-ruled rows unchanged, and lists only chains no seed row covers (deferred chains come back with blank decisions):
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python -m govbudget era-map propose && git status --short -- data/research/era_map dbt/seeds
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+uv run --project . python -m govbudget era-map propose && git status --short -- data/research/era_map dbt/seeds
 ```
 Expected: one line `era-map propose: 6927 era keys, 1253 chains; rulings SAME=810 EXCLUDE=47 HISTORY=271; <u> chain(s) for review -> /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/data/research/era_map` (`<u>` = Step 13's count; the class-ruling counts never move), then ` M data/research/era_map/chains.csv`, ` M data/research/era_map/counts.json`, ` M data/research/era_map/review.csv`, ` M dbt/seeds/p1_era_code_decisions.csv` and `?? data/research/era_map/batches/` (no `keys.csv` line: its rows do not depend on decisions). `propose` refuses (`holds decisions for … chain(s) that are not ratified yet`) if Step 12 did not ratify every decided row: go back to Step 12.
 
@@ -871,7 +961,7 @@ Expected: one line `era-map propose: 6927 era keys, 1253 chains; rulings SAME=81
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/data/research/era_map/review.csv GovBudget/data/research/era_map/chains.csv GovBudget/data/research/era_map/keys.csv GovBudget/data/research/era_map/counts.json GovBudget/dbt/seeds/p1_era_code_decisions.csv GovBudget/data/research/era_map/batches/B1.json && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "feat(era-map): owner batch B1 ratified (R-DEC-ERA-B1)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
-Repeat Steps 7–15 with n = 2, 3, … (replace `B1`/`--batch 1` throughout; the correction sentence of Step 9 is B1's only) until Step 13 prints `era-map check: 0 undecided chain(s), 0 stale decision(s)` and Step 14 prints `0 chain(s) for review`. 125 chains make five batches, more if the owner defers.
+Repeat Steps 7–15 with n = 2, 3, … (replace `B1`/`--batch 1` throughout) until Step 13 prints `era-map check: 0 undecided chain(s), 0 stale decision(s)` and Step 14 prints `0 chain(s) for review`. 125 chains make five batches, more if the owner defers.
 
 - [ ] **Step 16: Replace the warn test with the error test**
 
@@ -951,28 +1041,30 @@ never reaches the program table (assert_p1_era_map_no_undecided.sql)."
 Then confirm nothing else names the old test:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && grep -rn --exclude-dir=__pycache__ --exclude-dir=target --exclude-dir=logs "warn_p1_era_map_undecided" dbt tests src site/scripts | grep -v "^dbt/tests/assert_p1_era_map_no_undecided.sql:" || echo "no other references"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && grep -rn --exclude-dir=__pycache__ --exclude-dir=target --exclude-dir=logs "warn_p1_era_map_undecided" dbt tests src site/scripts | grep -v "^dbt/tests/assert_p1_era_map_no_undecided.sql:" || echo "no other references"
 ```
 Expected: `no other references` (dbt's `target/` and `logs/` and Python caches still hold the old name until the next run and are skipped; the new test's header comment names the file it replaces and is filtered out; the plan and ROADMAP prose keep the name as history and are not searched). Checked on a copy of Task 13's files (G4 scratch tree) with this step's three edits applied: `tests/test_p1_era_line_map_sql.py` gives `40 passed` and the grep prints `no other references`.
 
 - [ ] **Step 17: Run the map's SQL tests**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
 Expected: `40 passed` — Task 13 Step 8's count (the renamed test replaces the old one, so the count does not move; if Task 13 ended with a different count, expect that count), 0 failed.
 
 - [ ] **Step 18: Rebuild the seed and the map in the live warehouse (SHARED LAKE WRITE, G4-3)**
 
-This writes only the two nodes S2 changed — the `p1_era_code_decisions` seed table and the `p1_era_line_map` table — in the shared DuckDB, and runs their tests (dbt's default eager selection also runs every test that reads them). It never rebuilds other marts (a full `govbudget build` would rebuild every mart from whatever the lake holds at that minute). Make sure no other session holds `data/duckdb/govbudget.duckdb` (an export or a dbt run). Start it only outside the SAM window:
+This writes only the nodes S2 needs — the `stg_budget_lines` view (Task 7's, with `line_item_code`; rebuilt here as Task 13 Step 12 does, because the review can span days and a main-checkout build in between would drop the column), the `p1_era_code_decisions` seed table and the `p1_era_line_map` table — in the shared DuckDB, and runs their tests (dbt's default eager selection also runs every test that reads them). It never rebuilds other marts (a full `govbudget build` would rebuild every mart from whatever the lake holds at that minute). Make sure no other session holds `data/duckdb/govbudget.duckdb` (an export or a dbt run). Start it only outside the SAM window:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && MIN=$(date +%M) && if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: minute $MIN is in the SAM window (:15-:20, with margin)"; else GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb uv run --project . dbt build --project-dir dbt --profiles-dir dbt --select p1_era_code_decisions p1_era_line_map > tmp/era-review/build-close.log 2>&1; echo "exit=$?"; grep -E "p1_era_code_decisions|p1_era_line_map |assert_p1_era_map_no_undecided|warn_p1_era_map" tmp/era-review/build-close.log; tail -1 tmp/era-review/build-close.log; fi
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && MIN=$(date +%M) && if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: minute $MIN is in the SAM window (:15-:20, with margin)"; else GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb uv run --project . dbt build --project-dir dbt --profiles-dir dbt --select stg_budget_lines p1_era_code_decisions p1_era_line_map > tmp/era-review/build-close.log 2>&1; echo "exit=$?"; grep -E "stg_budget_lines|p1_era_code_decisions|p1_era_line_map |assert_p1_era_map_no_undecided|warn_p1_era_map" tmp/era-review/build-close.log; tail -1 tmp/era-review/build-close.log; fi
 ```
-Expected: `exit=0`; lines `OK loaded seed file main.p1_era_code_decisions … [INSERT <1,128 + the batch rows>]`, `OK created sql table model main.p1_era_line_map`, `PASS assert_p1_era_map_no_undecided`, no `warn_p1_era_map_undecided` line; last line `Done. PASS=<n> WARN=0 ERROR=0 SKIP=0 …`. `Could not set lock on file` means another process holds the DuckDB file: wait and re-run.
+Expected: `exit=0`; lines `OK created sql view model main.stg_budget_lines`, `OK loaded seed file main.p1_era_code_decisions … [INSERT <1,128 + the batch rows>]`, `OK created sql table model main.p1_era_line_map`, `PASS assert_p1_era_map_no_undecided`, no `warn_p1_era_map_undecided` line; last line `Done. PASS=<n> WARN=0 ERROR=0 SKIP=0 …`. `Could not set lock on file` means another process holds the DuckDB file: wait and re-run. A `Binder Error` on `line_item_code` means the shared lake's `data/parquet/jbooks/budget_lines.parquet` lost the column (a main-checkout `jbooks export-facts`, README lake hazard): re-run `jbooks export-facts` from this branch (outside the SAM window, as Task 23 Step 1's recovery block does), then rebuild with this step.
 
 - [ ] **Step 19: Prove the strict state on the live lake (read-only)**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python -m govbudget era-map check --strict > tmp/era-review/check.log; echo "exit=$?"; tail -1 tmp/era-review/check.log; uv run --project . python -c "import duckdb,os; c=duckdb.connect(os.environ['GOVBUDGET_DUCKDB'], read_only=True); print(c.execute(\"select count(*) filter (where decision = 'undecided' or keys_sha_ok = false), count(*), count(distinct ruling) filter (where ruling like 'R-DEC-ERA-B%') from p1_era_line_map\").fetchone())"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+uv run --project . python -m govbudget era-map check --strict > tmp/era-review/check.log; echo "exit=$?"; tail -1 tmp/era-review/check.log; uv run --project . python -c "import duckdb,os; c=duckdb.connect(os.environ['GOVBUDGET_DUCKDB'], read_only=True); print(c.execute(\"select count(*) filter (where decision = 'undecided' or keys_sha_ok = false), count(*), count(distinct ruling) filter (where ruling like 'R-DEC-ERA-B%') from p1_era_line_map\").fetchone())"
 ```
 Expected: `exit=0`, `era-map check: 0 undecided chain(s), 0 stale decision(s)`, then `(0, 6927, <k>)` where `<k>` is the number of batches that ruled at least one key.
 
@@ -981,7 +1073,7 @@ Expected: `exit=0`, `era-map check: 0 undecided chain(s), 0 stale decision(s)`, 
 Count the rulings:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . python - <<'PY'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python - <<'PY'
 import collections, csv
 rows = list(csv.DictReader(open("dbt/seeds/p1_era_code_decisions.csv", newline="")))
 batch = [r for r in rows if r["ruling"].startswith("R-DEC-ERA-B")]

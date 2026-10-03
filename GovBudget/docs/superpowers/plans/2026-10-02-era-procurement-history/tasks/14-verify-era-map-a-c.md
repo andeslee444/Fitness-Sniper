@@ -14,6 +14,8 @@ single final verdict line (V4); S2 "`verify-era-map` legs a–c".
   `cmd_verify_lineage`, which ends at line 2429, and `cmd_export_site` at line 2432; new parser
   after `vlin.set_defaults(func=cmd_verify_lineage)` at line 3120)
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: table `p1_era_line_map` (Task 13); `p1_loader.parse_p1_rollup(xlsx_path,
 *, exhibit, fiscal_year) -> P1Parse` with `P1Parse.rows: list[P1Row]`, `P1Parse.era_line_keying`,
 `P1Row.{pe_bli, account, organization, budget_activity, line_item_code, title, source_cells}`
@@ -429,7 +431,7 @@ def test_cli_zero_arguments_runs_every_leg(pinned, capsys):
 
 - [ ] **Step 2: Run the tests to see them fail**
 
-Run: `uv run --project . pytest tests/test_verify_era_map.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_era_map.py -q`
 
 Expected: `1 error` during collection —
 `ModuleNotFoundError: No module named 'govbudget.verify_era_map'`.
@@ -827,7 +829,7 @@ def format_report(result: dict) -> list[str]:
 
 - [ ] **Step 4: Run the tests — the gate passes, the CLI tests fail**
 
-Run: `uv run --project . pytest tests/test_verify_era_map.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_era_map.py -q`
 
 Expected: `3 failed, 23 passed`; the three `test_cli_*` tests fail on
 `assert 2 == 0` / `assert 2 == 1` after argparse prints
@@ -903,7 +905,7 @@ after `vlin.set_defaults(func=cmd_verify_lineage)`.)
 
 - [ ] **Step 6: Run the tests to see them pass**
 
-Run: `uv run --project . pytest tests/test_verify_era_map.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_era_map.py -q`
 
 Expected: `26 passed`.
 
@@ -911,7 +913,11 @@ Expected: `26 passed`.
 
 Requires Task 13 Step 12. Run from `GovBudget/` in the worktree:
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data \
 uv run --project . python -m govbudget verify-era-map --legs ac; echo "exit=$?"
 ```
@@ -928,6 +934,8 @@ exit=0
 Then leg b, which stays FAIL until Task 15 ratifies the last review batch:
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data \
 uv run --project . python -m govbudget verify-era-map --legs b; echo "exit=$?"
 ```

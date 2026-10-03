@@ -63,7 +63,11 @@ Cost: about 100 lines of copied SQL, held in step by those two guards.
 
 Check the inputs:
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data \
 uv run --project . python -c "
 import duckdb
@@ -398,7 +402,7 @@ def test_grain_unique_fails_on_a_duplicate_history_only_grain():
 
 - [ ] **Step 3: Run the tests to see them fail**
 
-Run: `uv run --project . pytest tests/test_program_decade_series_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_program_decade_series_sql.py -q`
 
 Expected: `21 failed`, each with
 `FileNotFoundError: [Errno 2] No such file or directory: '…/GovBudget/dbt/models/marts/fct_program_decade_series.sql'`.
@@ -742,7 +746,7 @@ where exists (
 
 - [ ] **Step 5: Run the tests — the model tests pass, the singular-test tests still fail**
 
-Run: `uv run --project . pytest tests/test_program_decade_series_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_program_decade_series_sql.py -q`
 
 Expected: `10 failed, 11 passed`; every failure is
 `FileNotFoundError: … dbt/tests/assert_program_decade_<name>.sql` (5 name `grain_unique`, 3
@@ -935,7 +939,7 @@ having count(*) > 1
 
 - [ ] **Step 7: Run the tests to see them pass**
 
-Run: `uv run --project . pytest tests/test_program_decade_series_sql.py tests/test_p1_era_line_map_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_program_decade_series_sql.py tests/test_p1_era_line_map_sql.py -q`
 
 Expected: `61 passed`.
 
@@ -992,7 +996,7 @@ entry Task 13 appended (its `source_cells` column):
         description: "The era keys summed into an era grain, sorted, comma-separated (e.g. '3010F-AF-L25,3010F-AF-L79'); NULL for native grains."
 ```
 
-Run: `uv run --project . pytest tests/test_dbt_build.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_dbt_build.py -q`
 
 Expected: `7 passed` (the fixture lake has no era rows, so every program row is native and the
 three tests pass).
@@ -1009,7 +1013,10 @@ Make sure no other session holds the DuckDB file. The hourly SAM launchd job wri
 `data/parquet/sam` at :17, so the build starts only outside minutes :12–:22. From `GovBudget/` in
 the worktree:
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: minute $MIN is in the SAM window (:12-:22); rerun after :22"; else \
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data \
 GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb \
@@ -1033,7 +1040,11 @@ Done. PASS=16 WARN=0 ERROR=0
 
 - [ ] **Step 11: Check the live program table (read-only)**
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python -c "
 import duckdb
 con = duckdb.connect('/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb', read_only=True)

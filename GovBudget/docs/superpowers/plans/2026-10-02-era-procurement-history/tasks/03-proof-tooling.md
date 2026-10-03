@@ -7,14 +7,14 @@
 **Files:**
 - Create: `src/govbudget/proof.py`
 - Create: `tests/test_proof.py`
-- Modify: `src/govbudget/cli.py` — insert `cmd_proof` between `cmd_refresh` (ends at line 2937) and `def main(argv=None)` (line 2940); insert the `proof` subparser between `rfr.set_defaults(func=cmd_refresh)` (line 3336) and `args = p.parse_args(argv)` (line 3338). Anchor on the text, not the numbers: Tasks 5, 12 and 14 add subparsers at the same place.
+- Modify: `src/govbudget/cli.py` — insert `cmd_proof` between `cmd_refresh` (ends at line 2937) and `def main(argv=None)` (line 2940); insert the `proof` subparser between `rfr.set_defaults(func=cmd_refresh)` (line 3336) and `args = p.parse_args(argv)` (line 3338). Anchor on the text, not the numbers (line numbers are approximate): Tasks 5, 12 and 14 add subparsers elsewhere in main(); anchor on text.
 
 **Interfaces:**
 Consumes: Task 1 (`scripts/era/env.sh`, the 127.0.0.1:55432 cluster, `.proofs/` ignored). Existing: `govbudget.cli.main`, `govbudget.config.{DATA_DIR, PG_DSN}`.
 Produces (contract names first):
-- `snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> dict` — the manifest: `{schema_version: 1, created_at, out_dir, source: {data_dir, pg_dsn}, env: {GOVBUDGET_DATA, GOVBUDGET_DUCKDB, GOVBUDGET_PG_DSN}, duckdb: {path, sha256_at_copy, sha256, views, views_rewritten}, parquet: {relpath: {sha256, bytes, rows}}, site: {files, bytes, sha256}, raw_docs: {files, bytes, sha256}, manifest_jsonl_sha256, pg: {source_db, scratch_db, scratch_dsn, dump, dump_sha256, pg_dump_version, tables: {name: {rows, md5}}, rewrites: {"jbook_documents.file_path": n}}}`. Writes `<out>/{duckdb/govbudget.duckdb, parquet/, site/, raw_docs/, manifest.jsonl, pg/<db>.dump, snapshot.json, env.sh}` and creates database `scratch_db` on the source server. Refuses before writing anything at minutes :15–:20, on an existing `out_dir` or database, a bad name, an out_dir inside the lake, a missing lake entry, a `.wal`, or a DuckDB writer; refuses after the copy if the clock entered :15–:20 during it (delete `out_dir` and retry).
-- `diff_trees(a: Path, b: Path) -> dict` — `{a, b, build_window: {a: [lo, hi] | None, b: ...}, counts: {identical, equivalent, changed, only_a, only_b}, groups: {group: counts}, files: {relpath: {status, kind: json|parquet|bytes, group, detail}}}`; `files` lists every non-identical file. JSON detail: `{changes: [{pattern, change: added|removed|changed|reordered, count, samples: [{pointer, a, b}]}]}`; parquet detail: `{schema_a, schema_b, rows_a, rows_b, only_a, only_b, sample_only_a, sample_only_b}`; bytes detail: `{sha256_a, sha256_b}`.
-- `load_expectations(path) -> list[dict]`, `check_expectations(report, rules) -> {ok, unexpected, unmet, matched}`, `format_report(report, verdict=None) -> list[str]`, `is_equal(report) -> bool`; constants `SNAPSHOT_MANIFEST = "snapshot.json"`, `SNAPSHOT_ENV = "env.sh"`, `BUILD_TS = "<build-timestamp>"`, `BUILD_DATE = "<build-date>"`.
+- `snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> dict` — the manifest: `{schema_version: 1, created_at, out_dir, source: {data_dir, pg_dsn}, env: {GOVBUDGET_DATA, GOVBUDGET_DUCKDB, GOVBUDGET_PG_DSN}, duckdb: {path, sha256_at_copy, sha256, views, views_rewritten}, parquet: {relpath: {sha256, bytes, rows}}, site: {files, bytes, sha256}, raw_docs: {files, bytes, sha256}, manifest_jsonl_sha256, pg: {source_db, scratch_db, scratch_dsn, dump, dump_sha256, pg_dump_version, tables: {name: {rows, md5}}, rewrites: {"jbook_documents.file_path": n}}}`. Writes `<out>/{duckdb/govbudget.duckdb, parquet/, site/, raw_docs/, manifest.jsonl, pg/<db>.dump, snapshot.json, env.sh}` and creates database `scratch_db` on the source server. Refuses before writing anything at minutes :15–:20, on an existing `out_dir` or database, a bad name, a scratch name without the `govbudget_proof_` prefix when the DSN host is local (`localhost`, `127.0.0.1`, `::1` or none — the README allows no other database there; `cmd_proof` inherits the refusal), an out_dir inside the lake, a missing lake entry, a `.wal`, or a DuckDB writer; refuses after the copy if the clock entered :15–:20 during it (delete `out_dir` and retry).
+- `diff_trees(a: Path, b: Path) -> dict` — `{a, b, build_window: {a: [lo, hi] | None, b: ...}, counts: {identical, equivalent, changed, only_a, only_b}, float_noise: {files, values}, groups: {group: counts}, files: {relpath: {status, kind: json|parquet|bytes, group, detail, float_noise}}}`; `files` lists every non-identical file. **Float noise floor (pre-flight ruling 2026-10-03):** DOUBLE/FLOAT parquet values and JSON floats that are equal to 12 significant digits (relative difference at most 1e-12) are `equivalent (float noise)`, never `changed`; `float_noise` counts them apart (per file: the number of such values; report-wide: files and values). Integers, decimals and strings stay exact, and an int never equals a float. Reason: dbt marts built from parallel double sums (`dim_geography`, `fct_district_totals`, `fct_program_concentration`) differ in the last bits between two identical queries (e.g. 4589898661.9800005 vs 4589898661.98), so an exact compare could never read EQUAL; spec §9's "empty diff" is judged above that floor. JSON detail: `{changes: [{pattern, change: added|removed|changed|reordered, count, samples: [{pointer, a, b}]}]}`; parquet detail: `{schema_a, schema_b, rows_a, rows_b, only_a, only_b, sample_only_a, sample_only_b}`; bytes detail: `{sha256_a, sha256_b}`.
+- `load_expectations(path) -> list[dict]`, `check_expectations(report, rules) -> {ok, unexpected, unmet, matched}`, `format_report(report, verdict=None) -> list[str]` (after the counts line it always prints `  equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits`), `is_equal(report) -> bool`; constants `SNAPSHOT_MANIFEST = "snapshot.json"`, `SNAPSHOT_ENV = "env.sh"`, `BUILD_TS = "<build-timestamp>"`, `BUILD_DATE = "<build-date>"`, `FLOAT_SIGNIFICANT_DIGITS = 12`, `SCRATCH_DB_PREFIX = "govbudget_proof_"`.
 - CLI `govbudget proof snapshot --out DIR --scratch-db NAME [--data-dir DIR] [--pg-dsn DSN]`; `govbudget proof diff A B [--expect FILE] [--report FILE]`. `diff` prints one final line: `proof diff: EQUAL` (exit 0) / `proof diff: DIFFERENT` (exit 1) without `--expect`; `proof diff: PASS` (exit 0) / `proof diff: FAIL` (exit 1) with it.
 - `--expect` file: a JSON list of rules `{"path": glob, "why": text, "status": [changed|only_a|only_b]?, "pointer": glob?, "change": [added|removed|changed|reordered]?, "required": bool?}`. Only `*` is a wildcard (it also matches `/`); `[]` and `{fid}` are literal. Every difference must match a rule; every `required` rule must match one. A JSON difference is matched per (`pattern`, `change`): `pattern` is the JSON pointer with 16-hex fact-ID keys collapsed to `{fid}` and list elements written `/[]` (e.g. `/{fid}/retrieved_at`, `/decade_series/[]`).
 - Run-dir convention for every proof export (Tasks 8, 9, 21): `cp -c -R <snap> <snap>-<run>`; `source <snap>/env.sh <snap>-<run>`; `uv run --project . python -m govbudget export-site` from the code checkout's `GovBudget/`; `uv run --project . python -m govbudget proof diff <snapA>-<run>/site <snapB>-<run>/site [--expect FILE]`. Scratch database names: `govbudget_proof_<snapshot name>`.
@@ -26,7 +26,7 @@ Measured for this task (read-only unless stated, 2026-10-02):
 - `diff_trees(live data/site, cp -c clone)`: 35,520 identical files in 15.9 s. On a scratch clone with every `2026-10-02T01:` stamp shifted to `2026-10-05T07:` in the 260 JSON files and `citations.parquet` that carry them: 259 files `equivalent`, 28.9 s; the two `measured_on` values the shift missed were reported `changed` (correctly: the build day had moved).
 - DuckDB rewrite on a scratch clone of `govbudget.duckdb` + `parquet/`: 18 views rewritten, 0 left naming `/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/`, and `dim_programs` 1,936, `stg_budget_lines` 159,494, `fct_program_lobbying` 12,571, `dim_lobbyists` 1,612, `fct_state_per_capita` 6 rows — equal to the live file.
 - Lake: `parquet/` 112 files (109 `.parquet`, plus `sam/manifest.jsonl`, `sam/daily/.lock`, `sam/daily/state.json`), `site/` 35,520 files, `raw_docs/` 1,112 files, no symlinks; `cp -c -R data/site` 4.3 s. Postgres `govbudget`: 18 tables, 1,028 MB (largest `budget_line_awards`, 719 MB); one per-table digest (`provenance_pages`, 75,434 rows) takes 0.52 s.
-- `tests/test_proof.py` on the prototype: 15 passed after cycle A; `7 failed, 16 passed` at the start of cycle B; 23 passed at the end; mutation checks (no window widening; masking `retrieved_at` as a key) each fail the masking tests.
+- `tests/test_proof.py` on the prototype: 15 passed after cycle A; `7 failed, 16 passed` at the start of cycle B; 23 passed at the end; mutation checks (no window widening; masking `retrieved_at` as a key) each fail the masking tests. After the 2026-10-03 pre-flight amendments (float-noise floor, local-prefix refusal, test-cluster `ADMIN_DSN` default) the same cycle reads 21 / `10 failed, 22 passed` / 32, measured on a scratch build of the amended blocks with a private PG 17 cluster; a 5,000-row double table with last-bit noise in two thirds of its rows (and a 2,000-element JSON list) diffs `equivalent` in 0.06 s, and one 1e-9 change in either reads `changed`.
 
 - [ ] **Step 1: Write the failing diff tests**
 
@@ -39,11 +39,14 @@ The diff decides whether an A/B export proof passes, so its masking is pinned
 here on tiny trees: build stamps (every `built_at`, a `retrieved_at` that is a
 UTC instant inside the tree's own build window, `measured_on` on the build day)
 are masked; source stamps — workbook download times, SAM retrieval times — are
-evidence and never are. Parquet files compare as row multisets.
+evidence and never are. Parquet files compare as row multisets. DOUBLE/FLOAT
+values and JSON floats equal to 12 significant digits are float noise:
+equivalent, counted apart, never changed.
 """
 from __future__ import annotations
 
 import datetime
+import decimal
 import json
 import os
 import shutil
@@ -59,7 +62,10 @@ import pytest
 from govbudget import cli, proof
 
 ROOT = Path(__file__).resolve().parents[1]
-ADMIN_DSN = os.environ.get("GOVBUDGET_TEST_PG_DSN", "postgresql://localhost/postgres")
+# The throwaway test cluster (Task 1). With GOVBUDGET_TEST_PG_DSN unset the
+# fallback is still that cluster, so a missing env SKIPS instead of creating
+# and dropping databases on the real server.
+ADMIN_DSN = os.environ.get("GOVBUDGET_TEST_PG_DSN", "postgresql://127.0.0.1:55432/postgres")
 
 BUILT_A = "2026-10-02T01:30:21.066005+00:00"
 DERIVED_A = "2026-10-02T01:26:11.150859+00:00"
@@ -252,6 +258,85 @@ def test_other_files_compare_by_bytes_and_big_directories_group(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# float noise
+# ---------------------------------------------------------------------------
+
+# Two identical `select * ... order by all` queries on the live warehouse return
+# parallel double sums that differ in the last bits (dim_geography,
+# fct_district_totals, fct_program_concentration; pre-flight 2026-10-03).
+NOISY = 4589898661.9800005
+CLEAN = 4589898661.98
+MOVED = 4589898662.98
+
+
+def test_float_noise_is_equivalent_and_counted_on_its_own(tmp_path):
+    # (a) DOUBLE parquet values and JSON floats equal to 12 significant digits
+    assert NOISY != CLEAN
+    cols = [("state", "varchar"), ("n", "integer"), ("total", "double")]
+    _parquet(tmp_path / "a" / "data" / "dim_geography.parquet", cols,
+             [("NY", 1, CLEAN), ("CA", 2, 7.5)])
+    _parquet(tmp_path / "b" / "data" / "dim_geography.parquet", cols,
+             [("CA", 2, 7.5), ("NY", 1, NOISY)])
+    _json(tmp_path / "a" / "json" / "geo.json",
+          {"total": CLEAN, "rows": [{"state": "NY", "total": CLEAN}, {"state": "CA", "total": 7.5}]})
+    _json(tmp_path / "b" / "json" / "geo.json",
+          {"total": NOISY, "rows": [{"state": "NY", "total": NOISY}, {"state": "CA", "total": 7.5}]})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert {rel: (e["status"], e["float_noise"]) for rel, e in report["files"].items()} == {
+        "data/dim_geography.parquet": ("equivalent", 1),
+        "json/geo.json": ("equivalent", 2),
+    }
+    assert report["counts"]["equivalent"] == 2 and report["counts"]["changed"] == 0
+    assert report["float_noise"] == {"files": 2, "values": 3}
+    assert proof.is_equal(report)
+    assert ("  equivalent (float noise): 2 file(s), 3 value(s) equal to 12 significant digits"
+            in proof.format_report(report))
+
+
+def test_a_float_change_beyond_12_significant_digits_is_a_change(tmp_path):
+    # (b) 4589898661.98 -> 4589898662.98 moves the 10th significant digit
+    cols = [("state", "varchar"), ("n", "integer"), ("total", "double")]
+    _parquet(tmp_path / "a" / "data" / "t.parquet", cols, [("NY", 1, CLEAN), ("CA", 2, 7.5)])
+    _parquet(tmp_path / "b" / "data" / "t.parquet", cols, [("NY", 1, MOVED), ("CA", 2, 7.5)])
+    _json(tmp_path / "a" / "p.json", {"total": CLEAN, "rows": [{"total": CLEAN}]})
+    _json(tmp_path / "b" / "p.json", {"total": MOVED, "rows": [{"total": MOVED}]})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    pq = report["files"]["data/t.parquet"]
+    assert (pq["status"], pq["float_noise"], pq["detail"]["only_a"], pq["detail"]["only_b"]) == (
+        "changed", 0, 1, 1)
+    assert pq["detail"]["sample_only_b"] == [{"state": "NY", "n": 1, "total": MOVED}]
+    assert _changes(report, "p.json") == [
+        ("/rows/[]", "added", 1), ("/rows/[]", "removed", 1), ("/total", "changed", 1)]
+    assert report["float_noise"] == {"files": 0, "values": 0}
+    assert not proof.is_equal(report)
+
+
+@pytest.mark.parametrize("typ, va, vb", [
+    ("bigint", 100_000_000_000_000, 100_000_000_000_001),
+    ("decimal(38,10)", decimal.Decimal("4589898661.98"), decimal.Decimal("4589898661.9800000001")),
+    ("varchar", "4589898661.98", "4589898661.9800005"),
+])
+def test_integers_decimals_and_strings_stay_exact(tmp_path, typ, va, vb):
+    # (c) only DOUBLE/FLOAT columns get the 12-digit comparison: a difference
+    # far below 1e-12 in an integer, decimal or string column is a change,
+    # even beside a double that differs only by noise
+    cols = [("state", "varchar"), ("v", typ), ("total", "double")]
+    _parquet(tmp_path / "a" / "data" / "t.parquet", cols, [("NY", va, CLEAN)])
+    _parquet(tmp_path / "b" / "data" / "t.parquet", cols, [("NY", vb, NOISY)])
+    pq = proof.diff_trees(tmp_path / "a", tmp_path / "b")["files"]["data/t.parquet"]
+    assert (pq["status"], pq["detail"]["only_a"], pq["detail"]["only_b"]) == ("changed", 1, 1)
+
+
+def test_json_integers_and_strings_stay_exact(tmp_path):
+    # (c) for JSON: ints and strings compare exactly; only the float is noise
+    _json(tmp_path / "a" / "p.json", {"n": 100_000_000_000_000, "s": "4589898661.98", "x": CLEAN})
+    _json(tmp_path / "b" / "p.json", {"n": 100_000_000_000_001, "s": "4589898661.9800005", "x": NOISY})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert _changes(report, "p.json") == [("/n", "changed", 1), ("/s", "changed", 1)]
+    assert report["files"]["p.json"]["float_noise"] == 1
+
+
+# ---------------------------------------------------------------------------
 # --expect
 # ---------------------------------------------------------------------------
 
@@ -311,7 +396,7 @@ def test_globs_treat_only_the_star_as_special():
 - [ ] **Step 2: Run them — they fail**
 
 ```bash
-uv run --project . pytest tests/test_proof.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_proof.py -q
 ```
 
 Expected: collection error `ImportError: cannot import name 'proof' from 'govbudget'`, `1 error`.
@@ -383,18 +468,27 @@ multisets, everything else by bytes. It masks build timestamps only — values o
 window, and `measured_on` equal to the build day — never `retrieved_at` as a
 key, because source retrieval stamps are evidence (spec §10 expects specific
 `retrieved_at` changes).
+
+Float noise: dbt marts built from parallel double sums (dim_geography,
+fct_district_totals, fct_program_concentration) differ in the last bits
+between two identical queries (4589898661.9800005 vs 4589898661.98), so
+DOUBLE/FLOAT parquet values and JSON floats equal to FLOAT_SIGNIFICANT_DIGITS
+significant digits (relative difference at most 1e-12) count as equivalent and
+are tallied apart (report["float_noise"], each file's "float_noise"); they are
+never "changed". Integers, decimals and strings always compare exactly.
 """
 from __future__ import annotations
 
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import shlex
 import shutil
 import subprocess
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -413,6 +507,9 @@ STAMP_KEYS = frozenset({"built_at", "retrieved_at"})
 DATE_KEYS = frozenset({"measured_on"})
 STATUSES = ("identical", "equivalent", "changed", "only_a", "only_b")
 CHANGES = ("added", "removed", "changed", "reordered")
+FLOAT_SIGNIFICANT_DIGITS = 12
+FLOAT_TYPES = frozenset({"DOUBLE", "FLOAT"})
+SCRATCH_DB_PREFIX = "govbudget_proof_"
 
 _UTC_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00")
 _UTC_FRACTION_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{1,6}\+00:00")
@@ -426,6 +523,10 @@ _SAMPLE_ROWS = 5
 _MAX_VALUE_CHARS = 300
 _IGNORED_NAMES = frozenset({".DS_Store"})
 _RULE_KEYS = frozenset({"path", "why", "status", "pointer", "change", "required"})
+_FLOAT_REL_TOL = 10.0 ** -FLOAT_SIGNIFICANT_DIGITS
+_FLOAT_MARK = "\x00float"          # stands in for every float in a pairing key
+_NOISE_MAX_ROWS = 1_000_000        # residual parquet rows beyond this compare exactly
+_LOCAL_HOSTS = frozenset({"", "localhost", "127.0.0.1", "::1"})
 
 
 def _now() -> datetime.datetime:
@@ -561,13 +662,131 @@ def _escape(key: str) -> str:
     return key.replace("~", "~0").replace("/", "~1")
 
 
-def _json_changes(a, b, pointer: str, out: list) -> None:
+def _float_close(x, y) -> bool:
+    """Equal to FLOAT_SIGNIFICANT_DIGITS significant digits: the relative
+    difference is at most 1e-12. None and NaN match only themselves."""
+    if x is None or y is None:
+        return x is None and y is None
+    if math.isnan(x) or math.isnan(y):
+        return math.isnan(x) and math.isnan(y)
+    return x == y or math.isclose(x, y, rel_tol=_FLOAT_REL_TOL, abs_tol=0.0)
+
+
+def _float_order(x) -> tuple:
+    """Sort key for a float column or leaf that keeps noisy twins together."""
+    if x is None:
+        return (0,)
+    if math.isnan(x):
+        return (2,)
+    return (1, float(f"{x:.{FLOAT_SIGNIFICANT_DIGITS}g}"), x)
+
+
+def _strip_floats(value):
+    """value with every float replaced by one marker: what float noise cannot change."""
+    if type(value) is float:
+        return _FLOAT_MARK
+    if isinstance(value, dict):
+        return {k: _strip_floats(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_strip_floats(v) for v in value]
+    return value
+
+
+def _floats(value) -> list:
+    """Every float in value, in canonical (sorted-key) order."""
+    if type(value) is float:
+        return [value]
+    if isinstance(value, dict):
+        return [f for k in sorted(value) for f in _floats(value[k])]
+    if isinstance(value, list):
+        return [f for v in value for f in _floats(v)]
+    return []
+
+
+def _json_noise(a, b) -> int | None:
+    """How many float leaves differ between a and b by float noise only, or
+    None when a and b differ in any other way (lists in order here)."""
+    if type(a) is float and type(b) is float:
+        if a == b:
+            return 0
+        return 1 if _float_close(a, b) else None
+    if isinstance(a, dict) and isinstance(b, dict):
+        if a.keys() != b.keys():
+            return None
+        pairs = [(a[k], b[k]) for k in a]
+    elif isinstance(a, list) and isinstance(b, list):
+        if len(a) != len(b):
+            return None
+        pairs = list(zip(a, b))
+    else:
+        return 0 if (type(a) is type(b) and a == b) else None
+    total = 0
+    for x, y in pairs:
+        n = _json_noise(x, y)
+        if n is None:
+            return None
+        total += n
+    return total
+
+
+def _row_noise(ra: tuple, rb: tuple, floats: list[int]) -> int | None:
+    """How many float columns differ between two rows by noise only, or None."""
+    n = 0
+    for i in floats:
+        x, y = ra[i], rb[i]
+        if not _float_close(x, y):
+            return None
+        if x is not None and not math.isnan(x) and x != y:
+            n += 1
+    return n
+
+
+def _pair_noise(xs: list, ys: list, *, group_key, order_key, measure) -> tuple[list, list, int]:
+    """Pair items of xs and ys that differ only by float noise.
+
+    Items pair only inside one group_key (everything except the floats, which
+    must be equal exactly); inside a group both sides are walked in order_key
+    order and paired when measure() is not None. Returns (unpaired xs,
+    unpaired ys, number of float values that differed)."""
+    gx: dict = defaultdict(list)
+    gy: dict = defaultdict(list)
+    for x in xs:
+        gx[group_key(x)].append(x)
+    for y in ys:
+        gy[group_key(y)].append(y)
+    left_x, left_y, values = [], [], 0
+    for key in sorted(set(gx) | set(gy)):
+        la = sorted(gx.get(key, []), key=order_key)
+        lb = sorted(gy.get(key, []), key=order_key)
+        i = j = 0
+        while i < len(la) and j < len(lb):
+            n = measure(la[i], lb[j])
+            if n is not None:
+                values += n
+                i += 1
+                j += 1
+            elif order_key(la[i]) < order_key(lb[j]):
+                left_x.append(la[i])
+                i += 1
+            else:
+                left_y.append(lb[j])
+                j += 1
+        left_x.extend(la[i:])
+        left_y.extend(lb[j:])
+    return left_x, left_y, values
+
+
+def _json_changes(a, b, pointer: str, out: list, noise: list | None = None) -> None:
     """Append (change, pointer, a, b) for every difference between a and b.
 
     Dicts recurse by key; lists compare as multisets of canonical JSON (a
     shuffled list is one `reordered` change; an inserted element is one
     `added` at `<list>/[]`); scalars must match in type AND value, so 1 vs
-    1.0 or 1 vs true is a change."""
+    1.0 or 1 vs true is a change. Two floats equal to 12 significant digits
+    are not a change: their count goes to `noise` instead (list elements that
+    differ only by such floats are paired first)."""
+    if noise is None:
+        noise = []
     if isinstance(a, dict) and isinstance(b, dict):
         for key in sorted(set(a) | set(b)):
             p = f"{pointer}/{_escape(key)}"
@@ -576,7 +795,7 @@ def _json_changes(a, b, pointer: str, out: list) -> None:
             elif key not in a:
                 out.append(("added", p, None, b[key]))
             else:
-                _json_changes(a[key], b[key], p, out)
+                _json_changes(a[key], b[key], p, out, noise)
         return
     if isinstance(a, list) and isinstance(b, list):
         ca, cb = [_canon(x) for x in a], [_canon(x) for x in b]
@@ -586,12 +805,26 @@ def _json_changes(a, b, pointer: str, out: list) -> None:
         if ma == mb:
             out.append(("reordered", pointer, None, None))
             return
-        for s, n in sorted((ma - mb).items()):
-            out.extend([("removed", pointer + "/[]", json.loads(s), None)] * n)
-        for s, n in sorted((mb - ma).items()):
-            out.extend([("added", pointer + "/[]", None, json.loads(s))] * n)
+        only_a = [json.loads(s) for s, n in sorted((ma - mb).items()) for _ in range(n)]
+        only_b = [json.loads(s) for s, n in sorted((mb - ma).items()) for _ in range(n)]
+        only_a, only_b, n_noise = _pair_noise(
+            only_a, only_b,
+            group_key=lambda x: _canon(_strip_floats(x)),
+            order_key=lambda x: tuple(_float_order(f) for f in _floats(x)),
+            measure=_json_noise,
+        )
+        noise.append(n_noise)
+        if not only_a and not only_b:
+            if [_canon(_strip_floats(x)) for x in a] != [_canon(_strip_floats(x)) for x in b]:
+                out.append(("reordered", pointer, None, None))
+            return
+        out.extend(("removed", pointer + "/[]", x, None) for x in sorted(only_a, key=_canon))
+        out.extend(("added", pointer + "/[]", None, y) for y in sorted(only_b, key=_canon))
         return
     if type(a) is type(b) and a == b:
+        return
+    if type(a) is float and type(b) is float and _float_close(a, b):
+        noise.append(1)
         return
     out.append(("changed", pointer, a, b))
 
@@ -607,14 +840,16 @@ def _short(value) -> str | None:
     return s if len(s) <= _MAX_VALUE_CHARS else s[:_MAX_VALUE_CHARS] + "…"
 
 
-def _json_detail(pa: Path, pb: Path, wa, wb) -> dict | None:
-    """None when the two files hold the same JSON value after masking."""
+def _json_detail(pa: Path, pb: Path, wa, wb) -> tuple[dict | None, int]:
+    """(detail, float-noise values); detail is None when the two files hold
+    the same JSON value after masking, floats compared to 12 significant digits."""
     a = _mask(json.loads(pa.read_text(encoding="utf-8")), wa)
     b = _mask(json.loads(pb.read_text(encoding="utf-8")), wb)
     raw: list = []
-    _json_changes(a, b, "", raw)
+    noise: list = []
+    _json_changes(a, b, "", raw, noise)
     if not raw:
-        return None
+        return None, sum(noise)
     grouped: dict[tuple[str, str], dict] = {}
     for change, pointer, va, vb in raw:
         key = (_pattern(pointer), change)
@@ -624,7 +859,7 @@ def _json_detail(pa: Path, pb: Path, wa, wb) -> dict | None:
         entry["count"] += 1
         if len(entry["samples"]) < _SAMPLES_PER_CHANGE:
             entry["samples"].append({"pointer": pointer, "a": _short(va), "b": _short(vb)})
-    return {"changes": [grouped[k] for k in sorted(grouped)]}
+    return {"changes": [grouped[k] for k in sorted(grouped)]}, sum(noise)
 
 
 def _sql_path(path: Path) -> str:
@@ -655,13 +890,19 @@ def _masked_select(con, path: Path, schema: list, window, tag: str) -> str:
     return f"select {', '.join(exprs)} from {src}"
 
 
+def _jsonable(cols: list[str], row: tuple) -> dict:
+    return json.loads(json.dumps(dict(zip(cols, row)), default=str))
+
+
 def _jsonable_rows(cursor) -> list[dict]:
     cols = [d[0] for d in cursor.description]
-    return [json.loads(json.dumps(dict(zip(cols, row)), default=str)) for row in cursor.fetchall()]
+    return [_jsonable(cols, row) for row in cursor.fetchall()]
 
 
-def _parquet_detail(pa: Path, pb: Path, wa, wb) -> dict | None:
-    """None when the two files hold the same row multiset after masking."""
+def _parquet_detail(pa: Path, pb: Path, wa, wb) -> tuple[dict | None, int]:
+    """(detail, float-noise values); detail is None when the two files hold the
+    same row multiset after masking, DOUBLE/FLOAT columns compared to 12
+    significant digits (every other column exactly)."""
     import duckdb
 
     con = duckdb.connect()
@@ -673,13 +914,32 @@ def _parquet_detail(pa: Path, pb: Path, wa, wb) -> dict | None:
         if schema_a != schema_b:
             return {"schema_a": schema_a, "schema_b": schema_b, "rows_a": rows_a,
                     "rows_b": rows_b, "only_a": None, "only_b": None,
-                    "sample_only_a": [], "sample_only_b": []}
+                    "sample_only_a": [], "sample_only_b": []}, 0
         sel_a = _masked_select(con, pa, schema_a, wa, "a")
         sel_b = _masked_select(con, pb, schema_b, wb, "b")
         only_a = con.execute(f"select count(*) from ({sel_a} except all {sel_b})").fetchone()[0]
         only_b = con.execute(f"select count(*) from ({sel_b} except all {sel_a})").fetchone()[0]
         if only_a == 0 and only_b == 0:
-            return None
+            return None, 0
+        cols = [name for name, _ in schema_a]
+        floats = [i for i, (_, typ) in enumerate(schema_a) if typ in FLOAT_TYPES]
+        if floats and only_a + only_b <= _NOISE_MAX_ROWS:
+            exact = [i for i in range(len(cols)) if i not in floats]
+            left_a, left_b, noise = _pair_noise(
+                con.execute(f"select * from ({sel_a} except all {sel_b})").fetchall(),
+                con.execute(f"select * from ({sel_b} except all {sel_a})").fetchall(),
+                group_key=lambda r: repr([r[i] for i in exact]),
+                order_key=lambda r: tuple(_float_order(r[i]) for i in floats),
+                measure=lambda ra, rb: _row_noise(ra, rb, floats),
+            )
+            if not left_a and not left_b:
+                return None, noise
+            return {
+                "schema_a": schema_a, "schema_b": schema_b, "rows_a": rows_a, "rows_b": rows_b,
+                "only_a": len(left_a), "only_b": len(left_b),
+                "sample_only_a": [_jsonable(cols, r) for r in left_a[:_SAMPLE_ROWS]],
+                "sample_only_b": [_jsonable(cols, r) for r in left_b[:_SAMPLE_ROWS]],
+            }, noise
         return {
             "schema_a": schema_a, "schema_b": schema_b, "rows_a": rows_a, "rows_b": rows_b,
             "only_a": only_a, "only_b": only_b,
@@ -687,7 +947,7 @@ def _parquet_detail(pa: Path, pb: Path, wa, wb) -> dict | None:
                 f"select * from ({sel_a} except all {sel_b}) limit {_SAMPLE_ROWS}")),
             "sample_only_b": _jsonable_rows(con.execute(
                 f"select * from ({sel_b} except all {sel_a}) limit {_SAMPLE_ROWS}")),
-        }
+        }, 0
     finally:
         con.close()
 
@@ -712,7 +972,10 @@ def diff_trees(a: Path, b: Path) -> dict:
 
     report["counts"] has every status in STATUSES; report["files"] lists each
     file that is not byte-identical; report["groups"] tallies statuses per
-    path group (a directory with 50+ files collapses to '<dir>/*<suffix>')."""
+    path group (a directory with 50+ files collapses to '<dir>/*<suffix>');
+    report["float_noise"] = {files, values} counts the float values equal to
+    12 significant digits that were treated as equal (each file entry carries
+    its own "float_noise")."""
     a, b = Path(a), Path(b)
     for root in (a, b):
         if not root.is_dir():
@@ -724,9 +987,10 @@ def diff_trees(a: Path, b: Path) -> dict:
     counts = Counter({s: 0 for s in STATUSES})
     groups: dict[str, Counter] = {}
     files: dict[str, dict] = {}
+    noise_files = noise_values = 0
     for rel in every:
         kind, group = _kind(rel), _group(rel, dir_counts)
-        detail = None
+        detail, noise = None, 0
         if rel not in files_b:
             status = "only_a"
         elif rel not in files_a:
@@ -736,18 +1000,22 @@ def diff_trees(a: Path, b: Path) -> dict:
         else:
             if kind == "json":
                 try:
-                    detail = _json_detail(a / rel, b / rel, wa, wb)
+                    detail, noise = _json_detail(a / rel, b / rel, wa, wb)
                 except ValueError:  # not JSON after all: compare as bytes
                     kind = "bytes"
             elif kind == "parquet":
-                detail = _parquet_detail(a / rel, b / rel, wa, wb)
+                detail, noise = _parquet_detail(a / rel, b / rel, wa, wb)
             if kind == "bytes":
                 detail = {"sha256_a": _sha256_file(a / rel), "sha256_b": _sha256_file(b / rel)}
             status = "changed" if detail is not None else "equivalent"
         counts[status] += 1
         groups.setdefault(group, Counter({s: 0 for s in STATUSES}))[status] += 1
+        if noise:
+            noise_files += 1
+            noise_values += noise
         if status != "identical":
-            files[rel] = {"status": status, "kind": kind, "group": group, "detail": detail}
+            files[rel] = {"status": status, "kind": kind, "group": group, "detail": detail,
+                          "float_noise": noise}
     return {
         "a": str(a),
         "b": str(b),
@@ -756,6 +1024,7 @@ def diff_trees(a: Path, b: Path) -> dict:
             for side, w in (("a", wa), ("b", wb))
         },
         "counts": dict(counts),
+        "float_noise": {"files": noise_files, "values": noise_values},
         "groups": {g: dict(c) for g, c in sorted(groups.items())},
         "files": files,
     }
@@ -863,14 +1132,16 @@ def check_expectations(report: dict, rules: list[dict]) -> dict:
 
 def format_report(report: dict, verdict: dict | None = None) -> list[str]:
     """Human-readable lines; the last line is the verdict."""
-    c = report["counts"]
+    c, fn = report["counts"], report["float_noise"]
     lines = [
         f"proof diff: A = {report['a']}",
         f"proof diff: B = {report['b']}",
         f"  build window A {report['build_window']['a']} · B {report['build_window']['b']}",
         f"  identical {c['identical']:,} · equivalent {c['equivalent']:,}"
-        f" (build stamps, row order or JSON formatting only) · changed {c['changed']:,}"
+        f" (build stamps, row order, JSON formatting or float noise only) · changed {c['changed']:,}"
         f" · only in A {c['only_a']:,} · only in B {c['only_b']:,}",
+        f"  equivalent (float noise): {fn['files']:,} file(s), {fn['values']:,} value(s)"
+        f" equal to {FLOAT_SIGNIFICANT_DIGITS} significant digits",
     ]
     for group, gc in report["groups"].items():
         if not (gc["changed"] or gc["only_a"] or gc["only_b"]):
@@ -911,10 +1182,10 @@ def format_report(report: dict, verdict: dict | None = None) -> list[str]:
 - [ ] **Step 4: Run the diff tests — they pass**
 
 ```bash
-uv run --project . pytest tests/test_proof.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_proof.py -q
 ```
 
-Expected: `15 passed`.
+Expected: `21 passed` (the 15 masking, structure and `--expect` tests plus the 6 float-noise tests: (a), (b), three (c) parquet types and the JSON (c) case).
 
 - [ ] **Step 5: Commit the diff**
 
@@ -1012,6 +1283,24 @@ def test_snapshot_refuses_an_existing_out_dir(tmp_path, monkeypatch):
                        pg_dsn="postgresql://x/db", scratch_db="snap")
 
 
+@pytest.mark.parametrize("dsn", [
+    "postgresql://localhost/govbudget",
+    "postgresql://127.0.0.1:55432/postgres",
+    "postgresql:///govbudget",
+])
+def test_snapshot_refuses_a_local_scratch_db_without_the_proof_prefix(tmp_path, monkeypatch, dsn):
+    # README: on the local server only govbudget_proof_<name> may be created;
+    # both the function and the CLI (cmd_proof) refuse before touching anything.
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data", pg_dsn=dsn,
+                       scratch_db="snap")
+    with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
+        cli.main(["proof", "snapshot", "--out", str(tmp_path / "s"), "--scratch-db", "snap",
+                  "--data-dir", str(tmp_path / "data"), "--pg-dsn", dsn])
+    assert not (tmp_path / "s").exists()
+
+
 def _lake(data: Path) -> None:
     """A miniature lake: a DuckDB view that embeds its parquet's absolute path."""
     _parquet(data / "parquet" / "jbooks" / "budget_lines.parquet",
@@ -1057,12 +1346,12 @@ def pg_source():
         admin = psycopg.connect(ADMIN_DSN, autocommit=True)
     except psycopg.OperationalError as e:
         pytest.skip(f"Postgres unavailable ({e}); start the test cluster (Task 1)")
-    for db in ("proof_src_test", "proof_scratch_test"):
+    for db in ("proof_src_test", "govbudget_proof_scratch_test"):
         admin.execute(f"drop database if exists {db}")
     admin.execute("create database proof_src_test")
     dsn = urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/proof_src_test"))
     yield admin, dsn
-    for db in ("proof_src_test", "proof_scratch_test"):
+    for db in ("proof_src_test", "govbudget_proof_scratch_test"):
         admin.execute(f"drop database if exists {db} with (force)")
     admin.close()
 
@@ -1080,9 +1369,9 @@ def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
         con.execute("insert into budget_lines values ('ATA000', 1.5), ('B02100', 2)")
     out = tmp_path / "proofs" / "s0"
 
-    m = proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db="proof_scratch_test")
+    m = proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db="govbudget_proof_scratch_test")
 
-    scratch_dsn = urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/proof_scratch_test"))
+    scratch_dsn = urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/govbudget_proof_scratch_test"))
     assert m["env"] == {"GOVBUDGET_DATA": str(out),
                         "GOVBUDGET_DUCKDB": f"{out}/duckdb/govbudget.duckdb",
                         "GOVBUDGET_PG_DSN": scratch_dsn}
@@ -1101,9 +1390,9 @@ def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
     with psycopg.connect(scratch_dsn) as con:
         assert con.execute("select file_path from jbook_documents").fetchone()[0] == (
             f"{out}/raw_docs/fy2017/dod/p1_display.xlsx")
-    with pytest.raises(FileExistsError, match="database proof_scratch_test already exists"):
+    with pytest.raises(FileExistsError, match="database govbudget_proof_scratch_test already exists"):
         proof.snapshot(tmp_path / "proofs" / "s1", data_dir=live, pg_dsn=src_dsn,
-                       scratch_db="proof_scratch_test")
+                       scratch_db="govbudget_proof_scratch_test")
     assert not (tmp_path / "proofs" / "s1").exists()
     shutil.rmtree(live / "parquet")
     con = duckdb.connect(str(out / "duckdb" / "govbudget.duckdb"), read_only=True)
@@ -1120,11 +1409,11 @@ def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
 - [ ] **Step 7: Run them — the new ones fail**
 
 ```bash
-uv run --project . pytest tests/test_proof.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_proof.py -q
 ```
 
-Expected: `7 failed, 16 passed`:
-`test_cli_diff_exit_codes_and_report` (`assert 2 == 1` — argparse rejects `proof`), the four `test_snapshot_refuses_*` cases (SAM window, two bad names, existing out dir) and `test_snapshot_pins_lake_and_postgres` (`AttributeError: module 'govbudget.proof' has no attribute 'snapshot'`), and `test_view_rewrite_repoints_the_copy_and_leaves_the_source` (`... no attribute '_rewrite_duckdb_views'`). `test_config_follows_govbudget_data_except_research` already passes: it pins the existing `config.py` behaviour the snapshot relies on. If `test_snapshot_pins_lake_and_postgres` shows `SKIPPED` instead, the test cluster is down — restart it (Task 1 Step 5).
+Expected: `10 failed, 22 passed`:
+`test_cli_diff_exit_codes_and_report` (`assert 2 == 1` — argparse rejects `proof`), the four `test_snapshot_refuses_*` cases (SAM window, two bad names, existing out dir), the three `test_snapshot_refuses_a_local_scratch_db_without_the_proof_prefix` cases and `test_snapshot_pins_lake_and_postgres` (`AttributeError: module 'govbudget.proof' has no attribute 'snapshot'`), and `test_view_rewrite_repoints_the_copy_and_leaves_the_source` (`... no attribute '_rewrite_duckdb_views'`). `test_config_follows_govbudget_data_except_research` already passes: it pins the existing `config.py` behaviour the snapshot relies on. If `test_snapshot_pins_lake_and_postgres` shows `SKIPPED` instead (`9 failed, 22 passed, 1 skipped`), the test cluster is down — restart it (Task 1 Step 5). Re-measured 2026-10-03 on a scratch build of these blocks with a private PG 17 cluster: 21, then `10 failed, 22 passed`, then 32 passed.
 
 - [ ] **Step 8: Implement the snapshot half of `src/govbudget/proof.py`**
 
@@ -1143,7 +1432,8 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
     out_dir/pg/<db>.dump, out_dir/snapshot.json and out_dir/env.sh, and restores
     the dump into a NEW database `scratch_db` on the same server. Refuses if
     out_dir or the scratch database already exists, inside the SAM write window
-    (:15-:20), or while a writer holds the DuckDB file.
+    (:15-:20), while a writer holds the DuckDB file, or when the server is
+    local and scratch_db is not named govbudget_proof_<name>.
     """
     out_dir = Path(out_dir).absolute()
     data_dir = Path(data_dir).resolve()
@@ -1157,6 +1447,7 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
             f"proof snapshot: scratch database name {scratch_db!r} must match"
             f" {_SCRATCH_DB_RE.pattern}"
         )
+    _check_scratch_name(pg_dsn, scratch_db)
     source_db = urlsplit(pg_dsn).path.lstrip("/")
     if not source_db:
         raise ValueError(f"proof snapshot: {pg_dsn!r} names no database")
@@ -1239,6 +1530,19 @@ def _check_sam_window(stage: str) -> None:
         raise RuntimeError(
             f"proof snapshot: refusing at {now:%H:%M} ({stage}) — the hourly SAM"
             " job writes data/parquet/sam at :17; run outside :15-:20"
+        )
+
+
+def _check_scratch_name(pg_dsn: str, scratch_db: str) -> None:
+    """On a local server (the real `govbudget` lives there) the only database
+    this tool may create is govbudget_proof_<name> (README, Global Constraints)."""
+    host = (urlsplit(pg_dsn).hostname or "").lower()
+    if host in _LOCAL_HOSTS and not (
+        scratch_db.startswith(SCRATCH_DB_PREFIX) and len(scratch_db) > len(SCRATCH_DB_PREFIX)
+    ):
+        raise ValueError(
+            f"proof snapshot: a scratch database on a local server must be named"
+            f" {SCRATCH_DB_PREFIX}<name>, not {scratch_db!r}"
         )
 
 
@@ -1545,7 +1849,8 @@ After:
     prf_snap.add_argument("--out", type=Path, required=True,
                           help="new directory, e.g. <main GovBudget>/.proofs/s0")
     prf_snap.add_argument("--scratch-db", required=True, dest="scratch_db",
-                          help="NEW database on the same server for the restored dump")
+                          help="NEW database on the same server for the restored dump;"
+                               " on a local server it must be named govbudget_proof_<name>")
     prf_snap.add_argument("--data-dir", type=Path, default=config.DATA_DIR, dest="data_dir")
     prf_snap.add_argument("--pg-dsn", default=config.PG_DSN, dest="pg_dsn")
     prf_snap.set_defaults(func=cmd_proof)
@@ -1568,18 +1873,20 @@ After:
 - [ ] **Step 10: Run the tests — all pass**
 
 ```bash
-uv run --project . pytest tests/test_proof.py tests/test_budget_pdf_export_workflow.py tests/test_roadmap_backlog.py -q -rs
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_proof.py tests/test_budget_pdf_export_workflow.py tests/test_roadmap_backlog.py -q -rs
 uv run --project . python -m govbudget proof --help
 ```
 
-Expected: `59 passed` (23 in `test_proof.py`, 6 in the unchanged export workflow, 30 in the ledger after Task 2) and no `SKIPPED` line; `--help` lists `{snapshot,diff}`.
+Expected: `68 passed` (32 in `test_proof.py`, 6 in the unchanged export workflow, 30 in the ledger after Task 2) and no `SKIPPED` line; `--help` lists `{snapshot,diff}`.
 
 - [ ] **Step 11: Smoke-test on the real lake, then remove the smoke snapshot**
 
-This creates a scratch database `govbudget_proof_t3_smoke` on `localhost` (not a write to `govbudget`; the plan header allows `govbudget_proof_<name>` databases) and APFS clones under `.proofs/` (no extra space). The snapshot copy reads the live lake, so the plan header's SAM-window rule applies. Check the clock first — `date +%M` must not be 15–20 (the command refuses itself in that window). It takes a few minutes, mostly `pg_dump` and `pg_restore` of the 1 GB database.
+This creates a scratch database `govbudget_proof_t3_smoke` on `localhost` (not a write to `govbudget`; the plan header allows `govbudget_proof_<name>` databases) and APFS clones under `.proofs/` (no extra space). The snapshot copy reads the live lake, so the plan header's SAM-window rule applies. Check the clock first — `date +%M` must not be 15–20 (the command refuses itself in that window); the block's guard line keeps the README margin (:12–:22). If a block prints `WAIT: SAM window …`, wait until :23 and re-run it. It takes a few minutes, mostly `pg_dump` and `pg_restore` of the 1 GB database.
 
 ```bash
-source scripts/era/env.sh
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python -m govbudget proof snapshot --out "$GOVBUDGET_PROOFS/t3-smoke" --scratch-db govbudget_proof_t3_smoke
 ```
 
@@ -1593,9 +1900,11 @@ proof snapshot: /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/t3-s
   source /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/t3-smoke/env.sh [RUN_DIR]
 ```
 
-Then verify the snapshot is hermetic and the diff sees the cloned site as equal to live:
+Then verify the snapshot is hermetic and the diff sees the cloned site as equal to live (the diff reads the live `data/site`, so the guard applies):
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python - <<'EOF'
 import json, duckdb, psycopg
 snap = "/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/t3-smoke"
@@ -1611,13 +1920,14 @@ EOF
 uv run --project . python -m govbudget proof diff "$GOVBUDGET_DATA/site" "$GOVBUDGET_PROOFS/t3-smoke/site"
 ```
 
-Expected: `0 1936`; `{'jbook_documents.file_path': 254} 0`; the diff prints `identical 35,520 · equivalent 0 (build stamps, row order or JSON formatting only) · changed 0 · only in A 0 · only in B 0` and ends `proof diff: EQUAL` (about 16 s).
+Expected: `0 1936`; `{'jbook_documents.file_path': 254} 0`; the diff prints `identical 35,520 · equivalent 0 (build stamps, row order, JSON formatting or float noise only) · changed 0 · only in A 0 · only in B 0`, then `  equivalent (float noise): 0 file(s), 0 value(s) equal to 12 significant digits` (a byte clone has no noise), and ends `proof diff: EQUAL` (about 16 s).
 
 Clean up:
 
 ```bash
-"$GOVBUDGET_PG_BIN/psql" postgresql://localhost/postgres -c 'drop database govbudget_proof_t3_smoke'
-rm -rf "$GOVBUDGET_PROOFS/t3-smoke"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+"${GOVBUDGET_PG_BIN:?}/psql" postgresql://localhost/postgres -c 'drop database govbudget_proof_t3_smoke'
+rm -rf "${GOVBUDGET_PROOFS:?}/t3-smoke"
 ```
 
 Expected: `DROP DATABASE`.

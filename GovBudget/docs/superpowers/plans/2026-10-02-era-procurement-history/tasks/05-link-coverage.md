@@ -277,7 +277,7 @@ def test_cli_writes_a_baseline_then_passes_and_fails_against_it(tmp_path, capsys
 Run (from `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget`):
 
 ```bash
-uv run --project . pytest tests/test_link_coverage.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_link_coverage.py -q
 ```
 
 Expected: collection error, nothing runs:
@@ -579,7 +579,7 @@ def compare_to_baseline(report: dict, baseline: dict) -> list[str]:
 - [ ] **Step 4: Run the tests: the module tests pass, the CLI test still fails**
 
 ```bash
-uv run --project . pytest tests/test_link_coverage.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_link_coverage.py -q
 ```
 
 Expected: `1 failed, 9 passed`. The failure is in
@@ -697,7 +697,8 @@ module's other commands do.)
 - [ ] **Step 6: Run the tests to verify they pass, plus the neighbouring CLI tests**
 
 ```bash
-uv run --project . pytest tests/test_link_coverage.py tests/test_budget_pdf_export_workflow.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_link_coverage.py tests/test_budget_pdf_export_workflow.py -q
 uv run --project . python -m govbudget link-coverage --help
 ```
 
@@ -718,6 +719,7 @@ The baseline must describe what production serves at S0. Run from
 `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget`:
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 shasum -a 256 /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site/json/citations.json
 curl -s https://fiscalreceipts.com/llms.txt | grep -o '[0-9,]* source citations'
 grep -o '[0-9,]* source citations' site/public/llms.txt
@@ -740,6 +742,7 @@ place of the expected ones below.
 - [ ] **Step 9: Write the baseline from the live export**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 uv run --project . python -m govbudget link-coverage \
   --site-dir /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site \
   --write-baseline data/research/link_coverage/baseline.json
@@ -757,6 +760,7 @@ link-coverage: PASS
 - [ ] **Step 10: Check the baseline against itself and reconcile it with overview §7**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 uv run --project . python -m govbudget link-coverage \
   --site-dir /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site \
   --baseline data/research/link_coverage/baseline.json
@@ -810,7 +814,7 @@ Task 1 installed `site/node_modules` (`npm ci`) and created the `data/site` syml
 lake. This step checks both, and that the link shows the export the baseline was computed from.
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 test -d site/node_modules && ! test -L site/node_modules && echo "node_modules: real directory"
 ls -ld data/site
 git check-ignore -v data/site
@@ -835,7 +839,7 @@ symlink. The shared exclude file already lists `GovBudget/data/site` at line 26 
 2026-10-02), so the second command normally appends nothing:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 test -L data/site || ln -s /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site data/site
 git check-ignore -q data/site || echo 'GovBudget/data/site' >> "$(git rev-parse --path-format=absolute --git-common-dir)/info/exclude"
 git check-ignore -v data/site
@@ -852,7 +856,7 @@ stale and comes from a dirty tree. The env var is required: a placeholder-origin
 differently.
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site || exit 1
 NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build > "${TMPDIR:-/tmp}/task5-build.log" 2>&1; echo "exit=$?"
 grep -E "Generating static pages using [0-9]+ workers \([0-9]+/[0-9]+\) in|Indexed [0-9]+ pages|Finished in" "${TMPDIR:-/tmp}/task5-build.log"
 cat out/.build-meta.json
@@ -886,7 +890,7 @@ The measurement script below extracts `weigh()` from `scripts/gates/build.mjs:88
 the gate's numbers. It reads the paths and ceilings from the exported `PAGE_WEIGHT_BUDGET`.
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site || exit 1
 node --input-type=module -e '
 import fs from "fs"; import path from "path"; import zlib from "zlib";
 import { PAGE_WEIGHT_BUDGET } from "./scripts/gates/build.mjs";
@@ -993,7 +997,7 @@ build numbers differ by a few bytes.
 - [ ] **Step 16: Verify the page-weight leg and that only comments and stamps changed**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site || exit 1
 node --input-type=module -e '
 import { checkPageWeight, PAGE_WEIGHT_BUDGET } from "./scripts/gates/build.mjs";
 const { errors, notes } = checkPageWeight();

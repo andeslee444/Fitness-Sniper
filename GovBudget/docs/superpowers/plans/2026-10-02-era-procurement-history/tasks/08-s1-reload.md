@@ -284,7 +284,7 @@ def test_the_tripwire_propagates_before_any_write(pg_dsn, era_db, tmp_path):
 
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_s1_reload_era_p1.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_s1_reload_era_p1.py -q`
 
 Expected: collection error `FileNotFoundError: [Errno 2] No such file or directory: '/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/scripts/era/s1_reload_era_p1.py'`.
 
@@ -694,13 +694,13 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run the tests to see them pass**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_s1_reload_era_p1.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_s1_reload_era_p1.py -q`
 
 Expected: `11 passed`.
 
 - [ ] **Step 5: Run the jbooks suite and commit**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks -q`
 
 Expected: `455 passed, 2 skipped`.
 
@@ -708,24 +708,24 @@ Expected: `455 passed, 2 skipped`.
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/scripts/era/s1_reload_era_p1.py GovBudget/tests/jbooks/test_s1_reload_era_p1.py && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "feat(era): S1 script — V1 no-write loader diff and a transactional re-run that rolls back on any difference (families S1, V1)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Steps 6–19 are the proof and the shared write. Run them from
-`/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget`
-in one shell, in order; stop at the first output that differs from the expected one and
-do not run any later step. Set once:
+Steps 6–19 are the proof and the shared write. Run them in order; stop at the first output
+that differs from the expected one and do not run any later step. Shell state does not
+persist between tool calls, so every block below is self-contained: it starts with the
+`cd … && source scripts/era/env.sh` line and the set-once line (`PROOFS`, `LIVE_DATA`,
+`LIVE_PG`, `LOGS`), re-deriving them itself. A block that prints `WAIT: SAM window …` did
+nothing: wait until :23 and re-run the whole block. Create the log directory once:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget
-set -o pipefail
-PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs
-LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data
-LIVE_PG=postgresql://localhost/govbudget
-LOGS=$PROOFS/s1-logs
-mkdir -p $LOGS
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+mkdir -p "${LOGS:?}"
 ```
 
 - [ ] **Step 6: V1 against the live database (read-only)**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 GOVBUDGET_PG_DSN=$LIVE_PG uv run --project . python scripts/era/s1_reload_era_p1.py --check 2>&1 | tee $LOGS/01-v1-live.log
 ```
 
@@ -745,9 +745,12 @@ V1: CLEAN (7 editions, 57722 parsed rows)
 - [ ] **Step 7: Snapshot S0**
 
 Check `date +%M` is not 15–20 (the hourly SAM job writes `data/parquet/sam` at :17; the
-tool also refuses). Then:
+tool also refuses); the block's guard line keeps the README margin (:12–:22). Then:
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=$LIVE_DATA GOVBUDGET_PG_DSN=$LIVE_PG uv run --project . python -m govbudget proof snapshot --out $PROOFS/s0 --scratch-db govbudget_proof_s0 2>&1 | tee $LOGS/02-snapshot.log
 ls $PROOFS/s0/snapshot.json $PROOFS/s0/env.sh
 ```
@@ -755,21 +758,49 @@ ls $PROOFS/s0/snapshot.json $PROOFS/s0/env.sh
 Expected: exit 0; both files listed. `govbudget_proof_s0` now holds a restore of the live
 database (schema_migrations 001–020, no `line_item_code`).
 
-- [ ] **Step 8: Export Z — S0 as production sees it (no rebuild)**
+- [ ] **Step 8: Export Z — S0 as production sees it (no rebuild) — and the control Z2**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 cp -c -R $PROOFS/s0 $PROOFS/s0-Z
 ( source $PROOFS/s0/env.sh $PROOFS/s0-Z && uv run --project . python -m govbudget export-site ) 2>&1 | tee $LOGS/03-export-Z.log
 ```
 
-Expected: exit 0; the log ends with `budget PDF receipts: …` and
-`export-site: … datasets, … citations, … -> $PROOFS/s0-Z/site`. Z reads the S0 lake in
-its heap order through the S0 warehouse (built 2026-09-27 02:45 by the same dbt code:
-no `dbt/` commit since 2026-09-26 21:56).
+Expected: exit 0; the log's last three lines are `budget PDF receipts: …`,
+`export-site: … datasets, … citations, … -> $PROOFS/s0-Z/site` and
+`export-site: dossiers <n> written, <k> claim(s) dropped across <m> dossier(s)` (the CLI
+prints the dossier summary last; `data/research/dossiers-raw/` holds 69 files today). Z reads
+the S0 lake in its heap order through the S0 warehouse (built 2026-09-27 02:45 by the same
+dbt code: no `dbt/` commit since 2026-09-26 21:56).
+
+Then the control (pre-flight ruling 2026-10-03): a second clone of the same S0 snapshot,
+exported through the same CLI before Step 9 touches the shared scratch database, and diffed
+against Z. Parallel double sums in the marts (`dim_geography`, `fct_district_totals`,
+`fct_program_concentration`) differ in the last bits between two identical queries, so this
+pair fixes the noise floor the Z/A/B judgement in Step 11 is read against:
+
+```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+cp -c -R $PROOFS/s0 $PROOFS/s0-Z2
+( source $PROOFS/s0/env.sh $PROOFS/s0-Z2 && uv run --project . python -m govbudget export-site ) 2>&1 | tee $LOGS/03b-export-Z2.log
+uv run --project . python -m govbudget proof diff $PROOFS/s0-Z/site $PROOFS/s0-Z2/site 2>&1 | tee $LOGS/03c-diff-Z-Z2.log
+```
+
+Expected: the Z2 export ends with the same three lines as Z (`-> $PROOFS/s0-Z2/site`); the
+diff's counts line ends `changed 0 · only in A 0 · only in B 0`, its
+`equivalent (float noise): <F> file(s), <V> value(s) equal to 12 significant digits` line
+may show non-zero counts (for example `data/dim_geography.parquet` and the other two marts'
+parquets; `equivalent` counts those files too), and the log ends `proof diff: EQUAL`. If it
+says `DIFFERENT`: stop. The export is not deterministic above the float-noise floor (the
+report names the files), so Steps 9–19 cannot be judged; take the report to the owner.
 
 - [ ] **Step 9: Export A — S0 plus migration 021, re-exported and rebuilt under this branch**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 cp -c -R $PROOFS/s0 $PROOFS/s0-A
 ( source $PROOFS/s0/env.sh $PROOFS/s0-A \
   && uv run --project . python -m govbudget migrate \
@@ -780,24 +811,33 @@ cp -c -R $PROOFS/s0 $PROOFS/s0-A
 
 Expected: exit 0; `migrations applied: ['021_budget_lines_line_item_code.sql']`;
 `exported: announcement_link_reviews.parquet, award_adjudications.parquet, budget_line_awards.parquet, budget_lines.parquet, detail_narratives.parquet, details.parquet, documents.parquet, program_family.parquet, program_lineage.parquet`;
-dbt ends `Completed successfully`; the `export-site:` summary line.
+dbt ends `Completed with 2 warnings:` and `Done. PASS=204 WARN=2 ERROR=0 SKIP=0 NO-OP=0 TOTAL=206`
+(measured 2026-10-03 on a clone of the live lake with the column added as this export writes
+it; the two warnings are the pre-existing warn tests `warn_subaward_amount_exceeds_50b` (WARN 3)
+and `warn_lda_amendment_latest_undetermined` (WARN 7)). The criterion is `ERROR=0`: any
+`ERROR=` other than 0 stops the task; a different PASS/WARN split with `ERROR=0` goes on.
+Then the `budget PDF receipts:` and `export-site:` summary lines and the dossier line, as in
+Step 8.
 
 - [ ] **Step 10: Export B — A plus the S1 re-run**
 
-Z, A and B share one scratch database: every `source $PROOFS/s0/env.sh <run dir>` points
+Z, Z2, A and B share one scratch database: every `source $PROOFS/s0/env.sh <run dir>` points
 `GOVBUDGET_PG_DSN` at `govbudget_proof_s0`, which Step 9 migrates and this step writes. Run
 Steps 8, 9 and 10 in that order. The `migrate` at the head of this chain is idempotent (021
 is already recorded after Step 9), so this step no longer depends on Step 9 having
 migrated the database; without it, a run of this step without Step 9 would stop at
 `s1_reload_era_p1.py --apply` with exit 2 and ``run `govbudget migrate` (021) first``.
-To retry this step after a failure before `apply: COMMITTED`, first `rm -rf $PROOFS/s0-B`
-(`cp -c -R` into an existing directory nests the copy). Once the apply has committed, the
+To retry this step after a failure before `apply: COMMITTED`, first `rm -rf "${PROOFS:?}/s0-B"`
+in a block that starts with the two header lines (`cp -c -R` into an existing directory nests the copy). Once the apply has committed, the
 scratch database holds the S1 codes, so repeating Step 8, 9 or 10 means starting again
 from Step 7 with a fresh snapshot; the snapshot tool refuses an existing out dir or
 database, so first run `/opt/homebrew/opt/postgresql@17/bin/dropdb govbudget_proof_s0` and
-`rm -rf $PROOFS/s0 $PROOFS/s0-Z $PROOFS/s0-A $PROOFS/s0-B`.
+`rm -rf "${PROOFS:?}/s0" "${PROOFS:?}/s0-Z" "${PROOFS:?}/s0-Z2" "${PROOFS:?}/s0-A" "${PROOFS:?}/s0-B"`
+(in a block that starts with the two header lines).
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 cp -c -R $PROOFS/s0 $PROOFS/s0-B
 ( source $PROOFS/s0/env.sh $PROOFS/s0-B \
   && uv run --project . python -m govbudget migrate \
@@ -830,23 +870,32 @@ apply: era keys 6927, with exactly one line_item_code: 6927
 apply: COMMITTED
 ```
 
-then the export-facts, dbt and export-site lines as in Step 9.
+then the export-facts, dbt (`Done. PASS=204 WARN=2 ERROR=0 …`; criterion `ERROR=0`) and
+export-site lines as in Step 9.
 
 - [ ] **Step 11: Site diffs — Z = A (order and rebuild are inert), A = B (S1 is inert)**
 
+Read these only after Step 8's control `proof diff Z Z2` read `EQUAL`.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+grep -qx 'proof diff: EQUAL' $LOGS/03c-diff-Z-Z2.log || { echo "STOP: the Step 8 control (Z vs Z2) did not read EQUAL"; exit 1; }
 uv run --project . python -m govbudget proof diff $PROOFS/s0-Z/site $PROOFS/s0-A/site 2>&1 | tee $LOGS/06-diff-Z-A.log
 uv run --project . python -m govbudget proof diff $PROOFS/s0-A/site $PROOFS/s0-B/site 2>&1 | tee $LOGS/07-diff-A-B.log
 ```
 
 Expected: both logs end `proof diff: EQUAL` (zero changed, zero only-in-A, zero
-only-in-B; build stamps masked). If either says `DIFFERENT`: stop. Do not run Steps 13–19;
+only-in-B; build stamps masked; float-noise equivalents allowed — each log's
+`equivalent (float noise)` line reports them apart, on the same marts as the control). If either says `DIFFERENT`: stop. Do not run Steps 13–19;
 the report names the files that moved — a consumer depends on lake row order (Z ≠ A) or on
 `line_item_code` (A ≠ B), which the spec says cannot happen; take it back to the owner.
 
 - [ ] **Step 12: Lake check — only the column changed**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 uv run --project . python - $PROOFS/s0/parquet/jbooks $PROOFS/s0-A/parquet/jbooks $PROOFS/s0-B/parquet/jbooks <<'EOF' 2>&1 | tee $LOGS/08-lake.log
 import sys
 from pathlib import Path
@@ -914,6 +963,8 @@ other jbooks parquets equal as multisets, S0 = A = B: True (8 files)
 - [ ] **Step 13: Confirm migrate will apply only 021 to the live database (read-only)**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 uv run --project . python - <<'EOF'
 import psycopg
 from govbudget.jbooks.db import MIGRATIONS_DIR
@@ -929,6 +980,8 @@ Expected: `['021_budget_lines_line_item_code.sql']`.
 - [ ] **Step 14: Live write — migrate, rehearse, apply, re-check (shared Postgres)**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 export GOVBUDGET_DATA=$LIVE_DATA GOVBUDGET_PG_DSN=$LIVE_PG
 uv run --project . python -m govbudget migrate 2>&1 | tee $LOGS/09-live-migrate.log
 uv run --project . python scripts/era/s1_reload_era_p1.py --apply --dry-run 2>&1 | tee $LOGS/10-live-dry-run.log
@@ -946,8 +999,14 @@ edition's row count (6783, 13377, 12857, 8775, 10050, 2979, 2901) and
 - [ ] **Step 15: Live write — lake export (shared lake)**
 
 ```bash
-m=$((10#$(date +%M))); if [ $m -ge 15 ] && [ $m -le 20 ]; then echo "SAM write window: wait until :21 and re-run this step"; else uv run --project . python -m govbudget jbooks export-facts 2>&1 | tee $LOGS/13-live-export-facts.log; fi
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
+uv run --project . python -m govbudget jbooks export-facts 2>&1 | tee $LOGS/13-live-export-facts.log
 ```
+
+The guard refuses minutes :12–:22 (the README margin around the :17 SAM write); on `WAIT`,
+wait until :23 and re-run the block.
 
 Expected: `exported: announcement_link_reviews.parquet, …, program_lineage.parquet` (the
 nine names of Step 9). No live `govbudget build` here: the live warehouse's views select
@@ -955,7 +1014,12 @@ by name and keep working; Task 13 is the first branch build on the live lake.
 
 - [ ] **Step 16: The live result equals the rehearsal**
 
+This step reads the live lake's `parquet/jbooks`, so it carries the guard too (on `WAIT`, wait until :23 and re-run the block).
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python - $LIVE_PG postgresql://localhost/govbudget_proof_s0 $LIVE_DATA/parquet/jbooks $PROOFS/s0-B/parquet/jbooks <<'EOF' 2>&1 | tee $LOGS/14-live-equals-rehearsal.log
 import sys
 
@@ -997,9 +1061,9 @@ lake budget_lines: live 159494 rows | rehearsal 159494 rows | identical row for 
 
 - [ ] **Step 17: Run the whole test suite once more**
 
-Step 14 exported the live lake and database into this shell; no test may see them:
+`scripts/era/env.sh` points `GOVBUDGET_DATA`, `GOVBUDGET_DUCKDB` and `GOVBUDGET_PG_DSN` at the live lake and database; no test may see them:
 
-Run: `unset GOVBUDGET_DATA GOVBUDGET_PG_DSN GOVBUDGET_DUCKDB; GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && unset GOVBUDGET_DATA GOVBUDGET_PG_DSN GOVBUDGET_DUCKDB; GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest -q`
 
 Expected: `3557 passed, 42 skipped` (measured on a copy of this branch with Tasks 6–8
 applied; Tasks 1–5 add their own tests on top, so the requirement is `0 failed`).
@@ -1007,6 +1071,8 @@ applied; Tasks 1–5 add their own tests on top, so the requirement is `0 failed
 - [ ] **Step 18: Write the proof note and commit it**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
 NOTE=docs/superpowers/reviews/families-s1-proof.md
 {
   echo "# Families piece 1 — S1 proof (procurement history before FY2024, Task 8)"
@@ -1015,6 +1081,7 @@ NOTE=docs/superpowers/reviews/families-s1-proof.md
   echo "Code: $(git rev-parse HEAD). Snapshot: .proofs/s0 (snapshot.json sha256 $(shasum -a 256 $PROOFS/s0/snapshot.json | cut -d' ' -f1)); scratch database govbudget_proof_s0."
   echo
   echo "Z = the S0 snapshot exported as production reads it (S0 warehouse, S0 lake in heap order)."
+  echo "Z2 = a second export of the same S0 snapshot: the control. Z = Z2 sets the float-noise floor (values equal to 12 significant digits) that every diff below is read against."
   echo "A = S0 + migration 021, then jbooks export-facts (id order), govbudget build, export-site."
   echo "B = A + scripts/era/s1_reload_era_p1.py --apply, then the same three steps."
   echo "Live = the shared database and lake after the same migrate/apply/export-facts."
@@ -1029,7 +1096,9 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 - [ ] **Step 19: Clean up the run clones and the scratch database**
 
 ```bash
-rm -rf $PROOFS/s0-Z $PROOFS/s0-A $PROOFS/s0-B
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+set -o pipefail; PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs; LIVE_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data; LIVE_PG=postgresql://localhost/govbudget; LOGS=$PROOFS/s1-logs
+rm -rf "${PROOFS:?}/s0-Z" "${PROOFS:?}/s0-Z2" "${PROOFS:?}/s0-A" "${PROOFS:?}/s0-B"
 /opt/homebrew/opt/postgresql@17/bin/dropdb govbudget_proof_s0
 ls $PROOFS/s0/pg/
 ```

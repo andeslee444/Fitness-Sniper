@@ -27,6 +27,8 @@ collision_pinned,successor_resolves,p1r_crosscheck}`; `no_undecided` ships here 
   10fb4585, 129-130 once Task 7's Step 5 has added its four lines above them, 156-157 once Step
   10's helper is in)
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: `stg_budget_lines.line_item_code` and the lake parquet's
 `line_item_code` (Task 7; populated on every era P-1 row by Tasks 8/9 and exported to
 `data/parquet/jbooks/budget_lines.parquet`); seed `dbt/seeds/p1_era_code_decisions.csv` with
@@ -45,6 +47,7 @@ source_document_sha256, source_cells`); the nine dbt tests above; `tests/dbt_ren
 Run from `GovBudget/` in the worktree:
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 head -1 dbt/seeds/p1_era_code_decisions.csv
 grep -n "p1_era_code_decisions" -A2 dbt/dbt_project.yml
 grep -n "line_item_code" dbt/models/staging/stg_budget_lines.sql
@@ -545,7 +548,7 @@ def test_p1r_crosscheck_allow_list_must_stay_exact_on_the_real_corpus():
 
 - [ ] **Step 4: Run the tests to see them fail**
 
-Run: `uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
 
 Expected: `40 failed`, each with
 `FileNotFoundError: [Errno 2] No such file or directory: '…/GovBudget/dbt/models/marts/p1_era_line_map.sql'`
@@ -742,7 +745,7 @@ left join key_cells kc
 
 - [ ] **Step 6: Run the tests — the model tests pass, the singular-test tests still fail**
 
-Run: `uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
 
 Expected: `29 failed, 11 passed`; every failure is
 `FileNotFoundError: … dbt/tests/assert_p1_era_map_<name>.sql` or `… warn_p1_era_map_undecided.sql`.
@@ -1377,7 +1380,7 @@ where decision = 'undecided'
 
 - [ ] **Step 8: Run the tests to see them pass**
 
-Run: `uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_p1_era_line_map_sql.py -q`
 
 Expected: `40 passed`.
 
@@ -1513,7 +1516,7 @@ After:
     )
 ```
 
-Run: `uv run --project . pytest tests/test_dbt_build.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_dbt_build.py -q`
 
 Expected: `7 passed` (the fixture build reports `PASS` for every `p1_era_map` test: the fixture
 registers no era workbook, so the full-corpus legs are off, and its map has no rows).
@@ -1530,7 +1533,10 @@ Make sure no other session holds `data/duckdb/govbudget.duckdb` (an export or a 
 hourly SAM launchd job writes `data/parquet/sam` at :17, so the build starts only outside
 minutes :12–:22. Run from `GovBudget/` in the worktree:
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: minute $MIN is in the SAM window (:12-:22); rerun after :22"; else \
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data \
 GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb \
@@ -1569,7 +1575,11 @@ chain decided, one organization per edition `same_program` on `10`/`15`) this se
 
 - [ ] **Step 13: Check the live map (read-only)**
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python -c "
 import duckdb
 con = duckdb.connect('/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb', read_only=True)

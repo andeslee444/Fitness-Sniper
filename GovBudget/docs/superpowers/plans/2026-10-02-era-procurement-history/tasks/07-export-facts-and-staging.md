@@ -10,6 +10,8 @@
 - Modify: `tests/jbooks/test_export_facts.py` (append after `:426`)
 - Modify: `tests/test_dbt_build.py:68-69` (`make_lake`'s `budget_lines.parquet` COPY) and `:450-452` (`test_dbt_build_succeeds_on_fixture_lake`)
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: `budget_lines.line_item_code` (Task 6). / Produces: lake
 `data/parquet/jbooks/budget_lines.parquet` column `line_item_code` (varchar, appended
 last; rows in `budget_lines.id` order); `stg_budget_lines.line_item_code` (and so
@@ -90,7 +92,7 @@ def test_export_facts_orders_budget_lines_by_id(pg_dsn, tmp_path):
 
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_facts.py -q -k "line_item_code or orders_budget_lines"`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_facts.py -q -k "line_item_code or orders_budget_lines"`
 
 Expected: `2 failed`: `Right contains one more item: 'line_item_code'` and
 `At index 0 diff: ('1506N-N-L2',) != ('1506N-N-L1',)`.
@@ -132,7 +134,7 @@ with:
 
 - [ ] **Step 4: Run the export tests to see them pass**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_facts.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_facts.py -q`
 
 Expected: `16 passed`.
 
@@ -183,7 +185,7 @@ with:
 
 - [ ] **Step 6: Run it to see it fail**
 
-Run: `uv run --project . pytest tests/test_dbt_build.py -q -k succeeds_on_fixture_lake`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_dbt_build.py -q -k succeeds_on_fixture_lake`
 
 Expected: `1 failed` with `_duckdb.BinderException: Binder Error: Referenced column "line_item_code" not found in FROM clause!`
 (the build succeeds — stg selects by name and ignores the new parquet column — and the new
@@ -210,13 +212,13 @@ from {{ source('lake', 'jbook_budget_lines') }}
 
 - [ ] **Step 8: Run the dbt fixture tests to see them pass**
 
-Run: `uv run --project . pytest tests/test_dbt_build.py tests/test_dbt_program_lobbying_title.py tests/test_dbt_award_fy_moves.py tests/test_dbt_link_grading.py tests/test_dbt_lda_amendments.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_dbt_build.py tests/test_dbt_program_lobbying_title.py tests/test_dbt_award_fy_moves.py tests/test_dbt_link_grading.py tests/test_dbt_lda_amendments.py -q`
 
 Expected: `61 passed` (every dbt build that uses `make_lake` now sees the column).
 
 - [ ] **Step 9: Run the jbooks suite**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks -q`
 
 Expected: `444 passed, 2 skipped`.
 

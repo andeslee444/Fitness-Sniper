@@ -17,6 +17,8 @@ and assembly tests updated); V10; S4. Task 14's module (G4) is canonical; contra
 - Modify: `src/govbudget/verify_phase5.py:31-36` (docstring), `:124-146` (comments, `_ASSEMBLY_PHASES`, `_VERDICT_RE`)
 - Test: `tests/test_verify_phase5.py` (append after `:729`)
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:**
 Consumes: Task 14 (`src/govbudget/verify_era_map.py` as G4 drafts it: `_leg(ok, summary, failures)` returning
 `{"ok", "detail": {"summary", "failures"}}`, `_sha256_file`, `LEG_NAMES` (already `"d": "fact ids"`, `"e": "published
@@ -469,8 +471,9 @@ def test_cli_zero_arguments_fails_without_the_export(pinned, capsys):
 
 Run (two commands: a collection error stops a pytest run, so the files run separately):
 ```bash
-uv run --project . pytest tests/test_verify_era_map_def.py -q
-uv run --project . pytest tests/test_verify_era_map.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_era_map_def.py -q
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_era_map.py -q
 ```
 Expected: the first stops at collection, `1 error`, with
 `ImportError: cannot import name 'leg_d_fact_ids' from 'govbudget.verify_era_map'`. The second prints
@@ -686,7 +689,7 @@ its own terms); `format_report` prints them unchanged because each returns `_leg
 
 Run:
 ```bash
-uv run --project . pytest tests/test_verify_era_map_def.py tests/test_verify_era_map.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_era_map_def.py tests/test_verify_era_map.py -q
 ```
 Expected: `49 passed` — 23 in `tests/test_verify_era_map_def.py` (6 for d, 8 for e, 7 for f, the dispatch case, the
 `format_report` case) and 26 in Task 14's file (its 26, less the deleted placeholder test, plus the second
@@ -695,7 +698,11 @@ zero-argument test).
 - [ ] **Step 6: Run legs d and f on the live export (read-only), and show leg e fails until the map ships**
 
 Run:
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python -m govbudget verify-era-map --legs df; echo "exit $?"
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python -m govbudget verify-era-map --legs e; echo "exit $?"
 ```
@@ -797,7 +804,7 @@ def test_assembly_gate_passes_with_era_map_green(monkeypatch):
 
 Run:
 ```bash
-uv run --project . pytest tests/test_verify_phase5.py -q -k "era_map"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_phase5.py -q -k "era_map"
 ```
 Expected: FAIL, `6 failed, 60 deselected` — `test_assembly_phases_end_with_verify_era_map` (`assert 'verify-era-map' in
 ['verify-phase1', …]`), both regex tests (`assert None is not None`: the old regex matches only `phase\w+|lineage`), the
@@ -891,7 +898,7 @@ _VERDICT_RE = re.compile(
 
 Run:
 ```bash
-uv run --project . pytest tests/test_verify_phase5.py tests/test_verify_phase5_provider_block.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_verify_phase5.py tests/test_verify_phase5_provider_block.py -q
 ```
 Expected: `96 passed` (66 in `tests/test_verify_phase5.py`, including the 6 new `era_map` tests and the existing
 lineage-arm and regex tests, whose fake runner now also prints `verify-era-map: PASS`/`FAIL` for the extended regex to

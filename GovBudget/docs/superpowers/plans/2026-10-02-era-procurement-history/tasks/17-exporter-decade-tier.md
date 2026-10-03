@@ -8,6 +8,8 @@
 - Create: `tests/test_export_decade_era_map.py`
 - Modify (test): `tests/test_export_breakdowns.py` (append after line 586), `tests/jbooks/test_export_basis.py:266-269`, `tests/jbooks/test_export_site_pg.py:1961-1963`
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: `fct_program_decade_series` (Task 16; columns and conventions in CONTRACT ISSUE 1), `fct_decade_series` (unchanged base table, read for row order), `p1_era_line_map` (Task 13), `program_pdf_receipts.additive_budget_formula`, `fact_id_workbook`, `fact_id_derived`. / Produces: `_build_decade_citation_rows(*, duckdb_path, existing_fids: set, scope_pes: set) -> tuple[list, list, list, dict, frozenset]` (fifth element `era_grain_fids: frozenset[str]`); `_decade_era_map_formula(program_key: str, account: str | None, organization: str | None, amount_type: str, edition: int) -> str`; derived surface `"decade_era_map"` with key `f"{program_key}|{account or ''}|{organization or ''}|{edition}"` and metric = the grain's `amount_type`; `decade_side_meta` now also maps every era grain and era leaf fid to `(label, page slug)`, which `_emit_breakdowns` uses as the row's `pe_bli`.
 
 What changes and why, in one place (so the edits read as one design):
@@ -548,7 +550,7 @@ def test_no_warehouse_tables_skips_the_tier(tmp_path):
 Run (from `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget`):
 
 ```bash
-uv run --project . pytest tests/test_export_decade_era_map.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_decade_era_map.py -q
 ```
 
 Expected: a collection error, because the formula helper does not exist yet:
@@ -647,7 +649,7 @@ class TestEraMapBreakdown:
 - [ ] **Step 4: Run it and watch the page test fail**
 
 ```bash
-uv run --project . pytest tests/test_export_breakdowns.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_breakdowns.py -q
 ```
 
 Expected: `1 failed, 21 passed`; the failure is
@@ -1264,7 +1266,7 @@ with:
 - [ ] **Step 6: Run the new tests**
 
 ```bash
-uv run --project . pytest tests/test_export_decade_era_map.py tests/test_export_breakdowns.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_decade_era_map.py tests/test_export_breakdowns.py -q
 ```
 
 Expected: `38 passed` (16 + 22).
@@ -1275,7 +1277,7 @@ These two fixtures build only `fct_decade_series`, so the switched tier must
 refuse them (needs Task 1's throwaway cluster):
 
 ```bash
-GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_basis.py tests/jbooks/test_export_site_pg.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_basis.py tests/jbooks/test_export_site_pg.py -q
 ```
 
 Expected: `5 failed, 39 passed, 16 errors` — the 16 `basis_site`/`task3_site`
@@ -1350,7 +1352,7 @@ with:
 - [ ] **Step 9: Run the Postgres-backed exporter tests again**
 
 ```bash
-GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_basis.py tests/jbooks/test_export_site_pg.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_export_basis.py tests/jbooks/test_export_site_pg.py -q
 ```
 
 Expected: `60 passed` (17 + 43). `test_decade_parquet_and_citations` still sees
@@ -1360,11 +1362,13 @@ book-diff fact — the native path is unchanged.
 - [ ] **Step 10: Regression over the other decade consumers**
 
 ```bash
-uv run --project . pytest tests/test_export_years_matrix.py tests/jbooks/test_export_lineage.py tests/test_export_site_decade_only.py tests/test_f15_funding_history.py tests/lineage/test_flow.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_export_years_matrix.py tests/jbooks/test_export_lineage.py tests/test_export_site_decade_only.py tests/test_f15_funding_history.py tests/lineage/test_flow.py -q
 ```
 
 Expected: `0 failed` (measured on the change: `110 passed, 4 skipped`; the 4 skips
-are `years_matrix.json` live-file checks that skip when `data/site` is absent).
+are `years_matrix.json` live-file checks that skip when `data/site` is absent). With
+Task 1's `data/site` link in the worktree those 4 run and pass, so the line reads
+`114 passed` (+4 passed, 0 skipped); either form is correct.
 
 - [ ] **Step 11: Native byte-identity on the live warehouse (read-only)**
 
@@ -1448,7 +1452,11 @@ sys.exit(0 if all(checks.values()) else 1)
 
 Run:
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/task17/native_identity_proof.py /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb
 ```
 

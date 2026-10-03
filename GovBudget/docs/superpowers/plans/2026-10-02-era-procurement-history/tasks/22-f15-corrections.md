@@ -14,7 +14,9 @@
 - Create: `docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff-s5.json`
 - Modify (re-pins): `tests/fixtures/f15/history.json`, `tests/fixtures/f15/history.sha256`, `tests/fixtures/f15/builder_inputs.json.gz`, `tests/fixtures/f15/page_snapshot.json`
 - Modify: `site/scripts/gates/build.mjs` — the `/families/f-15/` `PAGE_WEIGHT_BUDGET` entry (:254) `measured` stamp and its comment
-- Modify: `docs/superpowers/ROADMAP.md` — the "F-15 family funding correction (2026-09-24)" paragraph under "## Current priorities" (lines 32–40 today)
+- Modify: `docs/superpowers/ROADMAP.md` — the "F-15 family funding correction (2026-09-24)" paragraph under "## Current priorities" (lines 32–40 at drafting; 46–54 after Task 15)
+
+Every line number in this task is a hint (anchor on the quoted text; line numbers are approximate).
 
 **Interfaces:**
 Consumes: `.proofs/s4-B`, `.proofs/s4/env.sh` and `govbudget_proof_s4` (Task 21; Task 3's snapshot layout: a run dir holds `site/`, `duckdb/govbudget.duckdb`, `parquet/`); `scripts/export_f15_funding_history.py` (exists, :1–12); `govbudget proof diff A B --expect RULES.json` (Task 3); Task 4's `scripts/era/capture_f15_fixtures.py --site-dir DIR --duckdb PATH --out-dir DIR --expect-sha256 HEX` (writes `history.sha256` as 64 hex + newline) and `site/scripts/f15-page-snapshot.mjs <index.html> --out FILE`; `tests/test_f15_era_identity.py` (Task 4); `govbudget verify-era-map` leg f (Task 20); `NarrativeSourceChip` (`site/src/components/narrative-chip.tsx`); narrative fact `e7d5bcfb4a30f458`.
@@ -32,7 +34,7 @@ Send the owner, in chat, exactly:
 > 3. Coverage note 3, amended: “Historical procurement line numbers change between editions. Each legacy line is matched within its own budget edition, without asserting a modern-program or aircraft-variant allocation, except where a budget book states one (F015E0).”
 > 4. New last coverage note: “The totals exclude classified funding and military construction.”
 
-Wait for the owner's reply. If any string is amended, use the amended text everywhere the steps below write it (Python `PROGRAM_NOTES`/`COVERAGE_NOTES`, both test files, the Step 14 check). Record the reply and its date for Step 20.
+Wait for the owner's reply. If any string is amended, use the amended text everywhere the steps below write it (Python `PROGRAM_NOTES`/`COVERAGE_NOTES`, both test files, the Step 14 check, the Step 16 page check, and the Step 19 ROADMAP sentence, which quotes the label and paraphrases the notes). Record the reply and its date for Step 19.
 
 - [ ] **Step 2: Write the failing Python tests**
 
@@ -116,7 +118,7 @@ def test_a_program_note_ships_only_with_its_reviewed_narrative_receipt():
 
 - [ ] **Step 3: Run them to verify they fail**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_f15_funding_history.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_funding_history.py -q`
 Expected: collection error `ImportError: cannot import name 'check_program_notes' from 'govbudget.f15_funding_history'`.
 
 - [ ] **Step 4: Implement the Python change**
@@ -233,7 +235,7 @@ with:
 
 - [ ] **Step 5: Run the Python tests to verify they pass**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && uv run --project . pytest tests/test_f15_funding_history.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_funding_history.py -q`
 Expected: `33 passed` (30 existing + 3 new).
 
 - [ ] **Step 6: Write the failing site tests**
@@ -329,7 +331,7 @@ describe("F-15 budget-line notes (spec §6.5)", () => {
 
 - [ ] **Step 7: Run it to verify it fails**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && npx vitest run src/__tests__/family-funding-history-note.test.tsx`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/family-funding-history-note.test.tsx`
 Expected: `Tests  3 failed | 1 passed (4)` — "quotes the F015E0 sentence…" fails `expected … to have a length of 1 but got +0`, the gate test fails `TypeError: (0 , checkFamilyHistoryNotes) is not a function`, the loader test fails `expected [Function] to throw an error`; only "renders no note list…" passes. (Measured on a copy of this site tree.)
 
 - [ ] **Step 8: Implement the type, the loader guard, the row and the note list**
@@ -487,13 +489,13 @@ export function checkFamilyHistoryNotes(root, history, citations) {
 
 - [ ] **Step 9: Run the site tests and lint**
 
-Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && npx vitest run src/__tests__/family-funding-history-note.test.tsx && npx eslint src/components/family-funding-history.tsx src/lib/family-funding-history.ts src/__tests__/family-funding-history-note.test.tsx scripts/gates/family-history.mjs`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && npx vitest run src/__tests__/family-funding-history-note.test.tsx && npx eslint src/components/family-funding-history.tsx src/lib/family-funding-history.ts src/__tests__/family-funding-history-note.test.tsx scripts/gates/family-history.mjs`
 Expected: `Tests  4 passed (4)`; eslint prints nothing. (Prototyped 2026-10-02 on a copy of this exact site tree: 4/4 pass, eslint clean, `tsc --noEmit` reports nothing in the touched files, and the existing `family-funding-history.test.tsx` + `-gate.test.tsx` stay green on today's data, which carries no note.)
 
 This step runs while the worktree's `data/site` still links to the main lake, which does not ship `p1_era_line_map` until the release, and Task 19 Part C made `site/src/app/data/page.tsx` throw at module level on such an export. No test here imports that page:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && grep -rlE "(from|import\()\s*[\"'][^\"']*app/data/page" src scripts || echo "no test imports the /data/ page"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && grep -rlE "(from|import\()\s*[\"'][^\"']*app/data/page" src scripts || echo "no test imports the /data/ page"
 ```
 Expected: `no test imports the /data/ page` (measured 2026-10-02 on the base tree: no file under `src/` or `scripts/` imports it; Task 19's new tests do not either). If a file is listed, first point `data/{site,duckdb,parquet}` at `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-B/{site,duckdb,parquet}` (Task 21 Step 21's `ln -sfn` loop), run the vitest command, and restore the links (Task 21 Step 21's restore block).
 
@@ -502,7 +504,7 @@ Expected: `no test imports the /data/ page` (measured 2026-10-02 on the base tre
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/.. && git add GovBudget/src/govbudget/f15_funding_history.py GovBudget/tests/test_f15_funding_history.py GovBudget/site/src/lib/family-funding-history.ts GovBudget/site/src/components/family-funding-history.tsx GovBudget/site/src/components/family-funding-history.module.css GovBudget/site/scripts/gates/family-history.mjs GovBudget/site/src/__tests__/family-funding-history-note.test.tsx && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "fix(f15): F015E0 is the FY2020 F-15EX Lot 1 line — cited note, coverage exclusions (spec §6.5, owner sign-off)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
-(The pins are still S0's; Steps 11–18 re-pin before anything is built from this code for release.)
+(The pins are still S0's; Steps 11–18 re-pin before anything is built from this code for release.) Note: from this commit until Step 15 re-captures the fixtures from the S5 state (committed in Step 20), `pytest tests/test_f15_era_identity.py` is expected to fail its golden-bytes, fresh-state and sensitivity tests (`3 failed, 1 passed`; the pin test passes): they rebuild the history with the new code and compare it with the S0 pins. Do not "fix" them before Step 15; Step 5 runs only `tests/test_f15_funding_history.py`.
 
 - [ ] **Step 11: Write the S5 expected-diff rule list**
 
@@ -514,26 +516,26 @@ Task 3's `--expect` format (a JSON list of rules; Task 21 Step 7 explains it). S
    "why": "§6.5 (S5): the F015E0 retitle, its note and note_fact_id, and the two coverage-note changes — Step 14 proves the change is exactly these"}
 ]
 ```
-Anything else that differs FAILS the diff — citations, cite shards, breakdowns, workbook cells, the manifest, `site_meta.json`. Re-running the F-15 builder on an export it already wrote rewrites `json/datasets.json` with byte differences but an equal JSON value, which the diff counts as `equivalent`, not as a difference (measured read-only 2026-10-02: the builder re-run on an APFS clone of the live export changed only `datasets.json`'s bytes; `proof diff` reported `identical 35,519 · equivalent 1 · changed 0`).
+Anything else that differs FAILS the diff — citations, cite shards, breakdowns, workbook cells, the manifest, `site_meta.json`. `manifest.json`'s `json_sidecars` already counts `json/era_map_summary.json` in the S4 export (Task 19's receipts step recounts after writing it), so the builder's recount leaves it unchanged and no `/json_sidecars` rule is needed. Re-running the F-15 builder on an export it already wrote rewrites `json/datasets.json` with byte differences but an equal JSON value, which the diff counts as `equivalent`, not as a difference (measured read-only 2026-10-02: the builder re-run on an APFS clone of the live export changed only `datasets.json`'s bytes; `proof diff` reported `identical 35,519 · equivalent 1 · changed 0`).
 
 - [ ] **Step 12: Produce the S5 history on a clone of the S4 export**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && cp -c -R "$P/s4-B" "$P/s5" && (source "$P/s4/env.sh" "$P/s5" && echo "$GOVBUDGET_DATA" && uv run --project . python scripts/export_f15_funding_history.py --duckdb "$P/s5/duckdb/govbudget.duckdb" --out-dir "$P/s5/site")
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && cp -c -R "$P/s4-B" "$P/s5" && (source "$P/s4/env.sh" "$P/s5" && echo "$GOVBUDGET_DATA" && uv run --project . python scripts/export_f15_funding_history.py --duckdb "$P/s5/duckdb/govbudget.duckdb" --out-dir "$P/s5/site")
 ```
 Expected: `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s5`, then one JSON line with `"added_citations": 0`, `"annual_points": 30`, `"citations": <N_B>` (Task 21 Step 15), `"cumulative_actuals_thousands": 17043321.0`, `"source_facts": 207` (the totals do not move). The clone's DuckDB views keep reading `.proofs/s4/parquet` (pinned).
 
 - [ ] **Step 13: Diff S4 against S5 at file level**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python -m govbudget proof diff "$P/s4-B/site" "$P/s5/site" --expect docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff-s5.json --report "$P/s4-logs/s5-diff-report.json" > "$P/s4-logs/s5-diff.txt" 2>&1; echo "exit=$?"; tail -6 "$P/s4-logs/s5-diff.txt"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python -m govbudget proof diff "$P/s4-B/site" "$P/s5/site" --expect docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff-s5.json --report "$P/s4-logs/s5-diff-report.json" > "$P/s4-logs/s5-diff.txt" 2>&1; echo "exit=$?"; tail -6 "$P/s4-logs/s5-diff.txt"
 ```
-Expected: `exit=0`; the counts line ends `changed 1 · only in A 0 · only in B 0` (`equivalent` 0 or 1, see Step 11); `rule 0 [json/f15_funding_history.json] matched <k>: …`; last line `proof diff: PASS`.
+Expected: `exit=0`; the counts line ends `changed 1 · only in A 0 · only in B 0` (`equivalent` 0 or 1, see Step 11); the next line reads `  equivalent (float noise): 0 file(s), 0 value(s) equal to 12 significant digits` (S5 re-runs only the F-15 builder; no mart is re-exported); `rule 0 [json/f15_funding_history.json] matched <k>: …`; last line `proof diff: PASS`.
 
 - [ ] **Step 14: Check the history diff equals exactly the approved changes**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python - "$P/s4-B/site/json/f15_funding_history.json" "$P/s5/site/json/f15_funding_history.json" <<'PY'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && uv run --project . python - "$P/s4-B/site/json/f15_funding_history.json" "$P/s5/site/json/f15_funding_history.json" <<'PY'
 import json, sys
 a, b = (json.load(open(path)) for path in sys.argv[1:3])
 LABEL = "F-15e (FY2020 F-15EX Lot 1 aircraft)"
@@ -563,26 +565,70 @@ Expected: `S5 diff: exactly the retitle, the two note fields and the two coverag
 Task 4's capture script refuses unless the shipped history's sha256 equals `--expect-sha256`, so pass the digest of the history Step 14 just approved; it writes `history.sha256` in Task 4's format (64 lowercase hex characters and a newline):
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && SHA=$(shasum -a 256 "$P/s5/site/json/f15_funding_history.json" | cut -d' ' -f1) && echo "S5 history sha256 $SHA" && uv run --project . python scripts/era/capture_f15_fixtures.py --site-dir "$P/s5/site" --duckdb "$P/s5/duckdb/govbudget.duckdb" --out-dir tests/fixtures/f15 --expect-sha256 "$SHA" && test "$(cat tests/fixtures/f15/history.sha256)" = "$SHA" && echo "pin = S5 history" && git diff --stat -- tests/fixtures/f15 && uv run --project . pytest tests/test_f15_era_identity.py tests/test_f15_funding_history.py -q && (source "$P/s4/env.sh" "$P/s5" && uv run --project . python -m govbudget verify-era-map --legs f) > "$P/s4-logs/s5-verify-era-map-f.log" 2>&1; echo "verify exit=$?"; tail -1 "$P/s4-logs/s5-verify-era-map-f.log"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && SHA=$(shasum -a 256 "$P/s5/site/json/f15_funding_history.json" | cut -d' ' -f1) && echo "S5 history sha256 $SHA" && uv run --project . python scripts/era/capture_f15_fixtures.py --site-dir "$P/s5/site" --duckdb "$P/s5/duckdb/govbudget.duckdb" --out-dir tests/fixtures/f15 --expect-sha256 "$SHA" && test "$(cat tests/fixtures/f15/history.sha256)" = "$SHA" && echo "pin = S5 history" && git diff --stat -- tests/fixtures/f15 && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_f15_era_identity.py tests/test_f15_funding_history.py -q && (source "$P/s4/env.sh" "$P/s5" && uv run --project . python -m govbudget verify-era-map --legs f) > "$P/s4-logs/s5-verify-era-map-f.log" 2>&1; echo "verify exit=$?"; tail -1 "$P/s4-logs/s5-verify-era-map-f.log"
 ```
 Expected: `S5 history sha256 <64 hex>` (not `9f70c770…`); the capture's JSON line with `"history_sha256": "<the same hex>"`, `"source_rows": 467`, `"series": 195`, `"previews": 207`, `"current_fact_ids": 20`; `pin = S5 history`; the diff stat lists `history.json`, `history.sha256`, `builder_inputs.json.gz`; all tests pass; `verify exit=0` and `verify-era-map: PASS`. A capture refusal (`capture_f15_fixtures: …`) writes nothing: stop and read its message.
 
-- [ ] **Step 16: Build the site on the S5 export, re-snapshot the F-15 page, run the gates**
+- [ ] **Step 16: Build the site on the S5 export, re-snapshot the F-15 page, re-measure and re-stamp its weight**
+
+The re-stamp comes before Step 17's `npm run verify` (pre-flight ruling 2026-10-03): gate 1's drift leg compares the recorded headroom with the real one, so the S5 page is checked against an S5 stamp.
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && for d in site duckdb parquet; do ln -sfn "$P/s5/$d" "data/$d"; done && ls -l data | grep -- '->' && ls dbt/target/manifest.json && cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build > "$P/s4-logs/s5-site-build.log" 2>&1; echo "build exit=$?"; node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --out ../tests/fixtures/f15/page_snapshot.json && cd .. && git diff -- tests/fixtures/f15/page_snapshot.json | head -80
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && if (cd site && node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --check ../tests/fixtures/f15/page_snapshot.json > /dev/null 2>&1); then grep -o e7d5bcfb4a30f458 site/out/families/f-15/index.html | wc -l | tr -d ' ' > "$P/s4-logs/s5-f15-fid-before.txt"; else echo unknown > "$P/s4-logs/s5-f15-fid-before.txt"; fi; echo "e7d5bcfb4a30f458 on the pre-S5 page: $(cat "$P/s4-logs/s5-f15-fid-before.txt")" && for d in site duckdb parquet; do ln -sfn "$P/s5/$d" "data/$d"; done && ls -l data | grep -- '->' && ls dbt/target/manifest.json && cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build > "$P/s4-logs/s5-site-build.log" 2>&1; echo "build exit=$?"; node scripts/f15-page-snapshot.mjs out/families/f-15/index.html --out ../tests/fixtures/f15/page_snapshot.json && cd .. && git diff --stat -- tests/fixtures/f15/page_snapshot.json
 ```
-Expected: three symlinks into `.proofs/s5`; `build exit=0`; `f15-page-snapshot: wrote ../tests/fixtures/f15/page_snapshot.json (<e> data-fact-id elements, <d> distinct page fact ids, 8 matrix rows)`. Read the snapshot diff: it must show only (1) the F015E0 row title `F-15e (FY2020 F-15EX Lot 1 aircraft)`, (2) that row's `Note below` link, (3) the new `Budget-line notes` list with the quoted sentence and its `source` chip for `e7d5bcfb4a30f458`, (4) coverage note 3's new ending and the new last coverage note. Anything else: stop and explain before Step 17.
+Expected: `e7d5bcfb4a30f458 on the pre-S5 page: <n>` — the count on Task 21's S4 build still in `site/out` (the fact is already on the S0 page), recorded only when that page still equals the committed S0 snapshot; `unknown` if `site/out` no longer holds it, and the check below then falls back to a bound; three symlinks into `.proofs/s5`; `build exit=0`; `f15-page-snapshot: wrote ../tests/fixtures/f15/page_snapshot.json (<e> data-fact-id elements, <d> distinct page fact ids, 8 matrix rows)`; the diff stat lists `page_snapshot.json`.
+
+Check the snapshot diff and the page text against the approved changes. The snapshot normalizes only the data-fact-id elements, the page's fact-id tokens and the matrix (Task 4), so the note's sentence and the coverage notes are checked in the built page itself:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && npm test > "$P/s4-logs/s5-vitest.log" 2>&1; echo "vitest exit=$?"; tail -4 "$P/s4-logs/s5-vitest.log"; NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify > "$P/s4-logs/s5-site-verify.log" 2>&1; echo "verify exit=$?"; grep -E "program-skeleton|page weight|^overall:" "$P/s4-logs/s5-site-verify.log" | tail -12
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python - site/out/families/f-15/index.html "$GOVBUDGET_PROOFS/s4-logs/s5-f15-fid-before.txt" <<'PY'
+import html as H, json, re, subprocess, sys
+FID = "e7d5bcfb4a30f458"
+LABEL = "F-15e (FY2020 F-15EX Lot 1 aircraft)"
+NOTE = ("This exhibit does not include the eight aircraft in Lot 1 which were funded outside this exhibit in FY 2020 "
+        "(two test aircraft were purchased with RDT&E funds (PE 0207134F); four operationally representative test "
+        "aircraft and two operational aircraft were purchased with procurement funds (F015E0, Line #3 "
+        "[line 3 of the PB2020–21 P-1 (line 4 in PB2022)])).")
+NEW2 = ("Historical procurement line numbers change between editions. Each legacy line is matched within its own "
+        "budget edition, without asserting a modern-program or aircraft-variant allocation, except where a budget "
+        "book states one (F015E0).")
+ADDED = "The totals exclude classified funding and military construction."
+old = json.loads(subprocess.check_output(["git", "show", "HEAD:./tests/fixtures/f15/page_snapshot.json"]))
+new = json.load(open("tests/fixtures/f15/page_snapshot.json"))
+page = open(sys.argv[1], encoding="utf-8").read()
+moved = set(old) ^ set(new) | {k for k in old if k in new and old[k] != new[k]}
+assert moved <= {"matrix", "data_fact_id_elements", "data_fact_ids", "page_fact_id_occurrences", "page_fact_ids"}, moved
+assert (old["matrix"]["columns"], old["matrix"]["annual"]) == (new["matrix"]["columns"], new["matrix"]["annual"])
+assert len(old["matrix"]["rows"]) == len(new["matrix"]["rows"]) == 8
+for o, n in zip(old["matrix"]["rows"], new["matrix"]["rows"]):
+    if o["label"][0] == "BLI F015E0":
+        assert n["label"] == [o["label"][0], LABEL, *o["label"][2:], "Note below"], n["label"]
+        assert {**o, "label": None} == {**n, "label": None}, "F015E0 cells moved"
+    else:
+        assert o == n, o["label"]
+assert new["data_fact_id_elements"] == old["data_fact_id_elements"] + 1
+for key in ("data_fact_ids", "page_fact_ids"):
+    assert set(old[key]) <= set(new[key]) and set(new[key]) - set(old[key]) <= {FID}, key
+grew = new["page_fact_id_occurrences"] - old["page_fact_id_occurrences"]
+before = open(sys.argv[2]).read().strip()
+if FID not in old["page_fact_ids"]:
+    before = "0"
+if before.isdigit():          # exact: every new token is an occurrence of FID
+    assert grew == page.count(FID) - int(before) > 0, (grew, page.count(FID), before)
+else:                         # pre-S5 page unavailable: the growth is bounded by FID's occurrences
+    assert 0 < grew < page.count(FID), (grew, page.count(FID))
+text = H.unescape(re.sub(r"<!--.*?-->", "", re.sub(r"<script\b.*?</script>", "", page, flags=re.S)))
+for name, s in (("note", NOTE), ("coverage note 3", NEW2), ("new last coverage note", ADDED)):
+    assert s in text, f"{name} not rendered on /families/f-15/"
+print(f"page snapshot: only the F015E0 label (+ 'Note below'), +1 data-fact-id element, +{grew} occurrences of {FID}; the note and both coverage notes render")
+PY
 ```
-Expected: `vitest exit=0` (`npm test` runs both vitest configs; the real-data F-15 suites now read the S5 history: 8 program rows, 67 cells, the gate test runs `checkFamilyHistoryNotes` on one note; every suite that reads `data/site` sees an export that ships `p1_era_line_map`); `verify exit=0`, leg p's `family history sums … checked ✓`, `overall: PASS`.
+Expected: `page snapshot: only the F015E0 label (+ 'Note below'), +1 data-fact-id element, +<k> occurrences of e7d5bcfb4a30f458; the note and both coverage notes render`. That is the whole allowed snapshot diff: `matrix.rows[F015E0].label[1]` becomes the new title and `"Note below"` is appended to that label; `data_fact_id_elements` grows by one (the `NarrativeSourceChip`); `page_fact_id_occurrences` grows only by occurrences of `e7d5bcfb4a30f458` (the quote's `data-cite-fact-id`, the chip, the RSC props); `data_fact_ids` / `page_fact_ids` gain at most `e7d5bcfb4a30f458`; no other path changes. Any assertion error: stop and explain before Step 17. (Program-skeleton leg (p), `checkFamilyHistoryNotes`, gates the same note on every build, and Step 14's exact JSON diff proves the strings shipped.)
 
-- [ ] **Step 17: Re-measure the F-15 page weight and re-stamp it**
+Re-measure the page weight:
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && node -e 'const fs=require("fs"),z=require("zlib");const b=fs.readFileSync("out/families/f-15/index.html");console.log(b.length.toLocaleString("en-US")+" / "+z.gzipSync(b,{level:9}).length.toLocaleString("en-US"))'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && node -e 'const fs=require("fs"),z=require("zlib");const b=fs.readFileSync("out/families/f-15/index.html");console.log(b.length.toLocaleString("en-US")+" / "+z.gzipSync(b,{level:9}).length.toLocaleString("en-US"))'
 ```
 Expected: `<raw> / <gzip>` within `725,000 / 70,000` (2,243 gzip of headroom was measured on 2026-09-25; the change adds one short row link, ~460 characters of note and ~100 of coverage text, each also carried once in the RSC payload). If gzip exceeds 70,000: stop and take it to the owner (never raise the ceiling, never trim existing disclosures without the owner). In `site/scripts/gates/build.mjs` replace the entry line (:254)
 
@@ -600,16 +646,23 @@ with (filling the printed numbers and the short HEAD sha the build used):
   { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "<raw> / <gzip>" },
 ```
 
+- [ ] **Step 17: Run the site tests and the gates on the S5 build**
+
+```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && cd site && P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs && npm test > "$P/s4-logs/s5-vitest.log" 2>&1; echo "vitest exit=$?"; tail -4 "$P/s4-logs/s5-vitest.log"; NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify > "$P/s4-logs/s5-site-verify.log" 2>&1; echo "verify exit=$?"; grep -E "program-skeleton|page weight|^overall:" "$P/s4-logs/s5-site-verify.log" | tail -12
+```
+Expected: `vitest exit=0` (`npm test` runs both vitest configs; the real-data F-15 suites now read the S5 history: 8 program rows, 67 cells, the gate test runs `checkFamilyHistoryNotes` on one note; every suite that reads `data/site` sees an export that ships `p1_era_line_map`); `verify exit=0`, leg p's `family history sums … checked ✓`, page weight with `/families/f-15/` inside its unchanged ceiling against the Step 16 stamp, `overall: PASS`.
+
 - [ ] **Step 18: Restore the data links**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && git checkout -- site/public/llms.txt && for d in site duckdb parquet; do ln -sfn "/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/$d" "data/$d"; done && git -C .. status --porcelain -- GovBudget | grep -v '^??'
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && git checkout -- site/public/llms.txt && for d in site duckdb parquet; do ln -sfn "/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/$d" "data/$d"; done && git -C .. status --porcelain -- GovBudget | grep -v '^??'
 ```
 Expected: only the re-pins and `build.mjs` are listed as modified (`tests/fixtures/f15/*`, `site/scripts/gates/build.mjs`), plus the S5 expected-diff file as untracked (`??`, filtered here).
 
 - [ ] **Step 19: Record the sign-off in the ROADMAP**
 
-In `docs/superpowers/ROADMAP.md`, at the end of the "F-15 family funding correction (2026-09-24)" paragraph (it ends `…recorded in the [family history record](plans/2026-09-24-f15-funding-history.md).`), append:
+In `docs/superpowers/ROADMAP.md`, at the end of the "F-15 family funding correction (2026-09-24)" paragraph, append. The paragraph's text wraps: its last line in the file is exactly `[family history record](plans/2026-09-24-f15-funding-history.md).` (the words `…recorded in the` end the line before). Anchor on that one line and append the block on the next line, with no blank line between. Use the owner's approved strings from Step 1 (an amended label or note changes this text too):
 
 ```markdown
 **F015E0 correction (<YYYY-MM-DD>, families piece 1 S5):** the owner signed off

@@ -575,7 +575,7 @@ def test_propose_refuses_a_changed_org_split(tmp_path, monkeypatch):
 
 - [ ] **Step 3: Run the tests and watch them fail**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map_propose.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map_propose.py -q`
 
 Expected: collection error, ending
 ```
@@ -1316,7 +1316,7 @@ def propose(
 
 - [ ] **Step 5: Run the tests and watch them pass**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map_propose.py tests/jbooks/test_era_map.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map_propose.py tests/jbooks/test_era_map.py -q`
 
 Expected: `67 passed`.
 
@@ -1329,7 +1329,11 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 - [ ] **Step 7: Confirm the real-data precondition (Tasks 7–9 done)**
 
 Run:
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 uv run --project . python -c "import duckdb; p='/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/parquet/jbooks/budget_lines.parquet'; c=duckdb.connect(); print([r[0] for r in c.execute(f\"describe select * from read_parquet('{p}')\").fetchall()][-1]); print(c.execute(f\"select count(*), count(*) filter (where coalesce(line_item_code,'') = '') from read_parquet('{p}') where exhibit='P-1' and fiscal_year between '2017' and '2023' and pe_bli similar to '[0-9]{{4}}[A-Z]-[A-Z]+-L.*'\").fetchone())"
 ```
 Expected:
@@ -1350,7 +1354,11 @@ about 50 s (most of it the PB2024–26 XML scan, 1.75 GB). If DuckDB reports a c
 another process is building the warehouse: wait and re-run.
 
 Run:
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python - <<'EOF'
 import json
 from govbudget import config
@@ -1475,7 +1483,7 @@ ec7bdac6eb27ea1ed065a9d852ac2fb99bd1b07fba516e45789afd9741d1f08e  data/research/
 282044cf2f109b9d570debac9cae23971821cb9ac3e9f2b29448818c23c20704  data/research/era_map/keys.csv
 39db7799cdffa69465a91ccf8679f98bcfa36ffd30a46acc782e23b43c9e8890  data/research/era_map/review.csv
 ```
-Run `shasum -a 256 dbt/seeds/p1_era_code_decisions.csv data/research/era_map/*`. A sha that differs while
+Run `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && shasum -a 256 dbt/seeds/p1_era_code_decisions.csv data/research/era_map/*`. A sha that differs while
 Step 8's counts match exactly is worth a look (most likely a re-exported `documents.parquet`
 sha or a changed PB2026 XML file), but it does not block the task.
 
@@ -1483,6 +1491,7 @@ sha or a changed PB2026 XML file), but it does not block the task.
 
 Run:
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 uv run --project . python - <<'EOF'
 import csv
 rows = {r["decision_id"]: r for r in csv.DictReader(open("dbt/seeds/p1_era_code_decisions.csv"))}
@@ -1507,6 +1516,7 @@ F0150P|3010F||2017-2020 history_only R-DEC-ERA-HISTORY ''
 Then check the pre-fills for chains that print a code beside another organization's page
 (CONTRACT ISSUE 9c):
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 uv run --project . python - <<'EOF'
 import csv
 rows = {r["chain_id"]: r for r in csv.DictReader(open("data/research/era_map/review.csv"))}
@@ -1538,7 +1548,11 @@ organizations into one page. DSS → DCSA shares no edition with DCSA's chain: a
 - [ ] **Step 10: Check that propose is deterministic and the worktree change is as expected**
 
 Run the Step 8 command again, then:
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 shasum -a 256 dbt/seeds/p1_era_code_decisions.csv data/research/era_map/* && git status --short dbt/seeds data/research/era_map
 ```
 Expected: the same five sha256s as after the first run, and

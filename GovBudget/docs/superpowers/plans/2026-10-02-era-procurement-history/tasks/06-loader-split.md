@@ -14,6 +14,8 @@
 - Create: `tests/jbooks/test_p1_loader_era.py`
 - Test (unchanged, must stay green): `tests/jbooks/test_p1_loader.py` (12 tests)
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: Task 1's throwaway cluster (`GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres`)
 and `uv sync`; `era_keys.era_procurement_key`, `era_keys.is_era_procurement_key`,
 `rollup_loader.norm_header` (unchanged). / Produces: `budget_lines.line_item_code text`
@@ -109,7 +111,7 @@ def test_021_backfills_the_printed_code_everywhere_but_era_keys(con):
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_migration_021.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_migration_021.py -q`
 
 Expected: `2 failed`, with `AssertionError: assert [] == [('text',)]` and
 `psycopg.errors.UndefinedColumn: column "line_item_code" of relation "budget_lines" does not exist`.
@@ -138,7 +140,7 @@ update budget_lines set line_item_code = pe_bli
 
 - [ ] **Step 4: Run the test to see it pass**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_migration_021.py tests/jbooks/test_db.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_migration_021.py tests/jbooks/test_db.py -q`
 
 Expected: `3 passed` (the session fixture's `migrate` applied 021; `test_db.py`'s
 idempotence check still sees nothing left to apply).
@@ -382,7 +384,7 @@ def test_update_branch_sets_line_item_code_on_an_existing_row(pg_dsn, tmp_path, 
 
 - [ ] **Step 7: Run them to see them fail**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_p1_loader_era.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_p1_loader_era.py -q`
 
 Expected: collection error `ImportError: cannot import name 'EraKeyConflict' from 'govbudget.jbooks.p1_loader'`.
 
@@ -728,13 +730,13 @@ guard, the amount melt and the cell lists are byte-for-byte today's logic, so V1
 
 - [ ] **Step 9: Run the loader tests to see them pass**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_p1_loader_era.py tests/jbooks/test_p1_loader.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_p1_loader_era.py tests/jbooks/test_p1_loader.py -q`
 
 Expected: `23 passed` (11 new, 12 existing).
 
 - [ ] **Step 10: Run the whole jbooks suite**
 
-Run: `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks -q`
 
 Expected: `442 passed, 2 skipped` (measured on a copy of this branch: 429 passed and 2
 skipped before this task, + 2 migration tests + 11 loader tests).
@@ -744,6 +746,7 @@ skipped before this task, + 2 migration tests + 11 loader tests).
 Run:
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python - <<'EOF'
 from pathlib import Path
 from govbudget.jbooks.p1_loader import parse_p1_rollup

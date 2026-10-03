@@ -19,6 +19,8 @@ whole chains.
   Tasks 3/5 may shift them, the text anchors are unique)
 - Test: `tests/jbooks/test_era_map_ratify.py`
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:** Consumes: everything Tasks 10–11 produce; the committed seed (Task 11);
 `config.DUCKDB_PATH`, `config.RAW_DOCS_DIR`, `config.RESEARCH_DIR`, `config.ROOT`
 (`src/govbudget/config.py`). / Produces: `default_seed_path() -> Path`
@@ -371,7 +373,7 @@ def test_cli_help_renders(argv, capsys):
 
 - [ ] **Step 2: Run the tests and watch them fail**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map_ratify.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map_ratify.py -q`
 
 Expected: `28 failed` (AttributeError `module 'govbudget.jbooks.era_map' has no attribute 'ratify'` /
 `'check'`, `KeyError: 'p1_era_code_decisions'` for the dbt config, and argparse
@@ -625,7 +627,7 @@ def check(*, duckdb_path: Path, seed_path: Path) -> dict:
 
 - [ ] **Step 4: Run the tests: the module tests pass, config and CLI still fail**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map_ratify.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map_ratify.py -q`
 
 Expected: `6 failed, 22 passed`. The failures are `test_dbt_seed_config_is_all_varchar`,
 `test_cli_propose_check_ratify` and the four `test_cli_help_renders` cases.
@@ -811,11 +813,11 @@ After:
 
 - [ ] **Step 8: Run the tests and watch them pass**
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map_ratify.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map_ratify.py -q`
 
 Expected: `28 passed`.
 
-Run: `uv run --project . pytest tests/jbooks/test_era_map.py tests/jbooks/test_era_map_propose.py tests/jbooks/test_era_map_ratify.py tests/jbooks/test_era_keys.py tests/test_collision_keys.py tests/test_shrink_guard.py -q`
+Run: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_era_map.py tests/jbooks/test_era_map_propose.py tests/jbooks/test_era_map_ratify.py tests/jbooks/test_era_keys.py tests/test_collision_keys.py tests/test_shrink_guard.py -q`
 
 Expected: `138 passed, 2 skipped` (0 failed). The 2 skips are the pre-existing warehouse checks
 in `tests/test_collision_keys.py`, which need `GOVBUDGET_DATA`; with
@@ -827,7 +829,7 @@ in `tests/test_collision_keys.py`, which need `GOVBUDGET_DATA`; with
 This writes only a temporary DuckDB file and the gitignored `dbt/target`, `dbt/logs`. Never point
 it at the real warehouse.
 ```bash
-SEEDCHECK="$(mktemp -d)/seedcheck.duckdb" && GOVBUDGET_DUCKDB="$SEEDCHECK" uv run --project . dbt seed --project-dir dbt --profiles-dir dbt --select p1_era_code_decisions && uv run --project . python -c "import duckdb,sys; c=duckdb.connect(sys.argv[1], read_only=True); print(c.execute('select count(*), count(distinct decision_id), count(program_account), count(successor_code) from p1_era_code_decisions').fetchone(), sorted({r[1] for r in c.execute('describe p1_era_code_decisions').fetchall()}))" "$SEEDCHECK"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && SEEDCHECK="$(mktemp -d)/seedcheck.duckdb" && GOVBUDGET_DUCKDB="$SEEDCHECK" uv run --project . dbt seed --project-dir dbt --profiles-dir dbt --select p1_era_code_decisions && uv run --project . python -c "import duckdb,sys; c=duckdb.connect(sys.argv[1], read_only=True); print(c.execute('select count(*), count(distinct decision_id), count(program_account), count(successor_code) from p1_era_code_decisions').fetchone(), sorted({r[1] for r in c.execute('describe p1_era_code_decisions').fetchall()}))" "$SEEDCHECK"
 ```
 Expected: dbt ends `Done. PASS=1 WARN=0 ERROR=0 SKIP=0 ...`, then
 ```
@@ -838,7 +840,11 @@ Expected: dbt ends `Done. PASS=1 WARN=0 ERROR=0 SKIP=0 ...`, then
 
 - [ ] **Step 10: Exercise the CLI on the live lake (read-only)**
 
+This step opens the live lake (README SAM window, read-only included): if a block prints `WAIT: SAM window …`, nothing ran — wait until :23 and re-run that block.
+
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 OUT="$(mktemp)"; GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python -m govbudget era-map check > "$OUT"; echo "exit=$?"; tail -1 "$OUT"; grep -c '^  undecided ' "$OUT"; grep '30|0300D|DODEA' "$OUT"
 ```
 Expected:
@@ -849,10 +855,14 @@ era-map check: 125 undecided chain(s), 0 stale decision(s)
   undecided 30|0300D|DODEA editions 2017,2018,2019,2020,2021,2022,2023 (7 key(s))
 ```
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python -m govbudget era-map check --strict > /dev/null; echo "exit=$?"
 ```
 Expected: `exit=1` (125 chains await the Task 15 review batches).
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data uv run --project . python -m govbudget era-map propose && git status --short dbt/seeds data/research/era_map
 ```
 Expected: one line

@@ -10,10 +10,12 @@
 - Local only, never committed: `.venv` (uv), `site/node_modules` (npm), the cluster at `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/testpg`, one line appended to the shared `/Users/andeslee/Documents/Cursor-Projects/.git/info/exclude`, this checkout's dbt parse output (`dbt/target/`, `dbt/logs/`, `dbt/.user.yml`; ignored by `.gitignore` lines 7, 9, 10), the symlink `data/site -> /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site` (ignored by the shared exclude's `GovBudget/data/site`, line 26)
 - Test (existing, unchanged): `tests/jbooks/test_p1_loader.py`, `tests/test_roadmap_backlog.py`
 
+Line numbers cited in this task are hints (anchor on the quoted text; line numbers are approximate): earlier tasks shift them.
+
 **Interfaces:**
 Consumes: nothing.
 Produces:
-- `scripts/era/env.sh` (sourced, bash or zsh, from the worktree's `GovBudget/`): exports `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data`, `GOVBUDGET_DUCKDB=$GOVBUDGET_DATA/duckdb/govbudget.duckdb`, `GOVBUDGET_PG_DSN=postgresql://localhost/govbudget`, `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres`, `GOVBUDGET_PG_BIN=/opt/homebrew/opt/postgresql@17/bin` (unless already set), `GOVBUDGET_PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs`. Every later task's shell starts with `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh`.
+- `scripts/era/env.sh` (sourced, bash or zsh, from the worktree's `GovBudget/`): exports `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data`, `GOVBUDGET_DUCKDB=$GOVBUDGET_DATA/duckdb/govbudget.duckdb`, `GOVBUDGET_PG_DSN=postgresql://localhost/govbudget`, `GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres`, `GOVBUDGET_PG_BIN=/opt/homebrew/opt/postgresql@17/bin` (unless already set), `GOVBUDGET_PROOFS=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs`. Every later task's shell starts with `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh`. Shell state does not persist between tool calls (each subagent Bash call is a fresh shell), so every command block in the plan repeats that line itself (from Step 3 on) and never relies on a variable set in an earlier block.
 - A running throwaway Postgres 17 cluster on `127.0.0.1:55432` (data dir `.proofs/testpg`, log `.proofs/testpg.log`, superuser = the OS user, trust auth, locale C).
 - `.proofs/` ignored in the worktree (`GovBudget/.gitignore`) and, until this branch merges, in the main checkout (shared `info/exclude`).
 - `dbt/target/manifest.json` written by THIS checkout's own `dbt parse` (163 test nodes, the same set as main's manifest and the live `site_meta.build_checks.dbt_assertions`). `site/src/lib/data.ts:649-671` (`dbtAssertionCount`, ROADMAP #173, called from `getSiteMeta` at `:627`) throws during a production site build when the checkout has no manifest, and `site/src/__tests__/dbt-assertion-count.test.ts:62-71` reads it in `npm run test`, so Tasks 4 (Step 14) and 5 build only after this exists. Never copy another checkout's manifest: #173 exists because /methodology/ printed another checkout's count. Tasks 13, 15, 16 and 21 rewrite it through `govbudget build`.
@@ -26,6 +28,7 @@ Measured for this task (2026-10-02): `uv sync --dry-run` → "Resolved 84 packag
 Run (from `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget`):
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget || exit 1
 uv sync
 uv run --project . python -c "import govbudget, duckdb, psycopg, pytest; print(duckdb.__version__, psycopg.__version__, pytest.__version__)"
 ```
@@ -35,7 +38,7 @@ Expected: `uv sync` prints `Resolved 84 packages`, then `Installed 83 packages` 
 - [ ] **Step 2: Install the site's node_modules (real, not a symlink)**
 
 ```bash
-cd site && npm ci && node -p "require('next/package.json').version + ' ' + require('vitest/package.json').version" && test -x node_modules/.bin/next && cd ..
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && npm ci && node -p "require('next/package.json').version + ' ' + require('vitest/package.json').version" && test -x node_modules/.bin/next
 ```
 
 Expected: npm ends with `added <N> packages, and audited <M> packages in <t>s` (N close to the lockfile's 1,259 entries; optional platform packages vary), then `16.2.9 3.2.6`.
@@ -76,7 +79,7 @@ unset _era_common _era_main
 Run:
 
 ```bash
-source scripts/era/env.sh && env | grep '^GOVBUDGET_' | sort && test -f "$GOVBUDGET_DUCKDB" && echo lake-ok
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && env | grep '^GOVBUDGET_' | sort && test -f "$GOVBUDGET_DUCKDB" && echo lake-ok
 ```
 
 Expected (exactly these six lines, then `lake-ok`):
@@ -116,9 +119,10 @@ After (lines 16-22):
 The snapshots live in the MAIN checkout (`/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs`), whose `.gitignore` gets this rule only when the branch merges, so also add it to the shared exclude file (idempotent):
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 EXCL="$(git rev-parse --path-format=absolute --git-common-dir)/info/exclude"
 grep -qxF 'GovBudget/.proofs/' "$EXCL" || printf 'GovBudget/.proofs/\n' >> "$EXCL"
-mkdir -p "$GOVBUDGET_PROOFS"
+mkdir -p "${GOVBUDGET_PROOFS:?}"
 git -C /Users/andeslee/Documents/Cursor-Projects check-ignore -v GovBudget/.proofs/testpg
 git -C /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families check-ignore -v GovBudget/.proofs/testpg
 ```
@@ -128,6 +132,7 @@ Expected: `.git/info/exclude:32:GovBudget/.proofs/	GovBudget/.proofs/testpg` (th
 - [ ] **Step 5: Create and start the throwaway test cluster**
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 lsof -nP -iTCP:55432 -sTCP:LISTEN || echo port-free
 LC_ALL=C "$GOVBUDGET_PG_BIN/initdb" -D "$GOVBUDGET_PROOFS/testpg" --locale=C -E UTF8 --auth=trust
 LC_ALL=C "$GOVBUDGET_PG_BIN/pg_ctl" -D "$GOVBUDGET_PROOFS/testpg" -l "$GOVBUDGET_PROOFS/testpg.log" \
@@ -137,13 +142,15 @@ LC_ALL=C "$GOVBUDGET_PG_BIN/pg_ctl" -D "$GOVBUDGET_PROOFS/testpg" -l "$GOVBUDGET
 
 Expected: `port-free`; initdb ends with `Success. You can now start the database server using:`; pg_ctl prints `waiting for server to start.... done` and `server started`; psql prints `andeslee|17.8`. `LC_ALL=C` is required on `pg_ctl` too — without it the log says `FATAL:  postmaster became multithreaded during startup`.
 
-After a reboot, restart with the same `LC_ALL=C ... pg_ctl ... -w start` line. Stop it (at the end of the plan) with `"$GOVBUDGET_PG_BIN/pg_ctl" -D "$GOVBUDGET_PROOFS/testpg" stop`.
+After a reboot, restart with the same `LC_ALL=C ... pg_ctl ... -w start` line (preceded by the `cd … && source scripts/era/env.sh` line, so `$GOVBUDGET_PG_BIN` and `$GOVBUDGET_PROOFS` are set). Stop it (at the end of the plan) with `"$GOVBUDGET_PG_BIN/pg_ctl" -D "$GOVBUDGET_PROOFS/testpg" stop`.
 
 - [ ] **Step 6: Prove the harness — the loader tests run against the throwaway cluster, not skipped**
 
 ```bash
-uv run --project . pytest tests/jbooks/test_p1_loader.py -q -rs
-uv run --project . pytest tests/test_roadmap_backlog.py -q
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+: "${GOVBUDGET_TEST_PG_DSN:?source scripts/era/env.sh first}"
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_p1_loader.py -q -rs
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_roadmap_backlog.py -q
 "$GOVBUDGET_PG_BIN/psql" "$GOVBUDGET_TEST_PG_DSN" -Atc "select datname from pg_database where datname like 'govbudget_test%'"
 ```
 
@@ -154,7 +161,7 @@ Expected: `12 passed` with no `SKIPPED` line (a skip means the cluster is down: 
 A production site build throws without `dbt/target/manifest.json` (`site/src/lib/data.ts:649-671`, ROADMAP #173), and the worktree has none until dbt runs here. `dbt parse` writes it from this checkout's own models and tests. It builds nothing and opens no warehouse; `GOVBUDGET_DUCKDB` points at a scratch path anyway, so even a dbt change of behaviour could not touch the lake. Never copy another checkout's manifest instead: that is the bug #173 fixed.
 
 ```bash
-source scripts/era/env.sh
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 GOVBUDGET_DUCKDB="$GOVBUDGET_PROOFS/dbt-parse.duckdb" uv run --project . dbt parse --project-dir dbt --profiles-dir dbt
 test ! -e "$GOVBUDGET_PROOFS/dbt-parse.duckdb" && echo no-warehouse-opened
 uv run --project . python -c "import json;n=json.load(open('dbt/target/manifest.json'))['nodes'];print(sum(v.get('resource_type')=='test' for v in n.values()))"
@@ -165,6 +172,7 @@ Expected: dbt logs `Registered adapter: duckdb=1.10.1`, `Unable to do partial pa
 Then link the live export where the site build looks for it (idempotent; a link that is already there, even one a later task re-pointed at a snapshot, is left alone):
 
 ```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 { [ -L data/site ] || [ -e data/site ]; } || ln -s /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site data/site
 EXCL="$(git rev-parse --path-format=absolute --git-common-dir)/info/exclude"
 git check-ignore -q data/site || printf 'GovBudget/data/site\n' >> "$EXCL"
