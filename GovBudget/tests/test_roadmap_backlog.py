@@ -230,3 +230,27 @@ def test_scoping_notes_exist_and_are_referenced(rel):
     for heading in REQUIRED_NOTE_HEADINGS:
         assert heading in body, f"{rel} has no {heading!r} section"
     assert rel in ROADMAP.read_text(encoding="utf-8"), f"no backlog entry cites {rel}"
+
+
+# Families piece 1 (docs/superpowers/specs/2026-10-02-era-procurement-history-
+# design.md §11.8) files five follow-ups at S0. Asserted by subject phrase, as
+# above; each phrase sits on one line of its entry.
+FAMILIES_FOLLOW_UPS = [
+    "/years/ needs sharding",
+    "Chem Demil O&M and RDT&E lines",
+    "JLTV continuation sentence",
+    "Dead v1 PDF receipt files",
+    "still routes JASSM and C-130J",
+]
+
+
+@pytest.mark.parametrize("subject", FAMILIES_FOLLOW_UPS)
+def test_the_families_piece_1_follow_ups_are_filed_once_and_open(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+    assert body.rstrip().endswith("**Status:** open (2026-10-02)."), (
+        f"#{num} does not end with its open-status line"
+    )

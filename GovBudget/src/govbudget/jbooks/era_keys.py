@@ -115,9 +115,13 @@ def is_era_procurement_key(pe_bli: str | None) -> bool:
     across editions. A /program/ page is a cross-edition identity claim by
     construction — one URL, one title, a decade of figures under it — so
     these keys must never become pages, however much money they carry
-    (1,214 of them in the shipped warehouse; '3010F-AF-L1' alone sums
-    $142.6B across PB2017-PB2023 because the era P-1 loader files an
-    account's rollup row under its first line number).
+    (1,214 of them in the shipped warehouse). '3010F-AF-L1' shows why: it
+    is Air Force Aircraft Procurement line 1, whose printed Line Item is
+    ATA000 (F-35) in PB2017-PB2021 and B02100 (B-21 Raider) in
+    PB2022-PB2023 — two programs under one key, 58 rows and $142.566B
+    summed over every scenario column (corrected 2026-10-02: this
+    docstring used to call the line an account total filed under its
+    first line number).
     """
     return bool(pe_bli) and _ERA_KEY_RE.match(pe_bli) is not None
 

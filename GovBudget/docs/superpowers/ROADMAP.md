@@ -4711,6 +4711,108 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `site/scripts/gates/linkgraph.mjs` (leg k). Effort: hours.
   **Status:** open (2026-10-01).
 
+- **#193 /years/ needs sharding before it can carry era procurement or
+  PB2027.** `_emit_years_matrix` (`src/govbudget/export_site.py`) raises
+  when `json/years_matrix.json` passes `_YEARS_MATRIX_MAX_BYTES`
+  (4,194,304 bytes), and that cap is not to be raised. Measured read-only
+  2026-10-02 on the live export (built 2026-10-02T01:30Z): 3,178,320 bytes,
+  which leaves 1,015,984. The families piece-1 spec estimates the
+  PB2017–PB2023 procurement points at about 0.75 MB more (about 3.9–4.0 MB
+  in all), which would leave no room for PB2027, so piece 1 fences /years/:
+  it keeps its procurement rows from PB2024 on
+  (`docs/superpowers/specs/2026-10-02-era-procurement-history-design.md`
+  §2, §6.2). Fix: shard the matrix (by exhibit or by edition block, each
+  shard fetched lazily by the /years/ island), check the size per shard,
+  then lift the era fence. Source: `src/govbudget/export_site.py`
+  (`_YEARS_MATRIX_MAX_BYTES`, `_emit_years_matrix`),
+  `site/src/app/years/page.tsx`. Effort: days.
+  **Status:** open (2026-10-02).
+
+- **#194 The P-1 loader drops 0390D's real Chem Demil O&M and RDT&E lines
+  as section headers.** `_is_valid_pe_bli`
+  (`src/govbudget/jbooks/p1_loader.py`) rejects a Budget Line Item cell that
+  holds any of `& / % #` or whitespace, to skip appropriation labels and to
+  keep `/program/[peBli]` routes safe. Account 0390D (Chemical Agents and
+  Munitions Destruction) prints two real lines under exactly those codes:
+  `O&M` ("Chem Demilitarization - O&M") and `RDT&E` ("Chem Demilitarization
+  - RDT&E"), both `Add` rows. Measured read-only 2026-10-02 in
+  `data/raw_docs/fy2026/dod/p1_display.xlsx` rows 303–304: FY2024 actuals
+  87,404 + 1,002,560 = 1,089,964 thousand (about $1.09B); PB2025 drops
+  1,059,818 of FY2023 actuals and PB2024 1,093,252 of FY2022 actuals the
+  same way. None of it reaches `budget_lines`, a page or a total. The era
+  editions print the same pair (loaded under era keys `0390D-ARMY-L1`/`-L2`:
+  14 keys, $5,832,017 thousand of FY(N−2) actuals; spec §5.2 correction);
+  families piece 1 excludes those chains as
+  `exclude_route_unsafe` (R-DEC-ERA-EXCLUDE,
+  `docs/superpowers/specs/2026-10-02-era-procurement-history-design.md`
+  §2, §5.1). Fix: load the two lines under a route-safe key with the
+  printed code kept in `line_item_code`, give them pages, and re-measure
+  every total that sums 0390D. Source: `src/govbudget/jbooks/p1_loader.py`
+  (`_is_valid_pe_bli` and the section-header skip in `load_p1_rollup`).
+  Effort: days.
+  **Status:** open (2026-10-02).
+
+- **#195 The JLTV continuation sentence is cited to a book that does not
+  print it.** Narrative fact `136baeef904dd052` (5731D15610, the
+  `LineItem[6]` justification) holds "NOTE: This budget line D15610 is a
+  continuation of an existing effort where prior year funds through FY 2020
+  are reflected under the previous budget line D15603." Its citation names
+  the PB2026 Army OPA "BA 3, 4 & 6 - Other Support Equipment, Initial
+  Spares and Agile Portfolio Management" PDF (`jbook_documents` id 346, sha
+  `a0b31f94…`) with no page: the narrative came from the
+  whole-appropriation master XML attached to that PDF, and none of its 602
+  pages prints the sentence. Only the BA1 "Tactical & Support Vehicles"
+  book prints it, on PDF p.100 of 251 (id 347, sha `184228d8…`), and that
+  book is `superseded` in `jbook_documents`, so it is not hosted. Measured
+  read-only 2026-10-02 (`data/site/citations/citations.parquet`,
+  `data/site/data/jbook_narratives.parquet`, the two PDFs under
+  `data/raw_docs/fy2026/a/`). Families piece 1 records the JLTV successor
+  (5600D15603 → 5731D15610) from the BA1 page by document sha, page and XML
+  path, and does not display it
+  (`docs/superpowers/specs/2026-10-02-era-procurement-history-design.md`
+  §5.4). Fix: attribute a master-XML narrative to the book whose pages
+  print it (or host BA1 and re-point this fact), and add a check that every
+  `jbook_narrative` citation names a document that prints its text. Source:
+  `src/govbudget/export_site.py` (the jbook_narrative citation pass).
+  Effort: hours.
+  **Status:** open (2026-10-02).
+
+- **#196 Dead v1 PDF receipt files still ship and need the owner's sign-off
+  to remove.** `export_budget_pdf_receipts` in
+  `src/govbudget/budget_pdf_receipts.py:393-472` has no caller: the
+  `export-budget-pdf-receipts` command and the `export-site` CLI both run
+  `program_pdf_receipts.export_program_pdf_receipts`, which writes
+  `json/budget-pdf-receipts/v2/`. The 256 v1 shards the old function wrote,
+  `json/budget-pdf-receipts/??.json` (169 of them non-empty, measured
+  read-only 2026-10-02 in `data/site`), still sit beside `v2/`, and step 5d2
+  of `site/scripts/prepare-assets.mjs` copies the whole directory into the
+  build, so they deploy; the site fetches only `v2/`
+  (`site/src/lib/budget-pdf-receipts.ts`).
+  `data-seeds/f15_budget_pdf_sources.json` has no reader either. Fix, with
+  the owner's sign-off because it deletes shipped files: remove the
+  function, the v1 shards and the unread seed, and copy only `v2/` in
+  `prepare-assets.mjs`. Found by the families piece-1 review. Source:
+  `src/govbudget/budget_pdf_receipts.py`,
+  `site/scripts/prepare-assets.mjs`. Effort: hours.
+  **Status:** open (2026-10-02).
+
+- **#197 `data-seeds/search_aliases.csv` still routes JASSM and C-130J to
+  the pages #55 moved them off.** Its line 3 sends a search for "JASSM" to
+  `/program/0603000D8Z/` (Joint Munitions Advanced Technology) and line 11
+  sends "C-130J" to `/program/2012C130J/` (AC/MC-130J). #55 corrected both
+  in `dbt/seeds/program_aliases.csv` on 2026-08-27 (JASSM → 0207325F,
+  C-130J → 0401132F; `c6270fc9`, `1edbfcc0`), but nothing ties the two seeds
+  together, and `export_site` publishes the search seed as `alias:` entries
+  in `json/search_quick.json`: the live export routes `alias:jassm` to
+  `/program/0603000D8Z/` and `alias:c-130j` to `/program/2012C130J/`
+  (measured read-only 2026-10-02). Fix: route both terms as #55 did, and add
+  a check that a term present in both seeds names the same program; the
+  families registry (pieces 2–4) is meant to become the one membership
+  source. Source: `data-seeds/search_aliases.csv`,
+  `dbt/seeds/program_aliases.csv`, `src/govbudget/export_site.py` (the
+  search-aliases block). Effort: hours.
+  **Status:** open (2026-10-02).
+
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
 naming the sprint and/or commit that closed it and when, so an item's state is
@@ -5681,6 +5783,23 @@ docs/superpowers/ROADMAP.md`.
     **Status: OPEN** — swept 2026-08-24. Deferred by the entry itself and
     assigned to drawdown Task D5 ("decide before building"), which never
     executed; no commit in the history references #28.
+
+    *Correction (2026-10-02, families piece 1; nothing above is reworded).*
+    `3010F-AF-L1` is not a rollup parse artifact. It is Air Force Aircraft
+    Procurement line 1: the era loader's key for the P-1 row whose printed
+    Line Item (column I) is ATA000 "F-35" in PB2017–PB2021 and B02100 "B-21
+    Raider" in PB2022–PB2023 — 58 `budget_lines` rows, $142.566B summed over
+    every scenario column (measured read-only 2026-10-02 in Postgres and the
+    seven era `data/raw_docs/fy20NN/dod/p1_display.xlsx` workbooks). The
+    1,214 `-L<n>` keys are the era loader's line keys
+    (`{account}-{org}-L{line}`; 6,927 edition-key pairs): real P-1 lines keyed
+    by line number because the loader drops the printed code, not parse
+    debris. They must still never become pages, since a line number is no
+    program identity across editions; families piece 1
+    (`docs/superpowers/specs/2026-10-02-era-procurement-history-design.md`)
+    maps them through their printed codes instead. The same claim in
+    `src/govbudget/jbooks/era_keys.py` (`is_era_procurement_key`) is
+    corrected in the same commit.
 29. **Program-lineage Phase 2 (coverage + depth, from 5I).** The Phase-1 lineage
     layer is small-but-bulletproof (25 stated + 3 inferred edges) because regex
     over narratives is high-precision/low-recall and stated edges are FY2026-fenced
