@@ -356,3 +356,209 @@ def test_globs_treat_only_the_star_as_special():
     assert not proof._glob("/decade_series/[]", "/decade_series/x")
     assert proof._glob("json/*.json", "json/program_details/P1.json")
     assert proof._glob("/{fid}/*", "/{fid}/retrieved_at")
+
+
+def test_cli_diff_exit_codes_and_report(tmp_path, capsys):
+    _expect_fixture(tmp_path)
+    a, b = str(tmp_path / "a"), str(tmp_path / "b")
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", a, b])
+    assert exc.value.code == 1
+    assert capsys.readouterr().out.splitlines()[-1] == "proof diff: DIFFERENT"
+
+    expect = tmp_path / "expect.json"
+    expect.write_text(json.dumps([
+        {"path": "json/program_details/*.json", "why": "era points"},
+        {"path": "data/*.parquet", "why": "new dataset"},
+    ]))
+    out = tmp_path / "report.json"
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", a, b, "--expect", str(expect), "--report", str(out)])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.splitlines()[-1] == "proof diff: PASS"
+    saved = json.loads(out.read_text())
+    assert saved["verdict"]["ok"] is True
+    assert saved["report"]["counts"]["only_b"] == 1
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", a, a])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.splitlines()[-1] == "proof diff: EQUAL"
+
+
+# ---------------------------------------------------------------------------
+# snapshot
+# ---------------------------------------------------------------------------
+
+
+def test_config_follows_govbudget_data_except_research(tmp_path):
+    """Every lake path export-site uses moves with GOVBUDGET_DATA; RESEARCH_DIR
+    stays with the code checkout."""
+    code = (
+        "import json; from govbudget import config as c; print(json.dumps({k: str(getattr(c, k))"
+        " for k in ('DATA_DIR','SITE_DIR','DUCKDB_PATH','PARQUET_DIR','RAW_DOCS_DIR',"
+        "'MANIFEST_PATH','RESEARCH_DIR','ROOT')}))"
+    )
+    env = {**os.environ, "GOVBUDGET_DATA": str(tmp_path)}
+    env.pop("GOVBUDGET_DUCKDB", None)
+    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True,
+                         text=True, check=True, cwd=ROOT)
+    got = json.loads(out.stdout)
+    base = str(tmp_path.resolve())
+    assert got["DATA_DIR"] == base
+    assert got["SITE_DIR"] == f"{base}/site"
+    assert got["DUCKDB_PATH"] == f"{base}/duckdb/govbudget.duckdb"
+    assert got["PARQUET_DIR"] == f"{base}/parquet"
+    assert got["RAW_DOCS_DIR"] == f"{base}/raw_docs"
+    assert got["MANIFEST_PATH"] == f"{base}/manifest.jsonl"
+    assert got["RESEARCH_DIR"] == f"{got['ROOT']}/data/research"
+
+
+def test_snapshot_refuses_inside_the_sam_write_window(tmp_path, monkeypatch):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 17))
+    with pytest.raises(RuntimeError, match="SAM job writes data/parquet/sam at :17"):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path, pg_dsn="postgresql://x/db",
+                       scratch_db="snap")
+    assert not (tmp_path / "s").exists()
+
+
+@pytest.mark.parametrize("scratch, message", [
+    ("Bad-Name", "must match"),
+    ("db", "cannot be the source database"),
+])
+def test_snapshot_refuses_bad_scratch_names(tmp_path, monkeypatch, scratch, message):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    with pytest.raises(ValueError, match=message):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data",
+                       pg_dsn="postgresql://x/db", scratch_db=scratch)
+
+
+def test_snapshot_refuses_an_existing_out_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    (tmp_path / "s").mkdir()
+    with pytest.raises(FileExistsError, match="already exists"):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data",
+                       pg_dsn="postgresql://x/db", scratch_db="snap")
+
+
+@pytest.mark.parametrize("dsn", [
+    "postgresql://localhost/govbudget",
+    "postgresql://127.0.0.1:55432/postgres",
+    "postgresql:///govbudget",
+])
+def test_snapshot_refuses_a_local_scratch_db_without_the_proof_prefix(tmp_path, monkeypatch, dsn):
+    # README: on the local server only govbudget_proof_<name> may be created;
+    # both the function and the CLI (cmd_proof) refuse before touching anything.
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data", pg_dsn=dsn,
+                       scratch_db="snap")
+    with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
+        cli.main(["proof", "snapshot", "--out", str(tmp_path / "s"), "--scratch-db", "snap",
+                  "--data-dir", str(tmp_path / "data"), "--pg-dsn", dsn])
+    assert not (tmp_path / "s").exists()
+
+
+def _lake(data: Path) -> None:
+    """A miniature lake: a DuckDB view that embeds its parquet's absolute path."""
+    _parquet(data / "parquet" / "jbooks" / "budget_lines.parquet",
+             [("pe_bli", "varchar"), ("amount_thousands", "double")], [("ATA000", 1.5)])
+    (data / "duckdb").mkdir(parents=True)
+    con = duckdb.connect(str(data / "duckdb" / "govbudget.duckdb"))
+    try:
+        con.execute(
+            "create view stg_budget_lines as select * from read_parquet("
+            f"'{data.resolve()}/parquet/jbooks/budget_lines.parquet')"
+        )
+        con.execute("create table fct_decade_series as select 1 as n")
+    finally:
+        con.close()
+    _json(data / "site" / "manifest.json", {"built_at": BUILT_A})
+    (data / "raw_docs" / "fy2017" / "dod").mkdir(parents=True)
+    (data / "raw_docs" / "fy2017" / "dod" / "p1_display.xlsx").write_bytes(b"xlsx")
+    (data / "manifest.jsonl").write_text('{"stage": "fixture"}\n')
+
+
+def test_view_rewrite_repoints_the_copy_and_leaves_the_source(tmp_path):
+    live = tmp_path / "live"
+    _lake(live)
+    snap = tmp_path / "snap"
+    (snap / "duckdb").mkdir(parents=True)
+    shutil.copy(live / "duckdb" / "govbudget.duckdb", snap / "duckdb" / "govbudget.duckdb")
+    shutil.copytree(live / "parquet", snap / "parquet")
+    got = proof._rewrite_duckdb_views(snap / "duckdb" / "govbudget.duckdb",
+                                      old_root=live.resolve(), new_root=snap.resolve())
+    assert got == {"views": 1, "rewritten": 1}
+    shutil.rmtree(live / "parquet")          # the copy must not need the live lake
+    con = duckdb.connect(str(snap / "duckdb" / "govbudget.duckdb"), read_only=True)
+    try:
+        assert con.execute("select pe_bli from stg_budget_lines").fetchall() == [("ATA000",)]
+    finally:
+        con.close()
+
+
+@pytest.fixture()
+def pg_source():
+    """A throwaway source database on the TEST cluster, never the real one."""
+    try:
+        admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    except psycopg.OperationalError as e:
+        pytest.skip(f"Postgres unavailable ({e}); start the test cluster (Task 1)")
+    for db in ("proof_src_test", "govbudget_proof_scratch_test"):
+        admin.execute(f"drop database if exists {db}")
+    admin.execute("create database proof_src_test")
+    dsn = urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/proof_src_test"))
+    yield admin, dsn
+    for db in ("proof_src_test", "govbudget_proof_scratch_test"):
+        admin.execute(f"drop database if exists {db} with (force)")
+    admin.close()
+
+
+def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
+    admin, src_dsn = pg_source
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    _lake(live)
+    doc = f"{live.resolve()}/raw_docs/fy2017/dod/p1_display.xlsx"
+    with psycopg.connect(src_dsn) as con:
+        con.execute("create table jbook_documents (id serial primary key, file_path text)")
+        con.execute("insert into jbook_documents (file_path) values (%s)", (doc,))
+        con.execute("create table budget_lines (pe_bli text, amount numeric)")
+        con.execute("insert into budget_lines values ('ATA000', 1.5), ('B02100', 2)")
+    out = tmp_path / "proofs" / "s0"
+
+    m = proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db="govbudget_proof_scratch_test")
+
+    scratch_dsn = urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/govbudget_proof_scratch_test"))
+    assert m["env"] == {"GOVBUDGET_DATA": str(out),
+                        "GOVBUDGET_DUCKDB": f"{out}/duckdb/govbudget.duckdb",
+                        "GOVBUDGET_PG_DSN": scratch_dsn}
+    assert m["duckdb"]["views"] == 1 and m["duckdb"]["views_rewritten"] == 1
+    assert m["parquet"]["jbooks/budget_lines.parquet"]["rows"] == 1
+    assert m["site"]["files"] == 1 and m["raw_docs"]["files"] == 1
+    assert m["pg"]["tables"]["budget_lines"]["rows"] == 2
+    assert m["pg"]["rewrites"] == {"jbook_documents.file_path": 1}
+    assert json.loads((out / "snapshot.json").read_text()) == m
+    with psycopg.connect(src_dsn) as con:    # the digest is the source's own
+        src_md5 = con.execute(
+            "select md5(coalesce(string_agg(h, '' order by h), ''))"
+            " from (select md5(t::text) as h from public.budget_lines t) s").fetchone()[0]
+        assert con.execute("select file_path from jbook_documents").fetchone()[0] == doc
+    assert m["pg"]["tables"]["budget_lines"]["md5"] == src_md5
+    with psycopg.connect(scratch_dsn) as con:
+        assert con.execute("select file_path from jbook_documents").fetchone()[0] == (
+            f"{out}/raw_docs/fy2017/dod/p1_display.xlsx")
+    with pytest.raises(FileExistsError, match="database govbudget_proof_scratch_test already exists"):
+        proof.snapshot(tmp_path / "proofs" / "s1", data_dir=live, pg_dsn=src_dsn,
+                       scratch_db="govbudget_proof_scratch_test")
+    assert not (tmp_path / "proofs" / "s1").exists()
+    shutil.rmtree(live / "parquet")
+    con = duckdb.connect(str(out / "duckdb" / "govbudget.duckdb"), read_only=True)
+    try:
+        assert con.execute("select count(*) from stg_budget_lines").fetchone()[0] == 1
+    finally:
+        con.close()
+    env = subprocess.run(
+        ["bash", "-c", f'source "{out}/env.sh" "{out}-A" && echo "$GOVBUDGET_DATA|$GOVBUDGET_DUCKDB|$GOVBUDGET_PG_DSN"'],
+        capture_output=True, text=True, check=True).stdout.strip()
+    assert env == f"{out}-A|{out}-A/duckdb/govbudget.duckdb|{scratch_dsn}"

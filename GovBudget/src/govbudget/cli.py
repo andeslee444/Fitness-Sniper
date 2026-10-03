@@ -2937,6 +2937,41 @@ def cmd_refresh(args) -> None:
         sys.exit(1)
 
 
+def cmd_proof(args) -> None:
+    """Families piece 1: pinned proof snapshots and the masked export diff."""
+    import json as _json
+
+    from govbudget import proof
+
+    if args.proof_action == "snapshot":
+        m = proof.snapshot(
+            args.out, data_dir=args.data_dir, pg_dsn=args.pg_dsn,
+            scratch_db=args.scratch_db,
+        )
+        print(f"proof snapshot: {m['out_dir']}")
+        print(f"  duckdb sha256 {m['duckdb']['sha256_at_copy']}"
+              f" ({m['duckdb']['views_rewritten']} of {m['duckdb']['views']} views repointed)")
+        print(f"  parquet files {len(m['parquet'])} · site files {m['site']['files']:,}"
+              f" · raw_docs files {m['raw_docs']['files']:,}")
+        print(f"  postgres {m['pg']['source_db']} -> {m['pg']['scratch_db']}"
+              f" ({len(m['pg']['tables'])} tables, dump sha256 {m['pg']['dump_sha256']})")
+        print(f"  source {m['out_dir']}/{proof.SNAPSHOT_ENV} [RUN_DIR]")
+        return
+    report = proof.diff_trees(args.a, args.b)
+    verdict = None
+    if args.expect is not None:
+        verdict = proof.check_expectations(report, proof.load_expectations(args.expect))
+    if args.report is not None:
+        args.report.write_text(
+            _json.dumps({"report": report, "verdict": verdict}, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    for line in proof.format_report(report, verdict):
+        print(line)
+    ok = verdict["ok"] if verdict is not None else proof.is_equal(report)
+    sys.exit(0 if ok else 1)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -3334,6 +3369,35 @@ def main(argv=None) -> None:
                      help="skip the confirmation prompt. REQUIRED for scheduled "
                           "runs — launchd gives a job no TTY")
     rfr.set_defaults(func=cmd_refresh)
+
+    prf = sub.add_parser(
+        "proof",
+        help="families piece 1: pin a proof snapshot; diff two data/site trees",
+    )
+    prf_sub = prf.add_subparsers(dest="proof_action", required=True)
+    prf_snap = prf_sub.add_parser(
+        "snapshot",
+        help="APFS-clone the lake export-site reads + restore Postgres into a scratch db",
+    )
+    prf_snap.add_argument("--out", type=Path, required=True,
+                          help="new directory, e.g. <main GovBudget>/.proofs/s0")
+    prf_snap.add_argument("--scratch-db", required=True, dest="scratch_db",
+                          help="NEW database on the same server for the restored dump;"
+                               " on a local server it must be named govbudget_proof_<name>")
+    prf_snap.add_argument("--data-dir", type=Path, default=config.DATA_DIR, dest="data_dir")
+    prf_snap.add_argument("--pg-dsn", default=config.PG_DSN, dest="pg_dsn")
+    prf_snap.set_defaults(func=cmd_proof)
+    prf_diff = prf_sub.add_parser(
+        "diff",
+        help="compare two data/site trees (build stamps masked; parquet as row multisets)",
+    )
+    prf_diff.add_argument("a", type=Path)
+    prf_diff.add_argument("b", type=Path)
+    prf_diff.add_argument("--expect", type=Path, default=None,
+                          help="JSON list of allowed-difference rules; FAIL on anything else")
+    prf_diff.add_argument("--report", type=Path, default=None,
+                          help="also write the full JSON report here")
+    prf_diff.set_defaults(func=cmd_proof)
 
     args = p.parse_args(argv)
     args.func(args)

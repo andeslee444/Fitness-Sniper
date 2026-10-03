@@ -769,3 +769,339 @@ def format_report(report: dict, verdict: dict | None = None) -> list[str]:
         lines.append(f"  UNMET required rule {u['rule']} [{u['path']}]: {u['why']}")
     lines.append("proof diff: PASS" if verdict["ok"] else "proof diff: FAIL")
     return lines
+
+
+# ---------------------------------------------------------------------------
+# snapshot
+# ---------------------------------------------------------------------------
+
+
+def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> dict:
+    """Pin everything export-site reads into out_dir; return the manifest.
+
+    Writes out_dir/{duckdb,parquet,site,raw_docs,manifest.jsonl} (APFS clones),
+    out_dir/pg/<db>.dump, out_dir/snapshot.json and out_dir/env.sh, and restores
+    the dump into a NEW database `scratch_db` on the same server. Refuses if
+    out_dir or the scratch database already exists, inside the SAM write window
+    (:15-:20), while a writer holds the DuckDB file, or when the server is
+    local and scratch_db is not named govbudget_proof_<name>.
+    """
+    out_dir = Path(out_dir).absolute()
+    data_dir = Path(data_dir).resolve()
+    _check_sam_window("before the copy")
+    if out_dir.exists():
+        raise FileExistsError(f"proof snapshot: {out_dir} already exists")
+    if out_dir == data_dir or data_dir in out_dir.parents:
+        raise ValueError(f"proof snapshot: {out_dir} is inside the lake {data_dir}")
+    if not _SCRATCH_DB_RE.fullmatch(scratch_db):
+        raise ValueError(
+            f"proof snapshot: scratch database name {scratch_db!r} must match"
+            f" {_SCRATCH_DB_RE.pattern}"
+        )
+    _check_scratch_name(pg_dsn, scratch_db)
+    source_db = urlsplit(pg_dsn).path.lstrip("/")
+    if not source_db:
+        raise ValueError(f"proof snapshot: {pg_dsn!r} names no database")
+    if scratch_db == source_db:
+        raise ValueError("proof snapshot: the scratch database cannot be the source database")
+    src_duckdb = data_dir / DUCKDB_REL
+    for required in (src_duckdb, data_dir / MANIFEST_REL, *(data_dir / d for d in CLONED_DIRS)):
+        if not required.exists():
+            raise FileNotFoundError(f"proof snapshot: {required} is missing")
+    wal = src_duckdb.with_name(src_duckdb.name + ".wal")
+    if wal.exists():
+        raise RuntimeError(f"proof snapshot: {wal} exists — a DuckDB write is unfinished")
+    if _database_exists(pg_dsn, scratch_db):
+        raise FileExistsError(
+            f"proof snapshot: database {scratch_db} already exists — drop it"
+            f" (dropdb) or choose another --scratch-db"
+        )
+
+    import duckdb
+
+    # A read-only connection holds DuckDB's shared file lock for the whole
+    # copy, so no writer (dbt build) can start mid-clone — and it fails here,
+    # before anything is written, if a writer already holds the file.
+    try:
+        lock = duckdb.connect(str(src_duckdb), read_only=True)
+    except duckdb.IOException as e:
+        raise RuntimeError(f"proof snapshot: {src_duckdb} is being written ({e}); retry later") from e
+    try:
+        out_dir.mkdir(parents=True)
+        (out_dir / DUCKDB_REL.parent).mkdir()
+        _clone(src_duckdb, out_dir / DUCKDB_REL)
+        for name in CLONED_DIRS:
+            _clone(data_dir / name, out_dir / name)
+        _clone(data_dir / MANIFEST_REL, out_dir / MANIFEST_REL)
+    finally:
+        lock.close()
+    _check_sam_window(f"after the copy — delete {out_dir} and retry")
+
+    duckdb_sha_at_copy = _sha256_file(out_dir / DUCKDB_REL)
+    views = _rewrite_duckdb_views(out_dir / DUCKDB_REL, old_root=data_dir, new_root=out_dir)
+    pg = _pg_snapshot(
+        pg_dsn, scratch_db, out_dir / "pg",
+        old_raw_docs=data_dir / "raw_docs", new_raw_docs=out_dir / "raw_docs",
+        data_dir=data_dir,
+    )
+    env = {
+        "GOVBUDGET_DATA": str(out_dir),
+        "GOVBUDGET_DUCKDB": str(out_dir / DUCKDB_REL),
+        "GOVBUDGET_PG_DSN": pg["scratch_dsn"],
+    }
+    manifest = {
+        "schema_version": 1,
+        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
+        "out_dir": str(out_dir),
+        "source": {"data_dir": str(data_dir), "pg_dsn": pg_dsn},
+        "env": env,
+        "duckdb": {
+            "path": DUCKDB_REL.as_posix(),
+            "sha256_at_copy": duckdb_sha_at_copy,
+            "sha256": _sha256_file(out_dir / DUCKDB_REL),
+            "views": views["views"],
+            "views_rewritten": views["rewritten"],
+        },
+        "parquet": _parquet_digest(out_dir / "parquet"),
+        "site": _tree_digest(out_dir / "site"),
+        "raw_docs": _tree_digest(out_dir / "raw_docs"),
+        "manifest_jsonl_sha256": _sha256_file(out_dir / MANIFEST_REL),
+        "pg": pg,
+    }
+    (out_dir / SNAPSHOT_MANIFEST).write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (out_dir / SNAPSHOT_ENV).write_text(_env_script(manifest), encoding="utf-8")
+    return manifest
+
+
+def _check_sam_window(stage: str) -> None:
+    now = _now()
+    if now.minute in SAM_WINDOW_MINUTES:
+        raise RuntimeError(
+            f"proof snapshot: refusing at {now:%H:%M} ({stage}) — the hourly SAM"
+            " job writes data/parquet/sam at :17; run outside :15-:20"
+        )
+
+
+def _check_scratch_name(pg_dsn: str, scratch_db: str) -> None:
+    """On a local server (the real `govbudget` lives there) the only database
+    this tool may create is govbudget_proof_<name> (README, Global Constraints)."""
+    host = (urlsplit(pg_dsn).hostname or "").lower()
+    if host in _LOCAL_HOSTS and not (
+        scratch_db.startswith(SCRATCH_DB_PREFIX) and len(scratch_db) > len(SCRATCH_DB_PREFIX)
+    ):
+        raise ValueError(
+            f"proof snapshot: a scratch database on a local server must be named"
+            f" {SCRATCH_DB_PREFIX}<name>, not {scratch_db!r}"
+        )
+
+
+def _clone(src: Path, dst: Path) -> None:
+    """APFS copy-on-write clone (macOS `cp -c`): seconds, no extra space."""
+    done = subprocess.run(
+        ["cp", "-c", "-R", str(src), str(dst)], capture_output=True, text=True
+    )
+    if done.returncode != 0:
+        raise RuntimeError(
+            f"proof snapshot: cp -c -R {src} {dst} failed: {done.stderr.strip()}"
+            " (snapshots need APFS clones on one volume)"
+        )
+
+
+def _tree_digest(root: Path) -> dict:
+    lines, total = [], 0
+    files = _files(root)
+    for rel in files:
+        size = (root / rel).stat().st_size
+        total += size
+        lines.append(f"{rel}\t{size}\t{_sha256_file(root / rel)}\n")
+    return {
+        "files": len(files),
+        "bytes": total,
+        "sha256": hashlib.sha256("".join(lines).encode("utf-8")).hexdigest(),
+    }
+
+
+def _parquet_digest(root: Path) -> dict:
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        out = {}
+        for rel in _files(root):
+            path = root / rel
+            rows = None
+            if rel.endswith(".parquet"):
+                rows = con.execute(
+                    "select sum(num_rows) from parquet_file_metadata(?)", [str(path)]
+                ).fetchone()[0]
+            out[rel] = {
+                "sha256": _sha256_file(path),
+                "bytes": path.stat().st_size,
+                "rows": int(rows) if rows is not None else None,
+            }
+        return out
+    finally:
+        con.close()
+
+
+def _rewrite_duckdb_views(db_path: Path, *, old_root: Path, new_root: Path) -> dict:
+    """Repoint every view that embeds old_root at new_root, in the copy only.
+
+    DuckDB binds a view when it is created, so new_root's parquet must
+    already exist (snapshot() clones it first). Raises if any view still names
+    old_root afterwards."""
+    import duckdb
+
+    old, new = str(old_root) + "/", str(new_root) + "/"
+    con = duckdb.connect(str(db_path))
+    try:
+        views = con.execute(
+            "select view_name, sql from duckdb_views()"
+            " where not internal and database_name = current_database()"
+            " order by view_name"
+        ).fetchall()
+        rewritten = 0
+        for name, sql in views:
+            if old not in sql:
+                continue
+            if not sql.startswith("CREATE VIEW "):
+                raise RuntimeError(f"proof snapshot: unexpected DDL for view {name}: {sql[:80]!r}")
+            con.execute("CREATE OR REPLACE VIEW " + sql[len("CREATE VIEW "):].replace(old, new))
+            rewritten += 1
+        left = con.execute(
+            "select view_name from duckdb_views()"
+            " where not internal and database_name = current_database()"
+            " and contains(sql, ?)",
+            [old],
+        ).fetchall()
+        if left:
+            raise RuntimeError(f"proof snapshot: views still read {old}: {sorted(r[0] for r in left)}")
+        con.execute("checkpoint")
+    finally:
+        con.close()
+    return {"views": len(views), "rewritten": rewritten}
+
+
+def _pg_bin(name: str) -> str:
+    env_dir = os.environ.get("GOVBUDGET_PG_BIN")
+    if env_dir:
+        cand = Path(env_dir) / name
+        if cand.is_file():
+            return str(cand)
+        raise FileNotFoundError(f"proof snapshot: {cand} not found (GOVBUDGET_PG_BIN)")
+    found = shutil.which(name)
+    if found:
+        return found
+    cand = DEFAULT_PG_BIN / name
+    if cand.is_file():
+        return str(cand)
+    raise FileNotFoundError(
+        f"proof snapshot: {name} not found — set GOVBUDGET_PG_BIN to the Postgres bin directory"
+    )
+
+
+def _with_database(dsn: str, database: str) -> str:
+    parts = urlsplit(dsn)
+    return urlunsplit(parts._replace(path="/" + database))
+
+
+def _database_exists(pg_dsn: str, name: str) -> bool:
+    import psycopg
+
+    with psycopg.connect(_with_database(pg_dsn, "postgres"), autocommit=True) as admin:
+        return admin.execute(
+            "select 1 from pg_database where datname = %s", (name,)
+        ).fetchone() is not None
+
+
+def _run(cmd: list[str]) -> str:
+    done = subprocess.run(cmd, capture_output=True, text=True)
+    if done.returncode != 0:
+        raise RuntimeError(f"proof snapshot: {' '.join(cmd[:2])} failed: {done.stderr.strip()}")
+    return done.stdout
+
+
+def _pg_snapshot(
+    pg_dsn: str, scratch_db: str, dump_dir: Path, *,
+    old_raw_docs: Path, new_raw_docs: Path, data_dir: Path,
+) -> dict:
+    import psycopg
+    from psycopg import sql
+
+    source_db = urlsplit(pg_dsn).path.lstrip("/")
+    scratch_dsn = _with_database(pg_dsn, scratch_db)
+    dump_dir.mkdir()
+    dump = dump_dir / f"{source_db}.dump"
+    _run([_pg_bin("pg_dump"), "--format=custom", "--no-owner", "--no-privileges",
+          f"--file={dump}", pg_dsn])
+    with psycopg.connect(_with_database(pg_dsn, "postgres"), autocommit=True) as admin:
+        admin.execute(sql.SQL("create database {}").format(sql.Identifier(scratch_db)))
+    _run([_pg_bin("pg_restore"), "--no-owner", "--no-privileges", "--exit-on-error",
+          f"--dbname={scratch_dsn}", str(dump)])
+
+    tables: dict[str, dict] = {}
+    rewrites: dict[str, int] = {}
+    with psycopg.connect(scratch_dsn) as con:
+        # Pin the row-to-text rendering so the digests compare across sessions.
+        con.execute("set time zone 'UTC'")
+        con.execute("set datestyle = 'ISO, YMD'")
+        con.execute("set extra_float_digits = 1")
+        names = [r[0] for r in con.execute(
+            "select table_name from information_schema.tables"
+            " where table_schema = 'public' and table_type = 'BASE TABLE'"
+            " order by table_name"
+        ).fetchall()]
+        for name in names:
+            rows, digest = con.execute(sql.SQL(
+                "select count(*), md5(coalesce(string_agg(h, '' order by h), ''))"
+                " from (select md5(t::text) as h from {} t) s"
+            ).format(sql.Identifier("public", name))).fetchone()
+            tables[name] = {"rows": int(rows), "md5": digest}
+        # Digests above describe the dump as taken. Only now repoint the
+        # document paths at the cloned raw_docs, so export-site run against
+        # this database never opens a live-lake file.
+        if con.execute("select to_regclass('public.jbook_documents')").fetchone()[0]:
+            old, new = str(old_raw_docs) + "/", str(new_raw_docs) + "/"
+            cur = con.execute(
+                "update jbook_documents set file_path = %s || substr(file_path, length(%s) + 1)"
+                " where left(file_path, length(%s)) = %s",
+                (new, old, old, old),
+            )
+            rewrites["jbook_documents.file_path"] = cur.rowcount
+            live = str(data_dir) + "/"
+            left = con.execute(
+                "select count(*) from jbook_documents where left(file_path, length(%s)) = %s",
+                (live, live),
+            ).fetchone()[0]
+            if left:
+                raise RuntimeError(
+                    f"proof snapshot: {left} jbook_documents.file_path row(s) still under {live}"
+                )
+        con.commit()
+    return {
+        "source_db": source_db,
+        "scratch_db": scratch_db,
+        "scratch_dsn": scratch_dsn,
+        "dump": f"pg/{dump.name}",
+        "dump_sha256": _sha256_file(dump),
+        "pg_dump_version": _run([_pg_bin("pg_dump"), "--version"]).strip(),
+        "tables": tables,
+        "rewrites": rewrites,
+    }
+
+
+def _env_script(manifest: dict) -> str:
+    env = manifest["env"]
+    return (
+        f"# Written by `govbudget proof snapshot` at {manifest['created_at']}.\n"
+        "# Usage: source env.sh [RUN_DIR]\n"
+        "#   no argument: point export-site/dbt/verify-* at this snapshot itself;\n"
+        "#   RUN_DIR:     a `cp -c -R` clone of this snapshot to export into.\n"
+        f'_proof_dir="${{1:-{env["GOVBUDGET_DATA"]}}}"\n'
+        'export GOVBUDGET_DATA="$_proof_dir"\n'
+        'export GOVBUDGET_DUCKDB="$_proof_dir/duckdb/govbudget.duckdb"\n'
+        f"export GOVBUDGET_PG_DSN={shlex.quote(env['GOVBUDGET_PG_DSN'])}\n"
+        "unset _proof_dir\n"
+    )
