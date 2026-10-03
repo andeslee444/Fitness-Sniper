@@ -93,3 +93,72 @@ def test_existing_script_delegates_to_the_same_sitewide_command(monkeypatch):
     script = Path(__file__).resolve().parents[1] / "scripts/export_budget_pdf_receipts.py"
     runpy.run_path(str(script), run_name="__main__")
     command.assert_called_once_with(["export-budget-pdf-receipts", "--site-dir", "/tmp/fixture-site"])
+
+
+def test_full_export_cli_writes_the_era_summary_after_the_receipts(monkeypatch, tmp_path):
+    """Families piece 1 (Task 19): era_map_summary.json reads the receipts audit,
+    so it is written after the receipts step, from the same site and warehouse."""
+    configure_paths(monkeypatch, tmp_path)
+    events = []
+    monkeypatch.setattr(site_export, "export_site", lambda *a, **k: events.append("artifacts") or BASE_SUMMARY)
+
+    def receipts(**kwargs):
+        events.append("pdf-evidence")
+        return RECEIPT_SUMMARY
+
+    def summary(**kwargs):
+        events.append("era-summary")
+        assert kwargs == {"site_dir": tmp_path / "site", "duckdb_path": tmp_path / "warehouse.duckdb"}
+        return {"editions": [{}] * 7}
+
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", receipts)
+    monkeypatch.setattr(site_export, "write_era_map_summary", summary)
+    cli.main(["export-site"])
+    assert events == ["artifacts", "pdf-evidence", "era-summary"]
+
+
+def test_evidence_only_refresh_rewrites_the_era_summary(monkeypatch, tmp_path, capsys):
+    configure_paths(monkeypatch, tmp_path)
+    events = []
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", lambda **k: events.append("pdf-evidence") or RECEIPT_SUMMARY)
+    monkeypatch.setattr(site_export, "write_era_map_summary", lambda **k: events.append("era-summary") or {"editions": [{}] * 7})
+    cli.main(["export-budget-pdf-receipts"])
+    assert events == ["pdf-evidence", "era-summary"]
+    assert "era map summary: 7 editions" in capsys.readouterr().out
+
+
+def test_the_era_summary_recounts_the_manifest_json_sidecars(monkeypatch, tmp_path):
+    """The F-15 builder sets manifest.json json_sidecars (its rglob count of
+    json/**/*.json) before the receipts step writes json/era_map_summary.json,
+    so the receipts step recounts after the summary (Task 19, pre-flight)."""
+    configure_paths(monkeypatch, tmp_path)
+    json_dir = tmp_path / "site" / "json"
+    json_dir.mkdir(parents=True)
+    (json_dir / "citations.json").write_text("{}")
+    manifest = tmp_path / "site" / "manifest.json"
+    manifest.write_text('{"built_at":"b","json_sidecars":1}\n')
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", lambda **k: RECEIPT_SUMMARY)
+
+    def summary(**kwargs):
+        (kwargs["site_dir"] / "json" / "era_map_summary.json").write_text("{}")
+        return {"editions": [{}] * 7}
+
+    monkeypatch.setattr(site_export, "write_era_map_summary", summary)
+    cli.main(["export-budget-pdf-receipts"])
+    assert manifest.read_text() == '{"built_at":"b","json_sidecars":2}\n'
+    cli.main(["export-budget-pdf-receipts"])          # already right: bytes untouched
+    assert manifest.read_text() == '{"built_at":"b","json_sidecars":2}\n'
+
+
+def test_no_era_summary_leaves_the_manifest_alone(monkeypatch, tmp_path):
+    configure_paths(monkeypatch, tmp_path)
+    json_dir = tmp_path / "site" / "json"
+    json_dir.mkdir(parents=True)
+    (json_dir / "a.json").write_text("{}")
+    (json_dir / "b.json").write_text("{}")
+    manifest = tmp_path / "site" / "manifest.json"
+    manifest.write_text('{\n  "json_sidecars": 1\n}')
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", lambda **k: RECEIPT_SUMMARY)
+    monkeypatch.setattr(site_export, "write_era_map_summary", lambda **k: None)
+    cli.main(["export-budget-pdf-receipts"])
+    assert manifest.read_text() == '{\n  "json_sidecars": 1\n}'

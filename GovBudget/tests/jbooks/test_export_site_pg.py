@@ -2160,3 +2160,71 @@ def test_era_grain_fids_reach_the_fenced_emitters(pg_dsn, tmp_path, monkeypatch)
         es, "_emit_years_matrix", spy("years_matrix", es._emit_years_matrix))
     _run_decade_export(pg_dsn, tmp_path)
     assert seen == {"lineage": sentinel, "years_matrix": sentinel}
+
+
+# ---------------------------------------------------------------------------
+# Families piece 1 (Task 19): p1_era_line_map ships as an uncited dataset
+# ---------------------------------------------------------------------------
+
+_ERA_MAP_DDL = (
+    "create table p1_era_line_map ("
+    " edition integer, account varchar, organization varchar,"
+    " budget_activity varchar, era_key varchar, line_item_code varchar,"
+    " filed_title varchar, program_key varchar, program_account varchar,"
+    " program_org varchar, decision varchar, decision_id varchar,"
+    " ruling varchar, keys_sha_ok boolean, successor_code varchar,"
+    " source_document_sha256 varchar, source_cells varchar)"
+)
+
+
+def _add_era_map(db_path: Path, first: str, second: str) -> None:
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute(_ERA_MAP_DDL)
+        con.execute(
+            "insert into p1_era_line_map values"
+            " (2017, '3010F', 'AF', '04', '3010F-AF-L1', 'ATA000', 'F-35', 'ATA000', null, null,"
+            "  ?, 'ATA000|3010F||2017-2021', 'R-DEC-ERA-SAME', true, null, 'sha17', 'J7'),"
+            " (2019, '3010F', 'AF', '05', '3010F-AF-L9', 'F0150P', 'LEGACY LINE', 'F0150P', null, null,"
+            "  ?, 'F0150P|3010F||2019-2019', 'R-DEC-ERA-HISTORY', true, null, 'sha19', 'J30')",
+            [first, second],
+        )
+    finally:
+        con.close()
+
+
+def test_export_site_ships_p1_era_line_map_uncited(pg_dsn, tmp_path):
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    build_provenance_pages(pg_dsn)
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+    _add_era_map(db, "same_program", "history_only")
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    pq = site / "data" / "p1_era_line_map.parquet"
+    assert pq.exists()
+    rows = duckdb.connect().execute(
+        "select edition, era_key, decision from read_parquet(?)", [str(pq)]).fetchall()
+    assert rows == [(2017, "3010F-AF-L1", "same_program"), (2019, "3010F-AF-L9", "history_only")]
+    man = json.loads((site / "manifest.json").read_text())
+    assert man["datasets"]["p1_era_line_map"] == 2
+    assert "p1_era_line_map" in man["uncited_datasets"]
+    inventory = json.loads((site / "json" / "datasets.json").read_text())["datasets"]
+    entry = next(d for d in inventory if d["name"] == "p1_era_line_map")
+    assert entry["cited"] is False
+    assert entry["row_count"] == 2
+    assert entry["scope"].startswith("One row per PB2017–PB2023 P-1 display line")
+
+
+def test_export_site_refuses_an_undecided_era_line(pg_dsn, tmp_path):
+    _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+    _add_era_map(db, "same_program", "undecided")
+    with pytest.raises(RuntimeError, match="undecided"):
+        export_site(pg_dsn, db, out_dir=tmp_path / "site", pdf_base_url="/pdfs")

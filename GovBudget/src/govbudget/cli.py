@@ -2484,6 +2484,7 @@ def cmd_export_site(args) -> None:
 
 
 def _export_budget_pdf_evidence(*, site_dir: Path, manifest: Path, cache_dir: Path) -> dict:
+    from govbudget.export_site import write_era_map_summary
     from govbudget.program_pdf_receipts import export_program_pdf_receipts
 
     report = export_program_pdf_receipts(site_dir=site_dir, manifest=manifest, cache_dir=cache_dir)
@@ -2492,7 +2493,41 @@ def _export_budget_pdf_evidence(*, site_dir: Path, manifest: Path, cache_dir: Pa
         f" {report['source_count']} government documents;"
         f" audit -> {site_dir / 'json' / 'budget_pdf_receipts_audit.json'}"
     )
+    # Families piece 1 (spec §6.4, V7): the era summary reports each era
+    # edition's receipt completeness from the audit just written, so it is
+    # refreshed here, after every receipts run; None when no era map shipped.
+    era = write_era_map_summary(site_dir=site_dir, duckdb_path=config.DUCKDB_PATH)
+    if era is not None:
+        print(f"era map summary: {len(era['editions'])} editions"
+              f" -> {site_dir / 'json' / 'era_map_summary.json'}")
+        # The F-15 family-history builder counted json/**/*.json for
+        # manifest.json's json_sidecars before this file existed.
+        _refresh_json_sidecars(site_dir)
     return report
+
+
+def _refresh_json_sidecars(site_dir: Path) -> int | None:
+    """Recount manifest.json's json_sidecars after a late JSON sidecar.
+
+    export_site's F-15 family-history builder sets json_sidecars to the number
+    of json/**/*.json files (f15_funding_history.py, `json_dir.rglob("*.json")`)
+    before the receipts step runs, so json/era_map_summary.json, written above
+    on an export's first run, would be left out. Same count and the same
+    serialization as that builder (sorted keys, compact, trailing newline); the
+    file is rewritten only when the number changed. Returns the count, or None
+    when the site has no manifest.json.
+    """
+    import json
+
+    path = site_dir / "manifest.json"
+    if not path.is_file():
+        return None
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    count = len(list((site_dir / "json").rglob("*.json")))
+    if manifest.get("json_sidecars") != count:
+        manifest["json_sidecars"] = count
+        path.write_bytes((json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode())
+    return count
 
 
 def cmd_export_budget_pdf_receipts(args) -> None:

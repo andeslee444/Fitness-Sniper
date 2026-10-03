@@ -1756,6 +1756,19 @@ _DATASET_SCOPES: dict[str, str] = {
         " editions PB2017–PB2026, each cited to its own edition's workbook"
         " cell. Editions are parallel publications, never reconciled."
     ),
+    # Families piece 1 (spec 2026-10-02 §4.4): the reviewed era code
+    # decisions. Uncited by construction (no amounts), so it stays off
+    # _CITED_DATASETS. It names both meanings of pe_bli §6.1 keeps apart: the
+    # era key budget_lines_decade rows carry, and the printed code an era
+    # citation carries. /data/ renders it three times under a 15,600 gzip
+    # ceiling that data.module.css made room for (Task 19).
+    "p1_era_line_map": (
+        "One row per PB2017–PB2023 P-1 display line: era_key (its pe_bli in"
+        " budget_lines_decade), line_item_code (the budget line code printed"
+        " on it, the pe_bli its era citations carry) and the dated owner"
+        " decision that joins it to a program page or to history only, or"
+        " excludes it. Every row is a decision; none carries an amount."
+    ),
     "jbook_details": (
         "One row per (program element × project × budget scenario) cost figure"
         " extracted from J-book R-2/P-40 XML, with its XML element path and"
@@ -2186,6 +2199,175 @@ def _build_dataset_manifest(
     }
 
 
+#: Families piece 1 (spec 2026-10-02 §4.4, §6.4): the era-map dataset, the
+#: summary the site renders from it, and the P-1 editions it covers.
+ERA_MAP_DATASET = "p1_era_line_map"
+ERA_MAP_SUMMARY_FILE = "era_map_summary.json"
+ERA_MAP_EDITIONS = tuple(range(2017, 2024))
+
+
+def _export_p1_era_line_map(con, data_dir: Path) -> int | None:
+    """Ship the reviewed era code decisions as data/p1_era_line_map.parquet.
+
+    Families piece 1 (spec 2026-10-02 §4.4, §7). `con` is the export's
+    read-only warehouse connection. Returns the row count written, or None
+    when the warehouse has no p1_era_line_map (a fixture warehouse, or one
+    built before the map existed); then a stale parquet left in `data_dir` by
+    an earlier export is removed, never re-shipped.
+
+    Raises RuntimeError when the map holds an `undecided` row (§7: an era key
+    with no decision is never exported; dbt's assert_p1_era_map_no_undecided
+    is the build-time twin), and when the map is missing while
+    fct_program_decade_series carries era points (map_basis other than
+    'native'): era points never ship without the decisions behind them.
+    """
+    dest = Path(data_dir) / f"{ERA_MAP_DATASET}.parquet"
+    tables = {r[0] for r in con.execute(
+        "select table_name from information_schema.tables"
+        " where table_schema = 'main'").fetchall()}
+    if ERA_MAP_DATASET not in tables:
+        if "fct_program_decade_series" in tables:
+            cols = {r[0] for r in con.execute(
+                "select column_name from information_schema.columns"
+                " where table_schema = 'main'"
+                " and table_name = 'fct_program_decade_series'").fetchall()}
+            if "map_basis" in cols:
+                era_points = con.execute(
+                    "select count(*) from fct_program_decade_series"
+                    " where map_basis <> 'native'").fetchone()[0]
+                if era_points:
+                    raise RuntimeError(
+                        f"export-site: fct_program_decade_series carries {era_points}"
+                        " era point(s) but the warehouse has no p1_era_line_map; era"
+                        " points cannot ship without the decisions that put them"
+                        " there (run govbudget build)")
+        dest.unlink(missing_ok=True)
+        return None
+    undecided = con.execute(
+        f"select count(*) from {ERA_MAP_DATASET} where decision = 'undecided'"
+    ).fetchone()[0]
+    if undecided:
+        raise RuntimeError(
+            f"export-site: p1_era_line_map holds {undecided} undecided era line(s);"
+            " an era key with no decision is never exported (spec §7). Run"
+            " `govbudget era-map check`.")
+    dest_str = str(dest).replace("'", "''")
+    con.execute(
+        f"COPY (select * from {ERA_MAP_DATASET}"
+        " order by edition, account, organization, budget_activity, era_key)"
+        f" TO '{dest_str}' (format parquet, compression zstd)")
+    return int(con.execute(
+        f"select count(*) from read_parquet('{dest_str}')").fetchone()[0])
+
+
+def write_era_map_summary(*, site_dir: Path, duckdb_path: Path) -> dict | None:
+    """json/era_map_summary.json: the shipped era map, counted (spec §4.4, §6.4, V7).
+
+    Per PB2017–PB2023 edition: the P-1 lines the map holds; per decision, the
+    chains (distinct decision_id with a line in that edition), lines and their
+    FY N−2 actuals (fct_decade_series kind 'actuals', USD thousands); and the
+    edition's P-1 receipt completeness from json/budget_pdf_receipts_audit.json.
+    Across editions, the same tallies by (ruling, decision) and by decision.
+
+    Runs AFTER export_program_pdf_receipts (cli._export_budget_pdf_evidence):
+    the audit must be a full-corpus run over THIS citations.json (its
+    citation_sha256), or this raises ValueError rather than publish another
+    run's completeness. Returns None, and removes a stale summary, when the
+    export shipped no data/p1_era_line_map.parquet. Raises ValueError on a
+    decision outside DECISIONS (an `undecided` row) or an edition outside
+    2017–2023.
+    """
+    import duckdb as _duckdb
+
+    from govbudget.jbooks.era_map import DECISIONS
+
+    site_dir = Path(site_dir)
+    out_path = site_dir / "json" / ERA_MAP_SUMMARY_FILE
+    parquet = site_dir / "data" / f"{ERA_MAP_DATASET}.parquet"
+    if not parquet.is_file():
+        out_path.unlink(missing_ok=True)
+        return None
+    audit = json.loads((site_dir / "json" / "budget_pdf_receipts_audit.json").read_text())
+    citations_sha = hashlib.sha256(
+        (site_dir / "json" / "citations.json").read_bytes()).hexdigest()
+    if not audit.get("full_corpus") or audit.get("citation_sha256") != citations_sha:
+        raise ValueError(
+            "era_map_summary: budget_pdf_receipts_audit.json is not a full-corpus run"
+            " over this citations.json; run `govbudget export-budget-pdf-receipts` first")
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        rows = con.execute(
+            "with a as ("
+            "  select pe_bli, edition_year, sum(amount_thousands) as actuals"
+            "  from fct_decade_series"
+            "  where amount_type_kind = 'actuals' and fy = edition_year - 2"
+            "  group by pe_bli, edition_year)"
+            " select m.edition, m.era_key, m.decision, m.decision_id, m.ruling,"
+            "        coalesce(a.actuals, 0)"
+            " from read_parquet(?) m"
+            " left join a on a.pe_bli = m.era_key and a.edition_year = m.edition"
+            " order by m.edition, m.era_key",
+            [str(parquet)],
+        ).fetchall()
+    finally:
+        con.close()
+
+    def tally() -> dict:
+        return {"chains": set(), "lines": 0, "actuals": Decimal(0)}
+
+    per_edition = {ed: {d: tally() for d in DECISIONS} for ed in ERA_MAP_EDITIONS}
+    totals = {d: tally() for d in DECISIONS}
+    by_ruling: dict[tuple[str, str], dict] = {}
+    for edition, era_key, decision, decision_id, ruling, actuals in rows:
+        edition = int(edition)
+        if edition not in per_edition:
+            raise ValueError(
+                f"era_map_summary: {era_key} sits in PB{edition}, outside PB2017–PB2023")
+        if decision not in DECISIONS:
+            raise ValueError(
+                f"era_map_summary: {era_key} (PB{edition}) carries decision"
+                f" {decision!r}; an undecided era line is never published")
+        amount = Decimal(str(actuals))
+        for t in (per_edition[edition][decision], totals[decision],
+                  by_ruling.setdefault((ruling or "", decision), tally())):
+            t["chains"].add(decision_id)
+            t["lines"] += 1
+            t["actuals"] += amount
+
+    def counted(t: dict) -> dict:
+        return {"chains": len(t["chains"]), "lines": t["lines"],
+                "actuals_thousands": float(t["actuals"])}
+
+    books = {(b.get("edition"), b.get("exhibit")): b for b in audit.get("books", [])}
+    editions = []
+    for ed in ERA_MAP_EDITIONS:
+        book = books.get((ed, "P-1"), {})
+        editions.append({
+            "edition": ed,
+            "fy_actuals": ed - 2,
+            "lines": sum(t["lines"] for t in per_edition[ed].values()),
+            "by_decision": {d: counted(per_edition[ed][d]) for d in DECISIONS},
+            "receipts": {"facts": int(book.get("facts", 0)),
+                         "complete": int(book.get("complete", 0))},
+        })
+    summary = {
+        "schema_version": 1,
+        "actuals_basis": ("FY N-2 actuals as printed in the PB N P-1"
+                          " (fct_decade_series amount_type_kind 'actuals'),"
+                          " USD thousands, nominal"),
+        "receipts_basis": ("budget_pdf_receipts_audit.json books[edition, P-1]:"
+                           " the edition's cited P-1 workbook facts and how many"
+                           " carry a complete PDF receipt"),
+        "editions": editions,
+        "by_ruling": [{"ruling": r, "decision": d, **counted(t)}
+                      for (r, d), t in sorted(by_ruling.items())],
+        "totals": {d: counted(totals[d]) for d in DECISIONS},
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_json(out_path, summary)
+    return summary
+
+
 #: Final-review finding #10 (2026-09-27): the /downloads/ citations card said
 #: "(jbook_pdf + workbook + lda_filing)", and citations.parquet held 10 kinds
 #: (workbook 42,153, derived 38,993, lda_filing 18,853, jbook_narrative
@@ -2586,6 +2768,12 @@ def export_site(
             con=con, duckdb_path=duckdb_path, data_dir=data_dir
         )
         dataset_counts["dim_lobbyists"] = len(lobbyist_rows)
+
+        # p1_era_line_map — the reviewed era code decisions (families piece
+        # 1). Uncited: _CITED_DATASETS leaves it on the ledger below.
+        era_map_rows = _export_p1_era_line_map(con, data_dir)
+        if era_map_rows is not None:
+            dataset_counts[ERA_MAP_DATASET] = era_map_rows
     finally:
         con.close()
 
