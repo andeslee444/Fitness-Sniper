@@ -1,0 +1,10 @@
+{
+  "batch": "B5",
+  "decided_on": "2026-10-03",
+  "owner_reply": "approved, except 6: history_only; 15: history_only",
+  "rows": {
+    "20|0300D|DCAA": {"decision": "history_only", "program_account": "0300D", "program_org": "DCAA",
+      "note": "owner B5 row 6: history_only, filed under its own identity (code 20 is a PB2026 collision code; joining DCSA or DTRA would put two organizations on one page)"},
+    "CAADJS|3021F|": {"decision": "history_only", "note": "owner B5 row 15: history_only"}
+  }
+}
