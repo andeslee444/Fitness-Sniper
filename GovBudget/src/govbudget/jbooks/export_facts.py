@@ -20,8 +20,17 @@ EXPORTS: dict[str, str] = {
         "select exhibit, fiscal_year, account, account_title, organization,"
         " budget_activity, budget_activity_title, pe_bli, title, amount_type,"
         " amount_thousands, source_document_id, source_sheet,"
-        " coalesce(array_to_string(source_cells, ','), '') as source_cells from budget_lines"
+        " coalesce(array_to_string(source_cells, ','), '') as source_cells,"
+        " line_item_code from budget_lines"
         " where source_document_id is not null"
+        # Row order is the table's id (insertion) order. An unordered select
+        # returns heap order, which moves whenever an UPDATE rewrites a
+        # tuple: migration 021 rewrites every modern P-1/P-1R row and the S1
+        # re-run every era P-1 row, so the lake file would reorder under
+        # unchanged data. Switching heap -> id order permutes the file once
+        # (159,494 rows on 2026-10-02); the S1 proof's Z-vs-A export diff
+        # shows the published site does not depend on that order.
+        " order by id"
     ),
     "details": (
         # d.account is the P-40 AppropriationNumber the reconciler already

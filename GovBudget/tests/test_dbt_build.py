@@ -66,7 +66,11 @@ def make_lake(data_dir: Path):
     jbooks = data_dir / "parquet/jbooks"
     jbooks.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
-        f"copy (select * from (values ('R-1','2026','0400','Research','DARPA','1','Basic Research',"
+        # line_item_code (migration 021): the printed budget line code, as
+        # migration 021 backfills it — pe_bli on P-1/P-1R rows (none of this
+        # fixture's P-1 rows is an era key), NULL on R-1 rows.
+        f"copy (select *, case when exhibit in ('P-1', 'P-1R') then pe_bli end"
+        f" as line_item_code from (values ('R-1','2026','0400','Research','DARPA','1','Basic Research',"
         f"'0601101E','DEFENSE RESEARCH','fy_2024_actuals','280494','1'),"
         # Phase 5H: fy_2026_total detail rows feed the budget flow river —
         # two programs under one BA so the flow tree has real fan-out,
@@ -449,6 +453,13 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     con = duckdb.connect(str(tmp_path / "duckdb" / "test.duckdb"))
+    # Families piece 1 (migration 021): stg_budget_lines passes the printed
+    # budget line code through by name; R-1 rows carry none.
+    assert con.sql(
+        "select exhibit, count(*), count(line_item_code),"
+        " count(*) filter (where line_item_code = pe_bli)"
+        " from stg_budget_lines group by 1 order by 1"
+    ).fetchall() == [("P-1", 5, 5, 5), ("P-1R", 1, 1, 1), ("R-1", 7, 0, 0)]
     # 4 since the ROADMAP #6 rider added K3, a deobligation on K1's award.
     assert con.sql("select count(*) from fct_award_transactions").fetchone()[0] == 4
     assert con.sql("select count(*) from dim_recipients").fetchone()[0] == 2

@@ -10,5 +10,6 @@ select
     title,
     amount_type,
     try_cast(amount_thousands as double) as amount_thousands,
-    source_document_id
+    source_document_id,
+    line_item_code
 from {{ source('lake', 'jbook_budget_lines') }}
