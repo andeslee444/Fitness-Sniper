@@ -192,8 +192,12 @@ export function getCorpusCounts(): CorpusCount[] {
       // whose history is CITED (a positive fct_decade_series grain). The
       // rest are era P-1 display line numbers, which are workbook rows
       // rather than program identities, and reserve-component P-1R rows,
-      // whose money is already inside the P-1 line. The sentence names the
-      // two universes it unions instead of claiming all of them.
+      // whose money is already inside the P-1 line. Families piece 1
+      // (2026-10-02) keeps that: an era line still gets no page of its own;
+      // its figures reach an existing page only through a reviewed decision
+      // on the code it printed (p1_era_line_map), so this count and the
+      // sentence below do not change. The sentence names the two universes
+      // it unions instead of claiming all of them.
       counts:
         "Browsable program pages, all tiers: elements the FY2026 workbooks " +
         "list, plus elements only earlier editions list.",

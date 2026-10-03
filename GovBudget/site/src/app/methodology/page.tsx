@@ -1765,13 +1765,25 @@ export default function MethodologyPage() {
                   record, never a silent skip.
                 </p>
                 <p className="mt-2">
-                  Two honest gaps remain. First, cross-edition{" "}
+                  {/* Families piece 1 (spec 2026-10-02 §6.4): this sentence
+                      said cross-edition procurement comparisons stopped at the
+                      PB2024 boundary. Era procurement lines now join a program
+                      only through a dated, reviewed decision on the code each
+                      P-1 printed (published in p1_era_line_map); the rest stay
+                      data only. The sentence states that gap instead, at the
+                      old one's exact rendered length (312 bytes):
+                      /methodology/ sits near its gate-1 ceiling and only the
+                      link markup is new.
+                      src/__tests__/methodology-era-sentence.test.ts pins it. */}
+                  Two honest gaps remain. First, PB2017–PB2023{" "}
                   <em>procurement</em>{" "}
-                  comparisons stop at the PB2024 boundary:
-                  PB2017–PB2023 procurement lines are keyed within their own
-                  edition (the underlying account/line identity is unstable
-                  across those years), so book diffs for the era editions cover
-                  RDT&amp;E only — a wrong lineage would be worse than a gap.
+                  lines join a program only by a dated, reviewed decision on
+                  the code their P-1 printed, never by title (renames too;
+                  published in{" "}
+                  <a href="/data/" className="underline hover:text-foreground">p1_era_line_map</a>);
+                  the rest stay data only, and book diffs for the era editions
+                  still cover RDT&amp;E only — a wrong lineage would be worse
+                  than a gap.
                   Second, program elements absent from an edition render as gaps
                   (&ldquo;–&rdquo;, or a break in the decade sparkline) with a
                   &ldquo;not in the PB20XX edition&rdquo; note; the site never

@@ -1,0 +1,133 @@
+/* ── The /data/ dataset inventory's row and cell styling, hoisted (gate 1) ──
+   Families piece 1 (spec 2026-10-02 §4.4, Task 19) adds a seventeenth
+   dataset, p1_era_line_map, to a page that had 42 gzip bytes of headroom
+   (live 2026-10-01: 101,696 / 15,558 against 105,000 / 15,600). One more
+   row costs more than that, and the ceiling is not raised. Every inventory
+   row carried the same utility strings on the <tr> and all five cells, and
+   the page ships each row twice (HTML and the RSC payload). Hoisting them
+   here, the move coverage.module.css made for /coverage/, weighed −19,948
+   raw / −2,038 gzip on production-origin builds against 2026-10-02's data
+   (101,696 / 15,555 -> 81,748 / 13,517) with no rendered character changed.
+
+   Each rule names the utility list it replaces and declares what that list
+   compiles to (Tailwind 4, the site's built stylesheet), so every computed
+   style is unchanged: scripts/computed-style-snapshot.mjs compares every
+   element of the table at 390×844 and 1440×900, light and dark, screen and
+   print, and the row :hover state. Cells are selected by the hooks already
+   on them (data attributes) or by column position; the name cell keeps
+   `t-id` for the type spec. Unlayered rules beat the utilities layer, and
+   nothing else styles these cells, so these rules win exactly where the
+   utilities did. */
+
+/* <tr>: block sm:table-row border-b border-border last:border-0
+   hover:bg-muted/30 transition-colors py-3 sm:py-0 */
+.inv > tbody > tr {
+  display: block;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-color: var(--border);
+  padding-block: calc(var(--spacing) * 3);
+  transition-property: color, background-color, border-color, outline-color,
+    text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via,
+    --tw-gradient-to;
+  transition-timing-function: var(--tw-ease, var(--ease-standard));
+  transition-duration: var(--tw-duration, var(--motion-fast));
+}
+.inv > tbody > tr:last-child {
+  border-style: solid;
+  border-width: 0;
+}
+@media (hover: hover) {
+  .inv > tbody > tr:hover {
+    background-color: var(--muted);
+  }
+  @supports (color: color-mix(in lab, red, red)) {
+    .inv > tbody > tr:hover {
+      background-color: color-mix(in oklab, var(--muted) 30%, transparent);
+    }
+  }
+}
+
+/* name <td> (keeps t-id): block sm:table-cell px-4 py-0 sm:py-2
+   sm:whitespace-nowrap */
+.inv > tbody > tr > td:first-child {
+  display: block;
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 0);
+}
+
+/* rows <td>: inline sm:table-cell px-4 py-0 sm:py-2 text-left sm:text-right
+   tabular-nums text-xs sm:text-sm text-muted-foreground
+   size <td>: the same with pr-4 sm:px-4 in place of px-4, plus
+   whitespace-nowrap */
+.inv > tbody > tr > td:nth-child(2),
+.inv > tbody > tr > td:nth-child(3) {
+  display: inline;
+  padding-block: calc(var(--spacing) * 0);
+  text-align: left;
+  --tw-numeric-spacing: tabular-nums;
+  font-variant-numeric: var(--tw-ordinal,) var(--tw-slashed-zero,)
+    var(--tw-numeric-figure,) var(--tw-numeric-spacing,)
+    var(--tw-numeric-fraction,);
+  font-size: var(--text-xs);
+  line-height: var(--tw-leading, var(--text-xs--line-height));
+  color: var(--muted-foreground);
+}
+.inv > tbody > tr > td:nth-child(2) {
+  padding-inline: calc(var(--spacing) * 4);
+}
+.inv > tbody > tr > td:nth-child(3) {
+  padding-right: calc(var(--spacing) * 4);
+  white-space: nowrap;
+}
+
+/* citation <td>: inline sm:table-cell px-4 py-0 sm:py-2 text-xs */
+.inv [data-primary-value="citation"] {
+  display: inline;
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 0);
+  font-size: var(--text-xs);
+  line-height: var(--tw-leading, var(--text-xs--line-height));
+}
+
+/* scope <td>: block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground
+   sm:max-w-sm */
+.inv [data-primary-value="scope"] {
+  display: block;
+  padding-inline: calc(var(--spacing) * 4);
+  padding-top: calc(var(--spacing) * 1);
+  color: var(--muted-foreground);
+}
+
+/* The `sm:` halves, on the same selectors as the rules they override. */
+@media (width >= 40rem) {
+  .inv > tbody > tr {
+    display: table-row;
+    padding-block: calc(var(--spacing) * 0);
+  }
+  .inv > tbody > tr > td:first-child {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 2);
+    white-space: nowrap;
+  }
+  .inv > tbody > tr > td:nth-child(2),
+  .inv > tbody > tr > td:nth-child(3) {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 2);
+    text-align: right;
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+  .inv > tbody > tr > td:nth-child(3) {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+  .inv [data-primary-value="citation"] {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 2);
+  }
+  .inv [data-primary-value="scope"] {
+    display: table-cell;
+    padding-block: calc(var(--spacing) * 2);
+    max-width: var(--container-sm);
+  }
+}

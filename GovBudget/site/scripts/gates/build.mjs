@@ -369,7 +369,22 @@ export const PAGE_WEIGHT_BUDGET = [
   // The drift leg fired at 7.0x (+245 gzip: the final review's fct_influence
   // and dim_geography descriptions, R-DEC-LDATOTAL). 41 gzip bytes left: any
   // further text here needs a trim first, never a raise.
-  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "101,707 / 15,559" },
+  // FAMILIES PIECE 1 (2026-10-03, Task 19 Part A): the inventory rows'
+  // utility strings moved into src/app/data/data.module.css (the
+  // coverage.module.css move). p1_era_line_map adds a 17th inventory row and
+  // Explorer option, and one row weighs more than the 42 gzip bytes this
+  // page had left (live 2026-10-01: 101,696 / 15,558). Production-origin
+  // builds against the 2026-10-02 export: 101,696 / 15,557 -> 81,748 /
+  // 13,515 (-19,948 raw / -2,042 gzip); scripts/computed-style-snapshot.mjs
+  // found 0 computed-style differences (390/1440, light/dark, screen/print,
+  // row hover). The new row (simulated +381 to +605 gzip by scope length)
+  // ships with the map; Task 21's S4 build re-measures it. The per-edition
+  // era table does not render here: as built it weighed +3,647 gzip on this
+  // page even after the hoist. CEILINGS UNCHANGED. RE-MEASURED 2026-10-03
+  // (Task 19 Part A build of 5e317a38 plus the Part A edits, built
+  // 2026-10-03T17:29:32Z, before the map ships; gate 1's own weigh()):
+  // 81,748 / 13,515; 23,252 raw / 2,085 gzip left.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "81,748 / 13,515" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -651,7 +666,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // Production served 161,166 / 45,270 the same day. Piece 1 replaces one
   // sentence here at equal length and adds a link (spec §6.4); its era table
   // renders wherever it fits without a ceiling raise, decided in Task 19.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,166 / 45,270" },
+  // FAMILIES PIECE 1 (2026-10-03, Task 19 Part A): the "PB2024 boundary"
+  // sentence became the era-procurement gap sentence at its exact rendered
+  // length (312 bytes); only its p1_era_line_map link is new. RE-MEASURED
+  // 2026-10-03 (production-origin build of 5e317a38 plus the Part A edits,
+  // built 2026-10-03T17:29:32Z; gate 1's own weigh()): 161,166 / 45,270 ->
+  // 161,354 / 45,328 (+188 raw / +58 gzip). CEILINGS UNCHANGED; 646 raw /
+  // 72 gzip left. The era table does not render here.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,354 / 45,328" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //

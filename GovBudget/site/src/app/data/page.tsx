@@ -13,6 +13,8 @@ import { PageIntro } from "@/components/page-intro";
 // exports become client references in a server component).
 import { DATASET_NAMES, type DatasetName } from "@/lib/dataset-names";
 
+import styles from "./data.module.css";
+
 // ── Dataset inventory ─────────────────────────────────────────────────────────
 // PM Sprint 2 (§P1-5): row counts and scope sentences come from the build
 // manifest (data/site/json/datasets.json), computed from the emitted parquets.
@@ -147,9 +149,14 @@ export default function DataPage() {
             page. Below `sm` each dataset becomes a card: name, rows, size and
             citation on one line, scope beneath. One DOM: the same <table>
             restyled, so data-dataset-card / data-dataset-rowcount hooks and
-            the header semantics are untouched. */}
+            the header semantics are untouched.
+            FAMILIES PIECE 1 (Task 19): the rows' and cells' utility strings
+            live in data.module.css (`.inv`), selected by the hooks below.
+            They used to ride on every row twice (HTML + RSC payload); the
+            hoist paid for p1_era_line_map's row on a page with 42 gzip bytes
+            left. src/__tests__/data-inventory-hoist.test.ts pins it. */}
         <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="min-w-full text-sm">
+          <table className={`min-w-full text-sm ${styles.inv}`}>
             <thead className="hidden sm:table-header-group">
               <tr className="border-b border-border bg-muted/50">
                 <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
@@ -177,25 +184,21 @@ export default function DataPage() {
                     key={ds.name}
                     data-dataset-card={ds.name}
                     role="row"
-                    className="block sm:table-row border-b border-border last:border-0 hover:bg-muted/30 transition-colors py-3 sm:py-0"
                   >
-                    <td role="cell" className="t-id block sm:table-cell px-4 py-0 sm:py-2 sm:whitespace-nowrap">
+                    <td role="cell" className="t-id">
                       {ds.name}
                     </td>
                     {/* [data-dataset-rowcount] wraps the NUMERALS ONLY — gate
                         24 leg b parses its text as an integer against the
                         shipped parquet, so the mobile "rows" word rides
                         outside it. */}
-                    <td
-                      role="cell"
-                      className="inline sm:table-cell px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground"
-                    >
+                    <td role="cell">
                       <span data-dataset-rowcount>
                         {ds.row_count.toLocaleString("en-US")}
                       </span>
                       <span className="sm:hidden"> rows</span>
                     </td>
-                    <td role="cell" className="inline sm:table-cell pr-4 sm:px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                    <td role="cell">
                       <span className="sm:hidden" aria-hidden="true">
                         ·{" "}
                       </span>
@@ -204,11 +207,7 @@ export default function DataPage() {
                     {/* data-primary-value marks the two columns that were
                         entirely off-canvas at 390px before the card treatment
                         (backlog #31) — gate 3's mobile leg measures both. */}
-                    <td
-                      role="cell"
-                      data-primary-value="citation"
-                      className="inline sm:table-cell px-4 py-0 sm:py-2 text-xs"
-                    >
+                    <td role="cell" data-primary-value="citation">
                       {isCited ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-medium">
                           cited
@@ -219,11 +218,7 @@ export default function DataPage() {
                         </span>
                       )}
                     </td>
-                    <td
-                      role="cell"
-                      data-primary-value="scope"
-                      className="block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground sm:max-w-sm"
-                    >
+                    <td role="cell" data-primary-value="scope">
                       {ds.scope}
                     </td>
                   </tr>
