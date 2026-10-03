@@ -34,6 +34,13 @@ R-DEC-ERA-EXCLUDE stays, with its corrected figure: the two `0390D` Chem Demil
 lines carry $5.83B of era actuals and have no page in any edition (#194). The other session's
 12-family attempt is preserved, unmerged, on local branch
 `wip/other-session-families-layout-2026-09-29`.
+**Era-map review closed (2026-10-03):** the owner ruled the 125 chains
+that needed an individual decision in 5 batches, **R-DEC-ERA-B1**–**R-DEC-ERA-B5**
+(2026-10-03), as 108 same_program and
+17 history_only (0 chains split by edition range); each row of
+`dbt/seeds/p1_era_code_decisions.csv` names its batch, and the owner's replies are
+kept verbatim in `data/research/era_map/batches/`. No PB2017–PB2023 era key is undecided:
+`assert_p1_era_map_no_undecided` (error severity) replaced the warn test.
 
 **F-15 family funding correction (2026-09-24):** replace the largest single
 program's request with a cited history of the identified F-15 development and

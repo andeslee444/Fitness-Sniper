@@ -260,12 +260,13 @@ def test_singular_test_passes_on_the_clean_fixture(test_name):
     assert _failures(_lake(), test_name) == []
 
 
-def test_warn_test_lists_undecided_and_stale_keys():
+def test_no_undecided_lists_undecided_and_stale_keys():
+    # Not in ALL_TESTS: the clean fixture keeps one undecided key on purpose.
     con = _lake()
-    rows = _failures(con, "warn_p1_era_map_undecided")
+    rows = _failures(con, "assert_p1_era_map_no_undecided")
     assert [(r[0], r[1], r[6]) for r in rows] == [(2019, "2035A-ARMY-L5", "undecided")]
     con.execute("update p1_era_line_map set keys_sha_ok = false where era_key = '0300D-DSS-L21'")
-    assert len(_failures(con, "warn_p1_era_map_undecided")) == 2
+    assert len(_failures(con, "assert_p1_era_map_no_undecided")) == 2
 
 
 # --- the singular tests: each fails on its defect ---------------------------
