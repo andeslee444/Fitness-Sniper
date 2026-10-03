@@ -420,7 +420,8 @@ order by 1, 2, 3, 4, 5
 """
 
 
-#: How an empty organization code prints in a refusal (13 live identities).
+#: How an empty organization code prints in a refusal (20 live identities since
+#: S1b loaded the seven PB2017-PB2023 P-1 Classified Programs lines, 2026-10-02).
 EMPTY_ORG = "''"
 
 
