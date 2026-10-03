@@ -741,7 +741,7 @@ Record the snapshot's shas for the proof note:
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && uv run --project . python -c "import json,sys; m=json.load(open(sys.argv[1])); print(json.dumps({'created_at': m['created_at'], 'duckdb_sha256_at_copy': m['duckdb']['sha256_at_copy'], 'duckdb_sha256': m['duckdb']['sha256'], 'views_rewritten': m['duckdb']['views_rewritten'], 'site_sha256': m['site']['sha256'], 'raw_docs_sha256': m['raw_docs']['sha256'], 'manifest_jsonl_sha256': m['manifest_jsonl_sha256'], 'pg_dump_sha256': m['pg']['dump_sha256'], 'pg_scratch_dsn': m['pg']['scratch_dsn'], 'jbook_documents_rewritten': m['pg']['rewrites']}, indent=1))" "$GOVBUDGET_PROOFS/s4/snapshot.json" > "$GOVBUDGET_PROOFS/s4-logs/snapshot-shas.json" && cat "$GOVBUDGET_PROOFS/s4-logs/snapshot-shas.json"
 ```
-Expected: the JSON object with every sha filled and `"pg_scratch_dsn": "postgresql://localhost/govbudget_proof_s4"`.
+Expected: the JSON object with every sha filled and `"pg_scratch_dsn": "dbname=govbudget_proof_s4 host=localhost"` (keyword/value conninfo since Task 3's fix round, built with `psycopg.conninfo.make_conninfo`).
 
 - [ ] **Step 11: V3 on the pinned state — the dbt tests, no rebuild**
 
@@ -775,8 +775,8 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 ```
 Expected (seconds; the clones share blocks):
 ```
-s4-A: /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-A | /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-A/duckdb/govbudget.duckdb | postgresql://localhost/govbudget_proof_s4
-s4-B: /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-B | /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-B/duckdb/govbudget.duckdb | postgresql://localhost/govbudget_proof_s4
+s4-A: /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-A | /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-A/duckdb/govbudget.duckdb | dbname=govbudget_proof_s4 host=localhost
+s4-B: /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-B | /Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/s4-B/duckdb/govbudget.duckdb | dbname=govbudget_proof_s4 host=localhost
 ```
 Never write `.proofs/s4` again: both clones' DuckDB views read `.proofs/s4/parquet` and their documents resolve to `.proofs/s4/raw_docs`. Always pass the run dir to the snapshot's `env.sh` (without it, `env.sh` points at `.proofs/s4` itself).
 
