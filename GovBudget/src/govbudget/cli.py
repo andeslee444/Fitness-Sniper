@@ -2429,6 +2429,21 @@ def cmd_verify_lineage(args) -> None:
     sys.exit(0 if gates_ok else 1)
 
 
+def cmd_verify_era_map(args) -> None:
+    from govbudget import verify_era_map
+
+    out = verify_era_map.run_verify_era_map(
+        site_dir=config.SITE_DIR,
+        duckdb_path=config.DUCKDB_PATH,
+        seed_path=verify_era_map.DEFAULT_SEED_PATH,
+        legs=args.legs,
+    )
+    for line in verify_era_map.format_report(out):
+        print(line)
+    print(f"verify-era-map: {out['verdict']}")
+    sys.exit(0 if out["verdict"] == "PASS" else 1)
+
+
 def cmd_export_site(args) -> None:
     from govbudget.export_site import export_site, refresh_usaspending_ids
 
@@ -3282,6 +3297,17 @@ def main(argv=None) -> None:
              " + 1:1-sum honesty)",
     )
     vlin.set_defaults(func=cmd_verify_lineage)
+
+    vera = sub.add_parser(
+        "verify-era-map",
+        help="families piece 1 release gate: era P-1 map vs the shipped"
+             " workbooks, owner decisions, F-15 roster (legs a-f)",
+    )
+    vera.add_argument(
+        "--legs", default="abcdef",
+        help="legs to run, letters from abcdef (default: all six)",
+    )
+    vera.set_defaults(func=cmd_verify_era_map)
 
     v5 = sub.add_parser(
         "verify-phase5",
