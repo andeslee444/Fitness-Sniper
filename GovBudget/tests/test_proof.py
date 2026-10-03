@@ -889,3 +889,59 @@ def test_cli_control_write_noise_and_noise_from_round_trip(tmp_path, capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(["proof", "diff", str(a), str(b), "--control", "--noise-from", str(noise_file)])
     assert exc.value.code == 2
+
+
+# ---------------------------------------------------------------------------
+# Fix round 3b: an absolute floor for float/numeric-text noise near zero
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("x, y, close", [
+    (-7.450580596923828e-09, 0.0, True),    # AZ-05's real residue: -2**-27 vs 0.0
+    (0.0, 0.000002, False),                 # 2e-6 > the 1e-6 floor: a real change
+    (1e-7, -1e-7, True),                    # 2e-7 absolute gap, both near zero
+    (1e-6, 0.0, True),                      # exactly at the floor
+    (CLEAN, NOISY, True),                   # unaffected: still equal by the
+    (CLEAN, MOVED, False),                  # existing 12-significant-digit rule
+])
+def test_float_close_has_an_absolute_floor_near_zero(x, y, close):
+    assert proof._float_close(x, y) is close
+
+
+def test_near_zero_float_in_a_json_list_element_is_noise(tmp_path):
+    # The real AZ-05 shape: an element differs ONLY in one near-zero float,
+    # everything else (including the pe_bli-style string) identical.
+    entry = {"award_count": 1, "fiscal_year": 2025, "pe_bli": "0604874C",
+             "positive_obligation": 122223512.03999999, "recipient_count": 1,
+             "transaction_count": 4}
+    _json(tmp_path / "a" / "p.json",
+          {"by_year_programs": [{**entry, "total_obligation": -7.450580596923828e-09}]})
+    _json(tmp_path / "b" / "p.json",
+          {"by_year_programs": [{**entry, "total_obligation": 0.0}]})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["p.json"]["status"] == "equivalent"
+    assert report["float_noise"]["values"] >= 1
+    assert proof.is_equal(report)
+
+    # A genuine 2e-6 change in the same position is still "changed".
+    _json(tmp_path / "b" / "p.json",
+          {"by_year_programs": [{**entry, "total_obligation": 0.000002}]})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["p.json"]["status"] == "changed"
+    assert not proof.is_equal(report)
+
+
+@pytest.mark.parametrize("typ, va, vb", [
+    ("bigint", 1, 2),
+    ("decimal(10,6)", decimal.Decimal("0.000001"), decimal.Decimal("0.000003")),
+    ("varchar", "ABC", "ABD"),
+])
+def test_absolute_floor_does_not_affect_integers_decimals_or_strings(tmp_path, typ, va, vb):
+    # The floor applies only where the float rule already applies (DOUBLE/
+    # FLOAT and numeric text); an integer, decimal or plain string a mere
+    # 1e-6 (or less) apart by VALUE is still an exact, reported change.
+    cols = [("state", "varchar"), ("v", typ)]
+    _parquet(tmp_path / "a" / "data" / "t.parquet", cols, [("NY", va)])
+    _parquet(tmp_path / "b" / "data" / "t.parquet", cols, [("NY", vb)])
+    pq = proof.diff_trees(tmp_path / "a", tmp_path / "b")["files"]["data/t.parquet"]
+    assert (pq["status"], pq["detail"]["only_a"], pq["detail"]["only_b"]) == ("changed", 1, 1)

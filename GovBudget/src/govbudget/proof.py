@@ -65,9 +65,12 @@ Float noise: dbt marts built from parallel double sums (dim_geography,
 fct_district_totals, fct_program_concentration) differ in the last bits
 between two identical queries (4589898661.9800005 vs 4589898661.98), so
 DOUBLE/FLOAT parquet values and JSON floats equal to FLOAT_SIGNIFICANT_DIGITS
-significant digits (relative difference at most 1e-12) count as equivalent and
-are tallied apart (report["float_noise"], each file's "float_noise"); they are
-never "changed". Integers and decimals always compare exactly.
+significant digits (relative difference at most 1e-12) OR within
+_FLOAT_ABS_TOL (1e-6) absolute — the same non-determinism shows up as a
+near-zero residual too, where a purely relative rule is degenerate (Fix
+round 3b) — count as equivalent and are tallied apart (report["float_noise"],
+each file's "float_noise"); they are never "changed". Integers and decimals
+always compare exactly.
 
 Fix round 3 (2026-10, driven by two real exports of one snapshot differing):
   - Numeric-text equivalence: when BOTH sides of a string leaf (a JSON value
@@ -82,8 +85,8 @@ Fix round 3 (2026-10, driven by two real exports of one snapshot differing):
     verdict (noise, a trusted reorder, or a real change) is reported at the
     OUTER string leaf's pointer, never a pointer inside the decoded value.
   - Derived-hash equivalence (ruling 3): a content hash or byte count is
-    equivalent when the file it describes compared equivalent (or
-    identical) in the SAME diff. DERIVED_HASH_CARRIERS names the two known
+    equivalent when the file it describes compared equivalent, reordered, or
+    identical in the SAME diff. DERIVED_HASH_CARRIERS names the two known
     cases (json/datasets.json's per-entry `bytes`, pointed at
     `data/<file>`; json/budget_pdf_receipts_audit.json's `/citation_sha256`,
     pointed at json/citations.json) — an explicit, small mapping, not a
@@ -98,6 +101,11 @@ Fix round 3 (2026-10, driven by two real exports of one snapshot differing):
     as "changed", exactly as before this ruling — nothing becomes laxer by
     accident. A trusted reorder's file status is "reordered", a THIRD good
     status alongside "identical"/"equivalent" (is_equal() treats it as fine).
+
+Fix round 3b (2026-10, controller ruling after Fix round 3's real-check run
+left one difference): _FLOAT_ABS_TOL — see its own comment — closes the one
+case the relative-only rule could not: a near-zero float residual compared
+against an exact 0.0.
 """
 from __future__ import annotations
 
@@ -173,6 +181,18 @@ _MAX_VALUE_CHARS = 300
 _IGNORED_NAMES = frozenset({".DS_Store"})
 _RULE_KEYS = frozenset({"path", "why", "status", "pointer", "change", "required"})
 _FLOAT_REL_TOL = 10.0 ** -FLOAT_SIGNIFICANT_DIGITS
+#: Fix round 3b (controller ruling, 2026-10): a PURELY relative tolerance is
+#: degenerate near zero — max(|x|,|y|) is tiny there too, so the tolerance
+#: band shrinks right along with the gap it is supposed to absorb. Real
+#: evidence: json/districts/AZ-05.json's total_obligation, -2**-27
+#: (-7.450580596923828e-09, float-precision residue from the same parallel
+#: double-sum non-determinism as every other float-noise case here) vs
+#: 0.0 — a relative-only rule can never call that noise. Amounts in this
+#: warehouse are dollars or thousands of dollars, so one millionth of a
+#: unit is immaterial at that scale; the floor applies in ADDITION to (not
+#: instead of) the 12-significant-digit relative rule, everywhere the float
+#: rule applies (JSON floats, parquet DOUBLE/FLOAT, numeric text — ruling 1).
+_FLOAT_ABS_TOL = 1e-6
 _FLOAT_MARK = "\x00float"          # stands in for every float in a pairing key
 _NOISE_MAX_ROWS = 1_000_000        # residual parquet rows beyond this compare exactly
 
@@ -343,13 +363,15 @@ def _escape(key: str) -> str:
 
 
 def _float_close(x, y) -> bool:
-    """Equal to FLOAT_SIGNIFICANT_DIGITS significant digits: the relative
-    difference is at most 1e-12. None and NaN match only themselves."""
+    """Equal to FLOAT_SIGNIFICANT_DIGITS significant digits (relative
+    difference at most 1e-12) OR within _FLOAT_ABS_TOL (1e-6) absolute —
+    the floor a purely relative rule cannot provide near zero (Fix round
+    3b). None and NaN match only themselves."""
     if x is None or y is None:
         return x is None and y is None
     if math.isnan(x) or math.isnan(y):
         return math.isnan(x) and math.isnan(y)
-    return x == y or math.isclose(x, y, rel_tol=_FLOAT_REL_TOL, abs_tol=0.0)
+    return x == y or math.isclose(x, y, rel_tol=_FLOAT_REL_TOL, abs_tol=_FLOAT_ABS_TOL)
 
 
 def _float_order(x) -> tuple:
