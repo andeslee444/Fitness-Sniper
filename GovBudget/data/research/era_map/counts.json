@@ -1,0 +1,81 @@
+{
+ "chain_groups": {
+  "a1_only": 811,
+  "a2_without_r": 18,
+  "cr": 45,
+  "h_drift_free": 271,
+  "h_drifting": 8,
+  "r_containing": 98,
+  "unsafe": 2
+ },
+ "chains": 1253,
+ "collision_codes": [
+  "0145",
+  "1350",
+  "20",
+  "2101",
+  "2210",
+  "2292",
+  "30",
+  "3010",
+  "3050",
+  "3215",
+  "3302",
+  "4217",
+  "500"
+ ],
+ "era_actuals_k": "783756819",
+ "era_keys": 6927,
+ "era_keys_by_edition": {
+  "2017": 969,
+  "2018": 1029,
+  "2019": 989,
+  "2020": 975,
+  "2021": 1005,
+  "2022": 993,
+  "2023": 967
+ },
+ "key_class_actuals_k": {
+  "A1": "681693028",
+  "A2": "10697778",
+  "CR": "0",
+  "H": "48272642",
+  "R1": "11952806",
+  "R2": "9172777",
+  "R3": "16135771",
+  "UNSAFE": "5832017"
+ },
+ "key_classes": {
+  "A1": 5477,
+  "A2": 64,
+  "CR": 45,
+  "H": 978,
+  "R1": 152,
+  "R2": 133,
+  "R3": 64,
+  "UNSAFE": 14
+ },
+ "left_ruling": 1,
+ "org_split_codes": [
+  "10",
+  "15",
+  "20",
+  "30",
+  "500"
+ ],
+ "owner_batch_chains": 0,
+ "review_rows": 125,
+ "ruled_actuals_k": {
+  "R-DEC-ERA-EXCLUDE": "5832017",
+  "R-DEC-ERA-HISTORY": "46875952",
+  "R-DEC-ERA-SAME": "651579549"
+ },
+ "rulings": {
+  "R-DEC-ERA-EXCLUDE": 47,
+  "R-DEC-ERA-HISTORY": 271,
+  "R-DEC-ERA-SAME": 810
+ },
+ "successors": {
+  "5600D15603|2035A|": "5731D15610"
+ }
+}
