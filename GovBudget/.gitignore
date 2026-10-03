@@ -17,3 +17,6 @@ data/refresh/
 # derived, ~0.5 GB, files up to ~52 MB; must never reach the fiscalreceipts
 # subtree publish.  Anchored: only GovBudget/tmp/, not every dir named tmp.
 /tmp/
+# Proof snapshots and the throwaway test Postgres cluster (families piece 1,
+# scripts/era/env.sh): APFS clones of the lake; never committed or published.
+/.proofs/
