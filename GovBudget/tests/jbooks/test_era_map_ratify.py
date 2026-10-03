@@ -93,8 +93,12 @@ def test_ratify_merges_a_batch_with_a_range_split(world):
     assert b1["50|0300D||2022-2022"]["n_keys"] == "1"
     assert b1["50|0300D||2023-2023"]["titles_seen"] == "2023: Indian Incentive Program"
     assert len(seed) == 7 + 5
+    # Fix round 2's MVTRUE|3021F| isn't part of this GOOD/SPLIT batch — it
+    # stays undecided (ratify is explicitly allowed to be partial; a later
+    # batch would pick it up).
     assert era_map.check(duckdb_path=world["db"], seed_path=world["seed"]) == {
-        "undecided": [], "stale": []}
+        "undecided": [{"chain_id": "MVTRUE|3021F|", "editions": [2023], "n_keys": 1}],
+        "stale": []}
 
 
 @pytest.mark.parametrize("edits, extra, message", [
@@ -145,7 +149,9 @@ def test_propose_after_ratify_drops_the_ratified_chains(world):
     ratify(world)
     era_map.propose(duckdb_path=world["db"], raw_docs_dir=world["db"].parents[2] / "raw_docs",
                     out_dir=world["out"], seed_path=world["seed"], decided_on=ON)
-    assert read(world["review"]) == []
+    # Fix round 2's MVTRUE|3021F| wasn't in this batch, so it's the only
+    # chain re-proposed back to review.csv.
+    assert [r["chain_id"] for r in read(world["review"])] == ["MVTRUE|3021F|"]
     assert sum(r["ruling"] == "R-DEC-ERA-B1" for r in read(world["seed"])) == 5
 
 
@@ -241,11 +247,13 @@ def test_ratify_refuses_two_organizations_on_one_page_in_one_batch(clash_world):
 def test_check_lists_undecided_chains(world):
     res = era_map.check(duckdb_path=world["db"], seed_path=world["seed"])
     assert res["stale"] == []
+    # Fix round 2 adds MVTRUE|3021F| (a genuine account move) to the world.
     assert res["undecided"] == [
         {"chain_id": "1045|1612N|", "editions": [2022], "n_keys": 1},
         {"chain_id": "20|0300D|DHRA", "editions": [2023], "n_keys": 1},
         {"chain_id": "20|0300D|DSS", "editions": [2022], "n_keys": 1},
         {"chain_id": "50|0300D|", "editions": [2022, 2023], "n_keys": 2},
+        {"chain_id": "MVTRUE|3021F|", "editions": [2023], "n_keys": 1},
     ]
 
 
@@ -296,15 +304,17 @@ def test_cli_propose_check_ratify(cli_world, capsys):
 
     main(["era-map", "propose"])
     out = capsys.readouterr().out
-    assert out.startswith("era-map propose: 15 era keys, 11 chains; rulings"
-                          " SAME=3 EXCLUDE=2 HISTORY=2; 4 chain(s) for review")
+    # Fix round 2 adds MVTRUE|3021F| (a genuine account move whose
+    # destination title matches) to the fixture world.
+    assert out.startswith("era-map propose: 16 era keys, 12 chains; rulings"
+                          " SAME=3 EXCLUDE=2 HISTORY=2; 5 chain(s) for review")
     seed = cli_world / "dbt" / "seeds" / "p1_era_code_decisions.csv"
     assert {r["decided_on"] for r in read(seed)} == {"2026-10-02"}
     assert (cli_world / "data" / "research" / "era_map" / "counts.json").is_file()
 
     main(["era-map", "check"])
     assert capsys.readouterr().out.splitlines()[-1] == (
-        "era-map check: 4 undecided chain(s), 0 stale decision(s)")
+        "era-map check: 5 undecided chain(s), 0 stale decision(s)")
     with pytest.raises(SystemExit) as exc:
         main(["era-map", "check", "--strict"])
     assert exc.value.code == 1

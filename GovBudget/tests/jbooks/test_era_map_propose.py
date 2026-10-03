@@ -51,7 +51,7 @@ def run(tmp_path, seed=None, decided_on=ON):
 def test_load_era_keys_reads_code_sha_cells_and_amounts(tmp_path):
     era = {k.era_key + f"@{k.edition}": k
            for k in era_map.load_era_keys(make_lake(tmp_path))}
-    assert len(era) == 15
+    assert len(era) == 16
     k = era["2035A-ARMY-L7@2022"]
     assert k.line_item_code == "5600D15603"
     assert k.filed_title == "Joint Light Tactical Vehicle"
@@ -170,21 +170,24 @@ def test_successor_prefers_the_chains_own_account(tmp_path):
 
 def test_propose_counts(tmp_path):
     counts, out, _seed = run(tmp_path)
-    assert counts["era_keys"] == 15 and counts["chains"] == 11
+    # Fix round 2 adds one more R2 chain (MVTRUE|3021F|, a genuine move with
+    # a matching destination title) to exercise the Jaccard gate end to end.
+    assert counts["era_keys"] == 16 and counts["chains"] == 12
     # Fix round 1: "50" is R1 (it has a PB2026 page), not H — it moves out
     # of h_drifting (now empty, so absent from the dict) into r_containing.
     assert counts["chain_groups"] == {
         "a1_only": 4, "cr": 1, "h_drift_free": 2,
-        "r_containing": 3, "unsafe": 1}
+        "r_containing": 4, "unsafe": 1}
     assert counts["key_classes"] == {"CR": 1, "UNSAFE": 1, "R3": 0, "A1": 5,
-                                     "A2": 0, "R1": 2, "R2": 2, "H": 4}
+                                     "A2": 0, "R1": 2, "R2": 3, "H": 4}
     assert counts["rulings"] == {"R-DEC-ERA-SAME": 3, "R-DEC-ERA-EXCLUDE": 2,
                                  "R-DEC-ERA-HISTORY": 2}
-    assert counts["review_rows"] == 4 and counts["left_ruling"] == 1
+    assert counts["review_rows"] == 5 and counts["left_ruling"] == 1
     assert counts["successors"] == {"5600D15603|2035A|": "5731D15610"}
     # "50" carries no era-side amounts (spec §5.3 example), so era_actuals_k
-    # drops by the $7K it used to wrongly contribute as an H chain.
-    assert counts["era_actuals_k"] == "6455"
+    # drops by the $7K it used to wrongly contribute as an H chain; MVTRUE
+    # (Fix round 2) adds $80K.
+    assert counts["era_actuals_k"] == "6535"
     assert counts["collision_codes"] == ["20", "3010"]
     assert counts["org_split_codes"] == ["20"]
     # Successor-search coverage (Fix round 1, "ALSO" ruling): the two H
@@ -229,16 +232,38 @@ def test_propose_review_rows_sorted_by_dollars(tmp_path):
     review = rows(out / "review.csv")
     assert tuple(review[0]) == era_map.REVIEW_COLUMNS
     # "50" now carries $0 era-side (Fix round 1), so it sorts last, after DHRA's $5K.
+    # MVTRUE ($80K, Fix round 2) sorts between OHIO ($500K) and DSS ($40K).
     assert [r["chain_id"] for r in review] == [
-        "1045|1612N|", "20|0300D|DSS", "20|0300D|DHRA", "50|0300D|"]
-    ohio, dss, dhra, fifty = review
-    assert (ohio["proposed_decision"], ohio["program_account"]) == ("same_program", "")
+        "1045|1612N|", "MVTRUE|3021F|", "20|0300D|DSS", "20|0300D|DHRA", "50|0300D|"]
+    ohio, mvtrue, dss, dhra, fifty = review
+    # Fix round 2 (binding ruling, the "0182" shape): OHIO's only PB2026
+    # destination (1611N) prints a DIFFERENT program ("Columbia Class
+    # Submarine", title Jaccard < 0.5 against "OHIO Replacement Submarine")
+    # — same_program must not be guessed from an account move alone.
+    assert (ohio["proposed_decision"], ohio["program_account"]) == ("", "")
     assert ohio["accounts"] == "era=1612N; modern=1611N"
+    assert ohio["reason"] == (
+        "R2: account/organization move, but the code is 'Columbia Class"
+        " Submarine' in 1611N; decide same_program only if this line"
+        " moved there")
+    assert ohio["modern_title"] == "1611N: Columbia Class Submarine"
+    # Fix round 2: a genuine move (same title in the destination, 3022F)
+    # still clears the Jaccard gate and keeps same_program; modern_title
+    # shows "<account>: <title>" for a move, per the binding ruling.
+    assert (mvtrue["proposed_decision"], mvtrue["program_account"]) == ("same_program", "")
+    assert mvtrue["modern_title"] == "3022F: Space Launch Range System"
     assert (dss["proposed_decision"], dss["program_account"], dss["program_org"]) == (
         "same_program", "0300D", "DCSA")
+    # Fix round 2: DSS's modern_title now lists EVERY PB2026 destination of
+    # code "20" (not just the DCSA page its pin resolved to).
+    assert dss["modern_title"] == (
+        "0300D/DCSA: Major Equipment; 0300D/DHRA: Personnel Administration;"
+        " 0300D/DTRA: Vehicles")
     # A1 on a collision code with no PB2026 page: data only, pinned to its line
     assert (dhra["proposed_decision"], dhra["program_account"], dhra["program_org"]) == (
         "history_only", "0300D", "DHRA")
+    # DHRA is A1 alone (not a move) — modern_title keeps today's plain format.
+    assert dhra["modern_title"] == "Personnel Administration"
     # Fix round 1 (binding ruling): "50" is R1 with zero era-anchored
     # continuity checks (no era-side amounts at all) — the pre-fill must not
     # guess same_program from an absence of evidence. Blank decision, and a
@@ -258,17 +283,21 @@ def test_propose_review_rows_sorted_by_dollars(tmp_path):
 def test_propose_keys_and_chains_csv(tmp_path):
     _counts, out, _seed = run(tmp_path)
     keys = rows(out / "keys.csv")
-    assert len(keys) == 15 and tuple(keys[0]) == era_map.KEY_COLUMNS
+    assert len(keys) == 16 and tuple(keys[0]) == era_map.KEY_COLUMNS
     k = next(r for r in keys if r["era_key"] == "2035A-ARMY-L7" and r["edition"] == "2022")
     assert (k["line_number"], k["class"], k["chain_id"], k["source_rows"],
             k["source_cells"]) == ("7", "H", "5600D15603|2035A|", "7", "O7,Q7")
     chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
-    assert len(chains) == 11
+    assert len(chains) == 12
     assert chains["20|0300D|DHRA"]["left_ruling_reason"] == (
         "collision code without a matching PB2026 page")
     assert chains["5600D15603|2035A|"]["successor_evidence"].startswith(f"xml={JB}:5;")
     assert chains["FY2017CR|2031A|"]["ruling"] == "R-DEC-ERA-EXCLUDE"
     assert chains["50|0300D|"]["ruling"] == ""
+    # Fix round 2: chains.csv's modern_title shows every PB2026 destination
+    # for a move (classes containing R2 or R3), not just the chain's own.
+    assert chains["1045|1612N|"]["modern_title"] == "1611N: Columbia Class Submarine"
+    assert chains["MVTRUE|3021F|"]["modern_title"] == "3022F: Space Launch Range System"
 
 
 def test_propose_is_byte_stable_and_keeps_class_ruling_dates(tmp_path):

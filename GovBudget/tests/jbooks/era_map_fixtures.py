@@ -20,7 +20,16 @@ The world (editions 2022–2023 era, 2026 modern):
                         a PB2026 page, so it is R1 not H; it has no
                         era-anchored continuity check at all, so the
                         pre-fill must not guess same_program)
-  1045|1612N|        R2 (code under 1611N)     → review
+  1045|1612N|        R2, destination title       → review, blank reused-code
+                        (Fix round 2: moved to 1611N, but 1611N's own code
+                        is "Columbia Class Submarine" (Jaccard < 0.5 against
+                        "OHIO Replacement Submarine") — the "0182" shape:
+                        an account move pre-filled same_program without
+                        checking the destination is actually this program)
+  MVTRUE|3021F|      R2, destination title matches → SAME kept
+                        (Fix round 2: moved to 3022F, same title both sides
+                        — confirms the Jaccard gate still allows a genuine
+                        move through, and modern_title shows "<acct>: <title>")
 
 make_lake(..., org_clash=True) adds two organizations printing one code in
 one edition, where the page is the other organization's (the live
@@ -62,6 +71,7 @@ ERA = [
     (2022, "0300D", "WHS", "50", "50", "Indian Financing Act", None, None),
     (2023, "0300D", "WHS", "50", "50", "Indian Incentive Program", None, None),
     (2022, "1612N", "NAVY", "3", "1045", "OHIO Replacement Submarine", "500", None),
+    (2023, "3021F", "AF", "6", "MVTRUE", "Space Launch Range System", "80", None),
 ]
 # (code, account, org, title, actuals_k, has a PB2026 page in dim_programs)
 MODERN = [
@@ -74,6 +84,7 @@ MODERN = [
     ("5731D15610", "2035A", "A", "Joint Light Tactical Vehicle (JLTV)", "900", True),
     ("1045", "1611N", "N", "Columbia Class Submarine", "2000", True),
     ("50", "0300D", "DTRA", "DTRA Cyber Activities", "12", True),
+    ("MVTRUE", "3022F", "F", "Space Launch Range System", "90", True),
 ]
 # make_lake(org_clash=True) only
 ERA_ORG_CLASH = [

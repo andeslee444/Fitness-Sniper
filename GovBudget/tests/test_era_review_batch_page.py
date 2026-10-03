@@ -336,7 +336,12 @@ def test_what_this_tool_writes_is_what_ratify_accepts(tmp_path, monkeypatch):
     assert main(["render", "--batch", "1", "--review", str(review), "--seed", str(seed),
                  "--out-dir", str(pages)]) == 0
     shown = json.loads((pages / "B1.json").read_text())["chain_ids"]
-    assert sorted(shown) == ["1045|1612N|", "20|0300D|DHRA", "20|0300D|DSS", "50|0300D|"]
+    # Fix round 2 adds MVTRUE|3021F| (a genuine account move whose
+    # destination title matches) to the fixture world; it's not in the
+    # answers below, so it's a third "approved proposal with its pre-filled
+    # pin" (same_program), auto-accepted the same way DSS/DHRA are.
+    assert sorted(shown) == ["1045|1612N|", "20|0300D|DHRA", "20|0300D|DSS",
+                             "50|0300D|", "MVTRUE|3021F|"]
     answers = answers_file(tmp_path, "B1", {
         "1045|1612N|": {"decision": "same_program", "note": "OHIO Replacement = COLUMBIA"},
         "50|0300D|": {"split": [{"last_edition": 2022, "decision": "exclude_reused_code"},
@@ -344,10 +349,11 @@ def test_what_this_tool_writes_is_what_ratify_accepts(tmp_path, monkeypatch):
     assert main(["answer", "--batch", "1", "--review", str(review), "--out-dir", str(pages),
                  "--answers", str(answers)]) == 0
     assert era_map.ratify(review_csv=review, seed_path=seed, batch="B1",
-                          decided_on=date(2026, 10, 5), duckdb_path=db) == 5
+                          decided_on=date(2026, 10, 5), duckdb_path=db) == 6
     b1 = {r["decision_id"]: r for r in era_map.read_seed(seed) if r["ruling"] == "R-DEC-ERA-B1"}
     assert set(b1) == {"1045|1612N||2022-2022", "20|0300D|DSS|2022-2022", "50|0300D||2022-2022",
-                       "50|0300D||2023-2023", "20|0300D|DHRA|2023-2023"}
+                       "50|0300D||2023-2023", "20|0300D|DHRA|2023-2023",
+                       "MVTRUE|3021F||2023-2023"}
     assert b1["1045|1612N||2022-2022"]["note"] == "OHIO Replacement = COLUMBIA"
     assert era_map.check(duckdb_path=db, seed_path=seed) == {"undecided": [], "stale": []}
     era_map.propose(duckdb_path=db, raw_docs_dir=raw, out_dir=out, seed_path=seed, decided_on=date(2026, 10, 2))

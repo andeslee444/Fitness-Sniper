@@ -941,7 +941,16 @@ def _chain_group(ch: Chain) -> str:
 def _chain_context(ch: Chain, keys: Sequence[EraKey], ctx: _Context) -> dict:
     ident = ctx.ident(keys[0])
     mi = ctx.idx.get(ident)
-    if mi is not None and mi.latest_title is not None:
+    # Fix round 2 (review finding): a chain whose class contains R2 or R3 is
+    # an account/organization move — `ident` (the chain's OWN account[/org])
+    # is exactly the identity that move left, so looking the title up there
+    # finds nothing. Show every PB2024-26 destination for the code instead.
+    # A non-move chain keeps today's single-title format.
+    is_move = bool(ch.classes & {"R2", "R3"})
+    destinations = _modern_destinations(ch.line_item_code, ctx) if is_move else []
+    if is_move:
+        modern_title = _format_destinations(destinations)
+    elif mi is not None and mi.latest_title is not None:
         modern_title = mi.latest_title[1]
     else:
         modern_title = ""
@@ -954,6 +963,7 @@ def _chain_context(ch: Chain, keys: Sequence[EraKey], ctx: _Context) -> dict:
         "continuity_total": total,
         "continuity_ok": total > 0 and passed * 3 >= total * 2,
         "modern_accounts": sorted(ctx.modern_accounts.get(ch.line_item_code, ())),
+        "modern_destinations": destinations,
     }
 
 
@@ -970,6 +980,31 @@ def _pick_page_by_title(ch: Chain, keys: Sequence[EraKey], ctx: _Context,
         if mi is not None and latest in mi.norm_titles:
             hits.add((account, org))
     return next(iter(hits)) if len(hits) == 1 else ("", "")
+
+
+def _modern_destinations(code: str, ctx: _Context) -> list[tuple[str, str, str]]:
+    """Every (account, organization, title) the code prints in PB2024-26, one
+    row per distinct modern identity (organization blank unless code is an
+    org-split code), sorted by (account, organization). Fix round 2 (review
+    finding): a chain's own (code, account[, org]) identity is only ONE of
+    these — an account/organization move (classes containing R2 or R3) needs
+    to see every destination, not just the one, if any, that happens to
+    share the chain's own account."""
+    idents = sorted({(a, o if code in ctx.split else "")
+                     for c, a, o in ctx.line_idents if c == code})
+    out: list[tuple[str, str, str]] = []
+    for account, org in idents:
+        mi = ctx.idx.get((code, account, org))
+        if mi is not None and mi.latest_title is not None:
+            out.append((account, org, mi.latest_title[1]))
+    return out
+
+
+def _format_destinations(destinations: Sequence[tuple[str, str, str]]) -> str:
+    """'<account>[/<org>]: <title>' per destination, joined by '; ' (Fix
+    round 2 ruling 1) — shared by modern_title and the ambiguous-move reason
+    so the two stay consistent."""
+    return "; ".join(f"{a}{'/' + o if o else ''}: {t}" for a, o, t in destinations)
 
 
 def _org_editions(
@@ -1073,9 +1108,36 @@ def _prefill(ch: Chain, keys: Sequence[EraKey], ctx: _Context, info: dict,
                 f" {ch.account}{'/' + ch.organization if ch.organization else ''}"
                 " — history_only (data only), or name the page it joins", pa, po)
     if ch.classes & {"R2", "R3"}:
-        return ("same_program",
-                f"{rule}: account/organization move (modern accounts"
-                f" {', '.join(info['modern_accounts']) or 'none'})", pa, po)
+        # Fix round 2 (review finding): same_program only when the chain's
+        # latest filed title actually matches the destination's modern
+        # title — moving accounts doesn't prove it is the same program.
+        destinations = info["modern_destinations"]
+        pin = (pa, po if ch.line_item_code in ctx.split else "") if (pa or po) else None
+        own = (ch.account,
+               _modern_org(ch.organization) if ch.line_item_code in ctx.split else "")
+        if pin is not None:
+            target = next((d for d in destinations if (d[0], d[1]) == pin), None)
+        elif len(destinations) == 1:
+            target = destinations[0]
+        else:
+            own_hits = [d for d in destinations if (d[0], d[1]) == own]
+            target = own_hits[0] if len(own_hits) == 1 else None
+        if target is None:
+            listed = _format_destinations(destinations) or "no PB2024-26 title found"
+            return ("",
+                    f"{rule}: account/organization move to several possible"
+                    f" destinations ({listed}) — decide which, if any, this"
+                    " line moved to", pa, po)
+        dest_account, dest_org, dest_title = target
+        dest_label = f"{dest_account}{'/' + dest_org if dest_org else ''}"
+        if title_jaccard(keys[-1].filed_title, dest_title) >= JACCARD_MIN:
+            return ("same_program",
+                    f"{rule}: account/organization move (modern accounts"
+                    f" {', '.join(info['modern_accounts']) or 'none'})", pa, po)
+        return ("",
+                f"{rule}: account/organization move, but the code is"
+                f" '{dest_title}' in {dest_label}; decide same_program only"
+                " if this line moved there", pa, po)
     if "R1" in ch.classes:
         if info["continuity_total"] == 0:
             # no era-edition-anchored check exists at all: the code could be
