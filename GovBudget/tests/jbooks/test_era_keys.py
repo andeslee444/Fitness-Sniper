@@ -15,8 +15,10 @@ import pytest
 from govbudget.jbooks.era_keys import (
     era_key_anchor,
     era_procurement_key,
+    is_era_procurement_key,
     p40_agency_org,
 )
+from govbudget.jbooks.p1_loader import CLASSIFIED_CODE
 
 
 class TestEraProcurementKey:
@@ -138,6 +140,17 @@ def test_era_procurement_keyspace_disjoint_from_modern_and_r1():
         }
     if not era:
         pytest.skip("no era procurement rows loaded in this warehouse")
+    # Era keys are selected with is_era_procurement_key (the families plan's
+    # binding selector rule), never "every PB2017-23 P-1 row": since S1b the
+    # era editions also hold the Classified Programs line under
+    # CLASSIFIED_CODE, which modern editions carry under the same code by
+    # design. That line is the only era-edition value that is not an era key.
+    not_era_keys = {k for k in era if not is_era_procurement_key(k)}
+    assert not_era_keys <= {CLASSIFIED_CODE}, (
+        f"{len(not_era_keys)} era-edition procurement pe_bli values are neither"
+        f" era keys nor {CLASSIFIED_CODE}: {sorted(not_era_keys)[:10]}"
+    )
+    era -= not_era_keys
     collisions = era & (modern | r1)
     assert collisions == set(), (
         f"{len(collisions)} era procurement pe_bli values collide with the"
