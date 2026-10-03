@@ -214,14 +214,17 @@
  *  (s) ERA-MAP DECISIONS (families piece 1, spec 2026-10-02 §6.4). /downloads/
  *      renders, directly under the p1_era_line_map card (the card's next
  *      element in the card grid), one row per PB2017–PB2023
- *      edition: its P-1 lines, the chains ("codes") each decision covers and
- *      how many cited era cells carry a complete PDF receipt. This leg
+ *      edition: its P-1 lines, the printed codes each decision covers
+ *      (distinct line_item_code, never the decision count: Task 19 fix round
+ *      1) and how many cited era cells carry a complete PDF receipt. This leg
  *      requires the rendered cells to equal json/era_map_summary.json, the
- *      summary's lines and chains to equal an independent recount of the
- *      shipped parquet (eramap-recompute.py), and its receipt figures to
+ *      summary's lines, chains and codes to equal an independent recount of
+ *      the shipped parquet (eramap-recompute.py), and its receipt figures to
  *      equal the receipts audit's P-1 book for that edition. The map shipping
  *      without the summary, or not shipping at all, is a stale export and
- *      fails. See leg s's own block at the bottom.
+ *      fails, and so does the built page carrying the summary's uncited
+ *      dollar sums anywhere, scripts included. See leg s's own block at the
+ *      bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -5675,8 +5678,6 @@ export function runAnnouncementScopeLeg(errors, notes, injected) {
 
 /** The P-1 editions the era map covers (spec 2026-10-02 §4.4). */
 const ERA_EDITIONS = [2017, 2018, 2019, 2020, 2021, 2022, 2023];
-/** The decisions the rendered "Excluded" column sums (spec §4.3). */
-const ERA_EXCLUDED = ["exclude_placeholder", "exclude_route_unsafe", "exclude_reused_code"];
 /** Where the table renders: /coverage/ and /data/ had no room under their ceilings. */
 const ERA_PAGE = "/downloads/";
 
@@ -5703,16 +5704,19 @@ function recomputeEraMap() {
 }
 
 /** This leg's own rendering of one edition's cells, written apart from
- *  src/lib/era-map.ts on purpose: a change there has to agree with this. */
+ *  src/lib/era-map.ts on purpose: a change there has to agree with this.
+ *  "N codes" counts printed codes (Task 19 fix round 1): per decision for the
+ *  two program columns, and distinct across the three exclude decisions
+ *  (`excluded_codes`) for Excluded. */
 function eraExpectedCells(e) {
   const g = (n) => Number(n).toLocaleString("en-US");
   const codes = (n) => `${g(n)} ${n === 1 ? "code" : "codes"}`;
-  const chains = (d) => e.by_decision?.[d]?.chains ?? 0;
+  const codesOf = (d) => e.by_decision?.[d]?.codes ?? 0;
   return {
     lines: g(e.lines),
-    same_program: codes(chains("same_program")),
-    history_only: codes(chains("history_only")),
-    excluded: codes(ERA_EXCLUDED.reduce((s, d) => s + chains(d), 0)),
+    same_program: codes(codesOf("same_program")),
+    history_only: codes(codesOf("history_only")),
+    excluded: codes(e.excluded_codes ?? 0),
     receipts: `${g(e.receipts?.complete ?? 0)} of ${g(e.receipts?.facts ?? 0)}`,
   };
 }
@@ -5769,20 +5773,26 @@ export function runEraMapLeg(errors, notes, injected) {
 
   // (s1) the summary agrees with the shipped map, recounted from the parquet
   for (const e of editions) {
-    const t = recount.editions?.[String(e.edition)] ?? { lines: 0, by_decision: {} };
+    const t = recount.editions?.[String(e.edition)] ?? { lines: 0, by_decision: {}, excluded_codes: 0 };
     if (t.lines !== e.lines) {
       errors.push(`leg s: PB${e.edition} summary says ${e.lines} lines, the shipped map holds ${t.lines}`);
     }
     const decisions = new Set([...Object.keys(t.by_decision ?? {}), ...Object.keys(e.by_decision ?? {})]);
     for (const d of decisions) {
-      const want = t.by_decision?.[d] ?? { chains: 0, lines: 0 };
-      const got = e.by_decision?.[d] ?? { chains: 0, lines: 0 };
-      if (want.chains !== got.chains || want.lines !== got.lines) {
+      const want = t.by_decision?.[d] ?? { chains: 0, codes: 0, lines: 0 };
+      const got = e.by_decision?.[d] ?? { chains: 0, codes: 0, lines: 0 };
+      if (want.chains !== got.chains || want.codes !== got.codes || want.lines !== got.lines) {
         errors.push(
-          `leg s: PB${e.edition} ${d} summary says ${got.chains} chains / ${got.lines} lines, ` +
-            `the shipped map holds ${want.chains} / ${want.lines}`,
+          `leg s: PB${e.edition} ${d} summary says ${got.chains} chains / ${got.codes} codes / ` +
+            `${got.lines} lines, the shipped map holds ${want.chains} / ${want.codes} / ${want.lines}`,
         );
       }
+    }
+    if ((t.excluded_codes ?? 0) !== e.excluded_codes) {
+      errors.push(
+        `leg s: PB${e.edition} summary says ${e.excluded_codes} excluded codes, ` +
+          `the shipped map holds ${t.excluded_codes ?? 0}`,
+      );
     }
   }
 
@@ -5807,6 +5817,17 @@ export function runEraMapLeg(errors, notes, injected) {
   if (!html) {
     errors.push(`leg s: ${ERA_PAGE} not built — run npm run build`);
     return;
+  }
+  // (s5) and never ships its dollar sums. The summary's actuals_thousands
+  // carry no citation (owner decision: counts only), and a client component
+  // handed the summary object serialises all of them into the RSC payload,
+  // where no rendered-text gate looks (Task 19 fix round 1). The raw page,
+  // scripts included, must not name the field.
+  if (html.includes("actuals_thousands")) {
+    errors.push(
+      `leg s (${ERA_PAGE}): the built page carries era_map_summary.json's actuals_thousands ` +
+        "(uncited dollar sums) — pass the client component a rendered table, never the summary",
+    );
   }
   const root = parse(html, { comment: false });
   for (const el of root.querySelectorAll("script, style, noscript, template")) el.remove();

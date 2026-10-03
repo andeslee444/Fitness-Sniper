@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { DownloadCards } from "@/components/download-cards";
 import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { PageIntro } from "@/components/page-intro";
+import { EraMapTable } from "@/components/era-map-table";
 
 export const metadata: Metadata = {
   title: "Downloads",
@@ -73,8 +74,12 @@ export default function DownloadsPage() {
   const manifest = getDatasetManifest();
   // Families piece 1: the era-map decision table renders in the card grid,
   // directly after the p1_era_line_map card (owner decision, spec §6.4
-  // correction: /coverage/ and /data/ had no room).
+  // correction: /coverage/ and /data/ had no room). Rendered HERE, on the
+  // server: DownloadCards is a client component and gets the rendered
+  // table, so the summary's uncited actuals_thousands never reach the RSC
+  // payload (Task 19 fix round 1).
   const eraMap = getEraMapSummary();
+  const eraMapTable = eraMap ? <EraMapTable summary={eraMap} /> : null;
   // The citation index's own entry; the build fails without it (no
   // hand-written list of kinds to fall back to).
   const citations = citationsIndexOf(manifest);
@@ -145,7 +150,7 @@ export default function DownloadsPage() {
             pdfCount={meta.pdf_count}
             workbookCount={meta.workbook_count}
             uncitedDatasets={meta.uncited_datasets ?? []}
-            eraMap={eraMap}
+            eraMapTable={eraMapTable}
           />
         </AssetConfigProvider>
       </div>

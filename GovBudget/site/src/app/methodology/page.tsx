@@ -68,7 +68,7 @@ const FAQ_ITEMS = [
   {
     question: "How confident should I be in the figures?",
     answer:
-      "Figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document, query, or derived formula; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — reserved for datasets shipped before their citations (currently none).",
+      "Figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document, query, or derived formula; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — reserved for datasets without citations (currently p1_era_line_map).",
   },
   {
     question: "What are the known limitations?",

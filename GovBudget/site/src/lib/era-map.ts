@@ -6,7 +6,16 @@
  * the gate to pass.
  *
  * Counts only. Dollars stay in json/era_map_summary.json: a rendered $ must
- * carry a Cite state (gate 2), and these per-decision sums have none.
+ * carry a Cite state (gate 2), and these per-decision sums have none. The
+ * summary never crosses into a client component either: /downloads/ renders
+ * <EraMapTable> on the server and hands DownloadCards the rendered table, so
+ * the RSC payload carries the cells, not actuals_thousands (Task 19 fix
+ * round 1; gate 24 leg (s) checks the built page).
+ *
+ * "N codes" counts printed codes (distinct line_item_code), not decisions: a
+ * code can span several decisions (FY2017CR placeholders in 23 accounts of
+ * PB2018; codes 30 and 500 across organizations), and the decision count
+ * overstated the codes each column covers (Task 19 fix round 1).
  */
 import { formatCount } from "./format";
 
@@ -19,7 +28,8 @@ export const ERA_DECISIONS = [
 ] as const;
 export type EraDecision = (typeof ERA_DECISIONS)[number];
 
-/** The decisions the "Excluded" column sums. */
+/** The decisions the "Excluded" column covers (its codes are
+ *  `excluded_codes`, distinct across all three). */
 export const ERA_EXCLUDED: readonly EraDecision[] = [
   "exclude_placeholder",
   "exclude_route_unsafe",
@@ -27,7 +37,10 @@ export const ERA_EXCLUDED: readonly EraDecision[] = [
 ];
 
 export interface EraMapTally {
+  /** Distinct decisions (decision_id). */
   chains: number;
+  /** Distinct printed codes (line_item_code): what the table renders. */
+  codes: number;
   lines: number;
   actuals_thousands: number;
 }
@@ -37,6 +50,8 @@ export interface EraMapEdition {
   fy_actuals: number;
   lines: number;
   by_decision: Record<EraDecision, EraMapTally>;
+  /** Distinct printed codes across the three exclude decisions. */
+  excluded_codes: number;
   receipts: { facts: number; complete: number };
 }
 
@@ -67,12 +82,12 @@ const codes = (n: number): string => `${formatCount(n)} ${n === 1 ? "code" : "co
 
 /** One edition's cells, in column order. */
 export function eraMapCells(e: EraMapEdition): { key: EraMapColumn; label: string; value: string }[] {
-  const chains = (d: EraDecision): number => e.by_decision[d]?.chains ?? 0;
+  const codesOf = (d: EraDecision): number => e.by_decision[d]?.codes ?? 0;
   const values: Record<EraMapColumn, string> = {
     lines: formatCount(e.lines),
-    same_program: codes(chains("same_program")),
-    history_only: codes(chains("history_only")),
-    excluded: codes(ERA_EXCLUDED.reduce((sum, d) => sum + chains(d), 0)),
+    same_program: codes(codesOf("same_program")),
+    history_only: codes(codesOf("history_only")),
+    excluded: codes(e.excluded_codes ?? 0),
     receipts: `${formatCount(e.receipts.complete)} of ${formatCount(e.receipts.facts)}`,
   };
   return ERA_MAP_COLUMNS.map((c) => ({ key: c.key, label: c.label, value: values[c.key] }));

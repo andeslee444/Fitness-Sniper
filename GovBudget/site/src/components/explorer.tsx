@@ -165,9 +165,11 @@ ORDER BY pb_edition
     case "p1_era_line_map":
       // Families piece 1 (spec 2026-10-02 §4.4). One row per PB2017–PB2023
       // P-1 display line and the dated decision that joins it to a program,
-      // keeps it as history, or excludes it. No amounts: the figures live in
-      // budget_lines_decade under the same era_key. A chain is one decision
-      // (decision_id); owner review batches carry ruling R-DEC-ERA-B<n>.
+      // keeps it as history, or excludes it. No amounts: only a same_program
+      // line whose code has a program page has budget_lines_decade rows
+      // (under the same era_key); history_only and excluded lines have none
+      // there. A chain is one decision (decision_id); owner review batches
+      // carry ruling R-DEC-ERA-B<n>.
       return [
         {
           label: "Decisions by edition",

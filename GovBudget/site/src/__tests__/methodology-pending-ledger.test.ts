@@ -38,3 +38,25 @@ describe("/methodology/ pending-ledger clause", () => {
     expect(Buffer.byteLength(NEW)).toBe(77);
   });
 });
+
+/**
+ * Task 19 fix round 1: the FAQ answer in /methodology/'s JSON-LD said the
+ * pending tier is "reserved for datasets shipped before their citations
+ * (currently none)", false beside the clause above once p1_era_line_map
+ * ships. It names the dataset now, two bytes shorter (the page sits near its
+ * gate-1 ceiling).
+ */
+describe("/methodology/ FAQ JSON-LD: the pending tier", () => {
+  const src = fs.readFileSync(PAGE, "utf8");
+  const OLD_FAQ = "Citation tier pending (⁂) — reserved for datasets shipped before their citations (currently none).";
+  const NEW_FAQ = "Citation tier pending (⁂) — reserved for datasets without citations (currently p1_era_line_map).";
+
+  it("names p1_era_line_map and no longer says none", () => {
+    expect(src).toContain(NEW_FAQ);
+    expect(src).not.toContain("(currently none)");
+  });
+
+  it("is no longer than the answer it replaced", () => {
+    expect(Buffer.byteLength(NEW_FAQ)).toBeLessThanOrEqual(Buffer.byteLength(OLD_FAQ));
+  });
+});

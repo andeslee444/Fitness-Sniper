@@ -33,8 +33,6 @@
 
 import React from "react";
 import { useAssetUrl, useAssetConfigResolved } from "@/components/asset-config";
-import { EraMapTable } from "@/components/era-map-table";
-import type { EraMapSummary } from "@/lib/era-map";
 
 /** The dataset whose card the era-map table follows (families piece 1). */
 const ERA_MAP_DATASET = "p1_era_line_map";
@@ -121,7 +119,7 @@ export function DownloadCards({
   citationsIndex,
   workbookCount,
   uncitedDatasets = [],
-  eraMap = null,
+  eraMapTable = null,
 }: {
   builtAt: string;
   /**
@@ -155,11 +153,15 @@ export function DownloadCards({
    */
   uncitedDatasets?: string[];
   /**
-   * json/era_map_summary.json (lib/data getEraMapSummary; families piece 1).
-   * When present, the era-map table renders as the full-width grid item
-   * directly after the p1_era_line_map card (spec §6.4 owner decision).
+   * The era-map table (families piece 1), ALREADY RENDERED by the server
+   * page (<EraMapTable summary>). When present it renders as the full-width
+   * grid item directly after the p1_era_line_map card, which then spans both
+   * columns too (spec §6.4 owner decision). Never the summary itself: this
+   * is a client component, so every prop is serialised into the page's RSC
+   * payload, and the summary carries uncited actuals_thousands sums (Task 19
+   * fix round 1).
    */
-  eraMap?: EraMapSummary | null;
+  eraMapTable?: React.ReactNode;
 }) {
   const assetUrl = useAssetUrl();
   const assetConfigResolved = useAssetConfigResolved();
@@ -232,13 +234,20 @@ export function DownloadCards({
             {...(degraded ? { "aria-disabled": true } : {})}
             className={[
               "rounded-lg border border-border bg-card p-4 flex flex-col gap-2",
+              // The full-width era table follows this card; spanning it too
+              // keeps the grid from leaving the cell beside it empty.
+              ds.name === ERA_MAP_DATASET && eraMapTable ? "sm:col-span-2" : "",
               degraded ? "opacity-50" : "",
             ]
               .filter(Boolean)
               .join(" ")}
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="text-sm font-medium text-foreground">
+              {/* A level-2 heading per card (Task 19 fix round 1): the era
+                  table's h3 nests under p1_era_line_map's, and the cards
+                  after it stay its siblings in the page outline. role, not
+                  <h2>, so the global h2 type style does not apply. */}
+              <span role="heading" aria-level={2} className="text-sm font-medium text-foreground">
                 {ds.name}
               </span>
               {ds.rowCount !== undefined && (
@@ -294,13 +303,15 @@ export function DownloadCards({
               {ds.name}.parquet
             </a>
           </div>
-          {ds.name === ERA_MAP_DATASET && eraMap && <EraMapTable summary={eraMap} />}
+          {ds.name === ERA_MAP_DATASET && eraMapTable}
           </React.Fragment>
         ))}
       </div>
 
       <div className="mt-8 rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground mb-2">
+        {/* Level 2 like the card names (Task 19 fix round 1), so this box
+            is not read as part of the last card's section. */}
+        <p role="heading" aria-level={2} className="font-medium text-foreground mb-2">
           Additional assets (not in table above)
         </p>
         {/* citations.parquet used to be listed here too, under a heading
