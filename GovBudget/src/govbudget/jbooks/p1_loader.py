@@ -56,6 +56,10 @@ P1_ID_HEADERS = {
 }
 P1_REQUIRED = {"Account", "Organization"}
 P1_BLI_HEADERS = ("Budget Line Item", "Line Item")
+# The Classified Programs line: every P-1 edition prints it under this code.
+# Modern workbooks key it by its 'Budget Line Item' like any line; era
+# workbooks print it with a blank Line Number, so it needs its own rule.
+CLASSIFIED_CODE = "9999999999"
 
 
 @dataclass(frozen=True)
@@ -191,19 +195,34 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
         start=header_row + 1,
     ):
         ids = {name: row[j] for j, name in id_cols.items() if j < len(row)}
-        if not ids.get("pe_bli"):
+        # S1b: an era row with a blank Line Number is the Classified Programs
+        # line when its Line Item is CLASSIFIED_CODE (it loads under that
+        # code, as in modern editions); any other blank-line row (footnotes,
+        # spacer rows) is skipped.
+        classified = (
+            era_line_keying and not ids.get("pe_bli")
+            and code_col < len(row) and _code(row[code_col]) == CLASSIFIED_CODE
+        )
+        if not ids.get("pe_bli") and not classified:
             continue
         # Reject appropriation section-header rows ('RDT&E', 'O&M', …) whose
         # label mis-parses into the BLI cell. Guard the RAW cell (before era
         # re-keying), so a valid alphanumeric BLI / era line number survives.
-        if not _is_valid_pe_bli(ids.get("pe_bli")):
+        if not classified and not _is_valid_pe_bli(ids.get("pe_bli")):
             skipped_invalid += 1
             continue
         if add_col is not None and (
             add_col >= len(row) or str(row[add_col]).strip().lower() != "add"
         ):
             continue
-        if era_line_keying:
+        if classified:
+            pe_bli = code = CLASSIFIED_CODE
+            # The line names no organization: the workbooks print '' (as
+            # PB2024-PB2026 rows store it); an empty cell reads back as None,
+            # which must load as '' too, never the string 'None'.
+            if ids.get("organization") is None:
+                ids["organization"] = ""
+        elif era_line_keying:
             pe_bli = era_procurement_key(
                 str(ids.get("account")), str(ids.get("organization")),
                 str(ids.get("pe_bli")),

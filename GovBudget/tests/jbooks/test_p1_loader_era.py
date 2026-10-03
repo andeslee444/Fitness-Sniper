@@ -111,13 +111,40 @@ def test_parse_captures_the_printed_code_and_keys_by_line(tmp_path):
     assert line2.source_cells == ("Q6",)
 
 
-def test_parse_skips_classified_footnote_and_section_header_rows(tmp_path):
-    """Blank-Line-Number rows (the Classified Programs line, footnotes) and
-    the section-header label are skipped. S1b (Task 9) changes the first."""
+def test_parse_loads_classified_and_skips_footnote_and_section_header_rows(tmp_path):
+    """S1b: the blank-line Classified Programs row loads under its printed
+    code, as modern editions load it; footnotes and the section header
+    (blank or label Line Number, no classified code) stay skipped."""
     rows = ADVANCE_PROCUREMENT_PAIR[:1] + [CLASSIFIED, SECTION_HEADER] + FOOTNOTES
     parsed = parse_p1_rollup(make_era_xlsx(tmp_path, rows), exhibit="P-1", fiscal_year=2021)
-    assert {r.pe_bli for r in parsed.rows} == {"1506N-N-L1"}
+    assert {r.pe_bli for r in parsed.rows} == {"1506N-N-L1", "9999999999"}
     assert parsed.skipped_invalid == 1  # the 'RDT&E' label row
+    classified = sorted(
+        (r for r in parsed.rows if r.pe_bli == "9999999999"), key=lambda r: r.amount_type)
+    assert classified == [
+        P1Row(
+            exhibit="P-1", fiscal_year=2021, account="3080F",
+            account_title="Other Procurement, Air Force", organization="",
+            budget_activity="04",
+            budget_activity_title="Other Base Maintenance and Support Equip",
+            pe_bli="9999999999", title="Classified Programs",
+            amount_type=amount_type, amount_thousands=Decimal(amount),
+            source_sheet="Exhibit P-1", source_cells=(cell,),
+            line_item_code="9999999999",
+        )
+        for amount_type, amount, cell in (
+            ("fy_2019_base_oco", "20743417", "O4"),
+            ("fy_2020_base_enacted", "21086112", "Q4"),
+        )
+    ]
+
+
+def test_parse_skips_a_blank_line_row_with_any_other_code(tmp_path):
+    stray = _row(OPAF, "", "04", "Other Base Maintenance and Support Equip", "",
+                 "3080F00001", "Not classified", "", "Add", 5, 6)
+    parsed = parse_p1_rollup(make_era_xlsx(tmp_path, [stray]), exhibit="P-1", fiscal_year=2021)
+    assert parsed.rows == []
+    assert parsed.skipped_invalid == 0
 
 
 @pytest.mark.parametrize("field, value", [

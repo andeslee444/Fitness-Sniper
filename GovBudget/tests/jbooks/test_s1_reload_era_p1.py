@@ -9,6 +9,7 @@ row and an era P-1R row whose codes the backfill already set.
 """
 import hashlib
 import importlib.util
+from decimal import Decimal
 from pathlib import Path
 
 import psycopg
@@ -224,3 +225,47 @@ def test_the_tripwire_propagates_before_any_write(pg_dsn, era_db, tmp_path):
     with pytest.raises(EraKeyConflict, match="1506N-N-L2"):
         _run(pg_dsn, "--apply")
     assert _snapshot(pg_dsn) == before
+
+
+# S1b: the era Classified Programs line (blank Line Number, organization '',
+# code 9999999999 — live PB2021 row 1096).
+CLASSIFIED_2021 = ["3080F", "Other Procurement, Air Force", "", "04",
+                   "Other Base Maintenance and Support Equip", "", "99",
+                   "Classified Programs", "9999999999", "Classified Programs",
+                   "", "", "Add", 0, 20743417, 0, 21086112]
+
+
+def _add_classified(pg_dsn, era_db):
+    doc_id, path = era_db[2021]
+    _workbook(path, EDITION_ROWS[2021] + [CLASSIFIED_2021])
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("update jbook_documents set sha256 = %s where id = %s",
+                    (hashlib.sha256(path.read_bytes()).hexdigest(), doc_id))
+
+
+def test_check_counts_classified_rows_to_load_without_failing(pg_dsn, era_db, capsys):
+    _add_classified(pg_dsn, era_db)
+    assert _run(pg_dsn, "--check") == 0
+    out = capsys.readouterr().out
+    assert "missing in db 0" in out
+    assert "classified rows to load 2" in out
+    assert "V1: CLEAN (2 editions, 8 parsed rows)" in out
+
+
+def test_apply_inserts_exactly_the_classified_rows(pg_dsn, era_db, capsys):
+    _add_classified(pg_dsn, era_db)
+    before = _snapshot(pg_dsn)
+    assert _run(pg_dsn, "--apply") == 0
+    out = capsys.readouterr().out
+    assert "apply: rows inserted: 2 (expected 2); P-1/P-1R rows now 10" in out
+    assert "apply: era keys 3, with exactly one line_item_code: 3" in out
+    after = _snapshot(pg_dsn)
+    assert [r[:8] for r in after[:len(before)]] == [r[:8] for r in before]
+    assert [r[1:] for r in after[len(before):]] == [
+        ("P-1", 2021, "9999999999", "fy_2019_base_oco", Decimal("20743417"),
+         "Classified Programs", ["O5"], "9999999999"),
+        ("P-1", 2021, "9999999999", "fy_2020_base_enacted", Decimal("21086112"),
+         "Classified Programs", ["Q5"], "9999999999"),
+    ]
+    assert _run(pg_dsn, "--check") == 0
+    assert "classified rows to load 0" in capsys.readouterr().out

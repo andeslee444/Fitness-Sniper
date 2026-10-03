@@ -27,6 +27,11 @@ Spec: docs/superpowers/specs/2026-10-02-era-procurement-history-design.md
             non-null line_item_code. Any failure rolls back (exit 1);
             otherwise commits (or rolls back under --dry-run, exit 0).
 
+S1b: a key the parse yields but Postgres lacks is a difference, except
+an era Classified Programs row (pe_bli 9999999999, which the loader skipped
+before S1b): --check counts those as "classified rows to load" and --apply
+inserts them; the post-write check requires exactly those inserts.
+
 The parse runs before any database work, so EraKeyConflict propagates
 uncaught (this script never goes through the CLI's per-workbook catch-all).
 
@@ -48,7 +53,13 @@ from pathlib import Path
 import psycopg
 
 from govbudget import config
-from govbudget.jbooks.p1_loader import P1Parse, P1Row, parse_p1_rollup, write_p1_rows
+from govbudget.jbooks.p1_loader import (
+    CLASSIFIED_CODE,
+    P1Parse,
+    P1Row,
+    parse_p1_rollup,
+    write_p1_rows,
+)
 
 ERA_EDITIONS: tuple[int, ...] = tuple(range(2017, 2024))
 ERA_KEY_RE = re.compile(r"^\d{4}[A-Z]-[A-Z]+-L")
@@ -152,7 +163,11 @@ def compare_edition(con, parsed: P1Parse, *, fiscal_year: int, doc_id: int,
         db[k] = dict(zip(V1_COLUMNS, rec[5:12]))
         if with_codes:
             db[k]["line_item_code"] = rec[12]
-    missing = sorted(set(parse_by_key) - set(db), key=repr)
+    absent = sorted(set(parse_by_key) - set(db), key=repr)
+    # S1b: the era Classified Programs rows the loader used to skip are the
+    # only rows the parse may add; any other absent key is a difference.
+    to_load = [k for k in absent if k[5] == CLASSIFIED_CODE]
+    missing = [k for k in absent if k[5] != CLASSIFIED_CODE]
     extra = sorted(set(db) - set(parse_by_key), key=repr)
     diffs = []
     codes = Counter()
@@ -175,6 +190,7 @@ def compare_edition(con, parsed: P1Parse, *, fiscal_year: int, doc_id: int,
         "fiscal_year": fiscal_year, "doc_id": doc_id,
         "parse_rows": len(parsed.rows), "db_rows": len(db),
         "dup_keys": dup_keys, "missing": missing, "extra": extra,
+        "to_load": to_load,
         "diffs": diffs, "codes": codes, "with_codes": with_codes,
     }
 
@@ -194,7 +210,8 @@ def print_report(rep: dict) -> None:
         f" {rep['parse_rows']} rows | db {rep['db_rows']} | missing in db"
         f" {len(rep['missing'])} | extra in db {len(rep['extra'])} |"
         f" duplicate parse keys {rep['dup_keys']} | column diffs"
-        f" {len(rep['diffs'])} | line_item_code: {codes}"
+        f" {len(rep['diffs'])} | classified rows to load {len(rep['to_load'])}"
+        f" | line_item_code: {codes}"
     )
     for k in rep["missing"][:5]:
         print(f"  missing in db: {k}")
