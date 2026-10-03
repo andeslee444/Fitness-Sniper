@@ -527,3 +527,728 @@ def apply_class_rulings(
             decided_on=decided_on, program_account=pa, program_org=po,
         ))
     return rows, left
+
+
+# ---------------------------------------------------------------------------
+# Stated successors (§5.4)
+# ---------------------------------------------------------------------------
+
+# Continuation wording only — a mention of both codes is not enough.
+SUCCESSOR_RE = re.compile(
+    r"continuation of|continues under|previously (?:funded|reflected) (?:under|in)",
+    re.IGNORECASE,
+)
+# Code-shaped tokens: 5+ uppercase alphanumerics with at least one letter and
+# one digit. Digits-only codes ('1045') are never matched: in prose they are
+# indistinguishable from years, quantities and line numbers.
+_CODE_TOKEN_RE = re.compile(r"\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*[0-9])[A-Z0-9]{5,}\b")
+_ACCOUNT_PREFIX_RE = re.compile(r"^[0-9]{4}(?=[A-Z])")
+SUCCESSOR_EDITION_DIRS = ("fy2026", "fy2025", "fy2024")
+
+
+def code_forms(code: str) -> list[tuple[str, str]]:
+    """[(token, form)]: the literal code, then — for a code printed with a
+    4-digit account prefix ('5600D15603') — the code without it ('D15603'),
+    which is how the Army books print it."""
+    forms = [(code, "literal")]
+    short = _ACCOUNT_PREFIX_RE.sub("", code)
+    if short != code and len(short) >= 5:
+        forms.append((short, "short"))
+    return forms
+
+
+def successor_xml_files(raw_docs_dir: Path) -> list[Path]:
+    """PB2026, then PB2025, then PB2024 XML; inside an edition, a volume's own
+    justification book before any master book ('_MJB_' bundles every volume),
+    then by path."""
+    out: list[Path] = []
+    for edition_dir in SUCCESSOR_EDITION_DIRS:
+        base = Path(raw_docs_dir) / edition_dir
+        if not base.is_dir():
+            continue
+        out.extend(sorted(
+            base.rglob("*.xml"),
+            key=lambda p: ("_MJB_" in p.name, p.relative_to(base).as_posix()),
+        ))
+    return out
+
+
+def _sentence_bounds(text: str, start: int, end: int) -> tuple[int, int]:
+    """The sentence around text[start:end]: bounded by a newline, an XML tag
+    edge, or a period followed by a space."""
+    lows = [text.rfind("\n", 0, start), text.rfind(">", 0, start)]
+    dot = text.rfind(". ", 0, start)
+    if dot >= 0:
+        lows.append(dot + 1)
+    lo = max(lows) + 1
+    highs = [p for p in (text.find("\n", end), text.find("<", end)) if p >= 0]
+    dot = text.find(". ", end)
+    if dot >= 0:
+        highs.append(dot + 1)
+    hi = min(highs) if highs else len(text)
+    return lo, hi
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _pdf_page(pdf: Path, quote: str) -> int | None:
+    """1-based page of the PDF whose text contains the quote (whitespace
+    ignored), or None."""
+    from pypdf import PdfReader
+
+    needle = "".join(quote.split())
+    for i, page in enumerate(PdfReader(str(pdf)).pages, start=1):
+        if needle in "".join((page.extract_text() or "").split()):
+            return i
+    return None
+
+
+def search_successors(
+    chains: Sequence[Chain], *, raw_docs_dir: Path, modern: Sequence[ModernLine],
+) -> dict[str, dict]:
+    """{chain_id: successor} for era-only chains (classes == {'H'}) whose code
+    a PB2024–26 J-book XML sentence states continues under one PB2024–26 P-1
+    code. Each successor dict has successor_code, successor_account,
+    successor_evidence, matched_form, xml, line, quote.
+
+    A sentence qualifies only when it carries continuation wording
+    (SUCCESSOR_RE), one of the era code's forms, and exactly one other
+    PB2024–26 code (preferring the era chain's own account when the sentence
+    names several). The first qualifying sentence in successor_xml_files
+    order wins."""
+    raw_docs_dir = Path(raw_docs_dir)
+    targets = {c.chain_id: c for c in chains if c.classes == frozenset({"H"})}
+    if not targets:
+        return {}
+    era_forms: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for cid, ch in targets.items():
+        for token, form in code_forms(ch.line_item_code):
+            era_forms[token].append((cid, form))
+    modern_by_token: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for m in modern:
+        for token, _form in code_forms(m.code):
+            modern_by_token[token].add((m.code, m.account))
+    found: dict[str, dict] = {}
+    for xml in successor_xml_files(raw_docs_dir):
+        if len(found) == len(targets):
+            break
+        text = xml.read_bytes().decode("utf-8", errors="replace")
+        for hit in SUCCESSOR_RE.finditer(text):
+            lo, hi = _sentence_bounds(text, hit.start(), hit.end())
+            sentence = text[lo:hi]
+            tokens = set(_CODE_TOKEN_RE.findall(sentence))
+            for token in sorted(tokens):
+                for cid, form in era_forms.get(token, ()):
+                    if cid in found:
+                        continue
+                    ch = targets[cid]
+                    own = {t for t, _f in code_forms(ch.line_item_code)}
+                    cands: set[tuple[str, str]] = set()
+                    for other in tokens - own:
+                        cands |= modern_by_token.get(other, set())
+                    same = {c for c in cands if c[1] == ch.account}
+                    pick = same or cands
+                    if len(pick) != 1:
+                        continue
+                    code, account = next(iter(pick))
+                    rel = xml.relative_to(raw_docs_dir).as_posix()
+                    line = text.count("\n", 0, hit.start()) + 1
+                    quote = " ".join(sentence.split())
+                    parts = [f"xml={rel}:{line}", f"xml_sha256={_sha256_file(xml)}"]
+                    if xml.parent.name.endswith("__xml"):
+                        pdf = xml.parent.parent / (xml.parent.name[: -len("__xml")] + ".pdf")
+                        if pdf.is_file():
+                            page = _pdf_page(pdf, quote)
+                            parts += [f"pdf={pdf.relative_to(raw_docs_dir).as_posix()}",
+                                      f"pdf_sha256={_sha256_file(pdf)}",
+                                      f"pdf_page={page if page is not None else ''}"]
+                    parts += [f"form={form}", f'quote="{quote}"']
+                    found[cid] = {
+                        "successor_code": code,
+                        "successor_account": account,
+                        "successor_evidence": "; ".join(parts),
+                        "matched_form": form,
+                        "xml": rel,
+                        "line": line,
+                        "quote": quote,
+                    }
+    return found
+
+
+# ---------------------------------------------------------------------------
+# Lake inputs
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LakeInputs:
+    era: list[EraKey]
+    modern: list[ModernLine]
+    collision_codes: frozenset[str]
+    modern_pages: frozenset[tuple[str, str, str]]
+
+
+def jbooks_parquet(duckdb_path: Path, name: str) -> Path:
+    """data/parquet/jbooks/<name> beside the DuckDB file — the layouts
+    export_site._stage_parquet_path probes: {duckdb_dir}/parquet/jbooks/
+    (test fixtures), then {duckdb_dir}/../parquet/jbooks/ (data/duckdb +
+    data/parquet)."""
+    base = Path(duckdb_path).parent
+    for cand in (base / "parquet" / "jbooks" / name,
+                 base.parent / "parquet" / "jbooks" / name):
+        if cand.is_file():
+            return cand
+    raise FileNotFoundError(
+        f"era-map: {name} not found beside {duckdb_path}"
+        f" (looked in {base / 'parquet' / 'jbooks'} and"
+        f" {base.parent / 'parquet' / 'jbooks'})"
+    )
+
+
+def _sql_path(p: Path) -> str:
+    return str(p).replace("'", "''")
+
+
+def _dec(v) -> Decimal | None:
+    return None if v is None else Decimal(str(v))
+
+
+def _cell_sort_key(cell: str) -> tuple[int, str]:
+    m = re.match(r"^([A-Z]+)([0-9]+)$", cell)
+    return (int(m.group(2)), m.group(1)) if m else (0, cell)
+
+
+def _connect(duckdb_path: Path):
+    import duckdb
+
+    return duckdb.connect(str(duckdb_path), read_only=True)
+
+
+def _read_budget_lines(con, duckdb_path: Path) -> list[tuple]:
+    bl = jbooks_parquet(duckdb_path, "budget_lines.parquet")
+    cols = {r[0] for r in con.execute(
+        f"describe select * from read_parquet('{_sql_path(bl)}')").fetchall()}
+    if "line_item_code" not in cols:
+        raise RuntimeError(
+            f"era-map: {bl} has no line_item_code column. The era map reads the"
+            " printed budget line code from the lake: apply migration 021 and"
+            " run the S1 reload (scripts/era/s1_reload_era_p1.py --apply) and"
+            " `govbudget jbooks export-facts` first (plan Tasks 7-8)."
+        )
+    return con.execute(
+        "select cast(fiscal_year as integer), account, organization,"
+        " budget_activity, pe_bli, title, line_item_code, source_document_id,"
+        " coalesce(source_cells, '')"
+        f" from read_parquet('{_sql_path(bl)}')"
+        " where exhibit = 'P-1' and cast(fiscal_year as integer) between 2017 and 2026"
+    ).fetchall()
+
+
+def load_era_keys(duckdb_path: Path, *, with_amounts: bool = True) -> list[EraKey]:
+    """Every era P-1 key (PB2017–23, pe_bli an era procurement key) with its
+    printed code, title, budget activity, workbook sha and cells; amounts
+    from fct_decade_series when with_amounts. Raises EraKeyConflict if a key
+    prints more than one code, title, budget activity or source document."""
+    con = _connect(duckdb_path)
+    try:
+        rows = _read_budget_lines(con, duckdb_path)
+        docs = dict(con.execute(
+            "select id, sha256 from read_parquet("
+            f"'{_sql_path(jbooks_parquet(duckdb_path, 'documents.parquet'))}')"
+        ).fetchall())
+        amounts: dict[tuple[str, int, str], Decimal] = {}
+        if with_amounts:
+            for pe, ed, kind, amt in con.execute(
+                "select pe_bli, edition_year, amount_type_kind, amount"
+                " from fct_decade_series where edition_year <= 2023"
+                " and amount_type_kind in ('actuals', 'enacted')"
+            ).fetchall():
+                amounts[(pe, int(ed), kind)] = _dec(amt)
+    finally:
+        con.close()
+    acc: dict[tuple[int, str], dict] = {}
+    for ed, account, org, ba, pe, title, code, doc_id, cells in rows:
+        if ed > 2023 or not is_era_procurement_key(pe):
+            continue
+        a = acc.setdefault((ed, pe), {"account": set(), "org": set(), "ba": set(),
+                                       "title": set(), "code": set(), "doc": set(),
+                                       "cells": set()})
+        a["account"].add(account)
+        a["org"].add(org)
+        a["ba"].add(ba)
+        a["title"].add(title)
+        a["code"].add((code or "").strip())
+        a["doc"].add(doc_id)
+        a["cells"].update(c for c in cells.split(",") if c)
+    era = []
+    for (ed, pe), a in sorted(acc.items()):
+        for what in ("account", "org", "ba", "title", "code", "doc"):
+            if len(a[what]) != 1:
+                raise EraKeyConflict(
+                    f"era key {pe} (PB{ed}) has {len(a[what])} distinct {what}"
+                    f" values: {sorted(map(str, a[what]))}")
+        code = next(iter(a["code"]))
+        if not code:
+            raise RuntimeError(
+                f"era-map: era key {pe} (PB{ed}) has a blank line_item_code —"
+                " the S1 reload did not fill every era row (plan Task 8)")
+        doc = next(iter(a["doc"]))
+        if doc not in docs:
+            raise RuntimeError(f"era-map: source document {doc} of {pe} (PB{ed})"
+                               " is missing from documents.parquet")
+        era.append(EraKey(
+            edition=ed, account=next(iter(a["account"])),
+            organization=next(iter(a["org"])), budget_activity=next(iter(a["ba"])),
+            era_key=pe, line_item_code=code, filed_title=next(iter(a["title"])),
+            actuals_k=amounts.get((pe, ed, "actuals")),
+            source_document_sha256=docs[doc],
+            source_cells=tuple(sorted(a["cells"], key=_cell_sort_key)),
+            enacted_k=amounts.get((pe, ed, "enacted")),
+        ))
+    return era
+
+
+def load_inputs(duckdb_path: Path) -> LakeInputs:
+    """The era keys, the PB2024–26 P-1 lines, the PB2026 collision codes and
+    the PB2026 page identities, all read-only."""
+    era = load_era_keys(duckdb_path)
+    con = _connect(duckdb_path)
+    try:
+        rows = _read_budget_lines(con, duckdb_path)
+        grains = con.execute(
+            "select pe_bli, account, organization, edition_year, amount_type_kind,"
+            " amount from fct_decade_series where edition_year >= 2024"
+            " and amount_type_kind in ('actuals', 'enacted')"
+        ).fetchall()
+        programs = con.execute(
+            "select pe_bli, account, org from dim_programs").fetchall()
+    finally:
+        con.close()
+    acct_split = {r[0] for r in grains if r[1] is not None}
+    org_split = {r[0] for r in grains if r[2] is not None}
+    amounts = {(pe, acct, org, int(ed), kind): _dec(amt)
+               for pe, acct, org, ed, kind, amt in grains}
+    modern: set[ModernLine] = set()
+    for ed, account, org, _ba, pe, title, _code, _doc, _cells in rows:
+        if ed < 2024 or pe == "9999999999" or not is_route_safe_code(pe):
+            continue
+        gk = (pe, account if pe in acct_split else None,
+              org if pe in org_split else None, ed)
+        modern.add(ModernLine(
+            edition=ed, code=pe, account=account, organization=org, title=title,
+            actuals_k=amounts.get(gk + ("actuals",)),
+            enacted_k=amounts.get(gk + ("enacted",)),
+        ))
+    axes = require_resolved(programs, caller="era_map.load_inputs")
+    return LakeInputs(
+        era=era,
+        modern=sorted(modern, key=lambda m: (m.edition, m.code, m.account,
+                                             m.organization, m.title or "")),
+        collision_codes=frozenset(axes),
+        modern_pages=frozenset((pe, acct or "", org or "") for pe, acct, org in programs),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Seed / CSV I/O
+# ---------------------------------------------------------------------------
+
+
+def read_csv(path: Path) -> list[dict[str, str]]:
+    with open(path, newline="", encoding="utf-8") as fh:
+        return [dict(r) for r in csv.DictReader(fh)]
+
+
+def write_csv(path: Path, columns: Sequence[str], rows: Iterable[Mapping]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(columns), lineterminator="\n",
+                           extrasaction="raise")
+        w.writeheader()
+        for r in rows:
+            w.writerow({c: r.get(c, "") for c in columns})
+
+
+def read_seed(seed_path: Path) -> list[dict[str, str]]:
+    if not Path(seed_path).is_file():
+        return []
+    rows = read_csv(seed_path)
+    if rows and tuple(rows[0].keys()) != SEED_COLUMNS:
+        raise ValueError(f"{seed_path}: header {tuple(rows[0].keys())} != SEED_COLUMNS")
+    return rows
+
+
+def write_seed(seed_path: Path, rows: Iterable[Mapping]) -> None:
+    write_csv(Path(seed_path), SEED_COLUMNS, sorted(rows, key=lambda r: r["decision_id"]))
+
+
+def _ranges_overlap(a: Mapping, b: Mapping) -> bool:
+    return (a["line_item_code"], a["account"], a["organization"]) == (
+        b["line_item_code"], b["account"], b["organization"]) and not (
+        int(a["last_edition"]) < int(b["first_edition"])
+        or int(b["last_edition"]) < int(a["first_edition"]))
+
+
+# ---------------------------------------------------------------------------
+# propose (§4.6, §5.2, §5.4)
+# ---------------------------------------------------------------------------
+
+
+def _chain_group(ch: Chain) -> str:
+    """The research-pass bucket a chain falls in (mutually exclusive)."""
+    if "CR" in ch.classes:
+        return "cr"
+    if "UNSAFE" in ch.classes:
+        return "unsafe"
+    if ch.classes == frozenset({"A1"}):
+        return "a1_only"
+    if ch.classes == frozenset({"H"}):
+        return "h_drift_free" if title_drift_free(ch) else "h_drifting"
+    if ch.classes & {"R1", "R2", "R3"}:
+        return "r_containing"
+    if "A2" in ch.classes:
+        return "a2_without_r"
+    return "other"
+
+
+def _chain_context(ch: Chain, keys: Sequence[EraKey], ctx: _Context) -> dict:
+    ident = ctx.ident(keys[0])
+    mi = ctx.idx.get(ident)
+    if mi is not None and mi.latest_title is not None:
+        modern_title = mi.latest_title[1]
+    else:
+        modern_title = ""
+    jac = [j for j in (ctx.best_jaccard(k) for k in keys) if j is not None]
+    passed, total = ctx.continuity(ident)
+    return {
+        "modern_title": modern_title,
+        "title_jaccard": f"{min(jac):.2f}" if jac else "",
+        "continuity": f"{passed}/{total}",
+        "continuity_ok": total == 0 or passed * 3 >= total * 2,
+        "modern_accounts": sorted(ctx.modern_accounts.get(ch.line_item_code, ())),
+    }
+
+
+def _pick_page_by_title(ch: Chain, keys: Sequence[EraKey], ctx: _Context,
+                        modern_pages: frozenset[tuple[str, str, str]]) -> tuple[str, str]:
+    """For a collision-code chain left to review: the one page of its code
+    whose modern title matches the chain's latest filed title, else blanks."""
+    latest = normalize_title(keys[-1].filed_title)
+    hits = set()
+    for code, account, org in modern_pages:
+        if code != ch.line_item_code:
+            continue
+        mi = ctx.idx.get((code, account, org if code in ctx.split else ""))
+        if mi is not None and latest in mi.norm_titles:
+            hits.add((account, org))
+    return next(iter(hits)) if len(hits) == 1 else ("", "")
+
+
+def _org_editions(
+    era: Iterable[EraKey], split: frozenset[str],
+) -> dict[str, dict[tuple[str, str], set[int]]]:
+    """{code: {(account, era organization): editions holding keys}} for the
+    org-split codes."""
+    out: dict[str, dict[tuple[str, str], set[int]]] = {}
+    for k in era:
+        if k.line_item_code in split:
+            out.setdefault(k.line_item_code, {}).setdefault(
+                (k.account, k.organization), set()).add(k.edition)
+    return out
+
+
+def _org_clash(
+    ch: Chain, ctx: _Context, collision_codes: frozenset[str],
+    page: tuple[str, str],
+    org_editions: Mapping[str, Mapping[tuple[str, str], set[int]]],
+) -> tuple[str, dict[str, list[int]]] | None:
+    """(page organization, {other era organization: [shared editions]}) when
+    an org-split chain's code points at ANOTHER organization's page and that
+    organization prints the code in an edition this chain also holds keys
+    in. Deciding both same_program would sum two organizations' lines into
+    one page grain (fct_program_decade_series keeps organization only for
+    the PB2026 collision codes), i.e. put this chain's dollars on the other
+    organization's page. None otherwise.
+
+    The page: for a PB2026 collision code, `page` (the (account, org) the
+    pre-fill picked; a blank org means no page was picked); for any other
+    code, the code's one page, owned by the organizations that print it in
+    PB2024-26 (a chain of one of them is the page's own and never clashes).
+    Codes '10' and '15' are the live non-collision cases (PB2018 `10`:
+    TJS's page, DPAA's line; PB2021-23 `15`: DISA's page, TJS's line)."""
+    if not ch.organization:
+        return None
+    code, own = ch.line_item_code, _modern_org(ch.organization)
+    held = {e for e, _key in ch.keys}
+    rivals: dict[str, set[int]] = defaultdict(set)
+    if code in collision_codes:
+        page_account, page_org = page
+        if not page_org or page_org == own:
+            return None
+        for (a, o), eds in org_editions.get(code, {}).items():
+            if a == page_account and _modern_org(o) == page_org:
+                rivals[o] |= eds
+    else:
+        owners = sorted({o for c, _a, o in ctx.line_idents if c == code})
+        if not owners or own in owners:
+            return None
+        page_org = "/".join(owners)
+        for (_a, o), eds in org_editions.get(code, {}).items():
+            if o != ch.organization:
+                rivals[o] |= eds
+    shared = {o: sorted(eds & held) for o, eds in rivals.items() if eds & held}
+    return (page_org, shared) if shared else None
+
+
+def _prefill(ch: Chain, keys: Sequence[EraKey], ctx: _Context, info: dict,
+             collision_codes: frozenset[str],
+             modern_pages: frozenset[tuple[str, str, str]],
+             org_editions: Mapping[str, Mapping[tuple[str, str], set[int]]],
+             ) -> tuple[str, str, str, str]:
+    """(proposed_decision, reason, program_account, program_org) — Claude's
+    pre-fill for the owner; never a decision."""
+    rule = _proposed_rule(ch.classes)
+    pa = po = ""
+    if ch.line_item_code in collision_codes:
+        page = collision_page(ch, modern_pages)
+        pa, po = page if page is not None else _pick_page_by_title(
+            ch, keys, ctx, modern_pages)
+    if ch.classes == frozenset({"H"}):
+        return ("history_only",
+                f"{rule}: era-only code whose titles drift — confirm one program"
+                " (history_only) or split the range (exclude_reused_code)", "", "")
+    clash = _org_clash(ch, ctx, collision_codes, (pa, po), org_editions)
+    if clash is not None:
+        # another organization's page: data only. A collision code pins the
+        # chain's own identity so its grain stays apart from the page's.
+        page_org, shared = clash
+        printed = "; ".join(
+            f"code also printed by {o} in {', '.join(f'PB{e}' for e in eds)}"
+            for o, eds in sorted(shared.items()))
+        if ch.line_item_code in collision_codes:
+            page = f"{ch.line_item_code}-{page_org} (title match)"
+            pa, po = ch.account, _modern_org(ch.organization)
+        else:
+            page, pa, po = ch.line_item_code, "", ""
+        return ("history_only", f"{rule}: {printed}; page {page} is {page_org}'s",
+                pa, po)
+    if ch.classes == frozenset({"A1"}):
+        # only a collision-code chain with no matching PB2026 page gets here:
+        # pin it to its own PB2024-26 line identity, data only
+        org = _modern_org(ch.organization)
+        lines = sorted((a, o) for c, a, o in ctx.line_idents
+                       if c == ch.line_item_code and a == ch.account
+                       and (not ch.organization or o == org))
+        pa, po = lines[0] if len(lines) == 1 else ("", "")
+        return ("history_only",
+                f"{rule}: collision code with no PB2026 page for"
+                f" {ch.account}{'/' + ch.organization if ch.organization else ''}"
+                " — history_only (data only), or name the page it joins", pa, po)
+    if ch.classes & {"R2", "R3"}:
+        return ("same_program",
+                f"{rule}: account/organization move (modern accounts"
+                f" {', '.join(info['modern_accounts']) or 'none'})", pa, po)
+    if "R1" in ch.classes:
+        if info["continuity_ok"]:
+            return ("same_program",
+                    f"{rule}: renamed, continuity {info['continuity']} holds"
+                    f" (title Jaccard {info['title_jaccard'] or 'n/a'})", pa, po)
+        return ("",
+                f"{rule}: renamed and continuity {info['continuity']} fails —"
+                " consider a range split (earlier range exclude_reused_code)", pa, po)
+    return ("same_program",
+            f"{rule}: renamed within A2 (title Jaccard {info['title_jaccard']},"
+            f" continuity {info['continuity']})", pa, po)
+
+
+def propose(
+    *, duckdb_path: Path, raw_docs_dir: Path, out_dir: Path, seed_path: Path,
+    decided_on: date,
+) -> dict:
+    """Classify, chain, apply the class rulings, search successors, write
+    keys.csv / chains.csv / review.csv / counts.json under out_dir and the
+    class-ruled rows of the seed. Owner batch rows already in the seed
+    (ruling not a class ruling) are kept verbatim and their chains are
+    neither class-ruled nor re-proposed. Returns the counts dict."""
+    inputs = load_inputs(Path(duckdb_path))
+    split = org_split_codes(inputs.era)
+    if split != ORG_SPLIT_CODES:
+        raise RuntimeError(
+            f"era-map: org-split codes changed: lake {sorted(split)} !="
+            f" ORG_SPLIT_CODES {sorted(ORG_SPLIT_CODES)} — the chain identity"
+            " would move; review the change and update the constant and spec §4.3")
+    ctx = _Context(inputs.era, inputs.modern)
+    classes = {(k.edition, k.era_key): ctx.classify(k, inputs.collision_codes)
+               for k in ctx.era}
+    chains = build_chains(inputs.era, classes)
+    keys_by_chain = group_keys(inputs.era)
+    org_editions = _org_editions(inputs.era, split)
+
+    existing = read_seed(Path(seed_path))
+    owner_rows = [r for r in existing if r["ruling"] not in CLASS_RULINGS]
+    owner_chains = {chain_id(r["line_item_code"], r["account"], r["organization"])
+                    for r in owner_rows}
+    review_path = Path(out_dir) / "review.csv"
+    if review_path.is_file():
+        pending = sorted({r["chain_id"] for r in read_csv(review_path)
+                          if (r.get("decision") or "").strip()
+                          and r["chain_id"] not in owner_chains})
+        if pending:
+            raise RuntimeError(
+                f"era-map propose: {review_path} holds decisions for"
+                f" {len(pending)} chain(s) that are not ratified yet"
+                f" ({', '.join(pending[:5])}) — run `govbudget era-map ratify`"
+                " first, or blank their decision column; nothing was written")
+    open_chains = [c for c in chains if c.chain_id not in owner_chains]
+    ruled, left = apply_class_rulings(
+        open_chains, modern_pages=inputs.modern_pages,
+        collision_codes=inputs.collision_codes, decided_on=decided_on)
+    successors = search_successors(chains, raw_docs_dir=Path(raw_docs_dir),
+                                   modern=inputs.modern)
+    info = {c.chain_id: _chain_context(c, keys_by_chain[c.chain_id], ctx)
+            for c in chains}
+
+    prior = {r["decision_id"]: r for r in existing if r["ruling"] in CLASS_RULINGS}
+    by_id = {c.chain_id: c for c in chains}
+    for row in ruled:
+        cid = chain_id(row["line_item_code"], row["account"], row["organization"])
+        ch, ci = by_id[cid], info[cid]
+        row["modern_title"] = ci["modern_title"]
+        row["evidence"] = (f"title_jaccard={ci['title_jaccard'] or 'n/a'};"
+                           f" continuity={ci['continuity']};"
+                           f" actuals_k={_fmt_k(ch.actuals_k)}")
+        if row["decision"] == "history_only" and cid in successors:
+            for f in ("successor_code", "successor_account", "successor_evidence"):
+                row[f] = successors[cid][f]
+        old = prior.get(row["decision_id"])
+        if old and all(old[f] == row[f] for f in
+                       ("keys_sha256", "decision", "ruling", "program_account",
+                        "program_org")):
+            row["decided_on"] = old["decided_on"]
+    write_seed(Path(seed_path), owner_rows + ruled)
+
+    ruled_ids = {chain_id(r["line_item_code"], r["account"], r["organization"]): r
+                 for r in ruled}
+    review = []
+    left_reason: dict[str, str] = {}
+    for ch in left:
+        keys = keys_by_chain[ch.chain_id]
+        ci = info[ch.chain_id]
+        decision, reason, pa, po = _prefill(ch, keys, ctx, ci,
+                                            inputs.collision_codes,
+                                            inputs.modern_pages, org_editions)
+        if ch.classes == frozenset({"A1"}):
+            left_reason[ch.chain_id] = "collision code without a matching PB2026 page"
+        succ = successors.get(ch.chain_id, {})
+        review.append({
+            "chain_id": ch.chain_id,
+            "first_edition": str(ch.first_edition),
+            "last_edition": str(ch.last_edition),
+            "titles_by_edition": _titles_seen(ch, ch.first_edition, ch.last_edition),
+            "modern_title": ci["modern_title"],
+            "accounts": (f"era={ch.account}{'/' + ch.organization if ch.organization else ''};"
+                         f" modern={','.join(ci['modern_accounts']) or 'none'}"),
+            "continuity": ci["continuity"],
+            "actuals_k": _fmt_k(ch.actuals_k),
+            "proposed_decision": decision,
+            "reason": reason,
+            "program_account": pa,
+            "program_org": po,
+            "successor_code": succ.get("successor_code", ""),
+            "keys_sha256": ch.keys_sha256,
+            "decision": "",
+            "note": "",
+        })
+    review.sort(key=lambda r: (-Decimal(r["actuals_k"] or "0"), r["chain_id"]))
+
+    out_dir = Path(out_dir)
+    write_csv(out_dir / "review.csv", REVIEW_COLUMNS, review)
+    chain_rows = []
+    for ch in chains:
+        ci, succ = info[ch.chain_id], successors.get(ch.chain_id, {})
+        ruled_row = ruled_ids.get(ch.chain_id)
+        chain_rows.append({
+            "chain_id": ch.chain_id, "line_item_code": ch.line_item_code,
+            "account": ch.account, "organization": ch.organization,
+            "first_edition": str(ch.first_edition), "last_edition": str(ch.last_edition),
+            "classes": _proposed_rule(ch.classes), "n_keys": str(ch.n_keys),
+            "keys_sha256": ch.keys_sha256, "actuals_k": _fmt_k(ch.actuals_k),
+            "titles_by_edition": _titles_seen(ch, ch.first_edition, ch.last_edition),
+            "modern_title": ci["modern_title"], "title_jaccard": ci["title_jaccard"],
+            "continuity": ci["continuity"],
+            "ruling": ruled_row["ruling"] if ruled_row else (
+                "owner-batch" if ch.chain_id in owner_chains else ""),
+            "decision": ruled_row["decision"] if ruled_row else "",
+            "left_ruling_reason": left_reason.get(ch.chain_id, ""),
+            "successor_code": succ.get("successor_code", ""),
+            "successor_account": succ.get("successor_account", ""),
+            "successor_evidence": succ.get("successor_evidence", ""),
+        })
+    write_csv(out_dir / "chains.csv", CHAIN_COLUMNS, chain_rows)
+    key_rows = []
+    for ch in chains:
+        ci = info[ch.chain_id]
+        for k in keys_by_chain[ch.chain_id]:
+            jac = ctx.best_jaccard(k)
+            key_rows.append({
+                "edition": str(k.edition), "era_key": k.era_key,
+                "account": k.account, "organization": k.organization,
+                "budget_activity": k.budget_activity or "",
+                "line_number": k.era_key.rsplit("-L", 1)[1],
+                "line_item_code": k.line_item_code, "filed_title": k.filed_title or "",
+                "chain_id": ch.chain_id, "class": classes[(k.edition, k.era_key)],
+                "title_jaccard": "" if jac is None else f"{jac:.2f}",
+                "continuity": ci["continuity"],
+                "actuals_k": _fmt_k(k.actuals_k), "enacted_k": _fmt_k(k.enacted_k),
+                "source_document_sha256": k.source_document_sha256,
+                "source_rows": ",".join(str(r) for r in sorted(
+                    {_cell_sort_key(c)[0] for c in k.source_cells})),
+                "source_cells": ",".join(k.source_cells),
+            })
+    key_rows.sort(key=lambda r: (int(r["edition"]), r["era_key"]))
+    write_csv(out_dir / "keys.csv", KEY_COLUMNS, key_rows)
+
+    groups: dict[str, int] = defaultdict(int)
+    for ch in chains:
+        groups[_chain_group(ch)] += 1
+    key_classes = {c: 0 for c in CLASS_ORDER}
+    key_dollars = {c: Decimal(0) for c in CLASS_ORDER}
+    for k in inputs.era:
+        cls = classes[(k.edition, k.era_key)]
+        key_classes[cls] += 1
+        key_dollars[cls] += k.actuals_k or Decimal(0)
+    rulings: dict[str, int] = {r: 0 for r in CLASS_RULINGS}
+    for r in ruled:
+        rulings[r["ruling"]] += 1
+    by_edition: dict[str, int] = defaultdict(int)
+    for k in inputs.era:
+        by_edition[str(k.edition)] += 1
+    counts = {
+        "era_keys": len(inputs.era),
+        "era_keys_by_edition": dict(sorted(by_edition.items())),
+        "chains": len(chains),
+        "chain_groups": dict(sorted(groups.items())),
+        "key_classes": key_classes,
+        "key_class_actuals_k": {c: _fmt_k(v) for c, v in key_dollars.items()},
+        "era_actuals_k": _fmt_k(sum(key_dollars.values(), Decimal(0))),
+        "rulings": rulings,
+        "ruled_actuals_k": {
+            r: _fmt_k(sum((by_id[chain_id(x["line_item_code"], x["account"],
+                                          x["organization"])].actuals_k
+                           for x in ruled if x["ruling"] == r), Decimal(0)))
+            for r in CLASS_RULINGS},
+        "left_ruling": len(left_reason),
+        "review_rows": len(review),
+        "owner_batch_chains": len(owner_chains),
+        "org_split_codes": sorted(split),
+        "collision_codes": sorted(inputs.collision_codes),
+        "successors": {cid: s["successor_code"] for cid, s in sorted(successors.items())},
+    }
+    (out_dir / "counts.json").write_text(json.dumps(counts, indent=1, sort_keys=True) + "\n")
+    return counts
