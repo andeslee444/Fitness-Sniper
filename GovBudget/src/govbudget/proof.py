@@ -123,6 +123,21 @@ Fix round 4 (2026-10, review findings):
     verdict, both source trees and a content hash of the classes, nothing
     time-dependent (noise_file); `--noise-from` refuses any other file
     (load_noise_classes). format_report never truncates a list silently.
+
+Fix round 5 (2026-10, controller ruling on Task 8's judged diffs): a reorder
+class's pointer generalises every 16-hex fact-ID segment to {fid} — exactly
+as the report's grouping (_pattern) already prints `/{fid}/inputs` — both in
+the classes a --control run records and in the lookup a --noise-from run
+performs (_Mode.allow_reorder). Export nondeterminism reorders derived
+citations' `inputs` and usaspending `query_body` award_ids on a DIFFERENT
+random subset of fact IDs every run, so a per-fact-ID class (Fix round 3's
+`/1195916d7235078e/inputs`) under-samples it: a judged diff read "changed"
+on fact IDs the control merely happened not to see. The KIND of reorder is
+what the control observes. No other segment is generalised — codes, slugs,
+upper-case or non-16-character hex keep their literal text — and a reorder
+of a different field under a fact ID (`/{fid}/tags`) is its own class. The
+noise file records the rule (`pointer_generalisation`), and
+load_noise_classes refuses a file without it.
 """
 from __future__ import annotations
 
@@ -230,7 +245,10 @@ class _Mode:
     into `observed` (for --write-noise); any OTHER kind of difference still
     fails the control (diff_trees's caller reads `is_equal`). trusted, when
     not None (--noise-from), is the exact set of (group, pointer) classes a
-    PRIOR control run vouched for; a permutation elsewhere is untrusted.
+    PRIOR control run vouched for; a permutation elsewhere is untrusted. A
+    class is (group, pointer pattern): 16-hex fact-ID pointer segments read
+    as {fid} (Fix round 5), so `/1195916d7235078e/inputs` and
+    `/2ab45e40c656c4ef/inputs` are one class, `/{fid}/inputs`.
     Neither set (the default): nothing is trusted, same as before this
     ruling existed. Numeric-text/JSON-in-string/derived-hash equivalence
     (rulings 1-3) do not go through this gate — they apply unconditionally.
@@ -246,11 +264,16 @@ class _Mode:
         self.observed: Counter = Counter()
 
     def allow_reorder(self, group: str, pointer: str) -> bool:
+        # Fix round 5 (controller ruling): a class is keyed by the pointer's
+        # PATTERN — every 16-hex fact-ID segment becomes {fid}, exactly as the
+        # report's own grouping prints it — when a control records it AND when
+        # a --noise-from run looks it up. No other segment is generalised.
+        key = (group, _pattern(pointer))
         if self.control:
-            self.observed[(group, pointer)] += 1
+            self.observed[key] += 1
             return True
-        if self.trusted is not None and (group, pointer) in self.trusted:
-            self.observed[(group, pointer)] += 1
+        if self.trusted is not None and key in self.trusted:
+            self.observed[key] += 1
             return True
         return False
 
@@ -1023,7 +1046,8 @@ def diff_trees(a: Path, b: Path, *, control: bool = False,
     file entry carries its own "float_noise"); report["derived_hash"] does
     the same for a content hash/byte count resolved via ruling 3 (each
     file's own "derived_hash" count). report["reorder_classes"] lists every
-    (group, pointer) pure-permutation class trusted this run, sorted, with
+    (group, pointer pattern — fact IDs as {fid}, Fix round 5)
+    pure-permutation class trusted this run, sorted, with
     counts — non-empty only with `control=True` or a `noise_classes` set
     (ruling 4); with neither, nothing is trusted and behaviour is as before
     these rulings existed. `noise_classes` also accepts the JSON list
@@ -1189,6 +1213,9 @@ def load_expectations(path: Path) -> list[dict]:
 
 
 NOISE_FILE_SCHEMA = 1
+#: Recorded in every noise file (Fix round 5) and required by
+#: load_noise_classes: says how its class pointers are keyed.
+NOISE_POINTER_GENERALISATION = "16-hex fact-ID pointer segments are {fid}"
 
 
 def _classes_sha256(classes: list) -> str:
@@ -1218,6 +1245,7 @@ def noise_file(report: dict) -> dict:
         "verdict": "EQUAL",
         "a": str(Path(report["a"]).resolve()),
         "b": str(Path(report["b"]).resolve()),
+        "pointer_generalisation": NOISE_POINTER_GENERALISATION,
         "classes_sha256": _classes_sha256(classes),
         "classes": classes,
     }
@@ -1236,8 +1264,11 @@ def load_noise_classes(path: Path) -> list[dict]:
     `--control` run vouched for. Refuses a file that does not record a
     control verdict of EQUAL (including Fix round 3's bare-list format,
     which recorded no verdict at all), that does not name both source
-    trees, or whose classes no longer match their recorded classes_sha256.
-    `count` is provenance only — matching is by (path, pointer) alone."""
+    trees, or whose classes no longer match their recorded classes_sha256,
+    or that predates Fix round 5's fact-ID generalisation (no
+    `pointer_generalisation` marker, or a class pointer that still holds a
+    raw 16-hex segment). `count` is provenance only — matching is by
+    (path, pointer pattern) alone."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("verdict") != "EQUAL":
         raise ValueError(
@@ -1259,6 +1290,18 @@ def load_noise_classes(path: Path) -> list[dict]:
     if data.get("classes_sha256") != _classes_sha256(classes):
         raise ValueError(f"proof diff --noise-from: {path}'s classes do not match its"
                          f" classes_sha256 — edited after the control run?")
+    if data.get("pointer_generalisation") != NOISE_POINTER_GENERALISATION:
+        raise ValueError(
+            f"proof diff --noise-from: {path} does not say its class pointers are fact-ID"
+            f" generalised ({NOISE_POINTER_GENERALISATION!r}) — written before Fix round 5;"
+            f" re-run the --control"
+        )
+    for i, c in enumerate(classes):
+        if any(_FID_RE.fullmatch(seg) for seg in c["pointer"].split("/")):
+            raise ValueError(
+                f"proof diff --noise-from: class {i} pointer {c['pointer']!r} holds a raw"
+                f" fact-ID segment — a lookup reads it as {{fid}}, so it could never match"
+            )
     return classes
 
 

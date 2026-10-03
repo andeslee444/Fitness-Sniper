@@ -1200,6 +1200,7 @@ def test_noise_file_records_verdict_trees_and_a_content_hash(tmp_path, capsys):
         "verdict": "EQUAL",
         "a": str(a.resolve()),
         "b": str(b.resolve()),
+        "pointer_generalisation": "16-hex fact-ID pointer segments are {fid}",
         "classes_sha256": hashlib.sha256(
             json.dumps(classes, sort_keys=True, ensure_ascii=False,
                        separators=(",", ":")).encode("utf-8")).hexdigest(),
@@ -1251,3 +1252,147 @@ def test_format_report_lists_every_class_or_says_how_many_more(tmp_path, n_lists
     assert len(class_lines) == shown
     more_lines = [ln for ln in lines if "more (see --report)" in ln]
     assert more_lines == ([] if more is None else [f"    +{more} more (see --report)"])
+
+
+# ---------------------------------------------------------------------------
+# Fix round 5: reorder classes generalise 16-hex fact-ID pointer segments
+# to {fid} (controller ruling: export nondeterminism reorders a DIFFERENT
+# random subset of citations' inputs/query_body every run)
+# ---------------------------------------------------------------------------
+
+FID_1, FID_2 = "1195916d7235078e", "2ab45e40c656c4ef"
+
+
+def _citations(root: Path, by_fid: dict) -> None:
+    _json(root / "json" / "citations.json", by_fid)
+
+
+def _control_noise_file(tmp_path: Path, a_doc: dict, b_doc: dict) -> Path:
+    """Run a --control on two citations.json trees through the CLI; return
+    the noise file it wrote (it must read EQUAL)."""
+    a, b = tmp_path / "ctl_a", tmp_path / "ctl_b"
+    _citations(a, a_doc)
+    _citations(b, b_doc)
+    noise = tmp_path / "noise.json"
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--control", "--write-noise", str(noise)])
+    assert exc.value.code == 0
+    return noise
+
+
+def _judge(tmp_path: Path, noise: Path, a_doc: dict, b_doc: dict) -> dict:
+    a, b = tmp_path / "jdg_a", tmp_path / "jdg_b"
+    _citations(a, a_doc)
+    _citations(b, b_doc)
+    return proof.diff_trees(a, b, noise_classes=proof.load_noise_classes(noise))
+
+
+def _derived(inputs: list, body: list | None = None, **extra) -> dict:
+    c = {"kind": "derived", "inputs": inputs, **extra}
+    if body is not None:
+        c["query_body"] = json.dumps({"filters": {"award_ids": body}})
+    return c
+
+
+def test_control_writes_fid_segments_as_the_fid_pattern(tmp_path, capsys):
+    noise = _control_noise_file(
+        tmp_path,
+        {FID_1: _derived(["a", "b"], ["W1", "W2"]), FID_2: _derived(["c", "d"])},
+        {FID_1: _derived(["b", "a"], ["W2", "W1"]), FID_2: _derived(["d", "c"])},
+    )
+    capsys.readouterr()
+    doc = json.loads(noise.read_text())
+    assert doc["classes"] == [
+        {"count": 2, "path": "json/citations.json", "pointer": "/{fid}/inputs"},
+        {"count": 1, "path": "json/citations.json", "pointer": "/{fid}/query_body"},
+    ]
+    assert doc["pointer_generalisation"] == proof.NOISE_POINTER_GENERALISATION
+
+
+def test_a_fid_the_control_never_saw_is_reordered_under_noise_from(tmp_path, capsys):
+    # The control saw /<FID_1>/inputs and /<FID_1>/query_body reorder; the
+    # judged pair reorders the SAME fields on FID_2 only.
+    noise = _control_noise_file(
+        tmp_path,
+        {FID_1: _derived(["a", "b"], ["W1", "W2"]), FID_2: _derived(["c", "d"], ["W3", "W4"])},
+        {FID_1: _derived(["b", "a"], ["W2", "W1"]), FID_2: _derived(["c", "d"], ["W3", "W4"])},
+    )
+    capsys.readouterr()
+    report = _judge(
+        tmp_path, noise,
+        {FID_1: _derived(["a", "b"], ["W1", "W2"]), FID_2: _derived(["c", "d"], ["W3", "W4"])},
+        {FID_1: _derived(["a", "b"], ["W1", "W2"]), FID_2: _derived(["d", "c"], ["W4", "W3"])},
+    )
+    assert report["files"]["json/citations.json"]["status"] == "reordered"
+    assert report["reorder_classes"] == [
+        {"count": 1, "path": "json/citations.json", "pointer": "/{fid}/inputs"},
+        {"count": 1, "path": "json/citations.json", "pointer": "/{fid}/query_body"},
+    ]
+    assert proof.is_equal(report)
+
+
+def test_a_reorder_of_another_field_under_a_fid_is_still_changed(tmp_path, capsys):
+    noise = _control_noise_file(
+        tmp_path,
+        {FID_1: _derived(["a", "b"], tags=["x", "y"])},
+        {FID_1: _derived(["b", "a"], tags=["x", "y"])},
+    )
+    capsys.readouterr()
+    report = _judge(
+        tmp_path, noise,
+        {FID_2: _derived(["c", "d"], tags=["x", "y"])},
+        {FID_2: _derived(["c", "d"], tags=["y", "x"])},       # /{fid}/tags: never observed
+    )
+    assert _changes(report, "json/citations.json") == [("/{fid}/tags", "reordered", 1)]
+    assert not proof.is_equal(report)
+
+
+@pytest.mark.parametrize("seen, judged", [
+    ("0604874C", "0603000A"),                     # a pe_bli code
+    ("1195916D7235078E", "2AB45E40C656C4EF"),     # 16 hex digits, but upper case
+    ("1195916d7235078", "2ab45e40c656c4e"),       # 15 hex digits
+    ("1195916d7235078e0", "2ab45e40c656c4ef0"),   # 17 hex digits
+    ("TX-32", "TX-33"),                           # a slug
+])
+def test_a_non_fid_segment_is_not_generalised(tmp_path, capsys, seen, judged):
+    noise = _control_noise_file(tmp_path, {seen: {"rows": [1, 2]}}, {seen: {"rows": [2, 1]}})
+    capsys.readouterr()
+    assert proof.load_noise_classes(noise) == [
+        {"count": 1, "path": "json/citations.json", "pointer": f"/{seen}/rows"}
+    ]
+    report = _judge(tmp_path, noise, {judged: {"rows": [1, 2]}}, {judged: {"rows": [2, 1]}})
+    assert report["files"]["json/citations.json"]["status"] == "changed"
+    assert not proof.is_equal(report)
+    # ...while the key the control did see is still trusted.
+    report = _judge(tmp_path, noise, {seen: {"rows": [1, 2]}}, {seen: {"rows": [2, 1]}})
+    assert report["files"]["json/citations.json"]["status"] == "reordered"
+
+
+def test_parquet_varchar_classes_are_keyed_the_same_way(tmp_path):
+    # citations.parquet's classes were never per fact ID (the pointer is the
+    # column); a reorder on any row is one class, unchanged by this ruling.
+    cols = [("fact_id", "varchar"), ("inputs", "varchar")]
+    _parquet(tmp_path / "a" / "c.parquet", cols,
+             [(FID_1, json.dumps(["a", "b"])), (FID_2, json.dumps(["c", "d"]))])
+    _parquet(tmp_path / "b" / "c.parquet", cols,
+             [(FID_1, json.dumps(["b", "a"])), (FID_2, json.dumps(["d", "c"]))])
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert report["reorder_classes"] == [{"count": 2, "path": "c.parquet", "pointer": "/inputs"}]
+
+
+@pytest.mark.parametrize("edit, message", [
+    (lambda d: d.pop("pointer_generalisation"), "fact-ID"),     # written before Fix round 5
+    (lambda d: d.update(pointer_generalisation="none"), "fact-ID"),
+    (lambda d: d.update(classes=[{"count": 1, "path": "json/citations.json",
+                                  "pointer": f"/{FID_1}/inputs"}]), "fact-ID segment"),
+])
+def test_noise_from_refuses_classes_that_are_not_fid_generalised(tmp_path, capsys, edit, message):
+    noise = _control_noise_file(tmp_path, {FID_1: _derived(["a", "b"])},
+                                {FID_1: _derived(["b", "a"])})
+    capsys.readouterr()
+    doc = json.loads(noise.read_text())
+    edit(doc)
+    doc["classes_sha256"] = proof._classes_sha256(doc["classes"])
+    noise.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match=message):
+        proof.load_noise_classes(noise)
