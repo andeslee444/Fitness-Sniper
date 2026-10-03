@@ -485,3 +485,136 @@ def test_no_warehouse_tables_skips_the_tier(tmp_path):
     db = tmp_path / "empty.duckdb"
     duckdb.connect(str(db)).close()
     assert _build(db) == ([], [], [], {}, frozenset())
+
+
+# ---------------------------------------------------------------------------
+# Task 17 fix round 1: runtime parity between the program table and the line
+# table, the single-source era amount check, and a pin on the unused axis.
+# A full `dbt build` from a checkout without fct_program_decade_series
+# refreshes fct_decade_series alone and never runs the program table's dbt
+# tests, so the tier itself must refuse a stale program table.
+# ---------------------------------------------------------------------------
+
+NATIVE2_KEY = "0602702E|||FY2022|PB2024"
+
+
+def test_native_program_row_without_a_line_twin_raises(tmp_path):
+    db = _make_warehouse(
+        tmp_path, line_grains=list(NATIVE_GRAINS),
+        grains=NATIVE_GRAINS + [NATIVE2_GRAIN] + ERA_GRAINS,
+    )
+    with pytest.raises(RuntimeError) as exc:
+        _build(db, scope=SCOPE | {"0602702E"})
+    msg = str(exc.value)
+    assert "fct_program_decade_series and fct_decade_series disagree" in msg
+    assert (f"1 native fct_program_decade_series row(s) with no"
+            f" fct_decade_series twin (e.g. {NATIVE2_KEY})") in msg
+
+
+def test_line_row_without_a_native_program_row_raises(tmp_path):
+    # the stale-program-table shape: the line table gained a grain the
+    # program table never saw — the tier must not drop it silently
+    db = _make_warehouse(
+        tmp_path, line_grains=NATIVE_GRAINS + [NATIVE2_GRAIN],
+        grains=NATIVE_GRAINS + ERA_GRAINS,
+    )
+    with pytest.raises(RuntimeError) as exc:
+        _build(db, scope=SCOPE | {"0602702E"})
+    assert ("1 non-era fct_decade_series row(s) with no native"
+            f" fct_program_decade_series row (e.g. {NATIVE2_KEY})") in str(exc.value)
+
+
+def test_native_amount_drift_between_the_tables_raises(tmp_path):
+    stale = [("0601101E", 2022, 2024, "actuals", 99999.0, "fy_2022_actuals",
+              None, None, 1, NATIVE, "native")]
+    db = _make_warehouse(tmp_path, grains=stale + ERA_GRAINS)
+    with pytest.raises(RuntimeError) as exc:
+        _build(db)
+    assert ("1 native fct_program_decade_series row(s) differing from their"
+            " fct_decade_series twin (e.g. 0601101E|||FY2022|PB2024)") in str(exc.value)
+
+
+def test_era_key_line_rows_need_no_program_row(tmp_path, built):
+    """fct_decade_series still holds every era key's own grain (decided or
+    not); only the map decides whether one reaches the program table, so
+    the parity guard skips era keys exactly as the dbt test does."""
+    era_line = [
+        ("3010F-AF-L5", 2017, 2019, "actuals", 300.0, "fy_2017_actuals",
+         None, None, 1, L5_ACT),
+        ("3010F-AF-L10", 2017, 2019, "actuals", 60.0, "fy_2017_actuals",
+         None, None, 1, wb("AF", "01", "3010F-AF-L10", "fy_2017_actuals")),
+    ]
+    d = tmp_path / "era_line"
+    d.mkdir()
+    db = _make_warehouse(d, line_grains=NATIVE_GRAINS + era_line)
+    bl, cit, grains, side, era_fids = _build(db)
+    assert bl == built["bl_rows"]
+    assert grains == built["grains"]
+    assert era_fids == built["era_fids"]
+
+
+def test_single_source_era_grain_amount_drift_raises(tmp_path):
+    # PB2019 request of XB0100: one lake cell of 400; the program table
+    # says 401 — the cell would be cited beside a figure it does not hold
+    drifted = [g if g[9] != L5_REQ else g[:4] + (401.0,) + g[5:]
+               for g in NATIVE_GRAINS + ERA_GRAINS]
+    with pytest.raises(ValueError, match=r"amount 401\.0 in"
+                       r" fct_program_decade_series != the sum of its 1 lake"
+                       r" row\(s\) \(400\.0\) — mart/lake drift"):
+        _build(_make_warehouse(tmp_path, grains=drifted))
+
+
+def test_pin_on_the_unused_axis_is_ignored(tmp_path):
+    """An account-collision code's era chains carry BOTH pins in the map
+    (decision 5); the program table splits on account only. A Navy era row
+    files its own organization as 'NAVY' while the pin says 'N' (the live
+    shape): the grain must still match through the account pin alone."""
+    from govbudget.export_site import _ProgramIdentity
+
+    lake = [
+        ("P-1", "2019", "1506N", "Aircraft Procurement, Navy", "NAVY", "05",
+         "Modification of Aircraft", "1506N-NAVY-L40", "ZZ Mods",
+         "fy_2017_actuals", "700", "7", "Exhibit P-1", "Q40"),
+        ("P-1", "2019", "1611N", "Shipbuilding and Conversion, Navy", "NAVY",
+         "02", "Other Warships", "1611N-NAVY-L7", "ZZ Ship",
+         "fy_2017_actuals", "900", "7", "Exhibit P-1", "Q41"),
+    ]
+    zmap = [
+        (2019, "1506N", "NAVY", "05", "1506N-NAVY-L40", "ZZ0577", "ZZ0577",
+         "1506N", "N", "same_program"),
+        (2019, "1611N", "NAVY", "02", "1611N-NAVY-L7", "ZZ0577", "ZZ0577",
+         "1611N", "N", "same_program"),
+    ]
+    z1506 = wb("NAVY", "05", "1506N-NAVY-L40", "fy_2017_actuals", account="1506N")
+    z1611 = wb("NAVY", "02", "1611N-NAVY-L7", "fy_2017_actuals", account="1611N")
+    zgrains = [
+        ("ZZ0577", 2017, 2019, "actuals", 700.0, "fy_2017_actuals", "1506N",
+         None, 1, z1506, "era_line_map"),
+        ("ZZ0577", 2017, 2019, "actuals", 900.0, "fy_2017_actuals", "1611N",
+         None, 1, z1611, "era_line_map"),
+    ]
+    db = _make_warehouse(tmp_path, grains=NATIVE_GRAINS + ERA_GRAINS + zgrains,
+                         extra_lake=lake, extra_map=zmap)
+    titles = {"1506N": "Aircraft Procurement, Navy",
+              "1611N": "Shipbuilding and Conversion, Navy"}
+    con = duckdb.connect(str(db))
+    try:
+        con.executemany(
+            "insert into dim_programs values (?, ?, ?, 'N', 'procurement')",
+            [("ZZ0577", a, t) for a, t in titles.items()],
+        )
+    finally:
+        con.close()
+    bl, cit, grains, side, era_fids = _build(db, scope=SCOPE | {"ZZ0577"})
+    by_fid = {r[0]: r for r in bl}
+    assert by_fid[z1506][5] == "NAVY" and by_fid[z1611][5] == "NAVY"
+    assert ("ZZ0577", 2017, 2019, "actuals", 700.0, z1506, "fy_2017_actuals",
+            "1506N", None) in grains
+    assert ("ZZ0577", 2017, 2019, "actuals", 900.0, z1611, "fy_2017_actuals",
+            "1611N", None) in grains
+    assert {z1506, z1611} <= era_fids
+    ident = _ProgramIdentity([("ZZ0577", a, t, "N", True) for a, t in titles.items()])
+    pages = {a: ident.slug("ZZ0577", a, t, "N") for a, t in titles.items()}
+    assert pages["1506N"] != pages["1611N"]
+    assert side[z1506] == ("PB2019 FY2017 actuals", pages["1506N"])
+    assert side[z1611] == ("PB2019 FY2017 actuals", pages["1611N"])

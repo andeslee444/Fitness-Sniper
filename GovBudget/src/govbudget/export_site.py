@@ -7009,6 +7009,73 @@ def _build_decade_citation_rows(
                 " fct_decade_series — native grains are emitted in the line"
                 " table's row order, and its parity contract needs it"
             )
+        # Native parity, checked at RUNTIME (Task 17 fix round 1). dbt's
+        # assert_program_decade_native_equals_line proves it at build time,
+        # but a full `dbt build` from a checkout without the program table
+        # refreshes fct_decade_series alone and never runs that test: a
+        # stale program table would then silently drop or reorder native
+        # grains, or publish stale amounts. Same legs as that test, over the
+        # columns this tier reads (era-key line rows are excluded: the map
+        # decides those, and undecided ones have no program row by design).
+        parity = con.execute(
+            "with line as ("
+            "  select pe_bli as k, account as a, organization as o, fy,"
+            "         edition_year as ed, amount_type_kind, amount,"
+            "         amount_type, n_source_rows, source_fact_id"
+            "  from fct_decade_series"
+            "  where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')"
+            "), native as ("
+            "  select program_key as k, account as a, organization as o, fy,"
+            "         edition_year as ed, amount_type_kind, amount,"
+            "         amount_type, n_source_rows, source_fact_id"
+            "  from fct_program_decade_series where map_basis = 'native'"
+            "), bad as ("
+            "  select 'native fct_program_decade_series row(s) with no"
+            " fct_decade_series twin' as failure, n.k, n.a, n.o, n.fy, n.ed"
+            "  from native n left join line l"
+            "    on l.k = n.k and l.a is not distinct from n.a"
+            "   and l.o is not distinct from n.o and l.fy = n.fy"
+            "   and l.ed = n.ed"
+            "  where l.k is null"
+            "  union all"
+            "  select 'non-era fct_decade_series row(s) with no native"
+            " fct_program_decade_series row', l.k, l.a, l.o, l.fy, l.ed"
+            "  from line l left join native n"
+            "    on n.k = l.k and n.a is not distinct from l.a"
+            "   and n.o is not distinct from l.o and n.fy = l.fy"
+            "   and n.ed = l.ed"
+            "  where n.k is null"
+            "  union all"
+            "  select 'native fct_program_decade_series row(s) differing from"
+            " their fct_decade_series twin', n.k, n.a, n.o, n.fy, n.ed"
+            "  from native n join line l"
+            "    on l.k = n.k and l.a is not distinct from n.a"
+            "   and l.o is not distinct from n.o and l.fy = n.fy"
+            "   and l.ed = n.ed"
+            "  where l.amount_type_kind is distinct from n.amount_type_kind"
+            "     or l.amount is distinct from n.amount"
+            "     or l.amount_type is distinct from n.amount_type"
+            "     or l.n_source_rows is distinct from n.n_source_rows"
+            "     or l.source_fact_id is distinct from n.source_fact_id"
+            ")"
+            " select failure, count(*),"
+            "        min(k || '|' || coalesce(a, '') || '|' || coalesce(o, '')"
+            "            || '|FY' || fy || '|PB' || ed)"
+            " from bad group by failure order by failure"
+        ).fetchall()
+        if parity:
+            raise RuntimeError(
+                "decade: fct_program_decade_series and fct_decade_series"
+                " disagree on native grains — "
+                + "; ".join(
+                    f"{n} {failure} (e.g. {example})"
+                    for failure, n, example in parity
+                )
+                + ". The program table is stale or was built from another"
+                " lake (a full dbt build from a checkout without it refreshes"
+                " fct_decade_series alone): rebuild fct_program_decade_series"
+                " and its tests against the current fct_decade_series."
+            )
         # program_key is the PAGE key: exactly fct_decade_series.pe_bli on
         # native rows, the bare printed code on era rows. account /
         # organization follow fct_decade_series' convention (non-NULL only
@@ -7020,7 +7087,8 @@ def _build_decade_citation_rows(
         # native rows of budget_lines_decade.parquet and citations.parquet
         # keep their positions byte for byte; era grains follow, in a fixed
         # key order. The program table's native rows equal the line table's
-        # row for row on this key (assert_program_decade_native_equals_line).
+        # row for row on this key (the parity guard above, and dbt's
+        # assert_program_decade_native_equals_line).
         series = con.execute(
             "select p.program_key, p.fy, p.edition_year, p.amount_type_kind,"
             " p.amount, p.amount_type, p.n_source_rows, p.source_fact_id,"
@@ -7099,8 +7167,8 @@ def _build_decade_citation_rows(
     doc_lake = _stage_parquet_path(duckdb_path, "jbooks", "documents.parquet")
     if bl_lake is None or doc_lake is None:
         raise ValueError(
-            "decade: fct_decade_series exists but the jbooks lake parquets"
-            " (budget_lines.parquet / documents.parquet) are missing next to"
+            "decade: fct_program_decade_series has grains but the jbooks lake"
+            " parquets (budget_lines.parquet / documents.parquet) are missing next to"
             f" {duckdb_path} — run export-facts first (the decade citation"
             " tier must be built from the same lake the marts read)"
         )
@@ -7236,8 +7304,9 @@ def _build_decade_citation_rows(
             raise ValueError(
                 f"decade: grain ({pe_bli}, PB{edition}, {at}, account="
                 f"{account!r}, organization={series_org!r}) has"
-                f" {len(key_rows)} lake source rows but fct_decade_series"
-                f" says n_source_rows={n_src} — mart/lake drift; refusing to"
+                f" {len(key_rows)} lake source rows but"
+                f" fct_program_decade_series ({map_basis} row) says"
+                f" n_source_rows={n_src} — mart/lake drift; refusing to"
                 " mint (rebuild the marts against the current lake)"
             )
 
@@ -7308,13 +7377,29 @@ def _build_decade_citation_rows(
                     at,      # amount_type
                 ))
 
+        if is_era:
+            # Every era grain, single-source included (Task 17 fix round 1):
+            # the program table's amount must equal its lake cells, or a
+            # drifted mart value would publish beside a citation whose cell
+            # says otherwise. (A native grain keeps the pre-piece checks
+            # only, so its output stays byte-identical.)
+            leaf_total = sum(r[10] for r in key_rows)
+            if abs(leaf_total - amount) > 0.0005:
+                raise ValueError(
+                    f"decade: era grain ({pe_bli}, PB{edition}, {at}) amount"
+                    f" {amount} in fct_program_decade_series != the sum of its"
+                    f" {len(key_rows)} lake row(s) ({leaf_total}) — mart/lake"
+                    " drift; refusing to mint"
+                )
+
         if n_src == 1:
             grain_fid = input_fids[0]
             if src_fid is not None and grain_fid != src_fid:
                 raise ValueError(
                     f"decade: fact-id derivation mismatch for grain"
                     f" ({pe_bli}, PB{edition}, {at}) — exporter computed"
-                    f" {grain_fid} but fct_decade_series.source_fact_id is"
+                    f" {grain_fid} but fct_program_decade_series"
+                    f" ({map_basis} row).source_fact_id is"
                     f" {src_fid}; the mart's sha256 derivation and"
                     " fact_id_workbook disagree (STOP: fix the derivation,"
                     " never ship mismatched identities)"
@@ -7325,13 +7410,7 @@ def _build_decade_citation_rows(
             # surface, NOT 'decade': F-15's matrix reuses only the formulas
             # on its allow-list, so its 27 legacy multi-input cells keep
             # their own receipts. Inputs sorted by fact id: byte-stable.
-            leaf_total = sum(r[10] for r in key_rows)
-            if abs(leaf_total - amount) > 0.0005:
-                raise ValueError(
-                    f"decade: era grain ({pe_bli}, PB{edition}, {at}) amount"
-                    f" {amount} != the sum of its {len(key_rows)} lake rows"
-                    f" ({leaf_total}) — mart/lake drift; refusing to mint"
-                )
+            # (The amount was checked against the lake cells above.)
             grain_fid = fact_id_derived(
                 "decade_era_map",
                 f"{pe_bli}|{account or ''}|{series_org or ''}|{edition}",
@@ -7399,7 +7478,8 @@ def _build_decade_citation_rows(
                 f"decade: fct_book_diff row ({pe_bli}, account={account!r},"
                 f" organization={diff_org!r}, PB{from_ed}→PB{to_ed},"
                 f" {diff_kind}) references a side grain missing from"
-                " fct_decade_series — join completeness violated"
+                " fct_program_decade_series' native rows (the grains this"
+                " tier mints) — join completeness violated"
             )
         # E2: account folded into the diff identity when the mart resolved
         # one (the 10 genuine collisions) — without this, both accounts'
@@ -7546,8 +7626,9 @@ def _decade_era_map_formula(
     It must pass program_pdf_receipts.additive_budget_formula, whose
     predicates are `name='quoted'` or `name=bare` with bare values limited
     to [a-z0-9_]: codes, accounts and organizations carry capitals, so they
-    are quoted; the slug and the edition are bare. A value the grammar cannot carry raises rather than
-    shipping a receipt the PDF pipeline would silently skip.
+    are quoted; the slug and the edition are bare. A value the grammar
+    cannot carry raises rather than shipping a receipt the PDF pipeline
+    would silently skip.
     """
     for name, value in (("program_key", program_key), ("account", account),
                         ("organization", organization)):
