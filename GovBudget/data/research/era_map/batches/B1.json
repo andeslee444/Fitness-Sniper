@@ -1,0 +1,12 @@
+{
+  "batch": "B1",
+  "decided_on": "2026-10-03",
+  "owner_reply": "approved, except 5: history_only; 7, 8, 15, 17: same_program",
+  "rows": {
+    "0182|1506N|": {"decision": "history_only", "note": "owner B1 row 5: history_only"},
+    "021005|0350D|": {"decision": "same_program", "note": "owner B1 row 7: same_program"},
+    "022005|0350D|": {"decision": "same_program", "note": "owner B1 row 8: same_program"},
+    "013005|0350D|": {"decision": "same_program", "note": "owner B1 row 15: same_program"},
+    "016005|0350D|": {"decision": "same_program", "note": "owner B1 row 17: same_program"}
+  }
+}
