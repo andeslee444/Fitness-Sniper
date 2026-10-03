@@ -111,8 +111,8 @@ def test_a_tree_equals_its_copy(tmp_path):
     b = tmp_path / "b"
     shutil.copytree(a, b)
     report = proof.diff_trees(a, b)
-    assert report["counts"] == {"identical": 5, "equivalent": 0, "changed": 0,
-                                "only_a": 0, "only_b": 0}
+    assert report["counts"] == {"identical": 5, "equivalent": 0, "reordered": 0,
+                                "changed": 0, "only_a": 0, "only_b": 0}
     assert report["files"] == {}
     assert proof.is_equal(report)
 
@@ -213,13 +213,14 @@ def test_other_files_compare_by_bytes_and_big_directories_group(tmp_path):
     (tmp_path / "b" / "new.json").write_text("{}")
     _json(tmp_path / "b" / "json" / "program_details" / "P007.json", {"i": 7, "era": [1]})
     report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
-    assert report["counts"] == {"identical": 49, "equivalent": 0, "changed": 2,
-                                "only_a": 1, "only_b": 1}
+    assert report["counts"] == {"identical": 49, "equivalent": 0, "reordered": 0,
+                                "changed": 2, "only_a": 1, "only_b": 1}
     assert report["files"]["pdfs/x.pdf"]["kind"] == "bytes"
     assert report["files"]["gone.json"]["status"] == "only_a"
     assert report["files"]["new.json"]["status"] == "only_b"
     assert report["groups"]["json/program_details/*.json"] == {
-        "identical": 49, "equivalent": 0, "changed": 1, "only_a": 0, "only_b": 0}
+        "identical": 49, "equivalent": 0, "reordered": 0, "changed": 1,
+        "only_a": 0, "only_b": 0}
 
 
 # ---------------------------------------------------------------------------
@@ -279,12 +280,13 @@ def test_a_float_change_beyond_12_significant_digits_is_a_change(tmp_path):
 @pytest.mark.parametrize("typ, va, vb", [
     ("bigint", 100_000_000_000_000, 100_000_000_000_001),
     ("decimal(38,10)", decimal.Decimal("4589898661.98"), decimal.Decimal("4589898661.9800000001")),
-    ("varchar", "4589898661.98", "4589898661.9800005"),
+    ("varchar", "ABC-123", "ABC-124"),
 ])
 def test_integers_decimals_and_strings_stay_exact(tmp_path, typ, va, vb):
-    # (c) only DOUBLE/FLOAT columns get the 12-digit comparison: a difference
-    # far below 1e-12 in an integer, decimal or string column is a change,
-    # even beside a double that differs only by noise
+    # (c) only DOUBLE/FLOAT columns (and, since ruling 1, a VARCHAR column
+    # whose value is strict numeric text — covered separately below) get a
+    # tolerant comparison: an integer, a decimal, or a plain non-numeric
+    # string stays exact, even beside a double that differs only by noise
     cols = [("state", "varchar"), ("v", typ), ("total", "double")]
     _parquet(tmp_path / "a" / "data" / "t.parquet", cols, [("NY", va, CLEAN)])
     _parquet(tmp_path / "b" / "data" / "t.parquet", cols, [("NY", vb, NOISY)])
@@ -293,9 +295,10 @@ def test_integers_decimals_and_strings_stay_exact(tmp_path, typ, va, vb):
 
 
 def test_json_integers_and_strings_stay_exact(tmp_path):
-    # (c) for JSON: ints and strings compare exactly; only the float is noise
-    _json(tmp_path / "a" / "p.json", {"n": 100_000_000_000_000, "s": "4589898661.98", "x": CLEAN})
-    _json(tmp_path / "b" / "p.json", {"n": 100_000_000_000_001, "s": "4589898661.9800005", "x": NOISY})
+    # (c) for JSON: ints always compare exactly; a plain non-numeric string
+    # stays exact too — only the float is noise
+    _json(tmp_path / "a" / "p.json", {"n": 100_000_000_000_000, "s": "ABC-123", "x": CLEAN})
+    _json(tmp_path / "b" / "p.json", {"n": 100_000_000_000_001, "s": "ABC-124", "x": NOISY})
     report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
     assert _changes(report, "p.json") == [("/n", "changed", 1), ("/s", "changed", 1)]
     assert report["files"]["p.json"]["float_noise"] == 1
@@ -683,3 +686,206 @@ def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
         ["bash", "-c", f'source "{out}/env.sh" "{out}-A" && echo "$GOVBUDGET_DATA|$GOVBUDGET_DUCKDB|$GOVBUDGET_PG_DSN"'],
         capture_output=True, text=True, check=True).stdout.strip()
     assert env == f"{out}-A|{out}-A/duckdb/govbudget.duckdb|{scratch_dsn}"
+
+
+# ---------------------------------------------------------------------------
+# Fix round 3: numeric-text, JSON-in-string, derived hashes, reorder classes
+# ---------------------------------------------------------------------------
+
+
+def test_numeric_text_noise_vs_a_real_numeric_text_change(tmp_path):
+    # ruling 1: a string leaf that is a strict numeral on both sides
+    # compares as a number under the SAME 12-sig-digit rule as the real
+    # CLEAN/NOISY float-noise pair; MOVED genuinely differs.
+    _json(tmp_path / "a" / "p.json", {"recorded_value": str(CLEAN)})
+    _json(tmp_path / "b" / "p.json", {"recorded_value": str(NOISY)})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["p.json"]["status"] == "equivalent"
+    assert report["float_noise"] == {"files": 1, "values": 1}
+
+    _json(tmp_path / "b" / "p.json", {"recorded_value": str(MOVED)})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert _changes(report, "p.json") == [("/recorded_value", "changed", 1)]
+    assert report["float_noise"] == {"files": 0, "values": 0}
+
+
+def test_json_in_string_reorder_needs_a_matching_noise_class(tmp_path):
+    # ruling 2 (parse-and-recurse) + ruling 4 (reorder trust is gated).
+    a_body = json.dumps({"award_ids": ["A", "B", "C"]})
+    b_body = json.dumps({"award_ids": ["C", "B", "A"]})
+    _json(tmp_path / "a" / "p.json", {"query_body": a_body})
+    _json(tmp_path / "b" / "p.json", {"query_body": b_body})
+
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert _changes(report, "p.json") == [("/query_body", "changed", 1)]
+    assert not proof.is_equal(report)
+
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert report["files"]["p.json"]["status"] == "reordered"
+    assert report["reorder_classes"] == [{"path": "p.json", "pointer": "/query_body", "count": 1}]
+    assert proof.is_equal(report)
+
+    report = proof.diff_trees(
+        tmp_path / "a", tmp_path / "b",
+        noise_classes=[{"path": "p.json", "pointer": "/query_body", "count": 1}],
+    )
+    assert report["files"]["p.json"]["status"] == "reordered"
+    assert proof.is_equal(report)
+
+    # A reorder at a class NOT in the noise file stays "changed".
+    report = proof.diff_trees(
+        tmp_path / "a", tmp_path / "b",
+        noise_classes=[{"path": "p.json", "pointer": "/some_other_field"}],
+    )
+    assert _changes(report, "p.json") == [("/query_body", "changed", 1)]
+    assert not proof.is_equal(report)
+
+
+def test_parquet_varchar_json_reorder_is_changed_without_control_and_reordered_with_it(tmp_path):
+    # ruling 2 ("in JSON files AND in parquet VARCHAR cells") + ruling 4.
+    cols = [("fact_id", "varchar"), ("inputs", "varchar"), ("recorded_value", "varchar")]
+    _parquet(tmp_path / "a" / "data" / "c.parquet", cols,
+             [("f1", json.dumps(["x", "y", "z"]), str(CLEAN))])
+    _parquet(tmp_path / "b" / "data" / "c.parquet", cols,
+             [("f1", json.dumps(["z", "y", "x"]), str(NOISY))])
+
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    pq = report["files"]["data/c.parquet"]
+    assert (pq["status"], pq["detail"]["only_a"], pq["detail"]["only_b"]) == ("changed", 1, 1)
+
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert report["files"]["data/c.parquet"]["status"] == "reordered"
+    assert report["reorder_classes"] == [
+        {"path": "data/c.parquet", "pointer": "/inputs", "count": 1}
+    ]
+
+    report = proof.diff_trees(
+        tmp_path / "a", tmp_path / "b",
+        noise_classes=[{"path": "data/c.parquet", "pointer": "/inputs"}],
+    )
+    assert report["files"]["data/c.parquet"]["status"] == "reordered"
+
+
+def test_derived_hash_is_equivalent_only_when_the_referent_is(tmp_path):
+    # ruling 3: json/datasets.json's per-entry `bytes` is a derived hash of
+    # data/<file> — equivalent only while that file compares equivalent.
+    cols = [("x", "integer"), ("total", "double")]
+    _parquet(tmp_path / "a" / "data" / "fct_x.parquet", cols, [(1, CLEAN)])
+    _parquet(tmp_path / "b" / "data" / "fct_x.parquet", cols, [(1, NOISY)])
+    entry = {"file": "fct_x.parquet", "name": "fct_x", "row_count": 1, "scope": "s"}
+    _json(tmp_path / "a" / "json" / "datasets.json", {"datasets": [{**entry, "bytes": 100}]})
+    _json(tmp_path / "b" / "json" / "datasets.json", {"datasets": [{**entry, "bytes": 142}]})
+
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["data/fct_x.parquet"]["status"] == "equivalent"
+    assert report["files"]["json/datasets.json"]["status"] == "equivalent"
+    assert report["derived_hash"] == {"files": 1, "values": 1}
+    assert proof.is_equal(report)
+
+    # The referent now genuinely changes too: the hash difference stays.
+    _parquet(tmp_path / "b" / "data" / "fct_x.parquet", cols, [(1, MOVED)])
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["data/fct_x.parquet"]["status"] == "changed"
+    assert report["files"]["json/datasets.json"]["status"] == "changed"
+    changes = _changes(report, "json/datasets.json")
+    assert sorted(ch[1] for ch in changes) == ["added", "removed"]
+    assert all(ch[0] == "/datasets/[]" for ch in changes)
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+
+
+def test_derived_hash_audit_sha_is_equivalent_only_when_citations_is(tmp_path):
+    # ruling 3: json/budget_pdf_receipts_audit.json's /citation_sha256 is a
+    # derived hash of json/citations.json.
+    _json(tmp_path / "a" / "json" / "citations.json", {"fid1": {"kind": "derived", "v": CLEAN}})
+    _json(tmp_path / "b" / "json" / "citations.json", {"fid1": {"kind": "derived", "v": NOISY}})
+    _json(tmp_path / "a" / "json" / "budget_pdf_receipts_audit.json",
+          {"citation_sha256": "aaa...old"})
+    _json(tmp_path / "b" / "json" / "budget_pdf_receipts_audit.json",
+          {"citation_sha256": "bbb...new"})
+
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["json/citations.json"]["status"] == "equivalent"
+    assert report["files"]["json/budget_pdf_receipts_audit.json"]["status"] == "equivalent"
+    assert report["derived_hash"] == {"files": 1, "values": 1}
+
+    _json(tmp_path / "b" / "json" / "citations.json", {"fid1": {"kind": "derived", "v": MOVED}})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["json/citations.json"]["status"] == "changed"
+    assert report["files"]["json/budget_pdf_receipts_audit.json"]["status"] == "changed"
+    assert _changes(report, "json/budget_pdf_receipts_audit.json") == [
+        ("/citation_sha256", "changed", 1)
+    ]
+    assert report["derived_hash"] == {"files": 0, "values": 0}
+
+
+def test_control_fails_on_a_real_value_change(tmp_path):
+    # ruling 4: --control trusts the /rows reorder but still fails overall
+    # because /v is a genuine change.
+    _json(tmp_path / "a" / "p.json", {"v": 1, "rows": [1, 2, 3]})
+    _json(tmp_path / "b" / "p.json", {"v": 2, "rows": [3, 2, 1]})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert not proof.is_equal(report)
+    assert report["files"]["p.json"]["status"] == "changed"
+    assert _changes(report, "p.json") == [("/v", "changed", 1)]
+    assert report["reorder_classes"] == [{"path": "p.json", "pointer": "/rows", "count": 1}]
+
+
+def test_write_noise_output_is_deterministic(tmp_path):
+    _json(tmp_path / "a" / "p.json", {"rows": [1, 2, 3], "other": [4, 5, 6]})
+    _json(tmp_path / "b" / "p.json", {"rows": [3, 2, 1], "other": [6, 5, 4]})
+    r1 = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    r2 = proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True)
+    assert r1["reorder_classes"] == r2["reorder_classes"] == [
+        {"path": "p.json", "pointer": "/other", "count": 1},
+        {"path": "p.json", "pointer": "/rows", "count": 1},
+    ]
+
+
+def test_control_and_noise_from_are_mutually_exclusive(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        proof.diff_trees(tmp_path / "a", tmp_path / "b", control=True, noise_classes=[])
+
+
+def test_load_noise_classes_validates_shape(tmp_path):
+    path = tmp_path / "noise.json"
+    path.write_text(json.dumps([{"path": "x"}]))
+    with pytest.raises(ValueError, match="needs a string"):
+        proof.load_noise_classes(path)
+    path.write_text(json.dumps({"not": "a list"}))
+    with pytest.raises(ValueError, match="JSON list"):
+        proof.load_noise_classes(path)
+
+
+def test_cli_control_write_noise_and_noise_from_round_trip(tmp_path, capsys):
+    a, b = tmp_path / "a", tmp_path / "b"
+    _json(a / "p.json", {"rows": [1, 2, 3]})
+    _json(b / "p.json", {"rows": [3, 2, 1]})
+    noise_file = tmp_path / "noise.json"
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--control", "--write-noise", str(noise_file)])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.splitlines()[-1] == "proof diff: EQUAL"
+    assert json.loads(noise_file.read_text()) == [
+        {"path": "p.json", "pointer": "/rows", "count": 1}
+    ]
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b)])
+    assert exc.value.code == 1
+    assert capsys.readouterr().out.splitlines()[-1] == "proof diff: DIFFERENT"
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--noise-from", str(noise_file)])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.splitlines()[-1] == "proof diff: EQUAL"
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--write-noise", str(tmp_path / "x.json")])
+    assert exc.value.code == 2
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--control", "--noise-from", str(noise_file)])
+    assert exc.value.code == 2

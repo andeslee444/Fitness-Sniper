@@ -67,7 +67,37 @@ between two identical queries (4589898661.9800005 vs 4589898661.98), so
 DOUBLE/FLOAT parquet values and JSON floats equal to FLOAT_SIGNIFICANT_DIGITS
 significant digits (relative difference at most 1e-12) count as equivalent and
 are tallied apart (report["float_noise"], each file's "float_noise"); they are
-never "changed". Integers, decimals and strings always compare exactly.
+never "changed". Integers and decimals always compare exactly.
+
+Fix round 3 (2026-10, driven by two real exports of one snapshot differing):
+  - Numeric-text equivalence: when BOTH sides of a string leaf (a JSON value
+    or a parquet VARCHAR cell) match a strict decimal/exponent numeral, they
+    compare as numbers under the SAME 12-significant-digit rule and, if
+    equal, count as float noise too — not their own class. A string that
+    does not look like a bare number always compares exactly.
+  - JSON-in-string equivalence: when BOTH sides of a string leaf parse as a
+    JSON array or object (citations.parquet's `inputs`/`query_body`/
+    `recorded_value` VARCHAR columns; citations.json's matching fields), the
+    PARSED values are compared with these same rules, recursively; the
+    verdict (noise, a trusted reorder, or a real change) is reported at the
+    OUTER string leaf's pointer, never a pointer inside the decoded value.
+  - Derived-hash equivalence (ruling 3): a content hash or byte count is
+    equivalent when the file it describes compared equivalent (or
+    identical) in the SAME diff. DERIVED_HASH_CARRIERS names the two known
+    cases (json/datasets.json's per-entry `bytes`, pointed at
+    `data/<file>`; json/budget_pdf_receipts_audit.json's `/citation_sha256`,
+    pointed at json/citations.json) — an explicit, small mapping, not a
+    generic hash-field detector. Tallied apart in report["derived_hash"].
+  - Reorder classes (ruling 4): a pure permutation (multiset-equal arrays by
+    canonical JSON, including an array found inside a JSON-in-string value)
+    is trusted as equivalent ONLY when diff_trees() is called with
+    control=True (every class is trusted, and tallied into
+    report["reorder_classes"] for `--write-noise`) or with a `noise_classes`
+    set a prior control run produced (`--noise-from`; only a REGISTERED
+    (group, pointer) class is trusted). With neither, a reorder is reported
+    as "changed", exactly as before this ruling — nothing becomes laxer by
+    accident. A trusted reorder's file status is "reordered", a THIRD good
+    status alongside "identical"/"equivalent" (is_equal() treats it as fine).
 """
 from __future__ import annotations
 
@@ -96,16 +126,44 @@ BUILD_TS = "<build-timestamp>"
 BUILD_DATE = "<build-date>"
 STAMP_KEYS = frozenset({"built_at", "retrieved_at"})
 DATE_KEYS = frozenset({"measured_on"})
-STATUSES = ("identical", "equivalent", "changed", "only_a", "only_b")
+#: "reordered" only ever gets a non-zero count under --control/--noise-from
+#: (Fix round 3, ruling 4); without either flag a pure permutation is still
+#: reported as "changed", exactly as before.
+STATUSES = ("identical", "equivalent", "reordered", "changed", "only_a", "only_b")
 CHANGES = ("added", "removed", "changed", "reordered")
 FLOAT_SIGNIFICANT_DIGITS = 12
 FLOAT_TYPES = frozenset({"DOUBLE", "FLOAT"})
 SCRATCH_DB_PREFIX = "govbudget_proof_"
+#: ruling 3 (Fix round 3): an explicit, small mapping of known content-hash /
+#: byte-count fields to the file they describe. Each carrier is handled by
+#: its own small resolver (_resolve_datasets_derived_hash /
+#: _resolve_audit_derived_hash) rather than a generic detector.
+DERIVED_HASH_CARRIERS = ("json/datasets.json", "json/budget_pdf_receipts_audit.json")
 
 _UTC_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00")
 _UTC_FRACTION_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{1,6}\+00:00")
 _FID_RE = re.compile(r"[0-9a-f]{16}")
 _SCRATCH_DB_RE = re.compile(r"[a-z][a-z0-9_]{0,62}")
+#: ruling 1 (Fix round 3): a strict decimal/exponent numeral, the WHOLE
+#: string — "1e9x" or "" do not match. A BARE INTEGER ("4248") does not
+#: match either, deliberately: this pattern also decides which parquet
+#: VARCHAR columns are "lenient" for row-pairing purposes (_group_cell), and
+#: a bare-digit code column is common in this domain (pe_bli values like
+#: "4248", "1600", even "0152" — which float() reads as 152.0, a second,
+#: independent reason a bare integer must never match) and is an IDENTITY
+#: key, not a value that can be noisy; treating it leniently merges rows
+#: that are not the same row (caught empirically: fct_program_concentration
+#: .parquet's pe_bli column, pre-flight 2026-10-03 — real two-export-of-one-
+#: snapshot evidence). Requiring a decimal point or exponent — true "decimal
+#: /exponent" notation — excludes every such code while still matching every
+#: real case (a serialized float always carries one, e.g. str(1234.0) ==
+#: "1234.0"). Two strings that both match are compared as numbers with the
+#: same 12-significant-digit rule as a native float; the result is float
+#: noise, never its own class.
+_NUMERIC_TEXT_RE = re.compile(
+    r"[+-]?(?:\d+\.\d*|\.\d+)(?:[eE][+-]?\d+)?"  # has a decimal point
+    r"|[+-]?\d+[eE][+-]?\d+"                      # or a bare mantissa with an exponent
+)
 _WINDOW_LOOKBACK = datetime.timedelta(hours=3)
 _WINDOW_LOOKAHEAD = datetime.timedelta(hours=1)
 _GROUP_MIN_FILES = 50
@@ -117,6 +175,38 @@ _RULE_KEYS = frozenset({"path", "why", "status", "pointer", "change", "required"
 _FLOAT_REL_TOL = 10.0 ** -FLOAT_SIGNIFICANT_DIGITS
 _FLOAT_MARK = "\x00float"          # stands in for every float in a pairing key
 _NOISE_MAX_ROWS = 1_000_000        # residual parquet rows beyond this compare exactly
+
+
+class _Mode:
+    """How diff_trees() treats a pure permutation (ruling 4, Fix round 3).
+
+    control=True: every (group, pointer) permutation is trusted and tallied
+    into `observed` (for --write-noise); any OTHER kind of difference still
+    fails the control (diff_trees's caller reads `is_equal`). trusted, when
+    not None (--noise-from), is the exact set of (group, pointer) classes a
+    PRIOR control run vouched for; a permutation elsewhere is untrusted.
+    Neither set (the default): nothing is trusted, same as before this
+    ruling existed. Numeric-text/JSON-in-string/derived-hash equivalence
+    (rulings 1-3) do not go through this gate — they apply unconditionally.
+    """
+
+    __slots__ = ("control", "trusted", "observed")
+
+    def __init__(self, *, control: bool = False, trusted: set[tuple[str, str]] | None = None):
+        if control and trusted is not None:
+            raise ValueError("proof diff: --control and --noise-from are mutually exclusive")
+        self.control = control
+        self.trusted = trusted
+        self.observed: Counter = Counter()
+
+    def allow_reorder(self, group: str, pointer: str) -> bool:
+        if self.control:
+            self.observed[(group, pointer)] += 1
+            return True
+        if self.trusted is not None and (group, pointer) in self.trusted:
+            self.observed[(group, pointer)] += 1
+            return True
+        return False
 
 
 def _now() -> datetime.datetime:
@@ -293,9 +383,68 @@ def _floats(value) -> list:
     return []
 
 
-def _json_noise(a, b) -> int | None:
-    """How many float leaves differ between a and b by float noise only, or
-    None when a and b differ in any other way (lists in order here)."""
+def _numeric_text(s) -> float | None:
+    """float(s) if s is a strict decimal/exponent numeral — the WHOLE
+    string (ruling 1, Fix round 3); None for "", "1e9x", "nan", a sha256
+    that happens to be all digits but isn't meant as a number, etc."""
+    if not isinstance(s, str) or not _NUMERIC_TEXT_RE.fullmatch(s):
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _multiset_canon(value):
+    """value with every float stripped and every list's elements sorted
+    into canonical order, at any depth: two values share this form iff they
+    are equal up to float noise and list reordering. Used only to GROUP
+    pairing candidates (parquet row cells); `measure`/`_json_noise` still
+    decide precisely whether a candidate pair is really equivalent."""
+    if type(value) is float:
+        return _FLOAT_MARK
+    if isinstance(value, dict):
+        return {k: _multiset_canon(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return sorted((_multiset_canon(v) for v in value), key=_canon)
+    return value
+
+
+def _leaf_equiv(a, b, pointer: str, group: str | None, mode: "_Mode | None") -> int | None:
+    """a and b are two DIFFERENT, not-both-float scalars at `pointer`.
+
+    Returns the noise count if they are equivalent under ruling 1 (both
+    strings that are numeric-text-close) or ruling 2 (both strings that
+    parse as a JSON array/object, compared recursively with these same
+    rules — including a trusted reorder inside, gated by `mode` exactly as
+    a native list would be, keyed at THIS pointer regardless of how deep
+    the real difference sits); None for a genuine difference."""
+    if not (isinstance(a, str) and isinstance(b, str)):
+        return None
+    na, nb = _numeric_text(a), _numeric_text(b)
+    if na is not None and nb is not None:
+        return 1 if _float_close(na, nb) else None
+    try:
+        pa, pb = json.loads(a), json.loads(b)
+    except ValueError:
+        return None
+    if not isinstance(pa, (list, dict)) or not isinstance(pb, (list, dict)):
+        return None
+    sub_out: list = []
+    sub_noise: list = []
+    _json_changes(pa, pb, pointer, sub_out, sub_noise, group=group, mode=mode,
+                  key_pointer=pointer)
+    return sum(sub_noise) if not sub_out else None
+
+
+def _json_noise(a, b, *, group: str | None = None, mode: "_Mode | None" = None,
+                key_pointer: str = "") -> int | None:
+    """How many float/numeric-text/JSON-in-string leaves differ between a
+    and b by noise only (rulings 1+2), or None when a and b differ in any
+    other way (lists compared POSITIONALLY here — this pairs CANDIDATES
+    already matched on everything else by the caller, not an independent
+    reorder search; `key_pointer` is fixed by the caller for any nested
+    JSON-in-string reorder-trust lookup, same convention as _json_changes)."""
     if type(a) is float and type(b) is float:
         if a == b:
             return 0
@@ -309,25 +458,44 @@ def _json_noise(a, b) -> int | None:
             return None
         pairs = list(zip(a, b))
     else:
-        return 0 if (type(a) is type(b) and a == b) else None
+        if type(a) is type(b) and a == b:
+            return 0
+        return _leaf_equiv(a, b, key_pointer, group, mode)
     total = 0
     for x, y in pairs:
-        n = _json_noise(x, y)
+        n = _json_noise(x, y, group=group, mode=mode, key_pointer=key_pointer)
         if n is None:
             return None
         total += n
     return total
 
 
-def _row_noise(ra: tuple, rb: tuple, floats: list[int]) -> int | None:
-    """How many float columns differ between two rows by noise only, or None."""
+def _row_noise(ra: tuple, rb: tuple, lenient: list[tuple[int, str, str]],
+               group: str | None, mode: "_Mode | None") -> int | None:
+    """How many columns differ between two rows by noise only, or None.
+
+    `lenient` is [(column index, DuckDB type, pointer)] for every column
+    eligible for lenient comparison: a FLOAT_TYPES column (ruling: existing
+    float noise) or a VARCHAR column (ruling 1: numeric-text; ruling 2:
+    JSON-in-string, recursively, with the same reorder gating as a JSON
+    file — `pointer` is `/<column name>`, used for that gating)."""
     n = 0
-    for i in floats:
+    for i, typ, pointer in lenient:
         x, y = ra[i], rb[i]
-        if not _float_close(x, y):
+        if typ in FLOAT_TYPES:
+            if not _float_close(x, y):
+                return None
+            if x is not None and not math.isnan(x) and x != y:
+                n += 1
+            continue
+        if x == y:
+            continue
+        if x is None or y is None:
             return None
-        if x is not None and not math.isnan(x) and x != y:
-            n += 1
+        m = _leaf_equiv(x, y, pointer, group, mode)
+        if m is None:
+            return None
+        n += m
     return n
 
 
@@ -366,17 +534,34 @@ def _pair_noise(xs: list, ys: list, *, group_key, order_key, measure) -> tuple[l
     return left_x, left_y, values
 
 
-def _json_changes(a, b, pointer: str, out: list, noise: list | None = None) -> None:
+def _json_changes(a, b, pointer: str, out: list, noise: list | None = None, *,
+                  group: str | None = None, mode: "_Mode | None" = None,
+                  key_pointer: str | None = None) -> None:
     """Append (change, pointer, a, b) for every difference between a and b.
 
-    Dicts recurse by key; lists compare as multisets of canonical JSON (a
-    shuffled list is one `reordered` change; an inserted element is one
-    `added` at `<list>/[]`); scalars must match in type AND value, so 1 vs
-    1.0 or 1 vs true is a change. Two floats equal to 12 significant digits
-    are not a change: their count goes to `noise` instead (list elements that
-    differ only by such floats are paired first)."""
+    Dicts recurse by key; lists compare as multisets of canonical JSON: a
+    shuffled list is a pure permutation, trusted as equivalent (nothing
+    appended; the caller sees it only via `mode.observed`) only when
+    `mode.allow_reorder(group, key_pointer or pointer)` says so (ruling 4,
+    Fix round 3) — otherwise it is one `reordered` change, exactly as
+    before that ruling. An inserted element is one `added` at `<list>/[]`.
+    Scalars must match in type AND value, so 1 vs 1.0 or 1 vs true is a
+    change — UNLESS both are floats close to 12 significant digits, or both
+    are strings that are numeric-text-close (ruling 1) or JSON-in-string
+    equivalent (ruling 2, recursively, with the SAME reorder gating): any of
+    those go to `noise` instead (list elements that differ only by such
+    noise are paired first, via `_json_noise`).
+
+    `key_pointer`, when given, is the pointer used for EVERY reorder-trust
+    lookup in this call and its recursion, no matter how deep — set once by
+    the ruling-2 JSON-in-string caller (`_leaf_equiv`) so a reorder found
+    anywhere inside a decoded string value is keyed by that OUTER leaf's
+    pointer, matching what the report (and a --write-noise file) show. A
+    plain top-level call leaves it None, so the real, deepening `pointer` is
+    used instead — unchanged from before this ruling existed."""
     if noise is None:
         noise = []
+    rk = key_pointer if key_pointer is not None else pointer
     if isinstance(a, dict) and isinstance(b, dict):
         for key in sorted(set(a) | set(b)):
             p = f"{pointer}/{_escape(key)}"
@@ -385,7 +570,8 @@ def _json_changes(a, b, pointer: str, out: list, noise: list | None = None) -> N
             elif key not in a:
                 out.append(("added", p, None, b[key]))
             else:
-                _json_changes(a[key], b[key], p, out, noise)
+                _json_changes(a[key], b[key], p, out, noise, group=group, mode=mode,
+                              key_pointer=key_pointer)
         return
     if isinstance(a, list) and isinstance(b, list):
         ca, cb = [_canon(x) for x in a], [_canon(x) for x in b]
@@ -393,6 +579,8 @@ def _json_changes(a, b, pointer: str, out: list, noise: list | None = None) -> N
             return
         ma, mb = Counter(ca), Counter(cb)
         if ma == mb:
+            if mode is not None and mode.allow_reorder(group, rk):
+                return
             out.append(("reordered", pointer, None, None))
             return
         only_a = [json.loads(s) for s, n in sorted((ma - mb).items()) for _ in range(n)]
@@ -401,11 +589,13 @@ def _json_changes(a, b, pointer: str, out: list, noise: list | None = None) -> N
             only_a, only_b,
             group_key=lambda x: _canon(_strip_floats(x)),
             order_key=lambda x: tuple(_float_order(f) for f in _floats(x)),
-            measure=_json_noise,
+            measure=lambda x, y: _json_noise(x, y, group=group, mode=mode, key_pointer=rk),
         )
         noise.append(n_noise)
         if not only_a and not only_b:
             if [_canon(_strip_floats(x)) for x in a] != [_canon(_strip_floats(x)) for x in b]:
+                if mode is not None and mode.allow_reorder(group, rk):
+                    return
                 out.append(("reordered", pointer, None, None))
             return
         out.extend(("removed", pointer + "/[]", x, None) for x in sorted(only_a, key=_canon))
@@ -415,6 +605,10 @@ def _json_changes(a, b, pointer: str, out: list, noise: list | None = None) -> N
         return
     if type(a) is float and type(b) is float and _float_close(a, b):
         noise.append(1)
+        return
+    n = _leaf_equiv(a, b, rk, group, mode)
+    if n is not None:
+        noise.append(n)
         return
     out.append(("changed", pointer, a, b))
 
@@ -430,16 +624,13 @@ def _short(value) -> str | None:
     return s if len(s) <= _MAX_VALUE_CHARS else s[:_MAX_VALUE_CHARS] + "…"
 
 
-def _json_detail(pa: Path, pb: Path, wa, wb) -> tuple[dict | None, int]:
-    """(detail, float-noise values); detail is None when the two files hold
-    the same JSON value after masking, floats compared to 12 significant digits."""
-    a = _mask(json.loads(pa.read_text(encoding="utf-8")), wa)
-    b = _mask(json.loads(pb.read_text(encoding="utf-8")), wb)
-    raw: list = []
-    noise: list = []
-    _json_changes(a, b, "", raw, noise)
+def _group_raw_changes(raw: list) -> dict | None:
+    """Group raw (change, pointer, a, b) tuples into the {"changes": [...]}
+    detail shape; None when raw is empty (used both by _json_detail and by
+    the derived-hash post-pass, which filters a file's raw tuples and must
+    regroup the remainder the SAME way, Fix round 3)."""
     if not raw:
-        return None, sum(noise)
+        return None
     grouped: dict[tuple[str, str], dict] = {}
     for change, pointer, va, vb in raw:
         key = (_pattern(pointer), change)
@@ -449,7 +640,32 @@ def _json_detail(pa: Path, pb: Path, wa, wb) -> tuple[dict | None, int]:
         entry["count"] += 1
         if len(entry["samples"]) < _SAMPLES_PER_CHANGE:
             entry["samples"].append({"pointer": pointer, "a": _short(va), "b": _short(vb)})
-    return {"changes": [grouped[k] for k in sorted(grouped)]}, sum(noise)
+    return {"changes": [grouped[k] for k in sorted(grouped)]}
+
+
+def _json_raw_diff(pa: Path, pb: Path, wa, wb, group: str | None,
+                   mode: "_Mode | None") -> tuple[list, list]:
+    """(raw, noise): the UNGROUPED diff of two JSON files after masking.
+    Exposed separately from _json_detail so the derived-hash post-pass
+    (ruling 3) can re-examine and filter the exact tuples, then regroup the
+    remainder with _group_raw_changes — the grouped/sampled "changes" shape
+    _json_detail returns does not keep every instance, only a few samples."""
+    a = _mask(json.loads(pa.read_text(encoding="utf-8")), wa)
+    b = _mask(json.loads(pb.read_text(encoding="utf-8")), wb)
+    raw: list = []
+    noise: list = []
+    _json_changes(a, b, "", raw, noise, group=group, mode=mode)
+    return raw, noise
+
+
+def _json_detail(pa: Path, pb: Path, wa, wb, group: str | None = None,
+                 mode: "_Mode | None" = None) -> tuple[dict | None, int]:
+    """(detail, float/numeric-text-noise values); detail is None when the
+    two files hold the same JSON value after masking and after rulings 1-4
+    (floats/numeric-text close to 12 significant digits, JSON-in-string
+    equivalence, and — only under `mode` — a trusted reorder)."""
+    raw, noise = _json_raw_diff(pa, pb, wa, wb, group, mode)
+    return _group_raw_changes(raw), sum(noise)
 
 
 def _sql_path(path: Path) -> str:
@@ -489,10 +705,35 @@ def _jsonable_rows(cursor) -> list[dict]:
     return [_jsonable(cols, row) for row in cursor.fetchall()]
 
 
-def _parquet_detail(pa: Path, pb: Path, wa, wb) -> tuple[dict | None, int]:
-    """(detail, float-noise values); detail is None when the two files hold the
-    same row multiset after masking, DOUBLE/FLOAT columns compared to 12
-    significant digits (every other column exactly)."""
+def _group_cell(value):
+    """A row-grouping contribution for a VARCHAR-lenient column: collapses
+    the kinds of noise rulings 1-2 tolerate (so a row differing only that
+    way still groups with its twin — `_row_noise` decides precisely),
+    while anything else — including a value that merely LOOKS numeric,
+    e.g. a sha256 that happens to be all digits — passes through unchanged,
+    so a real mismatch there still splits the group; a row's OTHER,
+    non-lenient columns (e.g. fact_id) still disambiguate what this alone
+    cannot."""
+    if isinstance(value, str):
+        if _NUMERIC_TEXT_RE.fullmatch(value):
+            return "\x00num"
+        try:
+            parsed = json.loads(value)
+        except ValueError:
+            return value
+        if isinstance(parsed, (list, dict)):
+            return _canon(_multiset_canon(parsed))
+    return value
+
+
+def _parquet_detail(pa: Path, pb: Path, wa, wb, group: str | None = None,
+                    mode: "_Mode | None" = None) -> tuple[dict | None, int]:
+    """(detail, noise values); detail is None when the two files hold the
+    same row multiset after masking: DOUBLE/FLOAT columns compared to 12
+    significant digits, and — ruling 1/2, Fix round 3 — a VARCHAR column's
+    cell too when both sides are numeric-text-close or JSON-in-string
+    equivalent (a reorder inside gated by `mode` exactly as in a JSON
+    file). Every other column compares exactly."""
     import duckdb
 
     con = duckdb.connect()
@@ -513,14 +754,21 @@ def _parquet_detail(pa: Path, pb: Path, wa, wb) -> tuple[dict | None, int]:
             return None, 0
         cols = [name for name, _ in schema_a]
         floats = [i for i, (_, typ) in enumerate(schema_a) if typ in FLOAT_TYPES]
-        if floats and only_a + only_b <= _NOISE_MAX_ROWS:
-            exact = [i for i in range(len(cols)) if i not in floats]
+        varchars = [i for i, (_, typ) in enumerate(schema_a) if typ == "VARCHAR"]
+        lenient = sorted(
+            [(i, "DOUBLE", f"/{cols[i]}") for i in floats]
+            + [(i, "VARCHAR", f"/{cols[i]}") for i in varchars]
+        )
+        if lenient and only_a + only_b <= _NOISE_MAX_ROWS:
+            exact = [i for i in range(len(cols)) if i not in floats and i not in varchars]
             left_a, left_b, noise = _pair_noise(
                 con.execute(f"select * from ({sel_a} except all {sel_b})").fetchall(),
                 con.execute(f"select * from ({sel_b} except all {sel_a})").fetchall(),
-                group_key=lambda r: repr([r[i] for i in exact]),
+                group_key=lambda r: repr(
+                    [r[i] for i in exact] + [_group_cell(r[i]) for i in varchars]
+                ),
                 order_key=lambda r: tuple(_float_order(r[i]) for i in floats),
-                measure=lambda ra, rb: _row_noise(ra, rb, floats),
+                measure=lambda ra, rb: _row_noise(ra, rb, lenient, group, mode),
             )
             if not left_a and not left_b:
                 return None, noise
@@ -557,19 +805,91 @@ def _group(rel: str, dir_counts: Counter) -> str:
     return rel
 
 
-def diff_trees(a: Path, b: Path) -> dict:
+def _dataset_entries(doc) -> dict:
+    """{file: entry} for datasets.json's list, keyed by the one field that
+    never changes across equivalent exports (Fix round 3, ruling 3)."""
+    if not isinstance(doc, dict):
+        return {}
+    return {
+        d["file"]: d for d in doc.get("datasets", [])
+        if isinstance(d, dict) and isinstance(d.get("file"), str)
+    }
+
+
+def _resolve_datasets_derived_hash(raw: list, pa_doc, pb_doc,
+                                   file_status: dict[str, str]) -> tuple[list, int]:
+    """Drop json/datasets.json's /datasets/[] added/removed pairs whose
+    entries differ ONLY in `bytes` (a derived file size) when the parquet
+    they describe (data/<file>) compared equivalent or identical in this
+    SAME diff (ruling 3). Returns (filtered raw, values resolved)."""
+    da, db = _dataset_entries(pa_doc), _dataset_entries(pb_doc)
+    resolved_files: set[str] = set()
+    for name in sorted(set(da) & set(db)):
+        old, new = da[name], db[name]
+        if old == new:
+            continue
+        diff_keys = {k for k in set(old) | set(new) if old.get(k) != new.get(k)}
+        if diff_keys and diff_keys <= {"bytes"}:
+            if file_status.get(f"data/{name}", "identical") in ("identical", "equivalent", "reordered"):
+                resolved_files.add(name)
+    if not resolved_files:
+        return raw, 0
+
+    def _is_resolved(item: tuple) -> bool:
+        change, pointer, va, vb = item
+        if pointer != "/datasets/[]" or change not in ("added", "removed"):
+            return False
+        entry = vb if change == "added" else va
+        return isinstance(entry, dict) and entry.get("file") in resolved_files
+
+    return [item for item in raw if not _is_resolved(item)], len(resolved_files)
+
+
+def _resolve_audit_derived_hash(raw: list, file_status: dict[str, str]) -> tuple[list, int]:
+    """Drop json/budget_pdf_receipts_audit.json's /citation_sha256 change
+    when json/citations.json compared equivalent or identical in this SAME
+    diff (ruling 3)."""
+    if file_status.get("json/citations.json", "identical") not in ("identical", "equivalent", "reordered"):
+        return raw, 0
+    filtered = [item for item in raw
+               if not (item[1] == "/citation_sha256" and item[0] == "changed")]
+    return filtered, len(raw) - len(filtered)
+
+
+_DERIVED_HASH_RESOLVERS = {
+    "json/datasets.json": _resolve_datasets_derived_hash,
+    "json/budget_pdf_receipts_audit.json": _resolve_audit_derived_hash,
+}
+
+
+def diff_trees(a: Path, b: Path, *, control: bool = False,
+               noise_classes: "set[tuple[str, str]] | list[dict] | None" = None) -> dict:
     """Compare two data/site trees; return the report (see module docstring).
 
     report["counts"] has every status in STATUSES; report["files"] lists each
     file that is not byte-identical; report["groups"] tallies statuses per
     path group (a directory with 50+ files collapses to '<dir>/*<suffix>');
-    report["float_noise"] = {files, values} counts the float values equal to
-    12 significant digits that were treated as equal (each file entry carries
-    its own "float_noise")."""
+    report["float_noise"] = {files, values} counts the float/numeric-text
+    values equal to 12 significant digits that were treated as equal (each
+    file entry carries its own "float_noise"); report["derived_hash"] does
+    the same for a content hash/byte count resolved via ruling 3 (each
+    file's own "derived_hash" count). report["reorder_classes"] lists every
+    (group, pointer) pure-permutation class trusted this run, sorted, with
+    counts — non-empty only with `control=True` or a `noise_classes` set
+    (ruling 4); with neither, nothing is trusted and behaviour is as before
+    these rulings existed. `noise_classes` also accepts the JSON list
+    `load_noise_classes()` returns (each a {"path", "pointer", ...} dict)."""
     a, b = Path(a), Path(b)
     for root in (a, b):
         if not root.is_dir():
             raise NotADirectoryError(f"proof diff: {root} is not a directory")
+    trusted = None
+    if noise_classes is not None:
+        trusted = {
+            (c["path"], c["pointer"]) if isinstance(c, dict) else tuple(c)
+            for c in noise_classes
+        }
+    mode = _Mode(control=control, trusted=trusted)
     wa, wb = _build_window(a), _build_window(b)
     files_a, files_b = set(_files(a)), set(_files(b))
     every = sorted(files_a | files_b)
@@ -577,10 +897,11 @@ def diff_trees(a: Path, b: Path) -> dict:
     counts = Counter({s: 0 for s in STATUSES})
     groups: dict[str, Counter] = {}
     files: dict[str, dict] = {}
+    file_status: dict[str, str] = {}
     noise_files = noise_values = 0
     for rel in every:
         kind, group = _kind(rel), _group(rel, dir_counts)
-        detail, noise = None, 0
+        detail, noise, had_reorder = None, 0, False
         if rel not in files_b:
             status = "only_a"
         elif rel not in files_a:
@@ -588,16 +909,19 @@ def diff_trees(a: Path, b: Path) -> dict:
         elif _same_bytes(a / rel, b / rel):
             status = "identical"
         else:
+            before = sum(mode.observed.values())
             if kind == "json":
                 try:
-                    detail, noise = _json_detail(a / rel, b / rel, wa, wb)
+                    detail, noise = _json_detail(a / rel, b / rel, wa, wb, group, mode)
                 except ValueError:  # not JSON after all: compare as bytes
                     kind = "bytes"
             elif kind == "parquet":
-                detail, noise = _parquet_detail(a / rel, b / rel, wa, wb)
+                detail, noise = _parquet_detail(a / rel, b / rel, wa, wb, group, mode)
             if kind == "bytes":
                 detail = {"sha256_a": _sha256_file(a / rel), "sha256_b": _sha256_file(b / rel)}
-            status = "changed" if detail is not None else "equivalent"
+            had_reorder = sum(mode.observed.values()) > before
+            status = "changed" if detail is not None else ("reordered" if had_reorder else "equivalent")
+        file_status[rel] = status
         counts[status] += 1
         groups.setdefault(group, Counter({s: 0 for s in STATUSES}))[status] += 1
         if noise:
@@ -606,6 +930,49 @@ def diff_trees(a: Path, b: Path) -> dict:
         if status != "identical":
             files[rel] = {"status": status, "kind": kind, "group": group, "detail": detail,
                           "float_noise": noise}
+
+    # Ruling 3 (derived hashes): a second, explicit pass — the referenced
+    # file's FINAL status must be known first, and the two known carriers
+    # do not sort after everything they can reference (budget_pdf_receipts_
+    # audit.json < citations.json alphabetically), so this cannot be folded
+    # into the loop above.
+    dh_files = dh_values = 0
+    for rel, resolver in _DERIVED_HASH_RESOLVERS.items():
+        entry = files.get(rel)
+        if entry is None or entry["status"] != "changed" or entry["kind"] != "json":
+            continue
+        pa_path, pb_path = a / rel, b / rel
+        # A throwaway Mode: this re-derives the SAME raw diff the main loop
+        # already computed for `rel` (to get the ungrouped tuples, which
+        # _json_detail discarded after grouping) — reusing `mode` itself
+        # here would double-count any reorder this file already contributed
+        # to `mode.observed`/report["reorder_classes"].
+        fresh_mode = _Mode(control=mode.control, trusted=mode.trusted)
+        raw, _ = _json_raw_diff(pa_path, pb_path, wa, wb, entry["group"], fresh_mode)
+        if rel == "json/datasets.json":
+            pa_doc = _mask(json.loads(pa_path.read_text(encoding="utf-8")), wa)
+            pb_doc = _mask(json.loads(pb_path.read_text(encoding="utf-8")), wb)
+            filtered, resolved = resolver(raw, pa_doc, pb_doc, file_status)
+        else:
+            filtered, resolved = resolver(raw, file_status)
+        if not resolved:
+            continue
+        dh_files += 1
+        dh_values += resolved
+        new_detail = _group_raw_changes(filtered)
+        new_status = "changed" if new_detail is not None else "equivalent"
+        counts[entry["status"]] -= 1
+        counts[new_status] += 1
+        groups[entry["group"]][entry["status"]] -= 1
+        groups[entry["group"]][new_status] += 1
+        entry["status"] = new_status
+        entry["detail"] = new_detail
+        file_status[rel] = new_status
+
+    reorder_classes = [
+        {"path": g, "pointer": p, "count": n}
+        for (g, p), n in sorted(mode.observed.items())
+    ]
     return {
         "a": str(a),
         "b": str(b),
@@ -615,6 +982,8 @@ def diff_trees(a: Path, b: Path) -> dict:
         },
         "counts": dict(counts),
         "float_noise": {"files": noise_files, "values": noise_values},
+        "derived_hash": {"files": dh_files, "values": dh_values},
+        "reorder_classes": reorder_classes,
         "groups": {g: dict(c) for g, c in sorted(groups.items())},
         "files": files,
     }
@@ -669,11 +1038,28 @@ def load_expectations(path: Path) -> list[dict]:
     return rules
 
 
+def load_noise_classes(path: Path) -> list[dict]:
+    """Read a --write-noise file back for --noise-from (ruling 4, Fix round
+    3): a JSON list of {"path", "pointer", "count"} reorder classes a prior
+    `--control` run vouched for. `count` is provenance only — matching is
+    by (path, pointer) alone."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError("proof diff --noise-from: the file must hold a JSON list of classes")
+    for i, c in enumerate(data):
+        if not isinstance(c, dict) or not isinstance(c.get("path"), str) \
+                or not isinstance(c.get("pointer"), str):
+            raise ValueError(
+                f"proof diff --noise-from: class {i} needs a string 'path' and 'pointer'"
+            )
+    return data
+
+
 def _diff_items(report: dict) -> list[dict]:
     items = []
     for rel, entry in sorted(report["files"].items()):
         status = entry["status"]
-        if status == "equivalent":
+        if status in ("equivalent", "reordered"):
             continue
         if status == "changed" and entry["kind"] == "json":
             for ch in entry["detail"]["changes"]:
@@ -722,22 +1108,30 @@ def check_expectations(report: dict, rules: list[dict]) -> dict:
 
 def format_report(report: dict, verdict: dict | None = None) -> list[str]:
     """Human-readable lines; the last line is the verdict."""
-    c, fn = report["counts"], report["float_noise"]
+    c, fn, dh = report["counts"], report["float_noise"], report["derived_hash"]
     lines = [
         f"proof diff: A = {report['a']}",
         f"proof diff: B = {report['b']}",
         f"  build window A {report['build_window']['a']} · B {report['build_window']['b']}",
         f"  identical {c['identical']:,} · equivalent {c['equivalent']:,}"
-        f" (build stamps, row order, JSON formatting or float noise only) · changed {c['changed']:,}"
-        f" · only in A {c['only_a']:,} · only in B {c['only_b']:,}",
+        f" (build stamps, row order, JSON formatting, float/numeric-text noise or a"
+        f" derived hash only) · reordered {c['reordered']:,} (control class)"
+        f" · changed {c['changed']:,} · only in A {c['only_a']:,} · only in B {c['only_b']:,}",
         f"  equivalent (float noise): {fn['files']:,} file(s), {fn['values']:,} value(s)"
         f" equal to {FLOAT_SIGNIFICANT_DIGITS} significant digits",
+        f"  equivalent (derived hash): {dh['files']:,} file(s), {dh['values']:,} value(s)"
+        f" — a content hash or byte count of a file that compared equivalent",
     ]
+    if report["reorder_classes"]:
+        lines.append(f"  reordered (control class): {c['reordered']:,} file(s) across"
+                     f" {len(report['reorder_classes']):,} class(es)")
+        for rc in report["reorder_classes"][:10]:
+            lines.append(f"    [{rc['path']}] {rc['pointer']} ×{rc['count']:,}")
     for group, gc in report["groups"].items():
-        if not (gc["changed"] or gc["only_a"] or gc["only_b"]):
+        if not (gc["changed"] or gc["only_a"] or gc["only_b"] or gc["reordered"]):
             continue
-        lines.append(f"  {group}: changed {gc['changed']:,} · only in A {gc['only_a']:,}"
-                     f" · only in B {gc['only_b']:,}")
+        lines.append(f"  {group}: changed {gc['changed']:,} · reordered {gc['reordered']:,}"
+                     f" · only in A {gc['only_a']:,} · only in B {gc['only_b']:,}")
         tally: Counter = Counter()
         for entry in report["files"].values():
             if entry["group"] != group or entry["status"] != "changed":

@@ -3002,7 +3002,16 @@ def cmd_proof(args) -> None:
               f" ({len(m['pg']['tables'])} tables, dump sha256 {m['pg']['dump_sha256']})")
         print(f"  source {m['out_dir']}/{proof.SNAPSHOT_ENV} [RUN_DIR]")
         return
-    report = proof.diff_trees(args.a, args.b)
+    if args.write_noise is not None and not args.control:
+        print("proof diff: --write-noise requires --control", file=sys.stderr)
+        sys.exit(2)
+    noise_classes = proof.load_noise_classes(args.noise_from) if args.noise_from is not None else None
+    report = proof.diff_trees(args.a, args.b, control=args.control, noise_classes=noise_classes)
+    if args.write_noise is not None:
+        args.write_noise.write_text(
+            _json.dumps(report["reorder_classes"], indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     verdict = None
     if args.expect is not None:
         verdict = proof.check_expectations(report, proof.load_expectations(args.expect))
@@ -3455,6 +3464,16 @@ def main(argv=None) -> None:
                           help="JSON list of allowed-difference rules; FAIL on anything else")
     prf_diff.add_argument("--report", type=Path, default=None,
                           help="also write the full JSON report here")
+    prf_reorder = prf_diff.add_mutually_exclusive_group()
+    prf_reorder.add_argument("--control", action="store_true",
+                             help="trust every pure-permutation (reorder) class this run finds;"
+                                  " --write-noise FILE records them. Fix round 3, ruling 4")
+    prf_reorder.add_argument("--noise-from", type=Path, default=None, dest="noise_from",
+                             help="trust only the (path, pointer) reorder classes a prior"
+                                  " --control run wrote to this file")
+    prf_diff.add_argument("--write-noise", type=Path, default=None, dest="write_noise",
+                          help="with --control: write the observed reorder classes"
+                               " (JSON, sorted, with counts) here")
     prf_diff.set_defaults(func=cmd_proof)
 
     args = p.parse_args(argv)
