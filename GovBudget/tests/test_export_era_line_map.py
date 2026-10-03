@@ -63,6 +63,15 @@ def test_scope_names_both_meanings_of_pe_bli_and_carries_no_money():
     assert scope.endswith("Every row is a decision; none carries an amount.")
 
 
+def test_scope_says_only_page_joined_same_program_lines_have_rows_and_citations():
+    """Task 19 fix round 1: the decade tier mints rows and era citations only
+    for same_program lines whose code has a program page, so the scope must
+    not read as if every line's pe_bli appears in either."""
+    scope = _DATASET_SCOPES["p1_era_line_map"]
+    assert ("Only a same_program line whose code has a program page has those"
+            " rows and citations.") in scope
+
+
 def test_the_map_stays_on_the_uncited_ledger():
     assert "p1_era_line_map" not in _CITED_DATASETS
 

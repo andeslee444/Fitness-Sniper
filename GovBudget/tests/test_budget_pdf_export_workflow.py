@@ -162,3 +162,21 @@ def test_no_era_summary_leaves_the_manifest_alone(monkeypatch, tmp_path):
     monkeypatch.setattr(site_export, "write_era_map_summary", lambda **k: None)
     cli.main(["export-budget-pdf-receipts"])
     assert manifest.read_text() == '{\n  "json_sidecars": 1\n}'
+
+
+def test_removing_a_stale_era_summary_recounts_the_manifest_json_sidecars(monkeypatch, tmp_path, capsys):
+    """Task 19 fix round 1: when no map shipped, write_era_map_summary removes a
+    stale json/era_map_summary.json; json_sidecars was counted with it, so the
+    receipts step recounts after the removal too."""
+    configure_paths(monkeypatch, tmp_path)
+    json_dir = tmp_path / "site" / "json"
+    json_dir.mkdir(parents=True)
+    (json_dir / "citations.json").write_text("{}")
+    (json_dir / "era_map_summary.json").write_text("{}")
+    manifest = tmp_path / "site" / "manifest.json"
+    manifest.write_text('{"built_at":"b","json_sidecars":2}\n')
+    monkeypatch.setattr(receipt_export, "export_program_pdf_receipts", lambda **k: RECEIPT_SUMMARY)
+    cli.main(["export-budget-pdf-receipts"])          # the real write_era_map_summary
+    assert not (json_dir / "era_map_summary.json").exists()
+    assert manifest.read_text() == '{"built_at":"b","json_sidecars":1}\n'
+    assert "removed stale" in capsys.readouterr().out

@@ -1761,13 +1761,18 @@ _DATASET_SCOPES: dict[str, str] = {
     # _CITED_DATASETS. It names both meanings of pe_bli §6.1 keeps apart: the
     # era key budget_lines_decade rows carry, and the printed code an era
     # citation carries. /data/ renders it three times under a 15,600 gzip
-    # ceiling that data.module.css made room for (Task 19).
+    # ceiling that data.module.css made room for (Task 19). Task 19 fix
+    # round 1: only a same_program line whose code has a program page gets
+    # decade rows and era citations (the decade tier mints no others), so the
+    # sentence says so rather than imply every line has both.
     "p1_era_line_map": (
         "One row per PB2017–PB2023 P-1 display line: era_key (its pe_bli in"
         " budget_lines_decade), line_item_code (the budget line code printed"
         " on it, the pe_bli its era citations carry) and the dated owner"
         " decision that joins it to a program page or to history only, or"
-        " excludes it. Every row is a decision; none carries an amount."
+        " excludes it. Only a same_program line whose code has a program page"
+        " has those rows and citations. Every row is a decision; none carries"
+        " an amount."
     ),
     "jbook_details": (
         "One row per (program element × project × budget scenario) cost figure"
@@ -2204,6 +2209,8 @@ def _build_dataset_manifest(
 ERA_MAP_DATASET = "p1_era_line_map"
 ERA_MAP_SUMMARY_FILE = "era_map_summary.json"
 ERA_MAP_EDITIONS = tuple(range(2017, 2024))
+#: The decisions /downloads/' "Excluded" column covers (Task 19 fix round 1).
+ERA_MAP_EXCLUDED = ("exclude_placeholder", "exclude_route_unsafe", "exclude_reused_code")
 
 
 def _export_p1_era_line_map(con, data_dir: Path) -> int | None:
@@ -2264,10 +2271,18 @@ def write_era_map_summary(*, site_dir: Path, duckdb_path: Path) -> dict | None:
     """json/era_map_summary.json: the shipped era map, counted (spec §4.4, §6.4, V7).
 
     Per PB2017–PB2023 edition: the P-1 lines the map holds; per decision, the
-    chains (distinct decision_id with a line in that edition), lines and their
-    FY N−2 actuals (fct_decade_series kind 'actuals', USD thousands); and the
+    chains (distinct decision_id with a line in that edition), the codes
+    (distinct line_item_code among those lines), the lines and their FY N−2
+    actuals (fct_decade_series kind 'actuals', USD thousands); the distinct
+    codes across the three exclude decisions (`excluded_codes`); and the
     edition's P-1 receipt completeness from json/budget_pdf_receipts_audit.json.
-    Across editions, the same tallies by (ruling, decision) and by decision.
+    Across editions, the same tallies by (ruling, decision) and by decision
+    (`codes` there is distinct across the whole era).
+
+    Task 19 fix round 1: /downloads/ renders `codes`, never `chains`. A code
+    can span several decisions (FY2017CR placeholders sit in 23 accounts of
+    PB2018, one decision each; codes 30 and 500 span organizations), so a
+    chain count overstates "the codes each decision covers".
 
     Runs AFTER export_program_pdf_receipts (cli._export_budget_pdf_evidence):
     the audit must be a full-corpus run over THIS citations.json (its
@@ -2303,7 +2318,7 @@ def write_era_map_summary(*, site_dir: Path, duckdb_path: Path) -> dict | None:
             "  where amount_type_kind = 'actuals' and fy = edition_year - 2"
             "  group by pe_bli, edition_year)"
             " select m.edition, m.era_key, m.decision, m.decision_id, m.ruling,"
-            "        coalesce(a.actuals, 0)"
+            "        coalesce(a.actuals, 0), m.line_item_code"
             " from read_parquet(?) m"
             " left join a on a.pe_bli = m.era_key and a.edition_year = m.edition"
             " order by m.edition, m.era_key",
@@ -2313,12 +2328,12 @@ def write_era_map_summary(*, site_dir: Path, duckdb_path: Path) -> dict | None:
         con.close()
 
     def tally() -> dict:
-        return {"chains": set(), "lines": 0, "actuals": Decimal(0)}
+        return {"chains": set(), "codes": set(), "lines": 0, "actuals": Decimal(0)}
 
     per_edition = {ed: {d: tally() for d in DECISIONS} for ed in ERA_MAP_EDITIONS}
     totals = {d: tally() for d in DECISIONS}
     by_ruling: dict[tuple[str, str], dict] = {}
-    for edition, era_key, decision, decision_id, ruling, actuals in rows:
+    for edition, era_key, decision, decision_id, ruling, actuals, code in rows:
         edition = int(edition)
         if edition not in per_edition:
             raise ValueError(
@@ -2330,13 +2345,18 @@ def write_era_map_summary(*, site_dir: Path, duckdb_path: Path) -> dict | None:
         amount = Decimal(str(actuals))
         for t in (per_edition[edition][decision], totals[decision],
                   by_ruling.setdefault((ruling or "", decision), tally())):
-            t["chains"].add(decision_id)
+            # NULLs count as neither, as count(distinct) has it in the
+            # gate's independent recount (eramap-recompute.py).
+            if decision_id is not None:
+                t["chains"].add(decision_id)
+            if code is not None:
+                t["codes"].add(code)
             t["lines"] += 1
             t["actuals"] += amount
 
     def counted(t: dict) -> dict:
-        return {"chains": len(t["chains"]), "lines": t["lines"],
-                "actuals_thousands": float(t["actuals"])}
+        return {"chains": len(t["chains"]), "codes": len(t["codes"]),
+                "lines": t["lines"], "actuals_thousands": float(t["actuals"])}
 
     books = {(b.get("edition"), b.get("exhibit")): b for b in audit.get("books", [])}
     editions = []
@@ -2347,6 +2367,8 @@ def write_era_map_summary(*, site_dir: Path, duckdb_path: Path) -> dict | None:
             "fy_actuals": ed - 2,
             "lines": sum(t["lines"] for t in per_edition[ed].values()),
             "by_decision": {d: counted(per_edition[ed][d]) for d in DECISIONS},
+            "excluded_codes": len(set().union(
+                *(per_edition[ed][d]["codes"] for d in ERA_MAP_EXCLUDED))),
             "receipts": {"facts": int(book.get("facts", 0)),
                          "complete": int(book.get("complete", 0))},
         })

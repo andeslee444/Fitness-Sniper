@@ -2496,12 +2496,18 @@ def _export_budget_pdf_evidence(*, site_dir: Path, manifest: Path, cache_dir: Pa
     # Families piece 1 (spec §6.4, V7): the era summary reports each era
     # edition's receipt completeness from the audit just written, so it is
     # refreshed here, after every receipts run; None when no era map shipped.
+    summary_path = site_dir / "json" / "era_map_summary.json"
+    had_summary = summary_path.is_file()
     era = write_era_map_summary(site_dir=site_dir, duckdb_path=config.DUCKDB_PATH)
     if era is not None:
-        print(f"era map summary: {len(era['editions'])} editions"
-              f" -> {site_dir / 'json' / 'era_map_summary.json'}")
+        print(f"era map summary: {len(era['editions'])} editions -> {summary_path}")
+    elif had_summary:
+        print(f"era map summary: no p1_era_line_map shipped; removed stale {summary_path}")
+    if era is not None or had_summary:
         # The F-15 family-history builder counted json/**/*.json for
-        # manifest.json's json_sidecars before this file existed.
+        # manifest.json's json_sidecars before this step wrote the summary,
+        # or while a stale summary, removed just above, was still there
+        # (Task 19 fix round 1).
         _refresh_json_sidecars(site_dir)
     return report
 
@@ -2512,7 +2518,8 @@ def _refresh_json_sidecars(site_dir: Path) -> int | None:
     export_site's F-15 family-history builder sets json_sidecars to the number
     of json/**/*.json files (f15_funding_history.py, `json_dir.rglob("*.json")`)
     before the receipts step runs, so json/era_map_summary.json, written above
-    on an export's first run, would be left out. Same count and the same
+    on an export's first run, would be left out, and a stale summary removed
+    above would still be counted. Same count and the same
     serialization as that builder (sorted keys, compact, trailing newline); the
     file is rewritten only when the number changed. Returns the count, or None
     when the site has no manifest.json.
