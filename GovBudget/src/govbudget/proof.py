@@ -83,7 +83,6 @@ import subprocess
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
 
 SNAPSHOT_MANIFEST = "snapshot.json"
 SNAPSHOT_ENV = "env.sh"
@@ -118,7 +117,6 @@ _RULE_KEYS = frozenset({"path", "why", "status", "pointer", "change", "required"
 _FLOAT_REL_TOL = 10.0 ** -FLOAT_SIGNIFICANT_DIGITS
 _FLOAT_MARK = "\x00float"          # stands in for every float in a pairing key
 _NOISE_MAX_ROWS = 1_000_000        # residual parquet rows beyond this compare exactly
-_LOCAL_HOSTS = frozenset({"", "localhost", "127.0.0.1", "::1"})
 
 
 def _now() -> datetime.datetime:
@@ -782,11 +780,16 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
     Writes out_dir/{duckdb,parquet,site,raw_docs,manifest.jsonl} (APFS clones),
     out_dir/pg/<db>.dump, out_dir/snapshot.json and out_dir/env.sh, and restores
     the dump into a NEW database `scratch_db` on the same server. Refuses if
-    out_dir or the scratch database already exists, inside the SAM write window
-    (:15-:20), while a writer holds the DuckDB file, or when the server is
-    local and scratch_db is not named govbudget_proof_<name>.
+    out_dir or the scratch database already exists, out_dir resolves inside
+    the lake (symlinks followed — a worktree's data/site is a symlink into
+    the live lake), inside the SAM write window (:15-:20), while a writer
+    holds the DuckDB file, or scratch_db is not named govbudget_proof_<name>.
     """
-    out_dir = Path(out_dir).absolute()
+    # .resolve(), not .absolute(): a worktree's data/site is a symlink into
+    # the live lake (Task 1), and .absolute() does not follow it — an
+    # unresolved out_dir could sit textually outside data_dir while actually
+    # landing inside it once the symlink is followed (2026-10 review finding).
+    out_dir = Path(out_dir).resolve()
     data_dir = Path(data_dir).resolve()
     _check_sam_window("before the copy")
     if out_dir.exists():
@@ -798,10 +801,8 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
             f"proof snapshot: scratch database name {scratch_db!r} must match"
             f" {_SCRATCH_DB_RE.pattern}"
         )
-    _check_scratch_name(pg_dsn, scratch_db)
-    source_db = urlsplit(pg_dsn).path.lstrip("/")
-    if not source_db:
-        raise ValueError(f"proof snapshot: {pg_dsn!r} names no database")
+    _check_scratch_name(scratch_db)
+    source_db = _resolve_dbname(pg_dsn)
     if scratch_db == source_db:
         raise ValueError("proof snapshot: the scratch database cannot be the source database")
     src_duckdb = data_dir / DUCKDB_REL
@@ -884,15 +885,21 @@ def _check_sam_window(stage: str) -> None:
         )
 
 
-def _check_scratch_name(pg_dsn: str, scratch_db: str) -> None:
-    """On a local server (the real `govbudget` lives there) the only database
-    this tool may create is govbudget_proof_<name> (README, Global Constraints)."""
-    host = (urlsplit(pg_dsn).hostname or "").lower()
-    if host in _LOCAL_HOSTS and not (
+def _check_scratch_name(scratch_db: str) -> None:
+    """The only database this tool may create is govbudget_proof_<name>
+    (README, Global Constraints) — unconditionally, on every host.
+
+    This used to be enforced only when the DSN's netloc looked local. That
+    was unsound (2026-10 review finding): libpq lets a query parameter
+    (`?host=...`) silently retarget a connection to a different server than
+    the one the URI's host component names, so a DSN that merely LOOKS
+    remote could defeat a host-based exemption and create an unprefixed
+    database on the real server."""
+    if not (
         scratch_db.startswith(SCRATCH_DB_PREFIX) and len(scratch_db) > len(SCRATCH_DB_PREFIX)
     ):
         raise ValueError(
-            f"proof snapshot: a scratch database on a local server must be named"
+            f"proof snapshot: a scratch database must be named"
             f" {SCRATCH_DB_PREFIX}<name>, not {scratch_db!r}"
         )
 
@@ -1002,9 +1009,49 @@ def _pg_bin(name: str) -> str:
     )
 
 
+def _resolve_dbname(pg_dsn: str) -> str:
+    """The database pg_dsn actually targets, after every libpq override.
+
+    A query parameter (`?dbname=...`) wins over the URI path's database
+    component — verified against a running server (2026-10 review finding)
+    — so the target must never be read with urlsplit(pg_dsn).path: that
+    silently disagrees with where the connection actually lands."""
+    import psycopg
+
+    dbname = psycopg.conninfo.conninfo_to_dict(pg_dsn).get("dbname")
+    if not dbname:
+        raise ValueError(f"proof snapshot: {pg_dsn!r} names no database")
+    return dbname
+
+
 def _with_database(dsn: str, database: str) -> str:
-    parts = urlsplit(dsn)
-    return urlunsplit(parts._replace(path="/" + database))
+    """dsn, retargeted at `database` — even when a libpq query parameter
+    (`?dbname=...`) would otherwise win over a bare URI-path replacement
+    (2026-10 review finding: a naive urlsplit/urlunsplit path swap does not
+    survive such a query parameter, so pg_restore could land on whatever the
+    query named instead of the scratch database)."""
+    import psycopg
+
+    return psycopg.conninfo.make_conninfo(dsn, dbname=database)
+
+
+def _assert_current_database(con, expected: str) -> None:
+    """Defense in depth against a libpq override silently retargeting a
+    connection (2026-10 review finding): refuse before touching anything if
+    the live connection did not land on the database we meant to touch."""
+    got = con.execute("select current_database()").fetchone()[0]
+    if got != expected:
+        raise RuntimeError(
+            f"proof snapshot: connected to database {got!r}, expected"
+            f" {expected!r} — refusing to touch it"
+        )
+
+
+def _assert_connected_to(dsn: str, expected: str) -> None:
+    import psycopg
+
+    with psycopg.connect(dsn) as con:
+        _assert_current_database(con, expected)
 
 
 def _database_exists(pg_dsn: str, name: str) -> bool:
@@ -1030,7 +1077,7 @@ def _pg_snapshot(
     import psycopg
     from psycopg import sql
 
-    source_db = urlsplit(pg_dsn).path.lstrip("/")
+    source_db = _resolve_dbname(pg_dsn)
     scratch_dsn = _with_database(pg_dsn, scratch_db)
     dump_dir.mkdir()
     dump = dump_dir / f"{source_db}.dump"
@@ -1038,12 +1085,17 @@ def _pg_snapshot(
           f"--file={dump}", pg_dsn])
     with psycopg.connect(_with_database(pg_dsn, "postgres"), autocommit=True) as admin:
         admin.execute(sql.SQL("create database {}").format(sql.Identifier(scratch_db)))
+    # Defense in depth before the destructive pg_restore: a libpq override
+    # buried in pg_dsn could otherwise make scratch_dsn resolve somewhere
+    # other than the database just created (2026-10 review finding).
+    _assert_connected_to(scratch_dsn, scratch_db)
     _run([_pg_bin("pg_restore"), "--no-owner", "--no-privileges", "--exit-on-error",
           f"--dbname={scratch_dsn}", str(dump)])
 
     tables: dict[str, dict] = {}
     rewrites: dict[str, int] = {}
     with psycopg.connect(scratch_dsn) as con:
+        _assert_current_database(con, scratch_db)
         # Pin the row-to-text rendering so the digests compare across sessions.
         con.execute("set time zone 'UTC'")
         con.execute("set datestyle = 'ISO, YMD'")

@@ -422,15 +422,19 @@ def test_snapshot_refuses_inside_the_sam_write_window(tmp_path, monkeypatch):
     assert not (tmp_path / "s").exists()
 
 
-@pytest.mark.parametrize("scratch, message", [
-    ("Bad-Name", "must match"),
-    ("db", "cannot be the source database"),
+@pytest.mark.parametrize("scratch, dsn, message", [
+    ("Bad-Name", "postgresql://x/db", "must match"),
+    # scratch must itself carry the required prefix (Fix round 1, Finding 1:
+    # the prefix rule is now unconditional) to reach the self-conflict check
+    # this case targets, so the source db is named with the prefix too.
+    ("govbudget_proof_same", "postgresql://x/govbudget_proof_same",
+     "cannot be the source database"),
 ])
-def test_snapshot_refuses_bad_scratch_names(tmp_path, monkeypatch, scratch, message):
+def test_snapshot_refuses_bad_scratch_names(tmp_path, monkeypatch, scratch, dsn, message):
     monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
     with pytest.raises(ValueError, match=message):
         proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data",
-                       pg_dsn="postgresql://x/db", scratch_db=scratch)
+                       pg_dsn=dsn, scratch_db=scratch)
 
 
 def test_snapshot_refuses_an_existing_out_dir(tmp_path, monkeypatch):
@@ -439,6 +443,25 @@ def test_snapshot_refuses_an_existing_out_dir(tmp_path, monkeypatch):
     with pytest.raises(FileExistsError, match="already exists"):
         proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data",
                        pg_dsn="postgresql://x/db", scratch_db="snap")
+
+
+def test_snapshot_refuses_an_out_dir_inside_the_lake_through_a_symlink(tmp_path, monkeypatch):
+    # Fix round 1, Finding 2: in the real worktree, GovBudget/data/site is a
+    # symlink into the live lake (Task 1). Path.absolute() does not follow
+    # it, so a textually-outside out_dir could still land inside the lake
+    # once the symlink resolves — the containment check must resolve both
+    # sides, not just data_dir.
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    live.mkdir()
+    worktree_data = tmp_path / "worktree" / "data"
+    worktree_data.parent.mkdir()
+    worktree_data.symlink_to(live, target_is_directory=True)
+    out_dir = worktree_data / "site" / "x"   # resolves into live/site/x
+    with pytest.raises(ValueError, match="is inside the lake"):
+        proof.snapshot(out_dir, data_dir=live, pg_dsn="postgresql://x/db",
+                       scratch_db="govbudget_proof_snap")
+    assert not (live / "site").exists()
 
 
 @pytest.mark.parametrize("dsn", [
@@ -457,6 +480,71 @@ def test_snapshot_refuses_a_local_scratch_db_without_the_proof_prefix(tmp_path, 
         cli.main(["proof", "snapshot", "--out", str(tmp_path / "s"), "--scratch-db", "snap",
                   "--data-dir", str(tmp_path / "data"), "--pg-dsn", dsn])
     assert not (tmp_path / "s").exists()
+
+
+def test_snapshot_refuses_a_non_prefixed_scratch_db_even_on_a_remote_looking_host(
+    tmp_path, monkeypatch,
+):
+    # Fix round 1, Finding 1: the old check only required the prefix when the
+    # DSN's netloc looked local, which a libpq query parameter (?host=...)
+    # can silently contradict (verified: a DSN whose netloc names a remote
+    # host can still connect to 127.0.0.1 via such a parameter). The rule is
+    # now unconditional, so a DSN that merely LOOKS remote is refused too,
+    # before any connection is attempted.
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data",
+                       pg_dsn="postgresql://remote.example.invalid/govbudget",
+                       scratch_db="snap")
+    assert not (tmp_path / "s").exists()
+
+
+def test_with_database_overrides_a_query_parameter_dbname():
+    # Fix round 1, Finding 1: a bare urlsplit/urlunsplit path swap does not
+    # survive a `?dbname=...` query parameter (libpq lets the query param
+    # win), so _with_database must use psycopg.conninfo.make_conninfo, which
+    # overrides the dbname regardless of where it came from.
+    dsn = "postgresql://127.0.0.1:55432/postgres?dbname=template1"
+    scratch_dsn = proof._with_database(dsn, "govbudget_proof_x")
+    assert psycopg.conninfo.conninfo_to_dict(scratch_dsn)["dbname"] == "govbudget_proof_x"
+
+
+def test_resolve_dbname_follows_a_query_parameter_override():
+    # Fix round 1, Finding 1: the source database must be read from the
+    # resolved conninfo, not urlsplit(pg_dsn).path, which a query parameter
+    # can silently contradict.
+    assert proof._resolve_dbname(
+        "postgresql://127.0.0.1:55432/postgres?dbname=template1") == "template1"
+    with pytest.raises(ValueError, match="names no database"):
+        proof._resolve_dbname("postgresql://host:5432/")
+
+
+class _FakeCursor:
+    def __init__(self, value):
+        self._value = value
+
+    def fetchone(self):
+        return (self._value,)
+
+
+class _FakeConnection:
+    """Enough of a psycopg Connection for _assert_current_database: a single
+    .execute(...).fetchone() round trip, no real database needed."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def execute(self, *_args, **_kwargs):
+        return _FakeCursor(self._value)
+
+
+def test_assert_current_database_refuses_on_mismatch():
+    # Fix round 1, Finding 1: the final defense-in-depth check before any
+    # destructive Postgres operation — refuse rather than touch the wrong
+    # database if the connection did not land where expected.
+    proof._assert_current_database(_FakeConnection("govbudget_proof_x"), "govbudget_proof_x")
+    with pytest.raises(RuntimeError, match="connected to database 'govbudget'"):
+        proof._assert_current_database(_FakeConnection("govbudget"), "govbudget_proof_x")
 
 
 def _lake(data: Path) -> None:
@@ -514,6 +602,30 @@ def pg_source():
     admin.close()
 
 
+def test_a_query_dbname_override_is_resolved_and_the_scratch_dsn_still_targets_scratch(
+    pg_source,
+):
+    # Fix round 1, Finding 1, run against the throwaway cluster only: a DSN
+    # whose query parameter secretly retargets the connection to "postgres"
+    # even though its path names proof_src_test — the exact libpq override
+    # this fix addresses. _resolve_dbname must follow the override (not the
+    # path), and the scratch DSN _with_database builds must still land on
+    # the scratch database, not on whatever the query named.
+    admin, src_dsn = pg_source
+    sep = "&" if "?" in src_dsn else "?"
+    overridden = f"{src_dsn}{sep}dbname=postgres"
+    assert proof._resolve_dbname(overridden) == "postgres"
+    with psycopg.connect(overridden) as con:
+        assert con.execute("select current_database()").fetchone()[0] == "postgres"
+
+    scratch_dsn = proof._with_database(overridden, "govbudget_proof_scratch_test")
+    assert psycopg.conninfo.conninfo_to_dict(scratch_dsn)["dbname"] == "govbudget_proof_scratch_test"
+    admin.execute("create database govbudget_proof_scratch_test")
+    with psycopg.connect(scratch_dsn) as con:
+        assert con.execute("select current_database()").fetchone()[0] == (
+            "govbudget_proof_scratch_test")
+
+
 def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
     admin, src_dsn = pg_source
     monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
@@ -529,7 +641,16 @@ def test_snapshot_pins_lake_and_postgres(tmp_path, monkeypatch, pg_source):
 
     m = proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db="govbudget_proof_scratch_test")
 
-    scratch_dsn = urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/govbudget_proof_scratch_test"))
+    # _with_database now builds the scratch DSN with psycopg.conninfo.make_conninfo
+    # (Fix round 1, Finding 1), which returns a keyword/value conninfo string,
+    # not a URI — so the expected value is resolved semantically (the right
+    # dbname, on the same host/port as ADMIN_DSN), not hand-rolled as a URI.
+    scratch_dsn = m["pg"]["scratch_dsn"]
+    resolved = psycopg.conninfo.conninfo_to_dict(scratch_dsn)
+    admin_resolved = psycopg.conninfo.conninfo_to_dict(ADMIN_DSN)
+    assert resolved["dbname"] == "govbudget_proof_scratch_test"
+    assert resolved.get("host") == admin_resolved.get("host")
+    assert str(resolved.get("port")) == str(admin_resolved.get("port"))
     assert m["env"] == {"GOVBUDGET_DATA": str(out),
                         "GOVBUDGET_DUCKDB": f"{out}/duckdb/govbudget.duckdb",
                         "GOVBUDGET_PG_DSN": scratch_dsn}
