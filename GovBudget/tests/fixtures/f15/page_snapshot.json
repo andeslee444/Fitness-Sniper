@@ -1,0 +1,1446 @@
+{
+  "schema": 1,
+  "page": "/families/f-15/",
+  "data_fact_id_elements": 107,
+  "data_fact_ids": [
+    "03407158217dec76",
+    "142a943a6fe77204",
+    "14806401bc7e4a7f",
+    "15f4c851e57efc4c",
+    "1953773dbdff1fd4",
+    "19e4a8a49bf07ece",
+    "1aa2448f9f474c25",
+    "2019c977d0cdcd9b",
+    "20399e5da2d6fc71",
+    "25d2b9054e8fc2b1",
+    "27edf244326da779",
+    "2e982e810ca51212",
+    "34295b8e3f5fd62c",
+    "39eeabb96f541679",
+    "3bd9c921b2397209",
+    "44f9ccc1f1518032",
+    "45067be4d3ad265d",
+    "4a9ae7cc78dcf0ba",
+    "4baf8e8f89510c3a",
+    "4d4689e6aead7655",
+    "4d52ff483082fe98",
+    "4e6b8342a59968f9",
+    "4ef4d4a845c9b5e0",
+    "5172d240a8b3917b",
+    "52afeba73bc4a672",
+    "5768200ce4fbc494",
+    "5b80bce3a2db7715",
+    "5de99e056e2d0289",
+    "617cab212ff33661",
+    "61c6df17db0d46b2",
+    "63595002ee505bdd",
+    "649277069c66af1a",
+    "69f335c74e523de1",
+    "6a1949fc7d316173",
+    "6c158b6af8659c20",
+    "6c63e2988349b696",
+    "6f10e4bcff84613b",
+    "6f45548146aeb6a5",
+    "6f84e2a31e9bbd2e",
+    "70e8427bdef8c6d1",
+    "737f8f0a44986809",
+    "748cc45cb1eeeb83",
+    "76dcec542f29b8dc",
+    "79527b754f083f8c",
+    "79c8eb9fc70c7afd",
+    "7a8168a729375e50",
+    "7e2ce3f9955ed215",
+    "819f32a0ad3fb66e",
+    "84b823fc2c6e3b8a",
+    "8a610b3fa7169c0b",
+    "8b424261e0ae47b3",
+    "8bd8a0092a70e30a",
+    "8d352af78e0ae4fc",
+    "8d856112b6ded24a",
+    "92835a9645aa3793",
+    "94ecc844a92fb15c",
+    "9b44f32b71e916ca",
+    "9c1d3afa3a8bd0ec",
+    "a0231f5a75a7ad52",
+    "a1e559f43a1650d7",
+    "a4580d41871c1626",
+    "adc171885eec5949",
+    "b11fc3c3e766557e",
+    "b1825261df2b6e44",
+    "b6dc716ae54bfabf",
+    "bc530d70edda83f5",
+    "c434f0c4f15f6c14",
+    "c47678c16e482c04",
+    "c889c1ad92557fc0",
+    "c8c0c25b1c22024f",
+    "cda2240d829dc883",
+    "ce5af1a0d1556435",
+    "cf802c75afa0f505",
+    "d2366452d5345e24",
+    "d9aedd1cd8025592",
+    "ddd02231c1b0d549",
+    "e2a8baadbe15c1e5",
+    "e2b042504433a743",
+    "e3e7f47db85c6be2",
+    "e58bcd5e7566188d",
+    "e8057e2c5f1484ef",
+    "eb75776f36dc041b",
+    "ebd20a419a652f63",
+    "ee6187a7fee3977c",
+    "efb486af8aea49d2",
+    "f35d71c53b3bbeb4",
+    "f54336ba2aeabd35",
+    "f686ca71766fa573",
+    "f811373597446a1d",
+    "fac838b99b8f9ecc",
+    "fb81e4384d0a4a78",
+    "ff2c844c2d1fb4ae"
+  ],
+  "data_dataset_counts": {
+    "budget_lines": 23,
+    "budget_lines_decade": 39,
+    "f15_funding_history": 29,
+    "fct_decade_series": 16
+  },
+  "family_f15_occurrences": 14,
+  "page_fact_id_occurrences": 1196,
+  "page_fact_ids": [
+    "0026c924483c6624",
+    "033016199ca94aa7",
+    "03407158217dec76",
+    "03fc8bdf403e3e06",
+    "06ca86e1d053cc1b",
+    "0c8e872223901656",
+    "0d980e5886f925b6",
+    "111fe0395e1109c6",
+    "142a943a6fe77204",
+    "14806401bc7e4a7f",
+    "15f4c851e57efc4c",
+    "1634576efacdc10f",
+    "1953773dbdff1fd4",
+    "19b4ce0fcab57486",
+    "19e4a8a49bf07ece",
+    "1a0b161c2eb05317",
+    "1aa2448f9f474c25",
+    "1b4537414a0f1178",
+    "1d3d0892cdaa14f0",
+    "2019c977d0cdcd9b",
+    "20399e5da2d6fc71",
+    "213e714e0e0bc3ee",
+    "23ee4cb8b6621989",
+    "24ea51a5f25f426d",
+    "25d2b9054e8fc2b1",
+    "27edf244326da779",
+    "28f53c8d681494cc",
+    "2a68943b53aa61bb",
+    "2b7966a9b85a3397",
+    "2c984fa8f0198358",
+    "2cd7da5c6e9ef16d",
+    "2e982e810ca51212",
+    "32134a88b4c54bad",
+    "34295b8e3f5fd62c",
+    "34865ce471b42dc3",
+    "35b48370abc5804d",
+    "35f11c9df545b3a5",
+    "37416d9afa5722f4",
+    "38d008dd3c6f7dd7",
+    "39950e1fdcbdacfc",
+    "39eeabb96f541679",
+    "3bd9c921b2397209",
+    "3d865db190729371",
+    "3f87a0c097f67afb",
+    "3f88d403774d6832",
+    "422f5d06912f5552",
+    "44f9ccc1f1518032",
+    "45067be4d3ad265d",
+    "4576afb019a980c3",
+    "457bcd2ad8dc7c53",
+    "4a9ae7cc78dcf0ba",
+    "4b62e8f0d4cdf4d4",
+    "4baf8e8f89510c3a",
+    "4c4d2c35675fc165",
+    "4d4689e6aead7655",
+    "4d52ff483082fe98",
+    "4d6a5d249d5842be",
+    "4e12a526915cec44",
+    "4e6b8342a59968f9",
+    "4e76aee97f8dea62",
+    "4e93e4ee71f0c279",
+    "4ef4d4a845c9b5e0",
+    "4f5dff4acc894160",
+    "5172d240a8b3917b",
+    "517ea36286469b8d",
+    "52afeba73bc4a672",
+    "549cb40b9098bca3",
+    "56b67a1018348e86",
+    "5711f9082a7db358",
+    "5768200ce4fbc494",
+    "5824faa96c5e26d9",
+    "5873ff22adb5bec4",
+    "5adee99bd501dbe4",
+    "5b80bce3a2db7715",
+    "5c4b7c591830fbc8",
+    "5c85bc9e7b05cb77",
+    "5de99e056e2d0289",
+    "5f4bbf6639ec3c69",
+    "5fa251f2511754c2",
+    "5fe7d8d62c4817bc",
+    "60038ad51296099c",
+    "617cab212ff33661",
+    "619c9271f416aa12",
+    "61c6df17db0d46b2",
+    "62ff1888f79bb125",
+    "63595002ee505bdd",
+    "641a4bd911324a59",
+    "649277069c66af1a",
+    "67ee40b228b3a0ee",
+    "69bc01cf719ec44c",
+    "69f335c74e523de1",
+    "6a1949fc7d316173",
+    "6c158b6af8659c20",
+    "6c63e2988349b696",
+    "6d1b8ce20d138a0e",
+    "6f0f7584be8f94eb",
+    "6f10e4bcff84613b",
+    "6f45548146aeb6a5",
+    "6f84e2a31e9bbd2e",
+    "70e8427bdef8c6d1",
+    "7233cd3ab0b7bb36",
+    "7347e505f9023b27",
+    "737f8f0a44986809",
+    "748cc45cb1eeeb83",
+    "76dcec542f29b8dc",
+    "782f7ecb83e6ac1a",
+    "79527b754f083f8c",
+    "79c8eb9fc70c7afd",
+    "7a20f14833c6e636",
+    "7a8168a729375e50",
+    "7c68d2fcd2c0b3ae",
+    "7d0620b677932327",
+    "7e2ce3f9955ed215",
+    "7ef6ab9c4b7f2f83",
+    "7f0d2a0b4b10c14a",
+    "819f32a0ad3fb66e",
+    "84b823fc2c6e3b8a",
+    "8504b516dc7be76f",
+    "860e44229afd8cfe",
+    "8a610b3fa7169c0b",
+    "8b29171e8ff429c3",
+    "8b424261e0ae47b3",
+    "8bd8a0092a70e30a",
+    "8d352af78e0ae4fc",
+    "8d856112b6ded24a",
+    "8e3705a0bc020046",
+    "925ef085b78568b1",
+    "92835a9645aa3793",
+    "94a7a84c6395f9a6",
+    "94a8f98690368cf9",
+    "94ecc844a92fb15c",
+    "9640be5cd0208a2f",
+    "97884d9ae98e9e06",
+    "9930a93c14d384ea",
+    "9b44f32b71e916ca",
+    "9c1d3afa3a8bd0ec",
+    "9f64735e0528bbe6",
+    "a0231f5a75a7ad52",
+    "a1e559f43a1650d7",
+    "a4580d41871c1626",
+    "a460b0ce553b43bb",
+    "a48009ce91e59483",
+    "a4e888fc82ca5cc2",
+    "a6a687d4f5a21e45",
+    "a8508c00878b393f",
+    "adc171885eec5949",
+    "afc7c692185b8de3",
+    "b11fc3c3e766557e",
+    "b1287343b8ef971c",
+    "b1825261df2b6e44",
+    "b30fae1fd23999e4",
+    "b3d205eda8843fd2",
+    "b3dbc6ed30814fdf",
+    "b6cd2b96317e94ce",
+    "b6dc716ae54bfabf",
+    "b722bb7f4e528569",
+    "bbda7a1fd1393b27",
+    "bbdb7b516d3e4805",
+    "bc03510d536c5546",
+    "bc530d70edda83f5",
+    "bd8ba4939e5f7ec3",
+    "bdc921cf6593dc11",
+    "c005083496e57d0f",
+    "c05ad3ce0481b0ef",
+    "c104bc2a0fdbe003",
+    "c2e1c6ce3563a5c8",
+    "c2e8cdd857eea75d",
+    "c303d6ad42de3c35",
+    "c434f0c4f15f6c14",
+    "c47678c16e482c04",
+    "c67d4ea9519aea4b",
+    "c889c1ad92557fc0",
+    "c8c0c25b1c22024f",
+    "c9e5c28dfebc879e",
+    "cb4796e48126e4a7",
+    "cce72b42a96bfcb7",
+    "cda2240d829dc883",
+    "ce5af1a0d1556435",
+    "cf802c75afa0f505",
+    "d081c98629a99ef9",
+    "d2366452d5345e24",
+    "d292c18e72c52097",
+    "d3a0b39363a7431e",
+    "d6731203c7287c9a",
+    "d6cedbfa86c64dfb",
+    "d8c21be1689cd700",
+    "d8c50892fa5d86a9",
+    "d9982379a24ebac6",
+    "d9aedd1cd8025592",
+    "da8fcf0561c0e6e8",
+    "db33e367e5601a90",
+    "db6f06823d7c8d5e",
+    "ddd02231c1b0d549",
+    "e1048ba48d6e56aa",
+    "e2a8baadbe15c1e5",
+    "e2b042504433a743",
+    "e3e7f47db85c6be2",
+    "e4418fd721940b73",
+    "e58bcd5e7566188d",
+    "e5eeb79d701874a3",
+    "e70a0c6b3e29118a",
+    "e776e4100175b36d",
+    "e7d5bcfb4a30f458",
+    "e8057e2c5f1484ef",
+    "eb75776f36dc041b",
+    "ebd20a419a652f63",
+    "eccc346afef75263",
+    "ee4d1acbe08dae68",
+    "ee6187a7fee3977c",
+    "efb486af8aea49d2",
+    "f34e9c8fc9eeda48",
+    "f35d71c53b3bbeb4",
+    "f3e454247add801c",
+    "f54336ba2aeabd35",
+    "f686ca71766fa573",
+    "f811373597446a1d",
+    "f83f3eea59d1de9b",
+    "fac838b99b8f9ecc",
+    "fb38861375168743",
+    "fb81e4384d0a4a78",
+    "fbde90e8f0ecd38b",
+    "fd8e7b24615c8637",
+    "ff2c844c2d1fb4ae"
+  ],
+  "matrix": {
+    "columns": [
+      "fy2015a",
+      "fy2016a",
+      "fy2017a",
+      "fy2018a",
+      "fy2019a",
+      "fy2020a",
+      "fy2021a",
+      "fy2022a",
+      "fy2023a",
+      "fy2024a",
+      "fy2025e",
+      "fy2026r"
+    ],
+    "annual": [
+      {
+        "column": "fy2015a",
+        "fact_id": "e2a8baadbe15c1e5",
+        "dataset": "f15_funding_history",
+        "text": "$771.1M",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2016a",
+        "fact_id": "142a943a6fe77204",
+        "dataset": "f15_funding_history",
+        "text": "$984.6M",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2017a",
+        "fact_id": "8d856112b6ded24a",
+        "dataset": "f15_funding_history",
+        "text": "$734.1M",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2018a",
+        "fact_id": "4ef4d4a845c9b5e0",
+        "dataset": "f15_funding_history",
+        "text": "$963.2M",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2019a",
+        "fact_id": "c434f0c4f15f6c14",
+        "dataset": "f15_funding_history",
+        "text": "$992.6M",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2020a",
+        "fact_id": "b1825261df2b6e44",
+        "dataset": "f15_funding_history",
+        "text": "$1.88B",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2021a",
+        "fact_id": "ebd20a419a652f63",
+        "dataset": "f15_funding_history",
+        "text": "$2.01B",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2022a",
+        "fact_id": "2019c977d0cdcd9b",
+        "dataset": "f15_funding_history",
+        "text": "$2.02B",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2023a",
+        "fact_id": "fb81e4384d0a4a78",
+        "dataset": "f15_funding_history",
+        "text": "$3.54B",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2024a",
+        "fact_id": "5b80bce3a2db7715",
+        "dataset": "f15_funding_history",
+        "text": "$3.16B",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2025e",
+        "fact_id": "6a1949fc7d316173",
+        "dataset": "f15_funding_history",
+        "text": "$2.29B",
+        "inputs": [],
+        "missing": null
+      },
+      {
+        "column": "fy2026r",
+        "fact_id": "d9aedd1cd8025592",
+        "dataset": "f15_funding_history",
+        "text": "$3.71B",
+        "inputs": [],
+        "missing": null
+      }
+    ],
+    "rows": [
+      {
+        "program_id": "R-1:3600F:AF:0207134F",
+        "label": [
+          "PE 0207134F",
+          "F-15E Squadrons",
+          "Development"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": "d2366452d5345e24",
+            "dataset": "budget_lines_decade",
+            "text": "$233.9M",
+            "inputs": [
+              "d2366452d5345e24"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": "76dcec542f29b8dc",
+            "dataset": "budget_lines_decade",
+            "text": "$210.0M",
+            "inputs": [
+              "76dcec542f29b8dc"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": "27edf244326da779",
+            "dataset": "budget_lines_decade",
+            "text": "$344.2M",
+            "inputs": [
+              "27edf244326da779"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": "649277069c66af1a",
+            "dataset": "budget_lines_decade",
+            "text": "$308.2M",
+            "inputs": [
+              "649277069c66af1a"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "15f4c851e57efc4c",
+            "dataset": "budget_lines_decade",
+            "text": "$196.0M",
+            "inputs": [
+              "15f4c851e57efc4c"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "737f8f0a44986809",
+            "dataset": "budget_lines_decade",
+            "text": "$640.1M",
+            "inputs": [
+              "737f8f0a44986809"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": "61c6df17db0d46b2",
+            "dataset": "budget_lines_decade",
+            "text": "$230.3M",
+            "inputs": [
+              "61c6df17db0d46b2"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": "45067be4d3ad265d",
+            "dataset": "budget_lines_decade",
+            "text": "$231.9M",
+            "inputs": [
+              "45067be4d3ad265d"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": "f54336ba2aeabd35",
+            "dataset": "budget_lines_decade",
+            "text": "$193.3M",
+            "inputs": [
+              "f54336ba2aeabd35"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": "e58bcd5e7566188d",
+            "dataset": "budget_lines",
+            "text": "$40.3M",
+            "inputs": [
+              "e58bcd5e7566188d"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": "cda2240d829dc883",
+            "dataset": "budget_lines",
+            "text": "$158.6M",
+            "inputs": [
+              "cda2240d829dc883"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": "44f9ccc1f1518032",
+            "dataset": "budget_lines",
+            "text": "$233.0M",
+            "inputs": [
+              "44f9ccc1f1518032"
+            ],
+            "missing": null
+          }
+        ]
+      },
+      {
+        "program_id": "R-1:3600F:AF:0207146F",
+        "label": [
+          "PE 0207146F",
+          "F-15EX",
+          "Development"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "52afeba73bc4a672",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "52afeba73bc4a672"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "6f84e2a31e9bbd2e",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "6f84e2a31e9bbd2e"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": "748cc45cb1eeeb83",
+            "dataset": "budget_lines_decade",
+            "text": "$79.9M",
+            "inputs": [
+              "748cc45cb1eeeb83"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": "19e4a8a49bf07ece",
+            "dataset": "budget_lines_decade",
+            "text": "$104.0M",
+            "inputs": [
+              "19e4a8a49bf07ece"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": "25d2b9054e8fc2b1",
+            "dataset": "budget_lines_decade",
+            "text": "$91.2M",
+            "inputs": [
+              "25d2b9054e8fc2b1"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": "14806401bc7e4a7f",
+            "dataset": "budget_lines",
+            "text": "$102.0M",
+            "inputs": [
+              "14806401bc7e4a7f"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": "c889c1ad92557fc0",
+            "dataset": "budget_lines",
+            "text": "$56.2M",
+            "inputs": [
+              "c889c1ad92557fc0"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": "a1e559f43a1650d7",
+            "dataset": "budget_lines",
+            "text": "$80.4M",
+            "inputs": [
+              "a1e559f43a1650d7"
+            ],
+            "missing": null
+          }
+        ]
+      },
+      {
+        "program_id": "R-1:3600F:AF:0207171F",
+        "label": [
+          "PE 0207171F",
+          "F-15 EPAWSS",
+          "Development"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": "c47678c16e482c04",
+            "dataset": "f15_funding_history",
+            "text": "$37.7M",
+            "inputs": [
+              "3d865db190729371",
+              "7f0d2a0b4b10c14a"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": "4baf8e8f89510c3a",
+            "dataset": "budget_lines_decade",
+            "text": "$174.4M",
+            "inputs": [
+              "4baf8e8f89510c3a"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": "6c158b6af8659c20",
+            "dataset": "budget_lines_decade",
+            "text": "$241.5M",
+            "inputs": [
+              "6c158b6af8659c20"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": "f686ca71766fa573",
+            "dataset": "budget_lines_decade",
+            "text": "$202.2M",
+            "inputs": [
+              "f686ca71766fa573"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "ce5af1a0d1556435",
+            "dataset": "budget_lines_decade",
+            "text": "$133.4M",
+            "inputs": [
+              "ce5af1a0d1556435"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "8d352af78e0ae4fc",
+            "dataset": "budget_lines_decade",
+            "text": "$46.0M",
+            "inputs": [
+              "8d352af78e0ae4fc"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": "69f335c74e523de1",
+            "dataset": "budget_lines_decade",
+            "text": "$165.7M",
+            "inputs": [
+              "69f335c74e523de1"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": "4e6b8342a59968f9",
+            "dataset": "budget_lines_decade",
+            "text": "$100.2M",
+            "inputs": [
+              "4e6b8342a59968f9"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": "f35d71c53b3bbeb4",
+            "dataset": "budget_lines_decade",
+            "text": "$65.6M",
+            "inputs": [
+              "f35d71c53b3bbeb4"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": "6f10e4bcff84613b",
+            "dataset": "budget_lines",
+            "text": "$13.0M",
+            "inputs": [
+              "6f10e4bcff84613b"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": null,
+            "dataset": null,
+            "text": "Missing",
+            "inputs": [],
+            "missing": "0207171F"
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": null,
+            "dataset": null,
+            "text": "Missing",
+            "inputs": [],
+            "missing": "0207171F"
+          }
+        ]
+      },
+      {
+        "program_id": "P-1:3010F:AF:F01500",
+        "label": [
+          "BLI F01500",
+          "F-15",
+          "Procurement"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": "3bd9c921b2397209",
+            "dataset": "budget_lines_decade",
+            "text": "$498.3M",
+            "inputs": [
+              "3bd9c921b2397209"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": "a0231f5a75a7ad52",
+            "dataset": "f15_funding_history",
+            "text": "$596.9M",
+            "inputs": [
+              "28f53c8d681494cc",
+              "cce72b42a96bfcb7"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": "8bd8a0092a70e30a",
+            "dataset": "f15_funding_history",
+            "text": "$145.4M",
+            "inputs": [
+              "38d008dd3c6f7dd7",
+              "56b67a1018348e86"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": "34295b8e3f5fd62c",
+            "dataset": "f15_funding_history",
+            "text": "$450.3M",
+            "inputs": [
+              "641a4bd911324a59",
+              "8e3705a0bc020046"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "ff2c844c2d1fb4ae",
+            "dataset": "f15_funding_history",
+            "text": "$448.3M",
+            "inputs": [
+              "8504b516dc7be76f",
+              "fbde90e8f0ecd38b"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "efb486af8aea49d2",
+            "dataset": "f15_funding_history",
+            "text": "$443.7M",
+            "inputs": [
+              "5f4bbf6639ec3c69",
+              "62ff1888f79bb125"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": "1953773dbdff1fd4",
+            "dataset": "f15_funding_history",
+            "text": "$164.2M",
+            "inputs": [
+              "bbdb7b516d3e4805",
+              "e4418fd721940b73"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": "eb75776f36dc041b",
+            "dataset": "f15_funding_history",
+            "text": "$164.8M",
+            "inputs": [
+              "9930a93c14d384ea",
+              "a8508c00878b393f"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": "5172d240a8b3917b",
+            "dataset": "f15_funding_history",
+            "text": "$195.2M",
+            "inputs": [
+              "23ee4cb8b6621989",
+              "5adee99bd501dbe4"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": "e3e7f47db85c6be2",
+            "dataset": "budget_lines",
+            "text": "$28.6M",
+            "inputs": [
+              "e3e7f47db85c6be2"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": "8b424261e0ae47b3",
+            "dataset": "budget_lines",
+            "text": "$39.8M",
+            "inputs": [
+              "8b424261e0ae47b3"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": "5de99e056e2d0289",
+            "dataset": "f15_funding_history",
+            "text": "$125.2M",
+            "inputs": [
+              "afc7c692185b8de3",
+              "b722bb7f4e528569"
+            ],
+            "missing": null
+          }
+        ]
+      },
+      {
+        "program_id": "P-1:3010F:AF:F015EX",
+        "label": [
+          "BLI F015EX",
+          "F-15EX",
+          "Procurement"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "ee6187a7fee3977c",
+            "dataset": "f15_funding_history",
+            "text": "$0",
+            "inputs": [
+              "422f5d06912f5552",
+              "d6cedbfa86c64dfb"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "617cab212ff33661",
+            "dataset": "f15_funding_history",
+            "text": "$0",
+            "inputs": [
+              "2cd7da5c6e9ef16d",
+              "37416d9afa5722f4"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": "ddd02231c1b0d549",
+            "dataset": "f15_funding_history",
+            "text": "$1.37B",
+            "inputs": [
+              "549cb40b9098bca3",
+              "69bc01cf719ec44c"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": "e2b042504433a743",
+            "dataset": "budget_lines_decade",
+            "text": "$1.25B",
+            "inputs": [
+              "e2b042504433a743"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": "f811373597446a1d",
+            "dataset": "budget_lines_decade",
+            "text": "$2.74B",
+            "inputs": [
+              "f811373597446a1d"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": "84b823fc2c6e3b8a",
+            "dataset": "f15_funding_history",
+            "text": "$2.74B",
+            "inputs": [
+              "97884d9ae98e9e06",
+              "c05ad3ce0481b0ef"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": "92835a9645aa3793",
+            "dataset": "budget_lines",
+            "text": "$1.81B",
+            "inputs": [
+              "92835a9645aa3793"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": "4a9ae7cc78dcf0ba",
+            "dataset": "f15_funding_history",
+            "text": "$3.01B",
+            "inputs": [
+              "03407158217dec76",
+              "5768200ce4fbc494",
+              "819f32a0ad3fb66e"
+            ],
+            "missing": null
+          }
+        ]
+      },
+      {
+        "program_id": "P-1:3010F:AF:F15EWS",
+        "label": [
+          "BLI F15EWS",
+          "F-15 EPAW",
+          "Procurement"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": "94ecc844a92fb15c",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "94ecc844a92fb15c"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": "6c63e2988349b696",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "6c63e2988349b696"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "bc530d70edda83f5",
+            "dataset": "budget_lines_decade",
+            "text": "$214.9M",
+            "inputs": [
+              "bc530d70edda83f5"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "4d52ff483082fe98",
+            "dataset": "budget_lines_decade",
+            "text": "$125.4M",
+            "inputs": [
+              "4d52ff483082fe98"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": "39eeabb96f541679",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "39eeabb96f541679"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": "b11fc3c3e766557e",
+            "dataset": "budget_lines_decade",
+            "text": "$163.8M",
+            "inputs": [
+              "b11fc3c3e766557e"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": "7a8168a729375e50",
+            "dataset": "budget_lines_decade",
+            "text": "$259.8M",
+            "inputs": [
+              "7a8168a729375e50"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": "fac838b99b8f9ecc",
+            "dataset": "budget_lines",
+            "text": "$233.3M",
+            "inputs": [
+              "fac838b99b8f9ecc"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": "1aa2448f9f474c25",
+            "dataset": "budget_lines",
+            "text": "$227.3M",
+            "inputs": [
+              "1aa2448f9f474c25"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": "7e2ce3f9955ed215",
+            "dataset": "budget_lines",
+            "text": "$252.6M",
+            "inputs": [
+              "7e2ce3f9955ed215"
+            ],
+            "missing": null
+          }
+        ]
+      },
+      {
+        "program_id": "P-1:3010F:AF:F0150P",
+        "label": [
+          "BLI F0150P",
+          "F-15 (legacy support line)",
+          "Procurement · Historical code"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": "6f45548146aeb6a5",
+            "dataset": "budget_lines_decade",
+            "text": "$1.12M",
+            "inputs": [
+              "6f45548146aeb6a5"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": "20399e5da2d6fc71",
+            "dataset": "budget_lines_decade",
+            "text": "$3.21M",
+            "inputs": [
+              "20399e5da2d6fc71"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": "4d4689e6aead7655",
+            "dataset": "budget_lines_decade",
+            "text": "$2.98M",
+            "inputs": [
+              "4d4689e6aead7655"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": "9b44f32b71e916ca",
+            "dataset": "budget_lines_decade",
+            "text": "$2.52M",
+            "inputs": [
+              "9b44f32b71e916ca"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          }
+        ]
+      },
+      {
+        "program_id": "P-1:3010F:AF:F015E0",
+        "label": [
+          "BLI F015E0",
+          "F-15e (legacy line)",
+          "Procurement · Historical code"
+        ],
+        "cells": [
+          {
+            "column": "fy2015a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2016a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2017a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2018a",
+            "fact_id": "2e982e810ca51212",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "2e982e810ca51212"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2019a",
+            "fact_id": "9c1d3afa3a8bd0ec",
+            "dataset": "budget_lines_decade",
+            "text": "$0",
+            "inputs": [
+              "9c1d3afa3a8bd0ec"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2020a",
+            "fact_id": "63595002ee505bdd",
+            "dataset": "budget_lines_decade",
+            "text": "$621.1M",
+            "inputs": [
+              "63595002ee505bdd"
+            ],
+            "missing": null
+          },
+          {
+            "column": "fy2021a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2022a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2023a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2024a",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2025e",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          },
+          {
+            "column": "fy2026r",
+            "fact_id": null,
+            "dataset": null,
+            "text": "—",
+            "inputs": [],
+            "missing": null
+          }
+        ]
+      }
+    ]
+  }
+}
