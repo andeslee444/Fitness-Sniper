@@ -135,8 +135,14 @@ def test_ratify_refuses_and_writes_nothing(world, edits, extra, message):
 
 def test_ratify_refuses_bad_batch_labels_and_reuse(world):
     decide(world, GOOD, SPLIT)
+    before = world["seed"].read_bytes()
     with pytest.raises(ValueError, match="is not B<n>"):
         ratify(world, batch="b1")
+    # final review TRIAGE-2: `$` matches before a final newline, so .match let
+    # "B1\n" through as ruling 'R-DEC-ERA-B1\n', dodging the reuse refusal
+    with pytest.raises(ValueError, match="is not B<n>"):
+        ratify(world, batch="B1\n")
+    assert world["seed"].read_bytes() == before
     assert ratify(world) == 5
     with pytest.raises(ValueError, match="already in"):
         ratify(world)

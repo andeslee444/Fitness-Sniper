@@ -96,14 +96,14 @@ def test_era_procurement_keyspace_disjoint_from_modern_and_r1():
     with modern (fy>=2024) pe_bli values or with any edition's R-1 PE codes.
     """
     with _live_pg() as con:
-        era = {
+        p1_era = {
             r[0]
             for r in con.execute(
                 "select distinct pe_bli from budget_lines"
                 " where exhibit='P-1' and fiscal_year<=2023"
             )
         }
-        era |= {
+        details_era = {
             r[0]
             for r in con.execute(
                 """
@@ -138,19 +138,22 @@ def test_era_procurement_keyspace_disjoint_from_modern_and_r1():
                 "select distinct pe_bli from budget_lines where exhibit='R-1'"
             )
         }
-    if not era:
+    if not (p1_era or details_era):
         pytest.skip("no era procurement rows loaded in this warehouse")
     # Era keys are selected with is_era_procurement_key (the families plan's
     # binding selector rule), never "every PB2017-23 P-1 row": since S1b the
-    # era editions also hold the Classified Programs line under
-    # CLASSIFIED_CODE, which modern editions carry under the same code by
-    # design. That line is the only era-edition value that is not an era key.
-    not_era_keys = {k for k in era if not is_era_procurement_key(k)}
+    # era editions' budget_lines P-1 also hold the Classified Programs line
+    # under CLASSIFIED_CODE, which modern P-1 editions and every edition's
+    # R-1 (era included) carry under the same code by design. It is excused
+    # from the budget_lines P-1 set only (final review TRIAGE-1): the era P-40
+    # loader keys every detail row as an era key, so an era detail row under
+    # CLASSIFIED_CODE is a collision, not the Classified Programs line.
+    not_era_keys = {k for k in p1_era if not is_era_procurement_key(k)}
     assert not_era_keys <= {CLASSIFIED_CODE}, (
-        f"{len(not_era_keys)} era-edition procurement pe_bli values are neither"
+        f"{len(not_era_keys)} era P-1 pe_bli values are neither"
         f" era keys nor {CLASSIFIED_CODE}: {sorted(not_era_keys)[:10]}"
     )
-    era -= not_era_keys
+    era = (p1_era - not_era_keys) | details_era
     collisions = era & (modern | r1)
     assert collisions == set(), (
         f"{len(collisions)} era procurement pe_bli values collide with the"

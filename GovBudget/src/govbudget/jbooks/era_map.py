@@ -1491,7 +1491,7 @@ def ratify(
         chain would never return to review.csv; split the whole chain into
         ranges, or leave its decision blank (defer it) until it is.
     Returns the number of rows added."""
-    if not BATCH_RE.match(batch):
+    if not BATCH_RE.fullmatch(batch):  # .match: `$` accepts "B1\n"
         raise ValueError(f"batch {batch!r} is not B<n> (e.g. B1)")
     ruling = f"R-DEC-ERA-{batch}"
     review_csv = Path(review_csv)
