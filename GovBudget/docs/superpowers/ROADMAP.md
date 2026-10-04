@@ -41,6 +41,12 @@ that needed an individual decision in 5 batches, **R-DEC-ERA-B1**–**R-DEC-ERA-
 `dbt/seeds/p1_era_code_decisions.csv` names its batch, and the owner's replies are
 kept verbatim in `data/research/era_map/batches/`. No PB2017–PB2023 era key is undecided:
 `assert_p1_era_map_no_undecided` (error severity) replaced the warn test.
+*Correction (2026-10-04):* the owner switched four chains to `exclude_reused_code` as
+**R-DEC-ERA-B6** (B1 row 5 `0182` MH-60R, B3 row 24 `1000`, B4 row 17 `50`, B5 row 15
+`CAADJS`; codes reused for a different program, spec §5.3/§7), leaving 108 same_program,
+13 history_only and 4 exclude_reused_code; "each row … names its batch" means each of the
+125 owner rows (class-ruled rows name their class ruling); B5 row 6's pin to its own
+identity (0300D/DCAA) was the option the controller offered in chat.
 
 **F-15 family funding correction (2026-09-24):** replace the largest single
 program's request with a cited history of the identified F-15 development and

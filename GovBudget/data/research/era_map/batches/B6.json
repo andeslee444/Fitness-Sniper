@@ -1,0 +1,14 @@
+{
+  "batch": "B6",
+  "decided_on": "2026-10-04",
+  "owner_reply": "switch B1-5, B3-24, B4-17, B5-15 to exclude_reused_code",
+  "owner_acknowledgements": {
+    "B6 correction": "Correction of B1 row 5, B3 row 24, B4 row 17 and B5 row 15, recommended by the controller after the Task 15 review found they are reused codes (spec §5.3, §7)."
+  },
+  "rows": {
+    "0182|1506N|": {"decision": "exclude_reused_code", "note": "owner B6 correction (supersedes B1 row 5 history_only): code reused for a different program, spec §5.3/§7"},
+    "1000|1508N|": {"decision": "exclude_reused_code", "note": "owner B6 correction (supersedes B3 row 24 history_only): code reused for a different program, spec §5.3/§7"},
+    "50|0300D|": {"decision": "exclude_reused_code", "note": "owner B6 correction (supersedes B4 row 17 history_only): code reused for a different program, spec §5.3/§7"},
+    "CAADJS|3021F|": {"decision": "exclude_reused_code", "note": "owner B6 correction (supersedes B5 row 15 history_only): code reused for a different program, spec §5.3/§7"}
+  }
+}
