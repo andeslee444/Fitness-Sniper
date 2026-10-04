@@ -251,7 +251,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // weigh()): 713,183 / 69,954 -> 701,316 / 67,757. CEILINGS UNCHANGED;
   // 23,684 raw / 2,243 gzip left. The old stamp was the live branch's (its
   // 55c36484 build); this is the first measurement of the merged page.
-  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "701,316 / 67,757" },
+  // RE-MEASURED 2026-10-04 (families piece 1, S5: the F015E0 label, its
+  // cited Lot 1 note and two coverage notes; build of 937e6c84 plus the
+  // S5 working tree on the S5 proof export, this file's own weigh() —
+  // zlib level 9): 701,316 / 67,757 -> 703,427 / 68,538. CEILINGS UNCHANGED;
+  // 21,573 raw / 1,462 gzip left.
+  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "703,427 / 68,538" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is

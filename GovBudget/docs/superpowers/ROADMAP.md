@@ -57,6 +57,15 @@ procurement identities are matched within their budget editions. This
 supersedes the earlier single-largest-record family lead rule. Implementation,
 coverage limits and release checks are recorded in the
 [family history record](plans/2026-09-24-f15-funding-history.md).
+**F015E0 correction (2026-10-04, families piece 1 S5):** the owner signed off
+(approved) relabeling F015E0 "F-15e (FY2020 F-15EX Lot 1
+aircraft)" and quoting the PB2026 F-15EX P-40 sentence (AF Aircraft Procurement
+Vol I, p.71, receipt `e7d5bcfb4a30f458`) that says its procurement funds bought
+four operationally representative test aircraft and two operational aircraft of
+Lot 1 in FY2020; the coverage notes now say the totals exclude classified
+funding and military construction and that F015E0 is the one legacy line with a
+stated allocation. Totals unchanged; the history's sha256 is re-pinned
+(`tests/fixtures/f15/history.sha256`).
 
 **Open historical coverage work:** backfill pre-FY2015 official P-1/R-1 books
 and the older F-15A–D PE 0207130F; review program membership by edition and

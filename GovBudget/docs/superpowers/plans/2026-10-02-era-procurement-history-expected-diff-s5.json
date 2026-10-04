@@ -1,0 +1,4 @@
+[
+  {"path": "json/f15_funding_history.json", "status": ["changed"], "required": true,
+   "why": "§6.5 (S5): the F015E0 retitle, its note and note_fact_id, and the two coverage-note changes — Step 14 proves the change is exactly these"}
+]

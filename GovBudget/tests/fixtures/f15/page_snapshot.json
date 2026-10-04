@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "page": "/families/f-15/",
-  "data_fact_id_elements": 107,
+  "data_fact_id_elements": 108,
   "data_fact_ids": [
     "03407158217dec76",
     "142a943a6fe77204",
@@ -83,6 +83,7 @@
     "e2b042504433a743",
     "e3e7f47db85c6be2",
     "e58bcd5e7566188d",
+    "e7d5bcfb4a30f458",
     "e8057e2c5f1484ef",
     "eb75776f36dc041b",
     "ebd20a419a652f63",
@@ -103,7 +104,7 @@
     "fct_decade_series": 16
   },
   "family_f15_occurrences": 14,
-  "page_fact_id_occurrences": 1196,
+  "page_fact_id_occurrences": 1199,
   "page_fact_ids": [
     "0026c924483c6624",
     "033016199ca94aa7",
@@ -1333,8 +1334,9 @@
         "program_id": "P-1:3010F:AF:F015E0",
         "label": [
           "BLI F015E0",
-          "F-15e (legacy line)",
-          "Procurement · Historical code"
+          "F-15e (FY2020 F-15EX Lot 1 aircraft)",
+          "Procurement · Historical code",
+          "Note below"
         ],
         "cells": [
           {
