@@ -119,3 +119,64 @@ def test_cli_reads_two_site_trees(tmp_path):
     assert main(["--a", str(a), "--b", str(b), "--expected-f15", "1", "--report", str(tmp_path / "r.json")]) == 0
     assert json.loads((tmp_path / "r.json").read_text())["citations"]["new_in_b"] == 1
     assert main(["--a", str(b), "--b", str(a), "--expected-f15", "1"]) == 1
+
+
+# Task 21 fix: two exports of ONE code and ONE snapshot (B vs B2) differ in 130
+# citation fields by export noise alone; V6 judges them with proof diff's rules.
+INPUTS_CLASS = {"path": "json/citations.json", "pointer": "/{fid}/inputs", "count": 1}
+
+
+DFID = "0123456789abcdef"  # reorder classes key real 16-hex fact IDs as {fid}
+
+
+def reordered():
+    a, b = a_side(), b_side()
+    a[DFID] = {**DV, "inputs": '["w1", "w2"]'}
+    b[DFID] = {**DV, "inputs": '["w2", "w1"]'}
+    return a, b
+
+
+def test_a_reorder_reads_changed_unless_a_control_vouched_for_its_class():
+    a, b = reordered()
+    report = compare_citations(a, b, LEAVES, expected_f15=1)
+    assert not report["ok"] and [c["field"] for c in report["changed"]] == ["inputs"]
+    other = {"path": "json/citations.json", "pointer": "/{fid}/query_body"}
+    assert not compare_citations(a, b, LEAVES, expected_f15=1, noise_classes=[other])["ok"]
+    report = compare_citations(a, b, LEAVES, expected_f15=1, noise_classes=[INPUTS_CLASS])
+    assert report["ok"], report
+    assert report["noise_equivalent"] == {"inputs": 1}
+    assert report["reorder_classes_trusted"] == [{"path": "json/citations.json", "pointer": "/{fid}/inputs", "count": 1}]
+
+
+def test_a_vouched_class_never_excuses_a_changed_input_set():
+    a, b = reordered()
+    b[DFID]["inputs"] = '["w2", "w3"]'
+    assert not compare_citations(a, b, LEAVES, expected_f15=1, noise_classes=[INPUTS_CLASS])["ok"]
+
+
+def test_numeric_text_equal_to_12_significant_digits_is_noise():
+    a, b = a_side(), b_side()
+    a["d1"]["recorded_value"], b["d1"]["recorded_value"] = "3872766113006.810", "3872766113006.812"
+    report = compare_citations(a, b, LEAVES, expected_f15=1)
+    assert report["ok"] and report["noise_equivalent"] == {"recorded_value": 1}
+    b["d1"]["recorded_value"] = "3872766200000.000"
+    assert not compare_citations(a, b, LEAVES, expected_f15=1)["ok"]
+
+
+def test_cli_reads_a_noise_file(tmp_path):
+    from govbudget.proof import NOISE_FILE_SCHEMA, NOISE_POINTER_GENERALISATION, _classes_sha256
+
+    history = {"programs": [{"id": "P1", "code": "F01500"}],
+               "points": [{"components": [{"pe_bli": "3010F-AF-L21", "program_id": "P1", "fact_id": "f1"}]}]}
+    rows = [("f1", "3010F-AF-L21", 10.0)]
+    ca, cb = reordered()
+    a = site(tmp_path / "a", ca, history, rows)
+    b = site(tmp_path / "b", cb, history, rows)
+    classes = [INPUTS_CLASS]
+    noise = tmp_path / "noise.json"
+    noise.write_text(json.dumps({"schema_version": NOISE_FILE_SCHEMA, "verdict": "EQUAL", "a": "B", "b": "B2",
+                                 "pointer_generalisation": NOISE_POINTER_GENERALISATION,
+                                 "classes_sha256": _classes_sha256(classes), "classes": classes}))
+    args = ["--a", str(a), "--b", str(b), "--expected-f15", "1"]
+    assert main(args) == 1
+    assert main(args + ["--noise-from", str(noise)]) == 0

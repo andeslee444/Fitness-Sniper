@@ -13,6 +13,16 @@ differences:
     F15EWS 15), which B's decade tier now mints before the F-15 builder runs:
     pe_bli null -> the printed code, and retrieved_at's space form -> its 'T'
     form (the same instant). Each of the 72 must show exactly that move.
+  * export noise, judged by `govbudget proof diff`'s own rules (Task 21 fix,
+    measured on two exports of ONE code and ONE snapshot, B vs B2: 130
+    such field differences): numeric text equal to 12 significant digits
+    (dim_geography / district parallel double sums in `recorded_value`),
+    unconditionally, as proof diff does; and a pure permutation inside a
+    JSON-in-string field (derived `inputs`, usaspending `query_body`
+    award_ids, on a different random subset of facts every run) ONLY when
+    its json/citations.json class is in the `--noise-from` file a
+    `proof diff --control --write-noise` run wrote. Without that file a
+    reorder reads "changed", exactly as before. Tallied apart, never silent.
 
 Facts new in B are counted here and judged elsewhere (verify-era-map leg d,
 verify-phase5b1, the S4 page and receipt report).
@@ -23,11 +33,15 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
+
+from govbudget.proof import _json_noise, _Mode, load_noise_classes
 
 RUN_STAMPED_KINDS = frozenset({"derived", "state_file", "state_soql"})
 F15_A1_CODES = frozenset({"F01500", "F015EX", "F15EWS"})
 F15_A1_LEAVES = 72
+CITATIONS_GROUP = "json/citations.json"
 _ERA_KEY = re.compile(r"^\d{4}[A-Z]-[A-Z]+-L\d+$")
 
 
@@ -43,10 +57,22 @@ def f15_a1_leaves(history: dict) -> dict[str, str]:
     return leaves
 
 
-def compare_citations(a: dict, b: dict, f15_leaves: dict[str, str], *, expected_f15: int = F15_A1_LEAVES) -> dict:
+def _is_noise(fid: str, field: str, va, vb, mode: _Mode) -> bool:
+    """proof diff's verdict on one citations.json leaf: equivalent export noise?"""
+    probe = mode.fork()
+    if _json_noise(va, vb, group=CITATIONS_GROUP, mode=probe, key_pointer=f"/{fid}/{field}") is None:
+        return False
+    mode.absorb(probe)
+    return True
+
+
+def compare_citations(a: dict, b: dict, f15_leaves: dict[str, str], *, expected_f15: int = F15_A1_LEAVES,
+                      noise_classes: list[dict] | None = None) -> dict:
     missing: list[str] = []
     changed: list[dict] = []
     restamped = 0
+    noise: Counter = Counter()
+    mode = _Mode(trusted={(c["path"], c["pointer"]) for c in noise_classes or []})
     for fid in sorted(a):
         ca, cb = a[fid], b.get(fid)
         if cb is None:
@@ -66,6 +92,9 @@ def compare_citations(a: dict, b: dict, f15_leaves: dict[str, str], *, expected_
                     and " " in va and va.replace(" ", "T", 1) == vb):
                 moved.add(field)
                 continue
+            if _is_noise(fid, field, va, vb, mode):
+                noise[field] += 1
+                continue
             changed.append({"fact_id": fid, "field": field, "a": va, "b": vb})
         if fid in f15_leaves:
             if moved == {"pe_bli", "retrieved_at"}:
@@ -76,7 +105,9 @@ def compare_citations(a: dict, b: dict, f15_leaves: dict[str, str], *, expected_
     ok = (not missing and not changed and len(f15_leaves) == expected_f15 and restamped == expected_f15)
     return {"ok": ok, "a_facts": len(a), "b_facts": len(b), "new_in_b": len(set(b) - set(a)),
             "missing": missing, "changed": changed, "f15_leaves": len(f15_leaves),
-            "f15_restamped": restamped}
+            "f15_restamped": restamped, "noise_equivalent": dict(sorted(noise.items())),
+            "reorder_classes_trusted": [{"path": g, "pointer": p, "count": n}
+                                        for (g, p), n in sorted(mode.observed.items())]}
 
 
 def compare_decade_rows(a_parquet: Path, b_parquet: Path) -> dict:
@@ -99,12 +130,13 @@ def compare_decade_rows(a_parquet: Path, b_parquet: Path) -> dict:
             "a_rows": a_rows, "b_rows": b_rows, "lost": len(lost), "lost_fact_ids": lost[:20]}
 
 
-def run(a_site: Path, b_site: Path, *, expected_f15: int = F15_A1_LEAVES) -> dict:
+def run(a_site: Path, b_site: Path, *, expected_f15: int = F15_A1_LEAVES, noise_from: Path | None = None) -> dict:
     a_site, b_site = Path(a_site), Path(b_site)
     a = json.loads((a_site / "json" / "citations.json").read_text())
     b = json.loads((b_site / "json" / "citations.json").read_text())
     history = json.loads((a_site / "json" / "f15_funding_history.json").read_text())
-    citations = compare_citations(a, b, f15_a1_leaves(history), expected_f15=expected_f15)
+    classes = load_noise_classes(noise_from) if noise_from else None
+    citations = compare_citations(a, b, f15_a1_leaves(history), expected_f15=expected_f15, noise_classes=classes)
     decade = compare_decade_rows(a_site / "data" / "budget_lines_decade.parquet",
                                  b_site / "data" / "budget_lines_decade.parquet")
     return {"ok": citations["ok"] and decade["ok"], "citations": citations, "budget_lines_decade": decade}
@@ -116,8 +148,11 @@ def main(argv=None) -> int:
     p.add_argument("--b", type=Path, required=True, help="data/site exported by the S4 code")
     p.add_argument("--expected-f15", type=int, default=F15_A1_LEAVES)
     p.add_argument("--report", type=Path, default=None, help="write the full JSON report here")
+    p.add_argument("--noise-from", type=Path, default=None,
+                   help="a `proof diff --control --write-noise` file: only its json/citations.json reorder classes"
+                        " are trusted")
     args = p.parse_args(argv)
-    report = run(args.a, args.b, expected_f15=args.expected_f15)
+    report = run(args.a, args.b, expected_f15=args.expected_f15, noise_from=args.noise_from)
     if args.report:
         args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     c, d = report["citations"], report["budget_lines_decade"]
@@ -126,6 +161,10 @@ def main(argv=None) -> int:
           f"F-15 era leaves restamped {c['f15_restamped']}/{c['f15_leaves']} (expected {args.expected_f15})")
     print(f"budget_lines_decade: A {d['a_rows']:,} rows, B {d['b_rows']:,} rows, A rows not in B {d['lost']:,}, "
           f"schema {'equal' if d['schema_equal'] else 'DIFFERS'}")
+    noise = ", ".join(f"{field} {n:,}" for field, n in c["noise_equivalent"].items()) or "none"
+    trusted = ", ".join(f"[{r['path']}] {r['pointer']} x{r['count']:,}" for r in c["reorder_classes_trusted"]) or "none"
+    print(f"equivalent under proof diff's noise rules: {sum(c['noise_equivalent'].values()):,} field(s) ({noise}); "
+          f"reorder classes trusted: {trusted}")
     for fid in c["missing"][:20]:
         print(f"  missing {fid}")
     for item in c["changed"][:20]:
