@@ -56,7 +56,8 @@ regression test in `tests/jbooks/test_acquire.py`; the fifth (`proof.py`'s scrat
 rewrite) is instead covered by `tests/test_proof.py::test_snapshot_pins_lake_and_postgres`,
 which asserts the source database's row is unchanged and the scratch database's row resolves
 under the snapshot root — proving it needs the snapshot/`pg_dump`+`pg_restore` machinery that
-module already sets up, not a worktree symlink fixture. Since 2026-09-12, that module's
+module already sets up, not a worktree symlink fixture. Since 2026-09-12 (four writers; five
+since families piece 1, 2026-10), that module's
 `test_file_path_writer_census_matches_the_five_tested_writers` parses `src/govbudget/**/*.py`
 for SQL that writes `file_path` and fails unless the writer set is exactly these five, so a
 **sixth** writer is a red test, not a dead citation. (Before that census the four cases pinned

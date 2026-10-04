@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-04 (families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -4878,6 +4878,117 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `dbt/seeds/program_aliases.csv`, `src/govbudget/export_site.py` (the
   search-aliases block). Effort: hours.
   **Status:** open (2026-10-02).
+
+- **#198 Era-map review tooling: guards and test gaps the families piece 1
+  reviews deferred.** `era-map propose`/`ratify` and the owner-review renderer
+  closed S2 correctly (125 chains, R-DEC-ERA-B1–B6), but each matters again
+  the next time a decision changes (a correction batch, pieces 2–4):
+  - Task 10/11/12: rule 4(b), one organization per page grain, is not checked on class-ruled chains, and in ratify it is order-dependent (only the second org's same_program is refused). `assert_p1_era_map_org_split` is the only backstop (0 live cases).
+  - Task 10: UNSAFE auto-excludes every non-route-safe code in any account, though the ruling names only 0390D O&M/RDT&E. Revisit with #194.
+  - Task 10: titles containing ' | ' read as drift (fails safe). The frozen `Chain` holds a dict field, and the pure module imports p1_loader. Test gaps: None in a present key, a multi-page collision chain, per-edition R3.
+  - Task 11: 133 digits-only era-only chains ($20.29B) are never searched for a successor (counted in counts.json `successor_coverage`). Literal-before-short successor precedence is not enforced across sentences.
+  - Task 11/12: propose writes the seed before review/chains/keys/counts, and `write_seed` overwrites in place (no temp + replace). A mid-run failure leaves the five files out of step.
+  - Task 11/15: test gaps. A mere mention is not a successor; the lake is opened read-only; successor-evidence quote escaping is untested (the one live quote is clean); the renderer's escaping test skips the successor block.
+  - Task 12: ratify requires chains.csv beside --review even when no row names a successor, and reports only the first error per row (a ~170-line function). `era-map propose --decided-on` repeats the literal 2026-10-02 instead of `CLASS_RULINGS_DECIDED_ON`. Test gaps: successor only on history_only, lake-side drift, no-such-chain, holds-no-key, missing columns, integers, CLI exit codes.
+  - Task 15: `review_batch_page answer` does not check that review.csv is unchanged since render. A blank-proposal collision row does not name the missing pins. Bad answers end in tracebacks. The own-account R3 reason reads "also printed by no other account" (GPS03C|3022F|, 0182|1508N|). The page prints "1 era lines".
+  - Task 15: after a decision change, a map-only `dbt build` fails `assert_program_decade_conservation` until `fct_program_decade_series` is rebuilt. The clean order is map, then program table, then map; write it into the era-map runbook.
+  Source: `src/govbudget/jbooks/era_map.py`, `scripts/era/review_batch_page.py`,
+  `docs/superpowers/plans/2026-10-02-era-procurement-history/tasks/12-ratify-check-cli.md`.
+  Effort: days.
+  **Status:** open (2026-10-04).
+
+- **#199 Proof tooling and proof notes: hardening deferred from families
+  piece 1.** `govbudget proof snapshot|diff`, `scripts/era/fact_stability.py`
+  and `scripts/era/s4_report.py` proved S1, S1b, S4 and S5, with these gaps
+  left for the next piece's proofs:
+  - Task 3: hermeticity checks match one spelling of the lake path. A worktree-symlink spelling in `jbook_documents.file_path` or a view passes.
+  - Task 3: the after-copy SAM check looks only at the end minute.
+  - Task 3: a failure after `create database` leaves the scratch db and a partial out_dir, and symlinks are detected only after the db exists.
+  - Task 3: the snapshot env.sh default path is unquoted inside "${1:-…}".
+  - Task 3: `measured_on` is masked at any depth in any JSON.
+  - Task 3: tool errors exit 1 with a traceback, indistinguishable from FAIL.
+  - Task 3: untested refusals (.wal, DuckDB writer lock, out_dir in lake, missing lake entry, after-copy window). The pg_source fixture lacks a port-55432 assertion, and there is no literal ?host= DSN test for `_with_database`. snapshot.json and env.sh keep the scratch DSN in plaintext (no password today).
+  - Task 3: two noisy lenient columns in one parquet group can leave a twin unpaired (fails safe). Dotted numeric text compares numerically (subaward_number 10391.02). Overflowing exponents inside JSON-in-string compare inf == inf. The 16-hex {fid} rule also matches 16-digit decimals and a–f words.
+  - Task 3: the noise file records tree paths, not digests, and a DIFFERENT control leaves an older noise file in place for a later --noise-from. NOISE_FILE_SCHEMA is still 1, with gating by the pointer_generalisation marker outside classes_sha256. --noise-from help omits {fid}. The forward ruling for a repeatable --noise-from (a union of EQUAL controls) was never built.
+  - Task 21: expected-diff rules 5–8/17/33/35 defer to tools that read neither citations.parquet, nor non-era audit books, nor datasets.json entries. s4_report does not value-check `decade_absent` (gate 21 leg k does). fact_stability imports private proof.py helpers. There is a type-only equality nit.
+  - Task 8/9: families-s1-proof.md's header names float noise only and omits the 1e-6 absolute and 1e-12 relative tolerances, which can absorb a few dollars on totals above ~$1T. families-s1b-proof.md's `Code:` line names 99ebde61, but the exports ran under e25945b7 (identical source).
+  Source: `src/govbudget/proof.py`, `scripts/era/fact_stability.py`,
+  `scripts/era/s4_report.py`, `docs/superpowers/reviews/families-s1-proof.md`,
+  `docs/superpowers/plans/2026-10-02-era-procurement-history/tasks/03-proof-tooling.md`.
+  Effort: days.
+  **Status:** open (2026-10-04).
+
+- **#200 link-coverage (V9) fails open in four corners.** All four are outside
+  the release path today (see the families piece 1 final review):
+  - Task 5: it passes when json/budget_pdf_receipts_audit.json is missing (`receipts_match_citations` None). It should fail when the baseline recorded True and the report has None.
+  - Task 5: `--baseline X --write-baseline X` writes the baseline before reading it, so the lost-receipt leg compares the report to itself. Compare first, or refuse equal paths.
+  - Task 5: a summary card that loses its fid is skipped instead of counted (d). There is no test for a derived figure whose input has no citation.
+  - Task 5: errors end in a traceback, not "link-coverage: FAIL", and non-string inputs raise TypeError.
+  Source: `src/govbudget/link_coverage.py`, `src/govbudget/cli.py`
+  (`cmd_link_coverage`). Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#201 F-15 snapshot and pin tooling, and the /families/f-15/ F015E0 note.**
+  - Task 4: f15-page-snapshot skips prose outside the matrix (coverage paragraph, row meta, Partial badge).
+  - Task 4: its direct-run guard compares `path.resolve(argv[1])` with the module's realpath, so run through a symlinked path it exits 0 without checking.
+  - Task 4: the capture self-check uses in-memory rows, not the round-tripped fixture, and outputs are not written atomically.
+  - Task 22: the family-history gate does not check that the ref href targets the note, and checks the receipt kind, not page/sha/substring.
+  - Task 22: "Note below" sits inside the F015E0 row header, so every cell's accessible row name carries it.
+  - Task 22: verify.mjs prints only three notes per gate, so gate 21 leg p's note is invisible.
+  - Task 22: /families/f-15/ has 1,462 gzip bytes of headroom (703,427 / 68,538 against 725,000 / 70,000). Trim before pieces 2–4 add to it; never raise the ceiling.
+  Source: `site/scripts/f15-page-snapshot.mjs`, `site/scripts/gates/family-history.mjs`,
+  `site/src/components/family-funding-history.tsx`, `site/scripts/gates/build.mjs`.
+  Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#202 P-1 loader tripwires for an era re-load.**
+  - Task 6: the era grouping key includes account_title and budget_activity_title, which the upsert key does not. A title variation would send two groups to one DB row, and the last write wins (0 cases in the 20 workbooks). The p1_loader.py:179 comment is inaccurate. Add a P1Row upsert-key uniqueness check.
+  - Task 6: no test asserts line_item_code on a modern P-1 workbook.
+  - Task 9: no tripwire catches two Classified Programs rows with different titles in one (account, BA). The S1 script caught it; `jbooks load-rollups` would keep the last.
+  - Task 9: the `EMPTY_ORG` comment in crosswalk.py dates S1b 2026-10-02; the live write ran 2026-10-03.
+  Source: `src/govbudget/jbooks/p1_loader.py`, `src/govbudget/jbooks/crosswalk.py`.
+  Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#203 verify-era-map and the era dbt tests: coverage gaps.**
+  - Task 13: unit-test gaps. There is no account-collision fixture row, and the complete, one_code and P-1R count legs are uncovered (live planted defects fire).
+  - Task 13: source_cells carry no sheet name.
+  - Task 13: `assert_p1_era_map_collision_pinned` enforces only the pin the page split uses, though decision 5 says both (ratify enforces both).
+  - Task 13: the prefix-match key regex is looser than `_ERA_KEY_RE`.
+  - Task 13: the test helper `ensure_lake_columns` can leave budget_lines.tmp.parquet behind on a COPY failure.
+  - Task 14: leg a's classified-row filter has no unit test. Failure branches are untested (wrong sha, wrong line number, non-era parse, multi-identity key, stale build). A bad --legs value ends in a traceback.
+  Source: `dbt/tests/assert_p1_era_map_collision_pinned.sql`,
+  `src/govbudget/verify_era_map.py`, `tests/test_dbt_build.py`. Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#204 Era fences rely on optional arguments.**
+  - Task 18: `era_grain_fids` defaults to `frozenset()` in `_emit_lineage`, the two sidecar writers and `_emit_years_matrix`. A future second caller that omits it would put era points on a fenced surface silently.
+  - Task 18: `build_lineage_flow` is protected only by its FY2026-only rule (`AMOUNT_FY`).
+  Fix: make the parameter required (13 call sites including tests) and add the invariant comment at the `build_lineage_flow` call.
+  Source: `src/govbudget/export_site.py`, `src/govbudget/lineage/flow.py`. Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#205 `npm ci` refuses the site lockfile, and two gate comments are stale.**
+  - Task 1: `site/package-lock.json` locks @emnapi/wasi-threads 1.2.2 where 1.2.3 is required. `npm ci` exits EUSAGE (reproduced 2026-10-04; same files on dc801fdb). Worktrees clone main's node_modules instead. Vercel does not build the site, so deploys are unaffected.
+  - Task 5: the /methodology/ and /coverage/ entries in build.mjs still say the era table is "decided in Task 19". It was decided: /downloads/.
+  Source: `site/package-lock.json`, `site/scripts/gates/build.mjs`. Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#206 Families piece 1: copy and claims the final review left open.**
+  The final review's truthfulness lens (2026-10-04) fixed the home trust
+  anchor (T1), the /methodology/ era sentence (T2), the budget_lines_decade
+  and p1_era_line_map scopes and the decade Explorer preset (T3, T5), and the
+  /years/ procurement tooltip and legend (T4). These remain:
+  - T4: two /methodology/ sentences are stale for a /years/ procurement row's PB2017–PB2023 columns while #193's fence holds. #coverage-years-matrix says an absent cell means the trajectory workbook "simply has no row for that program and column", and the #coverage-editions gap sentence reads a "not in the PB20XX edition" note as the element being absent from that edition. On the S5 export 4,995 default-view /years/ gaps have a cited point on the program page. /methodology/ has about 61 gzip bytes left: rewrite at equal length, or fix both when #193 lifts the fence.
+  - T6: the map scope ("dated owner decision"), the /downloads/ era paragraph ("a dated decision") and /methodology/ ("a dated, reviewed decision") promise a date that the published p1_era_line_map does not carry (no decided_on column; the date lives only in the seed and this file), and 1,128 of the 1,253 decisions are the class rulings R-DEC-ERA-SAME/HISTORY/EXCLUDE. Add decided_on to the map (a spec §4.4 amendment; the dataset is uncited) or reword to an owner ruling dated in the seed.
+  - T7: "citation tier pending" has three definitions (the /methodology/ body, its FAQ JSON-LD, /about/'s "row-level linkage is a work in progress"), and none fits a dataset that will never carry amounts. Align them: a pending dataset ships without row-level citations (today p1_era_line_map, whose rows are decisions). Narrow /about/'s "No number is displayed without disclosing which state it is in" and the FAQ's "Every rendered number carries a citation" to dollar figures, or name gate 24 leg (s), which recounts the era table's counts on /downloads/.
+  - T9: the /families/f-15/ F015E0 note quotes "This exhibit does not include the eight aircraft in Lot 1 …" under the "BLI F015E0" label, so it reads as F015E0's own exhibit; the exhibit is the PB2026 F-15EX (F015EX) P-40 (receipt e7d5bcfb4a30f458, page 71). A gloss such as "This exhibit [the PB2026 F-15EX P-40] …" changes owner-approved strings: it needs fresh owner sign-off and a re-pin of the F-15 history sha (tests/fixtures/f15/README.md).
+  - T11: two claims hold on S5 but only string pins guard them: the map scope's "Only a same_program line whose code has a program page, or an F-15 family-history line, has those rows and citations" and /methodology/'s "book diffs for the era editions cover RDT&E only". Add a datatruth or verify-era-map leg asserting (a) every era budget_lines_decade row is a same_program line whose code has a page, or an F-15 roster line (ERA_MEMBERS × ERA_PROGRAM_CODES), and (b) no P-1 page's book_diff has from_edition ≤ 2023. The home trust anchor went stale exactly this way (T1).
+  Source: `src/govbudget/export_site.py` (`_DATASET_SCOPES`),
+  `site/src/app/methodology/page.tsx`, `site/src/app/about/page.tsx`,
+  `site/src/components/era-map-table.tsx`, `src/govbudget/f15_funding_history.py`,
+  `src/govbudget/verify_era_map.py`. Effort: days.
+  **Status:** open (2026-10-04).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
