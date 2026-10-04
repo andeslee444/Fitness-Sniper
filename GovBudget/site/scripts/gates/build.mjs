@@ -384,7 +384,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // (Task 19 Part A build of 5e317a38 plus the Part A edits, built
   // 2026-10-03T17:29:32Z, before the map ships; gate 1's own weigh()):
   // 81,748 / 13,515; 23,252 raw / 2,085 gzip left.
-  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "81,748 / 13,515" },
+  // RE-MEASURED 2026-10-04 (Task 21, the S4 proof build of 45281589 on
+  // the S4 export, with the p1_era_line_map row; gate 1's weigh(), zlib level
+  // 9): 81,748 / 13,515 -> 84,798 / 14,401. CEILINGS UNCHANGED; 20,202
+  // raw / 1,199 gzip left.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "84,798 / 14,401" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -673,7 +677,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // built 2026-10-03T17:29:32Z; gate 1's own weigh()): 161,166 / 45,270 ->
   // 161,354 / 45,328 (+188 raw / +58 gzip). CEILINGS UNCHANGED; 646 raw /
   // 72 gzip left. The era table does not render here.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,354 / 45,328" },
+  // RE-MEASURED 2026-10-04 (Task 21, the S4 proof build of 45281589 on
+  // the S4 export: the pending-ledger clause and the S4 dbt-assertion count;
+  // gate 1's weigh(), zlib level 9): 161,354 / 45,328 -> 161,353 / 45,339.
+  // CEILINGS UNCHANGED; 647 raw / 61 gzip left.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,353 / 45,339" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
