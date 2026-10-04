@@ -22,7 +22,7 @@
   - Tasks 8 and 9: the S1/S1b database writes;
   - Tasks 13, 15 and 16: selective `dbt build --select` of the nodes they add or change, never a full `govbudget build`;
   - Task 21: snapshot clones only;
-  - Task 23: the release export, plus a recovery `jbooks export-facts` and selective build only if the lake lost the branch's state.
+  - Task 23: the release export, plus a recovery `jbooks export-facts` and selective build only if the lake lost the branch's state, plus restoring `data/site` from `.proofs/release-pre-site` if the release stops after its export without deploying (Step 3's abort path; final review RR-2(d), 2026-10-04).
 
   Each write is additive and followed by a proof on a snapshot.
 - **Scratch proof databases** named `govbudget_proof_<name>` may be created and dropped on `postgresql://localhost` by `govbudget proof snapshot` (which refuses any other name on a local server, Task 3). Never create, alter or drop any other database.
@@ -30,7 +30,7 @@
 - **Site builds in the worktree** read `GovBudget/data/site` relative to `site/`, and the build needs this worktree's own `dbt/target/manifest.json`. Task 1 creates the `data/site` symlink (excluded by the shared `.git/info/exclude`) and runs `dbt parse`. Tasks 21–23 repoint the `data/*` symlinks at the snapshot or lake they build against.
 - **Never** raise a page-weight ceiling or the `/years/` 4 MiB cap. Never trim existing disclosure prose without the owner. Never re-key `pe_bli`: era keys stay the lake and fact identity.
 - **Era keys** are selected with `era_keys.is_era_procurement_key(pe_bli)` (or `'^\d{4}[A-Z]-[A-Z]+-L'`), never "every PB2017–23 P-1 row": from Task 9 on, era editions also hold `9999999999` classified rows.
-- **Lake hazard until merge.** A `jbooks export-facts` run from the main checkout rewrites `data/parquet/jbooks/budget_lines.parquet` without `line_item_code`, which breaks every branch dbt build. If that happens, re-run `jbooks export-facts` from this branch first (Task 23 Step 1 checks).
+- **Lake hazard until merge.** A `jbooks export-facts` run from the main checkout rewrites `data/parquet/jbooks/budget_lines.parquet` without `line_item_code`, which breaks every branch dbt build. If that happens, re-run `jbooks export-facts` from this branch first (Task 23 Step 1 checks). The same holds for every other worktree whose `data/*` links point at the live lake: an `export-site` from any of them rewrites the shared `data/site` with pre-branch code, which is why Task 23 fingerprints its export and re-checks it before deploying (final review INT-4, 2026-10-04).
 
 ## Owner Decisions Already Made (do not re-ask)
 
