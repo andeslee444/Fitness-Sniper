@@ -80,3 +80,9 @@
 .matrixNote{font:var(--type-ui);line-height:1.5;color:var(--muted-ink);margin-top:10px;max-width:110ch}
 @media(max-width:767px){.matrixScroll{scroll-padding-left:166px}.matrix thead .matrixCorner,.matrix tbody th{width:164px;min-width:164px;max-width:164px}.matrix .matrixProgram{padding:10px}.matrix .cellAmount{min-height:100px}.matrixTotal th{white-space:normal}.matrixKey{line-height:1.5}}
 @media(max-width:767px){.summary{grid-template-columns:1fr;gap:18px}.overview{padding-block:14px}.track{height:56px}.bars{gap:2px}.chartHint{display:none}.selected{gap:4px 8px}.tableScroll{max-height:560px}.table th,.table td{padding:10px 12px}}
+.noteRef{display:inline-block;margin-top:4px;font:var(--type-ui);color:var(--ink);text-underline-offset:3px}
+.noteRef:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.programNotes{list-style:none;margin:10px 0 0;padding:0;max-width:110ch;font:var(--type-ui);line-height:1.5;color:var(--muted-ink)}
+.programNotes li+li{margin-top:8px}
+.programNotes .programCode{display:inline;margin:0 6px 0 0}
+.noteQuote{color:var(--ink)}

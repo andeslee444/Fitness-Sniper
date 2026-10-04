@@ -7,8 +7,10 @@ import pytest
 from govbudget.f15_funding_history import (
     ERA_MEMBERS,
     ERA_PROGRAM_CODES,
+    PROGRAMS,
     build_history,
     build_program_matrix,
+    check_program_notes,
     member_row,
 )
 
@@ -279,3 +281,52 @@ def test_matrix_preserves_exact_scenario_measure_for_homogeneous_inputs(amount_t
     selected = next(p for p in enriched["points"] if p["kind"] == kind)
     assert selected["program_cells"][0]["measure"] == expected
     assert {row["measure"] for row in selected["components"]} == {expected}
+
+
+# Spec §6.5 (S5): the strings the owner signed off.
+F015E0_LABEL = "F-15e (FY2020 F-15EX Lot 1 aircraft)"
+F015E0_NOTE = (
+    "This exhibit does not include the eight aircraft in Lot 1 which were funded outside this exhibit in "
+    "FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four operationally "
+    "representative test aircraft and two operational aircraft were purchased with procurement funds "
+    "(F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)]))."
+)
+NARRATIVE = dict(kind="jbook_narrative", page_number=71, pe_bli="F015EX",
+                 sha256="528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e")
+
+
+def test_f015e0_row_is_retitled_and_carries_its_cited_lot1_note():
+    row = source("3010F-AF-L4", 2022, amount_type="fy_2020_actuals", value=621100, exhibit="P-1", account="3010F", organization="AF", budget_activity="01", title="F-15e", cells="J10")
+    payload, _, leaves, _ = build([row], [point(row, fy=2020)])
+    enriched, _, _ = matrix(payload, leaves)
+    programs = {p["code"]: p for p in enriched["programs"]}
+    assert programs["F015E0"]["title"] == F015E0_LABEL
+    assert programs["F015E0"]["note"] == F015E0_NOTE
+    assert programs["F015E0"]["note_fact_id"] == "e7d5bcfb4a30f458"
+    assert [code for code, p in programs.items() if "note" in p or "note_fact_id" in p] == ["F015E0"]
+    assert programs["F0150P"]["title"] == "F-15 (legacy support line)"
+
+
+def test_coverage_notes_state_the_exclusions_and_the_f015e0_allocation():
+    row = source()
+    payload, *_ = build([row], [point(row)])
+    notes = payload["coverage_notes"]
+    assert notes[2] == ("Historical procurement line numbers change between editions. Each legacy line is matched "
+                        "within its own budget edition, without asserting a modern-program or aircraft-variant "
+                        "allocation, except where a budget book states one (F015E0).")
+    assert notes[-1] == "The totals exclude classified funding and military construction."
+    assert len(notes) == 7
+
+
+def test_a_program_note_ships_only_with_its_reviewed_narrative_receipt():
+    check_program_notes(PROGRAMS, {"e7d5bcfb4a30f458": dict(NARRATIVE)})
+    for registry in ({}, {"e7d5bcfb4a30f458": {**NARRATIVE, "page_number": 70}},
+                     {"e7d5bcfb4a30f458": {**NARRATIVE, "kind": "workbook"}},
+                     {"e7d5bcfb4a30f458": {**NARRATIVE, "sha256": "f" * 64}}):
+        with pytest.raises(ValueError, match="program note receipt mismatch"):
+            check_program_notes(PROGRAMS, registry)
+    unreviewed = [{**PROGRAMS[0], "note": "x", "note_fact_id": "0123456789abcdef"}]
+    with pytest.raises(ValueError, match="program note receipt mismatch"):
+        check_program_notes(unreviewed, {"0123456789abcdef": dict(NARRATIVE)})
+    with pytest.raises(ValueError, match="program note receipt mismatch"):
+        check_program_notes([{**PROGRAMS[0], "note": "x"}], {})

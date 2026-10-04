@@ -48,10 +48,32 @@ ERA_PROGRAM_CODES = {
     2022: {4: "F015E0", 5: "F015EX", 6: "F015EX", 30: "F01500", 34: "F15EWS", 78: "F01500"},
     2023: {5: "F015EX", 6: "F015EX", 28: "F01500", 32: "F15EWS", 74: "F01500"},
 }
+# A program note quotes the one budget-book sentence that states what a line
+# bought, cited to that sentence's narrative receipt (spec §6.5; the owner
+# signed off the exact strings, recorded in the ROADMAP). F015E0: PB2026 AF
+# Aircraft Procurement Vol I, F015EX P-40 description, PDF p.71, the only page
+# that prints it. The quote is verbatim; the [bracketed] gloss is ours, read
+# from ERA_PROGRAM_CODES (F015E0 is line 3 in PB2020–21, line 4 in PB2022).
+PROGRAM_NOTES = {
+    "F015E0": dict(
+        note=("This exhibit does not include the eight aircraft in Lot 1 which were funded outside this "
+              "exhibit in FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four "
+              "operationally representative test aircraft and two operational aircraft were purchased with "
+              "procurement funds (F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)]))."),
+        note_fact_id="e7d5bcfb4a30f458",
+    ),
+}
+# What each note_fact_id must resolve to in the exported registry: the
+# jbook_narrative receipt for that paragraph, in that exact PDF.
+NOTE_RECEIPTS = {
+    "e7d5bcfb4a30f458": dict(kind="jbook_narrative", page_number=71,
+                             sha256="528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e"),
+}
 PROGRAMS = [
     dict(id=f"{exhibit}:{account}:AF:{code}", code=code, title=title,
          program_slug=code if code in MODERN_MEMBERS else None,
-         exhibit=exhibit, account=account, organization="AF")
+         exhibit=exhibit, account=account, organization="AF",
+         **PROGRAM_NOTES.get(code, {}))
     for code, exhibit, account, title in [
         ("0207134F", "R-1", "3600F", "F-15E Squadrons"),
         ("0207146F", "R-1", "3600F", "F-15EX"),
@@ -60,7 +82,7 @@ PROGRAMS = [
         ("F015EX", "P-1", "3010F", "F-15EX"),
         ("F15EWS", "P-1", "3010F", "F-15 EPAW"),
         ("F0150P", "P-1", "3010F", "F-15 (legacy support line)"),
-        ("F015E0", "P-1", "3010F", "F-15e (legacy line)"),
+        ("F015E0", "P-1", "3010F", "F-15e (FY2020 F-15EX Lot 1 aircraft)"),
     ]
 ]
 SCOPE_NOTE = (
@@ -72,15 +94,29 @@ SCOPE_NOTE = (
 COVERAGE_NOTES = [
     "Coverage begins with FY2015 actuals in PB2017. Earlier funding, including early F-15A–D development, is not represented.",
     "The locally imported records do not contain PE 0207130F; no amount or zero is invented for it.",
-    "Historical procurement line numbers change between editions. Each legacy line is matched within its own budget edition, without asserting a modern-program or aircraft-variant allocation.",
+    "Historical procurement line numbers change between editions. Each legacy line is matched within its own budget edition, without asserting a modern-program or aircraft-variant allocation, except where a budget book states one (F015E0).",
     "Actuals, current-year figures and requests are separate snapshots. Requests and current-year figures are excluded from the cumulative actuals figure.",
     "Amounts are nominal dollars of total obligational authority (TOA), not contract obligations, cash outlays or inflation-adjusted dollars.",
     "Missing workbook figures are not zero spending. Some current-year columns contain requests adjusted for continuing resolutions rather than final enacted appropriations.",
+    "The totals exclude classified funding and military construction.",
 ]
 
 
 def _json_bytes(value):
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def check_program_notes(programs, registry) -> None:
+    """A program note ships only with the reviewed narrative receipt it quotes."""
+    for program in programs:
+        if "note" not in program and "note_fact_id" not in program:
+            continue
+        fid = program.get("note_fact_id")
+        expected = NOTE_RECEIPTS.get(fid)
+        citation = registry.get(fid) if fid else None
+        if (not program.get("note") or expected is None or citation is None
+                or any(citation.get(key) != value for key, value in expected.items())):
+            raise ValueError(f"F-15 program note receipt mismatch: {program['code']}/{fid}")
 
 
 def member_row(row: dict) -> bool:
@@ -350,6 +386,7 @@ def export_f15_funding_history(*, duckdb_path, out_dir):
             return None
         registry_path = json_dir / "citations.json"
         registry = json.loads(registry_path.read_text())
+        check_program_notes(PROGRAMS, registry)
         wb_citations = {fid: additions[fid] for fid in workbook_rows}
         previews = build_workbook_previews(workbook_dir=out_dir / "workbooks", citations=wb_citations)
         if len(previews) != len(workbook_rows):

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { Cite } from "@/components/cite";
+import { NarrativeSourceChip } from "@/components/narrative-chip";
 import { formatAmount } from "@/lib/format";
 import { familyHistorySeries, type FamilyFundingHistoryView, type FamilyFundingPointSummary } from "@/lib/family-funding-history";
 import styles from "./family-funding-history.module.css";
@@ -20,6 +21,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
   const selected = series.find(point => point.id === selectedId)!;
   const max = Math.max(1, ...series.map(point => point.amount_thousands));
   const total = history.cumulative;
+  const noted = history.programs.filter(program => program.note);
   const tableRef = useRef<HTMLDivElement>(null);
   function selectYear(id: string) {
     setSelectedId(id);
@@ -84,6 +86,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
                 <span className={styles.programCode}>{program.exhibit === "R-1" ? "PE" : "BLI"} {program.code}</span>
                 {program.program_slug ? <Link href={`/program/${program.program_slug}/`}>{program.title}</Link> : <span>{program.title}</span>}
                 <span className={styles.rowMeta}>{program.exhibit === "R-1" ? "Development" : "Procurement"}{!program.program_slug ? " · Historical code" : ""}</span>
+                {program.note && <a className={styles.noteRef} href={`#history-note-${program.code}`} data-history-note-ref={program.code}>Note below</a>}
               </th>
               {series.map(point => {
                 const cell = point.program_cells.find(cell => cell.program_id === program.id);
@@ -101,6 +104,13 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
         </table>
       </div>
       <p className={styles.matrixNote}>Rows follow the government’s PE or budget-line code across editions. Historical F0150P and F015E0 remain separate. Missing EPAWSS development figures in FY2025–2026 are excluded from those totals.</p>
+      {noted.length > 0 && <ul className={styles.programNotes} aria-label="Budget-line notes">
+        {noted.map(program => <li key={program.id} id={`history-note-${program.code}`} data-history-note={program.code}>
+          <span className={styles.programCode}>{program.exhibit === "R-1" ? "PE" : "BLI"} {program.code}</span>
+          <span className={styles.noteQuote} data-source-text="narrative" data-cite-fact-id={program.note_fact_id}>“{program.note}”</span>
+          {program.note_fact_id && <NarrativeSourceChip factId={program.note_fact_id} />}
+        </li>)}
+      </ul>}
       <details className={styles.notes}>
         <summary>Coverage and accounting notes</summary>
         <p>{history.scope_note}</p><p>{total.scope_note}</p>{history.coverage_notes.map(note => <p key={note}>{note}</p>)}

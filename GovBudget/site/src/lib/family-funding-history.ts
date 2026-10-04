@@ -27,6 +27,10 @@ export interface FamilyFundingProgram {
   exhibit: string;
   account: string;
   organization: string;
+  /** A budget book's own sentence about this line, quoted verbatim ([brackets] gloss it); always paired with note_fact_id. */
+  note?: string;
+  /** The jbook_narrative receipt for `note`: the page that prints the sentence. */
+  note_fact_id?: string;
 }
 
 export interface FamilyFundingCell {
@@ -136,6 +140,12 @@ export function validateFamilyHistoryMatrix(history: FamilyFundingHistoryData): 
   if (!Array.isArray(history.programs) || !Array.isArray(history.points)) throw new Error("Missing family funding matrix");
   const programs = new Map(history.programs.map(program => [program.id, program]));
   if (programs.size !== history.programs.length) throw new Error("Duplicate family program identity");
+  for (const program of history.programs) {
+    const hasNote = program.note !== undefined, hasReceipt = program.note_fact_id !== undefined;
+    if (hasNote !== hasReceipt || (hasNote && (!program.note!.trim() || !/^[0-9a-f]{16}$/.test(program.note_fact_id!)))) {
+      throw new Error(`Invalid family program note: ${program.code}`);
+    }
+  }
   for (const point of history.points) {
     const inputs = new Map(point.components.map(row => [row.fact_id, row]));
     const seen = new Set<string>();

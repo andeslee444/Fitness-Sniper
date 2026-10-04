@@ -123,5 +123,34 @@ export function checkFamilyHistory(root, history, citations, slice) {
     for (const a of clone.querySelectorAll("[data-amount]")) a.remove();
     check(!/\$[\d,]+(\.\d+)?\s*[TBMK]?\b/.test(clone.text), "family history has currency outside a cited figure");
   }
+  errors.push(...checkFamilyHistoryNotes(root, history, citations));
+  return errors;
+}
+
+/**
+ * A program note is a budget book's own sentence (spec §6.5): it renders once,
+ * quoted verbatim as cited source text, beside the narrative receipt that
+ * prints it, and its matrix row points to it.
+ */
+export function checkFamilyHistoryNotes(root, history, citations) {
+  const errors = [];
+  const squash = text => String(text ?? "").replace(/\s+/g, " ").trim();
+  const noted = history.programs.filter(program => program.note !== undefined || program.note_fact_id !== undefined);
+  const rendered = root.querySelectorAll("[data-history-note]");
+  if (rendered.length !== noted.length) errors.push(`family notes: ${rendered.length} rendered for ${noted.length} noted program(s)`);
+  for (const program of noted) {
+    if (!program.note || citations[program.note_fact_id]?.kind !== "jbook_narrative") {
+      errors.push(`program ${program.code} note lacks a narrative receipt`);
+      continue;
+    }
+    const el = root.querySelector(`[data-history-note="${program.code}"]`);
+    const quote = el?.querySelector(`[data-source-text="narrative"][data-cite-fact-id="${program.note_fact_id}"]`);
+    if (!el || !quote || !el.querySelector(`[data-narrative-chip][data-fact-id="${program.note_fact_id}"]`)) {
+      errors.push(`program ${program.code} note is not rendered with its source chip`);
+      continue;
+    }
+    if (squash(quote.text) !== squash(`“${program.note}”`)) errors.push(`program ${program.code} rendered note differs from its export`);
+    if (!root.querySelector(`[data-history-program="${program.id}"] [data-history-note-ref="${program.code}"]`)) errors.push(`program ${program.code} row does not point to its note`);
+  }
   return errors;
 }
