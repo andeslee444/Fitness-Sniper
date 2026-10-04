@@ -1750,11 +1750,16 @@ _DATASET_SCOPES: dict[str, str] = {
         " rows are the reserve-component subset of P-1 lines and are never"
         " summed with them."
     ),
+    # Families piece 1 final review T3: 17,502 of the S5 export's 56,264 rows
+    # are PB2017–PB2023 P-1 rows whose pe_bli is an era key, not a printed
+    # code, so the scope says so (spec §6.1 keeps both meanings in the scopes).
     "budget_lines_decade": (
         "The decade sibling of budget_lines: one row per (President's Budget"
         " edition × program element × amount type) figure across all ten"
         " editions PB2017–PB2026, each cited to its own edition's workbook"
-        " cell. Editions are parallel publications, never reconciled."
+        " cell (a PB2017–PB2023 P-1 row's pe_bli is its era_key;"
+        " p1_era_line_map gives the code printed on it). Editions are"
+        " parallel publications, never reconciled."
     ),
     # Families piece 1 (spec 2026-10-02 §4.4): the reviewed era code
     # decisions. Uncited by construction (no amounts), so it stays off
@@ -1771,14 +1776,18 @@ _DATASET_SCOPES: dict[str, str] = {
     # history_only ones included (F0150P and F015E0 have no page), and its
     # citations carry no pe_bli. The sentence names both and claims the
     # printed-code pe_bli only for same_program lines.
+    # Final review T5: the map holds era keys only, so the 50 era Classified
+    # Programs lines S1b loaded under 9999999999 are not in it.
     "p1_era_line_map": (
-        "One row per PB2017–PB2023 P-1 display line: era_key (its pe_bli in"
-        " budget_lines_decade), line_item_code (the budget line code printed"
-        " on it, the pe_bli a same_program line's era citations carry) and the"
-        " dated owner decision that joins it to a program page or to history"
-        " only, or excludes it. Only a same_program line whose code has a"
-        " program page, or an F-15 family-history line, has those rows and"
-        " citations. Every row is a decision; none carries an amount."
+        "One row per era-keyed PB2017–PB2023 P-1 display line (the Classified"
+        " Programs lines, loaded under 9999999999, are not in the map):"
+        " era_key (its pe_bli in budget_lines_decade), line_item_code (the"
+        " budget line code printed on it, the pe_bli a same_program line's era"
+        " citations carry) and the dated owner decision that joins it to a"
+        " program page or to history only, or excludes it. Only a same_program"
+        " line whose code has a program page, or an F-15 family-history line,"
+        " has those rows and citations. Every row is a decision; none carries"
+        " an amount."
     ),
     "jbook_details": (
         "One row per (program element × project × budget scenario) cost figure"

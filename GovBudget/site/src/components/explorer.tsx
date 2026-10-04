@@ -150,11 +150,14 @@ ORDER BY pb_edition, amount_type
           `),
         },
         {
+          // Final review T3: not "program_elements". A PB2017–PB2023 P-1
+          // row's pe_bli is its era key (one per edition's display line;
+          // p1_era_line_map gives the printed code), so this counts keys.
           label: "Rows per President's Budget edition",
           sql: t(`
 SELECT fiscal_year AS pb_edition,
        COUNT(*) AS rows,
-       COUNT(DISTINCT pe_bli) AS program_elements
+       COUNT(DISTINCT pe_bli) AS pe_bli_keys
 FROM 'budget_lines_decade.parquet'
 GROUP BY pb_edition
 ORDER BY pb_edition
@@ -163,9 +166,9 @@ ORDER BY pb_edition
       ];
 
     case "p1_era_line_map":
-      // Families piece 1 (spec 2026-10-02 §4.4). One row per PB2017–PB2023
-      // P-1 display line and the dated decision that joins it to a program,
-      // keeps it as history, or excludes it. No amounts: a line has
+      // Families piece 1 (spec 2026-10-02 §4.4). One row per era-keyed
+      // PB2017–PB2023 P-1 display line and the dated decision that joins it
+      // to a program, keeps it as history, or excludes it. No amounts: a line has
       // budget_lines_decade rows (under the same era_key) only when it is
       // same_program and its code has a program page, or when it belongs to
       // the F-15 family history (whose history_only F0150P and F015E0 lines

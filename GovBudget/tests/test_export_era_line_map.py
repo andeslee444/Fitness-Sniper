@@ -57,11 +57,31 @@ def test_scope_is_registered_after_budget_lines_decade():
 
 def test_scope_names_both_meanings_of_pe_bli_and_carries_no_money():
     scope = _DATASET_SCOPES["p1_era_line_map"]
-    assert scope.startswith("One row per PB2017–PB2023 P-1 display line")
+    assert scope.startswith("One row per era-keyed PB2017–PB2023 P-1 display line")
     assert "era_key (its pe_bli in budget_lines_decade)" in scope
     assert ("line_item_code (the budget line code printed on it, the pe_bli a same_program"
             " line's era citations carry)") in scope
     assert scope.endswith("Every row is a decision; none carries an amount.")
+
+
+def test_scope_leaves_out_the_classified_programs_lines():
+    """Final review T5: S1b loaded each era edition's Classified Programs
+    lines under 9999999999 (7 per edition, 8 in PB2023; 50 in all), and the
+    map selects era keys only, so "one row per P-1 display line" overstated
+    it: /downloads/ counts 969 PB2017 lines against the 976 the P-1 prints."""
+    scope = _DATASET_SCOPES["p1_era_line_map"]
+    assert ("(the Classified Programs lines, loaded under 9999999999, are not"
+            " in the map)") in scope
+
+
+def test_decade_scope_says_what_an_era_rows_pe_bli_is():
+    """Final review T3: 17,502 of the S5 export's 56,264 budget_lines_decade
+    rows carry an era key as pe_bli, so the decade scope says so and points at
+    the map for the printed code (spec §6.1: both meanings in the scopes)."""
+    scope = _DATASET_SCOPES["budget_lines_decade"]
+    assert ("(a PB2017–PB2023 P-1 row's pe_bli is its era_key; p1_era_line_map"
+            " gives the code printed on it)") in scope
+    assert scope.endswith("Editions are parallel publications, never reconciled.")
 
 
 def test_scope_names_both_minters_of_era_rows_and_citations():

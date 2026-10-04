@@ -2218,7 +2218,7 @@ def test_export_site_ships_p1_era_line_map_uncited(pg_dsn, tmp_path):
     entry = next(d for d in inventory if d["name"] == "p1_era_line_map")
     assert entry["cited"] is False
     assert entry["row_count"] == 2
-    assert entry["scope"].startswith("One row per PB2017–PB2023 P-1 display line")
+    assert entry["scope"].startswith("One row per era-keyed PB2017–PB2023 P-1 display line")
 
 
 def test_export_site_refuses_an_undecided_era_line(pg_dsn, tmp_path):
