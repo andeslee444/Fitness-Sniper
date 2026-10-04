@@ -171,7 +171,13 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 33,170 / 6,685 -> 37,390 / 7,708. CEILINGS UNCHANGED;
   // 7,610 raw / 1,292 gzip left.
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "37,390 / 7,708" },
+  // RE-MEASURED 2026-10-04 (final-review fixes, T4: the procurement
+  // tooltip and edition-legend sentence render in the client island, so only
+  // chunk hashes move in this HTML; build of ea1c4071 on the S5 proof export
+  // with datasets.json's two fixed scopes; gate 1's weigh(), zlib level 9):
+  // 37,390 / 7,708 -> 37,362 / 7,668. CEILINGS UNCHANGED; 7,638 raw / 1,332
+  // gzip left.
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "37,362 / 7,668" },
   // Re-baselined 2026-09-01 (FPDS-AP expansion): the crosswalked-PE universe
   // grew 24 → ~186 and the feed derives from it — cards 160 → ~720. Corpus
   // growth, not template bloat (the per-card markup is unchanged). Ceilings
@@ -207,7 +213,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 1,389,234 / 88,003 -> 1,379,988 / 89,021. CEILINGS UNCHANGED;
   // 95,012 raw / 5,979 gzip left.
-  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,379,988 / 89,021" },
+  // RE-MEASURED 2026-10-04 (final-review fixes, T1: the trust anchor claims
+  // a tier only for datasets that hold amounts; build of ea1c4071 on the S5
+  // proof export with datasets.json's two fixed scopes; gate 1's weigh(),
+  // zlib level 9): 1,379,988 / 89,021 -> 1,379,989 / 89,162. CEILINGS
+  // UNCHANGED; 95,011 raw / 5,838 gzip left.
+  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,379,989 / 89,162" },
   // RE-MEASURED 2026-09-18 (chain D): 684,005 / 67,188 -> 692,931 / 68,099.
   // The drift leg caught this one: the stale entry claimed 1,812 gzip bytes
   // of headroom where 901 were left. CEILINGS UNCHANGED; nothing trimmed.
@@ -393,7 +404,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // the S4 export, with the p1_era_line_map row; gate 1's weigh(), zlib level
   // 9): 81,748 / 13,515 -> 84,798 / 14,401. CEILINGS UNCHANGED; 20,202
   // raw / 1,199 gzip left.
-  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "84,798 / 14,401" },
+  // RE-MEASURED 2026-10-04 (final-review fixes, T3/T5: the longer
+  // budget_lines_decade and p1_era_line_map scopes, each rendered three times
+  // here; build of ea1c4071 on the S5 proof export with datasets.json's two
+  // fixed scopes; gate 1's weigh(), zlib level 9): 84,798 / 14,401 -> 85,358
+  // / 14,530. CEILINGS UNCHANGED; 19,642 raw / 1,070 gzip left.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "85,358 / 14,530" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -686,7 +702,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // the S4 export: the pending-ledger clause and the S4 dbt-assertion count;
   // gate 1's weigh(), zlib level 9): 161,354 / 45,328 -> 161,353 / 45,339.
   // CEILINGS UNCHANGED; 647 raw / 61 gzip left.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,353 / 45,339" },
+  // RE-MEASURED 2026-10-04 (final-review fixes, T2: "the rest have no
+  // program page" at the sentence's same 312 bytes; build of ea1c4071 on the
+  // S5 proof export with datasets.json's two fixed scopes; gate 1's weigh(),
+  // zlib level 9): 161,353 / 45,339 -> 161,353 / 45,336. CEILINGS UNCHANGED;
+  // 647 raw / 64 gzip left.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,353 / 45,336" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
