@@ -52,6 +52,15 @@ identity (0300D/DCAA) was the option the controller offered in chat.
 PB2017 on 890 procurement pages; next is piece 2
 (family registry), per the [overview](specs/2026-10-02-platform-families-overview.md).
 
+**Follow-ups first (owner, 2026-10-04):** before piece 2, clear the piece-1
+follow-ups #193–#206, with these owner decisions: shard `/years/` and lift its
+era fence so it shows PB2017–PB2023 procurement (#193); load the two 0390D
+Chem Demil lines under route-safe codes with pages (#194); remove the unread v1
+PDF receipt files from the deploy (#196); add the gloss "This exhibit [the
+PB2026 F-15EX (F015EX) P-40] does not include …" to the F015E0 note (#206 T9);
+and publish each era decision's date in `p1_era_line_map` as a `decided_on`
+column (#206 T6).
+
 **F-15 family funding correction (2026-09-24):** replace the largest single
 program's request with a cited history of the identified F-15 development and
 procurement lines. The available span is FY2015–2026; the headline combines
