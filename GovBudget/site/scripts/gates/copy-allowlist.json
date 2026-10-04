@@ -38,8 +38,8 @@
   {
     "page": "/methodology/",
     "leg": 13,
-    "text": "(⁂): figure is from a dataset for which row-level citation linkage is not yet complete. As of this build every published dataset carries a c",
-    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175"
+    "text": "(⁂): figure is from a dataset for which row-level citation linkage is not yet complete. As of this build only p1_era_line_map is on the pend",
+    "reason": "Pre-existing in production 81929a6b (gate run on the deployed build 2026-09-25); exempted under integration ruling R-INT-7; burn-down tracked in ROADMAP #175; re-keyed 2026-10-04 after families piece 1 Task 19 replaced the sentence; burn-down still ROADMAP #175"
   },
   {
     "page": "/methodology/",

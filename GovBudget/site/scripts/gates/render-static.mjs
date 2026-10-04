@@ -381,7 +381,8 @@ function walkLeavesForSelfDenominatingCounter(node) {
 // (lda_filing disclosing-filing rows). A manifest ledger entry outside this
 // set is an export REGRESSION (a citation tier silently disappeared) and
 // fails the gate. Extend this set only with a deliberate, reviewed edit.
-const EXPECTED_UNCITED_DATASETS = new Set([]);
+// p1_era_line_map: owner decision at plan review 2026-10-02 (spec §4.4, families piece 1) — rows are decisions, not money.
+const EXPECTED_UNCITED_DATASETS = new Set(["p1_era_line_map"]);
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
