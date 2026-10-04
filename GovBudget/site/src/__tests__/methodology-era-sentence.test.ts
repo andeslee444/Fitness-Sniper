@@ -3,10 +3,10 @@
  * spec 2026-10-02 §6.4). The sentence said cross-edition procurement
  * comparisons stop at the PB2024 boundary. Era procurement lines now join a
  * program only through a dated, reviewed decision on the code each P-1
- * printed, and the rest stay data only, so the sentence states that gap, at
- * the replaced sentence's exact rendered byte length: /methodology/ sits near
- * its gate-1 ceiling and only the link markup is new. It must still read as
- * a gap (it opens "Two honest gaps remain"), not as a new capability.
+ * printed, and the rest have no program page, so the sentence states that
+ * gap, at the replaced sentence's exact rendered byte length: /methodology/
+ * sits near its gate-1 ceiling and only the link markup is new. It must still
+ * read as a gap (it opens "Two honest gaps remain"), not as a new capability.
  */
 import { describe, it, expect } from "vitest";
 import fs from "fs";
@@ -46,11 +46,15 @@ describe("/methodology/ era procurement sentence", () => {
       "PB2017–PB2023 procurement lines join a program only by a dated, reviewed decision on the code their P-1 printed, never by title",
     );
     expect(sentence).toContain("(renames too; published in p1_era_line_map)");
-    expect(sentence).toContain("the rest stay data only");
+    expect(sentence).toContain("the rest have no program page");
+    // Final review T2: F-15's history_only F0150P and F015E0 lines render with
+    // cited amounts on /families/f-15/, so "data only" was false; what holds
+    // for every line without a same_program decision is "no program page".
+    expect(sentence).not.toContain("data only");
   });
 
   it("keeps the two statements that stay true", () => {
-    expect(sentence).toContain("book diffs for the era editions still cover RDT&E only");
+    expect(sentence).toContain("book diffs for the era editions cover RDT&E only");
     expect(visible("Second, program elements", "</p>")).toContain(
       "never fuzzy-matches renamed programs across editions",
     );

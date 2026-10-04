@@ -53,6 +53,7 @@ import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 import { formatCount } from "@/lib/format";
 import { EXTENDED_MEASURE_LABEL } from "@/lib/basis";
+import { isPeCode } from "@/lib/pe-link";
 
 // ── Sidecar types (years_matrix.json schema_version 1) ──────────────────────
 
@@ -1040,7 +1041,8 @@ export function YearsMatrix() {
           className="text-xs leading-5 text-muted-foreground"
         >
           Actuals for FY N come from the PB(N+2) book; each column states its
-          edition.{" "}
+          edition. Procurement rows here start at PB2024; any PB2017–PB2023
+          history is on the program page.{" "}
           <Link
             href="/methodology/#coverage-editions"
             className="underline decoration-dotted hover:text-foreground"
@@ -1484,6 +1486,7 @@ function ProgramRows({
             colKey={key}
             cell={program.cells[key]}
             decade={decadeMeta.get(key)}
+            peBli={program.pe_bli}
           />
         ))}
       </tr>
@@ -1579,6 +1582,10 @@ const PROJECT_COL_META: Record<string, { fy: number; measure: string }> = {
   fy2026: { fy: 2026, measure: "request" },
 };
 
+/** The first edition /years/ carries procurement (P-1) rows in: the
+ *  families piece 1 fence (spec 2026-10-02 §6.2, ROADMAP #193). */
+const PROCUREMENT_GRID_FIRST_EDITION = 2024;
+
 /**
  * One program dollar/Δ/%Δ cell. Missing → "—" (plain text, no data-v).
  *
@@ -1604,22 +1611,37 @@ function ProgramCellTd({
   colKey,
   cell,
   decade,
+  peBli,
 }: {
   colKey: string;
   cell: YearsCell | undefined;
   /** Phase 5E: set when colKey is a decade column ('fy{yyyy}{a|e|r}'). */
   decade?: DecadeColumn;
+  /** The row's code: a PE-shaped one is an R-1 row, any other a P-1 row. */
+  peBli: string;
 }) {
   if (!cell) {
     // Decade gaps are edition-honest absences (spec §2 rule 4): the PE has
     // no entry in that column's book — the tooltip says which edition.
+    // Except a procurement row before PB2024 (families piece 1 final review
+    // T4): /years/ keeps P-1 rows from PB2024 on (the ROADMAP #193 fence)
+    // while the program page carries the era history a reviewed decision
+    // matched, so that gap is this grid's, not the edition's. "Any": not
+    // every P-1 row has era history (S5: 4,995 of the 6,027 default-view
+    // pre-PB2024 P-1 gaps have a point on the program page).
+    const procurementBeforeGrid =
+      decade !== undefined &&
+      decade.edition < PROCUREMENT_GRID_FIRST_EDITION &&
+      !isPeCode(peBli);
     return (
       <td
         data-col={colKey}
         data-cell-state="absent"
         title={
           decade
-            ? `Not in the PB${decade.edition} edition`
+            ? procurementBeforeGrid
+              ? `Any PB${decade.edition} procurement history is on the program page, not yet in this grid`
+              : `Not in the PB${decade.edition} edition`
             : "No figure for this program in this column's source"
         }
         className="border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 text-muted-foreground"

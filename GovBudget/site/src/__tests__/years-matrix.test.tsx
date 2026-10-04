@@ -727,6 +727,59 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     expect(cell.getAttribute("title")).toBe("Not in the PB2017 edition");
   });
 
+  // Families piece 1 final review T4. /years/ keeps procurement rows from
+  // PB2024 on (the ROADMAP #193 fence) while their program pages now carry
+  // the PB2017–PB2023 era history, so a P-1 row's earlier gap must not claim
+  // the line was missing from that edition. R-1 rows (PE-shaped codes) and
+  // every PB2024+ gap keep "Not in the PB… edition".
+  it("a procurement row's pre-PB2024 gap points at the program page, not at the edition", async () => {
+    const withP1: YearsMatrixData = {
+      ...MATRIX_DECADE,
+      orgs: [
+        ...MATRIX_DECADE.orgs,
+        {
+          org: "N",
+          programs: [
+            {
+              pe_bli: "2013",
+              title: "Virginia Class Submarine",
+              // fence: no cell before PB2024; fy2025e (PB2026) is a plain gap
+              cells: { fy2026r: { fid: "dd00000000000008", v: 10000000 } },
+              projects: [],
+            },
+          ],
+        },
+      ],
+    };
+    fetchMock.mockImplementation((url: string) =>
+      String(url) === "/json/years_matrix.json"
+        ? Promise.resolve(jsonResponse(withP1))
+        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+    );
+    await renderMatrix();
+    const title = (pe: string, col: string) =>
+      (document.querySelector(`tr[data-pe="${pe}"] td[data-col="${col}"]`) as HTMLElement)
+        .getAttribute("title");
+    expect(title("2013", "fy2015a")).toBe(
+      "Any PB2017 procurement history is on the program page, not yet in this grid",
+    );
+    expect(title("2013", "fy2020a")).toBe(
+      "Any PB2022 procurement history is on the program page, not yet in this grid",
+    );
+    expect(title("2013", "fy2025e")).toBe("Not in the PB2026 edition");
+    // the R-1 rows beside it are unchanged
+    expect(title("0602702E", "fy2015a")).toBe("Not in the PB2017 edition");
+    expect(title("0603882C", "fy2020a")).toBe("Not in the PB2022 edition");
+  });
+
+  it("the edition legend says where procurement history before PB2024 lives", async () => {
+    await renderMatrix();
+    const legend = document.querySelector('[data-testid="edition-legend"]') as HTMLElement;
+    expect(legend.textContent).toContain(
+      "Procurement rows here start at PB2024; any PB2017–PB2023 history is on the program page.",
+    );
+  });
+
   it("sorting by a decade column works, missing-last", async () => {
     await renderMatrix();
     fireEvent.click(

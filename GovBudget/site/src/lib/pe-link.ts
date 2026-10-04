@@ -24,6 +24,17 @@
  */
 export const PE_TOKEN_RE = /\b\d{7}[A-Z][A-Z0-9]{0,2}\b/;
 
+/**
+ * True when the WHOLE code is PE-shaped (PE_TOKEN_RE end to end): an R-1
+ * program element, not a P-1 budget line code (2013, 0125B96000,
+ * 2143369000). On the families piece 1 S5 export this splits the /years/
+ * rows exactly: all 1,077 R-1 rows match, none of the 861 P-1/P-1R rows.
+ */
+export function isPeCode(code: string): boolean {
+  const m = PE_TOKEN_RE.exec(code);
+  return m !== null && m.index === 0 && m[0].length === code.length;
+}
+
 /** "…PE 0601122E, Project EMR-01" continuation after a PE token. */
 const PROJECT_REF_RE = /^,?\s+Project\s+([A-Za-z0-9-]+)/;
 

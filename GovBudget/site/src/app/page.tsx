@@ -523,10 +523,14 @@ export default function HomePage() {
       {/* ── Trust anchor ─────────────────────────────────────────────────── */}
       <section className={styles.trust}>
         <Reveal className="spine">
+          {/* Families piece 1 final review T1: the tier claim covers the
+              datasets that hold amounts. p1_era_line_map (decisions, no
+              amount column) ships on the uncited ledger, as /data/ and
+              /methodology/ say. src/__tests__/home-trust-anchor.test.ts. */}
           <p className="text-muted-foreground text-sm">
             All figures are cited to their exact source document, page, API
-            query, or derived formula — every published dataset carries a
-            citation tier. See{" "}
+            query, or derived formula — every published dataset that holds
+            amounts carries a citation tier. See{" "}
             <Link href="/methodology/" className="underline hover:text-foreground">
               full methodology
             </Link>
