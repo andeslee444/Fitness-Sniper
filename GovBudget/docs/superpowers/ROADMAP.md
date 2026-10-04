@@ -239,6 +239,50 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Findings log (what we learned; feeds future phases)
 
+- **2026-10-04: Families piece 1, S4 proof — pre-S4 code against S4 code on one
+  post-S3 snapshot.** Snapshot `.proofs/s4` (`govbudget proof snapshot`, 2026-10-04T06:45:32.124851+00:00;
+  DuckDB sha256 c3f7286a84074aef7633082d07fc8e148907db93e38959a7096d9271f9d1e2fa at copy,
+  24aa9aa491aac5db703561daeb45c697318f3c1cd19a44d9ee211229976de975 after 18
+  views were repointed at the copy; site 61b20a94af7a256b0c0a292d27d3792d0265338f59ad4fe45638663650dac53e;
+  raw_docs 320c7d9106b8422277fd965bdb26b2fcc94a67f71dab49d0a9798704fc7f3f27;
+  Postgres dump 275e1a3ef4cb7e8c857215c17a0ff3a4bc22fa6c5db1b06486c7b00d6fbefc2f restored as `govbudget_proof_s4`) [snapshot-shas.json].
+  V3 on the pinned state: `dbt test` of the seed, the map and the program table
+  passed (PASS=32 ERROR=0), 0 views read the live lake, 0 undecided keys, the DuckDB bytes unchanged
+  [v3-dbt-test.log]. Export A ran the code at `8836a1ba` (the parent of the decade-tier
+  switch), export B the code at `45281589`, each in its own clone (`s4-A`, `s4-B`)
+  through `govbudget export-site`, both with 196 dbt test nodes in their manifests
+  (`dbt/` differs between them only by the S2 seed rows, the warn→assert undecided
+  test and one description). A third clone exported by B's code (`s4-B2`) is the
+  control: B vs B2 reads EQUAL, and its nine reorder classes (`noise-s4.json`) are
+  the only reorders the judged diff trusts. The masked A/B diff passes the spec §10 rule list
+  (`docs/superpowers/plans/2026-10-02-era-procurement-history-expected-diff.json`)
+  [diff.txt]. V6: all 125,496 facts A publishes are in B unchanged; B adds
+  18,345 (17,409 era workbook leaves, 936 `decade_era_map` sums); the 72 F-15 A1 era leaves moved only `pe_bli` (null →
+  F01500/F015EX/F15EWS) and `retrieved_at` (space → `T` form);
+  `budget_lines_decade` keeps all 38,855 A rows (B 56,264) [s4-fact-stability.json].
+  V6 reads export noise with proof diff's own rules (`--noise-from` the control;
+  the first version compared raw values and failed even B vs B2): 114 permuted
+  `inputs`/`query_body` lists and 2 last-digit district `recorded_value` sums are
+  equivalent, 0 fields changed.
+  Page gain: 811 of 892 procurement pages with
+  PB2026 lines (629 of them with all seven era editions)
+  and 79 of 89 decade-only
+  procurement pages gain PB2017–PB2023 points, 16,494 points in all; no R&D
+  page changed [s4-report.json]. V7: no complete PDF receipt lost; F-15 default
+  cells 67/67; era P-1 receipts complete by edition PB2017 2,205/2,232, PB2018 2,322/2,355,
+  PB2019 2,368/2,403, PB2020 2,465/2,496, PB2021 2,553/2,622, PB2022 2,670/2,697, PB2023 2,658/2,697.
+  V5, verify-phase5e, verify-era-map (six legs) and verify-lineage pass on B. V8:
+  the first site build against an export that ships the map failed two gates
+  Task 19 never ran: gate 2 (the manifest's uncited ledger holds
+  `p1_era_line_map`, not in its expected set) and gate 27 (the R-INT-7
+  `/methodology/` leg-13 exemption, #175, keyed to the sentence Task 19
+  replaced). Both were fixed by reviewed gate-side edits (`p1_era_line_map`
+  added per spec §4.4; the exemption re-keyed, page bytes unchanged), after
+  which `npm run verify` reads overall PASS on B. The normalized F-15 page equals the S0 snapshot and
+  `f15_funding_history.json` is unchanged; the sitemap keeps 4,349 URLs; `/data/`
+  re-measured with the map row at 84,798 / 14,401 and `/methodology/` at 161,353 / 45,339
+  (ceilings unchanged).
+
 - **2026-09-26: The decisions wave — the owner's calls, delegated and
   recorded.** On 2026-09-25 the owner wrote "API topped up. will go with your
   recommendation on all roadmap decisions. please fix duplications." (the
