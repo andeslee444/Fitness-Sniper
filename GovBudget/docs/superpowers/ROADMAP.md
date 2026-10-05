@@ -59,7 +59,14 @@ Chem Demil lines under route-safe codes with pages (#194); remove the unread v1
 PDF receipt files from the deploy (#196); add the gloss "This exhibit [the
 PB2026 F-15EX (F015EX) P-40] does not include …" to the F015E0 note (#206 T9);
 and publish each era decision's date in `p1_era_line_map` as a `decided_on`
-column (#206 T6).
+column (#206 T6). *Owner, later 2026-10-04, after the follow-ups design found
+the RDT&E Chem Demil line restates R-1 PEs 0708081D + 0708083D to the
+thousand:* the RDT&E line gets no page and is recorded as an R-1 restatement
+(only the O&M line gets a page, `0390DOM`); the era O&M chain joins that page
+as owner batch B7; #195 gets the full re-attribution fix as a second release;
+the F015E0 gloss names the exhibit exactly, "[the PB2026 F-15EX AP (F015EX)
+P-40]". The design's other recommendations stand (its Q2, Q4–Q16, Q18,
+Q20–Q23, Q25, Q26), and the Chem Demil write gets a `--revert` mode (Q24 (b)).
 
 **F-15 family funding correction (2026-09-24):** replace the largest single
 program's request with a cited history of the identified F-15 development and
