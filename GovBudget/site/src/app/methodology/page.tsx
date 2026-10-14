@@ -1719,8 +1719,8 @@ export default function MethodologyPage() {
                 </p>
                 <p className="mt-2">
                   &ldquo;–&rdquo; and a zero tagged <em>XML</em>{" "}mean different
-                  things. &ldquo;–&rdquo; is <em>absent</em>: the trajectory
-                  workbook simply has no row for that program and column (most
+                  things. &ldquo;–&rdquo; is <em>absent</em>: the edition
+                  workbook simply holds no line for that program and column (most
                   DARPA program elements, for example, carry no FY2026 Total
                   there). An amber <em>XML</em>-tagged zero on a project sub-row
                   is a <em>source statement</em>: the J-book XML explicitly

@@ -7,7 +7,9 @@ trust chain the exporter claims (trajectory pivot == sum of titled detail
 lines; project cells == jbook_details rows).
 
 Invoked by site/scripts/gates/yearsmatrix.mjs:
-    uv run python site/scripts/gates/yearsmatrix-recompute.py <request.json>
+    uv run python site/scripts/gates/yearsmatrix-recompute.py <request.json> [site_data_dir]
+
+site_data_dir defaults to data/site/data (tests pass a fixture directory).
 
 Request JSON:
     {
@@ -23,7 +25,10 @@ Response JSON (stdout):
       "deltas":   {"{pe_bli}|{org}": float|null},
       "projects": {"{pe_bli}|{project_number}|{scenario}": float|null},
       "decade":   {"{fact_id}": {"v": float, "n": int, "fys": [int],
-                                 "pes": [str], "shas": [str]} | null}
+                                 "pes": [str], "shas": [str],
+                                 "era": [{"era_key", "program_key",
+                                          "decision", "program_account",
+                                          "program_org"}]} | null}
     }
 
 Program cells: sum(amount_thousands) over budget_lines.parquet detail rows
@@ -38,6 +43,11 @@ budget_lines_decade.parquet rows aggregated — value sum, row count, and
 the DISTINCT fiscal_years (edition years), pe_blis and document sha256s
 behind the fact. The gate checks the value against the payload cell AND
 that every source row's edition equals the column's stated edition.
+Era rows (ROADMAP #193): a row whose pe_bli is an era procurement key
+('3020F-AF-L8') is listed under "era" with its p1_era_line_map row for
+(edition = fiscal_year, era_key = pe_bli) — program_key and decision null
+when the map has none — so the gate can prove the cell reaches its program
+through a reviewed decision.
 """
 from __future__ import annotations
 
@@ -48,18 +58,23 @@ from pathlib import Path
 import duckdb
 
 from govbudget.config import ROOT
+from govbudget.jbooks.era_keys import is_era_procurement_key
 from govbudget.jbooks.orgs import workbook_org
-
-BL_PARQUET = ROOT / "data" / "site" / "data" / "budget_lines.parquet"
-JD_PARQUET = ROOT / "data" / "site" / "data" / "jbook_details.parquet"
-DEC_PARQUET = ROOT / "data" / "site" / "data" / "budget_lines_decade.parquet"
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: yearsmatrix-recompute.py <request.json>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(
+            "usage: yearsmatrix-recompute.py <request.json> [site_data_dir]",
+            file=sys.stderr,
+        )
         return 2
     request = json.loads(Path(sys.argv[1]).read_text())
+    data_dir = Path(sys.argv[2]) if len(sys.argv) == 3 else ROOT / "data" / "site" / "data"
+    BL_PARQUET = data_dir / "budget_lines.parquet"
+    JD_PARQUET = data_dir / "jbook_details.parquet"
+    DEC_PARQUET = data_dir / "budget_lines_decade.parquet"
+    MAP_PARQUET = data_dir / "p1_era_line_map.parquet"
 
     if not BL_PARQUET.exists() or not JD_PARQUET.exists():
         print(
@@ -110,14 +125,21 @@ def main() -> int:
     decade_fids = request.get("decade_fids", [])
     out["decade"] = {}
     if decade_fids:
-        if not DEC_PARQUET.exists():
-            print(f"decade parquet missing: {DEC_PARQUET}", file=sys.stderr)
-            return 2
+        for needed in (DEC_PARQUET, MAP_PARQUET):
+            if not needed.exists():
+                print(f"decade recompute input missing: {needed}", file=sys.stderr)
+                return 2
         dec = str(DEC_PARQUET).replace("'", "''")
+        emap = str(MAP_PARQUET).replace("'", "''")
         for fid in decade_fids:
             rows = con.execute(
-                f"select amount_thousands, fiscal_year, pe_bli, document_sha256"
-                f" from read_parquet('{dec}') where fact_id = ?",
+                f"select d.amount_thousands, d.fiscal_year, d.pe_bli,"
+                f" d.document_sha256, m.program_key, m.decision,"
+                f" m.program_account, m.program_org"
+                f" from read_parquet('{dec}') d"
+                f" left join read_parquet('{emap}') m"
+                f" on m.edition = d.fiscal_year and m.era_key = d.pe_bli"
+                f" where d.fact_id = ?",
                 [fid],
             ).fetchall()
             if not rows or any(r[0] is None for r in rows):
@@ -129,6 +151,17 @@ def main() -> int:
                 "fys": sorted({int(r[1]) for r in rows}),
                 "pes": sorted({r[2] for r in rows}),
                 "shas": sorted({r[3] for r in rows}),
+                "era": [
+                    {
+                        "era_key": r[2],
+                        "program_key": r[4],
+                        "decision": r[5],
+                        "program_account": r[6],
+                        "program_org": r[7],
+                    }
+                    for r in rows
+                    if is_era_procurement_key(r[2])
+                ],
             }
 
     print(json.dumps(out))

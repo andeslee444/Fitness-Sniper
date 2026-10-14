@@ -636,10 +636,15 @@ Do **not** try to shrink `site/out/` by excluding `json/`, `json-lite/`,
   it;
 - **every cited SAM receipt is live** (ROADMAP #191): each file under
   `site/out/json/sam/` is fetched in full from the site host and must equal
-  the local file's sha256 — a SAM registration citation links nowhere else.
+  the local file's sha256 — a SAM registration citation links nowhere else;
+- **the `/years/` files belong together** (ROADMAP #193): the core,
+  `/json/years_matrix.json`, carries a `build_id` and a shard manifest, and
+  every shard it lists (`/json/years_matrix/decade.json`,
+  `/json/years_matrix/detail.json`) answers 200 with the manifest's sha256
+  and the core's `build_id`.
 
   `--skip-site` skips every site-host check: the build stamp, the `/fact/`
-  rewrite and `/json/years_matrix.json` probes, and the SAM receipts.
+  rewrite probe, the `/years/` probe, and the SAM receipts.
 
 It exits non-zero on any failure and can be run on its own at any time to audit
 what is live:

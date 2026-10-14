@@ -396,6 +396,19 @@ F015EX exhibit, which is not a continuation. Its corrected label is §6.5's job.
 | `/years/` | Built from `decade_grains`; era points would add about 0.75 MB (≈3.9–4.0 MB against a 4,194,304 B cap that must not be raised, leaving no room for PB2027) and fail years-matrix leg g (its source rows' `pe_bli` is the era key) | `_emit_years_matrix` skips grains in the era set | `years_matrix.json` byte-identical; years-matrix gate unchanged |
 | `/methodology/` | Live weight is 161,166 / 45,270 gzip against 162,000 / 45,400 (about 130 B gzip of headroom; the build stamp still says 45,147) | One sentence replaced at equal length plus a link (§6.4); everything else goes elsewhere | Build gate passes with the re-measured stamp and no raised ceiling |
 
+*Amendment (families piece-1 follow-ups, owner decision 2026-10-04: "shard `/years/`
+and lift its era fence"; nothing above reworded).* `/years/` is no longer fenced.
+ROADMAP #193 split it into a core (`json/years_matrix.json`, schema 2: the header,
+every row and the default decade columns) and two lazy shards
+(`json/years_matrix/decade.json`, `json/years_matrix/detail.json`) that share its
+`build_id`. The 4,194,304 B cap is unchanged and now applies to each file, measured
+on the bytes written; the core may not gzip above 780,074 B, what the single file
+cost a reader on open. `_emit_years_matrix` no longer takes `era_grain_fids`, and a
+`/years/` row now shows exactly its program page's decade points, PB2017–PB2023
+procurement included: gate 20 leg j checks that parity, and leg g resolves an era
+cell's source rows through `p1_era_line_map`. Lineage funding lines and the F-15
+browser stay fenced as above.
+
 ### 6.3 Receipts
 
 The `export-site` CLI reruns `program_pdf_receipts` over the full corpus, so receipts

@@ -26,6 +26,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import {
+  MIN_STATIC_FETCH_TARGETS,
   runJsonXmlHrefLeg,
   sameOriginJsonXmlTarget,
   scanFetchTargets,
@@ -137,6 +138,10 @@ describe("scanFetchTargets — against the real site/src", () => {
       "/json/years_matrix/detail.json",
     ]);
     expect(found.has("/json/feed.json")).toBe(false);
+  });
+
+  it("floors the static scan at exactly the population it measures (ROADMAP #193)", () => {
+    expect(MIN_STATIC_FETCH_TARGETS).toBe(scanFetchTargets(srcDir).size);
   });
 
   it("does not pick targets out of test files' fetch mocks", () => {

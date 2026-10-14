@@ -107,6 +107,22 @@ DATA_FILES = {
 }
 
 
+def _years_files(build_id: str, *, shard_build_id: str | None = None) -> dict[str, bytes]:
+    """A /years/ core whose manifest lists one shard, and that shard."""
+    shard = json.dumps({
+        "schema_version": 2, "build_id": shard_build_id or build_id,
+        "shard": "decade", "columns": [], "rows": {},
+    }).encode()
+    core = json.dumps({
+        "schema_version": 2, "build_id": build_id, "orgs": [],
+        "shards": [{
+            "name": "decade", "path": "years_matrix/decade.json", "columns": [],
+            "bytes": len(shard), "sha256": hashlib.sha256(shard).hexdigest(),
+        }],
+    }).encode()
+    return {"/json/years_matrix.json": core, "/json/years_matrix/decade.json": shard}
+
+
 @pytest.fixture()
 def landed(tmp_path: Path, mock_host):
     """A git checkout of the verifier with a built site/out and an export,
@@ -152,7 +168,9 @@ def landed(tmp_path: Path, mock_host):
     for rel, body in DATA_FILES.items():
         routes[f"/{rel}"] = (200, body, "application/octet-stream")
     routes["/.build-meta.json"] = (200, json.dumps(meta).encode(), "application/json")
-    routes["/json/years_matrix.json"] = (200, b"{}", "application/json")
+    # ROADMAP #193: the /years/ core and the one shard it lists, one build.
+    for path, body in _years_files("b" * 64).items():
+        routes[path] = (200, body, "application/json")
 
     def run(*args: str):
         return subprocess.run(
@@ -169,6 +187,8 @@ def test_a_deploy_that_landed_passes(landed):
     assert r.returncode == 0, r.stdout + r.stderr
     assert f"PASS: /.build-meta.json git_head — {head} == HEAD" in r.stdout
     assert "PASS: /.build-meta.json build — built_at 2026-09-26T22:36:02.525Z" in r.stdout
+    assert "PASS: /json/years_matrix.json — build_id bbbbbbbbbbbb…, 1 shard(s) listed" in r.stdout
+    assert "PASS: /json/years_matrix/decade.json" in r.stdout
     for rel in DATA_FILES:
         assert f"PASS: {rel} — sha256 {hashlib.sha256(DATA_FILES[rel]).hexdigest()[:12]}" in r.stdout
     assert "live-asset assertions passed" in r.stdout
@@ -419,3 +439,41 @@ def test_backup_default_tag_is_a_utc_timestamp(backup):
     copy = next(c for c in calls if c.startswith("copy "))
     import re
     assert re.search(r"rollback/\d{4}-\d{2}-\d{2}T\d{6}Z/data/$", copy), copy
+
+
+# ---------------------------------------------------------------------------
+# Assertion 8 (ROADMAP #193): the /years/ core and its shards are one build
+# ---------------------------------------------------------------------------
+
+
+def test_a_years_shard_from_another_build_fails(landed):
+    root, head, meta, host, run = landed
+    for path, body in _years_files("b" * 64, shard_build_id="c" * 64).items():
+        host.routes[path] = (200, body, "application/json")
+    r = run()
+    assert r.returncode == 1, r.stdout
+    assert f"FAIL: /json/years_matrix/decade.json — build_id {'c' * 64} != the core's {'b' * 64}" in r.stdout
+
+
+def test_a_years_shard_that_differs_from_the_manifest_fails(landed):
+    root, head, meta, host, run = landed
+    host.routes["/json/years_matrix/decade.json"] = (200, b'{"build_id": "x"}', "application/json")
+    r = run()
+    assert r.returncode == 1, r.stdout
+    assert "FAIL: /json/years_matrix/decade.json — sha256" in r.stdout
+
+
+def test_a_pre_split_years_matrix_fails(landed):
+    root, head, meta, host, run = landed
+    host.routes["/json/years_matrix.json"] = (200, b'{"schema_version": 1}', "application/json")
+    r = run()
+    assert r.returncode == 1, r.stdout
+    assert "FAIL: /json/years_matrix.json — no build_id or shard manifest (schema_version 1)" in r.stdout
+
+
+def test_a_missing_years_shard_fails(landed):
+    root, head, meta, host, run = landed
+    del host.routes["/json/years_matrix/decade.json"]
+    r = run()
+    assert r.returncode == 1, r.stdout
+    assert "FAIL: /json/years_matrix/decade.json — HTTP 404" in r.stdout

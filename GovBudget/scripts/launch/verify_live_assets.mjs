@@ -82,6 +82,13 @@
  *      full from the site host and must equal the local file's sha256: a
  *      cited receipt that 404s, or still serves an older answer, is the
  *      broken source link #191 was. Skipped with --skip-site.
+ *   8. THE /years/ FILES BELONG TOGETHER (ROADMAP #193). /json/years_matrix.json
+ *      is the core of a split matrix: it must parse and carry a build_id and
+ *      a shard manifest, and every shard it lists
+ *      (/json/years_matrix/decade.json, /json/years_matrix/detail.json) must
+ *      answer 200 with the manifest's sha256 and the core's build_id. A shard
+ *      left over from another deployment would leave a reader's column
+ *      showing an error. Skipped with --skip-site.
  *
  * USAGE
  *   node scripts/launch/verify_live_assets.mjs
@@ -627,6 +634,53 @@ async function checkUrl(label, url, { expectBody = true } = {}) {
   record(true, label, `HTTP 200, ${len} bytes`);
 }
 
+/** Assertion 8 probe: the /years/ core and every shard it lists, from one
+ *  build (ROADMAP #193). */
+async function checkYearsMatrix() {
+  const coreLabel = "/json/years_matrix.json";
+  const coreUrl = `${siteBase}/json/years_matrix.json`;
+  let core;
+  try {
+    const res = await fetchWithTimeout(coreUrl, { headers: { "Cache-Control": "no-cache" } });
+    if (res.status !== 200) {
+      record(false, coreLabel, `HTTP ${res.status} from ${coreUrl}`);
+      return;
+    }
+    core = JSON.parse(Buffer.from(await res.arrayBuffer()).toString("utf8"));
+  } catch (e) {
+    record(false, coreLabel, `request or parse failed: ${e.message} (${coreUrl})`);
+    return;
+  }
+  if (typeof core.build_id !== "string" || !Array.isArray(core.shards) || core.shards.length === 0) {
+    record(false, coreLabel, `no build_id or shard manifest (schema_version ${core.schema_version})`);
+    return;
+  }
+  record(true, coreLabel, `build_id ${core.build_id.slice(0, 12)}…, ${core.shards.length} shard(s) listed`);
+  for (const entry of core.shards) {
+    const label = `/json/${entry.path}`;
+    const url = `${siteBase}/json/${entry.path}`;
+    try {
+      const res = await fetchWithTimeout(url, { headers: { "Cache-Control": "no-cache" } });
+      if (res.status !== 200) {
+        record(false, label, `HTTP ${res.status} from ${url}`);
+        continue;
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      const sha = crypto.createHash("sha256").update(buf).digest("hex");
+      const shard = JSON.parse(buf.toString("utf8"));
+      if (sha !== entry.sha256) {
+        record(false, label, `sha256 ${sha.slice(0, 12)}… != the core manifest's ${String(entry.sha256).slice(0, 12)}…`);
+      } else if (shard.build_id !== core.build_id) {
+        record(false, label, `build_id ${shard.build_id} != the core's ${core.build_id}`);
+      } else {
+        record(true, label, `sha256 ${sha.slice(0, 12)}…, the core's build_id`);
+      }
+    } catch (e) {
+      record(false, label, `request or parse failed: ${e.message} (${url})`);
+    }
+  }
+}
+
 /** Assertion 5 probe: the live object's sha256 and size equal the local file's. */
 async function checkFixedName(t) {
   const url = `${assetBase}/${t.key.split("/").map(encodeURIComponent).join("/")}`;
@@ -809,7 +863,7 @@ async function main() {
     console.log("── site host (which build is live; the /fact/ rewrite) ──");
     await checkBuildMeta(head, local);
     await checkUrl(`/fact/${FACT_PROBE}`, `${siteBase}/fact/${FACT_PROBE}`);
-    await checkUrl("/json/years_matrix.json", `${siteBase}/json/years_matrix.json`);
+    await checkYearsMatrix();
     await checkSamReceipts();
   }
 

@@ -1059,12 +1059,17 @@ export function templatedDirIsShipped(dirPrefix, outRoot = outDir) {
  *  fetching /json/feed.json (FeedSectionExpand now fetches the
  *  directory-templated /json/feed-sections/${eventType}.json, floored
  *  separately by MIN_TEMPLATED_FETCH_DIRS so neither floor can backfill the
- *  other). Below this the scanner has stopped matching (a fetch wrapper, a
- *  moved file, a regex regression) and the leg would report "all targets
- *  resolve" while checking none — the state in which /json/feed.json 404'd
- *  in production. RE-MEASURE if the client stops fetching one of these; do
- *  not lower it to fit. */
-const MIN_STATIC_FETCH_TARGETS = 4;
+ *  other). RE-MEASURED for ROADMAP #193 at SIX: the /years/ island also
+ *  fetches its two lazy shards, /json/years_matrix/decade.json and
+ *  /json/years_matrix/detail.json, by literal URL (a floor, so this
+ *  tightens it). Below this the scanner has stopped matching (a fetch
+ *  wrapper, a moved file, a regex regression) and the leg would report "all
+ *  targets resolve" while checking none — the state in which
+ *  /json/feed.json 404'd in production. RE-MEASURE if the client stops
+ *  fetching one of these; do not lower it to fit. Exported for
+ *  scripts/gates/__tests__/fetch-targets.test.mjs, which pins it to the
+ *  population it floors. */
+export const MIN_STATIC_FETCH_TARGETS = 6;
 
 /** Non-vacuity floor for the directory-templated scan (measured 2026-09-05
  *  against site/src: TWO — /json-lite/program_details/ from
@@ -1142,7 +1147,8 @@ export function runJsonXmlHrefLeg(
     errors.push(
       `leg i: only ${fetchTargets.size} statically named fetch target(s) found ` +
         `under site/src (floor ${MIN_STATIC_FETCH_TARGETS}: measured 2026-09-04 ` +
-        `at 5, re-measured 2026-09-05 at 4, ROADMAP #88). The scanner has ` +
+        `at 5, re-measured 2026-09-05 at 4 (ROADMAP #88) and at 6 for the ` +
+        `/years/ shards (ROADMAP #193)). The scanner has ` +
         `stopped matching, so the check that ` +
         `would have caught /json/feed.json 404ing in production is running ` +
         `against nothing. Re-derive the scan; do not lower the floor`,

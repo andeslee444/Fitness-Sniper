@@ -56,6 +56,28 @@
  *      the default view renders the decade columns with visible PB-edition
  *      tags and the edition-rule legend ("PB(N+2)"), and decade cells are
  *      state-A Cites.
+ *      ERA CELLS (ROADMAP #193, follow-ups design §3.6): a PB2017–PB2023
+ *      procurement cell's lake rows carry an era key ('3020F-AF-L8'), not
+ *      the row's code, and belong to the row only through the reviewed era
+ *      map (data/site/data/p1_era_line_map.parquet, joined by the recompute
+ *      helper): each key must map, in the stated edition, to a same_program
+ *      decision whose program_key is the row's pe_bli, a split row's
+ *      (account, org) pins must be the row's own, and the rows must be one
+ *      per input fid (decadeSourceProblem). Non-vacuity: at least one era
+ *      leaf (a P-1 workbook fact) and one era-map sum (a decade_era_map
+ *      fact) verified in every PB2017–PB2023 edition.
+ *  (j) SIDECAR PARITY (ROADMAP #193; #206 T4): every row, every decade
+ *      column — a cell is present iff the row's program page sidecar has
+ *      the point, with the same value and fid (runSidecarParityLeg).
+ *  (k) LAZY OPENING (live): opening /years/ fetches the core and nothing
+ *      else; the lazy shards load only when a reader asks for a column or
+ *      a project row they hold (openingFetchProblem).
+ *  size: every /years/ file at most 4 MiB on disk, and the core at most
+ *      780,074 B at gzip -9 (checkYearsFileBudgets; neither may be raised).
+ *
+ *  The static legs read the MERGED view of the core and its two shards
+ *  through years-matrix-load.mjs, which also proves the three files belong
+ *  to one export (manifest bytes, sha256 and build_id).
  *  (e-UI overlay, STRENGTHENED 2026-07-02 — visual-judge M2 blocker: the
  *      large breakdown overlay shipped without a visible sum row) — an
  *      overlay-sized (>5-row) breakdown is opened live from the built page
@@ -96,6 +118,7 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
+import { loadYearsMatrix, YEARS_CORE } from "./years-matrix-load.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -194,13 +217,271 @@ function sampleDecadeCells(matrix, { perColumn = 3 } = {}) {
         const { program } = programs[i];
         const cell = program.cells[key];
         if (cell && cell.fid) {
-          out.push({ pe_bli: program.pe_bli, col, cell });
+          out.push({ pe_bli: program.pe_bli, slug: program.slug, col, cell });
           n++;
         }
       }
     }
   }
   return out;
+}
+
+/** The last edition whose procurement lines are era keys (families piece 1). */
+const LAST_ERA_EDITION = 2023;
+
+/** "leaf" for an era P-1 workbook fact, "sum" for a decade_era_map derived
+ *  fact, null otherwise. Before PB2024 a P-1 line has no native program
+ *  grain, so every P-1 workbook decade cell of an era column is an era leaf
+ *  (on the 2026-10-04 export: 14,082 leaves and 903 sums once the fence
+ *  lifts, every other PB2017–PB2023 cell an R-1 one). */
+export function eraCellKind(cit) {
+  if (!cit) return null;
+  if (cit.kind === "workbook" && cit.sheet === "Exhibit P-1") return "leaf";
+  if (cit.kind === "derived" && /\bera_line_map=/.test(cit.formula ?? "")) return "sum";
+  return null;
+}
+
+/**
+ * Era cells for legs f and g (non-vacuity, design §3.6): in every
+ * PB2017–PB2023 edition, up to `perKind` era leaves and `perKind` era-map
+ * sums, strided across rows over EVERY column of that edition, the decade
+ * shard's included.
+ */
+function sampleEraCells(matrix, citations, { perKind = 2 } = {}) {
+  const cols = (matrix.decade_columns ?? []).filter((c) => c.edition <= LAST_ERA_EDITION);
+  const programs = [...iterPrograms(matrix)];
+  const stride = Math.max(1, Math.floor(programs.length / 37));
+  const out = [];
+  for (const edition of [...new Set(cols.map((c) => c.edition))].sort((a, b) => a - b)) {
+    const taken = { leaf: 0, sum: 0 };
+    for (const col of cols.filter((c) => c.edition === edition)) {
+      for (let pass = 0; pass < stride; pass++) {
+        for (let i = pass; i < programs.length; i += stride) {
+          const { program } = programs[i];
+          const cell = program.cells[col.key];
+          if (!cell || !cell.fid) continue;
+          const kind = eraCellKind(citations[cell.fid]);
+          if (!kind || taken[kind] >= perKind) continue;
+          taken[kind]++;
+          out.push({ pe_bli: program.pe_bli, slug: program.slug, col, cell, era: kind });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Leg (g) for ONE decade cell: null when its source rows sit in the column's
+ * stated edition and belong to the cell's row, else what is wrong.
+ *
+ *   s        { pe_bli, slug?, col: { key, edition }, cell }
+ *   cit      the cell's citation (a workbook one: its sha256 must be among
+ *            the rows' documents)
+ *   rows     the recompute helper's entry for each input fid:
+ *            { n, fys, pes, shas, era: [{ era_key, program_key, decision,
+ *            program_account, program_org }] }
+ *   members  slug → { account, org } for split rows (programs.json)
+ *
+ * A native cell's rows carry the row's own pe_bli. An era cell's rows carry
+ * era keys, and belong to the row only through the reviewed era map: every
+ * key must map to a same_program decision whose program_key is the row's
+ * pe_bli and, on a split row, whose (account, org) pins are the row's own.
+ */
+export function decadeSourceProblem(s, cit, rows, members) {
+  const where = `${s.slug ?? s.pe_bli}/${s.col.key}`;
+  const n = rows.reduce((acc, r) => acc + r.n, 0);
+  if (n !== rows.length) {
+    return `decade cell ${where}: ${rows.length} input fid(s) resolve to ${n} lake row(s)`;
+  }
+  const fys = new Set(rows.flatMap((r) => r.fys));
+  if (fys.size !== 1 || !fys.has(s.col.edition)) {
+    return `decade cell ${where} sources span edition(s) [${[...fys].join(",")}] != stated PB${s.col.edition}`;
+  }
+  if (cit.kind === "workbook" && !rows.some((r) => (r.shas ?? []).includes(cit.sha256))) {
+    return `decade cell ${where} citation sha256 not among its lake rows`;
+  }
+  const pes = new Set(rows.flatMap((r) => r.pes));
+  if (pes.size === 1 && pes.has(s.pe_bli)) return null;
+  const era = rows.flatMap((r) => r.era ?? []);
+  if (era.length !== n) {
+    return `decade cell ${where} sources span pe_bli(s) [${[...pes].join(",")}], not all of them era keys`;
+  }
+  for (const e of era) {
+    if (e.program_key == null) {
+      return `decade cell ${where}: era key ${e.era_key} has no p1_era_line_map row in PB${s.col.edition}`;
+    }
+    if (e.decision !== "same_program") {
+      return `decade cell ${where}: era key ${e.era_key} is decided ${e.decision}, not same_program`;
+    }
+    if (e.program_key !== s.pe_bli) {
+      return `decade cell ${where}: era key ${e.era_key} maps to program_key ${e.program_key}, not ${s.pe_bli}`;
+    }
+    if (s.slug) {
+      const m = members.get(s.slug);
+      if (!m || e.program_account !== m.account || e.program_org !== m.org) {
+        return (
+          `decade cell ${where}: era key ${e.era_key} is pinned to ` +
+          `(${e.program_account}, ${e.program_org}), not the row's (${m?.account}, ${m?.org})`
+        );
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Leg (j) — SIDECAR PARITY (follow-ups design §3.6, ROADMAP #193; #206 T4).
+ * /years/ shows exactly what each program page shows: for every row and
+ * every decade column, a cell is present if and only if the row's sidecar
+ * (program_details/<slug ?? pe_bli>.json) has a decade point with the same
+ * (kind, edition, fy), and then with the same value and fid. On the
+ * 2026-10-04 export, before the fence lifted, it found 15,048 missing cells
+ * on 795 rows (5,030 of them in the default view: 4,995 era cells and the 35
+ * modern default cells of the seven organization-split rows), none extra and
+ * none different; it must find none in either direction. /methodology/'s
+ * #coverage-years-matrix and #coverage-editions gap sentences rest on it: a
+ * "—" means the book has no figure, never that the grid left one out.
+ */
+export function runSidecarParityLeg(matrix, jsonDirArg, errors, notes) {
+  const cols = matrix.decade_columns ?? [];
+  if (cols.length === 0) {
+    errors.push("leg j is VACUOUS: the payload carries no decade_columns");
+    return;
+  }
+  const byKindFy = new Map(cols.map((c) => [`${c.kind}|${c.fy}`, c]));
+  let rows = 0;
+  let compared = 0;
+  const found = { missing: [], extra: [], differ: [] };
+  const counts = { missing: 0, extra: 0, differ: 0 };
+  const note = (kind, text) => {
+    counts[kind]++;
+    if (found[kind].length < 5) found[kind].push(text);
+  };
+  const noSidecar = [];
+  for (const { program } of iterPrograms(matrix)) {
+    const key = program.slug ?? program.pe_bli;
+    const sidecar = path.join(jsonDirArg, "program_details", `${key}.json`);
+    if (!fs.existsSync(sidecar)) {
+      noSidecar.push(key);
+      continue;
+    }
+    rows++;
+    const points = new Map();
+    for (const [kind, series] of Object.entries(readJson(sidecar).decade_series ?? {})) {
+      for (const pt of series) {
+        const col = byKindFy.get(`${kind}|${pt.fy}`);
+        if (!col || col.edition !== pt.edition) {
+          note("missing", `${key}: FY${pt.fy} ${kind} (PB${pt.edition}, fid ${pt.fid}) has no /years/ column`);
+          continue;
+        }
+        points.set(col.key, pt);
+      }
+    }
+    for (const col of cols) {
+      const cell = program.cells[col.key];
+      const pt = points.get(col.key);
+      if (!cell && !pt) continue;
+      compared++;
+      if (!cell) note("missing", `${key}/${col.key} (PB${col.edition}, fid ${pt.fid})`);
+      else if (!pt) note("extra", `${key}/${col.key} (fid ${cell.fid})`);
+      else if (cell.v !== pt.v || cell.fid !== pt.fid) {
+        note("differ", `${key}/${col.key}: grid ${cell.v} ${cell.fid}, page ${pt.v} ${pt.fid}`);
+      }
+    }
+  }
+  if (noSidecar.length > 0) {
+    errors.push(
+      `leg j: ${noSidecar.length} /years/ row(s) have no program_details sidecar ` +
+        `(first: ${noSidecar.slice(0, 5).join(", ")})`,
+    );
+  }
+  if (rows === 0 || compared === 0) {
+    errors.push(`leg j is VACUOUS: ${rows} row(s), ${compared} cell(s) compared`);
+    return;
+  }
+  for (const [kind, what] of [
+    ["missing", "cell(s) the program page has and /years/ does not"],
+    ["extra", "cell(s) /years/ shows that the program page does not"],
+    ["differ", "cell(s) whose value or fid differs from the program page"],
+  ]) {
+    if (counts[kind] > 0) {
+      errors.push(`leg j: ${counts[kind]} ${what}: ${found[kind].join(" | ")}`);
+    }
+  }
+  if (counts.missing + counts.extra + counts.differ === 0) {
+    notes.push(
+      `leg j: ${compared} decade cell(s) on ${rows} row(s) equal their program ` +
+        `page's points, 0 missing, 0 extra ✓`,
+    );
+  }
+}
+
+/** The /years/ size budgets (follow-ups design §3.6, Q11). Never raise them. */
+export const YEARS_FILE_MAX_BYTES = 4 * 1024 * 1024;
+export const YEARS_CORE_GZIP_MAX = 780_074;
+
+/** Every /years/ file at most 4 MiB on disk, the core at most 780,074 B at
+ *  gzip -9 (what the deployed single file cost a reader on open). */
+export function checkYearsFileBudgets(files, errors, notes) {
+  for (const f of files) {
+    if (f.bytes > YEARS_FILE_MAX_BYTES) {
+      errors.push(`size: ${f.rel} is ${f.bytes} bytes, over the 4 MiB cap per /years/ file`);
+    }
+  }
+  const core = files.find((f) => f.rel === YEARS_CORE);
+  if (!core) {
+    errors.push(`size: ${YEARS_CORE} was not measured`);
+  } else if (core.gzip > YEARS_CORE_GZIP_MAX) {
+    errors.push(
+      `size: ${YEARS_CORE} gzips to ${core.gzip} bytes, over the ` +
+        `${YEARS_CORE_GZIP_MAX}-byte budget for what /years/ downloads on open`,
+    );
+  }
+  notes.push(
+    `size: ${files.map((f) => `${f.rel} ${f.bytes} B (${f.gzip} gzip)`).join("; ")}`,
+  );
+}
+
+/** Leg (k): null when opening /years/ fetched only the core, else why not.
+ *  `requests` are the /json/years_matrix* paths requested while the page
+ *  loaded; `shards` is the table's data-shards marker once it was idle. */
+export function openingFetchProblem(requests, shards) {
+  if (requests.length === 1 && requests[0] === `/json/${YEARS_CORE}` && shards === "core") {
+    return null;
+  }
+  return (
+    `opening /years/ fetched [${requests.join(", ")}] (data-shards="${shards}"); ` +
+    `it must fetch only /json/${YEARS_CORE} until a reader asks for a lazy column or project row`
+  );
+}
+
+/**
+ * Open /years/ at `baseUrl` and report what it fetched before anyone touched
+ * it — leg (k)'s probe, exported so the release can run it against
+ * production (`node -e "import('./scripts/gates/yearsmatrix.mjs').then(async
+ * (m) => console.log(await m.probeYearsOpeningFetches('https://fiscalreceipts.com')))"`).
+ */
+export async function probeYearsOpeningFetches(baseUrl) {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    const requests = [];
+    page.on("request", (req) => {
+      const u = new URL(req.url());
+      if (u.pathname.startsWith("/json/years_matrix")) requests.push(u.pathname);
+    });
+    await page.goto(`${baseUrl}/years/`, { waitUntil: "networkidle", timeout: 60000 });
+    await page.waitForSelector('[data-testid="years-matrix"][aria-busy="false"]', {
+      timeout: 30000,
+    });
+    const shards = await page
+      .locator('[data-testid="years-matrix"]')
+      .getAttribute("data-shards");
+    return { requests, shards, problem: openingFetchProblem(requests, shards) };
+  } finally {
+    await browser.close();
+  }
 }
 
 /** Spawn the python recompute helper over the parquet lake. */
@@ -507,30 +788,22 @@ export async function runYearsMatrixGate({ baseUrl }) {
   const errors = [];
   const notes = [];
 
-  // ── Load static inputs ────────────────────────────────────────────────────
-  const matrixPath = path.join(jsonDir, "years_matrix.json");
-  if (!fs.existsSync(matrixPath)) {
-    return {
-      pass: false,
-      errors: [`years_matrix.json missing at ${matrixPath} — run export-site`],
-      notes,
-    };
+  // ── Load static inputs: the core and its two shards, merged (#193) ──────
+  let loaded;
+  try {
+    loaded = loadYearsMatrix(jsonDir);
+  } catch (e) {
+    return { pass: false, errors: [`years matrix: ${e.message}`], notes };
   }
-  const matrix = readJson(matrixPath);
+  const { matrix, files } = loaded;
   const citations = readJson(path.join(jsonDir, "citations.json"));
 
-  const size = fs.statSync(matrixPath).size;
-  // Payload budget: ~1.6–2KB/program. Raised 900KB → 2MB in Phase 5G when the
-  // Navy FY2026 J-book ingestion grew the detail-grade matrix from ~462 to 813
-  // programs (~1.53MB). Raised 2MB → 4MB in the Phase 5G Army/AF/SF archive
-  // round: the matrix grew 813 → 1,741 programs (~2.74MB) at the SAME
-  // per-program density — legitimate corpus growth, not design regression.
-  // Still catches runaway bloat (a doubling from here, 1,741 → ~2,540+).
-  if (size >= 4096 * 1024) {
-    errors.push(`years_matrix.json is ${size} bytes — over the 4MB budget`);
-  }
+  // Size (Q11): every file ≤ 4 MiB on disk, the core ≤ 780,074 B at gzip -9.
+  // The per-file cap is the Phase 5G 4 MB budget, now per file; the core
+  // budget is what the single pre-split file cost a reader on open.
+  checkYearsFileBudgets(files, errors, notes);
   const nPrograms = [...iterPrograms(matrix)].length;
-  notes.push(`matrix: ${nPrograms} programs / ${matrix.orgs.length} orgs / ${size} bytes`);
+  notes.push(`matrix: ${nPrograms} programs / ${matrix.orgs.length} orgs`);
 
   const { programCells, deltaCells, projectCells } = sampleCells(matrix);
   const nSampled = programCells.length + deltaCells.length + projectCells.length;
@@ -703,8 +976,18 @@ export async function runYearsMatrixGate({ baseUrl }) {
         "leg f: payload carries no decade_columns/decade_default_columns (Phase 5E contract)"
       );
     } else {
-      const samples = sampleDecadeCells(matrix);
+      const samples = [
+        ...sampleDecadeCells(matrix),
+        ...sampleEraCells(matrix, citations),
+      ];
       const colsCovered = new Set(samples.map((s) => s.col.key));
+      // split rows' own (account, org), for leg g's era pins
+      const members = new Map(
+        readJson(path.join(jsonDir, "programs.json")).map((p) => [
+          p.slug,
+          { account: p.account, org: p.org },
+        ]),
+      );
       if (colsCovered.size < 3) {
         errors.push(`leg f: only ${colsCovered.size} decade columns sampled (<3)`);
       }
@@ -756,6 +1039,7 @@ export async function runYearsMatrixGate({ baseUrl }) {
         }
       }
 
+      const eraVerified = new Set();
       let dec = null;
       if (wanted.size > 0) {
         try {
@@ -784,40 +1068,48 @@ export async function runYearsMatrixGate({ baseUrl }) {
           }
           okF++;
           // Leg (g): sources must all sit in the column's STATED edition,
-          // belong to the cell's pe_bli, and a workbook citation's sha256
-          // must be among its lake rows' documents (spec §2 rule 1).
-          const fys = new Set(rows.flatMap((r) => r.fys));
-          const pes = new Set(rows.flatMap((r) => r.pes));
-          if (fys.size !== 1 || !fys.has(s.col.edition)) {
-            errors.push(
-              `leg g: decade cell ${s.pe_bli}/${s.col.key} sources span edition(s) [${[...fys].join(",")}] != stated PB${s.col.edition}`
-            );
-            continue;
-          }
-          if (pes.size !== 1 || !pes.has(s.pe_bli)) {
-            errors.push(
-              `leg g: decade cell ${s.pe_bli}/${s.col.key} sources span pe_bli(s) [${[...pes].join(",")}]`
-            );
-            continue;
-          }
-          if (
-            cit.kind === "workbook" &&
-            !rows.some((r) => (r.shas ?? []).includes(cit.sha256))
-          ) {
-            errors.push(
-              `leg g: decade cell ${s.pe_bli}/${s.col.key} citation sha256 not among its lake rows`
-            );
+          // belong to the cell's row — directly, or for an era cell through
+          // the reviewed era map — and a workbook citation's sha256 must be
+          // among its lake rows' documents (spec §2 rule 1; #193).
+          const problem = decadeSourceProblem(s, cit, rows, members);
+          if (problem) {
+            errors.push(`leg g: ${problem}`);
             continue;
           }
           okG++;
+          if (s.era) eraVerified.add(`${s.col.edition}|${s.era}`);
         }
         notes.push(
           `leg f: ${okF}/${checks.length} decade cells recomputed from budget_lines_decade.parquet across ${colsCovered.size} columns ✓`
         );
         notes.push(`leg g: ${okG}/${checks.length} decade cells edition-integrity verified ✓`);
+        // Non-vacuity (#193): an era leaf and an era-map sum verified in
+        // every PB2017–PB2023 edition the grid carries.
+        const eraEditions = [
+          ...new Set(
+            (matrix.decade_columns ?? [])
+              .map((c) => c.edition)
+              .filter((e) => e <= LAST_ERA_EDITION),
+          ),
+        ].sort((a, b) => a - b);
+        const unproven = eraEditions.flatMap((e) =>
+          ["leaf", "sum"].filter((k) => !eraVerified.has(`${e}|${k}`)).map((k) => `PB${e} ${k}`),
+        );
+        if (eraEditions.length === 0 || unproven.length > 0) {
+          errors.push(
+            `leg g is VACUOUS for era procurement: no verified ${unproven.join(", ") || "era edition at all"}`
+          );
+        } else {
+          notes.push(
+            `leg g: an era leaf and an era-map sum verified through p1_era_line_map in each of PB${eraEditions[0]}–PB${eraEditions.at(-1)} ✓`
+          );
+        }
       }
     }
   }
+
+  // ── Leg (j): sidecar parity (#193) ────────────────────────────────────────
+  runSidecarParityLeg(matrix, jsonDir, errors, notes);
 
   // ── Leg (d): shard integrity ──────────────────────────────────────────────
   {
@@ -956,6 +1248,12 @@ export async function runYearsMatrixGate({ baseUrl }) {
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(msg.text());
     });
+    // Leg (k): every /json/years_matrix* request, from the first navigation.
+    const yearsRequests = [];
+    page.on("request", (req) => {
+      const u = new URL(req.url());
+      if (u.pathname.startsWith("/json/years_matrix")) yearsRequests.push(u.pathname);
+    });
 
     let pageUp = false;
     try {
@@ -980,6 +1278,19 @@ export async function runYearsMatrixGate({ baseUrl }) {
     }
 
     if (pageUp) {
+      // ---- leg k: the opening view fetched the core and nothing else ----
+      {
+        await page
+          .waitForSelector('[data-testid="years-matrix"][aria-busy="false"]', { timeout: 15000 })
+          .catch(() => null);
+        const shards = await page
+          .locator('[data-testid="years-matrix"]')
+          .getAttribute("data-shards");
+        const problem = openingFetchProblem([...yearsRequests], shards);
+        if (problem) errors.push(`leg k: ${problem}`);
+        else notes.push('leg k: /years/ opened on the core alone (data-shards="core") ✓');
+      }
+
       // ---- honesty-marker legend near the table controls (strengthened) ----
       if ((await page.locator('[data-testid="cite-legend"]').count()) === 0) {
         errors.push('leg e-UI: [data-testid="cite-legend"] missing on /years/ near the table controls');
@@ -1154,8 +1465,13 @@ export async function runYearsMatrixGate({ baseUrl }) {
               );
             } else {
               await showChip.first().click({ timeout: 10000 });
+              // The column joins once its shard has merged (#193).
               const th = page.locator(`th[data-col="${col.key}"]`).first();
-              await th.waitFor({ state: "attached", timeout: 10000 });
+              await th.waitFor({ state: "attached", timeout: 15000 });
+              await page.waitForSelector(
+                '[data-testid="years-matrix"][aria-busy="false"]',
+                { timeout: 15000 },
+              );
               const t = (await th.textContent()) ?? "";
               if (!t.includes("\u2020")) {
                 errors.push(
@@ -1382,7 +1698,11 @@ export async function runYearsMatrixGate({ baseUrl }) {
           errors.push("leg c: no [data-expand] caret found");
         } else {
           await caret.click();
-          await page.waitForTimeout(400);
+          // Project rows ship in detail.json (#193): wait for it to merge.
+          await page
+            .locator('[data-testid="years-matrix"][data-shards~="detail"][aria-busy="false"]')
+            .waitFor({ timeout: 15000 })
+            .catch(() => null);
           const after = await page.locator("tr[data-project-row]:visible").count();
           if (after <= before) {
             errors.push(`leg c: expand did not reveal project rows (${before} → ${after})`);
@@ -1586,7 +1906,12 @@ export async function runYearsMatrixGate({ baseUrl }) {
               );
             } else {
               await chip.click();
-              await page.waitForTimeout(300);
+              // The Δ column joins once detail.json has merged (#193).
+              await page
+                .locator('th[data-col="fy2526_change"]')
+                .first()
+                .waitFor({ state: "attached", timeout: 15000 })
+                .catch(() => null);
             }
           }
           const cite = page.locator(`[data-fact-id="${delta.cell.fid}"]`).first();
