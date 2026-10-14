@@ -19101,7 +19101,7 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
                 left join entity_xwalk x on t.recipient_uei = x.recipient_uei
                 where t.pop_district is not null and t.obligation > 0
                 group by 1,2,3,4,5
-                order by dollars desc
+                order by dollars desc, piid, recipient_uei, pop_state, pop_district, family_key
                 limit 12
                 """,
                 [pe_bli],
