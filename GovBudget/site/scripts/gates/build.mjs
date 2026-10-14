@@ -690,7 +690,8 @@ export const PAGE_WEIGHT_BUDGET = [
   // CEILINGS UNCHANGED; 834 raw / 130 gzip left (the old stamp claimed 253).
   // Production served 161,166 / 45,270 the same day. Piece 1 replaces one
   // sentence here at equal length and adds a link (spec §6.4); its era table
-  // renders wherever it fits without a ceiling raise, decided in Task 19.
+  // renders wherever it fits without a ceiling raise; decided 2026-10-02 at
+  // plan review: /downloads/.
   // FAMILIES PIECE 1 (2026-10-03, Task 19 Part A): the "PB2024 boundary"
   // sentence became the era-procurement gap sentence at its exact rendered
   // length (312 bytes); only its p1_era_line_map link is new. RE-MEASURED
@@ -846,7 +847,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // 462). Production served 86,203 / 20,458 the same day (3 gzip bytes of
   // normal per-build drift from Next's build ID). Piece 1's per-edition era
   // table (spec §6.4) renders on whichever page fits it without a ceiling
-  // raise; Task 19 measures the candidate pages and decides.
+  // raise; decided 2026-10-02 at plan review: /downloads/.
   { label: "/coverage/", file: "coverage/index.html", maxRaw: 103_000, maxGzip: 20_750, measured: "86,203 / 20,455" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
