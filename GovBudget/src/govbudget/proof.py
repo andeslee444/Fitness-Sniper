@@ -478,6 +478,20 @@ def _numeric_text(s) -> float | None:
     return value if math.isfinite(value) else None
 
 
+def _finite_or_text(text: str):
+    """json.loads parse_float hook (ROADMAP #199): a JSON number that
+    overflows a double ("1e400") keeps its literal text, so two different
+    overflowing numbers never compare equal as inf == inf."""
+    value = float(text)
+    return value if math.isfinite(value) else text
+
+
+def _loads_text(s: str):
+    """json.loads for a JSON-in-string leaf (ruling 2), keeping non-finite
+    numbers as text."""
+    return json.loads(s, parse_float=_finite_or_text)
+
+
 def _multiset_canon(value):
     """value with every float stripped and every list's elements sorted
     into canonical order, at any depth: two values share this form iff they
@@ -508,7 +522,7 @@ def _leaf_equiv(a, b, pointer: str, group: str | None, mode: "_Mode | None") -> 
     if na is not None and nb is not None:
         return 1 if _float_close(na, nb) else None
     try:
-        pa, pb = json.loads(a), json.loads(b)
+        pa, pb = _loads_text(a), _loads_text(b)
     except ValueError:
         return None
     if not isinstance(pa, (list, dict)) or not isinstance(pb, (list, dict)):
@@ -817,7 +831,7 @@ def _group_cell(value):
         if _numeric_text(value) is not None:
             return "\x00num"
         try:
-            parsed = json.loads(value)
+            parsed = _loads_text(value)
         except ValueError:
             return value
         if isinstance(parsed, (list, dict)):
@@ -850,7 +864,7 @@ def _text_order(value) -> tuple:
     if number is not None:
         return (1, _float_order(number), value)
     try:
-        parsed = json.loads(value)
+        parsed = _loads_text(value)
     except (TypeError, ValueError):
         parsed = None
     if isinstance(parsed, (list, dict)):
@@ -1212,16 +1226,24 @@ def load_expectations(path: Path) -> list[dict]:
     return rules
 
 
-NOISE_FILE_SCHEMA = 1
+#: Schema 2 (ROADMAP #199, follow-ups spec §6.1): the generalisation marker
+#: is hashed with the classes, and the file records both trees' digests.
+#: load_noise_classes refuses any other schema, so schema-1 files from
+#: piece 1's proofs are never reused.
+NOISE_FILE_SCHEMA = 2
 #: Recorded in every noise file (Fix round 5) and required by
 #: load_noise_classes: says how its class pointers are keyed.
 NOISE_POINTER_GENERALISATION = "16-hex fact-ID pointer segments are {fid}"
 
 
-def _classes_sha256(classes: list) -> str:
-    """sha256 of the classes' canonical JSON (sorted keys, no whitespace,
-    UTF-8): the noise file's timestamp-free content hash (Fix round 4)."""
-    return hashlib.sha256(_canon(classes).encode("utf-8")).hexdigest()
+def _classes_sha256(classes: list, pointer_generalisation: str | None) -> str:
+    """sha256 of the canonical JSON (sorted keys, no whitespace, UTF-8) of
+    {"classes": …, "pointer_generalisation": …}: the noise file's
+    timestamp-free content hash (Fix round 4). Schema 2 hashes the marker
+    with the classes, so editing either one breaks the hash."""
+    return hashlib.sha256(_canon({
+        "classes": classes, "pointer_generalisation": pointer_generalisation,
+    }).encode("utf-8")).hexdigest()
 
 
 def noise_file(report: dict) -> dict:
@@ -1240,22 +1262,35 @@ def noise_file(report: dict) -> dict:
         raise ValueError("proof diff --write-noise: the control is DIFFERENT — it vouches for"
                          " no reorder class; noise file not written")
     classes = report["reorder_classes"]
+    a, b = Path(report["a"]).resolve(), Path(report["b"]).resolve()
     return {
         "schema_version": NOISE_FILE_SCHEMA,
         "verdict": "EQUAL",
-        "a": str(Path(report["a"]).resolve()),
-        "b": str(Path(report["b"]).resolve()),
+        "a": str(a),
+        "b": str(b),
+        # what the control compared, not only where (ROADMAP #199)
+        "a_tree_sha256": _tree_digest(a)["sha256"],
+        "b_tree_sha256": _tree_digest(b)["sha256"],
         "pointer_generalisation": NOISE_POINTER_GENERALISATION,
-        "classes_sha256": _classes_sha256(classes),
+        "classes_sha256": _classes_sha256(classes, NOISE_POINTER_GENERALISATION),
         "classes": classes,
     }
 
 
 def write_noise_file(path: Path, report: dict) -> None:
-    """Write noise_file(report) to path; raises (and writes nothing) when
-    noise_file refuses."""
-    doc = noise_file(report)
-    Path(path).write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    """Write noise_file(report) to path. When noise_file refuses (a DIFFERENT
+    control, or no control at all) nothing is written, and an older file at
+    path is DELETED before the refusal propagates (ROADMAP #199): a stale
+    noise file must not survive for a later --noise-from."""
+    path = Path(path)
+    try:
+        doc = noise_file(report)
+    except ValueError as e:
+        if path.exists():
+            path.unlink()
+            raise ValueError(f"{e}; the older {path} was removed") from e
+        raise
+    path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def load_noise_classes(path: Path) -> list[dict]:
@@ -1267,8 +1302,9 @@ def load_noise_classes(path: Path) -> list[dict]:
     trees, or whose classes no longer match their recorded classes_sha256,
     or that predates Fix round 5's fact-ID generalisation (no
     `pointer_generalisation` marker, or a class pointer that still holds a
-    raw 16-hex segment). `count` is provenance only — matching is by
-    (path, pointer pattern) alone."""
+    raw 16-hex segment), or whose schema_version is not NOISE_FILE_SCHEMA
+    (ROADMAP #199). `count` is provenance only — matching is by (path,
+    pointer pattern) alone."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("verdict") != "EQUAL":
         raise ValueError(
@@ -1287,7 +1323,15 @@ def load_noise_classes(path: Path) -> list[dict]:
             raise ValueError(
                 f"proof diff --noise-from: class {i} needs a string 'path' and 'pointer'"
             )
-    if data.get("classes_sha256") != _classes_sha256(classes):
+    # The schema first: a schema-1 file hashes the classes alone, so the hash
+    # check below would misreport it as edited after its control run.
+    if data.get("schema_version") != NOISE_FILE_SCHEMA:
+        raise ValueError(
+            f"proof diff --noise-from: {path} is noise-file schema"
+            f" {data.get('schema_version')!r}, not {NOISE_FILE_SCHEMA} — written before"
+            f" the ROADMAP #199 hardening; re-run the --control"
+        )
+    if data.get("classes_sha256") != _classes_sha256(classes, data.get("pointer_generalisation")):
         raise ValueError(f"proof diff --noise-from: {path}'s classes do not match its"
                          f" classes_sha256 — edited after the control run?")
     if data.get("pointer_generalisation") != NOISE_POINTER_GENERALISATION:

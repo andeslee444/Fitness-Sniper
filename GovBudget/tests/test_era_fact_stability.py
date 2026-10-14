@@ -176,7 +176,8 @@ def test_cli_reads_a_noise_file(tmp_path):
     noise = tmp_path / "noise.json"
     noise.write_text(json.dumps({"schema_version": NOISE_FILE_SCHEMA, "verdict": "EQUAL", "a": "B", "b": "B2",
                                  "pointer_generalisation": NOISE_POINTER_GENERALISATION,
-                                 "classes_sha256": _classes_sha256(classes), "classes": classes}))
+                                 "classes_sha256": _classes_sha256(classes, NOISE_POINTER_GENERALISATION),
+                                 "classes": classes}))
     args = ["--a", str(a), "--b", str(b), "--expected-f15", "1"]
     assert main(args) == 1
     assert main(args + ["--noise-from", str(noise)]) == 0

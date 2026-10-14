@@ -3641,11 +3641,14 @@ def main(argv=None) -> None:
                                   " --write-noise FILE records them. Fix round 3, ruling 4")
     prf_reorder.add_argument("--noise-from", type=Path, default=None, dest="noise_from",
                              help="trust only the (path, pointer) reorder classes a prior"
-                                  " --control run wrote to this file")
+                                  " --control run wrote to this file; a class pointer's"
+                                  " 16-hex fact-ID segments read as {fid}, so one class"
+                                  " covers that field under every fact")
     prf_diff.add_argument("--write-noise", type=Path, default=None, dest="write_noise",
                           help="with --control: when the control is EQUAL, write its verdict,"
-                               " source trees and reorder classes (JSON, sorted, with counts"
-                               " and a content hash) here; a DIFFERENT control writes nothing")
+                               " source trees and their digests, and reorder classes (JSON,"
+                               " sorted, with counts and a content hash) here; a DIFFERENT"
+                               " control writes nothing and removes an older file there")
     prf_diff.set_defaults(func=cmd_proof)
 
     args = p.parse_args(argv)

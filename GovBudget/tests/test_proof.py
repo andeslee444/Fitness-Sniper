@@ -864,7 +864,7 @@ def test_load_noise_classes_validates_shape(tmp_path):
     path = tmp_path / "noise.json"
     classes = [{"path": "x"}]
     path.write_text(json.dumps({"verdict": "EQUAL", "a": "A", "b": "B", "classes": classes,
-                                "classes_sha256": proof._classes_sha256(classes)}))
+                                "classes_sha256": proof._classes_sha256(classes, None)}))
     with pytest.raises(ValueError, match="needs a string"):
         proof.load_noise_classes(path)
     path.write_text(json.dumps({"verdict": "EQUAL", "a": "A", "b": "B",
@@ -1205,14 +1205,19 @@ def test_noise_file_records_verdict_trees_and_a_content_hash(tmp_path, capsys):
     doc = json.loads(outs[0])
     classes = [{"count": 1, "path": "p.json", "pointer": "/other"},
                {"count": 1, "path": "p.json", "pointer": "/rows"}]
+    marker = "16-hex fact-ID pointer segments are {fid}"
     assert doc == {
-        "schema_version": 1,
+        "schema_version": 2,
         "verdict": "EQUAL",
         "a": str(a.resolve()),
         "b": str(b.resolve()),
-        "pointer_generalisation": "16-hex fact-ID pointer segments are {fid}",
+        "a_tree_sha256": proof._tree_digest(a)["sha256"],
+        "b_tree_sha256": proof._tree_digest(b)["sha256"],
+        "pointer_generalisation": marker,
+        # schema 2 (#199): the generalisation marker is hashed WITH the classes
         "classes_sha256": hashlib.sha256(
-            json.dumps(classes, sort_keys=True, ensure_ascii=False,
+            json.dumps({"classes": classes, "pointer_generalisation": marker},
+                       sort_keys=True, ensure_ascii=False,
                        separators=(",", ":")).encode("utf-8")).hexdigest(),
         "classes": classes,
     }
@@ -1230,7 +1235,7 @@ _ROWS_CLASS = [{"path": "p.json", "pointer": "/rows", "count": 1}]
     ({"verdict": "DIFFERENT", "a": "A", "b": "B", "classes": _ROWS_CLASS,
       "classes_sha256": "ok"}, "verdict"),
     ({"verdict": "EQUAL", "classes": _ROWS_CLASS, "classes_sha256": "ok"}, "source tree"),
-    ({"verdict": "EQUAL", "a": "A", "b": "B", "classes": _ROWS_CLASS,
+    ({"schema_version": 2, "verdict": "EQUAL", "a": "A", "b": "B", "classes": _ROWS_CLASS,
       "classes_sha256": "0" * 64}, "classes_sha256"),          # edited after the control
 ])
 def test_noise_from_refuses_a_file_without_an_equal_verdict(tmp_path, capsys, doc, message):
@@ -1402,7 +1407,7 @@ def test_noise_from_refuses_classes_that_are_not_fid_generalised(tmp_path, capsy
     capsys.readouterr()
     doc = json.loads(noise.read_text())
     edit(doc)
-    doc["classes_sha256"] = proof._classes_sha256(doc["classes"])
+    doc["classes_sha256"] = proof._classes_sha256(doc["classes"], doc.get("pointer_generalisation"))
     noise.write_text(json.dumps(doc))
     with pytest.raises(ValueError, match=message):
         proof.load_noise_classes(noise)
@@ -1634,3 +1639,89 @@ def test_cli_tool_errors_exit_2_with_one_line(tmp_path, capsys):
     err = capsys.readouterr().err
     assert err.startswith(f"proof diff: ERROR — {tmp_path / 'nope'} is not a directory")
     assert "Traceback" not in err
+
+
+
+# ---------------------------------------------------------------------------
+# Families piece-1 follow-ups, ROADMAP #199 (spec 2026-10-04 §6.1): numeric
+# corners and the schema-2 noise file
+# ---------------------------------------------------------------------------
+
+
+def test_overflowing_numbers_inside_a_json_string_are_not_equal(tmp_path):
+    # json.loads reads both "1e400" and "1e500" as inf, so the two strings
+    # used to compare identical. The parse now keeps a non-finite number as
+    # its text.
+    _json(tmp_path / "a" / "p.json", {"inputs": "[1e400, 2]"})
+    _json(tmp_path / "b" / "p.json", {"inputs": "[1e500, 2]"})
+    report = proof.diff_trees(tmp_path / "a", tmp_path / "b")
+    assert report["files"]["p.json"]["status"] == "changed"
+    assert _changes(report, "p.json") == [("/inputs", "changed", 1)]
+    assert proof.is_equal(proof.diff_trees(tmp_path / "a", tmp_path / "a"))
+
+
+def test_a_different_control_removes_an_older_noise_file(tmp_path, capsys):
+    a, b = tmp_path / "a", tmp_path / "b"
+    _json(a / "p.json", {"rows": [1, 2, 3]})
+    _json(b / "p.json", {"rows": [3, 2, 1]})
+    noise = tmp_path / "noise.json"
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--control", "--write-noise", str(noise)])
+    assert exc.value.code == 0 and noise.is_file()
+    _json(b / "p.json", {"rows": [3, 2, 1], "v": 2})          # the next control is DIFFERENT
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(a), str(b), "--control", "--write-noise", str(noise)])
+    assert exc.value.code == 1
+    assert not noise.exists()
+    assert f"the older {noise} was removed" in capsys.readouterr().err
+
+
+def test_the_generalisation_marker_is_inside_the_content_hash(tmp_path, capsys):
+    noise = _control_noise_file(tmp_path, {FID_1: _derived(["a", "b"])},
+                                {FID_1: _derived(["b", "a"])})
+    capsys.readouterr()
+    doc = json.loads(noise.read_text())
+    assert doc["schema_version"] == 2
+    doc["pointer_generalisation"] += " (edited)"
+    noise.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="classes_sha256"):
+        proof.load_noise_classes(noise)
+
+
+def test_a_schema_1_noise_file_is_refused(tmp_path, capsys):
+    noise = _control_noise_file(tmp_path, {FID_1: _derived(["a", "b"])},
+                                {FID_1: _derived(["b", "a"])})
+    capsys.readouterr()
+    doc = json.loads(noise.read_text())
+    doc["schema_version"] = 1
+    noise.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="noise-file schema 1, not 2"):
+        proof.load_noise_classes(noise)
+
+
+def test_a_genuine_piece_1_noise_file_is_refused_for_its_schema(tmp_path, capsys):
+    # A piece-1 (schema 1) file has no tree digests and hashes the classes
+    # alone. The schema check runs before the hash check, so it is refused
+    # for its schema, not reported as edited after its control run.
+    noise = _control_noise_file(tmp_path, {FID_1: _derived(["a", "b"])},
+                                {FID_1: _derived(["b", "a"])})
+    capsys.readouterr()
+    doc = json.loads(noise.read_text())
+    doc["schema_version"] = 1
+    doc.pop("a_tree_sha256", None)
+    doc.pop("b_tree_sha256", None)
+    doc["classes_sha256"] = hashlib.sha256(
+        json.dumps(doc["classes"], sort_keys=True, ensure_ascii=False,
+                   separators=(",", ":")).encode("utf-8")).hexdigest()
+    noise.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="noise-file schema 1, not 2"):
+        proof.load_noise_classes(noise)
+
+
+def test_noise_from_help_names_the_fid_rule(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", "--help"])
+    assert exc.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "16-hex fact-ID segments read as {fid}" in help_text
