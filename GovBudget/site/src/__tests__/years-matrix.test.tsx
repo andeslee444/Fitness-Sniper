@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act, cleanup } from "@testing-library/react";
 import React from "react";
 
 import {
@@ -1123,7 +1123,9 @@ describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
     fireEvent.click(screen.getByRole("button", { name: /show fy2020e column/i }));
     // asked for, not merged: the chip says so, the table is busy, and the
     // column is not drawn as a column of "—" (which means "not in the book")
-    const chip = screen.getByRole("button", { name: /hide fy2020e column/i });
+    // the chip's accessible name carries the state too: aria-label replaces
+    // the visible " …", so a screen reader would otherwise hear nothing
+    const chip = screen.getByRole("button", { name: /^hide fy2020e column, loading$/i });
     expect(chip.getAttribute("data-shard-state")).toBe("loading");
     expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("true");
     expect(document.querySelector('th[data-col="fy2020e"]')).toBeNull();
@@ -1132,6 +1134,8 @@ describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
       expect(document.querySelector('th[data-col="fy2020e"]')).not.toBeNull();
     });
     expect(chip.hasAttribute("data-shard-state")).toBe(false);
+    expect(chip.getAttribute("aria-label")).not.toMatch(/loading/i);
+    expect(screen.getByRole("button", { name: /^hide fy2020e column$/i })).toBe(chip);
     expect(screen.getByTestId("years-matrix").getAttribute("data-shards")).toBe("core decade");
     expect(
       document
@@ -1168,6 +1172,7 @@ describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
       expect(chip.getAttribute("data-shard-state")).toBe("error");
     });
     expect(chip.textContent).toContain("(unavailable)");
+    expect(chip.getAttribute("aria-label")).toMatch(/^hide fy2020e column, could not be loaded$/i);
     expect(document.querySelector('th[data-col="fy2020e"]')).toBeNull();
     expect(fetched()).toEqual([CORE_URL, DECADE_URL, CORE_URL]);
     expect(fetchMock.mock.calls[2][1]).toEqual({ cache: "no-cache" });
@@ -1176,8 +1181,9 @@ describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
     expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("false");
   });
 
-  it("a redeploy between the two fetches moves the grid to the new build", async () => {
-    const v2: YearsMatrixData = {
+  /** MATRIX_DECADE as a redeploy would publish it: one figure moved. */
+  function nextBuild(): YearsMatrixData {
+    return {
       ...MATRIX_DECADE,
       orgs: MATRIX_DECADE.orgs.map((o, i) =>
         i !== 0
@@ -1192,8 +1198,11 @@ describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
             },
       ),
     };
+  }
+
+  it("a redeploy between the two fetches moves the grid to the new build", async () => {
     const before = splitForTest(MATRIX_DECADE, "build-1");
-    const after = splitForTest(v2, "build-2");
+    const after = splitForTest(nextBuild(), "build-2");
     let coreRequests = 0;
     serveMatrix(MATRIX_DECADE, {
       [CORE_URL]: () => (coreRequests++ === 0 ? before.core : after.core),
@@ -1210,6 +1219,146 @@ describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
         ?.getAttribute("data-v"),
     ).toBe("96000");
     expect(fetched()).toEqual([CORE_URL, DECADE_URL, CORE_URL]);
+  });
+
+  it("a shard still in flight when the grid moves to a newer build is dropped, not merged into it", async () => {
+    // detail.json is asked for under build-1 and held; decade.json then
+    // reports build-2, the grid moves, and detail.json is asked for again.
+    // The held build-1 detail.json is released last: merging it into the
+    // build-2 core would throw (mergeYearsMatrix: files from two exports).
+    const before = splitForTest(MATRIX_DECADE, "build-1");
+    const after = splitForTest(nextBuild(), "build-2");
+    let coreRequests = 0;
+    let detailRequests = 0;
+    let releaseOldDetail: () => void = () => {};
+    serveMatrix(MATRIX_DECADE, {
+      [CORE_URL]: () => (coreRequests++ === 0 ? before.core : after.core),
+      [DECADE_URL]: after.decade,
+      [DETAIL_URL]: () =>
+        detailRequests++ === 0
+          ? new Promise((resolve) => {
+              releaseOldDetail = () => resolve(before.detail);
+            })
+          : after.detail,
+    });
+    await renderMatrix();
+    fireEvent.click(
+      document.querySelector('tr[data-pe="0601101E"] [data-expand]') as HTMLElement,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show fy2020e column/i }));
+    await waitFor(() => {
+      const table = screen.getByTestId("years-matrix");
+      expect(table.getAttribute("data-shards")).toBe("core decade detail");
+      expect(table.getAttribute("aria-busy")).toBe("false");
+    });
+    expect(fetched()).toEqual([CORE_URL, DETAIL_URL, DECADE_URL, CORE_URL, DETAIL_URL]);
+    // the old build's detail.json comes back after the move
+    await act(async () => {
+      releaseOldDetail();
+    });
+    const table = screen.getByTestId("years-matrix");
+    expect(table.getAttribute("data-shards")).toBe("core decade detail");
+    expect(table.getAttribute("aria-busy")).toBe("false");
+    expect(document.querySelectorAll("tr[data-project-row]").length).toBeGreaterThan(0);
+    expect(
+      document
+        .querySelector('tr[data-pe="0601101E"] td[data-col="fy2020a"]')
+        ?.getAttribute("data-v"),
+    ).toBe("96000");
+    expect(fetched().filter((u) => u === DETAIL_URL)).toHaveLength(2);
+  });
+
+  it("an expanded row says its project rows are loading, then shows them", async () => {
+    const files = splitForTest(MATRIX_DECADE);
+    let release: () => void = () => {};
+    serveMatrix(MATRIX_DECADE, {
+      [DETAIL_URL]: () =>
+        new Promise((resolve) => {
+          release = () => resolve(files.detail);
+        }),
+    });
+    await renderMatrix();
+    const row = document.querySelector('tr[data-pe="0601101E"]') as HTMLElement;
+    fireEvent.click(row.querySelector("[data-expand]") as HTMLElement);
+    // a caret that opens on nothing, with only aria-busy on the table, says
+    // nothing a reader can see: the row says it under itself
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("Loading project rows…");
+    expect(row.nextElementSibling?.contains(status)).toBe(true);
+    expect(row.nextElementSibling?.getAttribute("data-project-notice")).toBe("loading");
+    expect(document.querySelectorAll("tr[data-project-row]")).toHaveLength(0);
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByRole("alert")).toBeNull();
+    release();
+    await waitFor(() => {
+      expect(document.querySelectorAll("tr[data-project-row]").length).toBeGreaterThan(0);
+    });
+    // loaded: the rows are there and neither notice is
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector("tr[data-project-notice]")).toBeNull();
+    expect(row.nextElementSibling?.hasAttribute("data-project-row")).toBe(true);
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("false");
+  });
+
+  it("an expanded row says its project rows could not be loaded when detail.json fails", async () => {
+    serveMatrix(MATRIX_DECADE, {
+      [DETAIL_URL]: () => Promise.reject(new Error("offline")),
+    });
+    await renderMatrix();
+    const row = document.querySelector('tr[data-pe="0601101E"]') as HTMLElement;
+    const caret = row.querySelector("[data-expand]") as HTMLElement;
+    fireEvent.click(caret);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(
+      "Project rows could not be loaded; reload the page to try again",
+    );
+    expect(row.nextElementSibling?.contains(alert)).toBe(true);
+    expect(row.nextElementSibling?.getAttribute("data-project-notice")).toBe("error");
+    expect(document.querySelectorAll("tr[data-project-row]")).toHaveLength(0);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("false");
+    // a failed shard stays failed until the page is reloaded: collapsing and
+    // expanding again asks for nothing more, and the row still says why
+    fireEvent.click(caret);
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(caret);
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Project rows could not be loaded; reload the page to try again",
+    );
+    expect(fetched().filter((u) => u === DETAIL_URL)).toHaveLength(1);
+  });
+
+  it("a PB2026-detail chip says in its name that it is loading, or could not be loaded", async () => {
+    const files = splitForTest(MATRIX_DECADE);
+    let release: () => void = () => {};
+    serveMatrix(MATRIX_DECADE, {
+      [DETAIL_URL]: () =>
+        new Promise((resolve) => {
+          release = () => resolve(files.detail);
+        }),
+    });
+    await renderMatrix();
+    fireEvent.click(screen.getByRole("button", { name: /show fy2025 total column/i }));
+    const chip = screen.getByRole("button", { name: /^hide fy2025 total column, loading$/i });
+    release();
+    await waitFor(() => {
+      expect(document.querySelector('th[data-col="fy_2025_total"]')).not.toBeNull();
+    });
+    expect(screen.getByRole("button", { name: /^hide fy2025 total column$/i })).toBe(chip);
+
+    // and when the shard fails
+    cleanup();
+    serveMatrix(MATRIX_DECADE, {
+      [DETAIL_URL]: () => Promise.reject(new Error("offline")),
+    });
+    await renderMatrix();
+    fireEvent.click(screen.getByRole("button", { name: /show fy2025 total column/i }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /^hide fy2025 total column, could not be loaded$/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("an export from before the split (schema 1, one file) still renders whole", async () => {

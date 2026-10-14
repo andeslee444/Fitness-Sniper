@@ -46,7 +46,9 @@
  *   [data-sort="<key>"], [data-expand], [data-testid="years-filter"],
  *   [data-testid="years-csv"], [data-sticky-col],
  *   table[data-shards="core[ decade][ detail]"] (the files merged so far)
- *   with aria-busy="true" while a column the reader asked for is loading.
+ *   with aria-busy="true" while a column the reader asked for is loading;
+ *   tr[data-project-notice="loading|error"] directly under an expanded row
+ *   while detail.json (its project rows) is loading or failed.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -604,6 +606,8 @@ type LoadState =
 
 /** One lazy shard: never asked for, in flight, merged, or failed. */
 type ShardStatus = "idle" | "loading" | "ready" | "error";
+/** What an expanded row says while detail.json (its project rows) is not in. */
+type ProjectsNotice = "loading" | "error";
 const NO_SHARDS: Record<YearsShardName, ShardStatus> = {
   decade: "idle",
   detail: "idle",
@@ -660,9 +664,13 @@ async function fetchShardFor(
 }
 
 /** The island's shard bookkeeping: which shards have been asked for under
- *  the current core, and the state setters that report on them. */
+ *  the current core, the core the grid is on, and the state setters that
+ *  report on them. */
 interface ShardLoader {
   requested: Set<YearsShardName>;
+  /** The core the grid is on: the one a shard result must have been fetched
+   *  for to be merged. Null until the first core loads. */
+  current: YearsMatrixCore | null;
   setLoad: (state: LoadState) => void;
   setShards: React.Dispatch<
     React.SetStateAction<Partial<Record<YearsShardName, YearsMatrixShard>>>
@@ -672,12 +680,22 @@ interface ShardLoader {
   >;
 }
 
+/** Move the grid onto `core`: the build every later shard result is checked
+ *  against (see requestShards). */
+function adoptCore(loader: ShardLoader, core: YearsMatrixCore): void {
+  loader.current = core;
+  loader.setLoad({ s: "ready", core });
+}
+
 /**
  * Ask for shards, each at most once per core. Called only from the core's
  * load callback and from event handlers (a column chip, an expand caret),
  * never from an effect: a shard loads because a reader asked for what it
  * holds. When a shard comes back with a newer core, the grid moves to that
  * build, and every other shard asked for so far is fetched again for it.
+ * A result (or failure) that arrives after the grid has moved belongs to the
+ * old build and is dropped: the move already asked for that shard again, and
+ * merging an old shard into the new core would throw.
  */
 function requestShards(
   loader: ShardLoader,
@@ -692,6 +710,7 @@ function requestShards(
     loader.setShardStatus((prev) => ({ ...prev, [name]: "loading" }));
     fetchShardFor(current, name)
       .then(({ core, shard }) => {
+        if (current !== loader.current) return;
         if (core === current) {
           loader.setShards((prev) => ({ ...prev, [name]: shard }));
           loader.setShardStatus((prev) => ({ ...prev, [name]: "ready" }));
@@ -700,12 +719,13 @@ function requestShards(
         const again = [...loader.requested].filter((n) => n !== name);
         loader.requested.clear();
         loader.requested.add(name);
-        loader.setLoad({ s: "ready", core });
+        adoptCore(loader, core);
         loader.setShards({ [name]: shard });
         loader.setShardStatus({ ...NO_SHARDS, [name]: "ready" });
         requestShards(loader, core, again);
       })
       .catch(() => {
+        if (current !== loader.current) return;
         loader.setShardStatus((prev) => ({ ...prev, [name]: "error" }));
       });
   }
@@ -720,6 +740,25 @@ function shardsHolding(core: YearsMatrixCore, columns: string[]): Set<YearsShard
     if (s) out.add(s);
   }
   return out;
+}
+
+/**
+ * A picker chip's accessible name. aria-label replaces the chip's text, so
+ * the " …" and "(unavailable)" the chip draws would never be announced: the
+ * state goes into the name.
+ */
+function chipName(
+  on: boolean,
+  label: string,
+  pending: "loading" | "error" | undefined,
+): string {
+  const state =
+    pending === "loading"
+      ? ", loading"
+      : pending === "error"
+        ? ", could not be loaded"
+        : "";
+  return `${on ? "Hide" : "Show"} ${label} column${state}`;
 }
 
 interface SortState {
@@ -773,6 +812,7 @@ export function YearsMatrix() {
     useState<Record<YearsShardName, ShardStatus>>(NO_SHARDS);
   const [loader] = useState<ShardLoader>(() => ({
     requested: new Set(),
+    current: null,
     setLoad,
     setShards,
     setShardStatus,
@@ -868,7 +908,7 @@ export function YearsMatrix() {
     jsonOf<YearsMatrixCore>(fetch("/json/years_matrix.json"), "years_matrix.json")
       .then((core) => {
         if (cancelled) return;
-        setLoad({ s: "ready", core });
+        adoptCore(loader, core);
         // §P2-2: open on substance, not on a screenful of em-dashes.
         const key = defaultSortKey(core);
         if (key) {
@@ -897,7 +937,9 @@ export function YearsMatrix() {
     [core],
   );
   // The grid's data: the core plus every shard merged so far. A shard is
-  // stored only once its build_id matches the core's (fetchShardFor).
+  // stored only once its build_id matches the core's (fetchShardFor) and the
+  // core it was fetched for is still the grid's (requestShards drops a
+  // result that lands after the grid has moved to a newer build).
   const matrix = useMemo(
     () =>
       core
@@ -976,6 +1018,14 @@ export function YearsMatrix() {
     "core",
     ...YEARS_SHARD_NAMES.filter((s) => shardStatus[s] === "ready"),
   ].join(" ");
+
+  // What an expanded row says under itself while its project rows (detail.json)
+  // are not there: it is loading, or it failed. Without it the caret opens on
+  // nothing, and aria-busy on the table is all a reader gets.
+  const projectsNotice: ProjectsNotice | undefined =
+    shardStatus.detail === "loading" || shardStatus.detail === "error"
+      ? shardStatus.detail
+      : undefined;
 
   /** A picker chip's loading state: "loading" or "error" while the reader
    *  has it on and its shard has not merged; undefined otherwise. */
@@ -1210,7 +1260,7 @@ export function YearsMatrix() {
               key={key}
               type="button"
               aria-pressed={on}
-              aria-label={`${on ? "Hide" : "Show"} ${label} column`}
+              aria-label={chipName(on, label, pending)}
               aria-busy={pending === "loading" || undefined}
               data-shard-state={pending}
               title={
@@ -1245,7 +1295,7 @@ export function YearsMatrix() {
                 key={key}
                 type="button"
                 aria-pressed={on}
-                aria-label={`${on ? "Hide" : "Show"} ${columnLabel(key)} column`}
+                aria-label={chipName(on, columnLabel(key), pending)}
                 aria-busy={pending === "loading" || undefined}
                 data-shard-state={pending}
                 title={
@@ -1548,6 +1598,7 @@ export function YearsMatrix() {
                       entry.program.slug ?? entry.program.pe_bli,
                     )}
                     onToggle={toggleProgram}
+                    projectsNotice={projectsNotice}
                     showOrg
                   />
                 ))
@@ -1605,6 +1656,7 @@ export function YearsMatrix() {
                               entry.program.slug ?? entry.program.pe_bli,
                             )}
                             onToggle={toggleProgram}
+                            projectsNotice={projectsNotice}
                           />
                         ))}
                     </React.Fragment>
@@ -1637,6 +1689,9 @@ interface ProgramRowsProps {
   decadeMeta: Map<string, DecadeColumn>;
   expanded: boolean;
   onToggle: (peBli: string) => void;
+  /** Set while detail.json is loading or has failed: an expanded row says so
+   *  under itself instead of opening on nothing (ROADMAP #193). */
+  projectsNotice?: ProjectsNotice;
   /** Flat (sorted) mode — show the org inline since section headers are hidden. */
   showOrg?: boolean;
 }
@@ -1648,6 +1703,7 @@ function ProgramRows({
   decadeMeta,
   expanded,
   onToggle,
+  projectsNotice,
   showOrg = false,
 }: ProgramRowsProps) {
   const { org, program } = entry;
@@ -1742,6 +1798,28 @@ function ProgramRows({
           />
         ))}
       </tr>
+
+      {expanded && projectsNotice && (
+        <tr
+          data-project-notice={projectsNotice}
+          className="bg-muted/20"
+        >
+          <td data-sticky-col className={`${STICKY_PROJECT_COL_CLASS} py-1 pl-8 pr-2.5`}>
+            {/* The role sits on the text, not the row: a row with another
+                role would leave the table without a row here. Same wording
+                as the picker chip's title and the matrix's loading line. */}
+            <span
+              role={projectsNotice === "error" ? "alert" : "status"}
+              className="block w-[140px] text-muted-foreground sm:w-[210px]"
+            >
+              {projectsNotice === "error"
+                ? "Project rows could not be loaded; reload the page to try again"
+                : "Loading project rows…"}
+            </span>
+          </td>
+          <td colSpan={columns.length} aria-hidden="true" />
+        </tr>
+      )}
 
       {expanded &&
         program.projects.map((project) => (
