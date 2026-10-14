@@ -1438,8 +1438,16 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
     the dump into a NEW database `scratch_db` on the same server. Refuses if
     out_dir or the scratch database already exists, out_dir resolves inside
     the lake (symlinks followed — a worktree's data/site is a symlink into
-    the live lake), inside the SAM write window (:15-:20), while a writer
-    holds the DuckDB file, or scratch_db is not named govbudget_proof_<name>.
+    the live lake), the SAM write window (:15-:20) holds the start or any
+    minute of the copy, a writer holds the DuckDB file, the DSN carries a
+    password, or scratch_db is not named govbudget_proof_<name>.
+
+    Order (ROADMAP #199): the copy; then the symlink scan and the digests of
+    every pinned tree; then the view rewrite and its hermeticity check (every
+    read_parquet path must RESOLVE under out_dir); only then `create
+    database`, whose jbook_documents.file_path rows must also resolve under
+    out_dir. On any failure after out_dir is created, out_dir is removed, and
+    the scratch database is dropped if, and only if, this call created it.
     """
     # .resolve(), not .absolute(): a worktree's data/site is a symlink into
     # the live lake (Task 1), and .absolute() does not follow it — an
@@ -1448,6 +1456,7 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
     out_dir = Path(out_dir).resolve()
     data_dir = Path(data_dir).resolve()
     _check_sam_window("before the copy")
+    _refuse_password(pg_dsn)
     if out_dir.exists():
         raise FileExistsError(f"proof snapshot: {out_dir} already exists")
     if out_dir == data_dir or data_dir in out_dir.parents:
@@ -1483,53 +1492,69 @@ def snapshot(out_dir: Path, *, data_dir: Path, pg_dsn: str, scratch_db: str) -> 
         lock = duckdb.connect(str(src_duckdb), read_only=True)
     except duckdb.IOException as e:
         raise RuntimeError(f"proof snapshot: {src_duckdb} is being written ({e}); retry later") from e
+    created = {"out_dir": False, "db": False}
     try:
-        out_dir.mkdir(parents=True)
-        (out_dir / DUCKDB_REL.parent).mkdir()
-        _clone(src_duckdb, out_dir / DUCKDB_REL)
-        for name in CLONED_DIRS:
-            _clone(data_dir / name, out_dir / name)
-        _clone(data_dir / MANIFEST_REL, out_dir / MANIFEST_REL)
-    finally:
-        lock.close()
-    _check_sam_window(f"after the copy — delete {out_dir} and retry")
+        copy_started = _now()
+        try:
+            out_dir.mkdir(parents=True)
+            created["out_dir"] = True
+            (out_dir / DUCKDB_REL.parent).mkdir()
+            _clone(src_duckdb, out_dir / DUCKDB_REL)
+            for name in CLONED_DIRS:
+                _clone(data_dir / name, out_dir / name)
+            _clone(data_dir / MANIFEST_REL, out_dir / MANIFEST_REL)
+        finally:
+            lock.close()
+        _check_sam_interval(copy_started, _now(), "the copy")
 
-    duckdb_sha_at_copy = _sha256_file(out_dir / DUCKDB_REL)
-    views = _rewrite_duckdb_views(out_dir / DUCKDB_REL, old_root=data_dir, new_root=out_dir)
-    pg = _pg_snapshot(
-        pg_dsn, scratch_db, out_dir / "pg",
-        old_raw_docs=data_dir / "raw_docs", new_raw_docs=out_dir / "raw_docs",
-        data_dir=data_dir,
-    )
-    env = {
-        "GOVBUDGET_DATA": str(out_dir),
-        "GOVBUDGET_DUCKDB": str(out_dir / DUCKDB_REL),
-        "GOVBUDGET_PG_DSN": pg["scratch_dsn"],
-    }
-    manifest = {
-        "schema_version": 1,
-        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        "out_dir": str(out_dir),
-        "source": {"data_dir": str(data_dir), "pg_dsn": pg_dsn},
-        "env": env,
-        "duckdb": {
-            "path": DUCKDB_REL.as_posix(),
-            "sha256_at_copy": duckdb_sha_at_copy,
-            "sha256": _sha256_file(out_dir / DUCKDB_REL),
-            "views": views["views"],
-            "views_rewritten": views["rewritten"],
-        },
-        "parquet": _parquet_digest(out_dir / "parquet"),
-        "site": _tree_digest(out_dir / "site"),
-        "raw_docs": _tree_digest(out_dir / "raw_docs"),
-        "manifest_jsonl_sha256": _sha256_file(out_dir / MANIFEST_REL),
-        "pg": pg,
-    }
-    (out_dir / SNAPSHOT_MANIFEST).write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    (out_dir / SNAPSHOT_ENV).write_text(_env_script(manifest), encoding="utf-8")
-    return manifest
+        # Every pinned tree is scanned (_files raises on a symlink) and
+        # digested BEFORE any database exists (ROADMAP #199).
+        duckdb_sha_at_copy = _sha256_file(out_dir / DUCKDB_REL)
+        parquet = _parquet_digest(out_dir / "parquet")
+        site = _tree_digest(out_dir / "site")
+        raw_docs = _tree_digest(out_dir / "raw_docs")
+        manifest_jsonl_sha256 = _sha256_file(out_dir / MANIFEST_REL)
+        views = _rewrite_duckdb_views(out_dir / DUCKDB_REL, old_root=data_dir, new_root=out_dir)
+        pg = _pg_snapshot(
+            pg_dsn, scratch_db, out_dir / "pg",
+            old_raw_docs=data_dir / "raw_docs", new_raw_docs=out_dir / "raw_docs",
+            new_root=out_dir, created=created,
+        )
+        env = {
+            "GOVBUDGET_DATA": str(out_dir),
+            "GOVBUDGET_DUCKDB": str(out_dir / DUCKDB_REL),
+            "GOVBUDGET_PG_DSN": pg["scratch_dsn"],
+        }
+        manifest = {
+            "schema_version": 1,
+            "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "out_dir": str(out_dir),
+            "source": {"data_dir": str(data_dir), "pg_dsn": pg_dsn},
+            "env": env,
+            "duckdb": {
+                "path": DUCKDB_REL.as_posix(),
+                "sha256_at_copy": duckdb_sha_at_copy,
+                "sha256": _sha256_file(out_dir / DUCKDB_REL),
+                "views": views["views"],
+                "views_rewritten": views["rewritten"],
+            },
+            "parquet": parquet,
+            "site": site,
+            "raw_docs": raw_docs,
+            "manifest_jsonl_sha256": manifest_jsonl_sha256,
+            "pg": pg,
+        }
+        (out_dir / SNAPSHOT_MANIFEST).write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        (out_dir / SNAPSHOT_ENV).write_text(_env_script(manifest), encoding="utf-8")
+        return manifest
+    except BaseException:
+        if created["db"]:
+            _drop_scratch_database(pg_dsn, scratch_db)
+        if created["out_dir"]:
+            shutil.rmtree(out_dir, ignore_errors=True)
+        raise
 
 
 def _check_sam_window(stage: str) -> None:
@@ -1558,6 +1583,74 @@ def _check_scratch_name(scratch_db: str) -> None:
             f"proof snapshot: a scratch database must be named"
             f" {SCRATCH_DB_PREFIX}<name>, not {scratch_db!r}"
         )
+
+
+def _sam_window_touched(start: datetime.datetime, end: datetime.datetime) -> bool:
+    """True when any wall-clock minute from start to end (inclusive) is a SAM
+    write minute (:15-:20), or the span is an hour or longer. ROADMAP #199:
+    the after-copy check used to read the end minute only, so a copy from
+    :14 to :21 passed."""
+    if end < start:
+        start, end = end, start
+    if end - start >= datetime.timedelta(hours=1):
+        return True
+    minute = start.replace(second=0, microsecond=0)
+    while minute <= end:
+        if minute.minute in SAM_WINDOW_MINUTES:
+            return True
+        minute += datetime.timedelta(minutes=1)
+    return False
+
+
+def _check_sam_interval(start: datetime.datetime, end: datetime.datetime, stage: str) -> None:
+    if _sam_window_touched(start, end):
+        raise RuntimeError(
+            f"proof snapshot: refusing — {stage} ran {start:%H:%M:%S}-{end:%H:%M:%S},"
+            " across the SAM window (the hourly SAM job writes data/parquet/sam at :17);"
+            " run outside :15-:20"
+        )
+
+
+def _refuse_password(pg_dsn: str) -> None:
+    """snapshot.json and env.sh record the scratch DSN in plaintext, so a
+    source DSN that carries a password is refused before anything is
+    written (ROADMAP #199). The message never repeats the password."""
+    import psycopg
+
+    if psycopg.conninfo.conninfo_to_dict(pg_dsn).get("password"):
+        raise ValueError(
+            "proof snapshot: the source DSN carries a password; snapshot.json and env.sh"
+            " would record it in plaintext. Use ~/.pgpass or PGPASSWORD instead"
+        )
+
+
+def _is_under(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
+_READ_PARQUET_ARG_RE = re.compile(r"read_parquet\(\s*(\[[^\]]*\]|'(?:[^']|'')*')")
+_SQL_STRING_RE = re.compile(r"'((?:[^']|'')*)'")
+
+
+def _view_parquet_paths(sql: str) -> list[str]:
+    """Every path literal a view's read_parquet(...) calls name — a string
+    or a list of strings — with SQL '' unescaped."""
+    out: list[str] = []
+    for m in _READ_PARQUET_ARG_RE.finditer(sql):
+        out.extend(s.replace("''", "'") for s in _SQL_STRING_RE.findall(m.group(1)))
+    return out
+
+
+def _drop_scratch_database(pg_dsn: str, scratch_db: str) -> None:
+    """Drop the scratch database a failed snapshot() created itself
+    (ROADMAP #199). Refuses any name but govbudget_proof_<name>."""
+    import psycopg
+    from psycopg import sql
+
+    _check_scratch_name(scratch_db)
+    with psycopg.connect(_with_database(pg_dsn, "postgres"), autocommit=True) as admin:
+        admin.execute(sql.SQL("drop database if exists {} with (force)").format(
+            sql.Identifier(scratch_db)))
 
 
 def _clone(src: Path, dst: Path) -> None:
@@ -1641,6 +1734,25 @@ def _rewrite_duckdb_views(db_path: Path, *, old_root: Path, new_root: Path) -> d
         ).fetchall()
         if left:
             raise RuntimeError(f"proof snapshot: views still read {old}: {sorted(r[0] for r in left)}")
+        # Hermeticity by RESOLVED path (ROADMAP #199): a view that spells the
+        # lake through a symlink passes the string test above and would still
+        # read the live parquet.
+        root = Path(new_root).resolve()
+        outside = [
+            f"{name}: {path}"
+            for name, sql_text in con.execute(
+                "select view_name, sql from duckdb_views()"
+                " where not internal and database_name = current_database()"
+                " order by view_name"
+            ).fetchall()
+            for path in _view_parquet_paths(sql_text)
+            if not _is_under(Path(path).resolve(), root)
+        ]
+        if outside:
+            raise RuntimeError(
+                f"proof snapshot: {len(outside)} view read(s) resolve outside the snapshot"
+                f" {root}: {outside[:5]}"
+            )
         con.execute("checkpoint")
     finally:
         con.close()
@@ -1728,7 +1840,7 @@ def _run(cmd: list[str]) -> str:
 
 def _pg_snapshot(
     pg_dsn: str, scratch_db: str, dump_dir: Path, *,
-    old_raw_docs: Path, new_raw_docs: Path, data_dir: Path,
+    old_raw_docs: Path, new_raw_docs: Path, new_root: Path, created: dict,
 ) -> dict:
     import psycopg
     from psycopg import sql
@@ -1741,6 +1853,9 @@ def _pg_snapshot(
           f"--file={dump}", pg_dsn])
     with psycopg.connect(_with_database(pg_dsn, "postgres"), autocommit=True) as admin:
         admin.execute(sql.SQL("create database {}").format(sql.Identifier(scratch_db)))
+    # snapshot() drops it after any later failure — and only because this
+    # call made it (ROADMAP #199).
+    created["db"] = True
     # Defense in depth before the destructive pg_restore: a libpq override
     # buried in pg_dsn could otherwise make scratch_dsn resolve somewhere
     # other than the database just created (2026-10 review finding).
@@ -1778,14 +1893,19 @@ def _pg_snapshot(
                 (new, old, old, old),
             )
             rewrites["jbook_documents.file_path"] = cur.rowcount
-            live = str(data_dir) + "/"
-            left = con.execute(
-                "select count(*) from jbook_documents where left(file_path, length(%s)) = %s",
-                (live, live),
-            ).fetchone()[0]
-            if left:
+            # Hermeticity by RESOLVED path (ROADMAP #199): a symlinked
+            # spelling of the live lake passes a prefix test.
+            root = Path(new_root).resolve()
+            outside = sorted(
+                fp for (fp,) in con.execute(
+                    "select distinct file_path from jbook_documents where file_path is not null"
+                ).fetchall()
+                if not _is_under(Path(fp).resolve(), root)
+            )
+            if outside:
                 raise RuntimeError(
-                    f"proof snapshot: {left} jbook_documents.file_path row(s) still under {live}"
+                    f"proof snapshot: {len(outside)} jbook_documents.file_path row(s) resolve"
+                    f" outside the snapshot {root} (e.g. {outside[0]})"
                 )
         con.commit()
     return {
@@ -1801,13 +1921,17 @@ def _pg_snapshot(
 
 
 def _env_script(manifest: dict) -> str:
+    """The snapshot's env.sh. The default path is a shlex-quoted assignment,
+    overridden by "$1" when a RUN_DIR is passed (ROADMAP #199: the old
+    "${1:-<path>}" broke on '}', '$' and '"' in the path)."""
     env = manifest["env"]
     return (
         f"# Written by `govbudget proof snapshot` at {manifest['created_at']}.\n"
         "# Usage: source env.sh [RUN_DIR]\n"
         "#   no argument: point export-site/dbt/verify-* at this snapshot itself;\n"
         "#   RUN_DIR:     a `cp -c -R` clone of this snapshot to export into.\n"
-        f'_proof_dir="${{1:-{env["GOVBUDGET_DATA"]}}}"\n'
+        f"_proof_dir={shlex.quote(env['GOVBUDGET_DATA'])}\n"
+        'if [ -n "${1:-}" ]; then _proof_dir="$1"; fi\n'
         'export GOVBUDGET_DATA="$_proof_dir"\n'
         'export GOVBUDGET_DUCKDB="$_proof_dir/duckdb/govbudget.duckdb"\n'
         f"export GOVBUDGET_PG_DSN={shlex.quote(env['GOVBUDGET_PG_DSN'])}\n"

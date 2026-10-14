@@ -3094,7 +3094,25 @@ def cmd_refresh(args) -> None:
 
 
 def cmd_proof(args) -> None:
-    """Families piece 1: pinned proof snapshots and the masked export diff."""
+    """Families piece 1: pinned proof snapshots and the masked export diff.
+
+    Exit codes (one convention for the follow-ups' tools, ROADMAP #199):
+    0 EQUAL/PASS, 1 DIFFERENT/FAIL, 2 a tool error — one stderr line
+    `proof <action>: ERROR — <message>`, never a traceback."""
+    tool = f"proof {args.proof_action}"
+    try:
+        _cmd_proof(args)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — every tool error exits 2, without a traceback
+        message = str(e)
+        if message.startswith(f"{tool}: "):
+            message = message[len(tool) + 2:]
+        print(f"{tool}: ERROR — {message}", file=sys.stderr)
+        sys.exit(2)
+
+
+def _cmd_proof(args) -> None:
     import json as _json
 
     from govbudget import proof
@@ -3114,15 +3132,10 @@ def cmd_proof(args) -> None:
         print(f"  source {m['out_dir']}/{proof.SNAPSHOT_ENV} [RUN_DIR]")
         return
     if args.write_noise is not None and not args.control:
-        print("proof diff: --write-noise requires --control", file=sys.stderr)
-        sys.exit(2)
+        raise ValueError("--write-noise requires --control")
     noise_classes = None
     if args.noise_from is not None:
-        try:
-            noise_classes = proof.load_noise_classes(args.noise_from)
-        except ValueError as e:
-            print(e, file=sys.stderr)
-            sys.exit(2)
+        noise_classes = proof.load_noise_classes(args.noise_from)
     report = proof.diff_trees(args.a, args.b, control=args.control, noise_classes=noise_classes)
     if args.write_noise is not None:
         # Only an EQUAL control vouches for its reorder classes (Fix round 4);

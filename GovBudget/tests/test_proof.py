@@ -474,16 +474,24 @@ def test_snapshot_refuses_an_out_dir_inside_the_lake_through_a_symlink(tmp_path,
     "postgresql://127.0.0.1:55432/postgres",
     "postgresql:///govbudget",
 ])
-def test_snapshot_refuses_a_local_scratch_db_without_the_proof_prefix(tmp_path, monkeypatch, dsn):
+def test_snapshot_refuses_a_local_scratch_db_without_the_proof_prefix(
+    tmp_path, monkeypatch, capsys, dsn,
+):
     # README: on the local server only govbudget_proof_<name> may be created;
     # both the function and the CLI (cmd_proof) refuse before touching anything.
+    # The CLI reports a tool error on one line and exits 2 (follow-ups #199).
     monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
     with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
         proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data", pg_dsn=dsn,
                        scratch_db="snap")
-    with pytest.raises(ValueError, match="must be named govbudget_proof_<name>"):
+    with pytest.raises(SystemExit) as exc:
         cli.main(["proof", "snapshot", "--out", str(tmp_path / "s"), "--scratch-db", "snap",
                   "--data-dir", str(tmp_path / "data"), "--pg-dsn", dsn])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert err.startswith("proof snapshot: ERROR — a scratch database must be named"
+                          " govbudget_proof_<name>")
+    assert "Traceback" not in err
     assert not (tmp_path / "s").exists()
 
 
@@ -593,6 +601,8 @@ def test_view_rewrite_repoints_the_copy_and_leaves_the_source(tmp_path):
 @pytest.fixture()
 def pg_source():
     """A throwaway source database on the TEST cluster, never the real one."""
+    assert str(psycopg.conninfo.conninfo_to_dict(ADMIN_DSN).get("port")) == "55432", (
+        f"GOVBUDGET_TEST_PG_DSN={ADMIN_DSN!r} is not the throwaway cluster on port 55432")
     try:
         admin = psycopg.connect(ADMIN_DSN, autocommit=True)
     except psycopg.OperationalError as e:
@@ -1396,3 +1406,231 @@ def test_noise_from_refuses_classes_that_are_not_fid_generalised(tmp_path, capsy
     noise.write_text(json.dumps(doc))
     with pytest.raises(ValueError, match=message):
         proof.load_noise_classes(noise)
+
+
+# ---------------------------------------------------------------------------
+# Families piece-1 follow-ups, ROADMAP #199 (spec 2026-10-04 §6.1): snapshot
+# safety and the one CLI convention (tool error -> exit 2, one line)
+# ---------------------------------------------------------------------------
+
+_SRC = "postgresql://127.0.0.1:55432/proof_src_test"
+_SCRATCH = "govbudget_proof_scratch_test"
+
+
+def _scratch_db_exists(admin) -> bool:
+    return admin.execute(
+        "select 1 from pg_database where datname = %s", (_SCRATCH,)).fetchone() is not None
+
+
+def test_snapshot_refuses_a_dsn_with_a_password(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    dsn = "postgresql://andeslee:s3cret@127.0.0.1:55432/postgres"
+    with pytest.raises(ValueError, match="carries a password"):
+        proof.snapshot(tmp_path / "s", data_dir=tmp_path / "data", pg_dsn=dsn, scratch_db=_SCRATCH)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "snapshot", "--out", str(tmp_path / "s"), "--scratch-db", _SCRATCH,
+                  "--data-dir", str(tmp_path / "data"), "--pg-dsn", dsn])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert err.startswith("proof snapshot: ERROR — the source DSN carries a password")
+    assert "s3cret" not in err
+    assert not (tmp_path / "s").exists()
+
+
+def test_snapshot_refuses_when_the_copy_spans_the_sam_window(tmp_path, monkeypatch):
+    # #199: the after-copy check looked only at the end minute. A copy that
+    # starts at :14 and ends at :21 crossed the :17 SAM write.
+    live = tmp_path / "live"
+    _lake(live)
+    times = iter([datetime.datetime(2026, 10, 2, 9, 14, 30),   # the before-copy check
+                  datetime.datetime(2026, 10, 2, 9, 14, 40),   # the copy starts
+                  datetime.datetime(2026, 10, 2, 9, 21, 5)])   # the copy ends
+    monkeypatch.setattr(proof, "_now", lambda: next(times))
+    monkeypatch.setattr(proof, "_database_exists", lambda dsn, name: False)
+
+    def no_postgres(*_args, **_kwargs):
+        raise AssertionError("the copy spanned :17 — snapshot must stop before Postgres")
+
+    monkeypatch.setattr(proof, "_pg_snapshot", no_postgres)
+    out = tmp_path / "proofs" / "s0"
+    with pytest.raises(RuntimeError, match="the copy ran 09:14:40-09:21:05, across the SAM window"):
+        proof.snapshot(out, data_dir=live, pg_dsn=_SRC, scratch_db=_SCRATCH)
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("start, end, touched", [
+    ((9, 5, 0), (9, 14, 59), False),
+    ((9, 14, 59), (9, 15, 0), True),
+    ((9, 20, 59), (9, 21, 1), True),
+    ((9, 21, 0), (10, 14, 0), False),
+    ((9, 21, 0), (10, 21, 0), True),       # an hour or longer always spans :17
+])
+def test_sam_window_touched_reads_every_minute_of_the_interval(start, end, touched):
+    day = datetime.datetime(2026, 10, 2)
+    a = day.replace(hour=start[0], minute=start[1], second=start[2])
+    b = day.replace(hour=end[0], minute=end[1], second=end[2])
+    assert proof._sam_window_touched(a, b) is touched
+
+
+def test_snapshot_refuses_an_unfinished_duckdb_write(tmp_path, monkeypatch):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    _lake(live)
+    (live / "duckdb" / "govbudget.duckdb.wal").write_bytes(b"wal")
+    with pytest.raises(RuntimeError, match="a DuckDB write is unfinished"):
+        proof.snapshot(tmp_path / "s", data_dir=live, pg_dsn=_SRC, scratch_db=_SCRATCH)
+    assert not (tmp_path / "s").exists()
+
+
+def test_snapshot_refuses_while_a_writer_holds_the_duckdb_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    monkeypatch.setattr(proof, "_database_exists", lambda dsn, name: False)
+    live = tmp_path / "live"
+    _lake(live)
+    writer = subprocess.Popen(
+        [sys.executable, "-c",
+         "import duckdb, sys, time; c = duckdb.connect(sys.argv[1]);"
+         " print('locked', flush=True); time.sleep(60)",
+         str(live / "duckdb" / "govbudget.duckdb")],
+        stdout=subprocess.PIPE, text=True)
+    try:
+        assert writer.stdout.readline().strip() == "locked"
+        with pytest.raises(RuntimeError, match="is being written"):
+            proof.snapshot(tmp_path / "s", data_dir=live, pg_dsn=_SRC, scratch_db=_SCRATCH)
+    finally:
+        writer.kill()
+        writer.wait()
+    assert not (tmp_path / "s").exists()
+
+
+def test_snapshot_refuses_a_missing_lake_entry(tmp_path, monkeypatch):
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    _lake(live)
+    shutil.rmtree(live / "raw_docs")
+    with pytest.raises(FileNotFoundError, match="raw_docs is missing"):
+        proof.snapshot(tmp_path / "s", data_dir=live, pg_dsn=_SRC, scratch_db=_SCRATCH)
+    assert not (tmp_path / "s").exists()
+
+
+def test_with_database_keeps_a_literal_host_query_parameter():
+    # libpq lets ?host= retarget a URI. The scratch DSN must keep that
+    # override, so `create database` lands on the server the dump came from.
+    dsn = "postgresql://remote.example.invalid/govbudget?host=127.0.0.1&port=55432"
+    got = psycopg.conninfo.conninfo_to_dict(proof._with_database(dsn, "govbudget_proof_x"))
+    assert (got["host"], str(got["port"]), got["dbname"]) == (
+        "127.0.0.1", "55432", "govbudget_proof_x")
+
+
+def test_view_rewrite_refuses_a_symlinked_spelling_of_the_lake(tmp_path):
+    # #199: a view that names the lake through a symlink (a worktree's
+    # data/ links) is not rewritten by the string replace and still read the
+    # live parquet; hermeticity is now checked on the RESOLVED path.
+    live = tmp_path / "live"
+    _lake(live)
+    alias = tmp_path / "worktree-data"
+    alias.symlink_to(live, target_is_directory=True)
+    con = duckdb.connect(str(live / "duckdb" / "govbudget.duckdb"))
+    try:
+        con.execute("create view stg_alias as select * from read_parquet("
+                    f"'{alias}/parquet/jbooks/budget_lines.parquet')")
+    finally:
+        con.close()
+    snap = tmp_path / "snap"
+    (snap / "duckdb").mkdir(parents=True)
+    shutil.copy(live / "duckdb" / "govbudget.duckdb", snap / "duckdb" / "govbudget.duckdb")
+    shutil.copytree(live / "parquet", snap / "parquet")
+    with pytest.raises(RuntimeError,
+                       match=r"1 view read\(s\) resolve outside the snapshot .*stg_alias"):
+        proof._rewrite_duckdb_views(snap / "duckdb" / "govbudget.duckdb",
+                                    old_root=live.resolve(), new_root=snap.resolve())
+
+
+def test_view_parquet_paths_reads_strings_lists_and_escaped_quotes():
+    sql = ("CREATE VIEW v AS SELECT * FROM read_parquet('/a/b.parquet') UNION ALL"
+           " SELECT * FROM read_parquet(['/c/d.parquet', '/e/it''s.parquet'],"
+           " (hive_partitioning = CAST('t' AS BOOLEAN)))")
+    assert proof._view_parquet_paths(sql) == ["/a/b.parquet", "/c/d.parquet", "/e/it's.parquet"]
+
+
+@pytest.mark.parametrize("weird", ["/tmp/a}b", "/tmp/a$HOME", '/tmp/a"b', "/tmp/a b'c"])
+def test_env_sh_keeps_any_snapshot_path_literal(tmp_path, weird):
+    script = tmp_path / "env.sh"
+    script.write_text(proof._env_script({
+        "created_at": "2026-10-13T00:00:00+00:00",
+        "env": {"GOVBUDGET_DATA": weird, "GOVBUDGET_DUCKDB": f"{weird}/duckdb/govbudget.duckdb",
+                "GOVBUDGET_PG_DSN": "host=127.0.0.1 port=55432 dbname=govbudget_proof_x"}}))
+
+    def sourced(*args: str) -> str:
+        return subprocess.run(
+            ["bash", "-c", 'source "$0" "$@"; printf "%s|%s" "$GOVBUDGET_DATA" "$GOVBUDGET_DUCKDB"',
+             str(script), *args], capture_output=True, text=True, check=True).stdout
+
+    assert sourced() == f"{weird}|{weird}/duckdb/govbudget.duckdb"
+    assert sourced("/runs/x") == "/runs/x|/runs/x/duckdb/govbudget.duckdb"
+
+
+def test_a_symlink_in_a_pinned_tree_refuses_before_any_database_exists(
+    tmp_path, monkeypatch, pg_source,
+):
+    admin, src_dsn = pg_source
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    _lake(live)
+    (live / "site" / "linked").symlink_to(live / "parquet", target_is_directory=True)
+    out = tmp_path / "proofs" / "s0"
+    with pytest.raises(RuntimeError, match="symlink inside a pinned tree"):
+        proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db=_SCRATCH)
+    assert not _scratch_db_exists(admin)
+    assert not out.exists()
+
+
+def test_a_failure_after_create_database_drops_only_that_database(
+    tmp_path, monkeypatch, pg_source,
+):
+    admin, src_dsn = pg_source
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    _lake(live)
+
+    def injected(dsn, expected):
+        raise RuntimeError("proof snapshot: injected failure after create database")
+
+    monkeypatch.setattr(proof, "_assert_connected_to", injected)
+    out = tmp_path / "proofs" / "s0"
+    with pytest.raises(RuntimeError, match="injected failure"):
+        proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db=_SCRATCH)
+    names = {r[0] for r in admin.execute("select datname from pg_database").fetchall()}
+    assert _SCRATCH not in names
+    assert "proof_src_test" in names           # the source is never touched
+    assert not out.exists()
+
+
+def test_a_document_path_through_a_symlink_refuses_and_cleans_up(
+    tmp_path, monkeypatch, pg_source,
+):
+    admin, src_dsn = pg_source
+    monkeypatch.setattr(proof, "_now", lambda: datetime.datetime(2026, 10, 2, 9, 5))
+    live = tmp_path / "live"
+    _lake(live)
+    alias = tmp_path / "worktree-data"
+    alias.symlink_to(live, target_is_directory=True)
+    with psycopg.connect(src_dsn) as con:
+        con.execute("create table jbook_documents (id serial primary key, file_path text)")
+        con.execute("insert into jbook_documents (file_path) values (%s), (%s)",
+                    (f"{live.resolve()}/raw_docs/fy2017/dod/p1_display.xlsx",
+                     f"{alias}/raw_docs/fy2017/dod/p1_display.xlsx"))
+    out = tmp_path / "proofs" / "s0"
+    with pytest.raises(RuntimeError, match="1 jbook_documents.file_path row.s. resolve outside"):
+        proof.snapshot(out, data_dir=live, pg_dsn=src_dsn, scratch_db=_SCRATCH)
+    assert not _scratch_db_exists(admin)
+    assert not out.exists()
+
+
+def test_cli_tool_errors_exit_2_with_one_line(tmp_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["proof", "diff", str(tmp_path / "nope"), str(tmp_path)])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert err.startswith(f"proof diff: ERROR — {tmp_path / 'nope'} is not a directory")
+    assert "Traceback" not in err
