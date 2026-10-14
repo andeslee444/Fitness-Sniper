@@ -1,0 +1,17 @@
+{
+  "explained_by_pe_bli": ["0390DOM"],
+  "moved": {
+    "709cbd08c6b7dfb0": {"why": "/programs/ universe (site_meta.programs_coverage.universe_fact_id): 385,268,393 -> 385,271,636", "delta_thousands": "3243.000"},
+    "c216c55e0ddffec1": {"why": "flow chart b:total: 385,268,393 -> 385,271,636", "delta_thousands": "3243.000"},
+    "d2f5b699e5123b11": {"why": "flow chart b:c:A (Army): 43,338,494 -> 43,341,737", "delta_thousands": "3243.000"},
+    "da3a508dbe8427f4": {"why": "flow chart edge b:c:A->b:other:appropriation: 28,418,219 -> 28,421,462", "delta_thousands": "3243.000"},
+    "ce38e79987ed7a92": {"why": "flow chart b:other:appropriation (holds A|0390D): 100,800,917 -> 100,804,160", "delta_thousands": "3243.000"},
+    "ac97b301729e8743": {"why": "flow chart edge b:other:appropriation->b:other:budget_activity: 92,318,533 -> 92,321,776", "delta_thousands": "3243.000"},
+    "980c6bbee984f264": {"why": "flow chart b:other:budget_activity: 215,533,900 -> 215,537,143", "delta_thousands": "3243.000"},
+    "9a77d80916d1cead": {"why": "flow chart edge b:other:budget_activity->b:other:program: 204,111,830 -> 204,115,073", "delta_thousands": "3243.000"},
+    "ce27343e3d87e507": {"why": "flow chart b:other:program: 263,982,731 -> 263,985,974", "delta_thousands": "3243.000"},
+    "25e51edb9bfa36b3": {"why": "flow chart edge b:other:program->b:bridge:not-crosswalked: 137,809,962 -> 137,813,205", "delta_thousands": "3243.000"},
+    "6ca3c62f32d31298": {"why": "flow chart bridge not_yet_crosswalked: 227,538,773 -> 227,542,016 ($227.5B unchanged)", "delta_thousands": "3243.000"}
+  },
+  "rows": {"data/budget_lines.parquet": ["0390DOM"], "data/budget_lines_decade.parquet": ["0390D-ARMY-L1", "0390DOM"], "data/fct_budget_trajectory.parquet": ["0390DOM"]}
+}
