@@ -34,6 +34,7 @@ def _emit(edges, families, *, all_pe_blis, rollup_pes, titles, series, cited):
         titles_by_pe=titles,
         decade_series_by_pe=series,
         cited_fact_ids=set(cited),
+        era_grain_fids=frozenset(),
     )
 
 

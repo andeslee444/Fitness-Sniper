@@ -11174,6 +11174,31 @@ def _lineage_ba(pe_bli: str) -> str | None:
     return None
 
 
+def _assert_lineage_flow_has_no_era_amount(
+    payload: dict, era_grain_fids: frozenset[str],
+) -> None:
+    """ROADMAP #204 invariant at the build_lineage_flow call: no amount the
+    /lineage/ payload chose is an era grain (spec 2026-10-02 §6.2 keeps era
+    points off lineage). build_lineage_flow takes only the FY2026 request
+    point (lineage.flow.AMOUNT_FY), which no PB2017-PB2023 grain can be;
+    this check stops that from resting on one constant in another module."""
+    from govbudget.lineage.flow import AMOUNT_FY
+
+    chosen = {
+        node["amount"]["fid"]
+        for group in [*payload.get("families", []), *payload.get("candidates", [])]
+        for node in group.get("nodes", [])
+        if isinstance(node.get("amount"), dict)
+    }
+    leaked = sorted(chosen & era_grain_fids)
+    if leaked:
+        raise RuntimeError(
+            f"lineage flow: {len(leaked)} FY{AMOUNT_FY} amount(s) chosen from an era grain"
+            f" ({', '.join(leaked[:5])}); era points stay off /lineage/"
+            " (spec 2026-10-02 §6.2, ROADMAP #204)"
+        )
+
+
 def _emit_lineage(
     *,
     edges: list,
@@ -11183,7 +11208,7 @@ def _emit_lineage(
     titles_by_pe: dict[str, str],
     decade_series_by_pe: dict[str, dict],
     cited_fact_ids: set[str],
-    era_grain_fids: frozenset[str] = frozenset(),
+    era_grain_fids: frozenset[str],
 ) -> dict[str, dict]:
     """Build the per-program ``lineage`` sidecar block (program-lineage Task 6).
 
@@ -11461,9 +11486,12 @@ def _emit_json_sidecars(
     decade_side_meta: dict | None = None,
     summary_by_pe: dict | None = None,
     fy26_split_by_pe: dict | None = None,
-    era_grain_fids: frozenset[str] = frozenset(),
+    era_grain_fids: frozenset[str],
 ) -> int:
     """Emit all JSON sidecars to out_dir/json/.
+
+    era_grain_fids is required (ROADMAP #204): a caller that forgot it would
+    put era points on a fenced surface silently.
 
     Reads DuckDB mart tables (read-only) and uses the already-computed
     detail_rows / bl_rows / citation_rows from the main export pass.
@@ -11516,7 +11544,7 @@ def _write_all_sidecars(
     decade_side_meta: dict | None = None,
     summary_by_pe: dict | None = None,
     fy26_split_by_pe: dict | None = None,
-    era_grain_fids: frozenset[str] = frozenset(),
+    era_grain_fids: frozenset[str],
 ) -> int:
     """Core sidecar writer; called from _emit_json_sidecars.
 
@@ -13485,6 +13513,9 @@ def _write_all_sidecars(
         decade_series_by_pe=decade_series_by_pe,
         cited_fact_ids=_cited_fact_ids,
     )
+    # ROADMAP #204: era grains never reach /lineage/. Asserted here, at the
+    # call, not only through build_lineage_flow's FY2026-only rule.
+    _assert_lineage_flow_has_no_era_amount(lineage_flow_payload, era_grain_fids)
 
     # Task E3 (Sprint E, ROADMAP #67): one sidecar per dim_programs ROW, not
     # per distinct pe_bli — all_prog_rows is a LIST (never deduped), so the

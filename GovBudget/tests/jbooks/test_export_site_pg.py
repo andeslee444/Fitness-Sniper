@@ -2239,3 +2239,27 @@ def test_export_site_refuses_an_undecided_era_line(pg_dsn, tmp_path):
     _add_era_map(db, "same_program", "undecided")
     with pytest.raises(RuntimeError, match="undecided"):
         export_site(pg_dsn, db, out_dir=tmp_path / "site", pdf_base_url="/pdfs")
+
+
+def test_the_lineage_flow_invariant_sees_the_tiers_era_marker(pg_dsn, tmp_path, monkeypatch):
+    """ROADMAP #204: export_site checks build_lineage_flow's chosen amounts
+    against the decade tier's own era set. A sentinel set stands in for it."""
+    import govbudget.export_site as es
+
+    sentinel = frozenset({"e0a0000000000001"})
+    real_tier = es._build_decade_citation_rows
+    real_check = es._assert_lineage_flow_has_no_era_amount
+    seen: list[frozenset] = []
+
+    def tier(**kwargs):
+        bl, cit, grains, side, _era = real_tier(**kwargs)
+        return bl, cit, grains, side, sentinel
+
+    def check(payload, era_grain_fids):
+        seen.append(era_grain_fids)
+        return real_check(payload, era_grain_fids)
+
+    monkeypatch.setattr(es, "_build_decade_citation_rows", tier)
+    monkeypatch.setattr(es, "_assert_lineage_flow_has_no_era_amount", check)
+    _run_decade_export(pg_dsn, tmp_path)
+    assert seen == [sentinel]

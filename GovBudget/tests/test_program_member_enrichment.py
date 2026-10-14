@@ -138,7 +138,8 @@ def _member_export(tmp_path, extra_details=(), extra_narratives=()):
         row[17], row[18], row[24] = f'https://example.mil/{n[8]}.pdf', n[5], n[1]
         citations.append(tuple(row))
     _emit_json_sidecars(out_dir=out, duckdb_path=db, detail_rows=details,
-                       bl_rows=bl_rows, citation_rows=citations, manifest={})
+                       bl_rows=bl_rows, citation_rows=citations, manifest={},
+                       era_grain_fids=frozenset())
     return out
 
 
