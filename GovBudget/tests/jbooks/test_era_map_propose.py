@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import pathlib
 import subprocess
 import sys
 from datetime import date
@@ -15,6 +16,7 @@ import pytest
 from govbudget.jbooks import era_map
 from govbudget.jbooks.era_map import Chain, EraKey, ModernLine, search_successors
 from govbudget.jbooks.p1_loader import EraKeyConflict
+from jbooks import era_map_fixtures
 from jbooks.era_map_fixtures import (
     JLTV_SENTENCE,
     make_lake,
@@ -700,3 +702,217 @@ def test_prefill_own_account_with_no_other_account_says_so(monkeypatch):
     assert decision == "same_program"
     assert reason == "R3: the code's own account (3022F); no other PB2024-26 account prints it"
     assert (pa, po) == ("", "")
+
+
+# ---------------------------------------------------------------------------
+# Task 4a fix round 1: the overturn hold persists in review.csv (Q25 is
+# fail-closed), a rule-4(b) clash beside an owner row, a pins-only overturn,
+# and the five outputs staged before any is replaced
+# ---------------------------------------------------------------------------
+
+DECIDED = date(2026, 10, 5)
+HELD_ATA = ("A1: class result same_program (R-DEC-ERA-SAME) differs from the seeded"
+            " history_only (R-DEC-ERA-HISTORY, 2026-10-02) — confirm or keep the seeded"
+            " decision; no silent overturn")
+
+
+def _db(tmp_path):
+    return tmp_path / "lake" / "duckdb" / "govbudget.duckdb"
+
+
+def _propose_again(tmp_path, out, seed, db=None):
+    return era_map.propose(duckdb_path=db or _db(tmp_path), raw_docs_dir=tmp_path / "raw_docs",
+                           out_dir=out, seed_path=seed, decided_on=ON)
+
+
+def _files(seed, out):
+    return {p.name: p.read_bytes() for p in [seed, *sorted(out.iterdir())]}
+
+
+def _seed_ata_as(seed, decision, ruling):
+    seeded = rows(seed)
+    next(r for r in seeded if r["line_item_code"] == "ATA000").update(
+        decision=decision, ruling=ruling)
+    era_map.write_seed(seed, seeded)
+
+
+def _assert_ata_held(tmp_path, out, seed, reason=HELD_ATA):
+    assert not [r for r in rows(seed) if r["line_item_code"] == "ATA000"]
+    held = {r["chain_id"]: r for r in rows(out / "review.csv")}["ATA000|3010F|"]
+    assert held["reason"] == reason
+    chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+    assert chains["ATA000|3010F|"]["left_ruling_reason"] == (
+        "class result differs from the seeded decision")
+    assert chains["ATA000|3010F|"]["ruling"] == ""
+    undecided = era_map.check(duckdb_path=_db(tmp_path), seed_path=seed)["undecided"]
+    assert "ATA000|3010F|" in [u["chain_id"] for u in undecided]
+    return held
+
+
+def test_a_held_overturn_stays_held_until_the_owner_ratifies(tmp_path):
+    # Review finding 1: the hold fired once, while the seed still held the old
+    # class row; the same call removed that row, so a second plain `propose`
+    # class-ruled the chain with the new result and `era-map check` passed.
+    _c, out, seed = run(tmp_path)
+    _seed_ata_as(seed, "history_only", "R-DEC-ERA-HISTORY")
+    _propose_again(tmp_path, out, seed)
+    first = _files(seed, out)
+    _assert_ata_held(tmp_path, out, seed)
+    for _ in range(3):
+        _propose_again(tmp_path, out, seed)
+        held = _assert_ata_held(tmp_path, out, seed)
+        assert held["proposed_decision"] == "same_program"
+        assert _files(seed, out) == first          # byte-stable, nothing drifts
+
+
+def test_a_ratified_owner_row_releases_the_hold(tmp_path):
+    _c, out, seed = run(tmp_path)
+    _seed_ata_as(seed, "history_only", "R-DEC-ERA-HISTORY")
+    _propose_again(tmp_path, out, seed)
+    _propose_again(tmp_path, out, seed)            # still held: no owner action yet
+    _assert_ata_held(tmp_path, out, seed)
+    review = rows(out / "review.csv")
+    next(r for r in review if r["chain_id"] == "ATA000|3010F|")["decision"] = "history_only"
+    era_map.write_csv(out / "review.csv", era_map.REVIEW_COLUMNS, review)
+    assert era_map.ratify(review_csv=out / "review.csv", seed_path=seed, batch="B1",
+                          decided_on=DECIDED, duckdb_path=_db(tmp_path)) == 1
+    _propose_again(tmp_path, out, seed)
+    ata = [r for r in rows(seed) if r["line_item_code"] == "ATA000"]
+    assert [(r["decision"], r["ruling"], r["decided_on"]) for r in ata] == [
+        ("history_only", "R-DEC-ERA-B1", "2026-10-05")]
+    assert "ATA000|3010F|" not in {r["chain_id"] for r in rows(out / "review.csv")}
+    chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+    assert (chains["ATA000|3010F|"]["ruling"], chains["ATA000|3010F|"]["left_ruling_reason"]) == (
+        "owner-batch", "")
+    undecided = era_map.check(duckdb_path=_db(tmp_path), seed_path=seed)["undecided"]
+    assert "ATA000|3010F|" not in [u["chain_id"] for u in undecided]
+    again = _files(seed, out)
+    _propose_again(tmp_path, out, seed)
+    assert _files(seed, out) == again
+
+
+def test_a_held_overturn_follows_a_class_result_that_changes_again(tmp_path, monkeypatch):
+    _c, out, seed = run(tmp_path)
+    _seed_ata_as(seed, "exclude_reused_code", "R-DEC-ERA-EXCLUDE")
+    _propose_again(tmp_path, out, seed)
+    _assert_ata_held(tmp_path, out, seed, reason=(
+        "A1: class result same_program (R-DEC-ERA-SAME) differs from the seeded"
+        " exclude_reused_code (R-DEC-ERA-EXCLUDE, 2026-10-02) — confirm or keep the seeded"
+        " decision; no silent overturn"))
+    # the lake moves on: PB2026 no longer prints ATA000, so the chain is era-only
+    # and the class ruling is history_only
+    monkeypatch.setattr(era_map_fixtures, "MODERN",
+                        [m for m in era_map_fixtures.MODERN if m[0] != "ATA000"])
+    db2 = era_map_fixtures.make_lake(tmp_path / "lake2")
+    _propose_again(tmp_path, out, seed, db=db2)
+    assert not [r for r in rows(seed) if r["line_item_code"] == "ATA000"]
+    held = {r["chain_id"]: r for r in rows(out / "review.csv")}["ATA000|3010F|"]
+    assert held["proposed_decision"] == "history_only"
+    assert held["reason"] == (
+        "H: class result history_only (R-DEC-ERA-HISTORY) differs from the seeded"
+        " exclude_reused_code (R-DEC-ERA-EXCLUDE, 2026-10-02) — confirm or keep the seeded"
+        " decision; no silent overturn")
+    chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+    assert chains["ATA000|3010F|"]["left_ruling_reason"] == (
+        "class result differs from the seeded decision")
+    undecided = era_map.check(duckdb_path=db2, seed_path=seed)["undecided"]
+    assert "ATA000|3010F|" in [u["chain_id"] for u in undecided]
+
+
+def test_a_pins_only_difference_is_an_overturn_and_stays_held(tmp_path):
+    _c, out, seed = run(tmp_path)
+    seeded = rows(seed)
+    dtra = next(r for r in seeded if r["decision_id"] == "20|0300D|DTRA|2022-2022")
+    assert (dtra["decision"], dtra["program_org"]) == ("same_program", "DTRA")
+    dtra["program_org"] = "DCSA"                   # same decision and ruling, other page
+    era_map.write_seed(seed, seeded)
+    for _ in range(2):
+        _propose_again(tmp_path, out, seed)
+        assert "20|0300D|DTRA|2022-2022" not in {r["decision_id"] for r in rows(seed)}
+        held = {r["chain_id"]: r for r in rows(out / "review.csv")}["20|0300D|DTRA"]
+        assert (held["proposed_decision"], held["program_account"], held["program_org"]) == (
+            "same_program", "0300D", "DTRA")
+        assert held["reason"] == (
+            "A1: class result same_program (R-DEC-ERA-SAME) differs from the seeded"
+            " same_program (R-DEC-ERA-SAME, 2026-10-02) — confirm or keep the seeded"
+            " decision; no silent overturn")
+        chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+        assert chains["20|0300D|DTRA"]["left_ruling_reason"] == (
+            "class result differs from the seeded decision")
+
+
+def test_a_clash_with_an_owner_ratified_row_holds_only_the_class_ruled_side(
+        tmp_path, monkeypatch):
+    # The live DISA/TJS shape on code 15: the owner already ratified TJS
+    # same_program; the class ruling would put DISA on the same page.
+    monkeypatch.setattr(era_map, "ORG_SPLIT_CODES", frozenset({"15", "20"}))
+    db = make_lake(tmp_path / "lake", extra_era=CLASH_15)
+    con = duckdb.connect(str(db))
+    con.execute("insert into dim_programs values ('15', '0300D', 'DISA')")
+    con.close()
+    out = tmp_path / "research" / "era_map"
+    seed = tmp_path / "seeds" / "p1_era_code_decisions.csv"
+    owner = {c: "" for c in era_map.SEED_COLUMNS}
+    owner.update({"decision_id": "15|0300D|TJS|2022-2022", "line_item_code": "15",
+                  "account": "0300D", "organization": "TJS", "first_edition": "2022",
+                  "last_edition": "2022", "decision": "same_program", "n_keys": "1",
+                  "keys_sha256": "x" * 64, "decided_on": "2026-10-05",
+                  "decided_by": "owner", "ruling": "R-DEC-ERA-B1"})
+    era_map.write_seed(seed, [owner])
+    for _ in range(2):
+        era_map.propose(duckdb_path=db, raw_docs_dir=make_raw_docs(tmp_path), out_dir=out,
+                        seed_path=seed, decided_on=ON)
+        assert next(r for r in rows(seed) if r["ruling"] == "R-DEC-ERA-B1") == owner
+        assert not [r for r in rows(seed) if r["organization"] == "DISA"]
+        review = {r["chain_id"]: r for r in rows(out / "review.csv")}
+        assert "15|0300D|TJS" not in review
+        assert review["15|0300D|DISA"]["proposed_decision"] == ""
+        assert review["15|0300D|DISA"]["reason"] == (
+            "A1: 15|0300D|TJS|2022-2022: same_program collides with 15|0300D|DISA|2022-2022"
+            " — page 15 would sum TJS and DISA in PB2022; decide history_only for the"
+            " organization whose page it is not")
+        chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+        assert chains["15|0300D|TJS"]["ruling"] == "owner-batch"
+        assert chains["15|0300D|DISA"]["left_ruling_reason"] == (
+            "one organization per page grain (rule 4(b))")
+
+
+def test_propose_stages_every_output_before_replacing_any(tmp_path, monkeypatch):
+    # Review finding M2: the five os.replace calls run back to back, after all
+    # five temporary files are written.
+    _c, out, seed = run(tmp_path)
+    era_map.write_seed(seed, [r for r in rows(seed) if r["line_item_code"] != "ATA000"])
+    staged = []
+    real = era_map.os.replace
+
+    def spy(src, dst):
+        if not staged:
+            staged.extend(sorted(p.name for d in (seed.parent, out)
+                                 for p in d.iterdir() if p.name.endswith(".tmp")))
+        return real(src, dst)
+
+    monkeypatch.setattr(era_map.os, "replace", spy)
+    _propose_again(tmp_path, out, seed)
+    assert staged == sorted([".chains.csv.tmp", ".counts.json.tmp", ".keys.csv.tmp",
+                             ".p1_era_code_decisions.csv.tmp", ".review.csv.tmp"])
+    assert not [p for d in (seed.parent, out) for p in d.iterdir() if p.name.endswith(".tmp")]
+
+
+def test_propose_replaces_nothing_when_a_temporary_file_cannot_be_written(
+        tmp_path, monkeypatch):
+    _c, out, seed = run(tmp_path)
+    era_map.write_seed(seed, [r for r in rows(seed) if r["line_item_code"] != "ATA000"])
+    before = _files(seed, out)
+    real = pathlib.Path.write_text
+
+    def flaky(self, *args, **kwargs):
+        if self.name == ".keys.csv.tmp":           # the fourth of the five
+            raise OSError("disk full")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "write_text", flaky)
+    with pytest.raises(OSError, match="disk full"):
+        _propose_again(tmp_path, out, seed)
+    monkeypatch.undo()
+    assert _files(seed, out) == before
+    assert not [p for d in (seed.parent, out) for p in d.iterdir() if p.name.endswith(".tmp")]

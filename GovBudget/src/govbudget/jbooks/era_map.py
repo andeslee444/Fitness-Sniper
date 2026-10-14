@@ -909,17 +909,30 @@ def _csv_text(columns: Sequence[str], rows: Iterable[Mapping]) -> str:
     return buf.getvalue()
 
 
-def _atomic_write_text(path: Path, text: str) -> None:
-    """Write text through a temporary file beside path and os.replace, so a
-    reader never sees a half-written file (ROADMAP #198)."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
+def _atomic_write_texts(files: Mapping[Path, str]) -> None:
+    """Write every file whole through a temporary file beside it, so a reader
+    never sees a half-written file (ROADMAP #198). All the temporary files
+    are written first, so a failure there (a full disk) leaves every target
+    untouched; only then do the os.replace calls run, back to back. (A
+    replace that itself fails midway can still leave some targets replaced;
+    a rename within one directory does not run out of space.)"""
+    staged: list[tuple[Path, Path]] = []
     try:
-        tmp.write_text(text, encoding="utf-8", newline="")
-        os.replace(tmp, path)
+        for path, text in files.items():
+            path = Path(path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(f".{path.name}.tmp")
+            staged.append((tmp, path))
+            tmp.write_text(text, encoding="utf-8", newline="")
+        for tmp, path in staged:
+            os.replace(tmp, path)
     finally:
-        tmp.unlink(missing_ok=True)
+        for tmp, _path in staged:
+            tmp.unlink(missing_ok=True)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    _atomic_write_texts({Path(path): text})
 
 
 def write_csv(path: Path, columns: Sequence[str], rows: Iterable[Mapping]) -> None:
@@ -1262,8 +1275,10 @@ def propose(
     (ruling not a class ruling) are kept verbatim and their chains are
     neither class-ruled nor re-proposed. A class result that would
     overturn a seeded decision, or break rule 4(b), goes to review instead
-    (_hold_for_review). Nothing is written until all five outputs are
-    computed. Returns the counts dict."""
+    (_hold_for_review); an overturn stays held on every later propose, read
+    back from the review.csv it wrote, until an owner row covers the chain.
+    Nothing is written until all five outputs are computed. Returns the
+    counts dict."""
     inputs = load_inputs(Path(duckdb_path))
     split = org_split_codes(inputs.era)
     if split != ORG_SPLIT_CODES:
@@ -1283,16 +1298,16 @@ def propose(
     owner_chains = {chain_id(r["line_item_code"], r["account"], r["organization"])
                     for r in owner_rows}
     review_path = Path(out_dir) / "review.csv"
-    if review_path.is_file():
-        pending = sorted({r["chain_id"] for r in read_csv(review_path)
-                          if (r.get("decision") or "").strip()
-                          and r["chain_id"] not in owner_chains})
-        if pending:
-            raise RuntimeError(
-                f"era-map propose: {review_path} holds decisions for"
-                f" {len(pending)} chain(s) that are not ratified yet"
-                f" ({', '.join(pending[:5])}) — run `govbudget era-map ratify`"
-                " first, or blank their decision column; nothing was written")
+    prior_review = read_csv(review_path) if review_path.is_file() else []
+    pending = sorted({r["chain_id"] for r in prior_review
+                      if (r.get("decision") or "").strip()
+                      and r["chain_id"] not in owner_chains})
+    if pending:
+        raise RuntimeError(
+            f"era-map propose: {review_path} holds decisions for"
+            f" {len(pending)} chain(s) that are not ratified yet"
+            f" ({', '.join(pending[:5])}) — run `govbudget era-map ratify`"
+            " first, or blank their decision column; nothing was written")
     open_chains = [c for c in chains if c.chain_id not in owner_chains]
     ruled, left = apply_class_rulings(
         open_chains, modern_pages=inputs.modern_pages,
@@ -1321,7 +1336,7 @@ def propose(
             row["decided_on"] = old["decided_on"]
     ruled, held = _hold_for_review(
         ruled, existing=existing, owner_rows=owner_rows, keys_by_chain=keys_by_chain,
-        collision_codes=inputs.collision_codes)
+        collision_codes=inputs.collision_codes, prior_review=prior_review)
     left = sorted([*left, *(by_id[cid] for cid in held)], key=lambda c: c.chain_id)
 
     ruled_ids = {chain_id(r["line_item_code"], r["account"], r["organization"]): r
@@ -1458,7 +1473,7 @@ def propose(
         "successor_coverage": successor_coverage,
     }
     # ROADMAP #198: every output is computed above; only now is anything
-    # written, each file whole through a temporary file and os.replace.
+    # written: all five temporary files first, then the five os.replace calls.
     outputs = {
         Path(seed_path): _csv_text(SEED_COLUMNS, sorted(
             owner_rows + ruled, key=lambda r: r["decision_id"])),
@@ -1467,8 +1482,7 @@ def propose(
         out_dir / "keys.csv": _csv_text(KEY_COLUMNS, key_rows),
         out_dir / "counts.json": json.dumps(counts, indent=1, sort_keys=True) + "\n",
     }
-    for path, text in outputs.items():
-        _atomic_write_text(path, text)
+    _atomic_write_texts(outputs)
     return counts
 
 
@@ -1541,10 +1555,39 @@ def _clash_message(a: Mapping[str, str], b: Mapping[str, str], shared: Sequence[
             " organization whose page it is not")
 
 
+# The overturn hold's reason ends " … differs from the seeded <old decision>
+# (<old ruling>, <old decided_on>) — confirm or keep the seeded decision; no
+# silent overturn". The old class row leaves the seed with the hold (Q25), so
+# this text, in review.csv, is the only record of what was seeded: the next
+# propose reads it back (_carried_overturns) to keep the chain held.
+_OVERTURN_MID = " differs from the seeded "
+_OVERTURN_TAIL = " — confirm or keep the seeded decision; no silent overturn"
+_OVERTURN_LEFT_REASON = "class result differs from the seeded decision"
+
+
+def _overturn_reason(row: Mapping[str, str], seeded: str) -> str:
+    return (f"{row['proposed_rule']}: class result {row['decision']} ({row['ruling']})"
+            f"{_OVERTURN_MID}{seeded}{_OVERTURN_TAIL}")
+
+
+def _carried_overturns(prior_review: Sequence[Mapping[str, str]]) -> dict[str, str]:
+    """{chain_id: "<old decision> (<old ruling>, <old decided_on>)"} for the
+    rows of the review.csv an earlier propose wrote that hold a chain as an
+    overturn of a seeded class decision."""
+    carried: dict[str, str] = {}
+    for r in prior_review:
+        reason = r.get("reason") or ""
+        if reason.endswith(_OVERTURN_TAIL) and _OVERTURN_MID in reason:
+            carried[r["chain_id"]] = reason.split(
+                _OVERTURN_MID, 1)[1][:-len(_OVERTURN_TAIL)]
+    return carried
+
+
 def _hold_for_review(
     ruled: Sequence[dict], *, existing: Sequence[Mapping[str, str]],
     owner_rows: Sequence[Mapping[str, str]],
     keys_by_chain: Mapping[str, Sequence[EraKey]], collision_codes: frozenset[str],
+    prior_review: Sequence[Mapping[str, str]] = (),
 ) -> tuple[list[dict], dict[str, tuple[str, str, str, str, str]]]:
     """The class-ruled rows propose must NOT write to the seed (ROADMAP #198;
     follow-ups spec §4.5, §6.2, Q25), as (rows kept, {chain_id: (proposed
@@ -1555,6 +1598,13 @@ def _hold_for_review(
         review, proposed as the new class result. Its old class row leaves
         the seed with it, so the owner's batch can be ratified; until then
         `era-map check --strict` fails on its keys (fail-closed).
+      * the overturn hold persists: the old class row is gone after the first
+        propose, so a chain stays held while the review.csv an earlier
+        propose wrote (prior_review) still carries the overturn reason for
+        it, whatever the class result is by then (the proposal and reason
+        follow the current result; the seeded decision it is held against is
+        carried over from the earlier reason). Only an owner row covering
+        the chain releases it: such a chain is not in `ruled`.
       * rule 4(b): a class-ruled same_program row that clashes with another
         same_program row (class-ruled or owner-decided) goes to review with
         no proposal.
@@ -1563,6 +1613,7 @@ def _hold_for_review(
     for r in existing:
         if r["ruling"] in CLASS_RULINGS:
             prior[chain_id(r["line_item_code"], r["account"], r["organization"])].append(r)
+    carried = _carried_overturns(prior_review)
     held: dict[str, tuple[str, str, str, str, str]] = {}
     for row in ruled:
         cid = chain_id(row["line_item_code"], row["account"], row["organization"])
@@ -1571,15 +1622,15 @@ def _hold_for_review(
                         ("decision", "ruling", "program_account", "program_org"))]
         if moved:
             old = moved[0]
-            held[cid] = (
-                row["decision"],
-                f"{row['proposed_rule']}: class result {row['decision']} ({row['ruling']})"
-                f" differs from the seeded {old['decision']} ({old['ruling']},"
-                f" {old['decided_on']}) — confirm or keep the seeded decision;"
-                " no silent overturn",
-                row["program_account"], row["program_org"],
-                "class result differs from the seeded decision",
-            )
+            seeded = f"{old['decision']} ({old['ruling']}, {old['decided_on']})"
+        elif cid in carried:
+            seeded = carried[cid]
+        else:
+            continue
+        held[cid] = (
+            row["decision"], _overturn_reason(row, seeded),
+            row["program_account"], row["program_org"], _OVERTURN_LEFT_REASON,
+        )
 
     def cid_of(r: Mapping[str, str]) -> str:
         return chain_id(r["line_item_code"], r["account"], r["organization"])
