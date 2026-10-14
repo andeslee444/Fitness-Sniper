@@ -2543,7 +2543,23 @@ def cmd_export_budget_pdf_receipts(args) -> None:
 
 
 def cmd_link_coverage(args) -> None:
-    """Overview §7 / spec V9: link class of every budget figure on the program pages."""
+    """Overview §7 / spec V9: link class of every budget figure on the program pages.
+
+    Exit codes (one convention for the follow-ups' tools, ROADMAP #200): 0 PASS,
+    1 FAIL (a violation), 2 a tool error — one stderr line `link-coverage:
+    ERROR — <message>`, never a traceback (an unreadable site dir or baseline,
+    a foreign baseline, or one file named as both --baseline and
+    --write-baseline)."""
+    try:
+        _link_coverage(args)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — every tool error exits 2, without a traceback
+        print(f"link-coverage: ERROR — {e}", file=sys.stderr)
+        sys.exit(2)
+
+
+def _link_coverage(args) -> None:
     import json
 
     from govbudget.link_coverage import (
@@ -2552,6 +2568,14 @@ def cmd_link_coverage(args) -> None:
         compare_to_baseline,
         compute_link_coverage,
     )
+
+    if (args.baseline is not None and args.write_baseline is not None
+            and args.baseline.resolve() == args.write_baseline.resolve()):
+        raise ValueError(
+            f"--baseline and --write-baseline both name {args.baseline}; the comparison"
+            " would read the file it just wrote (ROADMAP #200) — write the new baseline"
+            " to another path"
+        )
 
     def pct(share):
         return "n/a" if share is None else f"{100 * share:.2f}%"
@@ -2565,11 +2589,10 @@ def cmd_link_coverage(args) -> None:
         f" PDF-highlighted {pct(site['pdf_highlighted'])};"
         f" {site['pages_fully_pdf_highlighted']:,} of {site['pages']:,} pages fully PDF-highlighted"
     )
-    if args.write_baseline is not None:
-        args.write_baseline.parent.mkdir(parents=True, exist_ok=True)
-        text = json.dumps(baseline_from_report(report), indent=0, sort_keys=True) + "\n"
-        args.write_baseline.write_text(text)
-        print(f"link-coverage: baseline -> {args.write_baseline} ({len(text.encode()):,} bytes)")
+    print(f"link-coverage: {site['summary_cards_cited_by_xml_path']:,} summary card(s) cited by"
+          " XML path only, outside V9 (Q20)")
+    # Compare FIRST (ROADMAP #200): the old order wrote the new baseline, then
+    # read it back as the one to compare against.
     if args.baseline is not None:
         baseline = json.loads(args.baseline.read_text())
         violations = compare_to_baseline(report, baseline)
@@ -2581,6 +2604,15 @@ def cmd_link_coverage(args) -> None:
     if len(violations) > 50:
         print(f"  ... and {len(violations) - 50:,} more")
     print(f"link-coverage: {len(violations):,} violation(s)")
+    if args.write_baseline is not None:
+        if violations:
+            print(f"link-coverage: baseline NOT written to {args.write_baseline}"
+                  " (the report has violations)")
+        else:
+            args.write_baseline.parent.mkdir(parents=True, exist_ok=True)
+            text = json.dumps(baseline_from_report(report), indent=0, sort_keys=True) + "\n"
+            args.write_baseline.write_text(text)
+            print(f"link-coverage: baseline -> {args.write_baseline} ({len(text.encode()):,} bytes)")
     if violations:
         print("link-coverage: FAIL")
         sys.exit(1)

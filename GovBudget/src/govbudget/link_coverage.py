@@ -68,6 +68,11 @@ def _page_figures(detail: dict) -> list[tuple[str, object]]:
     for card in (detail.get("summary") or {}).get("cards") or []:
         if card.get("fid"):
             out.append(("summary_cards", card["fid"]))
+        elif card.get("value") is not None and not card.get("xml_path"):
+            # ROADMAP #200: a card that shows a value and names no source at
+            # all is (d), never skipped. A card cited by XML path only (the
+            # J-book detail cards) is counted apart by _xml_path_cards (Q20).
+            out.append(("summary_cards", None))
     diff = detail.get("book_diff")
     for entry in diff if isinstance(diff, list) else [diff]:
         if isinstance(entry, dict) and entry.get("fid"):
@@ -81,6 +86,16 @@ def _page_figures(detail: dict) -> list[tuple[str, object]]:
             if isinstance(line, dict) and line.get("fid"):
                 out.append(("fy26_lines", line["fid"]))
     return out
+
+
+def _xml_path_cards(detail: dict) -> int:
+    """Summary cards cited by an XML path only (no fid, a value, an
+    xml_path): J-book detail figures, outside V9 and reported as their own
+    count (follow-ups spec Q20; 440 on the 2026-10-04 export)."""
+    return sum(
+        1 for card in (detail.get("summary") or {}).get("cards") or []
+        if not card.get("fid") and card.get("value") is not None and card.get("xml_path")
+    )
 
 
 def _has_url(citation: dict, *keys: str) -> bool:
@@ -125,7 +140,7 @@ class _Classifier:
     def _derived(self, fid: str, citation: dict, active: frozenset[str]) -> str:
         try:
             inputs = json.loads(citation.get("inputs") or "[]")
-        except ValueError:
+        except (TypeError, ValueError):  # ROADMAP #200: a non-string `inputs` is (d), not a crash
             return "d"
         if not isinstance(inputs, list) or not inputs:
             return "d"
@@ -176,10 +191,13 @@ def compute_link_coverage(site_dir: Path) -> dict:
     figures: dict[str, str] = {}
     pages: dict[str, dict] = {}
     occurrences = {section: dict.fromkeys(CLASSES, 0) for section in SECTIONS}
+    xml_path_cards = 0
     for path in detail_paths:
         slug = path.stem
         page: dict[str, str] = {}
-        for index, (section, fid) in enumerate(_page_figures(json.loads(path.read_text()))):
+        detail = json.loads(path.read_text())
+        xml_path_cards += _xml_path_cards(detail)
+        for index, (section, fid) in enumerate(_page_figures(detail)):
             if isinstance(fid, str) and _FID.fullmatch(fid):
                 key, cls = fid, classify(fid)
             else:
@@ -214,6 +232,7 @@ def compute_link_coverage(site_dir: Path) -> dict:
         "receipts_match_citations": receipts_match,
         "workbooks_pinned": len(pinned),
         "export_built_at": built_at,
+        "summary_cards_cited_by_xml_path": xml_path_cards,
     })
     return {"site": site, "pages": pages, "figures": dict(sorted(figures.items()))}
 
@@ -277,5 +296,14 @@ def compare_to_baseline(report: dict, baseline: dict) -> list[str]:
         if cls != "a":
             state = "no longer published" if cls is None else f"now ({cls})"
             violations.append(f"lost PDF receipt: {fid} was (a) in the baseline, {state}")
+    if (baseline.get("site", {}).get("receipts_match_citations") is True
+            and report["site"].get("receipts_match_citations") is None):
+        # ROADMAP #200: absolute_violations reads None as "not audited" and
+        # passes; against a baseline that WAS audited, a missing audit fails.
+        violations.append(
+            "receipt audit missing: the baseline recorded receipts_match_citations true, but"
+            " json/budget_pdf_receipts_audit.json is absent from this site"
+            " (re-run export-budget-pdf-receipts)"
+        )
     violations.extend(absolute_violations(report))
     return violations

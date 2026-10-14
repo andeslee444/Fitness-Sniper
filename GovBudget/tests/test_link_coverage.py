@@ -228,3 +228,105 @@ def test_cli_writes_a_baseline_then_passes_and_fails_against_it(tmp_path, capsys
     out = capsys.readouterr().out
     assert f"  - lost PDF receipt: {fid(1)} was (a) in the baseline, now (b)" in out
     assert out.rstrip().endswith("link-coverage: FAIL")
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #200 (follow-ups spec 2026-10-04 §6.5): fail closed
+# ---------------------------------------------------------------------------
+
+def test_a_baseline_that_recorded_the_receipt_audit_fails_when_the_audit_is_missing(tmp_path):
+    s0 = compute_link_coverage(write_site(tmp_path / "s0", citations=CITATIONS, receipts=RECEIPTS,
+                                          pages={"AAA": page(lines=[fid(1)])}))
+    baseline = baseline_from_report(s0)
+    assert baseline["site"]["receipts_match_citations"] is True
+    unaudited = compute_link_coverage(write_site(tmp_path / "s4", citations=CITATIONS,
+                                                 receipts=RECEIPTS,
+                                                 pages={"AAA": page(lines=[fid(1)])},
+                                                 audit_sha=None))
+    assert compare_to_baseline(unaudited, baseline) == [
+        "receipt audit missing: the baseline recorded receipts_match_citations true, but"
+        " json/budget_pdf_receipts_audit.json is absent from this site"
+        " (re-run export-budget-pdf-receipts)"
+    ]
+
+
+def test_a_value_card_with_no_source_is_d_and_an_xml_path_card_is_counted_apart(tmp_path):
+    detail = page(lines=[fid(1)])
+    detail["summary"]["cards"] += [
+        {"fid": None, "value": 12.5},                                    # a value, no source
+        {"fid": None, "value": 0.0, "xml_path": "ProgramElement[241]"},  # J-book detail (Q20)
+        {"fid": None, "value": None},                                    # an absent card
+    ]
+    report = compute_link_coverage(write_site(tmp_path, citations=CITATIONS, receipts=RECEIPTS,
+                                              pages={"AAA": detail}))
+    assert report["figures"] == {fid(1): "a", "nofid:AAA:summary_cards:1": "d"}
+    assert report["site"]["summary_cards_cited_by_xml_path"] == 1
+    assert absolute_violations(report)[0] == (
+        "not source-linked: nofid:AAA:summary_cards:1 is (d) on /program/AAA/")
+
+
+def test_a_derived_figure_whose_input_has_no_citation_is_d(tmp_path):
+    citations = dict(CITATIONS, **{fid(20): derived(fid(1), fid(21))})   # fid(21) is cited nowhere
+    report = compute_link_coverage(write_site(tmp_path, citations=citations, receipts=RECEIPTS,
+                                              pages={"AAA": page(lines=[fid(20)])}))
+    assert report["figures"] == {fid(20): "d"}
+
+
+def test_non_string_derived_inputs_are_d_not_a_crash(tmp_path):
+    citations = dict(CITATIONS, **{fid(22): {"kind": "derived", "inputs": [fid(1)],
+                                             "formula": "x", "official_url": None}})
+    report = compute_link_coverage(write_site(tmp_path, citations=citations, receipts=RECEIPTS,
+                                              pages={"AAA": page(lines=[fid(22)])}))
+    assert report["figures"] == {fid(22): "d"}
+
+
+def test_cli_refuses_one_file_as_both_baseline_and_new_baseline(tmp_path, capsys):
+    s0 = write_site(tmp_path / "s0", citations=CITATIONS, receipts=RECEIPTS,
+                    pages={"AAA": page(lines=[fid(1), fid(2)])})
+    target = tmp_path / "baseline.json"
+    cli.main(["link-coverage", "--site-dir", str(s0), "--write-baseline", str(target)])
+    before = target.read_bytes()
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["link-coverage", "--site-dir", str(s0), "--baseline", str(target),
+                  "--write-baseline", str(target)])
+    assert exc.value.code == 2
+    assert capsys.readouterr().err.startswith(
+        "link-coverage: ERROR — --baseline and --write-baseline both name")
+    assert target.read_bytes() == before
+
+
+def test_cli_compares_first_and_never_writes_a_failing_report_as_a_baseline(tmp_path, capsys):
+    s0 = write_site(tmp_path / "s0", citations=CITATIONS, receipts=RECEIPTS,
+                    pages={"AAA": page(lines=[fid(1), fid(2)])})
+    old, new = tmp_path / "old.json", tmp_path / "new.json"
+    cli.main(["link-coverage", "--site-dir", str(s0), "--write-baseline", str(old)])
+    s4 = write_site(tmp_path / "s4", citations=CITATIONS,
+                    receipts=dict(RECEIPTS, **{fid(1): receipt(False)}),
+                    pages={"AAA": page(lines=[fid(1), fid(2)])})
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["link-coverage", "--site-dir", str(s4), "--baseline", str(old),
+                  "--write-baseline", str(new)])
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert f"  - lost PDF receipt: {fid(1)} was (a) in the baseline, now (b)" in out
+    assert f"link-coverage: baseline NOT written to {new} (the report has violations)" in out
+    assert not new.exists()
+
+
+def test_cli_tool_errors_exit_2_without_a_traceback(tmp_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["link-coverage", "--site-dir", str(tmp_path)])
+    assert exc.value.code == 2
+    assert capsys.readouterr().err.startswith(
+        "link-coverage: ERROR — no program sidecars under")
+    s0 = write_site(tmp_path / "s0", citations=CITATIONS, receipts=RECEIPTS,
+                    pages={"AAA": page(lines=[fid(1)])})
+    foreign = tmp_path / "foreign.json"
+    foreign.write_text('{"schema_version": 9}')
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["link-coverage", "--site-dir", str(s0), "--baseline", str(foreign)])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "unsupported link-coverage baseline schema: 9" in err and "Traceback" not in err
